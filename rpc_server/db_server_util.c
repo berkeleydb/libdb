@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000
+ * Copyright (c) 2000-2001
  *      Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_server_util.c,v 1.32 2001/01/18 18:36:59 bostic Exp $";
+static const char revid[] = "$Id: db_server_util.c,v 1.42 2001/06/13 01:49:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -66,9 +66,8 @@ main(argc, argv)
 	char **argv;
 {
 	extern char *optarg;
-	extern int optind;
 	CLIENT *cl;
-	int ch, ret;
+	int ch;
 
 	prog = argv[0];
 
@@ -87,11 +86,11 @@ main(argc, argv)
 	 * time on the same environments.
 	 */
 	if ((cl = clnt_create("localhost",
-	    DB_SERVERPROG, DB_SERVERVERS, "tcp")) != NULL) {
+	    DB_RPC_SERVERPROG, DB_RPC_SERVERVERS, "tcp")) != NULL) {
 		fprintf(stderr,
 		    "%s: Berkeley DB RPC server already running.\n", prog);
 		clnt_destroy(cl);
-		exit(1);
+		return (EXIT_FAILURE);
 	}
 
 	LIST_INIT(&__dbsrv_home);
@@ -117,7 +116,7 @@ main(argc, argv)
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case 'v':
 			__dbsrv_verbose = 1;
 			break;
@@ -135,7 +134,8 @@ main(argc, argv)
 	 * It would be bad to timeout environments sooner than txns.
 	 */
 	if (__dbsrv_defto > __dbsrv_idleto)
-printf("%s:  WARNING: Idle timeout %ld is less than resource timeout %ld\n",
+		fprintf(stderr,
+		    "%s: WARNING: Idle timeout %ld is less than resource timeout %ld\n",
 		    prog, __dbsrv_idleto, __dbsrv_defto);
 
 	LIST_INIT(&__dbsrv_head);
@@ -149,14 +149,14 @@ printf("%s:  WARNING: Idle timeout %ld is less than resource timeout %ld\n",
 #endif
 
 	if (logfile != NULL && __db_util_logset("berkeley_db_svc", logfile))
-		exit(1);
+		return (EXIT_FAILURE);
 
 	/*
 	 * Now that we are ready to start, run recovery on all the
 	 * environments specified.
 	 */
-	if ((ret = env_recover(prog)) != 0)
-		exit(1);
+	if (env_recover(prog) != 0)
+		return (EXIT_FAILURE);
 
 	/*
 	 * We've done our setup, now call the generated server loop
@@ -176,7 +176,7 @@ usage(prog)
 	fprintf(stderr, "usage: %s %s\n\t%s\n", prog,
 	    "[-Vv] [-h home]",
 	    "[-I idletimeout] [-L logfile] [-t def_timeout] [-T maxtimeout]");
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static void
@@ -192,7 +192,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    prog, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -220,7 +220,6 @@ __dbsrv_timeout(force)
 	int force;
 {
 	static long to_hint = -1;
-	DBC *dbcp;
 	time_t t;
 	long to;
 	ct_entry *ctp, *nextctp;
@@ -278,7 +277,6 @@ __dbsrv_timeout(force)
 				if (__dbsrv_verbose)
 					printf("Timing out cursor %ld\n",
 					    ctp->ct_id);
-				dbcp = (DBC *)ctp->ct_anyp;
 				(void)__dbc_close_int(ctp);
 				/*
 				 * Start over with a guaranteed good ctp.
@@ -352,7 +350,7 @@ __dbclear_ctp(ctp)
 	ct_entry *ctp;
 {
 	LIST_REMOVE(ctp, entries);
-	__os_free(ctp, sizeof(ct_entry));
+	__os_free(NULL, ctp, sizeof(ct_entry));
 }
 
 /*
@@ -367,17 +365,17 @@ __dbdel_ctp(parent)
 }
 
 /*
- * PUBLIC: ct_entry *new_ct_ent __P((u_int32_t *));
+ * PUBLIC: ct_entry *new_ct_ent __P((int *));
  */
 ct_entry *
 new_ct_ent(errp)
-	u_int32_t *errp;
+	int *errp;
 {
 	time_t t;
 	ct_entry *ctp, *octp;
 	int ret;
 
-	if ((ret = __os_malloc(NULL, sizeof(ct_entry), NULL, &ctp)) != 0) {
+	if ((ret = __os_malloc(NULL, sizeof(ct_entry), &ctp)) != 0) {
 		*errp = ret;
 		return (NULL);
 	}
@@ -389,8 +387,8 @@ new_ct_ent(errp)
 	 * we know for certain that we can use our entry.
 	 */
 	if ((t = time(NULL)) == -1) {
-		*errp = t;
-		__os_free(ctp, sizeof(ct_entry));
+		*errp = __os_get_errno();
+		__os_free(NULL, ctp, sizeof(ct_entry));
 		return (NULL);
 	}
 	octp = LIST_FIRST(&__dbsrv_head);
@@ -509,9 +507,9 @@ add_home(home)
 	home_entry *hp, *homep;
 	int ret;
 
-	if ((ret = __os_malloc(NULL, sizeof(home_entry), NULL, &hp)) != 0)
+	if ((ret = __os_malloc(NULL, sizeof(home_entry), &hp)) != 0)
 		return (ret);
-	if ((ret = __os_malloc(NULL, strlen(home)+1, NULL, &hp->home)) != 0)
+	if ((ret = __os_malloc(NULL, strlen(home)+1, &hp->home)) != 0)
 		return (ret);
 	memcpy(hp->home, home, strlen(home)+1);
 	hp->dir = home;
@@ -575,7 +573,7 @@ env_recover(progname)
 		if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			fprintf(stderr, "%s: db_env_create: %s\n",
 			    progname, db_strerror(ret));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (__dbsrv_verbose == 1) {
 			(void)dbenv->set_verbose(dbenv, DB_VERB_RECOVERY, 1);
@@ -591,7 +589,7 @@ env_recover(progname)
 		if (__dbsrv_verbose)
 			printf("Running recovery on %s\n", hp->home);
 		flags = DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
-		    DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON | DB_RECOVER;
+		    DB_INIT_TXN | DB_USE_ENVIRON | DB_RECOVER;
 		if ((ret = dbenv->open(dbenv, hp->home, flags, 0)) != 0) {
 			dbenv->err(dbenv, ret, "DBENV->open");
 			goto error;

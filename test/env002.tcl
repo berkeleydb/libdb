@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env002.tcl,v 11.11 2000/08/25 14:21:50 sue Exp $
+# $Id: env002.tcl,v 11.12 2001/01/25 18:23:04 bostic Exp $
 #
 # Env Test 002
 # Test set_lg_dir and env name resolution

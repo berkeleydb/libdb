@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test020.tcl,v 11.12 2000/10/19 23:15:22 ubell Exp $
+# $Id: test020.tcl,v 11.13 2001/01/25 18:23:09 bostic Exp $
 #
 # DB Test 20 {access method}
 # Test in-memory databases.

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: rpc001.tcl,v 11.23 2001/01/02 20:04:56 sue Exp $
+# $Id: rpc001.tcl,v 11.25 2001/05/17 20:37:06 bostic Exp $
 #
 # Test RPC specifics, primarily that unsupported functions return
 # errors and such.
@@ -326,7 +326,7 @@ proc rpc_join {env msg sleep fdb pdb ddb use_txn op} {
 	#
 	set curs_list {}
 	set txn_list {}
-	set msgnum [expr $op * 2 + 1] 
+	set msgnum [expr $op * 2 + 1]
 	if { $use_txn } {
 		puts "\t$msg$msgnum: Set up txns and join cursor"
 		set txn [$env txn]
@@ -346,7 +346,7 @@ proc rpc_join {env msg sleep fdb pdb ddb use_txn op} {
 
 	#
 	# Start a cursor, (using txn child0 in the fruit and price dbs, if
-	# needed).  # Just pick something simple to join on.  
+	# needed).  # Just pick something simple to join on.
 	# Then call join on the dessert db.
 	#
 	set fkey yellow
@@ -372,7 +372,7 @@ proc rpc_join {env msg sleep fdb pdb ddb use_txn op} {
 	set ret [$jdbc get]
 	error_check_bad jget [llength $ret] 0
 
-	set msgnum [expr $op * 2 + 2] 
+	set msgnum [expr $op * 2 + 2]
 	if { $op == 1 } {
 		puts -nonewline "\t$msg$msgnum: Timeout all cursors"
 		if { $use_txn } {

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_dir.c,v 11.8 2000/06/27 17:29:52 sue Exp $";
+static const char revid[] = "$Id: os_dir.c,v 11.10 2001/04/03 15:14:26 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -68,7 +68,7 @@ __os_dirlist(dbenv, dir, namesp, cntp)
 		if (cnt >= arraysz) {
 			arraysz += 100;
 			if ((ret = __os_realloc(dbenv,
-			    arraysz * sizeof(names[0]), NULL, &names)) != 0)
+			    arraysz * sizeof(names[0]), &names)) != 0)
 				goto nomem;
 		}
 		if ((ret = __os_strdup(dbenv, dp->d_name, &names[cnt])) != 0)
@@ -81,7 +81,7 @@ __os_dirlist(dbenv, dir, namesp, cntp)
 	return (0);
 
 nomem:	if (names != NULL)
-		__os_dirfree(names, cnt);
+		__os_dirfree(dbenv, names, cnt);
 	if (dirp != NULL)
 		(void)closedir(dirp);
 	return (ret);
@@ -91,10 +91,11 @@ nomem:	if (names != NULL)
  * __os_dirfree --
  *	Free the list of files.
  *
- * PUBLIC: void __os_dirfree __P((char **, int));
+ * PUBLIC: void __os_dirfree __P((DB_ENV *, char **, int));
  */
 void
-__os_dirfree(names, cnt)
+__os_dirfree(dbenv, names, cnt)
+	DB_ENV *dbenv;
 	char **names;
 	int cnt;
 {
@@ -102,7 +103,7 @@ __os_dirfree(names, cnt)
 		__db_jump.j_dirfree(names, cnt);
 	else {
 		while (cnt > 0)
-			__os_free(names[--cnt], 0);
-		__os_free(names, 0);
+			__os_free(dbenv, names[--cnt], 0);
+		__os_free(dbenv, names, 0);
 	}
 }

@@ -5,7 +5,6 @@
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -16,6 +15,10 @@
 #include "log.h"
 #include "txn.h"
 
+/*
+ * PUBLIC: int __log_register1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops,
+ * PUBLIC:      void *));
+ */
 int
 __log_register1_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -36,39 +39,44 @@ __log_register1_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __log_register1_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]log_register1: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]log_register1: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\topcode: %lu\n", (u_long)argp->opcode);
-	printf("\tname: ");
+	(void)printf("\topcode: %lu\n", (u_long)argp->opcode);
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tuid: ");
+	(void)printf("\n");
+	(void)printf("\tuid: ");
 	for (i = 0; i < argp->uid.size; i++) {
 		ch = ((u_int8_t *)argp->uid.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tftype: 0x%lx\n", (u_long)argp->ftype);
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tftype: 0x%lx\n", (u_long)argp->ftype);
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __log_register1_read __P((DB_ENV *, void *,
+ * PUBLIC:      __log_register1_args **));
+ */
 int
 __log_register1_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -80,7 +88,7 @@ __log_register1_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__log_register1_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -111,6 +119,10 @@ __log_register1_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __log_register_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t,
+ * PUBLIC:      u_int32_t, const DBT *, const DBT *, int32_t, DBTYPE, db_pgno_t));
+ */
 int
 __log_register_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, name, uid, fileid, ftype, meta_pgno)
@@ -150,7 +162,7 @@ __log_register_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(fileid)
 	    + sizeof(ftype)
 	    + sizeof(meta_pgno);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -190,12 +202,21 @@ __log_register_log(dbenv, txnid, ret_lsnp, flags,
 	bp += sizeof(meta_pgno);
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = __log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__log_register_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __log_register_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops,
+ * PUBLIC:      void *));
+ */
 int
 __log_register_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -216,40 +237,45 @@ __log_register_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __log_register_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]log_register: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]log_register: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\topcode: %lu\n", (u_long)argp->opcode);
-	printf("\tname: ");
+	(void)printf("\topcode: %lu\n", (u_long)argp->opcode);
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tuid: ");
+	(void)printf("\n");
+	(void)printf("\tuid: ");
 	for (i = 0; i < argp->uid.size; i++) {
 		ch = ((u_int8_t *)argp->uid.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tftype: 0x%lx\n", (u_long)argp->ftype);
-	printf("\tmeta_pgno: %lu\n", (u_long)argp->meta_pgno);
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tftype: 0x%lx\n", (u_long)argp->ftype);
+	(void)printf("\tmeta_pgno: %lu\n", (u_long)argp->meta_pgno);
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __log_register_read __P((DB_ENV *, void *,
+ * PUBLIC:      __log_register_args **));
+ */
 int
 __log_register_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -261,7 +287,7 @@ __log_register_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__log_register_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -294,6 +320,9 @@ __log_register_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __log_init_print __P((DB_ENV *));
+ */
 int
 __log_init_print(dbenv)
 	DB_ENV *dbenv;
@@ -309,6 +338,9 @@ __log_init_print(dbenv)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __log_init_recover __P((DB_ENV *));
+ */
 int
 __log_init_recover(dbenv)
 	DB_ENV *dbenv;
@@ -323,4 +355,3 @@ __log_init_recover(dbenv)
 		return (ret);
 	return (0);
 }
-

@@ -21,6 +21,8 @@ and some are higher level functions that are useful to provide the user.
 <I>mode</I>] [-errfile <I>filename</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-dup] [-dupsort] [-recnum] [-renumber] [-revsplitoff]
 [-snapshot]</B>
+<BR><B>&nbsp;&nbsp;&nbsp; [-btcompare <I>proc</I>] [-dupcompare <I>proc</I>]
+[-hashproc <I>proc</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-extent <I>size</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-ffactor <I>density</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-nelem <I>size</I>]</B>
@@ -115,6 +117,21 @@ splitting of pages on deletion</LI>
 
 <LI>
 <B>-snapshot </B>selects the DB_SNAPSHOT flag to support database snapshots</LI>
+
+<LI>
+<B>-btcompare</B> sets the Btree comparison function to the Tcl procedure
+named <B><I>proc</I></B> using the <A HREF="../../docs/api_c/db_set_bt_compare.html">DB->set_bt_compare</A>
+method.</LI>
+
+<LI>
+<B>-dupcompare</B> sets the duplicate data comparison function to the Tcl
+procedure named <B><I>proc</I></B> using the <A HREF="../../docs/api_c/db_set_dup_compare.html">DB->set_dup_compare</A>
+method.</LI>
+
+<LI>
+<B>-hashproc</B> sets a user-defined hash function to the Tcl procedure
+named <B><I>proc</I></B> using the <A HREF="../../docs/api_c/db_set_h_hash.html">DB->set_h_hash</A>
+method.</LI>
 
 <LI>
 <B>-extent </B>sets the size of a Queue database extent to the given <B><I>size
@@ -242,14 +259,6 @@ is specified it performs this operation under transaction protection.
 it already exists, that is, both the key and data items are already in
 the database. The -nodupdata flag may only be specified if the underlying
 database has been configured to support sorted duplicates.</LI>
-</UL>
-
-<HR WIDTH="100%"><B>> <I>db</I> stat</B>
-<P>The <B>undocumented</B> options are:
-<UL>
-<LI>
-<B>-cachedcounts</B> This flag causes DB to return the cached key/record
-counts, similar to the DB_CACHED_COUNTS flags to DB->stat.</LI>
 </UL>
 
 <HR WIDTH="100%"><B>> <I>dbc</I> put</B>

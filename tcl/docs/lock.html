@@ -13,7 +13,7 @@ when a user gets a lock we create a new lock handle that they then use
 with in a similar manner to all the other handles to release the lock.&nbsp;
 We present the general locking functions first, and then those that manipulate
 locks.
-<P><B>> &lt;env> lock_detect [-lock_conflict] [default|oldest|youngest|random]</B>
+<P><B>> &lt;env> lock_detect [default|oldest|youngest|random]</B>
 <P>This command runs the deadlock detector.&nbsp; It directly translates
 to the <A HREF="../../docs/api_c/lock_detect.html">lock_detect</A> DB call.&nbsp;
 It returns either a 0 (for success), a DB error message or it throws a
@@ -34,9 +34,6 @@ for deadlock as follows:
 <B>youngest</B> selects DB_LOCK_YOUNGEST to abort the youngest locker on
 a deadlock</LI>
 </UL>
-The second argument, <B>-lock_conflict</B>, selects the DB_LOCK_CONFLICT
-flag to only run the detector if a lock conflict has occurred since the
-last time the detector was run.
 <HR WIDTH="100%">
 <BR><B>> &lt;env> lock_stat</B>
 <P>This command returns a list of name/value pairs where the names correspond

@@ -341,3 +341,17 @@
      this approach.
 
 
+1.77 26th April 2001
+
+   * AIX is reported to need -lpthreads, so Makefile.PL now checks for AIX and
+     adds it to the link options.
+
+   * Minor documentation updates.
+
+   * Merged Core patch 9176
+
+   * Added a patch from Edward Avis that adds support for splice with
+     recno databases.
+
+   * Modified Makefile.PL to only enable the warnings pragma if using perl
+     5.6.1 or better.    

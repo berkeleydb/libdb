@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test028.tcl,v 11.12 2000/08/25 14:21:55 sue Exp $
+# $Id: test028.tcl,v 11.13 2001/01/25 18:23:10 bostic Exp $
 #
 # Put after cursor delete test.
 proc test028 { method args } {

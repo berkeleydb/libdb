@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test075.tcl,v 11.9 2000/08/25 14:21:58 sue Exp $
+# $Id: test075.tcl,v 11.11 2001/07/11 21:12:59 krinsky Exp $
 #
 # DB Test 75 (replacement)
 # Test the DB->rename method.
@@ -121,6 +121,7 @@ proc test075 { method { tnum 75 } args } {
 
 	puts "\tTest0$tnum.d: Create/rename file in environment"
 
+	env_cleanup $testdir
 	set env [berkdb env -create -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 	error_check_bad "$oldfile exists" [file exists $oldfile] 1

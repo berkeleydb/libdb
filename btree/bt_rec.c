@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_rec.c,v 11.35 2001/01/10 16:24:47 ubell Exp $";
+static const char revid[] = "$Id: bt_rec.c,v 11.43 2001/06/19 16:14:37 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,8 +19,10 @@ static const char revid[] = "$Id: bt_rec.c,v 11.35 2001/01/10 16:24:47 ubell Exp
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
 #include "hash.h"
 #include "btree.h"
+#include "lock.h"
 #include "log.h"
 
 #define	IS_BTREE_PAGE(pagep)						\
@@ -49,7 +51,7 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	db_pgno_t pgno;
-	int cmp_n, cmp_p, level, modified, ret;
+	int cmp_n, cmp_p, created, level, modified, ret;
 
 	REC_PRINT(__bam_pg_alloc_print);
 	REC_INTRO(__bam_pg_alloc_read, 0);
@@ -75,19 +77,25 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 		} else
 			goto done;
 	}
-	if ((ret = memp_fget(mpf, &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0) {
+	created = modified = 0;
+	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0) {
 		/*
-		 * We specify creation and check for it later, because this
-		 * operation was supposed to create the page, and even in
-		 * the undo case it's going to get linked onto the freelist
-		 * which we're also fixing up.
+		 * We have to be able to identify if a page was newly
+		 * created so we can recover it properly.  We cannot simply
+		 * look for an empty header, because hash uses a pgin
+		 * function that will set the header.  Instead, we explicitly
+		 * try for the page without CREATE and if that fails, then
+		 * create it.
 		 */
-		(void)__db_pgerr(file_dbp, argp->pgno);
-		goto err;
+		if ((ret = memp_fget(mpf,
+		    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0) {
+			(void)__db_pgerr(file_dbp, argp->pgno);
+			goto err;
+		}
+		created = modified = 1;
 	}
 
 	/* Fix up the allocated page. */
-	modified = 0;
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 	cmp_p = log_compare(&LSN(pagep), &argp->page_lsn);
 
@@ -104,6 +112,10 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	 * archive restore, the page may have the LSN of the meta page
 	 * at the point of the roll back.  This will be no more
 	 * than the LSN of the metadata page at the time of this allocation.
+	 * Another special case we have to handle is if we ended up with a
+	 * page of all 0's which can happen if we abort between allocating a
+	 * page in mpool and initializing it.  In that case, even if we're
+	 * undoing, we need to re-initialize the page.
 	 */
 	if (DB_REDO(op) &&
 	    (cmp_p == 0 ||
@@ -125,8 +137,10 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 
 		pagep->lsn = *lsnp;
 		modified = 1;
-	} else if (cmp_n == 0 && DB_UNDO(op)) {
+	} else if (DB_UNDO(op) && (cmp_n == 0 || created)) {
 		/*
+		 * This is where we handle the case of a 0'd page (pagep->pgno
+		 * is equal to PGNO_INVALID).
 		 * Undo the allocation, reinitialize the page and
 		 * link its next pointer to the free list.
 		 */
@@ -240,7 +254,7 @@ __bam_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = memp_fget(mpf, &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 		goto out;
 	modified = 0;
-	__ua_memcpy(&copy_lsn, &LSN(argp->header.data), sizeof(DB_LSN));
+	(void)__ua_memcpy(&copy_lsn, &LSN(argp->header.data), sizeof(DB_LSN));
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 	cmp_p = log_compare(&LSN(pagep), &copy_lsn);
 	CHECK_LSN(op, cmp_p, &LSN(pagep), &copy_lsn);
@@ -345,7 +359,7 @@ __bam_split_recover(dbenv, dbtp, lsnp, op, info)
 	 * so it's got to be aligned.  Copying it into allocated memory is
 	 * the only way to guarantee this.
 	 */
-	if ((ret = __os_malloc(dbenv, argp->pg.size, NULL, &sp)) != 0)
+	if ((ret = __os_malloc(dbenv, argp->pg.size, &sp)) != 0)
 		goto out;
 	memcpy(sp, argp->pg.data, argp->pg.size);
 
@@ -400,10 +414,8 @@ __bam_split_recover(dbenv, dbtp, lsnp, op, info)
 			goto check_next;
 
 		/* Allocate and initialize new left/right child pages. */
-		if ((ret =
-		    __os_malloc(dbenv, file_dbp->pgsize, NULL, &_lp)) != 0
-		    || (ret =
-		    __os_malloc(dbenv, file_dbp->pgsize, NULL, &_rp)) != 0)
+		if ((ret = __os_malloc(dbenv, file_dbp->pgsize, &_lp)) != 0 ||
+		    (ret = __os_malloc(dbenv, file_dbp->pgsize, &_rp)) != 0)
 			goto out;
 		if (rootsplit) {
 			P_INIT(_lp, file_dbp->pgsize, argp->left,
@@ -594,11 +606,11 @@ out:	/* Free any pages that weren't dirtied. */
 
 	/* Free any allocated space. */
 	if (_lp != NULL)
-		__os_free(_lp, file_dbp->pgsize);
+		__os_free(dbenv, _lp, file_dbp->pgsize);
 	if (_rp != NULL)
-		__os_free(_rp, file_dbp->pgsize);
+		__os_free(dbenv, _rp, file_dbp->pgsize);
 	if (sp != NULL)
-		__os_free(sp, argp->pg.size);
+		__os_free(dbenv, sp, argp->pg.size);
 
 	REC_CLOSE;
 }
@@ -636,7 +648,7 @@ __bam_rsplit_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = memp_fget(mpf, &pgno, 0, &pagep)) != 0) {
 		/* The root page must always exist if we are going forward. */
 		if (DB_REDO(op)) {
-			__db_pgerr(file_dbp, pgno);
+			(void)__db_pgerr(file_dbp, pgno);
 			goto out;
 		}
 		/* This must be the root of an OPD tree. */
@@ -681,7 +693,7 @@ __bam_rsplit_recover(dbenv, dbtp, lsnp, op, info)
 		goto out;
 	}
 	modified = 0;
-	__ua_memcpy(&copy_lsn, &LSN(argp->pgdbt.data), sizeof(DB_LSN));
+	(void)__ua_memcpy(&copy_lsn, &LSN(argp->pgdbt.data), sizeof(DB_LSN));
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 	cmp_p = log_compare(&LSN(pagep), &copy_lsn);
 	CHECK_LSN(op, cmp_p, &LSN(pagep), &copy_lsn);
@@ -961,7 +973,7 @@ __bam_repl_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		memset(&dbt, 0, sizeof(dbt));
 		dbt.size = argp->prefix + argp->suffix + argp->repl.size;
-		if ((ret = __os_malloc(dbenv, dbt.size, NULL, &dbt.data)) != 0)
+		if ((ret = __os_malloc(dbenv, dbt.size, &dbt.data)) != 0)
 			goto err;
 		p = dbt.data;
 		memcpy(p, bk->data, argp->prefix);
@@ -971,7 +983,7 @@ __bam_repl_recover(dbenv, dbtp, lsnp, op, info)
 		memcpy(p, bk->data + (bk->len - argp->suffix), argp->suffix);
 
 		ret = __bam_ritem(dbc, pagep, argp->indx, &dbt);
-		__os_free(dbt.data, dbt.size);
+		__os_free(dbenv, dbt.data, dbt.size);
 		if (ret != 0)
 			goto err;
 
@@ -985,7 +997,7 @@ __bam_repl_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		memset(&dbt, 0, sizeof(dbt));
 		dbt.size = argp->prefix + argp->suffix + argp->orig.size;
-		if ((ret = __os_malloc(dbenv, dbt.size, NULL, &dbt.data)) != 0)
+		if ((ret = __os_malloc(dbenv, dbt.size, &dbt.data)) != 0)
 			goto err;
 		p = dbt.data;
 		memcpy(p, bk->data, argp->prefix);
@@ -995,7 +1007,7 @@ __bam_repl_recover(dbenv, dbtp, lsnp, op, info)
 		memcpy(p, bk->data + (bk->len - argp->suffix), argp->suffix);
 
 		ret = __bam_ritem(dbc, pagep, argp->indx, &dbt);
-		__os_free(dbt.data, dbt.size);
+		__os_free(dbenv, dbt.data, dbt.size);
 		if (ret != 0)
 			goto err;
 
@@ -1181,7 +1193,8 @@ __bam_rcuradj_recover(dbenv, dbtp, lsnp, op, info)
 	 * this function know anything about how offpage dups work.
 	 */
 	if ((ret =
-	    __db_icursor(file_dbp, NULL, DB_RECNO, argp->root, 0, &rdbc)) != 0)
+	    __db_icursor(file_dbp,
+		NULL, DB_RECNO, argp->root, 0, DB_LOCK_INVALIDID, &rdbc)) != 0)
 		goto out;
 
 	cp = (BTREE_CURSOR *)rdbc->internal;

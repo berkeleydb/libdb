@@ -1,4 +1,4 @@
-# $Id: TESTS,v 11.34 2000/11/06 19:31:56 sue Exp $
+# $Id: TESTS,v 11.43 2001/05/24 18:05:01 krinsky Exp $
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Access method tests
@@ -130,7 +130,7 @@ test037		Test DB_RMW
 
 test038		DB_GET_BOTH on deleted items
 
-test039		DB_GET_BOTH  on deleted items without comparison function
+test039		DB_GET_BOTH on deleted items without comparison function
 
 test040		Test038 with off-page duplicates
 
@@ -154,7 +154,7 @@ test047		Cursor get test with SET_RANGE option.
 
 test048		Cursor stability across Btree splits.
 
-test049		Cursor operations on unitialized cursors.
+test049		Cursor operations on uninitialized cursors.
 
 test050		Cursor overwrite test for Recno.
 
@@ -189,7 +189,7 @@ test063		Test of the DB_RDONLY flag to DB->open
 
 test064		Test of DB->get_type
 
-test065		Test of DB->stat(DB_RECORDCOUNT)
+test065		Test of DB->stat(DB_FASTSTAT)
 
 test066		Test of cursor overwrites of DB_CURRENT w/ duplicates.
 
@@ -240,6 +240,25 @@ test085		Test of cursor behavior when a cursor is pointing to a deleted
 test086		Test of cursor stability across btree splits/rsplits with
 		subtransaction aborts (a variant of test048).  [#2373]
 
+test087		Test of cursor stability when converting to and modifying
+		off-page duplicate pages with subtransaction aborts. [#2373]
+
+test088		Test of cursor stability across btree splits with very 
+		deep trees (a variant of test048). [#2514]
+
+test090		Test for functionality near the end of the queue.
+
+test091		Test of DB_CONSUME_WAIT.
+
+test092		Test of DB_DIRTY_READ [#3395]
+
+test093		Test using set_bt_compare.
+
+test094		Test using set_dup_compare.
+
+test095		Bulk get test. [#2934]
+
+test096		Db->truncate test.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Cursor Join.
@@ -335,6 +354,10 @@ recd012		Test of log file ID management. [#2288]
 
 recd013		Test of cursor adjustment on child transaction aborts. [#2373]
 
+recd014		Test of recovery and queue extent files
+
+recd015		Test of many txns with txn_prepare/txn_recover.
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Subdatabase tests
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -387,7 +410,9 @@ subdb008	Tests lorder differences between subdbs
 
 subdb009	Test DB->rename() method for subdbs
 
-subdb010	Test DB->remove() method for subdbs
+subdb010	Test DB->remove() method and DB->truncate() for subdbs
+
+subdb011	Test deleting Subdbs with overflow pages
 
 subdbtest001 	Tests multiple access methods in one subdb
 			Open several subdbs, each with a different access method
@@ -446,3 +471,15 @@ Recno backing file tests
 rsrc001		Basic backing file test (put/get)
 
 rsrc002		Test of set_re_delim
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Secondary index tests
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sindex001	Basic secondary index put/delete test
+
+sindex002	Basic cursor-based secondary index put/delete test
+
+sindex003	sindex001 with secondaries created and closed mid-test
+
+sindex004	sindex002 with secondaries created and closed mid-test
+

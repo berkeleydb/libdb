@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_stat.c,v 11.21 2001/01/09 16:59:30 bostic Exp $";
+static const char revid[] = "$Id: mp_stat.c,v 11.34 2001/07/02 18:39:15 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,7 +29,6 @@ static const char revid[] = "$Id: mp_stat.c,v 11.21 2001/01/09 16:59:30 bostic E
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -40,13 +39,14 @@ static void __memp_pbh __P((DB_MPOOL *, BH *, size_t *, FILE *));
 /*
  * memp_stat --
  *	Display MPOOL statistics.
+ *
+ * EXTERN: int memp_stat __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***));
  */
 int
-memp_stat(dbenv, gspp, fspp, db_malloc)
+memp_stat(dbenv, gspp, fspp)
 	DB_ENV *dbenv;
 	DB_MPOOL_STAT **gspp;
 	DB_MPOOL_FSTAT ***fspp;
-	void *(*db_malloc) __P((size_t));
 {
 	DB_MPOOL *dbmp;
 	DB_MPOOL_FSTAT **tfsp, *tstruct;
@@ -61,11 +61,12 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 
 #ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_stat(dbenv, gspp, fspp, db_malloc));
+		return (__dbcl_memp_stat(dbenv, gspp, fspp));
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->mp_handle, DB_INIT_MPOOL);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->mp_handle, "memp_stat", DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
 	sp = NULL;
@@ -87,8 +88,11 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 		sp->st_region_wait = dbmp->reginfo[0].rp->mutex.mutex_set_wait;
 		sp->st_region_nowait =
 		    dbmp->reginfo[0].rp->mutex.mutex_set_nowait;
-		sp->st_gbytes = dbenv->mp_gbytes;
-		sp->st_bytes = dbenv->mp_bytes;
+
+		c_mp = dbmp->reginfo[0].primary;
+		sp->st_gbytes = c_mp->stat.st_gbytes;
+		sp->st_bytes = c_mp->stat.st_bytes;
+
 		sp->st_ncache = dbmp->nreg;
 		sp->st_regsize = dbmp->reginfo[0].rp->size;
 
@@ -160,7 +164,7 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 			return (0);
 
 		/* Allocate space */
-		if ((ret = __os_malloc(dbenv, len, db_malloc, fspp)) != 0)
+		if ((ret = __os_umalloc(dbenv, len, fspp)) != 0)
 			return (ret);
 
 		R_LOCK(dbenv, dbmp->reginfo);
@@ -208,14 +212,22 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
  * __memp_dump_region --
  *	Display MPOOL structures.
  *
- * PUBLIC: void __memp_dump_region __P((DB_ENV *, char *, FILE *));
+ * PUBLIC: int __memp_dump_region __P((DB_ENV *, char *, FILE *));
  */
-void
+int
 __memp_dump_region(dbenv, area, fp)
 	DB_ENV *dbenv;
 	char *area;
 	FILE *fp;
 {
+	static const FN fn[] = {
+		{ MP_CAN_MMAP,	"mmapped" },
+		{ MP_DEADFILE,	"dead" },
+		{ MP_EXTENT,	"extent" },
+		{ MP_TEMP,	"temporary" },
+		{ MP_UNLINK,	"unlink" },
+		{ 0,		NULL }
+	};
 	DB_MPOOL *dbmp;
 	DB_MPOOLFILE *dbmfp;
 	MPOOL *mp;
@@ -224,6 +236,10 @@ __memp_dump_region(dbenv, area, fp)
 	u_int32_t i, flags;
 	int cnt;
 	u_int8_t *p;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->mp_handle, "memp_dump_region", DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
 
@@ -256,15 +272,16 @@ __memp_dump_region(dbenv, area, fp)
 	    DB_LINE, (u_long)dbmp->reginfo[0].addr);
 
 	/* Display the MPOOLFILE structures. */
-	cnt = 0;
-	for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
+	for (cnt = 0, mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
 	    mfp != NULL; mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile), ++cnt) {
-		(void)fprintf(fp, "File #%d: %s: type %ld, %s\n\t [UID: ",
-		    cnt + 1, __memp_fns(dbmp, mfp), (long)mfp->ftype,
-		    F_ISSET(mfp, MP_CAN_MMAP) ? "mmap" : "read/write");
+		(void)fprintf(fp, "File #%d: %s: type %ld",
+		    cnt + 1, __memp_fns(dbmp, mfp), (long)mfp->ftype);
+		__db_prflags(mfp->flags, fn, fp);
+
+		(void)fprintf(fp, "\n\t [UID: ");
 		p = R_ADDR(dbmp->reginfo, mfp->fileid_off);
-		for (i = 0; i < DB_FILE_ID_LEN; ++i) {
-			(void)fprintf(fp, "%x", *p++);
+		for (i = 0; i < DB_FILE_ID_LEN; ++i, ++p) {
+			(void)fprintf(fp, "%x", (u_int)*p);
 			if (i < DB_FILE_ID_LEN - 1)
 				(void)fprintf(fp, " ");
 		}
@@ -296,6 +313,8 @@ __memp_dump_region(dbenv, area, fp)
 
 	/* Flush in case we're debugging. */
 	(void)fflush(fp);
+
+	return (0);
 }
 
 /*
@@ -360,6 +379,7 @@ __memp_pbh(dbmp, bhp, fmap, fp)
 	static const FN fn[] = {
 		{ BH_CALLPGIN,		"callpgin" },
 		{ BH_DIRTY,		"dirty" },
+		{ BH_DIRTY_CREATE,	"created" },
 		{ BH_DISCARD,		"discard" },
 		{ BH_LOCKED,		"locked" },
 		{ BH_SYNC,		"sync" },
@@ -374,13 +394,15 @@ __memp_pbh(dbmp, bhp, fmap, fp)
 			break;
 
 	if (fmap[i] == INVALID_ROFF)
-		(void)fprintf(fp, "  %4lu, %lu, %2lu, %lu",
+		(void)fprintf(fp, "  %4lu, %lu, %2lu, %lu [%lu,%lu]",
 		    (u_long)bhp->pgno, (u_long)bhp->mf_offset,
-		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp));
+		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp),
+		    (u_long)LSN(bhp->buf).file, (u_long)LSN(bhp->buf).offset);
 	else
-		(void)fprintf(fp, "  %4lu,   #%d,  %2lu, %lu",
+		(void)fprintf(fp, "  %4lu,   #%d,  %2lu, %lu [%lu,%lu]",
 		    (u_long)bhp->pgno, i + 1,
-		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp));
+		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp),
+		    (u_long)LSN(bhp->buf).file, (u_long)LSN(bhp->buf).offset);
 
 	__db_prflags(bhp->flags, fn, fp);
 

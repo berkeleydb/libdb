@@ -1,5 +1,5 @@
-<!--$Id: func.so,v 11.8 2000/03/18 21:43:20 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: func.so,v 11.9 2001/03/01 15:58:20 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,18 +8,18 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/upgrade.3.0/envopen.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/dbenv.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/upgrade.3.0/envopen.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/dbenv.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: function arguments</h1>
-<p>In Berkeley DB 3.0, there are no longer separate structures that
-represent each subsystem (e.g., DB_LOCKTAB or DB_TXNMGR), and an overall
+<p>In Berkeley DB 3.0, there are no longer separate structures that represent
+each subsystem (for example, DB_LOCKTAB or DB_TXNMGR), and an overall
 DB_ENV environment structure.  Instead there is only the
-DB_ENV structure.  This means that DB_ENV references should
-be passed around by your application instead of passing around DB_LOCKTAB
-or DB_TXNMGR references.
+DB_ENV structure.  This means that DB_ENV references
+should be passed around by your application instead of passing around
+DB_LOCKTAB or DB_TXNMGR references.
 <p>Each of the following functions:
 <p><blockquote><pre>lock_detect
 lock_get
@@ -62,7 +62,7 @@ in any way.  In fact, a simple way to identify all of the places that
 need to be upgraded is to remove all such structures and variables
 they declare, and then compile.  You will see a warning message from
 your compiler in each case that needs to be upgraded.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/upgrade.3.0/envopen.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/dbenv.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.0/envopen.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/dbenv.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

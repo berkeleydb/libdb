@@ -34,7 +34,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: strcasecmp.c,v 1.4 2000/03/24 22:31:31 bostic Exp $";
+static const char revid[] = "$Id: strcasecmp.c,v 1.5 2001/04/10 20:43:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -85,7 +85,9 @@ static const unsigned char charmap[] = {
  * strcasecmp --
  *	Do strcmp(3) in a case-insensitive manner.
  *
+ * PUBLIC: #ifndef HAVE_STRCASECMP
  * PUBLIC: int strcasecmp __P((const char *, const char *));
+ * PUBLIC: #endif
  */
 int
 strcasecmp(s1, s2)

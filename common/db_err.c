@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_err.c,v 11.38 2001/01/22 21:50:25 sue Exp $";
+static const char revid[] = "$Id: db_err.c,v 11.49 2001/06/19 19:03:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,21 +20,15 @@ static const char revid[] = "$Id: db_err.c,v 11.38 2001/01/22 21:50:25 sue Exp $
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "lock_ext.h"
-#include "log.h"
-#include "log_ext.h"
-#include "mp.h"
-#include "mp_ext.h"
-#include "txn.h"
-#include "txn_ext.h"
+#include "db_page.h"
 #include "clib_ext.h"
+#include "db_am.h"
 #include "common_ext.h"
-#include "db_auto.h"
 
 static void __db_errcall __P((const DB_ENV *, int, int, const char *, va_list));
 static void __db_errfile __P((const DB_ENV *, int, int, const char *, va_list));
+static void __db_real_log __P((const DB_ENV *,
+		DB_TXN *, const char *, u_int32_t, const char *, va_list ap));
 
 /*
  * __db_fchk --
@@ -157,7 +151,7 @@ __db_assert(failedexpr, file, line)
 	(void)fprintf(stderr,
 	    "__db_assert: \"%s\" failed: file \"%s\", line %d\n",
 	    failedexpr, file, line);
-	fflush(stderr);
+	(void)fflush(stderr);
 
 	/* We want a stack trace of how this could possibly happen. */
 	abort();
@@ -193,9 +187,9 @@ __db_panic(dbenv, errval)
 {
 
 	if (dbenv != NULL) {
-		((REGENV *)((REGINFO *)dbenv->reginfo)->primary)->panic = 1;
+		((REGENV *)((REGINFO *)dbenv->reginfo)->primary)->envpanic = 1;
 
-		dbenv->db_panic = errval;
+		dbenv->panic_errval = errval;
 
 		__db_err(dbenv, "PANIC: %s", db_strerror(errval));
 
@@ -214,6 +208,8 @@ __db_panic(dbenv, errval)
 /*
  * db_strerror --
  *	ANSI C strerror(3) for DB.
+ *
+ * EXTERN: char *db_strerror __P((int));
  */
 char *
 db_strerror(error)
@@ -232,6 +228,8 @@ db_strerror(error)
 	 * altered.
 	 */
 	switch (error) {
+	case DB_DONOTINDEX:
+		return ("DB_DONOTINDEX: Secondary index callback returns null");
 	case DB_INCOMPLETE:
 		return ("DB_INCOMPLETE: Cache flush was unable to complete");
 	case DB_KEYEMPTY:
@@ -253,8 +251,13 @@ db_strerror(error)
 		return ("DB_NOTFOUND: No matching key/data pair found");
 	case DB_OLD_VERSION:
 		return ("DB_OLDVERSION: Database requires a version upgrade");
+	case DB_PAGE_NOTFOUND:
+		return ("DB_PAGE_NOTFOUND: Requested page not found");
 	case DB_RUNRECOVERY:
 		return ("DB_RUNRECOVERY: Fatal error, run database recovery");
+	case DB_SECONDARY_BAD:
+		return
+	    ("DB_SECONDARY_BAD: Secondary index item missing from primary");
 	case DB_VERIFY_BAD:
 		return ("DB_VERIFY_BAD: Database verification failed");
 	default: {
@@ -451,11 +454,8 @@ __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
 /*
  * __db_real_log --
  *	Write information into the DB log.
- *
- * PUBLIC: void __db_real_log __P((const DB_ENV *,
- * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, va_list ap));
  */
-void
+static void
 #ifdef __STDC__
 __db_real_log(const DB_ENV *dbenv, DB_TXN *txnid,
     const char *opname, u_int32_t flags, const char *fmt, va_list ap)
@@ -530,15 +530,32 @@ __db_unknown_type(dbenv, routine, type)
  *	Cannot combine operations with and without transactions.
  *
  * PUBLIC: #ifdef DIAGNOSTIC
- * PUBLIC: int __db_missing_txn_err __P((DB_ENV *));
+ * PUBLIC: int __db_missing_txn_err __P((DB *));
  * PUBLIC: #endif
  */
 int
-__db_missing_txn_err(dbenv)
-	DB_ENV *dbenv;
+__db_missing_txn_err(dbp)
+	DB *dbp;
 {
-	__db_err(dbenv,
+	__db_err((dbp)->dbenv,
     "DB handle previously used in transaction, missing transaction handle.");
+	return (EINVAL);
+}
+
+/*
+ * __db_not_txn_env --
+ *	DB handle must be in an environment that supports transactions.
+ *
+ * PUBLIC: #ifdef DIAGNOSTIC
+ * PUBLIC: int __db_not_txn_env __P((DB *));
+ * PUBLIC: #endif
+ */
+int
+__db_not_txn_env(dbp)
+	DB *dbp;
+{
+	__db_err((dbp)->dbenv,
+	    "DB environment not configured for transactions.");
 	return (EINVAL);
 }
 #endif

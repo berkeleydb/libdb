@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_findckp.c,v 11.5 2000/11/30 00:58:40 ubell Exp $";
+static const char revid[] = "$Id: log_findckp.c,v 11.7 2001/04/03 15:14:22 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -78,13 +78,13 @@ __log_findckp(dbenv, lsnp)
 	next_lsn = last_ckp;
 	do {
 		if (F_ISSET(dbenv, DB_ENV_THREAD))
-			__os_free(data.data, data.size);
+			__os_free(dbenv, data.data, data.size);
 
 		if ((ret = log_get(dbenv, &next_lsn, &data, DB_SET)) != 0)
 			return (ret);
 		if ((ret = __txn_ckp_read(dbenv, data.data, &ckp_args)) != 0) {
 			if (F_ISSET(dbenv, DB_ENV_THREAD))
-				__os_free(data.data, data.size);
+				__os_free(dbenv, data.data, data.size);
 			return (ret);
 		}
 		if (IS_ZERO_LSN(ckp_lsn))
@@ -101,7 +101,7 @@ __log_findckp(dbenv, lsnp)
 		}
 		last_ckp = next_lsn;
 		next_lsn = ckp_args->last_ckp;
-		__os_free(ckp_args, sizeof(*ckp_args));
+		__os_free(dbenv, ckp_args, sizeof(*ckp_args));
 
 		/*
 		 * Keep looping until either you 1) run out of checkpoints,
@@ -113,7 +113,7 @@ __log_findckp(dbenv, lsnp)
 	    log_compare(&final_ckp, &last_ckp) == 0));
 
 	if (F_ISSET(dbenv, DB_ENV_THREAD))
-		__os_free(data.data, data.size);
+		__os_free(dbenv, data.data, data.size);
 
 	/*
 	 * At this point, either, next_lsn is ZERO or ckp_lsn is the
@@ -127,7 +127,7 @@ __log_findckp(dbenv, lsnp)
 get_first:	if ((ret = log_get(dbenv, &last_ckp, &data, DB_FIRST)) != 0)
 			return (ret);
 		if (F_ISSET(dbenv, DB_ENV_THREAD))
-			__os_free(data.data, data.size);
+			__os_free(dbenv, data.data, data.size);
 	}
 	*lsnp = last_ckp;
 

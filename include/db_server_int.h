@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000
+ * Copyright (c) 2000-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_server_int.h,v 1.13 2001/01/11 18:19:52 bostic Exp $
+ * $Id: db_server_int.h,v 1.16 2001/04/27 15:51:14 bostic Exp $
  */
 
 #ifndef _DB_SERVER_INT_H_
@@ -13,6 +13,21 @@
 #define	DB_SERVER_TIMEOUT	300	/* 5 minutes */
 #define	DB_SERVER_MAXTIMEOUT	1200	/* 20 minutes */
 #define	DB_SERVER_IDLETIMEOUT	86400	/* 1 day */
+
+/*
+ * Ignore/mask off the following env->open flags:
+ * Most are illegal for a client to specify as they would control
+ * server resource usage.  We will just ignore them.
+ *	DB_LOCKDOWN
+ *	DB_PRIVATE
+ *	DB_RECOVER
+ *	DB_RECOVER_FATAL
+ *	DB_SYSTEM_MEM
+ *	DB_USE_ENVIRON, DB_USE_ENVIRON_ROOT	- handled on client
+ */
+#define	DB_SERVER_FLAGMASK	(					\
+DB_LOCKDOWN | DB_PRIVATE | DB_RECOVER | DB_RECOVER_FATAL |		\
+DB_SYSTEM_MEM | DB_USE_ENVIRON | DB_USE_ENVIRON_ROOT)
 
 #define	CT_CURSOR	0x001		/* Cursor */
 #define	CT_DB		0x002		/* Database */

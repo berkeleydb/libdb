@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test062.tcl,v 11.13 2000/12/20 19:02:36 sue Exp $
+# $Id: test062.tcl,v 11.15 2001/05/17 20:37:08 bostic Exp $
 #
 # DB Test 62:  Test of partial puts onto duplicate pages.
 #	Insert the first 200 words into the dictionary 200 times each with
@@ -91,21 +91,21 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 			set doff [expr [string length $d] + 2]
 			set dlen 0
 			error_check_good data_and_key_sanity $d $k
-	
+
 			set ret [$dbc get -current]
 			error_check_good before_sanity \
 			    [lindex [lindex $ret 0] 0] \
 			    [string range [lindex [lindex $ret 0] 1] 2 end]
-	
+
 			error_check_good partial_put [eval {$dbc put -current \
 			    -partial [list $doff $dlen] $d}] 0
-	
+
 			set ret [$dbc get -current]
 			error_check_good partial_put_correct \
 			    [lindex [lindex $ret 0] 1] $orig_d$d
 		}
 	}
-	
+
 	puts "\tTest0$tnum.c: Double-checking get loop."
 	# Double-check that each datum in the regular db has
 	# been appropriately modified.

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_open.c,v 11.21 2001/01/11 18:19:53 bostic Exp $";
+static const char revid[] = "$Id: os_open.c,v 11.24 2001/06/13 15:54:49 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -147,7 +147,7 @@ __os_region_open(dbenv, name, oflags, mode, fhp)
 	 */
 err:
 	if (newname != NULL)
-		__os_free(newname, 0);
+		__os_free(dbenv, newname, 0);
 	return (ret);
 }
 
@@ -155,7 +155,9 @@ err:
  * __os_shmname --
  *	Translate a pathname into a shm_open memory object name.
  *
+ * PUBLIC: #ifdef HAVE_QNX
  * PUBLIC: int __os_shmname __P((DB_ENV *, const char *, char **));
+ * PUBLIC: #endif
  */
 int
 __os_shmname(dbenv, name, newnamep)
@@ -206,7 +208,7 @@ __os_shmname(dbenv, name, newnamep)
 		 * If we have a path component, copy and return it.
 		 */
 		ret = __os_strdup(dbenv, p, newnamep);
-		__os_free(tmpname, 0);
+		__os_free(dbenv, tmpname, 0);
 		return (ret);
 	}
 
@@ -215,11 +217,11 @@ __os_shmname(dbenv, name, newnamep)
 	 * Add a leading slash, and copy the remainder.
 	 */
 	size = strlen(tmpname) + 2;
-	if ((ret = __os_malloc(dbenv, size, NULL, &p)) != 0)
+	if ((ret = __os_malloc(dbenv, size, &p)) != 0)
 		return (ret);
 	p[0] = '/';
 	memcpy(&p[1], tmpname, size-1);
-	__os_free(tmpname, 0);
+	__os_free(dbenv, tmpname, 0);
 	*newnamep = p;
 	return (0);
 }

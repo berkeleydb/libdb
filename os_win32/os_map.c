@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 11.22 2000/10/26 14:18:08 bostic Exp $";
+static const char revid[] = "$Id: os_map.c,v 11.25 2001/04/27 17:18:40 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -82,7 +82,7 @@ __os_r_sysdetach(dbenv, infop, destroy)
 
 	if (infop->wnt_handle != NULL) {
 		(void)CloseHandle(*((HANDLE*)(infop->wnt_handle)));
-		__os_free(infop->wnt_handle, sizeof(HANDLE));
+		__os_free(dbenv, infop->wnt_handle, sizeof(HANDLE));
 	}
 
 	__os_set_errno(0);
@@ -279,8 +279,8 @@ __os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 	 * errors, it just means we leak the memory.
 	 */
 	if (use_pagefile && infop != NULL) {
-		if (__os_malloc(NULL,
-		    sizeof(HANDLE), NULL, &infop->wnt_handle) == 0)
+		if (__os_malloc(dbenv,
+		    sizeof(HANDLE), &infop->wnt_handle) == 0)
 			memcpy(infop->wnt_handle, &hMemory, sizeof(HANDLE));
 	} else
 		CloseHandle(hMemory);
@@ -295,7 +295,7 @@ __os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 		 * the REGINFO structure so that they do so.
 		 */
 		renv = (REGENV *)pMemory;
-		if (renv->magic == 0)
+		if (renv->magic == 0) {
 			if (F_ISSET(infop, REGION_CREATE_OK))
 				F_SET(infop, REGION_CREATE);
 			else {
@@ -303,6 +303,7 @@ __os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 				pMemory = NULL;
 				ret = EAGAIN;
 			}
+		}
 	}
 
 	*addr = pMemory;

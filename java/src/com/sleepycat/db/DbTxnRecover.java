@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2001
+ *      Sleepycat Software.  All rights reserved.
  *
- *	$Id: DbTxnRecover.java,v 11.1 2000/06/29 18:08:17 dda Exp $
+ * $Id: DbTxnRecover.java,v 11.4 2001/07/02 01:03:23 bostic Exp $
  */
 
 package com.sleepycat.db;
 
 /*
  * This interface is used by DbEnv.set_tx_recover()
- * 
+ *
  */
 public interface DbTxnRecover
 {

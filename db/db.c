@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db.c,v 11.117 2001/01/11 18:19:50 bostic Exp $";
+static const char revid[] = "$Id: db.c,v 11.157 2001/07/02 01:05:36 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -71,21 +71,26 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
 #define	DB_FILE_SETUP_CREATE	0x01
 #define	DB_FILE_SETUP_ZERO	0x02
 
+static int __db_disassociate __P((DB *));
 static int __db_file_setup __P((DB *,
-	       const char *, u_int32_t, int, db_pgno_t, int *));
-static int __db_master_update __P((DB *,
-	       const char *, u_int32_t,
-	       db_pgno_t *, mu_action, const char *, u_int32_t));
+		const char *, u_int32_t, int, db_pgno_t, int *));
+static int __db_master_update __P((DB *, const char *, u_int32_t,
+		db_pgno_t *, mu_action, const char *, u_int32_t));
+static int __db_metabegin __P((DB *, DB_LOCK *));
+static int __db_metaend __P((DB *,
+		DB_LOCK *, int, int (*)(DB *, void *), void *));
 static int __db_refresh __P((DB *));
 static int __db_remove_callback __P((DB *, void *));
+static int __db_schema_init __P((DB *,
+		const char *, const char *, const char *, DB_LOCK *, int));
 static int __db_set_pgsize __P((DB *, DB_FH *, char *));
 static int __db_subdb_remove __P((DB *, const char *, const char *));
 static int __db_subdb_rename __P(( DB *,
 		const char *, const char *, const char *));
-#if     CONFIG_TEST
+#if CONFIG_TEST
 static void __db_makecopy __P((const char *, const char *));
-static int __db_testdocopy __P((DB *, const char *));
-static int __qam_testdocopy __P((DB *, const char *));
+static int  __db_testdocopy __P((DB *, const char *));
+static int  __qam_testdocopy __P((DB *, const char *));
 #endif
 
 /*
@@ -115,7 +120,7 @@ __db_open(dbp, name, subdb, type, flags, mode)
 
 	/* Validate arguments. */
 #define	OKFLAGS								\
-    (DB_CREATE | DB_EXCL | DB_FCNTL_LOCKING |				\
+    (DB_CREATE | DB_DIRTY_READ | DB_EXCL | DB_FCNTL_LOCKING |		\
     DB_NOMMAP | DB_RDONLY | DB_RDWRMASTER | DB_THREAD | DB_TRUNCATE)
 	if ((ret = __db_fchk(dbenv, "DB->open", flags, OKFLAGS)) != 0)
 		return (ret);
@@ -221,6 +226,8 @@ __db_open(dbp, name, subdb, type, flags, mode)
 	/* Convert any DB->open flags. */
 	if (LF_ISSET(DB_RDONLY))
 		F_SET(dbp, DB_AM_RDONLY);
+	if (LF_ISSET(DB_DIRTY_READ))
+		F_SET(dbp, DB_AM_DIRTY);
 
 	/* Fill in the type. */
 	dbp->type = type;
@@ -311,7 +318,7 @@ err:	/*
 		/* If we were successful, don't discard the file on close. */
 		if (ret == 0)
 			F_CLR(mdbp, DB_AM_DISCARD);
-		if ((t_ret = mdbp->close(mdbp, 0)) != 0 && ret == 0)
+		if ((t_ret = mdbp->close(mdbp, DB_NOSYNC)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 
@@ -381,10 +388,9 @@ __db_dbopen(dbp, name, flags, mode, meta_pgno)
 		ret = __qam_open(dbp, name, meta_pgno, mode, flags);
 		break;
 	case DB_UNKNOWN:
-		return (__db_unknown_type(dbp->dbenv,
-		     "__db_dbopen", dbp->type));
-		break;
+		return (__db_unknown_type(dbenv, "__db_dbopen", dbp->type));
 	}
+
 	return (ret);
 }
 
@@ -421,14 +427,13 @@ __db_master_open(subdbp, name, flags, mode, dbpp)
 	dbp->pgsize = subdbp->pgsize;
 	F_SET(dbp, DB_AM_SUBDB);
 
-	if ((ret = __db_dbopen(dbp, name, flags, mode, PGNO_BASE_MD)) != 0) {
-		if (!F_ISSET(dbp, DB_AM_DISCARD))
-			dbp->close(dbp, 0);
-		return (ret);
-	}
+	ret = __db_dbopen(dbp, name, flags, mode, PGNO_BASE_MD);
 
-	*dbpp = dbp;
-	return (0);
+	if (ret != 0 && !F_ISSET(dbp, DB_AM_DISCARD))
+		dbp->close(dbp, 0);
+	else
+		*dbpp = dbp;
+	return (ret);
 }
 
 /*
@@ -639,12 +644,12 @@ done:	/*
 			if ((t_ret = mdbp->sync(mdbp, 0)) != 0 && ret == 0)
 				ret = t_ret;
 		} else
-			(void)__db_free(dbc, p);
+			(void)memp_fput(mdbp->mpf, p, 0);
 	}
 
 	/* Discard the cursor(s) and data. */
 	if (data.data != NULL)
-		__os_free(data.data, data.size);
+		__os_free(dbenv, data.data, data.size);
 	if (dbc != NULL && (t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 	if (ndbc != NULL && (t_ret = ndbc->c_close(ndbc)) != 0 && ret == 0)
@@ -666,12 +671,13 @@ __db_dbenv_setup(dbp, name, flags)
 	u_int32_t flags;
 {
 	DB *ldbp;
-	DB_ENV *dbenv;
 	DBT pgcookie;
+	DB_ENV *dbenv;
+	DB_MPOOL *dbmp;
 	DB_MPOOL_FINFO finfo;
 	DB_PGINFO pginfo;
-	int ret;
 	u_int32_t maxid;
+	int ret;
 
 	dbenv = dbp->dbenv;
 
@@ -747,7 +753,7 @@ __db_dbenv_setup(dbp, name, flags)
 	finfo.lsn_offset = 0;
 
 	pginfo.db_pagesize = dbp->pgsize;
-	pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP);
+	pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP) ? 1 : 0;
 	pgcookie.data = &pginfo;
 	pgcookie.size = sizeof(DB_PGINFO);
 
@@ -761,12 +767,16 @@ __db_dbenv_setup(dbp, name, flags)
 	 * region, there's supposed to be extra space there for that purpose.
 	 */
 	if (LF_ISSET(DB_THREAD)) {
-		if ((ret = __db_mutex_alloc(
-		    dbenv, dbenv->reginfo, (MUTEX **)&dbp->mutexp)) != 0)
+		DB_ASSERT(MPOOL_ON(dbenv));
+		dbmp = dbenv->mp_handle;
+		if ((ret = __db_mutex_alloc(dbenv,
+		    dbmp->reginfo, 0, (MUTEX **)&dbp->mutexp)) != 0)
 			return (ret);
-		if ((ret = __db_mutex_init(
-		    dbenv, dbp->mutexp, 0, MUTEX_THREAD)) != 0) {
-			__db_mutex_free(dbenv, dbenv->reginfo, dbp->mutexp);
+		if ((ret = __db_shmutex_init(dbenv, dbp->mutexp, 0,
+		    MUTEX_THREAD, dbmp->reginfo,
+		    (REGMAINT *)R_ADDR(dbmp->reginfo,
+		    ((MPOOL *)dbmp->reginfo->primary)->maint_off))) != 0) {
+			__db_mutex_free(dbenv, dbmp->reginfo, dbp->mutexp);
 			return (ret);
 		}
 	}
@@ -859,7 +869,7 @@ __db_file_setup(dbp, name, flags, mode, meta_pgno, retflags)
 	 * Save it until we close the DB handle.
 	 */
 	if (LF_ISSET(DB_FCNTL_LOCKING)) {
-		if ((ret = __os_malloc(dbenv, sizeof(*fhp), NULL, &fhp)) != 0)
+		if ((ret = __os_malloc(dbenv, sizeof(*fhp), &fhp)) != 0)
 			return (ret);
 	} else
 		fhp = &fh;
@@ -978,7 +988,7 @@ open_retry:
 			namedbt.data = (char *)name;
 			namedbt.size = strlen(name) + 1;
 			if ((ret = __crdel_fileopen_log(dbenv, txn,
-			    &lsn, DB_FLUSH, &namedbt, mode)) != 0)
+			    &lsn, DB_FLUSH, &namedbt, (u_int32_t)mode)) != 0)
 				goto err_msg;
 		}
 		DB_TEST_RECOVERY(dbp, DB_TEST_PREOPEN, ret, name);
@@ -988,9 +998,10 @@ open_retry:
 
 			/* Commit the file create. */
 			if (dbp->open_txn != NULL) {
-				if ((ret = txn_commit(txn, DB_TXN_SYNC)) != 0)
-					goto err_msg;
+				ret = txn_commit(txn, DB_TXN_SYNC);
 				txn = NULL;
+				if (ret != 0)
+					goto err_msg;
 			}
 
 			/*
@@ -1010,11 +1021,12 @@ open_retry:
 			 * open error, for no particular reason.
 			 */
 			if (dbp->open_txn != NULL) {
-				if ((t_ret = txn_abort(txn)) != 0) {
+				t_ret = txn_abort(txn);
+				txn = NULL;
+				if (t_ret != 0) {
 					ret = t_ret;
 					goto err_msg;
 				}
-				txn = NULL;
 			}
 
 			/*
@@ -1167,6 +1179,8 @@ swap_retry:	switch (magic) {
 		 */
 		if (!LF_ISSET(DB_CREATE | DB_TRUNCATE) &&
 		    !IS_RECOVERING(dbenv)) {
+			if ((ret = __os_closehandle(fhp)) != 0)
+				goto err;
 			if (retry_cnt++ < 3) {
 				__os_sleep(dbenv, 1, 0);
 				goto open_retry;
@@ -1229,7 +1243,7 @@ DB_TEST_RECOVERY_LABEL
 		(void)txn_abort(txn);
 
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 
 	return (ret);
 }
@@ -1268,9 +1282,11 @@ __db_set_pgsize(dbp, fhp, name)
 	/*
 	 * Sheer paranoia, but we don't want anything that's not a power-of-2
 	 * (we rely on that for alignment of various types on the pages), and
-	 * we want a multiple of the sector size as well.
+	 * we want a multiple of the sector size as well.  If the value
+	 * we got out of __os_ioinfo looks bad, use a default instead.
 	 */
-	OS_ROUNDOFF(iopsize, 512);
+	if (!IS_VALID_PAGESIZE(iopsize))
+		iopsize = DB_DEF_IOSIZE;
 
 	dbp->pgsize = iopsize;
 	F_SET(dbp, DB_AM_PGDEF);
@@ -1289,6 +1305,7 @@ __db_close(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
+	DB *sdbp;
 	DB_ENV *dbenv;
 	DBC *dbc;
 	int ret, t_ret;
@@ -1305,6 +1322,22 @@ __db_close(dbp, flags)
 	/* If never opened, or not currently open, it's easy. */
 	if (!F_ISSET(dbp, DB_OPEN_CALLED))
 		goto never_opened;
+
+	/*
+	 * If we have any secondary indices, disassociate them from us.
+	 * We don't bother with the mutex here;  it only protects some
+	 * of the ops that will make us core-dump mid-close anyway, and
+	 * if you're trying to do something with a secondary *while* you're
+	 * closing the primary, you deserve what you get.  The disassociation
+	 * is mostly done just so we can close primaries and secondaries in
+	 * any order--but within one thread of control.
+	 */
+	for (sdbp = LIST_FIRST(&dbp->s_secondaries);
+	    sdbp != NULL; sdbp = LIST_NEXT(sdbp, s_links)) {
+		LIST_REMOVE(sdbp, s_links);
+		if ((t_ret = __db_disassociate(sdbp)) != 0 && ret == 0)
+			ret = t_ret;
+	}
 
 	/* Sync the underlying access method. */
 	if (!LF_ISSET(DB_NOSYNC) && !F_ISSET(dbp, DB_AM_DISCARD) &&
@@ -1331,11 +1364,6 @@ __db_close(dbp, flags)
 	while ((dbc = TAILQ_FIRST(&dbp->join_queue)) != NULL)
 		if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-
-	/* Remove this DB handle from the DB_ENV's dblist. */
-	MUTEX_THREAD_LOCK(dbenv, dbenv->dblist_mutexp);
-	LIST_REMOVE(dbp, dblistlinks);
-	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
 
 	/* Sync the memory pool. */
 	if (!LF_ISSET(DB_NOSYNC) && !F_ISSET(dbp, DB_AM_DISCARD) &&
@@ -1369,13 +1397,15 @@ err:
 	/* Refresh the structure and close any local environment. */
 	if ((t_ret = __db_refresh(dbp)) != 0 && ret == 0)
 		ret = t_ret;
-	if (F_ISSET(dbenv, DB_ENV_DBLOCAL) &&
-	    --dbenv->dblocal_ref == 0 &&
+
+	dbenv->db_ref--;
+	if (F_ISSET(dbenv, DB_ENV_DBLOCAL) && dbenv->db_ref == 0 &&
 	    (t_ret = dbenv->close(dbenv, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
+	/* Free the database handle. */
 	memset(dbp, CLEAR_BYTE, sizeof(*dbp));
-	__os_free(dbp, sizeof(*dbp));
+	__os_free(dbenv, dbp, sizeof(*dbp));
 
 	return (ret);
 }
@@ -1388,6 +1418,7 @@ static int
 __db_refresh(dbp)
 	DB *dbp;
 {
+	DB_MPOOL *dbmp;
 	DB_ENV *dbenv;
 	DBC *dbc;
 	int ret, t_ret;
@@ -1411,6 +1442,35 @@ __db_refresh(dbp)
 
 	dbp->type = 0;
 
+	/* Discard the thread mutex. */
+	if (dbp->mutexp != NULL) {
+		dbmp = dbenv->mp_handle;
+		__db_mutex_free(dbenv, dbmp->reginfo, dbp->mutexp);
+		dbp->mutexp = NULL;
+	}
+
+	/* Discard any memory used to store returned data. */
+	if (dbp->my_rskey.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rskey.data, dbp->my_rskey.ulen);
+	if (dbp->my_rkey.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rkey.data, dbp->my_rkey.ulen);
+	if (dbp->my_rdata.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rdata.data, dbp->my_rdata.ulen);
+
+	/* For safety's sake;  we may refresh twice. */
+	memset(&dbp->my_rskey, 0, sizeof(DBT));
+	memset(&dbp->my_rkey, 0, sizeof(DBT));
+	memset(&dbp->my_rdata, 0, sizeof(DBT));
+
+	/*
+	 * Remove this DB handle from the DB_ENV's dblist, if it's been added.
+	 */
+	MUTEX_THREAD_LOCK(dbenv, dbenv->dblist_mutexp);
+	if (dbp->dblistlinks.le_prev != NULL)
+		LIST_REMOVE(dbp, dblistlinks);
+	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
+	dbp->dblistlinks.le_prev = NULL;
+
 	/* Close the memory pool file handle. */
 	if (dbp->mpf != NULL) {
 		if (F_ISSET(dbp, DB_AM_DISCARD))
@@ -1418,12 +1478,6 @@ __db_refresh(dbp)
 		if ((t_ret = memp_fclose(dbp->mpf)) != 0 && ret == 0)
 			ret = t_ret;
 		dbp->mpf = NULL;
-	}
-
-	/* Discard the thread mutex. */
-	if (dbp->mutexp != NULL) {
-		__db_mutex_free(dbenv, dbenv->reginfo, dbp->mutexp);
-		dbp->mutexp = NULL;
 	}
 
 	/* Discard the log file id. */
@@ -1438,6 +1492,70 @@ __db_refresh(dbp)
 	F_CLR(dbp, DB_DBM_ERROR);
 	F_CLR(dbp, DB_OPEN_CALLED);
 
+	return (ret);
+}
+
+static int
+__db_schema_init(dbp, command, name, subdb, lockp, flags)
+	DB *dbp;
+	const char *command, *name, *subdb;
+	DB_LOCK *lockp;
+	int flags;
+{
+	DB_ENV *dbenv;
+	db_pgno_t refcnt;
+	int ret;
+
+	dbenv = dbp->dbenv;
+	PANIC_CHECK(dbenv);
+	/*
+	 * Cannot use DB_ILLEGAL_AFTER_OPEN here because that returns
+	 * and we cannot return, but must deal with the error and destroy
+	 * the handle anyway.
+	 */
+	if (F_ISSET(dbp, DB_OPEN_CALLED)) {
+		ret = __db_mi_open(dbp->dbenv, command, 1);
+		goto err;
+	}
+
+	/* Validate arguments. */
+	if ((ret = __db_removechk(dbp, flags)) != 0)
+		goto err;
+
+	/* Subdatabases must be created in named files. */
+	if (subdb != NULL) {
+		if (name == NULL) {
+			__db_err(dbenv,
+			    "multiple databases cannot be created in temporary files");
+			goto err;
+		}
+		if (lockp != NULL)
+			return (0);
+	}
+
+	if ((ret = dbp->open(dbp,
+	    name, subdb, DB_UNKNOWN, DB_RDWRMASTER, 0)) != 0)
+		goto err;
+
+	__memp_refcount(dbp->mpf, &refcnt);
+	if (refcnt != 1) {
+		__db_err(dbp->dbenv, "%s: file is currently open", name);
+		ret = EINVAL;
+		goto err;
+	}
+
+	if (LOGGING_ON(dbenv) && (ret = __log_file_lock(dbp)) != 0)
+		goto err;
+
+	/* Start the transaction and log the delete. */
+	if (TXN_ON(dbenv)) {
+		if (lockp != NULL)
+			ret = __db_metabegin(dbp, lockp);
+		else
+			ret = txn_begin(dbenv, NULL, &dbp->open_txn, 0);
+	}
+
+err:
 	return (ret);
 }
 
@@ -1465,46 +1583,14 @@ __db_remove(dbp, name, subdb, flags)
 	ret = 0;
 	backup = real_back = real_name = NULL;
 
-	PANIC_CHECK(dbenv);
-	/*
-	 * Cannot use DB_ILLEGAL_AFTER_OPEN here because that returns
-	 * and we cannot return, but must deal with the error and destroy
-	 * the handle anyway.
-	 */
-	if (F_ISSET(dbp, DB_OPEN_CALLED)) {
-		ret = __db_mi_open(dbp->dbenv, "remove", 1);
-		goto err_close;
-	}
-
-	/* Validate arguments. */
-	if ((ret = __db_removechk(dbp, flags)) != 0)
+	if ((ret = __db_schema_init(dbp, "remove",
+	    name, subdb, &remove_lock, flags)) != 0)
 		goto err_close;
 
-	/*
-	 * Subdatabases.
-	 */
-	if (subdb != NULL) {
-		/* Subdatabases must be created in named files. */
-		if (name == NULL) {
-			__db_err(dbenv,
-		    "multiple databases cannot be created in temporary files");
-			goto err_close;
-		}
+	if (subdb != NULL)
 		return (__db_subdb_remove(dbp, name, subdb));
-	}
-
-	if ((ret = dbp->open(dbp,
-	    name, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0)) != 0)
-		goto err_close;
-
-	if (LOGGING_ON(dbenv) && (ret = __log_file_lock(dbp)) != 0)
-		goto err_close;
 
 	if ((ret = dbp->sync(dbp, 0)) != 0)
-		goto err_close;
-
-	/* Start the transaction and log the delete. */
-	if (TXN_ON(dbenv) && (ret = __db_metabegin(dbp, &remove_lock)) != 0)
 		goto err_close;
 
 	if (LOGGING_ON(dbenv)) {
@@ -1549,7 +1635,7 @@ __db_remove(dbp, name, subdb, flags)
 
 	callback_func = __db_remove_callback;
 	cookie = real_back;
-	DB_TEST_RECOVERY(dbp, DB_TEST_PRERENAME, ret, name);
+	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 	if (dbp->db_am_remove != NULL &&
 	    (ret = dbp->db_am_remove(dbp,
 	    name, subdb, &newlsn, &callback_func, &cookie)) != 0)
@@ -1569,7 +1655,7 @@ __db_remove(dbp, name, subdb, flags)
 	else
 		ret = __os_unlink(dbenv, real_name);
 
-	DB_TEST_RECOVERY(dbp, DB_TEST_POSTRENAME, ret, name);
+	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, name);
 
 err:
 DB_TEST_RECOVERY_LABEL
@@ -1585,11 +1671,11 @@ DB_TEST_RECOVERY_LABEL
 
 err_close:
 	if (real_back != NULL)
-		__os_freestr(real_back);
+		__os_freestr(dbenv, real_back);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbenv, backup);
 
 	/* We no longer have an mpool, so syncing would be disastrous. */
 	if ((t_ret = dbp->close(dbp, DB_NOSYNC)) != 0 && ret == 0)
@@ -1608,14 +1694,12 @@ __db_subdb_remove(dbp, name, subdb)
 	const char *name, *subdb;
 {
 	DB *mdbp;
-	DBC *dbc;
 	DB_ENV *dbenv;
 	DB_LOCK remove_lock;
 	db_pgno_t meta_pgno;
 	int ret, t_ret;
 
 	mdbp = NULL;
-	dbc = NULL;
 	dbenv = dbp->dbenv;
 
 	/* Start the transaction. */
@@ -1629,6 +1713,7 @@ __db_subdb_remove(dbp, name, subdb)
 	if ((ret = __db_open(dbp, name, subdb, DB_UNKNOWN, 0, 0)) != 0)
 		goto err;
 
+	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 	/* Free up the pages in the subdatabase. */
 	switch (dbp->type) {
 		case DB_BTREE:
@@ -1656,7 +1741,9 @@ __db_subdb_remove(dbp, name, subdb)
 	if ((ret = __db_master_update(mdbp,
 	     subdb, dbp->type, &meta_pgno, MU_REMOVE, NULL, 0)) != 0)
 		goto err;
+	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, name);
 
+DB_TEST_RECOVERY_LABEL
 err:	/*
 	 * End the transaction, committing the transaction if we were
 	 * successful, aborting otherwise.
@@ -1703,45 +1790,14 @@ __db_rename(dbp, filename, subdb, newname, flags)
 	ret = 0;
 	real_name = real_newname = NULL;
 
-	PANIC_CHECK(dbenv);
-	/*
-	 * Cannot use DB_ILLEGAL_AFTER_OPEN here because that returns
-	 * and we cannot return, but must deal with the error and destroy
-	 * the handle anyway.
-	 */
-	if (F_ISSET(dbp, DB_OPEN_CALLED)) {
-		ret = __db_mi_open(dbp->dbenv, "rename", 1);
-		goto err_close;
-	}
-
-	/* Validate arguments -- has same rules as remove. */
-	if ((ret = __db_removechk(dbp, flags)) != 0)
+	if ((ret = __db_schema_init(dbp,
+	    "rename", filename, subdb, &remove_lock, flags)) != 0)
 		goto err_close;
 
-	/*
-	 * Subdatabases.
-	 */
-	if (subdb != NULL) {
-		if (filename == NULL) {
-			__db_err(dbenv,
-		    "multiple databases cannot be created in temporary files");
-			goto err_close;
-		}
+	if (subdb != NULL)
 		return (__db_subdb_rename(dbp, filename, subdb, newname));
-	}
-
-	if ((ret = dbp->open(dbp,
-	    filename, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0)) != 0)
-		goto err_close;
-
-	if (LOGGING_ON(dbenv) && (ret = __log_file_lock(dbp)) != 0)
-		goto err_close;
 
 	if ((ret = dbp->sync(dbp, 0)) != 0)
-		goto err_close;
-
-	/* Start the transaction and log the rename. */
-	if (TXN_ON(dbenv) && (ret = __db_metabegin(dbp, &remove_lock)) != 0)
 		goto err_close;
 
 	if (LOGGING_ON(dbenv)) {
@@ -1784,7 +1840,7 @@ __db_rename(dbp, filename, subdb, newname, flags)
 		goto err;
 	}
 
-	DB_TEST_RECOVERY(dbp, DB_TEST_PRERENAME, ret, filename);
+	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, filename);
 	if (dbp->db_am_rename != NULL &&
 	    (ret = dbp->db_am_rename(dbp, filename, subdb, newname)) != 0)
 		goto err;
@@ -1810,7 +1866,7 @@ __db_rename(dbp, filename, subdb, newname, flags)
 	dbp->mpf = NULL;
 
 	ret = __os_rename(dbenv, real_name, real_newname);
-	DB_TEST_RECOVERY(dbp, DB_TEST_POSTRENAME, ret, newname);
+	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, newname);
 
 DB_TEST_RECOVERY_LABEL
 err:	if (dbp->open_txn != NULL && (t_ret = __db_metaend(dbp,
@@ -1821,9 +1877,9 @@ err_close:
 	/* We no longer have an mpool, so syncing would be disastrous. */
 	dbp->close(dbp, DB_NOSYNC);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	if (real_newname != NULL)
-		__os_freestr(real_newname);
+		__os_freestr(dbenv, real_newname);
 
 	return (ret);
 }
@@ -1838,13 +1894,11 @@ __db_subdb_rename(dbp, name, subdb, newname)
 	const char *name, *subdb, *newname;
 {
 	DB *mdbp;
-	DBC *dbc;
 	DB_ENV *dbenv;
 	DB_LOCK remove_lock;
 	int ret, t_ret;
 
 	mdbp = NULL;
-	dbc = NULL;
 	dbenv = dbp->dbenv;
 
 	/* Start the transaction. */
@@ -1858,6 +1912,7 @@ __db_subdb_rename(dbp, name, subdb, newname)
 	if ((ret = __db_open(dbp, name, subdb, DB_UNKNOWN, 0, 0)) != 0)
 		goto err;
 
+	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 	/*
 	 * Rename the entry in the main database.
 	 */
@@ -1867,7 +1922,9 @@ __db_subdb_rename(dbp, name, subdb, newname)
 	if ((ret = __db_master_update(mdbp,
 	     subdb, dbp->type, NULL, MU_RENAME, newname, 0)) != 0)
 		goto err;
+	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, name);
 
+DB_TEST_RECOVERY_LABEL
 err:	/*
 	 * End the transaction, committing the transaction if we were
 	 * successful, aborting otherwise.
@@ -1891,6 +1948,58 @@ err_close:
 }
 
 /*
+ * __db_truncate
+ *	truncate method for DB.
+ *
+ * PUBLIC: int __db_truncate __P((DB *, DB_TXN *, u_int32_t *, u_int32_t));
+ */
+int
+__db_truncate(dbp, txn, countp, flags)
+	DB *dbp;
+	DB_TXN *txn;
+	u_int32_t *countp, flags;
+{
+	DB_ENV *dbenv;
+	int ret;
+
+	dbenv = dbp->dbenv;
+	ret = 0;
+
+	/* Validate arguments. */
+	if ((ret = __db_removechk(dbp, flags)) != 0)
+		goto err;
+
+	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, NULL);
+	switch (dbp->type) {
+		case DB_BTREE:
+		case DB_RECNO:
+			if ((ret =
+			    __bam_truncate(dbp, txn, countp)) != 0)
+				goto err;
+			break;
+		case DB_HASH:
+			if ((ret =
+			    __ham_truncate(dbp, txn, countp)) != 0)
+				goto err;
+			break;
+		case DB_QUEUE:
+			if ((ret =
+			    __qam_truncate(dbp, txn, countp)) != 0)
+				goto err;
+			break;
+		default:
+			ret = __db_unknown_type(dbenv,
+			     "__db_truncate", dbp->type);
+			goto err;
+	}
+	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, NULL);
+
+DB_TEST_RECOVERY_LABEL
+err:
+	return (ret);
+}
+
+/*
  * __db_metabegin --
  *
  * Begin a meta-data operation.  This involves doing any required locking,
@@ -1900,9 +2009,8 @@ err_close:
  * The writing flag indicates if the caller is actually allowing creates
  * or doing deletes (i.e., if the caller is opening and not creating, then
  * we don't need to do any of this).
- * PUBLIC: int __db_metabegin __P((DB *, DB_LOCK *));
  */
-int
+static int
 __db_metabegin(dbp, lockp)
 	DB *dbp;
 	DB_LOCK *lockp;
@@ -1914,7 +2022,7 @@ __db_metabegin(dbp, lockp)
 
 	dbenv = dbp->dbenv;
 
-	lockp->off = LOCK_INVALID;
+	LOCK_INIT(*lockp);
 
 	/*
 	 * There is no single place where we can know that we are or are not
@@ -1947,10 +2055,8 @@ __db_metabegin(dbp, lockp)
 /*
  * __db_metaend --
  *	End a meta-data operation.
- * PUBLIC: int __db_metaend __P((DB *,
- * PUBLIC:       DB_LOCK *, int, int (*)(DB *, void *), void *));
  */
-int
+static int
 __db_metaend(dbp, lockp, commit, callback, cookie)
 	DB *dbp;
 	DB_LOCK *lockp;
@@ -1973,11 +2079,11 @@ __db_metaend(dbp, lockp, commit, callback, cookie)
 			if (callback != NULL)
 				ret = callback(dbp, cookie);
 		}
-	} else if ((t_ret = txn_abort(dbp->open_txn)) && ret == 0)
+	} else if ((t_ret = txn_abort(dbp->open_txn)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Release our lock. */
-	if (lockp->off != LOCK_INVALID &&
+	if (LOCK_ISSET(*lockp) &&
 	    (t_ret = lock_put(dbenv, lockp)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -2061,7 +2167,7 @@ __db_backup_name(dbenv, name, backup, lsn)
 
 	len = strlen(name) + strlen(BACKUP_PREFIX) + MAX_LSN_TO_TEXT + 1;
 
-	if ((ret = __os_malloc(dbenv, len, NULL, &retp)) != 0)
+	if ((ret = __os_malloc(dbenv, len, &retp)) != 0)
 		return (ret);
 
 	/*
@@ -2126,18 +2232,66 @@ __dblist_get(dbenv, adjid)
 	return (dbp);
 }
 
-#if	CONFIG_TEST
+/*
+ * __db_disassociate --
+ *	Destroy the association between a given secondary and its primary.
+ */
+static int
+__db_disassociate(sdbp)
+	DB *sdbp;
+{
+	DBC *dbc;
+	int ret, t_ret;
+
+	ret = 0;
+
+	sdbp->s_callback = NULL;
+	sdbp->s_primary = NULL;
+	sdbp->get = sdbp->stored_get;
+	sdbp->close = sdbp->stored_close;
+
+	/*
+	 * Complain, but proceed, if we have any active cursors.  (We're in
+	 * the middle of a close, so there's really no turning back.)
+	 */
+	if (sdbp->s_refcnt != 1 ||
+	    TAILQ_FIRST(&sdbp->active_queue) != NULL ||
+	    TAILQ_FIRST(&sdbp->join_queue) != NULL) {
+		__db_err(sdbp->dbenv,
+    "Closing a primary DB while a secondary DB has active cursors is unsafe");
+		ret = EINVAL;
+	}
+	sdbp->s_refcnt = 0;
+
+	while ((dbc = TAILQ_FIRST(&sdbp->free_queue)) != NULL)
+		if ((t_ret = __db_c_destroy(dbc)) != 0 && ret == 0)
+			ret = t_ret;
+
+	F_CLR(sdbp, DB_AM_SECONDARY);
+	return (ret);
+}
+
+#if CONFIG_TEST
 /*
  * __db_testcopy
  *	Create a copy of all backup files and our "main" DB.
  *
+ * PUBLIC: #if CONFIG_TEST
  * PUBLIC: int __db_testcopy __P((DB *, const char *));
+ * PUBLIC: #endif
  */
 int
 __db_testcopy(dbp, name)
 	DB *dbp;
 	const char *name;
 {
+	DB_MPOOLFILE *dbmfp;
+
+	if (name == NULL) {
+		dbmfp = dbp->mpf;
+		name = R_ADDR(dbmfp->dbmp->reginfo, dbmfp->mfp->path_off);
+	}
+
 	if (dbp->type == DB_QUEUE)
 		return (__qam_testdocopy(dbp, name));
 	else
@@ -2169,7 +2323,7 @@ __qam_testdocopy(dbp, name)
 			return (ret);
 	}
 
-	__os_free(filelist, 0);
+	__os_free(dbp->dbenv, filelist, 0);
 	return (0);
 }
 
@@ -2200,10 +2354,10 @@ __db_testdocopy(dbp, name)
 	 */
 	len = strlen(real_name) + strlen(BACKUP_PREFIX) + MAX_LSN_TO_TEXT + 9;
 
-	if ((ret = __os_malloc(dbp->dbenv, len, NULL, &copy)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, len, &copy)) != 0)
 		goto out;
 
-	if ((ret = __os_malloc(dbp->dbenv, len, NULL, &backup)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, len, &backup)) != 0)
 		goto out;
 
 	/*
@@ -2214,7 +2368,7 @@ __db_testdocopy(dbp, name)
 
 	if ((ret = __os_strdup(dbp->dbenv, real_name, &dir)) != 0)
 		goto out;
-	__os_freestr(real_name);
+	__os_freestr(dbp->dbenv, real_name);
 	real_name = NULL;
 	/*
 	 * Create the name.  Backup file names are of the form:
@@ -2245,7 +2399,7 @@ __db_testdocopy(dbp, name)
 	 */
 	*p = '/';
 #endif
-	__os_freestr(dir);
+	__os_freestr(dbp->dbenv, dir);
 	if (ret != 0)
 		goto out;
 	for (i = 0; i < dircnt; i++) {
@@ -2268,25 +2422,25 @@ __db_testdocopy(dbp, name)
 			 * If so, just move on.
 			 */
 			if (strstr(real_name, ".afterop") != NULL) {
-				__os_freestr(real_name);
+				__os_freestr(dbp->dbenv, real_name);
 				real_name = NULL;
 				continue;
 			}
 			snprintf(copy, len, "%s.afterop", real_name);
 			__db_makecopy(real_name, copy);
-			__os_freestr(real_name);
+			__os_freestr(dbp->dbenv, real_name);
 			real_name = NULL;
 		}
 	}
 out:
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbp->dbenv, backup);
 	if (copy != NULL)
-		__os_freestr(copy);
+		__os_freestr(dbp->dbenv, copy);
 	if (namesp != NULL)
-		__os_dirfree(namesp, dircnt);
+		__os_dirfree(dbp->dbenv, namesp, dircnt);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbp->dbenv, real_name);
 	return (ret);
 }
 
@@ -2301,7 +2455,7 @@ __db_makecopy(src, dest)
 	memset(&rfh, 0, sizeof(rfh));
 	memset(&wfh, 0, sizeof(wfh));
 
-	if (__os_malloc(NULL, 1024, NULL, &buf) != 0)
+	if (__os_malloc(NULL, 1024, &buf) != 0)
 		return;
 
 	if (__os_open(NULL,
@@ -2316,7 +2470,7 @@ __db_makecopy(src, dest)
 		    __os_write(NULL, &wfh, buf, rcnt, &wcnt) < 0 || wcnt != rcnt)
 			break;
 
-err:	__os_free(buf, 1024);
+err:	__os_free(NULL, buf, 1024);
 	if (F_ISSET(&rfh, DB_FH_VALID))
 		__os_closehandle(&rfh);
 	if (F_ISSET(&wfh, DB_FH_VALID))

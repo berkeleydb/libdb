@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_symlink,v 1.9 2000/09/05 21:27:04 bostic Exp $
+#	$Id: s_symlink,v 1.14 2001/04/26 21:31:36 bostic Exp $
 
 echo 'Creating Berkeley DB source tree symbolic links...'
 
@@ -38,6 +38,7 @@ build docs_src/api_java/spell.ok ../api_c/spell.ok
 build docs_src/api_tcl/spell.ok ../api_c/spell.ok
 build docs_src/ref/am/spell.ok ../spell.ok
 build docs_src/ref/am_conf/spell.ok ../spell.ok
+build docs_src/ref/am_misc/spell.ok ../spell.ok
 build docs_src/ref/arch/spell.ok ../spell.ok
 build docs_src/ref/build_unix/spell.ok ../spell.ok
 build docs_src/ref/build_vxworks/spell.ok ../spell.ok
@@ -67,6 +68,8 @@ build docs_src/ref/upgrade.2.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.1/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.2/spell.ok ../spell.ok
+build docs_src/ref/upgrade.3.3/spell.ok ../spell.ok
+build docs_src/ref/upgrade/spell.ok ../spell.ok
 build docs_src/ref/xa/spell.ok ../spell.ok
 build env/tags ../dist/tags
 build examples_c/tags ../dist/tags
@@ -75,6 +78,7 @@ build examples_java java/src/com/sleepycat/examples
 build hash/tags ../dist/tags
 build hsearch/tags ../dist/tags
 build include/tags ../dist/tags
+build include_auto/tags ../dist/tags
 build libdb_java/tags ../dist/tags
 build lock/tags ../dist/tags
 build log/tags ../dist/tags

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_pthread.c,v 11.33 2001/01/09 00:56:16 ubell Exp $";
+static const char revid[] = "$Id: mut_pthread.c,v 11.36 2001/04/16 14:48:49 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -90,14 +90,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	pthread_mutexattr_t mutexattr, *mutexattrp = NULL;
 
 	if (!F_ISSET(mutexp, MUTEX_THREAD)) {
-		ret = pthread_condattr_init(&condattr);
-		if (ret == 0)
-			ret = pthread_condattr_setpshared(
-			    &condattr, PTHREAD_PROCESS_SHARED);
-		condattrp = &condattr;
-
-		if (ret == 0)
-			ret = pthread_mutexattr_init(&mutexattr);
+		ret = pthread_mutexattr_init(&mutexattr);
 		if (ret == 0)
 			ret = pthread_mutexattr_setpshared(
 			    &mutexattr, PTHREAD_PROCESS_SHARED);
@@ -108,14 +101,25 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 		ret = pthread_mutex_init(&mutexp->mutex, mutexattrp);
 	if (mutexattrp != NULL)
 		pthread_mutexattr_destroy(mutexattrp);
-	if (LF_ISSET(MUTEX_SELF_BLOCK)) {
+	if (ret == 0 && LF_ISSET(MUTEX_SELF_BLOCK)) {
+		if (!F_ISSET(mutexp, MUTEX_THREAD)) {
+			ret = pthread_condattr_init(&condattr);
+			if (ret == 0) {
+				condattrp = &condattr;
+				ret = pthread_condattr_setpshared(
+				    &condattr, PTHREAD_PROCESS_SHARED);
+			}
+		}
+
 		if (ret == 0)
 			ret = pthread_cond_init(&mutexp->cond, condattrp);
 
 		F_SET(mutexp, MUTEX_SELF_BLOCK);
 		if (condattrp != NULL)
 			pthread_condattr_destroy(condattrp);
-	}}
+	}
+
+	}
 #endif
 #ifdef HAVE_MUTEX_SOLARIS_LWP
 	/*

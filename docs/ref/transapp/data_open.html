@@ -1,5 +1,5 @@
-<!--$Id: data_open.so,v 1.3 2000/08/16 17:50:40 margo Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: data_open.so,v 1.7 2001/05/08 15:03:07 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td align=right><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Opening the databases</h1>
@@ -48,7 +48,7 @@ main(int argc, char *argv)
 <p>
 	/*
 	 * Open database:
-	 *	Key is a name; Data is: company name, address, cat breeds.
+	 *	Key is a name; Data is: company name, cat breeds.
 	 */
 	db_open(dbenv, &db_cats, "cats", 1);</b>
 <p>
@@ -88,9 +88,9 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	*dbp = db;
 }</b></pre></blockquote>
 <p>There is no reason to wrap database opens inside of transactions.  All
-database opens are transaction protected internally to Berkeley DB, and
-applications using transaction-protected environments can simply rely on
-files either being successfully re-created in a recovered environment,
+database creates are transaction-protected internally to Berkeley DB, and
+applications using transaction-protected environments can simply rely
+on files either being successfully re-created in a recovered environment
 or not appearing at all.
 <p>After running this initial code, we can use the <a href="../../utility/db_stat.html">db_stat</a> utility
 to display information about a database we have created:
@@ -112,7 +112,7 @@ Flags:
 0       Number of tree overflow pages.
 0       Number of bytes free in tree overflow pages (0% ff).
 0       Number of pages on the free list.</pre></blockquote>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env003.tcl,v 11.12 2000/08/25 14:21:50 sue Exp $
+# $Id: env003.tcl,v 11.14 2001/05/11 17:26:19 krinsky Exp $
 #
 # Env Test 003
 # Test DB_TMP_DIR and env name resolution
@@ -132,7 +132,7 @@ proc env003_run_test { major minor msg env_args tmp_path} {
 	# Create an environment and small-cached in-memory database to
 	# use.
 	set dbenv [eval {berkdb env -create -home $testdir} $env_args \
-	    {-cachesize {0 40960 1}}]
+	    {-cachesize {0 50000 1}}]
 	error_check_good env_open [is_valid_env $dbenv] TRUE
 	set db [berkdb_open_noerr -env $dbenv -create -btree]
 	error_check_good db_open [is_valid_db $db] TRUE

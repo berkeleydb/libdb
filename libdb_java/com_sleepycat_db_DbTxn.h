@@ -34,10 +34,10 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbTxn_id
 /*
  * Class:     com_sleepycat_db_DbTxn
  * Method:    prepare
- * Signature: ()V
+ * Signature: ([B)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jbyteArray);
 
 /*
  * Class:     com_sleepycat_db_DbTxn

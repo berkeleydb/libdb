@@ -1,17 +1,18 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: testparams.tcl,v 11.39 2001/01/11 17:29:42 sue Exp $
+# $Id: testparams.tcl,v 11.60 2001/05/23 16:47:32 sue Exp $
 
-set deadtests	 3
-set envtests	 8
-set recdtests	13
+set deadtests	 5
+set envtests	 9
+set recdtests	15
+set rpctests	 3
 set rsrctests	 3
-set runtests	93
-set subdbtests	10
-set rpctests	 2
+set runtests	96
+set sindextests  5
+set subdbtests	11
 
 set parms(subdb001) ""
 set parms(subdb002) 10000
@@ -23,6 +24,7 @@ set parms(subdb007) 10000
 set parms(subdb008) 10000
 set parms(subdb009) ""
 set parms(subdb010) ""
+set parms(subdb011) {13 10}
 set parms(test001) {10000 0 "01"}
 set parms(test002) 10000
 set parms(test003) ""
@@ -96,7 +98,7 @@ set parms(test070) {4 2 1000 CONSUME 0 -txn 70}
 set parms(test071) {1 1 10000 CONSUME 0 -txn 71}
 set parms(test072) {512 20 72}
 set parms(test073) {512 50 73}
-set parms(test074) {-nextnodup 512 100 74}
+set parms(test074) {-nextnodup 100 74}
 set parms(test075) {75}
 set parms(test076) {1000 76}
 set parms(test077) {1000 512 77}
@@ -104,7 +106,7 @@ set parms(test078) {100 512 78}
 set parms(test079) {10000 512 79}
 set parms(test080) {80}
 set parms(test081) {13 81}
-set parms(test082) {-prevnodup 512 100 82}
+set parms(test082) {-prevnodup 100 82}
 set parms(test083) {512 5000 2}
 set parms(test084) {10000 84 65536}
 set parms(test085) {512 3 10 85}
@@ -113,3 +115,8 @@ set parms(test087) {512 50 87}
 set parms(test088) ""
 set parms(test090) {1000 -txn 90}
 set parms(test091) {4 2 1000 0 91}
+set parms(test092) {1000}
+set parms(test093) {10000 93}
+set parms(test094) {10000 10 94}
+set parms(test095) {1000 25 95}
+set parms(test096) {512 1000 19}

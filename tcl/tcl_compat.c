@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_compat.c,v 11.22 2001/01/11 18:19:55 bostic Exp $";
+static const char revid[] = "$Id: tcl_compat.c,v 11.24 2001/04/03 15:14:28 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -405,13 +405,13 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (data.dptr == NULL ||
-		    (ret = __os_malloc(NULL, data.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, data.dsize + 1, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, data.dptr, data.dsize);
 			t[data.dsize] = '\0';
 			Tcl_SetResult(interp, t, TCL_VOLATILE);
-			__os_free(t, data.dsize + 1);
+			__os_free(NULL, t, data.dsize + 1);
 		}
 		break;
 	case DBMSTORE:
@@ -492,13 +492,13 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (key.dptr == NULL ||
-		    (ret = __os_malloc(NULL, key.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, key.dsize + 1, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, key.dptr, key.dsize);
 			t[key.dsize] = '\0';
 			Tcl_SetResult(interp, t, TCL_VOLATILE);
-			__os_free(t, key.dsize + 1);
+			__os_free(NULL, t, key.dsize + 1);
 		}
 		break;
 	case DBMNEXT:
@@ -526,13 +526,13 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (data.dptr == NULL ||
-		    (ret = __os_malloc(NULL, data.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, data.dsize + 1, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, data.dptr, data.dsize);
 			t[data.dsize] = '\0';
 			Tcl_SetResult(interp, t, TCL_VOLATILE);
-			__os_free(t, data.dsize + 1);
+			__os_free(NULL, t, data.dsize + 1);
 		}
 		break;
 	}
@@ -911,7 +911,7 @@ posixout:
 		if (md->reginfo.addr != NULL)
 			(void)__db_r_detach(md->env,
 			    &md->reginfo, F_ISSET(&md->reginfo, REGION_CREATE));
-		__os_free(md, sizeof(*md));
+		__os_free(md->env, md, sizeof(*md));
 	}
 	return (result);
 }
@@ -984,7 +984,7 @@ mutex_Cmd(clientData, interp, objc, objv)
 		res = Tcl_NewIntObj(0);
 		(void)Tcl_DeleteCommand(interp, mpip->i_name);
 		_DeleteInfo(mpip);
-		__os_free(mp, sizeof(*mp));
+		__os_free(mp->env, mp, sizeof(*mp));
 		break;
 	case MXRELE:
 		/*

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_func.c,v 11.7 2000/08/16 18:26:19 ubell Exp $";
+static const char revid[] = "$Id: hash_func.c,v 11.9 2001/04/10 20:44:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -230,6 +230,11 @@ __ham_func5(dbp, key, len)
 	return (h);
 }
 
+/*
+ * __ham_test --
+ *
+ * PUBLIC: u_int32_t __ham_test __P((DB *, const void *, u_int32_t));
+ */
 u_int32_t
 __ham_test(dbp, key, len)
 	DB *dbp;

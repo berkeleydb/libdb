@@ -1,18 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_files.c,v 1.16 2001/01/19 18:01:59 bostic Exp $";
+static const char revid[] = "$Id: qam_files.c,v 1.27 2001/07/02 01:05:43 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
+#include <stdlib.h>
 
 #include <string.h>
 #endif
@@ -27,14 +28,12 @@ static const char revid[] = "$Id: qam_files.c,v 1.16 2001/01/19 18:01:59 bostic 
 #include "mp.h"
 
 /*
- * __qam_fprobe -- calcluate and open extent
+ * __qam_fprobe -- calculate and open extent
  *
- * Calculate which extent the page is in, open and create
- * if necessary.
+ * Calculate which extent the page is in, open and create if necessary.
  *
  * PUBLIC: int __qam_fprobe __P((DB *, db_pgno_t, void *, qam_probe_mode, int));
  */
-
 int
 __qam_fprobe(dbp, pgno, addrp, mode, flags)
 	DB *dbp;
@@ -92,12 +91,12 @@ __qam_fprobe(dbp, pgno, addrp, mode, flags)
 
 	/*
 	 * Check to see if the requested extent is outside the range of
-	 * extents in the array.  This is true by defualt if there are
+	 * extents in the array.  This is true by default if there are
 	 * no extents here yet.
 	 */
 	if (offset < 0 || (unsigned) offset >= array->n_extent) {
 		oldext = array->n_extent;
-		numext =  array->hi_extent - array->low_extent  + 1;
+		numext = array->hi_extent - array->low_extent  + 1;
 		if (offset < 0
 		    && (unsigned) -offset + numext <= array->n_extent) {
 			/* If we can fit this one in, move the array up */
@@ -143,12 +142,13 @@ __qam_fprobe(dbp, pgno, addrp, mode, flags)
 	alloc:
 			if ((ret = __os_realloc(dbenv,
 			    array->n_extent * sizeof(struct __qmpf),
-			    NULL, &array->mpfarray)) != 0)
+			    &array->mpfarray)) != 0)
 				goto err;
 
 			if (offset < 0) {
 				offset = -offset;
-				memmove(&array->mpfarray[offset], array->mpfarray,
+				memmove(&array->mpfarray[offset],
+				    array->mpfarray,
 				    numext * sizeof(array->mpfarray[0]));
 				memset(array->mpfarray, 0,
 				    offset * sizeof(array->mpfarray[0]));
@@ -200,8 +200,7 @@ err:
 		pgno--;
 		pgno %= qp->page_ext;
 		if (mode == QAM_PROBE_GET)
-			return (memp_fget(mpf,
-			    &pgno, flags | DB_MPOOL_EXTENT, addrp));
+			return (memp_fget(mpf, &pgno, flags, addrp));
 		ret = memp_fput(mpf, addrp, flags);
 		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 		array->mpfarray[offset].pinref--;
@@ -218,7 +217,6 @@ err:
  *
  * PUBLIC: int __qam_fclose __P((DB *, db_pgno_t));
  */
-
 int
 __qam_fclose(dbp, pgnoaddr)
 	DB *dbp;
@@ -257,6 +255,7 @@ done:
 	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 	return (ret);
 }
+
 /*
  * __qam_fremove -- remove an extent.
  *
@@ -266,7 +265,6 @@ done:
  *
  * PUBLIC: int __qam_fremove __P((DB *, db_pgno_t));
  */
-
 int
 __qam_fremove(dbp, pgnoaddr)
 	DB *dbp;
@@ -305,6 +303,13 @@ __qam_fremove(dbp, pgnoaddr)
 	    DB_APP_DATA, NULL, buf, 0, NULL, &real_name)) != 0)
 		goto err;
 #endif
+	/*
+	 * The log must be flushed before the file is deleted.  We depend on
+	 * the log record of the last delete to recreate the file if we crash.
+	 */
+	if (LOGGING_ON(dbenv) && (ret = log_flush(dbenv, NULL)) != 0)
+		goto err;
+
 	mpf = array->mpfarray[offset].mpf;
 	array->mpfarray[offset].mpf = NULL;
 	__memp_set_unlink(mpf);
@@ -315,7 +320,8 @@ __qam_fremove(dbp, pgnoaddr)
 		memmove(array->mpfarray, &array->mpfarray[1],
 		    (array->hi_extent - array->low_extent)
 		    * sizeof(array->mpfarray[0]));
-		array->mpfarray[array->hi_extent - array->low_extent].mpf = NULL;
+		array->mpfarray[
+		    array->hi_extent - array->low_extent].mpf = NULL;
 		if (array->low_extent != array->hi_extent)
 			array->low_extent++;
 	} else {
@@ -327,7 +333,7 @@ err:
 	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 #if CONFIG_TEST
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 #endif
 	return (ret);
 }
@@ -383,7 +389,7 @@ __qam_sync(dbp, flags)
 	if (filelist == NULL)
 		return (0);
 
-	__os_free(filelist, 0);
+	__os_free(dbp->dbenv, filelist, 0);
 
 	done = 0;
 	qp = (QUEUE *)dbp->q_internal;
@@ -433,7 +439,7 @@ __qam_gen_filelist(dbp, filelistp)
 	DB_ENV *dbenv;
 	QUEUE *qp;
 	QMETA *meta;
-	db_pgno_t i, last, start, stop;
+	db_pgno_t i, last, start;
 	db_recno_t current, first;
 	QUEUE_FILELIST *fp;
 	int ret;
@@ -476,12 +482,8 @@ __qam_gen_filelist(dbp, filelistp)
 		return (ret);
 	fp = *filelistp;
 	i = start;
-	if (last >= start)
-		stop = last;
-	else
-		stop = QAM_RECNO_PAGE(dbp, UINT32_T_MAX);
-again:
-	for (; i <= last; i += qp->page_ext) {
+
+again:	for (; i <= last; i += qp->page_ext) {
 		if ((ret = __qam_fprobe(dbp,
 		    i, &fp->mpf, QAM_PROBE_MPF, 0)) != 0) {
 			if (ret == ENOENT)
@@ -494,10 +496,75 @@ again:
 
 	if (last < start) {
 		i = 1;
-		stop = last;
 		start = 0;
 		goto again;
 	}
 
 	return (0);
+}
+
+/*
+ * __qam_extent_names -- generate a list of extent files names.
+ *
+ * PUBLIC: int __qam_extent_names __P((DB_ENV *, char *, char ***));
+ */
+int
+__qam_extent_names(dbenv, name, namelistp)
+	DB_ENV *dbenv;
+	char *name;
+	char ***namelistp;
+{
+	DB *dbp;
+	QUEUE *qp;
+	QUEUE_FILELIST *filelist, *fp;
+	char buf[256], *dir, **cp, *freep;
+	int cnt, len, ret;
+
+	*namelistp = NULL;
+	filelist = NULL;
+	if ((ret = db_create(&dbp, dbenv, 0)) != 0)
+		return (ret);
+	if ((ret =
+	    __db_open(dbp, name, NULL, DB_QUEUE, DB_RDONLY, 0)) != 0)
+		return (ret);
+	qp = dbp->q_internal;
+	if (qp->page_ext == 0)
+		goto done;
+
+	if ((ret = __qam_gen_filelist(dbp, &filelist)) != 0)
+		goto done;
+
+	if (filelist == NULL)
+		goto done;
+
+	cnt = 0;
+	for (fp = filelist; fp->mpf != NULL; fp++)
+		cnt++;
+	dir = ((QUEUE *)dbp->q_internal)->dir;
+	name = ((QUEUE *)dbp->q_internal)->name;
+
+	/* QUEUE_EXTENT contains extra chars, but add 6 anyway for the int. */
+	len = cnt * (sizeof(**namelistp)
+	    + strlen(QUEUE_EXTENT) + strlen(dir) + strlen(name) + 6);
+
+	if ((ret =
+	    __os_malloc(dbp->dbenv, len, namelistp)) != 0)
+		goto done;
+	cp = *namelistp;
+	freep = (char *)(cp + cnt + 1);
+	for (fp = filelist; fp->mpf != NULL; fp++) {
+		snprintf(buf, sizeof(buf), QUEUE_EXTENT, dir, name, fp->id);
+		len = strlen(buf);
+		*cp++ = freep;
+		strcpy(freep, buf);
+		freep += len + 1;
+	}
+	*cp = NULL;
+
+done:
+	if (filelist != NULL)
+		__os_free(dbp->dbenv, filelist, 0);
+	dbp->close(dbp, DB_NOSYNC);
+
+	return (ret);
 }

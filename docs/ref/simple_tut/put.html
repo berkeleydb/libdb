@@ -1,5 +1,5 @@
-<!--$Id: put.so,v 10.31 2000/12/18 21:05:15 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: put.so,v 10.34 2001/05/08 15:03:05 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Simple Tutorial</dl></h3></td>
-<td width="1%"><a href="../../ref/simple_tut/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/get.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/simple_tut/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/get.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Adding elements to a database</h1>
@@ -81,10 +81,10 @@ therefore has to be specified in order to access the data item.  There is
 no requirement to store the trailing nul byte, it simply makes it easier
 for us to display strings that we've stored in programming languages that
 use nul bytes to terminate strings.
-<p>In many applications, it is important not to overwrite existing
-data.  For example, we might not want to store the key/data pair
-<b>fruit/apple</b> if it already existed, e.g., if someone had
-previously stored the key/data pair <b>fruit/cherry</b> into the
+<p>In many applications, it is important not to overwrite existing data.
+For example, we might not want to store the key/data pair
+<b>fruit/apple</b> if it already existed, for example, if the key/data
+pair <b>fruit/cherry</b> had been previously stored into the
 database.
 <p>This is easily accomplished by adding the <a href="../../api_c/db_put.html#DB_NOOVERWRITE">DB_NOOVERWRITE</a> flag to
 the <a href="../../api_c/db_put.html">DB-&gt;put</a> call:
@@ -120,7 +120,7 @@ default:
 	dbp-&gt;err(dbp, ret, "DB-&gt;put");
 	goto err;
 }</b></pre></blockquote>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/get.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/simple_tut/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/get.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

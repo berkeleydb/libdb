@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env006.tcl,v 11.5 2000/10/27 13:23:55 sue Exp $
+# $Id: env006.tcl,v 11.6 2001/01/25 18:23:04 bostic Exp $
 #
 # Env Test 6
 # DB Utility Check

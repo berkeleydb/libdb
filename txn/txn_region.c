@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_region.c,v 11.36 2001/01/11 18:19:55 bostic Exp $";
+static const char revid[] = "$Id: txn_region.c,v 11.50 2001/06/13 01:47:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,16 +34,15 @@ static const char revid[] = "$Id: txn_region.c,v 11.36 2001/01/11 18:19:55 bosti
 
 #include "db_int.h"
 #include "db_page.h"
-#include "log.h"	/* for __log_lastckp */
+#include "log.h"
 #include "txn.h"
-#include "db_am.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
 static int __txn_init __P((DB_ENV *, DB_TXNMGR *));
+static size_t __txn_region_size __P((DB_ENV *));
 static int __txn_set_tx_max __P((DB_ENV *, u_int32_t));
 static int __txn_set_tx_recover __P((DB_ENV *,
 	       int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
@@ -148,7 +147,7 @@ __txn_open(dbenv)
 	if (F_ISSET(dbenv, DB_ENV_CREATE))
 		F_SET(&tmgrp->reginfo, REGION_CREATE_OK);
 	if ((ret = __db_r_attach(dbenv,
-	    &tmgrp->reginfo, TXN_REGION_SIZE(dbenv->tx_max))) != 0)
+	    &tmgrp->reginfo, __txn_region_size(dbenv))) != 0)
 		goto err;
 
 	/* If we created the region, initialize it. */
@@ -163,10 +162,12 @@ __txn_open(dbenv)
 	/* Acquire a mutex to protect the active TXN list. */
 	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
 		if ((ret = __db_mutex_alloc(
-		    dbenv, &tmgrp->reginfo, &tmgrp->mutexp)) != 0)
+		    dbenv, &tmgrp->reginfo, 1, &tmgrp->mutexp)) != 0)
 			goto err;
-		if ((ret = __db_mutex_init(
-		    dbenv, tmgrp->mutexp, 0, MUTEX_THREAD)) != 0)
+		if ((ret = __db_shmutex_init(dbenv, tmgrp->mutexp, 0,
+		    MUTEX_THREAD, &tmgrp->reginfo,
+		    (REGMAINT *)R_ADDR(&tmgrp->reginfo,
+		    ((DB_TXNREGION *)tmgrp->reginfo.primary)->maint_off))) != 0)
 			goto err;
 	}
 
@@ -184,7 +185,7 @@ err:	if (tmgrp->reginfo.addr != NULL) {
 	}
 	if (tmgrp->mutexp != NULL)
 		__db_mutex_free(dbenv, &tmgrp->reginfo, tmgrp->mutexp);
-	__os_free(tmgrp, sizeof(*tmgrp));
+	__os_free(dbenv, tmgrp, sizeof(*tmgrp));
 	return (ret);
 }
 
@@ -200,6 +201,9 @@ __txn_init(dbenv, tmgrp)
 	DB_LSN last_ckp;
 	DB_TXNREGION *region;
 	int ret;
+#ifdef	MUTEX_SYSTEM_RESOURCES
+	u_int8_t *addr;
+#endif
 
 	ZERO_LSN(last_ckp);
 	/*
@@ -237,10 +241,21 @@ __txn_init(dbenv, tmgrp)
 	region->ncommits = 0;
 	region->nbegins = 0;
 	region->nactive = 0;
+	region->nrestores = 0;
 	region->maxnactive = 0;
 
 	SH_TAILQ_INIT(&region->active_txn);
-
+#ifdef	MUTEX_SYSTEM_RESOURCES
+	/* Allocate room for the txn maintenance info and initialize it. */
+	if ((ret = __db_shalloc(tmgrp->reginfo.addr,
+	    sizeof(REGMAINT) + TXN_MAINT_SIZE, 0, &addr)) != 0) {
+		__db_err(dbenv,
+		    "Unable to allocate memory for mutex maintenance");
+		return (ret);
+	}
+	__db_maintinit(&tmgrp->reginfo, addr, TXN_MAINT_SIZE);
+	region->maint_off = R_OFFSET(&tmgrp->reginfo, addr);
+#endif
 	return (0);
 }
 
@@ -274,13 +289,13 @@ __txn_close(dbenv)
 	 */
 	if (TAILQ_FIRST(&tmgrp->txn_chain) != NULL) {
 		__db_err(dbenv,
-	"Error: closing the transaction region with active transactions\n");
+	"Error: closing the transaction region with active transactions");
 		ret = EINVAL;
 		while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL) {
 			txnid = txnp->txnid;
 			if ((t_ret = txn_abort(txnp)) != 0) {
 				__db_err(dbenv,
-				    "Unable to abort transaction 0x%x: %s\n",
+				    "Unable to abort transaction 0x%x: %s",
 				    txnid, db_strerror(t_ret));
 				ret = __db_panic(dbenv, t_ret);
 			}
@@ -300,94 +315,49 @@ __txn_close(dbenv)
 	if ((t_ret = __db_r_detach(dbenv, &tmgrp->reginfo, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
-	__os_free(tmgrp, sizeof(*tmgrp));
+	__os_free(dbenv, tmgrp, sizeof(*tmgrp));
 
 	dbenv->tx_handle = NULL;
 	return (ret);
 }
 
-int
-txn_stat(dbenv, statp, db_malloc)
+/*
+ * __txn_region_size --
+ *	 Return the amount of space needed for the txn region.  Make the
+ *	 region large enough to hold txn_max transaction detail structures
+ *	 plus some space to hold thread handles and the beginning of the
+ *	 shalloc region and anything we need for mutex system resource
+ *	 recording.
+ */
+static size_t
+__txn_region_size(dbenv)
 	DB_ENV *dbenv;
-	DB_TXN_STAT **statp;
-	void *(*db_malloc) __P((size_t));
 {
-	DB_TXNMGR *mgr;
-	DB_TXNREGION *region;
-	DB_TXN_STAT *stats;
-	TXN_DETAIL *txnp;
-	size_t nbytes;
-	u_int32_t nactive, ndx;
-	int ret, slop;
+	size_t s;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_txn_stat(dbenv, statp, db_malloc));
+	s = sizeof(DB_TXNREGION) +
+	    dbenv->tx_max * sizeof(TXN_DETAIL) + 10 * 1024;
+#ifdef MUTEX_SYSTEM_RESOURCES
+	if (F_ISSET(dbenv, DB_ENV_THREAD))
+		s += sizeof(REGMAINT) + TXN_MAINT_SIZE;
 #endif
+	return (s);
+}
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, DB_INIT_TXN);
+/*
+ * __txn_region_destroy
+ *	Destroy any region maintenance info.
+ *
+ * PUBLIC: void __txn_region_destroy __P((DB_ENV *, REGINFO *));
+ */
+void
+__txn_region_destroy(dbenv, infop)
+	DB_ENV *dbenv;
+	REGINFO *infop;
+{
+	__db_shlocks_destroy(infop, (REGMAINT *)R_ADDR(infop,
+	    ((DB_TXNREGION *)R_ADDR(infop, infop->rp->primary))->maint_off));
 
-	*statp = NULL;
-
-	slop = 200;
-	mgr = dbenv->tx_handle;
-	region = mgr->reginfo.primary;
-
-retry:	R_LOCK(dbenv, &mgr->reginfo);
-	nactive = region->nactive;
-	R_UNLOCK(dbenv, &mgr->reginfo);
-
-	/*
-	 * Allocate extra active structures to handle any transactions that
-	 * are created while we have the region unlocked.
-	 */
-	nbytes = sizeof(DB_TXN_STAT) + sizeof(DB_TXN_ACTIVE) * (nactive + slop);
-	if ((ret = __os_malloc(dbenv, nbytes, db_malloc, &stats)) != 0)
-		return (ret);
-
-	R_LOCK(dbenv, &mgr->reginfo);
-	stats->st_last_txnid = region->last_txnid;
-	stats->st_last_ckp = region->last_ckp;
-	stats->st_maxtxns = region->maxtxns;
-	stats->st_naborts = region->naborts;
-	stats->st_nbegins = region->nbegins;
-	stats->st_ncommits = region->ncommits;
-	stats->st_pending_ckp = region->pending_ckp;
-	stats->st_time_ckp = region->time_ckp;
-	stats->st_nactive = region->nactive;
-	if (stats->st_nactive > nactive + 200) {
-		R_UNLOCK(dbenv, &mgr->reginfo);
-		slop *= 2;
-		goto retry;
-	}
-	stats->st_maxnactive = region->maxnactive;
-	stats->st_txnarray = (DB_TXN_ACTIVE *)&stats[1];
-
-	ndx = 0;
-	for (txnp = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
-	    txnp != NULL;
-	    txnp = SH_TAILQ_NEXT(txnp, links, __txn_detail)) {
-		stats->st_txnarray[ndx].txnid = txnp->txnid;
-		if (txnp->parent == INVALID_ROFF)
-			stats->st_txnarray[ndx].parentid = TXN_INVALID_ID;
-		else
-			stats->st_txnarray[ndx].parentid =
-			    ((TXN_DETAIL *)R_ADDR(&mgr->reginfo,
-			    txnp->parent))->txnid;
-		stats->st_txnarray[ndx].lsn = txnp->begin_lsn;
-		ndx++;
-
-		if (ndx >= stats->st_nactive)
-			break;
-	}
-
-	stats->st_region_wait = mgr->reginfo.rp->mutex.mutex_set_wait;
-	stats->st_region_nowait = mgr->reginfo.rp->mutex.mutex_set_nowait;
-	stats->st_regsize = mgr->reginfo.rp->size;
-
-	R_UNLOCK(dbenv, &mgr->reginfo);
-
-	*statp = stats;
-	return (0);
+	COMPQUIET(dbenv, NULL);
+	COMPQUIET(infop, NULL);
 }

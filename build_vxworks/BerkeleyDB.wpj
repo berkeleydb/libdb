@@ -37,6 +37,7 @@ cc386
 	-O0 \
 	-I$(PRJ_DIR) \
 	-I/export/home/db/include \
+	-I/export/home/db/include_auto \
 	-DDIAGNOSTIC \
 	-DDEBUG \
 	-DHAVE_RPC
@@ -145,6 +146,7 @@ cc386
 	-O2 \
 	-I$(PRJ_DIR) \
 	-I/export/home/db/include \
+	-I/export/home/db/include_auto \
 	-DHAVE_RPC
 <END>
 
@@ -256,6 +258,7 @@ cc386
 	-O0 \
 	-I$(PRJ_DIR) \
 	-I/export/home/db/include \
+	-I/export/home/db/include_auto \
 	-DDIAGNOSTIC \
 	-DDEBUG
 <END>
@@ -283,6 +286,10 @@ cc386 -E -P -xc
 
 <BEGIN> BUILD_PENTIUM_debug_MACRO_LD
 ld386
+<END>
+
+<BEGIN> BUILD_PENTIUM_debug_MACRO_LDDEPS
+
 <END>
 
 <BEGIN> BUILD_PENTIUM_debug_MACRO_LDFLAGS
@@ -362,7 +369,8 @@ cc386
 	-DCPU=PENTIUM \
 	-O2 \
 	-I$(PRJ_DIR) \
-	-I/export/home/db/include
+	-I/export/home/db/include \
+	-I/export/home/db/include_auto
 <END>
 
 <BEGIN> BUILD_PENTIUM_nodebug_MACRO_CFLAGS_AS
@@ -388,6 +396,10 @@ cc386 -E -P -xc
 
 <BEGIN> BUILD_PENTIUM_nodebug_MACRO_LD
 ld386
+<END>
+
+<BEGIN> BUILD_PENTIUM_nodebug_MACRO_LDDEPS
+
 <END>
 
 <BEGIN> BUILD_PENTIUM_nodebug_MACRO_LDFLAGS
@@ -448,104 +460,12 @@ size386
 
 <END>
 
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_AR
-arsimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_ARCHIVE
-$(PRJ_DIR)/SIMSPARCSOLARISgnu/BerkeleyDB.a
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_AS
-ccsimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_CC
-ccsimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_CFLAGS
--g \
-	-ansi \
-	-nostdinc \
-	-DRW_MULTI_THREAD \
-	-D_REENTRANT \
-	-fvolatile \
-	-fno-builtin \
-	-I. \
-	-I$(WIND_BASE)/target/h \
-	-DCPU=SIMSPARCSOLARIS \
-	-O2 \
-	-I$(PRJ_DIR) \
-	-I/export/home/db/include
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_CFLAGS_AS
--g \
-	-ansi \
-	-nostdinc \
-	-fvolatile \
-	-fno-builtin \
-	-P \
-	-x \
-	assembler-with-cpp \
-	-I. \
-	-I$(WIND_BASE)/target/h \
-	-DCPU=SIMSPARCSOLARIS
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_CPP
-ccsimso -E -P -xc
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_LD
-ccsimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_LDFLAGS
--N
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_LD_PARTIAL_FLAGS
--nostdlib -r
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_NM
-nmsimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_OPTION_DEFINE_MACRO
--D
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_OPTION_INCLUDE_DIR
--I
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_MACRO_SIZE
-sizesimso
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_RO_DEPEND_PATH
-{$(WIND_BASE)/target/h/} \
-	{$(WIND_BASE)/target/src/} \
-	{$(WIND_BASE)/target/config/}
-<END>
-
-<BEGIN> BUILD_SIMSPARCSOLARISgnu_TC
-::tc_SIMSPARCSOLARISgnu
-<END>
-
 <BEGIN> BUILD__CURRENT
 PENTIUM_RPCdebug
 <END>
 
 <BEGIN> BUILD__LIST
-PENTIUM_nodebug \
-	PENTIUM_RPCdebug \
-	PENTIUM_RPCnodebug \
-	PENTIUM_debug \
-	SIMSPARCSOLARISgnu
+PENTIUM_nodebug PENTIUM_RPCdebug PENTIUM_RPCnodebug PENTIUM_debug
 <END>
 
 <BEGIN> CORE_INFO_TYPE
@@ -569,20 +489,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_compare.c_objects
@@ -606,21 +526,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_conv.c_objects
@@ -644,25 +564,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_curadj.c_objects
@@ -686,26 +606,26 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_cursor.c_objects
@@ -729,23 +649,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_delete.c_objects
@@ -769,23 +689,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_method.c_objects
@@ -809,29 +729,29 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_open.c_objects
@@ -855,20 +775,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_put.c_objects
@@ -892,26 +812,29 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
+	/export/home/db/include/db_shash.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
+	/export/home/db/include/lock.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_rec.c_objects
@@ -935,23 +858,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_reclaim.c_objects
@@ -975,31 +898,31 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_recno.c_objects
@@ -1023,23 +946,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_rsearch.c_objects
@@ -1063,23 +986,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_search.c_objects
@@ -1103,23 +1026,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_split.c_objects
@@ -1143,23 +1066,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_stat.c_objects
@@ -1183,21 +1106,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_upgrade.h
 <END>
 
@@ -1222,21 +1145,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_verify.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/bt_verify.c_objects
@@ -1260,25 +1183,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/btree/btree_auto.c_objects
@@ -1302,11 +1225,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/clib/getopt.c_objects
@@ -1330,11 +1253,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/clib/snprintf.c_objects
@@ -1374,11 +1297,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/clib/vsnprintf.c_objects
@@ -1402,11 +1325,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/db_byteorder.c_objects
@@ -1430,26 +1353,16 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
-	/export/home/db/include/db_shash.h \
-	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
-	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
-	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/txn.h \
-	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/clib_ext.h \
-	/export/home/db/include/db_auto.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
+	/export/home/db/include/db_page.h \
+	/export/home/db/include_auto/clib_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/db_err.c_objects
@@ -1473,12 +1386,12 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
-	/export/home/db/include/clib_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
+	/export/home/db/include_auto/clib_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/db_getlong.c_objects
@@ -1502,11 +1415,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/db_log2.c_objects
@@ -1530,11 +1443,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/util_log.c_objects
@@ -1558,11 +1471,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/common/util_sig.c_objects
@@ -1586,22 +1499,22 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/crdel_auto.c_objects
@@ -1625,25 +1538,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/crdel_rec.c_objects
@@ -1667,35 +1580,35 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db.c_objects
@@ -1719,36 +1632,36 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_am.c_objects
@@ -1772,22 +1685,22 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_auto.c_objects
@@ -1811,34 +1724,34 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_cam.c_objects
@@ -1862,27 +1775,27 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_conv.c_objects
@@ -1906,25 +1819,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/log_auto.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include_auto/log_auto.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_ext.h
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_dispatch.c_objects
@@ -1948,26 +1861,26 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_dup.c_objects
@@ -1991,20 +1904,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_iface.c_objects
@@ -2028,21 +1941,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_join.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_join.c_objects
@@ -2066,28 +1979,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_meta.c_objects
@@ -2104,7 +2017,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/db/db_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -2112,30 +2025,29 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_method.c_objects
@@ -2159,17 +2071,17 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_verify.h
 <END>
 
@@ -2194,26 +2106,26 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/db_verify.h
 <END>
 
@@ -2238,23 +2150,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_rec.c_objects
@@ -2278,17 +2190,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include/db_shash.h \
+	/export/home/db/include/btree.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
+	/export/home/db/include/lock.h \
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_reclaim.c_objects
@@ -2312,20 +2230,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_ret.c_objects
@@ -2349,27 +2267,27 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_upg.c_objects
@@ -2393,27 +2311,27 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_upg_opd.c_objects
@@ -2437,28 +2355,31 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
+	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/db_verify.h \
-	/export/home/db/include/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
+	/export/home/db/include/lock.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_vrfy.c_objects
@@ -2482,14 +2403,16 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_verify.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/db/db_vrfyutil.c_objects
@@ -2513,11 +2436,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/db_salloc.c_objects
@@ -2541,11 +2464,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/db_shash.c_objects
@@ -2562,7 +2485,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/env/env_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -2570,32 +2493,31 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/env_method.c_objects
@@ -2619,40 +2541,40 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/clib_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/clib_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/env_open.c_objects
@@ -2676,25 +2598,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/env_recover.c_objects
@@ -2718,24 +2640,24 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/env/env_region.c_objects
@@ -2759,35 +2681,35 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash.c_objects
@@ -2811,25 +2733,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_auto.c_objects
@@ -2853,21 +2775,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_conv.c_objects
@@ -2891,28 +2813,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_dup.c_objects
@@ -2936,20 +2858,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_func.c_objects
@@ -2973,28 +2895,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_meta.c_objects
@@ -3018,20 +2940,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_method.c_objects
@@ -3055,28 +2977,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_page.c_objects
@@ -3100,31 +3022,31 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_rec.c_objects
@@ -3148,23 +3070,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_reclaim.c_objects
@@ -3188,26 +3110,26 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_stat.c_objects
@@ -3231,21 +3153,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/db_upgrade.h
 <END>
 
@@ -3270,24 +3192,24 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_verify.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hash/hash_verify.c_objects
@@ -3311,11 +3233,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/hsearch/hsearch.c_objects
@@ -3326,17 +3248,13 @@ hsearch.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_/export/home/db/include/tcl_db.h_dependDone
-TRUE
-<END>
-
 <BEGIN> FILE_/export/home/db/lock/lock.c_dependDone
 TRUE
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3344,30 +3262,29 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock.c_objects
@@ -3378,41 +3295,13 @@ lock.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_/export/home/db/lock/lock_conflict.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_/export/home/db/lock/lock_conflict.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	/export/home/db/include/queue.h \
-	/export/home/db/include/shqueue.h \
-	/export/home/db/include/debug.h \
-	/export/home/db/include/mutex.h \
-	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
-	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
-<END>
-
-<BEGIN> FILE_/export/home/db/lock/lock_conflict.c_objects
-lock_conflict.o
-<END>
-
-<BEGIN> FILE_/export/home/db/lock/lock_conflict.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_/export/home/db/lock/lock_deadlock.c_dependDone
 TRUE
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_deadlock.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3420,21 +3309,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_deadlock.c_objects
@@ -3458,14 +3346,14 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_method.c_objects
@@ -3482,7 +3370,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/lock/lock_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3490,16 +3378,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/lock_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_region.c_objects
@@ -3516,7 +3403,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/lock/lock_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3524,16 +3411,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/lock_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_stat.c_objects
@@ -3557,23 +3443,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h
+	/export/home/db/include_auto/lock_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/lock/lock_util.c_objects
@@ -3590,7 +3476,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3598,22 +3484,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log.c_objects
@@ -3630,7 +3515,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log_archive.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3638,18 +3523,17 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
-	/export/home/db/include/clib_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
+	/export/home/db/include_auto/clib_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_archive.c_objects
@@ -3673,25 +3557,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_auto.c_objects
@@ -3715,11 +3599,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_compare.c_objects
@@ -3743,19 +3627,19 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_findckp.c_objects
@@ -3772,7 +3656,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log_get.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3780,25 +3664,24 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_get.c_objects
@@ -3815,7 +3698,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3823,16 +3706,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_method.c_objects
@@ -3849,7 +3731,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log_put.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3857,26 +3739,30 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/hash.h \
-	/export/home/db/include/hash_auto.h \
-	/export/home/db/include/hash_ext.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/clib_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include_auto/clib_ext.h \
+	/export/home/db/include/txn.h \
+	/export/home/db/include/xa.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_put.c_objects
@@ -3900,20 +3786,20 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_rec.c_objects
@@ -3930,7 +3816,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/log/log_register.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -3938,16 +3824,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/log/log_register.c_objects
@@ -3971,14 +3856,14 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_alloc.c_objects
@@ -4002,17 +3887,17 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/db_page.h
 <END>
 
@@ -4030,7 +3915,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_fget.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4038,16 +3923,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_fget.c_objects
@@ -4064,7 +3948,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_fopen.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4072,16 +3956,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_fopen.c_objects
@@ -4098,7 +3981,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_fput.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4106,16 +3989,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_fput.c_objects
@@ -4132,7 +4014,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_fset.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4140,16 +4022,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_fset.c_objects
@@ -4166,7 +4047,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4174,16 +4055,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_method.c_objects
@@ -4207,14 +4087,14 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_region.c_objects
@@ -4231,7 +4111,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_register.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4239,16 +4119,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_register.c_objects
@@ -4265,7 +4144,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4273,22 +4152,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_stat.c_objects
@@ -4305,7 +4183,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_sync.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4313,16 +4191,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_sync.c_objects
@@ -4339,7 +4216,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/mp/mp_trickle.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -4347,16 +4224,15 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mp/mp_trickle.c_objects
@@ -4380,11 +4256,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mutex/mut_tas.c_objects
@@ -4408,11 +4284,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/mutex/mutex.c_objects
@@ -4436,11 +4312,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4465,11 +4341,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4494,11 +4370,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_errno.c_objects
@@ -4522,11 +4398,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_fid.c_objects
@@ -4550,11 +4426,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4579,11 +4455,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4608,11 +4484,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4637,11 +4513,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_oflags.c_objects
@@ -4665,11 +4541,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_open.c_objects
@@ -4693,11 +4569,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4722,11 +4598,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4751,11 +4627,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_root.c_objects
@@ -4779,11 +4655,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_rpath.c_objects
@@ -4807,11 +4683,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4836,11 +4712,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4865,11 +4741,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4894,11 +4770,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4923,11 +4799,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -4952,11 +4828,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os/os_tmpdir.c_objects
@@ -4980,11 +4856,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/os_jump.h
 <END>
 
@@ -5009,11 +4885,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os_vxworks/os_abs.c_objects
@@ -5037,11 +4913,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os_vxworks/os_finit.c_objects
@@ -5065,11 +4941,11 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/os_vxworks/os_map.c_objects
@@ -5093,31 +4969,31 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam.c_objects
@@ -5141,25 +5017,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_auto.c_objects
@@ -5183,21 +5059,21 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_conv.c_objects
@@ -5221,28 +5097,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/btree.h \
-	/export/home/db/include/btree_auto.h \
-	/export/home/db/include/btree_ext.h \
+	/export/home/db/include_auto/btree_auto.h \
+	/export/home/db/include_auto/btree_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h
+	/export/home/db/include_auto/mp_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_files.c_objects
@@ -5266,28 +5142,28 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_method.c_objects
@@ -5311,24 +5187,24 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_open.c_objects
@@ -5352,26 +5228,26 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_rec.c_objects
@@ -5395,23 +5271,23 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_stat.c_objects
@@ -5435,19 +5311,22 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_swap.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/db_upgrade.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include/db_upgrade.h \
+	/export/home/db/include/qam.h \
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_upgrade.c_objects
@@ -5471,17 +5350,19 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_verify.h \
 	/export/home/db/include/qam.h \
-	/export/home/db/include/qam_auto.h \
-	/export/home/db/include/qam_ext.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/qam_auto.h \
+	/export/home/db/include_auto/qam_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/qam/qam_verify.c_objects
@@ -5498,7 +5379,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/rpc_client/client.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -5506,18 +5387,17 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_client/client.c_objects
@@ -5533,7 +5413,8 @@ TRUE
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_client/db_server_clnt.c_dependencies
-$(PRJ_DIR)/db_config.h /export/home/db/include/db_server.h
+$(PRJ_DIR)/db_config.h \
+	/export/home/db/include_auto/db_server.h
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_client/db_server_clnt.c_objects
@@ -5550,7 +5431,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/rpc_client/gen_client.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -5558,22 +5439,19 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
-	/export/home/db/include/db_page.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/mp.h \
-	/export/home/db/include/mp_ext.h \
-	/export/home/db/include/rpc_client_ext.h \
+	/export/home/db/include_auto/mp_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/gen_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_client/gen_client.c_objects
@@ -5590,7 +5468,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/rpc_client/gen_client_ret.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -5598,19 +5476,17 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
-	/export/home/db/include/db_page.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_client/gen_client_ret.c_objects
@@ -5626,7 +5502,8 @@ TRUE
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_server/db_server_xdr.c_dependencies
-$(PRJ_DIR)/db_config.h /export/home/db/include/db_server.h
+$(PRJ_DIR)/db_config.h \
+	/export/home/db/include_auto/db_server.h
 <END>
 
 <BEGIN> FILE_/export/home/db/rpc_server/db_server_xdr.c_objects
@@ -5643,7 +5520,7 @@ TRUE
 
 <BEGIN> FILE_/export/home/db/txn/txn.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
+	/export/home/db/include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -5651,27 +5528,32 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_shash.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/lock.h \
-	/export/home/db/include/lock_ext.h \
+	/export/home/db/include_auto/lock_ext.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_page.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include/hash.h \
+	/export/home/db/include_auto/hash_auto.h \
+	/export/home/db/include_auto/hash_ext.h \
+	/export/home/db/include/db_am.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/txn/txn.c_objects
@@ -5695,22 +5577,22 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/db_dispatch.h \
 	/export/home/db/include/db_am.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/txn/txn_auto.c_objects
@@ -5734,22 +5616,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include/log.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/txn/txn_rec.c_objects
@@ -5760,13 +5645,12 @@ txn_rec.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_/export/home/db/txn/txn_region.c_dependDone
+<BEGIN> FILE_/export/home/db/txn/txn_recover.c_dependDone
 TRUE
 <END>
 
-<BEGIN> FILE_/export/home/db/txn/txn_region.c_dependencies
+<BEGIN> FILE_/export/home/db/txn/txn_recover.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	/export/home/db/include/db_server.h \
 	$(PRJ_DIR)/db_int.h \
 	$(PRJ_DIR)/db.h \
 	/export/home/db/include/queue.h \
@@ -5774,24 +5658,64 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
-	/export/home/db/include/db_page.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include/db_page.h \
+	/export/home/db/include/log.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_recover.c_objects
+txn_recover.o
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_recover.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_region.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_region.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	/export/home/db/include_auto/db_server.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h \
+	/export/home/db/include/queue.h \
+	/export/home/db/include/shqueue.h \
+	/export/home/db/include/debug.h \
+	/export/home/db/include/mutex.h \
+	/export/home/db/include/region.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
+	/export/home/db/include/os.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
+	/export/home/db/include/db_page.h \
+	/export/home/db/include/log.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
+	/export/home/db/include/txn.h \
+	/export/home/db/include/xa.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h \
-	/export/home/db/include/gen_client_ext.h \
-	/export/home/db/include/rpc_client_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/txn/txn_region.c_objects
@@ -5799,6 +5723,41 @@ txn_region.o
 <END>
 
 <BEGIN> FILE_/export/home/db/txn/txn_region.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_stat.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_stat.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	/export/home/db/include_auto/db_server.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h \
+	/export/home/db/include/queue.h \
+	/export/home/db/include/shqueue.h \
+	/export/home/db/include/debug.h \
+	/export/home/db/include/mutex.h \
+	/export/home/db/include/region.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
+	/export/home/db/include/os.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
+	/export/home/db/include/txn.h \
+	/export/home/db/include/xa.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
+	/export/home/db/include_auto/rpc_client_ext.h
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_stat.c_objects
+txn_stat.o
+<END>
+
+<BEGIN> FILE_/export/home/db/txn/txn_stat.c_tool
 C/C++ compiler
 <END>
 
@@ -5815,25 +5774,25 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/db_page.h \
 	/export/home/db/include/log.h \
-	/export/home/db/include/log_auto.h \
-	/export/home/db/include/log_ext.h \
+	/export/home/db/include_auto/log_auto.h \
+	/export/home/db/include_auto/log_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/db_am.h \
 	/export/home/db/include/db_dispatch.h \
-	/export/home/db/include/db_auto.h \
-	/export/home/db/include/crdel_auto.h \
-	/export/home/db/include/db_ext.h
+	/export/home/db/include_auto/db_auto.h \
+	/export/home/db/include_auto/crdel_auto.h \
+	/export/home/db/include_auto/db_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/xa/xa.c_objects
@@ -5857,16 +5816,16 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/xa_ext.h \
+	/export/home/db/include_auto/xa_ext.h \
 	/export/home/db/include/txn.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/xa/xa_db.c_objects
@@ -5890,16 +5849,16 @@ $(PRJ_DIR)/db_config.h \
 	/export/home/db/include/debug.h \
 	/export/home/db/include/mutex.h \
 	/export/home/db/include/region.h \
-	/export/home/db/include/mutex_ext.h \
-	/export/home/db/include/env_ext.h \
+	/export/home/db/include_auto/mutex_ext.h \
+	/export/home/db/include_auto/env_ext.h \
 	/export/home/db/include/os.h \
-	/export/home/db/include/os_ext.h \
-	/export/home/db/include/common_ext.h \
+	/export/home/db/include_auto/os_ext.h \
+	/export/home/db/include_auto/common_ext.h \
 	/export/home/db/include/txn.h \
 	/export/home/db/include/xa.h \
-	/export/home/db/include/txn_auto.h \
-	/export/home/db/include/txn_ext.h \
-	/export/home/db/include/xa_ext.h
+	/export/home/db/include_auto/txn_auto.h \
+	/export/home/db/include_auto/txn_ext.h \
+	/export/home/db/include_auto/xa_ext.h
 <END>
 
 <BEGIN> FILE_/export/home/db/xa/xa_map.c_objects
@@ -6015,7 +5974,6 @@ C/C++ compiler
 	/export/home/db/env/env_recover.c \
 	/export/home/db/env/db_salloc.c \
 	/export/home/db/lock/lock_util.c \
-	/export/home/db/lock/lock_conflict.c \
 	/export/home/db/lock/lock_deadlock.c \
 	/export/home/db/lock/lock_region.c \
 	/export/home/db/lock/lock.c \
@@ -6047,7 +6005,6 @@ C/C++ compiler
 	/export/home/db/rpc_client/db_server_clnt.c \
 	/export/home/db/rpc_client/gen_client.c \
 	/export/home/db/rpc_client/client.c \
-	/export/home/db/include/tcl_db.h \
 	/export/home/db/rpc_server/db_server_xdr.c \
 	/export/home/db/os_vxworks/os_map.c \
 	/export/home/db/db/db_vrfy.c \
@@ -6057,7 +6014,9 @@ C/C++ compiler
 	/export/home/db/os_vxworks/os_abs.c \
 	/export/home/db/lock/lock_method.c \
 	/export/home/db/lock/lock_stat.c \
-	/export/home/db/qam/qam_files.c
+	/export/home/db/qam/qam_files.c \
+	/export/home/db/txn/txn_stat.c \
+	/export/home/db/txn/txn_recover.c
 <END>
 
 <BEGIN> userComments

@@ -11,15 +11,11 @@ my $LIBS ;
 my $COMPAT185 = "" ;
 
 my @files = ('DB_File.pm', glob "t/*.t") ;
-# See if warnings is available
-eval 'use warnings;';
-if ($@) {
-    # not there, so write a dummy warnings.pm
-    oldWarnings(@files) ;
-} else {
-    # is there, 
-    newWarnings(@files) ;
-}
+# warnings pragma is stable from 5.6.1 onward
+if ($] < 5.006001) 
+ { oldWarnings(@files) }
+else 
+ { newWarnings(@files) }
 
 ParseCONFIG() ;
 
@@ -34,6 +30,9 @@ else {
 
 # Solaris is special.
 #$LIBS .= " -lthread" if $^O eq 'solaris' ;
+
+# AIX is special.
+$LIBS .= " -plthread" if $^O eq 'aix' ;
 
 # OS2 is a special case, so check for it now.
 my $OS2 = "" ;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash.h,v 11.19 2000/12/21 23:05:16 krinsky Exp $
+ * $Id: hash.h,v 11.22 2001/07/02 01:05:40 bostic Exp $
  */
 
 /* Hash internal structure. */
@@ -131,8 +131,11 @@ typedef struct cursor_t {
 
 typedef enum {
 	DB_HAM_CHGPG = 1,
-	DB_HAM_SPLIT = 2,
-	DB_HAM_DUP   = 3
+	DB_HAM_DELFIRSTPG = 2,
+	DB_HAM_DELMIDPG = 3,
+	DB_HAM_DELLASTPG = 4,
+	DB_HAM_DUP   = 5,
+	DB_HAM_SPLIT = 6
 } db_ham_mode;
 
 #include "hash_auto.h"

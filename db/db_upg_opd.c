@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_upg_opd.c,v 11.9 2000/11/30 00:58:33 ubell Exp $";
+static const char revid[] = "$Id: db_upg_opd.c,v 11.11 2001/04/03 15:14:11 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -71,7 +71,7 @@ __db_31_offdup(dbp, real_name, fhp, sorted, pgnop)
 	pgno_cur = pgno_next = NULL;
 
 	/* Allocate room to hold a page. */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &page)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &page)) != 0)
 		goto err;
 
 	/*
@@ -85,7 +85,7 @@ __db_31_offdup(dbp, real_name, fhp, sorted, pgnop)
 		if (pgno_max == cur_cnt) {
 			pgno_max += 20;
 			if ((ret = __os_realloc(dbp->dbenv, pgno_max *
-			    sizeof(db_pgno_t), NULL, &pgno_cur)) != 0)
+			    sizeof(db_pgno_t), &pgno_cur)) != 0)
 				goto err;
 		}
 		pgno_cur[cur_cnt++] = pgno;
@@ -112,7 +112,7 @@ __db_31_offdup(dbp, real_name, fhp, sorted, pgnop)
 		 * list while we do so.
 		 */
 		if ((ret = __os_malloc(dbp->dbenv,
-		    cur_cnt * sizeof(db_pgno_t), NULL, &pgno_next)) != 0)
+		    cur_cnt * sizeof(db_pgno_t), &pgno_next)) != 0)
 			goto err;
 
 		/* Figure out where we can start allocating new pages. */
@@ -121,7 +121,7 @@ __db_31_offdup(dbp, real_name, fhp, sorted, pgnop)
 
 		/* Allocate room for an internal page. */
 		if ((ret = __os_malloc(dbp->dbenv,
-		    dbp->pgsize, NULL, &ipage)) != 0)
+		    dbp->pgsize, &ipage)) != 0)
 			goto err;
 		PGNO(ipage) = PGNO_INVALID;
 	}
@@ -187,13 +187,13 @@ __db_31_offdup(dbp, real_name, fhp, sorted, pgnop)
 	*pgnop = pgno_cur[0];
 
 err:	if (pgno_cur != NULL)
-		__os_free(pgno_cur, 0);
+		__os_free(dbp->dbenv, pgno_cur, 0);
 	if (pgno_next != NULL)
-		__os_free(pgno_next, 0);
+		__os_free(dbp->dbenv, pgno_next, 0);
 	if (ipage != NULL)
-		__os_free(ipage, dbp->pgsize);
+		__os_free(dbp->dbenv, ipage, dbp->pgsize);
 	if (page != NULL)
-		__os_free(page, dbp->pgsize);
+		__os_free(dbp->dbenv, page, dbp->pgsize);
 
 	return (ret);
 }
@@ -340,14 +340,14 @@ __db_up_ovref(dbp, fhp, pgno)
 	int ret;
 
 	/* Allocate room to hold a page. */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &page)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &page)) != 0)
 		return (ret);
 
 	GET_PAGE(dbp, fhp, pgno, page);
 	++OV_REF(page);
 	PUT_PAGE(dbp, fhp, pgno, page);
 
-err:	__os_free(page, dbp->pgsize);
+err:	__os_free(dbp->dbenv, page, dbp->pgsize);
 
 	return (ret);
 }

@@ -1,15 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.cpp,v 11.12 2000/10/27 20:32:00 dda Exp $
+ * $Id: EnvExample.cpp,v 11.19 2001/05/10 17:14:06 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
@@ -18,8 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
 
 #include <db_cxx.h>
 
@@ -64,15 +59,15 @@ main(int, char **)
 		data_dir = CONFIG_DATA_DIR;
 
 		cout << "Setup env\n";
-		db_setup(DATABASE_HOME, data_dir, cerr);
+		db_setup(home, data_dir, cerr);
 
 		cout << "Teardown env\n";
-		db_teardown(DATABASE_HOME, data_dir, cerr);
-		return 0;
+		db_teardown(home, data_dir, cerr);
+		return EXIT_SUCCESS;
 	}
 	catch (DbException &dbe) {
 		cerr << "AccessExample: " << dbe.what() << "\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
 
@@ -98,7 +93,7 @@ db_setup(char *home, char *data_dir, ostream& err_stream)
 	(void)dbenv->set_data_dir(data_dir);
 
 	// Open the environment with full transactional support.
-	dbenv->open(DATABASE_HOME,
+	dbenv->open(home,
     DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN, 0);
 
 	// Do something interesting...

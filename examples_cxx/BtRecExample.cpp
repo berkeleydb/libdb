@@ -1,33 +1,26 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BtRecExample.cpp,v 11.6 2000/02/19 20:57:59 bostic Exp $
+ * $Id: BtRecExample.cpp,v 11.16 2001/05/10 17:14:06 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
+
 #include <errno.h>
 #include <iostream.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
 
 #include <iomanip.h>
 #include <db_cxx.h>
 
 #define	DATABASE	"access.db"
 #define	WORDLIST	"../test/wordlist"
-
-void usage();
-extern "C" int getopt(int, char * const *, const char *);
 
 char *progname = "BtRecExample";		// Program name.
 
@@ -51,7 +44,7 @@ BtRecExample::BtRecExample(FILE *fp)
 	int ret;
 
 	// Remove the previous database.
-	(void)unlink(DATABASE);
+	(void)remove(DATABASE);
 
 	dbp = new Db(NULL, 0);
 
@@ -107,7 +100,7 @@ void BtRecExample::stats()
 {
 	DB_BTREE_STAT *statp;
 
-	dbp->stat(&statp, NULL, 0);
+	dbp->stat(&statp, 0);
 	cout << progname << ": database contains "
 	     << (u_long)statp->bt_ndata << " records\n";
 
@@ -198,27 +191,15 @@ void BtRecExample::show(char *msg, Dbt *key, Dbt *data)
 }
 
 int
-main(int argc, char *argv[])
+main()
 {
-	extern char *optarg;
-	extern int optind;
 	FILE *fp;
-	int ch;
-
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
 
 	// Open the word database.
 	if ((fp = fopen(WORDLIST, "r")) == NULL) {
 		fprintf(stderr, "%s: open %s: %s\n",
 			progname, WORDLIST, db_strerror(errno));
-		exit (1);
+		return (EXIT_FAILURE);
 	}
 
 	try {
@@ -233,15 +214,8 @@ main(int argc, char *argv[])
 	}
 	catch (DbException &dbe) {
 		cerr << "Exception: " << dbe.what() << "\n";
-		return dbe.get_errno();
+		return (EXIT_FAILURE);
 	}
 
-	return (0);
-}
-
-void
-usage()
-{
-	(void)fprintf(stderr, "usage: %s\n", progname);
-	exit(1);
+	return (EXIT_SUCCESS);
 }

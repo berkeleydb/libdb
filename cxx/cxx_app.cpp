@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_app.cpp,v 11.38 2000/12/21 20:30:18 dda Exp $";
+static const char revid[] = "$Id: cxx_app.cpp,v 11.44 2001/04/18 13:21:18 sue Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -261,6 +261,20 @@ void DbEnv::runtime_error(const char *caller, int error, int error_policy)
 	}
 }
 
+// Like DbEnv::runtime_error, but issue a DbMemoryException
+// based on the fact that this Dbt is not large enough.
+void DbEnv::runtime_error_dbt(const char *caller, Dbt *dbt, int error_policy)
+{
+	if (error_policy == ON_ERROR_UNKNOWN)
+		error_policy = last_known_error_policy;
+	if (error_policy == ON_ERROR_THROW) {
+		// Creating and throwing the object in two separate
+		// statements seems to be necessary for HP compilers.
+		DbMemoryException except(caller, dbt);
+		throw except;
+	}
+}
+
 // static method
 char *DbEnv::strerror(int error)
 {
@@ -351,6 +365,7 @@ DB_DBENV_ACCESS(data_dir, const char *arg)
 DB_DBENV_ACCESS(lg_bsize, u_int32_t arg)
 DB_DBENV_ACCESS(lg_dir, const char *arg)
 DB_DBENV_ACCESS(lg_max, u_int32_t arg)
+DB_DBENV_ACCESS(lg_regionmax, u_int32_t arg)
 DB_DBENV_ACCESS(lk_detect, u_int32_t arg)
 DB_DBENV_ACCESS(lk_max, u_int32_t arg)
 DB_DBENV_ACCESS(lk_max_lockers, u_int32_t arg)
@@ -361,8 +376,29 @@ DB_DBENV_ACCESS(mutexlocks, int arg)
 DB_DBENV_ACCESS(tmp_dir, const char *arg)
 DB_DBENV_ACCESS(tx_max, u_int32_t arg)
 
-// Here are the set methods that don't fit the above mold.
+// Here are the get/set methods that don't fit the above mold.
 //
+
+int DbEnv::set_alloc(db_malloc_fcn_type malloc_fcn,
+		     db_realloc_fcn_type realloc_fcn,
+		     db_free_fcn_type free_fcn)
+{
+	DB_ENV *dbenv;
+
+	dbenv = unwrap(this);
+	return dbenv->set_alloc(dbenv, malloc_fcn, realloc_fcn, free_fcn);
+}
+
+void *DbEnv::get_app_private() const
+{
+	return unwrapConst(this)->app_private;
+}
+
+void DbEnv::set_app_private(void *value)
+{
+	unwrap(this)->app_private = value;
+}
+
 extern "C" {
 	typedef void (*db_errcall_fcn_type)
 		(const char *, char *);
@@ -456,13 +492,14 @@ int DbEnv::set_region_init(int arg)
 	return (ret);
 }
 
-int DbEnv::set_server(char *host, long tsec, long ssec, u_int32_t flags)
+int DbEnv::set_rpc_server(void *cl, char *host, long tsec, long ssec, u_int32_t flags)
 {
 	int ret;
 	DB_ENV *dbenv = unwrap(this);
 
-	if ((ret = dbenv->set_server(dbenv, host, tsec, ssec, flags)) != 0)
-		DB_ERROR("DbEnv::set_server", ret, error_policy());
+	if ((ret = dbenv->set_rpc_server(dbenv, cl, host, tsec, ssec, flags))
+	    != 0)
+		DB_ERROR("DbEnv::set_rpc_server", ret, error_policy());
 
 	return (ret);
 }

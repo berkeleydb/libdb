@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_dup.c,v 11.18 2000/11/30 00:58:32 ubell Exp $";
+static const char revid[] = "$Id: db_dup.c,v 11.22 2001/04/02 17:08:13 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -51,7 +51,8 @@ __db_ditem(dbc, pagep, indx, nbytes)
 		    &LSN(pagep), 0, DB_REM_DUP, dbp->log_fileid, PGNO(pagep),
 		    (u_int32_t)indx, nbytes, &ldbt, NULL, &LSN(pagep))) != 0)
 			return (ret);
-	}
+	} else
+		LSN_NOT_LOGGED(LSN(pagep));
 
 	/*
 	 * If there's only a single item on the page, we don't have to
@@ -68,6 +69,7 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	 * memmove(3), the regions may overlap.
 	 */
 	from = (u_int8_t *)pagep + HOFFSET(pagep);
+DB_ASSERT((int)pagep->inp[indx] - HOFFSET(pagep) >= 0);
 	memmove(from + nbytes, from, pagep->inp[indx] - HOFFSET(pagep));
 	HOFFSET(pagep) += nbytes;
 
@@ -129,11 +131,13 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	 * placeholder for the trailing variable-length data field.
 	 */
 	dbp = dbc->dbp;
-	if (DB_LOGGING(dbc))
+	if (DB_LOGGING(dbc)) {
 		if ((ret = __db_addrem_log(dbp->dbenv, dbc->txn,
 		    &LSN(pagep), 0, DB_ADD_DUP, dbp->log_fileid, PGNO(pagep),
 		    (u_int32_t)indx, nbytes, hdr, data, &LSN(pagep))) != 0)
 			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(pagep));
 
 	if (hdr == NULL) {
 		B_TSET(bk.type, B_KEYDATA, 0);
@@ -181,7 +185,8 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 	ret = 0;
 	np = pp = NULL;
-	npl.off = ppl.off = LOCK_INVALID;
+	LOCK_INIT(npl);
+	LOCK_INIT(ppl);
 	nlsnp = plsnp = NULL;
 	dbp = dbc->dbp;
 
@@ -220,13 +225,14 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		    pagep->pgno, &pagep->lsn,
 		    pagep->prev_pgno, plsnp, pagep->next_pgno, nlsnp)) != 0)
 			goto err;
-		if (np != NULL)
-			np->lsn = ret_lsn;
-		if (pp != NULL)
-			pp->lsn = ret_lsn;
-		if (add_rem == DB_REM_PAGE)
-			pagep->lsn = ret_lsn;
-	}
+	} else
+		LSN_NOT_LOGGED(ret_lsn);
+	if (np != NULL)
+		np->lsn = ret_lsn;
+	if (pp != NULL)
+		pp->lsn = ret_lsn;
+	if (add_rem == DB_REM_PAGE)
+		pagep->lsn = ret_lsn;
 
 	/*
 	 * Modify and release the two pages.
@@ -265,11 +271,11 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 err:	if (np != NULL)
 		(void)memp_fput(dbp->mpf, np, 0);
-	if (needlock && npl.off != LOCK_INVALID)
+	if (needlock)
 		(void)__TLPUT(dbc, npl);
 	if (pp != NULL)
 		(void)memp_fput(dbp->mpf, pp, 0);
-	if (needlock && ppl.off != LOCK_INVALID)
+	if (needlock)
 		(void)__TLPUT(dbc, ppl);
 	return (ret);
 }

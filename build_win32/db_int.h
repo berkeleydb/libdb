@@ -2,10 +2,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: db_int.src,v 11.42 2001/01/11 17:49:17 krinsky Exp $
+ * $Id: db_int.in,v 11.58 2001/07/06 20:35:14 bostic Exp $
  */
 
 #ifndef _DB_INTERNAL_H_
@@ -86,6 +86,12 @@ typedef unsigned long db_alignp_t;
 /* Align a pointer to a specific boundary. */
 #undef	ALIGNP
 #define	ALIGNP(value, bound)	ALIGN((db_alignp_t)value, bound)
+
+/* Is x a power of two?  (Tests true for zero, which doesn't matter here.) */
+#define	POWER_OF_TWO(x)	(((x) & ((x) - 1)) == 0)
+
+#define	IS_VALID_PAGESIZE(x)						\
+	(POWER_OF_TWO(x) && (x) >= DB_MIN_PGSIZE && ((x) <= DB_MAX_PGSIZE))
 
 /*
  * There are several on-page structures that are declared to have a number of
@@ -218,9 +224,9 @@ typedef enum {
 		return (__db_mi_open(dbenv, name, 1));
 
 /* We're not actually user hostile, honest. */
-#define	ENV_REQUIRES_CONFIG(dbenv, handle, subsystem)			\
+#define	ENV_REQUIRES_CONFIG(dbenv, handle, i, flags)			\
 	if (handle == NULL)						\
-		return (__db_env_config(dbenv, subsystem));
+		return (__db_env_config(dbenv, i, flags));
 
 /*******************************************************
  * Database Access Methods.
@@ -274,6 +280,40 @@ struct __dbc_internal {
  */
 #define	IS_INITIALIZED(dbc)	((dbc)->internal->pgno != PGNO_INVALID)
 
+/* Free the callback-allocated buffer, if necessary, hanging off of a DBT. */
+#define	FREE_IF_NEEDED(sdbp, dbt)					\
+	if (F_ISSET((dbt), DB_DBT_APPMALLOC)) {				\
+		__os_ufree((sdbp)->dbenv, (dbt)->data, 0);	\
+		F_CLR((dbt), DB_DBT_APPMALLOC);				\
+	}
+
+/*
+ * Use memory belonging to object "owner" to return the results of
+ * any no-DBT-flag get ops on cursor "dbc".
+ */
+#define	SET_RET_MEM(dbc, owner)				\
+	do {						\
+		(dbc)->rskey = &(owner)->my_rskey;	\
+		(dbc)->rkey = &(owner)->my_rkey;	\
+		(dbc)->rdata = &(owner)->my_rdata;	\
+	} while (0)
+
+/* Use the return-data memory src is currently set to use in dest as well. */
+#define	COPY_RET_MEM(src, dest)				\
+	do {						\
+		(dest)->rskey = (src)->rskey;		\
+		(dest)->rkey = (src)->rkey;		\
+		(dest)->rdata = (src)->rdata;		\
+	} while (0)
+
+/* Reset the returned-memory pointers to their defaults. */
+#define	RESET_RET_MEM(dbc)				\
+	do {						\
+		(dbc)->rskey = &(dbc)->my_rskey;	\
+		(dbc)->rkey = &(dbc)->my_rkey;		\
+		(dbc)->rdata = &(dbc)->my_rdata;	\
+	} while (0)
+
 /*******************************************************
  * Mpool.
  *******************************************************/
@@ -297,16 +337,27 @@ typedef struct __dbpginfo {
 	(LSN).file = 0;							\
 	(LSN).offset = 0;						\
 } while (0)
-
-/* Return 1 if LSN is a 'zero' lsn, otherwise return 0. */
 #define	IS_ZERO_LSN(LSN)	((LSN).file == 0)
+
+#define	MAX_LSN(LSN) do {						\
+	(LSN).file = UINT32_T_MAX;					\
+	(LSN).offset = UINT32_T_MAX;					\
+} while (0)
+#define	IS_MAX_LSN(LSN) \
+	((LSN).file == UINT32_T_MAX && (LSN).offset == UINT32_T_MAX)
+
+/* If logging is turned off, smash the lsn. */
+#define	LSN_NOT_LOGGED(LSN) do {					\
+	(LSN).file = 0;							\
+	(LSN).offset = 1;						\
+} while (0)
+#define	IS_NOT_LOGGED_LSN(LSN) \
+	((LSN).file == 0 && (LSN).offset == 1)
 
 /* Test if we need to log a change. */
 #define	DB_LOGGING(dbc)							\
 	(LOGGING_ON((dbc)->dbp->dbenv) && !F_ISSET(dbc, DBC_RECOVER))
 
-/* Internal flag for use with internal __log_unregister. */
-#define	DB_LOGONLY	0x01
 /*******************************************************
  * Txn.
  *******************************************************/
@@ -330,6 +381,7 @@ typedef struct __db_globals {
 	u_int32_t db_panic;		/* db_set_panic */
 	u_int32_t db_region_init;	/* db_set_region_init */
 	u_int32_t db_tas_spins;		/* db_set_tas_spins */
+	u_int32_t no_write_errors;	/* write error testing disallowed */
 #ifdef HAVE_VXWORKS
 	u_int32_t db_global_init;	/* VxWorks: inited */
 	SEM_ID db_global_lock;		/* VxWorks: global semaphore */
@@ -340,15 +392,16 @@ typedef struct __db_globals {
 
 #ifdef DB_INITIALIZE_DB_GLOBALS
 DB_GLOBALS __db_global_values = {
-	0,					/* db_set_pageyield */
-	1,					/* db_set_panic */
-	0,					/* db_set_region_init */
-	0,					/* db_set_tas_spins */
+	0,				/* db_set_pageyield */
+	1,				/* db_set_panic */
+	0,				/* db_set_region_init */
+	0,				/* db_set_tas_spins */
+	0,				/* write error testing disallowed */
 #ifdef HAVE_VXWORKS
-	0,					/* db_global_init */
-	NULL,					/* db_global_lock */
+	0,				/* VxWorks: inited */
+	NULL,				/* VxWorks: global semaphore */
 #endif
-						/* XA environment queue */
+					/* XA: list of opened environments. */
 	{NULL, &__db_global_values.db_envq.tqh_first}
 };
 #else

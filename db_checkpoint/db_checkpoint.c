@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_checkpoint.c,v 11.25 2001/01/18 18:36:57 bostic Exp $";
+    "$Id: db_checkpoint.c,v 11.28 2001/05/10 17:13:56 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -101,7 +101,7 @@ main(argc, argv)
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case 'v':
 			verbose = 1;
 			break;
@@ -120,7 +120,7 @@ main(argc, argv)
 		(void)fprintf(stderr,
 		    "%s: at least one of -1, -k and -p must be specified\n",
 		    progname);
-		exit (1);
+		return (EXIT_FAILURE);
 	}
 
 	/* Handle possible interruptions. */
@@ -208,7 +208,7 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
@@ -216,7 +216,7 @@ usage()
 {
 	(void)fprintf(stderr,
     "usage: db_checkpoint [-1Vv] [-h home] [-k kbytes] [-L file] [-p min]\n");
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -232,6 +232,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

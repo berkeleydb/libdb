@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd005.tcl,v 11.27 2000/12/15 21:41:38 ubell Exp $
+# $Id: recd005.tcl,v 11.29 2001/05/17 20:55:08 bostic Exp $
 #
 # Recovery Test 5.
 # Make sure that we can do catastrophic recovery even if we open
@@ -15,7 +15,7 @@ proc recd005 { method args} {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Recd005: $method catastropic recovery"
+	puts "Recd005: $method catastrophic recovery"
 
 	berkdb srand $rand_init
 

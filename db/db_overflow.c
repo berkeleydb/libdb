@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_overflow.c,v 11.21 2000/11/30 00:58:32 ubell Exp $";
+static const char revid[] = "$Id: db_overflow.c,v 11.33 2001/06/14 20:56:40 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -99,7 +99,12 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 	 */
 	if (F_ISSET(dbt, DB_DBT_PARTIAL)) {
 		start = dbt->doff;
-		needed = dbt->dlen;
+		if (start > tlen)
+			needed = 0;
+		else if (dbt->dlen > tlen - start)
+			needed = tlen - start;
+		else
+			needed = dbt->dlen;
 	} else {
 		start = 0;
 		needed = tlen;
@@ -112,15 +117,13 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 			return (ENOMEM);
 		}
 	} else if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(dbenv,
-		    needed, dbp->db_malloc, &dbt->data)) != 0)
+		if ((ret = __os_umalloc(dbenv, needed, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_realloc(dbenv,
-		    needed, dbp->db_realloc, &dbt->data)) != 0)
+		if ((ret = __os_urealloc(dbenv, needed, &dbt->data)) != 0)
 			return (ret);
 	} else if (*bpsz == 0 || *bpsz < needed) {
-		if ((ret = __os_realloc(dbenv, needed, NULL, bpp)) != 0)
+		if ((ret = __os_realloc(dbenv, needed, bpp)) != 0)
 			return (ret);
 		*bpsz = needed;
 		dbt->data = *bpp;
@@ -153,7 +156,7 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 		}
 		curoff += OV_LEN(h);
 		pgno = h->next_pgno;
-		memp_fput(dbp->mpf, h, 0);
+		(void)memp_fput(dbp->mpf, h, 0);
 	}
 	return (0);
 }
@@ -177,7 +180,7 @@ __db_poff(dbc, dbt, pgnop)
 	db_indx_t pagespace;
 	u_int32_t sz;
 	u_int8_t *p;
-	int ret;
+	int ret, t_ret;
 
 	/*
 	 * Allocate pages and copy the key/data item into them.  Calculate the
@@ -187,6 +190,7 @@ __db_poff(dbc, dbt, pgnop)
 	dbp = dbc->dbp;
 	pagespace = P_MAXSPACE(dbp->pgsize);
 
+	ret = 0;
 	lastp = NULL;
 	for (p = dbt->data,
 	    sz = dbt->size; sz > 0; p += pagespace, sz -= pagespace) {
@@ -213,14 +217,19 @@ __db_poff(dbc, dbt, pgnop)
 			    PGNO(pagep), lastp ? PGNO(lastp) : PGNO_INVALID,
 			    PGNO_INVALID, &tmp_dbt, &LSN(pagep),
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
-			    &null_lsn)) != 0)
-				return (ret);
-
-			/* Move lsn onto page. */
-			if (lastp)
-				LSN(lastp) = new_lsn;
-			LSN(pagep) = new_lsn;
-		}
+			    &null_lsn)) != 0) {
+				if (lastp != NULL)
+					(void)memp_fput(dbp->mpf,
+					    lastp, DB_MPOOL_DIRTY);
+				lastp = pagep;
+				break;
+			}
+		} else
+			LSN_NOT_LOGGED(new_lsn);
+		/* Move lsn onto page. */
+		if (lastp)
+			LSN(lastp) = new_lsn;
+		LSN(pagep) = new_lsn;
 
 		P_INIT(pagep, dbp->pgsize,
 		    PGNO(pagep), PGNO_INVALID, PGNO_INVALID, 0, P_OVERFLOW);
@@ -242,8 +251,10 @@ __db_poff(dbc, dbt, pgnop)
 		}
 		lastp = pagep;
 	}
-	(void)memp_fput(dbp->mpf, lastp, DB_MPOOL_DIRTY);
-	return (0);
+	if ((t_ret =
+	    memp_fput(dbp->mpf, lastp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
 }
 
 /*
@@ -268,11 +279,13 @@ __db_ovref(dbc, pgno, adjust)
 		return (ret);
 	}
 
-	if (DB_LOGGING(dbc))
+	if (DB_LOGGING(dbc)) {
 		if ((ret = __db_ovref_log(dbp->dbenv, dbc->txn,
 		    &LSN(h), 0, dbp->log_fileid, h->pgno, adjust,
 		    &LSN(h))) != 0)
 			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(h));
 	OV_REF(h) += adjust;
 
 	(void)memp_fput(dbp->mpf, h, DB_MPOOL_DIRTY);
@@ -319,10 +332,14 @@ __db_doff(dbc, pgno)
 			ZERO_LSN(null_lsn);
 			if ((ret = __db_big_log(dbp->dbenv, dbc->txn,
 			    &LSN(pagep), 0, DB_REM_BIG, dbp->log_fileid,
-			    PGNO(pagep), PREV_PGNO(pagep), NEXT_PGNO(pagep),
-			    &tmp_dbt, &LSN(pagep), &null_lsn, &null_lsn)) != 0)
+			    PGNO(pagep), PREV_PGNO(pagep),
+			    NEXT_PGNO(pagep), &tmp_dbt,
+			    &LSN(pagep), &null_lsn, &null_lsn)) != 0) {
+				(void)memp_fput(dbp->mpf, pagep, 0);
 				return (ret);
-		}
+			}
+		} else
+			LSN_NOT_LOGGED(LSN(pagep));
 		pgno = pagep->next_pgno;
 		if ((ret = __db_free(dbc, pagep)) != 0)
 			return (ret);
@@ -373,7 +390,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 			return (ret);
 		/* Pass the key as the first argument */
 		*cmpp = cmpfunc(dbp, dbt, &local_dbt);
-		__os_free(buf, bufsize);
+		__os_free(dbp->dbenv, buf, bufsize);
 		return (0);
 	}
 
@@ -448,7 +465,7 @@ __db_vrfy_overflow(dbp, vdp, h, pgno, flags)
 	/* Just store for now. */
 	pip->olen = HOFFSET(h);
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+err:	if ((t_ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -577,7 +594,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 			goto err;
 		}
 
-		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 ||
+		if ((ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 ||
 		    (ret = __db_vrfy_getpageinfo(vdp, next, &pip)) != 0)
 			return (ret);
 		if (pip->prev_pgno != pgno) {
@@ -600,7 +617,8 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 		    "Overflow item incomplete on page %lu", (u_long)pgno));
 	}
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -623,13 +641,13 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 	u_int32_t flags;
 {
 	PAGE *h;
-	int ret, err_ret;
+	int ret, t_ret;
 	u_int32_t bytesgot, bytes;
 	u_int8_t *src, *dest;
 
-	ret = DB_VERIFY_BAD;
-	err_ret = 0;
+	ret = t_ret = 0;
 	bytesgot = bytes = 0;
+	h = NULL;
 
 	while ((pgno != PGNO_INVALID) && (IS_VALID_PGNO(pgno))) {
 		/*
@@ -658,7 +676,7 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 			bytes = dbp->pgsize - P_OVERHEAD;
 
 		if ((ret = __os_realloc(dbp->dbenv,
-		    bytesgot + bytes, 0, buf)) != 0)
+		    bytesgot + bytes, buf)) != 0)
 			break;
 
 		dest = (u_int8_t *)*buf + bytesgot;
@@ -667,15 +685,24 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 		memcpy(dest, src, bytes);
 
 		pgno = NEXT_PGNO(h);
-		/* Not much we can do here--we don't want to quit. */
+
 		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
-			err_ret = ret;
+			break;
+		h = NULL;
 	}
 
-	if (ret == 0) {
+	/*
+	 * If we're being aggressive, salvage a partial datum if there
+	 * was an error somewhere along the way.
+	 */
+	if (ret == 0 || LF_ISSET(DB_AGGRESSIVE)) {
 		dbt->size = bytesgot;
 		dbt->data = *buf;
 	}
 
-	return ((err_ret != 0 && ret == 0) ? err_ret : ret);
+	/* If we broke out on error, don't leave pages pinned. */
+	if (h != NULL && (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
+		ret = t_ret;
+
+	return (ret);
 }

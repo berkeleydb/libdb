@@ -1,11 +1,11 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test049.tcl,v 11.15 2000/08/25 14:21:56 sue Exp $
+# $Id: test049.tcl,v 11.17 2001/05/17 20:55:08 bostic Exp $
 #
-# Test 049: Test of each cursor routine with unitialized cursors
+# Test 049: Test of each cursor routine with uninitialized cursors
 proc test049 { method args } {
 	global errorInfo
 	global errorCode
@@ -17,7 +17,7 @@ proc test049 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "\tTest$tstn: Test of cursor routines with unitialized cursors."
+	puts "\tTest$tstn: Test of cursor routines with uninitialized cursors."
 
 	set key	"key"
 	set data	"data"

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TpcbExample.java,v 11.9 2000/04/01 15:52:15 dda Exp $
+ * $Id: TpcbExample.java,v 11.12 2001/04/28 19:02:23 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -81,6 +81,10 @@ class TpcbExample extends DbEnv
         set_error_stream(System.err);
         set_errpfx(progname);
         set_cachesize(0, cachesize == 0 ? 4 * 1024 * 1024 : cachesize, 0);
+
+	if ((flags & (Db.DB_TXN_NOSYNC)) != 0)
+		set_flags(Db.DB_TXN_NOSYNC, true);
+	flags &= ~(Db.DB_TXN_NOSYNC);
 
 	int local_flags = flags | Db.DB_CREATE;
         if (initializing)
@@ -494,7 +498,11 @@ class TpcbExample extends DbEnv
             tcurs.close();
             hcurs.close();
 
-            t.commit(0);
+            // null out t in advance; if the commit fails,
+            // we don't want to abort it in the catch clause.
+            DbTxn tmptxn = t;
+            t = null;
+            tmptxn.commit(0);
 
             // END TIMING
             return (0);
@@ -634,9 +642,9 @@ class TpcbExample extends DbEnv
         history = history == 0 ? HISTORY : history;
 
         if (verbose)
-            System.out.println((long)accounts + " Accounts "
-                 + String.valueOf(branches) + " Branches "
-                 + String.valueOf(tellers) + " Tellers "
+            System.out.println((long)accounts + " Accounts, "
+                 + String.valueOf(branches) + " Branches, "
+                 + String.valueOf(tellers) + " Tellers, "
                  + String.valueOf(history) + " History");
 
         if (iflag) {

@@ -1,5 +1,5 @@
-<!--$Id: terrain.so,v 10.3 2000/12/14 20:52:03 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: terrain.so,v 10.4 2001/05/05 01:49:26 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
-<td width="1%"><a href="../../ref/intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Mapping the terrain: theory and practice</h1>
@@ -46,7 +46,7 @@ customer records for every person who shopped at the site. Often,
 database records have a different structure from the structures or
 instances supported by the programming language in which an application
 is written. As a result, working with records can mean:
-<ul type=disc>
+<p><ul type=disc>
 <li>using database operations like searches and updates on records; and
 <li>converting between programming language structures and database record
 types in the application.
@@ -179,13 +179,13 @@ Java programs.
 navigating application data. Network databases are designed to make
 pointer traversal very fast. Every record stored in a network database
 is allowed to contain pointers to other records. These pointers are
-generally physical addresses, so fetching the referenced record just
-means reading it from disk by its disk address.
+generally physical addresses, so fetching the record to which it refers
+just means reading it from disk by its disk address.
 <p>Network database systems generally permit records to contain integers,
 floating point numbers, and character strings, as well as references to
 other records. An application can search for records of interest. After
-retrieving a record, the application can fetch any referenced record
-quickly.
+retrieving a record, the application can fetch any record to which it
+refers, quickly.
 <p>Pointer traversal is fast because most network systems use physical disk
 addresses as pointers. When the application wants to fetch a record,
 the database system uses the address to fetch exactly the right string
@@ -241,7 +241,7 @@ and administer a separate database server, and the programmer must
 support not just one product, but two. Adding a server process to the
 application creates new opportunity for installation mistakes and
 run-time problems.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

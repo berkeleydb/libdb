@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mdbscript.tcl,v 11.23 2000/10/09 02:26:11 krinsky Exp $
+# $Id: mdbscript.tcl,v 11.24 2001/01/25 18:23:05 bostic Exp $
 #
 # Process script for the multi-process db tester.
 

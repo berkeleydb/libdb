@@ -1,5 +1,5 @@
-<!--$Id: inc.so,v 1.6 2000/08/08 19:58:20 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: inc.so,v 1.11 2001/05/08 15:03:08 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,20 +8,20 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/transapp/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td align=right><a href="../../ref/transapp/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Atomicity</h1>
-<p>The third reason listed for using transactions was atomicity.  Consider
-an application suite where multiple threads of control (multiple
-processes or threads in one or more processes) are changing the values
-associated with a key in one or more databases.  Specifically, they are
-taking the current value, incrementing it, and then storing it back into
-the database.
-<p>Such an application requires atomicity.  Since we want to change a value
-in the database, we must make sure that once we read it, no other thread
+<p>The third reason listed for using transactions was <i>atomicity</i>.
+Consider an application suite in which multiple threads of control
+(multiple processes or threads in one or more processes) are changing
+the values associated with a key in one or more databases.
+Specifically, they are taking the current value, incrementing it, and
+then storing it back into the database.
+<p>Such an application requires atomicity.  Because we want to change a value
+in the database, we must make sure that after we read it, no other thread
 of control modifies it.  For example, assume that both thread #1 and
 thread #2 are doing similar operations in the database, where thread #1
 is incrementing records by 3, and thread #2 is incrementing records by
@@ -33,7 +33,7 @@ thread #2  <b>read</b> record: the value is 2
 thread #2  <b>write</b> record + 5 back into the database (new value 7)
 thread #1  <b>write</b> record + 3 back into the database (new value 5)</pre></blockquote>
 <p>As you can see, instead of incrementing the record by a total of 8,
-we've only incremented it by 3, because thread #1 overwrote thread #2's
+we've incremented it only by 3 because thread #1 overwrote thread #2's
 change.  By wrapping the operations in transactions, we ensure that this
 cannot happen.  In a transaction, when the first thread reads the
 record, locks are acquired that will not be released until the
@@ -72,7 +72,7 @@ main(int argc, char *argv)
 <p>
 	/*
 	 * Open database:
-	 *	Key is a name; Data is: company name, address, cat breeds.
+	 *	Key is a name; Data is: company name, cat breeds.
 	 */
 	db_open(dbenv, &db_cats, "cats", 1);
 <p>
@@ -84,12 +84,12 @@ main(int argc, char *argv)
 	return (0);
 }
 <p>
-<b>void
+<b>int
 add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 {
 	DBT key, data;
 	DB_TXN *tid;
-	int original, ret;
+	int fail, original, ret, t_ret;
 	char buf64;
 <p>
 	/* Initialization. */
@@ -99,7 +99,7 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 	memset(&data, 0, sizeof(data));
 	data.flags = DB_DBT_MALLOC;
 <p>
-	for (;;) {
+	for (fail = 0;;) {
 		/* Begin the transaction. */
 		if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
 			dbenv-&gt;err(dbenv, ret, "txn_begin");
@@ -115,20 +115,18 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 			original = atoi(data.data);
 			break;
 		case DB_LOCK_DEADLOCK:
-			/* Deadlock: retry the operation. */
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, ret, "txn_abort");
+		default:
+			/* Retry the operation. */
+			if ((t_ret = txn_abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
 				exit (1);
 			}
+			if (++fail == MAXIMUM_RETRY)
+				return (ret);
 			continue;
 		case DB_NOTFOUND:
 			original = 0;
 			break;
-		default:
-			/* Error: run recovery. */
-			dbenv-&gt;err(
-			    dbenv, ret, "dbc-&gt;get: %s/%d", color, increment);
-			exit (1);
 		}
 		if (data.data != NULL)
 			free(data.data);
@@ -146,55 +144,53 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 				dbenv-&gt;err(dbenv, ret, "txn_commit");
 				exit (1);
 			}
-			return;
+			return (0);
 		case DB_LOCK_DEADLOCK:
-			/* Deadlock: retry the operation. */
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, ret, "txn_abort");
+		default:
+			/* Retry the operation. */
+			if ((t_ret = txn_abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
 				exit (1);
 			}
+			if (++fail == MAXIMUM_RETRY)
+				return (ret);
 			break;
-		default:
-			/* Error: run recovery. */
-			dbenv-&gt;err(
-			    dbenv, ret, "dbc-&gt;put: %s/%d", color, increment);
-			exit (1);
 		}
 	}
 }</b></pre></blockquote>
-<p>Any number of operations, on any number of databases, can be included
-in a single transaction to ensure atomicity of the operations.  There
+<p>Any number of operations on any number of databases can be included in
+a single transaction to ensure the atomicity of the operations.  There
 is, however, a trade-off between the number of operations included in
 a single transaction and both throughput and the possibility of
 deadlock.  The reason for this is because transactions acquire locks
-throughout their lifetime, and do not release them until transaction
-commit or abort.  So, the more operations included in a transaction,
-the more likely that a transaction will block other operations and that
+throughout their lifetime and do not release the locks until commit or
+abort time.  So, the more operations included in a transaction, the more
+likely it is that a transaction will block other operations and that
 deadlock will occur.  However, each transaction commit requires a
 synchronous disk I/O, so grouping multiple operations into a transaction
 can increase overall throughput.  (There is one exception to this.  The
 <a href="../../api_c/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option causes transactions to exhibit the ACI
 (atomicity, consistency and isolation) properties, but not D
-(durability), avoiding the synchronous disk I/O on transaction commit
-and greatly increasing transaction throughput for some applications.
+(durability); avoiding the synchronous disk I/O on transaction commit
+and greatly increasing transaction throughput for some applications.)
 <p>When applications do create complex transactions, they often avoid
-having more than one complex transaction at a time, as simple operations
-like a single <a href="../../api_c/db_put.html">DB-&gt;put</a> are unlikely to deadlock with each other
-or the complex transaction, while multiple complex transactions are
-likely to deadlock with each other as they will both acquire many locks
-over their lifetime.  Alternatively, complex transactions can be broken
-up into smaller sets of operations, and each of those sets may be
-encapsulated in a nested transaction.  Because nested transactions may
-be individually aborted and retried without causing the entire
-transaction to be aborted, this allows complex transactions to proceed
-even in the face of heavy contention, repeatedly trying the
-sub-operations until they succeed.
-<p>It is also helpful to order operations within a transaction, that is,
+having more than one complex transaction at a time because simple
+operations like a single <a href="../../api_c/db_put.html">DB-&gt;put</a> are unlikely to deadlock with
+each other or the complex transaction; while multiple complex
+transactions are likely to deadlock with each other because they will
+both acquire many locks over their lifetime.  Alternatively, complex
+transactions can be broken up into smaller sets of operations, and each
+of those sets may be encapsulated in a nested transaction.  Because
+nested transactions may be individually aborted and retried without
+causing the entire transaction to be aborted, this allows complex
+transactions to proceed even in the face of heavy contention, repeatedly
+trying the suboperations until they succeed.
+<p>It is also helpful to order operations within a transaction; that is,
 access the databases and items within the databases in the same order,
 to the extent possible, in all transactions.  Accessing databases and
 items in different orders greatly increases the likelihood of operations
 being blocked and failing due to deadlocks.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_ret.c,v 11.12 2000/11/30 00:58:33 ubell Exp $";
+static const char revid[] = "$Id: db_ret.c,v 11.15 2001/04/17 19:44:44 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -131,12 +131,10 @@ __db_retcopy(dbp, dbt, data, len, memp, memsize)
 	 * memory pointer is allowed to be NULL.
 	 */
 	if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(dbenv, len,
-		    dbp == NULL ? NULL : dbp->db_malloc, &dbt->data)) != 0)
+		if ((ret = __os_umalloc(dbenv, len, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_realloc(dbenv, len,
-		    dbp == NULL ? NULL : dbp->db_realloc, &dbt->data)) != 0)
+		if ((ret = __os_urealloc(dbenv, len, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_USERMEM)) {
 		if (len != 0 && (dbt->data == NULL || dbt->ulen < len))
@@ -145,7 +143,7 @@ __db_retcopy(dbp, dbt, data, len, memp, memsize)
 		return (EINVAL);
 	} else {
 		if (len != 0 && (*memsize == 0 || *memsize < len)) {
-			if ((ret = __os_realloc(dbenv, len, NULL, memp)) != 0) {
+			if ((ret = __os_realloc(dbenv, len, memp)) != 0) {
 				*memsize = 0;
 				return (ret);
 			}

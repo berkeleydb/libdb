@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_txn.cpp,v 11.13 2000/12/21 16:24:33 dda Exp $";
+static const char revid[] = "$Id: cxx_txn.cpp,v 11.17 2001/04/13 12:15:51 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -50,11 +50,23 @@ int DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags)
 	return (err);
 }
 
-int DbEnv::txn_stat(DB_TXN_STAT **statp, db_malloc_fcn_type db_malloc_fcn)
+int DbEnv::txn_recover(DB_PREPLIST *preplist, long count,
+		       long *retp, u_int32_t flags)
 {
 	int err;
 	DB_ENV *env = unwrap(this);
-	if ((err = ::txn_stat(env, statp, db_malloc_fcn)) != 0) {
+	if ((err = ::txn_recover(env, preplist, count, retp, flags)) != 0) {
+		DB_ERROR("DbEnv::txn_recover", err, error_policy());
+		return (err);
+	}
+	return (err);
+}
+
+int DbEnv::txn_stat(DB_TXN_STAT **statp)
+{
+	int err;
+	DB_ENV *env = unwrap(this);
+	if ((err = ::txn_stat(env, statp)) != 0) {
 		DB_ERROR("DbEnv::txn_stat", err, error_policy());
 		return (err);
 	}
@@ -122,13 +134,13 @@ u_int32_t DbTxn::id()
 	return (txn_id(txn));         // no error
 }
 
-int DbTxn::prepare()
+int DbTxn::prepare(u_int8_t *gid)
 {
 	int err;
 	DB_TXN *txn;
 
 	txn = unwrap(this);
-	if ((err = txn_prepare(txn)) != 0) {
+	if ((err = txn_prepare(txn, gid)) != 0) {
 		DB_ERROR("DbTxn::prepare", err, ON_ERROR_UNKNOWN);
 		return (err);
 	}

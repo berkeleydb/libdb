@@ -43,13 +43,13 @@ CPP=cl.exe
 # PROP Intermediate_Dir "Release_static"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /I "../include_auto" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Release_static/libdb32s.lib"
+# ADD LIB32 /nologo /out:"Release_static/libdb33s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug"
 
@@ -64,13 +64,13 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debug_static"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /Z7 /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Debug_static/libdb32sd.lib"
+# ADD LIB32 /nologo /out:"Debug_static/libdb33sd.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Release Static"
 
@@ -84,14 +84,14 @@ LIB32=link.exe -lib
 # PROP Output_Dir "Release_static"
 # PROP Intermediate_Dir "Release_static"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /I "../include_auto" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I "../include" /I "../include_auto" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release/libdb32s.lib"
-# ADD LIB32 /nologo /out:"Release_static/libdb32s.lib"
+# ADD BASE LIB32 /nologo /out:"Release/libdb33s.lib"
+# ADD LIB32 /nologo /out:"Release_static/libdb33s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug Static"
 
@@ -105,14 +105,14 @@ LIB32=link.exe -lib
 # PROP Output_Dir "Debug_static"
 # PROP Intermediate_Dir "Debug_static"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
-# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD BASE CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug/libdb32sd.lib"
-# ADD LIB32 /nologo /out:"Debug_static/libdb32sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug/libdb33sd.lib"
+# ADD LIB32 /nologo /out:"Debug_static/libdb33sd.lib"
 
 !ENDIF 
 
@@ -428,10 +428,6 @@ SOURCE=..\lock\lock.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\lock\lock_conflict.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\lock\lock_deadlock.c
 # End Source File
 # Begin Source File
@@ -696,7 +692,15 @@ SOURCE=..\txn\txn_rec.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\txn\txn_recover.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\txn\txn_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_stat.c
 # End Source File
 # Begin Source File
 

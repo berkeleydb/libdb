@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_seek.c,v 11.8 2000/05/17 19:30:19 bostic Exp $";
+static const char revid[] = "$Id: os_seek.c,v 11.10 2001/01/31 14:16:19 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -46,7 +46,7 @@ __os_seek(dbenv, fhp, pgsize, pageno, relative, isrewind, db_whence)
 	}
 
 	if (__db_jump.j_seek != NULL)
-		ret =  __db_jump.j_seek(fhp->fd, pgsize, pageno,
+		ret = __db_jump.j_seek(fhp->fd, pgsize, pageno,
 		    relative, isrewind, whence);
 	else {
 		offset = (__int64)pgsize * pageno + relative;

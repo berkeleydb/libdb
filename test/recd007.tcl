@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd007.tcl,v 11.38 2000/12/20 21:39:23 krinsky Exp $
+# $Id: recd007.tcl,v 11.45 2001/06/19 18:30:47 sue Exp $
 #
 # Recovery Test 7.
 # This is a recovery test for create/delete of databases.  We have
@@ -89,20 +89,20 @@ proc recd007 { method args} {
 	}
 
 	set rlist {
-	{ {"none" "prerename"}		"Recd007.l0: none/prerename"}
-	{ {"none" "postrename"}		"Recd007.l1: none/postrename"}
-	{ {"prerename" "none"}		"Recd007.m0: prerename/none"}
-	{ {"postrename" "none"}		"Recd007.m1: postrename/none"}
-	{ {"prerename" "prerename"}	"Recd007.n: prerename/prerename"}
-	{ {"prerename" "postrename"}	"Recd007.o: prerename/postrename"}
-	{ {"postrename" "postrename"}	"Recd007.p: postrename/postrename"}
+	{ {"none" "predestroy"}		"Recd007.l0: none/predestroy"}
+	{ {"none" "postdestroy"}	"Recd007.l1: none/postdestroy"}
+	{ {"predestroy" "none"}		"Recd007.m0: predestroy/none"}
+	{ {"postdestroy" "none"}	"Recd007.m1: postdestroy/none"}
+	{ {"predestroy" "predestroy"}	"Recd007.n: predestroy/predestroy"}
+	{ {"predestroy" "postdestroy"}	"Recd007.o: predestroy/postdestroy"}
+	{ {"postdestroy" "postdestroy"}	"Recd007.p: postdestroy/postdestroy"}
 	}
-	foreach op { dbremove dbrename } {
+	foreach op { dbremove dbrename dbtruncate } {
 		foreach pair $rlist {
 			set cmd [lindex $pair 0]
 			set msg [lindex $pair 1]
 			file_recover_delete $testdir $env_cmd $omethod \
-		    	$opts $testfile $cmd $msg $op
+			$opts $testfile $cmd $msg $op
 		}
 	}
 
@@ -150,6 +150,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	}
 
 	env_cleanup $dir
+	set dflags "-dar"
 	# Open the environment and set the copy/abort locations
 	set env [eval $env_cmd]
 	set copy [lindex $cmd 0]
@@ -238,7 +239,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		} else {
 			error_check_good \
 			    diff(init,postcreate):diff($init_file,$dir/$dbfile)\
-			    [dbdump_diff $init_file $dir/$dbfile] 0
+			    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 		}
 	} else {
 		#
@@ -289,7 +290,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $init_file $dir/$dbfile] 0
+		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 		#
 		# Need a new copy to get the right LSN into the file.
 		#
@@ -339,7 +340,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $init_file $dir/$dbfile] 0
+		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 	}
 
 }
@@ -384,43 +385,61 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	error_check_good abort_location [is_valid_delete_loc $abort] 1
 
 	if { [is_record_based $method] == 1 } {
-		set key 1
+		set key1 1
+		set key2 2
 	} else {
-		set key recd007_key
+		set key1 recd007_key1
+		set key2 recd007_key2
 	}
-	set data1 recd007_data
-	set data2 NEWrecd007_data2
+	set data1 recd007_data0
+	set data2 recd007_data1
+	set data3 NEWrecd007_data2
 
 	#
 	# Depending on what sort of subdb we want, if any, our
 	# args to the open call will be different (and if we
 	# want a 2nd subdb, we create the first here.
 	#
+	# XXX
+	# For dbtruncate, we want oflags to have "$env" in it,
+	# not have the value currently in 'env'.  That is why
+	# the '$' is protected below.  Later on we use oflags
+	# but with a new $env we just opened.
+	#
 	switch $sub {
 		0 {
+			set subdb ""
+			set new $dbfile.new
+			set dflags "-dar"
 			set oflags "-create $method -mode 0644 \
-			    -env $env $opts $dbfile"
+			    -env \$env $opts $dbfile"
 		}
 		1 {
+			set subdb sub0
+			set new $subdb.new
+			set dflags ""
 			set oflags "-create $method -mode 0644 \
-			    -env $env $opts $dbfile sub0"
+			    -env \$env $opts $dbfile $subdb"
 		}
 		2 {
 			#
 			# If we are aborting here, then we need to
 			# create a first subdb, then create a second
 			#
+			set subdb sub1
+			set new $subdb.new
+			set dflags ""
 			set oflags "-create $method -mode 0644 \
-			    -env $env $opts $dbfile sub0"
+			    -env \$env $opts $dbfile sub0"
 			set db [eval {berkdb_open} $oflags]
 			error_check_good db_open [is_valid_db $db] TRUE
 			set txn [$env txn]
-			set ret [$db put -txn $txn $key $data2]
+			set ret [$db put -txn $txn $key1 $data1]
 			error_check_good db_put $ret 0
 			error_check_good commit [$txn commit] 0
 			error_check_good db_close [$db close] 0
 			set oflags "-create $method -mode 0644 \
-			    -env $env $opts $dbfile sub1"
+			    -env \$env $opts $dbfile $subdb"
 		}
 		default {
 			puts "\tBad value $sub for sub"
@@ -443,7 +462,9 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set txn [$env txn]
-	set ret [$db put -txn $txn $key $data1]
+	set ret [$db put -txn $txn $key1 $data1]
+	error_check_good db_put $ret 0
+	set ret [$db put -txn $txn $key2 $data2]
 	error_check_good db_put $ret 0
 	error_check_good commit [$txn commit] 0
 	error_check_good db_close [$db close] 0
@@ -459,16 +480,49 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	# If we don't abort, then we expect success.
 	# If we abort, we expect no file removed.
 	#
-	if { [string compare $op dbremove] == 0 } {
-		set ret [catch { berkdb $op -env $env $dbfile } remret]
-	} else {
-		set ret [catch { berkdb $op -env $env $dbfile $dbfile.new } \
-		    remret]
+	switch $op {
+	"dbrename" {
+		set ret [catch { eval {berkdb} $op -env $env \
+		    $dbfile $subdb $new } remret]
 	}
-	if {[string first "none" $abort] == -1} {
+	"dbremove" {
+		set ret [catch { eval {berkdb} $op -env $env \
+		    $dbfile $subdb } remret]
+	}
+	"dbtruncate" {
+		set txn [$env txn]
+		set db [eval {berkdb_open_noerr -env} $env $dbfile $subdb]
+		error_check_good dbopen [is_valid_db $db] TRUE
+		error_check_good txnbegin [is_valid_txn $txn $env] TRUE
+		set ret [catch {$db truncate -txn $txn} remret]
+	}
+	}
+	if { $abort == "none" } {
+		if { $op == "dbtruncate" } {
+			error_check_good txncommit [$txn commit] 0
+			error_check_good dbclose [$db close] 0
+		}
+		#
+		# Operation was committed, verify it.
+		#
+		puts "\t\tCommand executed and committed."
+		error_check_good $op $ret 0
+		#
+		# If a dbtruncate, check that truncate returned the number
+		# of items previously in the database.
+		#
+		if { [string compare $op "dbtruncate"] == 0 } {
+			error_check_good remret $remret 2
+		}
+		recd007_check $op $sub $dir $dbfile $subdb $new $env $oflags
+	} else {
 		#
 		# Operation was aborted, verify it did not change.
 		#
+		if { $op == "dbtruncate" } {
+			error_check_good txnabort [$txn abort] 0
+			error_check_good dbclose [$db close] 0
+		}
 		puts "\t\tCommand executed and aborted."
 		error_check_good $op $ret 1
 
@@ -479,22 +533,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		error_check_good post$op.1 [file exists $dir/$dbfile] 1
 		error_check_good \
 		    diff(init,post$op.2):diff($init_file,$dir/$dbfile)\
-		    [dbdump_diff $init_file $dir/$dbfile] 0
-	} else {
-		#
-		# Operation was committed, verify it does
-		# not exist.
-		#
-		puts "\t\tCommand executed and committed."
-		error_check_good $op $ret 0
-		#
-		# Check that the file does not exist or correct
-		# file exists.
-		#
-		error_check_good $op [file exists $dir/$dbfile] 0
-		if { [string compare $op dbrename] == 0 } {
-			error_check_good $op [file exists $dir/$dbfile.new] 1
-		}
+		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 	}
 	error_check_good env_close [$env close] 0
 	catch { file copy -force $dir/$dbfile $init_file } res
@@ -518,19 +557,20 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		return
 	}
 	puts "complete"
-	if { [string first "none" $abort] != -1} {
+	if { $abort == "none" } {
 		#
-		# Operation was committed, verify it still does
-		# not exist.
+		# Operate was committed.
 		#
-		error_check_good after_recover1 [file exists $dir/$dbfile] 0
+		set env [eval $env_cmd]
+		recd007_check $op $sub $dir $dbfile $subdb $new $env $oflags
+		error_check_good env_close [$env close] 0
 	} else {
 		#
 		# Operation was aborted, verify it did not change.
 		#
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $init_file $dir/$dbfile] 0
+		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 	}
 
 	#
@@ -545,10 +585,10 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	#
 	set filecopy [glob $dir/*.afterop]
 	set afterop [lindex $filecopy 0]
-	file rename -force $afterop $dir/$dbfile
-	set afterop [string range $afterop \
-	    [expr [string last "/" $afterop] + 1]  \
-	    [string last "." $afterop]]
+#	set afterop [string range $afterop \
+#	    [expr [string last "/" $afterop] + 1]  \
+#	    [string last "." $afterop]]
+	catch { file rename -force $afterop $dir/$dbfile} res
 	move_file_extent $dir $dbfile afterop rename
 
 	berkdb debug_check
@@ -563,18 +603,16 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	puts "complete"
 
 	if { [string first "none" $abort] != -1} {
-		#
-		# Operation was committed, verify it still does
-		# not exist.
-		#
-		error_check_good after_recover2 [file exists $dir/$dbfile] 0
+		set env [eval $env_cmd]
+		recd007_check $op $sub $dir $dbfile $subdb $new $env $oflags
+		error_check_good env_close [$env close] 0
 	} else {
 		#
 		# Operation was aborted, verify it did not change.
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $init_file $dir/$dbfile] 0
+		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
 	}
 
 }
@@ -683,8 +721,8 @@ proc is_valid_create_loc { loc } {
 proc is_valid_delete_loc { loc } {
 	switch $loc {
 		none		-
-		prerename	-
-		postrename	-
+		predestroy	-
+		postdestroy	-
 		postremcall
 			{ return 1 }
 		default
@@ -697,20 +735,20 @@ proc is_valid_delete_loc { loc } {
 # just a free/invalid page.
 # Return 1 if they are different, 0 if logically the same (or identical).
 #
-proc dbdump_diff { initfile dbfile } {
+proc dbdump_diff { flags initfile dbfile } {
 	source ./include.tcl
 
 	set initdump $initfile.dump
 	set dbdump $dbfile.dump
 
-	set stat [catch {exec $util_path/db_dump -dar -f $initdump \
+	set stat [catch {eval {exec $util_path/db_dump} $flags -f $initdump \
 	    $initfile} ret]
 	error_check_good dbdump.init $stat 0
 
 	# Do a dump without the freelist which should eliminate any
 	# recovery differences.
-	set stat [catch {exec $util_path/db_dump -dar -f $dbdump $dbfile} \
-	    ret]
+	set stat [catch {eval {exec $util_path/db_dump} $flags -f $dbdump \
+	    $dbfile} ret]
 	error_check_good dbdump.db $stat 0
 
 	set stat [filecmp $dbdump $initdump]
@@ -721,3 +759,94 @@ proc dbdump_diff { initfile dbfile } {
 	puts "diff: $dbdump $initdump gives:\n$ret"
 	return 1
 }
+
+proc recd007_check { op sub dir dbfile subdb new env oflags } {
+	#
+	# No matter how many subdbs we have, dbtruncate will always
+	# have a file, and if we open our particular db, it should
+	# have no entries.
+	#
+	if { $sub == 0 } {
+		if { $op == "dbremove" } {
+			error_check_good $op:not-exist \
+			    [file exists $dir/$dbfile] 0
+		} elseif { $op == "dbrename"} {
+			error_check_good $op:exist \
+			    [file exists $dir/$dbfile] 0
+			error_check_good $op:exist2 \
+			    [file exists $dir/$dbfile.new] 1
+		} else {
+			error_check_good $op:exist \
+			    [file exists $dir/$dbfile] 1
+			set db [eval {berkdb_open} $oflags]
+			error_check_good db_open [is_valid_db $db] TRUE
+			set dbc [$db cursor]
+			error_check_good dbc_open \
+			    [is_valid_cursor $dbc $db] TRUE
+			set ret [$dbc get -first]
+			error_check_good dbget1 [llength $ret] 0
+			error_check_good dbc_close [$dbc close] 0
+			error_check_good db_close [$db close] 0
+		}
+		return
+	} else {
+		set t1 $dir/t1
+		#
+		# If we have subdbs, check that all but the last one
+		# are there, and the last one is correctly operated on.
+		#
+		set db [berkdb_open -rdonly -env $env $dbfile]
+		error_check_good dbopen [is_valid_db $db] TRUE
+		set c [eval {$db cursor}]
+		error_check_good db_cursor [is_valid_cursor $c $db] TRUE
+		set d [$c get -last]
+		if { $op == "dbremove" } {
+			if { $sub == 1 } {
+				error_check_good subdb:rem [llength $d] 0
+			} else {
+				error_check_bad subdb:rem [llength $d] 0
+				set sdb [lindex [lindex $d 0] 0]
+				error_check_bad subdb:rem1 $sdb $subdb
+			}
+		} elseif { $op == "dbrename"} {
+			set sdb [lindex [lindex $d 0] 0]
+			error_check_good subdb:ren $sdb $new
+			if { $sub != 1 } {
+				set d [$c get -prev]
+				error_check_bad subdb:ren [llength $d] 0
+				set sdb [lindex [lindex $d 0] 0]
+				error_check_good subdb:ren1 \
+				    [is_substr "new" $sdb] 0
+			}
+		} else {
+			set sdb [lindex [lindex $d 0] 0]
+			set dbt [berkdb_open -rdonly -env $env $dbfile $sdb]
+			error_check_good db_open [is_valid_db $dbt] TRUE
+			set dbc [$dbt cursor]
+			error_check_good dbc_open \
+			    [is_valid_cursor $dbc $dbt] TRUE
+			set ret [$dbc get -first]
+			error_check_good dbget2 [llength $ret] 0
+			error_check_good dbc_close [$dbc close] 0
+			error_check_good db_close [$dbt close] 0
+			if { $sub != 1 } {
+				set d [$c get -prev]
+				error_check_bad subdb:ren [llength $d] 0
+				set sdb [lindex [lindex $d 0] 0]
+				set dbt [berkdb_open -rdonly -env $env \
+				    $dbfile $sdb]
+				error_check_good db_open [is_valid_db $dbt] TRUE
+				set dbc [$db cursor]
+				error_check_good dbc_open \
+				    [is_valid_cursor $dbc $db] TRUE
+				set ret [$dbc get -first]
+				error_check_bad dbget3 [llength $ret] 0
+				error_check_good dbc_close [$dbc close] 0
+				error_check_good db_close [$dbt close] 0
+			}
+		}
+		error_check_good dbcclose [$c close] 0
+		error_check_good db_close [$db close] 0
+	}
+}
+

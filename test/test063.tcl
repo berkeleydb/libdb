@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test063.tcl,v 11.11 2000/08/25 14:21:58 sue Exp $
+# $Id: test063.tcl,v 11.12 2001/01/25 18:23:12 bostic Exp $
 #
 # DB Test 63:  Test that the DB_RDONLY flag is respected.
 #	Attempt to both DB->put and DBC->c_put into a database

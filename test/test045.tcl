@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test045.tcl,v 11.17 2000/10/19 23:15:22 ubell Exp $
+# $Id: test045.tcl,v 11.20 2001/05/17 20:37:08 bostic Exp $
 #
 # DB Test 45 Run the random db tester on the specified access method.
 # Options are:
@@ -17,11 +17,6 @@
 #	-keyavg <average key size>
 proc test045 { method {nops 10000} args } {
 	source ./include.tcl
-
-	if { [is_frecno $method] == 1 } {
-		puts "\tSkipping Test045 for method $method."
-		return
-	}
 
 	#
 	# If we are using an env, then skip this test.  It needs its own.
@@ -63,7 +58,7 @@ proc test045 { method {nops 10000} args } {
 			-errpct	 { incr i; set errpct [lindex $args $i] }
 			-init	 { incr i; set init [lindex $args $i] }
 			-keyavg	 { incr i; set keyavg [lindex $args $i] }
-			-extent	 { incr i; 
+			-extent	 { incr i;
 				    lappend oargs "-extent" "100" }
 			default	 { lappend oargs [lindex $args $i] }
 		}
@@ -90,7 +85,7 @@ proc test045 { method {nops 10000} args } {
 	if { $init != 0 } {
 		set n [expr 3 * $init]
 		exec $tclsh_path \
-		    $test_path/dbscript.tcl $f $n \
+		    $test_path/dbscript.tcl $method $f $n \
 		    1 $init $n $keyavg $dataavg $dups 0 -1 \
 		    > $testdir/test045.init
 	}
@@ -101,11 +96,11 @@ proc test045 { method {nops 10000} args } {
 	puts "\tTest045.b: Now firing off berkdb rand dbscript, running: "
 	# Now the database is initialized, run a test
 	puts "$tclsh_path\
-	    $test_path/dbscript.tcl $f $nops $cursors $delete $adds \
+	    $test_path/dbscript.tcl $method $f $nops $cursors $delete $adds \
 	    $keyavg $dataavg $dups $errpct > $testdir/test045.log"
 
 	exec $tclsh_path \
-	    $test_path/dbscript.tcl $f \
+	    $test_path/dbscript.tcl $method $f \
 	    $nops $cursors $delete $adds $keyavg \
 	    $dataavg $dups $errpct \
 	    > $testdir/test045.log

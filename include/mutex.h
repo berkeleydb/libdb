@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: mutex.h,v 11.41 2000/12/22 19:28:15 bostic Exp $
+ * $Id: mutex.h,v 11.45 2001/04/27 01:45:27 bostic Exp $
  */
 
 /*
@@ -480,7 +480,7 @@ typedef u_int32_t tsl_t;
  * common case of a locked mutex without wasting cycles making a reservation.
  *
  * 'set' mutexes have the value 1, like on Intel; the returned value from
- * MUTEX_SET() is 1 if the mutex previously had its low bit set, 0 otherwise.
+ * MUTEX_SET() is 1 if the mutex previously had its low bit clear, 0 otherwise.
  */
 #define	MUTEX_SET(tsl)	({		\
 	int __one = 1;			\
@@ -496,7 +496,7 @@ typedef u_int32_t tsl_t;
 1:"					\
 	: "=&r" (__r)			\
 	: "r" (__l), "r" (__one));	\
-	__r & 1;			\
+	!(__r & 1);			\
 })
 
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
@@ -552,9 +552,9 @@ typedef unsigned char tsl_t;
  * argument is never read, but only overwritten.)
  *
  * The stbar is needed for v8, and is implemented as membar #sync on v9,
- + so is functional there as well.  For v7, stbar may generate an illegal
- + instruction and we have no way to tell what we're running on.  Some
- + operating systems notice and skip this instruction in the fault handler.
+ * so is functional there as well.  For v7, stbar may generate an illegal
+ * instruction and we have no way to tell what we're running on.  Some
+ * operating systems notice and skip this instruction in the fault handler.
  *
  * For gcc/sparc, 0 is clear, 1 is set.
  */
@@ -742,3 +742,15 @@ struct __mutex_t {
 #define	DB_FCNTL_OFF_GEN	0		/* Everything else. */
 #define	DB_FCNTL_OFF_LOCK	1		/* Lock subsystem offset. */
 #define	DB_FCNTL_OFF_MPOOL	2		/* Mpool subsystem offset. */
+
+#ifdef MUTEX_SYSTEM_RESOURCES
+/*
+ * On systems where mutexes lock down actual system resources we allocate
+ * thread-handle mutexes in shared memory instead of in the heap, so that
+ * after application/system failure we can release them.  The number of
+ * slots we allocate for this purpose isn't configurable, but this tends
+ * to be an issue only on embedded systems where we don't expect to see
+ * large server applications.
+ */
+#define	DB_MAX_HANDLES	100			/* Mutex slots for handles. */
+#endif

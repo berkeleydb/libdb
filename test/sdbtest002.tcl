@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdbtest002.tcl,v 11.19 2000/08/25 14:21:53 sue Exp $
+# $Id: sdbtest002.tcl,v 11.20 2001/01/25 18:23:08 bostic Exp $
 #
 # Sub DB All-Method Test 2
 # Make several subdb's of different access methods all in one DB.

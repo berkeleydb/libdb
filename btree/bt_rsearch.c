@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_rsearch.c,v 11.21 2000/03/28 21:50:04 ubell Exp $";
+static const char revid[] = "$Id: bt_rsearch.c,v 11.25 2001/05/02 15:55:56 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -99,7 +99,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	 * Retrieve the root page.
 	 */
 	pg = cp->root;
-	stack = LF_ISSET(S_STACK);
+	stack = LF_ISSET(S_STACK) ? 1 : 0;
 	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
@@ -328,12 +328,15 @@ __bam_adjust(dbc, adjust)
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
 		h = epg->page;
 		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
-			if (DB_LOGGING(dbc) &&
-			    (ret = __bam_cadjust_log(dbp->dbenv,
-			    dbc->txn, &LSN(h), 0, dbp->log_fileid,
-			    PGNO(h), &LSN(h), (u_int32_t)epg->indx, adjust,
-			    PGNO(h) == root_pgno ? CAD_UPDATEROOT : 0)) != 0)
-				return (ret);
+			if (DB_LOGGING(dbc)) {
+				if ((ret = __bam_cadjust_log(dbp->dbenv,
+				    dbc->txn, &LSN(h), 0, dbp->log_fileid,
+				    PGNO(h), &LSN(h), (u_int32_t)epg->indx,
+				    adjust, PGNO(h) == root_pgno ?
+				    CAD_UPDATEROOT : 0)) != 0)
+					return (ret);
+			} else
+				LSN_NOT_LOGGED(LSN(h));
 
 			if (TYPE(h) == P_IBTREE)
 				GET_BINTERNAL(h, epg->indx)->nrecs += adjust;

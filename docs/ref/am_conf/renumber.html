@@ -1,5 +1,5 @@
-<!--$Id: renumber.so,v 10.23 2000/12/18 21:05:14 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: renumber.so,v 10.25 2001/05/05 01:49:21 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,10 +8,10 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Logically renumbering records</h1>
@@ -38,7 +38,7 @@ three records with the record numbers 1, 2, and 3, and the data items
 will cause the record "C" to be renumbered downward to record number 2.
 A cursor positioned at record number 3 ("C") will be adjusted and
 continue to point to "C" after the deletion.  Similarly, a cursor
-previously referencing the now deleted record number 2 will be
+previously referring to the now deleted record number 2 will be
 positioned between the new record numbers 1 and 2, and an insertion
 using that cursor will appear between those records.   In this manner
 records can be added and deleted to a database without disrupting the
@@ -52,8 +52,8 @@ DB handle inserts or deletes records into the database.  For
 this reason, applications using Recno databases with mutable record
 numbers will usually make all accesses to the database using a single
 DB handle and cursors created from that handle, or will
-otherwise single-thread access to the database, e.g., by using the
-Berkeley DB Concurrent Data Store product.
+otherwise single-thread access to the database, for example, by using
+the Berkeley DB Concurrent Data Store product.
 <p>In any Queue or Recno databases, creating new records will cause the
 creation of multiple records if the record number being created is more
 than one greater than the largest record currently in the database. For
@@ -73,7 +73,7 @@ a cursor positioned on the record, results in a special error return,
 databases with immutable record numbers, attempting to retrieve a deleted
 record by its record number will also result in the <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>
 return.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

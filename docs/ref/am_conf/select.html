@@ -1,5 +1,5 @@
-<!--$Id: select.so,v 10.23 2000/03/18 21:43:09 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: select.so,v 10.25 2001/03/31 17:06:27 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,10 +8,10 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Selecting an access method</h1>
@@ -19,10 +19,10 @@
 application's data set, locking requirements and data access patterns.
 For this reason, one access method may result in dramatically better
 performance for an application than another one.  Applications whose data
-could be stored in more than one access method may want to benchmark their
-performance using the different candidates.
+could be stored using more than one access method may want to benchmark
+their performance using the different candidates.
 <p>One of the strengths of Berkeley DB is that it provides multiple access methods
-with almost identical interfaces to the different access methods.  This
+with nearly identical interfaces to the different access methods.  This
 means that it is simple to modify an application to use a different access
 method.  Applications can easily benchmark the different Berkeley DB access
 methods against each other for their particular data set and access pattern.
@@ -49,20 +49,21 @@ with the same last name, the Btree access method is again a good choice.
 <p>There is little difference in performance between the Hash and Btree
 access methods on small data sets, where all, or most of, the data set
 fits into the cache.  However, when a data set is large enough that
-significant numbers of data pages no longer fit into the cache, then the
-Btree locality of reference described above becomes important for
-performance reasons.  For example, there is no locality of reference for
-the Hash access method, and so key "AAAAA" is as likely to be stored on
-the same data page with key "ZZZZZ" as with key "AAAAB".  In the Btree
-access method, because items are sorted, key "AAAAA" is far more likely
-to be near key "AAAAB" than key "ZZZZZ".  So, if the application exhibits
-locality of reference in its data requests, then the Btree page read into
-the cache to satisfy a request for key "AAAAA" is much more likely to be
-useful to satisfy subsequent requests from the application than the Hash
-page read into the cache to satisfy the same request.  This means that
-for applications with locality of reference, the cache is generally much
-"hotter" for the Btree access method than the Hash access method, and
-the Btree access method will make many fewer I/O calls.
+significant numbers of data pages no longer fit into the cache, then
+the Btree locality of reference described previously becomes important
+for performance reasons.  For example, there is no locality of reference
+for the Hash access method, and so key "AAAAA" is as likely to be stored
+on the same database page with key "ZZZZZ" as with key "AAAAB".  In the
+Btree access method, because items are sorted, key "AAAAA" is far more
+likely to be near key "AAAAB" than key "ZZZZZ".  So, if the application
+exhibits locality of reference in its data requests, then the Btree page
+read into the cache to satisfy a request for key "AAAAA" is much more
+likely to be useful to satisfy subsequent requests from the application
+than the Hash page read into the cache to satisfy the same request.
+This means that for applications with locality of reference, the cache
+is generally much more effective for the Btree access method than the
+Hash access method, and the Btree access method will make many fewer
+I/O calls.
 <p>However, when a data set becomes even larger, the Hash access method can
 outperform the Btree access method.  The reason for this is that Btrees
 contain more metadata pages than Hash databases.  The data set can grow
@@ -109,7 +110,7 @@ configured to run in either mutable or fixed mode.
 <p>In addition, the Recno access method provides support for databases whose
 permanent storage is a flat text file and the database is used as a fast,
 temporary storage area while the data is being read or modified.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

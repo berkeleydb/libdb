@@ -1,37 +1,25 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 11.21 2000/10/27 20:32:00 dda Exp $
+ * $Id: ex_tpcb.c,v 11.29 2001/05/10 17:14:05 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
+#include <time.h>
 
-#ifdef DB_WIN32
-#include <sys/types.h>
-#include <sys/timeb.h>
+#ifdef _WIN32
+extern int optind;
+extern char *optarg;
+extern int getopt(int, char * const *, const char *);
+#else
+#include <unistd.h>
 #endif
 
 #include <db.h>
@@ -130,36 +118,38 @@ int
 ex_tpcb_init()
 {
 	DB_ENV *dbenv;
-	int accounts, branches, ret, seed, t_ret, tellers, history, verbose;
+	int accounts, branches, ret, tellers, history, verbose;
 	char *home;
 	char *progname = "ex_tpcb_init";		/* Program name. */
 
 	verbose = 1;
 	if ((dbenv = db_init(HOME, progname, 0, 1, 0)) == NULL)
-		return (ERROR_RETURN);
+		return (EXIT_FAILURE);
 
 	accounts = ACCOUNTS;
 	branches = BRANCHES;
 	tellers = TELLERS;
 	history = HISTORY;
 
-	if ((ret = tp_populate(dbenv, accounts, branches, history, tellers,
-	    verbose)) != OK)
+	if ((ret = tp_populate(dbenv,
+	    accounts, branches, history, tellers, verbose)) != OK) {
 		fprintf(stderr, "%s: %s\n", progname, db_strerror(ret));
-	if ((t_ret = dbenv->close(dbenv, 0)) != 0) {
+		return (EXIT_FAILURE);
+	}
+	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (EXIT_FAILURE);
 	}
 
-	return (ret == 0 ? t_ret : ret);
+	return (EXIT_SUCCESS);
 }
 
 int
 ex_tpcb()
 {
 	DB_ENV *dbenv;
-	int accounts, branches, seed, tellers, history;
-	int ch, mpool, ntxns, ret, t_ret, txn_no_sync, verbose;
+	int accounts, branches, tellers, history;
+	int ch, mpool, ntxns, ret, ret, txn_no_sync, verbose;
 	char *progname = "ex_tpcb";		/* Program name. */
 
 	accounts = ACCOUNTS;
@@ -171,29 +161,30 @@ ex_tpcb()
 	mpool = 0;
 	ntxns = 20;
 	verbose = 1;
-	seed = (int)((u_int)getpid() | time(NULL));
 
-	srand((u_int)seed);
+	srand((u_int)time(NULL));
 
 	/* Initialize the database environment. */
 	if ((dbenv = db_init(HOME, progname, mpool, 0,
 	    txn_no_sync ? DB_TXN_NOSYNC : 0)) == NULL)
-		return (ERROR_RETURN);
+		return (EXIT_FAILURE);
 
 	if (verbose)
 		printf("%ld Accounts, %ld Branches, %ld Tellers, %ld History\n",
 		    (long)accounts, (long)branches,
 		    (long)tellers, (long)history);
 
-	if ((ret = tp_run(dbenv, ntxns, accounts, branches, tellers, verbose))
-	    != OK)
+	if ((ret = tp_run(dbenv,
+	    ntxns, accounts, branches, tellers, verbose)) != OK) {
 		fprintf(stderr, "tp_run failed\n");
-
-	if ((t_ret = dbenv->close(dbenv, 0)) != 0) {
-		fprintf(stderr, "%s: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (EXIT_FAILURE);
 	}
-	return (ret == 0 ? t_ret : ret);
+
+	if ((ret = dbenv->close(dbenv, 0)) != 0) {
+		fprintf(stderr, "%s: %s\n", progname, db_strerror(ret));
+		return (EXIT_FAILURE);
+	}
+	return (EXIT_SUCCESS);
 }
 #else
 int
@@ -211,11 +202,9 @@ main(argc, argv)
 	home = "TESTDIR";
 	progname = "ex_tpcb";
 	accounts = branches = history = tellers = 0;
-	txn_no_sync = 0;
-	mpool = ntxns = 0;
-	verbose = 0;
-	iflag = 0;
-	seed = (int)((u_int)getpid() | time(NULL));
+	iflag = mpool = ntxns = txn_no_sync = verbose = 0;
+	seed = (int)time(NULL);
+
 	while ((ch = getopt(argc, argv, "a:b:c:fh:in:S:s:t:v")) != EOF)
 		switch (ch) {
 		case 'a':			/* Number of account records */
@@ -270,7 +259,7 @@ main(argc, argv)
 	/* Initialize the database environment. */
 	if ((dbenv = db_init(home,
 	    progname, mpool, iflag, txn_no_sync ? DB_TXN_NOSYNC : 0)) == NULL)
-		return (1);
+		return (EXIT_FAILURE);
 
 	accounts = accounts == 0 ? ACCOUNTS : accounts;
 	branches = branches == 0 ? BRANCHES : branches;
@@ -296,10 +285,10 @@ main(argc, argv)
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: dbenv->close failed: %s\n",
 		    progname, db_strerror(ret));
-		return (1);
+		return (EXIT_FAILURE);
 	}
 
-	return (0);
+	return (EXIT_SUCCESS);
 }
 
 void
@@ -310,7 +299,7 @@ invarg(progname, arg, str)
 {
 	(void)fprintf(stderr,
 	    "%s: invalid argument for -%c: %s\n", progname, arg, str);
-	exit (1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -324,7 +313,7 @@ usage(progname)
 	(void)fprintf(stderr, "usage: %s -i %s %s\n", progname, a1, a2);
 	(void)fprintf(stderr,
 	    "       %s -n transactions %s %s\n", progname, a1, a2);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 #endif
 
@@ -356,6 +345,10 @@ db_init(home, prefix, cachesize, initializing, flags)
 	(void)dbenv->set_cachesize(dbenv, 0,
 	    cachesize == 0 ? 4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
 
+	if (flags & (DB_TXN_NOSYNC))
+		(void)dbenv->set_flags(dbenv, DB_TXN_NOSYNC, 1);
+	flags &= ~(DB_TXN_NOSYNC);
+
 	local_flags = flags | DB_CREATE | (initializing ? DB_INIT_MPOOL :
 	    DB_INIT_TXN | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL);
 	if ((ret = dbenv->open(dbenv, home, local_flags, 0)) != 0) {
@@ -376,7 +369,6 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 	int accounts, branches, history, tellers, verbose;
 {
 	DB *dbp;
-	char dbname[100];
 	u_int32_t balance, idnum, oflags;
 	u_int32_t end_anum, end_bnum, end_tnum;
 	u_int32_t start_anum, start_bnum, start_tnum;
@@ -396,8 +388,7 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 	}
 	(void)dbp->set_h_nelem(dbp, (u_int32_t)accounts);
 
-	snprintf(dbname, sizeof(dbname), "account");
-	if ((ret = dbp->open(dbp, dbname, NULL,
+	if ((ret = dbp->open(dbp, "account", NULL,
 	    DB_HASH, oflags, 0644)) != 0) {
 		env->err(env, ret, "DB->open: account");
 		return (ERROR_RETURN);
@@ -427,8 +418,7 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 	(void)dbp->set_h_ffactor(dbp, 1);
 	(void)dbp->set_h_nelem(dbp, (u_int32_t)branches);
 	(void)dbp->set_pagesize(dbp, 512);
-	snprintf(dbname, sizeof(dbname), "branch");
-	if ((ret = dbp->open(dbp, dbname, NULL,
+	if ((ret = dbp->open(dbp, "branch", NULL,
 	    DB_HASH, oflags, 0644)) != 0) {
 		env->err(env, ret, "DB->open: branch");
 		return (ERROR_RETURN);
@@ -456,8 +446,7 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 	(void)dbp->set_h_ffactor(dbp, 0);
 	(void)dbp->set_h_nelem(dbp, (u_int32_t)tellers);
 	(void)dbp->set_pagesize(dbp, 512);
-	snprintf(dbname, sizeof(dbname), "teller");
-	if ((ret = dbp->open(dbp, dbname, NULL,
+	if ((ret = dbp->open(dbp, "teller", NULL,
 	    DB_HASH, oflags, 0644)) != 0) {
 		env->err(env, ret, "DB->open: teller");
 		return (ERROR_RETURN);
@@ -480,8 +469,7 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 		return (ERROR_RETURN);
 	}
 	(void)dbp->set_re_len(dbp, HISTORY_LEN);
-	snprintf(dbname, sizeof(dbname), "history");
-	if ((ret = dbp->open(dbp, dbname, NULL,
+	if ((ret = dbp->open(dbp, "history", NULL,
 	    DB_RECNO, oflags, 0644)) != 0) {
 		env->err(env, ret, "DB->open: history");
 		return (ERROR_RETURN);
@@ -606,19 +594,9 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 	int n, accounts, branches, tellers, verbose;
 {
 	DB *adb, *bdb, *hdb, *tdb;
-	char dbname[100];
 	double gtps, itps;
 	int failed, ifailed, ret, txns;
 	time_t starttime, curtime, lasttime;
-#ifndef DB_WIN32
-	pid_t pid;
-
-	pid = getpid();
-#else
-	int pid;
-
-	pid = 0;
-#endif
 
 	/*
 	 * Open the database files.
@@ -627,8 +605,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 		dbenv->err(dbenv, ret, "db_create");
 		return (ERROR_RETURN);
 	}
-	snprintf(dbname, sizeof(dbname), "account");
-	if ((ret = adb->open(adb, dbname, NULL, DB_UNKNOWN, 0, 0)) != 0) {
+	if ((ret = adb->open(adb, "account", NULL, DB_UNKNOWN, 0, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB->open: account");
 		return (ERROR_RETURN);
 	}
@@ -637,8 +614,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 		dbenv->err(dbenv, ret, "db_create");
 		return (ERROR_RETURN);
 	}
-	snprintf(dbname, sizeof(dbname), "branch");
-	if ((ret = bdb->open(bdb, dbname, NULL, DB_UNKNOWN, 0, 0)) != 0) {
+	if ((ret = bdb->open(bdb, "branch", NULL, DB_UNKNOWN, 0, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB->open: branch");
 		return (ERROR_RETURN);
 	}
@@ -647,8 +623,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 		dbenv->err(dbenv, ret, "db_create");
 		return (ERROR_RETURN);
 	}
-	snprintf(dbname, sizeof(dbname), "teller");
-	if ((ret = tdb->open(tdb, dbname, NULL, DB_UNKNOWN, 0, 0)) != 0) {
+	if ((ret = tdb->open(tdb, "teller", NULL, DB_UNKNOWN, 0, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB->open: teller");
 		return (ERROR_RETURN);
 	}
@@ -657,8 +632,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 		dbenv->err(dbenv, ret, "db_create");
 		return (ERROR_RETURN);
 	}
-	snprintf(dbname, sizeof(dbname), "history");
-	if ((ret = hdb->open(hdb, dbname, NULL, DB_UNKNOWN, 0, 0)) != 0) {
+	if ((ret = hdb->open(hdb, "history", NULL, DB_UNKNOWN, 0, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB->open: history");
 		return (ERROR_RETURN);
 	}
@@ -678,8 +652,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 			curtime = time(NULL);
 			gtps = (double)(txns - failed) / (curtime - starttime);
 			itps = (double)(5000 - ifailed) / (curtime - lasttime);
-			printf("[%d] %d txns %d failed ", (int)pid,
-			    txns, failed);
+			printf("%d txns %d failed ", txns, failed);
 			printf("%6.2f TPS (gross) %6.2f TPS (interval)\n",
 			   gtps, itps);
 			lasttime = curtime;
@@ -711,7 +684,7 @@ tp_txn(dbenv, adb, bdb, tdb, hdb, accounts, branches, tellers, verbose)
 	db_recno_t key;
 	defrec rec;
 	histrec hrec;
-	int account, branch, teller;
+	int account, branch, teller, ret;
 
 	t = NULL;
 	acurs = bcurs = tcurs = NULL;
@@ -789,7 +762,9 @@ tp_txn(dbenv, adb, bdb, tdb, hdb, accounts, branches, tellers, verbose)
 	    tcurs->c_close(tcurs) != 0)
 		goto err;
 
-	if (txn_commit(t, 0) != 0)
+	ret = txn_commit(t, 0);
+	t = NULL;
+	if (ret != 0)
 		goto err;
 
 	/* END TIMING */

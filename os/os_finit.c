@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_finit.c,v 11.8 2000/11/30 00:58:42 ubell Exp $";
+static const char revid[] = "$Id: os_finit.c,v 11.11 2001/07/06 20:31:16 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -89,23 +89,14 @@ __os_finit(dbenv, fhp, size, zerofill)
 }
 
 /*
- * __os_fpinit --
- *	Initialize a page in a regular file.
+ * __os_fs_notzero --
+ *	Return 1 if allocated filesystem blocks are not zeroed.
  *
- * PUBLIC: int __os_fpinit __P((DB_ENV *, DB_FH *, db_pgno_t, int, int));
+ * PUBLIC: int __os_fs_notzero __P((void));
  */
 int
-__os_fpinit(dbenv, fhp, pgno, pagecount, pagesize)
-	DB_ENV *dbenv;
-	DB_FH *fhp;
-	db_pgno_t pgno;
-	int pagecount, pagesize;
+__os_fs_notzero()
 {
-	COMPQUIET(dbenv, NULL);
-	COMPQUIET(fhp, NULL);
-	COMPQUIET(pgno, 0);
-	COMPQUIET(pagecount, 0);
-	COMPQUIET(pagesize, 0);
-
+	/* Most filesystems zero out implicitly created pages. */
 	return (0);
 }

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_pr.c,v 11.46 2001/01/22 17:25:06 krinsky Exp $";
+static const char revid[] = "$Id: db_pr.c,v 11.57 2001/06/13 14:12:43 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,12 +27,14 @@ static const char revid[] = "$Id: db_pr.c,v 11.46 2001/01/22 17:25:06 krinsky Ex
 #include "qam.h"
 #include "db_am.h"
 #include "db_verify.h"
+#include "mp.h"
 
 static int	 __db_bmeta __P((DB *, FILE *, BTMETA *, u_int32_t));
 static int	 __db_hmeta __P((DB *, FILE *, HMETA *, u_int32_t));
 static void	 __db_meta __P((DB *, DBMETA *, FILE *, FN const *, u_int32_t));
-static const char	*__db_dbtype_to_string __P((DB *));
-static void	 __db_prdb __P((DB *, FILE *, u_int32_t));
+static const char *__db_dbtype_to_string __P((DB *));
+static const char *__db_pagetype_to_string __P((u_int32_t));
+static void	 __db_prdb __P((DB *, FILE *));
 static FILE	*__db_prinit __P((FILE *));
 static void	 __db_proff __P((void *));
 static int	 __db_prtree __P((DB *, u_int32_t));
@@ -101,7 +103,7 @@ __db_dump(dbp, op, name)
 			return (EINVAL);
 		}
 
-	__db_prdb(dbp, fp, flags);
+	__db_prdb(dbp, fp);
 
 	fprintf(fp, "%s\n", DB_LINE);
 
@@ -121,10 +123,9 @@ __db_dump(dbp, op, name)
  *	Print out the DB structure information.
  */
 static void
-__db_prdb(dbp, fp, flags)
+__db_prdb(dbp, fp)
 	DB *dbp;
 	FILE *fp;
-	u_int32_t flags;
 {
 	static const FN fn[] = {
 		{ DB_AM_DISCARD,	"discard cached pages" },
@@ -148,8 +149,6 @@ __db_prdb(dbp, fp, flags)
 	BTREE *bt;
 	HASH *h;
 	QUEUE *q;
-
-	COMPQUIET(flags, 0);
 
 	fprintf(fp,
 	    "In-memory DB structure:\n%s: %#lx",
@@ -220,13 +219,11 @@ __db_prtree(dbp, flags)
 		goto done;
 	}
 
-	/* Find out the page number of the last page in the database. */
-	if ((ret = memp_fget(dbp->mpf, &last, DB_MPOOL_LAST, &h)) != 0)
-		return (ret);
-	if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
-		return (ret);
-
-	/* Dump each page. */
+	/*
+	 * Find out the page number of the last page in the database, then
+	 * dump each page.
+	 */
+	__memp_lastpgno(dbp->mpf, &last);
 	for (i = 0; i <= last; ++i) {
 		if ((ret = memp_fget(dbp->mpf, &i, 0, &h)) != 0)
 			return (ret);
@@ -292,6 +289,7 @@ __db_meta(dbp, dbmeta, fp, fn, flags)
 				sep = ", ";
 		}
 		fprintf(fp, "\n");
+		fprintf(fp, "\tlast_pgno: %lu\n", (u_long)dbmeta->last_pgno);
 	}
 
 	if (fn != NULL) {
@@ -441,7 +439,6 @@ __db_prpage(dbp, h, flags)
 {
 	BINTERNAL *bi;
 	BKEYDATA *bk;
-	BTREE *t;
 	FILE *fp;
 	HOFFPAGE a_hkd;
 	QAMDATA *qp, *qep;
@@ -519,8 +516,6 @@ __db_prpage(dbp, h, flags)
 	if (LF_ISSET(DB_PR_RECOVERYTEST))
 		fprintf(fp, " (lsn.file: %lu lsn.offset: %lu)\n",
 		    (u_long)LSN(h).file, (u_long)LSN(h).offset);
-
-	t = dbp->bt_internal;
 
 	s = "\t";
 	if (TYPE(h) != P_IBTREE && TYPE(h) != P_IRECNO) {
@@ -760,7 +755,7 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 		 * in a platform-independent way.  So we use the numeral in
 		 * straight ASCII.
 		 */
-		__ua_memcpy(&recno, dbtp->data, sizeof(recno));
+		(void)__ua_memcpy(&recno, dbtp->data, sizeof(recno));
 		snprintf(buf, DBTBUFLEN, "%lu", (u_long)recno);
 
 		/* If we're printing data as hex, print keys as hex too. */
@@ -910,10 +905,8 @@ __db_dbtype_to_string(dbp)
 		return ("btree");
 	case DB_HASH:
 		return ("hash");
-		break;
 	case DB_RECNO:
 		return ("recno");
-		break;
 	case DB_QUEUE:
 		return ("queue");
 	default:
@@ -925,10 +918,8 @@ __db_dbtype_to_string(dbp)
 /*
  * __db_pagetype_to_string --
  *	Return the name of the specified page type.
- *
- * PUBLIC: const char *__db_pagetype_to_string __P((u_int32_t));
  */
-const char *
+static const char *
 __db_pagetype_to_string(type)
 	u_int32_t type;
 {
@@ -1075,7 +1066,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	 * 64 + subname is big enough for all the things we need to print here.
 	 */
 	buflen = 64 + ((subname != NULL) ? strlen(subname) : 0);
-	if ((ret = __os_malloc(dbenv, buflen, NULL, &buf)) != 0)
+	if ((ret = __os_malloc(dbenv, buflen, &buf)) != 0)
 		goto err;
 	if (subname != NULL) {
 		snprintf(buf, buflen, "database=%s\n", subname);
@@ -1106,7 +1097,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &btsp, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
@@ -1144,7 +1135,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &hsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &hsp, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
@@ -1172,15 +1163,23 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				goto err;
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &qsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &qsp, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
 		snprintf(buf, buflen, "re_len=%lu\n", (u_long)qsp->qs_re_len);
-		if (qsp->qs_re_pad != 0 && qsp->qs_re_pad != ' ')
-			snprintf(buf, buflen, "re_pad=%#x\n", qsp->qs_re_pad);
 		if ((ret = callback(handle, buf)) != 0)
 			goto err;
+		if (qsp->qs_re_pad != 0 && qsp->qs_re_pad != ' ') {
+			snprintf(buf, buflen, "re_pad=%#x\n", qsp->qs_re_pad);
+			if ((ret = callback(handle, buf)) != 0)
+				goto err;
+		}
+		if (qsp->qs_extentsize != 0) {
+			snprintf(buf, buflen, "extentsize=%d\n", qsp->qs_extentsize);
+			if ((ret = callback(handle, buf)) != 0)
+				goto err;
+		}
 		break;
 	case DB_RECNO:
 		if ((ret = callback(handle, "type=recno\n")) != 0)
@@ -1198,7 +1197,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &btsp, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
@@ -1253,16 +1252,16 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	ret = callback(handle, "HEADER=END\n");
 
 err:	if (pip != NULL &&
-	    (t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+	    (t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (btsp != NULL)
-		__os_free(btsp, 0);
+		__os_free(dbenv, btsp, 0);
 	if (hsp != NULL)
-		__os_free(hsp, 0);
+		__os_free(dbenv, hsp, 0);
 	if (qsp != NULL)
-		__os_free(qsp, 0);
+		__os_free(dbenv, qsp, 0);
 	if (buf != NULL)
-		__os_free(buf, buflen);
+		__os_free(dbenv, buf, buflen);
 
 	return (ret);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: txn.h,v 11.12 2001/01/02 17:23:39 margo Exp $
+ * $Id: txn.h,v 11.25 2001/07/10 20:06:53 sue Exp $
  */
 
 #ifndef	_TXN_H_
@@ -38,17 +38,18 @@ struct __db_txn {
 	u_int32_t	cursors;	/* Number of cursors open for txn */
 
 #define	TXN_CHILDCOMMIT	0x01		/* Transaction that has committed. */
-#define	TXN_MALLOC	0x02		/* Structure allocated by TXN system. */
-#define	TXN_NOSYNC	0x04		/* Do not sync on prepare and commit. */
-#define	TXN_NOWAIT	0x08		/* Do not wait on locks. */
-#define	TXN_SYNC	0x10		/* Sync on prepare and commit. */
+#define	TXN_COMPENSATE	0x02		/* Compensating transaction. */
+#define	TXN_DIRTY_READ	0x04		/* Transaction does dirty reads. */
+#define	TXN_MALLOC	0x08		/* Structure allocated by TXN system. */
+#define	TXN_NOSYNC	0x10		/* Do not sync on prepare and commit. */
+#define	TXN_NOWAIT	0x20		/* Do not wait on locks. */
+#define	TXN_SYNC	0x40		/* Sync on prepare and commit. */
 	u_int32_t	flags;
 };
 
 /*
  * Internal data maintained in shared memory for each transaction.
  */
-typedef char DB_XID[XIDDATASIZE];
 
 typedef struct __txn_detail {
 	u_int32_t txnid;		/* current transaction id
@@ -62,6 +63,9 @@ typedef struct __txn_detail {
 #define	TXN_PREPARED		3
 #define	TXN_COMMITTED		4
 	u_int32_t status;		/* status of the transaction */
+#define	TXN_COLLECTED		0x1
+#define	TXN_RESTORED		0x2
+	u_int32_t flags;		/* collected during txn_recover */
 
 	SH_TAILQ_ENTRY	links;		/* free/active list */
 
@@ -77,7 +81,7 @@ typedef struct __txn_detail {
 	 * XID (xid_t) structure: because these fields are logged, the
 	 * sizes have to be explicit.
 	 */
-	DB_XID xid;			/* XA global transaction id */
+	u_int8_t xid[XIDDATASIZE];	/* XA global transaction id */
 	u_int32_t bqual;		/* bqual_length from XID */
 	u_int32_t gtrid;		/* gtrid_length from XID */
 	int32_t format;			/* XA format */
@@ -102,6 +106,7 @@ struct __db_txnmgr {
 					 */
 					/* List of active transactions. */
 	TAILQ_HEAD(_chain, __db_txn)	txn_chain;
+	u_int32_t	 n_discards;	/* Number of txns discarded. */
 
 /* These fields are never updated after creation, and so not protected. */
 	DB_ENV		*dbenv;		/* Environment. */
@@ -120,28 +125,34 @@ struct __db_txnregion {
 	time_t		time_ckp;	/* time of last checkpoint */
 	u_int32_t	logtype;	/* type of logging */
 	u_int32_t	locktype;	/* lock type */
+#define	TXN_IN_RECOVERY	 0x01		/* environment is being recovered */
+	u_int32_t	flags;
 	u_int32_t	naborts;	/* number of aborted TXNs */
 	u_int32_t	ncommits;	/* number of committed TXNs */
 	u_int32_t	nbegins;	/* number of begun TXNs */
 	u_int32_t	nactive;	/* number of active TXNs */
+	u_int32_t	nrestores;	/* number of restored TXNs */
 	u_int32_t	maxnactive;	/* maximum number of active TXNs */
 					/* active TXN list */
 	SH_TAILQ_HEAD(__active) active_txn;
+#ifdef MUTEX_SYSTEM_RESOURCES
+#define	TXN_MAINT_SIZE	(sizeof(roff_t) * DB_MAX_HANDLES)
+
+	roff_t		maint_off;      /* offset of region maintenance info */
+#endif
 };
 
 /*
- * Make the region large enough to hold N transaction detail structures
- * plus some space to hold thread handles and the beginning of the shalloc
- * region.
+ * Log record types.  Note that these are *not* alphabetical.  This is
+ * intentional so that we don't change the meaning of values between
+ * software upgrades. IGNORE, NOTFOUND and OK are used in the txnlist functions.
  */
-#define	TXN_REGION_SIZE(N)						\
-	(sizeof(DB_TXNREGION) + N * sizeof(TXN_DETAIL) + 1000)
-
-/*
- * Log record types.
- */
+#define	TXN_OK		0
 #define	TXN_COMMIT	1
 #define	TXN_PREPARE	2
+#define	TXN_ABORT	3
+#define	TXN_NOTFOUND	4
+#define	TXN_IGNORE	5
 
 #include "txn_auto.h"
 #include "txn_ext.h"

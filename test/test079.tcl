@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test079.tcl,v 11.5 2000/11/16 23:56:18 ubell Exp $
+# $Id: test079.tcl,v 11.6 2001/01/25 18:23:13 bostic Exp $
 #
 # DB Test 79 {access method}
 # Check that delete operations work in large btrees.  10000 entries and

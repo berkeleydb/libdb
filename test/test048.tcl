@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test048.tcl,v 11.11 2000/12/11 17:42:18 sue Exp $
+# $Id: test048.tcl,v 11.12 2001/01/25 18:23:11 bostic Exp $
 #
 # Test048: Cursor stability across btree splits.
 proc test048 { method args } {

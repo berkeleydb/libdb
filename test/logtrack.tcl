@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #       Sleepycat Software.  All rights reserved.
 #
-#       $Id: logtrack.tcl,v 11.6 2000/10/27 15:30:39 krinsky Exp $
+#       $Id: logtrack.tcl,v 11.8 2001/06/15 17:40:54 krinsky Exp $
 #
 # logtrack.tcl:  A collection of routines, formerly implemented in Perl
 # as log.pl, to track which log record types the test suite hits.
@@ -73,7 +73,7 @@ proc logtrack_summary { } {
 	set pref ""
 	while { [gets $f line] >= 0 } {
 		# Get the keyword, the first thing on the line:
-		# BEGIN/DEPRECATED/PREFIX
+		# BEGIN/DEPRECATED/IGNORED/PREFIX
 		set keyword [lindex $line 0]
 
 		if { [string compare $keyword PREFIX] == 0 } {
@@ -92,7 +92,8 @@ proc logtrack_summary { } {
 
 			error_check_good exist_put [$existdb put \
 			    ${pref}_[lindex $line 1] ""] 0
-		} elseif { [string compare $keyword DEPRECATED] == 0 } {
+		} elseif { [string compare $keyword DEPRECATED] == 0 ||
+			   [string compare $keyword IGNORED] == 0 } {
 			error_check_good deprec_put [$deprecdb put \
 			    ${pref}_[lindex $line 1] ""] 0
 		}

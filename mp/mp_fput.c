@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fput.c,v 11.16 2000/11/30 00:58:41 ubell Exp $";
+static const char revid[] = "$Id: mp_fput.c,v 11.25 2001/07/10 19:33:26 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,13 +24,14 @@ static const char revid[] = "$Id: mp_fput.c,v 11.16 2000/11/30 00:58:41 ubell Ex
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
 /*
  * memp_fput --
  *	Mpool file put function.
+ *
+ * EXTERN: int memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
  */
 int
 memp_fput(dbmfp, pgaddr, flags)
@@ -104,12 +105,15 @@ memp_fput(dbmfp, pgaddr, flags)
 /* UNLOCK THE REGION, LOCK THE CACHE. */
 
 	/* Set/clear the page bits. */
-	if (LF_ISSET(DB_MPOOL_CLEAN) && F_ISSET(bhp, BH_DIRTY)) {
+	if (LF_ISSET(DB_MPOOL_CLEAN) &&
+	    F_ISSET(bhp, BH_DIRTY) && !F_ISSET(bhp, BH_DIRTY_CREATE)) {
 		++c_mp->stat.st_page_clean;
+		DB_ASSERT(c_mp->stat.st_page_dirty != 0);
 		--c_mp->stat.st_page_dirty;
 		F_CLR(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DIRTY) && !F_ISSET(bhp, BH_DIRTY)) {
+		DB_ASSERT(c_mp->stat.st_page_clean != 0);
 		--c_mp->stat.st_page_clean;
 		++c_mp->stat.st_page_dirty;
 		F_SET(bhp, BH_DIRTY);
@@ -118,8 +122,15 @@ memp_fput(dbmfp, pgaddr, flags)
 		F_SET(bhp, BH_DISCARD);
 
 	/*
-	 * If the page is dirty and being scheduled to be written as part of
-	 * a checkpoint, we no longer know that the log is up-to-date.
+	 * If the buffer is dirty and scheduled to be written as part of a
+	 * checkpoint, we no longer know the log is up-to-date -- set a flag
+	 * to force a log flush when the buffer is written.  The flag has to
+	 * be set here (and not below where we call memp_bhwrite()), because
+	 * the actual write may not be done as part of a memp_fput() call,
+	 * but rather as part of a memp_sync() call, if the thread dirtying
+	 * the buffer manages to acquire and release the buffer after the
+	 * checkpoint thread has collected a list of buffers to write but
+	 * before it actually writes them.
 	 */
 	if (F_ISSET(bhp, BH_DIRTY) && F_ISSET(bhp, BH_SYNC))
 		F_SET(bhp, BH_SYNC_LOGFLSH);
@@ -162,16 +173,16 @@ memp_fput(dbmfp, pgaddr, flags)
 	 * If this buffer is scheduled for writing because of a checkpoint, we
 	 * need to write it (if it's dirty), or update the checkpoint counters
 	 * (if it's not dirty).  If we try to write it and can't, that's not
-	 * necessarily an error as it's not completely unreasonable that the
-	 * application have permission to write the underlying file, but set a
-	 * flag so that the next time the memp_sync function is called we try
-	 * writing it there, as the checkpoint thread of control better be able
-	 * to write all of the files.
+	 * necessarily an error as it's possible the application didn't have
+	 * permission to write the underlying file -- in that case, set a flag
+	 * so that the next time the memp_sync function is called the buffer is
+	 * written there, as the checkpoint thread of control better be able to
+	 * write all of the files.
 	 */
 	if (F_ISSET(bhp, BH_SYNC)) {
 		if (F_ISSET(bhp, BH_DIRTY)) {
-			if (__memp_bhwrite(dbmp,
-			    dbmfp->mfp, bhp, NULL, &wrote) != 0 || !wrote)
+			if (!F_ISSET(bhp, BH_LOCKED) && (__memp_bhwrite(dbmp,
+			    dbmfp->mfp, bhp, 0, NULL, &wrote) != 0 || !wrote))
 				F_SET(mp, MP_LSN_RETRY);
 		} else {
 			F_CLR(bhp, BH_SYNC);

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test076.tcl,v 1.7 2000/08/25 14:21:58 sue Exp $
+# $Id: test076.tcl,v 1.10 2001/07/11 21:13:00 krinsky Exp $
 #
 # DB Test 76: Test creation of many small databases in an env
 proc test076 { method { ndbs 1000  } { tnum 76 } args } {
@@ -11,7 +11,6 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
-
 
 	if { [is_record_based $method] == 1 } {
 		set key ""
@@ -28,8 +27,8 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
 		set deleteenv 1
-		set env [eval {berkdb env -create -home} $testdir \
-		    {-cachesize {0 102400 1}}]
+		env_cleanup $testdir
+		set env [eval {berkdb env -create -home} $testdir]
 		error_check_good env [is_valid_env $env] TRUE
 		set args "$args -env $env"
 	} else {

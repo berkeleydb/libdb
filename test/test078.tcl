@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test078.tcl,v 1.9 2000/12/11 17:24:55 sue Exp $
+# $Id: test078.tcl,v 1.10 2001/01/25 18:23:13 bostic Exp $
 #
 # DB Test 78: Test of DBC->c_count(). [#303]
 proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {

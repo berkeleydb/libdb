@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_verify.h,v 1.18 2000/12/31 17:51:52 bostic Exp $
+ * $Id: db_verify.h,v 1.20 2001/05/10 15:33:58 krinsky Exp $
  */
 
 #ifndef _DB_VERIFY_H_
@@ -29,12 +29,6 @@
 #define	TYPE_ERR_PRINT(dbenv, func, pgno, ptype)			\
     EPRINT(((dbenv), "%s called on nonsensical page %lu of type %lu",	\
 	(func), (u_long)(pgno), (u_long)(ptype)));
-
-/* Is x a power of two?  (Tests true for zero, which doesn't matter here.) */
-#define	POWER_OF_TWO(x)	(((x) & ((x) - 1)) == 0)
-
-#define	IS_VALID_PAGESIZE(x)						\
-	(POWER_OF_TWO(x) && (x) >= DB_MIN_PGSIZE && ((x) <= DB_MAX_PGSIZE))
 
 /*
  * Note that 0 is, in general, a valid pgno, despite equalling PGNO_INVALID;

@@ -106,7 +106,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1set_1errpfx
 /*
  * Class:     com_sleepycat_db_DbEnv
  * Method:    feedback_changed
- * Signature: (Lcom/sleepycat/db/DbFeedback;)V
+ * Signature: (Lcom/sleepycat/db/DbEnvFeedback;)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_feedback_1changed
   (JNIEnv *, jobject, jobject);
@@ -114,10 +114,10 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_feedback_1changed
 /*
  * Class:     com_sleepycat_db_DbEnv
  * Method:    set_verbose
- * Signature: (II)V
+ * Signature: (IZ)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1verbose
-  (JNIEnv *, jobject, jint, jint);
+  (JNIEnv *, jobject, jint, jboolean);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
@@ -149,6 +149,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lg_1dir
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lg_1max
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
+ * Method:    set_lg_regionmax
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lg_1regionmax
   (JNIEnv *, jobject, jint);
 
 /*
@@ -250,18 +258,18 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1region_1init
 /*
  * Class:     com_sleepycat_db_DbEnv
  * Method:    set_flags
- * Signature: (II)V
+ * Signature: (IZ)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1flags
-  (JNIEnv *, jobject, jint, jint);
+  (JNIEnv *, jobject, jint, jboolean);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
- * Method:    set_server
- * Signature: (Ljava/lang/String;JJI)V
+ * Method:    set_rpc_server
+ * Signature: (Lcom/sleepycat/db/DbClient;Ljava/lang/String;JJI)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1server
-  (JNIEnv *, jobject, jstring, jlong, jlong, jint);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1rpc_1server
+  (JNIEnv *, jobject, jobject, jstring, jlong, jlong, jint);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
@@ -494,6 +502,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1begin
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_txn_1checkpoint
   (JNIEnv *, jobject, jint, jint, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
+ * Method:    txn_recover
+ * Signature: (II)[Lcom/sleepycat/db/DbPreplist;
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_txn_1recover
+  (JNIEnv *, jobject, jint, jint);
 
 /*
  * Class:     com_sleepycat_db_DbEnv

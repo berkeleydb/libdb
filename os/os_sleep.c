@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_sleep.c,v 11.7 2000/04/07 14:26:36 bostic Exp $";
+static const char revid[] = "$Id: os_sleep.c,v 11.9 2001/01/31 14:16:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -68,7 +68,7 @@ __os_sleep(dbenv, secs, usecs)
 	 */
 	t.tv_sec = secs;
 	t.tv_usec = usecs;
-	ret =  select(0, NULL, NULL, NULL, &t) == -1 ? __os_get_errno() : 0;
+	ret = select(0, NULL, NULL, NULL, &t) == -1 ? __os_get_errno() : 0;
 
 	if (ret != 0)
 		__db_err(dbenv, "select: %s", strerror(ret));

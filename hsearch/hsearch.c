@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hsearch.c,v 11.5 2000/11/30 00:58:37 ubell Exp $";
+static const char revid[] = "$Id: hsearch.c,v 11.7 2001/04/10 20:44:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,6 +58,22 @@ static const char revid[] = "$Id: hsearch.c,v 11.5 2000/11/30 00:58:37 ubell Exp
 static DB	*dbp;
 static ENTRY	 retval;
 
+/*
+ * Translate HSEARCH calls into DB calls so that DB doesn't step on the
+ * application's name space.
+ *
+ * EXTERN: #if DB_DBM_HSEARCH != 0
+ *
+ * EXTERN: #define hcreate(a)	__db_hcreate(a)
+ * EXTERN: #define hdestroy	__db_hdestroy
+ * EXTERN: #define hsearch(a, b)	__db_hsearch(a, b)
+ *
+ * EXTERN: int __db_hcreate __P((size_t));
+ * EXTERN: ENTRY *__db_hsearch __P((ENTRY, ACTION));
+ * EXTERN: void __db_hdestroy __P((void));
+ *
+ * EXTERN: #endif
+ */
 int
 __db_hcreate(nel)
 	size_t nel;

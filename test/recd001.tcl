@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd001.tcl,v 11.28 2000/12/07 19:13:46 sue Exp $
+# $Id: recd001.tcl,v 11.35 2001/07/02 01:08:46 bostic Exp $
 #
 # Recovery Test 1.
 # These are the most basic recovery tests.  We do individual recovery
@@ -124,6 +124,7 @@ proc recd001 { method {select 0} args} {
 	set newdata NEWrecd001_dataNEW
 	set off 3
 	set len 12
+
 	set partial_grow replacement_record_grow
 	set partial_shrink xxx
 	if { [is_fixed_length $method] == 1 } {
@@ -165,16 +166,72 @@ proc recd001 { method {select 0} args} {
 #		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
-		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
-		op_recover prepare-abort $testdir $env_cmd $testfile2 $cmd $msg
-		op_recover prepare-commit $testdir $env_cmd $testfile2 $cmd $msg
+		#
+		# Note that since prepare-discard ultimately aborts
+		# the txn, it must come before prepare-commit.
+		#
+		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+		    $cmd $msg
+		op_recover prepare-discard $testdir $env_cmd $testfile2 \
+		    $cmd $msg
+		op_recover prepare-commit $testdir $env_cmd $testfile2 \
+		    $cmd $msg
 	}
 	set fixed_len $orig_fixed_len
 
-	puts "\tRecd001.o: Verify db_printlog can read logfile"
-	set tmpfile $testdir/printlog.out
-	set stat [catch {exec $util_path/db_printlog -h $testdir \
-	    > $tmpfile} ret]
-	error_check_good db_printlog $stat 0
-	fileremove $tmpfile
+	if { [is_fixed_length $method] == 1 } {
+		puts "Skipping remainder of test for fixed length methods"
+		return
+	}
+
+	#
+	# Check partial extensions.  If we add a key/data to the database
+	# and then expand it using -partial, then recover, recovery was
+	# failing in #3944.  Check that scenario here.
+	#
+	# !!!
+	# We loop here because on each iteration, we need to clean up
+	# the old env (i.e. this test does not depend on earlier runs).
+	# If we run it without cleaning up the env inbetween, we do not
+	# test the scenario of #3944.
+	#
+	set len [string length $data]
+	set len2 256
+	set part_data [replicate "abcdefgh" 32]
+	set p [list 0 $len]
+	set cmd [subst \
+	    {DB put -txn TXNID -partial {$len $len2} $key $part_data}]
+	set msg "Recd001.o: partial put prepopulated/expanding"
+	foreach op {abort commit prepare-abort prepare-discard prepare-commit} {
+		env_cleanup $testdir
+
+		set dbenv [eval $env_cmd]
+		error_check_good dbenv [is_valid_env $dbenv] TRUE
+		set oflags "-create $omethod -mode 0644 \
+		    -env $dbenv $opts $testfile"
+		set db [eval {berkdb_open} $oflags]
+		error_check_good db_open [is_valid_db $db] TRUE
+		set oflags "-create $omethod -mode 0644 \
+		    -env $dbenv $opts $testfile2"
+		set db2 [eval {berkdb_open} $oflags]
+		error_check_good db_open [is_valid_db $db2] TRUE
+
+		set t [$dbenv txn]
+		error_check_good txn_begin [is_valid_txn $t $dbenv] TRUE
+		set ret [$db put -txn $t -partial $p $key $data]
+		error_check_good dbput $ret 0
+		error_check_good txncommit [$t commit] 0
+		error_check_good dbclose [$db close] 0
+
+		set t [$dbenv txn]
+		error_check_good txn_begin [is_valid_txn $t $dbenv] TRUE
+		set ret [$db2 put -txn $t -partial $p $key $data]
+		error_check_good dbput $ret 0
+		error_check_good txncommit [$t commit] 0
+		error_check_good dbclose [$db2 close] 0
+		error_check_good dbenvclose [$dbenv close] 0
+
+		op_recover $op $testdir $env_cmd $testfile $cmd $msg
+	}
+	return
 }

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_meta.c,v 11.10 2000/12/21 21:54:35 margo Exp $";
+static const char revid[] = "$Id: hash_meta.c,v 11.12 2001/03/15 00:18:42 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -51,9 +51,8 @@ __ham_get_meta(dbc)
 
 	if ((ret = memp_fget(dbc->dbp->mpf,
 	    &hashp->meta_pgno, DB_MPOOL_CREATE, &(hcp->hdr))) != 0 &&
-	    hcp->hlock.off != LOCK_INVALID) {
+	    LOCK_ISSET(hcp->hlock)) {
 		(void)lock_put(dbc->dbp->dbenv, &hcp->hlock);
-		hcp->hlock.off = LOCK_INVALID;
 	}
 
 	return (ret);
@@ -77,9 +76,8 @@ __ham_release_meta(dbc)
 		    F_ISSET(hcp, H_DIRTY) ? DB_MPOOL_DIRTY : 0);
 	hcp->hdr = NULL;
 	if (!F_ISSET(dbc, DBC_RECOVER) &&
-	    dbc->txn == NULL && hcp->hlock.off != LOCK_INVALID)
+	    dbc->txn == NULL && LOCK_ISSET(hcp->hlock))
 		(void)lock_put(dbc->dbp->dbenv, &hcp->hlock);
-	hcp->hlock.off = LOCK_INVALID;
 	F_CLR(hcp, H_DIRTY);
 
 	return (0);

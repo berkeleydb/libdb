@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbTxn.c,v 11.3 2000/09/18 18:32:25 dda Exp $";
+static const char revid[] = "$Id: java_DbTxn.c,v 11.7 2001/04/17 17:55:08 bostic Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -15,7 +15,7 @@ static const char revid[] = "$Id: java_DbTxn.c,v 11.3 2000/09/18 18:32:25 dda Ex
 #include <stdlib.h>
 #include <string.h>
 
-#include "db.h"
+#include "db_int.h"
 #include "java_util.h"
 #include "com_sleepycat_db_DbTxn.h"
 
@@ -57,21 +57,34 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbTxn_id
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare
-  (JNIEnv *jnienv, jobject jthis)
+  (JNIEnv *jnienv, jobject jthis, jbyteArray gid)
 {
 	int err;
-	DB_TXN *dbtxn = get_DB_TXN(jnienv, jthis);
+	DB_TXN *dbtxn;
+	jbyte *c_array;
+
+	dbtxn = get_DB_TXN(jnienv, jthis);
 	if (!verify_non_null(jnienv, dbtxn))
 		return;
 
-	err = txn_prepare(dbtxn);
+	if (gid == NULL ||
+	    (*jnienv)->GetArrayLength(jnienv, gid) < DB_XIDDATASIZE) {
+		report_exception(jnienv, "DbTxn.prepare gid array "
+				 "must be >= 128 bytes", EINVAL, 0);
+		return;
+	}
+	c_array = (*jnienv)->GetByteArrayElements(jnienv, gid, NULL);
+	err = txn_prepare(dbtxn, c_array);
+	(*jnienv)->ReleaseByteArrayElements(jnienv, gid, c_array, 0);
 	verify_return(jnienv, err, 0);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_finalize
   (JNIEnv *jnienv, jobject jthis)
 {
-	DB_TXN *dbtxn = get_DB_TXN(jnienv, jthis);
+	DB_TXN *dbtxn;
+
+	dbtxn = get_DB_TXN(jnienv, jthis);
 	if (dbtxn) {
 		/* Free any data related to DB_TXN here
 		 * Note: we don't make a policy of doing

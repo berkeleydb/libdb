@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: client.c,v 1.21 2000/11/30 00:58:44 ubell Exp $";
+static const char revid[] = "$Id: client.c,v 1.35 2001/06/13 14:40:14 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -26,67 +26,100 @@ static const char revid[] = "$Id: client.c,v 1.21 2000/11/30 00:58:44 ubell Exp 
 
 #include "db_int.h"
 #include "txn.h"
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
+
+static int __dbcl_c_destroy __P((DBC *));
+static int __dbcl_txn_close __P((DB_ENV *));
+
+/*
+ * __dbcl_envrpcserver --
+ *	Initialize an environment's server.
+ *
+ * PUBLIC: int __dbcl_envrpcserver
+ * PUBLIC:     __P((DB_ENV *, void *, const char *, long, long, u_int32_t));
+ */
+int
+__dbcl_envrpcserver(dbenv, clnt, host, tsec, ssec, flags)
+	DB_ENV *dbenv;
+	void *clnt;
+	const char *host;
+	long tsec, ssec;
+	u_int32_t flags;
+{
+	CLIENT *cl;
+	struct timeval tp;
+
+	COMPQUIET(flags, 0);
+
+#ifdef HAVE_VXWORKS
+	if (rpcTaskInit() != 0) {
+		__db_err(dbenv, "Could not initialize VxWorks RPC");
+		return (ERROR);
+	}
+#endif
+	/*
+	 * Only create the client and set its timeout if the user
+	 * did not pass us a client structure to begin with.
+	 */
+	if (clnt == NULL) {
+		if ((cl = clnt_create((char *)host, DB_RPC_SERVERPROG,
+		    DB_RPC_SERVERVERS, "tcp")) == NULL) {
+			__db_err(dbenv, clnt_spcreateerror((char *)host));
+			return (DB_NOSERVER);
+		}
+		if (tsec != 0) {
+			tp.tv_sec = tsec;
+			tp.tv_usec = 0;
+			(void)clnt_control(cl, CLSET_TIMEOUT, (char *)&tp);
+		}
+	} else {
+		cl = (CLIENT *)clnt;
+		F_SET(dbenv, DB_ENV_RPCCLIENT_GIVEN);
+	}
+	dbenv->cl_handle = cl;
+
+	return (__dbcl_env_create(dbenv, ssec));
+}
 
 /*
  * __dbclenv_server --
  *	Initialize an environment's server.
  *
- * PUBLIC: int __dbcl_envserver __P((DB_ENV *, char *, long, long, u_int32_t));
+ * PUBLIC: int __dbcl_envserver
+ * PUBLIC:     __P((DB_ENV *, const char *, long, long, u_int32_t));
  */
 int
 __dbcl_envserver(dbenv, host, tsec, ssec, flags)
 	DB_ENV *dbenv;
-	char *host;
+	const char *host;
 	long tsec, ssec;
 	u_int32_t flags;
 {
-	CLIENT *cl;
-	__env_create_msg req;
-	__env_create_reply *replyp;
-	struct timeval tp;
+	COMPQUIET(flags, 0);
+	return (__dbcl_envrpcserver(dbenv, NULL, host, tsec, ssec, flags));
+}
+
+/*
+ * __dbcl_env_open_wrap --
+ *	Wrapper function for DBENV->open function for clients.
+ *	We need a wrapper function to deal with DB_USE_ENVIRON* flags
+ *	and we don't want to complicate the generated code for env_open.
+ *
+ * PUBLIC: int __dbcl_env_open_wrap
+ * PUBLIC:     __P((DB_ENV *, const char *, u_int32_t, int));
+ */
+int
+__dbcl_env_open_wrap(dbenv, home, flags, mode)
+	DB_ENV * dbenv;
+	const char * home;
+	u_int32_t flags;
+	int mode;
+{
 	int ret;
 
-	COMPQUIET(flags, 0);
-
-#ifdef HAVE_VXWORKS
-	if ((ret = rpcTaskInit()) != 0) {
-		__db_err(dbenv, "Could not initialize VxWorks RPC");
-		return (ERROR);
-	}
-#endif
-	if ((cl =
-	    clnt_create(host, DB_SERVERPROG, DB_SERVERVERS, "tcp")) == NULL) {
-		__db_err(dbenv, clnt_spcreateerror(host));
-		return (DB_NOSERVER);
-	}
-	dbenv->cl_handle = cl;
-
-	if (tsec != 0) {
-		tp.tv_sec = tsec;
-		tp.tv_usec = 0;
-		(void)clnt_control(cl, CLSET_TIMEOUT, (char *)&tp);
-	}
-
-	req.timeout = ssec;
-	/*
-	 * CALL THE SERVER
-	 */
-	if ((replyp = __db_env_create_1(&req, cl)) == NULL) {
-		__db_err(dbenv, clnt_sperror(cl, "Berkeley DB"));
-		return (DB_NOSERVER);
-	}
-
-	/*
-	 * Process reply and free up our space from request
-	 * SUCCESS:  Store ID from server.
-	 */
-	if ((ret = replyp->status) != 0)
+	if ((ret = __db_home(dbenv, home, flags)) != 0)
 		return (ret);
-
-	dbenv->cl_id = replyp->envcl_id;
-	return (0);
+	return (__dbcl_env_open(dbenv, dbenv->db_home, flags, mode));
 }
 
 /*
@@ -114,7 +147,7 @@ __dbcl_refresh(dbenv)
 		ret = __dbcl_txn_close(dbenv);
 		dbenv->tx_handle = NULL;
 	}
-	if (cl != NULL)
+	if (!F_ISSET(dbenv, DB_ENV_RPCCLIENT_GIVEN) && cl != NULL)
 		clnt_destroy(cl);
 	dbenv->cl_handle = NULL;
 	return (ret);
@@ -123,8 +156,6 @@ __dbcl_refresh(dbenv)
 /*
  * __dbcl_txn_close --
  *	Clean up an environment's transactions.
- *
- * PUBLIC: int __dbcl_txn_close __P((DB_ENV *));
  */
 int
 __dbcl_txn_close(dbenv)
@@ -147,7 +178,7 @@ __dbcl_txn_close(dbenv)
 	while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL)
 		__dbcl_txn_end(txnp);
 
-	__os_free(tmgrp, sizeof(*tmgrp));
+	__os_free(dbenv, tmgrp, sizeof(*tmgrp));
 	return (ret);
 
 }
@@ -187,7 +218,42 @@ __dbcl_txn_end(txnp)
 	if (txnp->parent != NULL)
 		TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
 	TAILQ_REMOVE(&mgr->txn_chain, txnp, links);
-	__os_free(txnp, sizeof(*txnp));
+	__os_free(dbenv, txnp, sizeof(*txnp));
+
+	return;
+}
+
+/*
+ * __dbcl_txn_setup --
+ *	Setup a client transaction structure.
+ *
+ * PUBLIC: void __dbcl_txn_setup __P((DB_ENV *, DB_TXN *, DB_TXN *, u_int32_t));
+ */
+void
+__dbcl_txn_setup(dbenv, txn, parent, id)
+	DB_ENV *dbenv;
+	DB_TXN *txn;
+	DB_TXN *parent;
+	u_int32_t id;
+{
+	txn->txnid = id;
+	txn->mgrp = dbenv->tx_handle;
+	txn->parent = parent;
+	TAILQ_INIT(&txn->kids);
+	txn->flags = TXN_MALLOC;
+	if (parent != NULL)
+		TAILQ_INSERT_HEAD(&parent->kids, txn, klinks);
+
+	/*
+	 * XXX
+	 * In DB library the txn_chain is protected by the mgrp->mutexp.
+	 * However, that mutex is implemented in the environments shared
+	 * memory region.  The client library does not support all of the
+	 * region - that just get forwarded to the server.  Therefore,
+	 * the chain is unprotected here, but properly protected on the
+	 * server.
+	 */
+	TAILQ_INSERT_TAIL(&txn->mgrp->txn_chain, txn, links);
 
 	return;
 }
@@ -195,10 +261,8 @@ __dbcl_txn_end(txnp)
 /*
  * __dbcl_c_destroy --
  *	Destroy a cursor.
- *
- * PUBLIC: int __dbcl_c_destroy __P((DBC *));
  */
-int
+static int
 __dbcl_c_destroy(dbc)
 	DBC *dbc;
 {
@@ -207,7 +271,7 @@ __dbcl_c_destroy(dbc)
 	dbp = dbc->dbp;
 
 	TAILQ_REMOVE(&dbp->free_queue, dbc, links);
-	__os_free(dbc, sizeof(*dbc));
+	__os_free(NULL, dbc, sizeof(*dbc));
 
 	return (0);
 }
@@ -252,7 +316,7 @@ __dbcl_c_setup(cl_id, dbp, dbcpp)
 	DBC **dbcpp;
 {
 	DBC *dbc, tmpdbc;
-	int ret, t_ret;
+	int ret;
 
 	if ((dbc = TAILQ_FIRST(&dbp->free_queue)) != NULL)
 		TAILQ_REMOVE(&dbp->free_queue, dbc, links);
@@ -260,12 +324,12 @@ __dbcl_c_setup(cl_id, dbp, dbcpp)
 		if ((ret =
 		    __os_calloc(dbp->dbenv, 1, sizeof(DBC), &dbc)) != 0) {
 			/*
-			* If we die here, set up a tmp dbc to call the
-			* server to shut down that cursor.
-			*/
+			 * If we die here, set up a tmp dbc to call the
+			 * server to shut down that cursor.
+			 */
 			tmpdbc.dbp = NULL;
 			tmpdbc.cl_id = cl_id;
-			t_ret = __dbcl_dbc_close(&tmpdbc);
+			(void)__dbcl_dbc_close(&tmpdbc);
 			return (ret);
 		}
 		dbc->c_close = __dbcl_dbc_close;
@@ -273,6 +337,7 @@ __dbcl_c_setup(cl_id, dbp, dbcpp)
 		dbc->c_del = __dbcl_dbc_del;
 		dbc->c_dup = __dbcl_dbc_dup;
 		dbc->c_get = __dbcl_dbc_get;
+		dbc->c_pget = __dbcl_dbc_pget;
 		dbc->c_put = __dbcl_dbc_put;
 		dbc->c_am_destroy = __dbcl_c_destroy;
 	}
@@ -310,10 +375,10 @@ __dbcl_retcopy(dbenv, dbt, data, len)
 	 * Or use memory specified by application: DB_DBT_USERMEM.
 	 */
 	if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(dbenv, len, NULL, &dbt->data)) != 0)
+		if ((ret = __os_malloc(dbenv, len, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_realloc(dbenv, len, NULL, &dbt->data)) != 0)
+		if ((ret = __os_realloc(dbenv, len, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_USERMEM)) {
 		if (len != 0 && (dbt->data == NULL || dbt->ulen < len))
@@ -365,7 +430,7 @@ __dbcl_dbclose_common(dbp)
 	TAILQ_INIT(&dbp->active_queue);
 
 	memset(dbp, CLEAR_BYTE, sizeof(*dbp));
-	__os_free(dbp, sizeof(*dbp));
+	__os_free(NULL, dbp, sizeof(*dbp));
 	return (ret);
 }
 #endif /* HAVE_RPC */

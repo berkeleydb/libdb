@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_stat.c,v 11.42 2001/01/18 18:36:59 bostic Exp $";
+    "$Id: db_stat.c,v 11.62 2001/06/05 16:06:22 margo Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -39,6 +39,7 @@ static const char revid[] =
 #include "db_shash.h"
 #include "lock.h"
 #include "mp.h"
+#include "clib_ext.h"
 
 #define	PCT(f, t, pgsize)						\
     ((t) == 0 ? 0 :							\
@@ -47,12 +48,12 @@ static const char revid[] =
 typedef enum { T_NOTSET, T_DB, T_ENV, T_LOCK, T_LOG, T_MPOOL, T_TXN } test_t;
 
 int	 argcheck __P((char *, const char *));
-int	 btree_stats __P((DB_ENV *, DB *, DB_BTREE_STAT *));
+int	 btree_stats __P((DB_ENV *, DB *, DB_BTREE_STAT *, int));
 int	 db_init __P((char *, test_t));
 void	 dl __P((const char *, u_long));
 void	 dl_bytes __P((const char *, u_long, u_long, u_long));
 int	 env_stats __P((DB_ENV *));
-int	 hash_stats __P((DB_ENV *, DB *));
+int	 hash_stats __P((DB_ENV *, DB *, int));
 int	 lock_ok __P((char *));
 int	 lock_stats __P((DB_ENV *));
 int	 log_stats __P((DB_ENV *));
@@ -60,7 +61,7 @@ int	 main __P((int, char *[]));
 int	 mpool_ok __P((char *));
 int	 mpool_stats __P((DB_ENV *));
 void	 prflags __P((u_int32_t, const FN *));
-int	 queue_stats __P((DB_ENV *, DB *));
+int	 queue_stats __P((DB_ENV *, DB *, int));
 int	 txn_compare __P((const void *, const void *));
 int	 txn_stats __P((DB_ENV *));
 void	 usage __P((void));
@@ -81,7 +82,7 @@ main(argc, argv)
 	DB_BTREE_STAT *sp;
 	DB *alt_dbp, *dbp;
 	test_t ttype;
-	int ch, checked, d_close, e_close, exitval, nflag, ret;
+	int ch, checked, d_close, e_close, exitval, fast, nflag, ret;
 	char *db, *home, *subdb;
 
 	version_check();
@@ -89,37 +90,55 @@ main(argc, argv)
 	dbp = NULL;
 	ttype = T_NOTSET;
 	nflag = 0;
+	fast = 0;
 	d_close = e_close = exitval = 0;
 	db = home = subdb = NULL;
-	while ((ch = getopt(argc, argv, "C:cd:eh:lM:mNs:tV")) != EOF)
+	while ((ch = getopt(argc, argv, "C:cd:efh:lM:mNs:tV")) != EOF)
 		switch (ch) {
 		case 'C':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_LOCK;
 			if (!argcheck(internal = optarg, "Acflmo"))
 				usage();
 			break;
 		case 'c':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_LOCK;
 			break;
 		case 'd':
-			db = optarg;
+			if (ttype != T_DB && ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_DB;
+			db = optarg;
 			break;
 		case 'e':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_ENV;
+			break;
+		case 'f':
+			fast = DB_FAST_STAT;
 			break;
 		case 'h':
 			home = optarg;
 			break;
 		case 'l':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_LOG;
 			break;
 		case 'M':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_MPOOL;
 			if (!argcheck(internal = optarg, "Ahlm"))
 				usage();
 			break;
 		case 'm':
+			if (ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_MPOOL;
 			break;
 		case 'N':
@@ -128,19 +147,27 @@ main(argc, argv)
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
 				    progname, db_strerror(ret));
-				return (1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 's':
-			subdb = optarg;
+			if (ttype != T_DB && ttype != T_NOTSET)
+				goto argcombo;
 			ttype = T_DB;
+			subdb = optarg;
 			break;
 		case 't':
+			if (ttype != T_NOTSET) {
+argcombo:			fprintf(stderr,
+				    "%s: illegal option combination\n",
+				    progname);
+				return (EXIT_FAILURE);
+			}
 			ttype = T_TXN;
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case '?':
 		default:
 			usage();
@@ -157,6 +184,8 @@ main(argc, argv)
 		usage();
 		/* NOTREACHED */
 	default:
+		if (fast != 0)
+			usage();
 		break;
 	}
 
@@ -207,9 +236,10 @@ main(argc, argv)
 		 */
 		checked = 0;
 		if (subdb == NULL && dbp->type == DB_BTREE) {
-			if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+			if ((ret =
+			dbp->stat(dbp, &sp, DB_FAST_STAT)) != 0) {
 				dbp->err(dbp, ret, "dbp->stat");
-				return (1);
+				return (EXIT_FAILURE);
 			}
 			checked = 1;
 		}
@@ -234,15 +264,16 @@ main(argc, argv)
 		switch (dbp->type) {
 		case DB_BTREE:
 		case DB_RECNO:
-			if (btree_stats(dbenv, dbp, checked == 1 ? sp : NULL))
+			if (btree_stats(
+			    dbenv, dbp, checked == 1 ? sp : NULL, fast))
 				goto shutdown;
 			break;
 		case DB_HASH:
-			if (hash_stats(dbenv, dbp))
+			if (hash_stats(dbenv, dbp, fast))
 				goto shutdown;
 			break;
 		case DB_QUEUE:
-			if (queue_stats(dbenv, dbp))
+			if (queue_stats(dbenv, dbp, fast))
 				goto shutdown;
 			break;
 		case DB_UNKNOWN:
@@ -280,7 +311,7 @@ shutdown:	exitval = 1;
 	}
 	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
 		exitval = 1;
-		dbp->err(dbp, ret, "close");
+		dbenv->err(dbenv, ret, "close");
 	}
 	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
@@ -291,7 +322,7 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 /*
@@ -316,7 +347,7 @@ env_stats(dbenvp)
 	printf("%d.%d.%d\tEnvironment version.\n",
 	    renv.majver, renv.minver, renv.patch);
 	printf("%lx\tMagic number.\n", (u_long)renv.magic);
-	printf("%d\tPanic value.\n", renv.panic);
+	printf("%d\tPanic value.\n", renv.envpanic);
 
 	/* Adjust the reference count for us... */
 	printf("%d\tReferences.\n", renv.refcnt - 1);
@@ -370,10 +401,11 @@ env_stats(dbenvp)
  *	Display btree/recno statistics.
  */
 int
-btree_stats(dbenvp, dbp, msp)
+btree_stats(dbenvp, dbp, msp, fast)
 	DB_ENV *dbenvp;
 	DB *dbp;
 	DB_BTREE_STAT *msp;
+	int fast;
 {
 	static const FN fn[] = {
 		{ BTM_DUP,	"duplicates" },
@@ -391,7 +423,7 @@ btree_stats(dbenvp, dbp, msp)
 
 	if (msp != NULL)
 		sp = msp;
-	else if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+	else if ((ret = dbp->stat(dbp, &sp, fast)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
 		return (1);
 	}
@@ -455,9 +487,10 @@ btree_stats(dbenvp, dbp, msp)
  *	Display hash statistics.
  */
 int
-hash_stats(dbenvp, dbp)
+hash_stats(dbenvp, dbp, fast)
 	DB_ENV *dbenvp;
 	DB *dbp;
+	int fast;
 {
 	static const FN fn[] = {
 		{ DB_HASH_DUP,	"duplicates" },
@@ -469,7 +502,7 @@ hash_stats(dbenvp, dbp)
 
 	COMPQUIET(dbenvp, NULL);
 
-	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+	if ((ret = dbp->stat(dbp, &sp, fast)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
 		return (1);
 	}
@@ -514,16 +547,17 @@ hash_stats(dbenvp, dbp)
  *	Display queue statistics.
  */
 int
-queue_stats(dbenvp, dbp)
+queue_stats(dbenvp, dbp, fast)
 	DB_ENV *dbenvp;
 	DB *dbp;
+	int fast;
 {
 	DB_QUEUE_STAT *sp;
 	int ret;
 
 	COMPQUIET(dbenvp, NULL);
 
-	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+	if ((ret = dbp->stat(dbp, &sp, fast)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
 		return (1);
 	}
@@ -536,6 +570,9 @@ queue_stats(dbenvp, dbp)
 	else
 		printf("0x%x\tFixed-length record pad.\n", (int)sp->qs_re_pad);
 	dl("Underlying database page size.\n", (u_long)sp->qs_pagesize);
+	if (sp->qs_extentsize != 0)
+		dl("Underlying database extent size.\n",
+		    (u_long)sp->qs_extentsize);
 	dl("Number of records in the database.\n", (u_long)sp->qs_nkeys);
 	dl("Number of database pages.\n", (u_long)sp->qs_pages);
 	dl("Number of bytes free in database pages", (u_long)sp->qs_pgfree);
@@ -560,11 +597,14 @@ lock_stats(dbenvp)
 	int ret;
 
 	if (internal != NULL) {
-		__lock_dump_region(dbenvp, internal, stdout);
+		if ((ret = __lock_dump_region(dbenvp, internal, stdout)) != 0) {
+			dbenvp->err(dbenvp, ret, NULL);
+			return (1);
+		}
 		return (0);
 	}
 
-	if ((ret = lock_stat(dbenvp, &sp, NULL)) != 0) {
+	if ((ret = lock_stat(dbenvp, &sp)) != 0) {
 		dbenvp->err(dbenvp, ret, NULL);
 		return (1);
 	}
@@ -608,7 +648,7 @@ log_stats(dbenvp)
 	DB_LOG_STAT *sp;
 	int ret;
 
-	if ((ret = log_stat(dbenvp, &sp, NULL)) != 0) {
+	if ((ret = log_stat(dbenvp, &sp)) != 0) {
 		dbenvp->err(dbenvp, ret, NULL);
 		return (1);
 	}
@@ -637,6 +677,8 @@ log_stats(dbenvp)
 	dl("Total log file flushes.\n", (u_long)sp->st_scount);
 	printf("%lu\tCurrent log file number.\n", (u_long)sp->st_cur_file);
 	printf("%lu\tCurrent log file offset.\n", (u_long)sp->st_cur_offset);
+	printf("%lu\tOn-disk log file number.\n", (u_long)sp->st_disk_file);
+	printf("%lu\tOn-disk log file offset.\n", (u_long)sp->st_disk_offset);
 	dl("The number of region locks granted without waiting.\n",
 	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
@@ -658,11 +700,14 @@ mpool_stats(dbenvp)
 	int ret;
 
 	if (internal != NULL) {
-		__memp_dump_region(dbenvp, internal, stdout);
-		return (1);
+		if ((ret = __memp_dump_region(dbenvp, internal, stdout)) != 0) {
+			dbenvp->err(dbenvp, ret, NULL);
+			return (1);
+		}
+		return (0);
 	}
 
-	if ((ret = memp_stat(dbenvp, &gsp, &fsp, NULL)) != 0) {
+	if ((ret = memp_stat(dbenvp, &gsp, &fsp)) != 0) {
 		dbenvp->err(dbenvp, ret, NULL);
 		return (1);
 	}
@@ -746,7 +791,7 @@ txn_stats(dbenvp)
 	int ret;
 	const char *p;
 
-	if ((ret = txn_stat(dbenvp, &sp, NULL)) != 0) {
+	if ((ret = txn_stat(dbenvp, &sp)) != 0) {
 		dbenvp->err(dbenvp, ret, NULL);
 		return (1);
 	}
@@ -775,6 +820,7 @@ txn_stats(dbenvp)
 	dl("Number of transactions begun.\n", (u_long)sp->st_nbegins);
 	dl("Number of transactions aborted.\n", (u_long)sp->st_naborts);
 	dl("Number of transactions committed.\n", (u_long)sp->st_ncommits);
+	dl("Number of transactions restored.\n", (u_long)sp->st_nrestores);
 	dl_bytes("Transaction region size",
 	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
 	dl("The number of region locks granted without waiting.\n",
@@ -783,11 +829,17 @@ txn_stats(dbenvp)
 	    (u_long)sp->st_region_wait);
 	qsort(sp->st_txnarray,
 	    sp->st_nactive, sizeof(sp->st_txnarray[0]), txn_compare);
-	for (i = 0; i < sp->st_nactive; ++i)
-		printf("\tid: %lx; initial LSN file/offest %lu/%lu\n",
+	for (i = 0; i < sp->st_nactive; ++i) {
+		printf("\tid: %lx; initial LSN file/offset %lu/%lu",
 		    (u_long)sp->st_txnarray[i].txnid,
 		    (u_long)sp->st_txnarray[i].lsn.file,
 		    (u_long)sp->st_txnarray[i].lsn.offset);
+		if (sp->st_txnarray[i].parentid == 0)
+			printf("\n");
+		else
+			printf(" parent: %lx\n",
+			    (u_long)sp->st_txnarray[i].parentid);
+	}
 
 	return (0);
 }
@@ -967,8 +1019,8 @@ void
 usage()
 {
 	fprintf(stderr, "usage: db_stat %s\n",
-	    "[-celmNtV] [-C Acflmo] [-d file [-s file]] [-h home] [-M Ahlm]");
-	exit (1);
+"[-celmNtV] [-C Acflmo]\n\t[-d file [-f] [-s database]] [-h home] [-M Ahlm]");
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -984,6 +1036,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

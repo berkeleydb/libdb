@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_deadlock.c,v 11.19 2001/01/18 18:36:57 bostic Exp $";
+    "$Id: db_deadlock.c,v 11.25 2001/05/10 17:13:56 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -55,8 +55,7 @@ main(argc, argv)
 	u_int32_t atype;
 	time_t now;
 	long usecs;
-	u_int32_t flags;
-	int ch, e_close, exitval, ret, verbose;
+	int ch, e_close, exitval, poll, ret, verbose;
 	char *home, *logfile;
 
 	version_check();
@@ -64,14 +63,23 @@ main(argc, argv)
 	atype = DB_LOCK_DEFAULT;
 	home = logfile = NULL;
 	usecs = 0;
-	flags = 0;
+	poll = 0;
 	e_close = exitval = verbose = 0;
 	while ((ch = getopt(argc, argv, "a:h:L:t:Vvw")) != EOF)
 		switch (ch) {
 		case 'a':
 			switch (optarg[0]) {
+			case 'm':
+				atype = DB_LOCK_MAXLOCKS;
+				break;
+			case 'n':
+				atype = DB_LOCK_MINLOCKS;
+				break;
 			case 'o':
 				atype = DB_LOCK_OLDEST;
+				break;
+			case 'w':
+				atype = DB_LOCK_MINWRITE;
 				break;
 			case 'y':
 				atype = DB_LOCK_YOUNGEST;
@@ -96,12 +104,12 @@ main(argc, argv)
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case 'v':
 			verbose = 1;
 			break;
 		case 'w':
-			LF_SET(DB_LOCK_CONFLICT);
+			poll = 1;
 			break;
 		case '?':
 		default:
@@ -113,17 +121,14 @@ main(argc, argv)
 	if (argc != 0)
 		usage();
 
-	if (usecs == 0 && !LF_ISSET(DB_LOCK_CONFLICT)) {
+	if (usecs == 0 && !poll) {
 		fprintf(stderr,
 		    "%s: at least one of -t and -w must be specified\n",
 		    progname);
-		exit(1);
+		return (EXIT_FAILURE);
 	}
 
-	/*
-	 * We detect every 100ms (100000 us) when we're running in
-	 * DB_LOCK_CONFLICT mode.
-	 */
+	/* We detect every 100ms (100000 us) when we're polling.  */
 	if (usecs == 0)
 		usecs = 100000;
 
@@ -166,7 +171,7 @@ main(argc, argv)
 			dbenv->errx(dbenv, "running at %.24s", ctime(&now));
 		}
 
-		if ((ret = lock_detect(dbenv, flags, atype, NULL)) != 0) {
+		if ((ret = lock_detect(dbenv, 0, atype, NULL)) != 0) {
 			dbenv->err(dbenv, ret, "lock_detect");
 			goto shutdown;
 		}
@@ -193,15 +198,15 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
 usage()
 {
 	(void)fprintf(stderr,
-    "usage: db_deadlock [-Vvw] [-a o | y] [-h home] [-L file] [-t sec]\n");
-	exit(1);
+"usage: db_deadlock [-Vvw] [-a m | n | o | w | y] [-h home] [-L file] [-t sec]\n");
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -217,6 +222,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

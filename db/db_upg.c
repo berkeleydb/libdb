@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_upg.c,v 11.20 2000/12/12 17:35:30 bostic Exp $";
+static const char revid[] = "$Id: db_upg.c,v 11.22 2001/04/03 15:14:11 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -233,7 +233,7 @@ __db_upgrade(dbp, fname, flags)
 
 err:	if ((t_ret = __os_closehandle(&fh)) != 0 && ret == 0)
 		ret = t_ret;
-	__os_freestr(real_name);
+	__os_freestr(dbenv, real_name);
 
 	/* We're done. */
 	if (dbp->db_feedback != NULL)
@@ -268,7 +268,7 @@ __db_page_pass(dbp, real_name, flags, fl, fhp)
 		return (ret);
 
 	/* Allocate memory for a single page. */
-	if ((ret = __os_malloc(dbenv, dbp->pgsize, NULL, &page)) != 0)
+	if ((ret = __os_malloc(dbenv, dbp->pgsize, &page)) != 0)
 		return (ret);
 
 	/* Walk the file, calling the underlying conversion functions. */
@@ -294,7 +294,7 @@ __db_page_pass(dbp, real_name, flags, fl, fhp)
 		}
 	}
 
-	__os_free(page, dbp->pgsize);
+	__os_free(dbp->dbenv, page, dbp->pgsize);
 	return (ret);
 }
 

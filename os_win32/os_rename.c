@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rename.c,v 1.2 2000/06/13 19:52:19 dda Exp $";
+static const char revid[] = "$Id: os_rename.c,v 1.3 2001/01/25 18:23:00 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"

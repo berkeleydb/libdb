@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: log.h,v 11.19 2001/01/11 18:19:52 bostic Exp $
+ * $Id: log.h,v 11.26 2001/07/05 18:41:03 bostic Exp $
  */
 
 #ifndef _LOG_H_
@@ -65,7 +65,6 @@ struct __db_log {
 	DB_LSN	  c_lsn;		/* Cursor: current LSN. */
 	DBT	  c_dbt;		/* Cursor: return DBT structure. */
 	DB_FH	  c_fh;			/* Cursor: file handle. */
-	FILE	  *c_fp;		/* Cursor: file pointer. */
 	u_int32_t c_off;		/* Cursor: previous record offset. */
 	u_int32_t c_len;		/* Cursor: current record length. */
 	u_int32_t r_file;		/* Cursor: current read file */
@@ -78,17 +77,6 @@ struct __db_log {
 /* These fields are not protected. */
 	DB_ENV	 *dbenv;		/* Reference to error information. */
 	REGINFO	  reginfo;		/* Region information. */
-
-/*
- * These fields are used by XA; since XA forbids threaded execution, these
- * do not have to be protected.
- */
-	void	*xa_info;		/* Committed transaction list that
-					 * has to be carried between calls
-					 * to xa_recover. */
-	DB_LSN	xa_lsn;			/* Position of an XA recovery scan. */
-	DB_LSN	xa_first;		/* LSN to which we need to roll back
-					   for this XA recovery scan. */
 
 #define	DBLOG_RECOVER		0x01	/* We are in recovery. */
 #define	DBLOG_FORCE_OPEN	0x02	/* Force the db open even
@@ -157,6 +145,12 @@ struct __log {
 
 	roff_t	  buffer_off;		/* Log buffer offset. */
 	u_int32_t buffer_size;		/* Log buffer size. */
+
+#ifdef MUTEX_SYSTEM_RESOURCES
+#define	LG_MAINT_SIZE	(sizeof(roff_t) * DB_MAX_HANDLES)
+
+	roff_t	  maint_off;		/* offset of region maintenance info */
+#endif
 };
 
 /*
@@ -181,6 +175,7 @@ struct __fname {
 #define	LOG_CHECKPOINT	1		/* Checkpoint: file name/id dump. */
 #define	LOG_CLOSE	2		/* File close. */
 #define	LOG_OPEN	3		/* File open. */
+#define	LOG_RCLOSE	4		/* File close after recovery. */
 
 #define	CHECK_LSN(redo, cmp, lsn, prev)					\
 	DB_ASSERT(!DB_REDO(redo) || (cmp) >= 0);			\

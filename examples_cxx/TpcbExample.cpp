@@ -1,38 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 11.14 2000/10/27 20:32:01 dda Exp $
+ * $Id: TpcbExample.cpp,v 11.22 2001/05/10 17:14:07 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
-
-#ifdef DB_WIN32
-#include <sys/types.h>
-#include <sys/timeb.h>
-#endif
+#include <time.h>
 
 #include <iostream.h>
 #include <iomanip.h>
@@ -147,7 +127,7 @@ main(int argc, char *argv[])
 	mpool = ntxns = 0;
 	verbose = 0;
 	iflag = 0;
-	seed = (unsigned long)getpid();
+	seed = (unsigned long)time(NULL);
 
 	for (int i = 1; i < argc; ++i) {
 
@@ -216,9 +196,9 @@ main(int argc, char *argv[])
 	history = history == 0 ? HISTORY : history;
 
 	if (verbose)
-		cout << (long)accounts << " Accounts "
-		     << (long)branches << " Branches "
-		     << (long)tellers << " Tellers "
+		cout << (long)accounts << " Accounts, "
+		     << (long)branches << " Branches, "
+		     << (long)tellers << " Tellers, "
 		     << (long)history << " History\n";
 
 	try {
@@ -240,11 +220,11 @@ main(int argc, char *argv[])
 		}
 
 		app.close(0);
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	catch (DbException &dbe) {
 		cerr << "TpcbExample: " << dbe.what() << "\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
 
@@ -253,7 +233,7 @@ invarg(int arg, char *str)
 {
 	cerr << "TpcbExample: invalid argument for -"
 	     << (char)arg << ": " << str << "\n";
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static void
@@ -262,7 +242,7 @@ usage()
 	cerr << "usage: TpcbExample [-fiv] [-a accounts] [-b branches]\n"
 	     << "                   [-c cachesize] [-h home] [-n transactions ]\n"
 	     << "                   [-S seed] [-s history] [-t tellers]\n";
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 TpcbExample::TpcbExample(const char *home, int cachesize,
@@ -275,6 +255,10 @@ TpcbExample::TpcbExample(const char *home, int cachesize,
 	set_errpfx("TpcbExample");
 	(void)set_cachesize(0, cachesize == 0 ?
 			    4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
+
+	if (flags & (DB_TXN_NOSYNC))
+		set_flags(DB_TXN_NOSYNC, 1);
+	flags &= ~(DB_TXN_NOSYNC);
 
 	local_flags = flags | DB_CREATE | DB_INIT_MPOOL;
 	if (!initializing)
@@ -405,7 +389,7 @@ TpcbExample::populateTable(Db *dbp,
 		     dbp->put(NULL, &kdbt, &ddbt, DB_NOOVERWRITE)) != 0) {
 			cerr << "Failure initializing " << msg << " file: "
 			     << strerror(err) << "\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 }
@@ -478,15 +462,6 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 	double gtps, itps;
 	int failed, ifailed, ret, txns;
 	time_t starttime, curtime, lasttime;
-#ifndef DB_WIN32
-	pid_t pid;
-
-	pid = getpid();
-#else
-	int pid;
-
-	pid = 0;
-#endif
 
 	//
 	// Open the database files.
@@ -527,8 +502,7 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 			// We use printf because it provides much simpler
 			// formatting than iostreams.
 			//
-			printf("[%d] %d txns %d failed ", (int)pid,
-			    txns, failed);
+			printf("%d txns %d failed ", txns, failed);
 			printf("%6.2f TPS (gross) %6.2f TPS (interval)\n",
 			   gtps, itps);
 			lasttime = curtime;
@@ -560,7 +534,7 @@ TpcbExample::txn(Db *adb, Db *bdb, Db *tdb, Db *hdb,
 	db_recno_t key;
 	Defrec rec;
 	Histrec hrec;
-	int account, branch, teller;
+	int account, branch, teller, ret;
 
 	Dbt d_dbt;
 	Dbt d_histdbt;
@@ -632,7 +606,9 @@ TpcbExample::txn(Db *adb, Db *bdb, Db *tdb, Db *hdb,
 	    tcurs->close() != 0)
 		goto err;
 
-	if (t->commit(0) != 0)
+	ret = t->commit(0);
+	t = NULL;
+	if (ret != 0)
 		goto err;
 
 	// END TIMING
@@ -662,5 +638,5 @@ void errExit(int err, const char *s)
 		cerr << s << ": ";
 	}
 	cerr << strerror(err) << "\n";
-	exit(1);
+	exit(EXIT_FAILURE);
 }

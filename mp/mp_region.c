@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_region.c,v 11.26 2000/11/30 00:58:41 ubell Exp $";
+static const char revid[] = "$Id: mp_region.c,v 11.33 2001/06/13 01:42:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -157,11 +157,12 @@ __memp_open(dbenv)
 	/* If the region is threaded, allocate a mutex to lock the handles. */
 	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
 		if ((ret = __db_mutex_alloc(
-		    dbenv, dbmp->reginfo, &dbmp->mutexp)) != 0) {
+		    dbenv, dbmp->reginfo, 1, &dbmp->mutexp)) != 0) {
 			goto err;
 		}
-		if ((ret =
-		    __db_mutex_init(dbenv, dbmp->mutexp, 0, MUTEX_THREAD)) != 0)
+		if ((ret = __db_shmutex_init(dbenv, dbmp->mutexp, 0,
+		    MUTEX_THREAD, dbmp->reginfo,
+		    (REGMAINT *)R_ADDR(dbmp->reginfo, mp->maint_off))) != 0)
 			goto err;
 	}
 
@@ -180,12 +181,12 @@ err:	if (dbmp->reginfo != NULL && dbmp->reginfo[0].addr != NULL) {
 			if (dbmp->reginfo[i].id != INVALID_REGION_ID)
 				(void)__db_r_detach(
 				    dbenv, &dbmp->reginfo[i], 0);
-		__os_free(dbmp->reginfo,
+		__os_free(dbenv, dbmp->reginfo,
 		    dbmp->nreg * sizeof(*dbmp->reginfo));
 	}
 	if (dbmp->mutexp != NULL)
 		__db_mutex_free(dbenv, dbmp->reginfo, dbmp->mutexp);
-	__os_free(dbmp, sizeof(*dbmp));
+	__os_free(dbenv, dbmp, sizeof(*dbmp));
 	return (ret);
 }
 
@@ -257,6 +258,13 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	mp->htab = R_OFFSET(reginfo, htab);
 	mp->htab_buckets = htab_buckets;
 
+	/*
+	 * Only the environment creator knows the total cache size, fill in
+	 * those statistics now.
+	 */
+	mp->stat.st_gbytes = dbenv->mp_gbytes;
+	mp->stat.st_bytes = dbenv->mp_bytes;
+
 	return (0);
 
 mem_err:__db_err(dbenv, "Unable to allocate memory for mpool region");
@@ -287,12 +295,12 @@ __memp_close(dbenv)
 	/* Discard DB_MPREGs. */
 	while ((mpreg = LIST_FIRST(&dbmp->dbregq)) != NULL) {
 		LIST_REMOVE(mpreg, q);
-		__os_free(mpreg, sizeof(DB_MPREG));
+		__os_free(dbenv, mpreg, sizeof(DB_MPREG));
 	}
 
 	/* Discard DB_MPOOLFILEs. */
 	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
-		if ((t_ret = memp_fclose(dbmfp)) != 0 && ret == 0)
+		if ((t_ret = __memp_fclose(dbmfp, 1)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* Discard the thread mutex. */
@@ -305,8 +313,8 @@ __memp_close(dbenv)
 		    dbenv, &dbmp->reginfo[i], 0)) != 0 && ret == 0)
 			ret = t_ret;
 
-	__os_free(dbmp->reginfo, dbmp->nreg * sizeof(*dbmp->reginfo));
-	__os_free(dbmp, sizeof(*dbmp));
+	__os_free(dbenv, dbmp->reginfo, dbmp->nreg * sizeof(*dbmp->reginfo));
+	__os_free(dbenv, dbmp, sizeof(*dbmp));
 
 	dbenv->mp_handle = NULL;
 	return (ret);
@@ -328,9 +336,11 @@ __mpool_region_maint(infop)
 	/*
 	 * For mutex maintenance we need one mutex per possible page.
 	 * Compute the maximum number of pages this cache can have.
-	 * Also add in an mpool mutex.
+	 * Also add in an mpool mutex and mutexes for all dbenv and db
+	 * handles.
 	 */
 	numlocks = ((infop->rp->size / DB_MIN_PGSIZE) + 1);
+	numlocks += DB_MAX_HANDLES;
 	s = sizeof(roff_t) * numlocks;
 	return (s);
 }
@@ -347,11 +357,9 @@ __mpool_region_destroy(dbenv, infop)
 	DB_ENV *dbenv;
 	REGINFO *infop;
 {
-	MPOOL *mp;
+	__db_shlocks_destroy(infop, (REGMAINT *)R_ADDR(infop,
+	    ((MPOOL *)R_ADDR(infop, infop->rp->primary))->maint_off));
 
 	COMPQUIET(dbenv, NULL);
-	mp = R_ADDR(infop, infop->rp->primary);
-
-	__db_shlocks_destroy(infop, (REGMAINT *)R_ADDR(infop, mp->maint_off));
-	return;
+	COMPQUIET(infop, NULL);
 }

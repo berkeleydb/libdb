@@ -1,16 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: bt_verify.c,v 1.44 2000/12/06 19:55:44 ubell Exp $
+ * $Id: bt_verify.c,v 1.53 2001/06/12 19:46:36 krinsky Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_verify.c,v 1.44 2000/12/06 19:55:44 ubell Exp $";
+static const char revid[] = "$Id: bt_verify.c,v 1.53 2001/06/12 19:46:36 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -179,7 +179,8 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	 * not be and may still be correct.
 	 */
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -288,7 +289,8 @@ __ram_vrfy_leaf(dbp, vdp, h, pgno, flags)
 	/* Save off record count. */
 	pip->rec_cnt = NUM_ENT(h);
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : 0);
 }
@@ -377,7 +379,8 @@ __bam_vrfy(dbp, vdp, h, pgno, flags)
 			goto err;
 	}
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : 0);
 }
@@ -422,7 +425,7 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 
 	himark = dbp->pgsize;
 	if ((ret =
-	    __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &pagelayout)) != 0)
+	    __os_malloc(dbp->dbenv, dbp->pgsize, &pagelayout)) != 0)
 		goto err;
 	memset(pagelayout, 0, dbp->pgsize);
 	for (i = 0; i < NUM_ENT(h); i++) {
@@ -490,10 +493,11 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 
 	*nentriesp = nentries;
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (pagelayout != NULL)
-		__os_free(pagelayout, dbp->pgsize);
+		__os_free(dbp->dbenv, pagelayout, dbp->pgsize);
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
 
@@ -558,8 +562,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	 * it and the region immediately after it.
 	 */
 	himark = dbp->pgsize;
-	if ((ret = __os_malloc(dbp->dbenv,
-	    dbp->pgsize, NULL, &pagelayout)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &pagelayout)) != 0)
 		goto err;
 	memset(pagelayout, 0, dbp->pgsize);
 	for (i = 0; i < NUM_ENT(h); i++) {
@@ -728,8 +731,8 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 			    bo->pgno == PGNO_INVALID) {
 				isbad = 1;
 				EPRINT((dbp->dbenv,
-				    "Offpage item %lu, page %lu has bad pgno",
-				    (u_long)i, (u_long)pgno));
+			    "Offpage item %lu, page %lu has bad pgno %lu",
+				    (u_long)i, (u_long)pgno, (u_long)bo->pgno));
 				/* Don't save as a child. */
 				break;
 			}
@@ -821,7 +824,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				break;
 			}
 
-	(void)__os_free(pagelayout, dbp->pgsize);
+	(void)__os_free(dbp->dbenv, pagelayout, dbp->pgsize);
 
 	/* Verify HOFFSET. */
 	if ((db_indx_t)himark != HOFFSET(h)) {
@@ -833,7 +836,8 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 err:	if (nentriesp != NULL)
 		*nentriesp = nentries;
 
-	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return ((isbad == 1 && ret == 0) ? DB_VERIFY_BAD : ret);
@@ -1122,22 +1126,24 @@ overflow:		if (!ovflok) {
 						F_SET(pip, VRFY_DUPS_UNSORTED);
 
 					if (freedup1)
-						__os_free(dup1.data, 0);
+						__os_free(dbp->dbenv,
+						    dup1.data, 0);
 					if (freedup2)
-						__os_free(dup2.data, 0);
+						__os_free(dbp->dbenv,
+						    dup2.data, 0);
 				}
 			}
 		}
 	}
 
-err:	if (pip != NULL &&
-	    ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0) && ret == 0)
+err:	if (pip != NULL && ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0) && ret == 0)
 		ret = t_ret;
 
 	if (buf1 != NULL)
-		__os_free(buf1, 0);
+		__os_free(dbp->dbenv, buf1, 0);
 	if (buf2 != NULL)
-		__os_free(buf2, 0);
+		__os_free(dbp->dbenv, buf2, 0);
 
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -1243,12 +1249,12 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 		break;
 	}
 
-err:	if (mip != NULL &&
-	    ((t_ret = __db_vrfy_putpageinfo(vdp, mip)) != 0) && ret == 0)
-		t_ret = ret;
-	if (rip != NULL &&
-	    ((t_ret = __db_vrfy_putpageinfo(vdp, rip)) != 0) && ret == 0)
-		t_ret = ret;
+err:	if (mip != NULL && ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, mip)) != 0) && ret == 0)
+		ret = t_ret;
+	if (rip != NULL && ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, rip)) != 0) && ret == 0)
+		ret = t_ret;
 	return (ret);
 }
 
@@ -1300,7 +1306,7 @@ __bam_vrfy_subtree(dbp,
 	cc = NULL;
 	level = pip->bt_level;
 
-	toplevel = LF_ISSET(ST_TOPLEVEL);
+	toplevel = LF_ISSET(ST_TOPLEVEL) ? 1 : 0;
 	LF_CLR(ST_TOPLEVEL);
 
 	/*
@@ -1443,7 +1449,6 @@ __bam_vrfy_subtree(dbp,
 			}
 		}
 		goto leaf;
-		break;
 	case P_IBTREE:
 	case P_IRECNO:
 		/* We handle these below. */
@@ -1662,7 +1667,7 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	if (LF_ISSET(ST_RECNUM) && nrecs != pip->rec_cnt && toplevel) {
 		isbad = 1;
 		EPRINT((dbp->dbenv,
-		    "Bad record count on page %lu: got %lu, expected %lu",
+		    "Bad record count on page %lu: has %lu records, claims %lu",
 		    (u_long)pgno, (u_long)nrecs, (u_long)pip->rec_cnt));
 	}
 
@@ -1682,7 +1687,8 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 
 err:	if (h != NULL && (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (cc != NULL && ((t_ret = __db_vrfy_ccclose(cc)) != 0) && ret == 0)
 		ret = t_ret;
@@ -1778,7 +1784,7 @@ __bam_vrfy_treeorder(dbp, pgno, h, lp, rp, func, flags)
 			    (u_long)PGNO(h)));
 
 		if (dbt.data != lp->data)
-			__os_free(dbt.data, 0);
+			__os_free(dbp->dbenv, dbt.data, 0);
 		if (ret != 0)
 			return (ret);
 	}
@@ -1813,7 +1819,7 @@ __bam_vrfy_treeorder(dbp, pgno, h, lp, rp, func, flags)
 			    (u_long)PGNO(h)));
 
 		if (dbt.data != rp->data)
-			__os_free(dbt.data, 0);
+			__os_free(dbp->dbenv, dbt.data, 0);
 	}
 
 	return (ret);
@@ -1866,12 +1872,12 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	 * Allocate a buffer for overflow items.  Start at one page;
 	 * __db_safe_goff will realloc as needed.
 	 */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &ovflbuf)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &ovflbuf)) != 0)
 		return (ret);
 
 	if (LF_ISSET(DB_AGGRESSIVE)) {
 		if ((ret =
-		    __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &pgmap)) != 0)
+		    __os_malloc(dbp->dbenv, dbp->pgsize, &pgmap)) != 0)
 			goto err;
 		memset(pgmap, 0, dbp->pgsize);
 	}
@@ -2024,8 +2030,8 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 		err_ret = ret;
 
 err:	if (pgmap != NULL)
-		__os_free(pgmap, 0);
-	__os_free(ovflbuf, 0);
+		__os_free(dbp->dbenv, pgmap, 0);
+	__os_free(dbp->dbenv, ovflbuf, 0);
 
 	/* Mark this page as done. */
 	if ((t_ret = __db_salvage_markdone(vdp, pgno)) != 0)
@@ -2065,6 +2071,7 @@ __bam_salvage_walkdupint(dbp, vdp, h, key, handle, callback, flags)
 			if ((t_ret = __db_salvage_duptree(dbp,
 			    vdp, bi->pgno, key, handle, callback, flags)) != 0)
 				ret = t_ret;
+			break;
 		case P_IRECNO:
 			ri = GET_RINTERNAL(h, i);
 			if ((t_ret = __db_salvage_duptree(dbp,

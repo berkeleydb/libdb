@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_open.c,v 11.42 2000/11/30 00:58:28 ubell Exp $";
+static const char revid[] = "$Id: bt_open.c,v 11.49 2001/06/01 18:06:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -80,7 +80,6 @@ __bam_open(dbp, name, base_pgno, flags)
 	t = dbp->bt_internal;
 
 	/* Initialize the remaining fields/methods of the DB. */
-	dbp->del = __bam_delete;
 	dbp->key_range = __bam_key_range;
 	dbp->stat = __bam_stat;
 
@@ -324,7 +323,12 @@ again:	if (meta->dbmeta.magic != 0) {
 		t->bt_meta = base_pgno;
 		t->bt_root = meta->root;
 
-		(void)memp_fput(dbp->mpf, meta, 0);
+		/* We must initialize last_pgno, it could be stale. */
+		if (!LF_ISSET(DB_RDONLY) && dbp->meta_pgno == PGNO_BASE_MD) {
+			__memp_lastpgno(dbp->mpf, &meta->dbmeta.last_pgno);
+			(void)memp_fput(dbp->mpf, meta, DB_MPOOL_DIRTY);
+		} else
+			(void)memp_fput(dbp->mpf, meta, 0);
 		meta = NULL;
 		goto done;
 	}
@@ -369,6 +373,7 @@ again:	if (meta->dbmeta.magic != 0) {
 	meta->dbmeta.pagesize = dbp->pgsize;
 	meta->dbmeta.type = P_BTREEMETA;
 	meta->dbmeta.free = PGNO_INVALID;
+	meta->dbmeta.last_pgno = base_pgno;
 	if (F_ISSET(dbp, DB_AM_DUP))
 		F_SET(&meta->dbmeta, BTM_DUP);
 	if (F_ISSET(dbp, DB_RE_FIXEDLEN))

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_perm,v 1.9 2001/01/24 15:55:38 bostic Exp $
+#	$Id: s_perm,v 1.13 2001/05/14 19:53:01 bostic Exp $
 
 echo 'Updating Berkeley DB source tree permissions...'
 
@@ -14,11 +14,6 @@ run()
 	fi
 }
 
-run dist/build/chk.def 0555
-run dist/build/chk.define 0555
-run dist/build/chk.offt 0555
-run dist/build/chk.srcfiles 0555
-run dist/build/chk.tags 0555
 run dist/config.guess 0555
 run dist/config.sub 0555
 run dist/configure 0555

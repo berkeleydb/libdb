@@ -1,11 +1,11 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test088.tcl,v 11.4 2000/12/11 17:24:55 sue Exp $
+# $Id: test088.tcl,v 11.6 2001/05/17 20:37:09 bostic Exp $
 #
-# Test088: Cursor stability across btree splits with very deep trees. 
+# Test088: Cursor stability across btree splits with very deep trees.
 # (Variant of test048, SR #2514.)
 proc test088 { method args } {
 	global errorCode alphabet
@@ -48,7 +48,7 @@ proc test088 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set ps 512 
+	set ps 512
 	set oflags "-create -pagesize $ps -truncate -mode 0644 $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE

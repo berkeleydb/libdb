@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: region.h,v 11.13 2000/11/15 19:25:37 sue Exp $
+ * $Id: region.h,v 11.18 2001/05/16 17:08:54 bostic Exp $
  */
 
 /*
@@ -154,7 +154,7 @@ typedef struct __db_reg_env {
 	 */
 	u_int32_t  magic;		/* Valid region magic number. */
 
-	int	   panic;		/* Environment is dead. */
+	int	   envpanic;		/* Environment is dead. */
 
 	int	   majver;		/* Major DB version number. */
 	int	   minver;		/* Minor DB version number. */
@@ -273,19 +273,21 @@ typedef struct __db_regmaint_t {
 #define	PANIC_CHECK(dbenv)						\
 	if (DB_GLOBAL(db_panic) &&					\
 	    (dbenv)->reginfo != NULL && ((REGENV *)			\
-	    ((REGINFO *)(dbenv)->reginfo)->primary)->panic != 0)	\
+	    ((REGINFO *)(dbenv)->reginfo)->primary)->envpanic != 0)	\
 		return (DB_RUNRECOVERY);
 
 /*
- * All regions are created on 8K boundaries out of sheer paranoia, so that
- * we don't make some underlying VM unhappy.
+ * All regions are created on 8K boundaries out of sheer paranoia, so we
+ * don't make some underlying VM unhappy. Make sure we don't overflow or
+ * underflow.
  */
-#define	OS_ROUNDOFF(i, s) {						\
-	(i) += (s) - 1;							\
-	(i) -= (i) % (s);						\
-}
 #define	OS_VMPAGESIZE		(8 * 1024)
-#define	OS_VMROUNDOFF(i)	OS_ROUNDOFF(i, OS_VMPAGESIZE)
+#define	OS_VMROUNDOFF(i) {						\
+	if ((i) <							\
+	    (UINT32_T_MAX - OS_VMPAGESIZE) + 1 || (i) < OS_VMPAGESIZE)	\
+		(i) += OS_VMPAGESIZE - 1;				\
+	(i) -= (i) % OS_VMPAGESIZE;					\
+}
 
 #if defined(__cplusplus)
 }

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_lock.c,v 11.21 2001/01/11 18:19:55 bostic Exp $";
+static const char revid[] = "$Id: tcl_lock.c,v 11.27 2001/07/03 19:04:11 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,16 +56,20 @@ tcl_LockDetect(interp, objc, objv, envp)
 	DB_ENV *envp;			/* Environment pointer */
 {
 	static char *ldopts[] = {
-		"-lock_conflict",
 		"default",
+		"maxlocks",
+		"minlocks",
+		"minwrites",
 		"oldest",
 		"random",
 		"youngest",
 		 NULL
 	};
 	enum ldopts {
-		LD_CONFLICT,
 		LD_DEFAULT,
+		LD_MAXLOCKS,
+		LD_MINLOCKS,
+		LD_MINWRITES,
 		LD_OLDEST,
 		LD_RANDOM,
 		LD_YOUNGEST
@@ -86,6 +90,18 @@ tcl_LockDetect(interp, objc, objv, envp)
 			FLAG_CHECK(policy);
 			policy = DB_LOCK_DEFAULT;
 			break;
+		case LD_MAXLOCKS:
+			FLAG_CHECK(policy);
+			policy = DB_LOCK_MAXLOCKS;
+			break;
+		case LD_MINWRITES:
+			FLAG_CHECK(policy);
+			policy = DB_LOCK_MINWRITE;
+			break;
+		case LD_MINLOCKS:
+			FLAG_CHECK(policy);
+			policy = DB_LOCK_MINLOCKS;
+			break;
 		case LD_OLDEST:
 			FLAG_CHECK(policy);
 			policy = DB_LOCK_OLDEST;
@@ -97,9 +113,6 @@ tcl_LockDetect(interp, objc, objv, envp)
 		case LD_RANDOM:
 			FLAG_CHECK(policy);
 			policy = DB_LOCK_RANDOM;
-			break;
-		case LD_CONFLICT:
-			flag |= DB_LOCK_CONFLICT;
 			break;
 		}
 	}
@@ -152,9 +165,8 @@ tcl_LockGet(interp, objc, objv, envp)
 	memset(&obj, 0, sizeof(obj));
 
 	if ((result =
-	    Tcl_GetIntFromObj(interp, objv[objc-2], &itmp)) != TCL_OK)
+	    _GetUInt32(interp, objv[objc-2], &lockid)) != TCL_OK)
 		return (result);
-	lockid = itmp;
 
 	/*
 	 * XXX
@@ -224,7 +236,7 @@ tcl_LockStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = lock_stat(envp, &sp, NULL);
+	ret = lock_stat(envp, &sp);
 	result = _ReturnSetup(interp, ret, "lock stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -255,7 +267,7 @@ tcl_LockStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(sp, sizeof(*sp));
+	__os_free(envp, sp, sizeof(*sp));
 	return (result);
 }
 
@@ -319,7 +331,7 @@ lock_Cmd(clientData, interp, objc, objv)
 		result = _ReturnSetup(interp, ret, "lock put");
 		(void)Tcl_DeleteCommand(interp, lkip->i_name);
 		_DeleteInfo(lkip);
-		__os_free(lock, sizeof(DB_LOCK));
+		__os_free(env, lock, sizeof(DB_LOCK));
 		break;
 	}
 	return (result);
@@ -355,7 +367,6 @@ tcl_LockVec(interp, objc, objv, envp)
 	DB_LOCKREQ list;
 	DBT obj;
 	Tcl_Obj **myobjv, *res, *thisop;
-	db_lockmode_t mode;
 	u_int32_t flag, lockid;
 	int i, itmp, myobjc, optindex, result, ret;
 	char *lockname, msg[MSG_SIZE], newname[MSG_SIZE];
@@ -363,7 +374,7 @@ tcl_LockVec(interp, objc, objv, envp)
 	result = TCL_OK;
 	memset(newname, 0, MSG_SIZE);
 	flag = 0;
-	mode = 0;
+
 	/*
 	 * If -nowait is given, it MUST be first arg.
 	 */
@@ -385,10 +396,9 @@ tcl_LockVec(interp, objc, objv, envp)
 	/*
 	 * Our next arg MUST be the locker ID.
 	 */
-	result = Tcl_GetIntFromObj(interp, objv[i++], &itmp);
+	result = _GetUInt32(interp, objv[i++], &lockid);
 	if (result != TCL_OK)
 		return (result);
-	lockid = itmp;
 
 	/*
 	 * All other remaining args are operation tuples.
@@ -581,7 +591,7 @@ _LockPutInfo(interp, op, lock, lockid, objp)
 			found = 1;
 		if (found) {
 			(void)Tcl_DeleteCommand(interp, p->i_name);
-			__os_free(p->i_lock, sizeof(DB_LOCK));
+			__os_free(NULL, p->i_lock, sizeof(DB_LOCK));
 			_DeleteInfo(p);
 		}
 	}
@@ -615,7 +625,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 		    TCL_STATIC);
 		return (TCL_ERROR);
 	}
-	ret = __os_malloc(envp, sizeof(DB_LOCK), NULL, &lock);
+	ret = __os_malloc(envp, sizeof(DB_LOCK), &lock);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
@@ -624,7 +634,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	ret = lock_get(envp, lockid, flag, objp, mode, lock);
 	result = _ReturnSetup(interp, ret, "lock get");
 	if (result == TCL_ERROR) {
-		__os_free(lock, sizeof(DB_LOCK));
+		__os_free(envp, lock, sizeof(DB_LOCK));
 		_DeleteInfo(ip);
 		return (result);
 	}
@@ -632,12 +642,12 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	 * Success.  Set up return.  Set up new info
 	 * and command widget for this lock.
 	 */
-	ret = __os_malloc(envp, objp->size, NULL, &ip->i_lockobj.data);
+	ret = __os_malloc(envp, objp->size, &ip->i_lockobj.data);
 	if (ret != 0) {
 		Tcl_SetResult(interp, "Could not duplicate obj",
 		    TCL_STATIC);
 		(void)lock_put(envp, lock);
-		__os_free(lock, sizeof(DB_LOCK));
+		__os_free(envp, lock, sizeof(DB_LOCK));
 		_DeleteInfo(ip);
 		result = TCL_ERROR;
 		goto error;

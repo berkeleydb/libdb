@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test073.tcl,v 11.17 2000/12/11 17:24:55 sue Exp $
+# $Id: test073.tcl,v 11.19 2001/05/17 20:37:08 bostic Exp $
 #
 # DB Test 73: Test of cursor stability on duplicate pages.
 # Does the following:
@@ -42,7 +42,6 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	cleanup $testdir $env
 
 	set key "the key"
-
 
 	puts -nonewline "Test0$tnum $omethod ($args): "
 	if { [is_record_based $method] || [is_rbtree $method] } {

@@ -1,22 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_btrec.c,v 11.8 2000/05/22 15:17:03 sue Exp $
+ * $Id: ex_btrec.c,v 11.13 2001/05/10 17:14:04 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
 
 #include <db.h>
 
@@ -28,8 +23,7 @@
 #define	DATABASE	"access.db"
 #define	WORDLIST	"../test/wordlist"
 #define	ERROR_RETURN	1
-int	main __P((int, char *[]));
-void	usage __P((char *));
+int	main __P((void));
 #endif
 
 int	ex_btrec __P((void));
@@ -37,32 +31,9 @@ void	show __P((char *, DBT *, DBT *));
 
 #ifndef HAVE_VXWORKS
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main()
 {
-	extern char *optarg;
-	extern int optind;
-	int ch;
-
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage(argv[0]);
-		}
-	argc -= optind;
-	argv += optind;
-
-	return (ex_btrec());
-}
-
-void
-usage(progname)
-	char *progname;
-{
-	(void)fprintf(stderr, "usage: %s\n", progname);
-	exit(1);
+	return (ex_btrec() == ERROR_RETURN ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 #endif
 
@@ -88,7 +59,7 @@ ex_btrec()
 	}
 
 	/* Remove the previous database. */
-	(void)unlink(DATABASE);
+	(void)remove(DATABASE);
 
 	/* Create and initialize database object, open the database. */
 	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
@@ -144,7 +115,7 @@ ex_btrec()
 	(void)fclose(fp);
 
 	/* Print out the number of records in the database. */
-	if ((ret = dbp->stat(dbp, &statp, NULL, 0)) != 0) {
+	if ((ret = dbp->stat(dbp, &statp, 0)) != 0) {
 		dbp->err(dbp, ret, "DB->stat");
 		goto err1;
 	}

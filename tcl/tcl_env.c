@@ -1,20 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_env.c,v 11.33 2001/01/11 18:19:55 bostic Exp $";
+static const char revid[] = "$Id: tcl_env.c,v 11.39 2001/06/08 13:47:09 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 #include <tcl.h>
 #endif
 
@@ -65,6 +66,7 @@ env_Cmd(clientData, interp, objc, objv)
 #endif
 		"txn",
 		"txn_checkpoint",
+		"txn_recover",
 		"txn_stat",
 		"verbose",
 		NULL
@@ -95,6 +97,7 @@ env_Cmd(clientData, interp, objc, objv)
 #endif
 		ENVTXN,
 		ENVTXNCKP,
+		ENVTXNRECOVER,
 		ENVTXNSTAT,
 		ENVVERB
 	};
@@ -147,11 +150,11 @@ env_Cmd(clientData, interp, objc, objv)
 		 * this function.  Set it to NULL to make sure no
 		 * one tries to use it later.
 		 */
-		_EnvInfoDelete(interp, envip);
-		envip = NULL;
 		_debug_check();
 		ret = envp->close(envp, 0);
 		result = _ReturnSetup(interp, ret, "env close");
+		_EnvInfoDelete(interp, envip);
+		envip = NULL;
 		break;
 	case ENVLKDETECT:
 		result = tcl_LockDetect(interp, objc, objv, envp);
@@ -220,6 +223,9 @@ env_Cmd(clientData, interp, objc, objv)
 		break;
 	case ENVTXNCKP:
 		result = tcl_TxnCheckpoint(interp, objc, objv, envp);
+		break;
+	case ENVTXNRECOVER:
+		result = tcl_TxnRecover(interp, objc, objv, envp, envip);
 		break;
 	case ENVTXNSTAT:
 		result = tcl_TxnStat(interp, objc, objv, envp);
@@ -391,8 +397,8 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 			goto error;
 		}
 		if (server != NULL) {
-			ret = e->set_server(e, server, 0, 0, 0);
-			result = _ReturnSetup(interp, ret, "set_server");
+			ret = e->set_rpc_server(e, NULL, server, 0, 0, 0);
+			result = _ReturnSetup(interp, ret, "set_rpc_server");
 			if (result != TCL_OK)
 				goto error;
 		}
@@ -585,23 +591,23 @@ tcl_EnvTest(interp, objc, objv, envp)
 	};
 	static char *envtestat[] = {
 		"none",
+		"predestroy",
 		"preopen",
-		"prerename",
+		"postdestroy",
 		"postlog",
 		"postlogmeta",
 		"postopen",
-		"postrename",
 		"postsync",
 		NULL
 	};
 	enum envtestat {
 		ENVTEST_NONE,
+		ENVTEST_PREDESTROY,
 		ENVTEST_PREOPEN,
-		ENVTEST_PRERENAME,
+		ENVTEST_POSTDESTROY,
 		ENVTEST_POSTLOG,
 		ENVTEST_POSTLOGMETA,
 		ENVTEST_POSTOPEN,
-		ENVTEST_POSTRENAME,
 		ENVTEST_POSTSYNC
 	};
 	int *loc, optindex, result, testval;
@@ -648,8 +654,8 @@ tcl_EnvTest(interp, objc, objv, envp)
 	case ENVTEST_PREOPEN:
 		testval = DB_TEST_PREOPEN;
 		break;
-	case ENVTEST_PRERENAME:
-		testval = DB_TEST_PRERENAME;
+	case ENVTEST_PREDESTROY:
+		testval = DB_TEST_PREDESTROY;
 		break;
 	case ENVTEST_POSTLOG:
 		testval = DB_TEST_POSTLOG;
@@ -660,8 +666,8 @@ tcl_EnvTest(interp, objc, objv, envp)
 	case ENVTEST_POSTOPEN:
 		testval = DB_TEST_POSTOPEN;
 		break;
-	case ENVTEST_POSTRENAME:
-		testval = DB_TEST_POSTRENAME;
+	case ENVTEST_POSTDESTROY:
+		testval = DB_TEST_POSTDESTROY;
 		break;
 	case ENVTEST_POSTSYNC:
 		testval = DB_TEST_POSTSYNC;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -36,7 +36,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: strerror.c,v 11.4 2000/02/14 02:59:41 bostic Exp $";
+static const char revid[] = "$Id: strerror.c,v 11.5 2001/01/25 18:22:37 bostic Exp $";
 #endif /* not lint */
 
 /*

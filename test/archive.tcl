@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: archive.tcl,v 11.14 2000/10/27 13:23:55 sue Exp $
+# $Id: archive.tcl,v 11.15 2001/01/25 18:23:03 bostic Exp $
 #
 # Options are:
 # -checkrec <checkpoint frequency"

@@ -1,21 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_access.c,v 11.7 2000/05/22 15:17:03 sue Exp $
+ * $Id: ex_access.c,v 11.11 2001/05/10 17:14:04 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
 
 #include <db.h>
 
@@ -26,40 +21,16 @@
 #else
 #define	DATABASE	"access.db"
 #define	ERROR_RETURN	1
-int	main __P((int, char *[]));
-void	usage __P((char *));
+int	main __P((void));
 #endif
 
 int	ex_access __P((void));
 
 #ifndef HAVE_VXWORKS
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main()
 {
-	extern char *optarg;
-	extern int optind;
-	int ch;
-
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage(argv[0]);
-		}
-	argc -= optind;
-	argv += optind;
-
-	return (ex_access());
-}
-
-void
-usage(progname)
-	char *progname;
-{
-	(void)fprintf(stderr, "usage: %s\n", progname);
-	exit(1);
+	return (ex_access() == ERROR_RETURN ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 #endif
 
@@ -75,7 +46,7 @@ ex_access()
 	const char *progname = "ex_access";		/* Program name. */
 
 	/* Remove the previous database. */
-	(void)unlink(DATABASE);
+	(void)remove(DATABASE);
 
 	/* Create and initialize database object, open the database. */
 	if ((ret = db_create(&dbp, NULL, 0)) != 0) {

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_win32,v 1.9 2000/09/20 15:29:54 bostic Exp $
+#	$Id: s_win32,v 1.14 2001/05/27 14:08:20 bostic Exp $
 #
 # Build Windows/32 include files.
 
@@ -7,15 +7,14 @@ msgc="/* DO NOT EDIT: automatically built by dist/s_win32. */"
 
 . RELEASE
 
-t=/tmp/__db_$$
-rm -f $t
+s=/tmp/__db_a$$
+t=/tmp/__db_b$$
+rm -f $s $t
 
-trap 'rm -f $t ; exit 1' 1 2 3 13 15
+trap 'rm -f $s $t ; exit 1' 1 2 3 13 15
 
 f=../build_win32/db.h
-echo "Building $f"
-rm -f $f
-cat <<ENDOFSEDTEXT > $t
+cat <<ENDOFSEDTEXT > $s
 s/@u_int8_decl@/typedef unsigned char u_int8_t;/
 s/@int16_decl@/typedef short int16_t;/
 s/@u_int16_decl@/typedef unsigned short u_int16_t;/
@@ -33,35 +32,45 @@ s/@u_int_decl@/typedef unsigned int u_int;/
 	a\\
 	#endif
 }
-s/@ssize_t_decl@/typedef int ssize_t;/
+/@ssize_t_decl@/{
+	i\\
+	#if defined(_WIN64) || defined(_M_ALPHA)\\
+	typedef __int64 ssize_t;\\
+	#else\\
+	typedef int ssize_t;\\
+	#endif
+	d
+}
 s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/
 s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
 ENDOFSEDTEXT
-(echo "$msgc" && sed -f $t ../include/db.src) > $f
-chmod 444 $f
+(echo "$msgc" &&
+    sed -f $s ../include/db.in && 
+    cat ../include_auto/rpc_defs.in &&
+    cat ../include_auto/global_ext.in) > $t
+cmp $t $f > /dev/null 2>&1 || 
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 f=../build_win32/db_int.h
-echo "Building $f"
-rm -f $f
-cat <<ENDOFSEDTEXT > $t
+cat <<ENDOFSEDTEXT > $s
 s/\(PATH_SEPARATOR[^"]*"\)\/"/\1\\\\\\\\\\/:\"/
 s/@db_align_t_decl@/typedef unsigned long db_align_t;/
 s/@db_alignp_t_decl@/typedef unsigned long db_alignp_t;/
 ENDOFSEDTEXT
-(echo "$msgc" && sed -f $t ../include/db_int.src) > $f
-chmod 444 $f
+(echo "$msgc" && sed -f $s ../include/db_int.in) > $t
+cmp $t $f > /dev/null 2>&1 || 
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 f=../build_win32/libdb.rc
-echo "Building $f"
-rm -f $f
-cat <<ENDOFSEDTEXT > $t
+cat <<ENDOFSEDTEXT > $s
 s/%MAJOR%/$DB_VERSION_MAJOR/
 s/%MINOR%/$DB_VERSION_MINOR/
 s/%PATCH%/$DB_VERSION_PATCH/
 ENDOFSEDTEXT
-sed -f $t ../build_win32/libdbrc.src > $f
-chmod 444 $f
+sed -f $s ../build_win32/libdbrc.src > $t
+cmp $t $f > /dev/null 2>&1 || 
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
-rm -f $t
+rm -f $s $t

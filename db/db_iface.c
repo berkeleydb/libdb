@@ -1,20 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_iface.c,v 11.34 2001/01/11 18:19:51 bostic Exp $";
+static const char revid[] = "$Id: db_iface.c,v 11.53 2001/07/02 01:05:37 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -106,6 +104,9 @@ __db_cdelchk(dbp, flags, isrdonly, isvalid)
 	switch (flags) {
 	case 0:
 		break;
+	case DB_UPDATE_SECONDARY:
+		DB_ASSERT(F_ISSET(dbp, DB_AM_SECONDARY));
+		break;
 	default:
 		return (__db_ferr(dbp->dbenv, "DBcursor->c_del", 0));
 	}
@@ -130,7 +131,7 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	u_int32_t flags;
 	int isvalid;
 {
-	int ret;
+	int dirty, multi, ret;
 
 	/*
 	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
@@ -140,33 +141,52 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	 * If this changes, confirm that DB does not itself set the DB_RMW
 	 * flag in a path where CDB may have been configured.
 	 */
-	if (LF_ISSET(DB_RMW)) {
+	dirty = 0;
+	if (LF_ISSET(DB_DIRTY_READ | DB_RMW)) {
 		if (!LOCKING_ON(dbp->dbenv)) {
 			__db_err(dbp->dbenv,
-			    "the DB_RMW flag requires locking");
+		    "the DB_DIRTY_READ and DB_RMW flags require locking");
 			return (EINVAL);
 		}
-		LF_CLR(DB_RMW);
+		if (LF_ISSET(DB_DIRTY_READ))
+			dirty = 1;
+		LF_CLR(DB_DIRTY_READ | DB_RMW);
+	}
+
+	multi = 0;
+	if (LF_ISSET(DB_MULTIPLE | DB_MULTIPLE_KEY)) {
+		multi = 1;
+		if (LF_ISSET(DB_MULTIPLE) && LF_ISSET(DB_MULTIPLE_KEY))
+			goto multi_err;
+		LF_CLR(DB_MULTIPLE | DB_MULTIPLE_KEY);
 	}
 
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case DB_CONSUME:
 	case DB_CONSUME_WAIT:
+		if (dirty) {
+			__db_err(dbp->dbenv,
+    "DB_DIRTY_READ is not supported with DB_CONSUME or DB_CONSUME_WAIT");
+			return (EINVAL);
+		}
 		if (dbp->type != DB_QUEUE)
 			goto err;
 		break;
 	case DB_CURRENT:
 	case DB_FIRST:
 	case DB_GET_BOTH:
-	case DB_LAST:
 	case DB_NEXT:
 	case DB_NEXT_DUP:
 	case DB_NEXT_NODUP:
-	case DB_PREV:
-	case DB_PREV_NODUP:
 	case DB_SET:
 	case DB_SET_RANGE:
+		break;
+	case DB_LAST:
+	case DB_PREV:
+	case DB_PREV_NODUP:
+		if (multi)
+multi_err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 1));
 		break;
 	case DB_GET_BOTHC:
 		if (dbp->type == DB_QUEUE)
@@ -189,6 +209,18 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 		return (ret);
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);
+
+	if (multi && !F_ISSET(data, DB_DBT_USERMEM)) {
+		__db_err(dbp->dbenv,
+		    "DB_MULTIPLE(_KEY) requires that DB_DBT_USERMEM be set.");
+		return (EINVAL);
+	}
+	if (multi &&
+	    (F_ISSET(key, DB_DBT_PARTIAL) || F_ISSET(data, DB_DBT_PARTIAL))) {
+		__db_err(dbp->dbenv,
+		    "DB_DBT_PARTIAL forbidden with DB_MULTIPLE(_KEY)");
+		return (EINVAL);
+	}
 
 	/*
 	 * The cursor must be initialized for DB_CURRENT or DB_NEXT_DUP,
@@ -222,6 +254,17 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 	/* Check for changes to a read-only tree. */
 	if (isrdonly)
 		return (__db_rdonly(dbp->dbenv, "c_put"));
+
+	/* Check for puts on a secondary. */
+	if (F_ISSET(dbp, DB_AM_SECONDARY)) {
+		if (flags == DB_UPDATE_SECONDARY)
+			flags = DB_KEYLAST;
+		else {
+			__db_err(dbp->dbenv,
+		    "DBcursor->c_put() forbidden on secondary indices");
+			return (EINVAL);
+		}
+	}
 
 	/* Check for invalid function flags. */
 	switch (flags) {
@@ -259,8 +302,6 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 		/* FALLTHROUGH */
 	case DB_KEYFIRST:
 	case DB_KEYLAST:
-		if (dbp->type == DB_QUEUE || dbp->type == DB_RECNO)
-			goto err;
 		key_flags = 1;
 		break;
 	default:
@@ -282,6 +323,132 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_put", 0));
 		return (0);
 
 	return (__db_curinval(dbp->dbenv));
+}
+
+/*
+ * __db_pgetchk --
+ *	DB->pget flag check.
+ *
+ * PUBLIC: int __db_pgetchk __P((const DB *, const DBT *, DBT *, DBT *,
+ * PUBLIC:	u_int32_t));
+ */
+int
+__db_pgetchk(dbp, skey, pkey, data, flags)
+	const DB *dbp;
+	const DBT *skey;
+	DBT *pkey, *data;
+	u_int32_t flags;
+{
+	int ret;
+	u_int32_t save_flags;
+
+	save_flags = flags;
+
+	if (!F_ISSET(dbp, DB_AM_SECONDARY)) {
+		__db_err(dbp->dbenv,
+		    "DB->pget() may only be used on secondary indices");
+		return (EINVAL);
+	}
+
+	if (LF_ISSET(DB_MULTIPLE | DB_MULTIPLE_KEY)) {
+		__db_err(dbp->dbenv,
+	"DB_MULTIPLE and DB_MULTIPLE_KEY may not be used on secondary indices");
+		return (EINVAL);
+	}
+
+	/* DB_CONSUME makes no sense on a secondary index. */
+	LF_CLR(DB_RMW);
+	switch (flags) {
+	case DB_CONSUME:
+	case DB_CONSUME_WAIT:
+		return (__db_ferr(dbp->dbenv, "DB->pget", 0));
+	default:
+		/* __db_getchk will catch the rest. */
+		break;
+	}
+
+	/*
+	 * We allow the pkey field to be NULL, so that we can make the
+	 * two-DBT get calls into wrappers for the three-DBT ones.
+	 */
+	if (pkey != NULL &&
+	    (ret = __dbt_ferr(dbp, "primary key", pkey, 1)) != 0)
+		return (ret);
+
+	/* But the pkey field can't be NULL if we're doing a DB_GET_BOTH. */
+	if (pkey == NULL && flags == DB_GET_BOTH) {
+		__db_err(dbp->dbenv,
+    "A primary key must be specified to use DB_GET_BOTH on a secondary index");
+	}
+
+	return (__db_getchk(dbp, skey, data, save_flags));
+}
+
+/*
+ * __db_cpgetchk --
+ *	Secondary-index cursor get argument checking routine.
+ *
+ * PUBLIC: int __db_cpgetchk __P((const DB *,
+ * PUBLIC:     DBT *, DBT *, DBT *, u_int32_t, int));
+ */
+int
+__db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
+	const DB *dbp;
+	DBT *skey, *pkey, *data;
+	u_int32_t flags;
+	int isvalid;
+{
+	int ret;
+	u_int32_t save_flags;
+
+	save_flags = flags;
+
+	if (!F_ISSET(dbp, DB_AM_SECONDARY)) {
+		__db_err(dbp->dbenv,
+		    "DBC->c_pget() may only be used on secondary indices");
+		return (EINVAL);
+	}
+
+	if (LF_ISSET(DB_MULTIPLE | DB_MULTIPLE_KEY)) {
+		__db_err(dbp->dbenv,
+	"DB_MULTIPLE and DB_MULTIPLE_KEY may not be used on secondary indices");
+		return (EINVAL);
+	}
+
+	LF_CLR(DB_RMW);
+	switch (flags) {
+	case DB_CONSUME:
+	case DB_CONSUME_WAIT:
+		/* DB_CONSUME makes no sense on a secondary index. */
+		return (__db_ferr(dbp->dbenv, "DBC->c_pget", 0));
+	case DB_GET_BOTH:
+		/* DB_GET_BOTH is "get both the primary and the secondary". */
+		if (pkey == NULL) {
+			__db_err(dbp->dbenv,
+		    "DB_GET_BOTH requires both a secondary and a primary key");
+			return (EINVAL);
+		}
+		/* FALLTHROUGH */
+	default:
+		/* __db_cgetchk will catch the rest. */
+		break;
+	}
+
+	/*
+	 * We allow the pkey field to be NULL, so that we can make the
+	 * two-DBT get calls into wrappers for the three-DBT ones.
+	 */
+	if (pkey != NULL &&
+	    (ret = __dbt_ferr(dbp, "primary key", pkey, 0)) != 0)
+		return (ret);
+
+	/* But the pkey field can't be NULL if we're doing a DB_GET_BOTH. */
+	if (pkey == NULL && flags == DB_GET_BOTH) {
+		__db_err(dbp->dbenv,
+    "A primary key must be specified to use DB_GET_BOTH on a secondary index");
+	}
+
+	return (__db_cgetchk(dbp, skey, data, save_flags, isvalid));
 }
 
 /*
@@ -350,7 +517,7 @@ __db_getchk(dbp, key, data, flags)
 	DBT *data;
 	u_int32_t flags;
 {
-	int ret;
+	int dirty, multi, ret;
 
 	/*
 	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
@@ -360,13 +527,24 @@ __db_getchk(dbp, key, data, flags)
 	 * If this changes, confirm that DB does not itself set the DB_RMW
 	 * flag in a path where CDB may have been configured.
 	 */
-	if (LF_ISSET(DB_RMW)) {
+	dirty = 0;
+	if (LF_ISSET(DB_DIRTY_READ | DB_RMW)) {
 		if (!LOCKING_ON(dbp->dbenv)) {
 			__db_err(dbp->dbenv,
-			    "the DB_RMW flag requires locking");
+		    "the DB_DIRTY_READ and DB_RMW flags require locking");
 			return (EINVAL);
 		}
-		LF_CLR(DB_RMW);
+		if (LF_ISSET(DB_DIRTY_READ))
+			dirty = 1;
+		LF_CLR(DB_DIRTY_READ | DB_RMW);
+	}
+
+	multi = 0;
+	if (LF_ISSET(DB_MULTIPLE | DB_MULTIPLE_KEY)) {
+		if (LF_ISSET(DB_MULTIPLE_KEY))
+			goto multi_err;
+		multi = LF_ISSET(DB_MULTIPLE) ? 1 : 0;
+		LF_CLR(DB_MULTIPLE);
 	}
 
 	/* Check for invalid function flags. */
@@ -380,18 +558,42 @@ __db_getchk(dbp, key, data, flags)
 		break;
 	case DB_CONSUME:
 	case DB_CONSUME_WAIT:
+		if (dirty) {
+			__db_err(dbp->dbenv,
+    "DB_DIRTY_READ is not supported with DB_CONSUME or DB_CONSUME_WAIT");
+			return (EINVAL);
+		}
+		if (multi)
+multi_err:		return (__db_ferr(dbp->dbenv, "DB->get", 1));
 		if (dbp->type == DB_QUEUE)
 			break;
-		/* Fall through */
+		/* FALLTHROUGH */
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DB->get", 0));
 	}
 
-	/* Check for invalid key/data flags. */
+	/*
+	 * Check for invalid key/data flags.
+	 *
+	 * XXX: Dave Krinsky
+	 * Remember to modify this when we fix the flag-returning problem.
+	 */
 	if ((ret = __dbt_ferr(dbp, "key", key, flags == DB_SET_RECNO)) != 0)
 		return (ret);
 	if ((ret = __dbt_ferr(dbp, "data", data, 1)) != 0)
 		return (ret);
+
+	if (multi && !F_ISSET(data, DB_DBT_USERMEM)) {
+		__db_err(dbp->dbenv,
+		     "DB_MULTIPLE requires that DB_DBT_USERMEM be set.");
+		return (EINVAL);
+	}
+	if (multi &&
+	    (F_ISSET(key, DB_DBT_PARTIAL) || F_ISSET(data, DB_DBT_PARTIAL))) {
+		__db_err(dbp->dbenv,
+		    "DB_DBT_PARTIAL forbidden with DB_MULTIPLE(_KEY)");
+		return (EINVAL);
+	}
 
 	return (0);
 }
@@ -456,6 +658,14 @@ __db_joingetchk(dbp, key, flags)
 			return (EINVAL);
 		}
 		LF_CLR(DB_RMW);
+	}
+	if (LF_ISSET(DB_DIRTY_READ)) {
+		if (!LOCKING_ON(dbp->dbenv)) {
+			__db_err(dbp->dbenv,
+			    "the DB_DIRTY_READ flag requires locking");
+			return (EINVAL);
+		}
+		LF_CLR(DB_DIRTY_READ);
 	}
 
 	switch (flags) {
@@ -576,6 +786,7 @@ __db_statchk(dbp, flags)
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case 0:
+	case DB_FAST_STAT:
 	case DB_CACHED_COUNTS:
 		break;
 	case DB_RECORDCOUNT:
@@ -636,9 +847,9 @@ __dbt_ferr(dbp, name, dbt, check_thread)
 	 * database and then specify that same DBT as a key to a primary
 	 * database, without having to clear flags.
 	 */
-	if ((ret = __db_fchk(dbenv, name, dbt->flags,
-	    DB_DBT_MALLOC | DB_DBT_DUPOK |
-	    DB_DBT_REALLOC | DB_DBT_USERMEM | DB_DBT_PARTIAL)) != 0)
+	if ((ret = __db_fchk(dbenv, name, dbt->flags, DB_DBT_APPMALLOC |
+	    DB_DBT_MALLOC | DB_DBT_DUPOK | DB_DBT_REALLOC | DB_DBT_USERMEM |
+	    DB_DBT_PARTIAL)) != 0)
 		return (ret);
 	switch (F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM)) {
 	case 0:
@@ -684,4 +895,76 @@ __db_curinval(dbenv)
 	__db_err(dbenv,
 	    "Cursor position must be set before performing this operation");
 	return (EINVAL);
+}
+
+/*
+ * __db_secondary_corrupt --
+ *	Report that a secondary index appears corrupt, as it has a record
+ * that does not correspond to a record in the primary.
+ *
+ * PUBLIC: int __db_secondary_corrupt __P((DB *));
+ */
+int
+__db_secondary_corrupt(dbp)
+	DB *dbp;
+{
+
+	__db_err(dbp->dbenv,
+	    "Secondary index corrupt: item in secondary not found in primary");
+	return (DB_SECONDARY_BAD);
+}
+
+/*
+ * __db_associatechk --
+ *	Argument checking routine for DB->associate().
+ *
+ * PUBLIC: int __db_associatechk __P((DB *, DB *,
+ * PUBLIC:     int (*)(DB *, const DBT *, const DBT *, DBT *), u_int32_t));
+ */
+int
+__db_associatechk(dbp, sdbp, callback, flags)
+	DB *dbp, *sdbp;
+	int (*callback)(DB *, const DBT *, const DBT *, DBT *);
+	u_int32_t flags;
+{
+	DB_ENV *dbenv;
+
+	dbenv = dbp->dbenv;
+
+	if (F_ISSET(sdbp, DB_AM_SECONDARY)) {
+		__db_err(dbenv,
+		    "Secondary index handles may not be re-associated");
+		return (EINVAL);
+	}
+	if (F_ISSET(dbp, DB_AM_SECONDARY)) {
+		__db_err(dbenv,
+		    "Secondary indices may not be used as primary databases");
+		return (EINVAL);
+	}
+	if (F_ISSET(dbp, DB_AM_DUP)) {
+		__db_err(dbenv,
+		    "Primary databases may not be configured with duplicates");
+		return (EINVAL);
+	}
+	if (F_ISSET(dbp, DB_RE_RENUMBER)) {
+		__db_err(dbenv,
+	    "Renumbering recno databases may not be used as primary databases");
+		return (EINVAL);
+	}
+	if (callback == NULL &&
+	    (!F_ISSET(dbp, DB_AM_RDONLY) || !F_ISSET(sdbp, DB_AM_RDONLY))) {
+		__db_err(dbenv,
+    "Callback function may be NULL only when database handles are read-only");
+		return (EINVAL);
+	}
+
+	switch (flags) {
+	case 0:
+	case DB_CREATE:
+		break;
+	default:
+		return (__db_ferr(dbenv, "DB->associate", 0));
+	}
+
+	return (0);
 }

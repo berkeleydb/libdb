@@ -1,5 +1,5 @@
-<!--$Id: pagesize.so,v 10.20 2000/03/18 21:43:09 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: pagesize.so,v 10.21 2001/05/23 21:03:30 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,10 +8,10 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am_conf/logrec.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/cachesize.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/am_conf/logrec.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/cachesize.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Selecting a page size</h1>
@@ -33,8 +33,8 @@ performance penalty associated with retrieving or modifying overflow
 records.  Selecting a page size that is too small, and which forces the
 creation of large numbers of overflow pages, can seriously impact the
 performance of an application.
-<p>Second, in the Btree, Hash and Recno Access Methods, the finest-grained
-lock that Berkeley DB acquires is for a page.  (The Queue Access Method
+<p>Second, in the Btree, Hash and Recno access methods, the finest-grained
+lock that Berkeley DB acquires is for a page.  (The Queue access method
 generally acquires record-level locks rather than page-level locks.)
 Selecting a page size that is too large, and which causes threads or
 processes to wait because other threads of control are accessing or
@@ -59,7 +59,7 @@ write more data than is strictly necessary.
 from which your database can recover  See
 <a href="../../ref/transapp/reclimit.html">Berkeley DB Recoverability</a> for more
 information.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/logrec.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/cachesize.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/logrec.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/cachesize.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.h,v 11.17 2000/12/14 07:39:13 ubell Exp $
+ * $Id: db_dispatch.h,v 11.19 2001/05/03 18:58:48 ubell Exp $
  */
 
 #ifndef _DB_DISPATCH_H_
@@ -57,7 +57,7 @@ struct __db_txnlist {
 		struct {
 			u_int32_t txnid;
 			int32_t	generation;
-			int32_t aborted;
+			int32_t status;
 		} t;
 		struct {
 #define	TXNLIST_FLAG_DELETED	0x1

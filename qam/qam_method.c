@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_method.c,v 11.17 2001/01/10 04:50:54 ubell Exp $";
+static const char revid[] = "$Id: qam_method.c,v 11.20 2001/04/24 16:27:56 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -91,7 +91,7 @@ again:
 			    (t_ret = memp_fclose(mpf)) != 0 && ret == 0)
 				ret = t_ret;
 		}
-		__os_free(array->mpfarray, 0);
+		__os_free(dbp->dbenv, array->mpfarray, 0);
 	}
 	if (t->array2.n_extent != 0) {
 		array = &t->array2;
@@ -100,8 +100,8 @@ again:
 	}
 
 	if (t->path != NULL)
-		__os_free(t->path, 0);
-	__os_free(t, sizeof(QUEUE));
+		__os_free(dbp->dbenv, t->path, 0);
+	__os_free(dbp->dbenv, t, sizeof(QUEUE));
 	dbp->q_internal = NULL;
 
 	return (ret);
@@ -162,14 +162,14 @@ __db_prqueue(dbp, flags)
 	/* Dump each page. */
 begin:
 	for (; i <= stop; ++i) {
-		if ((ret = __qam_fget(dbp, &i, DB_MPOOL_EXTENT, &h)) != 0) {
+		if ((ret = __qam_fget(dbp, &i, 0, &h)) != 0) {
 			pg_ext = ((QUEUE *)dbp->q_internal)->page_ext;
 			if (pg_ext == 0) {
-				if (ret == EINVAL && first == last)
+				if (ret == DB_PAGE_NOTFOUND && first == last)
 					return (0);
 				return (ret);
 			}
-			if (ret == ENOENT || ret == EINVAL) {
+			if (ret == ENOENT || ret == DB_PAGE_NOTFOUND) {
 				i += pg_ext - ((i - 1) % pg_ext) - 1;
 				continue;
 			}
@@ -279,17 +279,17 @@ __qam_remove(dbp, name, subdb, lsnp, callbackp, cookiep)
 			if ((ret = __os_rename(dbenv,
 			     real_name, real_back)) != 0)
 				goto done;
-			__os_freestr(real_back);
+			__os_freestr(dbenv, real_back);
 			real_back = NULL;
 		}
 		else
 			if ((ret = __os_unlink(dbenv, real_name)) != 0)
 				goto done;
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 		real_name = NULL;
 	}
 	if ((ret= __os_malloc(dbenv,
-	    sizeof(struct __qam_cookie), NULL, &qam_cookie)) != 0)
+	    sizeof(struct __qam_cookie), &qam_cookie)) != 0)
 		goto done;
 	qam_cookie->lsn = *lsnp;
 	qam_cookie->filelist = filelist;
@@ -298,13 +298,13 @@ __qam_remove(dbp, name, subdb, lsnp, callbackp, cookiep)
 
 done:
 	if (ret != 0 && filelist != NULL)
-		__os_free(filelist, 0);
+		__os_free(dbenv, filelist, 0);
 	if (real_back != NULL)
-		__os_freestr(real_back);
+		__os_freestr(dbenv, real_back);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbenv, backup);
 
 	return (ret);
 }
@@ -338,8 +338,8 @@ __qam_remove_callback(dbp, cookie)
 	if ((ret = __os_unlink(dbp->dbenv, real_back)) != 0)
 		goto err;
 
-	__os_freestr(backup);
-	__os_freestr(real_back);
+	__os_freestr(dbenv, backup);
+	__os_freestr(dbenv, real_back);
 
 	if (fp == NULL)
 		return (0);
@@ -354,20 +354,20 @@ __qam_remove_callback(dbp, cookie)
 		    DB_APP_DATA, NULL, backup, 0, NULL, &real_back)) != 0)
 			goto err;
 		ret = __os_unlink(dbenv, real_back);
-		__os_freestr(real_back);
-		__os_freestr(backup);
+		__os_freestr(dbenv, real_back);
+		__os_freestr(dbenv, backup);
 	}
-	__os_free(filelist, 0);
-	__os_free(cookie, sizeof (struct __qam_cookie));
+	__os_free(dbenv, filelist, 0);
+	__os_free(dbenv, cookie, sizeof (struct __qam_cookie));
 
 	return (0);
 
 err:
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbenv, backup);
 
 	if (real_back != NULL)
-		__os_freestr(real_back);
+		__os_freestr(dbenv, real_back);
 
 	return (ret);
 }
@@ -455,18 +455,18 @@ __qam_rename(dbp, filename, subdb, newname)
 		}
 		if ((ret = __os_rename(dbenv, real_name, real_newname)) != 0)
 			goto err;
-		__os_freestr(real_name);
-		__os_freestr(real_newname);
+		__os_freestr(dbenv, real_name);
+		__os_freestr(dbenv, real_newname);
 		real_name = real_newname = NULL;
 	}
 
 err:
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	if (real_newname != NULL)
-		__os_freestr(real_newname);
+		__os_freestr(dbenv, real_newname);
 	if (filelist != NULL)
-		__os_free(filelist, 0);
+		__os_free(dbenv, filelist, 0);
 
 	return (ret);
 }

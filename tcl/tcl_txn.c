@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_txn.c,v 11.24 2000/12/31 19:26:23 bostic Exp $";
+static const char revid[] = "$Id: tcl_txn.c,v 11.37 2001/05/31 19:48:04 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,11 +22,9 @@ static const char revid[] = "$Id: tcl_txn.c,v 11.24 2000/12/31 19:26:23 bostic E
 #include "db_int.h"
 #include "tcl_db.h"
 
-/*
- * Prototypes for procedures defined later in this file:
- */
-static int      tcl_TxnCommit __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
-    DB_TXN *, DBTCL_INFO *));
+static int tcl_TxnCommit __P((Tcl_Interp *,
+	       int, Tcl_Obj * CONST *, DB_TXN *, DBTCL_INFO *));
+static int txn_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST *));
 
 /*
  * _TxnInfoDelete --
@@ -135,6 +133,7 @@ tcl_Txn(interp, objc, objv, envp, envip)
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	static char *txnopts[] = {
+		"-dirty",
 		"-nosync",
 		"-nowait",
 		"-parent",
@@ -142,6 +141,7 @@ tcl_Txn(interp, objc, objv, envp, envip)
 		NULL
 	};
 	enum txnopts {
+		TXN_DIRTY,
 		TXN_NOSYNC,
 		TXN_NOWAIT,
 		TXN_PARENT,
@@ -185,16 +185,19 @@ tcl_Txn(interp, objc, objv, envp, envip)
 				return (TCL_ERROR);
 			}
 			break;
+		case TXN_DIRTY:
+			flag |= DB_DIRTY_READ;
+			break;
 		case TXN_NOWAIT:
-			FLAG_CHECK(flag);
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_NOWAIT;
 			break;
 		case TXN_SYNC:
-			FLAG_CHECK(flag);
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_SYNC;
 			break;
 		case TXN_NOSYNC:
-			FLAG_CHECK(flag);
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_NOSYNC;
 			break;
 		}
@@ -275,7 +278,7 @@ do {									\
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = txn_stat(envp, &sp, NULL);
+	ret = txn_stat(envp, &sp);
 	result = _ReturnSetup(interp, ret, "txn stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -298,6 +301,7 @@ do {									\
 	MAKE_STAT_LIST("Number active txns", sp->st_nactive);
 	MAKE_STAT_LIST("Number txns begun", sp->st_nbegins);
 	MAKE_STAT_LIST("Number committed txns", sp->st_ncommits);
+	MAKE_STAT_LIST("Number restored txns", sp->st_nrestores);
 	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	for (i = 0, p = sp->st_txnarray; i < sp->st_nactive; i++, p++)
@@ -318,17 +322,15 @@ do {									\
 		}
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(sp, sizeof(*sp));
+	__os_free(envp, sp, 0);
 	return (result);
 }
 
 /*
  * txn_Cmd --
  *	Implements the "txn" widget.
- *
- * PUBLIC: int txn_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
-int
+static int
 txn_Cmd(clientData, interp, objc, objv)
 	ClientData clientData;          /* Txn handle */
 	Tcl_Interp *interp;             /* Interpreter */
@@ -338,6 +340,7 @@ txn_Cmd(clientData, interp, objc, objv)
 	static char *txncmds[] = {
 		"abort",
 		"commit",
+		"discard",
 		"id",
 		"prepare",
 		NULL
@@ -345,6 +348,7 @@ txn_Cmd(clientData, interp, objc, objv)
 	enum txncmds {
 		TXNABORT,
 		TXNCOMMIT,
+		TXNDISCARD,
 		TXNID,
 		TXNPREPARE
 	};
@@ -352,6 +356,7 @@ txn_Cmd(clientData, interp, objc, objv)
 	DB_TXN *txnp;
 	Tcl_Obj *res;
 	int cmdindex, result, ret;
+	u_int8_t *gid;
 
 	Tcl_ResetResult(interp);
 	txnp = (DB_TXN *)clientData;
@@ -386,16 +391,37 @@ txn_Cmd(clientData, interp, objc, objv)
 		res = Tcl_NewIntObj(ret);
 		break;
 	case TXNPREPARE:
+		if (objc != 3) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		gid = (u_int8_t *)Tcl_GetByteArrayFromObj(objv[2], NULL);
+		ret = txn_prepare(txnp, gid);
+		/*
+		 * !!!
+		 * txn_prepare commits all outstanding children.  But it
+		 * does NOT destroy the current txn handle.  So, we must
+		 * call _TxnInfoDelete to recursively remove all nested
+		 * txn handles, we do not call _DeleteInfo on ourselves.
+		 */
+		_TxnInfoDelete(interp, txnip);
+		result = _ReturnSetup(interp, ret, "txn prepare");
+		break;
+	case TXNCOMMIT:
+		result = tcl_TxnCommit(interp, objc, objv, txnp, txnip);
+		_TxnInfoDelete(interp, txnip);
+		(void)Tcl_DeleteCommand(interp, txnip->i_name);
+		_DeleteInfo(txnip);
+		break;
+	case TXNDISCARD:
 		if (objc != 2) {
 			Tcl_WrongNumArgs(interp, 1, objv, NULL);
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = txn_prepare(txnp);
-		result = _ReturnSetup(interp, ret, "txn prepare");
-		break;
-	case TXNCOMMIT:
-		result = tcl_TxnCommit(interp, objc, objv, txnp, txnip);
+		ret = txn_discard(txnp, 0);
+		result = _ReturnSetup(interp, ret, "txn discard");
 		_TxnInfoDelete(interp, txnip);
 		(void)Tcl_DeleteCommand(interp, txnip->i_name);
 		_DeleteInfo(txnip);
@@ -469,5 +495,80 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
 	_debug_check();
 	ret = txn_commit(txnp, flag);
 	result = _ReturnSetup(interp, ret, "txn commit");
+	return (result);
+}
+
+/*
+ * tcl_TxnRecover --
+ *
+ * PUBLIC: int tcl_TxnRecover __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
+ */
+int
+tcl_TxnRecover(interp, objc, objv, envp, envip)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *envp;			/* Environment pointer */
+	DBTCL_INFO *envip;		/* Info pointer */
+{
+#define	DO_PREPLIST(count)						\
+for (i = 0; i < count; i++) {						\
+	snprintf(newname, sizeof(newname), "%s.txn%d",			\
+	    envip->i_name, envip->i_envtxnid);				\
+	ip = _NewInfo(interp, NULL, newname, I_TXN);			\
+	if (ip == NULL) {						\
+		Tcl_SetResult(interp, "Could not set up info",		\
+		    TCL_STATIC);					\
+		return (TCL_ERROR);					\
+	}								\
+	envip->i_envtxnid++;						\
+	ip->i_parent = envip;						\
+	p = &prep[i];							\
+	_SetInfoData(ip, p->txn);					\
+	Tcl_CreateObjCommand(interp, newname,				\
+	    (Tcl_ObjCmdProc *)txn_Cmd, (ClientData)p->txn, NULL);	\
+	result = _SetListElem(interp, res, newname, strlen(newname),	\
+	    p->gid, DB_XIDDATASIZE);					\
+	if (result != TCL_OK)						\
+		goto error;						\
+}
+
+	DBTCL_INFO *ip;
+	DB_PREPLIST prep[DBTCL_PREP], *p;
+	Tcl_Obj *res;
+	long count, i;
+	int result, ret;
+	char newname[MSG_SIZE];
+
+	result = TCL_OK;
+	/*
+	 * No args for this.  Error if there are some.
+	 */
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, NULL);
+		return (TCL_ERROR);
+	}
+	_debug_check();
+	ret = txn_recover(envp, prep, DBTCL_PREP, &count, DB_FIRST);
+	result = _ReturnSetup(interp, ret, "txn recover");
+	if (result == TCL_ERROR)
+		return (result);
+	res = Tcl_NewObj();
+	DO_PREPLIST(count);
+
+	/*
+	 * If count returned is the maximum size we have, then there
+	 * might be more.  Keep going until we get them all.
+	 */
+	while (count == DBTCL_PREP) {
+		ret = txn_recover(envp, prep, DBTCL_PREP, &count, DB_NEXT);
+		result = _ReturnSetup(interp, ret, "txn recover");
+		if (result == TCL_ERROR)
+			return (result);
+		DO_PREPLIST(count);
+	}
+	Tcl_SetObjResult(interp, res);
+error:
 	return (result);
 }

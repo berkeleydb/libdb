@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
  * This code is derived from software contributed to Sleepycat Software by
@@ -11,7 +11,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 1.14 2000/12/04 19:01:43 sue Exp $";
+static const char revid[] = "$Id: os_map.c,v 1.16 2001/04/11 15:53:19 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -226,10 +226,11 @@ __os_segdata_init(dbenv)
  *	Currently not called.  This function should be called if the
  *	user creates a function to unload or shutdown.
  *
- * PUBLIC: int __os_segdata_destroy __P((void));
+ * PUBLIC: int __os_segdata_destroy __P((DB_ENV *));
  */
 int
-__os_segdata_destroy()
+__os_segdata_destroy(dbenv)
+	DB_ENV *dbenv;
 {
 	os_segdata_t *p;
 	int i;
@@ -241,17 +242,17 @@ __os_segdata_destroy()
 	for (i = 0; i < __os_segdata_size; i++) {
 		p = &__os_segdata[i];
 		if (p->name != NULL) {
-			__os_freestr(p->name);
+			__os_freestr(dbenv, p->name);
 			p->name = NULL;
 		}
 		if (p->segment != NULL) {
-			__os_free(p->segment, p->size);
+			__os_free(dbenv, p->segment, p->size);
 			p->segment = NULL;
 		}
 		p->size = 0;
 	}
 
-	__os_free(__os_segdata, __os_segdata_size * sizeof(os_segdata_t));
+	__os_free(dbenv, __os_segdata, __os_segdata_size * sizeof(os_segdata_t));
 	__os_segdata = NULL;
 	__os_segdata_size = 0;
 	DB_END_SINGLE_THREAD;
@@ -283,7 +284,7 @@ __os_segdata_allocate(dbenv, name, infop, rp)
 	if ((ret = __os_calloc(dbenv, 1, rp->size, &p->segment)) != 0)
 		return (ret);
 	if ((ret = __os_strdup(dbenv, name, &p->name)) != 0) {
-		__os_free(p->segment, rp->size);
+		__os_free(dbenv, p->segment, rp->size);
 		p->segment = NULL;
 		return (ret);
 	}
@@ -329,7 +330,7 @@ __os_segdata_new(dbenv, segidp)
 	 */
 	newsize = __os_segdata_size + OS_SEGDATA_INCREMENT;
 	if ((ret = __os_realloc(dbenv, newsize * sizeof(os_segdata_t),
-	    NULL, &__os_segdata)) != 0)
+	    &__os_segdata)) != 0)
 		return (ret);
 	memset(&__os_segdata[__os_segdata_size],
 	    0, OS_SEGDATA_INCREMENT * sizeof(os_segdata_t));
@@ -423,11 +424,11 @@ __os_segdata_release(dbenv, rp, is_locked)
 		DB_BEGIN_SINGLE_THREAD;
 	p = &__os_segdata[rp->segid];
 	if (p->name != NULL) {
-		__os_freestr(p->name);
+		__os_freestr(dbenv, p->name);
 		p->name = NULL;
 	}
 	if (p->segment != NULL) {
-		__os_free(p->segment, p->size);
+		__os_free(dbenv, p->segment, p->size);
 		p->segment = NULL;
 	}
 	p->size = 0;

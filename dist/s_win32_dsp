@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_win32_dsp,v 1.3 2000/12/02 04:36:47 dda Exp $
+#	$Id: s_win32_dsp,v 1.5 2001/05/27 14:03:33 bostic Exp $
 #
 # Build Windows/32 .dsp files.
 
@@ -18,7 +18,6 @@ create_dsp()
 
     dspoutput=$BUILDDIR/$projname.dsp
 
-    echo "Building $dspoutput"
     rm -f $dspoutput.insert
     for srcpath in `egrep "$match" $sources | sed -e 's/[ 	].*//'`
     do
@@ -42,8 +41,10 @@ create_dsp()
         -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/g" \
         -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/g" \
       < $dsptemplate > $dspoutput.new
-    rm -f $dspoutput $dspoutput.insert
-    mv $dspoutput.new $dspoutput
+    cmp $dspoutput.new $dspoutput > /dev/null 2>&1 ||
+	(echo "Building $dspoutput" && rm -f $dspoutput &&
+	    cp $dspoutput.new $dspoutput && chmod 444 $dspoutput)
+    rm -f $dspoutput.insert $dspoutput.new
 }
 
 TMPA=/tmp/swin32dsp$$a
@@ -79,6 +80,10 @@ do
     tcl )
         create_dsp db_tcl " $module " $TMPA \
 		$BUILDDIR/tcl_dsp.src $BUILDDIR/srcfile_dsp.src
+        ;;
+    testutil )
+        create_dsp db_test " $module " $TMPA \
+		$BUILDDIR/db_test.src $BUILDDIR/srcfile_dsp.src
         ;;
     static )
         create_dsp db_static " $module " $TMPA \

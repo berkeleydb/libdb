@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mutex.tcl,v 11.18 2000/09/01 19:24:59 krinsky Exp $
+# $Id: mutex.tcl,v 11.19 2001/01/25 18:23:05 bostic Exp $
 #
 # Exercise mutex functionality.
 # Options are:

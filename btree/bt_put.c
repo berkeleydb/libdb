@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_put.c,v 11.46 2001/01/17 18:48:46 bostic Exp $";
+static const char revid[] = "$Id: bt_put.c,v 11.59 2001/07/02 01:05:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,9 +56,12 @@ static const char revid[] = "$Id: bt_put.c,v 11.46 2001/01/17 18:48:46 bostic Ex
 #include "db_page.h"
 #include "btree.h"
 
+static int __bam_build
+	       __P((DBC *, u_int32_t, DBT *, PAGE *, u_int32_t, u_int32_t));
 static int __bam_dup_convert __P((DBC *, PAGE *, u_int32_t));
 static int __bam_ovput
 	       __P((DBC *, u_int32_t, db_pgno_t, PAGE *, u_int32_t, DBT *));
+static u_int32_t __bam_partsize __P((u_int32_t, DBT *, PAGE *, u_int32_t));
 
 /*
  * __bam_iitem --
@@ -119,7 +122,9 @@ len_err:		__db_err(dbp->dbenv,
 			    (u_long)data_size);
 			return (EINVAL);
 		}
-		if (data_size < t->re_len) {
+
+		/* Records that are deleted anyway needn't be padded out. */
+		if (!LF_ISSET(BI_DELETED) && data_size < t->re_len) {
 			padrec = 1;
 			data_size = t->re_len;
 		}
@@ -328,6 +333,11 @@ len_err:		__db_err(dbp->dbenv,
 
 	/* Add the data. */
 	if (bigdata) {
+		/*
+		 * We do not have to handle deleted (BI_DELETED) records
+		 * in this case; the actual records should never be created.
+		 */
+		DB_ASSERT(!LF_ISSET(BI_DELETED));
 		if ((ret = __bam_ovput(dbc,
 		    B_OVERFLOW, PGNO_INVALID, h, indx, data)) != 0)
 			return (ret);
@@ -390,10 +400,8 @@ len_err:		__db_err(dbp->dbenv,
 /*
  * __bam_partsize --
  *	Figure out how much space a partial data item is in total.
- *
- * PUBLIC: u_int32_t __bam_partsize __P((u_int32_t, DBT *, PAGE *, u_int32_t));
  */
-u_int32_t
+static u_int32_t
 __bam_partsize(op, data, h, indx)
 	u_int32_t op, indx;
 	DBT *data;
@@ -417,34 +425,14 @@ __bam_partsize(op, data, h, indx)
 	nbytes =
 	    B_TYPE(bk->type) == B_OVERFLOW ? ((BOVERFLOW *)bk)->tlen : bk->len;
 
-	/*
-	 * There are really two cases here:
-	 *
-	 * Case 1: We are replacing some bytes that do not exist (i.e., they
-	 * are past the end of the record).  In this case the number of bytes
-	 * we are replacing is irrelevant and all we care about is how many
-	 * bytes we are going to add from offset.  So, the new record length
-	 * is going to be the size of the new bytes (size) plus wherever those
-	 * new bytes begin (doff).
-	 *
-	 * Case 2: All the bytes we are replacing exist.  Therefore, the new
-	 * size is the oldsize (nbytes) minus the bytes we are replacing (dlen)
-	 * plus the bytes we are adding (size).
-	 */
-	if (nbytes < data->doff + data->dlen)		/* Case 1 */
-		return (data->doff + data->size);
-
-	return (nbytes + data->size - data->dlen);	/* Case 2 */
+	return (__db_partsize(nbytes, data));
 }
 
 /*
  * __bam_build --
  *	Build the real record for a partial put, or short fixed-length record.
- *
- * PUBLIC: int __bam_build __P((DBC *, u_int32_t,
- * PUBLIC:     DBT *, PAGE *, u_int32_t, u_int32_t));
  */
-int
+static int
 __bam_build(dbc, op, dbt, h, indx, nbytes)
 	DBC *dbc;
 	u_int32_t op, indx, nbytes;
@@ -454,9 +442,8 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	BKEYDATA *bk, tbk;
 	BOVERFLOW *bo;
 	BTREE *t;
-	BTREE_CURSOR *cp;
 	DB *dbp;
-	DBT copy;
+	DBT copy, *rdata;
 	u_int32_t len, tlen;
 	u_int8_t *p;
 	int ret;
@@ -464,25 +451,25 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	COMPQUIET(bo, NULL);
 
 	dbp = dbc->dbp;
-	cp = (BTREE_CURSOR *) dbc->internal;
 	t = dbp->bt_internal;
 
 	/* We use the record data return memory, it's only a short-term use. */
-	if (dbc->rdata.ulen < nbytes) {
+	rdata = &dbc->my_rdata;
+	if (rdata->ulen < nbytes) {
 		if ((ret = __os_realloc(dbp->dbenv,
-		    nbytes, NULL, &dbc->rdata.data)) != 0) {
-			dbc->rdata.ulen = 0;
-			dbc->rdata.data = NULL;
+		    nbytes, &rdata->data)) != 0) {
+			rdata->ulen = 0;
+			rdata->data = NULL;
 			return (ret);
 		}
-		dbc->rdata.ulen = nbytes;
+		rdata->ulen = nbytes;
 	}
 
 	/*
 	 * We use nul or pad bytes for any part of the record that isn't
 	 * specified; get it over with.
 	 */
-	memset(dbc->rdata.data,
+	memset(rdata->data,
 	   F_ISSET(dbp, DB_RE_FIXEDLEN) ? t->re_pad : 0, nbytes);
 
 	/*
@@ -495,7 +482,7 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	 * the chase.
 	 */
 	if (!F_ISSET(dbt, DB_DBT_PARTIAL) || op != DB_CURRENT) {
-		p = (u_int8_t *)dbc->rdata.data + dbt->doff;
+		p = (u_int8_t *)rdata->data + dbt->doff;
 		tlen = dbt->doff;
 		goto user_copy;
 	}
@@ -516,12 +503,12 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 		 */
 		memset(&copy, 0, sizeof(copy));
 		if ((ret = __db_goff(dbp, &copy, bo->tlen,
-		    bo->pgno, &dbc->rdata.data, &dbc->rdata.ulen)) != 0)
+		    bo->pgno, &rdata->data, &rdata->ulen)) != 0)
 			return (ret);
 
 		/* Skip any leading data from the original record. */
 		tlen = dbt->doff;
-		p = (u_int8_t *)dbc->rdata.data + dbt->doff;
+		p = (u_int8_t *)rdata->data + dbt->doff;
 
 		/*
 		 * Copy in any trailing data from the original record.
@@ -542,10 +529,10 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 		}
 	} else {
 		/* Copy in any leading data from the original record. */
-		memcpy(dbc->rdata.data,
+		memcpy(rdata->data,
 		    bk->data, dbt->doff > bk->len ? bk->len : dbt->doff);
 		tlen = dbt->doff;
-		p = (u_int8_t *)dbc->rdata.data + dbt->doff;
+		p = (u_int8_t *)rdata->data + dbt->doff;
 
 		/* Copy in any trailing data from the original record. */
 		len = dbt->doff + dbt->dlen;
@@ -564,11 +551,11 @@ user_copy:
 	tlen += dbt->size;
 
 	/* Set the DBT to reference our new record. */
-	dbc->rdata.size = F_ISSET(dbp, DB_RE_FIXEDLEN) ? t->re_len : tlen;
-	dbc->rdata.dlen = 0;
-	dbc->rdata.doff = 0;
-	dbc->rdata.flags = 0;
-	*dbt = dbc->rdata;
+	rdata->size = F_ISSET(dbp, DB_RE_FIXEDLEN) ? t->re_len : tlen;
+	rdata->dlen = 0;
+	rdata->doff = 0;
+	rdata->flags = 0;
+	*dbt = *rdata;
 	return (0);
 }
 
@@ -632,7 +619,8 @@ __bam_ritem(dbc, h, indx, data)
 		    (u_int32_t)indx, (u_int32_t)B_DISSET(bk->type),
 		    &orig, &repl, (u_int32_t)prefix, (u_int32_t)suffix)) != 0)
 			return (ret);
-	}
+	} else
+		LSN_NOT_LOGGED(LSN(h));
 
 	/*
 	 * Set references to the first in-use byte on the page and the
@@ -688,7 +676,6 @@ __bam_dup_convert(dbc, h, indx)
 	PAGE *h;
 	u_int32_t indx;
 {
-	BTREE_CURSOR *cp;
 	BKEYDATA *bk;
 	DB *dbp;
 	DBT hdr;
@@ -697,7 +684,6 @@ __bam_dup_convert(dbc, h, indx)
 	int ret;
 
 	dbp = dbc->dbp;
-	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/*
 	 * Count the duplicate records and calculate how much room they're
@@ -812,7 +798,7 @@ __bam_dup_convert(dbc, h, indx)
 
 	return (memp_fput(dbp->mpf, dp, DB_MPOOL_DIRTY));
 
-err:	(void)__db_free(dbc, dp);
+err:	(void)memp_fput(dbp->mpf, dp, 0);
 	return (ret);
 }
 

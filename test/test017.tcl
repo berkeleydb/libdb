@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test017.tcl,v 11.13 2000/12/11 17:42:18 sue Exp $
+# $Id: test017.tcl,v 11.18 2001/05/21 14:48:14 krinsky Exp $
 #
 # DB Test 17 {access method}
 # Run duplicates with small page size so that we test off page duplicates.
@@ -15,8 +15,7 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	if { [is_record_based $method] == 1 || \
-	    [is_rbtree $method] == 1 } {
+	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Test0$tnum skipping for method $method"
 		return
 	}
@@ -63,14 +62,13 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	set ovfl ""
 	# Here is the loop where we put and get each key/data pair
 	set dbc [eval {$db cursor} $txn]
-	puts -nonewline \
-	    "\tTest0$tnum.a: Creating duplicates with "
+	puts -nonewline "\tTest0$tnum.a: Creating duplicates with "
 	if { $contents != 0 } {
 		puts "file contents as key/data"
 	} else {
 		puts "file name as key/data"
 	}
-	set file_list [glob ../*/*.c ./*.lo]
+	set file_list [get_file_list 1]
 	foreach f $file_list {
 		if { $contents != 0 } {
 			set fid [open $f r]
@@ -149,15 +147,13 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	if {$contents == 0} {
 		filesort $t1 $t3
 
-		error_check_good Test0$tnum:diff($t3,$t2) \
-		    [filecmp $t3 $t2] 0
+		error_check_good Test0$tnum:diff($t3,$t2) [filecmp $t3 $t2] 0
 
 		# Now compare the keys to see if they match the file names
 		dump_file $db $txn $t1 test017.check
 		filesort $t1 $t3
 
-		error_check_good Test0$tnum:diff($t3,$t4) \
-		    [filecmp $t3 $t4] 0
+		error_check_good Test0$tnum:diff($t3,$t4) [filecmp $t3 $t4] 0
 	}
 
 	error_check_good db_close [$db close] 0
@@ -170,8 +166,7 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	if {$contents == 0} {
 		# Now compare the keys to see if they match the filenames
 		filesort $t1 $t3
-		error_check_good Test0$tnum:diff($t3,$t2) \
-		    [filecmp $t3 $t2] 0
+		error_check_good Test0$tnum:diff($t3,$t2) [filecmp $t3 $t2] 0
 	}
 	error_check_good db_close [$db close] 0
 
@@ -204,6 +199,7 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 		error_check_good db_close [$db close] 0
 		return
 	}
+
 	puts "\tTest0$tnum.e: Add overflow duplicate entries"
 	set ovfldup [expr $ndups + 1]
 	foreach f $ovfl {
@@ -214,20 +210,25 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 		fconfigure $fid -translation binary
 		set fdata [read $fid]
 		close $fid
-		set data $ovfldup:$fdata
+		set data $ovfldup:$fdata:$fdata:$fdata:$fdata
 
 		set ret [eval {$db put} $txn $pflags {$f $data}]
 		error_check_good ovfl_put $ret 0
 	}
+
 	puts "\tTest0$tnum.f: Verify overflow duplicate entries"
 	dup_check $db $txn $t1 $dlist $ovfldup
 	filesort $t1 $t3
-	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [filecmp $t3 $t2] 0
+	error_check_good Test0$tnum:diff($t3,$t2) [filecmp $t3 $t2] 0
 
 	set stat [$db stat]
-	error_check_bad overflow1 \
-	    [is_substr $stat "{{Overflow pages} 0}"] 1
+	if { [is_hash [$db get_type]] } {
+		error_check_bad overflow1_hash [is_substr $stat \
+		    "{{Number of big pages} 0}"] 1
+	} else {
+		error_check_bad \
+		    overflow1 [is_substr $stat "{{Overflow pages} 0}"] 1
+	}
 	error_check_good db_close [$db close] 0
 }
 

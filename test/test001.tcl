@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test001.tcl,v 11.17 2000/12/06 16:08:05 bostic Exp $
+# $Id: test001.tcl,v 11.19 2001/02/02 20:01:44 sue Exp $
 #
 # DB Test 1 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -26,8 +26,11 @@ proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 	#
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
+	# If we are not using an external env, then test setting
+	# the database cache size and using multiple caches.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		append args " -cachesize {0 1048576 3} "
 		set env NULL
 	} else {
 		set testfile test0$tnum.db

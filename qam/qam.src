@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: qam.src,v 11.15 2001/01/16 20:10:55 ubell Exp $
+ * $Id: qam.src,v 11.20 2001/06/15 16:38:14 bostic Exp $
  */
 
 PREFIX	qam
@@ -15,7 +15,6 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
-INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -33,7 +32,7 @@ INCLUDE
  * tell you what record number you got, just that you incremented
  * the record number.  These operations are never undone.
  */
-BEGIN inc		76
+IGNORED inc		76
 ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
 END

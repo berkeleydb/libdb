@@ -1,6 +1,6 @@
-; $Id: libdb.def,v 11.21 2001/01/04 15:07:33 dda Exp $
+; $Id: libdb.def,v 11.28 2001/05/12 16:19:33 dda Exp $
 
-DESCRIPTION	'Berkeley DB 3.2 Library'
+DESCRIPTION	'Berkeley DB 3.3 Library'
 EXPORTS
 	lock_get				@1
 	lock_id					@2
@@ -52,16 +52,18 @@ EXPORTS
 	db_env_set_func_read			@48
 	db_env_set_func_realloc			@49
 	db_env_set_func_rename			@50
-	db_env_set_func_sleep			@51
-	db_env_set_func_unlink			@52
-	db_env_set_func_unmap			@53
-	db_env_set_func_write			@54
-	db_env_set_func_yield			@55
-;	FREE					@56
+	db_env_set_func_seek			@51
+	db_env_set_func_sleep			@52
+	db_env_set_func_unlink			@53
+	db_env_set_func_unmap			@54
+	db_env_set_func_write			@55
+	db_env_set_func_yield			@56
 	db_env_set_pageyield			@57
 	db_env_set_panicstate			@58
 	db_env_set_region_init			@59
 	db_env_set_tas_spins			@60
+	txn_recover				@61
+	txn_discard				@62
 ; these are only for testing
 	__db_loadme				@201
 	__ham_func2				@202
@@ -109,7 +111,9 @@ EXPORTS
 	__os_freestr				@244
 	__os_calloc				@245
 	__ham_test				@246
-; these are needed for linking tools
+	__db_panic				@247
+	__os_umalloc				@248
+; these are needed for linking tools or java
 	__db_dump				@401
 	__db_rpath				@402
 	__db_dispatch				@403
@@ -149,3 +153,4 @@ EXPORTS
 	__db_verify_internal			@439
 	__os_yield				@440
 	__db_global_values			@441
+	__os_ufree				@442

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_method.c,v 11.10 2000/04/04 20:12:04 bostic Exp $";
+static const char revid[] = "$Id: mp_method.c,v 11.13 2001/05/10 02:04:03 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -23,7 +23,6 @@ static const char revid[] = "$Id: mp_method.c,v 11.10 2000/04/04 20:12:04 bostic
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -78,9 +77,31 @@ __memp_set_cachesize(dbenv, gbytes, bytes, ncache)
 {
 	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_cachesize");
 
-	dbenv->mp_gbytes = gbytes + bytes / GIGABYTE;
-	dbenv->mp_bytes = bytes % GIGABYTE;
-	dbenv->mp_ncache = ncache == 0 ? 1 : ncache;
+	/* Normalize the values. */
+	if (ncache == 0)
+		ncache = 1;
+
+	/*
+	 * You can only store 4GB-1 in an unsigned 32-bit value, so correct for
+	 * applications that specify 4GB cache sizes -- we know what they meant.
+	 */
+	if (gbytes / ncache == 4 && bytes == 0) {
+		--gbytes;
+		bytes = GIGABYTE - 1;
+	} else {
+		gbytes += bytes / GIGABYTE;
+		bytes %= GIGABYTE;
+	}
+
+	/* Avoid too-large cache sizes, they result in a region size of zero. */
+	if (gbytes / ncache > 4 || (gbytes / ncache == 4 && bytes != 0)) {
+		__db_err(dbenv, "individual cache size too large");
+		return (EINVAL);
+	}
+
+	dbenv->mp_gbytes = gbytes;
+	dbenv->mp_bytes = bytes;
+	dbenv->mp_ncache = ncache;
 
 	/*
 	 * If the application requested less than 500Mb, increase the

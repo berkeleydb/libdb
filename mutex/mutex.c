@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mutex.c,v 11.14 2000/11/30 00:58:42 ubell Exp $";
+static const char revid[] = "$Id: mutex.c,v 11.19 2001/04/27 15:59:15 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,12 +22,13 @@ static const char revid[] = "$Id: mutex.c,v 11.14 2000/11/30 00:58:42 ubell Exp 
  * __db_mutex_alloc --
  *	Allocate and initialize a mutex.
  *
- * PUBLIC: int __db_mutex_alloc __P((DB_ENV *, REGINFO *, MUTEX **));
+ * PUBLIC: int __db_mutex_alloc __P((DB_ENV *, REGINFO *, int, MUTEX **));
  */
 int
-__db_mutex_alloc(dbenv, infop, storep)
+__db_mutex_alloc(dbenv, infop, is_locked, storep)
 	DB_ENV *dbenv;
 	REGINFO *infop;
+	int is_locked;
 	MUTEX **storep;
 {
 	int ret;
@@ -45,13 +46,16 @@ __db_mutex_alloc(dbenv, infop, storep)
 	 * because the only known system where we can see this failure at
 	 * the moment is HP-UX 10.XX.
 	 */
-#ifdef MUTEX_NO_MALLOC_LOCKS
-	R_LOCK(dbenv, infop);
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
+	if (is_locked == 0)
+		R_LOCK(dbenv, infop);
 	ret = __db_shalloc(infop->addr, sizeof(MUTEX), MUTEX_ALIGN, storep);
-	R_UNLOCK(dbenv, infop);
+	if (is_locked == 0)
+		R_UNLOCK(dbenv, infop);
 #else
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
+	COMPQUIET(is_locked, 0);
 	ret = __os_calloc(dbenv, 1, sizeof(MUTEX), storep);
 #endif
 	if (ret != 0)
@@ -74,14 +78,14 @@ __db_mutex_free(dbenv, infop, mutexp)
 	if (F_ISSET(mutexp, MUTEX_INITED))
 		__db_mutex_destroy(mutexp);
 
-#ifdef MUTEX_NO_MALLOC_LOCKS
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
 	R_LOCK(dbenv, infop);
 	__db_shalloc_free(infop->addr, mutexp);
 	R_UNLOCK(dbenv, infop);
 #else
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
-	__os_free(mutexp, sizeof(*mutexp));
+	__os_free(dbenv, mutexp, sizeof(*mutexp));
 #endif
 }
 
@@ -90,11 +94,8 @@ __db_mutex_free(dbenv, infop, mutexp)
  * __db_shreg_locks_record --
  *	Record an entry in the shared locks area.
  *	Region lock must be held in caller.
- *
- * PUBLIC: int __db_shreg_locks_record __P((DB_ENV *, MUTEX *, REGINFO *,
- * PUBLIC:    REGMAINT *));
  */
-int
+static int
 __db_shreg_locks_record(dbenv, mutexp, infop, rp)
 	DB_ENV *dbenv;
 	MUTEX *mutexp;
@@ -110,7 +111,7 @@ __db_shreg_locks_record(dbenv, mutexp, infop, rp)
 	i = (roff_t *)R_ADDR(infop, rp->regmutex_hint) - &rp->regmutexes[0];
 	if (rp->regmutexes[i] != INVALID_ROFF) {
 		/*
-		 * Our hint failed, search for a open slot.
+		 * Our hint failed, search for an open slot.
 		 */
 		rp->stat.st_hint_miss++;
 		for (i = 0; i < rp->reglocks; i++)
@@ -218,9 +219,8 @@ __db_shreg_mutex_init(dbenv, mutexp, offset, flags, infop, rp)
 	 * of mutex.  We COMPQUIET it here, after the call above.
 	 */
 	COMPQUIET(offset, 0);
+	ret = __db_shreg_locks_record(dbenv, mutexp, infop, rp);
 
-	if (!F_ISSET(mutexp, MUTEX_THREAD))
-		ret = __db_shreg_locks_record(dbenv, mutexp, infop, rp);
 	/*
 	 * If we couldn't record it and we are returning an error,
 	 * we need to destroy the mutex we just created.
@@ -244,10 +244,13 @@ __db_shreg_maintinit(infop, addr, size)
 	size_t size;
 {
 	REGMAINT *rp;
+	u_int32_t i;
 
 	rp = (REGMAINT *)addr;
 	memset(addr, 0, sizeof(REGMAINT));
 	rp->reglocks = size / sizeof(roff_t);
 	rp->regmutex_hint = R_OFFSET(infop, &rp->regmutexes[0]);
+	for (i = 0; i < rp->reglocks; i++)
+		rp->regmutexes[i] = INVALID_ROFF;
 }
 #endif /* MUTEX_SYSTEM_RESOURCES */

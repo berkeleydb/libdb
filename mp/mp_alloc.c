@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_alloc.c,v 11.7 2000/04/20 21:14:18 bostic Exp $";
+static const char revid[] = "$Id: mp_alloc.c,v 11.14 2001/05/10 21:25:22 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -37,11 +37,14 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 	BH *bhp, *nbhp;
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
-	size_t total;
 	int nomore, restart, ret, wrote;
+	u_int32_t failed_writes, pages_reviewed;
+	size_t total;
 	void *p;
 
 	c_mp = memreg->primary;
+
+	failed_writes = 0;
 
 	/*
 	 * If we're allocating a buffer, and the one we're discarding is the
@@ -60,18 +63,37 @@ alloc:	if ((ret = __db_shalloc(memreg->addr, len, MUTEX_ALIGN, &p)) == 0) {
 		*(void **)retp = p;
 		return (0);
 	}
-	if (nomore) {
+	if (nomore == 1) {
+		/*
+		 * Things are really bad, let's try to sync the mpool.
+		 * This will force any queue extent pages out.
+		 * While it could be that we just don't have enough
+		 * space for what we want, and this is rather expensive,
+		 * we are about to fail, so, why not.
+		 */
+		R_UNLOCK(dbmp->dbenv, dbmp->reginfo);
+		ret = memp_sync(dbmp->dbenv, NULL);
+		R_LOCK(dbmp->dbenv, dbmp->reginfo);
+		if (ret == DB_INCOMPLETE || ret == EIO)
+			ret = 0;
+		else if (ret != 0)
+			return (ret);
+	} else if (nomore == 2) {
 		__db_err(dbmp->dbenv,
-	    "Unable to allocate %lu bytes from mpool shared region: %s\n",
+	    "Unable to allocate %lu bytes from mpool shared region: %s",
 		    (u_long)len, db_strerror(ret));
 		return (ret);
 	}
 
 retry:	/* Find a buffer we can flush; pure LRU. */
-	restart = total = 0;
+	total = 0;
+	restart = 0;
+	pages_reviewed = 0;
 	for (bhp =
 	    SH_TAILQ_FIRST(&c_mp->bhq, __bh); bhp != NULL; bhp = nbhp) {
 		nbhp = SH_TAILQ_NEXT(bhp, q, __bh);
+
+		++pages_reviewed;
 
 		/* Ignore pinned or locked (I/O in progress) buffers. */
 		if (bhp->ref != 0 || F_ISSET(bhp, BH_LOCKED))
@@ -83,10 +105,39 @@ retry:	/* Find a buffer we can flush; pure LRU. */
 		/* Write the page if it's dirty. */
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			++bhp->ref;
-			if ((ret = __memp_bhwrite(dbmp,
-			    bh_mfp, bhp, &restart, &wrote)) != 0)
-				return (ret);
+			ret = __memp_bhwrite(dbmp,
+			    bh_mfp, bhp, 0, &restart, &wrote);
 			--bhp->ref;
+
+			if (ret != 0) {
+				/*
+				 * Count the number of writes that have
+				 * failed.  If the number of writes that
+				 * have failed, total, plus the number
+				 * of pages we've reviewed on this pass
+				 * equals the number of buffers there
+				 * currently are, we've most likely
+				 * run out of buffers that are going to
+				 * succeed, and it's time to fail.
+				 * (We chuck failing buffers to the
+				 * end of the list.) [#0637]
+				 */
+				failed_writes++;
+				if (failed_writes + pages_reviewed >=
+				    c_mp->stat.st_page_dirty +
+				    c_mp->stat.st_page_clean)
+					return (ret);
+
+				/*
+				 * Otherwise, relocate this buffer
+				 * to the end of the LRU queue
+				 * so we're less likely to encounter
+				 * it again, and try again.
+				 */
+				SH_TAILQ_REMOVE(&c_mp->bhq, bhp, q, __bh);
+				SH_TAILQ_INSERT_TAIL(&c_mp->bhq, bhp, q);
+				goto retry;
+			}
 
 			/*
 			 * Another process may have acquired this buffer and
@@ -147,6 +198,6 @@ retry:	/* Find a buffer we can flush; pure LRU. */
 		if (restart)
 			goto retry;
 	}
-	nomore = 1;
+	nomore++;
 	goto alloc;
 }

@@ -25,6 +25,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1notify_1internal
 
 /*
  * Class:     com_sleepycat_db_Db
+ * Method:    _associate
+ * Signature: (Lcom/sleepycat/db/Db;Lcom/sleepycat/db/DbSecondaryKeyCreate;I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1associate
+  (JNIEnv *, jobject, jobject, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
  * Method:    _close
  * Signature: (I)I
  */
@@ -126,6 +134,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_key_1range
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1open
   (JNIEnv *, jobject, jstring, jstring, jint, jint, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    pget
+ * Signature: (Lcom/sleepycat/db/DbTxn;Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_pget
+  (JNIEnv *, jobject, jobject, jobject, jobject, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -318,6 +334,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_sync
   (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    truncate
+ * Signature: (Lcom/sleepycat/db/DbTxn;I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_truncate
+  (JNIEnv *, jobject, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_Db

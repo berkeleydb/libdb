@@ -49,6 +49,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
 
 /*
  * Class:     com_sleepycat_db_Dbc
+ * Method:    pget
+ * Signature: (Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_pget
+  (JNIEnv *, jobject, jobject, jobject, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Dbc
  * Method:    put
  * Signature: (Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;I)I
  */

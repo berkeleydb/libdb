@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_delete.c,v 11.31 2001/01/17 18:48:46 bostic Exp $";
+static const char revid[] = "$Id: bt_delete.c,v 11.36 2001/04/27 15:43:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,84 +57,6 @@ static const char revid[] = "$Id: bt_delete.c,v 11.31 2001/01/17 18:48:46 bostic
 #include "db_shash.h"
 #include "btree.h"
 #include "lock.h"
-
-/*
- * __bam_delete --
- *	Delete the items referenced by a key.
- *
- * PUBLIC: int __bam_delete __P((DB *, DB_TXN *, DBT *, u_int32_t));
- */
-int
-__bam_delete(dbp, txn, key, flags)
-	DB *dbp;
-	DB_TXN *txn;
-	DBT *key;
-	u_int32_t flags;
-{
-	DBC *dbc;
-	DBT lkey;
-	DBT data;
-	u_int32_t f_init, f_next;
-	int ret, t_ret;
-
-	PANIC_CHECK(dbp->dbenv);
-	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->del");
-	DB_CHECK_TXN(dbp, txn);
-
-	/* Check for invalid flags. */
-	if ((ret =
-	    __db_delchk(dbp, key, flags, F_ISSET(dbp, DB_AM_RDONLY))) != 0)
-		return (ret);
-
-	/* Allocate a cursor. */
-	if ((ret = dbp->cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
-		return (ret);
-
-	DEBUG_LWRITE(dbc, txn, "bam_delete", key, NULL, flags);
-
-	/*
-	 * Walk a cursor through the key/data pairs, deleting as we go.  Set
-	 * the DB_DBT_USERMEM flag, as this might be a threaded application
-	 * and the flags checking will catch us.  We don't actually want the
-	 * keys or data, so request a partial of length 0.
-	 */
-	memset(&lkey, 0, sizeof(lkey));
-	F_SET(&lkey, DB_DBT_USERMEM | DB_DBT_PARTIAL);
-	memset(&data, 0, sizeof(data));
-	F_SET(&data, DB_DBT_USERMEM | DB_DBT_PARTIAL);
-
-	/*
-	 * If locking (and we haven't already acquired CDB locks), set the
-	 * read-modify-write flag.
-	 */
-	f_init = DB_SET;
-	f_next = DB_NEXT_DUP;
-	if (STD_LOCKING(dbc)) {
-		f_init |= DB_RMW;
-		f_next |= DB_RMW;
-	}
-
-	/* Walk through the set of key/data pairs, deleting as we go. */
-	if ((ret = dbc->c_get(dbc, key, &data, f_init)) != 0)
-		goto err;
-	for (;;) {
-		if ((ret = dbc->c_del(dbc, 0)) != 0)
-			goto err;
-		if ((ret = dbc->c_get(dbc, &lkey, &data, f_next)) != 0) {
-			if (ret == DB_NOTFOUND) {
-				ret = 0;
-				break;
-			}
-			goto err;
-		}
-	}
-
-err:	/* Discard the cursor. */
-	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
-		ret = t_ret;
-
-	return (ret);
-}
 
 /*
  * __bam_ditem --
@@ -261,11 +183,13 @@ __bam_adjindx(dbc, h, indx, indx_copy, is_insert)
 	dbp = dbc->dbp;
 
 	/* Log the change. */
-	if (DB_LOGGING(dbc) &&
-	    (ret = __bam_adj_log(dbp->dbenv, dbc->txn, &LSN(h),
-	    0, dbp->log_fileid, PGNO(h), &LSN(h), indx, indx_copy,
-	    (u_int32_t)is_insert)) != 0)
-		return (ret);
+	if (DB_LOGGING(dbc)) {
+	    if ((ret = __bam_adj_log(dbp->dbenv, dbc->txn,
+		&LSN(h), 0, dbp->log_fileid, PGNO(h), &LSN(h),
+		indx, indx_copy, (u_int32_t)is_insert)) != 0)
+			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(h));
 
 	/* Shuffle the indices and mark the page dirty. */
 	if (is_insert) {
@@ -415,7 +339,8 @@ err:		for (; epg <= cp->csp; ++epg) {
 	for (done = 0; !done;) {
 		/* Initialize. */
 		parent = child = NULL;
-		p_lock.off = c_lock.off = LOCK_INVALID;
+		LOCK_INIT(p_lock);
+		LOCK_INIT(c_lock);
 
 		/* Lock the root. */
 		pgno = root_pgno;
@@ -469,7 +394,8 @@ err:		for (; epg <= cp->csp; ++epg) {
 			   0, dbp->log_fileid, PGNO(child), &a, PGNO(parent),
 			   RE_NREC(parent), &b, &parent->lsn)) != 0)
 				goto stop;
-		}
+		} else
+			LSN_NOT_LOGGED(child->lsn);
 
 		/*
 		 * Make the switch.
@@ -514,13 +440,11 @@ err:		for (; epg <= cp->csp; ++epg) {
 		if (0) {
 stop:			done = 1;
 		}
-		if (p_lock.off != LOCK_INVALID)
-			(void)__TLPUT(dbc, p_lock);
+		(void)__TLPUT(dbc, p_lock);
 		if (parent != NULL &&
 		    (t_ret = memp_fput(dbp->mpf, parent, 0)) != 0 && ret == 0)
 			ret = t_ret;
-		if (c_lock.off != LOCK_INVALID)
-			(void)__TLPUT(dbc, c_lock);
+		(void)__TLPUT(dbc, c_lock);
 		if (child != NULL &&
 		    (t_ret = memp_fput(dbp->mpf, child, 0)) != 0 && ret == 0)
 			ret = t_ret;

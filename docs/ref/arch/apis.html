@@ -1,5 +1,5 @@
-<!--$Id: apis.so,v 10.26 2000/03/18 21:43:09 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: apis.so,v 10.28 2001/03/01 15:57:54 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,20 +8,21 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Architecture</dl></h3></td>
-<td width="1%"><a href="../../ref/arch/progmodel.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/script.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/arch/progmodel.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/script.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Programmatic APIs</h1>
 <p>The Berkeley DB subsystems can be accessed through interfaces from multiple
 languages.  The standard library interface is ANSI C.  Applications can
 also use Berkeley DB via C++ or Java, as well as from scripting languages.
-Environments can be shared among applications written using any of theses
-APIs.  For example, you might have a local server written in C or C++, a
-script for an administrator written in Perl or Tcl, and a web based user
-interface written in Java, all sharing a single database environment.
+Environments can be shared among applications written by using any of
+theses APIs.  For example, you might have a local server written in C
+or C++, a script for an administrator written in Perl or Tcl, and a
+Web-based user interface written in Java -- all sharing a single
+database environment.
 <h3>C</h3>
 <p>The Berkeley DB library is written entirely in ANSI C.  C applications use a
 single include file:
@@ -41,16 +42,16 @@ C API associated with it.  The C structure is allocated with each
 constructor call and deallocated with each destructor call.  Thus, the
 rules the user needs to follow in allocating and deallocating structures
 are the same between the C and C++ interfaces.
-<p>To ensure portability to many platforms, both new and old, Berkeley DB makes as
-few assumptions as possible about the C++ compiler and library.  For
-example, it does not expect STL, templates or namespaces to be available.
-The newest C++ feature used is exceptions, which are used liberally to
-transmit error information.  Even the use of exceptions can be disabled
-at runtime.
-<h3>JAVA</h3>
+<p>To ensure portability to many platforms, both new and old, Berkeley DB makes
+as few assumptions as possible about the C++ compiler and library.  For
+example, it does not expect STL, templates, or namespaces to be
+available.  The newest C++ feature used is exceptions, which are used
+liberally to transmit error information.  Even the use of exceptions
+can be disabled at runtime.
+<h3>Java</h3>
 <p>The Java classes provide a layer around the C API that is almost identical
 to the C++ layer.  The classes and methods are, for the most part
-identical to the C++ layer.  Db constants and #defines are represented as
+identical to the C++ layer.  Berkeley DB constants and #defines are represented as
 "static final int" values.  Error conditions are communicated as Java
 exceptions.
 <p>As in C++, each Java object has exactly one structure from the underlying
@@ -60,14 +61,15 @@ collector.  Because the timing of garbage collection is not predictable,
 applications should take care to do a close when finished with any object
 that has a close method.
 <h3>Dbm/Ndbm, Hsearch</h3>
-<p>Berkeley DB supports the standard UNIX interfaces <a href="../../api_c/dbm.html">dbm</a> (or its
-<a href="../../api_c/dbm.html">ndbm</a> variant) and <a href="../../api_c/hsearch.html">hsearch</a>.  After including a new header
-file and recompiling, <a href="../../api_c/dbm.html">dbm</a> programs will run orders of magnitude
-faster and their underlying databases can grow as large as necessary.
-Historic <a href="../../api_c/dbm.html">dbm</a> applications fail when some number of entries were
-inserted into the database, where the number depends on the effectiveness
-of the hashing function on the particular data set.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/arch/progmodel.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/script.html"><img src="../../images/next.gif" alt="Next"></a>
+<p>Berkeley DB supports the standard UNIX interfaces <a href="../../api_c/dbm.html">dbm</a>, <a href="../../api_c/dbm.html">ndbm</a>,
+and <a href="../../api_c/hsearch.html">hsearch</a>.  After including a new header file and recompiling,
+programs will run orders of magnitude faster, and underlying databases
+can grow as large as necessary.  Also, historic <a href="../../api_c/dbm.html">dbm</a> and
+<a href="../../api_c/dbm.html">ndbm</a> applications can fail once some number of entries are
+inserted into the database, in which the number depends on the
+effectiveness of the internal hashing function on the particular data
+set.  This is not a problem with Berkeley DB.
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/arch/progmodel.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/script.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

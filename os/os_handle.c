@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_handle.c,v 11.19 2000/11/30 00:58:42 ubell Exp $";
+static const char revid[] = "$Id: os_handle.c,v 11.21 2001/01/25 18:22:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,16 +56,18 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
 		 * VxWorks does not support O_CREAT on open, you have to use
 		 * creat() instead.  (It does not support O_EXCL or O_TRUNC
 		 * either, even though they are defined "for future support".)
-		 * If O_EXCL is specified, single thread and try to open the
-		 * file.  If successful, return EEXIST.  Otherwise, call creat
-		 * and then end single threading.
+		 * We really want the POSIX behavior that if O_CREAT is set,
+		 * we open if it exists, or create it if it doesn't exist.
+		 * If O_CREAT is specified, single thread and try to open the
+		 * file.  If successful, and O_EXCL return EEXIST.  If
+		 * unsuccessful call creat and then end single threading.
 		 */
 		if (LF_ISSET(O_CREAT)) {
 			DB_BEGIN_SINGLE_THREAD;
 			newflags = flags & ~(O_CREAT | O_EXCL);
-			if (LF_ISSET(O_EXCL)) {
-				if ((fhp->fd =
-				    open(name, newflags, mode)) != -1) {
+			if ((fhp->fd =
+			    open(name, newflags, mode)) != -1) {
+				if (LF_ISSET(O_EXCL)) {
 					/*
 					 * If we get here, we want O_EXCL
 					 * create, and it exists.  Close and
@@ -84,8 +86,8 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
 				 * verify we truly got the equivalent of
 				 * ENOENT.
 				 */
-			}
-			fhp->fd = creat(name, newflags);
+			} else
+				fhp->fd = creat(name, newflags);
 			DB_END_SINGLE_THREAD;
 		} else
 

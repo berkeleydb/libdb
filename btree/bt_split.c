@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_split.c,v 11.31 2000/12/22 19:08:27 bostic Exp $";
+static const char revid[] = "$Id: bt_split.c,v 11.41 2001/06/12 19:42:38 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -67,21 +67,19 @@ static int __ram_root __P((DBC *, PAGE *, PAGE *, PAGE *));
  * __bam_split --
  *	Split a page.
  *
- * PUBLIC: int __bam_split __P((DBC *, void *));
+ * PUBLIC: int __bam_split __P((DBC *, void *, db_pgno_t *));
  */
 int
-__bam_split(dbc, arg)
+__bam_split(dbc, arg, root_pgnop)
 	DBC *dbc;
 	void *arg;
+	db_pgno_t *root_pgnop;
 {
-	BTREE *t;
 	BTREE_CURSOR *cp;
-	DB *dbp;
 	enum { UP, DOWN } dir;
 	db_pgno_t root_pgno;
 	int exact, level, ret;
 
-	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	root_pgno = cp->root;
 
@@ -112,17 +110,20 @@ __bam_split(dbc, arg)
 	 * split.  This would be an easy change for this code, but I have no
 	 * numbers that indicate it's worthwhile.
 	 */
-	t = dbp->bt_internal;
 	for (dir = UP, level = LEAFLEVEL;; dir == UP ? ++level : --level) {
 		/*
 		 * Acquire a page and its parent, locked.
 		 */
 		if ((ret = (dbc->dbtype == DB_BTREE ?
-		    __bam_search(dbc, arg, S_WRPAIR, level, NULL, &exact) :
+		    __bam_search(dbc, PGNO_INVALID,
+			arg, S_WRPAIR, level, NULL, &exact) :
 		    __bam_rsearch(dbc,
 			(db_recno_t *)arg, S_WRPAIR, level, &exact))) != 0)
 			return (ret);
 
+		if (root_pgnop != NULL)
+			*root_pgnop = cp->csp[0].page->pgno == root_pgno ?
+			    root_pgno : cp->csp[-1].page->pgno;
 		/*
 		 * Split the page if it still needs it (it's possible another
 		 * thread of control has already split the page).  If we are
@@ -222,9 +223,10 @@ __bam_root(dbc, cp)
 		    PGNO(rp), &LSN(rp), (u_int32_t)NUM_ENT(lp), 0, &log_lsn,
 		    dbc->internal->root, &log_dbt, opflags)) != 0)
 			goto err;
-		LSN(lp) = LSN(cp->page);
-		LSN(rp) = LSN(cp->page);
-	}
+	} else
+		LSN_NOT_LOGGED(LSN(cp->page));
+	LSN(lp) = LSN(cp->page);
+	LSN(rp) = LSN(cp->page);
 
 	/* Clean up the new root page. */
 	if ((ret = (dbc->dbtype == DB_RECNO ?
@@ -246,9 +248,9 @@ __bam_root(dbc, cp)
 	return (0);
 
 err:	if (lp != NULL)
-		(void)__db_free(dbc, lp);
+		(void)memp_fput(dbp->mpf, lp, 0);
 	if (rp != NULL)
-		(void)__db_free(dbc, rp);
+		(void)memp_fput(dbp->mpf, rp, 0);
 	(void)memp_fput(dbp->mpf, cp->page, 0);
 	(void)__TLPUT(dbc, cp->lock);
 	return (ret);
@@ -276,7 +278,7 @@ __bam_page(dbc, pp, cp)
 
 	dbp = dbc->dbp;
 	alloc_rp = lp = rp = tp = NULL;
-	tplock.off = LOCK_INVALID;
+	LOCK_INIT(tplock);
 	ret = -1;
 
 	/*
@@ -296,7 +298,7 @@ __bam_page(dbc, pp, cp)
 	 * up the tree badly, because we've violated the rule of always locking
 	 * down the tree, and never up.
 	 */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &rp)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &rp)) != 0)
 		goto err;
 	P_INIT(rp, dbp->pgsize, 0,
 	    ISINTERNAL(cp->page) ? PGNO_INVALID : PGNO(cp->page),
@@ -307,7 +309,7 @@ __bam_page(dbc, pp, cp)
 	 * Create new left page for the split, and fill in everything
 	 * except its LSN and next-page page number.
 	 */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, NULL, &lp)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &lp)) != 0)
 		goto err;
 	P_INIT(lp, dbp->pgsize, PGNO(cp->page),
 	    ISINTERNAL(cp->page) ?  PGNO_INVALID : PREV_PGNO(cp->page),
@@ -392,13 +394,15 @@ __bam_page(dbc, pp, cp)
 		    bc->root, &log_dbt, opflags)) != 0)
 			goto err;
 
-		/* Update the LSNs for all involved pages. */
-		LSN(alloc_rp) = LSN(cp->page);
-		LSN(lp) = LSN(cp->page);
-		LSN(rp) = LSN(cp->page);
-		if (tp != NULL)
-			LSN(tp) = LSN(cp->page);
-	}
+	} else
+		LSN_NOT_LOGGED(LSN(cp->page));
+
+	/* Update the LSNs for all involved pages. */
+	LSN(alloc_rp) = LSN(cp->page);
+	LSN(lp) = LSN(cp->page);
+	LSN(rp) = LSN(cp->page);
+	if (tp != NULL)
+		LSN(tp) = LSN(cp->page);
 
 	/*
 	 * Copy the left and right pages into place.  There are two paths
@@ -431,8 +435,8 @@ __bam_page(dbc, pp, cp)
 	    PGNO(cp->page), PGNO(cp->page), PGNO(rp), split, 0)) != 0)
 		goto err;
 
-	__os_free(lp, dbp->pgsize);
-	__os_free(rp, dbp->pgsize);
+	__os_free(dbp->dbenv, lp, dbp->pgsize);
+	__os_free(dbp->dbenv, rp, dbp->pgsize);
 
 	/*
 	 * Success -- write the real pages back to the store.  As we never
@@ -460,17 +464,16 @@ __bam_page(dbc, pp, cp)
 	return (ret);
 
 err:	if (lp != NULL)
-		__os_free(lp, dbp->pgsize);
+		__os_free(dbp->dbenv, lp, dbp->pgsize);
 	if (rp != NULL)
-		__os_free(rp, dbp->pgsize);
+		__os_free(dbp->dbenv, rp, dbp->pgsize);
 	if (alloc_rp != NULL)
-		(void)__db_free(dbc, alloc_rp);
-
+		(void)memp_fput(dbp->mpf, alloc_rp, 0);
 	if (tp != NULL)
 		(void)memp_fput(dbp->mpf, tp, 0);
-	if (tplock.off != LOCK_INVALID)
-		/* We never updated the next page, we can release it. */
-		(void)__LPUT(dbc, tplock);
+
+	/* We never updated the next page, we can release it. */
+	(void)__LPUT(dbc, tplock);
 
 	(void)memp_fput(dbp->mpf, pp->page, 0);
 	if (ret == DB_NEEDSPLIT)
@@ -882,11 +885,13 @@ noprefix:			nksize = child_bk->len;
 	 */
 	if (F_ISSET(cp, C_RECNUM)) {
 		/* Log the change. */
-		if (DB_LOGGING(dbc) &&
-		    (ret = __bam_cadjust_log(dbp->dbenv, dbc->txn,
+		if (DB_LOGGING(dbc)) {
+		if ((ret = __bam_cadjust_log(dbp->dbenv, dbc->txn,
 		    &LSN(ppage), 0, dbp->log_fileid, PGNO(ppage),
 		    &LSN(ppage), parent->indx, -(int32_t)nrecs, 0)) != 0)
 			return (ret);
+		} else
+			LSN_NOT_LOGGED(LSN(ppage));
 
 		/* Update the left page count. */
 		if (dbc->dbtype == DB_RECNO)

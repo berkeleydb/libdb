@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_stat.c,v 11.4 2000/12/08 20:15:31 ubell Exp $";
+static const char revid[] = "$Id: lock_stat.c,v 11.12 2001/06/09 19:44:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -26,7 +26,6 @@ static const char revid[] = "$Id: lock_stat.c,v 11.4 2000/12/08 20:15:31 ubell E
 #include "lock.h"
 
 #ifdef	HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -38,12 +37,13 @@ static const char *
 /*
  * lock_stat --
  *	Return LOCK statistics.
+ *
+ * EXTERN: int lock_stat __P((DB_ENV *, DB_LOCK_STAT **));
  */
 int
-lock_stat(dbenv, statp, db_malloc)
+lock_stat(dbenv, statp)
 	DB_ENV *dbenv;
 	DB_LOCK_STAT **statp;
-	void *(*db_malloc) __P((size_t));
 {
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
@@ -52,17 +52,17 @@ lock_stat(dbenv, statp, db_malloc)
 
 #ifdef	HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_lock_stat(dbenv, statp, db_malloc));
+		return (__dbcl_lock_stat(dbenv, statp));
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lk_handle, DB_INIT_LOCK);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lk_handle, "lock_stat", DB_INIT_LOCK);
 
 	*statp = NULL;
 
 	lt = dbenv->lk_handle;
 
-	if ((ret = __os_malloc(dbenv, sizeof(*stats), db_malloc, &stats)) != 0)
+	if ((ret = __os_umalloc(dbenv, sizeof(*stats), &stats)) != 0)
 		return (ret);
 
 	/* Copy out the global statistics. */
@@ -106,9 +106,9 @@ lock_stat(dbenv, statp, db_malloc)
 /*
  * __lock_dump_region --
  *
- * PUBLIC: void __lock_dump_region __P((DB_ENV *, char *, FILE *));
+ * PUBLIC: int __lock_dump_region __P((DB_ENV *, char *, FILE *));
  */
-void
+int
 __lock_dump_region(dbenv, area, fp)
 	DB_ENV *dbenv;
 	char *area;
@@ -121,6 +121,10 @@ __lock_dump_region(dbenv, area, fp)
 	DB_LOCKTAB *lt;
 	u_int32_t flags, i, j;
 	int label;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "lock_dump_region", DB_INIT_LOCK);
 
 	/* Make it easy to call from the debugger. */
 	if (fp == NULL)
@@ -153,7 +157,8 @@ __lock_dump_region(dbenv, area, fp)
 	LOCKREGION(dbenv, lt);
 
 	fprintf(fp, "%s\nLock region parameters\n", DB_LINE);
-	fprintf(fp, "%s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu\n",
+	fprintf(fp,
+	    "%s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu\n",
 	    "locker table size", (u_long)lrp->locker_t_size,
 	    "object table size", (u_long)lrp->object_t_size,
 	    "obj_off", (u_long)lrp->obj_off,
@@ -231,6 +236,8 @@ __lock_dump_region(dbenv, area, fp)
 		__db_shalloc_dump(lt->reginfo.addr, fp);
 
 	UNLOCKREGION(dbenv, lt);
+
+	return (0);
 }
 
 static void
@@ -303,6 +310,8 @@ __lock_dump_status(status)
 		return ("pending");
 	case DB_LSTAT_WAITING:
 		return ("waiting");
+	default:
+		break;
 	}
 	return ("unknown status");
 }

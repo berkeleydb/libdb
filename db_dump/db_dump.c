@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_dump.c,v 11.41 2001/01/18 18:36:57 bostic Exp $";
+    "$Id: db_dump.c,v 11.55 2001/07/06 20:30:20 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,6 +29,7 @@ static const char revid[] =
 #include "btree.h"
 #include "hash.h"
 #include "lock.h"
+#include "clib_ext.h"
 
 void	 configure __P((char *));
 int	 db_init __P((char *));
@@ -72,7 +73,7 @@ main(argc, argv)
 			if (freopen(optarg, "w", stdout) == NULL) {
 				fprintf(stderr, "%s: %s: reopen: %s\n",
 				    progname, optarg, strerror(errno));
-				exit (1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'h':
@@ -90,7 +91,7 @@ main(argc, argv)
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
 				    progname, db_strerror(ret));
-				return (1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'p':
@@ -108,7 +109,7 @@ main(argc, argv)
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case '?':
 		default:
 			usage();
@@ -123,27 +124,27 @@ main(argc, argv)
 		fprintf(stderr,
 		    "%s: the -d and -p options may not both be specified\n",
 		    progname);
-		exit (1);
+		return (EXIT_FAILURE);
 	}
 	if (lflag && subname != NULL) {
 		fprintf(stderr,
 		    "%s: the -l and -s options may not both be specified\n",
 		    progname);
-		exit (1);
+		return (EXIT_FAILURE);
 	}
 
 	if (keyflag && rflag) {
 		fprintf(stderr, "%s: %s",
 		    "the -k and -r or -R options may not both be specified\n",
 		    progname);
-		exit(1);
+		return (EXIT_FAILURE);
 	}
 
 	if (subname != NULL && rflag) {
 		fprintf(stderr, "%s: %s",
 		    "the -s and -r or R options may not both be specified\n",
 		    progname);
-		exit(1);
+		return (EXIT_FAILURE);
 	}
 
 	/* Handle possible interruptions. */
@@ -231,7 +232,7 @@ err:		exitval = 1;
 	}
 done:	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
 		exitval = 1;
-		dbp->err(dbp, ret, "close");
+		dbenv->err(dbenv, ret, "close");
 	}
 	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
@@ -242,7 +243,7 @@ done:	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 /*
@@ -279,8 +280,16 @@ db_init(home)
 	 * No environment exists (or, at least no environment that includes
 	 * an mpool region exists).  Create one, but make it private so that
 	 * no files are actually created.
+	 *
+	 * Note that for many databases with a large page size, the default
+	 * cache size is too small--at 64K, we can fit only four pages into
+	 * the default of 256K.  Because this is a utility, it's probably
+	 * reasonable to grab more--real restrictive environments aren't
+	 * going to run db_dump from a shell.  Since we malloc a megabyte for
+	 * the bulk get buffer, be conservative and use a megabyte here too.
 	 */
-	if ((ret = dbenv->open(dbenv, home,
+	if ((ret = dbenv->set_cachesize(dbenv, 0, MEGABYTE, 1)) == 0 &&
+	    (ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) == 0)
 		return (0);
 
@@ -305,14 +314,14 @@ is_sub(dbp, yesno)
 	switch (dbp->type) {
 	case DB_BTREE:
 	case DB_RECNO:
-		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &btsp, DB_FAST_STAT)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			return (ret);
 		}
 		*yesno = btsp->bt_metaflags & BTM_SUBDB ? 1 : 0;
 		break;
 	case DB_HASH:
-		if ((ret = dbp->stat(dbp, &hsp, NULL, 0)) != 0) {
+		if ((ret = dbp->stat(dbp, &hsp, DB_FAST_STAT)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
 			return (ret);
 		}
@@ -449,7 +458,10 @@ dump(dbp, pflag, keyflag)
 {
 	DBC *dbcp;
 	DBT key, data;
+	DBT keyret, dataret;
+	db_recno_t recno;
 	int ret, is_recno;
+	void *pointer;
 
 	/*
 	 * Get a cursor and step through the database, printing out each
@@ -462,17 +474,48 @@ dump(dbp, pflag, keyflag)
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
+	data.data = malloc(1024 * 1024);
+	data.ulen = 1024 * 1024;
+	data.flags = DB_DBT_USERMEM;
 	is_recno = (dbp->type == DB_RECNO || dbp->type == DB_QUEUE);
 	keyflag = is_recno ? keyflag : 1;
-	while ((ret = dbcp->c_get(dbcp, &key, &data, DB_NEXT)) == 0)
-		if ((keyflag && (ret = __db_prdbt(&key,
-		    pflag, " ", stdout, __db_verify_callback,
-		    is_recno, NULL)) != 0) || (ret =
-		    __db_prdbt(&data, pflag, " ", stdout,
-			__db_verify_callback, 0, NULL)) != 0) {
-			dbp->errx(dbp, NULL);
-			return (1);
+	if (is_recno) {
+		keyret.data = &recno;
+		keyret.size = sizeof(recno);
+	}
+
+retry:
+	while ((ret =
+	    dbcp->c_get(dbcp, &key, &data, DB_NEXT | DB_MULTIPLE_KEY)) == 0) {
+		DB_MULTIPLE_INIT(pointer, &data);
+		for (;;) {
+			if (is_recno)
+				DB_MULTIPLE_RECNO_NEXT(pointer, &data,
+				     recno, dataret.data, dataret.size);
+			else
+				DB_MULTIPLE_KEY_NEXT(pointer,
+				     &data, keyret.data,
+				     keyret.size, dataret.data, dataret.size);
+
+			if (dataret.data == NULL)
+				break;
+
+			if ((keyflag && (ret = __db_prdbt(&keyret,
+			    pflag, " ", stdout, __db_verify_callback,
+			    is_recno, NULL)) != 0) || (ret =
+			    __db_prdbt(&dataret, pflag, " ", stdout,
+				__db_verify_callback, 0, NULL)) != 0) {
+				dbp->errx(dbp, NULL);
+				return (1);
+			}
 		}
+	}
+	if (ret == ENOMEM) {
+		data.data = realloc(data.data, data.size);
+		data.ulen = data.size;
+		goto retry;
+	}
+
 	if (ret != DB_NOTFOUND) {
 		dbp->err(dbp, ret, "DBcursor->get");
 		return (1);
@@ -496,7 +539,7 @@ usage()
 {
 	(void)fprintf(stderr, "usage: %s\n",
 "db_dump [-klNprRV] [-d ahr] [-f output] [-h home] [-s database] db_file");
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -512,6 +555,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

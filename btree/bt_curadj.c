@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_curadj.c,v 11.20 2001/01/17 16:15:49 bostic Exp $";
+static const char revid[] = "$Id: bt_curadj.c,v 11.22 2001/05/31 21:23:08 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -372,8 +372,16 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 		    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
 			orig_cp = (BTREE_CURSOR *)dbc->internal;
 
+			/*
+			 * A note on the orig_cp->opd != NULL requirement here:
+			 * it's possible that there's a cursor that refers to
+			 * the same duplicate set, but which has no opd cursor,
+			 * because it refers to a different item and we took
+			 * care of it while processing a previous record.
+			 */
 			if (orig_cp->pgno != fpgno ||
 			    orig_cp->indx != first ||
+			    orig_cp->opd == NULL ||
 			    ((BTREE_CURSOR *)orig_cp->opd->internal)->indx
 			    != ti)
 				continue;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
  *	@(#)db_join.h	11.1 (Sleepycat) 7/25/99
@@ -22,6 +22,7 @@ typedef struct __join_cursor {
 	DBC	**j_workcurs;	/* Scratch cursor copies to muck with. */
 	DB	 *j_primary;	/* Primary dbp. */
 	DBT	  j_key;	/* Used to do lookups. */
+	DBT	  j_rdata;	/* Memory used for data return. */
 	u_int32_t j_ncurs;	/* How many cursors do we have? */
 #define	JOIN_RETRY	0x01	/* Error on primary get; re-return same key. */
 	u_int32_t flags;

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: shqueue.h,v 11.6 2000/11/14 20:20:28 bostic Exp $
+ * $Id: shqueue.h,v 11.7 2001/01/25 18:22:51 bostic Exp $
  */
 #ifndef	_SYS_SHQUEUE_H_
 #define	_SYS_SHQUEUE_H_

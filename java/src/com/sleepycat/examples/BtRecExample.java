@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BtRecExample.java,v 11.6 2000/02/19 20:58:02 bostic Exp $
+ * $Id: BtRecExample.java,v 11.8 2001/05/12 21:43:27 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -200,13 +200,6 @@ public class BtRecExample
 	}
 
 	System.exit(0);
-    }
-
-    void
-    usage()
-    {
-	System.err.println("usage: " + progname);
-	System.exit(1);
     }
 
     // Prompts for a line, and keeps prompting until a non blank

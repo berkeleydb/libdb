@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test086.tcl,v 11.2 2000/08/25 14:21:58 sue Exp $
+# $Id: test086.tcl,v 11.4 2001/05/17 20:37:09 bostic Exp $
 
 # Test086: Cursor stability across btree splits w/ subtransaction abort [#2373].
 proc test086 { method args } {
@@ -97,7 +97,6 @@ proc test086 { method args } {
 	puts "\tTest$tstn.e: Abort."
 	error_check_good ctxn_abort [$ctxn abort] 0
 
-
 	puts "\tTest$tstn.f: Check and see that cursors maintained reference."
 	for {set i 0} { $i < $nkeys } {incr i} {
 		set ret [$dbc_set($i) get -current]
@@ -107,7 +106,7 @@ proc test086 { method args } {
 		error_check_good dbc$i:get(match) $ret $ret2
 	}
 
-	# Put (and this time keep) the keys that caused the split.  
+	# Put (and this time keep) the keys that caused the split.
 	# We'll delete them to test reverse splits.
 	puts "\tTest$tstn.g: Put back added keys."
 	for {set i $nkeys} { $i < $mkeys } { incr i } {

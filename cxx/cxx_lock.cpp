@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_lock.cpp,v 11.9 2000/09/21 15:05:45 dda Exp $";
+static const char revid[] = "$Id: cxx_lock.cpp,v 11.11 2001/04/03 15:14:06 krinsky Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -54,13 +54,12 @@ int DbEnv::lock_id(u_int32_t *idp)
 	return (err);
 }
 
-int DbEnv::lock_stat(DB_LOCK_STAT **statp,
-		     db_malloc_fcn_type db_malloc_fcn)
+int DbEnv::lock_stat(DB_LOCK_STAT **statp)
 {
 	DB_ENV *env = unwrap(this);
 	int err;
 
-	if ((err = ::lock_stat(env, statp, db_malloc_fcn)) != 0) {
+	if ((err = ::lock_stat(env, statp)) != 0) {
 		DB_ERROR("DbEnv::lock_stat", err, error_policy());
 		return (err);
 	}

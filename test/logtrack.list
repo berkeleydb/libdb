@@ -49,7 +49,7 @@ PREFIX	log
 DEPRECATED	register1	1
 BEGIN	register	2
 PREFIX	qam
-BEGIN	inc	76
+IGNORED	inc	76
 BEGIN	incfirst	77
 BEGIN	mvptr	78
 BEGIN	del	79

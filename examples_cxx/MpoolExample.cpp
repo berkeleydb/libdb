@@ -1,25 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: MpoolExample.cpp,v 11.9 2000/10/27 20:32:01 dda Exp $
+ * $Id: MpoolExample.cpp,v 11.16 2001/05/10 17:14:07 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <iostream.h>
+#include <fstream.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#endif
 
 #include <db_cxx.h>
 
@@ -90,11 +86,11 @@ int main(int argc, char *argv[])
 		app.initdb(NULL, cachesize);
 		app.run(hits, pagesize, npages);
 		cout << "MpoolExample: completed\n";
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	catch (DbException &dbe) {
 		cerr << "MpoolExample: " << dbe.what() << "\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
 
@@ -105,18 +101,13 @@ int main(int argc, char *argv[])
 void
 init(char *file, int pagesize, int npages)
 {
-	//
 	// Create a file with the right number of pages, and store a page
 	// number on each page.
-	//
-	int fd;
-	int flags = O_CREAT | O_RDWR | O_TRUNC;
-#ifdef DB_WIN32
-	flags |= O_BINARY;
-#endif
-	if ((fd = open(file, flags, 0666)) < 0) {
-		cerr << "MpoolExample: " << file << ": " << strerror(errno) << "\n";
-		exit(1);
+	ofstream of(file, ios::out | ios::binary);
+
+	if (of.fail()) {
+		cerr << "MpoolExample: " << file << ": open failed\n";
+		exit(EXIT_FAILURE);
 	}
 	char *p = new char[pagesize];
 	memset(p, 0, pagesize);
@@ -124,10 +115,10 @@ init(char *file, int pagesize, int npages)
 	// The pages are numbered from 0.
 	for (int cnt = 0; cnt <= npages; ++cnt) {
 		*(db_pgno_t *)p = cnt;
-		if (write(fd, p, pagesize) != pagesize) {
-			cerr << "MpoolExample: " << file
-			     << ": " << strerror(errno) << "\n";
-			exit(1);
+		of.write(p, pagesize);
+		if (of.fail()) {
+			cerr << "MpoolExample: " << file << ": write failed\n";
+			exit(EXIT_FAILURE);
 		}
 	}
 	delete [] p;
@@ -138,7 +129,7 @@ usage()
 {
 	cerr << "usage: MpoolExample [-c cachesize] "
 	     << "[-h hits] [-n npages] [-p pagesize]\n";
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 // Note: by using DB_CXX_NO_EXCEPTIONS, we get explicit error returns
@@ -184,19 +175,19 @@ MpoolExample::run(int hits, int pagesize, int npages)
 			cerr << "MpoolExample: unable to retrieve page "
 			     << (unsigned long)pageno << ": "
 			     << strerror(errno) << "\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if (*(db_pgno_t *)p != pageno) {
 			cerr << "MpoolExample: wrong page retrieved ("
 			     << (unsigned long)pageno << " != "
 			     << *(int *)p << ")\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		if ((errno = dbmfp->put(p, 0)) != 0) {
 			cerr << "MpoolExample: unable to return page "
 			     << (unsigned long)pageno << ": "
 			     << strerror(errno) << "\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -205,6 +196,6 @@ MpoolExample::run(int hits, int pagesize, int npages)
 	// Close the pool.
 	if ((errno = close(0)) != 0) {
 		cerr << "MpoolExample: " << strerror(errno) << "\n";
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_db.h,v 11.9 2000/12/12 17:43:56 bostic Exp $
+ * $Id: tcl_db.h,v 11.16 2001/04/27 15:51:15 bostic Exp $
  */
 
 #define	MSG_SIZE 100		/* Message size */
@@ -13,6 +13,7 @@ enum INFOTYPE {
     I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_NDBM, I_MUTEX };
 
 #define	MAX_ID		8	/* Maximum number of sub-id's we need */
+#define	DBTCL_PREP	64	/* Size of txn_recover preplist */
 
 #define	DBTCL_DBM	1
 #define	DBTCL_NDBM	2
@@ -103,6 +104,13 @@ typedef struct dbtcl_info {
 	DBT i_lockobj;
 	FILE *i_err;
 	char *i_errpfx;
+
+	/* Callbacks--Tcl_Objs containing proc names */
+	Tcl_Obj *i_btcompare;
+	Tcl_Obj *i_dupcompare;
+	Tcl_Obj *i_hashproc;
+	Tcl_Obj *i_second_call;
+
 	struct dbtcl_info *i_parent;
 	int	i_otherid[MAX_ID];
 } DBTCL_INFO;
@@ -198,7 +206,7 @@ do {								\
  */
 #define	FLAG_CHECK2(flag,val)					\
 do {								\
-	if ((flag) != 0 && (flag) != (val)) {			\
+	if (((flag) & ~(val)) != 0) {				\
 		Tcl_SetResult(interp,				\
 		    " Only 1 policy can be specified.\n",	\
 		    TCL_STATIC);				\

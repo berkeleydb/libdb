@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test009.tcl,v 11.4 2000/05/22 12:51:38 bostic Exp $
+# $Id: test009.tcl,v 11.5 2001/01/25 18:23:08 bostic Exp $
 #
 # DB Test 9 {access method}
 # Check that we reuse overflow pages.  Create database with lots of

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fid.c,v 11.7 2000/10/26 14:17:05 bostic Exp $";
+static const char revid[] = "$Id: os_fid.c,v 11.9 2001/05/01 23:49:22 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -59,9 +59,9 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 
 	/* On POSIX/UNIX, use a dev/inode pair. */
 #ifdef HAVE_VXWORKS
-	if (stat((char *)fname, &sb)) {
+	if (stat((char *)fname, &sb) != 0) {
 #else
-	if (stat(fname, &sb)) {
+	if (stat(fname, &sb) != 0) {
 #endif
 		ret = __os_get_errno();
 		__db_err(dbenv, "%s: %s", fname, strerror(ret));

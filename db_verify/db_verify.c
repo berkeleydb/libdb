@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_verify.c,v 1.15 2001/01/18 18:36:59 bostic Exp $";
+    "$Id: db_verify.c,v 1.21 2001/06/12 19:51:45 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,6 +24,7 @@ static const char revid[] =
 #endif
 
 #include "db_int.h"
+#include "clib_ext.h"
 
 int	main __P((int, char *[]));
 void	usage __P((void));
@@ -60,16 +61,15 @@ main(argc, argv)
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
 				    progname, db_strerror(ret));
-				exit (1);
+				return (EXIT_FAILURE);
 			}
-			break;
 			break;
 		case 'q':
 			quiet = 1;
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case '?':
 		default:
 			usage();
@@ -135,7 +135,7 @@ main(argc, argv)
 		if ((ret = dbp->verify(dbp, argv[0], NULL, NULL, 0)) != 0)
 			dbp->err(dbp, ret, "DB->verify: %s", argv[0]);
 		if ((t_ret = dbp->close(dbp, 0)) != 0 && ret == 0) {
-			dbp->err(dbp, ret, "DB->close: %s", argv[0]);
+			dbenv->err(dbenv, ret, "DB->close: %s", argv[0]);
 			ret = t_ret;
 		}
 		if (ret != 0)
@@ -154,14 +154,14 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
 usage()
 {
 	fprintf(stderr, "usage: db_verify [-NqV] [-h home] db_file ...\n");
-	exit (1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -177,6 +177,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

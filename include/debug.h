@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: debug.h,v 11.17 2000/07/07 15:50:36 bostic Exp $
+ * $Id: debug.h,v 11.18 2001/01/25 18:22:51 bostic Exp $
  */
 
 #if defined(__cplusplus)

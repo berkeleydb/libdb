@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_upgrade.h,v 1.5 2000/11/16 23:40:56 ubell Exp $
+ * $Id: db_upgrade.h,v 1.8 2001/07/02 01:05:40 bostic Exp $
  */
 
 #ifndef _DB_UPGRADE_H_
@@ -16,12 +16,65 @@
  */
 
 /* Structures from the 3.1 release */
+typedef struct _dbmeta31 {
+	DB_LSN	  lsn;		/* 00-07: LSN. */
+	db_pgno_t pgno;		/* 08-11: Current page number. */
+	u_int32_t magic;	/* 12-15: Magic number. */
+	u_int32_t version;	/* 16-19: Version. */
+	u_int32_t pagesize;	/* 20-23: Pagesize. */
+	u_int8_t  unused1[1];	/*    24: Unused. */
+	u_int8_t  type;		/*    25: Page type. */
+	u_int8_t  unused2[2];	/* 26-27: Unused. */
+	u_int32_t free;		/* 28-31: Free list page number. */
+	DB_LSN    unused3;	/* 36-39: Unused. */
+	u_int32_t key_count;	/* 40-43: Cached key count. */
+	u_int32_t record_count;	/* 44-47: Cached record count. */
+	u_int32_t flags;	/* 48-51: Flags: unique to each AM. */
+				/* 52-71: Unique file ID. */
+	u_int8_t  uid[DB_FILE_ID_LEN];
+} DBMETA31;
+
+typedef struct _btmeta31 {
+	DBMETA31  dbmeta;		/* 00-71: Generic meta-data header. */
+
+	u_int32_t maxkey;	/* 72-75: Btree: Maxkey. */
+	u_int32_t minkey;	/* 76-79: Btree: Minkey. */
+	u_int32_t re_len;	/* 80-83: Recno: fixed-length record length. */
+	u_int32_t re_pad;	/* 84-87: Recno: fixed-length record pad. */
+	u_int32_t root;		/* 88-92: Root page. */
+
+	/*
+	 * Minimum page size is 128.
+	 */
+} BTMETA31;
+
+/************************************************************************
+ HASH METADATA PAGE LAYOUT
+ ************************************************************************/
+typedef struct _hashmeta31 {
+	DBMETA31 dbmeta;	/* 00-71: Generic meta-data page header. */
+
+	u_int32_t max_bucket;	/* 72-75: ID of Maximum bucket in use */
+	u_int32_t high_mask;	/* 76-79: Modulo mask into table */
+	u_int32_t low_mask;	/* 80-83: Modulo mask into table lower half */
+	u_int32_t ffactor;	/* 84-87: Fill factor */
+	u_int32_t nelem;	/* 88-91: Number of keys in hash table */
+	u_int32_t h_charkey;	/* 92-95: Value of hash(CHARKEY) */
+#define	NCACHED	32		/* number of spare points */
+				/* 96-223: Spare pages for overflow */
+	u_int32_t spares[NCACHED];
+
+	/*
+	 * Minimum page size is 256.
+	 */
+} HMETA31;
+
 /*
  * QAM Meta data page structure
  *
  */
 typedef struct _qmeta31 {
-	DBMETA    dbmeta;	/* 00-71: Generic meta-data header. */
+	DBMETA31 dbmeta;	/* 00-71: Generic meta-data header. */
 
 	u_int32_t start;	/* 72-75: Start offset. */
 	u_int32_t first_recno;	/* 76-79: First not deleted record. */
@@ -34,6 +87,21 @@ typedef struct _qmeta31 {
 	 * Minimum page size is 128.
 	 */
 } QMETA31;
+/* Structures from the 3.2 release */
+typedef struct _qmeta32 {
+	DBMETA31 dbmeta;	/* 00-71: Generic meta-data header. */
+
+	u_int32_t first_recno;	/* 72-75: First not deleted record. */
+	u_int32_t cur_recno;	/* 76-79: Last recno allocated. */
+	u_int32_t re_len;	/* 80-83: Fixed-length record length. */
+	u_int32_t re_pad;	/* 84-87: Fixed-length record pad. */
+	u_int32_t rec_page;	/* 88-91: Records Per Page. */
+	u_int32_t page_ext;	/* 92-95: Pages per extent */
+
+	/*
+	 * Minimum page size is 128.
+	 */
+} QMETA32;
 
 /* Structures from the 3.0 release */
 

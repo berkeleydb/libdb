@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_rec.c,v 11.34 2001/01/19 18:01:59 bostic Exp $";
+static const char revid[] = "$Id: qam_rec.c,v 11.46 2001/06/15 16:38:15 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,7 +29,13 @@ static const char revid[] = "$Id: qam_rec.c,v 11.34 2001/01/19 18:01:59 bostic E
  * __qam_inc_recover --
  *	Recovery function for inc.
  *
- * PUBLIC: int __qam_inc_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * This log record is no longer used, and so recovery is a no-op -- we don't
+ * want to remove it entirely though, because we'd have to upgrade the log
+ * version which requires application upgrades.  We should remove it when the
+ * log version is next upgraded.
+ *
+ * PUBLIC: int __qam_inc_recover
+ * PUBLIC:     __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
 __qam_inc_recover(dbenv, dbtp, lsnp, op, info)
@@ -42,61 +48,13 @@ __qam_inc_recover(dbenv, dbtp, lsnp, op, info)
 	__qam_inc_args *argp;
 	DB *file_dbp;
 	DBC *dbc;
-	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
-	QMETA *meta;
-	db_pgno_t metapg;
-	int cmp_p, modified, ret;
+	int ret;
 
 	COMPQUIET(info, NULL);
+	COMPQUIET(op, 0);
 	REC_PRINT(__qam_inc_print);
 	REC_INTRO(__qam_inc_read, 1);
-
-	metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
-
-	if ((ret = __db_lget(dbc,
-	    LCK_ROLLBACK, metapg,  DB_LOCK_WRITE, 0, &lock)) != 0)
-		goto done;
-	if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
-		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
-			    &metapg, DB_MPOOL_CREATE, &meta)) != 0) {
-				(void)__LPUT(dbc, lock);
-				goto out;
-			}
-			meta->dbmeta.pgno = metapg;
-			meta->dbmeta.type = P_QAMMETA;
-
-		} else {
-			*lsnp = argp->prev_lsn;
-			ret = 0;
-			(void)__LPUT(dbc, lock);
-			goto out;
-		}
-	}
-
-	modified = 0;
-	cmp_p = log_compare(&LSN(meta), &argp->lsn);
-	CHECK_LSN(op, cmp_p, &LSN(meta), &argp->lsn);
-
-	/*
-	 * The cur_recno never goes backwards.  It is a point of
-	 * contention among appenders.  If one fails cur_recno will
-	 * most likely be beyond that one when it aborts.
-	 * We move it ahead on either an abort or a commit
-	 * and make the LSN reflect that fact.
-	 */
-	if (cmp_p == 0) {
-		modified = 1;
-		meta->cur_recno++;
-		if (meta->cur_recno == RECNO_OOB)
-			meta->cur_recno++;
-		meta->dbmeta.lsn = *lsnp;
-	}
-	if ((ret = memp_fput(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)))
-		goto out;
-
-	(void)__LPUT(dbc, lock);
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
@@ -233,7 +191,7 @@ __qam_mvptr_recover(dbenv, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	QMETA *meta;
 	db_pgno_t metapg;
-	int cmp_p, modified, ret;
+	int cmp_n, cmp_p, modified, ret;
 
 	COMPQUIET(info, NULL);
 	REC_PRINT(__qam_mvptr_print);
@@ -262,13 +220,24 @@ __qam_mvptr_recover(dbenv, dbtp, lsnp, op, info)
 	}
 
 	modified = 0;
-	cmp_p = log_compare(&meta->dbmeta.lsn, &argp->metalsn);
+	cmp_n = log_compare(lsnp, &LSN(meta));
+	cmp_p = log_compare(&LSN(meta), &argp->metalsn);
 
 	/*
-	 * We never undo a movement of one of the pointers.
-	 * Just move them along regardless of abort/commit.
+	 * Under normal circumstances, we never undo a movement of one of
+	 * the pointers.  Just move them along regardless of abort/commit.
+	 *
+	 * If we're undoing a truncate, we need to reset the pointers to
+	 * their state before the truncate.
 	 */
-	if (cmp_p == 0) {
+	if (DB_UNDO(op) && (argp->opcode & QAM_TRUNCATE)) {
+		if (cmp_n == 0) {
+			meta->first_recno = argp->old_first;
+			meta->cur_recno = argp->old_cur;
+			modified = 1;
+			meta->dbmeta.lsn = argp->metalsn;
+		}
+	} else if (cmp_p == 0) {
 		if (argp->opcode & QAM_SETFIRST)
 			meta->first_recno = argp->new_first;
 
@@ -289,6 +258,7 @@ done:	*lsnp = argp->prev_lsn;
 
 out:	REC_CLOSE;
 }
+
 /*
  * __qam_del_recover --
  *	Recovery function for del.
@@ -339,7 +309,7 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret = __db_lget(dbc,
 		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = memp_fget(file_dbp->mpf, &metapg, 0, &meta)) != 0) {
+		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
 			(void)__LPUT(dbc, lock);
 			goto done;
 		}
@@ -349,9 +319,9 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		    || meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
-			(void)memp_fput(file_dbp->mpf, meta, DB_MPOOL_DIRTY);
+			(void)memp_fput(mpf, meta, DB_MPOOL_DIRTY);
 		} else
-			(void)memp_fput(file_dbp->mpf, meta, 0);
+			(void)memp_fput(mpf, meta, 0);
 		(void)__LPUT(dbc, lock);
 
 		/* Need to undo delete - mark the record as present */
@@ -385,6 +355,7 @@ done:	*lsnp = argp->prev_lsn;
 
 out:	REC_CLOSE;
 }
+
 /*
  * __qam_delext_recover --
  *	Recovery function for del in an extent based queue.
@@ -415,9 +386,19 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__qam_delext_print);
 	REC_INTRO(__qam_delext_read, 1);
 
-	if ((ret = __qam_fget(file_dbp,
-	     &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
-		goto out;
+	if ((ret = __qam_fget(file_dbp, &argp->pgno, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND && ret != ENOENT)
+			goto out;
+		/*
+		 * If we are redoing a delete and the page is not there
+		 * we are done.
+		 */
+		if (DB_REDO(op))
+			goto done;
+		if ((ret = __qam_fget(file_dbp,
+		    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
+			goto out;
+	}
 
 	modified = 0;
 	if (pagep->pgno == PGNO_INVALID) {
@@ -434,7 +415,7 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret = __db_lget(dbc,
 		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = memp_fget(file_dbp->mpf, &metapg, 0, &meta)) != 0) {
+		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
 			(void)__LPUT(dbc, lock);
 			goto done;
 		}
@@ -444,9 +425,9 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		    || meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
-			(void)memp_fput(file_dbp->mpf, meta, DB_MPOOL_DIRTY);
+			(void)memp_fput(mpf, meta, DB_MPOOL_DIRTY);
 		} else
-			(void)memp_fput(file_dbp->mpf, meta, 0);
+			(void)memp_fput(mpf, meta, 0);
 		(void)__LPUT(dbc, lock);
 
 		if ((ret = __qam_pitem(dbc, pagep,
@@ -485,7 +466,8 @@ out:	REC_CLOSE;
  * __qam_add_recover --
  *	Recovery function for add.
  *
- * PUBLIC: int __qam_add_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC: int __qam_add_recover
+ * PUBLIC:     __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
 __qam_add_recover(dbenv, dbtp, lsnp, op, info)
@@ -503,16 +485,26 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 	QMETA *meta;
 	QPAGE *pagep;
 	db_pgno_t metapg;
-	int cmp_n, modified, ret;
+	int cmp_n, meta_dirty, modified, ret;
 
 	COMPQUIET(info, NULL);
 	REC_PRINT(__qam_add_print);
 	REC_INTRO(__qam_add_read, 1);
 
 	modified = 0;
-	if ((ret = __qam_fget(file_dbp,
-	    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
-		goto out;
+	if ((ret = __qam_fget(file_dbp, &argp->pgno, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND && ret != ENOENT)
+			goto out;
+		/*
+		 * If we are undoing an append and the page is not there
+		 * we are done.
+		 */
+		if (DB_UNDO(op))
+			goto done;
+		if ((ret = __qam_fget(file_dbp,
+		    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
+			goto out;
+	}
 
 	if (pagep->pgno == PGNO_INVALID) {
 		pagep->pgno = argp->pgno;
@@ -529,16 +521,22 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 			goto err;
 		LSN(pagep) = *lsnp;
 		modified = 1;
-		/* Make sure first pointer includes this record. */
+		/* Make sure pointers include this record. */
 		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
 		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0)
 			goto err;
+		meta_dirty = 0;
 		if (QAM_BEFORE_FIRST(meta, argp->recno)) {
 			meta->first_recno = argp->recno;
-			if ((ret = memp_fput(mpf, meta, DB_MPOOL_DIRTY)) != 0)
-				goto err;
-		} else
-			if ((ret = memp_fput(mpf, meta, 0)) != 0)
+			meta_dirty = 1;
+		}
+		if (argp->recno == meta->cur_recno ||
+		   QAM_AFTER_CURRENT(meta, argp->recno)) {
+			meta->cur_recno = argp->recno + 1;
+			meta_dirty = 1;
+		}
+		if ((ret = memp_fput(mpf,
+		    meta, meta_dirty? DB_MPOOL_DIRTY : 0)) != 0)
 				goto err;
 
 	} else if (DB_UNDO(op)) {
@@ -585,6 +583,7 @@ done:	*lsnp = argp->prev_lsn;
 
 out:	REC_CLOSE;
 }
+
 /*
  * __qam_delete_recover --
  *	Recovery function for delete of an extent.
@@ -633,7 +632,7 @@ __qam_delete_recover(dbenv, dbtp, lsnp, op, info)
 		 * exists, then this is right.  If it doesn't exist, then
 		 * nothing will happen and that's OK.
 		 */
-		if ((ret =  __db_backup_name(dbenv, argp->name.data,
+		if ((ret = __db_backup_name(dbenv, argp->name.data,
 		    &backup, &argp->lsn)) != 0)
 			goto out;
 		if ((ret = __db_appname(dbenv,
@@ -651,15 +650,16 @@ __qam_delete_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbenv, backup);
 	if (real_back != NULL)
-		__os_freestr(real_back);
+		__os_freestr(dbenv, real_back);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	return (ret);
 }
+
 /*
  * __qam_rename_recover --
  *	Recovery function for rename.
@@ -720,13 +720,13 @@ __qam_rename_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 
 	if (new_name != NULL)
-		__os_free(new_name, 0);
+		__os_free(dbenv, new_name, 0);
 
 	if (real_name != NULL)
-		__os_free(real_name, 0);
+		__os_free(dbenv, real_name, 0);
 
 	return (ret);
 }

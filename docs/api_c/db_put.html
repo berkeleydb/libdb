@@ -1,5 +1,5 @@
-<!--$Id: db_put.so,v 10.34 2000/09/16 22:27:56 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: db_put.so,v 10.37 2001/04/02 00:36:35 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,13 +8,13 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td>
 <h1>DB-&gt;put</h1>
 </td>
-<td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -33,11 +33,11 @@ or adding a duplicate data item if duplicates are allowed.  If the database
 supports duplicates, the DB-&gt;put function adds the new data value at the
 end of the duplicate set.  If the database supports sorted duplicates,
 the new data value is inserted at the correct sorted location.
-<p>If the file is being accessed under transaction protection, the
-<b>txnid</b> parameter is a transaction ID returned from
-<a href="../api_c/txn_begin.html">txn_begin</a>, otherwise, NULL.
-<p>The <b>flags</b> parameter must be set to 0 or one of the following
-values:
+<p>If the operation is to be transaction-protected, the <b>txnid</b>
+parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">txn_begin</a>;
+otherwise, NULL.
+<p>The <b>flags</b> value must be set to 0 or
+one of the following values:
 <p><dl compact>
 <p><dt><a name="DB_APPEND">DB_APPEND</a><dd>Append the key/data pair to the end of the database.  For the
 DB_APPEND flag to be specified, the underlying database must be
@@ -46,9 +46,9 @@ returned in the specified <b>key</b>.
 <p>There is a minor behavioral difference between the Recno and Queue access
 methods for the DB_APPEND flag.  If a transaction enclosing a
 DB-&gt;put operation with the DB_APPEND flag aborts, the
-record number may be decremented (and later re-allocated by a subsequent
+record number may be decremented (and later reallocated by a subsequent
 DB_APPEND operation) by the Recno access method, but will not be
-decremented or re-allocated by the Queue access method.
+decremented or reallocated by the Queue access method.
 <p><dt><a name="DB_NODUPDATA">DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, enter the new key/data
 pair only if it does not already appear in the database.  If the
 key/data pair already appears in the database, <a href="../api_c/dbc_put.html#DB_KEYEXIST">DB_KEYEXIST</a> is
@@ -77,6 +77,7 @@ fail if the key already exists in the database.
 <p>An attempt was made to add a record to a fixed-length database that was too
 large to fit.
 <p>An attempt was made to do a partial put.
+<p>An attempt was made to add a record to a secondary index.
 </dl>
 <p><dl compact>
 <p><dt>ENOSPC<dd>A btree exceeded the maximum btree depth (255).
@@ -87,12 +88,14 @@ If a catastrophic error has occurred, the DB-&gt;put function may fail and retur
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/db_create.html">db_create</a>,
+<a href="../api_c/db_associate.html">DB-&gt;associate</a>,
 <a href="../api_c/db_close.html">DB-&gt;close</a>,
 <a href="../api_c/db_cursor.html">DB-&gt;cursor</a>,
 <a href="../api_c/db_del.html">DB-&gt;del</a>,
-<a href="../api_c/db_err.html">DB-&gt;err</a>,
+<a href="../api_c/db_err.html">DB-&gt;err</a>, <a href="../api_c/db_err.html">DB-&gt;errx</a>
 <a href="../api_c/db_fd.html">DB-&gt;fd</a>,
 <a href="../api_c/db_get.html">DB-&gt;get</a>,
+<a href="../api_c/db_get.html">DB-&gt;pget</a>,
 <a href="../api_c/db_get_byteswapped.html">DB-&gt;get_byteswapped</a>,
 <a href="../api_c/db_get_type.html">DB-&gt;get_type</a>,
 <a href="../api_c/db_join.html">DB-&gt;join</a>,
@@ -100,6 +103,9 @@ in the same way.
 <a href="../api_c/db_open.html">DB-&gt;open</a>,
 <a href="../api_c/db_put.html">DB-&gt;put</a>,
 <a href="../api_c/db_remove.html">DB-&gt;remove</a>,
+<a href="../api_c/db_rename.html">DB-&gt;rename</a>,
+<a href="../api_c/db_set_alloc.html">DB-&gt;set_alloc</a>,
+<a href="../api_c/db_set_append_recno.html">DB-&gt;set_append_recno</a>,
 <a href="../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a>,
 <a href="../api_c/db_set_bt_minkey.html">DB-&gt;set_bt_minkey</a>,
 <a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a>,
@@ -108,28 +114,28 @@ in the same way.
 <a href="../api_c/db_set_errcall.html">DB-&gt;set_errcall</a>,
 <a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a>,
 <a href="../api_c/db_set_errpfx.html">DB-&gt;set_errpfx</a>,
+<a href="../api_c/db_set_feedback.html">DB-&gt;set_feedback</a>,
 <a href="../api_c/db_set_flags.html">DB-&gt;set_flags</a>,
 <a href="../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a>,
 <a href="../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a>,
 <a href="../api_c/db_set_h_nelem.html">DB-&gt;set_h_nelem</a>,
 <a href="../api_c/db_set_lorder.html">DB-&gt;set_lorder</a>,
-<a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
 <a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
-<a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,
 <a href="../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a>,
 <a href="../api_c/db_set_re_source.html">DB-&gt;set_re_source</a>,
 <a href="../api_c/db_stat.html">DB-&gt;stat</a>,
 <a href="../api_c/db_sync.html">DB-&gt;sync</a>,
-<a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a>
+<a href="../api_c/db_truncate.html">DB-&gt;truncate</a>,
+<a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a>,
 and
 <a href="../api_c/db_verify.html">DB-&gt;verify</a>.
 </tt>
-<table><tr><td><br></td><td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

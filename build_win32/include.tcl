@@ -1,6 +1,6 @@
 set tclsh_path SET_YOUR_TCLSH_PATH
 set test_path ../test
-set tcllib ./Debug/libdb_tcl32d.dll
+set tcllib ./Debug/libdb_tcl33d.dll
 
 set KILL ./dbkill.exe
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd002.tcl,v 11.22 2000/12/11 17:24:54 sue Exp $
+# $Id: recd002.tcl,v 11.27 2001/05/16 19:01:15 sue Exp $
 #
 # Recovery Test #2.  Verify that splits can be recovered.
 proc recd002 { method {select 0} args} {
@@ -80,8 +80,13 @@ proc recd002 { method {select 0} args} {
 		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
-		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
+		#
+		# Note that since prepare-discard ultimately aborts
+		# the txn, it must come before prepare-commit.
+		#
 		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+			$cmd $msg
+		op_recover prepare-discard $testdir $env_cmd $testfile2 \
 			$cmd $msg
 		op_recover prepare-commit $testdir $env_cmd $testfile2 \
 			$cmd $msg

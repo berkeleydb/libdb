@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test025.tcl,v 11.11 2000/11/16 23:56:18 ubell Exp $
+# $Id: test025.tcl,v 11.13 2001/05/17 20:37:08 bostic Exp $
 #
 # DB Test 25 {method nentries}
 # Test the DB_APPEND flag.
@@ -62,7 +62,7 @@ proc test025 { method {nentries 10000} {start 0 } {tnum "25" } args} {
 		error_check_good db_put $ret 0
 		incr count
 	}
-		
+
 	while { [gets $did str] != -1 && $count < $nentries } {
 		set k [expr $count + 1]
 		set kvals($k) [pad_data $method $str]

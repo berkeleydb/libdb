@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test077.tcl,v 1.4 2000/08/25 14:21:58 sue Exp $
+# $Id: test077.tcl,v 1.5 2001/01/25 18:23:13 bostic Exp $
 #
 # DB Test 77: Test of DB_GET_RECNO [#1206].
 proc test077 { method { nkeys 1000 } { pagesize 512 } { tnum 77 } args } {

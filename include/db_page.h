@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_page.h,v 11.28 2000/12/06 19:55:45 ubell Exp $
+ * $Id: db_page.h,v 11.32 2001/05/22 17:40:35 ubell Exp $
  */
 
 #ifndef _DB_PAGE_H_
@@ -65,7 +65,7 @@ extern "C" {
  * The magic and version numbers have to be in the same place in all versions
  * of the metadata page as the application may not have upgraded the database.
  ************************************************************************/
-typedef struct _dbmeta31 {
+typedef struct _dbmeta33 {
 	DB_LSN	  lsn;		/* 00-07: LSN. */
 	db_pgno_t pgno;		/* 08-11: Current page number. */
 	u_int32_t magic;	/* 12-15: Magic number. */
@@ -75,18 +75,19 @@ typedef struct _dbmeta31 {
 	u_int8_t  type;		/*    25: Page type. */
 	u_int8_t  unused2[2];	/* 26-27: Unused. */
 	u_int32_t free;		/* 28-31: Free list page number. */
-	DB_LSN	  unused3;	/* 32-39: former Lsn for allocation */
+	db_pgno_t last_pgno;	/* 32-35: Page number of last page in db. */
+	u_int32_t unused3;	/* 36-39: Unused. */
 	u_int32_t key_count;	/* 40-43: Cached key count. */
 	u_int32_t record_count;	/* 44-47: Cached record count. */
 	u_int32_t flags;	/* 48-51: Flags: unique to each AM. */
 				/* 52-71: Unique file ID. */
 	u_int8_t  uid[DB_FILE_ID_LEN];
-} DBMETA31, DBMETA;
+} DBMETA33, DBMETA;
 
 /************************************************************************
  BTREE METADATA PAGE LAYOUT
  ************************************************************************/
-typedef struct _btmeta31 {
+typedef struct _btmeta33 {
 #define	BTM_DUP		0x001	/*	  Duplicates. */
 #define	BTM_RECNO	0x002	/*	  Recno tree. */
 #define	BTM_RECNUM	0x004	/*	  Btree: maintain record count. */
@@ -106,12 +107,12 @@ typedef struct _btmeta31 {
 	/*
 	 * Minimum page size is 128.
 	 */
-} BTMETA31, BTMETA;
+} BTMETA33, BTMETA;
 
 /************************************************************************
  HASH METADATA PAGE LAYOUT
  ************************************************************************/
-typedef struct _hashmeta31 {
+typedef struct _hashmeta33 {
 #define	DB_HASH_DUP	0x01	/*	  Duplicates. */
 #define	DB_HASH_SUBDB	0x02	/*	  Subdatabases. */
 #define	DB_HASH_DUPSORT	0x04	/*	  Duplicates are sorted. */
@@ -130,7 +131,7 @@ typedef struct _hashmeta31 {
 	/*
 	 * Minimum page size is 256.
 	 */
-} HMETA31, HMETA;
+} HMETA33, HMETA;
 
 /************************************************************************
  QUEUE METADATA PAGE LAYOUT
@@ -139,7 +140,7 @@ typedef struct _hashmeta31 {
  * QAM Meta data page structure
  *
  */
-typedef struct _qmeta32 {
+typedef struct _qmeta33 {
 	DBMETA    dbmeta;	/* 00-71: Generic meta-data header. */
 
 	u_int32_t first_recno;	/* 72-75: First not deleted record. */
@@ -152,7 +153,7 @@ typedef struct _qmeta32 {
 	/*
 	 * Minimum page size is 128.
 	 */
-} QMETA32, QMETA;
+} QMETA33, QMETA;
 
 /*
  * DBMETASIZE is a constant used by __db_file_setup and DB->verify
@@ -248,8 +249,8 @@ typedef struct _qpage {
  * the BINTERNAL fields on each access.)  Overload the PREV_PGNO field.
  */
 #define	RE_NREC(p)							\
-	((TYPE(p) == P_IBTREE || TYPE(p) == P_IRECNO) ?			\
-	PREV_PGNO(p) : (TYPE(p) == P_LBTREE ? NUM_ENT(p) / 2 : NUM_ENT(p)))
+	((TYPE(p) == P_IBTREE || TYPE(p) == P_IRECNO) ?	PREV_PGNO(p) :	\
+	(db_pgno_t)(TYPE(p) == P_LBTREE ? NUM_ENT(p) / 2 : NUM_ENT(p)))
 #define	RE_NREC_ADJ(p, adj)						\
 	PREV_PGNO(p) += adj;
 #define	RE_NREC_SET(p, num)						\

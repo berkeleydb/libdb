@@ -1,5 +1,5 @@
-<!--$Id: dbisnot.so,v 10.3 2000/12/14 20:52:03 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: dbisnot.so,v 10.6 2001/05/31 15:17:24 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
-<td width="1%"><a href="../../ref/intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>What is Berkeley DB not?</h1>
@@ -18,7 +18,7 @@
 simple data access services.
 <p>Records in Berkeley DB are (<i>key</i>, <i>value</i>) pairs. Berkeley DB
 supports only a few logical operations on records. They are:
-<ul type=disc>
+<p><ul type=disc>
 <li>Insert a record in a table.
 <li>Delete a record from a table.
 <li>Find a record in a table by looking up its key.
@@ -28,7 +28,7 @@ supports only a few logical operations on records. They are:
 Values are simply payload, to be
 stored with keys and reliably delivered back to the application on
 demand.
-<p>Both keys and values can be arbitrary bit strings, either fixed-length
+<p>Both keys and values can be arbitrary byte strings, either fixed-length
 or variable-length. As a result, programmers can put native programming
 language data structures into the database without converting them to
 a foreign record format first. Storage and retrieval are very simple,
@@ -74,19 +74,19 @@ a relational system the programmer can create a record from a fixed menu
 of data types. Because the record types are declared to the system, the
 relational engine can reach inside records and examine individual values
 in them. In addition, programmers can use SQL to declare relationships
-among tables, and to create indexes on tables. Relational engines
-usually maintain these relationships and indexes automatically.
+among tables, and to create indices on tables. Relational engines
+usually maintain these relationships and indices automatically.
 <p>In Berkeley DB, the key and value in a record are opaque
 to Berkeley DB. They may have a rich
 internal structure, but the library is unaware of it. As a result, Berkeley DB
 cannot decompose the value part of a record into its constituent parts,
 and cannot use those parts to find values of interest. Only the
 application, which knows the data structure, can do that.
-<p>Berkeley DB does allow programmers to create indexes on tables, and to use
-those indexes to speed up searches. However, the programmer has no way
-to tell the library how different tables and indexes are related.  The
+<p>Berkeley DB does allow programmers to create indices on tables, and to use
+those indices to speed up searches. However, the programmer has no way
+to tell the library how different tables and indices are related.  The
 application needs to make sure that they all stay consistent. In the
-case of indexes in particular, if the application puts a new record into
+case of indices in particular, if the application puts a new record into
 a table, it must also put a new record in the index for it. It's
 generally simple to write a single function to make the required
 updates, but it is work that relational systems do automatically.
@@ -108,7 +108,7 @@ method calls on any application object. It has no idea what methods are
 defined on user objects, and cannot see the public or private members
 of any instance.  The key and value part of all records are opaque to
 Berkeley DB.
-<p>Berkeley DB cannot automatically page in referenced objects, as some
+<p>Berkeley DB cannot automatically page in objects as they are accessed, as some
 object-oriented databases do. The object-oriented application programmer
 must decide what records are required, and must fetch them by making
 method calls on Berkeley DB objects.
@@ -139,7 +139,7 @@ Directory Access Protocol (LDAP) servers use Berkeley DB for record storage.
 LDAP clients connect to these servers over the network. Individual
 servers make calls through the Berkeley DB API to find records and return them
 to clients. On its own, however, Berkeley DB is not a server.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

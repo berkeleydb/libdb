@@ -1,23 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 11.8 2001/01/04 14:23:30 dda Exp $
+ * $Id: LockExample.cpp,v 11.16 2001/05/10 17:14:07 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
 #include <iostream.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#endif
 
 #include <db_cxx.h>
 
@@ -85,11 +80,11 @@ main(int argc, char *argv[])
 		LockExample app(home, maxlocks, do_unlink);
 		app.run();
 		app.close(0);
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	catch (DbException &dbe) {
 		cerr << "LockExample: " << dbe.what() << "\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
 
@@ -102,7 +97,7 @@ LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 		if ((ret = remove(home, DB_FORCE)) != 0) {
 			cerr << progname << ": DbEnv::remove: "
 			     << strerror(errno) << "\n";
-			exit (1);
+			exit(EXIT_FAILURE);
 		}
 	}
 	else {
@@ -232,5 +227,5 @@ static void
 usage()
 {
 	cerr << "usage: LockExample [-u] [-h home] [-m maxlocks]\n";
-	exit(1);
+	exit(EXIT_FAILURE);
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test067.tcl,v 11.12 2000/08/25 14:21:58 sue Exp $
+# $Id: test067.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
 #
 # DB Test 67: Test of DB_CURRENT partial puts on almost-empty duplicate pages.
 # This test was written to address the following issue, #2 in the list of

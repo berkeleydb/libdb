@@ -1,5 +1,5 @@
-<!--$Id: lock_stat.so,v 10.30 2000/12/08 20:43:15 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: lock_stat.so,v 10.31 2001/04/03 16:27:55 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,13 +8,13 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td>
 <h1>DbEnv.lock_stat</h1>
 </td>
-<td width="1%">
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<td align=right>
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -29,14 +29,6 @@ public DbLockStat lock_stat()
 creates a DbLockStat object encapsulating a statistical structure.
 The lock region statistics are stored in a DbLockStat object.
 The following data fields are available from the DbLockStat object:
-<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
-is called to allocate the memory, otherwise, the library function
-<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
-the calling conventions of the <b>malloc</b>(3) library routine.
-Regardless, the caller is responsible for deallocating the returned
-memory.  To deallocate returned memory, free the returned memory
-reference, references inside the returned memory do not need to be
-individually freed.
 <p>The lock region statistics are stored in a structure of type
 DB_LOCK_STAT.  The following DB_LOCK_STAT fields will be filled in:
 <p><dl compact>
@@ -70,24 +62,24 @@ failure.
 If a catastrophic error has occurred, the DbEnv.lock_stat method may fail and throw
 a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
 will fail in the same way.
-<h3>Classes</h3>
+<h1>Class</h1>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/lock_class.html">DbLock</a>
 <h1>See Also</h1>
 <a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a>,
 <a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a>,
-<a href="../api_java/env_set_lk_max_locks.html">DbEnv.set_lk_max_locks</a>,
-<a href="../api_java/env_set_lk_max_lockers.html">DbEnv.set_lk_max_lockers</a>,
-<a href="../api_java/env_set_lk_max_objects.html">DbEnv.set_lk_max_objects</a>,
 <a href="../api_java/env_set_lk_max.html">DbEnv.set_lk_max</a>,
+<a href="../api_java/env_set_lk_max_lockers.html">DbEnv.set_lk_max_lockers</a>,
+<a href="../api_java/env_set_lk_max_locks.html">DbEnv.set_lk_max_locks</a>,
+<a href="../api_java/env_set_lk_max_objects.html">DbEnv.set_lk_max_objects</a>,
 <a href="../api_java/lock_detect.html">DbEnv.lock_detect</a>,
 <a href="../api_java/lock_get.html">DbEnv.lock_get</a>,
 <a href="../api_java/lock_id.html">DbEnv.lock_id</a>,
-<a href="../api_java/lock_put.html">DbLock.put</a>
+<a href="../api_java/lock_put.html">DbLock.put</a>,
 and
 <a href="../api_java/lock_stat.html">DbEnv.lock_stat</a>.
 </tt>
-<table><tr><td><br></td><td width="1%">
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

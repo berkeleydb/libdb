@@ -1,20 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbLock.c,v 11.4 2000/11/30 00:58:39 ubell Exp $";
+static const char revid[] = "$Id: java_DbLock.c,v 11.7 2001/04/06 00:56:01 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "db.h"
+#include "db_int.h"
 #include "java_util.h"
 #include "com_sleepycat_db_DbLock.h"
 
@@ -37,7 +37,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_put
 		 * be used, so we release the storage related to it
 		 * (allocated in DbEnv.lock_get() or lock_tget()).
 		 */
-		free(dblock);
+		__os_free(NULL, dblock, sizeof(DB_LOCK));
 
 		set_private_dbobj(jnienv, name_DB_LOCK, jthis, 0);
 	}
@@ -49,7 +49,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_finalize
 	DB_LOCK *dblock = get_DB_LOCK(jnienv, jthis);
 	if (dblock) {
 		/* Free any data related to DB_LOCK here */
-		free(dblock);
+		__os_free(NULL, dblock, sizeof(DB_LOCK));
 	}
 	set_private_dbobj(jnienv, name_DB_LOCK, jthis, 0); /* paranoia */
 }

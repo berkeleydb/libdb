@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: mp.h,v 11.16 2001/01/10 04:50:53 ubell Exp $
+ * $Id: mp.h,v 11.22 2001/06/04 16:10:35 bostic Exp $
  */
 
 struct __bh;		typedef struct __bh BH;
@@ -13,7 +13,7 @@ struct __db_mpreg;	typedef struct __db_mpreg DB_MPREG;
 struct __mpool;		typedef struct __mpool MPOOL;
 struct __mpoolfile;	typedef struct __mpoolfile MPOOLFILE;
 
-/* We require at least 40K of cache. */
+/* We require at least 20K of cache. */
 #define	DB_CACHESIZE_MIN	(20 * 1024)
 
 /*
@@ -35,6 +35,8 @@ struct __db_mpool {
 
 	u_int32_t   nreg;		/* N underlying cache regions. */
 	REGINFO	   *reginfo;		/* Underlying cache regions. */
+	int	    extents;		/* Extent files opened by bhwrite. */
+					/* Once set it's never cleared. */
 };
 
 /*
@@ -89,9 +91,10 @@ struct __db_mpoolfile {
 	size_t	   len;			/* Length of mmap'd region. */
 
 	/* These fields need to be protected for multi-threaded support. */
-#define	MP_READONLY	0x01		/* File is readonly. */
-#define	MP_UPGRADE	0x02		/* File descriptor is readwrite. */
-#define	MP_UPGRADE_FAIL	0x04		/* Upgrade wasn't possible. */
+#define	MP_FLUSH	0x01		/* Was opened to flush a buffer. */
+#define	MP_READONLY	0x02		/* File is readonly. */
+#define	MP_UPGRADE	0x04		/* File descriptor is readwrite. */
+#define	MP_UPGRADE_FAIL	0x08		/* Upgrade wasn't possible. */
 	u_int32_t  flags;
 };
 
@@ -195,8 +198,9 @@ struct __mpoolfile {
 
 #define	MP_CAN_MMAP	0x01		/* If the file can be mmap'd. */
 #define	MP_DEADFILE	0x02		/* Dirty pages can simply be trashed. */
-#define	MP_TEMP		0x04		/* Backing file is a temporary. */
-#define	MP_UNLINK	0x08		/* Unlink file on last close. */
+#define	MP_EXTENT	0x04		/* Extent file. */
+#define	MP_TEMP		0x08		/* Backing file is a temporary. */
+#define	MP_UNLINK	0x10		/* Unlink file on last close. */
 	u_int32_t  flags;
 };
 
@@ -218,11 +222,12 @@ struct __bh {
 
 #define	BH_CALLPGIN	0x001		/* Page needs to be reworked... */
 #define	BH_DIRTY	0x002		/* Page was modified. */
-#define	BH_DISCARD	0x004		/* Page is useless. */
-#define	BH_LOCKED	0x008		/* Page is locked (I/O in progress). */
-#define	BH_SYNC		0x010		/* memp sync: write the page */
-#define	BH_SYNC_LOGFLSH	0x020		/* memp sync: also flush the log */
-#define	BH_TRASH	0x040		/* Page is garbage. */
+#define	BH_DIRTY_CREATE	0x004		/* Page created, must be written. */
+#define	BH_DISCARD	0x008		/* Page is useless. */
+#define	BH_LOCKED	0x010		/* Page is locked (I/O in progress). */
+#define	BH_SYNC		0x020		/* memp sync: write the page */
+#define	BH_SYNC_LOGFLSH	0x040		/* memp sync: also flush the log */
+#define	BH_TRASH	0x080		/* Page is garbage. */
 	u_int16_t  flags;
 
 	SH_TAILQ_ENTRY	q;		/* LRU queue. */

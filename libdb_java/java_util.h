@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_util.h,v 11.22 2001/01/11 18:19:53 bostic Exp $
+ * $Id: java_util.h,v 11.29 2001/05/12 17:17:35 dda Exp $
  */
 
 #ifndef _JAVA_UTIL_H_
@@ -97,6 +97,11 @@ static void debug_delete_global_ref(JNIEnv *jnienv, jobject obj, const char *s)
 #define	wrdebug(x)
 #endif
 
+/* Do any one time initialization, especially initializing any
+ * unchanging methodIds, fieldIds, etc.
+ */
+void one_time_init(JNIEnv *jnienv);
+
 /* Get the private data from a Db* object that points back to a C DB_* object.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
@@ -162,8 +167,16 @@ static const int EXCEPTION_FILE_NOT_FOUND = 0x0001;
 
 /* Report an exception back to the java side.
  */
-void report_exception(JNIEnv *jnienv, const char *text, int err,
-		      unsigned long expect_mask);
+void report_exception(JNIEnv *jnienv, const char *text,
+		      int err, unsigned long expect_mask);
+
+/* Create an exception object and return it.
+ * The given class must have a constructor that has a
+ * constructor with args (java.lang.String text, int errno);
+ * DbException and its subclasses fit this bill.
+ */
+jobject create_exception(JNIEnv *jnienv, jstring text,
+			 int err, jclass dbexcept);
 
 /* Report an error via the errcall mechanism.
  */
@@ -180,9 +193,19 @@ int verify_non_null(JNIEnv *jnienv, void *obj);
  */
 int verify_return(JNIEnv *jnienv, int err, unsigned long expect_mask);
 
+/* Verify that there was no memory error due to undersized Dbt.
+ * If there is report a DbMemoryException, with the Dbt attached
+ * and return false (0), otherwise return true (1).
+ */
+int verify_dbt(JNIEnv *jnienv, int err, LOCKED_DBT *locked_dbt);
+
 /* Create an object of the given class, calling its default constructor.
  */
 jobject create_default_object(JNIEnv *jnienv, const char *class_name);
+
+/* Create a Dbt object, , calling its default constructor.
+ */
+jobject create_dbt(JNIEnv *jnienv, const char *class_name);
 
 /* Convert an DB object to a Java encapsulation of that object.
  * Note: This implementation creates a new Java object on each call,
@@ -190,11 +213,7 @@ jobject create_default_object(JNIEnv *jnienv, const char *class_name);
  */
 jobject convert_object(JNIEnv *jnienv, const char *class_name, void *dbobj);
 
-/* Create a copy of the string
- */
-char *dup_string(const char *str);
-
-/* Create a malloc'ed copy of the java string.
+/* Create a copy of the java string using __os_malloc.
  * Caller must free it.
  */
 char *get_c_string(JNIEnv *jnienv, jstring jstr);
@@ -233,7 +252,8 @@ jobject get_DbLsn        (JNIEnv *jnienv, DB_LSN dbobj);
 jobject get_DbMpoolStat  (JNIEnv *jnienv, DB_MPOOL_STAT *dbobj);
 jobject get_DbMpoolFStat (JNIEnv *jnienv, DB_MPOOL_FSTAT *dbobj);
 jobject get_DbQueueStat  (JNIEnv *jnienv, DB_QUEUE_STAT *dbobj);
-jobject get_Dbt          (JNIEnv *jnienv, DBT *dbt);
+jobject get_const_Dbt    (JNIEnv *jnienv, const DBT *dbt, DBT_JAVAINFO **retp);
+jobject get_Dbt          (JNIEnv *jnienv, DBT *dbt, DBT_JAVAINFO **retp);
 jobject get_DbTxn        (JNIEnv *jnienv, DB_TXN *dbobj);
 jobject get_DbTxnStat    (JNIEnv *jnienv, DB_TXN_STAT *dbobj);
 
@@ -252,6 +272,7 @@ extern const char * const name_DB_LSN;
 extern const char * const name_DB_MEMORY_EX;
 extern const char * const name_DB_MPOOL_FSTAT;
 extern const char * const name_DB_MPOOL_STAT;
+extern const char * const name_DB_PREPLIST;
 extern const char * const name_DB_QUEUE_STAT;
 extern const char * const name_DB_RUNRECOVERY_EX;
 extern const char * const name_DBT;
@@ -267,9 +288,19 @@ extern const char * const name_DbErrcall;
 extern const char * const name_DbFeedback;
 extern const char * const name_DbHash;
 extern const char * const name_DbRecoveryInit;
+extern const char * const name_DbSecondaryKeyCreate;
 extern const char * const name_DbTxnRecover;
 
 extern const char * const string_signature;
+
+extern jfieldID fid_Dbt_data;
+extern jfieldID fid_Dbt_offset;
+extern jfieldID fid_Dbt_size;
+extern jfieldID fid_Dbt_ulen;
+extern jfieldID fid_Dbt_dlen;
+extern jfieldID fid_Dbt_doff;
+extern jfieldID fid_Dbt_flags;
+extern jfieldID fid_Dbt_must_create_data;
 
 #define	JAVADB_RO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
 JNIEXPORT j_fieldtype JNICALL                                               \
@@ -340,20 +371,20 @@ JNIEXPORT void JNICALL                                                      \
 
 #define	JAVADB_API_BEGIN(db, jthis) \
 	if ((db) != NULL) \
-	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
-	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = (jthis)
+	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref = \
+	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref = (jthis)
 
 #define	JAVADB_API_END(db) \
 	if ((db) != NULL) \
-	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
-	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = 0
+	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref = \
+	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref = 0
 
 #define	JAVADB_ENV_API_BEGIN(dbenv, jthis) \
 	if ((dbenv) != NULL) \
-	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = (jthis)
+	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref = (jthis)
 
 #define	JAVADB_ENV_API_END(dbenv) \
 	if ((dbenv) != NULL) \
-	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = 0
+	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref = 0
 
 #endif /* !_JAVA_UTIL_H_ */

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_mp.c,v 11.24 2001/01/09 16:13:59 sue Exp $";
+static const char revid[] = "$Id: tcl_mp.c,v 11.27 2001/04/05 18:17:34 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -320,7 +320,7 @@ tcl_MpStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = memp_stat(envp, &sp, &fsp, NULL);
+	ret = memp_stat(envp, &sp, &fsp);
 	result = _ReturnSetup(interp, ret, "memp stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -386,9 +386,9 @@ tcl_MpStat(interp, objc, objv, envp)
 	}
 	Tcl_SetObjResult(interp, res1);
 error:
-	__os_free(sp, sizeof(*sp));
+	__os_free(envp, sp, sizeof(*sp));
 	if (savefsp != NULL)
-		__os_free(savefsp, 0);
+		__os_free(envp, savefsp, 0);
 	return (result);
 }
 
@@ -756,7 +756,8 @@ tcl_PgInit(interp, objc, objv, page, pgip)
 		s = Tcl_GetByteArrayFromObj(objv[2], &length);
 		if (s == NULL)
 			return (TCL_ERROR);
-		memcpy(page, s, ((size_t)length < pgsz) ? length : pgsz);
+		memcpy(page, s,
+		    ((size_t)length < pgsz) ? (size_t)length : pgsz);
 		result = TCL_OK;
 	} else {
 		p = (long *)page;
@@ -795,8 +796,8 @@ tcl_PgIsset(interp, objc, objv, page, pgip)
 			return (TCL_ERROR);
 		result = TCL_OK;
 
-		if (memcmp(page,
-		    s, ((size_t)length < pgsz) ? length : pgsz ) != 0) {
+		if (memcmp(page, s,
+		    ((size_t)length < pgsz) ? (size_t)length : pgsz ) != 0) {
 			res = Tcl_NewIntObj(0);
 			Tcl_SetObjResult(interp, res);
 			return (result);

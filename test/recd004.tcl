@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd004.tcl,v 11.21 2000/12/11 17:24:55 sue Exp $
+# $Id: recd004.tcl,v 11.26 2001/05/16 19:01:16 sue Exp $
 #
 # Recovery Test #4.
 # Verify that we work correctly when big keys get elevated.
@@ -74,8 +74,13 @@ proc recd004 { method {select 0} args} {
 		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
-		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
+		#
+		# Note that since prepare-discard ultimately aborts
+		# the txn, it must come before prepare-commit.
+		#
 		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+			$cmd $msg
+		op_recover prepare-discard $testdir $env_cmd $testfile2 \
 			$cmd $msg
 		op_recover prepare-commit $testdir $env_cmd $testfile2 \
 			$cmd $msg

@@ -1,14 +1,16 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test087.tcl,v 11.6 2000/12/11 17:24:55 sue Exp $
+# $Id: test087.tcl,v 11.9 2001/07/02 01:08:46 bostic Exp $
 #
 # DB Test 87: Test of cursor stability on duplicate pages w/aborts.
 # Does the following:
 #    a. Initialize things by DB->putting ndups dups and
-#       setting a reference cursor to point to each.
+#       setting a reference cursor to point to each.  Do each put twice,
+#	first aborting, then committing, so we're sure to abort the move
+#	to off-page dups at some point.
 #    b. c_put ndups dups (and correspondingly expanding
 #       the set of reference cursors) after the last one, making sure
 #       after each step that all the reference cursors still point to
@@ -60,26 +62,30 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 	error_check_good "db open" [is_valid_db $db] TRUE
 
 	# Number of outstanding keys.
-	set keys 0
+	set keys $ndups
 
-	puts "\tTest0$tnum.a.1: Initializing put loop; $ndups dups, short data."
+	puts "\tTest0$tnum.a: put/abort/put/commit loop;\
+	    $ndups dups, short data."
 	set txn [$env txn]
 	error_check_good txn [is_valid_txn $txn $env] TRUE
 	for { set i 0 } { $i < $ndups } { incr i } {
 		set datum [makedatum_t73 $i 0]
 
-		error_check_good "db put ($i)" [$db put -txn $txn $key $datum] 0
+		set ctxn [$env txn -parent $txn]
+		error_check_good ctxn(abort,$i) [is_valid_txn $ctxn $env] TRUE
+		error_check_good "db put/abort ($i)" \
+		    [$db put -txn $ctxn $key $datum] 0
+		error_check_good ctxn_abort($i) [$ctxn abort] 0
+
+		verify_t73 is_long dbc [expr $i - 1] $key
+
+		set ctxn [$env txn -parent $txn]
+		error_check_good ctxn(commit,$i) [is_valid_txn $ctxn $env] TRUE
+		error_check_good "db put/commit ($i)" \
+		    [$db put -txn $ctxn $key $datum] 0
+		error_check_good ctxn_commit($i) [$ctxn commit] 0
 
 		set is_long($i) 0
-		incr keys
-	}
-	error_check_good txn_commit [$txn commit] 0
-
-	puts "\tTest0$tnum.a.2: Initializing cursor get loop; $keys dups."
-	set txn [$env txn]
-	error_check_good txn [is_valid_txn $txn $env] TRUE
-	for { set i 0 } { $i < $keys } { incr i } {
-		set datum [makedatum_t73 $i 0]
 
 		set dbc($i) [$db cursor -txn $txn]
 		error_check_good "db cursor ($i)"\
@@ -87,6 +93,8 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 		error_check_good "dbc get -get_both ($i)"\
 		    [$dbc($i) get -get_both $key $datum]\
 		    [list [list $key $datum]]
+
+		verify_t73 is_long dbc $i $key
 	}
 
 	puts "\tTest0$tnum.b: Cursor put (DB_KEYLAST); $ndups new dups,\
@@ -97,7 +105,6 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 	for { set i 0 } { $i < $ndups } { incr i } {
 		# !!! keys contains the number of the next dup
 		# to be added (since they start from zero)
-
 		set datum [makedatum_t73 $keys 0]
 		set curs [$db cursor -txn $ctxn]
 		error_check_good "db cursor create" [is_valid_cursor $curs $db]\
@@ -272,7 +279,7 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 	for { set i 0 } { $i < $keys } { incr i } {
 		error_check_good "dbc close ($i)" [$dbc($i) close] 0
 	}
-	error_check_good txn_commit [$txn commit] 0
 	error_check_good "db close" [$db close] 0
+	error_check_good txn_commit [$txn commit] 0
 	error_check_good "env close" [$env close] 0
 }

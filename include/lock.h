@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: lock.h,v 11.20 2000/12/12 17:43:56 bostic Exp $
+ * $Id: lock.h,v 11.27 2001/04/27 15:51:15 bostic Exp $
  */
 
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
@@ -14,12 +14,22 @@
  * so we use an invalid region offset to indicate an invalid or unset lock.
  */
 #define	LOCK_INVALID	INVALID_ROFF
+#define	LOCK_ISSET(lock) ((lock).off != LOCK_INVALID)
+#define	LOCK_INIT(lock)	((lock).off = LOCK_INVALID)
+
+/*
+ * Macro to identify a write lock for the purpose of counting locks
+ * for the NUMWRITES option to deadlockd detection.
+ */
+#define	IS_WRITELOCK(m) \
+	((m) == DB_LOCK_WRITE || (m) == DB_LOCK_IWRITE || (m) == DB_LOCK_IWR)
 
 /*
  * The locker id space is divided between the transaction manager and the lock
- * manager.  Lock IDs start at 0 and go to DB_LOCK_MAXID.  Txn IDs start at
+ * manager.  Lock IDs start at 1 and go to DB_LOCK_MAXID.  Txn IDs start at
  * DB_LOCK_MAXID + 1 and go up to TXN_INVALID.
  */
+#define	DB_LOCK_INVALIDID	0
 #define	DB_LOCK_MAXID		0x7fffffff
 
 /*
@@ -37,6 +47,7 @@ typedef struct __db_lockregion {
 					/* free locker header */
 	SH_TAILQ_HEAD(__flocker) free_lockers;
 	SH_TAILQ_HEAD(__dobj) dd_objs;	/* objects with waiters */
+	SH_TAILQ_HEAD(__lkrs) lockers;	/* list of lockers */
 	u_int32_t	maxlocks;	/* maximum number of locks in table */
 	u_int32_t	maxlockers;	/* maximum number of lockers in table */
 	u_int32_t	maxobjects;	/* maximum number of objects in table */
@@ -98,6 +109,8 @@ typedef struct __db_lockobj {
 typedef struct __db_locker {
 	u_int32_t id;			/* Locker id. */
 	u_int32_t dd_id;		/* Deadlock detector id. */
+	u_int32_t nlocks;		/* Number of locks held. */
+	u_int32_t nwrites;		/* Number of write locks held. */
 	size_t master_locker;		/* Locker of master transaction. */
 	size_t parent_locker;		/* Parent of this child. */
 	SH_LIST_HEAD(_child) child_locker;	/* List of descendant txns;
@@ -106,10 +119,13 @@ typedef struct __db_locker {
 	SH_LIST_ENTRY child_link;	/* Links transactions in the family;
 					   elements of the child_locker
 					   list. */
-	SH_TAILQ_ENTRY links;		/* Links for free list. */
+	SH_TAILQ_ENTRY links;		/* Links for free and hash list. */
+	SH_TAILQ_ENTRY ulinks;		/* Links in-use list. */
 	SH_LIST_HEAD(_held) heldby;	/* Locks held by this locker. */
 
 #define	DB_LOCKER_DELETED	0x0001
+#define	DB_LOCKER_DIRTY	0x0002
+#define	DB_LOCKER_INABORT	0x0004
 	u_int32_t flags;
 } DB_LOCKER;
 

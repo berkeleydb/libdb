@@ -5,7 +5,6 @@
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -15,6 +14,10 @@
 #include "db_am.h"
 #include "txn.h"
 
+/*
+ * PUBLIC: int __crdel_fileopen_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC:      u_int32_t, const DBT *, u_int32_t));
+ */
 int
 __crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
 	name, mode)
@@ -46,7 +49,7 @@ __crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size)
 	    + sizeof(mode);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -70,12 +73,21 @@ __crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
 	bp += sizeof(mode);
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__crdel_fileopen_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __crdel_fileopen_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC:      db_recops, void *));
+ */
 int
 __crdel_fileopen_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -96,28 +108,33 @@ __crdel_fileopen_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_fileopen_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_fileopen: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_fileopen: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tname: ");
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tmode: %o\n", argp->mode);
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\tmode: %o\n", argp->mode);
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_fileopen_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_fileopen_args **));
+ */
 int
 __crdel_fileopen_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -129,7 +146,7 @@ __crdel_fileopen_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_fileopen_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -151,6 +168,10 @@ __crdel_fileopen_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_metasub_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC:      u_int32_t, int32_t, db_pgno_t, const DBT *, DB_LSN *));
+ */
 int
 __crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, page, lsn)
@@ -186,7 +207,7 @@ __crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(pgno)
 	    + sizeof(u_int32_t) + (page == NULL ? 0 : page->size)
 	    + sizeof(*lsn);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -217,12 +238,21 @@ __crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
 	bp += sizeof(*lsn);
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__crdel_metasub_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __crdel_metasub_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops,
+ * PUBLIC:      void *));
+ */
 int
 __crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -243,31 +273,36 @@ __crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_metasub_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_metasub: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_metasub: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tpgno: %d\n", argp->pgno);
-	printf("\tpage: ");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tpgno: %lu\n", (u_long)argp->pgno);
+	(void)printf("\tpage: ");
 	for (i = 0; i < argp->page.size; i++) {
 		ch = ((u_int8_t *)argp->page.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tlsn: [%lu][%lu]\n",
+	(void)printf("\n");
+	(void)printf("\tlsn: [%lu][%lu]\n",
 	    (u_long)argp->lsn.file, (u_long)argp->lsn.offset);
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_metasub_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_metasub_args **));
+ */
 int
 __crdel_metasub_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -279,7 +314,7 @@ __crdel_metasub_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_metasub_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -305,6 +340,10 @@ __crdel_metasub_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_metapage_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC:      u_int32_t, int32_t, const DBT *, db_pgno_t, const DBT *));
+ */
 int
 __crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name, pgno, page)
@@ -340,7 +379,7 @@ __crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size)
 	    + sizeof(pgno)
 	    + sizeof(u_int32_t) + (page == NULL ? 0 : page->size);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -376,12 +415,21 @@ __crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
 	}
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__crdel_metapage_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __crdel_metapage_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC:      db_recops, void *));
+ */
 int
 __crdel_metapage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -402,38 +450,43 @@ __crdel_metapage_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_metapage_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_metapage: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_metapage: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tname: ");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tpgno: %d\n", argp->pgno);
-	printf("\tpage: ");
+	(void)printf("\n");
+	(void)printf("\tpgno: %lu\n", (u_long)argp->pgno);
+	(void)printf("\tpage: ");
 	for (i = 0; i < argp->page.size; i++) {
 		ch = ((u_int8_t *)argp->page.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_metapage_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_metapage_args **));
+ */
 int
 __crdel_metapage_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -445,7 +498,7 @@ __crdel_metapage_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_metapage_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -474,6 +527,10 @@ __crdel_metapage_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_old_delete_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC:      db_recops, void *));
+ */
 int
 __crdel_old_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -494,27 +551,32 @@ __crdel_old_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_old_delete_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_old_delete: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_old_delete: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tname: ");
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_old_delete_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_old_delete_args **));
+ */
 int
 __crdel_old_delete_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -526,7 +588,7 @@ __crdel_old_delete_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_old_delete_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -546,6 +608,10 @@ __crdel_old_delete_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_rename_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t,
+ * PUBLIC:      int32_t, const DBT *, const DBT *));
+ */
 int
 __crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name, newname)
@@ -579,7 +645,7 @@ __crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(fileid)
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size)
 	    + sizeof(u_int32_t) + (newname == NULL ? 0 : newname->size);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -613,12 +679,21 @@ __crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
 	}
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__crdel_rename_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __crdel_rename_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops,
+ * PUBLIC:      void *));
+ */
 int
 __crdel_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -639,37 +714,42 @@ __crdel_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_rename_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_rename: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_rename: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tname: ");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\tnewname: ");
+	(void)printf("\n");
+	(void)printf("\tnewname: ");
 	for (i = 0; i < argp->newname.size; i++) {
 		ch = ((u_int8_t *)argp->newname.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_rename_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_rename_args **));
+ */
 int
 __crdel_rename_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -681,7 +761,7 @@ __crdel_rename_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_rename_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -708,6 +788,10 @@ __crdel_rename_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_delete_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t,
+ * PUBLIC:      int32_t, const DBT *));
+ */
 int
 __crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name)
@@ -739,7 +823,7 @@ __crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(fileid)
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size);
-	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -763,12 +847,21 @@ __crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
 	}
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
 	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
-	if (txnid != NULL)
+	if (txnid != NULL && ret == 0)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, logrec.size);
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__crdel_delete_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+#endif
+	__os_free(dbenv, logrec.data, logrec.size);
 	return (ret);
 }
 
+/*
+ * PUBLIC: int __crdel_delete_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops,
+ * PUBLIC:      void *));
+ */
 int
 __crdel_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 	DB_ENV *dbenv;
@@ -789,28 +882,33 @@ __crdel_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	if ((ret = __crdel_delete_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
-	printf("[%lu][%lu]crdel_delete: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	(void)printf(
+	    "[%lu][%lu]crdel_delete: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %ld\n", (long)argp->fileid);
-	printf("\tname: ");
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
 		if (isprint(ch) || ch == 0xa)
-			putchar(ch);
+			(void)putchar(ch);
 		else
-			printf("%#x ", ch);
+			(void)printf("%#x ", ch);
 	}
-	printf("\n");
-	printf("\n");
-	__os_free(argp, 0);
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(dbenv, argp, 0);
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_delete_read __P((DB_ENV *, void *,
+ * PUBLIC:      __crdel_delete_args **));
+ */
 int
 __crdel_delete_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
@@ -822,7 +920,7 @@ __crdel_delete_read(dbenv, recbuf, argpp)
 	int ret;
 
 	ret = __os_malloc(dbenv, sizeof(__crdel_delete_args) +
-	    sizeof(DB_TXN), NULL, &argp);
+	    sizeof(DB_TXN), &argp);
 	if (ret != 0)
 		return (ret);
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -844,6 +942,9 @@ __crdel_delete_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_init_print __P((DB_ENV *));
+ */
 int
 __crdel_init_print(dbenv)
 	DB_ENV *dbenv;
@@ -871,6 +972,9 @@ __crdel_init_print(dbenv)
 	return (0);
 }
 
+/*
+ * PUBLIC: int __crdel_init_recover __P((DB_ENV *));
+ */
 int
 __crdel_init_recover(dbenv)
 	DB_ENV *dbenv;
@@ -897,4 +1001,3 @@ __crdel_init_recover(dbenv)
 		return (ret);
 	return (0);
 }
-

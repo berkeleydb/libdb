@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_trickle.c,v 11.12 2000/11/30 00:58:41 ubell Exp $";
+static const char revid[] = "$Id: mp_trickle.c,v 11.17 2001/04/27 15:45:13 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,7 +25,6 @@ static const char revid[] = "$Id: mp_trickle.c,v 11.12 2000/11/30 00:58:41 ubell
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -34,6 +33,8 @@ static int __memp_trick __P((DB_ENV *, int, int, int *));
 /*
  * memp_trickle --
  *	Keep a specified percentage of the buffers clean.
+ *
+ * EXTERN: int memp_trickle __P((DB_ENV *, int, int *));
  */
 int
 memp_trickle(dbenv, pct, nwrotep)
@@ -51,7 +52,8 @@ memp_trickle(dbenv, pct, nwrotep)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->mp_handle, DB_INIT_MPOOL);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->mp_handle, "memp_trickle", DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
 	mp = dbmp->reginfo[0].primary;
@@ -88,10 +90,12 @@ __memp_trick(dbenv, ncache, pct, nwrotep)
 	MPOOLFILE *mfp;
 	db_pgno_t pgno;
 	u_long total;
-	int ret, wrote;
+	int nwrote, ret, t_ret, wrote;
 
 	dbmp = dbenv->mp_handle;
 	c_mp = dbmp->reginfo[ncache].primary;
+	nwrote = 0;
+	ret = 0;
 
 	/*
 	 * If there are sufficient clean buffers, or no buffers or no dirty
@@ -106,7 +110,7 @@ __memp_trick(dbenv, ncache, pct, nwrotep)
 loop:	total = c_mp->stat.st_page_clean + c_mp->stat.st_page_dirty;
 	if (total == 0 || c_mp->stat.st_page_dirty == 0 ||
 	    (c_mp->stat.st_page_clean * 100) / total >= (u_long)pct)
-		return (0);
+		goto done;
 
 	/* Loop until we write a buffer. */
 	for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
@@ -125,8 +129,9 @@ loop:	total = c_mp->stat.st_page_clean + c_mp->stat.st_page_dirty;
 			continue;
 
 		pgno = bhp->pgno;
-		if ((ret = __memp_bhwrite(dbmp, mfp, bhp, NULL, &wrote)) != 0)
-			return (ret);
+		if ((ret =
+		    __memp_bhwrite(dbmp, mfp, bhp, 1, NULL, &wrote)) != 0)
+			break;
 
 		/*
 		 * Any process syncing the shared memory buffer pool had better
@@ -136,14 +141,21 @@ loop:	total = c_mp->stat.st_page_clean + c_mp->stat.st_page_dirty;
 		if (!wrote) {
 			__db_err(dbenv, "%s: unable to flush page: %lu",
 			    __memp_fns(dbmp, mfp), (u_long)pgno);
-			return (EPERM);
+			ret = EPERM;
+			break;
 		}
 
-		++c_mp->stat.st_page_trickle;
-		if (nwrotep != NULL)
-			++*nwrotep;
+		++nwrote;
 		goto loop;
 	}
 
-	return (0);
+done:
+	if (nwrotep != NULL)
+		*nwrotep = nwrote;
+	c_mp->stat.st_page_trickle += nwrote;
+
+	if (nwrote != 0 && dbmp->extents != 0)
+		if ((t_ret = __memp_close_flush_files(dbmp)) != 0 && ret == 0)
+			ret = t_ret;
+	return (ret);
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test003.tcl,v 11.18 2000/08/25 14:21:54 sue Exp $
+# $Id: test003.tcl,v 11.20 2001/05/14 21:55:55 krinsky Exp $
 #
 # DB Test 3 {access method}
 # Take the source files and dbtest executable and enter their names as the
@@ -55,9 +55,7 @@ proc test003 { method args} {
 	}
 
 	# Here is the loop where we put and get each key/data pair
-	set file_list [ glob \
-	    { $test_path/../*/*.[ch] } $test_path/*.tcl *.{a,o,lo,exe} \
-	    $test_path/file.1 ]
+	set file_list [get_file_list]
 
 	puts "\tTest003.a: put/get loop"
 	set count 0

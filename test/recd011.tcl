@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd011.tcl,v 11.13 2000/12/06 17:09:54 sue Exp $
+# $Id: recd011.tcl,v 11.14 2001/01/25 18:23:06 bostic Exp $
 #
 # Recovery Test 11.
 # Test recovery to a specific timestamp.

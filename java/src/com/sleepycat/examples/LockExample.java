@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.java,v 11.5 2001/01/04 14:23:30 dda Exp $
+ * $Id: LockExample.java,v 11.6 2001/01/25 18:22:53 bostic Exp $
  */
 
 package com.sleepycat.examples;

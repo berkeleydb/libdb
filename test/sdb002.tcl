@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb002.tcl,v 11.20 2000/09/20 13:22:04 sue Exp $
+# $Id: sdb002.tcl,v 11.24 2001/07/02 01:08:46 bostic Exp $
 #
 # Sub DB Test 2 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -24,7 +24,8 @@ proc subdb002 { method {nentries 10000} args } {
 	subdb002_body $method $omethod $nentries $largs $testfile NULL
 
 	cleanup $testdir NULL
-	set env [berkdb env -create -mode 0644 -txn -home $testdir]
+	set env [berkdb env -create -cachesize {0 10000000 0} \
+	    -mode 0644 -txn -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 	puts "Subdb002: $method ($largs) basic subdb tests in an environment"
 
@@ -151,6 +152,17 @@ proc subdb002_body { method omethod nentries largs testfile env } {
 
 	error_check_good Subdb002:diff($t3,$t2) \
 	    [filecmp $t3 $t2] 0
+
+	puts "\tSubdb002.e: db_dump with subdatabase"
+	set outfile $testdir/subdb002.dump
+	if { $env == "NULL" } {
+		set stat [catch {eval {exec $util_path/db_dump} -f $outfile \
+		    -s $subdb $testfile} ret]
+	} else {
+		set stat [catch {eval {exec $util_path/db_dump} -f $outfile \
+		    -h $testdir -s $subdb $testfile} ret]
+	}
+	error_check_good dbdump.subdb $stat 0
 }
 
 # Check function for Subdb002; keys and data are identical

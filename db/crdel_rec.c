@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: crdel_rec.c,v 11.43 2000/12/13 08:06:34 krinsky Exp $";
+static const char revid[] = "$Id: crdel_rec.c,v 11.47 2001/05/10 13:41:02 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -119,9 +119,9 @@ done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	return (ret);
 }
 
@@ -211,13 +211,12 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 			dbc = NULL;
 		}
 
-		if ((ret = __os_malloc(dbenv,
-		    DB_FILE_ID_LEN, NULL, &file_uid)) != 0)
+		if ((ret = __os_malloc(dbenv, DB_FILE_ID_LEN, &file_uid)) != 0)
 			goto out;
 		memcpy(file_uid, &file_dbp->fileid[0], DB_FILE_ID_LEN);
 		ret = __log_reopen_file(dbenv,
 		     NULL, argp->fileid, file_uid, argp->pgno);
-		(void)__os_free(file_uid, DB_FILE_ID_LEN);
+		(void)__os_free(dbenv, file_uid, DB_FILE_ID_LEN);
 		if (ret != 0)
 			goto out;
 	}
@@ -269,7 +268,7 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 		goto done;
 
 	meta = (DBMETA *)argp->page.data;
-	__ua_memcpy(&pagesize, &meta->pagesize, sizeof(pagesize));
+	(void)__ua_memcpy(&pagesize, &meta->pagesize, sizeof(pagesize));
 
 	if ((ret = __db_appname(dbenv, DB_APP_DATA,
 	    NULL, argp->name.data, 0, NULL, &real_name)) != 0)
@@ -312,7 +311,7 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 		 * Page didn't exist, update the LSN and write a new one.
 		 * (seek pointer shouldn't have moved)
 		 */
-		__ua_memcpy(&meta->lsn, lsnp, sizeof(DB_LSN));
+		(void)__ua_memcpy(&meta->lsn, lsnp, sizeof(DB_LSN));
 		if ((ret = __os_write(dbp->dbenv, &fh,
 		    argp->page.data, argp->page.size, &nr)) != 0)
 			goto out;
@@ -409,9 +408,9 @@ done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	if (F_ISSET(&fh, DB_FH_VALID))
 		(void)__os_closehandle(&fh);
 	return (ret);
@@ -483,7 +482,7 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 		 * be true is that the backup file is still around.  Try
 		 * to delete it, but it's not an error if that delete fails.
 		 */
-		if ((ret =  __db_backup_name(dbenv, argp->name.data,
+		if ((ret = __db_backup_name(dbenv, argp->name.data,
 		    &backup, lsnp)) != 0)
 			goto out;
 		if ((ret = __db_appname(dbenv,
@@ -502,7 +501,7 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 		 * exists, then this is right.  If it doesn't exist, then
 		 * nothing will happen and that's OK.
 		 */
-		if ((ret =  __db_backup_name(dbenv, argp->name.data,
+		if ((ret = __db_backup_name(dbenv, argp->name.data,
 		    &backup, lsnp)) != 0)
 			goto out;
 		if ((ret = __db_appname(dbenv,
@@ -521,13 +520,13 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 	if (backup != NULL)
-		__os_freestr(backup);
+		__os_freestr(dbenv, backup);
 	if (real_back != NULL)
-		__os_freestr(real_back);
+		__os_freestr(dbenv, real_back);
 	if (real_name != NULL)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 	return (ret);
 }
 /*
@@ -634,13 +633,13 @@ __crdel_rename_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, 0);
+		__os_free(dbenv, argp, 0);
 
 	if (new_name != NULL)
-		__os_free(new_name, 0);
+		__os_free(dbenv, new_name, 0);
 
 	if (real_name != NULL)
-		__os_free(real_name, 0);
+		__os_free(dbenv, real_name, 0);
 
 	return (ret);
 }

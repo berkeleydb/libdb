@@ -1,19 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_log.cpp,v 11.9 2000/09/21 15:05:45 dda Exp $";
+static const char revid[] = "$Id: cxx_log.cpp,v 11.12 2001/04/05 16:28:46 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
 
 #include "db_cxx.h"
+#include "db_int.h"
 #include "cxx_int.h"
 
 ////////////////////////////////////////////////////////////////////////
@@ -22,13 +23,12 @@ static const char revid[] = "$Id: cxx_log.cpp,v 11.9 2000/09/21 15:05:45 dda Exp
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-int DbEnv::log_archive(char **list[], u_int32_t flags,
-		       db_malloc_fcn_type db_malloc_fcn)
+int DbEnv::log_archive(char **list[], u_int32_t flags)
 {
 	int err;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_archive(env, list, flags, db_malloc_fcn)) != 0) {
+	if ((err = ::log_archive(env, list, flags)) != 0) {
 		DB_ERROR("DbEnv::log_archive", err, error_policy());
 		return (err);
 	}
@@ -70,7 +70,11 @@ int DbEnv::log_get(DbLsn *lsn, Dbt *data, u_int32_t flags)
 	DB_ENV *env = unwrap(this);
 
 	if ((err = ::log_get(env, lsn, data, flags)) != 0) {
-		DB_ERROR("DbEnv::log_get", err, error_policy());
+		if (err == ENOMEM && F_ISSET(data, DB_DBT_USERMEM) &&
+		    data->size > data->ulen)
+			DB_ERROR_DBT("DbEnv::log_get", data, error_policy());
+		else
+			DB_ERROR("DbEnv::log_get", err, error_policy());
 		return (err);
 	}
 	return (0);
@@ -100,12 +104,12 @@ int DbEnv::log_register(Db *dbp, const char *name)
 	return (0);
 }
 
-int DbEnv::log_stat(DB_LOG_STAT **spp, db_malloc_fcn_type db_malloc_fcn)
+int DbEnv::log_stat(DB_LOG_STAT **spp)
 {
 	int err = 0;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_stat(env, spp, db_malloc_fcn)) != 0) {
+	if ((err = ::log_stat(env, spp)) != 0) {
 		DB_ERROR("DbEnv::log_stat", err, error_policy());
 		return (err);
 	}

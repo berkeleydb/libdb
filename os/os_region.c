@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_region.c,v 11.9 2000/11/30 00:58:42 ubell Exp $";
+static const char revid[] = "$Id: os_region.c,v 11.11 2001/04/03 15:14:26 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -70,7 +70,7 @@ __os_r_attach(dbenv, infop, rp)
 		}
 #endif
 		if ((ret =
-		    __os_malloc(dbenv, rp->size, NULL, &infop->addr)) != 0)
+		    __os_malloc(dbenv, rp->size, &infop->addr)) != 0)
 			return (ret);
 #if defined(UMRW) && !defined(DIAGNOSTIC)
 		memset(infop->addr, CLEAR_BYTE, rp->size);
@@ -104,7 +104,7 @@ __os_r_detach(dbenv, infop, destroy)
 
 	/* If a region is private, free the memory. */
 	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
-		__os_free(infop->addr, rp->size);
+		__os_free(dbenv, infop->addr, rp->size);
 		return (0);
 	}
 

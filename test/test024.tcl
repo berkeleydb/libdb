@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test024.tcl,v 11.14 2000/08/25 14:21:55 sue Exp $
+# $Id: test024.tcl,v 11.15 2001/01/25 18:23:09 bostic Exp $
 #
 # DB Test 24 {method nentries}
 # Test the Btree and Record number get-by-number functionality.

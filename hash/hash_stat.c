@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_stat.c,v 11.24 2000/12/21 21:54:35 margo Exp $";
+static const char revid[] = "$Id: hash_stat.c,v 11.33 2001/07/02 01:05:39 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -30,14 +30,15 @@ static int __ham_stat_callback __P((DB *, PAGE *, void *, int *));
  * __ham_stat --
  *	Gather/print the hash statistics
  *
- * PUBLIC: int __ham_stat __P((DB *, void *, void *(*)(size_t), u_int32_t));
+ * PUBLIC: int __ham_stat __P((DB *, void *, u_int32_t));
  */
 int
-__ham_stat(dbp, spp, db_malloc, flags)
+__ham_stat(dbp, spp, flags)
 	DB *dbp;
-	void *spp, *(*db_malloc) __P((size_t));
+	void *spp;
 	u_int32_t flags;
 {
+	DB_ENV *dbenv;
 	DB_HASH_STAT *sp;
 	HASH_CURSOR *hcp;
 	DBC *dbc;
@@ -45,7 +46,9 @@ __ham_stat(dbp, spp, db_malloc, flags)
 	db_pgno_t pgno;
 	int ret;
 
-	PANIC_CHECK(dbp->dbenv);
+	dbenv = dbp->dbenv;
+
+	PANIC_CHECK(dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
 
 	sp = NULL;
@@ -62,16 +65,12 @@ __ham_stat(dbp, spp, db_malloc, flags)
 		goto err;
 
 	/* Allocate and clear the structure. */
-	if ((ret = __os_malloc(dbp->dbenv, sizeof(*sp), db_malloc, &sp)) != 0)
+	if ((ret = __os_umalloc(dbenv, sizeof(*sp), &sp)) != 0)
 		goto err;
 	memset(sp, 0, sizeof(*sp));
-	if (flags == DB_CACHED_COUNTS) {
-		sp->hash_nkeys = hcp->hdr->dbmeta.key_count;
-		sp->hash_ndata = hcp->hdr->dbmeta.record_count;
-		goto done;
-	}
-
 	/* Copy the fields that we have. */
+	sp->hash_nkeys = hcp->hdr->dbmeta.key_count;
+	sp->hash_ndata = hcp->hdr->dbmeta.record_count;
 	sp->hash_pagesize = dbp->pgsize;
 	sp->hash_buckets = hcp->hdr->max_bucket + 1;
 	sp->hash_magic = hcp->hdr->dbmeta.magic;
@@ -79,6 +78,9 @@ __ham_stat(dbp, spp, db_malloc, flags)
 	sp->hash_metaflags = hcp->hdr->dbmeta.flags;
 	sp->hash_nelem = hcp->hdr->nelem;
 	sp->hash_ffactor = hcp->hdr->ffactor;
+
+	if (flags == DB_FAST_STAT || flags == DB_CACHED_COUNTS)
+		goto done;
 
 	/* Walk the free list, counting pages. */
 	for (sp->hash_free = 0, pgno = hcp->hdr->dbmeta.free;
@@ -93,8 +95,10 @@ __ham_stat(dbp, spp, db_malloc, flags)
 	}
 
 	/* Now traverse the rest of the table. */
-	if ((ret = __ham_traverse(dbp,
-	    dbc, DB_LOCK_READ, __ham_stat_callback, sp)) != 0)
+	sp->hash_nkeys = 0;
+	sp->hash_ndata = 0;
+	if ((ret = __ham_traverse(dbc,
+	    DB_LOCK_READ, __ham_stat_callback, sp, 0)) != 0)
 		goto err;
 
 	if (!F_ISSET(dbp, DB_AM_RDONLY)) {
@@ -114,7 +118,7 @@ done:
 	return (0);
 
 err:	if (sp != NULL)
-		__os_free(sp, sizeof(*sp));
+		__os_free(dbenv, sp, sizeof(*sp));
 	if (hcp->hdr != NULL)
 		(void)__ham_release_meta(dbc);
 	(void)dbc->c_close(dbc);
@@ -127,24 +131,26 @@ err:	if (sp != NULL)
  *	 Traverse an entire hash table.  We use the callback so that we
  * can use this both for stat collection and for deallocation.
  *
- * PUBLIC:  int __ham_traverse __P((DB *, DBC *, db_lockmode_t,
- * PUBLIC:     int (*)(DB *, PAGE *, void *, int *), void *));
+ * PUBLIC:  int __ham_traverse __P((DBC *, db_lockmode_t,
+ * PUBLIC:     int (*)(DB *, PAGE *, void *, int *), void *, int));
  */
 int
-__ham_traverse(dbp, dbc, mode, callback, cookie)
-	DB *dbp;
+__ham_traverse(dbc, mode, callback, cookie, look_past_max)
 	DBC *dbc;
 	db_lockmode_t mode;
 	int (*callback) __P((DB *, PAGE *, void *, int *));
 	void *cookie;
+	int look_past_max;
 {
+	DB *dbp;
+	DBC *opd;
 	HASH_CURSOR *hcp;
 	HKEYDATA *hk;
-	DBC *opd;
 	db_pgno_t pgno, opgno;
-	u_int32_t bucket;
 	int did_put, i, ret, t_ret;
+	u_int32_t bucket, spares_entry;
 
+	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 	opd = NULL;
 	ret = 0;
@@ -156,8 +162,17 @@ __ham_traverse(dbp, dbc, mode, callback, cookie)
 	 * locking easy, makes this a pain in the butt.  We have to traverse
 	 * duplicate, overflow and big pages from the bucket so that we
 	 * don't access anything that isn't properly locked.
+	 *
+	 * If look_past_max is not set, we can stop at max_bucket;  if it
+	 * is set, we need to include pages that are part of the current
+	 * doubling but beyond the highest bucket we've split into, as well
+	 * as pages from a "future" doubling that may have been created
+	 * within an aborted transaction.  To do this, increment bucket
+	 * until the corresponding spares array entries cease to be defined.
 	 */
-	for (bucket = 0; bucket <= hcp->hdr->max_bucket; bucket++) {
+	for (bucket = 0; look_past_max ? (spares_entry = __db_log2(bucket + 1),
+	    spares_entry < NCACHED && hcp->hdr->spares[spares_entry] != 0) :
+	    bucket <= hcp->hdr->max_bucket; bucket++) {
 		hcp->bucket = bucket;
 		hcp->pgno = pgno = BUCKET_TO_PAGE(hcp, bucket);
 		for (ret = __ham_get_cpage(dbc, mode); ret == 0;
@@ -181,7 +196,7 @@ __ham_traverse(dbp, dbc, mode, callback, cookie)
 						return (ret);
 					if ((ret = __bam_traverse(opd,
 					    DB_LOCK_READ, opgno,
-					    __ham_stat_callback, cookie))
+					    callback, cookie))
 					    != 0)
 						goto err;
 					if ((ret = opd->c_close(opd)) != 0)
@@ -247,6 +262,7 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 	DB_BTREE_STAT bstat;
 	db_indx_t indx, len, off, tlen, top;
 	u_int8_t *hk;
+	int ret;
 
 	*putp = 0;
 	sp = cookie;
@@ -310,7 +326,8 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 		bstat.bt_int_pgfree = 0;
 		bstat.bt_leaf_pgfree = 0;
 		bstat.bt_ndata = 0;
-		__bam_stat_callback(dbp, pagep, &bstat, putp);
+		if ((ret = __bam_stat_callback(dbp, pagep, &bstat, putp)) != 0)
+			return (ret);
 		sp->hash_dup++;
 		sp->hash_dup_free += bstat.bt_leaf_pgfree +
 		    bstat.bt_dup_pgfree + bstat.bt_int_pgfree;

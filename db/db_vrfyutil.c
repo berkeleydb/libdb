@@ -1,16 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000
+ * Copyright (c) 2000-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfyutil.c,v 11.11 2000/11/28 21:36:04 bostic Exp $
+ * $Id: db_vrfyutil.c,v 11.18 2001/04/19 01:52:44 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfyutil.c,v 11.11 2000/11/28 21:36:04 bostic Exp $";
+static const char revid[] = "$Id: db_vrfyutil.c,v 11.18 2001/04/19 01:52:44 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,8 +22,9 @@ static const char revid[] = "$Id: db_vrfyutil.c,v 11.11 2000/11/28 21:36:04 bost
 #include "db_int.h"
 #include "db_page.h"
 #include "db_verify.h"
-#include "db_ext.h"
+#include "db_am.h"
 
+static int __db_vrfy_pageinfo_create __P((VRFY_PAGEINFO **));
 static int __db_vrfy_pgset_iinc __P((DB *, db_pgno_t, int));
 
 /*
@@ -90,7 +91,7 @@ err:	if (cdbp != NULL)
 	if (pgdbp != NULL)
 		(void)pgdbp->close(pgdbp, 0);
 	if (vdp != NULL)
-		__os_free(vdp, sizeof(VRFY_DBINFO));
+		__os_free(dbenv, vdp, sizeof(VRFY_DBINFO));
 	return (ret);
 }
 
@@ -99,10 +100,11 @@ err:	if (cdbp != NULL)
  *	Destructor for VRFY_DBINFO.  Destroys VRFY_PAGEINFOs and deallocates
  *	structure.
  *
- * PUBLIC: int __db_vrfy_dbinfo_destroy __P((VRFY_DBINFO *));
+ * PUBLIC: int __db_vrfy_dbinfo_destroy __P((DB_ENV *, VRFY_DBINFO *));
  */
 int
-__db_vrfy_dbinfo_destroy(vdp)
+__db_vrfy_dbinfo_destroy(dbenv, vdp)
+	DB_ENV *dbenv;
 	VRFY_DBINFO *vdp;
 {
 	VRFY_CHILDINFO *c, *d;
@@ -112,7 +114,7 @@ __db_vrfy_dbinfo_destroy(vdp)
 
 	for (c = LIST_FIRST(&vdp->subdbs); c != NULL; c = d) {
 		d = LIST_NEXT(c, links);
-		__os_free(c, 0);
+		__os_free(NULL, c, 0);
 	}
 
 	if ((t_ret = vdp->pgdbp->close(vdp->pgdbp, 0)) != 0)
@@ -126,7 +128,7 @@ __db_vrfy_dbinfo_destroy(vdp)
 
 	DB_ASSERT(LIST_FIRST(&vdp->activepips) == NULL);
 
-	__os_free(vdp, sizeof(VRFY_DBINFO));
+	__os_free(dbenv, vdp, sizeof(VRFY_DBINFO));
 	return (ret);
 }
 
@@ -208,10 +210,12 @@ found:	pip->pi_refcount++;
  * __db_vrfy_putpageinfo --
  *	Put back a VRFY_PAGEINFO that we're done with.
  *
- * PUBLIC: int __db_vrfy_putpageinfo __P((VRFY_DBINFO *, VRFY_PAGEINFO *));
+ * PUBLIC: int __db_vrfy_putpageinfo __P((DB_ENV *,
+ * PUBLIC:     VRFY_DBINFO *, VRFY_PAGEINFO *));
  */
 int
-__db_vrfy_putpageinfo(vdp, pip)
+__db_vrfy_putpageinfo(dbenv, vdp, pip)
+	DB_ENV *dbenv;
 	VRFY_DBINFO *vdp;
 	VRFY_PAGEINFO *pip;
 {
@@ -255,7 +259,7 @@ __db_vrfy_putpageinfo(vdp, pip)
 #endif
 
 	DB_ASSERT(pip->pi_refcount == 0);
-	__os_free(pip, 0);
+	__os_free(dbenv, pip, 0);
 	return (0);
 }
 
@@ -382,7 +386,7 @@ __db_vrfy_pgset_iinc(dbp, pgno, i)
 	F_SET(&data, DB_DBT_USERMEM);
 
 	if ((ret = dbp->get(dbp, NULL, &key, &data, 0)) == 0) {
-		DB_ASSERT(data.size = sizeof(int));
+		DB_ASSERT(data.size == sizeof(int));
 		memcpy(&val, data.data, sizeof(int));
 	} else if (ret != DB_NOTFOUND)
 		return (ret);
@@ -568,10 +572,8 @@ __db_vrfy_ccclose(dbc)
 /*
  * __db_vrfy_pageinfo_create --
  *	Constructor for VRFY_PAGEINFO;  allocates and initializes.
- *
- * PUBLIC: int __db_vrfy_pageinfo_create __P((VRFY_PAGEINFO **));
  */
-int
+static int
 __db_vrfy_pageinfo_create(pgipp)
 	VRFY_PAGEINFO **pgipp;
 {

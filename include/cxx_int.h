@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: cxx_int.h,v 11.13 2000/11/21 22:56:36 dda Exp $
+ * $Id: cxx_int.h,v 11.18 2001/05/08 18:58:46 bostic Exp $
  */
 
 #ifndef _CXX_INT_H_
@@ -69,9 +69,14 @@ WRAPPED_CLASS(DbTxn, DbTxnImp, DB_TXN*)
 #define	DB_ERROR(caller, ecode, policy) \
     DbEnv::runtime_error(caller, ecode, policy)
 
+#define	DB_ERROR_DBT(caller, dbt, policy) \
+    DbEnv::runtime_error_dbt(caller, dbt, policy)
+
+#define	DB_OVERFLOWED_DBT(dbt) \
+	(F_ISSET(dbt, DB_DBT_USERMEM) && dbt->size > dbt->ulen)
+
 // These defines are for tedious field set/get access methods.
 //
-
 #define	DB_RO_ACCESS(_class, _type, _cxx_name, _field)         \
 							       \
 _type _class::get_##_cxx_name() const                          \
@@ -85,10 +90,6 @@ void _class::set_##_cxx_name(_type value)                      \
 {                                                              \
 	_field = value;                                        \
 }                                                              \
-
-#define	DB_RW_ACCESS(_class, _type, _cxx_name, _field)         \
-	DB_RO_ACCESS(_class, _type, _cxx_name, _field)         \
-	DB_WO_ACCESS(_class, _type, _cxx_name, _field)
 
 /* values for Db::flags_ */
 #define	DB_CXX_PRIVATE_ENV      0x00000001

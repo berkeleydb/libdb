@@ -1,5 +1,5 @@
-<!--$Id: open.so,v 10.27 2000/12/14 21:42:18 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: open.so,v 10.29 2001/05/07 19:28:40 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Simple Tutorial</dl></h3></td>
-<td width="1%"><a href="../../ref/simple_tut/errors.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/put.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/simple_tut/errors.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Opening a database</h1>
@@ -72,7 +72,7 @@ an underlying database.
 <p>As you see, the program opens a database named <b>access.db</b>.  The
 underlying database is a Btree.  Because the <a href="../../api_c/env_open.html#DB_CREATE">DB_CREATE</a> flag was
 specified, the file will be created if it does not already exist.  The
-mode of any created files will be 0664 (i.e., readable and writeable by
+mode of any created files will be 0664 (that is, readable and writable by
 the owner and the group, and readable by everyone else).
 <p>One additional function call is used in this code sample, <a href="../../api_c/db_err.html">DB-&gt;err</a>.
 This method works like the ANSI C printf interface.  The second argument
@@ -83,7 +83,7 @@ from the format string and other arguments.  In the above code, if the
 <a href="../../api_c/db_open.html">DB-&gt;open</a> call were to fail, the message it would display would be
 something like
 <p><blockquote><pre>access.db: Operation not permitted</pre></blockquote>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/errors.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/put.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/simple_tut/errors.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: byteorder.tcl,v 11.7 2000/11/16 23:56:18 ubell Exp $
+# $Id: byteorder.tcl,v 11.8 2001/01/25 18:23:03 bostic Exp $
 #
 # Byte Order Test
 # Use existing tests and run with both byte orders.

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_search.c,v 11.32 2001/01/17 20:19:46 bostic Exp $";
+static const char revid[] = "$Id: bt_search.c,v 11.36 2001/04/18 16:57:13 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -62,12 +62,13 @@ static const char revid[] = "$Id: bt_search.c,v 11.32 2001/01/17 20:19:46 bostic
  * __bam_search --
  *	Search a btree for a key.
  *
- * PUBLIC: int __bam_search __P((DBC *,
+ * PUBLIC: int __bam_search __P((DBC *, db_pgno_t,
  * PUBLIC:     const DBT *, u_int32_t, int, db_recno_t *, int *));
  */
 int
-__bam_search(dbc, key, flags, stop, recnop, exactp)
+__bam_search(dbc, root_pgno, key, flags, stop, recnop, exactp)
 	DBC *dbc;
+	db_pgno_t root_pgno;
 	const DBT *key;
 	u_int32_t flags;
 	int stop, *exactp;
@@ -109,7 +110,7 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 	 * Retrieve the root page.
 	 */
 try_again:
-	pg = cp->root;
+	pg = root_pgno == PGNO_INVALID ? cp->root : root_pgno;
 	stack = LF_ISSET(S_STACK) && F_ISSET(cp, C_RECNUM);
 	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
@@ -414,7 +415,7 @@ __bam_stkrel(dbc, flags)
 		if (epg->page != NULL) {
 			if (LF_ISSET(STK_CLRDBC) && cp->page == epg->page) {
 				cp->page = NULL;
-				cp->lock.off = LOCK_INVALID;
+				LOCK_INIT(cp->lock);
 			}
 			if ((t_ret = memp_fput(
 			    dbp->mpf, epg->page, 0)) != 0 && ret == 0)
@@ -428,12 +429,10 @@ __bam_stkrel(dbc, flags)
 			 */
 			epg->page = NULL;
 		}
-		if (epg->lock.off != LOCK_INVALID) {
-			if (LF_ISSET(STK_NOLOCK))
-				(void)__LPUT(dbc, epg->lock);
-			else
-				(void)__TLPUT(dbc, epg->lock);
-		}
+		if (LF_ISSET(STK_NOLOCK))
+			(void)__LPUT(dbc, epg->lock);
+		else
+			(void)__TLPUT(dbc, epg->lock);
 	}
 
 	/* Clear the stack, all pages have been released. */
@@ -463,7 +462,7 @@ __bam_stkgrow(dbenv, cp)
 		return (ret);
 	memcpy(p, cp->sp, entries * sizeof(EPG));
 	if (cp->sp != cp->stack)
-		__os_free(cp->sp, entries * sizeof(EPG));
+		__os_free(dbenv, cp->sp, entries * sizeof(EPG));
 	cp->sp = p;
 	cp->csp = p + entries;
 	cp->esp = p + entries * 2;

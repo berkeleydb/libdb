@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: qam.h,v 11.26 2001/01/11 18:19:52 bostic Exp $
+ * $Id: qam.h,v 11.28 2001/05/15 15:11:48 krinsky Exp $
  */
 
 /*
@@ -124,6 +124,7 @@ typedef struct __qam_filelist {
  */
 #define	QAM_SETFIRST		0x01
 #define	QAM_SETCUR		0x02
+#define	QAM_TRUNCATE		0x04
 
 /*
  * Parameter to __qam_position.

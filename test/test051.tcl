@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test051.tcl,v 11.14 2000/08/25 14:21:57 sue Exp $
+# $Id: test051.tcl,v 11.16 2001/05/17 20:37:08 bostic Exp $
 #
 # Test51:
 #	Test of the fixed recno method.
@@ -72,7 +72,6 @@ proc test051 { method { args "" } } {
 		error_check_good \
 		    dbopen:flagtest:$f [is_substr $errorCode EINVAL] 1
 	}
-
 
 	# Test partial puts where dlen != size (should fail)
 	# it is an error to specify a partial put w/ different

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_log.c,v 11.21 2000/11/30 00:58:45 ubell Exp $";
+static const char revid[] = "$Id: tcl_log.c,v 11.23 2001/04/03 15:14:29 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -73,7 +73,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 	}
 	_debug_check();
 	list = NULL;
-	ret = log_archive(envp, &list, flag, NULL);
+	ret = log_archive(envp, &list, flag);
 	result = _ReturnSetup(interp, ret, "log archive");
 	if (result == TCL_OK) {
 		res = Tcl_NewListObj(0, NULL);
@@ -86,7 +86,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 		Tcl_SetObjResult(interp, res);
 	}
 	if (list != NULL)
-		__os_free(list, 0);
+		__os_free(envp, list, 0);
 	return (result);
 }
 
@@ -166,8 +166,8 @@ tcl_LogFile(interp, objc, objv, envp)
 	name = NULL;
 	while (ret == ENOMEM) {
 		if (name != NULL)
-			__os_free(name, len/2);
-		ret = __os_malloc(envp, len, NULL, &name);
+			__os_free(envp, name, len/2);
+		ret = __os_malloc(envp, len, &name);
 		if (ret != 0) {
 			Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 			break;
@@ -183,7 +183,7 @@ tcl_LogFile(interp, objc, objv, envp)
 	}
 
 	if (name != NULL)
-		__os_free(name, len/2);
+		__os_free(envp, name, len/2);
 
 	return (result);
 }
@@ -332,7 +332,7 @@ tcl_LogGet(interp, objc, objv, envp)
 		lsnlist = Tcl_NewListObj(myobjc, myobjv);
 		if (lsnlist == NULL) {
 			if (data.data != NULL)
-				__os_free(data.data, data.size);
+				__os_free(envp, data.data, data.size);
 			return (TCL_ERROR);
 		}
 		result = Tcl_ListObjAppendElement(interp, res, lsnlist);
@@ -340,7 +340,7 @@ tcl_LogGet(interp, objc, objv, envp)
 		result = Tcl_ListObjAppendElement(interp, res, dataobj);
 	}
 	if (data.data != NULL)
-		__os_free(data.data, data.size);
+		__os_free(envp, data.data, data.size);
 
 	if (result == TCL_OK)
 		Tcl_SetObjResult(interp, res);
@@ -502,7 +502,7 @@ tcl_LogStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = log_stat(envp, &sp, NULL);
+	ret = log_stat(envp, &sp);
 	result = _ReturnSetup(interp, ret, "log stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -536,7 +536,7 @@ tcl_LogStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(sp, sizeof(*sp));
+	__os_free(envp, sp, sizeof(*sp));
 	return (result);
 }
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env008.tcl,v 11.2 2000/10/30 19:00:38 sue Exp $
+# $Id: env008.tcl,v 11.3 2001/01/25 18:23:04 bostic Exp $
 #
 # Test of env and subdirs.
 proc env008 { } {

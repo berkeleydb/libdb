@@ -1,4 +1,4 @@
-#	$Id: srcfiles.in,v 1.7 2000/11/30 18:42:21 dda Exp $
+#	$Id: srcfiles.in,v 1.17 2001/07/06 20:50:40 bostic Exp $
 #
 # This is an input file for the s_win32_dsp script.  It describes every
 # source files used by Windows, and lists those that aren't as well,
@@ -17,6 +17,7 @@
 #   skip		this file is not used by Windows
 #   static		file appears in the static library (db_static.dsp)
 #   tcl			file appears in the tcl DLL (db_tcl.dsp)
+#   testutil		file is application used for testing (db_test.dsp)
 
 btree/bt_compare.c			dynamic static
 btree/bt_conv.c				dynamic static
@@ -36,7 +37,7 @@ btree/bt_stat.c				dynamic static
 btree/bt_upgrade.c			dynamic static
 btree/bt_verify.c			dynamic static
 btree/btree_auto.c			dynamic static
-build_win32/dbkill.cpp			skip
+build_win32/dbkill.cpp			testutil
 build_win32/dllmain.c			dynamic
 build_win32/libdb.def			dynamic
 build_win32/libdb.rc			dynamic
@@ -137,13 +138,13 @@ libdb_java/java_DbEnv.c			java
 libdb_java/java_DbLock.c		java
 libdb_java/java_DbLsn.c			java
 libdb_java/java_DbTxn.c			java
+libdb_java/java_DbUtil.c		java
 libdb_java/java_Dbc.c			java
 libdb_java/java_Dbt.c			java
 libdb_java/java_info.c			java
 libdb_java/java_locked.c		java
 libdb_java/java_util.c			java
 lock/lock.c				dynamic static
-lock/lock_conflict.c			dynamic static
 lock/lock_deadlock.c			dynamic static
 lock/lock_method.c			dynamic static
 lock/lock_region.c			dynamic static
@@ -175,6 +176,7 @@ mutex/mut_fcntl.c			skip
 mutex/mut_pthread.c			skip
 mutex/mut_tas.c				dynamic static
 mutex/mutex.c				dynamic static
+mutex/tm.c				skip
 os/os_abs.c				skip
 os/os_alloc.c				dynamic static
 os/os_dir.c				skip
@@ -242,6 +244,26 @@ tcl/tcl_lock.c				tcl
 tcl/tcl_log.c				tcl
 tcl/tcl_mp.c				tcl
 tcl/tcl_txn.c				tcl
+test_cxx/TestConstruct01.cpp		skip
+test_cxx/TestExceptInclude.cpp		skip
+test_cxx/TestKeyRange.cpp		skip
+test_cxx/TestSimpleAccess.cpp		skip
+test_cxx/TestTruncate.cpp		skip
+test_perf/db_perf.c			skip
+test_perf/perf_cache_check.c		skip
+test_perf/perf_checkpoint.c		skip
+test_perf/perf_config.c			skip
+test_perf/perf_debug.c			skip
+test_perf/perf_file.c			skip
+test_perf/perf_key.c			skip
+test_perf/perf_log.c			skip
+test_perf/perf_misc.c			skip
+test_perf/perf_op.c			skip
+test_perf/perf_spawn.c			skip
+test_perf/perf_thread.c			skip
+test_perf/perf_trickle.c		skip
+test_perf/perf_txn.c			skip
+test_perf/perf_util.c			skip
 test_server/dbs.c			skip
 test_server/dbs_am.c			skip
 test_server/dbs_checkpoint.c		skip
@@ -253,17 +275,19 @@ test_server/dbs_spawn.c			skip
 test_server/dbs_trickle.c		skip
 test_server/dbs_util.c			skip
 test_server/dbs_yield.c			skip
-test_thread/lock.c			skip
-test_thread/log.c			skip
-test_thread/mpool.c			skip
-test_thread/mutex.c			skip
+test_thread/t_lock.c			skip
+test_thread/t_log.c			skip
+test_thread/t_mpool.c			skip
+test_thread/t_mutex.c			skip
 test_vxworks/vx_mutex.c			skip
 test_vxworks/vxtpcb_files.c		skip
 test_vxworks/vxtpcb_onefile.c		skip
 txn/txn.c				dynamic static
 txn/txn_auto.c				dynamic static
 txn/txn_rec.c				dynamic static
+txn/txn_recover.c			dynamic static
 txn/txn_region.c			dynamic static
+txn/txn_stat.c				dynamic static
 xa/xa.c					dynamic static
 xa/xa_db.c				dynamic static
 xa/xa_map.c				dynamic static

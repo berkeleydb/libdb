@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test080.tcl,v 11.7 2000/10/19 23:15:22 ubell Exp $
+# $Id: test080.tcl,v 11.9 2001/05/17 20:37:09 bostic Exp $
 #
 # DB Test 80 {access method}
 # Test of dbremove
@@ -14,7 +14,6 @@ proc test080 { method {tnum 80} args } {
 	set omethod [convert_method $method]
 
 	puts "Test0$tnum: Test of DB->remove()"
-
 
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {

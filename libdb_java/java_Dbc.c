@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Dbc.c,v 11.10 2000/10/25 19:54:55 dda Exp $";
+static const char revid[] = "$Id: java_Dbc.c,v 11.16 2001/05/12 17:17:34 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -18,7 +18,6 @@ static const char revid[] = "$Id: java_Dbc.c,v 11.10 2000/10/25 19:54:55 dda Exp
 #include <stdio.h>
 #endif
 
-#include "db.h"
 #include "db_int.h"
 #include "java_util.h"
 #include "com_sleepycat_db_Dbc.h"
@@ -88,7 +87,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
 {
 	int err, retry, op_flags;
 	DBC *dbc;
-	JDBT dbkey, dbdata;
+	LOCKED_DBT lkey, ldata;
 	OpKind keyop, dataop;
 
 	/* Depending on flags, the user may be supplying the key,
@@ -112,32 +111,105 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
 	}
 
 	dbc = get_DBC(jnienv, jthis);
-	if (jdbt_lock(&dbkey, jnienv, key, keyop) != 0)
+	if (locked_dbt_get(&lkey, jnienv, key, keyop) != 0)
 		goto out2;
-	if (jdbt_lock(&dbdata, jnienv, data, dataop) != 0)
+	if (locked_dbt_get(&ldata, jnienv, data, dataop) != 0)
 		goto out1;
 
 	if (!verify_non_null(jnienv, dbc))
 		goto out1;
 
 	for (retry = 0; retry < 3; retry++) {
-		err = dbc->c_get(dbc, &dbkey.dbt->dbt, &dbdata.dbt->dbt, flags);
+		err = dbc->c_get(dbc, &lkey.javainfo->dbt, &ldata.javainfo->dbt, flags);
 
 		/* If we failed due to lack of memory in our DBT arrays,
 		 * retry.
 		 */
 		if (err != ENOMEM)
 			break;
-		if (!jdbt_realloc(&dbkey, jnienv) && !jdbt_realloc(&dbdata, jnienv))
+		if (!locked_dbt_realloc(&lkey, jnienv) && !locked_dbt_realloc(&ldata, jnienv))
 			break;
 	}
-	if (err != DB_NOTFOUND) {
-		verify_return(jnienv, err, 0);
+ out1:
+	locked_dbt_put(&ldata, jnienv);
+ out2:
+	locked_dbt_put(&lkey, jnienv);
+	if (err != 0 && err != DB_NOTFOUND) {
+		if (verify_dbt(jnienv, err, &lkey) &&
+		    verify_dbt(jnienv, err, &ldata))
+			verify_return(jnienv, err, 0);
+	}
+	return (err);
+}
+
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_pget
+  (JNIEnv *jnienv, jobject jthis,
+   /*Dbt*/ jobject key, /*Dbt*/ jobject pkey, /*Dbt*/ jobject data, jint flags)
+{
+	int err, retry, op_flags;
+	DBC *dbc;
+	LOCKED_DBT lkey, lpkey, ldata;
+	OpKind keyop, pkeyop, dataop;
+
+	/* Depending on flags, the user may be supplying the key,
+	 * or else we may have to retrieve it.
+	 */
+	err = 0;
+	keyop = outOp;
+	pkeyop = outOp;
+	dataop = outOp;
+
+	op_flags = flags & DB_OPFLAGS_MASK;
+	if (op_flags == DB_SET) {
+		keyop = inOp;
+	}
+	else if (op_flags == DB_SET_RANGE ||
+		 op_flags == DB_SET_RECNO) {
+		keyop = inOutOp;
+	}
+	else if (op_flags == DB_GET_BOTH) {
+		pkeyop = inOutOp;
+		keyop = inOutOp;
+		dataop = inOutOp;
+	}
+
+	dbc = get_DBC(jnienv, jthis);
+	if (locked_dbt_get(&lkey, jnienv, key, keyop) != 0)
+		goto out3;
+	if (locked_dbt_get(&lpkey, jnienv, pkey, pkeyop) != 0)
+		goto out2;
+	if (locked_dbt_get(&ldata, jnienv, data, dataop) != 0)
+		goto out1;
+
+	if (!verify_non_null(jnienv, dbc))
+		goto out1;
+
+	for (retry = 0; retry < 3; retry++) {
+		err = dbc->c_pget(dbc, &lkey.javainfo->dbt, &lpkey.javainfo->dbt,
+				  &ldata.javainfo->dbt, flags);
+
+		/* If we failed due to lack of memory in our DBT arrays,
+		 * retry.
+		 */
+		if (err != ENOMEM)
+			break;
+		if (!locked_dbt_realloc(&lkey, jnienv) &&
+		    !locked_dbt_realloc(&lpkey, jnienv) &&
+		    !locked_dbt_realloc(&ldata, jnienv))
+			break;
 	}
  out1:
-	jdbt_unlock(&dbdata, jnienv);
+	locked_dbt_put(&ldata, jnienv);
  out2:
-	jdbt_unlock(&dbkey, jnienv);
+	locked_dbt_put(&lpkey, jnienv);
+ out3:
+	locked_dbt_put(&lkey, jnienv);
+	if (err != 0 && err != DB_NOTFOUND) {
+		if (verify_dbt(jnienv, err, &lkey) &&
+		    verify_dbt(jnienv, err, &lpkey) &&
+		    verify_dbt(jnienv, err, &ldata))
+			verify_return(jnienv, err, 0);
+	}
 	return (err);
 }
 
@@ -147,25 +219,25 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_put
 {
 	int err;
 	DBC *dbc;
-	JDBT dbkey, dbdata;
+	LOCKED_DBT lkey, ldata;
 
 	err = 0;
 	dbc = get_DBC(jnienv, jthis);
-	if (jdbt_lock(&dbkey, jnienv, key, inOp) != 0)
+	if (locked_dbt_get(&lkey, jnienv, key, inOp) != 0)
 		goto out2;
-	if (jdbt_lock(&dbdata, jnienv, data, inOp) != 0)
+	if (locked_dbt_get(&ldata, jnienv, data, inOp) != 0)
 		goto out1;
 
 	if (!verify_non_null(jnienv, dbc))
 		goto out1;
-	err = dbc->c_put(dbc, &dbkey.dbt->dbt, &dbdata.dbt->dbt, flags);
+	err = dbc->c_put(dbc, &lkey.javainfo->dbt, &ldata.javainfo->dbt, flags);
 	if (err != DB_KEYEXIST) {
 		verify_return(jnienv, err, 0);
 	}
  out1:
-	jdbt_unlock(&dbdata, jnienv);
+	locked_dbt_put(&ldata, jnienv);
  out2:
-	jdbt_unlock(&dbkey, jnienv);
+	locked_dbt_put(&lkey, jnienv);
 	return (err);
 }
 

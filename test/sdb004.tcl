@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb004.tcl,v 11.14 2000/08/25 14:21:53 sue Exp $
+# $Id: sdb004.tcl,v 11.17 2001/05/15 05:15:59 krinsky Exp $
 #
 # SubDB Test 4 {access method}
 # Create 1 db with many large subdbs.  Use the contents as subdb names.
@@ -44,7 +44,9 @@ proc subdb004 { method args} {
 	}
 
 	# Here is the loop where we put and get each key/data pair
-	set file_list [glob ../*/*.c ./libdb.so.3.0 ./libtool ./libtool.exe]
+	# Note that the subdatabase name is passed in as a char *, not
+	# in a DBT, so it may not contain nulls;  use only source files.
+	set file_list [glob ../*/*.c]
 	set fcount [llength $file_list]
 
 	set count 0
@@ -128,7 +130,11 @@ proc subdb004 { method args} {
 		# Output the subdb name
 		set ofid [open $t3 w]
 		fconfigure $ofid -translation binary
-		set subdbname [string trimright $subdbname \0]
+		if { [string compare "\0" \
+		    [string range $subdbname end end]] == 0 } {
+			set slen [expr [string length $subdbname] - 2]
+			set subdbname [string range $subdbname 1 $slen]
+		}
 		puts -nonewline $ofid $subdbname
 		close $ofid
 

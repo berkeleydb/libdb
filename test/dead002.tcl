@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead002.tcl,v 11.15 2000/08/25 14:21:50 sue Exp $
+# $Id: dead002.tcl,v 11.16 2001/01/25 18:23:04 bostic Exp $
 #
 # Deadlock Test 2.
 # Identical to Test 1 except that instead of running a standalone deadlock

@@ -1,21 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_env.c,v 11.18 2000/10/27 20:32:00 dda Exp $
+ * $Id: ex_env.c,v 11.22 2001/05/10 17:14:04 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#endif
 
 #include <db.h>
 
@@ -71,13 +67,13 @@ main()
 
 	printf("Setup env\n");
 	if ((ret = db_setup(home, data_dir, stderr, progname)) != 0)
-		return (ret);
+		return (EXIT_FAILURE);
 
 	printf("Teardown env\n");
 	if ((ret = db_teardown(home, data_dir, stderr, progname)) != 0)
-		return (ret);
+		return (EXIT_FAILURE);
 
-	return (0);
+	return (EXIT_SUCCESS);
 }
 
 int

@@ -1,19 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_errno.c,v 11.3 2000/02/14 03:00:05 bostic Exp $";
+static const char revid[] = "$Id: os_errno.c,v 11.5 2001/04/05 18:58:35 bostic Exp $";
 #endif /* not lint */
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <errno.h>
-#endif
 
 #include "db_int.h"
 

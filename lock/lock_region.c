@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_region.c,v 11.41 2000/12/20 21:53:04 ubell Exp $";
+static const char revid[] = "$Id: lock_region.c,v 11.49 2001/06/13 01:42:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -26,7 +26,6 @@ static const char revid[] = "$Id: lock_region.c,v 11.41 2000/12/20 21:53:04 ubel
 #include "lock.h"
 
 #ifdef	HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -39,18 +38,36 @@ static size_t __lock_region_maint __P((DB_ENV *));
 #endif
 
 /*
- * This conflict array is used for concurrent db access (CDB).  It
- * uses the same locks as the db_rw_conflict array, but adds an IW
- * mode to be used for write cursors.
+ * The conflict arrays are set up such that the row is the lock you are
+ * holding and the column is the lock that is desired.
  */
-#define	DB_LOCK_CDB_N 5
-static u_int8_t const db_cdb_conflicts[] = {
-	/*		N   R   W  WT  IW*/
-	/*    N */	0,  0,  0,  0, 0,
-	/*    R */	0,  0,  1,  0, 0,
-	/*    W */	0,  1,  1,  1, 1,
-	/*   WT */	0,  0,  0,  0, 0,
-	/*   IW */	0,  0,  1,  0, 1,
+#define	DB_LOCK_RIW_N	9
+static const u_int8_t db_riw_conflicts[] = {
+/*         N   R   W   WT  IW  IR  RIW DR  WW */
+/*   N */  0,  0,  0,  0,  0,  0,  0,  0,  0,
+/*   R */  0,  0,  1,  0,  1,  0,  1,  0,  1,
+/*   W */  0,  1,  1,  1,  1,  1,  1,  1,  1,
+/*  WT */  0,  0,  0,  0,  0,  0,  0,  0,  0,
+/*  IW */  0,  1,  1,  0,  0,  0,  0,  1,  1,
+/*  IR */  0,  0,  1,  0,  0,  0,  0,  0,  1,
+/* RIW */  0,  1,  1,  0,  0,  0,  0,  1,  1,
+/*  DR */  0,  0,  1,  0,  1,  0,  1,  0,  0,
+/*  WW */  0,  1,  1,  0,  1,  1,  1,  0,  1,
+};
+
+/*
+ * This conflict array is used for concurrent db access (CDB).  It uses
+ * the same locks as the db_riw_conflicts array, but adds an IW mode to
+ * be used for write cursors.
+ */
+#define	DB_LOCK_CDB_N	5
+static const u_int8_t db_cdb_conflicts[] = {
+	/*		N	R	W	WT	IW */
+	/*   N */	0,	0,	0,	0,	0,
+	/*   R */	0,	0,	1,	0,	0,
+	/*   W */	0,	1,	1,	1,	1,
+	/*  WT */	0,	0,	0,	0,	0,
+	/*  IW */	0,	0,	1,	0,	1,
 };
 
 /*
@@ -101,7 +118,7 @@ __lock_dbenv_close(dbenv)
 	DB_ENV *dbenv;
 {
 	if (!F_ISSET(dbenv, DB_ENV_USER_ALLOC) && dbenv->lk_conflicts != NULL) {
-		__os_free(dbenv->lk_conflicts,
+		__os_free(dbenv, dbenv->lk_conflicts,
 		    dbenv->lk_modes * dbenv->lk_modes);
 		dbenv->lk_conflicts = NULL;
 	}
@@ -183,7 +200,7 @@ err:	if (lt->reginfo.addr != NULL) {
 		R_UNLOCK(dbenv, &lt->reginfo);
 		(void)__db_r_detach(dbenv, &lt->reginfo, 0);
 	}
-	__os_free(lt, sizeof(*lt));
+	__os_free(dbenv, lt, sizeof(*lt));
 	return (ret);
 }
 
@@ -312,13 +329,15 @@ __lock_init(dbenv, lt)
 	}
 
 	/* Initialize lockers onto a free list.  */
+	SH_TAILQ_INIT(&region->lockers);
 	SH_TAILQ_INIT(&region->free_lockers);
 	for (i = 0; i < region->maxlockers; ++i) {
 		if ((ret = __db_shalloc(lt->reginfo.addr,
 		    sizeof(DB_LOCKER), 0, &lidp)) != 0) {
-mem_err:	__db_err(dbenv, "Unable to allocate memory for the lock table");
-		return (ret);
-	}
+mem_err:		__db_err(dbenv,
+			    "Unable to allocate memory for the lock table");
+			return (ret);
+		}
 		SH_TAILQ_INSERT_HEAD(
 		    &region->free_lockers, lidp, links, __db_locker);
 	}
@@ -344,7 +363,7 @@ __lock_close(dbenv)
 	/* Detach from the region. */
 	ret = __db_r_detach(dbenv, &lt->reginfo, 0);
 
-	__os_free(lt, sizeof(*lt));
+	__os_free(dbenv, lt, sizeof(*lt));
 
 	dbenv->lk_handle = NULL;
 	return (ret);
@@ -419,12 +438,9 @@ __lock_region_destroy(dbenv, infop)
 	DB_ENV *dbenv;
 	REGINFO *infop;
 {
-	DB_LOCKREGION *region;
+	__db_shlocks_destroy(infop, (REGMAINT *)R_ADDR(infop,
+	    ((DB_LOCKREGION *)R_ADDR(infop, infop->rp->primary))->maint_off));
 
 	COMPQUIET(dbenv, NULL);
-	region = R_ADDR(infop, infop->rp->primary);
-
-	__db_shlocks_destroy(infop,
-	    (REGMAINT *)R_ADDR(infop, region->maint_off));
-	return;
+	COMPQUIET(infop, NULL);
 }

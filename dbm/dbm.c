@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: dbm.c,v 11.7 2000/11/30 00:58:35 ubell Exp $";
+static const char revid[] = "$Id: dbm.c,v 11.9 2001/04/10 20:43:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -60,6 +60,70 @@ static const char revid[] = "$Id: dbm.c,v 11.7 2000/11/30 00:58:35 ubell Exp $";
  *
  * This package provides dbm and ndbm compatible interfaces to DB.
  *
+ * EXTERN: #if DB_DBM_HSEARCH != 0
+ *
+ * EXTERN: int	 __db_ndbm_clearerr __P((DBM *));
+ * EXTERN: void	 __db_ndbm_close __P((DBM *));
+ * EXTERN: int	 __db_ndbm_delete __P((DBM *, datum));
+ * EXTERN: int	 __db_ndbm_dirfno __P((DBM *));
+ * EXTERN: int	 __db_ndbm_error __P((DBM *));
+ * EXTERN: datum __db_ndbm_fetch __P((DBM *, datum));
+ * EXTERN: datum __db_ndbm_firstkey __P((DBM *));
+ * EXTERN: datum __db_ndbm_nextkey __P((DBM *));
+ * EXTERN: DBM	*__db_ndbm_open __P((const char *, int, int));
+ * EXTERN: int	 __db_ndbm_pagfno __P((DBM *));
+ * EXTERN: int	 __db_ndbm_rdonly __P((DBM *));
+ * EXTERN: int	 __db_ndbm_store __P((DBM *, datum, datum, int));
+ *
+ * Translate NDBM calls into DB calls so that DB doesn't step on the
+ * application's name space.
+ *
+ * EXTERN: #define	dbm_clearerr(a)		__db_ndbm_clearerr(a)
+ * EXTERN: #define	dbm_close(a)		__db_ndbm_close(a)
+ * EXTERN: #define	dbm_delete(a, b)	__db_ndbm_delete(a, b)
+ * EXTERN: #define	dbm_dirfno(a)		__db_ndbm_dirfno(a)
+ * EXTERN: #define	dbm_error(a)		__db_ndbm_error(a)
+ * EXTERN: #define	dbm_fetch(a, b)		__db_ndbm_fetch(a, b)
+ * EXTERN: #define	dbm_firstkey(a)		__db_ndbm_firstkey(a)
+ * EXTERN: #define	dbm_nextkey(a)		__db_ndbm_nextkey(a)
+ * EXTERN: #define	dbm_open(a, b, c)	__db_ndbm_open(a, b, c)
+ * EXTERN: #define	dbm_pagfno(a)		__db_ndbm_pagfno(a)
+ * EXTERN: #define	dbm_rdonly(a)		__db_ndbm_rdonly(a)
+ * EXTERN: #define	dbm_store(a, b, c, d)	__db_ndbm_store(a, b, c, d)
+ *
+ * Translate DBM calls into DB calls so that DB doesn't step on the
+ * application's name space.
+ *
+ * The global variables dbrdonly, dirf and pagf were not retained when 4BSD
+ * replaced the dbm interface with ndbm, and are not supported here.
+ *
+ * EXTERN: #define	dbminit(a)	__db_dbm_init(a)
+ * EXTERN: #define	dbmclose	__db_dbm_close
+ * EXTERN: #if !defined(__cplusplus)
+ * EXTERN: #define	delete(a)	__db_dbm_delete(a)
+ * EXTERN: #endif
+ * EXTERN: #define	fetch(a)	__db_dbm_fetch(a)
+ * EXTERN: #define	firstkey	__db_dbm_firstkey
+ * EXTERN: #define	nextkey(a)	__db_dbm_nextkey(a)
+ * EXTERN: #define	store(a, b)	__db_dbm_store(a, b)
+ *
+ * Prototype the DB calls.
+ *
+ * EXTERN: int	 __db_dbm_close __P((void));
+ * EXTERN: int	 __db_dbm_dbrdonly __P((void));
+ * EXTERN: int	 __db_dbm_delete __P((datum));
+ * EXTERN: int	 __db_dbm_dirf __P((void));
+ * EXTERN: datum __db_dbm_fetch __P((datum));
+ * EXTERN: datum __db_dbm_firstkey __P((void));
+ * EXTERN: int	 __db_dbm_init __P((char *));
+ * EXTERN: datum __db_dbm_nextkey __P((datum));
+ * EXTERN: int	 __db_dbm_pagf __P((void));
+ * EXTERN: int	 __db_dbm_store __P((datum, datum));
+ *
+ * EXTERN: #endif
+ */
+
+/*
  * The DBM routines, which call the NDBM routines.
  */
 static DBM *__cur_db;

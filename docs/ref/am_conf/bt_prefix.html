@@ -1,5 +1,5 @@
-<!--$Id: bt_prefix.so,v 10.17 2000/07/04 18:28:27 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: bt_prefix.so,v 10.20 2001/05/07 19:28:38 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,18 +8,19 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am_conf/bt_compare.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/bt_minkey.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/am_conf/bt_compare.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/bt_minkey.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Btree prefix comparison</h1>
 <p>The Berkeley DB Btree implementation maximizes the number of keys that can be
 stored on an internal page by storing only as many bytes of each key as
-are necessary to distinguish it from adjacent keys.  The prefix comparison
-routine is what determines this minimum number of bytes (i.e., the length
-of the unique prefix), that must be stored.  A prefix comparison function
-for the Btree can be specified by calling <a href="../../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a>.
+are necessary to distinguish it from adjacent keys.  The prefix
+comparison routine is what determines this minimum number of bytes (that
+is, the length of the unique prefix), that must be stored.  A prefix
+comparison function for the Btree can be specified by calling
+<a href="../../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a>.
 <p>The prefix comparison routine must be compatible with the overall
 comparison function of the Btree, since what distinguishes any two keys
 depends entirely on the function used to compare them.  This means that
@@ -57,9 +58,9 @@ compare_prefix(dbp, a, b)
 		return (b-&gt;size + 1);
 	return (b-&gt;size);
 }</pre></blockquote>
-<p>The usefulness of this functionality is data dependent, but in some data
+<p>The usefulness of this functionality is data-dependent, but in some data
 sets can produce significantly reduced tree sizes and faster search times.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/bt_compare.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/bt_minkey.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/bt_compare.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/bt_minkey.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_method.c,v 11.7 2000/07/04 18:28:23 bostic Exp $";
+static const char revid[] = "$Id: hash_method.c,v 11.9 2001/04/03 15:14:17 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,7 +38,7 @@ __ham_db_create(dbp)
 	int ret;
 
 	if ((ret = __os_malloc(dbp->dbenv,
-	    sizeof(HASH), NULL, &dbp->h_internal)) != 0)
+	    sizeof(HASH), &dbp->h_internal)) != 0)
 		return (ret);
 
 	hashp = dbp->h_internal;
@@ -63,7 +63,7 @@ __ham_db_close(dbp)
 {
 	if (dbp->h_internal == NULL)
 		return (0);
-	__os_free(dbp->h_internal, sizeof(HASH));
+	__os_free(dbp->dbenv, dbp->h_internal, sizeof(HASH));
 	dbp->h_internal = NULL;
 	return (0);
 }

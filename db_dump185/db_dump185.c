@@ -1,15 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #ifndef lint
 static char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static char revid[] =
-    "$Id: db_dump185.c,v 11.8 2001/01/10 17:26:21 bostic Exp $";
+    "$Id: db_dump185.c,v 11.11 2001/05/10 17:13:57 bostic Exp $";
 #endif
 
 #include <sys/types.h>
@@ -191,7 +191,7 @@ main(argc, argv)
 			if (freopen(optarg, "w", stdout) == NULL) {
 				fprintf(stderr, "db_dump185: %s: %s\n",
 				    optarg, strerror(errno));
-				exit (1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'p':
@@ -212,7 +212,7 @@ main(argc, argv)
 		    dbopen(argv[0], O_RDONLY, 0, DB_HASH, NULL)) == NULL) {
 			fprintf(stderr,
 			    "db_dump185: %s: %s\n", argv[0], strerror(errno));
-			exit (1);
+			return (EXIT_FAILURE);
 		}
 		db_hash(dbp, pflag);
 	} else
@@ -236,9 +236,9 @@ main(argc, argv)
 
 	if (rval == -1) {
 		fprintf(stderr, "db_dump185: seq: %s\n", strerror(errno));
-		exit (1);
+		return (EXIT_FAILURE);
 	}
-	return (0);
+	return (EXIT_SUCCESS);
 }
 
 /*
@@ -349,5 +349,5 @@ void
 usage()
 {
 	(void)fprintf(stderr, "usage: db_dump185 [-p] [-f file] db_file\n");
-	exit(1);
+	exit(EXIT_FAILURE);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2001
+ *      Sleepycat Software.  All rights reserved.
  *
- *	$Id: Dbt.java,v 11.6 2000/06/16 03:34:01 dda Exp $
+ * $Id: Dbt.java,v 11.12 2001/07/02 01:03:24 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -18,6 +18,28 @@ public class Dbt
     // methods
     //
 
+    public Dbt(byte[] data)
+    {
+        init();
+        this.data = data;
+        if (data != null) {
+            this.size = data.length;
+        }
+    }
+
+    public Dbt(byte[] data, int off, int len)
+    {
+        init();
+        this.data = data;
+        this.offset = off;
+        this.size = len;
+    }
+
+    public Dbt()
+    {
+        init();
+    }
+
     protected native void finalize()
          throws Throwable;
 
@@ -26,85 +48,152 @@ public class Dbt
 
     // key/data
 
-    public void set_data(byte[] data)
+    public byte[] get_data()
     {
-        // internal_set_data is separated from set_data in case
-        // we want to have set_data automatically set some other
-        // fields (size, etc.) someday.
+        // In certain circumstances, like callbacks to
+        // user code that have Dbt args, we do not create
+        // data arrays until the user explicitly does a get_data.
+        // This saves us from needlessly creating objects
+        // (potentially large arrays) that may never be accessed.
         //
-        internal_set_data(data);
+        if (must_create_data) {
+            data = create_data();
+            must_create_data = false;
+        }
+        return data;
     }
 
-    public native byte[] get_data();
-    private native void internal_set_data(byte[] data);
+    public void set_data(byte[] data)
+    {
+        this.data = data;
+        this.must_create_data = false;
+    }
 
-    // These are not in the original DB interface,
-    // but they can be used to get/set the offset
+
+    // get_offset/set_offset is unique to the Java portion
+    // of the DB APIs.  They can be used to get/set the offset
     // into the attached byte array.
     //
-    public native void set_offset(int off);
-    public native int get_offset();
+    public int get_offset()
+    {
+        return offset;
+    }
+
+    public void set_offset(int offset)
+    {
+        this.offset = offset;
+    }
 
     // key/data length
-    public native /*u_int32_t*/ int get_size();
-    public native void set_size(/*u_int32_t*/ int size);
+    public /*u_int32_t*/ int get_size()
+    {
+        return size;
+    }
+
+    public void set_size(/*u_int32_t*/ int size)
+    {
+        this.size = size;
+    }
 
     // RO: length of user buffer.
-    public native /*u_int32_t*/ int get_ulen();
-    public native void set_ulen(/*u_int32_t*/ int ulen);
+    public /*u_int32_t*/ int get_ulen()
+    {
+        return ulen;
+    }
+
+    public void set_ulen(/*u_int32_t*/ int ulen)
+    {
+        this.ulen = ulen;
+    }
+
 
     // RO: get/put record length.
-    public native /*u_int32_t*/ int get_dlen();
-    public native void set_dlen(/*u_int32_t*/ int dlen);
+    public /*u_int32_t*/ int get_dlen()
+    {
+        return dlen;
+    }
+
+    public void set_dlen(/*u_int32_t*/ int dlen)
+    {
+        this.dlen = dlen;
+    }
 
     // RO: get/put record offset.
-    public native /*u_int32_t*/ int get_doff();
-    public native void set_doff(/*u_int32_t*/ int doff);
+    public /*u_int32_t*/ int get_doff()
+    {
+        return doff;
+    }
+
+    public void set_doff(/*u_int32_t*/ int doff)
+    {
+        this.doff = doff;
+    }
 
     // flags
-    public native /*u_int32_t*/ int get_flags();
-    public native void set_flags(/*u_int32_t*/ int flags);
+    public /*u_int32_t*/ int get_flags()
+    {
+        return flags;
+    }
+
+    public void set_flags(/*u_int32_t*/ int flags)
+    {
+        this.flags = flags;
+    }
+
 
     // These are not in the original DB interface.
     // They can be used to set the recno key for a Dbt.
-    // Note: you must set the data field to an array of
-    // at least four bytes before calling either of these.
+    // Note: if data is less than (offset + 4) bytes, these
+    // methods may throw an ArrayIndexException.  get_recno_key_data()
+    // will additionally throw a NullPointerException if data is null.
+    public void set_recno_key_data(int recno)
+    {
+        if (data == null) {
+            data = new byte[4];
+            size = 4;
+            offset = 0;
+        }
+        DbUtil.int2array(recno, data, offset);
+    }
+
+    public int get_recno_key_data()
+    {
+        return (DbUtil.array2int(data, offset));
+    }
+
+    // Used internally by DbMultipleRecnoIterator
     //
-    public native void set_recno_key_data(int recno);
-    public native int get_recno_key_data();
-
-    public Dbt(byte[] data)
+    /*package*/ void set_recno_key_from_buffer(byte[] data, int offset)
     {
-        init();
-        internal_set_data(data);
-        if (data != null)
-            set_size(data.length);
+        this.data = data;
+        this.offset = offset;
+        this.size = 4;
     }
 
-    public Dbt(byte[] data, int off, int len)
-    {
-        this(data);
-        set_ulen(len);
-        set_offset(off);
-    }
-
-    public Dbt()
-    {
-        init();
+    static {
+        Db.load_db();
     }
 
     // private methods
     //
     private native void init();
+    private native byte[] create_data();
+    private static native boolean is_big_endian();
 
     // private data
     //
     private long private_dbobj_ = 0;
 
-    static {
-        Db.load_db();
-    }
-}
+    private byte[] data = null;
+    private int offset = 0;
+    private int size = 0;
+    private int ulen = 0;
+    private int dlen = 0;
+    private int doff = 0;
+    private int flags = 0;
+    private boolean must_create_data = false;
 
+    private static boolean big_endian = is_big_endian();
+}
 
 // end of Dbt.java

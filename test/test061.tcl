@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test061.tcl,v 11.12 2000/10/27 13:23:56 sue Exp $
+# $Id: test061.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
 #
 # Test061: Test of transaction abort and commit for in-memory databases.
 #	a) Put + abort: verify absence of data

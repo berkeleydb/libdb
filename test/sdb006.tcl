@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb006.tcl,v 11.12 2000/09/20 13:22:03 sue Exp $
+# $Id: sdb006.tcl,v 11.13 2001/01/25 18:23:07 bostic Exp $
 #
 # We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 # everything else does as well.  We'll create test databases called

@@ -1,5 +1,5 @@
-<!--$Id: env_open.so,v 1.1 2000/07/25 17:56:36 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: env_open.so,v 1.3 2001/05/08 15:03:08 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,32 +8,33 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/transapp/app.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/data_open.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td align=right><a href="../../ref/transapp/app.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/data_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Opening the environment</h1>
 <p>Creating transaction-protected applications using the Berkeley DB library is
-quite easy.  Applications first use <a href="../../api_c/env_open.html">DBENV-&gt;open</a> to initialize
+quite easy.  Applications first use <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> to initialize
 the database environment.  Transaction-protected applications normally
 require all four Berkeley DB subsystems, so the <a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>,
-<a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a> and <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flags
+<a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a>, and <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flags
 should be specified.
-<p>Once the application has called <a href="../../api_c/env_open.html">DBENV-&gt;open</a>, it opens its
+<p>Once the application has called <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a>, it opens its
 databases within the environment.  Once the databases are opened, the
 application makes changes to the databases inside of transactions.  Each
-set of changes that entail a unit of work should be surrounded by the
-appropriate <a href="../../api_c/txn_begin.html">txn_begin</a>, <a href="../../api_c/txn_commit.html">txn_commit</a> and <a href="../../api_c/txn_abort.html">txn_abort</a>
+set of changes that entails a unit of work should be surrounded by the
+appropriate <a href="../../api_c/txn_begin.html">txn_begin</a>, <a href="../../api_c/txn_commit.html">txn_commit</a>, and <a href="../../api_c/txn_abort.html">txn_abort</a>
 calls.  The Berkeley DB access methods will make the appropriate calls into
-the lock, log and memory pool subsystems in order to guarantee
+the Lock, Log and Memory Pool subsystems in order to guarantee
 transaction semantics.  When the application is ready to exit, all
 outstanding transactions should have been committed or aborted.
 <p>Databases accessed by a transaction must not be closed during the
 transaction.  Once all outstanding transactions are finished, all open
 Berkeley DB files should be closed.  When the Berkeley DB database files have been
-closed, the environment should be closed by calling <a href="../../api_c/env_close.html">DBENV-&gt;close</a>.
-<p>The following code fragment creates the database environment directory,
+closed, the environment should be closed by calling
+<a href="../../api_c/env_close.html">DB_ENV-&gt;close</a>.
+<p>The following code fragment creates the database environment directory
 then opens the environment, running recovery.  Our DB_ENV
 database environment handle is declared to be free-threaded using the
 <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag, and so may be used by any number of threads that
@@ -167,7 +168,7 @@ Txn Region: 5.
 -1      Segment ID.
 1       Locks granted without waiting.
 0       Locks granted after waiting.</pre></blockquote>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/app.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/data_open.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/app.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/data_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

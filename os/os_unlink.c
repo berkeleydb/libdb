@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_unlink.c,v 11.13 2000/11/30 00:58:42 ubell Exp $";
+static const char revid[] = "$Id: os_unlink.c,v 11.15 2001/05/01 19:49:58 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -98,7 +98,7 @@ __os_region_unlink(dbenv, path)
 	}
 err:
 	if (newname != NULL)
-		__os_free(newname, 0);
+		__os_free(dbenv, newname, 0);
 	return (ret);
 #else
 	return (__os_unlink(dbenv, path));

@@ -1,4 +1,4 @@
-; $Id: libdb_tcl.def,v 11.2 1999/11/21 23:10:00 bostic Exp $
+; $Id: libdb_tcl.def,v 11.3 2001/04/26 12:51:58 dda Exp $
 
 DESCRIPTION     'Berkeley DB TCL interface Library'
 EXPORTS
@@ -32,4 +32,3 @@ EXPORTS
 	tcl_Txn
 	tcl_TxnCheckpoint
 	tcl_TxnStat
-	txn_Cmd

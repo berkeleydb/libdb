@@ -2,10 +2,10 @@
 #
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: gen_rec.awk,v 11.26 2001/01/08 21:06:46 bostic Exp $
+# $Id: gen_rec.awk,v 11.36 2001/06/15 16:38:12 bostic Exp $
 #
 
 # This awk script generates all the log, print, and read routines for the DB
@@ -21,25 +21,23 @@
 #	    (logical types are defined in each subsystem manually)
 #	structures to contain the data unmarshalled from the log.
 #
-# This awk script requires that five variables be set when it is called:
+# This awk script requires that four variables be set when it is called:
 #
 #	source_file	-- the C source file being created
 #	subsystem	-- the subsystem prefix, e.g., "db"
 #	header_file	-- the C #include file being created
 #	template_file	-- the template file being created
-#	template_dir	-- the directory to find the source template
 #
 # And stdin must be the input file that defines the recovery setup.
 
 BEGIN {
 	if (source_file == "" || subsystem == "" ||
-	    header_file == "" || template_file == "" || template_dir == "") {
-	    print "Usage: gen_rec.awk requires five variables to be set:"
+	    header_file == "" || template_file == "") {
+	    print "Usage: gen_rec.awk requires four variables to be set:"
 	    print "\tsource_file\t-- the C source file being created"
 	    print "\tsubsystem\t-- the subsystem prefix, e.g., \"db\""
 	    print "\theader_file\t-- the C #include file being created"
 	    print "\ttemplate_file\t-- the template file being created"
-	    print "\ttemplate_dir\t-- the directory to find the source template"
 	    exit
 	}
 	FS="[\t ][\t ]*"
@@ -47,7 +45,6 @@ BEGIN {
 	NAME=subsystem
 	HFILE=header_file
 	TFILE=template_file
-	TDIR=template_dir
 }
 /^[ 	]*PREFIX/ {
 	prefix = $2
@@ -81,14 +78,14 @@ BEGIN {
 	else
 		printf("%s %s\n", $2, $3) >> CFILE
 }
-/^[ 	]*(BEGIN|DEPRECATED)/ {
+/^[ 	]*(BEGIN|IGNORED|DEPRECATED)/ {
 	if (in_begin) {
 		print "Invalid format: missing END statement"
 		exit
 	}
 	in_begin = 1;
 	is_dbt = 0;
-	is_deprecated = ($1 == "DEPRECATED");
+	need_log_function = ($1 == "BEGIN");
 	nvars = 0;
 
 	thisfunc = $2;
@@ -97,7 +94,10 @@ BEGIN {
 	rectype = $3;
 
 	funcs[num_funcs] = funcname;
-	funcs_dep[num_funcs] = is_deprecated;
+	if ($1 == "DEPRECATED")
+		funcs_recname[num_funcs] = "__deprecated_recover";
+	else
+		funcs_recname[num_funcs] = sprintf("__%s_recover", funcname);
 	++num_funcs;
 }
 /^[ 	]*(ARG|DBT|POINTER)/ {
@@ -128,7 +128,7 @@ BEGIN {
 	}
 
 	# Declare the record type.
-	printf("\n#define\tDB_%s\t%d\n", funcname, rectype) >> HFILE
+	printf("#define\tDB_%s\t%d\n", funcname, rectype) >> HFILE
 
 	# Structure declaration.
 	printf("typedef struct _%s_args {\n", funcname) >> HFILE
@@ -149,14 +149,15 @@ BEGIN {
 	printf("} __%s_args;\n\n", funcname) >> HFILE
 
 	# Output the log, print and read functions.
-	if (!is_deprecated)
+	if (need_log_function)
 		log_function();
 	print_function();
 	read_function();
 
 	# Recovery template
-	cmd = sprintf("sed -e s/PREF/%s/ -e s/FUNC/%s/ < %s/rec_ctemp >> %s",
-	    prefix, thisfunc, TDIR, TFILE)
+	cmd = sprintf(\
+    "sed -e s/PREF/%s/ -e s/FUNC/%s/ < template/rec_ctemp >> %s",
+	    prefix, thisfunc, TFILE)
 	system(cmd);
 
 	# Done writing stuff, reset and continue.
@@ -165,7 +166,9 @@ BEGIN {
 
 END {
 	# Print initialization routine; function prototype
-	printf("int __%s_init_print __P((DB_ENV *));\n", prefix) >> HFILE;
+	p[1] = sprintf("int __%s_init_print __P((DB_ENV *));", prefix);
+	p[2] = "";
+	proto_format(p);
 
 	# Create the routine to call db_add_recovery(print_fn, id)
 	printf("int\n__%s_init_print(dbenv)\n", prefix) >> CFILE;
@@ -179,22 +182,20 @@ END {
 	printf("\treturn (0);\n}\n\n") >> CFILE;
 
 	# Recover initialization routine
-	printf("int __%s_init_recover __P((DB_ENV *));\n", prefix) >> HFILE;
+	p[1] = sprintf("int __%s_init_recover __P((DB_ENV *));", prefix);
+	p[2] = "";
+	proto_format(p);
 
 	# Create the routine to call db_add_recovery(func, id)
 	printf("int\n__%s_init_recover(dbenv)\n", prefix) >> CFILE;
 	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
 	for (i = 0; i < num_funcs; i++) {
 		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
-		if (funcs_dep[i] == 1)
-			printf("\t    __deprecated_recover, DB_%s)) != 0)\n", \
-			    funcs[i]) >> CFILE;
-		else
-			printf("\t    __%s_recover, DB_%s)) != 0)\n", \
-			    funcs[i], funcs[i]) >> CFILE;
+		printf("\t    %s, DB_%s)) != 0)\n", \
+		    funcs_recname[i], funcs[i]) >> CFILE;
 		printf("\t\treturn (ret);\n") >> CFILE;
 	}
-	printf("\treturn (0);\n}\n\n") >> CFILE;
+	printf("\treturn (0);\n}\n") >> CFILE;
 
 	# End the conditional for the HFILE
 	printf("#endif\n") >> HFILE;
@@ -202,17 +203,21 @@ END {
 
 function log_function() {
 	# Write the log function; function prototype
-	printf("int __%s_log __P((", funcname) >> HFILE;
-	printf("DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t") >> HFILE;
+	pi = 1;
+	p[pi++] = sprintf("int __%s_log", funcname);
+	p[pi++] = " ";
+	p[pi++] = "__P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t";
 	for (i = 0; i < nvars; i++) {
-		printf(", ") >> HFILE;
-		if (modes[i] == "DBT")
-			printf("const ") >> HFILE;
-		printf("%s", types[i]) >> HFILE;
-		if (modes[i] == "DBT")
-			printf(" *") >> HFILE;
+		p[pi++] = ", ";
+		p[pi++] = sprintf("%s%s%s",
+		    modes[i] == "DBT" ? "const " : "",
+		    types[i],
+		    modes[i] == "DBT" ? " *" : "");
 	}
-	printf("));\n") >> HFILE;
+	p[pi++] = "";
+	p[pi++] = "));";
+	p[pi++] = "";
+	proto_format(p);
 
 	# Function declaration
 	printf("int\n__%s_log(dbenv, txnid, ret_lsnp, flags", \
@@ -268,7 +273,7 @@ function log_function() {
 		printf("\n\t    + %s", sizes[i]) >> CFILE;
 	printf(";\n\tif ((ret = ") >> CFILE;
 	printf(\
-	    "__os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)\n")\
+	    "__os_malloc(dbenv, logrec.size, &logrec.data)) != 0)\n")\
 	    >> CFILE;
 	printf("\t\treturn (ret);\n\n") >> CFILE;
 
@@ -326,19 +331,29 @@ function log_function() {
 	printf("(DBT *)&logrec, flags);\n") >> CFILE;
 
 	# Update the transactions last_lsn
-	printf("\tif (txnid != NULL)\n") >> CFILE;
+	printf("\tif (txnid != NULL && ret == 0)\n") >> CFILE;
 	printf("\t\ttxnid->last_lsn = *ret_lsnp;\n") >> CFILE;
 
+	# If out of disk space log writes may fail.  If we are debugging
+	# that print out which records did not make it to disk.
+	printf("#ifdef LOG_DIAGNOSTIC\n") >> CFILE
+	printf("\tif (ret != 0)\n") >> CFILE;
+	printf("\t\t(void)__%s_print(dbenv,\n", funcname) >> CFILE;
+	printf("\t\t    (DBT *)&logrec, ret_lsnp, NULL, NULL);\n") >> CFILE
+	printf("#endif\n") >> CFILE
+
 	# Free and return
-	printf("\t__os_free(logrec.data, logrec.size);\n") >> CFILE;
+	printf("\t__os_free(dbenv, logrec.data, logrec.size);\n") >> CFILE;
 	printf("\treturn (ret);\n}\n\n") >> CFILE;
 }
 
 function print_function() {
 	# Write the print function; function prototype
-	printf("int __%s_print", funcname) >> HFILE;
-	printf(" __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));\n") \
-	    >> HFILE;
+	p[1] = sprintf("int __%s_print", funcname);
+	p[2] = " ";
+	p[3] = "__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));";
+	p[4] = "";
+	proto_format(p);
 
 	# Function declaration
 	printf("int\n__%s_print(dbenv, ", funcname) >> CFILE;
@@ -362,7 +377,7 @@ function print_function() {
 	printf("\t\treturn (ret);\n") >> CFILE;
 
 	# Print values in every record
-	printf("\tprintf(\"[%%lu][%%lu]%s: ", funcname) >> CFILE;
+	printf("\t(void)printf(\n\t    \"[%%lu][%%lu]%s: ", funcname) >> CFILE;
 	printf("rec: %%lu txnid %%lx ") >> CFILE;
 	printf("prevlsn [%%lu][%%lu]\\n\",\n") >> CFILE;
 	printf("\t    (u_long)lsnp->file,\n") >> CFILE;
@@ -374,7 +389,7 @@ function print_function() {
 
 	# Now print fields of argp
 	for (i = 0; i < nvars; i ++) {
-		printf("\tprintf(\"\\t%s: ", vars[i]) >> CFILE;
+		printf("\t(void)printf(\"\\t%s: ", vars[i]) >> CFILE;
 
 		if (modes[i] == "DBT") {
 			printf("\");\n") >> CFILE;
@@ -383,10 +398,10 @@ function print_function() {
 			printf("\t\tch = ((u_int8_t *)argp->%s.data)[i];\n", \
 			    vars[i]) >> CFILE;
 			printf("\t\tif (isprint(ch) || ch == 0xa)\n") >> CFILE;
-			printf("\t\t\tputchar(ch);\n") >> CFILE;
+			printf("\t\t\t(void)putchar(ch);\n") >> CFILE;
 			printf("\t\telse\n") >> CFILE;
-			printf("\t\t\tprintf(\"%%#x \", ch);\n") >> CFILE;
-			printf("\t}\n\tprintf(\"\\n\");\n") >> CFILE;
+			printf("\t\t\t(void)printf(\"%%#x \", ch);\n") >> CFILE;
+			printf("\t}\n\t(void)printf(\"\\n\");\n") >> CFILE;
 		} else if (types[i] == "DB_LSN *") {
 			printf("[%%%s][%%%s]\\n\",\n", \
 			    formats[i], formats[i]) >> CFILE;
@@ -405,16 +420,19 @@ function print_function() {
 			printf("argp->%s);\n", vars[i]) >> CFILE;
 		}
 	}
-	printf("\tprintf(\"\\n\");\n") >> CFILE;
-	printf("\t__os_free(argp, 0);\n") >> CFILE;
+	printf("\t(void)printf(\"\\n\");\n") >> CFILE;
+	printf("\t__os_free(dbenv, argp, 0);\n") >> CFILE;
 	printf("\treturn (0);\n") >> CFILE;
 	printf("}\n\n") >> CFILE;
 }
 
 function read_function() {
 	# Write the read function; function prototype
-	printf("int __%s_read __P((DB_ENV *, void *, ", funcname) >> HFILE;
-	printf("__%s_args **));\n", funcname) >> HFILE;
+	p[1] = sprintf("int __%s_read __P((DB_ENV *, void *,", funcname);
+	p[2] = " ";
+	p[3] = sprintf("__%s_args **));", funcname);
+	p[4] = "";
+	proto_format(p);
 
 	# Function declaration
 	printf("int\n__%s_read(dbenv, recbuf, argpp)\n", funcname) >> CFILE;
@@ -430,7 +448,7 @@ function read_function() {
 	printf("\tint ret;\n") >> CFILE;
 
 	printf("\n\tret = __os_malloc(dbenv, sizeof(") >> CFILE;
-	printf("__%s_args) +\n\t    sizeof(DB_TXN), NULL, &argp);\n", \
+	printf("__%s_args) +\n\t    sizeof(DB_TXN), &argp);\n", \
 	    funcname) >> CFILE;
 	printf("\tif (ret != 0)\n\t\treturn (ret);\n") >> CFILE;
 
@@ -472,4 +490,37 @@ function read_function() {
 	# Free and return
 	printf("\t*argpp = argp;\n") >> CFILE;
 	printf("\treturn (0);\n}\n\n") >> CFILE;
+}
+
+# proto_format --
+#	Pretty-print a function prototype.
+function proto_format(p)
+{
+	printf("/*\n") >> CFILE;
+
+	s = "";
+	for (i = 1; i in p; ++i)
+		s = s p[i];
+
+	t = " * PUBLIC: "
+	if (length(s) + length(t) < 80)
+		printf("%s%s", t, s) >> CFILE;
+	else {
+		split(s, p, "__P");
+		len = length(t) + length(p[1]);
+		printf("%s%s", t, p[1]) >> CFILE
+
+		n = split(p[2], comma, ",");
+		comma[1] = "__P" comma[1];
+		for (i = 1; i <= n; i++) {
+			if (len + length(comma[i]) > 75) {
+				printf("\n * PUBLIC:     ") >> CFILE;
+				len = 0;
+			}
+			printf("%s%s", comma[i], i == n ? "" : ",") >> CFILE;
+			len += length(comma[i]);
+		}
+	}
+	printf("\n */\n") >> CFILE;
+	delete p;
 }

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fset.c,v 11.13 2000/11/30 00:58:41 ubell Exp $";
+static const char revid[] = "$Id: mp_fset.c,v 11.18 2001/07/05 13:23:07 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,13 +24,14 @@ static const char revid[] = "$Id: mp_fset.c,v 11.13 2000/11/30 00:58:41 ubell Ex
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
 /*
  * memp_fset --
  *	Mpool page set-flag routine.
+ *
+ * EXTERN: int memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
  */
 int
 memp_fset(dbmfp, pgaddr, flags)
@@ -41,12 +42,11 @@ memp_fset(dbmfp, pgaddr, flags)
 	BH *bhp;
 	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	MPOOL *c_mp, *mp;
+	MPOOL *c_mp;
 	int ret;
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
-	mp = dbmp->reginfo[0].primary;
 
 #ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
@@ -80,12 +80,15 @@ memp_fset(dbmfp, pgaddr, flags)
 
 	R_LOCK(dbenv, dbmp->reginfo);
 
-	if (LF_ISSET(DB_MPOOL_CLEAN) && F_ISSET(bhp, BH_DIRTY)) {
+	if (LF_ISSET(DB_MPOOL_CLEAN) &&
+	    F_ISSET(bhp, BH_DIRTY) && !F_ISSET(bhp, BH_DIRTY_CREATE)) {
 		++c_mp->stat.st_page_clean;
+		DB_ASSERT(c_mp->stat.st_page_dirty != 0);
 		--c_mp->stat.st_page_dirty;
 		F_CLR(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DIRTY) && !F_ISSET(bhp, BH_DIRTY)) {
+		DB_ASSERT(c_mp->stat.st_page_clean != 0);
 		--c_mp->stat.st_page_clean;
 		++c_mp->stat.st_page_dirty;
 		F_SET(bhp, BH_DIRTY);

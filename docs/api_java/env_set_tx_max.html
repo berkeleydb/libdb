@@ -1,5 +1,5 @@
-<!--$Id: env_set_tx_max.so,v 10.21 2000/05/20 16:29:12 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_tx_max.so,v 10.23 2001/05/15 14:44:12 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,13 +8,13 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td>
 <h1>DbEnv.set_tx_max</h1>
 </td>
-<td width="1%">
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<td align=right>
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -32,7 +32,7 @@ ultimate parent commits or aborts.
 <p>When there are more than the specified number of concurrent transactions,
 calls to <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a> will fail (until some active transactions
 complete).  If no value is specified, a default value of 20 is used.
-<p>The DbEnv.set_tx_max interface may only be used to configure Berkeley DB before
+<p>The DbEnv.set_tx_max interface may be used only to configure Berkeley DB before
 the <a href="../api_java/env_open.html">DbEnv.open</a> interface is called.
 <p>The DbEnv.set_tx_max method throws an exception that encapsulates a non-zero error value on
 failure.
@@ -43,11 +43,16 @@ and the number of transactions.  Because the <b>DB_CONFIG</b> file is read when 
 environment is opened, it will silently overrule configuration done
 before that time.
 <h1>Errors</h1>
+<p>The DbEnv.set_tx_max method may fail and throw an exception encapsulating a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
 </dl>
-<h3>Classes</h3>
+<p>The DbEnv.set_tx_max method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv.set_tx_max method may fail and throw
+a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
+will fail in the same way.
+<h1>Class</h1>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
 <h1>See Also</h1>
 <a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
@@ -56,13 +61,15 @@ before that time.
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
 <a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,
 <a href="../api_java/txn_commit.html">DbTxn.commit</a>,
+<a href="../api_java/txn_discard.html">DbTxn.discard</a>,
 <a href="../api_java/txn_id.html">DbTxn.id</a>,
-<a href="../api_java/txn_prepare.html">DbTxn.prepare</a>
+<a href="../api_java/txn_prepare.html">DbTxn.prepare</a>,
+<a href="../api_java/txn_recover.html">DbEnv.txn_recover</a>,
 and
 <a href="../api_java/txn_stat.html">DbEnv.txn_stat</a>.
 </tt>
-<table><tr><td><br></td><td width="1%">
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

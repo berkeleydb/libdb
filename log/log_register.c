@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_register.c,v 11.35 2001/01/10 16:04:19 bostic Exp $";
+static const char revid[] = "$Id: log_register.c,v 11.40 2001/07/02 01:05:42 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,13 +24,14 @@ static const char revid[] = "$Id: log_register.c,v 11.35 2001/01/10 16:04:19 bos
 #include "log.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
 /*
  * log_register --
  *	Register a file name.
+ *
+ * EXTERN: int log_register __P((DB_ENV *, DB *, const char *));
  */
 int
 log_register(dbenv, dbp, name)
@@ -54,7 +55,8 @@ log_register(dbenv, dbp, name)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lg_handle, "log_register", DB_INIT_LOG);
 
 	dblp = dbenv->lg_handle;
 	lp = dblp->reginfo.primary;
@@ -221,6 +223,8 @@ err:		if (inserted)
 /*
  * log_unregister --
  *	Discard a registered file name.
+ *
+ * EXTERN: int log_unregister __P((DB_ENV *, DB *));
  */
 int
 log_unregister(dbenv, dbp)
@@ -235,7 +239,8 @@ log_unregister(dbenv, dbp)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lg_handle, "log_unregister", DB_INIT_LOG);
 
 	ret = __log_filelist_update(dbenv, dbp, dbp->log_fileid, NULL, NULL);
 	dbp->log_fileid = DB_LOGFILEID_INVALID;
@@ -415,17 +420,20 @@ __log_file_lock(dbp)
 			continue;
 
 		if (!memcmp(dbp->fileid, fnp->ufid, DB_FILE_ID_LEN)) {
-			if (fnp->meta_pgno == 0) {
+			/*
+			 * Lock our file.
+			 * If we are a master db no sub-db can be open either.
+			 */
+			if (fnp->meta_pgno == dbp->meta_pgno) {
 				if (fnp->ref != 1)
 					goto err;
 
 				fnp->locked = 1;
-			} else {
+			} else if (dbp->meta_pgno == 0) {
 err:				__db_err(dbp->dbenv, "File is open");
 				ret = EINVAL;
 				goto done;
 			}
-
 		}
 	}
 done:	R_UNLOCK(dbenv, &dblp->reginfo);

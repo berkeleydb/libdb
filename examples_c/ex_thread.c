@@ -1,33 +1,27 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_thread.c,v 11.9 2000/05/31 15:10:04 bostic Exp $
+ * $Id: ex_thread.c,v 11.20 2001/05/12 19:25:31 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
 
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#ifdef _WIN32
+extern int optind;
+extern char *optarg;
+extern int getopt(int, char * const *, const char *);
+#else
 #include <unistd.h>
 #endif
 
@@ -42,6 +36,7 @@ extern int sched_yield __P((void));		/* Pthread yield function. */
 DB_ENV *db_init __P((char *));
 void   *deadlock __P((void *));
 void	fatal __P((char *, int, int));
+void	onint __P((int));
 int	main __P((int, char *[]));
 int	reader __P((int));
 void	stats __P((void));
@@ -50,6 +45,8 @@ void   *tstart __P((void *));
 void	usage __P((void));
 void	word __P((void));
 int	writer __P((int));
+
+int	quit;					/* Interrupt handling flag. */
 
 struct _statistics {
 	int aborted;				/* Write. */
@@ -138,11 +135,14 @@ main(argc, argv)
 	/* Initialize the random number generator. */
 	srand(getpid() | time(NULL));
 
+	/* Register the signal handler. */
+	(void)signal(SIGINT, onint);
+
 	/* Build the key list. */
 	word();
 
 	/* Remove the previous database. */
-	(void)unlink(DATABASE);
+	(void)remove(DATABASE);
 
 	/* Initialize the database environment. */
 	dbenv = db_init(home);
@@ -151,7 +151,7 @@ main(argc, argv)
 	if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 		dbenv->err(dbenv, ret, "db_create");
 		(void)dbenv->close(dbenv, 0);
-		return (1);
+		return (EXIT_FAILURE);
 	}
 	if ((ret = dbp->set_pagesize(dbp, 1024)) != 0) {
 		dbp->err(dbp, ret, "set_pagesize");
@@ -177,8 +177,9 @@ main(argc, argv)
 
 	/* Create reader/writer threads. */
 	for (i = 0; i < nreaders + nwriters; ++i)
-		if (pthread_create(&tids[i], NULL, tstart, (void *)i))
-			fatal("pthread_create", errno, 1);
+		if ((ret =
+		    pthread_create(&tids[i], NULL, tstart, (void *)i)) != 0)
+			fatal("pthread_create", ret > 0 ? ret : errno, 1);
 
 	/* Create buffer pool trickle thread. */
 	if (pthread_create(&tids[i], NULL, trickle, &i))
@@ -193,10 +194,13 @@ main(argc, argv)
 	for (i = 0; i < nthreads; ++i)
 		(void)pthread_join(tids[i], &retp);
 
+	printf("Exiting\n");
+	stats();
+
 err:	(void)dbp->close(dbp, 0);
 	(void)dbenv->close(dbenv, 0);
 
-	return (0);
+	return (EXIT_SUCCESS);
 }
 
 int
@@ -219,7 +223,7 @@ reader(id)
 	 * Read-only threads do not require transaction protection, unless
 	 * there's a need for repeatable reads.
 	 */
-	for (;;) {
+	while (!quit) {
 		/* Pick a key at random, and look it up. */
 		n = rand() % nlist;
 		key.data = list[n];
@@ -273,7 +277,7 @@ writer(id)
 	data.ulen = sizeof(dbuf);
 	data.flags = DB_DBT_USERMEM;
 
-	for (;;) {
+	while (!quit) {
 		/* Pick a random key. */
 		n = rand() % nlist;
 		key.data = list[n];
@@ -430,7 +434,7 @@ db_init(home)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
@@ -442,7 +446,7 @@ db_init(home)
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0)) != 0) {
 		dbenv->err(dbenv, ret, NULL);
 		(void)dbenv->close(dbenv, 0);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 	return (dbenv);
 }
@@ -495,15 +499,13 @@ deadlock(arg)
 
 	t.tv_sec = 0;
 	t.tv_usec = 100000;
-	for (;;) {
-		(void)lock_detect(dbenv,
-		    DB_LOCK_CONFLICT, DB_LOCK_YOUNGEST, NULL);
+	while (!quit) {
+		(void)lock_detect(dbenv, 0, DB_LOCK_YOUNGEST, NULL);
 
 		/* Check every 100ms. */
 		(void)select(0, NULL, NULL, NULL, &t);
 	}
 
-	/* NOTREACHED */
 	return (NULL);
 }
 
@@ -525,7 +527,7 @@ trickle(arg)
 	printf("trickle thread starting: tid: %lu\n", (u_long)tid);
 	fflush(stdout);
 
-	for (;;) {
+	while (!quit) {
 		(void)memp_trickle(dbenv, 10, &wrote);
 		if (verbose) {
 			sprintf(buf, "trickle: wrote %d\n", wrote);
@@ -537,7 +539,6 @@ trickle(arg)
 		}
 	}
 
-	/* NOTREACHED */
 	return (NULL);
 }
 
@@ -585,7 +586,7 @@ fatal(msg, err, syserr)
 	if (syserr)
 		fprintf(stderr, "%s", strerror(err));
 	fprintf(stderr, "\n");
-	exit (1);
+	exit(EXIT_FAILURE);
 
 	/* NOTREACHED */
 }
@@ -600,5 +601,17 @@ usage()
 	(void)fprintf(stderr,
     "usage: %s [-pv] [-h home] [-n words] [-r readers] [-w writers]\n",
 	    progname);
-	exit(1);
+	exit(EXIT_FAILURE);
+}
+
+/*
+ * onint --
+ *	Interrupt signal handler.
+ */
+void
+onint(signo)
+	int signo;
+{
+	signo = 0;		/* Quiet compiler. */
+	quit = 1;
 }

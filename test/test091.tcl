@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test091.tcl,v 11.4 2000/12/01 04:28:36 ubell Exp $
+# $Id: test091.tcl,v 11.5 2001/01/25 18:23:13 bostic Exp $
 #
 # DB Test 91 {access method}
 # Check for CONSUME_WAIT functionality

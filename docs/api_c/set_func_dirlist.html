@@ -1,5 +1,5 @@
-<!--$Id: set_func_dirlist.so,v 10.6 2000/05/31 15:10:00 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: set_func_dirlist.so,v 10.10 2001/05/05 01:49:16 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,13 +8,13 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td>
 <h1>db_env_set_func_dirlist</h1>
 </td>
-<td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -27,28 +27,31 @@ db_env_set_func_dirlist(
 </pre></h3>
 <h1>Description</h1>
 <p>The Berkeley DB library requires the ability to read through a directory and
-create a list of files that that the directory contains.  The
+create a list of files that the directory contains.  The
 <b>func_dirlist</b> argument must conform to the following interface:
 <p><blockquote><pre>int dirlist(const char *dir, char ***namesp, int *cntp);</pre></blockquote>
 <p>The <b>dir</b> argument is the name of the directory to be searched.
 The function must return a pointer to an array of nul-terminated file
-names in the memory location referenced by the argument <b>namesp</b>,
-and a count of the number of elements in the array in the memory location
-referenced by <b>cntp</b>.
+names into the memory location to which the <b>namesp</b> argument
+refers, and a count of the number of elements in the array into the
+memory location to which <b>cntp</b> refers.
 <p>The <b>func_dirlist</b> function must return the value of <b>errno</b> on
 failure and 0 on success.
 <p>The db_env_set_func_dirlist interface affects the entire application, not a single
 database or database environment.
-<p>While the db_env_set_func_dirlist interface may be used to configure Berkeley DB at any time
+<p>Although the db_env_set_func_dirlist interface may be used to configure Berkeley DB at any time
 during the life of the application, it should normally be called before
 making any calls to the <a href="../api_c/env_create.html">db_env_create</a> or <a href="../api_c/db_create.html">db_create</a> functions.
-<p>The db_env_set_func_dirlist interface may only be used to configure Berkeley DB before
-the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <p>The db_env_set_func_dirlist function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
+<p>The db_env_set_func_dirlist function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
+<p>The db_env_set_func_dirlist function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the db_env_set_func_dirlist function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/set_func_close.html">db_env_set_func_close</a>,
 <a href="../api_c/set_func_dirfree.html">db_env_set_func_dirfree</a>,
@@ -66,12 +69,12 @@ the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <a href="../api_c/set_func_sleep.html">db_env_set_func_sleep</a>,
 <a href="../api_c/set_func_unlink.html">db_env_set_func_unlink</a>,
 <a href="../api_c/set_func_unmap.html">db_env_set_func_unmap</a>,
-<a href="../api_c/set_func_write.html">db_env_set_func_write</a>
+<a href="../api_c/set_func_write.html">db_env_set_func_write</a>,
 and
 <a href="../api_c/set_func_yield.html">db_env_set_func_yield</a>.
 </tt>
-<table><tr><td><br></td><td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

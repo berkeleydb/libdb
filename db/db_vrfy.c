@@ -1,16 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000
+ * Copyright (c) 2000-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfy.c,v 1.53 2001/01/11 18:19:51 bostic Exp $
+ * $Id: db_vrfy.c,v 1.67 2001/07/11 21:12:17 krinsky Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfy.c,v 1.53 2001/01/11 18:19:51 bostic Exp $";
+static const char revid[] = "$Id: db_vrfy.c,v 1.67 2001/07/11 21:12:17 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -21,18 +21,24 @@ static const char revid[] = "$Id: db_vrfy.c,v 1.53 2001/01/11 18:19:51 bostic Ex
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
 #include "db_swap.h"
 #include "db_verify.h"
-#include "db_ext.h"
 #include "btree.h"
 #include "hash.h"
 #include "qam.h"
+#include "lock.h"
+#include "mp.h"
 
 static int  __db_guesspgsize __P((DB_ENV *, DB_FH *));
 static int  __db_is_valid_magicno __P((u_int32_t, DBTYPE *));
 static int  __db_is_valid_pagetype __P((u_int32_t));
 static int  __db_meta2pgset
 		__P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t, DB *));
+static int __db_salvage __P((DB *, VRFY_DBINFO *, db_pgno_t,
+		PAGE *, void *, int (*)(void *, const void *), u_int32_t));
+static int __db_salvage_subdbpg __P((DB *, VRFY_DBINFO *,
+		PAGE *, void *, int (*)(void *, const void *), u_int32_t));
 static int  __db_salvage_subdbs
 		__P((DB *, VRFY_DBINFO *, void *,
 		int(*)(void *, const void *), u_int32_t, int *));
@@ -136,9 +142,7 @@ __db_verify_internal(dbp_orig, name, subdb, handle, callback, flags)
 	DB *dbp;
 	DB_ENV *dbenv;
 	DB_FH fh, *fhp;
-	PAGE *h;
 	VRFY_DBINFO *vdp;
-	db_pgno_t last;
 	int has, ret, isbad;
 	char *real_name;
 
@@ -278,18 +282,8 @@ __db_verify_internal(dbp_orig, name, subdb, handle, callback, flags)
 	/* Mark the dbp as opened, so that we correctly handle its close. */
 	F_SET(dbp, DB_OPEN_CALLED);
 
-	/*
-	 * Find out the page number of the last page in the database.
-	 *
-	 * XXX: This currently fails if the last page is of bad type,
-	 * because it calls __db_pgin and that pukes.  This is bad.
-	 */
-	if ((ret = memp_fget(dbp->mpf, &last, DB_MPOOL_LAST, &h)) != 0)
-		goto err;
-	if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
-		goto err;
-
-	vdp->last_pgno = last;
+	/* Find out the page number of the last page in the database. */
+	__memp_lastpgno(dbp->mpf, &vdp->last_pgno);
 
 	/*
 	 * DB_ORDERCHKONLY is a special case;  our file consists of
@@ -389,9 +383,9 @@ done:	if (!LF_ISSET(DB_SALVAGE) && dbp->db_feedback != NULL)
 	if (dbp)
 		(void)dbp->close(dbp, 0);
 	if (vdp)
-		(void)__db_vrfy_dbinfo_destroy(vdp);
+		(void)__db_vrfy_dbinfo_destroy(dbenv, vdp);
 	if (real_name)
-		__os_freestr(real_name);
+		__os_freestr(dbenv, real_name);
 
 	if ((ret == 0 && isbad == 1) || ret == DB_VERIFY_FATAL)
 		ret = DB_VERIFY_BAD;
@@ -417,10 +411,11 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	DB_ENV *dbenv;
 	VRFY_PAGEINFO *pip;
 	db_pgno_t freelist;
-	int t_ret, ret, nr, swapped;
+	size_t nr;
+	int isbad, ret, swapped;
 	u_int8_t mbuf[DBMETASIZE];
 
-	swapped = ret = t_ret = 0;
+	isbad = ret = swapped = 0;
 	freelist = 0;
 	dbenv = dbp->dbenv;
 	meta = (DBMETA *)mbuf;
@@ -432,17 +427,18 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	 * may be zero;  this is okay, as we want page zero anyway and
 	 * 0*0 == 0.
 	 */
-	if ((ret = __os_seek(dbenv, fhp, 0, 0, 0, 0, DB_OS_SEEK_SET)) != 0)
-		goto err;
-
-	if ((ret = __os_read(dbenv, fhp, mbuf, DBMETASIZE, (size_t *)&nr)) != 0)
-		goto err;
+	if ((ret = __os_seek(dbenv, fhp, 0, 0, 0, 0, DB_OS_SEEK_SET)) != 0 ||
+	    (ret = __os_read(dbenv, fhp, mbuf, DBMETASIZE, &nr)) != 0) {
+		__db_err(dbenv, 
+		    "Metadata page %lu cannot be read: %s", 
+		    (u_long)PGNO_BASE_MD, db_strerror(ret));
+		return (ret);
+	}
 
 	if (nr != DBMETASIZE) {
 		EPRINT((dbp->dbenv,
 		    "Incomplete metadata page %lu", (u_long)PGNO_BASE_MD));
-		t_ret = DB_VERIFY_FATAL;
-		goto err;
+		return (DB_VERIFY_FATAL);
 	}
 
 	/*
@@ -452,9 +448,9 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	/* 08-11: Current page number.  Must == pgno. */
 	/* Note that endianness doesn't matter--it's zero. */
 	if (meta->pgno != PGNO_BASE_MD) {
+		isbad = 1;
 		EPRINT((dbp->dbenv, "Bad pgno: was %lu, should be %lu",
 		    (u_long)meta->pgno, (u_long)PGNO_BASE_MD));
-		ret = DB_VERIFY_BAD;
 	}
 
 	/* 12-15: Magic number.  Must be one of valid set. */
@@ -466,9 +462,9 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 		    &dbp->type))
 			swapped = 1;
 		else {
+			isbad = 1;
 			EPRINT((dbp->dbenv,
 			    "Bad magic number: %lu", (u_long)meta->magic));
-			ret = DB_VERIFY_BAD;
 		}
 	}
 
@@ -481,7 +477,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	if ((dbp->type == DB_BTREE && meta->version != DB_BTREEVERSION) ||
 	    (dbp->type == DB_HASH && meta->version != DB_HASHVERSION) ||
 	    (dbp->type == DB_QUEUE && meta->version != DB_QAMVERSION)) {
-		ret = DB_VERIFY_BAD;
+		isbad = 1;
 		EPRINT((dbp->dbenv, "%s%s", "Old or incorrect DB ",
 		    "version; extraneous errors may result"));
 	}
@@ -495,9 +491,9 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	if (IS_VALID_PAGESIZE(meta->pagesize))
 		dbp->pgsize = meta->pagesize;
 	else {
+		isbad = 1;
 		EPRINT((dbp->dbenv,
 		    "Bad page size: %lu", (u_long)meta->pagesize));
-		ret = DB_VERIFY_BAD;
 
 		/*
 		 * Now try to settle on a pagesize to use.
@@ -516,7 +512,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	if ((dbp->type == DB_BTREE && meta->type != P_BTREEMETA) ||
 	    (dbp->type == DB_HASH && meta->type != P_HASHMETA) ||
 	    (dbp->type == DB_QUEUE && meta->type != P_QAMMETA)) {
-		ret = DB_VERIFY_BAD;
+		isbad = 1;
 		EPRINT((dbp->dbenv, "Bad page type: %lu", (u_long)meta->type));
 	}
 
@@ -547,21 +543,16 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 
 	pip->free = freelist;
 
-	if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+	if ((ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0)
 		return (ret);
 
 	/* Set up the dbp's fileid.  We don't use the regular open path. */
 	memcpy(dbp->fileid, meta->uid, DB_FILE_ID_LEN);
 
-	if (0) {
-err:		__db_err(dbenv, "%s", db_strerror(ret));
-	}
-
 	if (swapped == 1)
 		F_SET(dbp, DB_AM_SWAP);
-	if (t_ret != 0)
-		ret = t_ret;
-	return (ret);
+
+	return (isbad ? DB_VERIFY_BAD : 0);
 }
 
 /*
@@ -786,8 +777,8 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 		 */
 		if ((ret = __db_vrfy_getpageinfo(vdp, 0, &pip)) != 0)
 			goto err;
-		hassubs = F_ISSET(pip, VRFY_HAS_SUBDBS);
-		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+		hassubs = F_ISSET(pip, VRFY_HAS_SUBDBS) ? 1 : 0;
+		if ((ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0)
 			goto err;
 
 		if (isbad == 0 && hassubs)
@@ -865,13 +856,13 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 			    "Totally zeroed page %lu", (u_long)i));
 			isbad = 1;
 		}
-		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+		if ((ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0)
 			goto err;
 		pip = NULL;
 	}
 
 err:	if (pip != NULL)
-		(void)__db_vrfy_putpageinfo(vdp, pip);
+		(void)__db_vrfy_putpageinfo(dbenv, vdp, pip);
 
 	return ((isbad == 1 && ret == 0) ? DB_VERIFY_BAD : ret);
 }
@@ -988,7 +979,8 @@ __db_vrfy_common(dbp, vdp, h, pgno, flags)
 	}
 	pip->type = h->type;
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -1022,7 +1014,8 @@ __db_vrfy_invalid(dbp, vdp, h, pgno, flags)
 	} else
 		pip->next_pgno = NEXT_PGNO(h);
 
-	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -1139,7 +1132,8 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 	 * by offset and length--cover the right part of the page
 	 * without overlaps, gaps, or violations of the page boundary.
 	 */
-	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
@@ -1245,7 +1239,8 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	 */
 	F_CLR(pip, VRFY_INCOMPLETE);
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret =
+	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
@@ -1274,7 +1269,7 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 	if ((ret = __db_vrfy_getpageinfo(vdp, meta, &pip)) != 0)
 		return (ret);
 	for (pgno = pip->free; pgno != PGNO_INVALID; pgno = pip->next_pgno) {
-		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+		if ((ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0)
 			return (ret);
 
 		/* This shouldn't happen, but just in case. */
@@ -1308,7 +1303,7 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 		}
 	}
 
-	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+	if ((t_ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -1339,8 +1334,8 @@ __db_vrfy_subdbs(dbp, vdp, dbname, flags)
 	if ((ret = __db_master_open(dbp, dbname, DB_RDONLY, 0, &mdbp)) != 0)
 		return (ret);
 
-	if ((ret =
-	    __db_icursor(mdbp, NULL, DB_BTREE, PGNO_INVALID, 0, &dbc)) != 0)
+	if ((ret = __db_icursor(mdbp,
+	    NULL, DB_BTREE, PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
 		goto err;
 
 	memset(&key, 0, sizeof(key));
@@ -1367,7 +1362,7 @@ __db_vrfy_subdbs(dbp, vdp, dbname, flags)
 		if ((ret = __db_vrfy_getpageinfo(vdp, meta_pgno, &pip)) != 0)
 			goto err;
 		type = pip->type;
-		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+		if ((ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0)
 			goto err;
 		switch (type) {
 		case P_BTREEMETA:
@@ -1416,9 +1411,9 @@ err:	if (dbc != NULL && (t_ret = __db_c_close(dbc)) != 0 && ret == 0)
  *	Provide feedback during top-down database structure traversal.
  *	(See comment at the beginning of __db_vrfy_structure.)
  *
- * PUBLIC: int __db_vrfy_struct_feedback __P((DB *, VRFY_DBINFO *));
+ * PUBLIC: void __db_vrfy_struct_feedback __P((DB *, VRFY_DBINFO *));
  */
-int
+void
 __db_vrfy_struct_feedback(dbp, vdp)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
@@ -1426,7 +1421,7 @@ __db_vrfy_struct_feedback(dbp, vdp)
 	int progress;
 
 	if (dbp->db_feedback == NULL)
-		return (0);
+		return;
 
 	if (vdp->pgs_remaining > 0)
 		vdp->pgs_remaining--;
@@ -1434,8 +1429,6 @@ __db_vrfy_struct_feedback(dbp, vdp)
 	/* Don't allow a feedback call of 100 until we're really done. */
 	progress = 100 - (vdp->pgs_remaining * 50 / (vdp->last_pgno + 1));
 	dbp->db_feedback(dbp, DB_VERIFY, progress == 100 ? 99 : progress);
-
-	return (0);
 }
 
 /*
@@ -1584,11 +1577,8 @@ err:	if (pgsc != NULL)
  * __db_salvage --
  *	Walk through a page, salvaging all likely or plausible (w/
  *	DB_AGGRESSIVE) key/data pairs.
- *
- * PUBLIC: int __db_salvage __P((DB *, VRFY_DBINFO *, db_pgno_t, PAGE *,
- * PUBLIC:     void *, int (*)(void *, const void *), u_int32_t));
  */
-int
+static int
 __db_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
@@ -1669,7 +1659,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 	unkdbt.size = strlen("UNKNOWN") + 1;
 	unkdbt.data = "UNKNOWN";
 
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, 0, &ovflbuf)) != 0)
+	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize, &ovflbuf)) != 0)
 		return (ret);
 
 	err_ret = 0;
@@ -1731,7 +1721,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 			err_ret = ret;
 	}
 
-	__os_free(ovflbuf, 0);
+	__os_free(dbp->dbenv, ovflbuf, 0);
 
 	if (err_ret != 0 && ret == 0)
 		ret = err_ret;
@@ -1896,7 +1886,7 @@ __db_vrfy_duptype(dbp, vdp, pgno, flags)
 		break;
 	}
 
-	if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
+	if ((ret = __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0)
 		return (ret);
 	return (isbad == 1 ? DB_VERIFY_BAD : 0);
 }
@@ -2087,12 +2077,8 @@ err:	if (pgsc != NULL)
  * __db_salvage_subdbpg --
  *	Given a known-good leaf page in the master database, salvage all
  *	leaf pages corresponding to each subdb.
- *
- * PUBLIC: int __db_salvage_subdbpg
- * PUBLIC:     __P((DB *, VRFY_DBINFO *, PAGE *, void *,
- * PUBLIC:     int (*)(void *, const void *), u_int32_t));
  */
-int
+static int
 __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
@@ -2141,12 +2127,12 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 
 			/* Nul-terminate it. */
 			if ((ret = __os_realloc(dbp->dbenv,
-			    key.size + 1, NULL, &subdbname)) != 0)
+			    key.size + 1, &subdbname)) != 0)
 				goto err;
 			subdbname[key.size] = '\0';
 		} else if (B_TYPE(bkkey->type == B_KEYDATA)) {
 			if ((ret = __os_realloc(dbp->dbenv,
-			    bkkey->len + 1, NULL, &subdbname)) != 0)
+			    bkkey->len + 1, &subdbname)) != 0)
 				goto err;
 			memcpy(subdbname, bkkey->data, bkkey->len);
 			subdbname[bkkey->len] = '\0';
@@ -2243,7 +2229,7 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			goto err;
 	}
 err:	if (subdbname)
-		__os_free(subdbname, 0);
+		__os_free(dbp->dbenv, subdbname, 0);
 
 	if ((t_ret = pgset->close(pgset, 0)) != 0)
 		ret = t_ret;
@@ -2305,7 +2291,6 @@ __db_guesspgsize(dbenv, fhp)
 	size_t nr;
 	u_int32_t guess;
 	u_int8_t type;
-	int ret;
 
 	for (guess = DB_MAX_PGSIZE; guess >= DB_MIN_PGSIZE; guess >>= 1) {
 		/*
@@ -2321,11 +2306,11 @@ __db_guesspgsize(dbenv, fhp)
 		 * our previous guess; that last one was probably the page size.
 		 */
 		for (i = 1; i <= 3; i++) {
-			if ((ret = __os_seek(dbenv, fhp, guess,
-			    i, SSZ(DBMETA, type), 0, DB_OS_SEEK_SET)) != 0)
+			if (__os_seek(dbenv, fhp, guess,
+			    i, SSZ(DBMETA, type), 0, DB_OS_SEEK_SET) != 0)
 				break;
-			if ((ret = __os_read(dbenv,
-			    fhp, &type, 1, &nr)) != 0 || nr == 0)
+			if (__os_read(dbenv,
+			    fhp, &type, 1, &nr) != 0 || nr == 0)
 				break;
 			if (type == P_INVALID || type >= P_PAGETYPE_MAX)
 				return (guess << 1);

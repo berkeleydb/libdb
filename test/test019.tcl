@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test019.tcl,v 11.14 2000/08/25 14:21:54 sue Exp $
+# $Id: test019.tcl,v 11.17 2001/07/02 01:08:46 bostic Exp $
 #
 # Test019 { access_method nentries }
 # Test the partial get functionality.
@@ -76,15 +76,12 @@ proc test019 { method {nentries 10000} args } {
 		} else {
 			set key $str
 		}
-		set data [replicate $str $kvals($key)]
+		set data [pad_data $method [replicate $str $kvals($key)]]
 
-		if { [is_fixed_length $method] == 1 } {
-			set maxndx $fixed_len
-		} else {
-			set maxndx [expr [string length $data] - 1]
-		}
+		set maxndx [expr [string length $data] - 1]
+
 		set beg [berkdb random_int 0 [expr $maxndx - 1]]
-		set len [berkdb random_int 1 [expr $maxndx - $beg]]
+		set len [berkdb random_int 0 [expr $maxndx * 2]]
 
 		set ret [eval {$db get} \
 		    $txn {-partial [list $beg $len]} $gflags {$key}]
@@ -95,12 +92,10 @@ proc test019 { method {nentries 10000} args } {
 		set k [lindex [lindex $ret 0] 0]
 		set d [lindex [lindex $ret 0] 1]
 		error_check_good dbget_key $k $key
-		# If $d contains some of the padding, we want to get rid of it.
-		set firstnull [string first "\0" $d]
-		if { $firstnull == -1 } { set firstnull [string length $d] }
-		error_check_good dbget_data \
-		    [string range $d 0 [expr $firstnull - 1]] \
+
+		error_check_good dbget_data $d \
 		    [string range $data $beg [expr $beg + $len - 1]]
+
 	}
 	error_check_good db_close [$db close] 0
 	close $did

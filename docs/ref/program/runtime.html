@@ -1,5 +1,5 @@
-<!--$Id: runtime.so,v 10.23 2000/12/04 18:05:42 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: runtime.so,v 10.24 2001/03/05 19:15:08 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
-<td width="1%"><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Run-time configuration</h1>
@@ -35,22 +35,22 @@ Berkeley DB requests for underlying library or system call functionality:
 <a href="../../api_c/set_func_unmap.html">db_env_set_func_unmap</a>
 <a href="../../api_c/set_func_write.html">db_env_set_func_write</a>
 <a href="../../api_c/set_func_yield.html">db_env_set_func_yield</a></pre></blockquote>
-<p>These interfaces are only available from the Berkeley DB C language API.
+<p>These interfaces are available only from the Berkeley DB C language API.
 <p>In addition, there are a few interfaces that allow applications to
-re-configure, on an application-wide basis, Berkeley DB behaviors.
-<p><blockquote><pre><a href="../../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>
+reconfigure, on an application-wide basis, Berkeley DB behaviors.
+<p><blockquote><pre><a href="../../api_c/env_set_mutexlocks.html">DB_ENV-&gt;set_mutexlocks</a>
 <a href="../../api_c/env_set_pageyield.html">db_env_set_pageyield</a>
 <a href="../../api_c/env_set_panicstate.html">db_env_set_panicstate</a>
 <a href="../../api_c/env_set_region_init.html">db_env_set_region_init</a>
 <a href="../../api_c/env_set_tas_spins.html">db_env_set_tas_spins</a></pre></blockquote>
-<p>These interfaces are available from all of the Berkeley DB programmatic APIs.
+<p>These interfaces are available from all the Berkeley DB programmatic APIs.
 <p>A not-uncommon problem for applications is the new API in Solaris 2.6
-for manipulating large files.  As this API was not part of Solaris 2.5,
-it is difficult to create a single binary that takes advantage of the
-large file functionality in Solaris 2.6 but which still runs on Solaris
+for manipulating large files.  Because this API was not part of Solaris
+2.5, it is difficult to create a single binary that takes advantage of
+the large file functionality in Solaris 2.6, but still runs on Solaris
 2.5.  <a href="solaris.txt">Example code</a> that supports this is
 included in the Berkeley DB distribution.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

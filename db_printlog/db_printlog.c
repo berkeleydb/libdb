@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_printlog.c,v 11.23 2001/01/18 18:36:58 bostic Exp $";
+    "$Id: db_printlog.c,v 11.27 2001/05/10 17:13:58 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,6 +31,7 @@ static const char revid[] =
 #include "log.h"
 #include "qam.h"
 #include "txn.h"
+#include "clib_ext.h"
 
 int	main __P((int, char *[]));
 void	usage __P((void));
@@ -68,12 +69,12 @@ main(argc, argv)
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
 				    progname, db_strerror(ret));
-				return (1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case '?':
 		default:
 			usage();
@@ -172,14 +173,14 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
 usage()
 {
 	fprintf(stderr, "usage: db_printlog [-NV] [-h home]\n");
-	exit (1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -195,6 +196,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

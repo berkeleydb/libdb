@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test070.tcl,v 11.18 2000/12/18 20:04:47 sue Exp $
+# $Id: test070.tcl,v 11.20 2001/03/27 19:30:45 ubell Exp $
 #
 # DB Test 70: Test of DB_CONSUME.
 # Fork off six processes, four consumers and two producers.
@@ -114,6 +114,7 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 		set sortreclist [lreplace $sortreclist 0 0]
 	}
 	error_check_good list_ends_empty $sortreclist {}
+	error_check_good db_close [$db close] 0
 	error_check_good dbenv_close [$dbenv close] 0
 
 	puts "\tTest0$tnum completed successfully."

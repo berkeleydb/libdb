@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.java,v 11.7 2000/09/25 13:16:51 dda Exp $
+ * $Id: EnvExample.java,v 11.8 2001/01/25 18:22:53 bostic Exp $
  */
 
 package com.sleepycat.examples;

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_abs.c,v 1.4 2000/08/09 19:09:48 sue Exp $";
+static const char revid[] = "$Id: os_abs.c,v 1.6 2001/05/23 14:47:23 sue Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -32,11 +32,11 @@ __os_abspath(path)
 	if ((dummy = iosDevFind((char *)path, &ptail)) == NULL)
 		return (0);
 	/*
-	 * If the routine used the default device, then we are not
-	 * an abs path.
+	 * If the routine used a device, then ptail points to the
+	 * rest and we are an abs path.
 	 */
-	if (ptail == path)
-		return (0);
+	if (ptail != path)
+		return (1);
 	/*
 	 * If the path starts with a '/', then we are an absolute path,
 	 * using the host machine, otherwise we are not.

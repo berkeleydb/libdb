@@ -1,17 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_except.cpp,v 11.7 2000/09/21 15:05:45 dda Exp $";
+static const char revid[] = "$Id: cxx_except.cpp,v 11.9 2001/04/05 16:28:45 dda Exp $";
 #endif /* not lint */
 
 #include <string.h>
+#include <errno.h>
 
 #include "db_cxx.h"
 #include "cxx_int.h"
@@ -129,4 +130,59 @@ int DbException::get_errno() const
 const char *DbException::what() const
 {
 	return (what_);
+}
+
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                            DbMemoryException                       //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
+
+static const char *memory_err_desc = "Dbt not large enough for available data";
+DbMemoryException::~DbMemoryException()
+{
+}
+
+DbMemoryException::DbMemoryException(Dbt *dbt)
+:	DbException(memory_err_desc, ENOMEM)
+,	dbt_(dbt)
+{
+}
+
+DbMemoryException::DbMemoryException(const char *description)
+:	DbException(description, ENOMEM)
+,	dbt_(0)
+{
+}
+
+DbMemoryException::DbMemoryException(const char *prefix, Dbt *dbt)
+:	DbException(prefix, memory_err_desc, ENOMEM)
+,	dbt_(dbt)
+{
+}
+
+DbMemoryException::DbMemoryException(const char *prefix1, const char *prefix2, Dbt *dbt)
+:	DbException(prefix1, prefix2, ENOMEM)
+,	dbt_(dbt)
+{
+}
+
+DbMemoryException::DbMemoryException(const DbMemoryException &that)
+:	DbException(that)
+,	dbt_(that.dbt_)
+{
+}
+
+DbMemoryException &DbMemoryException::operator = (const DbMemoryException &that)
+{
+	if (this != &that) {
+		DbException::operator=(that);
+		dbt_ = that.dbt_;
+	}
+	return (*this);
+}
+
+Dbt *DbMemoryException::get_dbt() const
+{
+	return (dbt_);
 }

@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test015.tcl,v 11.20 2000/08/25 14:21:54 sue Exp $
+# $Id: test015.tcl,v 11.22 2001/04/20 22:36:50 krinsky Exp $
 #
 # DB Test 15 {access method}
 # Partial put test when item does not exist.
 proc test015 { method {nentries 7500} { start 0 } args } {
-	global fixed_len
+	global fixed_len testdir
 
 	set low_range 50
 	set mid_range 100
@@ -43,6 +43,8 @@ proc test015 { method {nentries 7500} { start 0 } args } {
 		puts -nonewline "$this: "
 		eval [concat test015_body $method [lindex $entry 1] \
 		    $nentries $args]
+
+		error_check_good verify [verify_dir $testdir "\tTest015.e: "] 0
 	}
 }
 

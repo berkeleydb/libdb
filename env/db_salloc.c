@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_salloc.c,v 11.10 2000/12/06 19:55:44 ubell Exp $";
+static const char revid[] = "$Id: db_salloc.c,v 11.12 2001/04/11 21:18:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -281,28 +281,6 @@ __db_shalloc_free(regionp, ptr)
 		else
 			SH_LIST_INSERT_AFTER(lastp, newp, links, __data);
 	}
-}
-
-/*
- * __db_shalloc_count --
- *	Return the amount of memory on the free list.
- *
- * PUBLIC: size_t __db_shalloc_count __P((void *));
- */
-size_t
-__db_shalloc_count(addr)
-	void *addr;
-{
-	struct __data *elp;
-	size_t count;
-
-	count = 0;
-	for (elp = SH_LIST_FIRST((struct __head *)addr, __data);
-	    elp != NULL;
-	    elp = SH_LIST_NEXT(elp, links, __data))
-		count += elp->len;
-
-	return (count);
 }
 
 /*

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999, 2000
+ * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa_db.c,v 11.9 2000/09/06 18:57:59 ubell Exp $";
+static const char revid[] = "$Id: xa_db.c,v 11.11 2001/04/03 15:14:32 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -141,7 +141,7 @@ __xa_close(dbp, flags)
 
 	real_close = ((XA_METHODS *)dbp->xa_internal)->close;
 
-	__os_free(dbp->xa_internal, sizeof(XA_METHODS));
+	__os_free(dbp->dbenv, dbp->xa_internal, sizeof(XA_METHODS));
 	dbp->xa_internal = NULL;
 
 	return (real_close(dbp, flags));

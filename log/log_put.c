@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_put.c,v 11.26 2000/11/30 00:58:40 ubell Exp $";
+static const char revid[] = "$Id: log_put.c,v 11.33 2001/04/27 15:46:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,9 +38,10 @@ static const char revid[] = "$Id: log_put.c,v 11.26 2000/11/30 00:58:40 ubell Ex
 #include "log.h"
 #include "hash.h"
 #include "clib_ext.h"
+#include "txn.h"
+#include "txn_ext.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
@@ -54,6 +55,8 @@ static int __log_write __P((DB_LOG *, void *, u_int32_t));
 /*
  * log_put --
  *	Write a log record.
+ *
+ * EXTERN: int log_put __P((DB_ENV *, DB_LSN *, const DBT *, u_int32_t));
  */
 int
 log_put(dbenv, lsn, dbt, flags)
@@ -71,11 +74,11 @@ log_put(dbenv, lsn, dbt, flags)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, "log_put", DB_INIT_LOG);
 
 	/* Validate arguments. */
 	if (flags != 0 && flags != DB_CHECKPOINT &&
-	    flags != DB_CURLSN && flags != DB_FLUSH)
+	    flags != DB_CURLSN && flags != DB_FLUSH && flags != DB_COMMIT)
 		return (__db_ferr(dbenv, "log_put", 0));
 
 	dblp = dbenv->lg_handle;
@@ -100,6 +103,7 @@ __log_put(dbenv, lsn, dbt, flags)
 {
 	DBT t;
 	DB_LOG *dblp;
+	DB_LSN save_lsn;
 	LOG *lp;
 	u_int32_t lastoff;
 	int ret;
@@ -147,8 +151,7 @@ __log_put(dbenv, lsn, dbt, flags)
 		lastoff = 0;
 
 	/* Initialize the LSN information returned to the user. */
-	lsn->file = lp->lsn.file;
-	lsn->offset = lp->lsn.offset;
+	save_lsn = lp->lsn;
 
 	/*
 	 * Insert persistent information as the first record in every file.
@@ -158,7 +161,7 @@ __log_put(dbenv, lsn, dbt, flags)
 	if (lp->lsn.offset == 0) {
 		t.data = &lp->persist;
 		t.size = sizeof(LOGP);
-		if ((ret = __log_putr(dblp, lsn,
+		if ((ret = __log_putr(dblp, &save_lsn,
 		    &t, lastoff == 0 ? 0 : lastoff - lp->len)) != 0)
 			return (ret);
 
@@ -173,14 +176,15 @@ __log_put(dbenv, lsn, dbt, flags)
 			return (ret);
 
 		/* Update the LSN information returned to the user. */
-		lsn->file = lp->lsn.file;
-		lsn->offset = lp->lsn.offset;
+		save_lsn = lp->lsn;
 	}
 
 	/* Write the application's log record. */
-	if ((ret = __log_putr(dblp, lsn, dbt, lp->lsn.offset - lp->len)) != 0)
+	if ((ret =
+	    __log_putr(dblp, &save_lsn, dbt, lp->lsn.offset - lp->len)) != 0)
 		return (ret);
 
+	*lsn = save_lsn;
 	/*
 	 * On a checkpoint, we:
 	 *	Put out the checkpoint record (above).
@@ -198,10 +202,39 @@ __log_put(dbenv, lsn, dbt, flags)
 	 *	Flush the current buffer contents to disk.
 	 *	Sync the log to disk.
 	 */
-	if (flags == DB_FLUSH || flags == DB_CHECKPOINT)
-		if ((ret = __log_flush(dblp, NULL)) != 0)
-			return (ret);
+	if (flags == DB_COMMIT || flags == DB_FLUSH || flags == DB_CHECKPOINT)
+		if ((ret = __log_flush(dblp, NULL)) != 0) {
+			if (flags != DB_COMMIT)
+				return (ret);
+			/*
+			 * If the flush failed we must make sure
+			 * that a commit record does not get out
+			 * after we abort the transaction.
+			 * We do this by overwritting it in
+			 * the buffer.
+			 * (For now we could just move the log
+			 *  pointers back, but with group commit
+			 *  there can be, we hope, many commits
+			 *  in the buffer.  The code below would
+			 *  be done for each txn in the commit queue.)
+			 * We point at the right part of the log
+			 * and write an abort record over the
+			 * commit.  We then must flush the log
+			 * again, since that part of the buffer
+			 * may have actually made it out.
+			 */
 
+			/* See if we are still in the buffer. */
+			if (lsn->file != lp->lsn.file
+			    || lsn->offset < lp->w_off)
+				return (0);
+
+			__txn_force_abort(dblp->bufp + lsn->offset - lp->w_off);
+			/* That part of the buffer may have made it to disk. */
+			/* Flush twice its a long way to the kitchen. */
+			(void)__log_flush(dblp, NULL);
+			return (ret);
+		}
 	/*
 	 * On a checkpoint, we:
 	 *	Save the time the checkpoint was written.
@@ -211,6 +244,7 @@ __log_put(dbenv, lsn, dbt, flags)
 		(void)time(&lp->chkpt);
 		lp->stat.st_wc_bytes = lp->stat.st_wc_mbytes = 0;
 	}
+
 	return (0);
 }
 
@@ -227,9 +261,15 @@ __log_putr(dblp, lsn, dbt, prev)
 {
 	HDR hdr;
 	LOG *lp;
-	int ret;
+	int ret, t_ret;
+	size_t b_off, nr;
+	u_int32_t w_off;
 
 	lp = dblp->reginfo.primary;
+
+	/* Save our position incase we fail. */
+	b_off = lp->b_off;
+	w_off = lp->w_off;
 
 	/*
 	 * Initialize the header.  If we just switched files, lsn.offset will
@@ -241,20 +281,45 @@ __log_putr(dblp, lsn, dbt, prev)
 	hdr.cksum = __ham_func4(NULL, dbt->data, dbt->size);
 
 	if ((ret = __log_fill(dblp, lsn, &hdr, sizeof(HDR))) != 0)
-		return (ret);
-	lp->len = sizeof(HDR);
-	lp->lsn.offset += sizeof(HDR);
+		goto err;
 
 	if ((ret = __log_fill(dblp, lsn, dbt->data, dbt->size)) != 0)
-		return (ret);
-	lp->len += dbt->size;
-	lp->lsn.offset += dbt->size;
+		goto err;
+
+	lp->len = sizeof(HDR) + dbt->size;;
+	lp->lsn.offset += sizeof(HDR) + dbt->size;
 	return (0);
+err:
+	/*
+	 * If we wrote more than one buffer before failing get the
+	 * first one back.
+	 * The extra buffers will fail the checksums and be ignored.
+	 */
+	if (w_off + lp->buffer_size < lp->w_off) {
+		if ((t_ret =
+		    __os_seek(dblp->dbenv,
+		    &dblp->lfh, 0, 0, w_off, 0, DB_OS_SEEK_SET)) != 0 ||
+		    (t_ret = __os_read(dblp->dbenv, &dblp->lfh, dblp->bufp,
+		    b_off, &nr)) != 0)
+			return (__db_panic(dblp->dbenv, t_ret));
+		if (nr != b_off) {
+			__db_err(dblp->dbenv, "Short read while restoring log");
+			return (__db_panic(dblp->dbenv, EIO));
+		}
+	}
+
+	/* Reset to where we started. */
+	lp->w_off = w_off;
+	lp->b_off = b_off;
+
+	return (ret);
 }
 
 /*
  * log_flush --
  *	Write all records less than or equal to the specified LSN.
+ *
+ * EXTERN: int log_flush __P((DB_ENV *, const DB_LSN *));
  */
 int
 log_flush(dbenv, lsn)
@@ -270,7 +335,7 @@ log_flush(dbenv, lsn)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, "log_flush", DB_INIT_LOG);
 
 	dblp = dbenv->lg_handle;
 	R_LOCK(dbenv, &dblp->reginfo);
@@ -457,7 +522,7 @@ __log_write(dblp, addr, len)
 	    __os_seek(dblp->dbenv,
 	    &dblp->lfh, 0, 0, lp->w_off, 0, DB_OS_SEEK_SET)) != 0 ||
 	    (ret = __os_write(dblp->dbenv, &dblp->lfh, addr, len, &nw)) != 0)
-		return (__db_panic(dblp->dbenv, ret));
+		return (ret);
 	if (nw != len) {
 		__db_err(dblp->dbenv, "Short write while writing log");
 		return (EIO);
@@ -483,6 +548,8 @@ __log_write(dblp, addr, len)
 /*
  * log_file --
  *	Map a DB_LSN to a file name.
+ *
+ * EXTERN: int log_file __P((DB_ENV *, const DB_LSN *, char *, size_t));
  */
 int
 log_file(dbenv, lsn, namep, len)
@@ -501,7 +568,7 @@ log_file(dbenv, lsn, namep, len)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, "log_file", DB_INIT_LOG);
 
 	dblp = dbenv->lg_handle;
 	R_LOCK(dbenv, &dblp->reginfo);
@@ -517,7 +584,7 @@ log_file(dbenv, lsn, namep, len)
 		return (EINVAL);
 	}
 	(void)strcpy(namep, name);
-	__os_freestr(name);
+	__os_freestr(dbenv, name);
 
 	return (0);
 }
@@ -561,7 +628,7 @@ __log_newfh(dblp)
 		__db_err(dblp->dbenv,
 		    "log_put: %s: %s", name, db_strerror(ret));
 
-	__os_freestr(name);
+	__os_freestr(dblp->dbenv, name);
 	return (ret);
 }
 
@@ -637,7 +704,7 @@ __log_name(dblp, filenumber, namep, fhp, flags)
 	 */
 	if ((ret = __os_open(dblp->dbenv,
 	    oname, flags, lp->persist.mode, fhp)) == 0) {
-		__os_freestr(*namep);
+		__os_freestr(dblp->dbenv, *namep);
 		*namep = oname;
 		return (0);
 	}
@@ -650,7 +717,7 @@ __log_name(dblp, filenumber, namep, fhp, flags)
 	 * old-style name, but we expected it to exist and we weren't just
 	 * looking for any log file.  That's not a likely error.
 	 */
-err:	__os_freestr(oname);
+err:	__os_freestr(dblp->dbenv, oname);
 	return (ret);
 }
 
@@ -686,13 +753,13 @@ __log_open_files(dbenv)
 		 * At the end of recovery we want to output the
 		 * files that were open so that a future recovery
 		 * run will have the correct files open during
-		 * a backward pass.  For this we output LOG_CLOSE
+		 * a backward pass.  For this we output LOG_RCLOSE
 		 * records so that the files will be closed on
 		 * the forward pass.
 		 */
 		if ((ret = __log_register_log(dbenv,
 		    NULL, &r_unused, 0,
-		    F_ISSET(dblp, DBLOG_RECOVER) ? LOG_CLOSE : LOG_CHECKPOINT,
+		    F_ISSET(dblp, DBLOG_RECOVER) ? LOG_RCLOSE : LOG_CHECKPOINT,
 		    fnp->name_off == INVALID_ROFF ? NULL : &t,
 		    &fid_dbt, fnp->id, fnp->s_type, fnp->meta_pgno)) != 0)
 			return (ret);

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_get.c,v 11.32 2001/01/11 18:19:53 bostic Exp $";
+static const char revid[] = "$Id: log_get.c,v 11.36 2001/04/20 17:35:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,13 +27,14 @@ static const char revid[] = "$Id: log_get.c,v 11.32 2001/01/11 18:19:53 bostic E
 #include "hash.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
 #endif
 
 /*
  * log_get --
  *	Get a log record.
+ *
+ * EXTERN: int log_get __P((DB_ENV *, DB_LSN *, DBT *, u_int32_t));
  */
 int
 log_get(dbenv, alsn, dbt, flags)
@@ -52,7 +53,7 @@ log_get(dbenv, alsn, dbt, flags)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, "log_get", DB_INIT_LOG);
 
 	/* Validate arguments. */
 	if (flags != DB_CHECKPOINT && flags != DB_CURRENT &&
@@ -101,7 +102,7 @@ log_get(dbenv, alsn, dbt, flags)
 			break;
 		}
 		if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-			__os_free(dbt->data, dbt->size);
+			__os_free(dbenv, dbt->data, dbt->size);
 			dbt->data = NULL;
 		}
 		ret = __log_get(dblp, alsn, dbt, flags, 0);
@@ -259,7 +260,7 @@ next_file:	++nlsn.file;
 			fail = np;
 			goto err1;
 		}
-		__os_freestr(np);
+		__os_freestr(dbenv, np);
 		np = NULL;
 	}
 
@@ -382,7 +383,7 @@ got_header:	memcpy((u_int8_t *)&hdr,
 	 * We're calling malloc(3) with a region locked.  This isn't
 	 * a good idea.
 	 */
-	if ((ret = __os_malloc(dbenv, len, NULL, &tbuf)) != 0)
+	if ((ret = __os_malloc(dbenv, len, &tbuf)) != 0)
 		goto err1;
 
 	/*
@@ -418,7 +419,7 @@ got_header:	memcpy((u_int8_t *)&hdr,
 	if ((ret = __db_retcopy(NULL, dbt, tbuf, len,
 	    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
 		goto err2;
-	__os_free(tbuf, 0);
+	__os_free(dbenv, tbuf, 0);
 	tbuf = NULL;
 
 cksum:	/*
@@ -458,8 +459,8 @@ err1:	if (!silent) {
 	}
 
 err2:	if (np != NULL)
-		__os_freestr(np);
+		__os_freestr(dbenv, np);
 	if (tbuf != NULL)
-		__os_free(tbuf, 0);
+		__os_free(dbenv, tbuf, 0);
 	return (ret);
 }

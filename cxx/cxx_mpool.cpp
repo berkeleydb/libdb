@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_mpool.cpp,v 11.11 2000/09/21 15:05:45 dda Exp $";
+static const char revid[] = "$Id: cxx_mpool.cpp,v 11.13 2001/04/03 15:14:07 krinsky Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -142,13 +142,12 @@ int DbEnv::memp_register(int ftype,
 	return (err);
 }
 
-int DbEnv::memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp,
-		     db_malloc_fcn_type db_malloc_fcn)
+int DbEnv::memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp)
 {
 	DB_ENV *env = unwrap(this);
 	int err = 0;
 
-	if ((err = ::memp_stat(env, gsp, fsp, db_malloc_fcn)) != 0) {
+	if ((err = ::memp_stat(env, gsp, fsp)) != 0) {
 		DB_ERROR("DbEnv::memp_stat", err, error_policy());
 		return (err);
 	}

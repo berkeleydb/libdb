@@ -1,20 +1,20 @@
-<!--$Id: env_set_mp_mmapsize.so,v 10.18 2000/05/20 16:29:12 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_mp_mmapsize.so,v 10.21 2001/05/15 14:44:11 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: DBENV-&gt;set_mp_mmapsize</title>
+<title>Berkeley DB: DB_ENV-&gt;set_mp_mmapsize</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-        <a name="2"><!--meow--></a>    
-<table><tr valign=top>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
 <td>
-<h1>DBENV-&gt;set_mp_mmapsize</h1>
+<h1>DB_ENV-&gt;set_mp_mmapsize</h1>
 </td>
-<td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,22 +22,22 @@
 #include &lt;db.h&gt;
 <p>
 int
-DBENV-&gt;set_mp_mmapsize(DB_ENV *dbenv, size_t mp_mmapsize);
+DB_ENV-&gt;set_mp_mmapsize(DB_ENV *dbenv, size_t mp_mmapsize);
 </pre></h3>
 <h1>Description</h1>
-<p>Files that are opened read-only in the pool (and that satisfy a few other
-criteria) are, by default, mapped into the process address space instead
-of being copied into the local cache.  This can result in better-than-usual
-performance, as available virtual memory is normally much larger than the
-local cache, and page faults are faster than page copying on many systems.
-However, in the presence of limited virtual memory it can cause resource
-starvation, and in the presence of large databases, it can result in immense
-process sizes.
+<p>Files that are opened read-only in the pool (and that satisfy a few
+other criteria) are, by default, mapped into the process address space
+instead of being copied into the local cache.  This can result in
+better-than-usual performance because available virtual memory is
+normally much larger than the local cache, and page faults are faster
+than page copying on many systems.  However, it can cause resource
+starvation in the presence of limited virtual memory, and it can result
+in immense process sizes in the presence of large databases.
 <p>Set the maximum file size, in bytes, for a file to be mapped into the
 process address space.  If no value is specified, it defaults to 10MB.
-<p>The DBENV-&gt;set_mp_mmapsize interface may only be used to configure Berkeley DB before
-the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
-<p>The DBENV-&gt;set_mp_mmapsize function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;set_mp_mmapsize interface may be used only to configure Berkeley DB before
+the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> interface is called.
+<p>The DB_ENV-&gt;set_mp_mmapsize function returns a non-zero error value on failure and 0 on success.
 <p>The database environment's maximum mapped file size may also be set using the environment's
 <b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
 single line with the string "set_mp_mmapsize", one or more whitespace characters,
@@ -45,12 +45,18 @@ and the size in bytes.  Because the <b>DB_CONFIG</b> file is read when the datab
 environment is opened, it will silently overrule configuration done
 before that time.
 <h1>Errors</h1>
+<p>The DB_ENV-&gt;set_mp_mmapsize function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
+<p>Called after <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> was called.
 </dl>
+<p>The DB_ENV-&gt;set_mp_mmapsize function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;set_mp_mmapsize function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
-<a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
+<a href="../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a>,
+<a href="../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,
 <a href="../api_c/memp_fget.html">memp_fget</a>,
 <a href="../api_c/memp_fopen.html">memp_fopen</a>,
@@ -59,12 +65,12 @@ before that time.
 <a href="../api_c/memp_fsync.html">memp_fsync</a>,
 <a href="../api_c/memp_register.html">memp_register</a>,
 <a href="../api_c/memp_stat.html">memp_stat</a>,
-<a href="../api_c/memp_sync.html">memp_sync</a>
+<a href="../api_c/memp_sync.html">memp_sync</a>,
 and
 <a href="../api_c/memp_trickle.html">memp_trickle</a>.
 </tt>
-<table><tr><td><br></td><td width="1%">
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,22 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_dbclient.c,v 1.12 2000/10/26 14:13:05 bostic Exp $
+ * $Id: ex_dbclient.c,v 1.20 2001/05/10 17:14:04 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#endif
 
 #include <db.h>
 
@@ -49,18 +45,16 @@ main(argc, argv)
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s hostname\n",argv[0]);
-		exit(1);
+		return (EXIT_FAILURE);
 	}
+
 	/*
 	 * All of the shared database files live in DATABASE_HOME, but
 	 * data files will live in CONFIG_DATA_DIR.
 	 */
 	home = DATABASE_HOME;
-
-	if ((ret = ex_dbclient_run(home, stderr, argv[1], argv[0])) != 0)
-		return (ret);
-
-	return (0);
+	return (ex_dbclient_run(home,
+	    stderr, argv[1], argv[0]) == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 #endif
 
@@ -112,19 +106,18 @@ retry:
 		/*
 		 * Set the server host we are talking to.
 		 */
-		if ((ret =
-		    dbenv->set_server(dbenv, host, 10000, 10000, 0)) != 0) {
-			fprintf(stderr, "Try %d: DBENV->set_server: %s\n",
+		if ((ret = dbenv->set_rpc_server(dbenv, NULL, host, 10000,
+		    10000, 0)) != 0) {
+			fprintf(stderr, "Try %d: DBENV->set_rpc_server: %s\n",
 			    retry, db_strerror(ret));
 			retry++;
-			if ((ret = __os_sleep(dbenv, 15, 0)) != 0)
-				return (ret);
+			sleep(15);
 		} else
 			break;
 	}
 
 	if (retry >= 5) {
-		fprintf(stderr, "DBENV->set_server: %s\n", db_strerror(ret));
+		fprintf(stderr, "DBENV->set_rpc_server: %s\n", db_strerror(ret));
 		dbenv->close(dbenv, 0);
 		return (ERROR_RETURN);
 	}
@@ -143,7 +136,7 @@ retry:
 	 * not logging or transactions.
 	 */
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN, 0)) != 0) {
+	    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL, 0)) != 0) {
 		dbenv->err(dbenv, ret, "environment open: %s", home);
 		dbenv->close(dbenv, 0);
 		if (ret == DB_NOSERVER)

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -36,21 +36,19 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_rec.c,v 11.15 2001/01/11 18:19:55 bostic Exp $";
+static const char revid[] = "$Id: txn_rec.c,v 11.24 2001/07/09 16:33:23 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#include <string.h>
 #endif
 
 #include "db_int.h"
 #include "db_page.h"
 #include "txn.h"
 #include "db_am.h"
-#include "db_dispatch.h"
-#include "log.h"
-#include "common_ext.h"
 
 static int __txn_restore_txn __P((DB_ENV *, DB_LSN *, __txn_xa_regop_args *));
 
@@ -82,31 +80,42 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = __txn_regop_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
-	if (argp->opcode != TXN_COMMIT) {
-		ret = EINVAL;
-		goto err;
-	}
-
 	if (op == DB_TXN_FORWARD_ROLL)
-		ret = __db_txnlist_remove(info, argp->txnid->txnid);
+		/*
+		 * If this was a 2-phase-commit transaction, then it
+		 * might already have been removed from the list, and
+		 * that's OK.  Ignore the return code from remove.
+		 */
+		(void)__db_txnlist_remove(dbenv, info, argp->txnid->txnid);
 	else if (dbenv->tx_timestamp == 0 ||
-	    argp->timestamp <= (int32_t)dbenv->tx_timestamp)
+	    argp->timestamp <= (int32_t)dbenv->tx_timestamp) {
 		/*
 		 * We know this is the backward roll case because we
 		 * are never called during ABORT or OPENFILES.
 		 */
-		ret = __db_txnlist_add(dbenv, info, argp->txnid->txnid, 0);
-	else
+		ret = __db_txnlist_update(dbenv,
+		    info, argp->txnid->txnid, argp->opcode);
+		
+		if (ret == TXN_NOTFOUND)
+			ret = __db_txnlist_add(dbenv,
+			    info, argp->txnid->txnid,
+			    argp->opcode == TXN_ABORT ? TXN_IGNORE : argp->opcode);
+	} else {
 		/*
-		 * This is commit record, but we failed the timestamp check
-		 * so we should treat it as an abort and add it to the list
-		 * as an aborted record.
+		 * We failed the timestamp check, so we treat this as an abort
+		 * even if it was a commit record.
 		 */
-		ret = __db_txnlist_add(dbenv, info, argp->txnid->txnid, 1);
+		ret = __db_txnlist_update(dbenv,
+		    info, argp->txnid->txnid, TXN_ABORT);
+		    
+		if (ret == TXN_NOTFOUND)
+			ret = __db_txnlist_add(dbenv,
+			    info, argp->txnid->txnid, TXN_IGNORE);
+	}
 
 	if (ret == 0)
 		*lsnp = argp->prev_lsn;
-err:	__os_free(argp, 0);
+	__os_free(dbenv, argp, 0);
 
 	return (ret);
 }
@@ -140,58 +149,50 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 		goto err;
 	}
 
-	ret = __db_txnlist_find(info, argp->txnid->txnid);
+	ret = __db_txnlist_find(dbenv, info, argp->txnid->txnid);
 
 	/*
 	 * If we are rolling forward, then an aborted prepare
-	 * indicates that this is the last record we'll see for
-	 * this transaction ID and we should remove it from the
+	 * indicates that this may the last record we'll see for
+	 * this transaction ID, so we should remove it from the
 	 * list.
 	 */
 
-	if (op == DB_TXN_FORWARD_ROLL && ret == 1)
-		ret = __db_txnlist_remove(info, argp->txnid->txnid);
-	else if (op == DB_TXN_BACKWARD_ROLL && ret != 0) {
+	if (op == DB_TXN_FORWARD_ROLL) {
+		if ((ret = __db_txnlist_remove(dbenv,
+		    info, argp->txnid->txnid)) != TXN_OK)
+			goto txn_err;
+	} else if (op == DB_TXN_BACKWARD_ROLL && ret == TXN_PREPARE) {
 		/*
 		 * On the backward pass, we have three possibilities:
 		 * 1. The transaction is already committed, no-op.
-		 * 2. The transaction is not committed and we are XA, treat
-		 *	 like commited and roll forward so that can be committed
-		 *	 or aborted late.
-		 * 3. The transaction is not committed and we are not XA
-		 *	mark the transaction as aborted.
-		 *
-		 * Cases 2 and 3 are handled here.
+		 * 2. The transaction is already aborted, no-op.
+		 * 3. The transaction is neither committed nor aborted.
+		 *	 Treat this like a commit and roll forward so that
+		 *	 the transaction can be resurrected in the region.
+		 * We handle case 3 here; cases 1 and 2 are the final clause
+		 * below.
+		 * This is prepared, but not yet committed transaction.  We
+		 * need to add it to the transaction list, so that it gets
+		 * rolled forward. We also have to add it to the region's
+		 * internal state so it can be properly aborted or committed
+		 * after recovery (see txn_recover).
 		 */
-
-		/*
-		 * Should never have seen this transaction unless it was
-		 * commited.
-		 */
-		DB_ASSERT(ret == DB_NOTFOUND);
-
-		if (IS_XA_TXN(argp)) {
-			/*
-			 * This is an XA prepared, but not yet committed
-			 * transaction.  We need to add it to the
-			 * transaction list, so that it gets rolled
-			 * forward. We also have to add it to the region's
-			 * internal state so it can be properly aborted
-			 * or recovered.
-			 */
-			if ((ret = __db_txnlist_add(dbenv,
-			    info, argp->txnid->txnid, 0)) == 0)
-				ret = __txn_restore_txn(dbenv, lsnp, argp);
-		} else
-			ret = __db_txnlist_add(dbenv,
-			    info, argp->txnid->txnid, 1);
+		if ((ret = __db_txnlist_remove(dbenv,
+		   info, argp->txnid->txnid)) != TXN_OK) {
+txn_err:		__db_err(dbenv,
+			    "Transaction not in list %x", argp->txnid->txnid);
+			ret = DB_NOTFOUND;
+		} else if ((ret = __db_txnlist_add(dbenv,
+		   info, argp->txnid->txnid, TXN_COMMIT)) == 0)
+			ret = __txn_restore_txn(dbenv, lsnp, argp);
 	} else
 		ret = 0;
 
 	if (ret == 0)
 		*lsnp = argp->prev_lsn;
 
-err:	__os_free(argp, 0);
+err:	__os_free(dbenv, argp, 0);
 
 	return (ret);
 }
@@ -227,10 +228,10 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	 */
 	if (argp->ckp_lsn.file == lsnp->file &&
 	    argp->ckp_lsn.offset == lsnp->offset)
-		__db_txnlist_gen(info, DB_REDO(op) ? -1 : 1);
+		__db_txnlist_gen(info, DB_UNDO(op) ? -1 : 1);
 
 	*lsnp = argp->last_ckp;
-	__os_free(argp, 0);
+	__os_free(dbenv, argp, 0);
 	return (DB_TXN_CKP);
 }
 
@@ -272,17 +273,26 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
 		ret = __db_txnlist_lsnadd(dbenv,
 		    info, &argp->c_lsn, TXNLIST_NEW);
 	} else if (op == DB_TXN_BACKWARD_ROLL) {
-		if (__db_txnlist_find(info, argp->txnid->txnid) == 0)
-			ret = __db_txnlist_add(dbenv, info, argp->child, 0);
+		if (__db_txnlist_find(dbenv,
+		    info, argp->txnid->txnid) == TXN_COMMIT)
+			ret = __db_txnlist_add(dbenv,
+			    info, argp->child, TXN_COMMIT);
 		else
-			ret = __db_txnlist_add(dbenv, info, argp->child, 1);
-	} else
-		ret = __db_txnlist_remove(info, argp->child);
+			ret = __db_txnlist_add(dbenv,
+			     info, argp->child, TXN_ABORT);
+	} else {
+		if ((ret =
+		    __db_txnlist_remove(dbenv, info, argp->child)) != TXN_OK) {
+			__db_err(dbenv,
+			    "Transaction not in list %x", argp->txnid->txnid);
+			ret = DB_NOTFOUND;
+		}
+	}
 
 	if (ret == 0)
 		*lsnp = argp->prev_lsn;
 
-	__os_free(argp, 0);
+	__os_free(dbenv, argp, 0);
 
 	return (ret);
 }
@@ -317,8 +327,10 @@ __txn_restore_txn(dbenv, lsnp, argp)
 
 	/* Allocate a new transaction detail structure. */
 	if ((ret =
-	    __db_shalloc(mgr->reginfo.addr, sizeof(TXN_DETAIL), 0, &td)) != 0)
+	    __db_shalloc(mgr->reginfo.addr, sizeof(TXN_DETAIL), 0, &td)) != 0) {
+		R_UNLOCK(dbenv, &mgr->reginfo);
 		return (ret);
+	}
 
 	/* Place transaction on active transaction list. */
 	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
@@ -333,7 +345,13 @@ __txn_restore_txn(dbenv, lsnp, argp)
 	td->bqual = argp->bqual;
 	td->gtrid = argp->gtrid;
 	td->format = argp->formatID;
+	td->flags = 0;
+	F_SET(td, TXN_RESTORED);
 
+	region->nrestores++;
+	region->nactive++;
+	if (region->nactive > region->maxnactive)
+		region->maxnactive = region->nactive;
 	R_UNLOCK(dbenv, &mgr->reginfo);
 	return (0);
 }

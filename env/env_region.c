@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_region.c,v 11.28 2000/12/12 17:36:10 bostic Exp $";
+static const char revid[] = "$Id: env_region.c,v 11.36 2001/05/01 01:21:14 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -110,8 +110,12 @@ loop:	renv = NULL;
 	 * If this is a public environment, we use the filesystem to ensure
 	 * the creation of the environment file is single-threaded.
 	 */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE))
+	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
+		if ((ret = __os_strdup(dbenv,
+		    "process-private", &infop->name)) != 0)
+			goto err;
 		goto creation;
+	}
 
 	/* Build the region name. */
 	(void)snprintf(buf, sizeof(buf), "%s", DB_REGION_ENV);
@@ -265,7 +269,7 @@ loop:	renv = NULL;
 	 * can't because Windows/NT filesystems won't open files mode 0.
 	 */
 	renv = infop->primary;
-	if (renv->panic) {
+	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_PANIC_OK)) {
 		ret = __db_panic_msg(dbenv);
 		goto err;
 	}
@@ -293,7 +297,7 @@ loop:	renv = NULL;
 	 * Finally!  We own the environment now.  Repeat the panic check, it's
 	 * possible that it was set while we waited for the lock.
 	 */
-	if (renv->panic) {
+	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_PANIC_OK)) {
 		ret = __db_panic_msg(dbenv);
 		goto err_unlock;
 	}
@@ -354,7 +358,7 @@ creation:
 	 * should never need anything close to that.
 	 */
 	memset(&tregion, 0, sizeof(tregion));
-	tregion.size = 50 * sizeof(REGION) + 50 * sizeof(MUTEX) + 2048;
+	tregion.size = 50 * sizeof(REGION) + 2048;
 	tregion.segid = INVALID_REGION_SEGID;
 	if ((ret = __os_r_attach(dbenv, infop, &tregion)) != 0)
 		goto err;
@@ -392,7 +396,7 @@ creation:
 	 * number which validates the file/environment.
 	 */
 	renv = infop->primary;
-	renv->panic = 0;
+	renv->envpanic = 0;
 	db_version(&renv->majver, &renv->minver, &renv->patch);
 	SH_LIST_INIT(&renv->regionq);
 	renv->refcnt = 1;
@@ -513,8 +517,8 @@ retry:	/* Close any open file handle. */
 
 	/* Free the allocated name and/or REGINFO structure. */
 	if (infop->name != NULL)
-		__os_freestr(infop->name);
-	__os_free(infop, sizeof(REGINFO));
+		__os_freestr(dbenv, infop->name);
+	__os_free(dbenv, infop, sizeof(REGINFO));
 
 	/* If we had a temporary error, wait awhile and try again. */
 	if (ret == 0) {
@@ -588,8 +592,8 @@ __db_e_detach(dbenv, destroy)
 	(void)__os_r_detach(dbenv, infop, destroy);
 
 	if (infop->name != NULL)
-		__os_free(infop->name, 0);
-	__os_free(dbenv->reginfo, sizeof(REGINFO));
+		__os_free(dbenv, infop->name, 0);
+	__os_free(dbenv, dbenv->reginfo, sizeof(REGINFO));
 	dbenv->reginfo = NULL;
 
 	return (0);
@@ -632,6 +636,7 @@ __db_e_remove(dbenv, force)
 	 * If the force flag is set, we do not acquire any locks during this
 	 * process.
 	 */
+	F_SET(dbenv, DB_ENV_PANIC_OK);
 	if (force)
 		dbenv->db_mutexlocks = 0;
 
@@ -654,8 +659,12 @@ __db_e_remove(dbenv, force)
 	/* Lock the environment. */
 	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
 
-	/* If it's in use, we're done. */
-	if (renv->refcnt == 1 || force) {
+	/*
+	 * If it's in use, we're done unless we're forcing the issue or the
+	 * environment has panic'd.  (Presumably, if the environment panic'd,
+	 * the thread holding the reference count may not have cleaned up.)
+	 */
+	if (renv->refcnt == 1 || renv->envpanic == 1 || force) {
 		/*
 		 * Set the panic flag and overwrite the magic number.
 		 *
@@ -663,7 +672,7 @@ __db_e_remove(dbenv, force)
 		 * From this point on, there's no going back, we pretty
 		 * much ignore errors, and just whack on whatever we can.
 		 */
-		renv->panic = 1;
+		renv->envpanic = 1;
 		renv->magic = 0;
 
 		/*
@@ -726,6 +735,7 @@ remfiles:	(void)__db_e_remfile(dbenv);
 	}
 
 err:
+	F_CLR(dbenv, DB_ENV_PANIC_OK);
 	return (ret);
 }
 
@@ -773,7 +783,7 @@ __db_e_remfile(dbenv)
 
 	/* Restore the path, and free it. */
 	*p = saved_byte;
-	__os_freestr(path);
+	__os_freestr(dbenv, path);
 
 	if (ret != 0) {
 		__db_err(dbenv, "%s: %s", dir, db_strerror(ret));
@@ -801,7 +811,7 @@ __db_e_remfile(dbenv)
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, names[cnt], 0, NULL, &path) == 0) {
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(path);
+			__os_freestr(dbenv, path);
 		}
 	}
 
@@ -809,9 +819,9 @@ __db_e_remfile(dbenv)
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, names[lastrm], 0, NULL, &path) == 0) {
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(path);
+			__os_freestr(dbenv, path);
 		}
-	__os_dirfree(names, fcnt);
+	__os_dirfree(dbenv, names, fcnt);
 
 	/*
 	 * !!!
@@ -822,7 +832,7 @@ __db_e_remfile(dbenv)
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, *names, 0, NULL, &path) == 0) {
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(path);
+			__os_freestr(dbenv, path);
 		}
 
 	return (0);
@@ -1011,7 +1021,7 @@ __db_r_detach(dbenv, infop, destroy)
 
 	/* Destroy the structure. */
 	if (infop->name != NULL)
-		__os_freestr(infop->name);
+		__os_freestr(dbenv, infop->name);
 
 	return (ret);
 }
@@ -1190,13 +1200,17 @@ __db_region_destroy(dbenv, infop)
 	case REGION_TYPE_LOCK:
 		__lock_region_destroy(dbenv, infop);
 		break;
+	case REGION_TYPE_LOG:
+		__log_region_destroy(dbenv, infop);
+		break;
 	case REGION_TYPE_MPOOL:
 		__mpool_region_destroy(dbenv, infop);
 		break;
-	case REGION_TYPE_ENV:
-	case REGION_TYPE_LOG:
-	case REGION_TYPE_MUTEX:
 	case REGION_TYPE_TXN:
+		__txn_region_destroy(dbenv, infop);
+		break;
+	case REGION_TYPE_ENV:
+	case REGION_TYPE_MUTEX:
 		break;
 	default:
 		DB_ASSERT(0);

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_archive.c,v 11.18 2001/01/18 18:36:56 bostic Exp $";
+    "$Id: db_archive.c,v 11.23 2001/05/10 17:13:55 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,6 +24,7 @@ static const char revid[] =
 
 #include "db_int.h"
 #include "common_ext.h"
+#include "clib_ext.h"
 
 int	 main __P((int, char *[]));
 void	 usage __P((void));
@@ -65,7 +66,7 @@ main(argc, argv)
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case 'v':
 			verbose = 1;
 			break;
@@ -112,7 +113,7 @@ main(argc, argv)
 	}
 
 	/* Get the list of names. */
-	if ((ret = log_archive(dbenv, &list, flags, NULL)) != 0) {
+	if ((ret = log_archive(dbenv, &list, flags)) != 0) {
 		dbenv->err(dbenv, ret, "log_archive");
 		goto shutdown;
 	}
@@ -121,7 +122,7 @@ main(argc, argv)
 	if (list != NULL) {
 		for (file = list; *file != NULL; ++file)
 			printf("%s\n", *file);
-		__os_free(list, 0);
+		__os_free(dbenv, list, 0);
 	}
 
 	if (0) {
@@ -136,14 +137,14 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	return (exitval);
+	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
 usage()
 {
 	(void)fprintf(stderr, "usage: db_archive [-alsVv] [-h home]\n");
-	exit (1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -159,6 +160,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

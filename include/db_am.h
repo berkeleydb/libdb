@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_am.h,v 11.21 2000/12/12 17:43:56 bostic Exp $
+ * $Id: db_am.h,v 11.30 2001/06/12 01:22:03 bostic Exp $
  */
 #ifndef _DB_AM_H_
 #define	_DB_AM_H_
@@ -66,9 +66,10 @@
 #define	REC_CLOSE {							\
 	int __t_ret;							\
 	if (argp != NULL)						\
-		__os_free(argp, sizeof(*argp));				\
-	if (dbc != NULL && (__t_ret = dbc->c_close(dbc)) != 0 && ret == 0) \
-		return (__t_ret);					\
+		__os_free(dbenv, argp, sizeof(*argp));			\
+	if (dbc != NULL &&						\
+	    (__t_ret = dbc->c_close(dbc)) != 0 && ret == 0)		\
+		ret = __t_ret;						\
 	return (ret);							\
 }
 
@@ -81,7 +82,7 @@
 }
 #define	REC_NOOP_CLOSE							\
 	if (argp != NULL)						\
-		__os_free(argp, sizeof(*argp));				\
+		__os_free(dbenv, argp, sizeof(*argp));			\
 	return (ret);							\
 
 /*
@@ -108,18 +109,51 @@
  * we don't tie up the internal pages of the tree longer than necessary.
  */
 #define	__LPUT(dbc, lock)						\
-	(lock.off != LOCK_INVALID ?					\
-	    lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
-#define	__TLPUT(dbc, lock)						\
-	(lock.off != LOCK_INVALID &&					\
-	    (dbc)->txn == NULL ? lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
+	(LOCK_ISSET(lock)? lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
 
+/*
+ * __TLPUT -- transactional lock put
+ *	If the lock is valid then
+ *	   If we are not in a transaction put the lock.
+ *	   Else if the cursor is doing dirty reads and this was a read then
+ *		put the lock.
+ *	   Else if the db is supporting dirty reads and this is a write then
+ *		downgrade it.
+ *	Else do nothing.
+ */
+#define	__TLPUT(dbc, lock)						\
+	(LOCK_ISSET(lock) ?						\
+	    ((dbc)->txn == NULL ?					\
+		lock_put((dbc)->dbp->dbenv, &(lock)) :			\
+		((F_ISSET(dbc, DBC_DIRTY_READ) &&			\
+		     (lock).mode == DB_LOCK_DIRTY) ?			\
+			lock_put((dbc)->dbp->dbenv, &(lock)) :		\
+			((F_ISSET((dbc)->dbp, DB_AM_DIRTY) &&		\
+			     (lock).mode == DB_LOCK_WRITE) ?		\
+				__lock_downgrade((dbc)->dbp->dbenv,	\
+				     &(lock), DB_LOCK_WWRITE, 0) :	\
+				0)))					\
+	    : 0)
+
+typedef struct {
+	DBC *dbc;
+	int count;
+} db_trunc_param;
+
+/*
+ * Check for common errors: failure to supply a transaction handle to a DB
+ * operation, and failure to configure the DB handle in a proper environment.
+ */
 #ifdef DIAGNOSTIC
 #define	DB_CHECK_TXN(dbp, txn)						\
-	if (txn != NULL)						\
+	if (txn == NULL) {						\
+		if (F_ISSET(dbp, DB_AM_TXN))				\
+			return (__db_missing_txn_err(dbp));		\
+	} else {							\
+		if (!TXN_ON((dbp)->dbenv))				\
+			return (__db_not_txn_env(dbp));			\
 		F_SET(dbp, DB_AM_TXN);					\
-	else if (F_ISSET(dbp, DB_AM_TXN))				\
-		return (__db_missing_txn_err((dbp)->dbenv));
+	}
 #else
 #define	DB_CHECK_TXN(dbp, txn)
 #endif

@@ -1,20 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_recno.c,v 11.65 2001/01/18 14:33:22 bostic Exp $";
+static const char revid[] = "$Id: bt_recno.c,v 11.81 2001/07/02 01:05:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 #endif
 
@@ -29,8 +30,6 @@ static const char revid[] = "$Id: bt_recno.c,v 11.65 2001/01/18 14:33:22 bostic 
 #include "txn.h"
 
 static int  __ram_add __P((DBC *, db_recno_t *, DBT *, u_int32_t, u_int32_t));
-static int  __ram_delete __P((DB *, DB_TXN *, DBT *, u_int32_t));
-static int  __ram_put __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
 static int  __ram_source __P((DB *));
 static int  __ram_sread __P((DBC *, db_recno_t));
 static int  __ram_update __P((DBC *, db_recno_t, int));
@@ -112,8 +111,6 @@ __ram_open(dbp, name, base_pgno, flags)
 	t = dbp->bt_internal;
 
 	/* Initialize the remaining fields/methods of the DB. */
-	dbp->del = __ram_delete;
-	dbp->put = __ram_put;
 	dbp->stat = __bam_stat;
 
 	/* Start up the tree. */
@@ -151,100 +148,34 @@ __ram_open(dbp, name, base_pgno, flags)
 }
 
 /*
- * __ram_delete --
- *	Recno db->del function.
+ * __ram_append --
+ *	Recno append function.
+ *
+ * PUBLIC: int __ram_append __P((DBC *, DBT *, DBT *));
  */
-static int
-__ram_delete(dbp, txn, key, flags)
-	DB *dbp;
-	DB_TXN *txn;
-	DBT *key;
-	u_int32_t flags;
+int
+__ram_append(dbc, key, data)
+	DBC *dbc;
+	DBT *key, *data;
 {
 	BTREE_CURSOR *cp;
-	DBC *dbc;
-	db_recno_t recno;
-	int ret, t_ret;
+	int ret;
 
-	PANIC_CHECK(dbp->dbenv);
-
-	/* Check for invalid flags. */
-	if ((ret = __db_delchk(dbp,
-	    key, flags, F_ISSET(dbp, DB_AM_RDONLY))) != 0)
-		return (ret);
-
-	/* Acquire a cursor. */
-	if ((ret = dbp->cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
-		return (ret);
-
-	DEBUG_LWRITE(dbc, txn, "ram_delete", key, NULL, flags);
-
-	/* Check the user's record number and fill in as necessary. */
-	if ((ret = __ram_getno(dbc, key, &recno, 0)) != 0)
-		goto err;
-
-	/* Do the delete. */
 	cp = (BTREE_CURSOR *)dbc->internal;
-	cp->recno = recno;
-
-	ret = __ram_c_del(dbc);
-
-	/* Release the cursor. */
-err:	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
-		ret = t_ret;
-
-	return (ret);
-}
-
-/*
- * __ram_put --
- *	Recno db->put function.
- */
-static int
-__ram_put(dbp, txn, key, data, flags)
-	DB *dbp;
-	DB_TXN *txn;
-	DBT *key, *data;
-	u_int32_t flags;
-{
-	DBC *dbc;
-	db_recno_t recno;
-	int ret, t_ret;
-
-	PANIC_CHECK(dbp->dbenv);
-
-	/* Check for invalid flags. */
-	if ((ret = __db_putchk(dbp,
-	    key, data, flags, F_ISSET(dbp, DB_AM_RDONLY), 0)) != 0)
-		return (ret);
-
-	/* Allocate a cursor. */
-	if ((ret = dbp->cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
-		return (ret);
-
-	DEBUG_LWRITE(dbc, txn, "ram_put", key, data, flags);
 
 	/*
-	 * If we're appending to the tree, make sure we've read in all of
-	 * the backing source file.  Otherwise, check the user's record
-	 * number and fill in as necessary.  If we found the record or it
-	 * simply didn't exist, add the user's record.
+	 * Make sure we've read in all of the backing source file.  If
+	 * we found the record or it simply didn't exist, add the
+	 * user's record.
 	 */
-	if (flags == DB_APPEND)
-		ret = __ram_update(dbc, DB_MAX_RECORDS, 0);
-	else
-		ret = __ram_getno(dbc, key, &recno, 1);
+	ret = __ram_update(dbc, DB_MAX_RECORDS, 0);
 	if (ret == 0 || ret == DB_NOTFOUND)
-		ret = __ram_add(dbc, &recno, data, flags, 0);
+		ret = __ram_add(dbc, &cp->recno, data, DB_APPEND, 0);
 
-	/* Discard the cursor. */
-	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
-		ret = t_ret;
-
-	/* Return the record number if we're appending to the tree. */
-	if (ret == 0 && flags == DB_APPEND)
-		ret = __db_retcopy(dbp, key, &recno, sizeof(recno),
-		    &dbc->rkey.data, &dbc->rkey.ulen);
+	/* Return the record number. */
+	if (ret == 0)
+		ret = __db_retcopy(dbc->dbp, key, &cp->recno, sizeof(cp->recno),
+		    &dbc->rkey->data, &dbc->rkey->ulen);
 
 	return (ret);
 }
@@ -412,6 +343,7 @@ __ram_c_get(dbc, key, data, flags, pgnop)
 	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
 
+	LF_CLR(DB_MULTIPLE|DB_MULTIPLE_KEY);
 retry:	switch (flags) {
 	case DB_CURRENT:
 		/*
@@ -531,6 +463,8 @@ retry:	switch (flags) {
 	 * read from the backing source file.  Do it now for DB_CURRENT (if
 	 * the current record was deleted we may need more records from the
 	 * backing file for a DB_CURRENT operation), DB_FIRST and DB_NEXT.
+	 * (We don't have to test for flags == DB_FIRST, because the switch
+	 * statement above re-set flags to DB_NEXT in that case.)
 	 */
 	if ((flags == DB_NEXT || flags == DB_CURRENT) && ((ret =
 	    __ram_update(dbc, cp->recno, 0)) != 0) && ret != DB_NOTFOUND)
@@ -574,8 +508,20 @@ retry:	switch (flags) {
 				(void)__bam_stkrel(dbc, STK_CLRDBC);
 				goto retry;
 			case DB_GET_BOTH:
-				(void)__bam_stkrel(dbc, STK_CLRDBC);
-				continue;
+				/*
+				 * If we're an OPD tree, we don't care
+				 * about matching a record number on a
+				 * DB_GET_BOTH--everything belongs to the
+				 * same tree.  A normal recno should give
+				 * up and return DB_NOTFOUND if the matching
+				 * recno is deleted.
+				 */
+				if (F_ISSET(dbc, DBC_OPD)) {
+					(void)__bam_stkrel(dbc, STK_CLRDBC);
+					continue;
+				}
+				ret = DB_NOTFOUND;
+				goto err;
 			default:
 				ret = DB_KEYEMPTY;
 				goto err;
@@ -601,7 +547,7 @@ retry:	switch (flags) {
 		if (flags != DB_SET && flags != DB_SET_RANGE)
 			ret = __db_retcopy(dbp,
 			     key, &cp->recno, sizeof(cp->recno),
-			     &dbc->rkey.data, &dbc->rkey.ulen);
+			     &dbc->rkey->data, &dbc->rkey->ulen);
 		F_SET(key, DB_DBT_ISSET);
 	}
 
@@ -637,23 +583,44 @@ __ram_c_put(dbc, key, data, flags, pgnop)
 	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/*
-	 * DB_KEYFIRST and DB_KEYLAST will only be set if we're dealing with
-	 * an off-page duplicate tree, they can't be specified at user level.
-	 * Translate them into something else.
+	 * DB_KEYFIRST and DB_KEYLAST mean different things if they're
+	 * used in an off-page duplicate tree.  If we're an off-page
+	 * duplicate tree, they really mean "put at the beginning of the
+	 * tree" and "put at the end of the tree" respectively, so translate
+	 * them to something else.
 	 */
-	switch (flags) {
-	case DB_KEYFIRST:
-		cp->recno = 1;
-		flags = DB_BEFORE;
-		break;
-	case DB_KEYLAST:
-		if ((ret = __ram_add(dbc, &cp->recno, data, DB_APPEND, 0)) != 0)
-			return (ret);
-		if (CURADJ_LOG(dbc) && (ret = __bam_rcuradj_log(dbp->dbenv,
-		    dbc->txn, &lsn, 0, dbp->log_fileid, CA_ICURRENT,
-		    cp->root, cp->recno, cp->order)))
-			return (ret);
-		return (0);
+	if (F_ISSET(dbc, DBC_OPD))
+		switch (flags) {
+		case DB_KEYFIRST:
+			cp->recno = 1;
+			flags = DB_BEFORE;
+			break;
+		case DB_KEYLAST:
+			if ((ret = __ram_add(dbc,
+			    &cp->recno, data, DB_APPEND, 0)) != 0)
+				return (ret);
+			if (CURADJ_LOG(dbc) &&
+			    (ret = __bam_rcuradj_log(dbp->dbenv,
+			    dbc->txn, &lsn, 0, dbp->log_fileid, CA_ICURRENT,
+			    cp->root, cp->recno, cp->order)))
+				return (ret);
+			return (0);
+		}
+
+	/*
+	 * Handle normal DB_KEYFIRST/DB_KEYLAST;  for a recno, which has
+	 * no duplicates, these are identical and mean "put the given
+	 * datum at the given recno".
+	 *
+	 * Note that the code here used to be in __ram_put;  now, we
+	 * go through the access-method-common __db_put function, which
+	 * handles DB_NOOVERWRITE, so we and __ram_add don't have to.
+	 */
+	if (flags == DB_KEYFIRST || flags == DB_KEYLAST) {
+		ret = __ram_getno(dbc, key, &cp->recno, 1);
+		if (ret == 0 || ret == DB_NOTFOUND)
+			ret = __ram_add(dbc, &cp->recno, data, 0, 0);
+		return (ret);
 	}
 
 	/*
@@ -688,7 +655,7 @@ split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 		ret = t_ret;
 	else if (ret == DB_NEEDSPLIT) {
 		arg = &cp->recno;
-		if ((ret = __bam_split(dbc, arg)) != 0)
+		if ((ret = __bam_split(dbc, arg, NULL)) != 0)
 			goto err;
 		goto split;
 	}
@@ -744,7 +711,7 @@ split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 	/* Return the key if we've created a new record. */
 	if (!F_ISSET(dbc, DBC_OPD) && (flags == DB_AFTER || flags == DB_BEFORE))
 		ret = __db_retcopy(dbp, key, &cp->recno,
-		    sizeof(cp->recno), &dbc->rkey.data, &dbc->rkey.ulen);
+		    sizeof(cp->recno), &dbc->rkey->data, &dbc->rkey->ulen);
 
 	/* The cursor was reset, no further delete adjustment is necessary. */
 err:	CD_CLR(cp);
@@ -940,13 +907,12 @@ __ram_update(dbc, recno, can_create)
 	int can_create;
 {
 	BTREE *t;
-	BTREE_CURSOR *cp;
 	DB *dbp;
+	DBT *rdata;
 	db_recno_t nrecs;
 	int ret;
 
 	dbp = dbc->dbp;
-	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
 
 	/*
@@ -976,27 +942,13 @@ __ram_update(dbc, recno, can_create)
 	if (!can_create || recno <= nrecs + 1)
 		return (0);
 
-	dbc->rdata.dlen = 0;
-	dbc->rdata.doff = 0;
-	dbc->rdata.flags = 0;
-	if (F_ISSET(dbp, DB_RE_FIXEDLEN)) {
-		if (dbc->rdata.ulen < t->re_len) {
-			if ((ret = __os_realloc(dbp->dbenv,
-			    t->re_len, NULL, &dbc->rdata.data)) != 0) {
-				dbc->rdata.ulen = 0;
-				dbc->rdata.data = NULL;
-				return (ret);
-			}
-			dbc->rdata.ulen = t->re_len;
-		}
-		dbc->rdata.size = t->re_len;
-		memset(dbc->rdata.data, t->re_pad, t->re_len);
-	} else
-		dbc->rdata.size = 0;
+	rdata = &dbc->my_rdata;
+	rdata->flags = 0;
+	rdata->size = 0;
 
 	while (recno > ++nrecs)
 		if ((ret = __ram_add(dbc,
-		    &nrecs, &dbc->rdata, 0, BI_DELETED)) != 0)
+		    &nrecs, rdata, 0, BI_DELETED)) != 0)
 			return (ret);
 	return (0);
 }
@@ -1019,7 +971,7 @@ __ram_source(dbp)
 	if ((ret = __db_appname(dbp->dbenv,
 	    DB_APP_DATA, NULL, t->re_source, 0, NULL, &source)) != 0)
 		return (ret);
-	__os_freestr(t->re_source);
+	__os_freestr(dbp->dbenv, t->re_source);
 	t->re_source = source;
 
 	/*
@@ -1132,7 +1084,7 @@ __ram_writeback(dbp)
 	 */
 	delim = t->re_delim;
 	if (F_ISSET(dbp, DB_RE_FIXEDLEN)) {
-		if ((ret = __os_malloc(dbenv, t->re_len, NULL, &pad)) != 0)
+		if ((ret = __os_malloc(dbenv, t->re_len, &pad)) != 0)
 			goto err;
 		memset(pad, t->re_pad, t->re_len);
 	} else
@@ -1191,7 +1143,7 @@ __ram_sread(dbc, top)
 {
 	BTREE *t;
 	DB *dbp;
-	DBT data;
+	DBT data, *rdata;
 	db_recno_t recno;
 	size_t len;
 	int ch, ret, was_modified;
@@ -1203,45 +1155,56 @@ __ram_sread(dbc, top)
 	if ((ret = __bam_nrecs(dbc, &recno)) != 0)
 		return (ret);
 
-	/* Use the record data return memory, it's only a short-term use. */
+	/*
+	 * Use the record key return memory, it's only a short-term use.
+	 * The record data return memory is used by __bam_iitem, which
+	 * we'll indirectly call, so use the key so as not to collide.
+	 */
 	len = F_ISSET(dbp, DB_RE_FIXEDLEN) ? t->re_len : 256;
-	if (dbc->rdata.ulen < len) {
+	rdata = &dbc->my_rkey;
+	if (rdata->ulen < len) {
 		if ((ret = __os_realloc(
-		    dbp->dbenv, len, NULL, &dbc->rdata.data)) != 0) {
-			dbc->rdata.ulen = 0;
-			dbc->rdata.data = NULL;
+		    dbp->dbenv, len, &rdata->data)) != 0) {
+			rdata->ulen = 0;
+			rdata->data = NULL;
 			return (ret);
 		}
-		dbc->rdata.ulen = len;
+		rdata->ulen = len;
 	}
 
 	memset(&data, 0, sizeof(data));
 	while (recno < top) {
-		data.data = dbc->rdata.data;
+		data.data = rdata->data;
 		data.size = 0;
 		if (F_ISSET(dbp, DB_RE_FIXEDLEN))
 			for (len = t->re_len; len > 0; --len) {
-				if ((ch = getc(t->re_fp)) == EOF)
-					goto eof;
+				if ((ch = getc(t->re_fp)) == EOF) {
+					if (data.size == 0)
+						goto eof;
+					break;
+				}
 				((u_int8_t *)data.data)[data.size++] = ch;
 			}
 		else
 			for (;;) {
-				if ((ch = getc(t->re_fp)) == EOF)
-					goto eof;
+				if ((ch = getc(t->re_fp)) == EOF) {
+					if (data.size == 0)
+						goto eof;
+					break;
+				}
 				if (ch == t->re_delim)
 					break;
 
 				((u_int8_t *)data.data)[data.size++] = ch;
-				if (data.size == dbc->rdata.ulen) {
+				if (data.size == rdata->ulen) {
 					if ((ret = __os_realloc(dbp->dbenv,
-					    dbc->rdata.ulen *= 2,
-					    NULL, &dbc->rdata.data)) != 0) {
-						dbc->rdata.ulen = 0;
-						dbc->rdata.data = NULL;
+					    rdata->ulen *= 2,
+					    &rdata->data)) != 0) {
+						rdata->ulen = 0;
+						rdata->data = NULL;
 						return (ret);
 					} else
-						data.data = dbc->rdata.data;
+						data.data = rdata->data;
 				}
 			}
 
@@ -1281,7 +1244,6 @@ __ram_add(dbc, recnop, data, flags, bi_flags)
 	DBT *data;
 	u_int32_t flags, bi_flags;
 {
-	BKEYDATA *bk;
 	BTREE_CURSOR *cp;
 	int exact, ret, stack;
 
@@ -1303,24 +1265,6 @@ retry:	/* Find the slot for insertion. */
 	if (flags == DB_APPEND && dbc->dbp->db_append_recno != NULL &&
 	    (ret = dbc->dbp->db_append_recno(dbc->dbp, data, *recnop)) != 0)
 		goto err;
-
-	/*
-	 * If re-numbering records, the on-page deleted flag means this record
-	 * was implicitly created.  If not re-numbering records, the on-page
-	 * deleted flag means this record was implicitly created, or, it was
-	 * deleted at some time.
-	 *
-	 * If DB_NOOVERWRITE is set and the item already exists in the tree,
-	 * return an error unless the item was either marked for deletion or
-	 * only implicitly created.
-	 */
-	if (exact) {
-		bk = GET_BKEYDATA(cp->page, cp->indx);
-		if (!B_DISSET(bk->type) && flags == DB_NOOVERWRITE) {
-			ret = DB_KEYEXIST;
-			goto err;
-		}
-	}
 
 	/*
 	 * Select the arguments for __bam_iitem() and do the insert.  If the
@@ -1353,7 +1297,7 @@ retry:	/* Find the slot for insertion. */
 		(void)__bam_stkrel(dbc, STK_CLRDBC);
 		stack = 0;
 
-		if ((ret = __bam_split(dbc, recnop)) != 0)
+		if ((ret = __bam_split(dbc, recnop, NULL)) != 0)
 			goto err;
 
 		goto retry;

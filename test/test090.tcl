@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test090.tcl,v 11.4 2000/12/11 17:24:56 sue Exp $
+# $Id: test090.tcl,v 11.5 2001/01/25 18:23:13 bostic Exp $
 #
 # DB Test 90 {access method}
 # Check for functionality near the end of the queue.

@@ -1,5 +1,5 @@
-<!--$Id: dbis.so,v 10.5 2001/01/19 17:30:29 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: dbis.so,v 10.7 2001/03/01 15:58:05 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
-<td width="1%"><a href="../../ref/intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>What is Berkeley DB?</h1>
@@ -67,7 +67,7 @@ operations, there is no query language to parse, and no execution plan
 to produce.
 <h3>Data Access Services</h3>
 <p>Berkeley DB applications can choose the storage structure that best suits the
-application. Berkeley DB supports hash tables, B-trees, simple
+application. Berkeley DB supports hash tables, Btrees, simple
 record-number-based storage, and persistent queues. Programmers can
 create tables using any of these storage structures, and can mix
 operations on different kinds of tables in a single application.
@@ -76,11 +76,11 @@ predictable search and update times for random-access records.  Hash
 tables allow users to ask, "Does this key exist?" or to fetch a record
 with a known key.  Hash tables do not allow users to ask for records
 with keys that are close to a known key.
-<p>B-trees are better for range-based searches, as when the application
+<p>Btrees are better for range-based searches, as when the application
 needs to find all records with keys between some starting and ending
-value.  B-trees also do a better job of exploiting <i>locality
+value.  Btrees also do a better job of exploiting <i>locality
 of reference</i>.  If the application is likely to touch keys near each
-other at the same time, the B-trees work well. The tree structure keeps
+other at the same time, the Btrees work well. The tree structure keeps
 keys that are close together near one another in storage, so fetching
 nearby values usually doesn't require a disk access.
 <p>Record-number-based storage is natural for applications that need
@@ -115,13 +115,13 @@ changes present, even after a crash. The database is guaranteed to be
 consistent and all committed changes are guaranteed to be present when
 recovery completes.
 <p>An application can specify, when it starts up, which data management
-services it will use. Some applications need fast,
-single-user, non-transactional B-tree data storage. In that case, the
-application can disable the locking and transaction systems, and will
-not incur the overhead of locking or logging. If an application needs
-to support multiple concurrent users, but doesn't need transactions, it
-can turn on locking without transactions. Applications that need
-concurrent, transaction-protected database access can enable all of the
+services it will use. Some applications need fast, single-user,
+non-transactional Btree data storage. In that case, the application can
+disable the locking and transaction systems, and will not incur the
+overhead of locking or logging. If an application needs to support
+multiple concurrent users, but doesn't need transactions, it can turn
+on locking without transactions. Applications that need concurrent,
+transaction-protected database access can enable all of the
 subsystems.
 <p>In all these cases, the application uses the same function-call API to
 fetch and update records.
@@ -145,14 +145,15 @@ around the standard UNIX file read and write operations!  Further, Berkeley DB
 was designed to interact correctly with the native system's toolset, a
 feature no other database package offers.  For example, Berkeley DB supports
 hot backups (database backups while the database is in use), using
-standard UNIX system utilities, e.g., dump, tar, cpio, pax or even cp.
+standard UNIX system utilities, for example, dump, tar, cpio, pax or
+even cp.
 <p>Finally, because scripting language interfaces are available for Berkeley DB
 (notably Tcl and Perl), application writers can build incredibly powerful
 database engines with little effort.  You can build transaction-protected
 database applications using your favorite scripting languages, an
 increasingly important feature in a world using CGI scripts to deliver
 HTML.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

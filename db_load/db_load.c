@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_load.c,v 11.33 2001/01/22 17:25:07 krinsky Exp $";
+    "$Id: db_load.c,v 11.41 2001/06/03 02:11:54 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -75,7 +75,7 @@ main(argc, argv)
 	/* Allocate enough room for configuration arguments. */
 	if ((clp = clist = (char **)calloc(argc + 1, sizeof(char *))) == NULL) {
 		fprintf(stderr, "%s: %s\n", progname, strerror(ENOMEM));
-		exit(1);
+		return (EXIT_FAILURE);
 	}
 
 	while ((ch = getopt(argc, argv, "c:f:h:nTt:V")) != EOF)
@@ -87,7 +87,7 @@ main(argc, argv)
 			if (freopen(optarg, "r", stdin) == NULL) {
 				fprintf(stderr, "%s: %s: reopen: %s\n",
 				    progname, optarg, strerror(errno));
-				exit(1);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'h':
@@ -120,7 +120,7 @@ main(argc, argv)
 			/* NOTREACHED */
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			exit(0);
+			return (EXIT_SUCCESS);
 		case '?':
 		default:
 			usage();
@@ -166,7 +166,13 @@ shutdown:	exitval = 1;
 	/* Resend any caught signal. */
 	__db_util_sigresend();
 
-	/* Return 0 on success, 1 if keys existed already, and 2 on failure. */
+	/*
+	 * Return 0 on success, 1 if keys existed already, and 2 on failure.
+	 *
+	 * Technically, this is wrong, because exit of anything other than
+	 * 0 is implementation-defined by the ANSI C standard.  I don't see
+	 * any good solutions that don't involve API changes.
+	 */
 	return (exitval == 0 ? (existed == 0 ? 0 : 1) : 2);
 }
 
@@ -267,12 +273,12 @@ load(name, argtype, clist, no_header, db_nooverwrite)
 	if (keyflag == -1)
 		keyflag = 0;
 
-	/* 
+	/*
 	 * Recno keys have only been printed in hexadecimal starting
-	 * with db_dump format version 3 (DB 3.2).  
+	 * with db_dump format version 3 (DB 3.2).
 	 *
-	 * !!! 
-	 * Note that version is set in rheader(), which must be called before 
+	 * !!!
+	 * Note that version is set in rheader(), which must be called before
 	 * this assignment.
 	 */
 	hexkeys = (version >= 3 && keyflag == 1 && checkprint == 0);
@@ -362,7 +368,7 @@ retry:		if (txn != NULL)
 			if ((ret = txn_begin(dbenv, txn, &ctxn, 0)) != 0)
 				goto err;
 		switch (ret =
-		    dbp->put(dbp, txn, writep, &data, db_nooverwrite)) {
+		    dbp->put(dbp, ctxn, writep, &data, db_nooverwrite)) {
 		case 0:
 			if (ctxn != NULL) {
 				if ((ret =
@@ -420,7 +426,7 @@ err:		rval = 1;
 
 	/* Close the database. */
 	if ((ret = dbp->close(dbp, 0)) != 0) {
-		dbp->err(dbp, ret, "DB->close");
+		dbenv->err(dbenv, ret, "DB->close");
 		rval = 1;
 	}
 
@@ -568,7 +574,7 @@ configure(dbp, clp, subdbp, keysp)
 		FLAG(name, value, "renumber", DB_RENUMBER);
 
 		dbp->errx(dbp,
-		    "unknown command-line configuration keyword");
+		    "unknown command-line configuration keyword \"%s\"", name);
 		return (1);
 	}
 	return (0);
@@ -689,6 +695,7 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 		NUMBER(name, value, "bt_minkey", set_bt_minkey);
 		NUMBER(name, value, "db_lorder", set_lorder);
 		NUMBER(name, value, "db_pagesize", set_pagesize);
+		NUMBER(name, value, "extentsize", set_q_extentsize);
 		FLAG(name, value, "duplicates", DB_DUP);
 		FLAG(name, value, "dupsort", DB_DUPSORT);
 		NUMBER(name, value, "h_ffactor", set_h_ffactor);
@@ -699,7 +706,7 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 		FLAG(name, value, "renumber", DB_RENUMBER);
 
 		dbp->errx(dbp,
-		    "unknown input-file header configuration keyword");
+		    "unknown input-file header configuration keyword \"%s\"", name);
 		return (1);
 	}
 	return (0);
@@ -977,7 +984,7 @@ usage()
 	(void)fprintf(stderr, "%s\n\t%s\n",
 	    "usage: db_load [-nTV]",
     "[-c name=value] [-f file] [-h home] [-t btree | hash | recno] db_file");
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 void
@@ -993,6 +1000,6 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 }

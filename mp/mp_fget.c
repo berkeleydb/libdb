@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fget.c,v 11.28 2001/01/10 04:50:53 ubell Exp $";
+static const char revid[] = "$Id: mp_fget.c,v 11.43 2001/07/05 13:23:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,13 +25,19 @@ static const char revid[] = "$Id: mp_fget.c,v 11.28 2001/01/10 04:50:53 ubell Ex
 #include "mp.h"
 
 #ifdef HAVE_RPC
-#include "gen_client_ext.h"
 #include "rpc_client_ext.h"
+#endif
+
+#ifdef HAVE_FILESYSTEM_NOTZERO
+static int __memp_fs_notzero
+    __P((DB_ENV *, DB_MPOOLFILE *, MPOOLFILE *, db_pgno_t *));
 #endif
 
 /*
  * memp_fget --
  *	Get a page from the file.
+ *
+ * EXTERN: int memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
  */
 int
 memp_fget(dbmfp, pgnoaddr, flags, addrp)
@@ -48,7 +54,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	MPOOLFILE *mfp;
 	size_t n_bucket, n_cache, mf_offset;
 	u_int32_t st_hsearch;
-	int b_incr, first, ret;
+	int b_incr, bh_dirty_create, first, ret;
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
@@ -75,13 +81,12 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * any attempt to actually write the file in memp_fput().
 	 */
 #define	OKFLAGS	\
-    (DB_MPOOL_CREATE | DB_MPOOL_LAST | \
-    DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP | DB_MPOOL_EXTENT)
+    (DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)
 	if (flags != 0) {
 		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
 			return (ret);
 
-		switch (flags & ~DB_MPOOL_EXTENT) {
+		switch (flags) {
 		case DB_MPOOL_CREATE:
 		case DB_MPOOL_LAST:
 		case DB_MPOOL_NEW:
@@ -107,25 +112,12 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
 	bhp = NULL;
 	st_hsearch = 0;
-	b_incr = ret = 0;
+	b_incr = bh_dirty_create = ret = 0;
 
 	R_LOCK(dbenv, dbmp->reginfo);
 
 	/*
-	 * Check for the new, last or last + 1 page requests.
-	 *
-	 * Examine and update the file's last_pgno value.  We don't care if
-	 * the last_pgno value immediately changes due to another thread --
-	 * at this instant in time, the value is correct.  We do increment the
-	 * current last_pgno value if the thread is asking for a new page,
-	 * however, to ensure that two threads creating pages don't get the
-	 * same one.
-	 *
-	 * If we create a page, there is the potential that a page after it
-	 * in the file will be written before it will be written.  Recovery
-	 * depends on pages that are "created" in the file by subsequent pages
-	 * being written be zeroed out, not have random garbage.  Ensure that
-	 * the OS agrees.
+	 * Check for the last, last + 1 or new group page requests.
 	 *
 	 * !!!
 	 * DB_MPOOL_NEW_GROUP is undocumented -- the hash access method needs
@@ -134,27 +126,43 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * LSN on the *last* page and write it, otherwise after a crash we may
 	 * not create all of the pages we need to create.
 	 */
-	if (LF_ISSET(DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)) {
-		if (LF_ISSET(DB_MPOOL_NEW)) {
-			if (F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
-			    __os_fpinit(dbenv, &dbmfp->fh, mfp->last_pgno + 1,
-			    1, mfp->stat.st_pagesize)) != 0) {
-				R_UNLOCK(dbenv, dbmp->reginfo);
-				return (ret);
-			}
-			++mfp->last_pgno;
-		}
-		if (LF_ISSET(DB_MPOOL_NEW_GROUP)) {
-			if (F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
-			    __os_fpinit(dbenv, &dbmfp->fh, mfp->last_pgno + 1,
-			    (int)*pgnoaddr, mfp->stat.st_pagesize)) != 0) {
-				R_UNLOCK(dbenv, dbmp->reginfo);
-				return (ret);
-			}
-			mfp->last_pgno += *pgnoaddr;
-		}
+	switch(flags) {
+	case DB_MPOOL_LAST:
 		*pgnoaddr = mfp->last_pgno;
+		break;
+	case DB_MPOOL_NEW:
+		*pgnoaddr = mfp->last_pgno + 1;
+		break;
+	case DB_MPOOL_NEW_GROUP:
+		*pgnoaddr = mfp->last_pgno + *pgnoaddr;
+		break;
+	default:
+		break;
 	}
+
+	/*
+	 * If we're returning a page after our current notion of the last-page,
+	 * update the mpool end-of-file information.  Note: there's no way to
+	 * un-instantiate this page, it's going to exist whether it's returned
+	 * to us dirty or not.
+	 */
+	if (*pgnoaddr > mfp->last_pgno) {
+		if (!LF_ISSET(
+		    DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP | DB_MPOOL_CREATE)) {
+			ret = DB_PAGE_NOTFOUND;
+			goto err;
+		}
+#ifdef HAVE_FILESYSTEM_NOTZERO
+		if (__os_fs_notzero() &&
+		    F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
+		    __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)) != 0)
+			goto err;
+#endif
+		mfp->last_pgno = *pgnoaddr;
+
+		bh_dirty_create = 1;
+	} else
+		bh_dirty_create = 0;
 
 	/*
 	 * Determine the hash bucket where this page will live, and get local
@@ -195,13 +203,18 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			 * !!!
 			 * See the comment above about non-existent pages and
 			 * the hash access method.
+			 *
+			 * Further, it's not an error to attempt to acquire an
+			 * an extent-file page that doesn't yet exist, even if
+			 * DB_MPOOL_CREATE is not set; we may just be doing a
+			 * get from a gap in the record numbers.
+			 *
+			 * So, even if we're pretty sure the application is
+			 * doing something wrong, let it go -- we'll complain
+			 * if they ever try and write the page.
 			 */
 			if (!LF_ISSET(DB_MPOOL_CREATE)) {
-				if (!LF_ISSET(DB_MPOOL_EXTENT))
-					__db_err(dbenv,
-					    "%s: page %lu doesn't exist",
-					    __memp_fn(dbmfp), (u_long)*pgnoaddr);
-				ret = EINVAL;
+				ret = DB_PAGE_NOTFOUND;
 				goto err;
 			}
 		} else {
@@ -246,7 +259,9 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		 * the region lock, wait for the I/O to complete, and reacquire
 		 * the region.
 		 */
-		for (first = 1; F_ISSET(bhp, BH_LOCKED); first = 0) {
+		for (first = 1;
+		    F_ISSET(bhp, BH_LOCKED) && dbenv->db_mutexlocks;
+		    first = 0) {
 			R_UNLOCK(dbenv, dbmp->reginfo);
 
 			/*
@@ -293,8 +308,6 @@ alloc:	/* Allocate new buffer header and data space. */
 	    &dbmp->reginfo[n_cache], mfp, 0, NULL, &bhp)) != 0)
 		goto err;
 
-	++c_mp->stat.st_page_clean;
-
 	/*
 	 * Initialize the BH fields so that we can call the __memp_bhfree
 	 * routine if an error occurs.
@@ -303,6 +316,13 @@ alloc:	/* Allocate new buffer header and data space. */
 	bhp->ref = 1;
 	bhp->pgno = *pgnoaddr;
 	bhp->mf_offset = mf_offset;
+
+	/* If we extended the file, make sure the page is never lost. */
+	if (bh_dirty_create) {
+		++c_mp->stat.st_page_dirty;
+		F_SET(bhp, BH_DIRTY | BH_DIRTY_CREATE);
+	} else
+		++c_mp->stat.st_page_clean;
 
 	/* Increment the count of buffers referenced by this MPOOLFILE. */
 	++mfp->block_cnt;
@@ -353,7 +373,7 @@ alloc:	/* Allocate new buffer header and data space. */
 			memset(bhp->buf, 0, mfp->stat.st_pagesize);
 		else {
 			memset(bhp->buf, 0, mfp->clear_len);
-#ifdef DIAGNOSTIC
+#if defined(DIAGNOSTIC) || defined(UMRW)
 			memset(bhp->buf + mfp->clear_len, CLEAR_BYTE,
 			    mfp->stat.st_pagesize - mfp->clear_len);
 #endif
@@ -368,28 +388,24 @@ alloc:	/* Allocate new buffer header and data space. */
 		 * down so that it cannot move and its contents are unchanged.
 		 */
 reread:		if ((ret = __memp_pgread(dbmfp,
-		    bhp, LF_ISSET(DB_MPOOL_CREATE|DB_MPOOL_EXTENT))) != 0) {
+		    bhp, LF_ISSET(DB_MPOOL_CREATE) ? 1 : 0)) != 0) {
 			/*
 			 * !!!
 			 * Discard the buffer unless another thread is waiting
-			 * on our I/O to complete.  Regardless, the header has
-			 * the BH_TRASH flag set.
+			 * on our I/O to complete.  It's OK to leave the buffer
+			 * around, as the waiting thread will see the BH_TRASH
+			 * flag set, and will not use the buffer.  If there's a
+			 * waiter, we need to decrement our reference count.
 			 */
 			if (bhp->ref == 1)
 				__memp_bhfree(dbmp, bhp, 1);
+			else
+				b_incr = 1;
 			goto err;
 		}
 
 		++mfp->stat.st_cache_miss;
 	}
-
-	/*
-	 * If we're returning a page after our current notion of the last-page,
-	 * update our information.  Note, there's no way to un-instantiate this
-	 * page, it's going to exist whether it's returned to us dirty or not.
-	 */
-	if (bhp->pgno > mfp->last_pgno)
-		mfp->last_pgno = bhp->pgno;
 
 	*(void **)addrp = bhp->buf;
 
@@ -401,6 +417,7 @@ done:	/* Update the chain search statistics. */
 		c_mp->stat.st_hash_examined += st_hsearch;
 	}
 
+	/* Update the file's reference count. */
 	++dbmfp->pinref;
 
 	R_UNLOCK(dbenv, dbmp->reginfo);
@@ -415,3 +432,96 @@ err:	/* Discard our reference. */
 	*(void **)addrp = NULL;
 	return (ret);
 }
+
+/*
+ * __memp_lastpgno --
+ *	Return the last page in the file.
+ *
+ * PUBLIC: void __memp_lastpgno __P((DB_MPOOLFILE *, db_pgno_t *));
+ */
+void
+__memp_lastpgno(dbmfp, pgnoaddr)
+	DB_MPOOLFILE *dbmfp;
+	db_pgno_t *pgnoaddr;
+{
+	DB_ENV *dbenv;
+	DB_MPOOL *dbmp;
+
+	dbmp = dbmfp->dbmp;
+	dbenv = dbmp->dbenv;
+
+	R_LOCK(dbenv, dbmp->reginfo);
+	*pgnoaddr = dbmfp->mfp->last_pgno;
+	R_UNLOCK(dbenv, dbmp->reginfo);
+}
+
+#ifdef HAVE_FILESYSTEM_NOTZERO
+/*
+ * __memp_fs_notzero --
+ *	Initialize the underlying allocated pages in the file.
+ */
+static int
+__memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
+	DB_ENV *dbenv;
+	DB_MPOOLFILE *dbmfp;
+	MPOOLFILE *mfp;
+	db_pgno_t *pgnoaddr;
+{
+	DB_IO db_io;
+	u_int32_t i, npages;
+	size_t nw;
+	int ret;
+	char *fail, *page;
+
+	/*
+	 * Pages allocated by writing pages past end-of-file are not zeroed,
+	 * on some systems.  Recovery could theoretically be fooled by a page
+	 * showing up that contained garbage.  In order to avoid this, we
+	 * have to write the pages out to disk, and flush them.  The reason
+	 * for the flush is because if we don't sync, the allocation of another
+	 * page subsequent to this one might reach the disk first, and if we
+	 * crashed at the right moment, leave us with this page as the one
+	 * allocated by writing a page past it in the file.
+	 *
+	 * Hash is the only access method that allocates groups of pages.  We
+	 * know that it will use the existence of the last page in a group to
+	 * signify that the entire group is OK; so, write all the pages but
+	 * the last one in the group, flush them to disk, and then write the
+	 * last one to disk and flush it.
+	 */
+	if ((ret = __os_calloc(dbenv, 1, mfp->stat.st_pagesize, &page)) != 0)
+		return (ret);
+
+	db_io.fhp = &dbmfp->fh;
+	db_io.mutexp = dbmfp->mutexp;
+	db_io.pagesize = db_io.bytes = mfp->stat.st_pagesize;
+	db_io.buf = page;
+
+	npages = *pgnoaddr - mfp->last_pgno;
+	for (i = 1; i < npages; ++i) {
+		db_io.pgno = mfp->last_pgno + i;
+		if ((ret = __os_io(dbenv, &db_io, DB_IO_WRITE, &nw)) != 0) {
+			fail = "write";
+			goto err;
+		}
+	}
+	if (i != 1 && (ret = __os_fsync(dbenv, &dbmfp->fh)) != 0) {
+		fail = "sync";
+		goto err;
+	}
+
+	db_io.pgno = mfp->last_pgno + npages;
+	if ((ret = __os_io(dbenv, &db_io, DB_IO_WRITE, &nw)) != 0) {
+		fail = "write";
+		goto err;
+	}
+	if ((ret = __os_fsync(dbenv, &dbmfp->fh)) != 0) {
+		fail = "sync";
+err:		__db_err(dbenv, "%s: %s failed for page %lu",
+		    __memp_fn(dbmfp), fail, (u_long)db_io.pgno);
+	}
+
+	__os_free(dbenv, page, mfp->stat.st_pagesize);
+	return (ret);
+}
+#endif

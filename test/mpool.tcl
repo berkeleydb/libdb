@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mpool.tcl,v 11.34 2001/01/18 04:58:07 krinsky Exp $
+# $Id: mpool.tcl,v 11.36 2001/02/02 20:02:38 sue Exp $
 #
 # Options are:
 # -cachesize {gbytes bytes ncache}
@@ -28,7 +28,8 @@ proc mpool { args } {
 
 	puts "mpool {$args} running"
 	# Set defaults
-	set cachearg " -cachesize {0 200000 3}"
+	set ncache 3
+	set cachearg " -cachesize {0 200000 $ncache}"
 	set nfiles 5
 	set iterations 500
 	set pagesize "512 1024 2048 4096 8192"
@@ -43,6 +44,7 @@ proc mpool { args } {
 			-c.* {
 			    incr i
 			    set cachesize [lindex $args $i]
+			    set ncache [lindex $cachesize 2]
 			    set cachearg " -cachesize $cachesize"
 			}
 			-d.* { incr i; set testdir [lindex $args $i] }
@@ -112,6 +114,23 @@ proc mpool { args } {
 	set env [eval {berkdb env -create -mode 0644}\
 	    $cachearg {-home $testdir} $flags]
 	error_check_good evn_open [is_substr $env env] 1
+
+	#
+	# Do a simple mpool_stat call to verify the number of caches
+	# just to exercise the stat code.
+	set stat [$env mpool_stat]
+	set str "Number of caches"
+	set checked 0
+	foreach statpair $stat {
+		if { $checked == 1 } {
+			break
+		}
+		if { [is_substr [lindex $statpair 0] $str] != 0} {
+			set checked 1
+			error_check_good ncache [lindex $statpair 1] $ncache
+		}
+	}
+	error_check_good checked $checked 1
 
 	memp001 $env \
 	    $testdir $nfiles $iterations [lindex $pagesize 0] $dostat $flags

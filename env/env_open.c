@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_open.c,v 11.34 2000/12/21 19:20:00 bostic Exp $";
+static const char revid[] = "$Id: env_open.c,v 11.52 2001/06/13 01:34:47 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -32,15 +32,17 @@ static const char revid[] = "$Id: env_open.c,v 11.34 2000/12/21 19:20:00 bostic 
 #include "txn.h"
 #include "clib_ext.h"
 
-static int __dbenv_config __P((DB_ENV *, const char *, u_int32_t));
-static int __dbenv_refresh __P((DB_ENV *));
-static int __db_home __P((DB_ENV *, const char *, u_int32_t));
 static int __db_parse __P((DB_ENV *, char *));
 static int __db_tmp_open __P((DB_ENV *, u_int32_t, char *, DB_FH *));
+static int __dbenv_config __P((DB_ENV *, const char *, u_int32_t));
+static int __dbenv_iremove __P((DB_ENV *, const char *, u_int32_t, int));
+static int __dbenv_refresh __P((DB_ENV *));
 
 /*
  * db_version --
  *	Return version information.
+ *
+ * EXTERN: char *db_version __P((int *, int *, int *));
  */
 char *
 db_version(majverp, minverp, patchp)
@@ -68,7 +70,7 @@ __dbenv_open(dbenv, db_home, flags, mode)
 	u_int32_t flags;
 	int mode;
 {
-	DB_ENV *rm_dbenv;
+	DB_MPOOL *dbmp;
 	int ret;
 	u_int32_t init_flags;
 
@@ -125,11 +127,46 @@ __dbenv_open(dbenv, db_home, flags, mode)
 	 * remove.  We don't care if the current environment was private or
 	 * not, we just want to nail any files that are left-over for whatever
 	 * reason, from whatever session.
+	 *
+	 * There's a nasty bug here, caused by our created DB_ENV handle not
+	 * having any of the configuration information that the application
+	 * may have set in the handle it passed us.  For example, it may
+	 * have set an error FILE, and error messages from DB_ENV->remove
+	 * won't be passed to that callback.  Nobody has thought of a good
+	 * solution, so we copy the information and hope that it's enough.
+	 * The dance to use the application's DB_ENV in the remove call is
+	 * so we don't surprise some callback function by giving it a memory
+	 * reference it's never seen before.
 	 */
 	if (LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL)) {
+		DB_ENV tmp, *rm_dbenv;
+
 		if ((ret = db_env_create(&rm_dbenv, 0)) != 0)
 			return (ret);
-		if ((ret = dbenv->remove(rm_dbenv, db_home, DB_FORCE)) != 0)
+		tmp = *dbenv;
+		*dbenv = *rm_dbenv;
+		dbenv->db_errfile = tmp.db_errfile;
+		dbenv->db_errpfx = tmp.db_errpfx;
+		dbenv->db_errcall = tmp.db_errcall;
+		dbenv->db_feedback = tmp.db_feedback;
+		dbenv->db_paniccall = tmp.db_paniccall;
+		dbenv->verbose = tmp.verbose;
+		dbenv->app_private = tmp.app_private;
+		dbenv->cj_internal = tmp.cj_internal;
+		ret = __dbenv_iremove(dbenv, db_home, DB_FORCE, 0);
+
+		/*
+		 * Copy our saved handle back into the user's memory, discard
+		 * our allocated handle.  We save the user's app_private field
+		 * it's improbable, but if we called a callback function and
+		 * the user changed the app_private field, we should preserve
+		 * the value.
+		 */
+		tmp.app_private = dbenv->app_private;
+		*dbenv = tmp;
+		__os_free(NULL, rm_dbenv, sizeof(DB_ENV));
+
+		if (ret != 0)
 			return (ret);
 	}
 
@@ -194,20 +231,6 @@ __dbenv_open(dbenv, db_home, flags, mode)
 		F_SET(dbenv, DB_ENV_CDB);
 	}
 
-	/* Initialize the DB list, and its mutex if appropriate. */
-	LIST_INIT(&dbenv->dblist);
-	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
-		if ((ret = __db_mutex_alloc(dbenv,
-		    dbenv->reginfo, (MUTEX **)&dbenv->dblist_mutexp)) != 0)
-			return (ret);
-		if ((ret = __db_mutex_init(dbenv,
-		    dbenv->dblist_mutexp, 0, MUTEX_THREAD)) != 0) {
-			__db_mutex_free(dbenv, dbenv->reginfo,
-			    dbenv->dblist_mutexp);
-			return (ret);
-		}
-	}
-
 	/*
 	 * Initialize the subsystems.  Transactions imply logging but do not
 	 * imply locking.  While almost all applications want both locking
@@ -261,6 +284,34 @@ __dbenv_open(dbenv, db_home, flags, mode)
 		    LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL))) != 0)
 			goto err;
 	}
+	/*
+	 * Initialize the DB list, and its mutex as necessary.  If the env
+	 * handle isn't free-threaded we don't need a mutex because there
+	 * will never be more than a single DB handle on the list.  If the
+	 * mpool wasn't initialized, then we can't ever open a DB handle.
+	 *
+	 * !!!
+	 * This must come after the __memp_open call above because if we are
+	 * recording mutexes for system resources, we will do it in the mpool
+	 * region for environments and db handles.  So, the mpool region must
+	 * already be initialized.
+	 */
+	LIST_INIT(&dbenv->dblist);
+	if (F_ISSET(dbenv, DB_ENV_THREAD) && LF_ISSET(DB_INIT_MPOOL)) {
+		dbmp = dbenv->mp_handle;
+		if ((ret = __db_mutex_alloc(dbenv,
+		    dbmp->reginfo, 0, (MUTEX **)&dbenv->dblist_mutexp)) != 0)
+			return (ret);
+		if ((ret = __db_shmutex_init(dbenv, dbenv->dblist_mutexp,
+		    0, MUTEX_THREAD, &dbmp->reginfo[0],
+		    (REGMAINT *)R_ADDR(&dbmp->reginfo[0],
+		    ((MPOOL *)dbmp->reginfo->primary)->maint_off))) != 0) {
+			__db_mutex_free(dbenv, dbmp->reginfo,
+			    dbenv->dblist_mutexp);
+			return (ret);
+		}
+	}
+
 	return (0);
 
 err:	(void)__dbenv_refresh(dbenv);
@@ -278,6 +329,20 @@ __dbenv_remove(dbenv, db_home, flags)
 	DB_ENV *dbenv;
 	const char *db_home;
 	u_int32_t flags;
+{
+	return (__dbenv_iremove(dbenv, db_home, flags, 1));
+}
+
+/*
+ * __dbenv_iremove --
+ *	Discard an environment, internal version.
+ */
+static int
+__dbenv_iremove(dbenv, db_home, flags, destroy_handle)
+	DB_ENV *dbenv;
+	const char *db_home;
+	u_int32_t flags;
+	int destroy_handle;
 {
 	int ret, t_ret;
 
@@ -311,8 +376,10 @@ __dbenv_remove(dbenv, db_home, flags)
 err:	if ((t_ret = __dbenv_refresh(dbenv)) != 0 && ret == 0)
 		ret = t_ret;
 
-	memset(dbenv, CLEAR_BYTE, sizeof(DB_ENV));
-	__os_free(dbenv, sizeof(DB_ENV));
+	if (destroy_handle) {
+		memset(dbenv, CLEAR_BYTE, sizeof(DB_ENV));
+		__os_free(NULL, dbenv, sizeof(DB_ENV));
+	}
 
 	return (ret);
 }
@@ -410,18 +477,34 @@ __dbenv_close(dbenv, flags)
 	DB_ENV *dbenv;
 	u_int32_t flags;
 {
-	int ret;
+	int ret, t_ret;
 
 	COMPQUIET(flags, 0);
 
 	PANIC_CHECK(dbenv);
+	ret = 0;
 
-	ret = __dbenv_refresh(dbenv);
+	/*
+	 * Before checking the reference count, we have to see if we
+	 * were in the middle of restoring transactions and need to
+	 * close the open files.
+	 */
+	if (TXN_ON(dbenv))
+		__txn_preclose(dbenv);
+
+	if (dbenv->db_ref != 0) {
+		__db_err(dbenv,
+		    "Database handles open during environment close");
+		ret = EINVAL;
+	}
+
+	if ((t_ret = __dbenv_refresh(dbenv)) != 0 && ret == 0)
+		ret = t_ret;
 
 	/* Discard the structure if we allocated it. */
 	if (!F_ISSET(dbenv, DB_ENV_USER_ALLOC)) {
 		memset(dbenv, CLEAR_BYTE, sizeof(DB_ENV));
-		__os_free(dbenv, sizeof(DB_ENV));
+		__os_free(NULL, dbenv, sizeof(DB_ENV));
 	}
 
 	return (ret);
@@ -435,10 +518,24 @@ static int
 __dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
 {
+	DB_MPOOL *dbmp;
 	int ret, t_ret;
 	char **p;
 
 	ret = 0;
+
+	/*
+	 * Discard DB list and its mutex.
+	 *
+	 * !!!
+	 * This must be done before we close the mpool region because we
+	 * may have allocated the DB handle mutex in the mpool region.
+	 */
+	LIST_INIT(&dbenv->dblist);
+	if (dbenv->dblist_mutexp != NULL) {
+		dbmp = dbenv->mp_handle;
+		__db_mutex_free(dbenv, dbmp->reginfo, dbenv->dblist_mutexp);
+	}
 
 	/*
 	 * Close subsystems, in the reverse order they were opened (txn
@@ -465,11 +562,6 @@ __dbenv_refresh(dbenv)
 			ret = t_ret;
 	}
 
-	/* Discard DB list and its mutex. */
-	LIST_INIT(&dbenv->dblist);
-	if (dbenv->dblist_mutexp != NULL)
-		__db_mutex_free(dbenv, dbenv->reginfo, dbenv->dblist_mutexp);
-
 	/* Detach from the region. */
 	if (dbenv->reginfo != NULL) {
 		if ((t_ret = __db_e_detach(dbenv, 0)) != 0 && ret == 0)
@@ -482,24 +574,24 @@ __dbenv_refresh(dbenv)
 	}
 
 	/* Clean up the structure. */
-	dbenv->db_panic = 0;
+	dbenv->panic_errval = 0;
 
 	if (dbenv->db_home != NULL) {
-		__os_freestr(dbenv->db_home);
+		__os_freestr(dbenv, dbenv->db_home);
 		dbenv->db_home = NULL;
 	}
 	if (dbenv->db_log_dir != NULL) {
-		__os_freestr(dbenv->db_log_dir);
+		__os_freestr(dbenv, dbenv->db_log_dir);
 		dbenv->db_log_dir = NULL;
 	}
 	if (dbenv->db_tmp_dir != NULL) {
-		__os_freestr(dbenv->db_tmp_dir);
+		__os_freestr(dbenv, dbenv->db_tmp_dir);
 		dbenv->db_tmp_dir = NULL;
 	}
 	if (dbenv->db_data_dir != NULL) {
 		for (p = dbenv->db_data_dir; *p != NULL; ++p)
-			__os_freestr(*p);
-		__os_free(dbenv->db_data_dir,
+			__os_freestr(dbenv, *p);
+		__os_free(dbenv, dbenv->db_data_dir,
 		    dbenv->data_cnt * sizeof(char **));
 		dbenv->db_data_dir = NULL;
 	}
@@ -508,12 +600,12 @@ __dbenv_refresh(dbenv)
 	dbenv->db_mode = 0;
 
 	if (dbenv->lockfhp != NULL) {
-		__os_free(dbenv->lockfhp, sizeof(*dbenv->lockfhp));
+		__os_free(dbenv, dbenv->lockfhp, sizeof(*dbenv->lockfhp));
 		dbenv->lockfhp = NULL;
 	}
 
 	if (dbenv->dtab != NULL) {
-		__os_free(dbenv->dtab,
+		__os_free(dbenv, dbenv->dtab,
 		    dbenv->dtab_size * sizeof(dbenv->dtab[0]));
 		dbenv->dtab = NULL;
 		dbenv->dtab_size = 0;
@@ -707,9 +799,9 @@ done:	len =
 	 */
 #define	DB_TRAIL	"BDBXXXXXX"
 	str_len = len + sizeof(DB_TRAIL) + 10;
-	if ((ret = __os_malloc(dbenv, str_len, NULL, &str)) != 0) {
+	if ((ret = __os_malloc(dbenv, str_len, &str)) != 0) {
 		if (tmp_free)
-			__os_freestr(etmp.db_tmp_dir);
+			__os_freestr(dbenv, etmp.db_tmp_dir);
 		return (ret);
 	}
 
@@ -722,7 +814,7 @@ done:	len =
 
 	/* Discard any space allocated to find the temp directory. */
 	if (tmp_free) {
-		__os_freestr(etmp.db_tmp_dir);
+		__os_freestr(dbenv, etmp.db_tmp_dir);
 		tmp_free = 0;
 	}
 
@@ -731,7 +823,7 @@ done:	len =
 	 * return it, otherwise, try and find another one to open.
 	 */
 	if (data_entry != -1 && __os_exists(str, NULL) != 0) {
-		__os_free(str, str_len);
+		__os_free(dbenv, str, str_len);
 		a = b = c = NULL;
 		goto retry;
 	}
@@ -739,12 +831,12 @@ done:	len =
 	/* Create the file if so requested. */
 	if (tmp_create &&
 	    (ret = __db_tmp_open(dbenv, tmp_oflags, str, fhp)) != 0) {
-		__os_free(str, str_len);
+		__os_free(dbenv, str, str_len);
 		return (ret);
 	}
 
 	if (namep == NULL)
-		__os_free(str, str_len);
+		__os_free(dbenv, str, str_len);
 	else
 		*namep = str;
 	return (0);
@@ -753,8 +845,10 @@ done:	len =
 /*
  * __db_home --
  *	Find the database home.
+ *
+ * PUBLIC:	int __db_home __P((DB_ENV *, const char *, u_int32_t));
  */
-static int
+int
 __db_home(dbenv, db_home, flags)
 	DB_ENV *dbenv;
 	const char *db_home;
@@ -861,6 +955,12 @@ illegal:	__db_err(dbenv, "mis-formatted name-value pair: %s", s);
 		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
 			goto badarg;
 		return (dbenv->set_lg_max(dbenv, v1));
+	}
+
+	if (!strcasecmp(name, "set_lg_regionmax")) {
+		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
+			goto badarg;
+		return (dbenv->set_lg_regionmax(dbenv, v1));
 	}
 
 	if (!strcasecmp(name, "set_lg_dir") ||

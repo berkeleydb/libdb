@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test030.tcl,v 11.13 2000/08/25 14:21:55 sue Exp $
+# $Id: test030.tcl,v 11.14 2001/01/25 18:23:10 bostic Exp $
 #
 # DB Test 30: Test DB_NEXT_DUP Functionality.
 proc test030 { method {nentries 10000} args } {

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_open.c,v 11.31 2000/12/20 17:59:29 ubell Exp $";
+static const char revid[] = "$Id: qam_open.c,v 11.35 2001/05/02 16:01:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,14 +56,10 @@ __qam_open(dbp, name, base_pgno, mode, flags)
 		return (EINVAL);
 	}
 	/* Initialize the remaining fields/methods of the DB. */
-	dbp->del = __qam_delete;
-	dbp->put = __qam_put;
 	dbp->stat = __qam_stat;
 	dbp->sync = __qam_sync;
 	dbp->db_am_remove = __qam_remove;
 	dbp->db_am_rename = __qam_rename;
-
-	metalock.off = LOCK_INVALID;
 
 	/*
 	 * Get a cursor.  If DB_CREATE is specified, we may be creating
@@ -180,7 +176,7 @@ done:	t->q_meta = base_pgno;
 		t->finfo.lsn_offset = 0;
 
 		t->pginfo.db_pagesize = dbp->pgsize;
-		t->pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP);
+		t->pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP) ? 1 : 0;
 		t->pgcookie.data = &t->pginfo;
 		t->pgcookie.size = sizeof(DB_PGINFO);
 

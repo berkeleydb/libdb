@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_method.c,v 11.5 2000/12/21 19:16:42 bostic Exp $";
+static const char revid[] = "$Id: lock_method.c,v 11.8 2001/04/03 15:14:21 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,12 +38,12 @@ __lock_set_lk_conflicts(dbenv, lk_conflicts, lk_modes)
 	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lk_conflicts");
 
 	if (dbenv->lk_conflicts != NULL) {
-		__os_free(dbenv->lk_conflicts,
+		__os_free(dbenv, dbenv->lk_conflicts,
 		    dbenv->lk_modes * dbenv->lk_modes);
 		dbenv->lk_conflicts = NULL;
 	}
 	if ((ret = __os_malloc(dbenv,
-	    lk_modes * lk_modes, NULL, &dbenv->lk_conflicts)) != 0)
+	    lk_modes * lk_modes, &dbenv->lk_conflicts)) != 0)
 		return (ret);
 	memcpy(dbenv->lk_conflicts, lk_conflicts, lk_modes * lk_modes);
 	dbenv->lk_modes = lk_modes;
@@ -66,6 +66,9 @@ __lock_set_lk_detect(dbenv, lk_detect)
 
 	switch (lk_detect) {
 	case DB_LOCK_DEFAULT:
+	case DB_LOCK_MAXLOCKS:
+	case DB_LOCK_MINLOCKS:
+	case DB_LOCK_MINWRITE:
 	case DB_LOCK_OLDEST:
 	case DB_LOCK_RANDOM:
 	case DB_LOCK_YOUNGEST:

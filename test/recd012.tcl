@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd012.tcl,v 11.14 2000/12/11 17:24:55 sue Exp $
+# $Id: recd012.tcl,v 11.17 2001/05/17 20:37:05 bostic Exp $
 #
 # Recovery Test 12.
 # Test recovery handling of file opens and closes.
@@ -24,9 +24,9 @@ proc recd012 { method {start 0} \
 		puts "Recd012: skipping for specific pagesizes"
 		return
 	}
-		
+
 	for { set i $start } { $i <= $niter } { incr i } {
-	
+
 		env_cleanup $testdir
 
 		# For repeatability, we pass in the iteration number
@@ -35,13 +35,13 @@ proc recd012 { method {start 0} \
 		# This lets us re-run a potentially failing iteration
 		# without having to start from the beginning and work
 		# our way to it.
-		# 
+		#
 		# The number of databases ranges from 4 to 8 and is
 		# a function of $niter
 #		set ndbs [expr ($i % 5) + 4]
-		
+
 		recd012_body \
-		    $method $ndbs $i $noutiter $niniter $pagesize $tnum $args 
+		    $method $ndbs $i $noutiter $niniter $pagesize $tnum $args
 	}
 }
 
@@ -96,18 +96,18 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		set db [eval berkdb_open $oflags $dbname]
 		error_check_good db($i) [is_valid_db $db] TRUE
 		error_check_good db($i)_close [$db close] 0
-	}	
+	}
 	close $f
 
 	error_check_good env_close [$dbenv close] 0
-	
+
 	# Now we get to the meat of things.  Our goal is to do some number
 	# of opens, closes, updates, and shutdowns (simulated here by a
 	# close of all open handles and a close/reopen of the environment,
 	# with or without an envremove), matching the regular expression
 	#
 	#	((O[OUC]+S)+R+V)
-	# 
+	#
 	# We'll repeat the inner + a random number up to $niniter times,
 	# and the outer + a random number up to $noutiter times.
 	#
@@ -120,8 +120,8 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	    ops."
 	for { set i 0 } { $i < $out } { incr i } {
 		set child [open "|$tclsh_path" w]
-		
-		# For performance, don't source everything, 
+
+		# For performance, don't source everything,
 		# just what we'll need.
 		puts $child "load $tcllib"
 		puts $child "set fixed_len $fixed_len"
@@ -142,26 +142,26 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		for { set j 0 } { $j < $nrecs } { incr j } {
 			set ret [catch {exec $util_path/db_recover \
 			    -h $testdir} res]
-			if { $ret != 0 } { 
+			if { $ret != 0 } {
 				puts "FAIL: db_recover returned with nonzero\
 				    exit status, output as follows:"
 				file mkdir /tmp/12out
 				set fd [open /tmp/12out/[pid] w]
-				puts $fd $res 
+				puts $fd $res
 				close $fd
 			}
 			error_check_good recover($j) $ret 0
 		}
-		
+
 	}
 
-	# Run recovery one final time;  it doesn't make sense to 
+	# Run recovery one final time;  it doesn't make sense to
 	# check integrity if we do not.
 	set ret [catch {exec $util_path/db_recover -h $testdir} res]
-	if { $ret != 0 } { 
+	if { $ret != 0 } {
 		puts "FAIL: db_recover returned with nonzero\
 		    exit status, output as follows:"
-		puts $res 
+		puts $res
 	}
 
 	# Make sure each datum is the correct filename.
@@ -188,11 +188,10 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	close $f
 	error_check_good env_close_integrity [$dbenv close] 0
 
-	
 	# Verify
-	error_check_good verify [verify_dir $testdir "\t\tRecd0$tnum.d: "] 0
+	error_check_good verify \
+	    [verify_dir $testdir "\t\tRecd0$tnum.d: " 0 0 1] 0
 }
-
 
 proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
     ofname args } {
@@ -202,7 +201,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 	} else {
 		set keybase .[repeat abcdefghijklmnopqrstuvwxyz 4]
 	}
-	
+
 	# Initialize our random number generator, repeatably based on an arg.
 	berkdb srand $rnd
 
@@ -229,7 +228,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 	}
 	close $f
 
-	# We now have $ndbs extant databases.  
+	# We now have $ndbs extant databases.
 	# Open one of them, just to get us started.
 	set opendbs {}
 	set oflags "-env $dbenv $args"
@@ -261,7 +260,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			set pair [lindex $opendbs $n]
 			set udb [lindex $pair 0]
 			set uname [lindex $pair 1]
-			
+
 			set key [berkdb random_int 1000 1999]$keybase
 			set data [chop_data $method $uname]
 			error_check_good put($uname,$udb,$key,$data) \
@@ -273,12 +272,12 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 				    [$curtxn commit] 0
 				set curtxn [$dbenv txn]
 				error_check_good txn_reopen \
-			    	    [is_valid_txn $curtxn $dbenv] TRUE
+				    [is_valid_txn $curtxn $dbenv] TRUE
 			}
 		}
 		2 {
 			# Close.
-	
+
 			if { [llength $opendbs] == 0 } {
 				# If none are open, open instead of closing.
 				recd012_open
@@ -292,7 +291,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			# Do it.
 			set which [berkdb random_int 0 \
 			    [expr [llength $opendbs] - 1]]
-	
+
 			set db [lindex [lindex $opendbs $which] 0]
 			error_check_good db_choice [is_valid_db $db] TRUE
 			global errorCode errorInfo
@@ -301,8 +300,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			    [[lindex [lindex $opendbs $which] 0] close] 0
 			set opendbs [lreplace $opendbs $which $which]
 			incr nopenfiles -1
-	
-			
+
 			# Reopen txn.
 			set curtxn [$dbenv txn]
 			error_check_good txn_reopen \
@@ -335,12 +333,12 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 	    [$ofdb put -txn $oftxn $recd012_ofkey $nopenfiles] 0
 	error_check_good of_commit [$oftxn commit] 0
 	error_check_good ofdb_close [$ofdb close] 0
-}	
+}
 
 proc recd012_open { } {
-	# This is basically an inline and has to modify curtxn, 
+	# This is basically an inline and has to modify curtxn,
 	# so use upvars.
-	upvar curtxn curtxn 
+	upvar curtxn curtxn
 	upvar ndbs ndbs
 	upvar dbname dbname
 	upvar dbenv dbenv
@@ -375,7 +373,7 @@ proc recd012_open { } {
 
 # Update the database containing the number of files that db_recover has
 # to contend with--we want to avoid letting it run out of file descriptors.
-# We do this by keeping track of the number of unclosed opens since the 
+# We do this by keeping track of the number of unclosed opens since the
 # checkpoint before last.
 # $recd012_ofkey stores this current value;  the two dups available
 # at $recd012_ofckptkey store the number of opens since the last checkpoint
@@ -399,7 +397,7 @@ proc recd012_nopenfiles_ckpt { env db nopenfiles } {
 	error_check_good del [$dbc del] 0
 
 	set nopenfiles [expr $nopenfiles - $discard]
-	
+
 	# Get the next ckpt value
 	set dbt [$dbc get -nextdup]
 	error_check_good set2 [llength $dbt] 1
@@ -410,10 +408,10 @@ proc recd012_nopenfiles_ckpt { env db nopenfiles } {
 
 	# Put this new number at the end of the dup set.
 	error_check_good put [$dbc put -keylast $recd012_ofckptkey $sincelast] 0
-	
+
 	# We should never deadlock since we're the only one in this db.
 	error_check_good dbc_close [$dbc close] 0
-	error_check_good txn_commit [$txn commit] 0	
+	error_check_good txn_commit [$txn commit] 0
 
 	return $nopenfiles
 }

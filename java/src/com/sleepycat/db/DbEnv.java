@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2001
+ *      Sleepycat Software.  All rights reserved.
  *
- *	$Id: DbEnv.java,v 11.25 2001/01/04 14:23:30 dda Exp $
+ * $Id: DbEnv.java,v 11.33 2001/07/02 01:03:22 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -62,7 +62,7 @@ public class DbEnv
     {
         dblist_.addElement(db);
     }
-    
+
     //
     // Remove from the private list of Db's.
     //
@@ -70,7 +70,7 @@ public class DbEnv
     {
         dblist_.removeElement(db);
     }
-    
+
     //
     // Iterate all the Db's in the list, and
     // notify them that the environment is closing,
@@ -85,7 +85,7 @@ public class DbEnv
         }
         dblist_.removeAllElements();
     }
-    
+
     // close discards any internal memory.
     // After using close, the DbEnv can be reopened.
     //
@@ -170,7 +170,7 @@ public class DbEnv
     private native void _set_errpfx(String errpfx);
 
     // Feedback
-    public void set_feedback(DbFeedback feedback)
+    public void set_feedback(DbEnvFeedback feedback)
          throws DbException
     {
         feedback_ = feedback;
@@ -178,18 +178,18 @@ public class DbEnv
     }
 
     // (Internal)
-    private native void feedback_changed(DbFeedback feedback)
+    private native void feedback_changed(DbEnvFeedback feedback)
          throws DbException;
 
     // Generate debugging messages.
-    public native void set_verbose(int which, int onoff)
+    public native void set_verbose(int which, boolean onoff)
          throws DbException;
 
     public native void set_data_dir(String data_dir)
          throws DbException;
 
     // Log buffer size.
-    public native void set_lg_bsize(/*u_int32_t*/ int lg_max)
+    public native void set_lg_bsize(/*u_int32_t*/ int lg_bsize)
          throws DbException;
 
     // Log directory.
@@ -198,6 +198,10 @@ public class DbEnv
 
     // Maximum log file size.
     public native void set_lg_max(/*u_int32_t*/ int lg_max)
+         throws DbException;
+
+    // Log region size.
+    public native void set_lg_regionmax(/*u_int32_t*/ int lg_regionmax)
          throws DbException;
 
     // Two dimensional conflict matrix.
@@ -254,11 +258,12 @@ public class DbEnv
     public native static void set_region_init(int region_init)
          throws DbException;
 
-    public native void set_flags(int flags, int onoff)
+    public native void set_flags(int flags, boolean onoff)
          throws DbException;
 
-    public native void set_server(String host, long cl_timeout,
-                                  long sv_timeout, int flags)
+    public native void set_rpc_server(DbClient client, String host,
+                                      long cl_timeout, long sv_timeout,
+                                      int flags)
          throws DbException;
 
     public native void set_shm_key(long shm_key)
@@ -363,6 +368,8 @@ public class DbEnv
     public native int txn_checkpoint(int kbyte, int min, int flags)
          throws DbException;
 
+    public native DbPreplist[] txn_recover(int count, int flags)
+        throws DbException;
 
     public native DbTxnStat txn_stat()
          throws DbException;
@@ -375,7 +382,7 @@ public class DbEnv
     private long private_info_ = 0;
     private int constructor_flags_ = 0;
     private Vector dblist_ = new Vector();    // Db's that are open
-    private DbFeedback feedback_ = null;
+    private DbEnvFeedback feedback_ = null;
     private DbRecoveryInit recovery_init_ = null;
     private DbTxnRecover tx_recover_ = null;
     private DbOutputStreamErrcall errstream_ =
@@ -386,7 +393,6 @@ public class DbEnv
     static {
         Db.load_db();
     }
-
 }
 
 // end of DbEnv.java

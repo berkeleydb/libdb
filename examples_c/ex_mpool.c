@@ -1,32 +1,25 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_mpool.c,v 11.13 2000/10/27 20:32:00 dda Exp $
+ * $Id: ex_mpool.c,v 11.19 2001/05/10 17:14:05 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#ifdef _WIN32
+extern int optind;
+extern char *optarg;
+extern int getopt(int, char * const *, const char *);
+#else
 #include <unistd.h>
 #endif
 
@@ -88,7 +81,8 @@ main(argc, argv)
 	argc -= optind;
 	argv += optind;
 
-	return (run_mpool(pagesize, cachesize, hits, npages, progname));
+	return (run_mpool(pagesize, cachesize,
+	    hits, npages, progname) == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void
@@ -98,7 +92,7 @@ usage(progname)
 	(void)fprintf(stderr,
 	    "usage: %s [-c cachesize] [-h hits] [-n npages] [-p pagesize]\n",
 	    progname);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 #else
 int
@@ -112,7 +106,8 @@ ex_mpool()
 	npages = 50;
 	pagesize = 1024;
 
-	return (run_mpool(pagesize, cachesize, hits, npages, progname));
+	return (run_mpool(pagesize, cachesize,
+	    hits, npages, progname) == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 #endif
 
@@ -143,7 +138,8 @@ init(file, pagesize, npages, progname)
 	char *file, *progname;
 	int pagesize, npages;
 {
-	int cnt, flags, fd;
+	FILE *fp;
+	int cnt, flags;
 	char *p;
 
 	/*
@@ -154,7 +150,7 @@ init(file, pagesize, npages, progname)
 #ifdef DB_WIN32
 	flags |= O_BINARY;
 #endif
-	if ((fd = open(file, flags, 0666)) < 0) {
+	if ((fp = fopen(file, "wb")) == NULL) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, file, strerror(errno));
 		return (ERROR_RETURN);
@@ -167,14 +163,14 @@ init(file, pagesize, npages, progname)
 	/* The pages are numbered from 0. */
 	for (cnt = 0; cnt <= npages; ++cnt) {
 		*(int *)p = cnt;
-		if (write(fd, p, pagesize) != pagesize) {
+		if (fwrite(p, pagesize, 1, fp) != 1) {
 			fprintf(stderr,
 			    "%s: %s: %s\n", progname, file, strerror(errno));
 			return (ERROR_RETURN);
 		}
 	}
 
-	(void)close(fd);
+	(void)fclose(fp);
 	free(p);
 	return (0);
 }

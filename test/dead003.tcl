@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead003.tcl,v 1.8 2000/08/25 14:21:50 sue Exp $
+# $Id: dead003.tcl,v 1.10 2001/05/17 20:37:04 bostic Exp $
 #
 # Deadlock Test 3.
 # Test DB_LOCK_OLDEST and DB_LOCK_YOUNGEST
@@ -27,7 +27,7 @@ proc dead003 { { procs "2 4 10" } {tests "ring clump" } } {
 		foreach t $tests {
 			set pidlist ""
 			foreach n $procs {
-				sentinel_init 
+				sentinel_init
 
 				# Fire off the tests
 				puts "\tDead003: $n procs of test $t"

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000
+# Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb009.tcl,v 11.4 2000/08/25 14:21:53 sue Exp $
+# $Id: sdb009.tcl,v 11.5 2001/01/25 18:23:07 bostic Exp $
 #
 # Subdatabase Test 9 (replacement)
 # Test the DB->rename method.

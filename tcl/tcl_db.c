@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_db.c,v 11.55 2000/11/28 20:12:31 bostic Exp $";
+static const char revid[] = "$Id: tcl_db.c,v 11.76 2001/07/03 19:04:10 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,19 +25,23 @@ static const char revid[] = "$Id: tcl_db.c,v 11.55 2000/11/28 20:12:31 bostic Ex
 /*
  * Prototypes for procedures defined later in this file:
  */
+static int	tcl_DbAssociate __P((Tcl_Interp *,
+    int, Tcl_Obj * CONST*, DB *));
 static int	tcl_DbClose __P((Tcl_Interp *,
     int, Tcl_Obj * CONST*, DB *, DBTCL_INFO *));
 static int	tcl_DbDelete __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
-static int	tcl_DbGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
+static int	tcl_DbGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *, int));
 static int	tcl_DbKeyRange __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
 static int	tcl_DbPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
 static int	tcl_DbStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
+static int	tcl_DbTruncate __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
 static int	tcl_DbCursor __P((Tcl_Interp *,
     int, Tcl_Obj * CONST*, DB *, DBC **));
 static int	tcl_DbJoin __P((Tcl_Interp *,
     int, Tcl_Obj * CONST*, DB *, DBC **));
 static int	tcl_DbGetjoin __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
 static int	tcl_DbCount __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB *));
+static int	tcl_second_call __P((DB *, const DBT *, const DBT *, DBT *));
 
 /*
  *
@@ -54,6 +58,7 @@ db_Cmd(clientData, interp, objc, objv)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *dbcmds[] = {
+		"associate",
 		"close",
 		"count",
 		"cursor",
@@ -64,15 +69,18 @@ db_Cmd(clientData, interp, objc, objv)
 		"is_byteswapped",
 		"join",
 		"keyrange",
+		"pget",
 		"put",
 		"stat",
 		"sync",
 #if CONFIG_TEST
 		"test",
 #endif
+		"truncate",
 		NULL
 	};
 	enum dbcmds {
+		DBASSOCIATE,
 		DBCLOSE,
 		DBCOUNT,
 		DBCURSOR,
@@ -83,19 +91,22 @@ db_Cmd(clientData, interp, objc, objv)
 		DBSWAPPED,
 		DBJOIN,
 		DBKEYRANGE,
+		DBPGET,
 		DBPUT,
 		DBSTAT,
-		DBSYNC
+		DBSYNC,
 #if CONFIG_TEST
-		, DBTEST
+		DBTEST,
 #endif
+		DBTRUNCATE
 	};
 	DB *dbp;
 	DBC *dbc;
 	DBTCL_INFO *dbip;
 	DBTCL_INFO *ip;
+	DBTYPE type;
 	Tcl_Obj *res;
-	int cmdindex, result, ret;
+	int cmdindex, isswapped, result, ret;
 	char newname[MSG_SIZE];
 
 	Tcl_ResetResult(interp);
@@ -126,6 +137,9 @@ db_Cmd(clientData, interp, objc, objv)
 
 	res = NULL;
 	switch ((enum dbcmds)cmdindex) {
+	case DBASSOCIATE:
+		result = tcl_DbAssociate(interp, objc, objv, dbp);
+		break;
 	case DBCLOSE:
 		result = tcl_DbClose(interp, objc, objv, dbp, dbip);
 		break;
@@ -133,7 +147,10 @@ db_Cmd(clientData, interp, objc, objv)
 		result = tcl_DbDelete(interp, objc, objv, dbp);
 		break;
 	case DBGET:
-		result = tcl_DbGet(interp, objc, objv, dbp);
+		result = tcl_DbGet(interp, objc, objv, dbp, 0);
+		break;
+	case DBPGET:
+		result = tcl_DbGet(interp, objc, objv, dbp, 1);
 		break;
 	case DBKEYRANGE:
 		result = tcl_DbKeyRange(interp, objc, objv, dbp);
@@ -153,8 +170,8 @@ db_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = dbp->get_byteswapped(dbp);
-		res = Tcl_NewIntObj(ret);
+		ret = dbp->get_byteswapped(dbp, &isswapped);
+		res = Tcl_NewIntObj(isswapped);
 		break;
 	case DBGETTYPE:
 		/*
@@ -165,14 +182,14 @@ db_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = dbp->get_type(dbp);
-		if (ret == DB_BTREE)
+		ret = dbp->get_type(dbp, &type);
+		if (type == DB_BTREE)
 			res = Tcl_NewStringObj("btree", strlen("btree"));
-		else if (ret == DB_HASH)
+		else if (type == DB_HASH)
 			res = Tcl_NewStringObj("hash", strlen("hash"));
-		else if (ret == DB_RECNO)
+		else if (type == DB_RECNO)
 			res = Tcl_NewStringObj("recno", strlen("recno"));
-		else if (ret == DB_QUEUE)
+		else if (type == DB_QUEUE)
 			res = Tcl_NewStringObj("queue", strlen("queue"));
 		else {
 			Tcl_SetResult(interp,
@@ -253,6 +270,9 @@ db_Cmd(clientData, interp, objc, objv)
 		result = tcl_EnvTest(interp, objc, objv, dbp->dbenv);
 		break;
 #endif
+	case DBTRUNCATE:
+		result = tcl_DbTruncate(interp, objc, objv, dbp);
+		break;
 	}
 	/*
 	 * Only set result if we have a res.  Otherwise, lower
@@ -287,16 +307,14 @@ tcl_DbStat(interp, objc, objv, dbp)
 	flag = 0;
 
 	if (objc > 3) {
-		Tcl_WrongNumArgs(interp, 2, objv, "?-recordcount?");
+		Tcl_WrongNumArgs(interp, 2, objv, "?-faststat?");
 		return (TCL_ERROR);
 	}
 
 	if (objc == 3) {
 		arg = Tcl_GetStringFromObj(objv[2], NULL);
-		if (strcmp(arg, "-recordcount") == 0)
-			flag = DB_RECORDCOUNT;
-		else if (strcmp(arg, "-cachedcounts") == 0)
-			flag = DB_CACHED_COUNTS;
+		if (strcmp(arg, "-faststat") == 0)
+			flag = DB_FAST_STAT;
 		else {
 			Tcl_SetResult(interp,
 			    "db stat: unknown arg", TCL_STATIC);
@@ -305,12 +323,12 @@ tcl_DbStat(interp, objc, objv, dbp)
 	}
 
 	_debug_check();
-	ret = dbp->stat(dbp, &sp, NULL, flag);
+	ret = dbp->stat(dbp, &sp, flag);
 	result = _ReturnSetup(interp, ret, "db stat");
 	if (result == TCL_ERROR)
 		return (result);
 
-	type = dbp->get_type(dbp);
+	(void)dbp->get_type(dbp, &type);
 	/*
 	 * Have our stats, now construct the name value
 	 * list pairs and free up the memory.
@@ -326,42 +344,51 @@ tcl_DbStat(interp, objc, objv, dbp)
 		MAKE_STAT_LIST("Page size", hsp->hash_pagesize);
 		MAKE_STAT_LIST("Number of keys", hsp->hash_nkeys);
 		MAKE_STAT_LIST("Number of records", hsp->hash_ndata);
-		MAKE_STAT_LIST("Estim. number of elements", hsp->hash_nelem);
+		MAKE_STAT_LIST("Estimated number of elements", hsp->hash_nelem);
 		MAKE_STAT_LIST("Fill factor", hsp->hash_ffactor);
 		MAKE_STAT_LIST("Buckets", hsp->hash_buckets);
-		MAKE_STAT_LIST("Free pages", hsp->hash_free);
-		MAKE_STAT_LIST("Bytes free", hsp->hash_bfree);
-		MAKE_STAT_LIST("Number of big pages", hsp->hash_bigpages);
-		MAKE_STAT_LIST("Big pages bytes free", hsp->hash_big_bfree);
-		MAKE_STAT_LIST("Overflow pages", hsp->hash_overflows);
-		MAKE_STAT_LIST("Overflow bytes free", hsp->hash_ovfl_free);
-		MAKE_STAT_LIST("Duplicate pages", hsp->hash_dup);
-		MAKE_STAT_LIST("Duplicate pages bytes free",
-		    hsp->hash_dup_free);
+		MAKE_STAT_LIST("Flags", hsp->hash_metaflags);
+		if (flag != DB_FAST_STAT) {
+			MAKE_STAT_LIST("Free pages", hsp->hash_free);
+			MAKE_STAT_LIST("Bytes free", hsp->hash_bfree);
+			MAKE_STAT_LIST("Number of big pages",
+			    hsp->hash_bigpages);
+			MAKE_STAT_LIST("Big pages bytes free",
+			    hsp->hash_big_bfree);
+			MAKE_STAT_LIST("Overflow pages", hsp->hash_overflows);
+			MAKE_STAT_LIST("Overflow bytes free",
+			    hsp->hash_ovfl_free);
+			MAKE_STAT_LIST("Duplicate pages", hsp->hash_dup);
+			MAKE_STAT_LIST("Duplicate pages bytes free",
+			    hsp->hash_dup_free);
+		}
 	} else if (type == DB_QUEUE) {
 		qsp = (DB_QUEUE_STAT *)sp;
 		MAKE_STAT_LIST("Magic", qsp->qs_magic);
 		MAKE_STAT_LIST("Version", qsp->qs_version);
 		MAKE_STAT_LIST("Page size", qsp->qs_pagesize);
+		MAKE_STAT_LIST("Extent size", qsp->qs_extentsize);
 		MAKE_STAT_LIST("Number of records", qsp->qs_ndata);
-		MAKE_STAT_LIST("Number of pages", qsp->qs_pages);
-		MAKE_STAT_LIST("Bytes free", qsp->qs_pgfree);
 		MAKE_STAT_LIST("Record length", qsp->qs_re_len);
 		MAKE_STAT_LIST("Record pad", qsp->qs_re_pad);
 		MAKE_STAT_LIST("First record number", qsp->qs_first_recno);
 		MAKE_STAT_LIST("Last record number", qsp->qs_cur_recno);
+		if (flag != DB_FAST_STAT) {
+			MAKE_STAT_LIST("Number of pages", qsp->qs_pages);
+			MAKE_STAT_LIST("Bytes free", qsp->qs_pgfree);
+		}
 	} else {	/* BTREE and RECNO are same stats */
 		bsp = (DB_BTREE_STAT *)sp;
+		MAKE_STAT_LIST("Magic", bsp->bt_magic);
+		MAKE_STAT_LIST("Version", bsp->bt_version);
 		MAKE_STAT_LIST("Number of keys", bsp->bt_nkeys);
 		MAKE_STAT_LIST("Number of records", bsp->bt_ndata);
-		if (flag != DB_RECORDCOUNT) {
-			MAKE_STAT_LIST("Magic", bsp->bt_magic);
-			MAKE_STAT_LIST("Version", bsp->bt_version);
-			MAKE_STAT_LIST("Flags", bsp->bt_metaflags);
-			MAKE_STAT_LIST("Minimum keys per page", bsp->bt_minkey);
-			MAKE_STAT_LIST("Fixed record length", bsp->bt_re_len);
-			MAKE_STAT_LIST("Record pad", bsp->bt_re_pad);
-			MAKE_STAT_LIST("Page size", bsp->bt_pagesize);
+		MAKE_STAT_LIST("Minimum keys per page", bsp->bt_minkey);
+		MAKE_STAT_LIST("Fixed record length", bsp->bt_re_len);
+		MAKE_STAT_LIST("Record pad", bsp->bt_re_pad);
+		MAKE_STAT_LIST("Page size", bsp->bt_pagesize);
+		MAKE_STAT_LIST("Flags", bsp->bt_metaflags);
+		if (flag != DB_FAST_STAT) {
 			MAKE_STAT_LIST("Levels", bsp->bt_levels);
 			MAKE_STAT_LIST("Internal pages", bsp->bt_int_pg);
 			MAKE_STAT_LIST("Leaf pages", bsp->bt_leaf_pg);
@@ -380,7 +407,7 @@ tcl_DbStat(interp, objc, objv, dbp)
 	}
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(sp, 0);
+	__os_free(dbp->dbenv, sp, 0);
 	return (result);
 }
 
@@ -437,6 +464,10 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 	(void)Tcl_DeleteCommand(interp, dbip->i_name);
 	_DeleteInfo(dbip);
 	_debug_check();
+
+	/* Paranoia. */
+	dbp->cj_internal = NULL;
+
 	ret = (dbp)->close(dbp, flag);
 	result = _ReturnSetup(interp, ret, "db close");
 	return (result);
@@ -496,7 +527,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 	 * and must be setup up to contain a db_recno_t.  Otherwise the
 	 * key is a "string".
 	 */
-	type = dbp->get_type(dbp);
+	(void)dbp->get_type(dbp, &type);
 
 	/*
 	 * We need to determine where the end of required args are.  If we
@@ -579,12 +610,10 @@ tcl_DbPut(interp, objc, objv, dbp)
 				break;
 			}
 			data.flags = DB_DBT_PARTIAL;
-			result = Tcl_GetIntFromObj(interp, elemv[0], &itmp);
-			data.doff = itmp;
+			result = _GetUInt32(interp, elemv[0], &data.doff);
 			if (result != TCL_OK)
 				break;
-			result = Tcl_GetIntFromObj(interp, elemv[1], &itmp);
-			data.dlen = itmp;
+			result = _GetUInt32(interp, elemv[1], &data.dlen);
 			/*
 			 * NOTE: We don't check result here because all we'd
 			 * do is break anyway, and we are doing that.  If you
@@ -612,8 +641,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 		if (flag == DB_APPEND)
 			recno = 0;
 		else {
-			result = Tcl_GetIntFromObj(interp, objv[objc-2], &itmp);
-			recno = itmp;
+			result = _GetUInt32(interp, objv[objc-2], &recno);
 			if (result != TCL_OK)
 				return (result);
 		}
@@ -653,17 +681,20 @@ tcl_DbPut(interp, objc, objv, dbp)
  * tcl_db_get --
  */
 static int
-tcl_DbGet(interp, objc, objv, dbp)
+tcl_DbGet(interp, objc, objv, dbp, ispget)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB *dbp;			/* Database pointer */
+	int ispget;			/* 1 for pget, 0 for get */
 {
 	static char *dbgetopts[] = {
 		"-consume",
 		"-consume_wait",
+		"-dirty",
 		"-get_both",
 		"-glob",
+		"-multi",
 		"-partial",
 		"-recno",
 		"-rmw",
@@ -673,26 +704,29 @@ tcl_DbGet(interp, objc, objv, dbp)
 	enum dbgetopts {
 		DBGET_CONSUME,
 		DBGET_CONSUME_WAIT,
+		DBGET_DIRTY,
 		DBGET_BOTH,
 		DBGET_GLOB,
+		DBGET_MULTI,
 		DBGET_PART,
 		DBGET_RECNO,
 		DBGET_RMW,
 		DBGET_TXN
 	};
 	DBC *dbc;
-	DBT key, data, save;
+	DBT key, pkey, data, save;
 	DBTYPE type;
 	DB_TXN *txn;
 	Tcl_Obj **elemv, *retlist;
-	db_recno_t recno;
-	u_int32_t flag, cflag, isdup, rmw;
-	int elemc, end, i, itmp, optindex, result, ret, useglob, userecno;
+	u_int32_t flag, cflag, isdup, mflag, rmw;
+	int bufsize, elemc, end, i, itmp, optindex, result, ret;
+	int useglob, useprecno, userecno;
 	char *arg, *pattern, *prefix, msg[MSG_SIZE];
+	db_recno_t precno, recno;
 
 	result = TCL_OK;
-	cflag = flag = rmw = 0;
-	useglob = userecno = 0;
+	cflag = flag = mflag = rmw = 0;
+	useglob = userecno = useprecno = 0;
 	txn = NULL;
 	pattern = prefix = NULL;
 
@@ -705,12 +739,15 @@ tcl_DbGet(interp, objc, objv, dbp)
 	memset(&data, 0, sizeof(data));
 	memset(&save, 0, sizeof(save));
 
+	/* For the primary key in a pget call. */
+	memset(&pkey, 0, sizeof(pkey));
+
 	/*
 	 * Get the command name index from the object based on the options
 	 * defined above.
 	 */
 	i = 2;
-	type = dbp->get_type(dbp);
+	(void)dbp->get_type(dbp, &type);
 	end = objc;
 	while (i < end) {
 		if (Tcl_GetIndexFromObj(interp, objv[i], dbgetopts, "option",
@@ -722,6 +759,13 @@ tcl_DbGet(interp, objc, objv, dbp)
 		}
 		i++;
 		switch ((enum dbgetopts)optindex) {
+		case DBGET_MULTI:
+			mflag |= DB_MULTIPLE;
+			result = Tcl_GetIntFromObj(interp, objv[i], &bufsize);
+			if (result != TCL_OK)
+				goto out;
+			i++;
+			break;
 		case DBGET_BOTH:
 			/*
 			 * Change 'end' and make sure we aren't already past
@@ -738,7 +782,7 @@ tcl_DbGet(interp, objc, objv, dbp)
 			flag = DB_GET_BOTH;
 			break;
 		case DBGET_TXN:
-			if (i == end - 1) {
+			if (i >= end) {
 				Tcl_WrongNumArgs(interp, 2, objv, "?-txn id?");
 				result = TCL_ERROR;
 				break;
@@ -773,7 +817,10 @@ tcl_DbGet(interp, objc, objv, dbp)
 			}
 			break;
 		case DBGET_RMW:
-			rmw = DB_RMW;
+			rmw |= DB_RMW;
+			break;
+		case DBGET_DIRTY:
+			rmw |= DB_DIRTY_READ;
 			break;
 		case DBGET_PART:
 			end = objc - 1;
@@ -795,12 +842,10 @@ tcl_DbGet(interp, objc, objv, dbp)
 				break;
 			}
 			save.flags = DB_DBT_PARTIAL;
-			result = Tcl_GetIntFromObj(interp, elemv[0], &itmp);
-			save.doff = itmp;
+			result = _GetUInt32(interp, elemv[0], &save.doff);
 			if (result != TCL_OK)
 				break;
-			result = Tcl_GetIntFromObj(interp, elemv[1], &itmp);
-			save.dlen = itmp;
+			result = _GetUInt32(interp, elemv[1], &save.dlen);
 			/*
 			 * NOTE: We don't check result here because all we'd
 			 * do is break anyway, and we are doing that.  If you
@@ -818,6 +863,20 @@ tcl_DbGet(interp, objc, objv, dbp)
 
 	if (type == DB_RECNO || type == DB_QUEUE)
 		userecno = 1;
+
+	/*
+	 * XXX
+	 * We technically shouldn't be looking inside the dbp like this,
+	 * but this is the only way to figure out whether the primary
+	 * key should also be a recno.
+	 */
+	if (ispget) {
+		if (dbp->s_primary != NULL &&
+		    (dbp->s_primary->type == DB_RECNO ||
+		    dbp->s_primary->type == DB_QUEUE))
+			useprecno = 1;
+	}
+
 	/*
 	 * Check for illegal combos of options.
 	 */
@@ -862,14 +921,13 @@ tcl_DbGet(interp, objc, objv, dbp)
 	 * ops that don't require returning multiple items, use DB->get
 	 * instead of a cursor operation.
 	 */
-	if (pattern == NULL && (isdup == 0 ||
+	if (pattern == NULL && (isdup == 0 || mflag != 0 ||
 	    flag == DB_SET_RECNO || flag == DB_GET_BOTH ||
 	    flag == DB_CONSUME || flag == DB_CONSUME_WAIT)) {
 		if (flag == DB_GET_BOTH) {
 			if (userecno) {
-				result = Tcl_GetIntFromObj(interp,
-				    objv[(objc - 2)], &itmp);
-				recno = itmp;
+				result = _GetUInt32(interp,
+				    objv[(objc - 2)], &recno);
 				if (result == TCL_OK) {
 					key.data = &recno;
 					key.size = sizeof(db_recno_t);
@@ -885,32 +943,70 @@ tcl_DbGet(interp, objc, objv, dbp)
 			 * Already checked args above.  Fill in key and save.
 			 * Save is used in the dbp->get call below to fill in
 			 * data.
+			 *
+			 * If the "data" here is really a primary key--that
+			 * is, if we're in a pget--and that primary key
+			 * is a recno, treat it appropriately as an int.
 			 */
-			save.data =
-			    Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
-			save.size = itmp;
+			if (useprecno) {
+				result = _GetUInt32(interp,
+				    objv[objc - 1], &precno);
+				if (result == TCL_OK) {
+					save.data = &precno;
+					save.size = sizeof(db_recno_t);
+				} else
+					return (result);
+			} else {
+				save.data = Tcl_GetByteArrayFromObj(
+				    objv[objc-1], &itmp);
+				save.size = itmp;
+			}
 		} else if (flag != DB_CONSUME && flag != DB_CONSUME_WAIT) {
 			if (userecno) {
-				result = Tcl_GetIntFromObj(
-				    interp, objv[(objc - 1)], &itmp);
-				recno = itmp;
+				result = _GetUInt32(
+				    interp, objv[(objc - 1)], &recno);
 				if (result == TCL_OK) {
 					key.data = &recno;
 					key.size = sizeof(db_recno_t);
 				} else
 					return (result);
 			} else {
-				key.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
+				key.data = Tcl_GetByteArrayFromObj(
+				    objv[objc-1], &itmp);
 				key.size = itmp;
+			}
+			if (mflag & DB_MULTIPLE) {
+				if ((ret = __os_malloc(dbp->dbenv,
+				    bufsize,
+				    &save.data)) != 0) {
+					Tcl_SetResult(interp,
+					    db_strerror(ret), TCL_STATIC);
+					goto out;
+				}
+				save.ulen = bufsize;
+				F_CLR(&save, DB_DBT_MALLOC);
+				F_SET(&save, DB_DBT_USERMEM);
 			}
 		}
 
-		memset(&data, 0, sizeof(data));
 		data = save;
 
-		_debug_check();
-
-		ret = dbp->get(dbp, txn, &key, &data, flag | rmw);
+		if (ispget) {
+			if (flag == DB_GET_BOTH) {
+				pkey.data = save.data;
+				pkey.size = save.size;
+				data.data = NULL;
+				data.size = 0;
+			}
+			F_SET(&pkey, DB_DBT_MALLOC);
+			_debug_check();
+			ret = dbp->pget(dbp,
+			    txn, &key, &pkey, &data, flag | rmw);
+		} else {
+			_debug_check();
+			ret = dbp->get(dbp,
+			    txn, &key, &data, flag | rmw | mflag);
+		}
 		result = _ReturnSetup(interp, ret, "db get");
 		if (ret == 0) {
 			/*
@@ -918,26 +1014,49 @@ tcl_DbGet(interp, objc, objv, dbp)
 			 * If it was a recno in key.data, we need to convert
 			 * into a string/object representation of that recno.
 			 */
-			if (type == DB_RECNO || type == DB_QUEUE)
-				result = _SetListRecnoElem(interp, retlist,
-				    *(db_recno_t *)key.data, data.data,
-				    data.size);
-			else
-				result = _SetListElem(interp, retlist,
-				    key.data, key.size, data.data, data.size);
-			/*
-			 * Free space from DB_DBT_MALLOC
-			 */
-			__os_free(data.data, data.size);
+			if (mflag & DB_MULTIPLE)
+				result = _SetMultiList(interp,
+				     retlist, &key, &data, type, flag);
+			else if (type == DB_RECNO || type == DB_QUEUE)
+				if (ispget)
+					result = _Set3DBTList(interp,
+					    retlist, &key, 1, &pkey,
+					    useprecno, &data);
+				else
+					result = _SetListRecnoElem(interp,
+					    retlist, *(db_recno_t *)key.data,
+					    data.data, data.size);
+			else {
+				if (ispget)
+					result = _Set3DBTList(interp,
+					    retlist, &key, 0, &pkey,
+					    useprecno, &data);
+				else
+					result = _SetListElem(interp, retlist,
+					    key.data, key.size,
+					    data.data, data.size);
+			}
 		}
+		/*
+		 * Free space from DBT.
+		 *
+		 * If we set DB_DBT_MALLOC, we need to free the space if
+		 * and only if we succeeded (and thus if DB allocated
+		 * anything).  If DB_DBT_MALLOC is not set, this is a bulk
+		 * get buffer, and needs to be freed no matter what.
+		 */
+		if ((F_ISSET(&data, DB_DBT_MALLOC) && ret == 0) ||
+		    !F_ISSET(&data, DB_DBT_MALLOC))
+			__os_free(dbp->dbenv, data.data, 0);
+		if (ispget && ret == 0)
+			__os_free(dbp->dbenv, pkey.data, pkey.size);
 		if (result == TCL_OK)
 			Tcl_SetObjResult(interp, retlist);
 		goto out;
 	}
 
 	if (userecno) {
-		result = Tcl_GetIntFromObj(interp, objv[(objc - 1)], &itmp);
-		recno = itmp;
+		result = _GetUInt32(interp, objv[(objc - 1)], &recno);
 		if (result == TCL_OK) {
 			key.data = &recno;
 			key.size = sizeof(db_recno_t);
@@ -988,8 +1107,14 @@ tcl_DbGet(interp, objc, objv, dbp)
 			cflag = DB_SET_RANGE;
 	} else
 		cflag = DB_SET;
-	_debug_check();
-	ret = dbc->c_get(dbc, &key, &data, cflag | rmw);
+	if (ispget) {
+		_debug_check();
+		F_SET(&pkey, DB_DBT_MALLOC);
+		ret = dbc->c_pget(dbc, &key, &pkey, &data, cflag | rmw);
+	} else {
+		_debug_check();
+		ret = dbc->c_get(dbc, &key, &data, cflag | rmw);
+	}
 	result = _ReturnSetup(interp, ret, "db get (cursor)");
 	if (result == TCL_ERROR)
 		goto out1;
@@ -1002,31 +1127,41 @@ tcl_DbGet(interp, objc, objv, dbp)
 		/*
 		 * Build up our {name value} sublist
 		 */
-		result = _SetListElem(interp, retlist,
-			key.data, key.size,
-			data.data, data.size);
+		if (ispget)
+			result = _Set3DBTList(interp, retlist, &key, 0,
+			    &pkey, useprecno, &data);
+		else
+			result = _SetListElem(interp, retlist,
+			    key.data, key.size, data.data, data.size);
 		/*
 		 * Free space from DB_DBT_MALLOC
 		 */
-		__os_free(data.data, data.size);
+		if (ispget)
+			__os_free(dbp->dbenv, pkey.data, pkey.size);
+		__os_free(dbp->dbenv, data.data, data.size);
 		if (result != TCL_OK)
 			break;
 		/*
 		 * Append {name value} to return list
 		 */
 		memset(&key, 0, sizeof(key));
+		memset(&pkey, 0, sizeof(pkey));
 		memset(&data, 0, sizeof(data));
 		/*
 		 * Restore any "partial" info we have saved.
 		 */
 		data = save;
-		ret = dbc->c_get(dbc, &key, &data, cflag | rmw);
+		if (ispget) {
+			F_SET(&pkey, DB_DBT_MALLOC);
+			ret = dbc->c_pget(dbc, &key, &pkey, &data, cflag | rmw);
+		} else
+			ret = dbc->c_get(dbc, &key, &data, cflag | rmw);
 		if (ret == 0 && pattern &&
 		    memcmp(key.data, prefix, strlen(prefix)) != 0) {
 			/*
 			 * Free space from DB_DBT_MALLOC
 			 */
-			__os_free(data.data, data.size);
+			__os_free(dbp->dbenv, data.data, data.size);
 			break;
 		}
 	}
@@ -1041,7 +1176,7 @@ out:
 	 * have multiple nuls at the end, so we free using __os_free().
 	 */
 	if (prefix != NULL)
-		__os_free(prefix,0);
+		__os_free(dbp->dbenv, prefix,0);
 	return (result);
 }
 
@@ -1177,13 +1312,12 @@ tcl_DbDelete(interp, objc, objv, dbp)
 	 * If it is a RECNO database, the key is a record number and must be
 	 * setup up to contain a db_recno_t.  Otherwise the key is a "string".
 	 */
-	type = dbp->get_type(dbp);
+	(void)dbp->get_type(dbp, &type);
 	ret = 0;
 	while (i < objc && ret == 0) {
 		memset(&key, 0, sizeof(key));
 		if (type == DB_RECNO || type == DB_QUEUE) {
-			result = Tcl_GetIntFromObj(interp, objv[i++], &itmp);
-			recno = itmp;
+			result = _GetUInt32(interp, objv[i++], &recno);
 			if (result == TCL_OK) {
 				key.data = &recno;
 				key.size = sizeof(db_recno_t);
@@ -1262,7 +1396,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		 * by copying and condensing another string.  Thus prefix may
 		 * have multiple nuls at the end, so we free using __os_free().
 		 */
-		__os_free(prefix,0);
+		__os_free(dbp->dbenv, prefix,0);
 		dbc->c_close(dbc);
 		result = _ReturnSetup(interp, ret, "db del");
 	}
@@ -1282,11 +1416,11 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 	DBC **dbcp;			/* Return cursor pointer */
 {
 	static char *dbcuropts[] = {
-		"-txn",		"-update",
+		"-dirty",	"-txn",		"-update",
 		NULL
 	};
 	enum dbcuropts {
-		DBCUR_TXN,	DBCUR_UPDATE
+		DBCUR_DIRTY,	DBCUR_TXN,	DBCUR_UPDATE
 	};
 	DB_TXN *txn;
 	u_int32_t flag;
@@ -1296,11 +1430,6 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 	result = TCL_OK;
 	flag = 0;
 	txn = NULL;
-	/*
-	 * If the user asks for -glob or -recno, it MUST be the second
-	 * last arg given.  If it isn't given, then we must check if
-	 * they gave us a correct key.
-	 */
 	i = 2;
 	while (i < objc) {
 		if (Tcl_GetIndexFromObj(interp, objv[i], dbcuropts, "option",
@@ -1325,8 +1454,11 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 				result = TCL_ERROR;
 			}
 			break;
+		case DBCUR_DIRTY:
+			flag |= DB_DIRTY_READ;
+			break;
 		case DBCUR_UPDATE:
-			flag = DB_WRITECURSOR;
+			flag |= DB_WRITECURSOR;
 			break;
 		}
 		if (result != TCL_OK)
@@ -1341,6 +1473,163 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 		result = _ErrorSetup(interp, ret, "db cursor");
 out:
 	return (result);
+}
+
+/*
+ * tcl_DbAssociate --
+ *	Call DB->associate().
+ */
+static int
+tcl_DbAssociate(interp, objc, objv, dbp)
+	Tcl_Interp *interp;
+	int objc;
+	Tcl_Obj *CONST objv[];
+	DB *dbp;
+{
+	static char *dbaopts[] = {
+		"-create",
+		NULL
+	};
+	enum dbaopts {
+		DBA_CREATE
+	};
+	DB *sdbp;
+	DBTCL_INFO *sdbip;
+	int i, optindex, result, ret;
+	char *arg, msg[MSG_SIZE];
+	u_int32_t flag;
+
+	result = TCL_OK;
+	flag = 0;
+	if (objc < 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "[callback] secondary");
+		return (TCL_ERROR);
+	}
+
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i], dbaopts, "option",
+		    TCL_EXACT, &optindex) != TCL_OK) {
+			result = IS_HELP(objv[i]);
+			if (result == TCL_OK)
+				return (result);
+			result = TCL_OK;
+			Tcl_ResetResult(interp);
+			break;
+		}
+		i++;
+		switch ((enum dbaopts)optindex) {
+		case DBA_CREATE:
+			flag |= DB_CREATE;
+			break;
+		}
+	}
+	if (result != TCL_OK)
+		return (result);
+
+	/*
+	 * Better be 1 or 2 args left.  The last arg must be the sdb
+	 * handle.  If 2 args then objc-2 is the callback proc, else
+	 * we have a NULL callback.
+	 */
+	/* Get the secondary DB handle. */
+	arg = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+	sdbp = NAME_TO_DB(arg);
+	if (sdbp == NULL) {
+		snprintf(msg, MSG_SIZE,
+		    "Associate: Invalid database handle: %s\n", arg);
+		Tcl_SetResult(interp, msg, TCL_VOLATILE);
+		return (TCL_ERROR);
+	}
+
+	/*
+	 * The callback is simply a Tcl object containing the name
+	 * of the callback proc, which is the second-to-last argument.
+	 *
+	 * Note that the callback needs to go in the *secondary* DB handle's
+	 * info struct;  we may have multiple secondaries with different
+	 * callbacks.
+	 */
+	sdbip = (DBTCL_INFO *)sdbp->cj_internal;
+	if (i != objc - 1) {
+		/*
+		 * We have 2 args, get the callback.
+		 */
+		sdbip->i_second_call = objv[objc - 2];
+		Tcl_IncrRefCount(sdbip->i_second_call);
+
+		/* Now call associate. */
+		_debug_check();
+		ret = dbp->associate(dbp, sdbp, tcl_second_call, flag);
+	} else {
+		/*
+		 * We have a NULL callback.
+		 */
+		sdbip->i_second_call = NULL;
+		ret = dbp->associate(dbp, sdbp, NULL, flag);
+	}
+	result = _ReturnSetup(interp, ret, "associate");
+
+	return (result);
+}
+
+/*
+ * tcl_second_call --
+ *	Callback function for secondary indices.  Get the callback
+ *	out of ip->i_second_call and call it.
+ */
+static int
+tcl_second_call(dbp, pkey, data, skey)
+	DB *dbp;
+	const DBT *pkey, *data;
+	DBT *skey;
+{
+	DBTCL_INFO *ip;
+	Tcl_Interp *interp;
+	Tcl_Obj *pobj, *dobj, *objv[3];
+	int len, result, ret;
+	void *retbuf, *databuf;
+
+	ip = (DBTCL_INFO *)dbp->cj_internal;
+	interp = ip->i_interp;
+	objv[0] = ip->i_second_call;
+
+	/*
+	 * Create two ByteArray objects, with the contents of the pkey
+	 * and data DBTs that are our inputs.
+	 */
+	pobj = Tcl_NewByteArrayObj(pkey->data, pkey->size);
+	Tcl_IncrRefCount(pobj);
+	dobj = Tcl_NewByteArrayObj(data->data, data->size);
+	Tcl_IncrRefCount(dobj);
+
+	objv[1] = pobj;
+	objv[2] = dobj;
+
+	result = Tcl_EvalObjv(interp, 3, objv, 0);
+
+	Tcl_DecrRefCount(pobj);
+	Tcl_DecrRefCount(dobj);
+
+	if (result != TCL_OK) {
+		__db_err(dbp->dbenv,
+		    "Tcl callback function failed with code %d", result);
+		return (EINVAL);
+	}
+
+	retbuf =
+	    Tcl_GetByteArrayFromObj(Tcl_GetObjResult(interp), &len);
+
+	/* retbuf is owned by Tcl; copy it into malloc'ed memory. */
+	if ((ret = __os_malloc(dbp->dbenv, len, &databuf)) != 0)
+		return (ret);
+	memcpy(databuf, retbuf, len);
+
+	skey->data = databuf;
+	skey->size = len;
+	F_SET(skey, DB_DBT_APPMALLOC);
+
+	return (0);
 }
 
 /*
@@ -1399,7 +1688,7 @@ tcl_DbJoin(interp, objc, objv, dbp, dbcp)
 	 * Allocate one more for NULL ptr at end of list.
 	 */
 	size = sizeof(DBC *) * ((objc - adj) + 1);
-	ret = __os_malloc(dbp->dbenv, size, NULL, &listp);
+	ret = __os_malloc(dbp->dbenv, size, &listp);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
@@ -1423,7 +1712,7 @@ tcl_DbJoin(interp, objc, objv, dbp, dbcp)
 	result = _ReturnSetup(interp, ret, "db join");
 
 out:
-	__os_free(listp, size);
+	__os_free(dbp->dbenv, listp, size);
 	return (result);
 }
 
@@ -1503,7 +1792,7 @@ tcl_DbGetjoin(interp, objc, objv, dbp)
 	if (result != TCL_OK)
 		return (result);
 	size = sizeof(DBC *) * ((objc - adj) + 1);
-	ret = __os_malloc(NULL, size, NULL, &listp);
+	ret = __os_malloc(NULL, size, &listp);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
@@ -1568,8 +1857,8 @@ tcl_DbGetjoin(interp, objc, objv, dbp)
 			result = _SetListElem(interp, retlist,
 			    key.data, key.size,
 			    data.data, data.size);
-			__os_free(key.data, key.size);
-			__os_free(data.data, data.size);
+			__os_free(dbp->dbenv, key.data, key.size);
+			__os_free(dbp->dbenv, data.data, data.size);
 		}
 	}
 	dbc->c_close(dbc);
@@ -1581,7 +1870,7 @@ out:
 			(listp[j])->c_close(listp[j]);
 		j--;
 	}
-	__os_free(listp, size);
+	__os_free(dbp->dbenv, listp, size);
 	return (result);
 }
 
@@ -1599,7 +1888,7 @@ tcl_DbCount(interp, objc, objv, dbp)
 	DBC *dbc;
 	DBT key, data;
 	db_recno_t count, recno;
-	int itmp, len, result, ret;
+	int len, result, ret;
 
 	result = TCL_OK;
 	count = 0;
@@ -1624,8 +1913,7 @@ tcl_DbCount(interp, objc, objv, dbp)
 	 * treat the key as a recno rather than as a byte string.
 	 */
 	if (dbp->type == DB_RECNO || dbp->type == DB_QUEUE) {
-		result = Tcl_GetIntFromObj(interp, objv[2], &itmp);
-		recno = itmp;
+		result = _GetUInt32(interp, objv[2], &recno);
 		if (result == TCL_OK) {
 			key.data = &recno;
 			key.size = sizeof(db_recno_t);
@@ -1727,7 +2015,7 @@ tcl_DbKeyRange(interp, objc, objv, dbp)
 	}
 	if (result != TCL_OK)
 		return (result);
-	type = dbp->get_type(dbp);
+	(void)dbp->get_type(dbp, &type);
 	ret = 0;
 	/*
 	 * Make sure we have a key.
@@ -1739,8 +2027,7 @@ tcl_DbKeyRange(interp, objc, objv, dbp)
 	}
 	memset(&key, 0, sizeof(key));
 	if (type == DB_RECNO || type == DB_QUEUE) {
-		result = Tcl_GetIntFromObj(interp, objv[i], &itmp);
-		recno = itmp;
+		result = _GetUInt32(interp, objv[i], &recno);
 		if (result == TCL_OK) {
 			key.data = &recno;
 			key.size = sizeof(db_recno_t);
@@ -1766,6 +2053,75 @@ tcl_DbKeyRange(interp, objc, objv, dbp)
 	retlist = Tcl_NewListObj(myobjc, myobjv);
 	if (result == TCL_OK)
 		Tcl_SetObjResult(interp, retlist);
+out:
+	return (result);
+}
+/*
+ * tcl_DbTruncate --
+ */
+static int
+tcl_DbTruncate(interp, objc, objv, dbp)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB *dbp;			/* Database pointer */
+{
+	static char *dbcuropts[] = {
+		"-txn",
+		NULL
+	};
+	enum dbcuropts {
+		DBCUR_TXN
+	};
+	DB_TXN *txn;
+	Tcl_Obj *res;
+	u_int32_t count;
+	int i, optindex, result, ret;
+	char *arg, msg[MSG_SIZE];
+
+	result = TCL_OK;
+	txn = NULL;
+
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i], dbcuropts, "option",
+		    TCL_EXACT, &optindex) != TCL_OK) {
+			result = IS_HELP(objv[i]);
+			goto out;
+		}
+		i++;
+		switch ((enum dbcuropts)optindex) {
+		case DBCUR_TXN:
+			if (i == objc) {
+				Tcl_WrongNumArgs(interp, 2, objv, "?-txn id?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			txn = NAME_TO_TXN(arg);
+			if (txn == NULL) {
+				snprintf(msg, MSG_SIZE,
+				    "Cursor: Invalid txn: %s\n", arg);
+				Tcl_SetResult(interp, msg, TCL_VOLATILE);
+				result = TCL_ERROR;
+			}
+			break;
+		}
+		if (result != TCL_OK)
+			break;
+	}
+	if (result != TCL_OK)
+		goto out;
+
+	_debug_check();
+	ret = dbp->truncate(dbp, txn, &count, 0);
+	if (ret != 0)
+		result = _ErrorSetup(interp, ret, "db cursor");
+
+	else {
+		res = Tcl_NewIntObj(count);
+		Tcl_SetObjResult(interp, res);
+	}
 out:
 	return (result);
 }

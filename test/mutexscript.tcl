@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mutexscript.tcl,v 11.12 2000/11/21 22:14:56 dda Exp $
+# $Id: mutexscript.tcl,v 11.14 2001/02/02 05:58:02 krinsky Exp $
 #
 # Random mutex tester.
 # Usage: mutexscript dir numiters mlocks sleepint degree
@@ -73,8 +73,8 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 		}
 	}
 
-	# Pick sleep interval
-	tclsleep [ berkdb random_int 1 $sleepint ]
+	# Sleep for 10 to (100*$sleepint) ms.
+	after [berkdb random_int 10 [expr $sleepint * 100]]
 
 	# Now release locks
 	foreach i $mlist {

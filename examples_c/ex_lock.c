@@ -1,19 +1,22 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_lock.c,v 11.6 2001/01/04 14:23:29 dda Exp $
+ * $Id: ex_lock.c,v 11.12 2001/05/10 17:14:04 bostic Exp $
  */
 
-#include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+extern int optind;
+extern char *optarg;
+extern int getopt(int, char * const *, const char *);
+#else
 #include <unistd.h>
 #endif
 
@@ -81,7 +84,7 @@ main(argc, argv)
 	if ((ret = lock_id(dbenv, &locker)) != 0) {
 		dbenv->err(dbenv, ret, "unable to get locker id");
 		(void)dbenv->close(dbenv, 0);
-		exit (1);
+		return (EXIT_FAILURE);
 	}
 	lockid = -1;
 
@@ -165,7 +168,7 @@ main(argc, argv)
 			dbenv->err(dbenv, ret,
 			    "lock_%s", did_get ? "get" : "put");
 			(void)dbenv->close(dbenv, 0);
-			exit (1);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -177,9 +180,9 @@ main(argc, argv)
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
-		return (1);
+		return (EXIT_FAILURE);
 	}
-	return (0);
+	return (EXIT_SUCCESS);
 }
 
 /*
@@ -197,19 +200,19 @@ db_init(home, maxlocks, do_unlink)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: db_env_create: %s\n",
 		    progname, db_strerror(ret));
-		exit (1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (do_unlink) {
 		if ((ret = dbenv->remove(dbenv, home, DB_FORCE)) != 0) {
 			fprintf(stderr, "%s: dbenv->remove: %s\n",
 			    progname, db_strerror(ret));
-			exit (1);
+			exit(EXIT_FAILURE);
 		}
 		if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			fprintf(stderr, "%s: db_env_create: %s\n",
 			    progname, db_strerror(ret));
-			exit (1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -222,7 +225,7 @@ db_init(home, maxlocks, do_unlink)
 	    dbenv->open(dbenv, home, DB_CREATE | DB_INIT_LOCK, 0)) != 0) {
 		dbenv->err(dbenv, ret, NULL);
 		(void)dbenv->close(dbenv, 0);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -231,5 +234,5 @@ usage()
 {
 	(void)fprintf(stderr,
 	    "usage: %s [-u] [-h home] [-m maxlocks]\n", progname);
-	exit(1);
+	exit(EXIT_FAILURE);
 }

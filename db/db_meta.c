@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_meta.c,v 11.26 2001/01/16 21:57:19 ubell Exp $";
+static const char revid[] = "$Id: db_meta.c,v 11.35 2001/07/02 01:05:37 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -75,13 +75,15 @@ __db_new(dbc, type, pagepp)
 	DBMETA *meta;
 	DB *dbp;
 	DB_LOCK metalock;
+	DB_LSN lsn;
 	PAGE *h;
-	db_pgno_t pgno;
-	int ret;
+	db_pgno_t pgno, newnext;
+	int extend, ret;
 
 	dbp = dbc->dbp;
 	meta = NULL;
 	h = NULL;
+	newnext = PGNO_INVALID;
 
 	pgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc,
@@ -89,34 +91,58 @@ __db_new(dbc, type, pagepp)
 		goto err;
 	if ((ret = memp_fget(dbp->mpf, &pgno, 0, (PAGE **)&meta)) != 0)
 		goto err;
-
 	if (meta->free == PGNO_INVALID) {
-		if ((ret = memp_fget(dbp->mpf, &pgno, DB_MPOOL_NEW, &h)) != 0)
-			goto err;
-		ZERO_LSN(h->lsn);
-		h->pgno = pgno;
+		pgno = meta->last_pgno + 1;
+		ZERO_LSN(lsn);
+		extend = 1;
 	} else {
 		pgno = meta->free;
 		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
 			goto err;
-		meta->free = h->next_pgno;
+
+		/*
+		 * We want to take the first page off the free list and
+		 * then set meta->free to the that page's next_pgno, but
+		 * we need to log the change first.
+		 */
+		newnext = h->next_pgno;
+		lsn = h->lsn;
+		extend = 0;
+	}
+
+	/*
+	 * Log the allocation before fetching the new page.  If we
+	 * don't have room in the log then we don't want to tell
+	 * mpool to extend the file.
+	 */
+	if (DB_LOGGING(dbc)) {
+		if ((ret = __db_pg_alloc_log(dbp->dbenv,
+		    dbc->txn, &LSN(meta), 0, dbp->log_fileid,
+		    &LSN(meta), &lsn, pgno,
+		    (u_int32_t)type, newnext)) != 0)
+			goto err;
+	} else
+		LSN_NOT_LOGGED(LSN(meta));
+
+	if (meta->free != newnext) {
+		meta->free = newnext;
 		(void)memp_fset(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
 	}
+
+	if (extend == 1) {
+		if ((ret = memp_fget(dbp->mpf, &pgno, DB_MPOOL_NEW, &h)) != 0)
+			goto err;
+		ZERO_LSN(h->lsn);
+		h->pgno = pgno;
+		meta->last_pgno++;
+		DB_ASSERT(pgno == meta->last_pgno);
+	}
+	LSN(h) = LSN(meta);
 
 	DB_ASSERT(TYPE(h) == P_INVALID);
 
 	if (TYPE(h) != P_INVALID)
 		return (__db_panic(dbp->dbenv, EINVAL));
-
-	/* Log the change. */
-	if (DB_LOGGING(dbc)) {
-		if ((ret = __db_pg_alloc_log(dbp->dbenv,
-		    dbc->txn, &LSN(meta), 0, dbp->log_fileid,
-		    &LSN(meta), &h->lsn, h->pgno,
-		    (u_int32_t)type, meta->free)) != 0)
-			goto err;
-		LSN(h) = LSN(meta);
-	}
 
 	(void)memp_fput(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
 	(void)__TLPUT(dbc, metalock);
@@ -181,10 +207,11 @@ __db_free(dbc, h)
 		    &LSN(meta), &ldbt, meta->free)) != 0) {
 			(void)memp_fput(dbp->mpf, (PAGE *)meta, 0);
 			(void)__TLPUT(dbc, metalock);
-			return (ret);
+			goto err;
 		}
-		LSN(h) = LSN(meta);
-	}
+	} else
+		LSN_NOT_LOGGED(LSN(meta));
+	LSN(h) = LSN(meta);
 
 	P_INIT(h, dbp->pgsize, h->pgno, PGNO_INVALID, meta->free, 0, P_INVALID);
 
@@ -264,7 +291,7 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 	    || !LOCKING_ON(dbenv) || F_ISSET(dbc, DBC_COMPENSATE)
 	    || (!LF_ISSET(LCK_ROLLBACK) && F_ISSET(dbc, DBC_RECOVER))
 	    || (!LF_ISSET(LCK_ALWAYS) && F_ISSET(dbc, DBC_OPD))) {
-		lockp->off = LOCK_INVALID;
+		LOCK_INIT(*lockp);
 		return (0);
 	}
 
@@ -282,6 +309,8 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 	if (DB_NONBLOCK(dbc))
 		lkflags |= DB_LOCK_NOWAIT;
 
+	if (F_ISSET(dbc, DBC_DIRTY_READ) && mode == DB_LOCK_READ)
+		mode = DB_LOCK_DIRTY;
 	/*
 	 * If the object not currently locked, acquire the lock and return,
 	 * otherwise, lock couple.
@@ -300,9 +329,6 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 	} else {
 		ret = lock_get(dbenv,
 		    dbc->locker, lkflags, &dbc->lock_dbt, mode, lockp);
-
-		if (ret != 0)
-			lockp->off = LOCK_INVALID;
 	}
 
 	return (ret);

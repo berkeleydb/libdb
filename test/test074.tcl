@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2000
+# Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test074.tcl,v 11.10 2000/08/25 14:21:58 sue Exp $
+# $Id: test074.tcl,v 11.12 2001/05/04 16:27:31 krinsky Exp $
 #
 # DB Test 74: Test of DB_NEXT_NODUP.
-proc test074 { method {dir -nextnodup} {pagesize 512} {nitems 100} {tnum 74} args } {
+proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 	source ./include.tcl
 	global alphabet
 	global rand_init

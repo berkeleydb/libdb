@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_rec.c,v 11.10 2000/08/03 15:32:19 ubell Exp $";
+static const char revid[] = "$Id: db_rec.c,v 11.14 2001/04/06 18:02:59 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -75,7 +75,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret = __db_pitem(dbc, pagep, argp->indx, argp->nbytes,
 		    argp->hdr.size == 0 ? NULL : &argp->hdr,
 		    argp->dbt.size == 0 ? NULL : &argp->dbt)) != 0)
-			goto out;
+			goto err;
 
 		change = DB_MPOOL_DIRTY;
 
@@ -84,7 +84,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo an add, or redo a delete. */
 		if ((ret = __db_ditem(dbc,
 		    pagep, argp->indx, argp->nbytes)) != 0)
-			goto out;
+			goto err;
 		change = DB_MPOOL_DIRTY;
 	}
 
@@ -95,7 +95,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 			LSN(pagep) = argp->pagelsn;
 	}
 
-	if ((ret = memp_fput(mpf, pagep, change)) != 0)
+err:	if ((ret = memp_fput(mpf, pagep, change)) != 0)
 		goto out;
 
 done:	*lsnp = argp->prev_lsn;
@@ -180,6 +180,13 @@ __db_big_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = memp_fput(mpf, pagep, change)) != 0)
 		goto out;
 
+	/*
+	 * We only delete a whole chain of overflow.
+	 * Each page is handled individually
+	 */
+	if (argp->opcode == DB_REM_BIG)
+		goto done;
+
 	/* Now check the previous page. */
 ppage:	if (argp->prev_pgno != PGNO_INVALID) {
 		change = 0;
@@ -204,14 +211,12 @@ ppage:	if (argp->prev_pgno != PGNO_INVALID) {
 		cmp_p = log_compare(&LSN(pagep), &argp->prevlsn);
 		CHECK_LSN(op, cmp_p, &LSN(pagep), &argp->prevlsn);
 
-		if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_ADD_BIG) ||
-		    (cmp_n == 0 && DB_UNDO(op) && argp->opcode == DB_REM_BIG)) {
+		if (cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_ADD_BIG) {
 			/* Redo add, undo delete. */
 			NEXT_PGNO(pagep) = argp->pgno;
 			change = DB_MPOOL_DIRTY;
-		} else if ((cmp_n == 0 &&
-		    DB_UNDO(op) && argp->opcode == DB_ADD_BIG) ||
-		    (cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_REM_BIG)) {
+		} else if (cmp_n == 0 &&
+		    DB_UNDO(op) && argp->opcode == DB_ADD_BIG) {
 			/* Redo delete, undo add. */
 			NEXT_PGNO(pagep) = argp->next_pgno;
 			change = DB_MPOOL_DIRTY;

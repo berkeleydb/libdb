@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead001.tcl,v 11.17 2000/11/05 14:23:55 dda Exp $
+# $Id: dead001.tcl,v 11.19 2001/05/17 20:37:04 bostic Exp $
 #
 # Deadlock Test 1.
 # We create various deadlock scenarios for different numbers of lockers
@@ -29,7 +29,7 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 		set pidlist ""
 		foreach n $procs {
 
-			sentinel_init 
+			sentinel_init
 
 			# Fire off the tests
 			puts "\tDead001: $n procs of test $t"

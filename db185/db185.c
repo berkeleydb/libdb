@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db185.c,v 11.15 2001/01/23 21:27:03 bostic Exp $";
+    "$Id: db185.c,v 11.18 2001/04/10 20:43:53 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,6 +38,11 @@ static int	db185_put __P((const DB185 *, DBT185 *, const DBT185 *, u_int));
 static int	db185_seq __P((const DB185 *, DBT185 *, DBT185 *, u_int));
 static int	db185_sync __P((const DB185 *, u_int));
 
+/*
+ * EXTERN: #define dbopen __db185_open
+ * EXTERN: DB185 *__db185_open
+ * EXTERN:     __P((const char *, int, int, DBTYPE, const void *));
+ */
 DB185 *
 __db185_open(file, oflags, mode, type, openinfo)
 	const char *file;
@@ -241,7 +246,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 einval:	ret = EINVAL;
 
 err:	if (db185p != NULL)
-		__os_free(db185p, sizeof(DB185));
+		__os_free(NULL, db185p, sizeof(DB185));
 	if (dbp != NULL)
 		(void)dbp->close(dbp, 0);
 
@@ -260,7 +265,7 @@ db185_close(db185p)
 
 	ret = dbp->close(dbp, 0);
 
-	__os_free(db185p, sizeof(DB185));
+	__os_free(NULL, db185p, sizeof(DB185));
 
 	if (ret == 0)
 		return (0);

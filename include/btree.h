@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999, 2000
+ * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: btree.h,v 11.37 2001/01/17 17:09:52 bostic Exp $
+ * $Id: btree.h,v 11.39 2001/03/15 00:18:43 ubell Exp $
  */
 
 /* Forward structure declarations. */
@@ -144,7 +144,7 @@ struct __epg {
 #define	BT_STK_CLR(c) do {						\
 	(c)->csp = (c)->sp;						\
 	(c)->csp->page = NULL;						\
-	(c)->csp->lock.off = LOCK_INVALID;				\
+	LOCK_INIT((c)->csp->lock);				\
 } while (0)
 
 #define	BT_STK_ENTER(dbenv, c, pagep, page_indx, l, mode, ret) do {	\
@@ -169,7 +169,7 @@ struct __epg {
 		(c)->csp->page = NULL;					\
 		(c)->csp->indx = page_indx;				\
 		(c)->csp->entries = NUM_ENT(pagep);			\
-		(c)->csp->lock.off = LOCK_INVALID;			\
+		LOCK_INIT((c)->csp->lock);			\
 		(c)->csp->lock_mode = DB_LOCK_NG;			\
 	}								\
 } while (0)

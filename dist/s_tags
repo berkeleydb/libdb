@@ -1,10 +1,10 @@
 #!/bin/sh -
-#	$Id: s_tags,v 1.5 2000/09/05 21:27:04 bostic Exp $
+#	$Id: s_tags,v 1.8 2001/04/10 20:43:58 bostic Exp $
 #
 # Build tags files.
 
 files="../include/*.h \
-	../include/*.src \
+	../include/*.in \
 	../btree/*.[ch] \
 	../clib/*.[ch] \
 	../common/*.[ch] \
@@ -14,7 +14,6 @@ files="../include/*.h \
 	../env/*.[ch] \
 	../hash/*.[ch] \
 	../hsearch/*.[ch] \
-	../libdb_java/*.[ch] \
 	../lock/*.[ch] \
 	../log/*.[ch] \
 	../mp/*.[ch] \
@@ -25,7 +24,9 @@ files="../include/*.h \
 	../rpc_server/*.[ch] \
 	../tcl/*.[ch] \
 	../txn/*.[ch] \
-	../xa/*.[ch]"
+	../xa/*.[ch] \
+	../cxx/*.cpp \
+	../libdb_java/*.[ch]"
 
 f=tags
 echo "Building $f"

@@ -1,5 +1,5 @@
-<!--$Id: dbinfo.so,v 11.8 2000/03/18 21:43:20 bostic Exp $-->
-<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
+<!--$Id: dbinfo.so,v 11.10 2001/04/03 19:39:02 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,9 +8,9 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<table><tr valign=top>
+<table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/upgrade.3.0/db.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/join.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/upgrade.3.0/db.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/join.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: the DBINFO structure</h1>
@@ -47,9 +47,9 @@ error.
 <p>Note: the <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> function takes additional arguments.
 Setting both the second argument (the number of GB in the pool) and the
 last argument (the number of memory pools to create) to 0 will result in
-behavior that is backward compatible with previous Berkeley DB releases.</td></tr>
+behavior that is backward-compatible with previous Berkeley DB releases.</td></tr>
 <tr><td>db_lorder</td><td><a href="../../api_c/db_set_lorder.html">DB-&gt;set_lorder</a></td></tr>
-<tr><td>db_malloc</td><td><a href="../../api_c/db_set_malloc.html">DB-&gt;set_malloc</a></td></tr>
+<tr><td>db_malloc</td><td>DB-&gt;set_malloc</td></tr>
 <tr><td>db_pagesize</td><td><a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a></td></tr>
 <tr><td>dup_compare</td><td><a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a></td></tr>
 <tr><td>flags</td><td><a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a>
@@ -65,7 +65,7 @@ record pad character.  They should simply be discarded from the application.</td
 <tr><td>re_pad</td><td><a href="../../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a></td></tr>
 <tr><td>re_source</td><td><a href="../../api_c/db_set_re_source.html">DB-&gt;set_re_source</a></td></tr>
 </table>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/upgrade.3.0/db.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/join.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.0/db.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/join.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

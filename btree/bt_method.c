@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2000
+ * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_method.c,v 11.20 2000/11/30 00:58:28 ubell Exp $";
+static const char revid[] = "$Id: bt_method.c,v 11.22 2001/04/03 15:14:04 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -90,9 +90,9 @@ __bam_db_close(dbp)
 
 	/* Free any backing source file name. */
 	if (t->re_source != NULL)
-		__os_freestr(t->re_source);
+		__os_freestr(dbp->dbenv, t->re_source);
 
-	__os_free(t, sizeof(BTREE));
+	__os_free(dbp->dbenv, t, sizeof(BTREE));
 	dbp->bt_internal = NULL;
 
 	return (0);
