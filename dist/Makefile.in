@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 11.52.2.1 2000/07/18 15:37:57 bostic Exp $
+# $Id: Makefile.in,v 11.66 2000/11/27 16:27:51 bostic Exp $
 
 srcdir=	@srcdir@/..
 builddir=.
@@ -7,8 +7,8 @@ builddir=.
 # C, C++
 ##################################################
 CPPFLAGS=	-I$(builddir) -I$(srcdir)/include @CPPFLAGS@
-CFLAGS=	 	-c @CFLAGS@ $(CPPFLAGS)
-CXXFLAGS=	-c @CXXFLAGS@ $(CPPFLAGS)
+CFLAGS=	 	-c $(CPPFLAGS) @CFLAGS@
+CXXFLAGS=	-c $(CPPFLAGS) @CXXFLAGS@
 
 CC=		@MAKEFILE_CC@
 CCLINK=		@MAKEFILE_CCLINK@
@@ -62,14 +62,17 @@ libxso_major=	$(libxso_base)-$(SOMAJOR).@SOSUFFIX@
 #	--enable-java --enable-dynamic
 ##################################################
 CLASSPATH=	$(JAVA_CLASSTOP)
+JAR=            @JAR@
 JAVAC=		env CLASSPATH=$(CLASSPATH) @JAVAC@
 JAVACFLAGS=	@JAVACFLAGS@
-JAVA_BUILTFILE= ./.javabuilt
+JAVA_BUILTFILE= .javabuilt
 JAVA_CLASSTOP=	$(srcdir)/java/classes
 JAVA_SRCDIR=	$(srcdir)/java/src
-JAVA_DBDIR=	$(JAVA_SRCDIR)/com/sleepycat/db
+JAVA_DBREL=     com/sleepycat/db
+JAVA_DBDIR=	$(JAVA_SRCDIR)/$(JAVA_DBREL)
 JAVA_EXDIR=	$(JAVA_SRCDIR)/com/sleepycat/examples
 
+libj_jarfile=	db.jar
 libjso_base=	libdb_java
 libjso=		$(libjso_base)-$(SOVERSION).@SOSUFFIX@
 libjso_target=	$(libjso_base)-$(SOVERSION).la
@@ -150,19 +153,20 @@ OBJS=   @ADDITIONAL_OBJS@ @LIBOBJS@ @RPC_OBJS@ bt_compare@o@ bt_conv@o@ \
 	hash_conv@o@ hash_dup@o@ hash_func@o@ hash_meta@o@ hash_method@o@ \
 	hash_page@o@ hash_rec@o@ hash_reclaim@o@ hash_stat@o@ hash_upgrade@o@ \
 	hash_verify@o@ hsearch@o@ lock@o@ lock_conflict@o@ \
-	lock_deadlock@o@ lock_region@o@ lock_util@o@ log@o@ log_archive@o@ \
-	log_auto@o@ log_compare@o@ log_findckp@o@ log_get@o@ log_method@o@ \
-	log_put@o@ log_rec@o@ log_register@o@ mp_alloc@o@ mp_bh@o@ \
-	mp_fget@o@ mp_fopen@o@ mp_fput@o@ mp_fset@o@ mp_method@o@ \
-	mp_region@o@ mp_register@o@ mp_stat@o@ mp_sync@o@ mp_trickle@o@ \
-	mutex@o@ os_abs@o@ os_alloc@o@ os_dir@o@ os_errno@o@ os_fid@o@ \
-	os_finit@o@ os_fsync@o@ os_handle@o@ os_map@o@ os_method@o@ \
-	os_oflags@o@ os_open@o@ os_region@o@ os_rename@o@ os_root@o@ \
-	os_rpath@o@ os_rw@o@ os_seek@o@ os_sleep@o@ os_spin@o@ os_stat@o@ \
-	os_tmpdir@o@ os_unlink@o@ qam@o@ qam_auto@o@ qam_conv@o@ \
+	lock_deadlock@o@ lock_method@o@ lock_region@o@ lock_stat@o@ \
+	lock_util@o@ log@o@ log_archive@o@ log_auto@o@ log_compare@o@ \
+	log_findckp@o@ log_get@o@ log_method@o@ log_put@o@ log_rec@o@ \
+	log_register@o@ mp_alloc@o@ mp_bh@o@ mp_fget@o@ mp_fopen@o@ \
+	mp_fput@o@ mp_fset@o@ mp_method@o@ mp_region@o@ mp_register@o@ \
+	mp_stat@o@ mp_sync@o@ mp_trickle@o@ mutex@o@ os_abs@o@ \
+	os_alloc@o@ os_dir@o@ os_errno@o@ os_fid@o@ os_finit@o@ \
+	os_fsync@o@ os_handle@o@ os_map@o@ os_method@o@ os_oflags@o@ \
+	os_open@o@ os_region@o@ os_rename@o@ os_root@o@ os_rpath@o@ \
+	os_rw@o@ os_seek@o@ os_sleep@o@ os_spin@o@ os_stat@o@ \
+	os_tmpdir@o@ os_unlink@o@ qam@o@ qam_auto@o@ qam_conv@o@ qam_files@o@ \
 	qam_method@o@ qam_open@o@ qam_rec@o@ qam_stat@o@ qam_upgrade@o@ \
-	qam_verify@o@ txn@o@ txn_auto@o@ txn_rec@o@ txn_region@o@ \
-	xa@o@ xa_db@o@ xa_map@o@
+	qam_verify@o@ txn@o@ txn_auto@o@ txn_rec@o@ txn_region@o@ xa@o@ \
+	xa_db@o@ xa_map@o@
 
 COBJS=	cxx_app@o@ cxx_except@o@ cxx_lock@o@ cxx_log@o@ cxx_mpool@o@ \
 	cxx_table@o@ cxx_txn@o@
@@ -192,21 +196,23 @@ PROGS=  @ADDITIONAL_PROGS@ db_archive db_checkpoint db_deadlock \
 	db_dump db_load db_printlog db_recover db_stat db_upgrade db_verify
 
 JAVA_DBSRCS=\
-	$(JAVA_DBDIR)/Db.java $(JAVA_DBDIR)/DbBtreeStat.java \
-	$(JAVA_DBDIR)/DbConstants.java \
-	$(JAVA_DBDIR)/DbDeadlockException.java $(JAVA_DBDIR)/DbEnv.java \
+	$(JAVA_DBDIR)/Db.java $(JAVA_DBDIR)/DbAppendRecno.java \
+	$(JAVA_DBDIR)/DbBtreeCompare.java \
+	$(JAVA_DBDIR)/DbBtreePrefix.java $(JAVA_DBDIR)/DbBtreeStat.java \
+	$(JAVA_DBDIR)/DbConstants.java $(JAVA_DBDIR)/DbDeadlockException.java \
+	$(JAVA_DBDIR)/DbDupCompare.java $(JAVA_DBDIR)/DbEnv.java \
 	$(JAVA_DBDIR)/DbEnvFeedback.java $(JAVA_DBDIR)/DbErrcall.java \
 	$(JAVA_DBDIR)/DbException.java $(JAVA_DBDIR)/DbFeedback.java \
-	$(JAVA_DBDIR)/DbHashStat.java $(JAVA_DBDIR)/DbKeyRange.java \
-	$(JAVA_DBDIR)/DbLock.java \
+	$(JAVA_DBDIR)/DbHash.java $(JAVA_DBDIR)/DbHashStat.java \
+	$(JAVA_DBDIR)/DbKeyRange.java $(JAVA_DBDIR)/DbLock.java \
 	$(JAVA_DBDIR)/DbLockStat.java $(JAVA_DBDIR)/DbLogStat.java \
 	$(JAVA_DBDIR)/DbLsn.java $(JAVA_DBDIR)/DbMemoryException.java \
 	$(JAVA_DBDIR)/DbMpoolFStat.java $(JAVA_DBDIR)/DbMpoolStat.java \
 	$(JAVA_DBDIR)/DbOutputStreamErrcall.java \
 	$(JAVA_DBDIR)/DbQueueStat.java $(JAVA_DBDIR)/DbRecoveryInit.java \
 	$(JAVA_DBDIR)/DbRunRecoveryException.java $(JAVA_DBDIR)/DbTxn.java \
-	$(JAVA_DBDIR)/DbTxnStat.java $(JAVA_DBDIR)/Dbc.java \
-	$(JAVA_DBDIR)/Dbt.java
+	$(JAVA_DBDIR)/DbTxnRecover.java	$(JAVA_DBDIR)/DbTxnStat.java \
+	$(JAVA_DBDIR)/Dbc.java $(JAVA_DBDIR)/Dbt.java
 
 JAVA_EXSRCS=\
 	$(JAVA_EXDIR)/AccessExample.java \
@@ -249,13 +255,16 @@ $(libtso_target): $(TOBJS) $(OBJS)
 	    $(TOBJS) $(OBJS) $(LDFLAGS) $(LIBTSO_LIBS)
 
 ##################################################
-# Creating individual dependencies and actions for building java files
-# is possible, but it is very messy and error prone.
+# Creating individual dependencies and actions for building class
+# files is possible, but it is very messy and error prone.
 ##################################################
 java:	$(JAVA_CLASSTOP) $(JAVA_BUILTFILE)
 
 $(JAVA_BUILTFILE): $(JAVA_DBSRCS) $(JAVA_EXSRCS)
+	@test -f $(rm) || (echo 'rm not found.'; exit 1)
+	@test -f $(cp) || (echo 'cp not found.'; exit 1)
 	$(JAVAC) -d $(JAVA_CLASSTOP) $(JAVACFLAGS) $(JAVA_DBSRCS)
+	@cd $(JAVA_CLASSTOP) && $(JAR) cf $(libj_jarfile) $(JAVA_DBREL)
 	$(JAVAC) -d $(JAVA_CLASSTOP) $(JAVACFLAGS) $(JAVA_EXSRCS)
 	@echo This file helps with building java using make > $(JAVA_BUILTFILE)
 
@@ -375,9 +384,11 @@ clean:
 	$(rm) -f $(PROGS) $(RMLIST)
 	$(rm) -f *@o@ *.o *.lo core *.core
 	$(rm) -rf ALL.OUT TESTDIR
-	$(rm) -rf .libs $(libdb) $(libcxx) $(libso) $(libso_target)
-	$(rm) -rf $(libxso) $(libxso_target) $(libjso) $(libjso_target)
-	$(rm) -rf $(libtso) $(libtso_target)
+	$(rm) -rf .libs $(libdb) $(libcxx)
+	$(rm) -rf $(libso_target) $(libso) $(libso_default) $(libso_major)
+	$(rm) -rf $(libxso_target) $(libxso) $(libxso_default) $(libxso_major)
+	$(rm) -rf $(libtso_target) $(libtso) $(libtso_default) $(libtso_major)
+	$(rm) -rf $(libjso_target) $(libjso) $(libjso_default) $(libjso_major)
 
 depend obj:
 
@@ -385,7 +396,10 @@ realclean distclean: clean
 	$(rm) -f Makefile config.cache config.log config.status db_config.h
 	$(rm) -f confdefs.h db.h db_int.h db_185.h include.tcl libtool
 
-install: all install_include @DEFAULT_INSTALL@ install_utilities install_docs
+install: all install_setup \
+	install_include install_lib install_utilities install_docs
+
+uninstall: uninstall_utilities uninstall_include uninstall_lib uninstall_docs
 
 install_setup:
 	@test -f $(chmod) || (echo 'chmod not found.'; exit 1)
@@ -398,10 +412,24 @@ install_include:
 	@test -d $(includedir) || \
 	    ($(mkdir) -p $(includedir) && $(chmod) $(dmode) $(includedir))
 	@cd $(includedir) && $(rm) -f db.h db_185.h db_cxx.h
-	@$(cp) -p db.h db_185.h $(srcdir)/include/db_cxx.h $(includedir)
-	@cd $(includedir) && $(chmod) $(fmode) db.h db_185.h db_cxx.h
+	@$(cp) -p db.h \
+	    $(srcdir)/include/db_cxx.h @ADDITIONAL_INCS@ $(includedir)
+	@cd $(includedir) && $(chmod) $(fmode) db.h db_cxx.h @ADDITIONAL_INCS@
 
-install_static: install_setup
+uninstall_include:
+	-cd $(includedir) && $(rm) -f db.h db_185.h db_cxx.h
+
+install_lib: @DEFAULT_INSTALL@ 
+
+uninstall_lib:
+	-cd $(libdir) && $(rm) -f $(libdb) $(libcxx) \
+	    $(libso_target) $(libso) $(libso_default) $(libso_major) \
+	    $(libxso_target) $(libxso) $(libxso_default) $(libxso_major) \
+	    $(libtso_target) $(libtso) $(libtso_default) $(libtso_major) \
+	    $(libjso_target) $(libjso) $(libjso_default) $(libjso_major) \
+	    $(libj_jarfile)
+
+install_static:
 	@echo "Installing DB library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
@@ -409,7 +437,7 @@ install_static: install_setup
 	@$(cp) -p $(libdb) $(libdir)
 	@cd $(libdir) && $(chmod) $(fmode) $(libdb)
 
-install_static_cxx: install_setup
+install_static_cxx:
 	@echo "Installing DB C++ static library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
@@ -417,56 +445,50 @@ install_static_cxx: install_setup
 	@$(cp) -p $(libcxx) $(libdir)
 	@cd $(libdir) && $(chmod) $(fmode) $(libcxx)
 
-install_dynamic: install_setup
+install_dynamic:
 	@echo "Installing DB library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
-	@cd $(libdir) && \
-	    $(rm) -f $(libso) $(libso_default) $(libso_major)
+	@cd $(libdir) && $(rm) -f \
+	    $(libso_target) $(libso) $(libso_default) $(libso_major)
 	@$(INSTALLER) $(libso_target) $(libdir)
 	@cd $(libdir) && $(ln) -s $(libso) $(libso_default)
 	@cd $(libdir) && $(ln) -s $(libso) $(libso_major)
 	@$(LIBTOOL) --mode=finish $(libdir)
 
-install_dynamic_cxx: install_setup
+install_dynamic_cxx:
 	@echo "Installing DB C++ library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
-	@cd $(libdir) && \
-	    $(rm) -f $(libxso) $(libxso_default) $(libxso_major)
+	@cd $(libdir) && $(rm) -f \
+	    $(libxso_target) $(libxso) $(libxso_default) $(libxso_major)
 	@$(INSTALLER) $(libxso_target) $(libdir)
 	@cd $(libdir) && $(ln) -s $(libxso) $(libxso_default)
 	@cd $(libdir) && $(ln) -s $(libxso) $(libxso_major)
 
-install_tcl: install_setup
+install_tcl:
 	@echo "Installing DB Tcl library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
-	@cd $(libdir) && \
-	    $(rm) -f $(libtso) $(libtso_default) $(libtso_major)
+	@cd $(libdir) && $(rm) -f \
+	    $(libtso_target) $(libtso) $(libtso_default) $(libtso_major)
 	@$(INSTALLER) $(libtso_target) $(libdir)
 	@cd $(libdir) && $(ln) -s $(libtso) $(libtso_default)
 	@cd $(libdir) && $(ln) -s $(libtso) $(libtso_major)
 
-install_java: install_setup
+install_java:
 	@echo "Installing DB Java library: $(libdir) ..."
 	@test -d $(libdir) || \
 	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
-	@cd $(libdir) && \
-	    $(rm) -f $(libjso) $(libjso_default) $(libjso_major)
+	@cd $(libdir) && $(rm) -f \
+	    $(libjso_target) $(libjso) $(libjso_default) $(libjso_major)
 	@$(INSTALLER) $(libjso_target) $(libdir)
 	@cd $(libdir) && $(ln) -s $(libjso) $(libjso_default)
 	@cd $(libdir) && $(ln) -s $(libjso) $(libjso_major)
 	@cd $(libdir) && $(ln) -s $(libjso) $(libjso_g)
+	@$(cp) $(JAVA_CLASSTOP)/$(libj_jarfile) $(libdir)
 
-install_docs: install_setup
-	@echo "Installing documentation: $(docdir) ..."
-	@test -d $(docdir) || \
-	    ($(mkdir) -p $(docdir) && $(chmod) $(dmode) $(docdir))
-	@cd $(docdir) && $(rm) -rf *
-	@cd $(srcdir)/docs && $(cp) -pr * $(docdir)/
-
-install_utilities: install_setup
+install_utilities:
 	@echo "Installing DB utilities: $(bindir) ..."
 	@test -d $(bindir) || \
 	    ($(mkdir) -p $(bindir) && $(chmod) $(dmode) $(bindir))
@@ -475,11 +497,17 @@ install_utilities: install_setup
 	@cd $(bindir) && (test ! -f $(strip) || $(strip) $(PROGS))
 	@cd $(bindir) && $(chmod) $(emode) $(PROGS)
 
-uninstall:
+uninstall_utilities:
 	-cd $(bindir) && $(rm) -f $(PROGS)
-	-cd $(includedir) && $(rm) -f db.h db_185.h db_cxx.h
-	-cd $(libdir) && $(rm) -f $(libdb) $(libcxx) $(libso_target) $(libso) \
-	    $(libjso) $(libjso_target) $(libtso) $(libtso_target)
+
+install_docs:
+	@echo "Installing documentation: $(docdir) ..."
+	@test -d $(docdir) || \
+	    ($(mkdir) -p $(docdir) && $(chmod) $(dmode) $(docdir))
+	@cd $(docdir) && $(rm) -rf *
+	@cd $(srcdir)/docs && $(cp) -pr * $(docdir)/
+
+uninstall_docs:
 	-cd $(docdir) && $(rm) -rf *
 
 ##################################################
@@ -648,6 +676,8 @@ qam_auto@o@: $(srcdir)/qam/qam_auto.c
 	$(CC) $(CFLAGS) $?
 qam_conv@o@: $(srcdir)/qam/qam_conv.c
 	$(CC) $(CFLAGS) $?
+qam_files@o@: $(srcdir)/qam/qam_files.c
+	$(CC) $(CFLAGS) $?
 qam_method@o@: $(srcdir)/qam/qam_method.c
 	$(CC) $(CFLAGS) $?
 qam_open@o@: $(srcdir)/qam/qam_open.c
@@ -701,25 +731,25 @@ java_util@o@: $(srcdir)/libdb_java/java_util.c
 
 # Tcl files
 tcl_compat@o@: $(srcdir)/tcl/tcl_compat.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_db@o@: $(srcdir)/tcl/tcl_db.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_db_pkg@o@: $(srcdir)/tcl/tcl_db_pkg.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_dbcursor@o@: $(srcdir)/tcl/tcl_dbcursor.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_env@o@: $(srcdir)/tcl/tcl_env.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_internal@o@: $(srcdir)/tcl/tcl_internal.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_lock@o@: $(srcdir)/tcl/tcl_lock.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_log@o@: $(srcdir)/tcl/tcl_log.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_mp@o@: $(srcdir)/tcl/tcl_mp.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 tcl_txn@o@: $(srcdir)/tcl/tcl_txn.c
-	$(CC) $(TCFLAGS) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(TCFLAGS) $?
 
 # Hash files
 hash_auto@o@: $(srcdir)/hash/hash_auto.c
@@ -756,7 +786,11 @@ lock_conflict@o@:$(srcdir)/lock/lock_conflict.c
 	$(CC) $(CFLAGS) $?
 lock_deadlock@o@:$(srcdir)/lock/lock_deadlock.c
 	$(CC) $(CFLAGS) $?
+lock_method@o@:$(srcdir)/lock/lock_method.c
+	$(CC) $(CFLAGS) $?
 lock_region@o@:$(srcdir)/lock/lock_region.c
+	$(CC) $(CFLAGS) $?
+lock_stat@o@:$(srcdir)/lock/lock_stat.c
 	$(CC) $(CFLAGS) $?
 lock_util@o@:$(srcdir)/lock/lock_util.c
 	$(CC) $(CFLAGS) $?

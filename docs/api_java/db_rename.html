@@ -1,5 +1,4 @@
- 
-<!--$Id: db_rename.so,v 10.4 2000/05/30 17:52:25 sue Exp $-->
+<!--$Id: db_rename.so,v 10.7 2000/10/25 15:24:44 dda Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.rename</h1>
@@ -21,9 +20,10 @@
 <tt>
 <h3><pre>
 import com.sleepycat.db.*;
+import java.io.FileNotFoundException;
 <p>
 public void rename(String file, String database, String newname, int flags)
-	throws DbException;
+	throws DbException, FileNotFoundException;
 </pre></h3>
 <h1>Description</h1>
 <p>The Db.rename interface renames the database specified by the
@@ -55,6 +55,9 @@ is affected by the configuration value DB_DATA_DIR.
 <p><dl compact>
 <p><dt>EINVAL<dd>A database in the file is currently open.
 </dl>
+<p>If the file or directory does not exist, the Db.rename method will
+fail and
+throw a FileNotFoundException exception.
 <p>The Db.rename method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
 If a catastrophic error has occurred, the Db.rename method may fail and throw
 a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
@@ -83,6 +86,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

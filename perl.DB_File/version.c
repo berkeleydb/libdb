@@ -8,7 +8,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1995-2000 Paul Marquess. All rights reserved.
+     Copyright (c) 1995-2001 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -17,6 +17,8 @@
 		Support for Berkeley DB 2/3's backward compatability mode.
         1.72 -  No change.
         1.73 -  Added support for threading
+        1.74 -  Added Perl core patch 7801.
+
 
 */
 
@@ -27,7 +29,11 @@
 #include <db.h>
 
 void
+#ifdef CAN_PROTOTYPE
+__getBerkeleyDBInfo(void)
+#else
 __getBerkeleyDBInfo()
+#endif
 {
 #ifdef dTHX	
     dTHX;

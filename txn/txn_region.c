@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_region.c,v 11.20 2000/05/17 19:06:34 sue Exp $";
+static const char revid[] = "$Id: txn_region.c,v 11.36 2001/01/11 18:19:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,6 +34,7 @@ static const char revid[] = "$Id: txn_region.c,v 11.20 2000/05/17 19:06:34 sue E
 
 #include "db_int.h"
 #include "db_page.h"
+#include "log.h"	/* for __log_lastckp */
 #include "txn.h"
 #include "db_am.h"
 
@@ -45,7 +46,7 @@ static const char revid[] = "$Id: txn_region.c,v 11.20 2000/05/17 19:06:34 sue E
 static int __txn_init __P((DB_ENV *, DB_TXNMGR *));
 static int __txn_set_tx_max __P((DB_ENV *, u_int32_t));
 static int __txn_set_tx_recover __P((DB_ENV *,
-	       int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *)));
+	       int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
 static int __txn_set_tx_timestamp __P((DB_ENV *, time_t *));
 
 /*
@@ -99,7 +100,7 @@ __txn_set_tx_max(dbenv, tx_max)
 static int
 __txn_set_tx_recover(dbenv, tx_recover)
 	DB_ENV *dbenv;
-	int (*tx_recover) __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+	int (*tx_recover) __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
 {
 	dbenv->tx_recover = tx_recover;
 	return (0);
@@ -138,12 +139,12 @@ __txn_open(dbenv)
 		return (ret);
 	TAILQ_INIT(&tmgrp->txn_chain);
 	tmgrp->dbenv = dbenv;
-	tmgrp->recover =
-	    dbenv->tx_recover == NULL ? __db_dispatch : dbenv->tx_recover;
 
 	/* Join/create the txn region. */
-	tmgrp->reginfo.id = REG_ID_TXN;
+	tmgrp->reginfo.type = REGION_TYPE_TXN;
+	tmgrp->reginfo.id = INVALID_REGION_ID;
 	tmgrp->reginfo.mode = dbenv->db_mode;
+	tmgrp->reginfo.flags = REGION_JOIN_OK;
 	if (F_ISSET(dbenv, DB_ENV_CREATE))
 		F_SET(&tmgrp->reginfo, REGION_CREATE_OK);
 	if ((ret = __db_r_attach(dbenv,
@@ -159,28 +160,30 @@ __txn_open(dbenv)
 	tmgrp->reginfo.primary =
 	    R_ADDR(&tmgrp->reginfo, tmgrp->reginfo.rp->primary);
 
-	R_UNLOCK(dbenv, &tmgrp->reginfo);
-
 	/* Acquire a mutex to protect the active TXN list. */
 	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
 		if ((ret = __db_mutex_alloc(
 		    dbenv, &tmgrp->reginfo, &tmgrp->mutexp)) != 0)
-			goto detach;
+			goto err;
 		if ((ret = __db_mutex_init(
 		    dbenv, tmgrp->mutexp, 0, MUTEX_THREAD)) != 0)
-			goto detach;
+			goto err;
 	}
+
+	R_UNLOCK(dbenv, &tmgrp->reginfo);
 
 	dbenv->tx_handle = tmgrp;
 	return (0);
 
 err:	if (tmgrp->reginfo.addr != NULL) {
 		if (F_ISSET(&tmgrp->reginfo, REGION_CREATE))
-			F_SET(tmgrp->reginfo.rp, REG_DEAD);
+			ret = __db_panic(dbenv, ret);
 		R_UNLOCK(dbenv, &tmgrp->reginfo);
 
-detach:		(void)__db_r_detach(dbenv, &tmgrp->reginfo, 0);
+		(void)__db_r_detach(dbenv, &tmgrp->reginfo, 0);
 	}
+	if (tmgrp->mutexp != NULL)
+		__db_mutex_free(dbenv, &tmgrp->reginfo, tmgrp->mutexp);
 	__os_free(tmgrp, sizeof(*tmgrp));
 	return (ret);
 }
@@ -194,8 +197,18 @@ __txn_init(dbenv, tmgrp)
 	DB_ENV *dbenv;
 	DB_TXNMGR *tmgrp;
 {
+	DB_LSN last_ckp;
 	DB_TXNREGION *region;
 	int ret;
+
+	ZERO_LSN(last_ckp);
+	/*
+	 * If possible, fetch the last checkpoint LSN from the log system
+	 * so that the backwards chain of checkpoints is unbroken when
+	 * the environment is removed and recreated. [#2865]
+	 */
+	if (LOGGING_ON(dbenv) && (ret = __log_lastckp(dbenv, &last_ckp)) != 0)
+		return (ret);
 
 	if ((ret = __db_shalloc(tmgrp->reginfo.addr,
 	    sizeof(DB_TXNREGION), 0, &tmgrp->reginfo.primary)) != 0) {
@@ -211,7 +224,7 @@ __txn_init(dbenv, tmgrp)
 	region->maxtxns = dbenv->tx_max;
 	region->last_txnid = TXN_MINIMUM;
 	ZERO_LSN(region->pending_ckp);
-	ZERO_LSN(region->last_ckp);
+	region->last_ckp = last_ckp;
 	region->time_ckp = time(NULL);
 
 	/*
@@ -243,6 +256,7 @@ __txn_close(dbenv)
 {
 	DB_TXN *txnp;
 	DB_TXNMGR *tmgrp;
+	u_int32_t txnid;
 	int ret, t_ret;
 
 	ret = 0;
@@ -252,23 +266,26 @@ __txn_close(dbenv)
 	 * This function can only be called once per process (i.e., not
 	 * once per thread), so no synchronization is required.
 	 *
-	 * We would like to abort any running transactions, but the caller
-	 * is doing something wrong by calling close with active
-	 * transactions.  It's quite likely that this will fail because
-	 * recovery won't find open files.  If this happens, the right
-	 * solution is DB_RUNRECOVERY.  So, convert any failure messages
-	 * to that.
+	 * The caller is doing something wrong if close is called with
+	 * active transactions.  Try and abort any active transactions,
+	 * but it's quite likely the aborts will fail because recovery
+	 * won't find open files.  If we can't abort any transaction,
+	 * panic, we have to run recovery to get back to a known state.
 	 */
-	while ((txnp =
-	    TAILQ_FIRST(&tmgrp->txn_chain)) != TAILQ_END(&tmgrp->txn_chain))
-		if ((t_ret = txn_abort(txnp)) != 0) {
-			__db_err(dbenv,
-			    "Unable to abort transaction 0x%x: %s\n",
-			    txnp->txnid, db_strerror(t_ret));
-			__txn_end(txnp, 0);
-			if (ret == 0)
-				ret = t_ret == 0 ? 0 : DB_RUNRECOVERY;
+	if (TAILQ_FIRST(&tmgrp->txn_chain) != NULL) {
+		__db_err(dbenv,
+	"Error: closing the transaction region with active transactions\n");
+		ret = EINVAL;
+		while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL) {
+			txnid = txnp->txnid;
+			if ((t_ret = txn_abort(txnp)) != 0) {
+				__db_err(dbenv,
+				    "Unable to abort transaction 0x%x: %s\n",
+				    txnid, db_strerror(t_ret));
+				ret = __db_panic(dbenv, t_ret);
+			}
 		}
+	}
 
 	/* Flush the log. */
 	if (LOGGING_ON(dbenv) &&

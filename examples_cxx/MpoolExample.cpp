@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: MpoolExample.cpp,v 11.8 2000/03/19 18:34:58 dda Exp $
+ * $Id: MpoolExample.cpp,v 11.9 2000/10/27 20:32:01 dda Exp $
  */
 
 #include "db_config.h"
@@ -111,7 +111,7 @@ init(char *file, int pagesize, int npages)
 	//
 	int fd;
 	int flags = O_CREAT | O_RDWR | O_TRUNC;
-#ifdef WIN32
+#ifdef DB_WIN32
 	flags |= O_BINARY;
 #endif
 	if ((fd = open(file, flags, 0666)) < 0) {

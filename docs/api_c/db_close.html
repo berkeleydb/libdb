@@ -1,5 +1,4 @@
- 
-<!--$Id: db_close.so,v 10.26 2000/04/05 15:54:40 bostic Exp $-->
+<!--$Id: db_close.so,v 10.27 2000/09/08 15:20:28 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;close</h1>
@@ -54,14 +53,15 @@ updated copy.
 thread may call the DB-&gt;close function.
 <p>Once DB-&gt;close has been called, regardless of its return, the
 DB handle may not be accessed again.
-<a name="3"><!--meow--></a>
-<p>The DB-&gt;close function returns a non-zero error value on failure, 0 on success, and <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if the underlying database still has dirty pages
-in the cache.  (The only reason for a return of <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> is
-if another thread of control was writing pages in the underlying database
-file at the same time as the DB-&gt;close function was called.  For this
-reason, a return of <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> can normally be ignored, or, in
-cases where it is a possible return value, the <a href="../api_c/db_close.html#DB_NOSYNC">DB_NOSYNC</a> option
-should probably have been specified.)
+        <a name="3"><!--meow--></a>    
+<p>The DB-&gt;close function returns a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if the underlying database still has
+dirty pages in the cache.  (The only reason to return
+<a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> is if another thread of control was writing pages
+in the underlying database file at the same time as the
+DB-&gt;close function was called.  For this reason, a return of
+<a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> can normally be ignored, or, in cases where it is
+a possible return value, the <a href="../api_c/db_close.html#DB_NOSYNC">DB_NOSYNC</a> option should probably
+have been specified.)
 <p>The DB-&gt;close function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
 <p>The DB-&gt;close function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
@@ -99,6 +99,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

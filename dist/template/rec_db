@@ -72,6 +72,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_split_recover --
  *	Recovery function for split.
@@ -133,6 +134,7 @@ __db_split_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_big_recover --
  *	Recovery function for big.
@@ -194,6 +196,7 @@ __db_big_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_ovref_recover --
  *	Recovery function for ovref.
@@ -255,6 +258,7 @@ __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_relink_recover --
  *	Recovery function for relink.
@@ -316,6 +320,7 @@ __db_relink_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_addpage_recover --
  *	Recovery function for addpage.
@@ -377,6 +382,7 @@ __db_addpage_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_debug_recover --
  *	Recovery function for debug.
@@ -438,6 +444,7 @@ __db_debug_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __db_noop_recover --
  *	Recovery function for noop.
@@ -499,3 +506,4 @@ __db_noop_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+

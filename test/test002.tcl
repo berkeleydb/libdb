@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test002.tcl,v 11.12 2000/04/21 18:36:23 krinsky Exp $
+#	$Id: test002.tcl,v 11.13 2000/08/25 14:21:53 sue Exp $
 #
 # DB Test 2 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -39,7 +39,7 @@ proc test002 { method {nentries 10000} args } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE

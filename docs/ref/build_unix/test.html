@@ -1,25 +1,22 @@
- 
-<!--$Id: test.so,v 10.18 2000/04/30 21:41:27 bostic Exp $-->
+<!--$Id: test.so,v 10.19 2000/06/28 14:33:57 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Building Berkeley DB for UNIX systems</title>
+<title>Berkeley DB Reference Guide: Running the test suite under UNIX</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_unix/shlib.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Running the test suite under UNIX</h1>
-<p>The Berkeley DB test suite is built if you specify --enable-test as an argument
-when configuring Berkeley DB.  The Berkeley DB test suite requires that Berkeley DB be built
-as a dynamic library (--enable-dynamic) and that the Tcl/Tk (--enable-tcl
-or --with-tcl) API be configured as well.
+<p>The Berkeley DB test suite is built if you specify --enable-test as an
+argument when configuring Berkeley DB.
 <p>Before running the tests for the first time, you may need to edit the
 <b>include.tcl</b> file in your build directory.  The Berkeley DB
 configuration assumes you intend to use the version of the tclsh utility

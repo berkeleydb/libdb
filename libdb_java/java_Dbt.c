@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Dbt.c,v 11.5 2000/05/25 04:18:12 dda Exp $";
+static const char revid[] = "$Id: java_Dbt.c,v 11.10 2000/10/25 19:54:55 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -30,8 +30,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_init
 {
 	DBT_JAVAINFO *dbtji;
 
-	dbtji = (DBT_JAVAINFO *)malloc(sizeof(DBT_JAVAINFO));
-	memset(dbtji, 0, sizeof(DBT_JAVAINFO));
+	dbtji = dbjit_construct();
 	set_private_dbobj(jnienv, name_DBT, jthis, dbtji);
 }
 
@@ -61,12 +60,28 @@ JNIEXPORT jbyteArray JNICALL Java_com_sleepycat_db_Dbt_get_1data
   (JNIEnv *jnienv, jobject jthis)
 {
 	DBT_JAVAINFO *db_this;
+	jbyteArray arr;
+	int len;
 
 	db_this = get_DBT_JAVAINFO(jnienv, jthis);
 	if (verify_non_null(jnienv, db_this)) {
-		return db_this->array_;
+		/* XXX this will copy the data on each call to get_data,
+		 * even if it is unchanged.
+		 */
+		if (db_this->create_array_ != 0) {
+			/* XXX we should reuse the existing array if we can */
+			len = db_this->dbt.size;
+			if (db_this->array_ != NULL)
+				DELETE_GLOBAL_REF(jnienv, db_this->array_);
+			arr = (*jnienv)->NewByteArray(jnienv, len);
+			db_this->array_ =
+				(jbyteArray)NEW_GLOBAL_REF(jnienv, arr);
+			(*jnienv)->SetByteArrayRegion(jnienv, arr, 0, len,
+						      db_this->dbt.data);
+		}
+		return (db_this->array_);
 	}
-	return 0;
+	return (0);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1offset
@@ -89,7 +104,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1offset
 	if (verify_non_null(jnienv, db_this)) {
 		return db_this->offset_;
 	}
-	return 0;
+	return (0);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1recno_1key_1data(JNIEnv *jnienv, jobject jthis, jint value)
@@ -141,7 +156,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1recno_1key_1data(JNIEnv *j
 	}
  out:
 	jdbt_unlock(&jdbt, jnienv);
-	return ret;
+	return (ret);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_finalize
@@ -153,6 +168,9 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_finalize
 	if (dbtji) {
 		/* Free any data related to DBT here */
 		dbjit_release(dbtji, jnienv);
+
+		/* Extra paranoia */
+		memset(dbtji, 0, sizeof(DBT_JAVAINFO));
 		free(dbtji);
 	}
 }

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_iface.c,v 11.27 2000/05/17 19:18:08 bostic Exp $";
+static const char revid[] = "$Id: db_iface.c,v 11.34 2001/01/11 18:19:51 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -130,9 +130,7 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	u_int32_t flags;
 	int isvalid;
 {
-	int key_einval, ret;
-
-	key_einval = 0;
+	int ret;
 
 	/*
 	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
@@ -154,26 +152,25 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case DB_CONSUME:
+	case DB_CONSUME_WAIT:
 		if (dbp->type != DB_QUEUE)
 			goto err;
 		break;
 	case DB_CURRENT:
 	case DB_FIRST:
+	case DB_GET_BOTH:
 	case DB_LAST:
 	case DB_NEXT:
 	case DB_NEXT_DUP:
 	case DB_NEXT_NODUP:
 	case DB_PREV:
 	case DB_PREV_NODUP:
+	case DB_SET:
+	case DB_SET_RANGE:
 		break;
 	case DB_GET_BOTHC:
 		if (dbp->type == DB_QUEUE)
 			goto err;
-		/* FALLTHROUGH */
-	case DB_GET_BOTH:
-	case DB_SET:
-	case DB_SET_RANGE:
-		key_einval = 1;
 		break;
 	case DB_GET_RECNO:
 		if (!F_ISSET(dbp, DB_BT_RECNUM))
@@ -182,7 +179,6 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	case DB_SET_RECNO:
 		if (!F_ISSET(dbp, DB_BT_RECNUM))
 			goto err;
-		key_einval = 1;
 		break;
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
@@ -201,7 +197,7 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 	if (isvalid || (flags != DB_CURRENT && flags != DB_NEXT_DUP))
 		return (0);
 
-	return(__db_curinval(dbp->dbenv));
+	return (__db_curinval(dbp->dbenv));
 }
 
 /*
@@ -219,9 +215,9 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 	u_int32_t flags;
 	int isrdonly, isvalid;
 {
-	int key_einval, key_flags, ret;
+	int key_flags, ret;
 
-	key_einval = key_flags = 0;
+	key_flags = 0;
 
 	/* Check for changes to a read-only tree. */
 	if (isrdonly)
@@ -265,7 +261,7 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 	case DB_KEYLAST:
 		if (dbp->type == DB_QUEUE || dbp->type == DB_RECNO)
 			goto err;
-		key_einval = key_flags = 1;
+		key_flags = 1;
 		break;
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_put", 0));
@@ -382,6 +378,11 @@ __db_getchk(dbp, key, data, flags)
 		if (!F_ISSET(dbp, DB_BT_RECNUM))
 			goto err;
 		break;
+	case DB_CONSUME:
+	case DB_CONSUME_WAIT:
+		if (dbp->type == DB_QUEUE)
+			break;
+		/* Fall through */
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DB->get", 0));
 	}
@@ -399,13 +400,17 @@ err:		return (__db_ferr(dbp->dbenv, "DB->get", 0));
  * __db_joinchk --
  *	Common join argument checking routine.
  *
- * PUBLIC: int __db_joinchk __P((const DB *, u_int32_t));
+ * PUBLIC: int __db_joinchk __P((const DB *, DBC * const *, u_int32_t));
  */
 int
-__db_joinchk(dbp, flags)
+__db_joinchk(dbp, curslist, flags)
 	const DB *dbp;
+	DBC * const *curslist;
 	u_int32_t flags;
 {
+	DB_TXN *txn;
+	int i;
+
 	switch (flags) {
 	case 0:
 	case DB_JOIN_NOSORT:
@@ -413,6 +418,20 @@ __db_joinchk(dbp, flags)
 	default:
 		return (__db_ferr(dbp->dbenv, "DB->join", 0));
 	}
+
+	if (curslist == NULL || curslist[0] == NULL) {
+		__db_err(dbp->dbenv,
+	    "At least one secondary cursor must be specified to DB->join");
+		return (EINVAL);
+	}
+
+	txn = curslist[0]->txn;
+	for (i = 1; curslist[i] != NULL; i++)
+		if (curslist[i]->txn != txn) {
+			__db_err(dbp->dbenv,
+		    "All secondary cursors must share the same transaction");
+			return (EINVAL);
+		}
 
 	return (0);
 }
@@ -482,9 +501,7 @@ __db_putchk(dbp, key, data, flags, isrdonly, isdup)
 	u_int32_t flags;
 	int isrdonly, isdup;
 {
-	int key_einval, key_flags, ret;
-
-	key_einval = key_flags = 0;
+	int ret;
 
 	/* Check for changes to a read-only tree. */
 	if (isrdonly)
@@ -494,12 +511,10 @@ __db_putchk(dbp, key, data, flags, isrdonly, isdup)
 	switch (flags) {
 	case 0:
 	case DB_NOOVERWRITE:
-		key_einval = key_flags = 1;
 		break;
 	case DB_APPEND:
 		if (dbp->type != DB_RECNO && dbp->type != DB_QUEUE)
 			goto err;
-		key_flags = 1;
 		break;
 	case DB_NODUPDATA:
 		if (F_ISSET(dbp, DB_AM_DUPSORT))
@@ -510,7 +525,7 @@ err:		return (__db_ferr(dbp->dbenv, "DB->put", 0));
 	}
 
 	/* Check for invalid key/data flags. */
-	if (key_flags && (ret = __dbt_ferr(dbp, "key", key, 0)) != 0)
+	if ((ret = __dbt_ferr(dbp, "key", key, 0)) != 0)
 		return (ret);
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_upg.c,v 11.16 2000/05/12 16:41:50 bostic Exp $";
+static const char revid[] = "$Id: db_upg.c,v 11.20 2000/12/12 17:35:30 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -142,6 +141,25 @@ __db_upgrade(dbp, fname, flags)
 				goto err;
 			if ((ret = __os_write(dbenv, &fh, mbuf, 256, &n)) != 0)
 				goto err;
+
+			/*
+			 * Before V6, we created hash pages one by one as they
+			 * were needed, using hashhdr.ovfl_point to reserve
+			 * a block of page numbers for them.  A consequence
+			 * of this was that, if no overflow pages had been
+			 * created, the current doubling might extend past
+			 * the end of the database file.
+			 *
+			 * In DB 3.X, we now create all the hash pages
+			 * belonging to a doubling atomicly;  it's not
+			 * safe to just save them for later, because when
+			 * we create an overflow page we'll just create
+			 * a new last page (whatever that may be).  Grow
+			 * the database to the end of the current doubling.
+			 */
+			if ((ret =
+			    __ham_30_sizefix(dbp, &fh, real_name, mbuf)) != 0)
+				goto err;
 			/* FALLTHROUGH */
 		case 6:
 			/*
@@ -173,13 +191,17 @@ __db_upgrade(dbp, fname, flags)
 			 */
 			if ((ret = __qam_31_qammeta(dbp, real_name, mbuf)) != 0)
 				return (ret);
+			/* FALLTHROUGH */
+		case 2:
+			if ((ret = __qam_32_qammeta(dbp, real_name, mbuf)) != 0)
+				return (ret);
 			if ((ret = __os_seek(dbenv,
 			    &fh, 0, 0, 0, 0, DB_OS_SEEK_SET)) != 0)
 				goto err;
 			if ((ret = __os_write(dbenv, &fh, mbuf, 256, &n)) != 0)
 				goto err;
 			/* FALLTHROUGH */
-		case 2:
+		case 3:
 			break;
 		default:
 			__db_err(dbenv, "%s: unsupported queue version: %lu",

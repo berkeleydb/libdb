@@ -1,11 +1,11 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_win32. */
 /*-
  * See the file LICENSE for redistribution information.
  *
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: db_int.src,v 11.31 2000/05/18 19:26:07 bostic Exp $
+ *	$Id: db_int.src,v 11.42 2001/01/11 17:49:17 krinsky Exp $
  */
 
 #ifndef _DB_INTERNAL_H_
@@ -22,17 +22,9 @@
 #else
 #include <varargs.h>
 #endif
+#include <errno.h>
 #endif
 
-/*
- * XXX
- * We need to #undef the following LIST_XXX macros because VxWorks copied
- * some of them into UnixLib.h -- not all of them though, so we can't use
- * their versions.
- */
-#undef LIST_INIT
-#undef LIST_INSERT_HEAD
-#undef LIST_REMOVE
 #include "queue.h"
 #include "shqueue.h"
 
@@ -157,7 +149,7 @@ typedef struct __fn {
 #define	MAXPATHLEN	1024
 
 #define	PATH_DOT	"."	/* Current working directory. */
-#define	PATH_SEPARATOR	"\\/"	/* Path separator character. */
+#define	PATH_SEPARATOR	"\\/:"	/* Path separator character. */
 
 /*
  * Flags understood by __os_open.
@@ -166,9 +158,10 @@ typedef struct __fn {
 #define	DB_OSO_EXCL	0x002		/* POSIX: O_EXCL */
 #define	DB_OSO_LOG	0x004		/* Opening a log file. */
 #define	DB_OSO_RDONLY	0x008		/* POSIX: O_RDONLY */
-#define	DB_OSO_SEQ	0x010		/* Expected sequential access. */
-#define	DB_OSO_TEMP	0x020		/* Remove after last close. */
-#define	DB_OSO_TRUNC	0x040		/* POSIX: O_TRUNC */
+#define	DB_OSO_REGION	0x010		/* Opening a region file. */
+#define	DB_OSO_SEQ	0x020		/* Expected sequential access. */
+#define	DB_OSO_TEMP	0x040		/* Remove after last close. */
+#define	DB_OSO_TRUNC	0x080		/* POSIX: O_TRUNC */
 
 /*
  * Seek options understood by __os_seek.
@@ -275,6 +268,12 @@ struct __dbc_internal {
 	__DBC_INTERNAL
 };
 
+/*
+ * Access-method-common macro for determining whether a cursor
+ * has been initialized.
+ */
+#define	IS_INITIALIZED(dbc)	((dbc)->internal->pgno != PGNO_INVALID)
+
 /*******************************************************
  * Mpool.
  *******************************************************/
@@ -312,6 +311,8 @@ typedef struct __dbpginfo {
  * Txn.
  *******************************************************/
 #define	DB_NONBLOCK(C)	((C)->txn != NULL && F_ISSET((C)->txn, TXN_NOWAIT))
+#define	IS_SUBTRANSACTION(txn) \
+	((txn) != NULL && (txn)->parent != NULL)
 
 /*******************************************************
  * Global variables.
@@ -325,7 +326,6 @@ typedef struct __dbpginfo {
  * pollution.
  */
 typedef struct __db_globals {
-	u_int32_t db_mutexlocks;	/* db_set_mutexlocks */
 	u_int32_t db_pageyield;		/* db_set_pageyield */
 	u_int32_t db_panic;		/* db_set_panic */
 	u_int32_t db_region_init;	/* db_set_region_init */
@@ -340,7 +340,6 @@ typedef struct __db_globals {
 
 #ifdef DB_INITIALIZE_DB_GLOBALS
 DB_GLOBALS __db_global_values = {
-	1,					/* db_set_mutexlocks */
 	0,					/* db_set_pageyield */
 	1,					/* db_set_panic */
 	0,					/* db_set_region_init */
@@ -363,6 +362,22 @@ struct __mutex_t;	typedef struct __mutex_t MUTEX;
 struct __vrfy_childinfo; typedef struct __vrfy_childinfo VRFY_CHILDINFO;
 struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
 struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
+struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
+struct __db_txnhead;	typedef struct __db_txnhead DB_TXNHEAD;
+typedef enum {
+	TXNLIST_DELETE,
+	TXNLIST_LSN,
+	TXNLIST_TXNID,
+	TXNLIST_PGNO
+} db_txnlist_type;
+
+/*
+ * Currently, region offsets are limited to 32-bits.  I expect that's going
+ * to have to be fixed in the not-too-distant future, since we won't want to
+ * split 100Gb memory pools into that many different regions.  It's typedef'd
+ * so it won't be too painful to upgrade.
+ */
+typedef u_int32_t roff_t;
 
 #if defined(__cplusplus)
 }
@@ -373,8 +388,8 @@ struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
  *******************************************************/
 #include "debug.h"
 #include "mutex.h"
-#include "mutex_ext.h"
 #include "region.h"
+#include "mutex_ext.h"
 #include "env_ext.h"
 #include "os.h"
 #include "os_ext.h"

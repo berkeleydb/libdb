@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_pthread.c,v 11.20 2000/05/02 22:15:07 bostic Exp $";
+static const char revid[] = "$Id: mut_pthread.c,v 11.33 2001/01/09 00:56:16 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #endif
@@ -32,21 +31,25 @@ static const char revid[] = "$Id: mut_pthread.c,v 11.20 2000/05/02 22:15:07 bost
 #endif
 
 #ifdef HAVE_MUTEX_SOLARIS_LWP
-#define	pthread_cond_signal	_lwp_cond_signal
-#define	pthread_cond_wait	_lwp_cond_wait
-#define	pthread_mutex_lock	_lwp_mutex_lock
-#define	pthread_mutex_trylock	_lwp_mutex_trylock
-#define	pthread_mutex_unlock	_lwp_mutex_unlock
-#define	pthread_self		_lwp_self
+#define	pthread_cond_signal		_lwp_cond_signal
+#define	pthread_cond_wait		_lwp_cond_wait
+#define	pthread_mutex_lock		_lwp_mutex_lock
+#define	pthread_mutex_trylock		_lwp_mutex_trylock
+#define	pthread_mutex_unlock		_lwp_mutex_unlock
+#define	pthread_self			_lwp_self
+#define	pthread_mutex_destroy(x)	0
 #endif
 #ifdef HAVE_MUTEX_UI_THREADS
-#define	pthread_cond_signal	cond_signal
-#define	pthread_cond_wait	cond_wait
-#define	pthread_mutex_lock	mutex_lock
-#define	pthread_mutex_trylock	mutex_trylock
-#define	pthread_mutex_unlock	mutex_unlock
-#define	pthread_self		thr_self
+#define	pthread_cond_signal		cond_signal
+#define	pthread_cond_wait		cond_wait
+#define	pthread_mutex_lock		mutex_lock
+#define	pthread_mutex_trylock		mutex_trylock
+#define	pthread_mutex_unlock		mutex_unlock
+#define	pthread_self			thr_self
+#define	pthread_mutex_destroy		mutex_destroy
 #endif
+
+#define	PTHREAD_UNLOCK_ATTEMPTS	5
 
 /*
  * __db_pthread_mutex_init --
@@ -160,6 +163,11 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 #endif
 
 	mutexp->spins = __os_spin();
+#ifdef MUTEX_SYSTEM_RESOURCES
+	mutexp->reg_off = INVALID_ROFF;
+#endif
+	if (ret == 0)
+		F_SET(mutexp, MUTEX_INITED);
 
 	return (ret);
 }
@@ -168,16 +176,17 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
  * __db_pthread_mutex_lock
  *	Lock on a mutex, logically blocking if necessary.
  *
- * PUBLIC: int __db_pthread_mutex_lock __P((MUTEX *));
+ * PUBLIC: int __db_pthread_mutex_lock __P((DB_ENV *, MUTEX *));
  */
 int
-__db_pthread_mutex_lock(mutexp)
+__db_pthread_mutex_lock(dbenv, mutexp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 {
 	u_int32_t nspins;
-	int ret, waited;
+	int i, ret, waited;
 
-	if (!DB_GLOBAL(db_mutexlocks) || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 	/* Attempt to acquire the resource for N spins. */
@@ -215,7 +224,20 @@ __db_pthread_mutex_lock(mutexp)
 #else
 		mutexp->locked = 1;
 #endif
-		if ((ret = pthread_mutex_unlock(&mutexp->mutex)) != 0)
+		/*
+		 * According to HP-UX engineers contacted by Netscape,
+		 * pthread_mutex_unlock() will occasionally return EFAULT
+		 * for no good reason on mutexes in shared memory regions,
+		 * and the correct caller behavior is to try again.  Do
+		 * so, up to PTHREAD_UNLOCK_ATTEMPTS consecutive times.
+		 * Note that we don't bother to restrict this to HP-UX;
+		 * it should be harmless elsewhere. [#2471]
+		 */
+		i = PTHREAD_UNLOCK_ATTEMPTS;
+		do {
+			ret = pthread_mutex_unlock(&mutexp->mutex);
+		} while (ret == EFAULT && --i > 0);
+		if (ret != 0)
 			return (ret);
 	} else {
 		if (nspins == mutexp->spins)
@@ -241,15 +263,16 @@ __db_pthread_mutex_lock(mutexp)
  * __db_pthread_mutex_unlock --
  *	Release a lock.
  *
- * PUBLIC: int __db_pthread_mutex_unlock __P((MUTEX *));
+ * PUBLIC: int __db_pthread_mutex_unlock __P((DB_ENV *, MUTEX *));
  */
 int
-__db_pthread_mutex_unlock(mutexp)
+__db_pthread_mutex_unlock(dbenv, mutexp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 {
-	int ret;
+	int i, ret;
 
-	if (!DB_GLOBAL(db_mutexlocks) || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 #ifdef DIAGNOSTIC
@@ -263,17 +286,43 @@ __db_pthread_mutex_unlock(mutexp)
 
 		mutexp->locked = 0;
 
-		if ((ret = pthread_mutex_unlock(&mutexp->mutex)) != 0)
+		if ((ret = pthread_cond_signal(&mutexp->cond)) != 0)
 			return (ret);
 
-		if ((ret = pthread_cond_signal(&mutexp->cond)) != 0)
+		/* See comment above;  workaround for [#2471]. */
+		i = PTHREAD_UNLOCK_ATTEMPTS;
+		do {
+			ret = pthread_mutex_unlock(&mutexp->mutex);
+		} while (ret == EFAULT && --i > 0);
+		if (ret != 0)
 			return (ret);
 	} else {
 		mutexp->locked = 0;
 
-		if ((ret = pthread_mutex_unlock(&mutexp->mutex)) != 0)
+		/* See comment above;  workaround for [#2471]. */
+		i = PTHREAD_UNLOCK_ATTEMPTS;
+		do {
+			ret = pthread_mutex_unlock(&mutexp->mutex);
+		} while (ret == EFAULT && --i > 0);
+		if (ret != 0)
 			return (ret);
 	}
 
 	return (0);
+}
+
+/*
+ * __db_pthread_mutex_destroy --
+ *	Destroy a MUTEX.
+ *
+ * PUBLIC: int __db_pthread_mutex_destroy __P((MUTEX *));
+ */
+int
+__db_pthread_mutex_destroy(mutexp)
+	MUTEX *mutexp;
+{
+	if (F_ISSET(mutexp, MUTEX_IGNORE))
+		return (0);
+
+	return (pthread_mutex_destroy(&mutexp->mutex));
 }

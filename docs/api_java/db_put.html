@@ -1,5 +1,4 @@
- 
-<!--$Id: db_put.so,v 10.33 2000/03/24 21:26:58 bostic Exp $-->
+<!--$Id: db_put.so,v 10.34 2000/09/16 22:27:56 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.put</h1>
@@ -49,11 +48,11 @@ Db.put operation with the Db.DB_APPEND flag aborts, the
 record number may be decremented (and later re-allocated by a subsequent
 Db.DB_APPEND operation) by the Recno access method, but will not be
 decremented or re-allocated by the Queue access method.
-<p><dt><a name="Db.DB_NODUPDATA">Db.DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, insert the specified
-key/data pair into the database unless it already exists in the database.
-If the key/data pair already appears in the database, <a href="../api_java/dbc_put.html#DB_KEYEXIST">Db.DB_KEYEXIST</a>
-is returned.  The Db.DB_NODUPDATA flag may only be specified if
-the underlying database has been configured to support sorted duplicates.
+<p><dt><a name="Db.DB_NODUPDATA">Db.DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, enter the new key/data
+pair only if it does not already appear in the database.  If the
+key/data pair already appears in the database, <a href="../api_java/dbc_put.html#DB_KEYEXIST">Db.DB_KEYEXIST</a> is
+returned.  The Db.DB_NODUPDATA flag may only be specified if the
+underlying database has been configured to support sorted duplicates.
 <p>The Db.DB_NODUPDATA flag may not be specified to the Queue or Recno
 access methods.
 <p><dt><a name="Db.DB_NOOVERWRITE">Db.DB_NOOVERWRITE</a><dd>Enter the new key/data pair only if the key does not already appear in
@@ -110,6 +109,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

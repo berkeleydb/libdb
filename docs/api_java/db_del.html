@@ -1,5 +1,4 @@
- 
-<!--$Id: db_del.so,v 10.21.2.1 2000/07/17 13:34:58 bostic Exp $-->
+<!--$Id: db_del.so,v 10.23 2000/09/05 19:35:10 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.del</h1>
@@ -35,8 +34,8 @@ associated with the designated key will be discarded.
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>, otherwise, NULL.
 <p>The <b>flags</b> parameter is currently unused, and must be set to 0.
 <p>The Db.del method throws an exception that encapsulates a non-zero error value on
-failure, and returns <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a> if the specified <b>key</b> did not exist
-in the file.
+failure, and <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a> if the specified <b>key</b> did not exist in
+the file.
 <h1>Errors</h1>
 <p>The Db.del method may fail and throw an exception encapsulating a non-zero error for the following conditions:
 <p><dl compact>
@@ -76,6 +75,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

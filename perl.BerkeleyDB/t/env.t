@@ -92,6 +92,7 @@ umask(0);
     chdir "./fred" ;
     ok 12, my $env = new BerkeleyDB::Env -Flags => DB_CREATE ;
     chdir ".." ;
+    undef $env ;
     rmtree $home ;
 }
 
@@ -102,6 +103,7 @@ umask(0);
     ok 14, my $env = new BerkeleyDB::Env -Home => $home,
     					 -Flags => DB_CREATE ;
 
+    undef $env ;
     rmtree $home ;
 }
 
@@ -152,6 +154,8 @@ umask(0);
 
     untie %hash ;
 
+    undef $txn ;
+    undef $env ;
     rmtree $home ;
 }
 
@@ -175,6 +179,7 @@ umask(0);
     chomp $contents ;
     ok 29, $BerkeleyDB::Error eq $contents ;
 
+    undef $env ;
     rmtree $home ;
 }
 
@@ -201,6 +206,7 @@ umask(0);
     $contents = docat($errfile) ;
     chomp $contents ;
     ok 36, $BerkeleyDB::Error eq $contents ;
+    undef $env ;
     rmtree $home ;
 }
 
@@ -238,6 +244,7 @@ umask(0);
     $contents = docat($errfile) ;
     chomp $contents ;
     ok 46, $contents =~ /$BerkeleyDB::Error$/ ;
+    undef $env ;
     rmtree $home ;
 }
 

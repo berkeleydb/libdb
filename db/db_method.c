@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_method.c,v 11.30 2000/04/24 17:28:28 sue Exp $";
+static const char revid[] = "$Id: db_method.c,v 11.36 2000/12/21 09:17:04 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,7 +18,6 @@ static const char revid[] = "$Id: db_method.c,v 11.30 2000/04/24 17:28:28 sue Ex
 #include <rpc/rpc.h>
 #endif
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -46,8 +45,10 @@ static DBTYPE
 static int  __db_init __P((DB *, u_int32_t));
 static int  __db_key_range
 		__P((DB *, DB_TXN *, DBT *, DB_KEY_RANGE *, u_int32_t));
+static int  __db_set_append_recno __P((DB *, int (*)(DB *, DBT *, db_recno_t)));
 static int  __db_set_cachesize __P((DB *, u_int32_t, u_int32_t, int));
-static int  __db_set_dup_compare __P((DB *, int (*)(const DBT *, const DBT *)));
+static int  __db_set_dup_compare
+		__P((DB *, int (*)(DB *, const DBT *, const DBT *)));
 static void __db_set_errcall __P((DB *, void (*)(const char *, char *)));
 static void __db_set_errfile __P((DB *, FILE *));
 static int  __db_set_feedback __P((DB *, void (*)(DB *, int, int)));
@@ -164,6 +165,7 @@ __db_init(dbp, flags)
 	dbp->put = __db_put;
 	dbp->remove = __db_remove;
 	dbp->rename = __db_rename;
+	dbp->set_append_recno = __db_set_append_recno;
 	dbp->set_cachesize = __db_set_cachesize;
 	dbp->set_dup_compare = __db_set_dup_compare;
 	dbp->set_errcall = __db_set_errcall;
@@ -330,6 +332,23 @@ __db_key_range(dbp, txn, key, kr, flags)
 }
 
 /*
+ * __db_set_append_recno --
+ *	Set record number append routine.
+ */
+static int
+__db_set_append_recno(dbp, func)
+	DB *dbp;
+	int (*func) __P((DB *, DBT *, db_recno_t));
+{
+	DB_ILLEGAL_AFTER_OPEN(dbp, "set_append_recno");
+	DB_ILLEGAL_METHOD(dbp, DB_OK_QUEUE | DB_OK_RECNO);
+
+	dbp->db_append_recno = func;
+
+	return (0);
+}
+
+/*
  * __db_set_cachesize --
  *	Set underlying cache size.
  */
@@ -353,7 +372,7 @@ __db_set_cachesize(dbp, cache_gbytes, cache_bytes, ncache)
 static int
 __db_set_dup_compare(dbp, func)
 	DB *dbp;
-	int (*func) __P((const DBT *, const DBT *));
+	int (*func) __P((DB *, const DBT *, const DBT *));
 {
 	DB_ILLEGAL_AFTER_OPEN(dbp, "dup_compare");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE | DB_OK_HASH);
@@ -532,6 +551,10 @@ __dbcl_init(dbp, dbenv, flags)
 
 	TAILQ_INIT(&dbp->free_queue);
 	TAILQ_INIT(&dbp->active_queue);
+	/* !!!
+	 * Note that we don't need to initialize the join_queue;  it's
+	 * not used in RPC clients.  See the comment in __dbcl_db_join_ret().
+	 */
 
 	dbp->close = __dbcl_db_close;
 	dbp->cursor = __dbcl_db_cursor;
@@ -548,6 +571,7 @@ __dbcl_init(dbp, dbenv, flags)
 	dbp->put = __dbcl_db_put;
 	dbp->remove = __dbcl_db_remove;
 	dbp->rename = __dbcl_db_rename;
+	dbp->set_append_recno = __dbcl_db_set_append_recno;
 	dbp->set_cachesize = __dbcl_db_cachesize;
 	dbp->set_dup_compare = NULL;
 	dbp->set_errcall = __db_set_errcall;
@@ -559,6 +583,7 @@ __dbcl_init(dbp, dbenv, flags)
 	dbp->set_malloc = __dbcl_db_malloc;
 	dbp->set_pagesize = __dbcl_db_pagesize;
 	dbp->set_paniccall = __dbcl_db_panic;
+	dbp->set_q_extentsize = __dbcl_db_extentsize;
 	dbp->set_realloc = __dbcl_db_realloc;
 	dbp->stat = __dbcl_db_stat;
 	dbp->sync = __dbcl_db_sync;
@@ -578,6 +603,9 @@ __dbcl_init(dbp, dbenv, flags)
 	dbp->set_re_len = __dbcl_db_re_len;
 	dbp->set_re_pad = __dbcl_db_re_pad;
 	dbp->set_re_source = __dbcl_db_re_source;
+/*
+	dbp->set_q_extentsize = __dbcl_db_q_extentsize;
+*/
 
 	cl = (CLIENT *)dbenv->cl_handle;
 	req.flags = flags;

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead001.tcl,v 11.13 2000/05/30 19:14:25 krinsky Exp $
+#	$Id: dead001.tcl,v 11.17 2000/11/05 14:23:55 dda Exp $
 #
 # Deadlock Test 1.
 # We create various deadlock scenarios for different numbers of lockers
@@ -13,7 +13,7 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 
 	puts "Dead001: Deadlock detector tests"
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Create the environment.
 	puts "\tDead001.a: creating environment"
@@ -22,7 +22,8 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 
 	error_check_good lock_env:close [$env close] 0
 
-	set dpid [exec ./db_deadlock -vw -h $testdir >& $testdir/dd.out &]
+	set dpid [exec $util_path/db_deadlock -vw -h $testdir \
+	    >& $testdir/dd.out &]
 
 	foreach t $tests {
 		set pidlist ""
@@ -65,6 +66,8 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 	}
 
 	exec $KILL $dpid
+	# Windows needs files closed before deleting files, so pause a little
+	tclsleep 2
 	fileremove -f $testdir/dd.out
 	# Remove log files
 	for { set i 0 } { $i < $n } { incr i } {

@@ -1,5 +1,4 @@
- 
-<!--$Id: txn_prepare.so,v 10.16 2000/03/01 21:41:30 bostic Exp $-->
+<!--$Id: txn_prepare.so,v 10.17 2000/12/31 19:26:21 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbTxn::prepare</h1>
@@ -35,6 +34,8 @@ return before responding to the distributed transaction manager.  Only
 after the distributed transaction manager receives successful responses
 from all of its <i>prepare</i> messages should it issue any
 <i>commit</i> messages.
+<p>In the case of nested transactions, preparing a parent transaction
+causes all unresolved children of the parent transaction to be prepared.
 <p>The DbTxn::prepare method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>

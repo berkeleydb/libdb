@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb006.tcl,v 11.10 2000/04/21 18:36:23 krinsky Exp $
+#	$Id: sdb006.tcl,v 11.12 2000/09/20 13:22:03 sue Exp $
 #
 # We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 # everything else does as well.  We'll create test databases called
@@ -40,13 +40,12 @@ proc subdb006 {method {nentries 100} args } {
 		#
 		puts "\tSubdb006.a: Intra-subdb join"
 
-		cleanup $testdir
+		cleanup $testdir NULL
 		set testfile $testdir/subdb006.db
 
 		set psize [list 8192]
 		set duplist {0 50 25 16 12}
 		set numdb [llength $duplist]
-		cleanup $testdir
 		build_all_subdb $testfile [list $method] $psize \
 		    $duplist $nentries $args
 

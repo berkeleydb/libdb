@@ -36,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db185_int.h,v 11.4 2000/02/14 02:59:44 bostic Exp $
+ * $Id: db185_int.h,v 11.7 2001/01/22 22:22:46 krinsky Exp $
  */
 
 #ifndef _DB185_H_
@@ -72,15 +72,19 @@ typedef struct __db185 {
 	int (*seq)
 	    __P((const struct __db185 *, DBT185 *, DBT185 *, u_int));
 	int (*sync)	__P((const struct __db185 *, u_int));
-	void *internal;			/* Access method private. */
+	DB	  *dbp;			/* DB structure.  Was void *internal. */
 	int (*fd)	__P((const struct __db185 *));
 
 	/*
 	 * !!!
-	 * Added to the end of the DB 1.85 DB structure, it's needed to
-	 * hold the DB 2.0 cursor used for DB 1.85 sequential operations.
+	 * The following elements added to the end of the DB 1.85 DB
+	 * structure.
 	 */
-	DBC *dbc;			/* DB 1.85 sequential cursor. */
+	DBC	  *dbc;			/* DB cursor. */
+					/* Various callback functions. */
+	int	  (*compare) __P((const DBT *, const DBT *));
+	size_t	  (*prefix) __P((const DBT *, const DBT *));
+	u_int32_t (*hash) __P((const void *, size_t));
 } DB185;
 
 /* Structure used to pass parameters to the btree routines. */

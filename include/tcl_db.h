@@ -4,7 +4,7 @@
  * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_db.h,v 11.6 2000/05/07 14:00:35 bostic Exp $
+ * $Id: tcl_db.h,v 11.9 2000/12/12 17:43:56 bostic Exp $
  */
 
 #define	MSG_SIZE 100		/* Message size */
@@ -12,14 +12,10 @@
 enum INFOTYPE {
     I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_NDBM, I_MUTEX };
 
-#define	MAX_OTHER	2	/* Maximum number of sub-info we need to know */
 #define	MAX_ID		8	/* Maximum number of sub-id's we need */
-#define	MAX_SPARE	2
 
 #define	DBTCL_DBM	1
 #define	DBTCL_NDBM	2
-
-#include "db_int.h"		/* For mutex stuff */
 
 typedef struct _mutex_entry {
 	union {
@@ -108,9 +104,7 @@ typedef struct dbtcl_info {
 	FILE *i_err;
 	char *i_errpfx;
 	struct dbtcl_info *i_parent;
-	struct dbtcl_info *i_spare[MAX_SPARE];
 	int	i_otherid[MAX_ID];
-	int	i_spareid[MAX_SPARE];
 } DBTCL_INFO;
 
 extern int __debug_on, __debug_print, __debug_stop, __debug_test;
@@ -150,8 +144,6 @@ LIST_HEAD(infohead, dbtcl_info) __db_infohead;
 #define	NAME_TO_TXN(name) (DB_TXN *)_NameToPtr((name))
 #define	NAME_TO_MP(name) (DB_MPOOLFILE *)_NameToPtr((name))
 #define	NAME_TO_LOCK(name) (DB_LOCK *)_NameToPtr((name))
-#define	NAME_TO_MUTEX(name) (_MUTEX_DATA *)_NameToPtr((name))
-#define	NAME_TO_NDBM(name) (DBM *)_NameToPtr((name))	/* Compat */
 
 /*
  * MAKE_STAT_LIST appends a {name value} pair to a result list
@@ -197,7 +189,7 @@ do {								\
 		result = TCL_ERROR;				\
 		break;						\
 	}							\
-} while(0)
+} while (0)
 
 /*
  * FLAG_CHECK2 checks that the given flag is not set yet or is
@@ -213,7 +205,7 @@ do {								\
 		result = TCL_ERROR;				\
 		break;						\
 	}							\
-} while(0)
+} while (0)
 
 /*
  * IS_HELP checks whether the arg we bombed on is -?, which is a help option.

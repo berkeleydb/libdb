@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 11.21 2000/04/04 20:12:01 bostic Exp $
+# $Id: gen_rpc.awk,v 11.25 2001/01/02 20:04:55 sue Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -124,25 +124,25 @@ END {
 		dbt_handle = 1;
 
 	if (c_type[nvars] == "DB_ENV *") {
-		ctp_type[nvars] = "H_ENV";
+		ctp_type[nvars] = "CT_ENV";
 		env_handle = 1;
 		env_idx = nvars;
 	}
 
 	if (c_type[nvars] == "DB *") {
-		ctp_type[nvars] = "H_DB";
+		ctp_type[nvars] = "CT_DB";
 		db_handle = 1;
 		db_idx = nvars;
 	}
 
 	if (c_type[nvars] == "DBC *") {
-		ctp_type[nvars] = "H_CURSOR";
+		ctp_type[nvars] = "CT_CURSOR";
 		dbc_handle = 1;
 		dbc_idx = nvars;
 	}
 
 	if (c_type[nvars] == "DB_TXN *") {
-		ctp_type[nvars] = "H_TXN";
+		ctp_type[nvars] = "CT_TXN";
 		txn_handle = 1;
 		txn_idx = nvars;
 	}
@@ -201,7 +201,7 @@ END {
 			printf("{\n\t__db_err(dbenv,\n") >> CFILE
 			printf("\t    \"%%s method meaningless in RPC") >> CFILE
 			printf(" environment\", name);\n") >> CFILE
-			printf("\treturn(__db_eopnotsup(dbenv));\n") >> CFILE
+			printf("\treturn (__db_eopnotsup(dbenv));\n") >> CFILE
 			printf("}\n\n") >> CFILE
 			first_nofunc = 1
 		}
@@ -298,10 +298,10 @@ END {
 		}
 
 		if (!env_handle) {
-			printf("\treturn(__dbcl_rpc_illegal(dbenv, ") >> CFILE
+			printf("\treturn (__dbcl_rpc_illegal(dbenv, ") >> CFILE
 			printf("\"%s\"));\n", name) >> CFILE
 		} else
-			printf("\treturn(__dbcl_rpc_illegal(%s, \"%s\"));\n", \
+			printf("\treturn (__dbcl_rpc_illegal(%s, \"%s\"));\n", \
 			    args[env_idx], name) >> CFILE
 		printf("}\n\n") >> CFILE
 
@@ -550,7 +550,7 @@ END {
 		printf("\t\txdr_free((xdrproc_t)xdr___%s_reply, (void *)&reply);\n", \
 		    name) >> SFILE
 		printf("\t__%s_free = 0;\n", name) >> SFILE
-		printf("\t\n\t/* Reinitialize allocated fields */\n") >> SFILE
+		printf("\n\t/* Reinitialize allocated fields */\n") >> SFILE
 		for (i = 0; i < rvars; ++i) {
 			if (ret_type[i] == "LIST") {
 				printf("\treply.%slist = NULL;\n", \
@@ -717,11 +717,11 @@ END {
 	#
 	printf("void __%s_%d_proc __P((", name, msgid) >> SHFILE
 	sep = "";
-	printargs[0] = 0;
+	argcount = 0;
 	for (i = 0; i < nvars; ++i) {
-		printargs[0]++;
-		split_lines(printargs, 1);
-		if (printargs[0] == 0) {
+		argcount++;
+		split_lines(1);
+		if (argcount == 0) {
 			sep = "";
 		}
 		if (rpc_type[i] == "IGNORE")
@@ -747,33 +747,33 @@ END {
 		if (rpc_type[i] == "DBT") {
 			printf("%su_int32_t", sep) >> SHFILE
 			sep = ", ";
-			printargs[0]++;
-			split_lines(printargs, 1);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(1);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%su_int32_t", sep) >> SHFILE
-			printargs[0]++;
-			split_lines(printargs, 1);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(1);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%su_int32_t", sep) >> SHFILE
-			printargs[0]++;
-			split_lines(printargs, 1);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(1);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%svoid *", sep) >> SHFILE
-			printargs[0]++;
-			split_lines(printargs, 1);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(1);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
@@ -801,11 +801,11 @@ END {
 	printf("__%s_%d_proc(", name, msgid) >> PFILE
 	printf("__%s_%d_proc(", name, msgid) >> SEDFILE
 	sep = "";
-	printargs[0] = 0;
+	argcount = 0;
 	for (i = 0; i < nvars; ++i) {
-		printargs[0]++;
-		split_lines(printargs, 0);
-		if (printargs[0] == 0) {
+		argcount++;
+		split_lines(0);
+		if (argcount == 0) {
 			sep = "";
 		}
 		if (rpc_type[i] == "IGNORE") 
@@ -830,36 +830,36 @@ END {
 			printf("%s%sdlen", sep, args[i]) >> PFILE
 			printf("%s%sdlen", sep, args[i]) >> SEDFILE
 			sep = ", ";
-			printargs[0]++;
-			split_lines(printargs, 0);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(0);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%s%sdoff", sep, args[i]) >> PFILE
 			printf("%s%sdoff", sep, args[i]) >> SEDFILE
-			printargs[0]++;
-			split_lines(printargs, 0);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(0);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%s%sflags", sep, args[i]) >> PFILE
 			printf("%s%sflags", sep, args[i]) >> SEDFILE
-			printargs[0]++;
-			split_lines(printargs, 0);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(0);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
 			}
 			printf("%s%sdata", sep, args[i]) >> PFILE
 			printf("%s%sdata", sep, args[i]) >> SEDFILE
-			printargs[0]++;
-			split_lines(printargs, 0);
-			if (printargs[0] == 0) {
+			argcount++;
+			split_lines(0);
+			if (argcount == 0) {
 				sep = "";
 			} else {
 				sep = ", ";
@@ -1463,11 +1463,15 @@ END {
 }
 
 #
-# Use an array because that is passed in by reference
-#
-function split_lines(pa, is_public) {
-	if (pa[0] > 3) {
-		pa[0] = 0;
+# split_lines --
+#	Add line separators to pretty-print the output.
+function split_lines(is_public) {
+	if (argcount > 3) {
+		# Reset the counter, remove any trailing whitespace from
+		# the separator.
+		argcount = 0;
+		sub("[ 	]$", "", sep)
+
 		if (is_public) {
 			printf("%s\n\t", sep) >> SHFILE
 		} else {

@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: shqueue.h,v 11.5 2000/05/17 01:17:52 dda Exp $
+ * $Id: shqueue.h,v 11.6 2000/11/14 20:20:28 bostic Exp $
  */
 #ifndef	_SYS_SHQUEUE_H_
 #define	_SYS_SHQUEUE_H_
@@ -67,8 +67,6 @@ struct {								\
 
 #define	SH_PTR_TO_OFF(src, dest)					\
 	((ssize_t)(((u_int8_t *)(dest)) - ((u_int8_t *)(src))))
-
-#define	SH_LIST_END(head)			NULL
 
 /*
  * Take the element's next pointer and calculate what the corresponding
@@ -151,8 +149,6 @@ struct {								\
 
 #define	SH_TAILQ_NEXT_TO_PREV(elm, field)				\
 	(-(elm)->field.stqe_next + SH_PTR_TO_OFF(elm, &(elm)->field.stqe_next))
-
-#define	SH_TAILQ_END(head)		NULL
 
 #define	SH_TAILQ_INIT(head) {						\
 	(head)->stqh_first = -1;					\
@@ -263,8 +259,6 @@ struct {								\
 #define	SH_CIRCLEQ_PREV(head, elm, field, type)				\
 	((elm)->field.scqe_prev == SH_PTR_TO_OFF(elm, head) ?		\
 	    (void *)head : SH_CIRCLEQ_PREVP(elm, field, type))
-
-#define	SH_CIRCLEQ_END(head)		((void *)(head))
 
 #define	SH_CIRCLEQ_INIT(head) {						\
 	(head)->scqh_first = 0;						\

@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb010.tcl,v 11.3 2000/05/22 12:51:38 bostic Exp $
+#	$Id: sdb010.tcl,v 11.4 2000/08/25 14:21:53 sue Exp $
 #
 # Subdatabase Test 10 {access method}
 # Test of dbremove
@@ -21,7 +21,7 @@ proc subdb010 { method args } {
 		return
 	}
 
-	cleanup $testdir
+	cleanup $testdir NULL
 
 	set testfile $testdir/subdb010.db
 	set testdb DATABASE

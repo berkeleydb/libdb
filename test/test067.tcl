@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test067.tcl,v 11.11 2000/04/21 18:36:27 krinsky Exp $
+#	$Id: test067.tcl,v 11.12 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 67: Test of DB_CURRENT partial puts on almost-empty duplicate pages.
 # This test was written to address the following issue, #2 in the list of
@@ -35,8 +35,11 @@ proc test067 { method {ndups 1000} {tnum 67} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 
 	puts "Test0$tnum:\
@@ -47,7 +50,7 @@ proc test067 { method {ndups 1000} {tnum 67} args } {
 	}
 
 	foreach dupopt { "-dup" "-dup -dupsort" } {
-		cleanup $testdir
+		cleanup $testdir $env
 		set db [eval {berkdb_open -create -truncate -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE

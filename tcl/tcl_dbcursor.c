@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_dbcursor.c,v 11.22 2000/04/21 18:18:58 bostic Exp $";
+static const char revid[] = "$Id: tcl_dbcursor.c,v 11.26 2001/01/11 18:19:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,7 +19,7 @@ static const char revid[] = "$Id: tcl_dbcursor.c,v 11.22 2000/04/21 18:18:58 bos
 #include <tcl.h>
 #endif
 
-#include "db.h"
+#include "db_int.h"
 #include "tcl_db.h"
 
 /*
@@ -99,7 +99,7 @@ dbc_Cmd(clientData, interp, objc, objv)
 		ret = dbc->c_close(dbc);
 		result = _ReturnSetup(interp, ret, "dbc close");
 		if (result == TCL_OK) {
-			(void) Tcl_DeleteCommand(interp, dbip->i_name);
+			(void)Tcl_DeleteCommand(interp, dbip->i_name);
 			_DeleteInfo(dbip);
 		}
 		break;
@@ -337,7 +337,6 @@ tcl_DbcGet(interp, objc, objv, dbc)
 	DBC *dbc;			/* Cursor pointer */
 {
 	static char *dbcgetopts[] = {
-		"-consume",
 		"-current",
 		"-first",
 		"-get_both",
@@ -357,7 +356,6 @@ tcl_DbcGet(interp, objc, objv, dbc)
 		NULL
 	};
 	enum dbcgetopts {
-		DBCGET_CONSUME,
 		DBCGET_CURRENT,
 		DBCGET_FIRST,
 		DBCGET_BOTH,
@@ -417,10 +415,6 @@ tcl_DbcGet(interp, objc, objv, dbc)
 		switch ((enum dbcgetopts)optindex) {
 		case DBCGET_RMW:
 			flag |= DB_RMW;
-			break;
-		case DBCGET_CONSUME:
-			FLAG_CHECK2(flag, DB_RMW);
-			flag |= DB_CONSUME;
 			break;
 		case DBCGET_CURRENT:
 			FLAG_CHECK2(flag, DB_RMW);

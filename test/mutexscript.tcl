@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mutexscript.tcl,v 11.11 2000/03/24 19:53:40 krinsky Exp $
+#	$Id: mutexscript.tcl,v 11.12 2000/11/21 22:14:56 dda Exp $
 #
 # Random mutex tester.
 # Usage: mutexscript dir numiters mlocks sleepint degree
@@ -32,6 +32,7 @@ set nmutex [ lindex $argv 2 ]
 set sleepint [ lindex $argv 3 ]
 set degree [ lindex $argv 4 ]
 set locker [pid]
+set mypid [sanitized_pid]
 
 # Initialize seed
 global rand_init
@@ -65,7 +66,7 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 
 		# Do get, set its val to own pid, and then add to list
 		error_check_good mutex_get:$obj [$mutex get $obj] 0
-		error_check_good mutex_setval:$obj [$mutex setval $obj [pid]] 0
+		error_check_good mutex_setval:$obj [$mutex setval $obj $mypid] 0
 		lappend mlist $obj
 		if {$lastobj >= $nmutex} {
 			break
@@ -77,9 +78,9 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 
 	# Now release locks
 	foreach i $mlist {
-		error_check_good mutex_getval:$i [$mutex getval $i] [pid]
+		error_check_good mutex_getval:$i [$mutex getval $i] $mypid
 		error_check_good mutex_setval:$i \
-		    [$mutex setval $i [expr 0 - [pid]]] 0
+		    [$mutex setval $i [expr 0 - $mypid]] 0
 		error_check_good mutex_release:$i [$mutex release $i] 0
 	}
 	puts "[timestamp] $locker released mutexes"

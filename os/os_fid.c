@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fid.c,v 11.5.2.1 2000/06/27 17:52:57 bostic Exp $";
+static const char revid[] = "$Id: os_fid.c,v 11.7 2000/10/26 14:17:05 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -67,19 +67,19 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 		__db_err(dbenv, "%s: %s", fname, strerror(ret));
 		return (ret);
 	}
-	
-	/* 
+
+	/*
 	 * Initialize/increment the serial number we use to help avoid
 	 * fileid collisions.  Note that we don't bother with locking;
 	 * it's unpleasant to do from down in here, and if we race on
 	 * this no real harm will be done, since the finished fileid
 	 * has so many other components.
-	 * 
+	 *
 	 * We increment by 100000 on each call as a simple way of
 	 * randomizing;  simply incrementing seems potentially less useful
 	 * if pids are also simply incremented, since this is process-local
 	 * and we may be one of a set of processes starting up.  100000
-	 * pushes us out of pid space on most platforms, and has few 
+	 * pushes us out of pid space on most platforms, and has few
 	 * interesting properties in base 2.
 	 */
 	if (fid_serial == SERIAL_INIT)
@@ -109,8 +109,8 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	 * the simplifying assumption that 32-bit and 64-bit processes will
 	 * get the same 32-bit values if we truncate any returned 64-bit value
 	 * to a 32-bit value.  When we're called from the mpool layer, though,
-	 * we need to be careful not to include anything that isn't 
-	 * reproducible for a given file, such as the timestamp or serial 
+	 * we need to be careful not to include anything that isn't
+	 * reproducible for a given file, such as the timestamp or serial
 	 * number.
 	 */
 	tmp = (u_int32_t)sb.st_ino;
@@ -130,8 +130,8 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 		tmp = (u_int32_t)time(NULL);
 		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 			*fidp++ = *p++;
-		
-		for (p = (u_int8_t *)&fid_serial, i = sizeof(u_int32_t); 
+
+		for (p = (u_int8_t *)&fid_serial, i = sizeof(u_int32_t);
 		    i > 0; --i)
 			*fidp++ = *p++;
 	}

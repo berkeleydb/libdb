@@ -1,4 +1,4 @@
-dnl $Id: mutex.m4,v 11.16 2000/04/29 19:03:49 bostic Exp $
+dnl $Id: mutex.m4,v 11.20 2000/12/20 22:16:56 bostic Exp $
 
 dnl Figure out mutexes for this compiler/architecture.
 AC_DEFUN(AM_DEFINE_MUTEXES, [
@@ -13,7 +13,7 @@ dnl
 dnl Assume that -lpthread exists when the user specifies POSIX mutexes.  (I
 dnl only expect this option to be used on Solaris, which has -lpthread.)
 if test "$db_cv_posixmutexes" = yes; then
-	db_cv_mutex="POSIX/pthreads/library"
+	db_cv_mutex="posix_only"
 fi
 
 dnl User-specified UI mutexes.
@@ -21,7 +21,7 @@ dnl
 dnl Assume that -lthread exists when the user specifies UI mutexes.  (I only
 dnl expect this option to be used on Solaris, which has -lthread.)
 if test "$db_cv_uimutexes" = yes; then
-	db_cv_mutex="UI/threads/library"
+	db_cv_mutex="ui_only"
 fi
 
 dnl LWP threads: _lwp_XXX
@@ -51,7 +51,7 @@ fi
 dnl UI threads: thr_XXX
 dnl
 dnl Try with and without the -lthread library.
-if test "$db_cv_mutex" = no; then
+if test "$db_cv_mutex" = no -o "$db_cv_mutex" = "ui_only"; then
 LIBS="-lthread $LIBS"
 AC_TRY_RUN([
 #include <thread.h>
@@ -68,7 +68,7 @@ main(){
 }], [db_cv_mutex="UI/threads/library"])
 LIBS="$orig_libs"
 fi
-if test "$db_cv_mutex" = no; then
+if test "$db_cv_mutex" = no -o "$db_cv_mutex" = "ui_only"; then
 AC_TRY_RUN([
 #include <thread.h>
 #include <synch.h>
@@ -83,11 +83,15 @@ main(){
 	mutex_unlock(&mutex));
 }], [db_cv_mutex="UI/threads"])
 fi
+if test "$db_cv_mutex" = "ui_only"; then
+	AC_MSG_ERROR([unable to find UI mutex interfaces])
+fi
+
 
 dnl POSIX.1 pthreads: pthread_XXX
 dnl
 dnl Try with and without the -lpthread library.
-if test "$db_cv_mutex" = no; then
+if test "$db_cv_mutex" = no -o "$db_cv_mutex" = "posix_only"; then
 AC_TRY_RUN([
 #include <pthread.h>
 main(){
@@ -110,7 +114,7 @@ main(){
 	pthread_mutexattr_destroy(&mutexattr));
 }], [db_cv_mutex="POSIX/pthreads"])
 fi
-if test "$db_cv_mutex" = no; then
+if test "$db_cv_mutex" = no -o "$db_cv_mutex" = "posix_only"; then
 LIBS="-lpthread $LIBS"
 AC_TRY_RUN([
 #include <pthread.h>
@@ -134,6 +138,9 @@ main(){
 	pthread_mutexattr_destroy(&mutexattr));
 }], [db_cv_mutex="POSIX/pthreads/library"])
 LIBS="$orig_libs"
+fi
+if test "$db_cv_mutex" = "posix_only"; then
+	AC_MSG_ERROR([unable to find POSIX mutex interfaces])
 fi
 
 dnl msemaphore: HPPA only
@@ -257,6 +264,18 @@ exit(1);}],
 [db_cv_mutex="HPPA/gcc-assembly"])
 fi
 
+dnl PPC/gcc:
+if test "$db_cv_mutex" = no; then
+AC_TRY_RUN([main(){
+#if defined(__powerpc__)
+#if defined(__GNUC__)
+exit(0);
+#endif
+#endif
+exit(1);}],
+[db_cv_mutex="PPC/gcc-assembly"])
+fi
+
 dnl Sparc/gcc: SunOS, Solaris
 dnl The sparc/gcc code doesn't always work, specifically, I've seen assembler
 dnl failures from the stbar instruction on SunOS 4.1.4/sun4c and gcc 2.7.2.2.
@@ -286,7 +305,7 @@ fi
 dnl x86/gcc: FreeBSD, NetBSD, BSD/OS, Linux
 if test "$db_cv_mutex" = no; then
 AC_TRY_RUN([main(){
-#if defined(i386)
+#if defined(i386) || defined(__i386__)
 #if defined(__GNUC__)
 	exit(0);
 #endif
@@ -344,6 +363,8 @@ POSIX/pthreads)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 POSIX/pthreads/library)	LIBS="-lpthread $LIBS"
 			ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_PTHREADS);;
+PPC/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_PPC_GCC_ASSEMBLY);;
 ReliantUNIX/initspin)	LIBS="$LIBS -lmproc"
 			ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_RELIANTUNIX_INITSPIN);;

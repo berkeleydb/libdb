@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_tmpdir.c,v 11.11 2000/04/07 14:26:36 bostic Exp $";
+static const char revid[] = "$Id: os_tmpdir.c,v 11.16 2001/01/08 20:42:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #endif
 
@@ -59,7 +58,7 @@ __os_tmpdir(dbenv, flags)
 
 	/* Use the environment if it's permitted and initialized. */
 	if (LF_ISSET(DB_USE_ENVIRON) ||
-	    (LF_ISSET(DB_USE_ENVIRON_ROOT) && __os_isroot() == 0)) {
+	    (LF_ISSET(DB_USE_ENVIRON_ROOT) && __os_isroot())) {
 		if ((p = getenv("TMPDIR")) != NULL && p[0] == '\0') {
 			__db_err(dbenv, "illegal TMPDIR environment variable");
 			return (EINVAL);
@@ -95,12 +94,10 @@ __os_tmpdir(dbenv, flags)
 			    FSp2FullPath(&spec), &dbenv->db_tmp_dir));
 	}
 #endif
-#ifdef _WIN32
+#ifdef DB_WIN32
 	/* Get the path to the temporary directory. */
-	{int len;
-	 char temp[_MAX_PATH + 1];
-	 char *eos;
-	 int isdir;
+	{int isdir, len;
+	char *eos, temp[MAXPATHLEN + 1];
 
 		if ((len = GetTempPath(sizeof(temp) - 1, temp)) > 2) {
 			eos = &temp[len];
@@ -108,7 +105,8 @@ __os_tmpdir(dbenv, flags)
 			if (*eos == '\\' || *eos == '/')
 				*eos = '\0';
 			if (__os_exists(temp, &isdir) == 0 && isdir != 0)
-				return (__os_strdup(dbenv, temp, &dbenv->db_tmp_dir));
+				return (__os_strdup(dbenv,
+				    temp, &dbenv->db_tmp_dir));
 		}
 	}
 #endif

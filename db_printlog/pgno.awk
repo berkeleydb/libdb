@@ -1,19 +1,18 @@
-# $Id: pgno.awk,v 10.2 1999/11/21 18:01:42 bostic Exp $
+# $Id: pgno.awk,v 10.3 2000/07/17 22:07:17 ubell Exp $
 #
 # Take a comma-separated list of page numbers and spit out all the
 # log records that affect those page numbers.
 
-{
-	if (NR == 1) {
-		npages = 0
-		while ((ndx = index(PGNO, ",")) != 0) {
-			pgno[npages] = substr(PGNO, 1, ndx - 1);
-			PGNO = substr(PGNO, ndx + 1, length(PGNO) - ndx);
-			npages++
-		}
-		pgno[npages] = PGNO;
+NR == 1 {
+	npages = 0
+	while ((ndx = index(PGNO, ",")) != 0) {
+		pgno[npages] = substr(PGNO, 1, ndx - 1);
+		PGNO = substr(PGNO, ndx + 1, length(PGNO) - ndx);
+		npages++
 	}
+	pgno[npages] = PGNO;
 }
+
 /^\[/{
 	if (printme == 1) {
 		printf("%s\n", rec);
@@ -40,4 +39,9 @@
 	for (i = 0; i <= npages; i++)
 		if ($2 == pgno[i])
 			printme = 1
+}
+
+END {
+	if (printme == 1)
+		printf("%s\n", rec);
 }

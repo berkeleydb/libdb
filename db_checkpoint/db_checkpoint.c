@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_checkpoint.c,v 11.19 2000/04/28 19:32:00 bostic Exp $";
+    "$Id: db_checkpoint.c,v 11.25 2001/01/18 18:36:57 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char revid[] =
 #endif
 #endif
 
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +45,7 @@ static const char revid[] =
 char	*check __P((DB_ENV *, long, long));
 int	 main __P((int, char *[]));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV	*dbenv;
 const char
@@ -63,6 +63,8 @@ main(argc, argv)
 	u_int32_t flags, kbytes, minutes, seconds;
 	int ch, e_close, exitval, once, ret, verbose;
 	char *home, *logfile;
+
+	version_check();
 
 	/*
 	 * !!!
@@ -143,9 +145,8 @@ main(argc, argv)
 	dbenv->set_errpfx(dbenv, progname);
 
 	/* Initialize the environment. */
-	if ((ret = dbenv->open(dbenv, home,
-	   DB_INIT_LOG | DB_INIT_TXN | DB_INIT_MPOOL | DB_USE_ENVIRON,
-	   0)) != 0) {
+	if ((ret = dbenv->open(dbenv,
+	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
 		goto shutdown;
 	}
@@ -216,4 +217,21 @@ usage()
 	(void)fprintf(stderr,
     "usage: db_checkpoint [-1Vv] [-h home] [-k kbytes] [-L file] [-p min]\n");
 	exit(1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

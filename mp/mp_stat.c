@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_stat.c,v 11.15 2000/05/17 18:21:27 bostic Exp $";
+static const char revid[] = "$Id: mp_stat.c,v 11.21 2001/01/09 16:59:30 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -50,10 +49,11 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 	void *(*db_malloc) __P((size_t));
 {
 	DB_MPOOL *dbmp;
-	DB_MPOOL_FSTAT **tfsp;
+	DB_MPOOL_FSTAT **tfsp, *tstruct;
 	DB_MPOOL_STAT *sp;
 	MPOOL *c_mp, *mp;
 	MPOOLFILE *mfp;
+	char *tname;
 	size_t len, nlen;
 	u_int32_t i;
 	int ret;
@@ -118,6 +118,23 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 			sp->st_region_nowait += c_mp->stat.st_region_nowait;
 		}
 
+		/*
+		 * We have duplicate statistics fields in the cache and
+		 * per-file structures.  The counters are only incremented
+		 * in the per-file structures, though.  The intent is that
+		 * if we ever flush files from the pool we can save their
+		 * last known totals in the cache structure.
+		 */
+		for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
+		    mfp != NULL; mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
+			sp->st_cache_hit += mfp->stat.st_cache_hit;
+			sp->st_cache_miss += mfp->stat.st_cache_miss;
+			sp->st_map += mfp->stat.st_map;
+			sp->st_page_create += mfp->stat.st_page_create;
+			sp->st_page_in += mfp->stat.st_page_in;
+			sp->st_page_out += mfp->stat.st_page_out;
+		}
+
 		R_UNLOCK(dbenv, dbmp->reginfo);
 	}
 
@@ -128,56 +145,50 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 		R_LOCK(dbenv, dbmp->reginfo);
 
 		/* Count the MPOOLFILE structures. */
-		for (len = 0,
+		for (i = 0, len = 0,
 		    mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
 		    mfp != NULL;
-		    ++len, mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile))
-			;
+		    ++i, mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile))
+			len += sizeof(DB_MPOOL_FSTAT *) +
+			    sizeof(DB_MPOOL_FSTAT) +
+			    strlen(__memp_fns(dbmp, mfp)) + 1;
+		len += sizeof(DB_MPOOL_FSTAT *);	/* Trailing NULL */
 
 		R_UNLOCK(dbenv, dbmp->reginfo);
 
 		if (len == 0)
 			return (0);
 
-		/* Allocate space for the pointers. */
-		len = (len + 1) * sizeof(DB_MPOOL_FSTAT *);
+		/* Allocate space */
 		if ((ret = __os_malloc(dbenv, len, db_malloc, fspp)) != 0)
 			return (ret);
 
 		R_LOCK(dbenv, dbmp->reginfo);
 
-		/* Build each individual entry. */
-		for (tfsp = *fspp,
-		    mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
-		    mfp != NULL;
-		    ++tfsp, mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
-			name = __memp_fns(dbmp, mfp);
-			nlen = strlen(name);
-			len = sizeof(DB_MPOOL_FSTAT) + nlen + 1;
-			if ((ret =
-			    __os_malloc(dbenv, len, db_malloc, tfsp)) != 0)
-				return (ret);
-			**tfsp = mfp->stat;
-			(*tfsp)->file_name = (char *)
-			    (u_int8_t *)*tfsp + sizeof(DB_MPOOL_FSTAT);
-			memcpy((*tfsp)->file_name, name, nlen + 1);
+		/*
+		 * Build each individual entry.  We assume that an array of
+		 * pointers are aligned correctly to be followed by an array
+		 * of structures, which should be safe (in this particular
+		 * case, the first element of the structure is a pointer, so
+		 * we're doubly safe).  The array is followed by space for
+		 * the text file names.
+		 *
+		 * Add 1 to i because we need to skip over the NULL.
+		 */
+		tfsp = *fspp;
+		tstruct = (DB_MPOOL_FSTAT *)(tfsp + i + 1);
+		tname = (char *)(tstruct + i);
 
-			/*
-			 * We have duplicate statistics fields in the cache
-			 * and per-file structures.  The counters are only
-			 * incremented in the per-file structures, though.
-			 * The intent is that if we ever flush files from
-			 * the pool we can save their last known totals in
-			 * the cache structure.
-			 */
-			if (sp != NULL) {
-				sp->st_cache_hit += mfp->stat.st_cache_hit;
-				sp->st_cache_miss += mfp->stat.st_cache_miss;
-				sp->st_map += mfp->stat.st_map;
-				sp->st_page_create += mfp->stat.st_page_create;
-				sp->st_page_in += mfp->stat.st_page_in;
-				sp->st_page_out += mfp->stat.st_page_out;
-			}
+		for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
+		    mfp != NULL;
+		    ++tfsp, ++tstruct, tname += nlen,
+		    mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
+			name = __memp_fns(dbmp, mfp);
+			nlen = strlen(name) + 1;
+			*tfsp = tstruct;
+			*tstruct = mfp->stat;
+			tstruct->file_name = tname;
+			memcpy(tname, name, nlen);
 		}
 		*tfsp = NULL;
 
@@ -347,13 +358,14 @@ __memp_pbh(dbmp, bhp, fmap, fp)
 	FILE *fp;
 {
 	static const FN fn[] = {
-		{ BH_CALLPGIN,	"callpgin" },
-		{ BH_DIRTY,	"dirty" },
-		{ BH_DISCARD,	"discard" },
-		{ BH_LOCKED,	"locked" },
-		{ BH_TRASH,	"trash" },
-		{ BH_WRITE,	"write" },
-		{ 0,		NULL }
+		{ BH_CALLPGIN,		"callpgin" },
+		{ BH_DIRTY,		"dirty" },
+		{ BH_DISCARD,		"discard" },
+		{ BH_LOCKED,		"locked" },
+		{ BH_SYNC,		"sync" },
+		{ BH_SYNC_LOGFLSH,	"sync:logflush" },
+		{ BH_TRASH,		"trash" },
+		{ 0,			NULL }
 	};
 	int i;
 

@@ -3,7 +3,7 @@
 /* Header for class com_sleepycat_db_Dbc */
 
 #ifndef _Included_com_sleepycat_db_Dbc
-#define _Included_com_sleepycat_db_Dbc
+#define	_Included_com_sleepycat_db_Dbc
 #ifdef __cplusplus
 extern "C" {
 #endif

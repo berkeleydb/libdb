@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test019.tcl,v 11.13 2000/05/16 19:46:19 krinsky Exp $
+#	$Id: test019.tcl,v 11.14 2000/08/25 14:21:54 sue Exp $
 #
 # Test019 { access_method nentries }
 # Test the partial get functionality.
@@ -23,10 +23,13 @@ proc test019 { method {nentries 10000} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test019.db
+		set env NULL
 	} else {
 		set testfile test019.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]

@@ -36,6 +36,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2 or 3
   $status = $db->db_sync() ;
   $status = $db->db_close() ;
   $hash_ref = $db->db_stat() ;
+  $status = $db->db_key_range();
   $type = $db->type() ;
   $status = $db->status() ;
   $boolean = $db->byteswapped() ;
@@ -44,9 +45,11 @@ BerkeleyDB - Perl extension for Berkeley DB version 2 or 3
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
 
   $cursor = $db->db_cursor([$flags]) ;
+  $newcursor = $cursor->c_dup([$flags]);
   $status = $cursor->c_get() ;
   $status = $cursor->c_put() ;
   $status = $cursor->c_del() ;
+  $status = $cursor->c_count() ;
   $status = $cursor->status() ;
   $status = $cursor->c_close() ;
 
@@ -56,6 +59,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2 or 3
 
   $status = $env->txn_checkpoint()
   $hash_ref = $env->txn_stat()
+  $status = $env->setmutexlocks()
 
   $txn = $env->txn_begin() ;
   $status = $txn->txn_prepare()
@@ -115,10 +119,13 @@ shouldn't need to make use of B<BerkeleyDB::Env>.
 
     $env = new BerkeleyDB::Env
              [ -Home         => $path, ]
+             [ -Server       => $name, ]
+             [ -CacheSize    => $number, ]
              [ -Config       => { name => value, name => value }, ]
              [ -ErrFile      => filename or filehandle, ]
              [ -ErrPrefix    => "string", ]
              [ -Flags        => number, ]
+             [ -LockDetect   => number, ]
              [ -Verbose      => boolean, ]
 
 =over 5
@@ -150,6 +157,16 @@ part of an absolute path.
 	     -Filename = "/other/joe.db",
 	     -Env => $env
     ...
+
+=item -Server
+
+If present, this parameter should be the hostname of a server that is running
+the Berkeley DB RPC server. All databases will be accessed via the RPC server.
+
+=item -Cachesize
+
+If present, this parameter sets the size of the environments shared memory
+buffer pool.
 
 =item -Config
 
@@ -236,6 +253,18 @@ B<DB_USE_ENVIRON>
 
 B<DB_USE_ENVIRON_ROOT>
 
+=item -LockDetect
+
+Specifies what to do when a lock conflict occurs. The value should be one of
+
+B<DB_LOCK_DEFAULT> 
+
+B<DB_LOCK_OLDEST>
+
+B<DB_LOCK_RANDOM>
+
+B<DB_LOCK_YOUNGEST>
+
 =item -Verbose
 
 Add extra debugging information to the messages sent to B<-ErrFile>.
@@ -276,6 +305,12 @@ TODO
 =item $env->status()
 
 Returns the status of the last BerkeleyDB::Env method.
+
+=item $env->setmutexlocks()
+
+Only available in Berkeley Db 3.0 or greater. Calls 
+B<db_env_set_mutexlocks> when used with Berkeley DB 3.1.x. When used with
+Berkeley DB 3.0 or 3.2 and better it calls B<DBENV-E<gt>set_mutexlocks>.
 
 =back
 
@@ -770,10 +805,22 @@ L<"Changing the sort order"> for an example.
 
 =head2 Methods
 
-See L<COMMON DATABASE METHODS>.
+B<BerkeleyDB::Btree> supports the following database methods.
+See also L<COMMON DATABASE METHODS>.
 
-B<BerkeleyDB::Btree> only supports the standard database methods.
-See L<COMMON DATABASE METHODS>.
+All the methods below return 0 to indicate success.
+
+=over 5
+
+=item $status = $db->db_key_range($key, $less, $equal, $greater [, $flags])
+
+Given a key, C<$key>, this method returns the proportion of keys less than 
+C<$key> in C<$less>, the proportion equal to C<$key> in C<$equal> and the
+proportion greater than C<$key> in C<$greater>.
+
+The proportion is returned as a double in the range 0.0 to 1.0.
+
+=back
 
 =head2 A Simple Btree Example
 
@@ -993,6 +1040,7 @@ Two forms of constructor are supported:
                 # BerkeleyDB::Queue specific
                 [ -Len             => number,]
                 [ -Pad             => byte,]
+                [ -ExtentSize    => number, ]
 
 and this
 
@@ -1243,6 +1291,21 @@ A cursor object is created with the C<db_cursor>
 
 A cursor object has the following methods available:
 
+=head2 $newcursor = $cursor->c_dup($flags)
+
+Creates a duplicate of C<$cursor>. This method needs Berkeley DB 3.0.x or better.
+
+The C<$flags> parameter is optional and can take the following value:
+
+=over 5
+
+=item DB_POSITION
+
+When present this flag will position the new cursor at the same place as the
+existing cursor.
+
+=back
+
 =head2 $status = $cursor->c_get($key, $value, $flags)
 
 Reads a key/value pair from the database, returning the data in C<$key>
@@ -1402,6 +1465,13 @@ If the key/value pair associated with the cursor have already been
 deleted, B<c_del> will return B<DB_KEYEMPTY>.
 
 The B<$flags> parameter is not used at present.
+
+=head2 $status = $cursor->c_del($cnt [, $flags])
+
+Stores the number of duplicates at the current cursor position in B<$cnt>.
+
+The B<$flags> parameter is not used at present. This method needs 
+Berkeley DB 3.1 or better.
 
 =head2  $status = $cursor->status()
 
@@ -1643,7 +1713,7 @@ The official web site for Berkeley DB is F<http://www.sleepycat.com>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997-2000 Paul Marquess. All rights reserved. This program
+Copyright (c) 1997-2001 Paul Marquess. All rights reserved. This program
 is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.
 
@@ -1651,7 +1721,7 @@ Although B<BerkeleyDB> is covered by the Perl license, the library it
 makes use of, namely Berkeley DB, is not. Berkeley DB has its own
 copyright and its own license. Please take the time to read it.
 
-Here are are few words taken from the Berkeley DB FAQ (at
+Here are few words taken from the Berkeley DB FAQ (at
 F<http://www.sleepycat.com>) regarding the license:
 
     Do I have to license DB to use it in Perl scripts?

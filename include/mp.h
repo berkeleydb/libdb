@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: mp.h,v 11.12 2000/05/12 17:59:51 krinsky Exp $
+ * $Id: mp.h,v 11.16 2001/01/10 04:50:53 ubell Exp $
  */
 
 struct __bh;		typedef struct __bh BH;
@@ -162,6 +162,9 @@ struct __mpool {
 	roff_t	    htab;		/* Hash table offset. */
 
 	DB_MPOOL_STAT stat;		/* Per-cache mpool statistics. */
+#ifdef MUTEX_SYSTEM_RESOURCES
+	roff_t	    maint_off;		/* Maintenance information offset */
+#endif
 };
 
 /*
@@ -171,7 +174,8 @@ struct __mpool {
 struct __mpoolfile {
 	SH_TAILQ_ENTRY  q;		/* List of MPOOLFILEs */
 
-	db_pgno_t ref_cnt;		/* Ref count: pages or DB_MPOOLFILEs. */
+	db_pgno_t mpf_cnt;		/* Ref count: DB_MPOOLFILEs. */
+	db_pgno_t block_cnt;		/* Ref count: blocks in cache. */
 	db_pgno_t lsn_cnt;		/* Checkpoint buffers left to write. */
 
 	int	  ftype;		/* File type. */
@@ -192,6 +196,7 @@ struct __mpoolfile {
 #define	MP_CAN_MMAP	0x01		/* If the file can be mmap'd. */
 #define	MP_DEADFILE	0x02		/* Dirty pages can simply be trashed. */
 #define	MP_TEMP		0x04		/* Backing file is a temporary. */
+#define	MP_UNLINK	0x08		/* Unlink file on last close. */
 	u_int32_t  flags;
 };
 
@@ -215,8 +220,9 @@ struct __bh {
 #define	BH_DIRTY	0x002		/* Page was modified. */
 #define	BH_DISCARD	0x004		/* Page is useless. */
 #define	BH_LOCKED	0x008		/* Page is locked (I/O in progress). */
-#define	BH_TRASH	0x010		/* Page is garbage. */
-#define	BH_WRITE	0x020		/* Page scheduled for writing. */
+#define	BH_SYNC		0x010		/* memp sync: write the page */
+#define	BH_SYNC_LOGFLSH	0x020		/* memp sync: also flush the log */
+#define	BH_TRASH	0x040		/* Page is garbage. */
 	u_int16_t  flags;
 
 	SH_TAILQ_ENTRY	q;		/* LRU queue. */
@@ -227,9 +233,10 @@ struct __bh {
 
 	/*
 	 * !!!
-	 * This array must be size_t aligned -- the DB access methods put PAGE
-	 * and other structures into it, and expect to be able to access them
-	 * directly.  (We guarantee size_t alignment in the documentation too.)
+	 * This array must be at least size_t aligned -- the DB access methods
+	 * put PAGE and other structures into it, and then access them directly.
+	 * (We guarantee size_t alignment to applications in the documentation,
+	 * too.)
 	 */
 	u_int8_t   buf[1];		/* Variable length data. */
 };

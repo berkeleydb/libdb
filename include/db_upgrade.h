@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_upgrade.h,v 1.4 2000/05/07 14:00:34 bostic Exp $
+ * $Id: db_upgrade.h,v 1.5 2000/11/16 23:40:56 ubell Exp $
  */
 
 #ifndef _DB_UPGRADE_H_
@@ -14,6 +14,26 @@
  * This file defines the metadata pages from the previous release.
  * These structures are only used to upgrade old versions of databases.
  */
+
+/* Structures from the 3.1 release */
+/*
+ * QAM Meta data page structure
+ *
+ */
+typedef struct _qmeta31 {
+	DBMETA    dbmeta;	/* 00-71: Generic meta-data header. */
+
+	u_int32_t start;	/* 72-75: Start offset. */
+	u_int32_t first_recno;	/* 76-79: First not deleted record. */
+	u_int32_t cur_recno;	/* 80-83: Last recno allocated. */
+	u_int32_t re_len;	/* 84-87: Fixed-length record length. */
+	u_int32_t re_pad;	/* 88-91: Fixed-length record pad. */
+	u_int32_t rec_page;	/* 92-95: Records Per Page. */
+
+	/*
+	 * Minimum page size is 128.
+	 */
+} QMETA31;
 
 /* Structures from the 3.0 release */
 

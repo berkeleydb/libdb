@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test078.tcl,v 1.7 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test078.tcl,v 1.9 2000/12/11 17:24:55 sue Exp $
 #
 # DB Test 78: Test of DBC->c_count(). [#303]
 proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
@@ -15,17 +15,25 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 
 	puts "Test0$tnum: Test of key counts."
 
-	cleanup $testdir
 	berkdb srand $rand_init
 
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 
 	puts "\tTest0$tnum.a: No duplicates, trivial answer."
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Test078: skipping for specific pagesizes"
+		return
+	}
 
 	set db [eval {berkdb_open -create -truncate -mode 0644\
 	    -pagesize $pagesize} $omethod $args {$testfile}]

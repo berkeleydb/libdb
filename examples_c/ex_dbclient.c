@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_dbclient.c,v 1.9 2000/05/22 15:17:03 sue Exp $
+ * $Id: ex_dbclient.c,v 1.12 2000/10/26 14:13:05 bostic Exp $
  */
 
 #include "db_config.h"
@@ -25,11 +25,11 @@
 #define	DATABASE	"access.db"
 
 int	db_clientrun __P((DB_ENV *, char *));
-int	db_setup __P((char *, FILE *, char *, char *));
-int	db_teardown __P((char *, FILE *, char *, char *));
+int	ex_dbclient_run __P((char *, FILE *, char *, char *));
 #ifdef HAVE_VXWORKS
 int	ex_dbclient __P((char *));
 #define	ERROR_RETURN	ERROR
+#define	VXSHM_KEY	10
 #else
 int	main __P((int, char *[]));
 #define	ERROR_RETURN	1
@@ -57,10 +57,7 @@ main(argc, argv)
 	 */
 	home = DATABASE_HOME;
 
-	if ((ret = db_setup(home, stderr, argv[1], argv[0])) != 0)
-		return (ret);
-
-	if ((ret = db_teardown(home, stderr, argv[1], argv[0])) != 0)
+	if ((ret = ex_dbclient_run(home, stderr, argv[1], argv[0])) != 0)
 		return (ret);
 
 	return (0);
@@ -81,17 +78,14 @@ ex_dbclient(host)
 	 */
 	home = DATABASE_HOME;
 
-	if ((ret = db_setup(home, stderr, host, progname)) != 0)
-		return (ret);
-
-	if ((ret = db_teardown(home, stderr, host, progname)) != 0)
+	if ((ret = ex_dbclient_run(home, stderr, host, progname)) != 0)
 		return (ret);
 
 	return (0);
 }
 
 int
-db_setup(home, errfp, host, progname)
+ex_dbclient_run(home, errfp, host, progname)
 	char *home, *host, *progname;
 	FILE *errfp;
 {
@@ -106,6 +100,12 @@ db_setup(home, errfp, host, progname)
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
 		return (ERROR_RETURN);
 	}
+#ifdef HAVE_VXWORKS
+	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
+		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
+		return (ERROR_RETURN);
+	}
+#endif
 	retry = 0;
 retry:
 	while (retry < 5) {
@@ -165,28 +165,6 @@ retry:
 }
 
 int
-db_teardown(home, errfp, host, progname)
-	char *home, *host, *progname;
-	FILE *errfp;
-{
-	DB_ENV *dbenv;
-	int ret;
-
-	/* Remove the shared database regions. */
-	if ((ret = db_env_create(&dbenv, DB_CLIENT)) != 0) {
-		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
-	}
-	dbenv->set_server(dbenv, host, 0, 0, 0);
-
-	if ((ret = dbenv->remove(dbenv, home, DB_FORCE)) != 0) {
-		fprintf(stderr, "DBENV->remove: %s\n", db_strerror(ret));
-		return (ERROR_RETURN);
-	}
-	return (0);
-}
-
-int
 db_clientrun(dbenv, progname)
 	DB_ENV *dbenv;
 	char *progname;
@@ -203,7 +181,7 @@ db_clientrun(dbenv, progname)
 	if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_create: %s\n", progname, db_strerror(ret));
-		return(ret);
+		return (ret);
 	}
 	if ((ret = dbp->set_pagesize(dbp, 1024)) != 0) {
 		dbp->err(dbp, ret, "set_pagesize");

@@ -3,12 +3,12 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd005.tcl,v 11.20 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: recd005.tcl,v 11.27 2000/12/15 21:41:38 ubell Exp $
 #
 # Recovery Test 5.
 # Make sure that we can do catastrophic recovery even if we open
 # files using the same log file id.
-proc recd005 { method {select 0} args} {
+proc recd005 { method args} {
 	source ./include.tcl
 	global rand_init
 
@@ -22,13 +22,13 @@ proc recd005 { method {select 0} args} {
 	set testfile1 recd005.1.db
 	set testfile2 recd005.2.db
 	set eflags \
-	    "-create -txn -lock_max 2000 -home $testdir"
+	    "-create -txn -lock_max 2000 -lock_max_objects 2000 -home $testdir"
 
 	set tnum 0
 	foreach sizes "{1000 10} {10 1000}" {
 		foreach ops "{abort abort} {abort commit} {commit abort} \
 		{commit commit}" {
-			cleanup $testdir
+			env_cleanup $testdir
 			incr tnum
 
 			set s1 [lindex $sizes 0]
@@ -77,7 +77,8 @@ proc recd005 { method {select 0} args} {
 			flush stdout
 
 			set stat [catch \
-			    {exec ./db_recover -h $testdir -c} result]
+			    {exec $util_path/db_recover -h $testdir -c} \
+			    result]
 			if { $stat == 1 } {
 				error "Recovery error: $result."
 			}
@@ -88,16 +89,22 @@ proc recd005 { method {select 0} args} {
 			if { $op1 == "abort" } {
 				file copy -force $testdir/$testfile1.afterop \
 				    $testdir/$testfile1
+				move_file_extent $testdir $testfile1 \
+				    afterop copy
 			} else {
 				file copy -force $testdir/$testfile1.init \
 				    $testdir/$testfile1
+				move_file_extent $testdir $testfile1 init copy
 			}
 			if { $op2 == "abort" } {
 				file copy -force $testdir/$testfile2.afterop \
 				    $testdir/$testfile2
+				move_file_extent $testdir $testfile2 \
+				    afterop copy
 			} else {
 				file copy -force $testdir/$testfile2.init \
 				    $testdir/$testfile2
+				move_file_extent $testdir $testfile2 init copy
 			}
 
 			berkdb debug_check
@@ -106,7 +113,8 @@ proc recd005 { method {select 0} args} {
 			flush stdout
 
 			set stat \
-			    [catch {exec ./db_recover -h $testdir -c} result]
+			    [catch {exec $util_path/db_recover \
+			    -h $testdir -c} result]
 			if { $stat == 1 } {
 				error "Recovery error: $result."
 			}
@@ -121,7 +129,8 @@ proc recd005 { method {select 0} args} {
 			    Verify db_printlog can read logfile"
 			set tmpfile $testdir/printlog.out
 			set stat [catch \
-			    {exec ./db_printlog -h $testdir > $tmpfile} ret]
+			    {exec $util_path/db_printlog -h $testdir \
+			    > $tmpfile} ret]
 			error_check_good db_printlog $stat 0
 			fileremove $tmpfile
 		}
@@ -137,6 +146,7 @@ proc do_one_file { dir method env env_cmd filename num op } {
 
 	# Save the initial file and open the environment and the first file
 	file copy -force $dir/$filename $dir/$filename.init
+	copy_extent_file $dir $filename init
 	set oflags "-unknown -env $env"
 	set db [eval {berkdb_open} $oflags $filename]
 
@@ -156,6 +166,7 @@ proc do_one_file { dir method env env_cmd filename num op } {
 	# recovery.
 	error_check_good sync:$db [$db sync] 0
 	file copy -force $dir/$filename $dir/$filename.afterop
+	copy_extent_file $dir $filename afterop
 	open_and_dump_file $testdir/$filename.afterop NULL $tflags \
 	    $afterop_file nop dump_file_direction "-first" "-next"
 	error_check_good txn_$op:$txn [$txn $op] 0
@@ -171,6 +182,7 @@ proc do_one_file { dir method env env_cmd filename num op } {
 	open_and_dump_file $testdir/$filename NULL $tflags $final_file nop \
 	    dump_file_direction "-first" "-next"
 	file copy -force $dir/$filename $dir/$filename.final
+	copy_extent_file $dir $filename final
 
 	# If this is an abort, it should match the original file.
 	# If this was a commit, then this file should match the

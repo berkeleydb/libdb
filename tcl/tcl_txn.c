@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_txn.c,v 11.19 2000/04/21 18:18:58 bostic Exp $";
+static const char revid[] = "$Id: tcl_txn.c,v 11.24 2000/12/31 19:26:23 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,7 +19,7 @@ static const char revid[] = "$Id: tcl_txn.c,v 11.19 2000/04/21 18:18:58 bostic E
 #include <tcl.h>
 #endif
 
-#include "db.h"
+#include "db_int.h"
 #include "tcl_db.h"
 
 /*
@@ -164,7 +164,7 @@ tcl_Txn(interp, objc, objv, envp, envip)
 	while (i < objc) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
 		    txnopts, "option", TCL_EXACT, &optindex) != TCL_OK) {
-			return(IS_HELP(objv[i]));
+			return (IS_HELP(objv[i]));
 		}
 		i++;
 		switch ((enum txnopts)optindex) {
@@ -278,7 +278,7 @@ do {									\
 	ret = txn_stat(envp, &sp, NULL);
 	result = _ReturnSetup(interp, ret, "txn stat");
 	if (result == TCL_ERROR)
-		return(result);
+		return (result);
 
 	/*
 	 * Have our stats, now construct the name value
@@ -469,5 +469,5 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
 	_debug_check();
 	ret = txn_commit(txnp, flag);
 	result = _ReturnSetup(interp, ret, "txn commit");
-	return(result);
+	return (result);
 }

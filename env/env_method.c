@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_method.c,v 11.24 2000/05/31 15:10:04 bostic Exp $";
+static const char revid[] = "$Id: env_method.c,v 11.31 2000/11/30 00:58:35 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -50,6 +49,8 @@ static void __dbenv_set_errcall __P((DB_ENV *, void (*)(const char *, char *)));
 static void __dbenv_set_errfile __P((DB_ENV *, FILE *));
 static void __dbenv_set_errpfx __P((DB_ENV *, const char *));
 static int  __dbenv_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
+static int  __dbenv_set_flags __P((DB_ENV *, u_int32_t, int));
+static int  __dbenv_set_mutexlocks __P((DB_ENV *, int));
 static int  __dbenv_set_paniccall __P((DB_ENV *, void (*)(DB_ENV *, int)));
 static int  __dbenv_set_recovery_init __P((DB_ENV *, int (*)(DB_ENV *)));
 static int  __dbenv_set_server_noclnt
@@ -122,6 +123,8 @@ __dbenv_init(dbenv)
 		dbenv->remove = __dbcl_env_remove;
 		dbenv->set_data_dir = __dbcl_set_data_dir;
 		dbenv->set_feedback = __dbcl_env_set_feedback;
+		dbenv->set_flags = __dbcl_env_flags;
+		dbenv->set_mutexlocks = __dbcl_set_mutex_locks;
 		dbenv->set_paniccall = __dbcl_env_paniccall;
 		dbenv->set_recovery_init = __dbcl_set_recovery_init;
 		dbenv->set_server = __dbcl_envserver;
@@ -135,6 +138,8 @@ __dbenv_init(dbenv)
 		dbenv->remove = __dbenv_remove;
 		dbenv->set_data_dir = __dbenv_set_data_dir;
 		dbenv->set_feedback = __dbenv_set_feedback;
+		dbenv->set_flags = __dbenv_set_flags;
+		dbenv->set_mutexlocks = __dbenv_set_mutexlocks;
 		dbenv->set_paniccall = __dbenv_set_paniccall;
 		dbenv->set_recovery_init = __dbenv_set_recovery_init;
 		dbenv->set_server = __dbenv_set_server_noclnt;
@@ -145,6 +150,7 @@ __dbenv_init(dbenv)
 	}
 #endif
 	dbenv->shm_key = INVALID_REGION_SEGID;
+	dbenv->db_mutexlocks = 1;
 
 	__log_dbenv_create(dbenv);		/* Subsystem specific. */
 	__lock_dbenv_create(dbenv);
@@ -208,6 +214,39 @@ __dbenv_errx(dbenv, fmt, va_alist)
 }
 
 static int
+__dbenv_set_flags(dbenv, flags, onoff)
+	DB_ENV *dbenv;
+	u_int32_t flags;
+	int onoff;
+{
+#define	OK_FLAGS	(DB_CDB_ALLDB | DB_NOMMAP | DB_TXN_NOSYNC)
+
+	if (LF_ISSET(~OK_FLAGS))
+		return (__db_ferr(dbenv, "DBENV->set_flags", 0));
+
+	if (LF_ISSET(DB_CDB_ALLDB)) {
+		ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_flags: DB_CDB_ALLDB");
+		if (onoff)
+			F_SET(dbenv, DB_ENV_CDB_ALLDB);
+		else
+			F_CLR(dbenv, DB_ENV_CDB_ALLDB);
+	}
+	if (LF_ISSET(DB_NOMMAP)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_NOMMAP);
+		else
+			F_CLR(dbenv, DB_ENV_NOMMAP);
+	}
+	if (LF_ISSET(DB_TXN_NOSYNC)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_TXN_NOSYNC);
+		else
+			F_CLR(dbenv, DB_ENV_TXN_NOSYNC);
+	}
+	return (0);
+}
+
+static int
 __dbenv_set_data_dir(dbenv, dir)
 	DB_ENV *dbenv;
 	const char *dir;
@@ -261,6 +300,15 @@ __dbenv_set_feedback(dbenv, feedback)
 	void (*feedback) __P((DB_ENV *, int, int));
 {
 	dbenv->db_feedback = feedback;
+	return (0);
+}
+
+static int
+__dbenv_set_mutexlocks(dbenv, onoff)
+	DB_ENV *dbenv;
+	int onoff;
+{
+	dbenv->db_mutexlocks = onoff;
 	return (0);
 }
 
@@ -409,5 +457,5 @@ __dbenv_set_server_noclnt(dbenv, host, tsec, ssec, flags)
 	COMPQUIET(flags, 0);
 
 	__db_err(dbenv, "set_server method meaningless in non-RPC enviroment");
-	return(__db_eopnotsup(dbenv));
+	return (__db_eopnotsup(dbenv));
 }

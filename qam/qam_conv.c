@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_conv.c,v 11.5 2000/03/31 00:30:39 ubell Exp $";
+static const char revid[] = "$Id: qam_conv.c,v 11.6 2000/11/16 23:40:57 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -37,12 +37,12 @@ __qam_mswap(pg)
 
 	 p = (u_int8_t *)pg + sizeof(DBMETA);
 
-	SWAP32(p);		/* start */
 	SWAP32(p);		/* first_recno */
 	SWAP32(p);		/* cur_recno */
 	SWAP32(p);		/* re_len */
 	SWAP32(p);		/* re_pad */
 	SWAP32(p);		/* rec_page */
+	SWAP32(p);		/* page_ext */
 
 	return (0);
 }

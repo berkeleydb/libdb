@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env005.tcl,v 11.7 2000/05/06 19:09:48 bostic Exp $
+#	$Id: env005.tcl,v 11.8 2000/08/25 14:21:50 sue Exp $
 #
 # Env Test 5
 # Test that using subsystems without initializing them correctly
@@ -14,7 +14,7 @@ proc env005 { } {
 
 	puts "Env005: Uninitialized env subsystems test."
 
-	cleanup $testdir
+	env_cleanup $testdir
 	puts "\tEnv005.a: Creating env with no subsystems."
 
 	set e [berkdb env -create -home $testdir]

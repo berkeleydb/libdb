@@ -1,5 +1,4 @@
- 
-<!--$Id: env_version.so,v 10.5.2.1 2000/07/30 18:27:00 bostic Exp $-->
+<!--$Id: env_version.so,v 10.7 2000/09/21 19:58:54 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv.get_version_major</h1>
@@ -27,7 +26,7 @@ public static int get_version_minor();
 public static int get_version_patch();
 public static String get_version_string();
 </pre></h3>
-<h1>Description</h1>
+<h1>Description</h1> 
 <p>These methods return version information about the underlying Berkeley DB
 software.  Berkeley DB is released with a major, minor and patch number, which
 is returned by DbEnv.get_version_major,
@@ -46,6 +45,8 @@ by DbEnv.get_version_string.
 <a href="../api_java/env_set_errcall.html">DbEnv.set_errcall</a>,
 <a href="../api_java/env_set_error_stream.html">DbEnv.set_error_stream</a>,
 <a href="../api_java/env_set_errpfx.html">DbEnv.set_errpfx</a>,
+<a href="../api_java/env_set_flags.html">DbEnv.set_flags</a>,
+<a href="../api_java/env_set_mutexlocks.html">DbEnv.set_mutexlocks</a>,
 and
 <a href="../api_java/env_set_verbose.html">DbEnv.set_verbose</a>.
 </tt>

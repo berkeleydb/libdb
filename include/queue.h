@@ -29,8 +29,46 @@
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  */
 
-#ifndef	_SYS_QUEUE_H_
-#define	_SYS_QUEUE_H_
+/*
+ * XXX
+ * We #undef the queue macros because there are incompatible versions of this
+ * file and these macros on various systems.  What makes the problem worse is
+ * they are included and/or defined by system include files which we may have
+ * already loaded into Berkeley DB before getting here.  For example, FreeBSD's
+ * <rpc/rpc.h> includes its system <sys/queue.h>, and VxWorks UnixLib.h defines
+ * several of the LIST_XXX macros.  Make sure we use ours.
+ */
+#undef	LIST_HEAD
+#undef	LIST_ENTRY
+#undef	LIST_FIRST
+#undef	LIST_NEXT
+#undef	LIST_INIT
+#undef	LIST_INSERT_AFTER
+#undef	LIST_INSERT_BEFORE
+#undef	LIST_INSERT_HEAD
+#undef	LIST_REMOVE
+#undef	TAILQ_HEAD
+#undef	TAILQ_ENTRY
+#undef	TAILQ_FIRST
+#undef	TAILQ_NEXT
+#undef	TAILQ_INIT
+#undef	TAILQ_INSERT_HEAD
+#undef	TAILQ_INSERT_TAIL
+#undef	TAILQ_INSERT_AFTER
+#undef	TAILQ_INSERT_BEFORE
+#undef	TAILQ_REMOVE
+#undef	CIRCLEQ_HEAD
+#undef	CIRCLEQ_ENTRY
+#undef	CIRCLEQ_FIRST
+#undef	CIRCLEQ_LAST
+#undef	CIRCLEQ_NEXT
+#undef	CIRCLEQ_PREV
+#undef	CIRCLEQ_INIT
+#undef	CIRCLEQ_INSERT_AFTER
+#undef	CIRCLEQ_INSERT_BEFORE
+#undef	CIRCLEQ_INSERT_HEAD
+#undef	CIRCLEQ_INSERT_TAIL
+#undef	CIRCLEQ_REMOVE
 
 /*
  * This file defines three types of data structures: lists, tail queues,
@@ -81,7 +119,6 @@ struct {								\
 
 #define	LIST_FIRST(head)		((head)->lh_first)
 #define	LIST_NEXT(elm, field)		((elm)->field.le_next)
-#define	LIST_END(head)			NULL
 
 /*
  * List functions.
@@ -136,7 +173,6 @@ struct {								\
 
 #define	TAILQ_FIRST(head)		((head)->tqh_first)
 #define	TAILQ_NEXT(elm, field)		((elm)->field.tqe_next)
-#define	TAILQ_END(head)			NULL
 
 /*
  * Tail queue functions.
@@ -190,6 +226,14 @@ struct {								\
 } while (0)
 
 /*
+ * This macro is used to fixup the queue after moving the head.
+ */
+#define	TAILQ_REINSERT_HEAD(head, elm, field) do {			\
+	DB_ASSERT((head)->tqh_first == (elm));				\
+	(elm)->field.tqe_prev = &(head)->tqh_first;                     \
+} while (0)
+
+/*
  * Circular queue definitions.
  */
 #define	CIRCLEQ_HEAD(name, type)					\
@@ -206,7 +250,6 @@ struct {								\
 
 #define	CIRCLEQ_FIRST(head)		((head)->cqh_first)
 #define	CIRCLEQ_LAST(head)		((head)->cqh_last)
-#define	CIRCLEQ_END(head)		((void *)(head))
 #define	CIRCLEQ_NEXT(elm, field)	((elm)->field.cqe_next)
 #define	CIRCLEQ_PREV(elm, field)	((elm)->field.cqe_prev)
 
@@ -274,5 +317,3 @@ struct {								\
 #if defined(__cplusplus)
 }
 #endif
-
-#endif	/* !_SYS_QUEUE_H_ */

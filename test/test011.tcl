@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test011.tcl,v 11.19 2000/05/16 19:46:19 krinsky Exp $
+#	$Id: test011.tcl,v 11.20 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 11 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -56,7 +56,7 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open -create -truncate \
 	    -mode 0644} [concat $args "-dup"] {$omethod $testfile}]
@@ -220,7 +220,7 @@ proc test011_recno { method {nentries 10000} {tnum 11} largs } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	if {$renum == 1} {
 		append largs " -renumber"

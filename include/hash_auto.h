@@ -176,8 +176,8 @@ typedef struct _ham_groupalloc1_args {
 int __ham_groupalloc1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __ham_groupalloc1_read __P((DB_ENV *, void *, __ham_groupalloc1_args **));
 
-#define	DB_ham_groupalloc	31
-typedef struct _ham_groupalloc_args {
+#define	DB_ham_groupalloc2	31
+typedef struct _ham_groupalloc2_args {
 	u_int32_t type;
 	DB_TXN *txnid;
 	DB_LSN prev_lsn;
@@ -187,11 +187,62 @@ typedef struct _ham_groupalloc_args {
 	db_pgno_t	start_pgno;
 	u_int32_t	num;
 	db_pgno_t	free;
+} __ham_groupalloc2_args;
+
+int __ham_groupalloc2_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __ham_groupalloc2_read __P((DB_ENV *, void *, __ham_groupalloc2_args **));
+
+#define	DB_ham_groupalloc	32
+typedef struct _ham_groupalloc_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	DB_LSN	meta_lsn;
+	db_pgno_t	start_pgno;
+	u_int32_t	num;
+	db_pgno_t	free;
 } __ham_groupalloc_args;
 
-int __ham_groupalloc_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t));
+int __ham_groupalloc_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t));
 int __ham_groupalloc_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __ham_groupalloc_read __P((DB_ENV *, void *, __ham_groupalloc_args **));
+
+#define	DB_ham_curadj	33
+typedef struct _ham_curadj_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	u_int32_t	indx;
+	u_int32_t	len;
+	u_int32_t	dup_off;
+	int	add;
+	int	is_dup;
+	u_int32_t	order;
+} __ham_curadj_args;
+
+int __ham_curadj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, u_int32_t, u_int32_t, u_int32_t, int, int, u_int32_t));
+int __ham_curadj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __ham_curadj_read __P((DB_ENV *, void *, __ham_curadj_args **));
+
+#define	DB_ham_chgpg	34
+typedef struct _ham_chgpg_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_ham_mode	mode;
+	db_pgno_t	old_pgno;
+	db_pgno_t	new_pgno;
+	u_int32_t	old_indx;
+	u_int32_t	new_indx;
+} __ham_chgpg_args;
+
+int __ham_chgpg_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_ham_mode, db_pgno_t, db_pgno_t, u_int32_t, u_int32_t));
+int __ham_chgpg_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __ham_chgpg_read __P((DB_ENV *, void *, __ham_chgpg_args **));
 int __ham_init_print __P((DB_ENV *));
 int __ham_init_recover __P((DB_ENV *));
 #endif

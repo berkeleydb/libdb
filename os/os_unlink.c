@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_unlink.c,v 11.8.2.1 2000/06/27 17:52:57 bostic Exp $";
+static const char revid[] = "$Id: os_unlink.c,v 11.13 2000/11/30 00:58:42 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #endif
@@ -71,4 +70,37 @@ __os_unlink(dbenv, path)
 	}
 
 	return (ret);
+}
+
+/*
+ * __os_region_unlink --
+ *	Remove a shared memory object file.
+ *
+ * PUBLIC: int __os_region_unlink __P((DB_ENV *, const char *));
+ */
+int
+__os_region_unlink(dbenv, path)
+	DB_ENV *dbenv;
+	const char *path;
+{
+#ifdef HAVE_QNX
+	int ret;
+	char *newname;
+
+	if ((ret = __os_shmname(dbenv, path, &newname)) != 0)
+		goto err;
+
+	if ((ret = shm_unlink(newname)) != 0) {
+		ret = __os_get_errno();
+		if (ret != ENOENT)
+			__db_err(dbenv, "Shm_unlink: %s: %s",
+			    newname, strerror(ret));
+	}
+err:
+	if (newname != NULL)
+		__os_free(newname, 0);
+	return (ret);
+#else
+	return (__os_unlink(dbenv, path));
+#endif
 }

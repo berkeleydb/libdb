@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead003.tcl,v 1.7 2000/05/30 19:14:25 krinsky Exp $
+#	$Id: dead003.tcl,v 1.8 2000/08/25 14:21:50 sue Exp $
 #
 # Deadlock Test 3.
 # Test DB_LOCK_OLDEST and DB_LOCK_YOUNGEST
@@ -17,7 +17,7 @@ proc dead003 { { procs "2 4 10" } {tests "ring clump" } } {
 
 	# Create the environment.
 	foreach d $detects {
-		cleanup $testdir
+		env_cleanup $testdir
 		puts "\tDead003.a: creating environment for $d"
 		set env [berkdb env \
 		    -create -mode 0644 -home $testdir -lock -lock_detect $d]

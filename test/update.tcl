@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: update.tcl,v 11.6 2000/03/24 19:53:43 krinsky Exp $
+#	$Id: update.tcl,v 11.9 2000/10/27 13:23:56 sue Exp $
 source ./include.tcl
 global update_dir
 set update_dir "$test_path/update_test"
@@ -36,20 +36,20 @@ proc _update { source_dir temp_dir \
 	source include.tcl
 	global errorInfo
 
-	cleanup $temp_dir
+	cleanup $temp_dir NULL
 
 	exec sh -c \
 "gzcat $source_dir/$version/$method/$file.tar.gz | (cd $temp_dir && tar xf -)"
 
 	if { $do_db_load_test } {
 		set ret [catch \
-		    {exec ./db_load -f "$temp_dir/$file.dump" \
+		    {exec $util_path/db_load -f "$temp_dir/$file.dump" \
 		    "$temp_dir/update.db"} message]
 		error_check_good \
 		    "Update load: $version $method $file $message" $ret 0
 
 		set ret [catch \
-		    {exec ./db_dump -f "$temp_dir/update.dump" \
+		    {exec $util_path/db_dump -f "$temp_dir/update.dump" \
 		    "$temp_dir/update.db"} message]
 		error_check_good \
 		    "Update dump: $version $method $file $message" $ret 0
@@ -75,7 +75,8 @@ proc _update { source_dir temp_dir \
 			error_check_good dbclose [$db close] 0
 
 			set ret [catch \
-			    {exec ./db_dump -f "$temp_dir/update.dump" \
+			    {exec $util_path/db_dump -f \
+			    "$temp_dir/update.dump" \
 			    "$temp_dir/$file-$endianness.db"} message]
 			error_check_good "Update\
 			    dump: $version $method $file $message" $ret 0

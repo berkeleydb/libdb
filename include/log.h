@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: log.h,v 11.13.2.2 2000/07/08 17:36:36 bostic Exp $
+ * $Id: log.h,v 11.19 2001/01/11 18:19:52 bostic Exp $
  */
 
 #ifndef _LOG_H_
@@ -16,22 +16,13 @@ struct __hdr;		typedef struct __hdr HDR;
 struct __log;		typedef struct __log LOG;
 struct __log_persist;	typedef struct __log_persist LOGP;
 
-#ifndef MAXLFNAME
 #define	LFPREFIX	"log."		/* Log file name prefix. */
 #define	LFNAME		"log.%010d"	/* Log file name template. */
 #define	LFNAME_V1	"log.%05d"	/* Log file name template, rev 1. */
-#define	MAXLFNAME	2000000000	/* Maximum log file name. */
-#endif
 
 #define	LG_MAX_DEFAULT		(10 * MEGABYTE)	/* 10 MB. */
 #define	LG_BSIZE_DEFAULT	(32 * 1024)	/* 32 KB. */
 #define	LG_BASE_REGION_SIZE	(60 * 1024)	/* 60 KB. */
-
-/*
- * The log region isn't fixed size because we store the registered
- * file names there.
- */
-#define	LOG_REGION_SIZE	(30 * 1024)
 
 /*
  * The per-process table that maps log file-id's to DB structures.
@@ -200,6 +191,17 @@ struct __fname {
 		    (u_long)(prev)->file, (u_long)(prev)->offset);	\
 		goto out;						\
 	}
+
+/*
+ * Status codes indicating the validity of a log file examined by
+ * __log_valid().
+ */
+typedef enum {
+	DB_LV_INCOMPLETE,
+	DB_LV_NORMAL,
+	DB_LV_OLD_READABLE,
+	DB_LV_OLD_UNREADABLE
+} logfile_validity;
 
 #include "log_auto.h"
 #include "log_ext.h"

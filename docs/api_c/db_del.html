@@ -1,5 +1,4 @@
- 
-<!--$Id: db_del.so,v 10.21.2.1 2000/07/17 13:34:58 bostic Exp $-->
+<!--$Id: db_del.so,v 10.23 2000/09/05 19:35:10 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;del</h1>
@@ -34,8 +33,8 @@ associated with the designated key will be discarded.
 <b>txnid</b> parameter is a transaction ID returned from
 <a href="../api_c/txn_begin.html">txn_begin</a>, otherwise, NULL.
 <p>The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>The DB-&gt;del function returns a non-zero error value on failure, 0 on success, and returns <a href="../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a> if the specified <b>key</b> did not exist
-in the file.
+<p>The DB-&gt;del function returns a non-zero error value on failure, 0 on success, and <a href="../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a> if the specified <b>key</b> did not exist in
+the file.
 <h1>Errors</h1>
 <p>The DB-&gt;del function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
@@ -82,6 +81,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

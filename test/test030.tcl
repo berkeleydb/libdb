@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test030.tcl,v 11.12 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test030.tcl,v 11.13 2000/08/25 14:21:55 sue Exp $
 #
 # DB Test 30: Test DB_NEXT_DUP Functionality.
 proc test030 { method {nentries 10000} args } {
@@ -30,14 +30,17 @@ proc test030 { method {nentries 10000} args } {
 	if { $eindex == -1 } {
 		set testfile $testdir/test030.db
 		set cntfile $testdir/cntfile.db
+		set env NULL
 	} else {
 		set testfile test030.db
 		set cntfile cntfile.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open -create -truncate \
 		-mode 0644 -dup} $args {$omethod $testfile}]

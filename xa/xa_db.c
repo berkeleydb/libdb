@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa_db.c,v 11.8 2000/03/28 21:50:21 ubell Exp $";
+static const char revid[] = "$Id: xa_db.c,v 11.9 2000/09/06 18:57:59 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,6 +24,8 @@ static int __xa_close __P((DB *, u_int32_t));
 static int __xa_cursor __P((DB *, DB_TXN *, DBC **, u_int32_t));
 static int __xa_del __P((DB *, DB_TXN *, DBT *, u_int32_t));
 static int __xa_get __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
+static int __xa_open __P((DB *,
+	    const char *, const char *, DBTYPE, u_int32_t, int));
 static int __xa_put __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
 
 typedef struct __xa_methods {
@@ -31,6 +33,8 @@ typedef struct __xa_methods {
 	int (*cursor) __P((DB *, DB_TXN *, DBC **, u_int32_t));
 	int (*del) __P((DB *, DB_TXN *, DBT *, u_int32_t));
 	int (*get) __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
+	int (*open) __P((DB *,
+	    const char *, const char *, DBTYPE, u_int32_t, int));
 	int (*put) __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
 } XA_METHODS;
 
@@ -55,12 +59,39 @@ __db_xa_create(dbp)
 		return (ret);
 
 	dbp->xa_internal = xam;
+	xam->open = dbp->open;
+	dbp->open = __xa_open;
 	xam->close = dbp->close;
+	dbp->close = __xa_close;
+
+	return (0);
+}
+
+/*
+ * __xa_open --
+ *	XA open wrapper.
+ */
+
+static int
+__xa_open(dbp, name, subdb, type, flags, mode)
+	DB *dbp;
+	const char *name, *subdb;
+	DBTYPE type;
+	u_int32_t flags;
+	int mode;
+{
+	XA_METHODS *xam;
+	int ret;
+
+	xam = (XA_METHODS *)dbp->xa_internal;
+
+	if ((ret = xam->open(dbp, name, subdb, type, flags, mode)) != 0)
+		return (ret);
+
 	xam->cursor = dbp->cursor;
 	xam->del = dbp->del;
 	xam->get = dbp->get;
 	xam->put = dbp->put;
-	dbp->close = __xa_close;
 	dbp->cursor = __xa_cursor;
 	dbp->del = __xa_del;
 	dbp->get = __xa_get;

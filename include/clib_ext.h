@@ -1,4 +1,4 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_clib_ext_h_
 #define	_clib_ext_h_
 #if defined(__cplusplus)
@@ -23,11 +23,7 @@ void *memmove __P((void *, const void *, size_t));
 int raise __P((int));
 #endif
 #ifndef HAVE_SNPRINTF
-#ifdef __STDC__
 int snprintf __P((char *, size_t, const char *, ...));
-#else
-int snprintf();
-#endif
 #endif
 int strcasecmp __P((const char *, const char *));
 #ifndef HAVE_STRERROR

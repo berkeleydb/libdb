@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: lock001.tcl,v 11.10 2000/05/22 12:51:37 bostic Exp $
+#	$Id: lock001.tcl,v 11.11 2000/08/25 14:21:51 sue Exp $
 #
 # Test driver for lock tests.
 #						General	Multi	Random
@@ -65,7 +65,7 @@ proc locktest { args } {
 	set nmodes [isqrt [llength $conflicts]]
 
 	# Cleanup
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Open the region we'll use for testing.
 	set eflags "-create -lock -home $testdir -mode 0644 \
@@ -73,7 +73,7 @@ proc locktest { args } {
 	set env [eval {berkdb env} $eflags]
 	lock001 $env $iterations $nmodes
 	reset_env $env
-	cleanup $testdir
+	env_cleanup $testdir
 
 	lock002 $maxlocks $conflicts
 

@@ -1,5 +1,8 @@
 #!./perl -w
 
+use warnings;
+use strict;
+
 BEGIN {
     unless(grep /blib/, @INC) {
         chdir 't' if -d 't';
@@ -12,7 +15,7 @@ use Config;
 BEGIN {
     if(-d "lib" && -f "TEST") {
         if ($Config{'extensions'} !~ /\bDB_File\b/ ) {
-            print "1..155\n";
+            print "1..157\n";
             exit 0;
         }
     }
@@ -21,7 +24,7 @@ BEGIN {
 use DB_File; 
 use Fcntl;
 
-print "1..155\n";
+print "1..157\n";
 
 sub ok
 {
@@ -91,7 +94,9 @@ sub docat_del
 }   
 
 
-$db185mode =  ($DB_File::db_version == 1 && ! $DB_File::db_185_compat) ;
+my $db185mode =  ($DB_File::db_version == 1 && ! $DB_File::db_185_compat) ;
+my $null_keys_allowed = ($DB_File::db_ver < 2.004010 
+				|| $DB_File::db_ver >= 3.1 );
 
 my $Dfile = "dbbtree.tmp";
 unlink $Dfile;
@@ -137,17 +142,19 @@ ok(16, $dbh->{prefix} == 1234 );
 # Check that an invalid entry is caught both for store & fetch
 eval '$dbh->{fred} = 1234' ;
 ok(17, $@ =~ /^DB_File::BTREEINFO::STORE - Unknown element 'fred' at/ ) ;
-eval '$q = $dbh->{fred}' ;
+eval 'my $q = $dbh->{fred}' ;
 ok(18, $@ =~ /^DB_File::BTREEINFO::FETCH - Unknown element 'fred' at/ ) ;
 
 # Now check the interface to BTREE
 
+my ($X, %h) ;
 ok(19, $X = tie(%h, 'DB_File',$Dfile, O_RDWR|O_CREAT, 0640, $DB_BTREE )) ;
 
-($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$mtime,$ctime,
+my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$mtime,$ctime,
    $blksize,$blocks) = stat($Dfile);
 ok(20, ($mode & 0777) == ($^O eq 'os2' ? 0666 : 0640) || $^O eq 'amigaos' || $^O eq 'MSWin32');
 
+my ($key, $value, $i);
 while (($key,$value) = each(%h)) {
     $i++;
 }
@@ -218,8 +225,8 @@ $h{'goner3'} = 'snork';
 delete $h{'goner1'};
 $X->DELETE('goner3');
 
-@keys = keys(%h);
-@values = values(%h);
+my @keys = keys(%h);
+my @values = values(%h);
 
 ok(27, $#keys == 29 && $#values == 29) ;
 
@@ -244,12 +251,19 @@ ok(30, ArrayCompare(\@b, \@c)) ;
 $h{'foo'} = '';
 ok(31, $h{'foo'} eq '' ) ;
 
-#$h{''} = 'bar';
-#ok(32, $h{''} eq 'bar' );
-ok(32,1) ;
+# Berkeley DB from version 2.4.10 to 3.0 does not allow null keys.
+# This feature was reenabled in version 3.1 of Berkeley DB.
+my $result = 0 ;
+if ($null_keys_allowed) {
+    $h{''} = 'bar';
+    $result = ( $h{''} eq 'bar' );
+}
+else
+  { $result = 1 }
+ok(32, $result) ;
 
 # check cache overflow and numeric keys and contents
-$ok = 1;
+my $ok = 1;
 for ($i = 1; $i < 200; $i++) { $h{$i + 0} = $i + 0; }
 for ($i = 1; $i < 200; $i++) { $ok = 0 unless $h{$i} == $i; }
 ok(33, $ok);
@@ -259,7 +273,7 @@ ok(33, $ok);
 ok(34, $size > 0 );
 
 @h{0..200} = 200..400;
-@foo = @h{0..200};
+my @foo = @h{0..200};
 ok(35, join(':',200..400) eq join(':',@foo) );
 
 # Now check all the non-tie specific stuff
@@ -268,7 +282,7 @@ ok(35, join(':',200..400) eq join(':',@foo) );
 # Check R_NOOVERWRITE flag will make put fail when attempting to overwrite
 # an existing record.
  
-$status = $X->put( 'x', 'newvalue', R_NOOVERWRITE) ;
+my $status = $X->put( 'x', 'newvalue', R_NOOVERWRITE) ;
 ok(36, $status == 1 );
  
 # check that the value of the key 'x' has not been changed by the 
@@ -289,9 +303,12 @@ ok(40, $value eq 'value' );
 
 $status = $X->del('q') ;
 ok(41, $status == 0 );
-#$status = $X->del('') ;
-#ok(42, $status == 0 );
-ok(42,1) ;
+if ($null_keys_allowed) {
+    $status = $X->del('') ;
+} else {
+    $status = 0 ;
+}
+ok(42, $status == 0 );
 
 # Make sure that the key deleted, cannot be retrieved
 ok(43, ! defined $h{'q'}) ;
@@ -371,7 +388,7 @@ ok(65, 1) ; # hard-wire to always pass. the previous test ($status == 1)
 
 $status = $X->seq($key, $value, R_FIRST) ;
 ok(66, $status == 0 );
-$previous = $key ;
+my $previous = $key ;
 
 $ok = 1 ;
 while (($status = $X->seq($key, $value, R_NEXT)) == 0)
@@ -420,6 +437,7 @@ untie %h ;
 unlink $Dfile;
 
 # Now try an in memory file
+my $Y;
 ok(74, $Y = tie(%h, 'DB_File',undef, O_RDWR|O_CREAT, 0640, $DB_BTREE ));
 
 # fd with an in memory file should return failure
@@ -433,6 +451,7 @@ untie %h ;
 # Duplicate keys
 my $bt = new DB_File::BTREEINFO ;
 $bt->{flags} = R_DUP ;
+my ($YY, %hh);
 ok(76, $YY = tie(%hh, 'DB_File', $Dfile, O_RDWR|O_CREAT, 0640, $bt )) ;
 
 $hh{'Wall'} = 'Larry' ;
@@ -478,34 +497,38 @@ unlink $Dfile;
 
 
 # test multiple callbacks
-$Dfile1 = "btree1" ;
-$Dfile2 = "btree2" ;
-$Dfile3 = "btree3" ;
+my $Dfile1 = "btree1" ;
+my $Dfile2 = "btree2" ;
+my $Dfile3 = "btree3" ;
  
-$dbh1 = new DB_File::BTREEINFO ;
-{ local $^W = 0 ;
-  $dbh1->{compare} = sub { $_[0] <=> $_[1] } ; }
+my $dbh1 = new DB_File::BTREEINFO ;
+$dbh1->{compare} = sub { 
+	no warnings 'numeric' ;
+	$_[0] <=> $_[1] } ; 
  
-$dbh2 = new DB_File::BTREEINFO ;
+my $dbh2 = new DB_File::BTREEINFO ;
 $dbh2->{compare} = sub { $_[0] cmp $_[1] } ;
  
-$dbh3 = new DB_File::BTREEINFO ;
+my $dbh3 = new DB_File::BTREEINFO ;
 $dbh3->{compare} = sub { length $_[0] <=> length $_[1] } ;
  
  
-tie(%h, 'DB_File',$Dfile1, O_RDWR|O_CREAT, 0640, $dbh1 ) ;
+my (%g, %k);
+tie(%h, 'DB_File',$Dfile1, O_RDWR|O_CREAT, 0640, $dbh1 ) ; 
 tie(%g, 'DB_File',$Dfile2, O_RDWR|O_CREAT, 0640, $dbh2 ) ;
 tie(%k, 'DB_File',$Dfile3, O_RDWR|O_CREAT, 0640, $dbh3 ) ;
  
-@Keys = qw( 0123 12 -1234 9 987654321 def  ) ;
-{ local $^W = 0 ;
-  @srt_1 = sort { $a <=> $b } @Keys ; }
+my @Keys = qw( 0123 12 -1234 9 987654321 def  ) ;
+my (@srt_1, @srt_2, @srt_3);
+{ 
+  no warnings 'numeric' ;
+  @srt_1 = sort { $a <=> $b } @Keys ; 
+}
 @srt_2 = sort { $a cmp $b } @Keys ;
 @srt_3 = sort { length $a <=> length $b } @Keys ;
  
 foreach (@Keys) {
-    { local $^W = 0 ; 
-      $h{$_} = 1 ; }
+    $h{$_} = 1 ;
     $g{$_} = 1 ;
     $k{$_} = 1 ;
 }
@@ -575,6 +598,7 @@ unlink $Dfile1 ;
 
    package Another ;
 
+   use warnings ;
    use strict ;
 
    open(FILE, ">SubDB.pm") or die "Cannot open SubDB.pm: $!\n" ;
@@ -582,6 +606,7 @@ unlink $Dfile1 ;
 
    package SubDB ;
 
+   use warnings ;
    use strict ;
    use vars qw( @ISA @EXPORT) ;
 
@@ -665,6 +690,7 @@ EOM
 
 {
    # DBM Filter tests
+   use warnings ;
    use strict ;
    my (%h, $db) ;
    my ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
@@ -771,6 +797,7 @@ EOM
 {    
     # DBM Filter with a closure
 
+    use warnings ;
     use strict ;
     my (%h, $db) ;
 
@@ -833,6 +860,7 @@ EOM
 
 {
    # DBM Filter recursion detection
+   use warnings ;
    use strict ;
    my (%h, $db) ;
    unlink $Dfile;
@@ -861,6 +889,7 @@ EOM
     # BTREE example 1
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
 
@@ -913,6 +942,7 @@ EOM
     # BTREE example 2
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
 
@@ -964,6 +994,7 @@ EOM
     # BTREE example 3
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
  
@@ -1019,6 +1050,7 @@ EOM
     # BTREE example 4
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
  
@@ -1067,6 +1099,7 @@ EOM
     # BTREE example 5
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
  
@@ -1101,6 +1134,7 @@ EOM
     # BTREE example 6
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
  
@@ -1135,6 +1169,7 @@ EOM
     # BTREE example 7
     ###
 
+    use warnings FATAL => qw(all) ;
     use strict ;
     use DB_File ;
     use Fcntl ;
@@ -1225,5 +1260,47 @@ EOM
 #   untie %h;
 #   unlink $Dfile;
 #}
+
+{
+    # Bug ID 20001013.009
+    #
+    # test that $hash{KEY} = undef doesn't produce the warning
+    #     Use of uninitialized value in null operation 
+    use warnings ;
+    use strict ;
+    use DB_File ;
+
+    unlink $Dfile;
+    my %h ;
+    my $a = "";
+    local $SIG{__WARN__} = sub {$a = $_[0]} ;
+    
+    tie %h, 'DB_File', $Dfile, O_RDWR|O_CREAT, 0664, $DB_BTREE
+	or die "Can't open file: $!\n" ;
+    $h{ABC} = undef;
+    ok(156, $a eq "") ;
+    untie %h ;
+    unlink $Dfile;
+}
+
+{
+    # test that %hash = () doesn't produce the warning
+    #     Argument "" isn't numeric in entersub
+    use warnings ;
+    use strict ;
+    use DB_File ;
+
+    unlink $Dfile;
+    my %h ;
+    my $a = "";
+    local $SIG{__WARN__} = sub {$a = $_[0]} ;
+    
+    tie %h, 'DB_File', $Dfile, O_RDWR|O_CREAT, 0664, $DB_BTREE
+	or die "Can't open file: $!\n" ;
+    %h = (); ;
+    ok(157, $a eq "") ;
+    untie %h ;
+    unlink $Dfile;
+}
 
 exit ;

@@ -6,12 +6,13 @@
 
 # 1. Where is the file db.h?
 #
-#    Change the path below to point to the directory where dh.h is
+#    Change the path below to point to the directory where db.h is
 #    installed on your system.
 
 #INCLUDE	= /usr/local/include
 #INCLUDE	= /usr/local/BerkeleyDB/include
-INCLUDE	= ./libraries/3.0.55
+#INCLUDE	= /usr/include
+INCLUDE	= ./libraries/3.2.7
 
 # 2. Where is libdb?
 #
@@ -20,7 +21,8 @@ INCLUDE	= ./libraries/3.0.55
 
 #LIB	= /usr/local/lib
 #LIB	= /usr/local/BerkeleyDB/lib
-LIB	= ./libraries/3.0.55
+#LIB	= /usr/lib
+LIB	= ./libraries/3.2.7
 
 # 3. What version of Berkely DB have you got?
 #

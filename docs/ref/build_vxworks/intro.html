@@ -1,15 +1,14 @@
- 
-<!--$Id: intro.so,v 1.6 2000/05/10 16:17:43 bostic Exp $-->
+<!--$Id: intro.so,v 1.7 2000/08/10 17:54:49 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Building Berkeley DB for VxWorks systems</title>
+<title>Berkeley DB Reference Guide: Building for VxWorks</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for VxWorks systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_win/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_vxworks/notes.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -30,7 +29,7 @@ in this workspace will be shown.  These projects were created for
 the x86 BSP for VxWorks.
 <p>The remainder of this document assumes you already have a
 VxWorks target and a target server, both up and running.
-<p>First, you'll need to set the include directories.  
+<p>First, you'll need to set the include directories.
 To do this, go to the <i>Builds</i> tab for the workspace.
 Open up <i>Berkeley DB Builds</i>.  You will see several different
 builds, containing different configurations.  All of the projects
@@ -70,7 +69,7 @@ requires several steps:
 <p><li>Select the build you are interested in and right click.
 Choose the <i>Set ... as Active Build</i> selection.
 <p><li>Select the build you are interested in and right click.
-Choose the <i>Dependencies ...</i> selection. 
+Choose the <i>Dependencies ...</i> selection.
 Run dependencies over all files in the Berkeley DB project.
 <p><li>Select the build you are interested in and right click.
 Choose the <i>Rebuild All (Berkeley DB.out)</i> selection.

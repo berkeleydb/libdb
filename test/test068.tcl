@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test068.tcl,v 11.10 2000/05/16 19:46:20 krinsky Exp $
+#	$Id: test068.tcl,v 11.11 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 68: Test of DB_BEFORE and DB_AFTER and partial puts.
 # Make sure DB_BEFORE and DB_AFTER work properly with partial puts,
@@ -25,8 +25,11 @@ proc test068 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 
 	puts "Test0$tnum:\
@@ -59,7 +62,7 @@ proc test068 { method args } {
 	}
 
 	foreach dupopt $dupoptlist {
-		cleanup $testdir
+		cleanup $testdir $env
 		set db [eval {berkdb_open_noerr -create -truncate -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE

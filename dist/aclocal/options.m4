@@ -1,4 +1,4 @@
-dnl $Id: options.m4,v 11.8 2000/04/30 21:41:26 bostic Exp $
+dnl $Id: options.m4,v 11.10 2000/07/07 15:50:39 bostic Exp $
 
 dnl Process user-specified options.
 AC_DEFUN(AM_OPTIONS_SET, [
@@ -103,6 +103,12 @@ AC_ARG_ENABLE(uimutexes,
 	[  --enable-uimutexes      Force use of Unix International mutexes.],
 	[db_cv_uimutexes="$enable_uimutexes"], [db_cv_uimutexes="no"])
 AC_MSG_RESULT($db_cv_uimutexes)
+
+AC_MSG_CHECKING(if --enable-umrw option specified)
+AC_ARG_ENABLE(umrw,
+	[  --enable-umrw           Mask harmless unitialized memory read/writes.],
+	[db_cv_umrw="$enable_umrw"], [db_cv_umrw="no"])
+AC_MSG_RESULT($db_cv_umrw)
 
 AC_MSG_CHECKING([if --with-tcl option specified])
 AC_ARG_WITH(tcl,

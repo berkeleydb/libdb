@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dbm.tcl,v 11.11 2000/05/22 12:51:36 bostic Exp $
+#	$Id: dbm.tcl,v 11.12 2000/08/25 14:21:50 sue Exp $
 #
 # Historic DBM interface test.
 # Use the first 1000 entries from the dictionary.
@@ -21,7 +21,7 @@ proc dbm { { nentries 1000 } } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir NULL
 
 	error_check_good dbminit [berkdb dbminit $testfile] 0
 	set did [open $dict]

@@ -3,12 +3,12 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd009.tcl,v 1.7 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: recd009.tcl,v 1.13 2000/12/07 19:13:46 sue Exp $
 #
 # Recovery Test 9.
 # Test stability of record numbers across splits
 # and reverse splits and across recovery.
-proc recd009 { method {select 0} } {
+proc recd009 { method {select 0} args} {
 	global fixed_len
 	source ./include.tcl
 
@@ -17,13 +17,13 @@ proc recd009 { method {select 0} } {
 		return
 	}
 
-	set opts [convert_args $method]
+	set opts [convert_args $method $args]
 	set method [convert_method $method]
 
 	puts "\tRecd009: Test record numbers across splits and recovery"
 
 	set testfile recd009.db
-	cleanup $testdir
+	env_cleanup $testdir
 	set mkeys 1000
 	set nkeys 5
 	set data "data"
@@ -93,7 +93,8 @@ proc recd009 { method {select 0} } {
 	}
 	puts "\tRecd009.e: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env002.tcl,v 11.10 2000/05/22 12:51:36 bostic Exp $
+#	$Id: env002.tcl,v 11.11 2000/08/25 14:21:50 sue Exp $
 #
 # Env Test 002
 # Test set_lg_dir and env name resolution
@@ -51,7 +51,7 @@ proc env002 { } {
 proc env002_body { home_arg } {
 	source ./include.tcl
 
-	cleanup $testdir
+	env_cleanup $testdir
 	set logdir "logs_in_here"
 
 	file mkdir $testdir/$logdir
@@ -68,7 +68,7 @@ proc env002_body { home_arg } {
 	env002_run_test a 1 "relative path, config file" $home_arg \
 		$testdir/$logdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	file mkdir $fulllogdir
 	env002_make_config $fulllogdir
@@ -77,7 +77,7 @@ proc env002_body { home_arg } {
 	env002_run_test a 2 "absolute path, config file" $home_arg \
 		$fulllogdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now we try without a config file, but instead with db_config
 	# relative paths
@@ -86,7 +86,7 @@ proc env002_body { home_arg } {
 		-log_dir $logdir -data_dir ." \
 		$testdir/$logdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# absolute
 	file mkdir $fulllogdir
@@ -94,7 +94,7 @@ proc env002_body { home_arg } {
 		-log_dir $fulllogdir -data_dir ." \
 		$fulllogdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now, set db_config -and- have a # DB_CONFIG file, and make
 	# sure only the latter is honored.
@@ -106,7 +106,7 @@ proc env002_body { home_arg } {
 	env002_run_test c 1 "relative path, both db_config and file" \
 		"$home_arg -log_dir $testdir/bogus \
 		-data_dir ." $testdir/$logdir
-	cleanup $testdir
+	env_cleanup $testdir
 
 	file mkdir $fulllogdir
 	env002_make_config $fulllogdir

@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_tx_timestamp.so,v 10.5 2000/05/01 21:57:44 bostic Exp $-->
+<!--$Id: env_set_tx_timestamp.so,v 10.6 2000/12/21 18:33:42 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv.set_tx_timestamp</h1>
@@ -30,6 +29,9 @@ public void set_tx_timestamp(java.util.Date timestamp)
 current possible date.
 Note that only the seconds (not the milliseconds) of the <b>timestamp</b>
 are used
+<p>Once a database environment has been upgraded to a new version of Berkeley DB
+involving a log format change (see <a href="../ref/upgrade/process.html">Upgrading Berkeley DB installations</a>, it is no longer possible to recover
+to a specific time before that upgrade.
 <p>The DbEnv.set_tx_timestamp interface may only be used to configure Berkeley DB before
 the <a href="../api_java/env_open.html">DbEnv.open</a> interface is called.
 <p>The DbEnv.set_tx_timestamp method throws an exception that encapsulates a non-zero error value on

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_archive.c,v 11.12.2.1 2000/07/26 20:43:44 bostic Exp $";
+    "$Id: db_archive.c,v 11.18 2001/01/18 18:36:56 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,6 +27,7 @@ static const char revid[] =
 
 int	 main __P((int, char *[]));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV	*dbenv;
 const char
@@ -42,6 +43,8 @@ main(argc, argv)
 	u_int32_t flags;
 	int ch, e_close, exitval, ret, verbose;
 	char **file, *home, **list;
+
+	version_check();
 
 	flags = 0;
 	e_close = exitval = verbose = 0;
@@ -100,8 +103,8 @@ main(argc, argv)
 	 * If attaching to a pre-existing environment fails, create a
 	 * private one and try again.
 	 */
-	if ((ret = dbenv->open(dbenv, home,
-	    DB_INIT_LOG | DB_INIT_TXN | DB_USE_ENVIRON, 0)) != 0 &&
+	if ((ret = dbenv->open(dbenv,
+	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) != 0 &&
 	    (ret = dbenv->open(dbenv, home, DB_CREATE |
 	    DB_INIT_LOG | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
@@ -141,4 +144,21 @@ usage()
 {
 	(void)fprintf(stderr, "usage: db_archive [-alsVv] [-h home]\n");
 	exit (1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

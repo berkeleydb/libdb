@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test053.tcl,v 11.10 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test053.tcl,v 11.12 2000/12/11 17:24:55 sue Exp $
 #
 # Test53: test of the DB_REVSPLITOFF flag in the btree and
 # Btree-w-recnum methods
@@ -21,6 +21,12 @@ proc test053 { method args } {
 		return
 	}
 
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Test053: skipping for specific pagesizes"
+		return
+	}
+
 	set txn ""
 	set flags ""
 
@@ -31,11 +37,14 @@ proc test053 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test053.db
+		set env NULL
 	} else {
 		set testfile test053.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags \
 	    "-create -truncate -revsplitoff -pagesize 1024 $args $omethod"
@@ -180,7 +189,6 @@ proc test053 { method args } {
 
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	puts "Test053 complete."
 }

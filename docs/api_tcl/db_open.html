@@ -1,5 +1,4 @@
- 
-<!--$Id: db_open.so,v 11.17 2000/03/22 21:56:10 bostic Exp $-->
+<!--$Id: db_open.so,v 11.18 2000/11/27 18:14:47 sue Exp $-->
 <!--$Id: m4.tcl,v 11.17 2000/04/24 17:31:11 sue Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -10,7 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1><b>berkdb open</b></h1>
@@ -30,6 +29,7 @@
 	[-env env]
 	[-errfile filename]
 	[-excl]
+	[-extent size]
 	[-ffactor density]
 	[-len len]
 	[-mode mode]
@@ -140,6 +140,13 @@ to specifying the same argument to the <b>berkdb env</b> command.
 primitives are used to implement this flag.  For this reason it is only
 applicable to the physical database file and cannot be used to test if a
 database in a file already exists.
+<p><dt>-extent size<dd>Set the size of the extents of the Queue database,  The size is specified
+as the number of pages in an extent.
+Each extent is created as a separate physical file. If no extent size
+is set, the default behavior is to create only
+a single underlying database file.
+<p>For information on tuning the extent size, see
+<a href="../ref/am_conf/extentsize.html">Selecting a extent size</a>.
 <p><dt>-ffactor density<dd>Set the desired density within the hash table.
 <p>The density is an approximation of the number of keys allowed to
 accumulate in any one bucket

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: upgrade.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
+#	$Id: upgrade.tcl,v 11.16 2000/10/27 13:23:56 sue Exp $
 
 source ./include.tcl
 
@@ -40,7 +40,7 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 			foreach file [glob $upgrade_dir/$version/$method/*] {
 				regexp (\[^\/\]*)\.tar\.gz$ $file dummy name
 
-				cleanup $testdir
+				cleanup $testdir NULL
 				#puts  "$upgrade_dir/$version/$method/$name.tar.gz"
 				set curdir [pwd]
 				cd $testdir
@@ -122,7 +122,7 @@ proc _db_load_test { temp_dir version method file } {
 	puts "db_load: $version $method $file"
 
 	set ret [catch \
-	    {exec ./db_load -f "$temp_dir/$file.dump" \
+	    {exec $util_path/db_load -f "$temp_dir/$file.dump" \
 	    "$temp_dir/upgrade.db"} message]
 	error_check_good \
 	    "Upgrade load: $version $method $file $message" $ret 0
@@ -158,7 +158,7 @@ proc gen_upgrade { dir } {
 					puts "FAIL: [format "test%03d" $j] $i"
 				}
 				puts $res
-				cleanup $testdir
+				cleanup $testdir NULL
 			}
 		}
 	}

@@ -3,13 +3,15 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test031.tcl,v 11.15 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test031.tcl,v 11.17 2000/11/06 19:31:55 sue Exp $
 #
 # DB Test 31 {access method}
 # Use the first 10,000 entries from the dictionary.
 # Insert each with self as key and "ndups" duplicates
 # For the data field, prepend random five-char strings (see test032)
 # that we force the duplicate sorting code to do something.
+# Along the way, test that we cannot insert duplicate duplicates
+# using DB_NODUPDATA.
 # By setting ndups large, we can make this an off-page test
 # After all are entered, retrieve all; verify output.
 # Close file, reopen, do retrieve and re-verify.
@@ -32,14 +34,17 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
 		set checkdb $testdir/checkdb.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
 		set checkdb checkdb.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	puts "Test0$tnum: \
 	    $method ($args) $nentries small sorted dup key/data pairs"
@@ -63,7 +68,7 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	set count 0
 
 	# Here is the loop where we put and get each key/data pair
-	puts "\tTest0$tnum.a: Put/get loop"
+	puts "\tTest0$tnum.a: Put/get loop, check nodupdata"
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open [is_substr $dbc $db] 1
 	while { [gets $did str] != -1 && $count < $nentries } {
@@ -75,10 +80,19 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 			set pref [randstring]
 			set dups $dups$pref
 			set datastr $pref:$str
+			if { $i == 2 } {
+				set nodupstr $datastr
+			}
 			set ret [eval {$db put} \
 			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
 		}
+
+		# Test DB_NODUPDATA using the DB handle
+		set ret [eval {$db put -nodupdata} \
+		    $txn $pflags {$str [chop_data $method $nodupstr]}]
+		error_check_good db_nodupdata [is_substr $ret "DB_KEYEXIST"] 1
+
 		set ret [eval {$check_db put} \
 		    $txn $pflags {$str [chop_data $method $dups]}]
 		error_check_good checkdb_put $ret 0
@@ -86,6 +100,15 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 		# Now retrieve all the keys matching this key
 		set x 0
 		set lastdup ""
+		# Test DB_NODUPDATA using cursor handle
+		set ret [$dbc get -set $str]
+		error_check_bad dbc_get [llength $ret] 0
+		set datastr [lindex [lindex $ret 0] 1]
+		error_check_bad dbc_data [string length $datastr] 0
+		set ret [eval {$dbc put -nodupdata} \
+		    {$str [chop_data $method $datastr]}]
+		error_check_good dbc_nodupdata [is_substr $ret "DB_KEYEXIST"] 1
+
 		for {set ret [$dbc get -set $str]} \
 		    {[llength $ret] != 0} \
 		    {set ret [$dbc get -nextdup] } {

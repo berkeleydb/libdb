@@ -1,5 +1,4 @@
- 
-<!--$Id: txn_begin.so,v 10.30.2.1 2000/07/12 13:14:50 bostic Exp $-->
+<!--$Id: txn_begin.so,v 10.37 2001/01/11 17:47:12 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv::txn_begin</h1>
@@ -29,9 +28,10 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);
 <p>The DbEnv::txn_begin method creates a new transaction in the environment
 and copies a pointer to a <a href="../api_cxx/txn_class.html">DbTxn</a> that uniquely identifies it into
 the memory referenced by <b>tid</b>.
-<p>If the <b>parent</b> argument is non-NULL, the new transaction will be
-a nested transaction, with the transaction indicated by <b>parent</b> as
-its parent.  Transactions may be nested to any level.
+<p>If the <b>parent</b> argument is non-NULL, the new transaction will
+be a nested transaction, with the transaction indicated by
+<b>parent</b> as its parent.  Transactions may be 
+nested to any level.
 <p>The <b>flags</b> parameter must be set to 0 or one of the following
 values:
 <p><dl compact>
@@ -41,7 +41,7 @@ consistency and isolation) properties, but not D (durability), i.e.,
 database integrity will be maintained but it is possible that this
 transaction may be undone during recovery instead of being redone.
 <p>This behavior may be set for an entire Berkeley DB environment as part of the
-<a href="../api_cxx/env_open.html">DbEnv::open</a> interface.
+<a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a> interface.
 <p><dt><a name="DB_TXN_NOWAIT">DB_TXN_NOWAIT</a><dd>If a lock is unavailable for any Berkeley DB operation performed in the context
 of this transaction, return immediately instead of blocking on the lock.
 The error return in the case will be <a href="../ref/program/errorret.html#DB_LOCK_NOTGRANTED">DB_LOCK_NOTGRANTED</a>.
@@ -49,12 +49,12 @@ The error return in the case will be <a href="../ref/program/errorret.html#DB_LO
 This means the transaction will exhibit all of the ACID (atomicity,
 consistency and isolation and durability) properties.
 <p>This behavior is the default for Berkeley DB environments unless the
-<a href="../api_cxx/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag was specified to the <a href="../api_cxx/env_open.html">DbEnv::open</a>
+<a href="../api_cxx/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag was specified to the <a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a>
 interface.
 </dl>
-<p><b>Note: transactions may not span threads, i.e., each transaction must begin
-and end in the same thread, and each transaction may only be used by a
-single thread.</b>
+<p><b>Note: An transaction may not span threads,
+i.e., each transaction must begin and end in the same thread, and each
+transaction may only be used by a single thread.</b>
 <p><b>Note: cursors may not span transactions, i.e., each cursor must be opened
 and closed within a single transaction.</b>
 <p><b>Note: a parent transaction may not issue any Berkeley DB operations, except for

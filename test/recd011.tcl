@@ -3,21 +3,21 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd011.tcl,v 11.8 2000/06/06 15:56:45 krinsky Exp $
+#	$Id: recd011.tcl,v 11.13 2000/12/06 17:09:54 sue Exp $
 #
 # Recovery Test 11.
 # Test recovery to a specific timestamp.
 proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 	source ./include.tcl
 
-	set args [convert_args $method]
+	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 	set tnum 11
 
 	puts "Recd0$tnum ($args): Test recovery to a specific timestamp."
 
 	set testfile recd0$tnum.db
-	cleanup $testdir
+	env_cleanup $testdir
 
 	set i 0
 	if { [is_record_based $method] == 1 } {
@@ -75,7 +75,7 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 		# Run db_recover.
 		berkdb debug_check
 		set t [clock format $timeof($i) -format "%y%m%d%H%M.%S"]
-		set ret [catch {exec ./db_recover -h $testdir -t $t} r]
+		set ret [catch {exec $util_path/db_recover -h $testdir -t $t} r]
 		error_check_good db_recover($i,$t) $ret 0
 
 		# Now open the db and check the timestamp.
@@ -94,13 +94,13 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 	# be just like the last timestamp;  the former should fail.
 	puts "\tRecd0$tnum.d: Recover to before the first timestamp."
 	set t [clock format [expr $timeof(0) - 1000] -format "%y%m%d%H%M.%S"]
-	set ret [catch {exec ./db_recover -h $testdir -t $t} r]
+	set ret [catch {exec $util_path/db_recover -h $testdir -t $t} r]
 	error_check_bad db_recover(before,$t) $ret 0
 
 	puts "\tRecd0$tnum.e: Recover to after the last timestamp."
 	set t [clock format \
 	    [expr $timeof($niter) + 1000] -format "%y%m%d%H%M.%S"]
-	set ret [catch {exec ./db_recover -h $testdir -t $t} r]
+	set ret [catch {exec $util_path/db_recover -h $testdir -t $t} r]
 	error_check_good db_recover(after,$t) $ret 0
 
 	# Now open the db and check the timestamp.

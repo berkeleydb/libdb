@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: lock003.tcl,v 11.15 2000/05/24 14:58:09 krinsky Exp $
+#	$Id: lock003.tcl,v 11.16 2000/08/25 14:21:51 sue Exp $
 #
 # Exercise multi-process aspects of lock.  Generate a bunch of parallel
 # testers that try to randomly obtain locks.
@@ -14,7 +14,7 @@ proc lock003 { dir {iter 500} {max 1000} {procs 5} {ldegree 5} {objs 75} \
 	puts "Lock003: Multi-process random lock test"
 
 	# Clean up after previous runs
-	cleanup $dir
+	env_cleanup $dir
 
 	# Open/create the lock region
 	set e [berkdb env -create -lock -home $dir]

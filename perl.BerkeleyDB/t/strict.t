@@ -12,7 +12,7 @@ BEGIN {
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..50\n";
+print "1..44\n";
 
 
 {
@@ -102,6 +102,9 @@ umask(0);
     ok 10, $@ =~ /BerkeleyDB Aborting: attempted to close an environment with 1 open database/ ;
     #print "[$@]\n" ;
 
+    undef $db1 ;
+    untie %hash ;
+    undef $env ;
     rmtree $home if -e $home ;
 }
 
@@ -201,9 +204,9 @@ umask(0);
 					       	-Env 	   => $env,
                                                 -Txn       => $txn  ;
     ok 37, my $cursor = $db->db_cursor() ;
-    ok 38, $txn->txn_commit()  == 0 ;
     eval { $status = $cursor->c_close() ; } ;
-    ok 39, $status == 0 ;
+    ok 38, $status == 0 ;
+    ok 39, ($status = $txn->txn_commit())  == 0 ;
     ok 40, $@ eq "" ;
     eval { $status = $db->db_close() ; } ;
     ok 41, $status == 0 ;
@@ -211,28 +214,6 @@ umask(0);
     eval { $status = $env->db_appexit() ; } ;
     ok 43, $status == 0 ;
     ok 44, $@ eq "" ;
-    #print "[$@]\n" ;
-    rmtree $home if -e $home ;
-}
-
-{
-    # closing a cursor with an open transaction
-    my $lex = new LexFile $Dfile ;
-    my %hash ;
-
-    rmtree $home if -e $home ;
-    ok 45, mkdir($home, 0777) ;
-    ok 46, my $env = new BerkeleyDB::Env -Home => $home,
-                                     -Flags => DB_CREATE|DB_INIT_TXN|
-                                                DB_INIT_MPOOL|DB_INIT_LOCK ;
-    ok 47, my $txn = $env->txn_begin() ;
-    ok 48, my $db = tie %hash, 'BerkeleyDB::Hash', -Filename => $Dfile,
-                                                -Flags     => DB_CREATE ,
-					       	-Env 	   => $env,
-                                                -Txn       => $txn  ;
-    ok 49, my $cursor = $db->db_cursor() ;
-    eval { $cursor->c_close() ; } ;
-    ok 50, $@ =~ /BerkeleyDB Aborting: attempted to close a Cursor with an open transaction/ ;
     #print "[$@]\n" ;
     rmtree $home if -e $home ;
 }

@@ -1,15 +1,25 @@
-# $Id: rectype.awk,v 11.2 1999/11/21 18:01:42 bostic Exp $
+# $Id: rectype.awk,v 11.3 2000/07/17 22:00:49 ubell Exp $
 #
 # Print out a range of the log
-# Command line should set RECTYPE to the record type that is sought.
+# Command line should set RECTYPE to the a comma separated list
+# of the rectypes (or partial strings of rectypes) sought.
+NR == 1 {
+	ntypes = 0
+	while ((ndx = index(RECTYPE, ",")) != 0) {
+		types[ntypes] = substr(RECTYPE, 1, ndx - 1);
+		RECTYPE = substr(RECTYPE, ndx + 1, length(RECTYPE) - ndx);
+		ntypes++
+	}
+	types[ntypes] = RECTYPE;
+}
 
 /^\[/{
-	printme = 1
-	i = index($1, RECTYPE);
-	if (i == 0)
-		printme = 0
-	else
-		printme = 1
+	printme = 0
+	for (i = 0; i <= ntypes; i++)
+		if (index($1, types[i]) != 0) {
+			printme = 1
+			break;
+		}
 }
 {
 	if (printme == 1)

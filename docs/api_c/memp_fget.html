@@ -1,5 +1,4 @@
- 
-<!--$Id: memp_fget.so,v 10.20.2.2 2000/07/01 15:25:51 bostic Exp $-->
+<!--$Id: memp_fget.so,v 10.23 2000/12/04 18:05:39 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>memp_fget</h1>
@@ -38,15 +37,15 @@ fail.
 <p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
 <p><dl compact>
-<p><dt><a name="DB_MPOOL_CREATE">DB_MPOOL_CREATE</a><dd>If the specified page does not exist, create it.  In this case,
-<a href="memp_register.html#pgin">the pgin function</a>,
-if specified, is called.
+<p><dt><a name="DB_MPOOL_CREATE">DB_MPOOL_CREATE</a><dd>If the specified page does not exist, create it.  In this case, the
+<a href="memp_register.html#pgin">pgin</a> function, if specified, is
+called.
 <p><dt><a name="DB_MPOOL_LAST">DB_MPOOL_LAST</a><dd>Return the last page of the source file and copy its page number
 to the location referenced by <b>pgnoaddr</b>.
 <p><dt><a name="DB_MPOOL_NEW">DB_MPOOL_NEW</a><dd>Create a new page in the file and copy its page number to the location
-referenced by <b>pgnoaddr</b>.  In this case,
-<a href="memp_register.html#pgin">the pgin function</a>,
-if specified, is <b>not</b> called.
+referenced by <b>pgnoaddr</b>.  In this case, the
+<a href="memp_register.html#pgin">pgin</a> function, if specified, is
+<b>not</b> called.
 </dl>
 <p>The DB_MPOOL_CREATE, DB_MPOOL_LAST and
 DB_MPOOL_NEW flags are mutually exclusive.

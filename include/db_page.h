@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_page.h,v 11.19.2.1 2000/06/30 15:15:17 krinsky Exp $
+ * $Id: db_page.h,v 11.28 2000/12/06 19:55:45 ubell Exp $
  */
 
 #ifndef _DB_PAGE_H_
@@ -75,7 +75,7 @@ typedef struct _dbmeta31 {
 	u_int8_t  type;		/*    25: Page type. */
 	u_int8_t  unused2[2];	/* 26-27: Unused. */
 	u_int32_t free;		/* 28-31: Free list page number. */
-	DB_LSN	  alloc_lsn;	/* 32-39: Lsn for allocation */
+	DB_LSN	  unused3;	/* 32-39: former Lsn for allocation */
 	u_int32_t key_count;	/* 40-43: Cached key count. */
 	u_int32_t record_count;	/* 44-47: Cached record count. */
 	u_int32_t flags;	/* 48-51: Flags: unique to each AM. */
@@ -139,20 +139,20 @@ typedef struct _hashmeta31 {
  * QAM Meta data page structure
  *
  */
-typedef struct _qmeta31 {
+typedef struct _qmeta32 {
 	DBMETA    dbmeta;	/* 00-71: Generic meta-data header. */
 
-	u_int32_t start;	/* 72-75: Start offset. */
-	u_int32_t first_recno;	/* 76-79: First not deleted record. */
-	u_int32_t cur_recno;	/* 80-83: Last recno allocated. */
-	u_int32_t re_len;	/* 84-87: Fixed-length record length. */
-	u_int32_t re_pad;	/* 88-91: Fixed-length record pad. */
-	u_int32_t rec_page;	/* 92-95: Records Per Page. */
+	u_int32_t first_recno;	/* 72-75: First not deleted record. */
+	u_int32_t cur_recno;	/* 76-79: Last recno allocated. */
+	u_int32_t re_len;	/* 80-83: Fixed-length record length. */
+	u_int32_t re_pad;	/* 84-87: Fixed-length record pad. */
+	u_int32_t rec_page;	/* 88-91: Records Per Page. */
+	u_int32_t page_ext;	/* 92-95: Pages per extent */
 
 	/*
 	 * Minimum page size is 128.
 	 */
-} QMETA31, QMETA;
+} QMETA32, QMETA;
 
 /*
  * DBMETASIZE is a constant used by __db_file_setup and DB->verify
@@ -366,8 +366,7 @@ typedef struct _hkeydata {
 	((PAGE *)(pg))->inp[indx - 1]) - ((PAGE *)(pg))->inp[indx])
 
 #define	LEN_HKEYDATA(pg, psize, indx)					\
-	(((indx) == 0 ? psize : ((PAGE *)(pg))->inp[indx - 1]) -	\
-	((PAGE *)(pg))->inp[indx] - HKEYDATA_SIZE(0))
+	(LEN_HITEM(pg, psize, indx) - HKEYDATA_SIZE(0))
 
 /*
  * Page space required to add a new HKEYDATA item to the page, with and
@@ -433,7 +432,6 @@ typedef struct _hoffdup {
  * without the index value.
  */
 #define	HOFFDUP_SIZE		(sizeof(HOFFDUP))
-#define	HOFFDUP_PSIZE		(HOFFDUP_SIZE + sizeof(db_indx_t))
 
 /************************************************************************
  BTREE PAGE LAYOUT
@@ -480,7 +478,7 @@ typedef struct _bkeydata {
  * without the index value.
  */
 #define	BKEYDATA_SIZE(len)						\
-	ALIGN((len) + SSZA(BKEYDATA, data), 4)
+	ALIGN((len) + SSZA(BKEYDATA, data), sizeof(u_int32_t))
 #define	BKEYDATA_PSIZE(len)						\
 	(BKEYDATA_SIZE(len) + sizeof(db_indx_t))
 
@@ -505,19 +503,9 @@ typedef struct _boverflow {
  * without the index value.
  */
 #define	BOVERFLOW_SIZE							\
-	ALIGN(sizeof(BOVERFLOW), 4)
+	ALIGN(sizeof(BOVERFLOW), sizeof(u_int32_t))
 #define	BOVERFLOW_PSIZE							\
 	(BOVERFLOW_SIZE + sizeof(db_indx_t))
-
-/*
- * Threshhold value, as a function of bt_minkey, of the number of
- * bytes a key/data pair can use before being placed on an overflow
- * page.  Assume every item requires the maximum alignment for
- * padding, out of sheer paranoia.
- */
-#define	B_MINKEY_TO_OVFLSIZE(minkey, pgsize)				\
-	((u_int16_t)(((pgsize) - P_OVERHEAD) / ((minkey) * P_INDX) - 	\
-	    (BKEYDATA_SIZE(0) + ALIGN(1, 4))))
 
 /*
  * Btree leaf and hash page layouts group indices in sets of two, one for the
@@ -552,7 +540,7 @@ typedef struct _binternal {
  * without the index value.
  */
 #define	BINTERNAL_SIZE(len)						\
-	ALIGN((len) + SSZA(BINTERNAL, data), 4)
+	ALIGN((len) + SSZA(BINTERNAL, data), sizeof(u_int32_t))
 #define	BINTERNAL_PSIZE(len)						\
 	(BINTERNAL_SIZE(len) + sizeof(db_indx_t))
 
@@ -577,7 +565,7 @@ typedef struct _rinternal {
  * without the index value.
  */
 #define	RINTERNAL_SIZE							\
-	ALIGN(sizeof(RINTERNAL), 4)
+	ALIGN(sizeof(RINTERNAL), sizeof(u_int32_t))
 #define	RINTERNAL_PSIZE							\
 	(RINTERNAL_SIZE + sizeof(db_indx_t))
 

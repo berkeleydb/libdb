@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_delete.c,v 11.21.2.3 2000/07/13 19:15:08 bostic Exp $";
+static const char revid[] = "$Id: bt_delete.c,v 11.31 2001/01/17 18:48:46 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -79,6 +79,7 @@ __bam_delete(dbp, txn, key, flags)
 
 	PANIC_CHECK(dbp->dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->del");
+	DB_CHECK_TXN(dbp, txn);
 
 	/* Check for invalid flags. */
 	if ((ret =
@@ -298,6 +299,7 @@ __bam_dpages(dbc, stack_epg)
 	EPG *stack_epg;
 {
 	BTREE_CURSOR *cp;
+	BINTERNAL *bi;
 	DB *dbp;
 	DBT a, b;
 	DB_LOCK c_lock, p_lock;
@@ -381,15 +383,18 @@ __bam_dpages(dbc, stack_epg)
 				goto err;
 		}
 
-		if ((ret = __db_free(dbc, epg->page)) != 0)
+		if ((ret = __db_free(dbc, epg->page)) != 0) {
+			epg->page = NULL;
 			goto err_inc;
+		}
 		(void)__TLPUT(dbc, epg->lock);
 	}
 
 	if (0) {
 err_inc:	++epg;
 err:		for (; epg <= cp->csp; ++epg) {
-			(void)memp_fput(dbp->mpf, epg->page, 0);
+			if (epg->page != NULL)
+				(void)memp_fput(dbp->mpf, epg->page, 0);
 			(void)__TLPUT(dbc, epg->lock);
 		}
 		BT_STK_CLR(cp);
@@ -425,7 +430,16 @@ err:		for (; epg <= cp->csp; ++epg) {
 
 		switch (TYPE(parent)) {
 		case P_IBTREE:
-			pgno = GET_BINTERNAL(parent, 0)->pgno;
+			/*
+			 * If this is overflow, then try to delete it.
+			 * The child may or may not still point at it.
+			 */
+			bi = GET_BINTERNAL(parent, 0);
+			if (B_TYPE(bi->type) == B_OVERFLOW)
+				if ((ret = __db_doff(dbc,
+				    ((BOVERFLOW *)bi->data)->pgno)) != 0)
+					goto stop;
+			pgno = bi->pgno;
 			break;
 		case P_IRECNO:
 			pgno = GET_RINTERNAL(parent, 0)->pgno;
@@ -491,8 +505,10 @@ err:		for (; epg <= cp->csp; ++epg) {
 		 * lock.  (The call to __db_free() discards our reference
 		 * to the page.)
 		 */
-		if ((ret = __db_free(dbc, child)) != 0)
+		if ((ret = __db_free(dbc, child)) != 0) {
+			child = NULL;
 			goto stop;
+		}
 		child = NULL;
 
 		if (0) {

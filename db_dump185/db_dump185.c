@@ -9,7 +9,7 @@
 static char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static char revid[] =
-    "$Id: db_dump185.c,v 11.5 2000/05/17 19:18:04 bostic Exp $";
+    "$Id: db_dump185.c,v 11.8 2001/01/10 17:26:21 bostic Exp $";
 #endif
 
 #include <sys/types.h>
@@ -17,8 +17,8 @@ static char revid[] =
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <db.h>
@@ -331,7 +331,7 @@ dbt_print(dbtp)
 	u_int8_t *p;
 
 	for (len = dbtp->size, p = dbtp->data; len--; ++p)
-		if (isprint(*p)) {
+		if (isprint((int)*p)) {
 			if (*p == '\\')
 				(void)printf("\\");
 			(void)printf("%c", *p);

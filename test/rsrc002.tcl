@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: rsrc002.tcl,v 11.7 2000/05/22 12:51:37 bostic Exp $
+#	$Id: rsrc002.tcl,v 11.11 2000/11/29 15:01:06 sue Exp $
 #
 # Recno backing file test #2: test of set_re_delim.
 #	Specify a backing file with colon-delimited records,
@@ -17,7 +17,7 @@ proc rsrc002 { } {
 	# and once without (an in-memory database).
 	foreach testfile { "$testdir/rsrc002.db" "" } {
 
-		cleanup $testdir
+		cleanup $testdir NULL
 
 		# Create the starting files
 		set oid1 [open $testdir/rsrc.txt w]

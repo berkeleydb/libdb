@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Dbc.c,v 11.6 2000/06/01 14:15:48 dda Exp $";
+static const char revid[] = "$Id: java_Dbc.c,v 11.10 2000/10/25 19:54:55 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -45,10 +45,10 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_count
 	db_recno_t count;
 
 	if (!verify_non_null(jnienv, dbc))
-		return 0;
+		return (0);
 	err = dbc->c_count(dbc, &count, flags);
 	verify_return(jnienv, err, 0);
-	return count;
+	return (count);
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_del
@@ -58,12 +58,12 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_del
 	DBC *dbc = get_DBC(jnienv, jthis);
 
 	if (!verify_non_null(jnienv, dbc))
-		return 0;
+		return (0);
 	err = dbc->c_del(dbc, flags);
 	if (err != DB_KEYEMPTY) {
 		verify_return(jnienv, err, 0);
 	}
-	return err;
+	return (err);
 }
 
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Dbc_dup
@@ -74,12 +74,12 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Dbc_dup
 	DBC *dbc_ret = NULL;
 
 	if (!verify_non_null(jnienv, dbc))
-		return 0;
+		return (0);
 	err = dbc->c_dup(dbc, &dbc_ret, flags);
 	if (!verify_return(jnienv, err, 0))
-		return 0;
+		return (0);
 
-	return get_Dbc(jnienv, dbc_ret);
+	return (get_Dbc(jnienv, dbc_ret));
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
@@ -138,7 +138,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
 	jdbt_unlock(&dbdata, jnienv);
  out2:
 	jdbt_unlock(&dbkey, jnienv);
-	return err;
+	return (err);
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_put
@@ -166,7 +166,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_put
 	jdbt_unlock(&dbdata, jnienv);
  out2:
 	jdbt_unlock(&dbkey, jnienv);
-	return err;
+	return (err);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbc_finalize
@@ -183,14 +183,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbc_finalize
 
 #ifdef DIAGNOSTIC
 	DBC *dbc;
-#endif
+
+	dbc = get_DBC(jnienv, jthis);
+	if (dbc != NULL)
+		fprintf(stderr, "Java API: Dbc has not been closed\n");
+#else
 
 	COMPQUIET(jnienv, NULL);
 	COMPQUIET(jthis, NULL);
 
-#ifdef DIAGNOSTIC
-	dbc = get_DBC(jnienv, jthis);
-	if (dbc != NULL)
-		fprintf(stderr, "Java API: Dbc has not been closed\n");
 #endif
 }

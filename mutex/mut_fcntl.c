@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_fcntl.c,v 11.4 2000/03/30 01:46:40 ubell Exp $";
+static const char revid[] = "$Id: mut_fcntl.c,v 11.11 2001/01/11 18:19:53 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,6 +46,10 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
 	}
 
 	mutexp->off = offset;
+#ifdef MUTEX_SYSTEM_RESOURCES
+	mutexp->reg_off = INVALID_ROFF;
+#endif
+	F_SET(mutexp, MUTEX_INITED);
 
 	return (0);
 }
@@ -55,17 +58,18 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
  * __db_fcntl_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_fcntl_mutex_lock __P((MUTEX *, DB_FH *));
+ * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, MUTEX *, DB_FH *));
  */
 int
-__db_fcntl_mutex_lock(mutexp, fhp)
+__db_fcntl_mutex_lock(dbenv, mutexp, fhp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 	DB_FH *fhp;
 {
 	struct flock k_lock;
 	int locked, ms, waited;
 
-	if (!DB_GLOBAL(db_mutexlocks))
+	if (!dbenv->db_mutexlocks)
 		return (0);
 
 	/* Initialize the lock. */
@@ -125,13 +129,14 @@ __db_fcntl_mutex_lock(mutexp, fhp)
  * __db_fcntl_mutex_unlock --
  *	Release a lock.
  *
- * PUBLIC: int __db_fcntl_mutex_unlock __P((MUTEX *));
+ * PUBLIC: int __db_fcntl_mutex_unlock __P((DB_ENV *, MUTEX *));
  */
 int
-__db_fcntl_mutex_unlock(mutexp)
+__db_fcntl_mutex_unlock(dbenv, mutexp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 {
-	if (!DB_GLOBAL(db_mutexlocks))
+	if (!dbenv->db_mutexlocks)
 		return (0);
 
 #ifdef DIAGNOSTIC
@@ -149,6 +154,21 @@ __db_fcntl_mutex_unlock(mutexp)
 	 * 0/non-0, not to any specific value.
 	 */
 	mutexp->pid = 0;
+
+	return (0);
+}
+
+/*
+ * __db_fcntl_mutex_destroy --
+ *	Destroy a MUTEX.
+ *
+ * PUBLIC: int __db_fcntl_mutex_destroy __P((MUTEX *));
+ */
+int
+__db_fcntl_mutex_destroy(mutexp)
+	MUTEX *mutexp;
+{
+	COMPQUIET(mutexp, NULL);
 
 	return (0);
 }

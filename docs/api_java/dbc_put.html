@@ -1,5 +1,4 @@
- 
-<!--$Id: dbc_put.so,v 10.32 2000/05/22 20:51:46 bostic Exp $-->
+<!--$Id: dbc_put.so,v 10.33 2000/12/04 17:02:01 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Dbc.put</h1>
@@ -29,22 +28,21 @@ public void put(Dbt key, Dbt data, int flags)
 <p>The Dbc.put method stores key/data pairs into the database.
 <p>The <b>flags</b> parameter must be set to one of the following values:
 <p><dl compact>
-<p><dt><a name="Db.DB_AFTER">Db.DB_AFTER</a><dd>In the case of the Btree and Hash access methods, insert the data element
-as a duplicate element of the key referenced by the cursor.  The new
-element appears immediately after the current cursor position.  It is an
-error to specify DB_AFTER if the underlying Btree or Hash database was
-not created with the <a href="../api_java/db_set_flags.html#DB_DUP">Db.DB_DUP</a> flag.  The <b>key</b> parameter is
-ignored.
-<p>In the case of the Recno access method, it is an error to specify DB_AFTER
-if the underlying Recno database was not created with the
-<a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag.  If the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag was specified,
-a new key is created, all records after the inserted item are
-automatically renumbered, and the key of the new record is returned in
-the structure referenced by the parameter <b>key</b>.  The initial value
-of the <b>key</b> parameter is ignored.  See <a href="../api_java/db_open.html">Db.open</a> for more
-information.
-<p>In the case of the Queue access method, it is always an error to specify
-DB_AFTER.
+<p><dt><a name="Db.DB_AFTER">Db.DB_AFTER</a><dd>In the case of the Btree and Hash access methods, insert the data
+element as a duplicate element of the key referenced by the cursor.
+The new element appears immediately after the current cursor position.
+It is an error to specify Db.DB_AFTER if the underlying Btree or
+Hash database does not support duplicate data items.  The <b>key</b>
+parameter is ignored.
+<p>In the case of the Recno access method, it is an error to specify
+Db.DB_AFTER if the underlying Recno database was not created with
+the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag.  If the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag was
+specified, a new key is created, all records after the inserted item
+are automatically renumbered, and the key of the new record is returned
+in the structure referenced by the parameter <b>key</b>.  The initial
+value of the <b>key</b> parameter is ignored.  See <a href="../api_java/db_open.html">Db.open</a>
+for more information.
+<p>The Db.DB_AFTER flag may not be specified to the Queue access method.
 <p>If the current cursor record has already been deleted and the underlying
 access method is Hash, Dbc.put will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
 If the underlying access method is Btree or Recno, the operation will
@@ -53,20 +51,19 @@ succeed.
 specified, the Dbc.put function will return EINVAL.
 <p><dt><a name="Db.DB_BEFORE">Db.DB_BEFORE</a><dd>In the case of the Btree and Hash access methods, insert the data element
 as a duplicate element of the key referenced by the cursor.  The new
-element appears immediately before the current cursor position.  It is an
-error to specify DB_BEFORE if the underlying Btree or Hash database was
-not created with the <a href="../api_java/db_set_flags.html#DB_DUP">Db.DB_DUP</a> flag.  The <b>key</b> parameter is
-ignored.
+element appears immediately before the current cursor position.  It is
+an error to specify Db.DB_BEFORE if the underlying Btree or Hash
+database does not support duplicate data items.  The <b>key</b>
+parameter is ignored.
 <p>In the case of the Recno access method, it is an error to specify
-DB_BEFORE if the underlying Recno database was not created with the
-<a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag.  If the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag was specified,
-a new key is created, the current record and all records after it are
-automatically renumbered, and the key of the new record is returned in
-the structure referenced by the parameter <b>key</b>.  The initial value
-of the <b>key</b> parameter is ignored.  See <a href="../api_java/db_open.html">Db.open</a> for more
-information.
-<p>In the case of the Queue access method, it is always an error to specify
-DB_BEFORE.
+Db.DB_BEFORE if the underlying Recno database was not created with
+the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag.  If the <a href="../api_java/db_set_flags.html#DB_RENUMBER">Db.DB_RENUMBER</a> flag was
+specified, a new key is created, the current record and all records
+after it are automatically renumbered, and the key of the new record is
+returned in the structure referenced by the parameter <b>key</b>.  The
+initial value of the <b>key</b> parameter is ignored.  See
+<a href="../api_java/db_open.html">Db.open</a> for more information.
+<p>The Db.DB_BEFORE flag may not be specified to the Queue access method.
 <p>If the current cursor record has already been deleted and the underlying
 access method is Hash, Dbc.put will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
 If the underlying access method is Btree or Recno, the operation will
@@ -85,29 +82,30 @@ will succeed.
 <p>If the cursor is not yet initialized, Dbc.put will return EINVAL.
 <p><dt><a name="Db.DB_KEYFIRST">Db.DB_KEYFIRST</a><dd>In the case of the Btree and Hash access methods, insert the specified
 key/data pair into the database.
-<p>If the key already exists in the database,
-and a duplicate sort function has been specified, the inserted data item
-is added in its sorted location.
-If the key already exists in the database,
-and no duplicate sort function has been specified, the inserted data item
-is added as the first of the data items for that key.
+<p>If the underlying database supports duplicate data items, and if the
+key already exists in the database and a duplicate sort function has
+been specified, the inserted data item is added in its sorted location.
+If the key already exists in the database and no duplicate sort function
+has been specified, the inserted data item is added as the first of the
+data items for that key.
 <p>The Db.DB_KEYFIRST flag may not be specified to the Queue or Recno
 access methods.
 <p><dt><a name="Db.DB_KEYLAST">Db.DB_KEYLAST</a><dd>In the case of the Btree and Hash access methods, insert the specified
 key/data pair into the database.
-<p>If the key already exists in the database,
-and a duplicate sort function has been specified, the inserted data item
-is added in its sorted location.
-If the key already exists in the database,
-and no duplicate sort function has been specified, the inserted data item
-is added as the last of the data items for that key.
+<p>If the underlying database supports duplicate data items, and if the
+key already exists in the database and a duplicate sort function has
+been specified, the inserted data item is added in its sorted location.
+If the key already exists in the database, and no duplicate sort
+function has been specified, the inserted data item is added as the last
+of the data items for that key.
 <p>The Db.DB_KEYLAST flag may not be specified to the Queue or Recno
 access methods.
 <p><dt><a name="Db.DB_NODUPDATA">Db.DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, insert the specified
 key/data pair into the database unless it already exists in the database.
 If the key/data pair already appears in the database, <a href="../api_java/dbc_put.html#DB_KEYEXIST">Db.DB_KEYEXIST</a>
 is returned.  The Db.DB_NODUPDATA flag may only be specified if
-the underlying database has been configured to support sorted duplicates.
+the underlying database has been configured to support sorted duplicate
+data items.
 <p>The Db.DB_NODUPDATA flag may not be specified to the Queue or Recno
 access methods.
 </dl>
@@ -130,8 +128,8 @@ underlying access method is Queue.
 large to fit.
 </dl>
 <p><dl compact>
-<p><dt>EPERM  <dd>Write attempted on read-only cursor when the <a href="../api_java/env_open.html#DB_INIT_CDB">Db.DB_INIT_CDB</a> flag was 
-specified to <a href="../api_java/env_open.html">DbEnv.open</a>. 
+<p><dt>EPERM  <dd>Write attempted on read-only cursor when the <a href="../api_java/env_open.html#DB_INIT_CDB">Db.DB_INIT_CDB</a> flag was
+specified to <a href="../api_java/env_open.html">DbEnv.open</a>.
 </dl>
 <p>If the operation was selected to resolve a deadlock, the
 Dbc.put method will fail and

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_recno.c,v 11.45.2.2 2000/07/24 20:04:48 bostic Exp $";
+static const char revid[] = "$Id: bt_recno.c,v 11.65 2001/01/18 14:33:22 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #endif
@@ -27,15 +26,14 @@ static const char revid[] = "$Id: bt_recno.c,v 11.45.2.2 2000/07/24 20:04:48 bos
 #include "lock.h"
 #include "lock_ext.h"
 #include "qam.h"
+#include "txn.h"
 
 static int  __ram_add __P((DBC *, db_recno_t *, DBT *, u_int32_t, u_int32_t));
-static void __ram_ca __P((DBC *, db_recno_t, ca_recno_arg));
 static int  __ram_delete __P((DB *, DB_TXN *, DBT *, u_int32_t));
-static int  __ram_fmap __P((DBC *, db_recno_t));
 static int  __ram_put __P((DB *, DB_TXN *, DBT *, DBT *, u_int32_t));
 static int  __ram_source __P((DB *));
+static int  __ram_sread __P((DBC *, db_recno_t));
 static int  __ram_update __P((DBC *, db_recno_t, int));
-static int  __ram_vmap __P((DBC *, db_recno_t));
 
 /*
  * In recno, there are two meanings to the on-page "deleted" flag.  If we're
@@ -54,16 +52,45 @@ static int  __ram_vmap __P((DBC *, db_recno_t));
  * It also maintains whether the cursor references a deleted record in the
  * cursor, and it doesn't always check the on-page value.
  */
-#define	CD_SET(dbp, cp) {						\
+#define	CD_SET(cp) {							\
 	if (F_ISSET(cp, C_RENUMBER))					\
 		F_SET(cp, C_DELETED);					\
 }
-#define	CD_CLR(dbp, cp) {						\
-	if (F_ISSET(cp, C_RENUMBER))					\
+#define	CD_CLR(cp) {							\
+	if (F_ISSET(cp, C_RENUMBER)) {					\
 		F_CLR(cp, C_DELETED);					\
+		cp->order = INVALID_ORDER;				\
+	}								\
 }
-#define	CD_ISSET(dbp, cp)						\
+#define	CD_ISSET(cp)							\
 	(F_ISSET(cp, C_RENUMBER) && F_ISSET(cp, C_DELETED))
+
+/*
+ * Macros for comparing the ordering of two cursors.
+ * cp1 comes before cp2 iff one of the following holds:
+ *	cp1's recno is less than cp2's recno
+ *	recnos are equal, both deleted, and cp1's order is less than cp2's
+ *	recnos are equal, cp1 deleted, and cp2 not deleted
+ */
+#define	C_LESSTHAN(cp1, cp2)						\
+    (((cp1)->recno < (cp2)->recno) ||					\
+    (((cp1)->recno == (cp2)->recno) &&					\
+    ((CD_ISSET((cp1)) && CD_ISSET((cp2)) && (cp1)->order < (cp2)->order) || \
+    (CD_ISSET((cp1)) && !CD_ISSET((cp2))))))
+
+/*
+ * cp1 is equal to cp2 iff their recnos and delete flags are identical,
+ * and if the delete flag is set their orders are also identical.
+ */
+#define	C_EQUAL(cp1, cp2)						\
+    ((cp1)->recno == (cp2)->recno && CD_ISSET((cp1)) == CD_ISSET((cp2)) && \
+    (!CD_ISSET((cp1)) || (cp1)->order == (cp2)->order))
+
+/*
+ * Do we need to log the current cursor adjustment?
+ */
+#define	CURADJ_LOG(dbc)							\
+	(DB_LOGGING((dbc)) && (dbc)->txn != NULL && (dbc)->txn->parent != NULL)
 
 /*
  * __ram_open --
@@ -91,7 +118,7 @@ __ram_open(dbp, name, base_pgno, flags)
 
 	/* Start up the tree. */
 	if ((ret = __bam_read_root(dbp, name, base_pgno, flags)) != 0)
-		goto err;
+		return (ret);
 
 	/*
 	 * If the user specified a source tree, open it and map it in.
@@ -102,13 +129,13 @@ __ram_open(dbp, name, base_pgno, flags)
 	 * doing!
 	 */
 	if (t->re_source != NULL && (ret = __ram_source(dbp)) != 0)
-		goto err;
+		return (ret);
 
 	/* If we're snapshotting an underlying source file, do it now. */
 	if (F_ISSET(dbp, DB_RE_SNAPSHOT)) {
 		/* Allocate a cursor. */
 		if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
-			goto err;
+			return (ret);
 
 		/* Do the snapshot. */
 		if ((ret = __ram_update(dbc,
@@ -118,24 +145,9 @@ __ram_open(dbp, name, base_pgno, flags)
 		/* Discard the cursor. */
 		if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-
-		if (ret != 0)
-			goto err;
 	}
 
 	return (0);
-
-err:	/* If we mmap'd a source file, discard it. */
-	if (t->re_smap != NULL)
-		(void)__os_unmapfile(dbp->dbenv, t->re_smap, t->re_msize);
-
-	/* If we opened a source file, discard it. */
-	if (F_ISSET(&t->re_fh, DB_FH_VALID))
-		(void)__os_closehandle(&t->re_fh);
-	if (t->re_source != NULL)
-		__os_freestr(t->re_source);
-
-	return (ret);
 }
 
 /*
@@ -215,17 +227,14 @@ __ram_put(dbp, txn, key, data, flags)
 	/*
 	 * If we're appending to the tree, make sure we've read in all of
 	 * the backing source file.  Otherwise, check the user's record
-	 * number and fill in as necessary.
+	 * number and fill in as necessary.  If we found the record or it
+	 * simply didn't exist, add the user's record.
 	 */
-	if (flags == DB_APPEND) {
-		if ((ret = __ram_update(
-		    dbc, DB_MAX_RECORDS, 0)) != 0 && ret == DB_NOTFOUND)
-			ret = 0;
-	} else
+	if (flags == DB_APPEND)
+		ret = __ram_update(dbc, DB_MAX_RECORDS, 0);
+	else
 		ret = __ram_getno(dbc, key, &recno, 1);
-
-	/* Add the record. */
-	if (ret == 0)
+	if (ret == 0 || ret == DB_NOTFOUND)
 		ret = __ram_add(dbc, &recno, data, flags, 0);
 
 	/* Discard the cursor. */
@@ -254,6 +263,7 @@ __ram_c_del(dbc)
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
+	DB_LSN lsn;
 	DBT hdr, data;
 	EPG *epg;
 	int exact, ret, stack;
@@ -264,17 +274,18 @@ __ram_c_del(dbc)
 	stack = 0;
 
 	/*
-	 * The semantics of cursors during delete are as follows: if record
-	 * numbers are mutable (C_RENUMBER is set), deleting a record causes
-	 * the cursor to automatically point to the immediately following
-	 * record.  In this case it is possible to use a single cursor for
-	 * repeated delete operations, without intervening operations.
+	 * The semantics of cursors during delete are as follows: in
+	 * non-renumbering recnos, records are replaced with a marker
+	 * containing a delete flag.  If the record referenced by this cursor
+	 * has already been deleted, we will detect that as part of the delete
+	 * operation, and fail.
 	 *
-	 * If record numbers are not mutable, then records are replaced with
-	 * a marker containing a delete flag.  If the record referenced by
-	 * this cursor has already been deleted, we will detect that as part
-	 * of the delete operation, and fail.
+	 * In renumbering recnos, cursors which represent deleted items
+	 * are flagged with the C_DELETED flag, and it is an error to
+	 * call c_del a second time without an intervening cursor motion.
 	 */
+	if (CD_ISSET(cp))
+		return (DB_KEYEMPTY);
 
 	/* Search the tree for the key; delete only deletes exact matches. */
 	if ((ret = __bam_rsearch(dbc, &cp->recno, S_DELETE, 1, &exact)) != 0)
@@ -309,7 +320,11 @@ __ram_c_del(dbc)
 		if ((ret = __bam_ditem(dbc, cp->page, cp->indx)) != 0)
 			goto err;
 		__bam_adjust(dbc, -1);
-		__ram_ca(dbc, cp->recno, CA_DELETE);
+		if (__ram_ca(dbc, CA_DELETE) > 0 &&
+		    CURADJ_LOG(dbc) && (ret = __bam_rcuradj_log(dbp->dbenv,
+		    dbc->txn, &lsn, 0, dbp->log_fileid, CA_DELETE,
+		    cp->root, cp->recno, cp->order)) != 0)
+			goto err;
 
 		/*
 		 * If the page is empty, delete it.
@@ -400,16 +415,11 @@ __ram_c_get(dbc, key, data, flags, pgnop)
 retry:	switch (flags) {
 	case DB_CURRENT:
 		/*
-		 * If we're in a normal Recno tree with mutable record numbers,
-		 * we need make no correction if we just deleted a record, we
-		 * will return the record following the deleted one by virtue
-		 * of renumbering the tree.
-		 *
-		 * If we're in an off-page duplicate Recno tree, we are using
-		 * mutable records, but we don't implicitly move the cursor if
-		 * we delete one.
+		 * If we're using mutable records and the deleted flag is
+		 * set, the cursor is pointing at a nonexistent record;
+		 * return an error.
 		 */
-		if (F_ISSET(dbc, DBC_OPD) && F_ISSET(cp, C_DELETED))
+		if (CD_ISSET(cp))
 			return (DB_KEYEMPTY);
 		break;
 	case DB_NEXT_DUP:
@@ -435,7 +445,7 @@ retry:	switch (flags) {
 		 * we have to avoid incrementing the record number so that we
 		 * return the right record by virtue of renumbering the tree.
 		 */
-		if (CD_ISSET(dbp, cp))
+		if (CD_ISSET(cp))
 			break;
 
 		if (cp->recno != RECNO_OOB) {
@@ -489,9 +499,9 @@ retry:	switch (flags) {
 		if (F_ISSET(dbc, DBC_OPD)) {
 			cp->recno++;
 			break;
-		} else
-			ret = DB_NOTFOUND;
-			goto err;
+		}
+		ret = DB_NOTFOUND;
+		goto err;
 		/* NOTREACHED */
 	case DB_GET_BOTH:
 		/*
@@ -596,7 +606,7 @@ retry:	switch (flags) {
 	}
 
 	/* The cursor was reset, no further delete adjustment is necessary. */
-err:	CD_CLR(dbp, cp);
+err:	CD_CLR(cp);
 
 	return (ret);
 }
@@ -616,7 +626,9 @@ __ram_c_put(dbc, key, data, flags, pgnop)
 {
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	int exact, ret, t_ret;
+	DB_LSN lsn;
+	int exact, nc, ret, t_ret;
+	u_int32_t iiflags;
 	void *arg;
 
 	COMPQUIET(pgnop, NULL);
@@ -635,20 +647,41 @@ __ram_c_put(dbc, key, data, flags, pgnop)
 		flags = DB_BEFORE;
 		break;
 	case DB_KEYLAST:
-		return (__ram_add(dbc, &cp->recno, data, DB_APPEND, 0));
+		if ((ret = __ram_add(dbc, &cp->recno, data, DB_APPEND, 0)) != 0)
+			return (ret);
+		if (CURADJ_LOG(dbc) && (ret = __bam_rcuradj_log(dbp->dbenv,
+		    dbc->txn, &lsn, 0, dbp->log_fileid, CA_ICURRENT,
+		    cp->root, cp->recno, cp->order)))
+			return (ret);
+		return (0);
 	}
+
+	/*
+	 * If we're putting with a cursor that's marked C_DELETED, we need to
+	 * take special care;  the cursor doesn't "really" reference the item
+	 * corresponding to its current recno, but instead is "between" that
+	 * record and the current one.  Translate the actual insert into
+	 * DB_BEFORE, and let the __ram_ca work out the gory details of what
+	 * should wind up pointing where.
+	 */
+	if (CD_ISSET(cp))
+		iiflags = DB_BEFORE;
+	else
+		iiflags = flags;
 
 split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 		goto err;
-	if (!exact) {
-		ret = DB_NOTFOUND;
-		goto err;
-	}
+	/*
+	 * An inexact match is okay;  it just means we're one record past the
+	 * end, which is reasonable if we're marked deleted.
+	 */
+	DB_ASSERT(exact || CD_ISSET(cp));
+
 	cp->page = cp->csp->page;
 	cp->pgno = cp->csp->page->pgno;
 	cp->indx = cp->csp->indx;
 
-	ret = __bam_iitem(dbc, key, data, flags, 0);
+	ret = __bam_iitem(dbc, key, data, iiflags, 0);
 	t_ret = __bam_stkrel(dbc, STK_CLRDBC);
 
 	if (t_ret != 0 && (ret == 0 || ret == DB_NEEDSPLIT))
@@ -664,12 +697,47 @@ split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 
 	switch (flags) {			/* Adjust the cursors. */
 	case DB_AFTER:
-		__ram_ca(dbc, cp->recno, CA_IAFTER);
-		++cp->recno;
+		nc = __ram_ca(dbc, CA_IAFTER);
+
+		/*
+		 * We only need to adjust this cursor forward if we truly added
+		 * the item after the current recno, rather than remapping it
+		 * to DB_BEFORE.
+		 */
+		if (iiflags == DB_AFTER)
+			++cp->recno;
+
+		/* Only log if __ram_ca found any relevant cursors. */
+		if (nc > 0 && CURADJ_LOG(dbc) &&
+		    (ret = __bam_rcuradj_log(dbp->dbenv,
+		    dbc->txn, &lsn, 0, dbp->log_fileid, CA_IAFTER,
+		    cp->root, cp->recno, cp->order)) != 0)
+			goto err;
 		break;
 	case DB_BEFORE:
-		__ram_ca(dbc, cp->recno, CA_IBEFORE);
+		nc = __ram_ca(dbc, CA_IBEFORE);
 		--cp->recno;
+
+		/* Only log if __ram_ca found any relevant cursors. */
+		if (nc > 0 && CURADJ_LOG(dbc) &&
+		    (ret = __bam_rcuradj_log(dbp->dbenv,
+		    dbc->txn, &lsn, 0, dbp->log_fileid, CA_IBEFORE,
+		    cp->root, cp->recno, cp->order)) != 0)
+			goto err;
+		break;
+	case DB_CURRENT:
+		/*
+		 * We only need to do an adjustment if we actually
+		 * added an item, which we only would have done if the
+		 * cursor was marked deleted.
+		 *
+		 * Only log if __ram_ca found any relevant cursors.
+		 */
+		if (CD_ISSET(cp) && __ram_ca(dbc, CA_ICURRENT) > 0 &&
+		    CURADJ_LOG(dbc) && (ret = __bam_rcuradj_log(
+		    dbp->dbenv, dbc->txn, &lsn, 0, dbp->log_fileid,
+		    CA_ICURRENT, cp->root, cp->recno, cp->order)) != 0)
+			goto err;
 		break;
 	}
 
@@ -679,67 +747,152 @@ split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 		    sizeof(cp->recno), &dbc->rkey.data, &dbc->rkey.ulen);
 
 	/* The cursor was reset, no further delete adjustment is necessary. */
-err:	CD_CLR(dbp, cp);
+err:	CD_CLR(cp);
 
 	return (ret);
 }
 
 /*
  * __ram_ca --
- *	Adjust cursors.
+ *	Adjust cursors.  Returns the number of relevant cursors.
+ *
+ * PUBLIC: int __ram_ca __P((DBC *, ca_recno_arg));
  */
-static void
-__ram_ca(dbc_arg, recno, op)
+int
+__ram_ca(dbc_arg, op)
 	DBC *dbc_arg;
-	db_recno_t recno;
 	ca_recno_arg op;
 {
-	BTREE_CURSOR *cp;
-	DB *dbp;
+	BTREE_CURSOR *cp, *cp_arg;
+	DB *dbp, *ldbp;
+	DB_ENV *dbenv;
 	DBC *dbc;
-	db_recno_t nrecs;
+	db_recno_t recno;
+	int adjusted, found;
+	u_int32_t order;
 
 	dbp = dbc_arg->dbp;
+	dbenv = dbp->dbenv;
+	cp_arg = (BTREE_CURSOR *)dbc_arg->internal;
+	recno = cp_arg->recno;
 
+	found = 0;
+
+	/*
+	 * It only makes sense to adjust cursors if we're a renumbering
+	 * recno;  we should only be called if this is one.
+	 */
+	DB_ASSERT(F_ISSET(cp_arg, C_RENUMBER));
+
+	MUTEX_THREAD_LOCK(dbenv, dbenv->dblist_mutexp);
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_THREAD_LOCK(dbp->mutexp);
-	for (dbc = TAILQ_FIRST(&dbp->active_queue);
-	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (BTREE_CURSOR *)dbc->internal;
-		if (dbc_arg->internal->root != cp->root)
-			continue;
-
-		switch (op) {
-		case CA_DELETE:
-			if (recno < cp->recno)
-				--cp->recno;
-			else if (recno == cp->recno) {
-				/*
-				 * If we're in an off-page duplicate Recno tree,
-				 * we are using mutable records, but we don't
-				 * implicitly move the cursor if we delete one.
-				 */
-				if (!F_ISSET(dbc, DBC_OPD) &&
-				    __bam_nrecs(dbc, &nrecs) == 0 &&
-				    recno > nrecs)
-					--cp->recno;
-				else
-					CD_SET(dbp, cp);
+	/*
+	 * If we're doing a delete, we need to find the highest
+	 * order of any cursor currently pointing at this item,
+	 * so we can assign a higher order to the newly deleted
+	 * cursor.  Unfortunately, this requires a second pass through
+	 * the cursor list.
+	 */
+	if (op == CA_DELETE) {
+		order = 1;
+		for (ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+		    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
+		    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+			MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
+			for (dbc = TAILQ_FIRST(&ldbp->active_queue);
+			    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
+				cp = (BTREE_CURSOR *)dbc->internal;
+				if (cp_arg->root == cp->root &&
+				    recno == cp->recno && CD_ISSET(cp) &&
+				    order <= cp->order)
+					order = cp->order + 1;
 			}
-			break;
-		case CA_IAFTER:
-			if (recno < cp->recno)
-				++cp->recno;
-			break;
-		case CA_IBEFORE:
-			if (recno <= cp->recno)
-				++cp->recno;
-			break;
+			MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 		}
+	} else
+		order = INVALID_ORDER;
+
+	/* Now go through and do the actual adjustments. */
+	for (ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
+	    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
+		for (dbc = TAILQ_FIRST(&ldbp->active_queue);
+		    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
+			cp = (BTREE_CURSOR *)dbc->internal;
+			if (cp_arg->root != cp->root)
+				continue;
+			++found;
+			adjusted = 0;
+			switch (op) {
+			case CA_DELETE:
+				if (recno < cp->recno) {
+					--cp->recno;
+					/*
+					 * If the adjustment made them equal,
+					 * we have to merge the orders.
+					 */
+					if (recno == cp->recno && CD_ISSET(cp))
+						cp->order += order;
+				} else if (recno == cp->recno &&
+				    !CD_ISSET(cp)) {
+					CD_SET(cp);
+					cp->order = order;
+				}
+				break;
+			case CA_IBEFORE:
+				/*
+				 * IBEFORE is just like IAFTER, except that we
+				 * adjust cursors on the current record too.
+				 */
+				if (C_EQUAL(cp_arg, cp)) {
+					++cp->recno;
+					adjusted = 1;
+				}
+				goto iafter;
+			case CA_ICURRENT:
+
+				/*
+				 * If the original cursor wasn't deleted, we
+				 * just did a replacement and so there's no
+				 * need to adjust anything--we shouldn't have
+				 * gotten this far.  Otherwise, we behave
+				 * much like an IAFTER, except that all
+				 * cursors pointing to the current item get
+				 * marked undeleted and point to the new
+				 * item.
+				 */
+				DB_ASSERT(CD_ISSET(cp_arg));
+				if (C_EQUAL(cp_arg, cp)) {
+					CD_CLR(cp);
+					break;
+				}
+				/* FALLTHROUGH */
+			case CA_IAFTER:
+iafter:				if (!adjusted && C_LESSTHAN(cp_arg, cp)) {
+					++cp->recno;
+					adjusted = 1;
+				}
+				if (recno == cp->recno && adjusted)
+					/*
+					 * If we've moved this cursor's recno,
+					 * split its order number--i.e.,
+					 * decrement it by enough so that
+					 * the lowest cursor moved has order 1.
+					 * cp_arg->order is the split point,
+					 * so decrement by one less than that.
+					 */
+					cp->order -= (cp_arg->order - 1);
+				break;
+			}
+		}
+		MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
 	}
-	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
+
+	return (found);
 }
 
 /*
@@ -810,7 +963,7 @@ __ram_update(dbc, recno, can_create)
 	if ((ret = __bam_nrecs(dbc, &nrecs)) != 0)
 		return (ret);
 	if (!t->re_eof && recno > nrecs) {
-		if ((ret = t->re_irec(dbc, recno)) != 0)
+		if ((ret = __ram_sread(dbc, recno)) != 0 && ret != DB_NOTFOUND)
 			return (ret);
 		if ((ret = __bam_nrecs(dbc, &nrecs)) != 0)
 			return (ret);
@@ -857,26 +1010,17 @@ __ram_source(dbp)
 	DB *dbp;
 {
 	BTREE *t;
-	size_t size;
-	u_int32_t bytes, mbytes;
 	char *source;
 	int ret;
 
 	t = dbp->bt_internal;
-	source = t->re_source;
 
-	/*
-	 * !!!
-	 * The caller has full responsibility for cleaning up on error --
-	 * (it has to anyway, in case it fails after this routine succeeds).
-	 */
-	ret = __db_appname(dbp->dbenv,
-	    DB_APP_DATA, NULL, source, 0, NULL, &t->re_source);
-
-	__os_freestr(source);
-
-	if (ret != 0)
+	/* Find the real name, and swap out the one we had before. */
+	if ((ret = __db_appname(dbp->dbenv,
+	    DB_APP_DATA, NULL, t->re_source, 0, NULL, &source)) != 0)
 		return (ret);
+	__os_freestr(t->re_source);
+	t->re_source = source;
 
 	/*
 	 * !!!
@@ -884,40 +1028,13 @@ __ram_source(dbp)
 	 * much care other than we'll complain if there are any modifications
 	 * when it comes time to write the database back to the source.
 	 */
-	ret = __os_open(dbp->dbenv, t->re_source,
-	    F_ISSET(dbp, DB_AM_RDONLY) ? DB_OSO_RDONLY : 0, 0, &t->re_fh);
-	if (ret != 0 && !F_ISSET(dbp, DB_AM_RDONLY))
-		ret = __os_open(dbp->dbenv,
-		    t->re_source, DB_OSO_RDONLY, 0, &t->re_fh);
-	if (ret != 0) {
+	if ((t->re_fp = fopen(t->re_source, "r")) == NULL) {
+		ret = errno;
 		__db_err(dbp->dbenv, "%s: %s", t->re_source, db_strerror(ret));
 		return (ret);
 	}
 
-	/*
-	 * !!!
-	 * We'd like to test to see if the file is too big to mmap.  Since we
-	 * don't know what size or type off_t's or size_t's are, or the largest
-	 * unsigned integral type is, or what random insanity the local C
-	 * compiler will perpetrate, doing the comparison in a portable way is
-	 * flatly impossible.  Hope that mmap fails if the file is too large.
-	 */
-	if ((ret = __os_ioinfo(dbp->dbenv, t->re_source,
-	    &t->re_fh, &mbytes, &bytes, NULL)) != 0) {
-		__db_err(dbp->dbenv, "%s: %s", t->re_source, db_strerror(ret));
-		return (ret);
-	}
-	if (mbytes == 0 && bytes == 0)
-		return (0);
-
-	size = mbytes * MEGABYTE + bytes;
-	if ((ret = __os_mapfile(dbp->dbenv, t->re_source,
-	    &t->re_fh, (size_t)size, 1, &t->re_smap)) != 0)
-		return (ret);
 	t->re_eof = 0;
-	t->re_cmap = t->re_smap;
-	t->re_emap = (u_int8_t *)t->re_smap + (t->re_msize = size);
-	t->re_irec = F_ISSET(dbp, DB_RE_FIXEDLEN) ?  __ram_fmap : __ram_vmap;
 	return (0);
 }
 
@@ -933,16 +1050,16 @@ __ram_writeback(dbp)
 {
 	BTREE *t;
 	DB_ENV *dbenv;
-	DB_FH fh;
 	DBC *dbc;
 	DBT key, data;
+	FILE *fp;
 	db_recno_t keyno;
-	size_t nw;
 	int ret, t_ret;
 	u_int8_t delim, *pad;
 
 	t = dbp->bt_internal;
 	dbenv = dbp->dbenv;
+	fp = NULL;
 
 	/* If the file wasn't modified, we're done. */
 	if (!t->re_modified)
@@ -972,31 +1089,29 @@ __ram_writeback(dbp)
 	 * occurs then, the part of the log holding the copy of the file could
 	 * be discarded, and that would make it impossible to recover in the
 	 * face of disaster.  This could all probably be fixed, but it would
-	 * require transaction protecting the backing source file, i.e. mpool
-	 * would have to know about it, and we don't want to go there.
+	 * require transaction protecting the backing source file.
+	 *
+	 * XXX
+	 * This could be made to work now that we have transactions protecting
+	 * file operations.  Margo has specifically asked for the privilege of
+	 * doing this work.
 	 */
 	if ((ret =
 	    __ram_update(dbc, DB_MAX_RECORDS, 0)) != 0 && ret != DB_NOTFOUND)
 		return (ret);
 
 	/*
-	 * !!!
-	 * Close any underlying mmap region.  This is required for Windows NT
-	 * (4.0, Service Pack 2) -- if the file is still mapped, the following
-	 * open will fail.
+	 * Close any existing file handle and re-open the file, truncating it.
 	 */
-	if (t->re_smap != NULL) {
-		(void)__os_unmapfile(dbenv, t->re_smap, t->re_msize);
-		t->re_smap = NULL;
+	if (t->re_fp != NULL) {
+		if (fclose(t->re_fp) != 0) {
+			ret = errno;
+			goto err;
+		}
+		t->re_fp = NULL;
 	}
-
-	/* Get rid of any backing file descriptor, just on GP's. */
-	if (F_ISSET(&t->re_fh, DB_FH_VALID))
-		(void)__os_closehandle(&t->re_fh);
-
-	/* Open the file, truncating it. */
-	if ((ret = __os_open(dbenv,
-	    t->re_source, DB_OSO_SEQ | DB_OSO_TRUNC, 0, &fh)) != 0) {
+	if ((fp = fopen(t->re_source, "w")) == NULL) {
+		ret = errno;
 		__db_err(dbenv, "%s: %s", t->re_source, db_strerror(ret));
 		goto err;
 	}
@@ -1025,46 +1140,35 @@ __ram_writeback(dbp)
 	for (keyno = 1;; ++keyno) {
 		switch (ret = dbp->get(dbp, NULL, &key, &data, 0)) {
 		case 0:
-			if ((ret = __os_write(dbenv,
-			    &fh, data.data, data.size, &nw)) != 0)
-				goto err;
-			if (nw != (size_t)data.size) {
-				ret = EIO;
+			if (fwrite(data.data, 1, data.size, fp) != data.size)
 				goto write_err;
-			}
 			break;
 		case DB_KEYEMPTY:
-			if (F_ISSET(dbp, DB_RE_FIXEDLEN)) {
-				if ((ret = __os_write(dbenv,
-				    &fh, pad, t->re_len, &nw)) != 0)
-					goto write_err;
-				if (nw != (size_t)t->re_len) {
-					ret = EIO;
-					goto write_err;
-				}
-			}
+			if (F_ISSET(dbp, DB_RE_FIXEDLEN) &&
+			    fwrite(pad, 1, t->re_len, fp) != t->re_len)
+				goto write_err;
 			break;
 		case DB_NOTFOUND:
 			ret = 0;
 			goto done;
 		}
-		if (!F_ISSET(dbp, DB_RE_FIXEDLEN)) {
-			if ((ret = __os_write(dbenv, &fh, &delim, 1, &nw)) != 0)
-				goto write_err;
-			if (nw != 1) {
-				ret = EIO;
-write_err:			__db_err(dbp->dbenv,
-				    "Write failed to backing file");
-				goto err;
-			}
+		if (!F_ISSET(dbp, DB_RE_FIXEDLEN) &&
+		    fwrite(&delim, 1, 1, fp) != 1) {
+write_err:		ret = errno;
+			__db_err(dbp->dbenv,
+			    "%s: write failed to backing file: %s",
+			    t->re_source, strerror(ret));
+			goto err;
 		}
 	}
 
 err:
 done:	/* Close the file descriptor. */
-	if (F_ISSET(&fh, DB_FH_VALID) &&
-	    (t_ret = __os_closehandle(&fh)) != 0 && ret == 0)
-		ret = t_ret;
+	if (fp != NULL && fclose(fp) != 0) {
+		if (ret == 0)
+			ret = errno;
+		__db_err(dbenv, "%s: %s", t->re_source, db_strerror(errno));
+	}
 
 	/* Discard the cursor. */
 	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
@@ -1077,122 +1181,69 @@ done:	/* Close the file descriptor. */
 }
 
 /*
- * __ram_fmap --
- *	Get fixed length records from a file.
+ * __ram_sread --
+ *	Read records from a source file.
  */
 static int
-__ram_fmap(dbc, top)
+__ram_sread(dbc, top)
 	DBC *dbc;
 	db_recno_t top;
 {
 	BTREE *t;
-	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT data;
 	db_recno_t recno;
-	u_int32_t len;
-	u_int8_t *sp, *ep, *p;
-	int ret, was_modified;
+	size_t len;
+	int ch, ret, was_modified;
 
+	t = dbc->dbp->bt_internal;
 	dbp = dbc->dbp;
-	cp = (BTREE_CURSOR *)dbc->internal;
-	t = dbp->bt_internal;
+	was_modified = t->re_modified;
 
 	if ((ret = __bam_nrecs(dbc, &recno)) != 0)
 		return (ret);
 
-	if (dbc->rdata.ulen < t->re_len) {
-		if ((ret = __os_realloc(dbp->dbenv,
-		    t->re_len, NULL, &dbc->rdata.data)) != 0) {
+	/* Use the record data return memory, it's only a short-term use. */
+	len = F_ISSET(dbp, DB_RE_FIXEDLEN) ? t->re_len : 256;
+	if (dbc->rdata.ulen < len) {
+		if ((ret = __os_realloc(
+		    dbp->dbenv, len, NULL, &dbc->rdata.data)) != 0) {
 			dbc->rdata.ulen = 0;
 			dbc->rdata.data = NULL;
 			return (ret);
 		}
-		dbc->rdata.ulen = t->re_len;
+		dbc->rdata.ulen = len;
 	}
 
-	was_modified = t->re_modified;
-
 	memset(&data, 0, sizeof(data));
-	data.data = dbc->rdata.data;
-	data.size = t->re_len;
-
-	sp = (u_int8_t *)t->re_cmap;
-	ep = (u_int8_t *)t->re_emap;
 	while (recno < top) {
-		if (sp >= ep) {
-			t->re_eof = 1;
-			ret = DB_NOTFOUND;
-			goto err;
-		}
-		len = t->re_len;
-		for (p = dbc->rdata.data;
-		    sp < ep && len > 0; *p++ = *sp++, --len)
-			;
+		data.data = dbc->rdata.data;
+		data.size = 0;
+		if (F_ISSET(dbp, DB_RE_FIXEDLEN))
+			for (len = t->re_len; len > 0; --len) {
+				if ((ch = getc(t->re_fp)) == EOF)
+					goto eof;
+				((u_int8_t *)data.data)[data.size++] = ch;
+			}
+		else
+			for (;;) {
+				if ((ch = getc(t->re_fp)) == EOF)
+					goto eof;
+				if (ch == t->re_delim)
+					break;
 
-		/*
-		 * Another process may have read this record from the input
-		 * file and stored it into the database already, in which
-		 * case we don't need to repeat that operation.  We detect
-		 * this by checking if the last record we've read is greater
-		 * or equal to the number of records in the database.
-		 *
-		 * XXX
-		 * We should just do a seek since the records are fixed length.
-		 */
-		if (t->re_last >= recno) {
-			if (len != 0)
-				memset(p, t->re_pad, len);
-
-			++recno;
-			if ((ret = __ram_add(dbc, &recno, &data, 0, 0)) != 0)
-				goto err;
-		}
-		++t->re_last;
-	}
-	t->re_cmap = sp;
-
-err:	if (!was_modified)
-		t->re_modified = 0;
-
-	return (0);
-}
-
-/*
- * __ram_vmap --
- *	Get variable length records from a file.
- */
-static int
-__ram_vmap(dbc, top)
-	DBC *dbc;
-	db_recno_t top;
-{
-	BTREE *t;
-	DBT data;
-	db_recno_t recno;
-	u_int8_t *sp, *ep;
-	int delim, ret, was_modified;
-
-	t = dbc->dbp->bt_internal;
-
-	if ((ret = __bam_nrecs(dbc, &recno)) != 0)
-		return (ret);
-
-	delim = t->re_delim;
-	was_modified = t->re_modified;
-
-	memset(&data, 0, sizeof(data));
-
-	sp = (u_int8_t *)t->re_cmap;
-	ep = (u_int8_t *)t->re_emap;
-	while (recno < top) {
-		if (sp >= ep) {
-			t->re_eof = 1;
-			ret = DB_NOTFOUND;
-			goto err;
-		}
-		for (data.data = sp; sp < ep && *sp != delim; ++sp)
-			;
+				((u_int8_t *)data.data)[data.size++] = ch;
+				if (data.size == dbc->rdata.ulen) {
+					if ((ret = __os_realloc(dbp->dbenv,
+					    dbc->rdata.ulen *= 2,
+					    NULL, &dbc->rdata.data)) != 0) {
+						dbc->rdata.ulen = 0;
+						dbc->rdata.data = NULL;
+						return (ret);
+					} else
+						data.data = dbc->rdata.data;
+				}
+			}
 
 		/*
 		 * Another process may have read this record from the input
@@ -1202,16 +1253,17 @@ __ram_vmap(dbc, top)
 		 * or equal to the number of records in the database.
 		 */
 		if (t->re_last >= recno) {
-			data.size = sp - (u_int8_t *)data.data;
 			++recno;
 			if ((ret = __ram_add(dbc, &recno, &data, 0, 0)) != 0)
 				goto err;
 		}
 		++t->re_last;
-		++sp;
 	}
-	t->re_cmap = sp;
 
+	if (0) {
+eof:		t->re_eof = 1;
+		ret = DB_NOTFOUND;
+	}
 err:	if (!was_modified)
 		t->re_modified = 0;
 
@@ -1243,6 +1295,14 @@ retry:	/* Find the slot for insertion. */
 	cp->page = cp->csp->page;
 	cp->pgno = cp->csp->page->pgno;
 	cp->indx = cp->csp->indx;
+
+	/*
+	 * The application may modify the data based on the selected record
+	 * number.
+	 */
+	if (flags == DB_APPEND && dbc->dbp->db_append_recno != NULL &&
+	    (ret = dbc->dbp->db_append_recno(dbc->dbp, data, *recnop)) != 0)
+		goto err;
 
 	/*
 	 * If re-numbering records, the on-page deleted flag means this record

@@ -1,5 +1,4 @@
- 
-<!--$Id: db_open.so,v 10.59 2000/04/18 22:51:44 bostic Exp $-->
+<!--$Id: db_open.so,v 10.61 2000/10/25 15:24:44 dda Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.open</h1>
@@ -21,10 +20,11 @@
 <tt>
 <h3><pre>
 import com.sleepycat.db.*;
+import java.io.FileNotFoundException;
 <p>
 public void open(String file,
     String database, int type, int flags, int mode)
-	throws DbException;
+	throws DbException, FileNotFoundException;
 </pre></h3>
 <h1>Description</h1>
 <p>The currently supported Berkeley DB file formats (or <i>access methods</i>)
@@ -45,9 +45,11 @@ optional and allows applications to have multiple logical databases in a
 single physical file.  While no <b>database</b> argument needs to be
 specified, it is an error to attempt to open a second database in a
 <b>file</b> that was not initially created using a <b>database</b> name.
-In-memory databases never intended to be shared or preserved on disk may
+In-memory databases never intended to be preserved on disk may
 be created by setting both the <b>file</b> and <b>database</b> arguments
-to null.
+to null.  Note that in-memory databases can only ever be shared by
+sharing the single database handle that created them, in circumstances
+where doing so is safe.
 <p>The <b>type</b> argument is of type int
 and must be set to one of Db.DB_BTREE, Db.DB_HASH,
 Db.DB_QUEUE, Db.DB_RECNO or Db.DB_UNKNOWN, except
@@ -120,8 +122,8 @@ directory in which to create a temporary backing file.
 type, page size, hash function, pad byte, byte order) or a flag value
 or parameter that is incompatible with the specified database.
 <p>
-The DB_THREAD flag was specified and spinlocks are not implemented for
-this architecture.
+The <a href="../api_java/env_open.html#DB_THREAD">Db.DB_THREAD</a> flag was specified and spinlocks are not
+implemented for this architecture.
 <p>The <a href="../api_java/env_open.html#DB_THREAD">Db.DB_THREAD</a> flag was specified to Db.open, but was not
 specified to the <a href="../api_java/env_open.html">DbEnv.open</a> call for the environment in which the
 <a href="../api_java/db_class.html">Db</a> handle was created.
@@ -158,6 +160,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_info.h,v 11.12 2000/06/01 14:17:58 dda Exp $
+ * $Id: java_info.h,v 11.17 2000/07/31 20:28:30 dda Exp $
  */
 
 #ifndef _JAVA_INFO_H_
@@ -23,40 +23,6 @@
 
 /****************************************************************
  *
- * These functions are used internally to help manage callbacks that
- * must go from C back into Java that have no arguments from
- * which we can extract context.  These are handled via
- * a set of fixed C callback functions for each callback type.
- * The context_free_callback manages the allocation/deallocation
- * of the functions.
- *
- */
-
-typedef struct _context_free_callback
-{
-	jobject callback_object_;
-	int callback_slot_;
-	int size_;
-}
-CONTEXT_FREE_CALLBACK;   /* used with all 'cfc' functions */
-
-extern CONTEXT_FREE_CALLBACK *cfc_construct(int size);
-extern void cfc_destroy(CONTEXT_FREE_CALLBACK *cfc, JNIEnv *jnienv);
-
-/* Allocate a new slot, or if appropriate, just return the old slot. */
-extern int cfc_get_new_slot(CONTEXT_FREE_CALLBACK *cfc,
-			    jobject new_object,
-			    void **array_of_containers,
-			    void *this_container);
-
-extern void cfc_set_callback_object(CONTEXT_FREE_CALLBACK *cfc,
-				    JNIEnv *jnienv, jobject val);
-
-extern int cfcget_slot(CONTEXT_FREE_CALLBACK *cfc);
-extern jobject get_callback_object(CONTEXT_FREE_CALLBACK *cfc);
-
-/****************************************************************
- *
  * Declaration of class DBT_javainfo
  *
  * A DBT_javainfo is created whenever a Dbt (java) object is created,
@@ -70,8 +36,11 @@ extern jobject get_callback_object(CONTEXT_FREE_CALLBACK *cfc);
 typedef struct _dbt_javainfo
 {
 	DBT dbt;
+	DB *db_;		/* associated DB */
+	jobject dbtref_;	/* the java Dbt object */
 	jbyteArray array_;
 	int offset_;
+	int create_array_;      /* flag to create the array as needed */
 }
 DBT_JAVAINFO;  /* used with all 'dbtji' functions */
 
@@ -116,13 +85,14 @@ typedef struct _db_env_javainfo
 	JavaVM *javavm_;
 	int is_dbopen_;
 	char *errpfx_;
-	jobject jdbref_;
-	jobject jenvref_;
-	jobject default_errcall_;
-	jobject errcall_;
+	jobject jdbref_;	/* temporary reference */
+	jobject jenvref_;	/* temporary reference */
+	jobject default_errcall_; /* global reference */
+	jobject errcall_;	/* global reference */
+	jobject feedback_;	/* global reference */
+	jobject tx_recover_;	/* global reference */
+	jobject recovery_init_;	/* global reference */
 	unsigned char *conflict_;
-	jobject feedback_;
-	jobject recovery_init_;
 }
 DB_ENV_JAVAINFO;  /* used with all 'dbjie' functions */
 
@@ -154,6 +124,11 @@ extern void dbjie_set_recovery_init_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 					   DB_ENV *dbenv, jobject value);
 extern int dbjie_call_recovery_init(DB_ENV_JAVAINFO *, DB_ENV *dbenv,
 				    jobject jenv);
+extern void dbjie_set_tx_recover_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
+					DB_ENV *dbenv, jobject value);
+extern int dbjie_call_tx_recover(DB_ENV_JAVAINFO *,
+				 DB_ENV *dbenv, jobject jenv,
+				 DBT *dbt, DB_LSN *lsn, int recops);
 extern jobject dbjie_get_errcall(DB_ENV_JAVAINFO *) ;
 extern int dbjie_is_dbopen(DB_ENV_JAVAINFO *);
 
@@ -173,9 +148,20 @@ extern int dbjie_is_dbopen(DB_ENV_JAVAINFO *);
 typedef struct _db_javainfo
 {
 	JavaVM *javavm_;
-	jobject jdbref_;
-	jobject feedback_;
-	jint flags_;
+	jobject jdbref_;	/* temporary reference during callback */
+	jobject feedback_;	/* global reference */
+	jobject append_recno_;  /* global reference */
+	jobject bt_compare_;    /* global reference */
+	jobject bt_prefix_;	/* global reference */
+	jobject dup_compare_;	/* global reference */
+	jobject h_hash_;	/* global reference */
+	jmethodID feedback_method_id_;
+	jmethodID append_recno_method_id_;
+	jmethodID bt_compare_method_id_;
+	jmethodID bt_prefix_method_id_;
+	jmethodID dup_compare_method_id_;
+	jmethodID h_hash_method_id_;
+	jint construct_flags_;
 } DB_JAVAINFO;
 
 /* create/initialize an object */
@@ -194,5 +180,21 @@ extern jint dbji_get_flags();
 extern void dbji_set_feedback_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
 extern void dbji_call_feedback(DB_JAVAINFO *, DB *db, jobject jdb,
 			       int opcode, int percent);
+
+extern void dbji_set_append_recno_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
+extern int dbji_call_append_recno(DB_JAVAINFO *, DB *db, jobject jdb,
+				  DBT *dbt, jint recno);
+extern void dbji_set_bt_compare_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
+extern int dbji_call_bt_compare(DB_JAVAINFO *, DB *db, jobject jdb,
+				const DBT *dbt1, const DBT *dbt2);
+extern void dbji_set_bt_prefix_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
+extern size_t dbji_call_bt_prefix(DB_JAVAINFO *, DB *db, jobject jdb,
+				  const DBT *dbt1, const DBT *dbt2);
+extern void dbji_set_dup_compare_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
+extern int dbji_call_dup_compare(DB_JAVAINFO *, DB *db, jobject jdb,
+				 const DBT *dbt1, const DBT *dbt2);
+extern void dbji_set_h_hash_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
+extern int dbji_call_h_hash(DB_JAVAINFO *, DB *db, jobject jdb,
+			    const void *data, int len);
 
 #endif /* !_JAVA_INFO_H_ */

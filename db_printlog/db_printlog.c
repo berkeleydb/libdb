@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_printlog.c,v 11.15 2000/05/31 15:09:58 bostic Exp $";
+    "$Id: db_printlog.c,v 11.23 2001/01/18 18:36:58 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -32,9 +32,9 @@ static const char revid[] =
 #include "qam.h"
 #include "txn.h"
 
-void	db_init __P((char *));
 int	main __P((int, char *[]));
 void	usage __P((void));
+void	version_check __P((void));
 
 DB_ENV	*dbenv;
 const char
@@ -49,10 +49,13 @@ main(argc, argv)
 	extern int optind;
 	DBT data;
 	DB_LSN key;
-	int ch, e_close, exitval, ret;
+	int ch, e_close, exitval, nflag, ret;
 	char *home;
 
+	version_check();
+
 	e_close = exitval = 0;
+	nflag = 0;
 	home = NULL;
 	while ((ch = getopt(argc, argv, "h:NV")) != EOF)
 		switch (ch) {
@@ -60,12 +63,7 @@ main(argc, argv)
 			home = optarg;
 			break;
 		case 'N':
-			if ((ret = db_env_set_mutexlocks(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_mutexlocks: %s\n",
-				    progname, db_strerror(ret));
-				return (1);
-			}
+			nflag = 1;
 			if ((ret = db_env_set_panicstate(0)) != 0) {
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
@@ -103,14 +101,18 @@ main(argc, argv)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
+	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+		dbenv->err(dbenv, ret, "set_mutexlocks");
+		goto shutdown;
+	}
+
 	/*
-	 * An environment is required, but as we may be called to display
-	 * information for a single log file, we create one if it does not
-	 * already exist.  If we create it, we create it private so that
-	 * it automatically goes away when we're done.
+	 * An environment is required, but as all we're doing is reading log
+	 * files, we create one if it doesn't already exist.  If we create
+	 * it, create it private so it automatically goes away when we're done.
 	 */
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_INIT_LOG | DB_USE_ENVIRON, 0)) != 0 &&
+	    DB_JOINENV | DB_USE_ENVIRON, 0)) != 0 &&
 	    (ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_LOG | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
@@ -140,12 +142,11 @@ main(argc, argv)
 
 		/*
 		 * XXX
-		 * We're looking into an opaque structure, here.
+		 * We use DB_TXN_ABORT as our op because that's the only op
+		 * that calls the underlying recovery function without any
+		 * consideration as to the contents of the transaction list.
 		 */
-		if (dbenv->tx_recover != NULL)
-			ret = dbenv->tx_recover(dbenv, &data, &key, 0, NULL);
-		else
-			ret = __db_dispatch(dbenv, &data, &key, 0, NULL);
+		ret = __db_dispatch(dbenv, &data, &key, DB_TXN_ABORT, NULL);
 
 		/*
 		 * XXX
@@ -179,4 +180,21 @@ usage()
 {
 	fprintf(stderr, "usage: db_printlog [-NV] [-h home]\n");
 	exit (1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

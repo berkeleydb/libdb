@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 11.21 2000/06/07 01:11:50 bostic Exp $";
+static const char revid[] = "$Id: os_map.c,v 11.22 2000/10/26 14:18:08 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -51,7 +51,7 @@ __os_r_sysattach(dbenv, infop, rp)
 	 */
 	is_system = F_ISSET(dbenv, DB_ENV_SYSTEM_MEM) ||
 	    (!F_ISSET(dbenv, DB_ENV_PRIVATE) && __os_is_winnt() == 0);
-		
+
 	/*
 	 * Map the file in.  If we're creating an in-system-memory region,
 	 * specify a segment ID (which is never used again) so that the

@@ -58,6 +58,20 @@ __db_env_create_1(req)
 	return (&reply);
 }
 
+__env_flags_reply *
+__db_env_flags_1(req)
+	__env_flags_msg *req;
+{
+	static __env_flags_reply reply; /* must be static */
+
+	__env_flags_1_proc(req->dbenvcl_id,
+	    req->flags,
+	    req->onoff,
+	    &reply);
+
+	return (&reply);
+}
+
 __env_open_reply *
 __db_env_open_1(req)
 	__env_open_msg *req;
@@ -197,6 +211,19 @@ __db_db_del_1(req)
 	return (&reply);
 }
 
+__db_extentsize_reply *
+__db_db_extentsize_1(req)
+	__db_extentsize_msg *req;
+{
+	static __db_extentsize_reply reply; /* must be static */
+
+	__db_extentsize_1_proc(req->dbpcl_id,
+	    req->extentsize,
+	    &reply);
+
+	return (&reply);
+}
+
 __db_flags_reply *
 __db_db_flags_1(req)
 	__db_flags_msg *req;
@@ -220,7 +247,7 @@ __db_db_get_1(req)
 	if (__db_get_free)
 		xdr_free((xdrproc_t)xdr___db_get_reply, (void *)&reply);
 	__db_get_free = 0;
-	
+
 	/* Reinitialize allocated fields */
 	reply.keydata.keydata_val = NULL;
 	reply.datadata.datadata_val = NULL;
@@ -341,7 +368,7 @@ __db_db_put_1(req)
 	if (__db_put_free)
 		xdr_free((xdrproc_t)xdr___db_put_reply, (void *)&reply);
 	__db_put_free = 0;
-	
+
 	/* Reinitialize allocated fields */
 	reply.keydata.keydata_val = NULL;
 
@@ -443,7 +470,7 @@ __db_db_stat_1(req)
 	if (__db_stat_free)
 		xdr_free((xdrproc_t)xdr___db_stat_reply, (void *)&reply);
 	__db_stat_free = 0;
-	
+
 	/* Reinitialize allocated fields */
 	reply.statslist = NULL;
 
@@ -621,7 +648,7 @@ __db_dbc_get_1(req)
 	if (__dbc_get_free)
 		xdr_free((xdrproc_t)xdr___dbc_get_reply, (void *)&reply);
 	__dbc_get_free = 0;
-	
+
 	/* Reinitialize allocated fields */
 	reply.keydata.keydata_val = NULL;
 	reply.datadata.datadata_val = NULL;
@@ -653,7 +680,7 @@ __db_dbc_put_1(req)
 	if (__dbc_put_free)
 		xdr_free((xdrproc_t)xdr___dbc_put_reply, (void *)&reply);
 	__dbc_put_free = 0;
-	
+
 	/* Reinitialize allocated fields */
 	reply.keydata.keydata_val = NULL;
 

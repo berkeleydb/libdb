@@ -1,5 +1,4 @@
- 
-<!--$Id: env_create.so,v 10.11 2000/03/17 01:53:59 bostic Exp $-->
+<!--$Id: env_create.so,v 10.12 2000/10/25 18:51:08 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_env_create</h1>
@@ -26,9 +25,9 @@ int
 db_env_create(DB_ENV **dbenvp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The db_env_create function creates a DB_ENV structure which is the handle
-for a Berkeley DB environment.  A pointer to this structure is returned in the
-memory referenced by <b>dbenvp</b>.
+<p>The db_env_create function creates a DB_ENV structure which is
+the handle for a Berkeley DB environment.  A pointer to this structure is
+returned in the memory referenced by <b>dbenvp</b>.
 <p>The <b>flags</b> parameter must be set to 0 or the following value:
 <p><dl compact>
 <p><dt><a name="DB_CLIENT">DB_CLIENT</a><dd>Create a client environment to connect to a server.
@@ -39,6 +38,10 @@ Prior to making any environment or database method calls, the application
 must call the <a href="../api_c/env_set_server.html">DBENV-&gt;set_server</a> function to establish the
 connection to the server.
 </dl>
+<p>The DB_ENV handle contains a special field, "app_private", which
+is declared as type "void *".  This field is provided for the use of
+the application program.  It is initialized to NULL and is not further
+used by Berkeley DB in any way.
 <p>The db_env_create function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
 <p>The db_env_create function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
@@ -57,6 +60,8 @@ in the same way.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
+<a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a>,
+<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.

@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_trickle.c,v 11.11 2000/04/20 21:14:19 bostic Exp $";
+static const char revid[] = "$Id: mp_trickle.c,v 11.12 2000/11/30 00:58:41 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #endif
 

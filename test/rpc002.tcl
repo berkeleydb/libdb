@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: rpc002.tcl,v 1.4 2000/05/31 19:07:00 sue Exp $
+#	$Id: rpc002.tcl,v 1.7 2000/10/27 13:23:56 sue Exp $
 #
 # RPC Test 2
 # Test invalid RPC functions and make sure we error them correctly
@@ -13,24 +13,21 @@ proc rpc002 { } {
 	global errorInfo
 	source ./include.tcl
 
-	set curdir [pwd]
-	cd $testdir
-	set fulltestdir [pwd]
-	cd $curdir
-	cleanup $testdir
 	set testfile "rpc002.db"
-	set home [file tail $testdir]
+	set home [file tail $rpc_testdir]
 	#
 	# First start the server.
 	#
 	puts "Rpc002: Unsupported interface test"
 	if { [string compare $rpc_server "localhost"] == 0 } {
-	       set dpid [exec ./berkeley_db_svc -h $fulltestdir &]
+	       set dpid [exec $util_path/berkeley_db_svc -h $rpc_testdir &]
 	} else {
-	       set dpid [exec rsh $curdir/berkeley_db_svc -h $fulltestdir &]
+	       set dpid [exec rsh $rpc_server $rpc_path/berkeley_db_svc \
+		   -h $rpc_testdir &]
 	}
 	puts "\tRpc002.a: Started server, pid $dpid"
 	tclsleep 2
+	remote_cleanup $rpc_server $rpc_testdir $testdir
 
 	puts "\tRpc002.b: Unsupported env options"
 	#
@@ -38,16 +35,16 @@ proc rpc002 { } {
 	# tested on the 'berkdb env' line.
 	#
 	set rlist {
-	{ "-data_dir $fulltestdir"	"Rpc002.b0"}
+	{ "-data_dir $rpc_testdir"	"Rpc002.b0"}
 	{ "-log_buffer 512"		"Rpc002.b1"}
-	{ "-log_dir $fulltestdir"	"Rpc002.b2"}
+	{ "-log_dir $rpc_testdir"	"Rpc002.b2"}
 	{ "-log_max 100"		"Rpc002.b3"}
 	{ "-lock_conflict {3 {0 0 0 0 0 1 0 1 1}}"	"Rpc002.b4"}
 	{ "-lock_detect default"	"Rpc002.b5"}
 	{ "-lock_max 100"		"Rpc002.b6"}
 	{ "-mmapsize 100"		"Rpc002.b7"}
 	{ "-shm_key 100"		"Rpc002.b9"}
-	{ "-tmp_dir $fulltestdir"	"Rpc002.b10"}
+	{ "-tmp_dir $rpc_testdir"	"Rpc002.b10"}
 	{ "-txn_max 100"		"Rpc002.b11"}
 	{ "-txn_timestamp 100"		"Rpc002.b12"}
 	{ "-verbose {recovery on}"		"Rpc002.b13"}

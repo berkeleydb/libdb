@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_recover.c,v 11.12 2000/04/27 21:31:36 ubell Exp $";
+    "$Id: db_recover.c,v 11.17 2001/01/18 18:36:58 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char revid[] =
 #endif
 #endif
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -38,10 +37,10 @@ static const char revid[] =
 #include "common_ext.h"
 #include "txn.h"
 
-void	 db_init __P((char *, int));
 int	 main __P((int, char *[]));
 void	 read_timestamp __P((char *, time_t *));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV	*dbenv;
 const char
@@ -59,6 +58,8 @@ main(argc, argv)
 	u_int32_t flags;
 	int ch, exitval, fatal_recover, ret, verbose;
 	char *home;
+
+	version_check();
 
 	home = NULL;
 	timestamp = 0;
@@ -267,4 +268,21 @@ usage()
 	(void)fprintf(stderr,
 	    "usage: db_recover [-cVv] [-h home] [-t [[CC]YY]MMDDhhmm[.SS]]\n");
 	exit(1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_lk_conflicts.so,v 10.21 2000/05/01 21:57:44 bostic Exp $-->
+<!--$Id: env_set_lk_conflicts.so,v 10.22 2000/12/08 20:43:15 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_lk_conflicts</h1>
@@ -24,17 +23,17 @@
 <p>
 int
 DBENV-&gt;set_lk_conflicts(DB_ENV *dbenv,
-    u_int8_t *lk_conflicts, int lk_nmodes);
+    u_int8_t *conflicts, int nmodes);
 </pre></h3>
 <h1>Description</h1>
 <p>Set the locking conflicts matrix.
-The <b>lk_conflicts</b> argument
-is an <b>lk_nmodes</b> by <b>lk_nmodes</b> array.
+The <b>conflicts</b> argument
+is an <b>nmodes</b> by <b>nmodes</b> array.
 A non-0 value for the array element:
-<p><blockquote><pre>lk_conflicts[requested_mode][held_mode]</pre></blockquote>
+<p><blockquote><pre>conflicts[requested_mode][held_mode]</pre></blockquote>
 <p>indicates that requested_mode and held_mode conflict.  The
 <i>not-granted</i> mode must be represented by 0.
-<p>If no <b>lk_conflicts</b> value is specified, the conflicts array
+<p>If no <b>conflicts</b> value is specified, the conflicts array
 <b>db_rw_conflicts</b> is used; see <a href="../ref/lock/stdmode.html">Standard Lock Modes</a> for a description of that array.
 <p>The DBENV-&gt;set_lk_conflicts interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
@@ -50,6 +49,9 @@ the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a>,
+<a href="../api_c/env_set_lk_max_locks.html">DBENV-&gt;set_lk_max_locks</a>,
+<a href="../api_c/env_set_lk_max_lockers.html">DBENV-&gt;set_lk_max_lockers</a>,
+<a href="../api_c/env_set_lk_max_objects.html">DBENV-&gt;set_lk_max_objects</a>,
 <a href="../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a>,
 <a href="../api_c/lock_detect.html">lock_detect</a>,
 <a href="../api_c/lock_get.html">lock_get</a>,

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test016.tcl,v 11.16 2000/05/22 12:51:38 bostic Exp $
+#	$Id: test016.tcl,v 11.17 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 16 {access method}
 # Partial put test where partial puts make the record smaller.
@@ -49,7 +49,7 @@ proc test016 { method {nentries 10000} args } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE

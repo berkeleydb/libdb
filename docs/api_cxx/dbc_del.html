@@ -1,4 +1,3 @@
- 
 <!--$Id: dbc_del.so,v 10.23 2000/05/22 20:51:46 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Dbc::del</h1>
@@ -46,8 +45,8 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
 <p><dl compact>
-<p><dt>EPERM  <dd>Write attempted on read-only cursor when the <a href="../api_cxx/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flag was 
-specified to <a href="../api_cxx/env_open.html">DbEnv::open</a>. 
+<p><dt>EPERM  <dd>Write attempted on read-only cursor when the <a href="../api_cxx/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flag was
+specified to <a href="../api_cxx/env_open.html">DbEnv::open</a>.
 </dl>
 <p>The Dbc::del method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
 If a catastrophic error has occurred, the Dbc::del method may fail and either

@@ -3,30 +3,31 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd006.tcl,v 11.14 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: recd006.tcl,v 11.21 2000/12/07 19:13:46 sue Exp $
 #
 # Recovery Test 6.
 # Test nested transactions.
-proc recd006 { method {select 0} } {
+proc recd006 { method {select 0} args} {
 	global kvals
 	source ./include.tcl
 
+	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	if { [is_record_based $method] == 1 } {
+	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Recd006 skipping for method $method"
 		return
 	}
 	puts "Recd006: $method nested transactions"
 
 	# Create the database and environment.
-	cleanup $testdir
+	env_cleanup $testdir
 
-	set testfile $testdir/recd006.db
 	set dbfile recd006.db
+	set testfile $testdir/$dbfile
 
 	puts "\tRecd006.a: create database"
-	set oflags "-create $omethod $testfile"
+	set oflags "-create $args $omethod $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -129,7 +130,8 @@ proc recd006 { method {select 0} } {
 
 	puts "\tRecd006.k: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

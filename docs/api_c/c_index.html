@@ -1,5 +1,4 @@
- 
-<!--$Id: c_index.so,v 10.46 2000/05/31 15:10:00 bostic Exp $-->
+<!--$Id: c_index.so,v 10.53 2000/12/21 19:11:27 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -24,10 +23,12 @@
 <tr><td><a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a></td><td>Set error message FILE</td></tr>
 <tr><td><a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a></td><td>Set error message prefix</td></tr>
 <tr><td><a href="../api_c/env_set_feedback.html">DBENV-&gt;set_feedback</a></td><td>Set feedback callback</td></tr>
+<tr><td><a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a></td><td>Environment configuration</td></tr>
+<tr><td><a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a></td><td>Turn off mutual exclusion locking</td></tr>
 <tr><td><a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a></td><td>Set panic callback</td></tr>
 <tr><td><a href="../api_c/env_set_rec_init.html">DBENV-&gt;set_recovery_init</a></td><td>Set recovery initialization callback</td></tr>
 <tr><td><a href="../api_c/env_set_server.html">DBENV-&gt;set_server</a></td><td>Establish server connection</td></tr>
-<tr><td><a href="../api_c/env_set_shm_key.html">DBENV-&gt;set_shm_key</a></td><td>Specify system memory shared segment ID</td></tr>
+<tr><td><a href="../api_c/env_set_shm_key.html">DBENV-&gt;set_shm_key</a></td><td>Set system memory shared segment ID</td></tr>
 <tr><td><a href="../api_c/env_set_tmp_dir.html">DBENV-&gt;set_tmp_dir</a></td><td>Set the environment temporary file directory</td></tr>
 <tr><td><a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a></td><td>Set verbose messages</td></tr>
 <tr><td><a href="../api_c/env_strerror.html">db_strerror</a></td><td>Error strings</td></tr>
@@ -48,28 +49,30 @@
 <tr><td><a href="../api_c/db_put.html">DB-&gt;put</a></td><td>Store items into a database</td></tr>
 <tr><td><a href="../api_c/db_remove.html">DB-&gt;remove</a></td><td>Remove a database</td></tr>
 <tr><td><a href="../api_c/db_rename.html">DB-&gt;rename</a></td><td>Rename a database</td></tr>
-<tr><td><a href="../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a></td><td>Specify a Btree comparison function</td></tr>
+<tr><td><a href="../api_c/db_set_append_recno.html">DB-&gt;set_append_recno</a></td><td>Set record append callback</td></tr>
+<tr><td><a href="../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a></td><td>Set a Btree comparison function</td></tr>
 <tr><td><a href="../api_c/db_set_bt_minkey.html">DB-&gt;set_bt_minkey</a></td><td>Set the minimum number of keys per Btree page</td></tr>
-<tr><td><a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a></td><td>Specify a Btree prefix comparison function</td></tr>
+<tr><td><a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a></td><td>Set a Btree prefix comparison function</td></tr>
 <tr><td><a href="../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a></td><td>Set the database cache size</td></tr>
-<tr><td><a href="../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a></td><td>Specify a duplicate comparison function</td></tr>
+<tr><td><a href="../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a></td><td>Set a duplicate comparison function</td></tr>
 <tr><td><a href="../api_c/db_set_errcall.html">DB-&gt;set_errcall</a></td><td>Set error message callback</td></tr>
 <tr><td><a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a></td><td>Set error message FILE</td></tr>
 <tr><td><a href="../api_c/db_set_errpfx.html">DB-&gt;set_errpfx</a></td><td>Set error message prefix</td></tr>
 <tr><td><a href="../api_c/db_set_feedback.html">DB-&gt;set_feedback</a></td><td>Set feedback callback</td></tr>
 <tr><td><a href="../api_c/db_set_flags.html">DB-&gt;set_flags</a></td><td>General database configuration</td></tr>
 <tr><td><a href="../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a></td><td>Set the Hash table density</td></tr>
-<tr><td><a href="../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a></td><td>Specify a hashing function</td></tr>
+<tr><td><a href="../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a></td><td>Set a hashing function</td></tr>
 <tr><td><a href="../api_c/db_set_h_nelem.html">DB-&gt;set_h_nelem</a></td><td>Set the Hash table size</td></tr>
 <tr><td><a href="../api_c/db_set_lorder.html">DB-&gt;set_lorder</a></td><td>Set the database byte order</td></tr>
-<tr><td><a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a></td><td>Specify a local space allocation function</td></tr>
+<tr><td><a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a></td><td>Set a local space allocation function</td></tr>
 <tr><td><a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a></td><td>Set the underlying database page size</td></tr>
 <tr><td><a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a></td><td>Set panic callback</td></tr>
+<tr><td><a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a></td><td>Set Queue database extent size</td></tr>
 <tr><td><a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a></td><td>Set the variable-length record delimiter</td></tr>
 <tr><td><a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a></td><td>Set the fixed-length record length</td></tr>
 <tr><td><a href="../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a></td><td>Set the fixed-length record pad byte</td></tr>
 <tr><td><a href="../api_c/db_set_re_source.html">DB-&gt;set_re_source</a></td><td>Set the backing Recno text file</td></tr>
-<tr><td><a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a></td><td>Specify a local space allocation function</td></tr>
+<tr><td><a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a></td><td>Set a local space allocation function</td></tr>
 <tr><td><a href="../api_c/db_stat.html">DB-&gt;stat</a></td><td>Return database statistics</td></tr>
 <tr><td><a href="../api_c/db_sync.html">DB-&gt;sync</a></td><td>Flush a database to stable storage</td></tr>
 <tr><td><a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a></td><td>Upgrade a database</td></tr>
@@ -85,7 +88,10 @@
 <tr><th>Lock Manager</th><th>Description</th></tr>
 <tr><td><a href="../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a></td><td>Set lock conflicts matrix</td></tr>
 <tr><td><a href="../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a></td><td>Set automatic deadlock detection</td></tr>
-<tr><td><a href="../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a></td><td>Set maximum number of locks</td></tr>
+<tr><td><a href="../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a></td><td>Set maximum number of locks (<b>Deprecated</b>)</td></tr>
+<tr><td><a href="../api_c/env_set_lk_max_locks.html">DBENV-&gt;set_lk_max_locks</a></td><td>Set maximum number of locks</td></tr>
+<tr><td><a href="../api_c/env_set_lk_max_lockers.html">DBENV-&gt;set_lk_max_lockers</a></td><td>Set maximum number of lockers</td></tr>
+<tr><td><a href="../api_c/env_set_lk_max_objects.html">DBENV-&gt;set_lk_max_objects</a></td><td>Set maximum number of lock objects</td></tr>
 <tr><td><a href="../api_c/lock_detect.html">lock_detect</a></td><td>Perform deadlock detection</td></tr>
 <tr><td><a href="../api_c/lock_get.html">lock_get</a></td><td>Acquire a lock</td></tr>
 <tr><td><a href="../api_c/lock_id.html">lock_id</a></td><td>Acquire a locker ID</td></tr>
@@ -136,7 +142,6 @@
 <tr><td><a href="../api_c/dbt.html">DBT</a></td><td>DBT structures</td></tr>
 <tr><td><a href="../api_c/db_lsn.html">DB_LSN</a></td><td>DB_LSN structures</td></tr>
 <tr><th>DB Library Configuration</th><th>Description</th></tr>
-<tr><td><a href="../api_c/env_set_mutexlocks.html">db_env_set_mutexlocks</a></td><td>Turn off mutual exclusion locking</td></tr>
 <tr><td><a href="../api_c/env_set_pageyield.html">db_env_set_pageyield</a></td><td>Yield the processor on each page access</td></tr>
 <tr><td><a href="../api_c/env_set_panicstate.html">db_env_set_panicstate</a></td><td>Reset panic state</td></tr>
 <tr><td><a href="../api_c/env_set_region_init.html">db_env_set_region_init</a></td><td>Fault in shared regions on initial access</td></tr>

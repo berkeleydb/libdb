@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mdbscript.tcl,v 11.22 2000/04/21 18:36:21 krinsky Exp $
+#	$Id: mdbscript.tcl,v 11.23 2000/10/09 02:26:11 krinsky Exp $
 #
 # Process script for the multi-process db tester.
 
@@ -302,14 +302,8 @@ for { set i 0 } { $i < $iter } { incr i } {
 					if { $renum == 1 } {
 						set ret [$dbc put -before \
 						    [chop_data $method $rec]]
-						if { $k == $nkeys } {
-							set rkey \
-							    [expr $nkeys - 1]
-						} else {
-							set rkey $k
-						}
 						error_check_good \
-						    "$dbc put $k" $ret $rkey
+						    "$dbc put $k" $ret $k
 					} elseif { \
 					    [is_record_based $method] == 1 } {
 						error_check_good "$dbc close" \

@@ -8,12 +8,11 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_log.c,v 11.19 2000/06/01 20:33:34 bostic Exp $";
+static const char revid[] = "$Id: tcl_log.c,v 11.21 2000/11/30 00:58:45 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-#include <errno.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +57,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 	while (i < objc) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
 		    archopts, "option", TCL_EXACT, &optindex) != TCL_OK)
-			return(IS_HELP(objv[i]));
+			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum archopts)optindex) {
 		case ARCH_ABS:
@@ -273,7 +272,7 @@ tcl_LogGet(interp, objc, objv, envp)
 	while (i < objc) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
 		    loggetopts, "option", TCL_EXACT, &optindex) != TCL_OK)
-			return(IS_HELP(objv[i]));
+			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum loggetopts)optindex) {
 		case LOGGET_CKP:
@@ -395,7 +394,7 @@ tcl_LogPut(interp, objc, objv, envp)
 	if (objc == 4) {
 		if (Tcl_GetIndexFromObj(interp, objv[2],
 		    logputopts, "option", TCL_EXACT, &optindex) != TCL_OK) {
-			return(IS_HELP(objv[2]));
+			return (IS_HELP(objv[2]));
 		}
 		switch ((enum logputopts)optindex) {
 		case LOGPUT_CKP:

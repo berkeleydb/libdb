@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test008.tcl,v 11.15 2000/05/22 12:51:38 bostic Exp $
+#	$Id: test008.tcl,v 11.17 2000/10/19 17:35:39 sue Exp $
 #
 # DB Test 8 {access method}
 # Take the source files and dbtest executable and enter their names as the
@@ -35,17 +35,21 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/$tnum.db
+		set env NULL
 	} else {
 		set testfile $tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	set t4 $testdir/t4
 
-	cleanup $testdir
+	cleanup $testdir $env
 
-	set db [eval {berkdb_open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open -create -truncate -mode 0644} \
+	    $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""
@@ -84,11 +88,11 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 	puts "\tTest00$reopen.b: Delete re-add loop"
 	foreach i "1 2 4 8 16" {
 		for {set ndx 0} {$ndx < $count} { incr ndx $i} {
-	 set r [eval {$db del} $txn {$names($ndx)}]
+			set r [eval {$db del} $txn {$names($ndx)}]
 			error_check_good db_del:$names($ndx) $r 0
 		}
 		for {set ndx 0} {$ndx < $count} { incr ndx $i} {
-	 put_file $db $txn $pflags $names($ndx)
+			put_file $db $txn $pflags $names($ndx)
 		}
 	}
 

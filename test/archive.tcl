@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: archive.tcl,v 11.11 2000/04/27 19:56:00 krinsky Exp $
+#	$Id: archive.tcl,v 11.14 2000/10/27 13:23:55 sue Exp $
 #
 # Options are:
 # -checkrec <checkpoint frequency"
@@ -18,7 +18,7 @@ proc archive_command { args } {
 	source ./include.tcl
 
 	# Catch a list of files output by db_archive.
-	catch { eval exec ./db_archive $args } output
+	catch { eval exec $util_path/db_archive $args } output
 
 	if { $is_windows_test == 1 || 1 } {
 		# On Windows, convert all filenames to use forward slashes.
@@ -54,7 +54,7 @@ proc archive { args } {
 
 	# Clean out old log if it existed
 	puts "Unlinking log: error message OK"
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now run the various functionality tests
 	set eflags "-create -txn -home $testdir \

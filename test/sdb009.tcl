@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb009.tcl,v 11.3 2000/05/22 12:51:38 bostic Exp $
+#	$Id: sdb009.tcl,v 11.4 2000/08/25 14:21:53 sue Exp $
 #
 # Subdatabase Test 9 (replacement)
 # Test the DB->rename method.
@@ -25,7 +25,7 @@ proc subdb009 { method args } {
 	set newsdb NEWDB
 
 	# Make sure we're starting from a clean slate.
-	cleanup $testdir
+	cleanup $testdir NULL
 	error_check_bad "$file exists" [file exists $file] 1
 
 	puts "\tSubdb009.a: Create/rename file"

@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_compare.c,v 11.10 2000/02/14 02:59:37 bostic Exp $";
+static const char revid[] = "$Id: bt_compare.c,v 11.12 2000/10/26 19:00:28 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,8 +58,8 @@ static const char revid[] = "$Id: bt_compare.c,v 11.10 2000/02/14 02:59:37 bosti
  * __bam_cmp --
  *	Compare a key to a given record.
  *
- * PUBLIC: int __bam_cmp __P((DB *, const DBT *,
- * PUBLIC:    PAGE *, u_int32_t, int (*)(const DBT *, const DBT *), int *));
+ * PUBLIC: int __bam_cmp __P((DB *, const DBT *, PAGE *,
+ * PUBLIC:    u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
 __bam_cmp(dbp, dbt, h, indx, func, cmpp)
@@ -67,7 +67,7 @@ __bam_cmp(dbp, dbt, h, indx, func, cmpp)
 	const DBT *dbt;
 	PAGE *h;
 	u_int32_t indx;
-	int (*func)__P((const DBT *, const DBT *));
+	int (*func)__P((DB *, const DBT *, const DBT *));
 	int *cmpp;
 {
 	BINTERNAL *bi;
@@ -98,8 +98,7 @@ __bam_cmp(dbp, dbt, h, indx, func, cmpp)
 		else {
 			pg_dbt.data = bk->data;
 			pg_dbt.size = bk->len;
-			pg_dbt.app_private = NULL;
-			*cmpp = func(dbt, &pg_dbt);
+			*cmpp = func(dbp, dbt, &pg_dbt);
 			return (0);
 		}
 		break;
@@ -132,8 +131,7 @@ __bam_cmp(dbp, dbt, h, indx, func, cmpp)
 		else {
 			pg_dbt.data = bi->data;
 			pg_dbt.size = bi->len;
-			pg_dbt.app_private = NULL;
-			*cmpp = func(dbt, &pg_dbt);
+			*cmpp = func(dbp, dbt, &pg_dbt);
 			return (0);
 		}
 		break;
@@ -152,14 +150,17 @@ __bam_cmp(dbp, dbt, h, indx, func, cmpp)
  * __bam_defcmp --
  *	Default comparison routine.
  *
- * PUBLIC: int __bam_defcmp __P((const DBT *, const DBT *));
+ * PUBLIC: int __bam_defcmp __P((DB *, const DBT *, const DBT *));
  */
 int
-__bam_defcmp(a, b)
+__bam_defcmp(dbp, a, b)
+	DB *dbp;
 	const DBT *a, *b;
 {
 	size_t len;
 	u_int8_t *p1, *p2;
+
+	COMPQUIET(dbp, NULL);
 
 	/*
 	 * Returns:
@@ -184,14 +185,17 @@ __bam_defcmp(a, b)
  * __bam_defpfx --
  *	Default prefix routine.
  *
- * PUBLIC: size_t __bam_defpfx __P((const DBT *, const DBT *));
+ * PUBLIC: size_t __bam_defpfx __P((DB *, const DBT *, const DBT *));
  */
 size_t
-__bam_defpfx(a, b)
+__bam_defpfx(dbp, a, b)
+	DB *dbp;
 	const DBT *a, *b;
 {
 	size_t cnt, len;
 	u_int8_t *p1, *p2;
+
+	COMPQUIET(dbp, NULL);
 
 	cnt = 1;
 	len = a->size > b->size ? b->size : a->size;

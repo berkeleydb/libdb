@@ -1,17 +1,16 @@
- 
-<!--$Id: extending.so,v 10.30.2.1 2000/07/19 18:16:40 bostic Exp $-->
+<!--$Id: extending.so,v 10.32 2000/07/25 16:31:19 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<title>Berkeley DB Reference Guide: Application-specific logging and recovery</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
-<td width="1%"><a href="../../ref/program/compatible.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/runtime.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/program/recimp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/runtime.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Application-specific logging and recovery</h1>
@@ -236,7 +235,7 @@ your own recovery process based on the recovery program provided in
 db_recover/db_recover.c.  Note that your recovery functions will need to
 correctly process the log records produced by calls to <a href="../../api_c/txn_begin.html">txn_begin</a>
 and <a href="../../api_c/txn_commit.html">txn_commit</a>.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/program/compatible.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/runtime.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/program/recimp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/runtime.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

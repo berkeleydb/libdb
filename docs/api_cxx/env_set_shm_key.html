@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_shm_key.so,v 10.3.2.1 2000/07/05 13:57:56 bostic Exp $-->
+<!--$Id: env_set_shm_key.so,v 10.5 2000/08/09 15:45:52 sue Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv::set_shm_key</h1>
@@ -27,9 +26,9 @@ DbEnv::set_shm_key(long shm_key);
 </pre></h3>
 <h1>Description</h1>
 <p>Specify a base segment ID for Berkeley DB environment shared memory regions
-created in system memory on systems supporting X/Open-style shared memory
-interfaces, e.g., UNIX systems supporting <b>shmget</b>(2) and related
-System V IPC interfaces.
+created in system memory on VxWorks or systems supporting X/Open-style
+shared memory interfaces, e.g., UNIX systems supporting
+<b>shmget</b>(2) and related System V IPC interfaces.
 <p>This base segment ID will be used when Berkeley DB shared memory regions are
 first created.  It will be incremented a small integer value each time
 a new shared memory region is created, that is, if the base ID is 35,
@@ -52,11 +51,12 @@ segments on the system will not grow without bound.
 the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
 <p>The DbEnv::set_shm_key method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>The environment's base segment ID may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
-line with the string "set_shm_key", one or more whitespace characters, and the ID.
-Configuration in the <b>DB_CONFIG</b> file silently overrules
-configuration done using the DbEnv::set_shm_key method.
+<p>The database environment's base segment ID may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_shm_key", one or more whitespace characters,
+and the ID.  Because the <b>DB_CONFIG</b> file is read when the database
+environment is opened, it will silently overrule configuration done
+before that time.
 <h1>Errors</h1>
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
@@ -76,6 +76,8 @@ configuration done using the DbEnv::set_shm_key method.
 <a href="../api_cxx/env_set_errfile.html">DbEnv::set_errfile</a>,
 <a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>,
 <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
+<a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a>,
+<a href="../api_cxx/env_set_mutexlocks.html">DbEnv::set_mutexlocks</a>,
 <a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
 and
 <a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>.

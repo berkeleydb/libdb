@@ -43,13 +43,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_open.c,v 11.37 2000/05/23 18:08:05 krinsky Exp $";
+static const char revid[] = "$Id: bt_open.c,v 11.42 2000/11/30 00:58:28 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #endif
@@ -93,6 +92,18 @@ __bam_open(dbp, name, base_pgno, flags)
 	if (t->bt_compare == __bam_defcmp && t->bt_prefix != __bam_defpfx) {
 		__db_err(dbp->dbenv,
 "prefix comparison may not be specified for default comparison routine");
+		return (EINVAL);
+	}
+
+	/*
+	 * Verify that the bt_minkey value specified won't cause the
+	 * calculation of ovflsize to underflow [#2406] for this pagesize.
+	 */
+	if (B_MINKEY_TO_OVFLSIZE(t->bt_minkey, dbp->pgsize) >
+	    B_MINKEY_TO_OVFLSIZE(DEFMINKEYPAGE, dbp->pgsize)) {
+		__db_err(dbp->dbenv,
+		    "bt_minkey value of %lu too high for page size of %lu",
+		    (u_long)t->bt_minkey, (u_long)dbp->pgsize);
 		return (EINVAL);
 	}
 
@@ -280,14 +291,14 @@ __bam_read_root(dbp, name, base_pgno, flags)
 	root = NULL;
 	locked = 0;
 
-	/* 
+	/*
 	 * Get a cursor.  If DB_CREATE is specified, we may be creating
 	 * the root page, and to do that safely in CDB we need a write
-	 * cursor.  In STD_LOCKING mode, we'll synchronize using the 
+	 * cursor.  In STD_LOCKING mode, we'll synchronize using the
 	 * meta page lock instead.
 	 */
 	if ((ret = dbp->cursor(dbp, dbp->open_txn,
-	    &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbp->dbenv) ? 
+	    &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbp->dbenv) ?
 	    DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
@@ -324,13 +335,13 @@ again:	if (meta->dbmeta.magic != 0) {
 
 	/* If we're doing CDB; we now have to get the write lock. */
 	if (CDB_LOCKING(dbp->dbenv)) {
-		/* 
-		 * We'd better have DB_CREATE set if we're actually doing 
-		 * the create. 
+		/*
+		 * We'd better have DB_CREATE set if we're actually doing
+		 * the create.
 		 */
 		DB_ASSERT(LF_ISSET(DB_CREATE));
-	    	if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
-	    	    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
+		if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
+		    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
 			goto err;
 	}
 
@@ -448,7 +459,8 @@ DB_TEST_RECOVERY_LABEL
 			ret = t_ret;
 
 	/* We can release the metapage lock when we are done. */
-	(void)__LPUT(dbc, metalock);
+	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
+		ret = t_ret;
 
 	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;

@@ -1,5 +1,4 @@
- 
-<!--$Id: db_stat.so,v 10.36 2000/05/25 13:47:07 dda Exp $-->
+<!--$Id: db_stat.so,v 10.37 2000/10/03 21:55:45 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.stat</h1>
@@ -98,13 +97,11 @@ fields are available from DbBtreeStat:
 <p><dt>public int bt_magic;<dd>Magic number that identifies the file as a Btree database.
 <dt>public int bt_version;<dd>The version of the Btree database.
 <dt>public int bt_nkeys;<dd>For the Btree Access Method, the number of unique keys in the database.
+<p>For the Recno Access Method, the number of records in the database.
+<dt>public int bt_ndata;<dd>For the Btree Access Method, the number of key/data pairs in the database.
 <p>For the Recno Access Method, the number of records in the database.  If
-the database has been configured to not re-number records during deletion,
-the number of records may include records that have been deleted.
-<dt>public int bt_ndata;<dd>For the Btree Access Method, the number of key/data pairs in the database,
-<p>For the Recno Access Method, the number of records in the database.  If
-the database has been configured to not re-number records during deletion,
-the number of records may include records that have been deleted.
+the database has been configured to not re-number records during
+deletion, the number of records will only reflect undeleted records.
 <dt>public int bt_pagesize;<dd>Underlying database page size.
 <dt>public int bt_minkey;<dd>The minimum keys per page.
 <dt>public int bt_re_len;<dd>The length of fixed-length records.
@@ -169,6 +166,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

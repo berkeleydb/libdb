@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test022.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test022.tcl,v 11.10 2000/08/25 14:21:55 sue Exp $
 #
 # Test022: Test of DB->get_byteswapped
 proc test022 { method args } {
@@ -21,11 +21,14 @@ proc test022 { method args } {
 	if { $eindex == -1 } {
 		set testfile1 "$testdir/test022a.db"
 		set testfile2 "$testdir/test022b.db"
+		set env NULL
 	} else {
 		set testfile1 "test022a.db"
 		set testfile2 "test022b.db"
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	# Create two databases, one in each byte order.
 	set db1 [eval {berkdb_open -create \

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_lock.c,v 11.18 2000/04/21 18:18:58 bostic Exp $";
+static const char revid[] = "$Id: tcl_lock.c,v 11.21 2001/01/11 18:19:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -79,7 +79,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 	while (i < objc) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
 		    ldopts, "option", TCL_EXACT, &optindex) != TCL_OK)
-			return(IS_HELP(objv[i]));
+			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum ldopts)optindex) {
 		case LD_DEFAULT:
@@ -238,8 +238,15 @@ tcl_LockStat(interp, objc, objv, envp)
 	 */
 	MAKE_STAT_LIST("Region size", sp->st_regsize);
 	MAKE_STAT_LIST("Max locks", sp->st_maxlocks);
+	MAKE_STAT_LIST("Max lockers", sp->st_maxlockers);
+	MAKE_STAT_LIST("Max objects", sp->st_maxobjects);
 	MAKE_STAT_LIST("Lock modes", sp->st_nmodes);
-	MAKE_STAT_LIST("Number of lockers", sp->st_nlockers);
+	MAKE_STAT_LIST("Current number of locks", sp->st_nlocks);
+	MAKE_STAT_LIST("Maximum number of locks so far", sp->st_maxnlocks);
+	MAKE_STAT_LIST("Current number of lockers", sp->st_nlockers);
+	MAKE_STAT_LIST("Maximum number of lockers so far", sp->st_maxnlockers);
+	MAKE_STAT_LIST("Current number of objects", sp->st_nobjects);
+	MAKE_STAT_LIST("Maximum number of objects so far", sp->st_maxnobjects);
 	MAKE_STAT_LIST("Number of conflicts", sp->st_nconflicts);
 	MAKE_STAT_LIST("Lock requests", sp->st_nrequests);
 	MAKE_STAT_LIST("Lock releases", sp->st_nreleases);
@@ -370,7 +377,7 @@ tcl_LockVec(interp, objc, objv, envp)
 		i = 3;
 	} else {
 		if (IS_HELP(objv[2]) == TCL_OK)
-			return(TCL_OK);
+			return (TCL_OK);
 		Tcl_ResetResult(interp);
 		i = 2;
 	}
@@ -443,12 +450,12 @@ tcl_LockVec(interp, objc, objv, envp)
 			if (ret != 0) {
 				result = _ReturnSetup(interp, ret, "lock vec");
 				thisop = Tcl_NewIntObj(ret);
-				(void) Tcl_ListObjAppendElement(interp, res,
+				(void)Tcl_ListObjAppendElement(interp, res,
 				    thisop);
 				goto error;
 			}
 			thisop = Tcl_NewStringObj(newname, strlen(newname));
-			(void) Tcl_ListObjAppendElement(interp, res, thisop);
+			(void)Tcl_ListObjAppendElement(interp, res, thisop);
 			continue;
 		case LKPUT:
 			if (myobjc != 2) {
@@ -629,7 +636,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	if (ret != 0) {
 		Tcl_SetResult(interp, "Could not duplicate obj",
 		    TCL_STATIC);
-		(void) lock_put(envp, lock);
+		(void)lock_put(envp, lock);
 		__os_free(lock, sizeof(DB_LOCK));
 		_DeleteInfo(ip);
 		result = TCL_ERROR;

@@ -1,5 +1,4 @@
- 
-<!--$Id: db_set_bt_compare.so,v 10.20 2000/05/25 13:47:07 dda Exp $-->
+<!--$Id: db_set_bt_compare.so,v 10.24 2000/10/26 15:20:40 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;set_bt_compare</h1>
@@ -24,24 +23,26 @@
 <p>
 int
 DB-&gt;set_bt_compare(DB *db,
-    int (*bt_compare_fcn)(const DBT *, const DBT *));
+    int (*bt_compare_fcn)(DB *, const DBT *, const DBT *));
 </pre></h3>
 <h1>Description</h1>
-<p>Set the Btree key comparison function.  The comparison function is called
-when it is necessary to compare a key specified by the application with
-a key currently stored in the tree.  The first argument to the comparison
-function is the <a href="../api_c/dbt.html">DBT</a> representing the application's key, the second
-is the current tree's key.
-<p>The comparison function must return an integer less than, equal to, or
-greater than zero if the first key argument is considered to be
-respectively less than, equal to, or greater than the second key argument.
-The comparison function must correctly handle any key values used by the
-application (possibly including zero-length keys).  In addition, when
-Btree key prefix comparison is being performed (see
-<a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a> for more information), the comparison routine
-may be passed a prefix of any database key.  The <b>data</b>,
-<b>size</b> and <b>app_private</b> fields of the <a href="../api_c/dbt.html">DBT</a> are the
-only fields that may be used for the purposes of this comparison.
+<p>Set the Btree key comparison function.  The comparison function is
+called when it is necessary to compare a key specified by the
+application with a key currently stored in the tree.  The first argument
+to the comparison function is the <a href="../api_c/dbt.html">DBT</a> representing the
+application supplied key, the second is the current tree's key.
+<p>The comparison function must return an integer value less than, equal
+to, or greater than zero if the first key argument is considered to be
+respectively less than, equal to, or greater than the second key
+argument.  In addition, the comparison function must cause the keys in
+the database to be <i>well-ordered</i>.  The comparison function
+must correctly handle any key values used by the application (possibly
+including zero-length keys).  In addition, when Btree key prefix
+comparison is being performed (see <a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a> for more
+information), the comparison routine may be passed a prefix of any
+database key.  The <b>data</b> and <b>size</b> fields of the
+<a href="../api_c/dbt.html">DBT</a> are the only fields that may be used for the purposes of
+this comparison.
 <p>If no comparison function is specified, the keys are compared lexically,
 with shorter keys collating before longer keys.  The same comparison
 method must be used each time a particular Btree is opened.
@@ -84,6 +85,7 @@ the <a href="../api_c/db_open.html">DB-&gt;open</a> interface is called.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.java,v 11.4 2000/03/19 14:44:55 dda Exp $
+ * $Id: LockExample.java,v 11.5 2001/01/04 14:23:30 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -36,7 +36,7 @@ class LockExample extends DbEnv
             set_error_stream(System.err);
             set_errpfx("LockExample");
             if (maxlocks != 0)
-                set_lk_max(maxlocks);
+                set_lk_max_locks(maxlocks);
             open(home, Db.DB_CREATE|Db.DB_INIT_LOCK, 0);
         }
     }

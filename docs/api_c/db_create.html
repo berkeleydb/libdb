@@ -1,5 +1,4 @@
- 
-<!--$Id: db_create.so,v 10.11 2000/03/17 01:53:57 bostic Exp $-->
+<!--$Id: db_create.so,v 10.12 2000/10/25 18:51:08 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_create</h1>
@@ -26,9 +25,9 @@ int
 db_create(DB **dbp, DB_ENV *dbenv, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The db_create function creates a DB structure which is the handle for a
-Berkeley DB database.  A pointer to this structure is returned in the memory
-referenced by <b>db</b>.
+<p>The db_create function creates a DB structure which is the
+handle for a Berkeley DB database.  A pointer to this structure is returned
+in the memory referenced by <b>db</b>.
 <p>If the <b>dbenv</b> argument is NULL, the database is standalone, i.e.,
 it is not part of any Berkeley DB environment.
 <p>If the <b>dbenv</b> argument is not NULL, the database is created within
@@ -47,6 +46,10 @@ OPENINFO parameter of the GROUPS section of the ubbconfig file.  See the
 <a href="../ref/xa/intro.html">XA Resource Manager</a> chapter in the
 Reference Guide for more information.
 </dl>
+<p>The DB handle contains a special field, "app_private", which
+is declared as type "void *".  This field is provided for the use of
+the application program.  It is initialized to NULL and is not further
+used by Berkeley DB in any way.
 <p>The db_create function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
 <p>The db_create function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
@@ -84,6 +87,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: snprintf.c,v 11.4 2000/05/18 19:24:59 bostic Exp $";
+static const char revid[] = "$Id: snprintf.c,v 11.5 2000/12/22 19:38:37 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,11 +24,7 @@ static const char revid[] = "$Id: snprintf.c,v 11.4 2000/05/18 19:24:59 bostic E
  *	Bounded version of sprintf.
  *
  * PUBLIC: #ifndef HAVE_SNPRINTF
- * PUBLIC: #ifdef __STDC__
  * PUBLIC: int snprintf __P((char *, size_t, const char *, ...));
- * PUBLIC: #else
- * PUBLIC: int snprintf();
- * PUBLIC: #endif
  * PUBLIC: #endif
  */
 #ifndef HAVE_SNPRINTF

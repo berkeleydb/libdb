@@ -1,4 +1,4 @@
-# $Id: TESTS,v 11.30 2000/05/18 17:44:06 sue Exp $
+# $Id: TESTS,v 11.34 2000/11/06 19:31:56 sue Exp $
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Access method tests
@@ -114,6 +114,7 @@ test029		Record renumbering
 test030		DB_NEXT_DUP functionality
 
 test031		Duplicate sorting functionality
+		Make sure DB_NODUPDATA works.
 
 test032		DB_GET_BOTH
 
@@ -229,7 +230,16 @@ test081		Test off-page duplicates and overflow pages together with
 
 test082		Test of DB_PREV_NODUP (uses test074).
 
-test083		Test of DB->key_range
+test083		Test of DB->key_range.
+
+test084		Sanity test of large (64K) pages.
+
+test085		Test of cursor behavior when a cursor is pointing to a deleted
+		btree key which then has duplicates added. [#2473]
+
+test086		Test of cursor stability across btree splits/rsplits with
+		subtransaction aborts (a variant of test048).  [#2373]
+
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Cursor Join.
@@ -320,6 +330,11 @@ recd010		Verify duplicates across split/reverse splits
 		and recovery.
 
 recd011		Verify that recovery to a specific timestamp works.
+
+recd012		Test of log file ID management. [#2288]
+
+recd013		Test of cursor adjustment on child transaction aborts. [#2373]
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Subdatabase tests
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

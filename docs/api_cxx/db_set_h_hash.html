@@ -1,5 +1,4 @@
- 
-<!--$Id: db_set_h_hash.so,v 10.17 2000/05/25 13:47:07 dda Exp $-->
+<!--$Id: db_set_h_hash.so,v 10.18 2000/07/04 18:28:27 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db::set_h_hash</h1>
@@ -24,7 +23,7 @@
 <p>
 extern "C" {
 	typedef u_int32_t (*h_hash_fcn_type)
-		(const void *bytes, u_int32_t length);
+		(DB *, const void *bytes, u_int32_t length);
 };
 int
 Db::set_h_hash(h_hash_fcn_type h_hash_fcn);
@@ -35,8 +34,10 @@ hash method is used.  Since no hash method performs equally well on all
 possible data, the user may find that the built-in hash method performs
 poorly with a particular data set.  User specified hash functions must
 take a pointer to a byte string and a length as arguments and return a
-value of type <b>u_int32_t</b>.  The hash function must handle any key
-values used by the application (possibly including zero-length keys).
+value of type
+<b>u_int32_t</b>.
+The hash function must handle any key values used by the application
+(possibly including zero-length keys).
 <p>If a hash method is specified, <a href="../api_cxx/db_open.html">Db::open</a> will attempt to determine
 if the hash method specified is the same as the one with which the database
 was created, and will fail if it detects that it is not.
@@ -81,6 +82,7 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <a href="../api_cxx/db_set_malloc.html">Db::set_malloc</a>,
 <a href="../api_cxx/db_set_pagesize.html">Db::set_pagesize</a>,
 <a href="../api_cxx/db_set_paniccall.html">Db::set_paniccall</a>,
+<a href="../api_cxx/db_set_q_extentsize.html">Db::set_q_extentsize</a>,
 <a href="../api_cxx/db_set_realloc.html">Db::set_realloc</a>,
 <a href="../api_cxx/db_set_re_delim.html">Db::set_re_delim</a>,
 <a href="../api_cxx/db_set_re_len.html">Db::set_re_len</a>,

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: rsrc001.tcl,v 11.12 2000/04/25 15:02:31 dda Exp $
+#	$Id: rsrc001.tcl,v 11.18 2001/01/18 06:41:03 krinsky Exp $
 #
 # Recno backing file test.
 # Try different patterns of adding records and making sure that the
@@ -15,21 +15,14 @@ proc rsrc001 { } {
 
 	# We run this test essentially twice, once with a db file
 	# and once without (an in-memory database).
+	set rec1 "This is record 1"
+	set rec2 "This is record 2 This is record 2"
+	set rec3 "This is record 3 This is record 3 This is record 3"
+	set rec4 [replicate "This is record 4 " 512]
+
 	foreach testfile { "$testdir/rsrc001.db" "" } {
 
-		cleanup $testdir
-
-		# Create the starting files
-		set oid1 [open $testdir/rsrc.txt w]
-		set oid2 [open $testdir/check.txt w]
-		puts $oid1 "This is record 1"
-		puts $oid2 "This is record 1"
-		puts $oid1 "This is record 2 This is record 2"
-		puts $oid2 "This is record 2 This is record 2"
-		puts $oid1 "This is record 3 This is record 3 This is record 3"
-		puts $oid2 "This is record 3 This is record 3 This is record 3"
-		close $oid1
-		close $oid2
+		cleanup $testdir NULL
 
 		if { $testfile == "" } {
 			puts "Rsrc001: Testing with in-memory database."
@@ -37,7 +30,38 @@ proc rsrc001 { } {
 			puts "Rsrc001: Testing with disk-backed database."
 		}
 
-		puts -nonewline "\tRsrc001.a: Read file, rewrite last record;"
+		# Create backing file for the empty-file test.
+		set oid1 [open $testdir/rsrc.txt w]
+		close $oid1
+
+		puts "\tRsrc001.a: Put to empty file."
+		set db [eval {berkdb_open -create -mode 0644\
+		    -recno -source $testdir/rsrc.txt} $testfile]
+		error_check_good dbopen [is_valid_db $db] TRUE
+		set txn ""
+
+		set ret [eval {$db put} $txn {1 $rec1}]
+		error_check_good put_to_empty $ret 0
+		error_check_good db_close [$db close] 0
+
+		# Now fill out the backing file and create the check file.
+		set oid1 [open $testdir/rsrc.txt a]
+		set oid2 [open $testdir/check.txt w]
+    
+		# This one was already put into rsrc.txt.
+		puts $oid2 $rec1
+
+		# These weren't.
+		puts $oid1 $rec2
+		puts $oid2 $rec2
+		puts $oid1 $rec3
+		puts $oid2 $rec3
+		puts $oid1 $rec4
+		puts $oid2 $rec4
+		close $oid1
+		close $oid2
+
+		puts -nonewline "\tRsrc001.b: Read file, rewrite last record;"
 		puts " write it out and diff"
 		set db [eval {berkdb_open -create -mode 0644\
 		    -recno -source $testdir/rsrc.txt} $testfile]
@@ -45,7 +69,6 @@ proc rsrc001 { } {
 
 		# Read the last record; replace it (but we won't change it).
 		# Then close the file and diff the two files.
-		set txn ""
 		set dbc [eval {$db cursor} $txn]
 		error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
 
@@ -74,7 +97,7 @@ proc rsrc001 { } {
 		    Rsrc001:diff($testdir/rsrc.txt,$testdir/check.txt) \
 		    [filecmp $testdir/rsrc.txt $testdir/check.txt] 0
 
-		puts -nonewline "\tRsrc001.b: "
+		puts -nonewline "\tRsrc001.c: "
 		puts "Append some records in tree and verify in file."
 		set oid [open $testdir/check.txt a]
 		for {set i 1} {$i < 10} {incr i} {
@@ -91,7 +114,7 @@ proc rsrc001 { } {
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
-		puts "\tRsrc001.c: Append by record number"
+		puts "\tRsrc001.d: Append by record number"
 		set oid [open $testdir/check.txt a]
 		for {set i 1} {$i < 10} {incr i} {
 			set rec [replicate "New Record (set 2) $i" $i]
@@ -108,7 +131,7 @@ proc rsrc001 { } {
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
-		puts "\tRsrc001.d: Put beyond end of file."
+		puts "\tRsrc001.e: Put beyond end of file."
 		set oid [open $testdir/check.txt a]
 		for {set i 1} {$i < 10} {incr i} {
 			puts $oid ""
@@ -117,17 +140,56 @@ proc rsrc001 { } {
 		set rec "Last Record"
 		puts $oid $rec
 		incr key
+
 		set ret [eval {$db put} $txn {$key $rec}]
 		error_check_good put_byno $ret 0
 
+		puts "\tRsrc001.f: Put beyond end of file, after reopen."
+
+		error_check_good db_close [$db close] 0
+		set db [eval {berkdb_open -create -mode 0644\
+		    -recno -source $testdir/rsrc.txt} $testfile]
+		error_check_good dbopen [is_valid_db $db] TRUE
+
+		set rec "Last record with reopen"
+		puts $oid $rec
+
+		incr key 
+		set ret [eval {$db put} $txn {$key $rec}]
+		error_check_good put_byno_with_reopen $ret 0
+
+		puts "\tRsrc001.g:\
+		    Put several beyond end of file, after reopen."
+		error_check_good db_close [$db close] 0
+		set db [eval {berkdb_open -create -mode 0644\
+		    -recno -source $testdir/rsrc.txt} $testfile]
+		error_check_good dbopen [is_valid_db $db] TRUE
+
+		set rec "Really really last record with reopen"
+		puts $oid ""
+		puts $oid ""
+		puts $oid ""
+		puts $oid $rec
+
+		incr key 
+		incr key
+		incr key
+		incr key
+
+		set ret [eval {$db put} $txn {$key $rec}]
+		error_check_good put_byno_with_reopen $ret 0
+
+
+
 		error_check_good db_sync [$db sync] 0
 		error_check_good db_sync [$db sync] 0
+
 		close $oid
 		set ret [filecmp $testdir/rsrc.txt $testdir/check.txt]
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
-		puts "\tRsrc001.e: Verify proper syncing of changes on close."
+		puts "\tRsrc001.h: Verify proper syncing of changes on close."
 		error_check_good Rsrc001:db_close [$db close] 0
 		set db [eval {berkdb_open -create -mode 0644 -recno \
 		    -source $testdir/rsrc.txt} $testfile]

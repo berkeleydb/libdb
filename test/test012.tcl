@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test012.tcl,v 11.13 2000/04/21 18:36:24 krinsky Exp $
+#	$Id: test012.tcl,v 11.14 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 12 {access method}
 # Take the source files and dbtest executable and enter their contents as
@@ -41,7 +41,7 @@ proc test012 { method args} {
 	set t3 $testdir/t3
 	set t4 $testdir/t4
 
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]

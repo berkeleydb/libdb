@@ -4,25 +4,22 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_am.h,v 11.13 2000/05/07 14:00:33 bostic Exp $
+ * $Id: db_am.h,v 11.21 2000/12/12 17:43:56 bostic Exp $
  */
-#ifndef _DB_AM_H
-#define	_DB_AM_H
+#ifndef _DB_AM_H_
+#define	_DB_AM_H_
 
 #define	DB_MINPAGECACHE	10		/* Min pages access methods cache. */
 
-#define	DB_ISBIG	0x01		/* DB recovery operation codes. */
-#define	DB_ISSUBDB	0x02
+/* DB recovery operation codes. The low bits used to have flags or'd in. */
 #define	DB_ADD_DUP	0x10
 #define	DB_REM_DUP	0x20
 #define	DB_ADD_BIG	0x30
 #define	DB_REM_BIG	0x40
-#define	DB_SPLITOLD	0x50
-#define	DB_SPLITNEW	0x60
+#define	DB_UNUSED_1	0x50
+#define	DB_UNUSED_2	0x60
 #define	DB_ADD_PAGE	0x70
 #define	DB_REM_PAGE	0x80
-#define	DB_LOG_CREATE	0x90
-#define	DB_LOG_DELETE	0xa0
 
 /*
  * This is a grotesque naming hack.  We have modified the btree page
@@ -66,12 +63,14 @@
 	mpf = file_dbp->mpf;						\
 }
 
-#define	REC_CLOSE							\
+#define	REC_CLOSE {							\
+	int __t_ret;							\
 	if (argp != NULL)						\
 		__os_free(argp, sizeof(*argp));				\
-	if (dbc != NULL)						\
-		dbc->c_close(dbc);					\
-	return (ret);
+	if (dbc != NULL && (__t_ret = dbc->c_close(dbc)) != 0 && ret == 0) \
+		return (__t_ret);					\
+	return (ret);							\
+}
 
 /*
  * No-op versions of the same macros.
@@ -90,7 +89,7 @@
  */
 #ifdef DEBUG_RECOVER
 #define	REC_PRINT(func)							\
-	(void)func(dbenv, dbtp, lsnp, redo, info);
+	(void)func(dbenv, dbtp, lsnp, op, info);
 #else
 #define	REC_PRINT(func)
 #endif
@@ -115,6 +114,17 @@
 	(lock.off != LOCK_INVALID &&					\
 	    (dbc)->txn == NULL ? lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
 
+#ifdef DIAGNOSTIC
+#define	DB_CHECK_TXN(dbp, txn)						\
+	if (txn != NULL)						\
+		F_SET(dbp, DB_AM_TXN);					\
+	else if (F_ISSET(dbp, DB_AM_TXN))				\
+		return (__db_missing_txn_err((dbp)->dbenv));
+#else
+#define	DB_CHECK_TXN(dbp, txn)
+#endif
+
+#include "db_dispatch.h"
 #include "db_auto.h"
 #include "crdel_auto.h"
 #include "db_ext.h"

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_env.c,v 11.28 2000/05/10 20:12:18 sue Exp $";
+static const char revid[] = "$Id: tcl_env.c,v 11.33 2001/01/11 18:19:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,8 +18,7 @@ static const char revid[] = "$Id: tcl_env.c,v 11.28 2000/05/10 20:12:18 sue Exp 
 #include <tcl.h>
 #endif
 
-#include "db_config.h"
-#include "db.h"
+#include "db_int.h"
 #include "tcl_db.h"
 
 /*
@@ -483,7 +482,7 @@ _EnvInfoDelete(interp, envip)
 		} else
 			nextp = LIST_NEXT(p, entries);
 	}
-	(void) Tcl_DeleteCommand(interp, envip->i_name);
+	(void)Tcl_DeleteCommand(interp, envip->i_name);
 	_DeleteInfo(envip);
 }
 
@@ -543,7 +542,7 @@ tcl_EnvVerbose(interp, envp, which, onoff)
 		wh = DB_VERB_WAITSFOR;
 		break;
 	default:
-		return(TCL_ERROR);
+		return (TCL_ERROR);
 	}
 	if (Tcl_GetIndexFromObj(interp, onoff, verbonoff, "option",
 	    TCL_EXACT, &optindex) != TCL_OK)
@@ -556,7 +555,7 @@ tcl_EnvVerbose(interp, envp, which, onoff)
 		on = 1;
 		break;
 	default:
-		return(TCL_ERROR);
+		return (TCL_ERROR);
 	}
 	ret = envp->set_verbose(envp, wh, on);
 	return (_ReturnSetup(interp, ret, "env set verbose"));

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_method.c,v 11.5 2000/05/31 15:10:05 bostic Exp $";
+static const char revid[] = "$Id: os_method.c,v 11.6 2000/11/15 19:25:39 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -170,14 +170,6 @@ db_env_set_func_yield(func_yield)
 	int (*func_yield) __P((void));
 {
 	__db_jump.j_yield = func_yield;
-	return (0);
-}
-
-int
-db_env_set_mutexlocks(onoff)
-	int onoff;
-{
-	DB_GLOBAL(db_mutexlocks) = onoff;
 	return (0);
 }
 

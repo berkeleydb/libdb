@@ -1,15 +1,14 @@
- 
-<!--$Id: solaris.so,v 11.13 2000/05/16 15:46:13 bostic Exp $-->
+<!--$Id: solaris.so,v 11.14 2000/09/13 17:22:20 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Building Berkeley DB for UNIX systems</title>
+<title>Berkeley DB Reference Guide: Solaris</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_unix/sco.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/sunos.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -20,7 +19,7 @@
 <p><li><b>I can't compile and run multi-threaded applications.</b>
 <p>Special compile-time flags and additional libraries are required when
 compiling threaded applications on Solaris.  If you are compiling a
-threaded application, you must compile with the _REENTRANT flag and link
+threaded application, you must compile with the D_REENTRANT flag and link
 with the libpthread.a or libthread.a libraries:
 <p><blockquote><pre>cc -mt ...
 cc -D_REENTRANT ... -lthread

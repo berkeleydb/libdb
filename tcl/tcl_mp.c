@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_mp.c,v 11.18 2000/05/17 19:40:01 sue Exp $";
+static const char revid[] = "$Id: tcl_mp.c,v 11.24 2001/01/09 16:13:59 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -194,7 +194,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 			 * This arg is the file name.
 			 */
 			if (IS_HELP(objv[i]) == TCL_OK)
-				return(TCL_OK);
+				return (TCL_OK);
 			Tcl_ResetResult(interp);
 			break;
 		}
@@ -209,7 +209,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 		case MPPAGE:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
-				    "?-mode mode?");
+				    "?-pagesize size?");
 				result = TCL_ERROR;
 				break;
 			}
@@ -304,13 +304,14 @@ tcl_MpStat(interp, objc, objv, envp)
 	DB_ENV *envp;			/* Environment pointer */
 {
 	DB_MPOOL_STAT *sp;
-	DB_MPOOL_FSTAT **fsp;
+	DB_MPOOL_FSTAT **fsp, **savefsp;
 	int result;
 	int ret;
 	Tcl_Obj *res;
 	Tcl_Obj *res1;
 
 	result = TCL_OK;
+	savefsp = NULL;
 	/*
 	 * No args for this.  Error if there are some.
 	 */
@@ -359,6 +360,7 @@ tcl_MpStat(interp, objc, objv, envp)
 	 * our per-file sublist.
 	 */
 	res1 = res;
+	savefsp = fsp;
 	for (; fsp != NULL && *fsp != NULL; fsp++) {
 		res = Tcl_NewObj();
 		result = _SetListElem(interp, res, "File Name",
@@ -385,8 +387,8 @@ tcl_MpStat(interp, objc, objv, envp)
 	Tcl_SetObjResult(interp, res1);
 error:
 	__os_free(sp, sizeof(*sp));
-	for (; fsp != NULL && *fsp != NULL; fsp++)
-		__os_free(*fsp, sizeof(**fsp));
+	if (savefsp != NULL)
+		__os_free(savefsp, 0);
 	return (result);
 }
 
@@ -513,7 +515,7 @@ tcl_MpGet(interp, objc, objv, mp, mpip)
 			 * This arg is the page number.
 			 */
 			if (IS_HELP(objv[i]) == TCL_OK)
-				return(TCL_OK);
+				return (TCL_OK);
 			Tcl_ResetResult(interp);
 			break;
 		}

@@ -1,15 +1,14 @@
- 
-<!--$Id: common.so,v 10.9 2000/03/18 21:43:11 bostic Exp $-->
+<!--$Id: common.so,v 10.13 2000/12/05 18:04:26 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Debugging Applications</title>
+<title>Berkeley DB Reference Guide: Common errors</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Debugging Applications</dl></h3></td>
 <td width="1%"><a href="../../ref/debug/printlog.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/intro.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -54,11 +53,11 @@ it is used.
 <p><dt>Possible Cause:<dd>Application not checking for <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.
 <p><dt>Fix:<dd>Unless you are using the Concurrent Data Store product, whenever you
 have multiple threads and/or processes and at least one of them is
-writing, you have the potential for deadlock.  As a result, you must test
-for the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return on every Berkeley DB call.  In general,
-updates should take place in a transaction or you might leave the database
-in an inconsistent state.  Reads may take place outside the context of a
-transaction under certain conditions.
+writing, you have the potential for deadlock.  As a result, you must
+test for the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return on every Berkeley DB call.  In
+general, updates should take place in a transaction or you might leave
+the database in an inconsistent state.  Reads may take place outside
+the context of a transaction under common conditions.
 <p>Whenever you get a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return, you should:
 <p><ol>
 <p><li>If you are running in a transaction, abort the transaction, first closing
@@ -66,17 +65,42 @@ any cursors opened in the transaction.
 <p><li>If you are not running in a transaction, simply close the cursor that got
 the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> (if it was a cursor operation) and retry.
 </ol>
+<p>See <a href="../../ref/transapp/put.html">Recoverability and deadlock
+avoidance</a> for further information.
 <p><dt><b>Symptom:</b><dd>An inordinately high number of deadlocks.
 <p><dt>Possible Cause:<dd>Read-Modify-Write pattern without using the RMW flag.
 <p><dt>Fix:<dd>If you frequently read a piece of data, modify it and then write
 it, you may be inadvertently causing a large number of deadlocks.  Try
 specifying the <a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a> flag on your get calls.
-<p><dt><b>Symptom:</b><dd>I run recovery and it exits cleanly, but did not re-apply my
-committed transaction.
-<p><dt>Possible Cause:<dd>Failure to enable logging and transactions.
-<p><dt>Fix:<dd>Make sure that you specify <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a> and <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a>
-when you call <a href="../../api_c/env_open.html">DBENV-&gt;open</a>, and then pass the resulting environment to
-<a href="../../api_c/db_open.html">DB-&gt;open</a>.
+<p>Or, if the application is doing a large number of updates in a small
+database, turning off Btree splits may help (see <a href="../../api_c/db_set_flags.html#DB_REVSPLITOFF">DB_REVSPLITOFF</a>
+for more information.)
+<p><dt><b>Symptom:</b><dd>I run recovery and it exits cleanly, but my database changes are missing.
+<p><dt>Possible Cause:<dd>Failure to enable logging and transactions in the database environment,
+failure to specify DB_ENV handle when creating DB handle,
+transaction handle not passed to Berkeley DB interface, failure to commit
+transaction.
+<p><dt>Fix:<dd>Make sure that the environment and database handles are properly
+created, and that the application passes the transaction handle returned
+by <a href="../../api_c/txn_begin.html">txn_begin</a> to the appropriate Berkeley DB interfaces, and that each
+transaction is eventually committed.
+<p><dt><b>Symptom:</b><dd>Recovery fails.
+<p><dt>Possible Cause:<dd>A database was updated in a transactional environment both with and
+without transactional handles.
+<p><dt>Fix:<dd>If any database write operation is done using a transaction handle,
+every write operation must be done in the context of a transaction.
+<p><dt><b>Symptom:</b><dd>A database environment locks up, sometimes gradually.
+<p><dt>Possible Cause:<dd>A thread of control exited unexpectedly, holding Berkeley DB resources.
+<p><dt>Fix:<dd>Whenever a thread of control exits holding Berkeley DB resources, all threads
+of control must exit the database environment, and recovery must be run.
+<p><dt><b>Symptom:</b><dd>A database environment locks up, sometimes gradually.
+<p><dt>Possible Cause:<dd>Cursors are not being closed before transaction abort.
+<p><dt>Fix:<dd>Before an application aborts a transaction, any cursors opened within
+the context of that transaction must be closed.
+<p><dt><b>Symptom:</b><dd>Transaction abort or recovery fail, or database corruption occurs.
+<p><dt>Possible Cause:<dd>Log files were removed before it was safe.
+<p><dt>Fix:<dd>Do not remove any log files from a database environment until Berkeley DB
+declares it safe.
 </dl>
 <table><tr><td><br></td><td width="1%"><a href="../../ref/debug/printlog.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

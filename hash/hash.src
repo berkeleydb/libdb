@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: hash.src,v 10.20 2000/02/17 20:24:09 bostic Exp $
+ *	$Id: hash.src,v 10.24 2000/12/12 17:41:48 bostic Exp $
  */
 
 /*
@@ -146,7 +146,7 @@ END
  * meta-data of the split.
  *
  * For the meta-data split
- * 	bucket: max_bucket in table before split
+ *	bucket: max_bucket in table before split
  *	ovflpoint: overflow point before split.
  *	spares: spares[ovflpoint] before split.
  */
@@ -302,7 +302,7 @@ ARG	start_pgno	db_pgno_t	lu
 ARG	num		u_int32_t	lu
 END
 
-BEGIN groupalloc	31
+DEPRECATED groupalloc2	31
 ARG	fileid		int32_t		ld
 POINTER	meta_lsn	DB_LSN *	lu
 POINTER	alloc_lsn	DB_LSN *	lu
@@ -310,3 +310,52 @@ ARG	start_pgno	db_pgno_t	lu
 ARG	num		u_int32_t	lu
 ARG	free		db_pgno_t	lu
 END
+
+BEGIN groupalloc	32
+ARG	fileid		int32_t		ld
+POINTER	meta_lsn	DB_LSN *	lu
+ARG	start_pgno	db_pgno_t	lu
+ARG	num		u_int32_t	lu
+ARG	free		db_pgno_t	lu
+END
+
+/*
+ * Records for backing out cursor adjustment.
+ *   curadj - added or deleted a record or a dup
+ *	within a record.
+ *	pgno	- page that was effected
+ *	indx	- indx of recrod effected.
+ *	len	- if a dup its length.
+ *	dup_off	- if a dup its offset
+ *	add	- 1 if add 0 if delete
+ *	is_dup  - 1 if dup 0 otherwise.
+ *	order	- order assinged to this deleted record or dup.
+ *
+ *   chgpg - rmoved a page, move the records to a new page
+ *	mode	- CHGPG page was deleted or records move to new page.
+ *		- SPLIT we split a bucket
+ *		- DUP we convered to off page duplicates.
+ *	old_pgno, new_pgno - old and new page numbers.
+ *	old_index, new_index - old and new index numbers, NDX_INVALID if
+ *		it effects all records on the page.
+ */
+BEGIN curadj	33
+ARG	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	indx		u_int32_t	lu
+ARG	len		u_int32_t	lu
+ARG	dup_off		u_int32_t	lu
+ARG	add		int		ld
+ARG	is_dup		int		ld
+ARG	order		u_int32_t	lu
+END
+
+BEGIN chgpg	34
+ARG	fileid		int32_t		ld
+ARG	mode		db_ham_mode	ld
+ARG	old_pgno	db_pgno_t	lu
+ARG	new_pgno	db_pgno_t	lu
+ARG	old_indx	u_int32_t	lu
+ARG	new_indx	u_int32_t	lu
+END
+

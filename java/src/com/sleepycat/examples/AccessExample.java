@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: AccessExample.java,v 11.4 2000/02/14 02:59:57 bostic Exp $
+ * $Id: AccessExample.java,v 11.5 2000/12/13 07:09:42 krinsky Exp $
  */
 
 package com.sleepycat.examples;
@@ -124,8 +124,9 @@ class AccessExample
             try
             {
                 int err;
-                if ((err = table.put(null, key, data, 0)) == Db.DB_KEYEXIST) {
-                    System.out.println("Key " + line + " already exists.");
+                if ((err = table.put(null, 
+		    key, data, Db.DB_NOOVERWRITE)) == Db.DB_KEYEXIST) {
+                        System.out.println("Key " + line + " already exists.");
                 }
             }
             catch (DbException dbe)

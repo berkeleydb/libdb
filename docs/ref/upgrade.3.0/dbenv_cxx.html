@@ -1,10 +1,9 @@
- 
-<!--$Id: dbenv_cxx.so,v 11.9 2000/03/22 22:02:15 bostic Exp $-->
+<!--$Id: dbenv_cxx.so,v 11.10 2000/12/01 17:59:32 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Upgrading Berkeley DB Applications</title>
+<title>Berkeley DB Reference Guide: Release 3.0: the DbEnv class for C++ and Java</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -28,7 +27,7 @@ DbEnv *dbenv = new DbEnv();
 dbenv-&gt;set_error_stream(&cerr);
 dbenv-&gt;set_errpfx("myprog");
 <p>
-if ((dberr = dbenv-&gt;appinit("/database/home"
+if ((dberr = dbenv-&gt;appinit("/database/home",
 	NULL, DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL)) != 0) {
     cerr &lt;&lt; "failure: " &lt;&lt; strerror(dberr);
     exit (1);
@@ -52,7 +51,7 @@ DbEnv dbenv = new DbEnv();
 dbenv.set_error_stream(System.err);
 dbenv.set_errpfx("myprog");
 <p>
-dbenv.appinit("/database/home"
+dbenv.appinit("/database/home",
     null, Db.DB_CREATE | Db.DB_INIT_LOCK | Db.DB_INIT_MPOOL);</pre></blockquote>
 <p>In the Berkeley DB 3.0 release, this code would be written as:
 <p><blockquote><pre>int dberr;

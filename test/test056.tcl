@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test056.tcl,v 11.12 2000/05/10 13:36:25 sue Exp $
+#	$Id: test056.tcl,v 11.13 2000/08/25 14:21:57 sue Exp $
 #
 # Test056
 # Check if deleting a key when a cursor is on a duplicate of that key works.
@@ -28,10 +28,13 @@ proc test056 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test056.db
+		set env NULL
 	} else {
 		set testfile test056.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set flags ""
 	set txn  ""

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_salloc.c,v 11.8 2000/04/07 14:29:18 bostic Exp $";
+static const char revid[] = "$Id: db_salloc.c,v 11.10 2000/12/06 19:55:44 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #endif
@@ -57,6 +56,32 @@ __db_shalloc_init(area, size)
 	elp = (struct __data *)(hp + 1);
 	elp->len = size - sizeof(struct __head) - sizeof(elp->len);
 	SH_LIST_INSERT_HEAD(hp, elp, links, __data);
+}
+
+/*
+ * __db_shalloc --
+ *	Allocate some space from the shared region.
+ *
+ * PUBLIC: int __db_shalloc_size __P((size_t, size_t));
+ */
+int
+__db_shalloc_size(len, align)
+	size_t len, align;
+{
+	/* Never allocate less than the size of a struct __data. */
+	if (len < sizeof(struct __data))
+		len = sizeof(struct __data);
+
+#ifdef DIAGNOSTIC
+	/* Add room for a guard byte. */
+	++len;
+#endif
+
+	/* Never align to less than a db_align_t boundary. */
+	if (align <= sizeof(db_align_t))
+		align = sizeof(db_align_t);
+
+	return (ALIGN(len, align) + sizeof (struct __data));
 }
 
 /*

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test062.tcl,v 11.11 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test062.tcl,v 11.13 2000/12/20 19:02:36 sue Exp $
 #
 # DB Test 62:  Test of partial puts onto duplicate pages.
 #	Insert the first 200 words into the dictionary 200 times each with
@@ -26,10 +26,13 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	puts "Test0$tnum:\
 	    $method ($args) Partial puts and duplicates."
@@ -60,6 +63,7 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
 		}
+		set keys($count) $str
 
 		incr count
 	}
@@ -72,29 +76,36 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 
 	# Do a partial write to extend each datum in
 	# the regular db by the corresponding dictionary word.
-	for {set ret [$dbc get -first]}  \
-	    {[llength $ret] != 0} \
-	    {set ret [$dbc get -next]} {
+	# We have to go through each key's dup set using -set
+	# because cursors are not stable in the hash AM and we
+	# want to make sure we hit all the keys.
+	for { set i 0 } { $i < $count } { incr i } {
+		set key $keys($i)
+		for {set ret [$dbc get -set $key]}  \
+		    {[llength $ret] != 0} \
+		    {set ret [$dbc get -nextdup]} {
 
-		set k [lindex [lindex $ret 0] 0]
-		set orig_d [lindex [lindex $ret 0] 1]
-		set d [string range $orig_d 2 end]
-		set doff [expr [string length $d] + 2]
-		set dlen 0
-		error_check_good data_and_key_sanity $d $k
-
-		set ret [$dbc get -current]
-		error_check_good before_sanity [lindex [lindex $ret 0] 0] \
-		    [string range [lindex [lindex $ret 0] 1] 2 end]
-
-		error_check_good partial_put [eval {$dbc put -current \
-		    -partial [list $doff $dlen] $d}] 0
-
-		set ret [$dbc get -current]
-		error_check_good partial_put_correct \
-		    [lindex [lindex $ret 0] 1] $orig_d$d
+			set k [lindex [lindex $ret 0] 0]
+			set orig_d [lindex [lindex $ret 0] 1]
+			set d [string range $orig_d 2 end]
+			set doff [expr [string length $d] + 2]
+			set dlen 0
+			error_check_good data_and_key_sanity $d $k
+	
+			set ret [$dbc get -current]
+			error_check_good before_sanity \
+			    [lindex [lindex $ret 0] 0] \
+			    [string range [lindex [lindex $ret 0] 1] 2 end]
+	
+			error_check_good partial_put [eval {$dbc put -current \
+			    -partial [list $doff $dlen] $d}] 0
+	
+			set ret [$dbc get -current]
+			error_check_good partial_put_correct \
+			    [lindex [lindex $ret 0] 1] $orig_d$d
+		}
 	}
-
+	
 	puts "\tTest0$tnum.c: Double-checking get loop."
 	# Double-check that each datum in the regular db has
 	# been appropriately modified.

@@ -7,11 +7,10 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Db.c,v 11.17.2.2 2000/07/20 15:13:07 krinsky Exp $";
+static const char revid[] = "$Id: java_Db.c,v 11.34 2000/11/30 00:58:38 ubell Exp $";
 #endif /* not lint */
 
 #include <jni.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,9 +37,19 @@ JAVADB_WO_ACCESS_METHOD(Db, jint, lorder, DB, lorder)
 JAVADB_WO_ACCESS_METHOD(Db, jint, re_1delim, DB, re_delim)
 JAVADB_WO_ACCESS_METHOD(Db, jint, re_1len, DB, re_len)
 JAVADB_WO_ACCESS_METHOD(Db, jint, re_1pad, DB, re_pad)
+JAVADB_WO_ACCESS_METHOD(Db, jint, q_1extentsize, DB, q_extentsize)
 JAVADB_WO_ACCESS_METHOD(Db, jint, bt_1maxkey, DB, bt_maxkey)
 JAVADB_WO_ACCESS_METHOD(Db, jint, bt_1minkey, DB, bt_minkey)
 
+/* This only gets called once ever, at the beginning of execution
+ * and can be used to initialize unchanging methodIds, fieldIds, etc.
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_one_1time_1init
+  (JNIEnv *jnienv,  /*Db.class*/ jclass jthisclass)
+{
+	COMPQUIET(jnienv, NULL);
+	COMPQUIET(jthisclass, NULL);
+}
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1init
   (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbEnv*/ jobject jdbenv, jint flags)
@@ -52,35 +61,18 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1init
 
 	dbenv = get_DB_ENV(jnienv, jdbenv);
 	dbinfo = get_DB_JAVAINFO(jnienv, jthis);
+	DB_ASSERT(dbinfo == NULL);
+
 	err = db_create(&db, dbenv, flags);
 	if (verify_return(jnienv, err, 0)) {
 		set_private_dbobj(jnienv, name_DB, jthis, db);
-
-		/* Create a new DB_JAVAINFO structure if
-		 * we don't have one already.  _init may
-		 * be called multiple times, we only create
-		 * one on the first call.
-		 */
-		if (dbinfo == NULL) {
-			dbinfo = dbji_construct(jnienv, flags);
-			set_private_info(jnienv, name_DB, jthis, dbinfo);
-		}
+		dbinfo = dbji_construct(jnienv, flags);
+		set_private_info(jnienv, name_DB, jthis, dbinfo);
 		db->cj_internal = dbinfo;
-
-		/* This seems to be needed to avoid free/malloc
-		 * mismatches on NT.  One shared library cannot free
-		 * memory that another shared library has alloced.
-		 * But that is exactly what we need to do when e.g. we
-		 * use the DB_MALLOC DBT option to implement
-		 * Dbc.get().  This works around it by asking DB to
-		 * use the allocator in this library.
-		 */
-		db->set_malloc(db, java_alloc_memory);
-		db->set_realloc(db, java_realloc_memory);
 	}
 }
 
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1close
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db__1close
   (JNIEnv *jnienv, /*Db*/ jobject jthis, jint flags)
 {
 	int err;
@@ -90,7 +82,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1close
 	db = get_DB(jnienv, jthis);
 	dbinfo = get_DB_JAVAINFO(jnienv, jthis);
 	if (!verify_non_null(jnienv, db))
-		return;
+		return (0);
 
 	JAVADB_API_BEGIN(db, jthis);
 
@@ -101,10 +93,12 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1close
 	set_private_dbobj(jnienv, name_DB, jthis, 0);
 
 	err = db->close(db, flags);
-	verify_return(jnienv, err, 0);
+	if (err != DB_INCOMPLETE)
+		verify_return(jnienv, err, 0);
 	dbji_dealloc(dbinfo, jnienv);
 
 	/* don't call JAVADB_API_END - db cannot be used */
+	return (err);
 }
 
 /* We are being notified that the parent DbEnv has closed.
@@ -118,6 +112,54 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1notify_1internal
 	set_private_dbobj(jnienv, name_DB, jthis, 0);
 }
 
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_append_1recno_1changed
+  (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbAppendRecno*/ jobject jcallback)
+{
+	DB *db;
+	DB_JAVAINFO *dbinfo;
+
+	db = get_DB(jnienv, jthis);
+	if (!verify_non_null(jnienv, db))
+		return;
+
+	JAVADB_API_BEGIN(db, jthis);
+	dbinfo = (DB_JAVAINFO*)db->cj_internal;
+	dbji_set_append_recno_object(dbinfo, jnienv, db, jcallback);
+	JAVADB_API_END(db);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_bt_1compare_1changed
+  (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbBtreeCompare*/ jobject jbtcompare)
+{
+	DB *db;
+	DB_JAVAINFO *dbinfo;
+
+	db = get_DB(jnienv, jthis);
+	if (!verify_non_null(jnienv, db))
+		return;
+
+	JAVADB_API_BEGIN(db, jthis);
+	dbinfo = (DB_JAVAINFO*)db->cj_internal;
+	dbji_set_bt_compare_object(dbinfo, jnienv, db, jbtcompare);
+	JAVADB_API_END(db);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_bt_1prefix_1changed
+  (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbBtreePrefix*/ jobject jbtprefix)
+{
+	DB *db;
+	DB_JAVAINFO *dbinfo;
+
+	db = get_DB(jnienv, jthis);
+	if (!verify_non_null(jnienv, db))
+		return;
+
+	JAVADB_API_BEGIN(db, jthis);
+	dbinfo = (DB_JAVAINFO*)db->cj_internal;
+	dbji_set_bt_prefix_object(dbinfo, jnienv, db, jbtprefix);
+	JAVADB_API_END(db);
+}
+
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_cursor
   (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbTxn*/ jobject txnid, jint flags)
 {
@@ -127,10 +169,10 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_cursor
 	DB_TXN *dbtxnid = get_DB_TXN(jnienv, txnid);
 
 	if (!verify_non_null(jnienv, db))
-		return NULL;
+		return (NULL);
 	err = db->cursor(db, dbtxnid, &dbc, flags);
 	verify_return(jnienv, err, 0);
-	return get_Dbc(jnienv, dbc);
+	return (get_Dbc(jnienv, dbc));
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_del
@@ -145,7 +187,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_del
 	err = 0;
 	db = get_DB(jnienv, jthis);
 	if (!verify_non_null(jnienv, db))
-		return 0;
+		return (0);
 
 	JAVADB_API_BEGIN(db, jthis);
 	dbtxnid = get_DB_TXN(jnienv, txnid);
@@ -160,7 +202,23 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_del
  out:
 	jdbt_unlock(&dbkey, jnienv);
 	JAVADB_API_END(db);
-	return err;
+	return (err);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_dup_1compare_1changed
+  (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbDupCompare*/ jobject jdupcompare)
+{
+	DB *db;
+	DB_JAVAINFO *dbinfo;
+
+	db = get_DB(jnienv, jthis);
+	if (!verify_non_null(jnienv, db))
+		return;
+
+	JAVADB_API_BEGIN(db, jthis);
+	dbinfo = (DB_JAVAINFO*)db->cj_internal;
+	dbji_set_dup_compare_object(dbinfo, jnienv, db, jdupcompare);
+	JAVADB_API_END(db);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_err
@@ -210,14 +268,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_fd
 	DB *db = get_DB(jnienv, jthis);
 
 	if (!verify_non_null(jnienv, db))
-		return 0;
+		return (0);
 
 	JAVADB_API_BEGIN(db, jthis);
 	err = db->fd(db, &return_value);
 	verify_return(jnienv, err, 0);
 	JAVADB_API_END(db);
 
-	return return_value;
+	return (return_value);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_feedback_1changed
@@ -291,7 +349,23 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_get
 	jdbt_unlock(&dbkey, jnienv);
  out3:
 	JAVADB_API_END(db);
-	return err;
+	return (err);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_hash_1changed
+  (JNIEnv *jnienv, /*Db*/ jobject jthis, /*DbHash*/ jobject jhash)
+{
+	DB *db;
+	DB_JAVAINFO *dbinfo;
+
+	db = get_DB(jnienv, jthis);
+	if (!verify_non_null(jnienv, db))
+		return;
+
+	JAVADB_API_BEGIN(db, jthis);
+	dbinfo = (DB_JAVAINFO*)db->cj_internal;
+	dbji_set_h_hash_object(dbinfo, jnienv, db, jhash);
+	JAVADB_API_END(db);
 }
 
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_join
@@ -323,7 +397,7 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_join
 	newlist[count] = 0;
 
 	if (!verify_non_null(jnienv, db))
-		return NULL;
+		return (NULL);
 	JAVADB_API_BEGIN(db, jthis);
 
 	err = db->join(db, newlist, &dbc, flags);
@@ -331,7 +405,7 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_join
 	verify_return(jnienv, err, 0);
 
 	JAVADB_API_END(db);
-	return get_Dbc(jnienv, dbc);
+	return (get_Dbc(jnienv, dbc));
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_key_1range
@@ -382,7 +456,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_put
 	db = get_DB(jnienv, jthis);
 	dbtxnid = get_DB_TXN(jnienv, txnid);
 	if (!verify_non_null(jnienv, db))
-		return 0;    /* error will be thrown, retval doesn't matter */
+		return (0);    /* error will be thrown, retval doesn't matter */
 	JAVADB_API_BEGIN(db, jthis);
 
 	if (jdbt_lock(&dbkey, jnienv, key, inOp) != 0)
@@ -401,7 +475,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_put
  out2:
 	jdbt_unlock(&dbkey, jnienv);
 	JAVADB_API_END(db);
-	return err;
+	return (err);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_rename
@@ -429,8 +503,10 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_rename
 
 	err = db->rename(db, j_file.string, j_database.string,
 			 j_newname.string, flags);
-	verify_return(jnienv, err, 0);
+
+	verify_return(jnienv, err, EXCEPTION_FILE_NOT_FOUND);
 	dbji_dealloc(dbinfo, jnienv);
+	set_private_dbobj(jnienv, name_DB, jthis, 0);
 
  out1:
 	jstr_unlock(&j_newname, jnienv);
@@ -460,7 +536,9 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_remove
 	if (jstr_lock(&j_database, jnienv, database) != 0)
 		goto out1;
 	err = db->remove(db, j_file.string, j_database.string, flags);
-	verify_return(jnienv, err, 0);
+
+	set_private_dbobj(jnienv, name_DB, jthis, 0);
+	verify_return(jnienv, err, EXCEPTION_FILE_NOT_FOUND);
 	dbji_dealloc(dbinfo, jnienv);
 
  out1:
@@ -513,13 +591,13 @@ JNIEXPORT void JNICALL
 	db = get_DB(jnienv, jthis);
 	if (verify_non_null(jnienv, db)) {
 		JAVADB_API_BEGIN(db, jthis);
-		if (re_source) {
-			char *str = dup_string((*jnienv)->GetStringUTFChars(jnienv, re_source, NULL));
-			err = db->set_re_source(db, str);
-		}
-		else {
+
+		/* XXX does the string from get_c_string ever get freed? */
+		if (re_source != NULL)
+			err = db->set_re_source(db, get_c_string(jnienv, re_source));
+		else
 			err = db->set_re_source(db, 0);
-		}
+
 		verify_return(jnienv, err, 0);
 		JAVADB_API_END(db);
 	}
@@ -538,17 +616,11 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
 	DB_QUEUE_STAT *qstp;
 
 	if (!verify_non_null(jnienv, db))
-		return NULL;
+		return (NULL);
 
 	JAVADB_API_BEGIN(db, jthis);
 
-	/* We cannot use the default allocator (on Win* platforms anyway)
-	 * because it often causes problems when we free storage
-	 * in a DLL that was allocated in another DLL.  Using
-	 * our own allocator (ours just calls malloc!) ensures
-	 * that there is no mismatch.
-	 */
-	err = db->stat(db, &statp, java_alloc_memory, flags);
+	err = db->stat(db, &statp, NULL, flags);
 	if (verify_return(jnienv, err, 0)) {
 		DBTYPE dbtype = db->get_type(db);
 		switch (dbtype) {
@@ -678,8 +750,6 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
 			set_int_field(jnienv, dbclass, retval,
 				      "qs_pgfree", qstp->qs_pgfree);
 			set_int_field(jnienv, dbclass, retval,
-				      "qs_start", qstp->qs_start);
-			set_int_field(jnienv, dbclass, retval,
 				      "qs_first_recno", qstp->qs_first_recno);
 			set_int_field(jnienv, dbclass, retval,
 				      "qs_cur_recno", qstp->qs_cur_recno);
@@ -693,24 +763,26 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
 					 EINVAL, 0);
 			break;
 		}
-		java_free_memory(statp);
+		free(statp);
 	}
 	JAVADB_API_END(db);
-	return retval;
+	return (retval);
 }
 
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_sync
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_sync
   (JNIEnv *jnienv, /*Db*/ jobject jthis, jint flags)
 {
 	int err;
 	DB *db = get_DB(jnienv, jthis);
 
 	if (!verify_non_null(jnienv, db))
-		return;
+		return (0);
 	JAVADB_API_BEGIN(db, jthis);
 	err = db->sync(db, flags);
-	verify_return(jnienv, err, 0);
+	if (err != DB_INCOMPLETE)
+		verify_return(jnienv, err, 0);
 	JAVADB_API_END(db);
+	return (err);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_sleepycat_db_Db_get_1byteswapped
@@ -721,12 +793,12 @@ JNIEXPORT jboolean JNICALL Java_com_sleepycat_db_Db_get_1byteswapped
 
 	db = get_DB(jnienv, jthis);
 	if (!verify_non_null(jnienv, db))
-		return 0;
+		return (0);
 
 	JAVADB_API_BEGIN(db, jthis);
 	retval = db->get_byteswapped(db) ? 1 : 0;
 	JAVADB_API_END(db);
-	return retval;
+	return (retval);
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_get_1type
@@ -736,9 +808,9 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_get_1type
 
 	db = get_DB(jnienv, jthis);
 	if (!verify_non_null(jnienv, db))
-		return 0;
+		return (0);
 
-	return (jint)db->type;
+	return ((jint)db->type);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1open
@@ -812,9 +884,9 @@ static int java_verify_callback(void *handle, const void *str_arg)
 				  vc->writemid, vc->bytes, 0, len-1);
 
 	if ((except = (*jnienv)->ExceptionOccurred(jnienv)) != NULL)
-		return EIO;
+		return (EIO);
 
-	return 0;
+	return (0);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_verify
@@ -849,7 +921,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_verify
 	vcs.writemid = (*jnienv)->GetMethodID(jnienv, streamclass,
 					      "write", "([BII)V");
 
-	/* invoke verify - this will invoke the callback repeatedly */
+	/* invoke verify - this will invoke the callback repeatedly. */
 	err = __db_verify_internal(db, j_name.string, j_subdb.string,
 				   &vcs, java_verify_callback, flags);
 	verify_return(jnienv, err, 0);
@@ -862,28 +934,31 @@ out2:
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1finalize
-  (JNIEnv *jnienv, jobject jthis, jint flags)
+    (JNIEnv *jnienv, jobject jthis,
+     jobject /*DbErrcall*/ errcall, jstring errpfx)
 {
 	DB_JAVAINFO *dbinfo;
-
-	COMPQUIET(flags, 0);
+	DB *db;
 
 	dbinfo = get_DB_JAVAINFO(jnienv, jthis);
+	db = get_DB(jnienv, jthis);
+	DB_ASSERT(dbinfo != NULL);
 
-	/* Note: we do *not* close the db here, because we
-	 * can never be sure if the Db is finalized before
-	 * or after its associated DbEnv.  The DB * we've
-	 * obtained may already be freed, and be junk memory.
-	 * It's cleaner to let the DbEnv always do the close
-	 * (if the user hasn't).
+	/* Note: We can never be sure if the underlying DB is attached to
+	 * a DB_ENV that was already closed.  Sure, that's a user error,
+	 * but it shouldn't crash the VM.  Therefore, we cannot just
+	 * automatically close if the handle indicates we are not yet
+	 * closed.  The best we can do is detect this and report it.
 	 */
+	if (db != NULL) {
+		/* If this error occurs, this object was never closed. */
+		report_errcall(jnienv, errcall, errpfx,
+			       "Db.finalize: open Db object destroyed");
+	}
 
 	/* Shouldn't see this object again, but just in case */
 	set_private_dbobj(jnienv, name_DB, jthis, 0);
+	set_private_info(jnienv, name_DB, jthis, 0);
 
-	if (dbinfo != NULL) {
-		/* Shouldn't see this object again, but just in case */
-		set_private_info(jnienv, name_DB, jthis, 0);
-		dbji_destroy(dbinfo, jnienv);
-	}
+	dbji_destroy(dbinfo, jnienv);
 }

@@ -21,7 +21,7 @@ if ($BerkeleyDB::db_ver < 2.005002)
 }
 
 
-print "1..34\n";
+print "1..37\n";
 
 {
     package LexFile ;
@@ -248,12 +248,16 @@ sub addData
     ok 32, keys %expected == 0 ;
     ok 33, $cursor1->status() == DB_NOTFOUND ;
 
-    ok 34, $txn->txn_commit == 0;
+    ok 34, $cursor1->c_close() == 0 ;
+    ok 35, $cursor2->c_close() == 0 ;
+    ok 36, $cursor3->c_close() == 0 ;
+
+    ok 37, ($status = $txn->txn_commit) == 0;
 
     undef $txn ;
-    undef $cursor1 ;
-    undef $cursor2 ;
-    undef $cursor3 ;
+    #undef $cursor1;
+    #undef $cursor2;
+    #undef $cursor3;
     undef $db1 ;
     undef $db2 ;
     undef $db3 ;

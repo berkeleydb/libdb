@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 11.13 2000/05/17 19:21:39 bostic Exp $
+ * $Id: TpcbExample.cpp,v 11.14 2000/10/27 20:32:01 dda Exp $
  */
 
 #include "db_config.h"
@@ -29,7 +29,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
+#ifdef DB_WIN32
 #include <sys/types.h>
 #include <sys/timeb.h>
 #endif
@@ -478,7 +478,7 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 	double gtps, itps;
 	int failed, ifailed, ret, txns;
 	time_t starttime, curtime, lasttime;
-#ifndef _WIN32
+#ifndef DB_WIN32
 	pid_t pid;
 
 	pid = getpid();

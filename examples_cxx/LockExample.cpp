@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 11.7 2000/03/19 14:47:44 dda Exp $
+ * $Id: LockExample.cpp,v 11.8 2001/01/04 14:23:30 dda Exp $
  */
 
 #include "db_config.h"
@@ -109,7 +109,7 @@ LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 		set_error_stream(&cerr);
 		set_errpfx("LockExample");
 		if (maxlocks != 0)
-			set_lk_max(maxlocks);
+			set_lk_max_locks(maxlocks);
 		open(home, DB_CREATE | DB_INIT_LOCK, 0);
 	}
 }

@@ -11,13 +11,12 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db185.c,v 11.9 2000/03/29 20:50:46 ubell Exp $";
+    "$Id: db185.c,v 11.15 2001/01/23 21:27:03 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,14 +25,18 @@ static const char revid[] =
 #include "db_int.h"
 #include "db185_int.h"
 
-static int  db185_close __P((DB185 *));
-static int  db185_del __P((const DB185 *, const DBT185 *, u_int));
-static int  db185_fd __P((const DB185 *));
-static int  db185_get __P((const DB185 *, const DBT185 *, DBT185 *, u_int));
-static void db185_openstderr __P((DB_FH *));
-static int  db185_put __P((const DB185 *, DBT185 *, const DBT185 *, u_int));
-static int  db185_seq __P((const DB185 *, DBT185 *, DBT185 *, u_int));
-static int  db185_sync __P((const DB185 *, u_int));
+static int	db185_close __P((DB185 *));
+static int	db185_compare __P((DB *, const DBT *, const DBT *));
+static int	db185_del __P((const DB185 *, const DBT185 *, u_int));
+static int	db185_fd __P((const DB185 *));
+static int	db185_get __P((const DB185 *, const DBT185 *, DBT185 *, u_int));
+static u_int32_t
+		db185_hash __P((DB *, const void *, u_int32_t));
+static void	db185_openstderr __P((DB_FH *));
+static size_t	db185_prefix __P((DB *, const DBT *, const DBT *));
+static int	db185_put __P((const DB185 *, DBT185 *, const DBT185 *, u_int));
+static int	db185_seq __P((const DB185 *, DBT185 *, DBT185 *, u_int));
+static int	db185_sync __P((const DB185 *, u_int));
 
 DB185 *
 __db185_open(file, oflags, mode, type, openinfo)
@@ -86,10 +89,14 @@ __db185_open(file, oflags, mode, type, openinfo)
 			 * structures in 1.85 and 2.0 have the same initial
 			 * fields.
 			 */
-			if (bi->prefix != NULL)
-				dbp->set_bt_prefix(dbp, bi->prefix);
-			if (bi->compare != NULL)
-				dbp->set_bt_compare(dbp, bi->compare);
+			if (bi->prefix != NULL) {
+				db185p->prefix = bi->prefix;
+				dbp->set_bt_prefix(dbp, db185_prefix);
+			}
+			if (bi->compare != NULL) {
+				db185p->compare = bi->compare;
+				dbp->set_bt_compare(dbp, db185_compare);
+			}
 			if (bi->lorder != 0)
 				dbp->set_lorder(dbp, bi->lorder);
 		}
@@ -106,9 +113,10 @@ __db185_open(file, oflags, mode, type, openinfo)
 			if (hi->cachesize != 0)
 				(void)dbp->set_cachesize
 				    (dbp, 0, hi->cachesize, 0);
-			if (hi->hash != NULL)
-				(void)dbp->set_h_hash(dbp,
-			(u_int32_t (*)__P((const void *, u_int32_t)))hi->hash);
+			if (hi->hash != NULL) {
+				db185p->hash = hi->hash;
+				(void)dbp->set_h_hash(dbp, db185_hash);
+			}
 			if (hi->lorder != 0)
 				dbp->set_lorder(dbp, hi->lorder);
 		}
@@ -208,10 +216,18 @@ __db185_open(file, oflags, mode, type, openinfo)
 	db185p->sync = db185_sync;
 
 	/*
-	 * !!!
-	 * Store the returned pointer to the real DB 2.0 structure in the
-	 * internal pointer.  Ugly, but we're not going for pretty, here.
+	 * Store a reference so we can indirect from the DB 1.85 structure
+	 * to the underlying DB structure, and vice-versa.  This has to be
+	 * done BEFORE the DB::open method call because the hash callback
+	 * is exercised as part of hash database initialiation.
+	 *
+	 * XXX
+	 * Overload the cj_internal field for this purpose.
 	 */
+	db185p->dbp = dbp;
+	dbp->cj_internal = db185p;
+
+	/* Open the database. */
 	if ((ret = dbp->open(dbp,
 	    file, NULL, type, __db_oflags(oflags), mode)) != 0)
 		goto err;
@@ -220,7 +236,6 @@ __db185_open(file, oflags, mode, type, openinfo)
 	if ((ret = dbp->cursor(dbp, NULL, &((DB185 *)db185p)->dbc, 0)) != 0)
 		goto err;
 
-	db185p->internal = dbp;
 	return (db185p);
 
 einval:	ret = EINVAL;
@@ -241,7 +256,7 @@ db185_close(db185p)
 	DB *dbp;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	ret = dbp->close(dbp, 0);
 
@@ -264,7 +279,7 @@ db185_del(db185p, key185, flags)
 	DBT key;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	memset(&key, 0, sizeof(key));
 	key.data = key185->data;
@@ -298,7 +313,7 @@ db185_fd(db185p)
 	DB *dbp;
 	int fd, ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	if ((ret = dbp->fd(dbp, &fd)) == 0)
 		return (fd);
@@ -318,7 +333,7 @@ db185_get(db185p, key185, data185, flags)
 	DBT key, data;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	memset(&key, 0, sizeof(key));
 	key.data = key185->data;
@@ -358,7 +373,7 @@ db185_put(db185p, key185, data185, flags)
 	DBT key, data;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	memset(&key, 0, sizeof(key));
 	key.data = key185->data;
@@ -438,7 +453,7 @@ db185_seq(db185p, key185, data185, flags)
 	DBT key, data;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	memset(&key, 0, sizeof(key));
 	key.data = key185->data;
@@ -498,7 +513,7 @@ db185_sync(db185p, flags)
 	size_t nw;
 	int ret;
 
-	dbp = (DB *)db185p->internal;
+	dbp = db185p->dbp;
 
 	switch (flags) {
 	case 0:
@@ -538,4 +553,41 @@ db185_openstderr(fhp)
 #define	STDERR_FILENO	2
 #endif
 	fhp->fd = STDERR_FILENO;
+}
+
+/*
+ * db185_compare --
+ *	Cutout routine to call the user's Btree comparison function.
+ */
+static int
+db185_compare(dbp, a, b)
+	DB *dbp;
+	const DBT *a, *b;
+{
+	return (((DB185 *)dbp->cj_internal)->compare(a, b));
+}
+
+/*
+ * db185_prefix --
+ *	Cutout routine to call the user's Btree prefix function.
+ */
+static size_t
+db185_prefix(dbp, a, b)
+	DB *dbp;
+	const DBT *a, *b;
+{
+	return (((DB185 *)dbp->cj_internal)->prefix(a, b));
+}
+
+/*
+ * db185_hash --
+ *	Cutout routine to call the user's hash function.
+ */
+static u_int32_t
+db185_hash(dbp, key, len)
+	DB *dbp;
+	const void *key;
+	u_int32_t len;
+{
+	return (((DB185 *)dbp->cj_internal)->hash(key, (size_t)len));
 }

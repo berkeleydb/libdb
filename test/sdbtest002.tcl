@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdbtest002.tcl,v 11.18 2000/05/24 14:58:10 krinsky Exp $
+#	$Id: sdbtest002.tcl,v 11.19 2000/08/25 14:21:53 sue Exp $
 #
 # Sub DB All-Method Test 2
 # Make several subdb's of different access methods all in one DB.
@@ -31,7 +31,7 @@ proc subdbtest002 { {nentries 10000} } {
 	# Set up various methods to rotate through
 	set methods \
 	    [list "-rbtree" "-recno" "-btree" "-btree" "-recno" "-rbtree"]
-	cleanup $testdir
+	cleanup $testdir NULL
 	puts "\tSubdbtest002.a: create subdbs of different access methods:"
 	puts "\t\t$methods"
 	set psize {8192 4096}

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: log.tcl,v 11.15 2000/03/24 19:53:39 krinsky Exp $
+#	$Id: log.tcl,v 11.17 2000/11/30 20:09:19 dda Exp $
 #
 # Options are:
 # -dir <directory in which to store memp>
@@ -39,7 +39,7 @@ proc logtest { args } {
 
 	# Clean out old log if it existed
 	puts "Unlinking log: error message OK"
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now run the various functionality tests
 	berkdb srand $rand_init
@@ -56,8 +56,7 @@ proc log001 { dir max nrecs } {
 
 	puts "Log001: Basic put/get test"
 
-	cleanup $dir
-	log_cleanup $dir
+	env_cleanup $dir
 
 	set env [berkdb env -log -create -home $dir \
 			-mode 0644 -log_max $max]
@@ -121,7 +120,6 @@ proc log001 { dir max nrecs } {
 	# Close and unlink the file
 	error_check_good env:close:$env [$env close] 0
 	error_check_good envremove:$dir [berkdb envremove -home $dir] 0
-	log_cleanup $dir
 
 	puts "Log001 Complete"
 }
@@ -131,8 +129,7 @@ proc log002 { dir {max 32768} } {
 
 	puts "Log002: Multiple log test w/trunc, file, compare functionality"
 
-	cleanup $dir
-	log_cleanup $dir
+	env_cleanup $dir
 
 	set env [berkdb env -create -home $dir -mode 0644 -log -log_max $max]
 	error_check_bad log_env:$dir $env NULL
@@ -194,7 +191,6 @@ proc log002 { dir {max 32768} } {
 	# Close and unlink the file
 	error_check_good env:close:$env [$env close] 0
 	error_check_good envremove:$dir [berkdb envremove -home $dir] 0
-	log_cleanup $dir
 
 	puts "Log002 Complete"
 }
@@ -204,8 +200,7 @@ proc log003 { dir {max 32768} } {
 
 	puts "Log003: Verify log_flush behavior"
 
-	cleanup $dir
-	log_cleanup $dir
+	env_cleanup $dir
 	set short_rec "abcdefghijklmnopqrstuvwxyz"
 	set long_rec [repeat $short_rec 200]
 	set very_long_rec [repeat $long_rec 4]
@@ -313,7 +308,7 @@ proc log004 { dir } {
 
 	puts "Log004: Prev on log when beginning of log has been truncated."
 	# Use archive test to populate log
-	cleanup $dir
+	env_cleanup $dir
 	puts "Log004.a: Call archive to populate log."
 	archive
 
@@ -326,7 +321,7 @@ proc log004 { dir } {
 
 	# Now open the log and get the first record and try a prev
 	puts "Log004.c: Open truncated log, attempt to access missing portion."
-	set myenv [berkdb env -log -home $dir]
+	set myenv [berkdb env -create -log -home $dir]
 	error_check_good log_open [is_substr $myenv "env"] 1
 
 	set ret [$myenv log_get -first]
@@ -339,15 +334,4 @@ proc log004 { dir } {
 	puts "Log004.d: Close log and environment."
 	error_check_good log_close [$myenv close] 0
 	puts "Log004 complete."
-}
-
-proc log_cleanup { dir } {
-	source ./include.tcl
-
-	set files [glob -nocomplain $dir/log.*]
-	if { [llength $files] != 0} {
-		foreach f $files {
-			fileremove -f $f
-		}
-	}
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: conscript.tcl,v 11.8 2000/05/08 19:29:31 sue Exp $
+#	$Id: conscript.tcl,v 11.12 2000/12/01 04:28:36 ubell Exp $
 #
 # Script for DB_CONSUME test (test070.tcl).
 # Usage: conscript dir file runtype nitems outputfile tnum args
@@ -29,7 +29,10 @@ proc consumescript_produce { db_cmd nitems tnum args } {
 	for { set ndx 0 } { $ndx < $nitems } { incr ndx } {
 		set oret $ret
 		set ret [$db put -append [chop_data q $mydata]]
-		error_check_good db_put [expr $oret < $ret] 1
+		error_check_good db_put \
+		    [expr $ret > 0 ? $oret < $ret : \
+		    $oret < 0 ? $oret < $ret : $oret > $ret] 1
+
 	}
 	# XXX: We permit incomplete syncs because they seem to
 	# be unavoidable and not damaging.
@@ -39,7 +42,7 @@ proc consumescript_produce { db_cmd nitems tnum args } {
 	puts "\t\tTest0$tnum: Producer $pid finished."
 }
 
-proc consumescript_consume { db_cmd nitems tnum outputfile args } {
+proc consumescript_consume { db_cmd nitems tnum outputfile mode args } {
 	source ./include.tcl
 	global mydata
 	set pid [pid]
@@ -47,13 +50,11 @@ proc consumescript_consume { db_cmd nitems tnum outputfile args } {
 
 	set db [eval $db_cmd]
 	error_check_good db_open:$pid [is_valid_db $db] TRUE
-	set dbc [$db cursor]
-	error_check_good cursor_open:$pid [is_valid_cursor $dbc $db] TRUE
 
 	set oid [open $outputfile w]
 
 	for { set ndx 0 } { $ndx < $nitems } { } {
-		set ret [$dbc get -consume]
+		set ret [$db get $mode]
 		if { [llength $ret] > 0 } {
 			error_check_good correct_data:$pid \
 				[lindex [lindex $ret 0] 1] [pad_data q $mydata]
@@ -66,7 +67,6 @@ proc consumescript_consume { db_cmd nitems tnum outputfile args } {
 	}
 
 	error_check_good output_close:$pid [close $oid] ""
-	error_check_good cursor_close:$pid [$dbc close] 0
 	# XXX: see above note.
 	set ret [catch {$db close} res]
 	error_check_good db_close:$pid [expr ($ret == 0) ||\
@@ -99,7 +99,7 @@ set args [lindex [lrange $argv 6 end] 0]
 set mydata "consumer data"
 
 # Open env
-set dbenv [berkdb env -home $dir -lock]
+set dbenv [berkdb env -home $dir ]
 error_check_good db_env_create [is_valid_env $dbenv] TRUE
 
 # Figure out db opening command.
@@ -112,9 +112,12 @@ if { $runtype == "PRODUCE" } {
 	error_check_good no_producer_outputfile $outputfile ""
 	consumescript_produce $db_cmd $nitems $tnum $args
 } elseif { $runtype == "CONSUME" } {
-	consumescript_consume $db_cmd $nitems $tnum $outputfile $args
+	consumescript_consume $db_cmd $nitems $tnum $outputfile -consume $args
+} elseif { $runtype == "WAIT" } {
+	consumescript_consume $db_cmd $nitems $tnum $outputfile -consume_wait \
+		$args
 } else {
-	error_check_good bad_args $runtype "either PRODUCE or CONSUME"
+	error_check_good bad_args $runtype "either PRODUCE, CONSUME or WAIT"
 }
 error_check_good env_close [$dbenv close] 0
 exit

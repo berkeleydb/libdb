@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_am.c,v 11.32 2000/05/04 22:11:29 krinsky Exp $";
+static const char revid[] = "$Id: db_am.c,v 11.42 2001/01/11 18:19:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -116,7 +115,7 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, dbcp)
 	 * right type.  With off page dups we may have different kinds
 	 * of cursors on the queue for a single database.
 	 */
-	MUTEX_THREAD_LOCK(dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->free_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links))
 		if (dbtype == dbc->dbtype) {
@@ -124,7 +123,7 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, dbcp)
 			dbc->flags = 0;
 			break;
 		}
-	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 
 	if (dbc == NULL) {
 		if ((ret = __os_calloc(dbp->dbenv, 1, sizeof(DBC), &dbc)) != 0)
@@ -151,8 +150,22 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, dbcp)
 
 			memcpy(dbc->lock.fileid, dbp->fileid, DB_FILE_ID_LEN);
 			if (CDB_LOCKING(dbenv)) {
-				dbc->lock_dbt.size = DB_FILE_ID_LEN;
-				dbc->lock_dbt.data = dbc->lock.fileid;
+				if (F_ISSET(dbenv, DB_ENV_CDB_ALLDB)) {
+					/*
+					 * If we are doing a single lock per
+					 * environment, set up the global
+					 * lock object just like we do to
+					 * single thread creates.
+					 */
+					DB_ASSERT(sizeof(db_pgno_t) ==
+					    sizeof(u_int32_t));
+					dbc->lock_dbt.size = sizeof(u_int32_t);
+					dbc->lock_dbt.data = &dbc->lock.pgno;
+					dbc->lock.pgno = 0;
+				} else {
+					dbc->lock_dbt.size = DB_FILE_ID_LEN;
+					dbc->lock_dbt.data = dbc->lock.fileid;
+				}
 			} else {
 				dbc->lock.type = DB_PAGE_LOCK;
 				dbc->lock_dbt.size = sizeof(dbc->lock);
@@ -188,8 +201,10 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, dbcp)
 
 	if ((dbc->txn = txn) == NULL)
 		dbc->locker = dbc->lid;
-	else
+	else {
 		dbc->locker = txn->txnid;
+		txn->cursors++;
+	}
 
 	if (is_opd)
 		F_SET(dbc, DBC_OPD);
@@ -219,10 +234,10 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, dbcp)
 		goto err;
 	}
 
-	MUTEX_THREAD_LOCK(dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 	TAILQ_INSERT_TAIL(&dbp->active_queue, dbc, links);
 	F_SET(dbc, DBC_ACTIVE);
-	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 
 	*dbcp = dbc;
 	return (0);
@@ -257,7 +272,7 @@ __db_cprint(dbp)
 	DBC_INTERNAL *cp;
 	char *s;
 
-	MUTEX_THREAD_LOCK(dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbp->dbenv, dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
 		switch (dbc->dbtype) {
@@ -295,7 +310,7 @@ __db_cprint(dbp)
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links))
 		fprintf(stderr, "free: %#0lx ", P_TO_ULONG(dbc));
 	fprintf(stderr, "\n");
-	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
 
 	return (0);
 }
@@ -349,7 +364,7 @@ __db_get(dbp, txn, key, data, flags)
 	u_int32_t flags;
 {
 	DBC *dbc;
-	int ret, t_ret;
+	int mode, ret, t_ret;
 
 	PANIC_CHECK(dbp->dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->get");
@@ -357,10 +372,23 @@ __db_get(dbp, txn, key, data, flags)
 	if ((ret = __db_getchk(dbp, key, data, flags)) != 0)
 		return (ret);
 
-	if ((ret = dbp->cursor(dbp, txn, &dbc, 0)) != 0)
+	mode = 0;
+	if (flags == DB_CONSUME || flags == DB_CONSUME_WAIT)
+		mode = DB_WRITELOCK;
+	if ((ret = dbp->cursor(dbp, txn, &dbc, mode)) != 0)
 		return (ret);
 
 	DEBUG_LREAD(dbc, txn, "__db_get", key, NULL, flags);
+
+	/*
+	 * The DBC_TRANSIENT flag indicates that we're just doing a
+	 * single operation with this cursor, and that in case of
+	 * error we don't need to restore it to its old position--we're
+	 * going to close it right away.  Thus, we can perform the get
+	 * without duplicating the cursor, saving some cycles in this
+	 * common case.
+	 */
+	F_SET(dbc, DBC_TRANSIENT);
 
 	ret = dbc->c_get(dbc, key, data,
 	    flags == 0 || flags == DB_RMW ? flags | DB_SET : flags);
@@ -396,8 +424,22 @@ __db_put(dbp, txn, key, data, flags)
 	    F_ISSET(dbp, DB_AM_DUP) || F_ISSET(key, DB_DBT_DUPOK))) != 0)
 		return (ret);
 
+	DB_CHECK_TXN(dbp, txn);
+
 	if ((ret = dbp->cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
 		return (ret);
+
+	/*
+	 * See the comment in __db_get().
+	 *
+	 * Note that the c_get in the DB_NOOVERWRITE case is safe to
+	 * do with this flag set;  if it errors in any way other than
+	 * DB_NOTFOUND, we're going to close the cursor without doing
+	 * anything else, and if it returns DB_NOTFOUND then it's safe
+	 * to do a c_put(DB_KEYLAST) even if an access method moved the
+	 * cursor, since that's not position-dependent.
+	 */
+	F_SET(dbc, DBC_TRANSIENT);
 
 	DEBUG_LWRITE(dbc, txn, "__db_put", key, data, flags);
 

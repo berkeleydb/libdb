@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test051.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test051.tcl,v 11.14 2000/08/25 14:21:57 sue Exp $
 #
 # Test51:
 #	Test of the fixed recno method.
@@ -34,10 +34,15 @@ proc test051 { method { args "" } } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test051.db
+		set testfile1 $testdir/test051a.db
+		set env NULL
 	} else {
 		set testfile test051.db
+		set testfile1 test051a.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 	set oflags "-create -truncate -mode 0644 $args"
 
 	# Test various flags (legal and illegal) to open
@@ -68,7 +73,6 @@ proc test051 { method { args "" } } {
 		    dbopen:flagtest:$f [is_substr $errorCode EINVAL] 1
 	}
 
-	cleanup $testdir
 
 	# Test partial puts where dlen != size (should fail)
 	# it is an error to specify a partial put w/ different
@@ -77,7 +81,7 @@ proc test051 { method { args "" } } {
 	set data ""
 	set test_char "a"
 
-	set db [eval {berkdb_open_noerr} $oflags $omethod $testfile]
+	set db [eval {berkdb_open_noerr} $oflags $omethod $testfile1]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\tTest051.b: Partial puts with dlen != size."
@@ -182,7 +186,6 @@ proc test051 { method { args "" } } {
 	}
 
 	$db close
-	cleanup $testdir
 
 	puts "\tTest051 complete."
 }

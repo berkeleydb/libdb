@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_upgrade.c,v 1.7 2000/05/31 15:09:59 bostic Exp $";
+    "$Id: db_upgrade.c,v 1.13 2001/01/18 18:36:59 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,9 +25,9 @@ static const char revid[] =
 
 #include "db_int.h"
 
-void	db_init __P((char *));
 int	main __P((int, char *[]));
 void	usage __P((void));
+void	version_check __P((void));
 
 const char
 	*progname = "db_upgrade";			/* Program name. */
@@ -42,11 +42,13 @@ main(argc, argv)
 	DB *dbp;
 	DB_ENV *dbenv;
 	u_int32_t flags;
-	int ch, e_close, exitval, ret, t_ret;
+	int ch, e_close, exitval, nflag, ret, t_ret;
 	char *home;
 
+	version_check();
+
 	dbenv = NULL;
-	flags = 0;
+	flags = nflag = 0;
 	e_close = exitval = 0;
 	home = NULL;
 	while ((ch = getopt(argc, argv, "h:NsV")) != EOF)
@@ -55,12 +57,7 @@ main(argc, argv)
 			home = optarg;
 			break;
 		case 'N':
-			if ((ret = db_env_set_mutexlocks(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_mutexlocks: %s\n",
-				    progname, db_strerror(ret));
-				exit (1);
-			}
+			nflag = 1;
 			if ((ret = db_env_set_panicstate(0)) != 0) {
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
@@ -101,14 +98,19 @@ main(argc, argv)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
+	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+		dbenv->err(dbenv, ret, "set_mutexlocks");
+		goto shutdown;
+	}
+
 	/*
 	 * If attaching to a pre-existing environment fails, create a
 	 * private one and try again.
 	 */
 	if ((ret = dbenv->open(dbenv,
-	    home, DB_INIT_MPOOL | DB_USE_ENVIRON, 0)) != 0 &&
-	    (ret = dbenv->open(dbenv,
-	    home, DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE, 0)) != 0) {
+	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) != 0 &&
+	    (ret = dbenv->open(dbenv, home,
+	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
 		goto shutdown;
 	}
@@ -151,4 +153,21 @@ usage()
 {
 	fprintf(stderr, "usage: db_upgrade [-NsV] [-h home] db_file ...\n");
 	exit (1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

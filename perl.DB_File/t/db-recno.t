@@ -1,5 +1,8 @@
 #!./perl -w
 
+use warnings;
+use strict ;
+
 BEGIN {
     unless(grep /blib/, @INC) {
         chdir 't' if -d 't';
@@ -12,7 +15,7 @@ use Config;
 BEGIN {
     if(-d "lib" && -f "TEST") {
         if ($Config{'extensions'} !~ /\bDB_File\b/ ) {
-            print "1..126\n";
+            print "1..128\n";
             exit 0;
         }
     }
@@ -20,7 +23,6 @@ BEGIN {
 
 use DB_File; 
 use Fcntl;
-use strict ;
 use vars qw($dbh $Dfile $bad_ones $FA) ;
 
 # full tied array support started in Perl 5.004_57
@@ -108,7 +110,7 @@ sub bad_one
 EOM
 }
 
-print "1..126\n";
+print "1..128\n";
 
 my $Dfile = "recno.tmp";
 unlink $Dfile ;
@@ -349,6 +351,7 @@ unlink $Dfile;
 
    package Another ;
 
+   use warnings ;
    use strict ;
 
    open(FILE, ">SubDB.pm") or die "Cannot open SubDB.pm: $!\n" ;
@@ -356,6 +359,7 @@ unlink $Dfile;
 
    package SubDB ;
 
+   use warnings ;
    use strict ;
    use vars qw( @ISA @EXPORT) ;
 
@@ -496,6 +500,7 @@ EOM
 
 {
    # DBM Filter tests
+   use warnings ;
    use strict ;
    my (@h, $db) ;
    my ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
@@ -602,6 +607,7 @@ EOM
 {    
     # DBM Filter with a closure
 
+    use warnings ;
     use strict ;
     my (@h, $db) ;
 
@@ -664,6 +670,7 @@ EOM
 
 {
    # DBM Filter recursion detection
+   use warnings ;
    use strict ;
    my (@h, $db) ;
    unlink $Dfile;
@@ -688,6 +695,7 @@ EOM
   {
     my $redirect = new Redirect $file ;
 
+    use warnings FATAL => qw(all);
     use strict ;
     use DB_File ;
 
@@ -743,6 +751,7 @@ EOM
   {
     my $redirect = new Redirect $save_output ;
 
+    use warnings FATAL => qw(all);
     use strict ;
     use vars qw(@h $H $file $i) ;
     use DB_File ;
@@ -843,6 +852,48 @@ REVERSE again
 0: first
 EOM
    
+}
+
+{
+    # Bug ID 20001013.009
+    #
+    # test that $hash{KEY} = undef doesn't produce the warning
+    #     Use of uninitialized value in null operation 
+    use warnings ;
+    use strict ;
+    use DB_File ;
+
+    unlink $Dfile;
+    my @h ;
+    my $a = "";
+    local $SIG{__WARN__} = sub {$a = $_[0]} ;
+    
+    tie @h, 'DB_File', $Dfile, O_RDWR|O_CREAT, 0664, $DB_RECNO 
+	or die "Can't open file: $!\n" ;
+    $h[0] = undef;
+    ok(127, $a eq "") ;
+    untie @h ;
+    unlink $Dfile;
+}
+
+{
+    # test that %hash = () doesn't produce the warning
+    #     Argument "" isn't numeric in entersub
+    use warnings ;
+    use strict ;
+    use DB_File ;
+    my $a = "";
+    local $SIG{__WARN__} = sub {$a = $_[0]} ;
+
+    unlink $Dfile;
+    my @h ;
+    
+    tie @h, 'DB_File', $Dfile, O_RDWR|O_CREAT, 0664, $DB_RECNO 
+	or die "Can't open file: $!\n" ;
+    @h = (); ;
+    ok(128, $a eq "") ;
+    untie @h ;
+    unlink $Dfile;
 }
 
 exit ;

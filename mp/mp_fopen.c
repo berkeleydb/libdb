@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fopen.c,v 11.30.2.1 2000/07/03 19:41:24 bostic Exp $";
+static const char revid[] = "$Id: mp_fopen.c,v 11.41 2001/01/10 04:50:53 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -81,15 +80,55 @@ memp_fopen(dbenv, path, flags, mode, pagesize, finfop, retp)
 		return (ret);
 
 	/* Require a non-zero pagesize. */
-	if (pagesize == 0) {
-		__db_err(dbenv, "memp_fopen: pagesize not specified");
+	if (pagesize == 0 ||
+	    (finfop != NULL && finfop->clear_len > pagesize)) {
+		__db_err(dbenv, "memp_fopen: illegal page size.");
 		return (EINVAL);
 	}
-	if (finfop != NULL && finfop->clear_len > pagesize)
-		return (EINVAL);
 
 	return (__memp_fopen(dbmp,
 	    NULL, path, flags, mode, pagesize, 1, finfop, retp));
+}
+
+/*
+ * __memp_set_unlink -- set unlink on last close flag.
+ *
+ * PUBLIC: void __memp_set_unlink __P((DB_MPOOLFILE *));
+ */
+void
+__memp_set_unlink(dbmpf)
+	DB_MPOOLFILE *dbmpf;
+{
+	DB_MPOOL *dbmp;
+	dbmp = dbmpf->dbmp;
+
+	R_LOCK(dbmp->dbenv, dbmp->reginfo);
+	F_SET(dbmpf->mfp, MP_UNLINK);
+	R_UNLOCK(dbmp->dbenv, dbmp->reginfo);
+}
+
+/*
+ * __memp_clear_unlink -- clear unlink on last close flag.
+ *
+ * PUBLIC: void __memp_clear_unlink __P((DB_MPOOLFILE *));
+ */
+void
+__memp_clear_unlink(dbmpf)
+	DB_MPOOLFILE *dbmpf;
+{
+	DB_MPOOL *dbmp;
+	dbmp = dbmpf->dbmp;
+
+	/*
+	 * This bit is protected in the queue code because the metapage
+	 * is locked so we can avoid geting the region lock.
+	 * If this gets used from other than the queue code, we cannot.
+	 */
+	if (!F_ISSET(dbmpf->mfp, MP_UNLINK))
+		return;
+	R_LOCK(dbmp->dbenv, dbmp->reginfo);
+	F_CLR(dbmpf->mfp, MP_UNLINK);
+	R_UNLOCK(dbmp->dbenv, dbmp->reginfo);
 }
 
 /*
@@ -176,7 +215,9 @@ __memp_fopen(dbmp, mfp, path, flags, mode, pagesize, needlock, finfop, retp)
 			oflags |= DB_OSO_RDONLY;
 		if ((ret =
 		   __os_open(dbenv, rpath, oflags, mode, &dbmfp->fh)) != 0) {
-			__db_err(dbenv, "%s: %s", rpath, db_strerror(ret));
+			if (!LF_ISSET(DB_EXTENT))
+				__db_err(dbenv,
+				    "%s: %s", rpath, db_strerror(ret));
 			goto err;
 		}
 
@@ -255,7 +296,7 @@ __memp_fopen(dbmp, mfp, path, flags, mode, pagesize, needlock, finfop, retp)
 		ret = __memp_mf_open(
 		    dbmp, path, pagesize, last_pgno, finfop, flags, &mfp);
 	else {
-		++mfp->ref_cnt;
+		++mfp->mpf_cnt;
 		ret = 0;
 	}
 	if (needlock)
@@ -326,9 +367,9 @@ __memp_fopen(dbmp, mfp, path, flags, mode, pagesize, needlock, finfop, retp)
 	if (rpath != NULL)
 		__os_freestr(rpath);
 
-	MUTEX_THREAD_LOCK(dbmp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 	TAILQ_INSERT_TAIL(&dbmp->dbmfq, dbmfp, q);
-	MUTEX_THREAD_UNLOCK(dbmp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 
 	*retp = dbmfp;
 	return (0);
@@ -341,11 +382,13 @@ err:	/*
 		__os_freestr(rpath);
 	if (F_ISSET(&dbmfp->fh, DB_FH_VALID))
 		(void)__os_closehandle(&dbmfp->fh);
-	if (dbmfp != NULL)
+	if (dbmfp != NULL) {
+		if (dbmfp->mutexp != NULL)
+			__db_mutex_free(dbenv, dbmp->reginfo, dbmfp->mutexp);
 		__os_free(dbmfp, sizeof(DB_MPOOLFILE));
+	}
 	return (ret);
 }
-	MPOOL *mp;
 
 /*
  * __memp_mf_open --
@@ -361,6 +404,7 @@ __memp_mf_open(dbmp, path, pagesize, last_pgno, finfop, flags, retp)
 	u_int32_t flags;
 	MPOOLFILE **retp;
 {
+	MPOOL *mp;
 	MPOOLFILE *mfp;
 	int ret;
 	void *p;
@@ -417,7 +461,7 @@ __memp_mf_open(dbmp, path, pagesize, last_pgno, finfop, flags, retp)
 				if (finfop->ftype != 0)
 					mfp->ftype = finfop->ftype;
 
-				++mfp->ref_cnt;
+				++mfp->mpf_cnt;
 
 				*retp = mfp;
 				return (0);
@@ -433,7 +477,7 @@ __memp_mf_open(dbmp, path, pagesize, last_pgno, finfop, flags, retp)
 
 	/* Initialize the structure. */
 	memset(mfp, 0, sizeof(MPOOLFILE));
-	mfp->ref_cnt = 1;
+	mfp->mpf_cnt = 1;
 	mfp->ftype = finfop->ftype;
 	mfp->lsn_off = finfop->lsn_offset;
 	mfp->clear_len = finfop->clear_len;
@@ -506,6 +550,7 @@ memp_fclose(dbmfp)
 	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
 	MPOOLFILE *mfp;
+	char *rpath;
 	int ret, t_ret;
 
 	dbmp = dbmfp->dbmp;
@@ -525,7 +570,7 @@ memp_fclose(dbmfp)
 	 * loop infinitely when calling us to discard all of the DB_MPOOLFILEs.
 	 */
 	for (;;) {
-		MUTEX_THREAD_LOCK(dbmp->mutexp);
+		MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 
 		/*
 		 * We have to reference count DB_MPOOLFILE structures as other
@@ -553,11 +598,11 @@ memp_fclose(dbmfp)
 			TAILQ_REMOVE(&dbmp->dbmfq, dbmfp, q);
 			break;
 		}
-		MUTEX_THREAD_UNLOCK(dbmp->mutexp);
+		MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 
 		(void)__os_sleep(dbenv, 1, 0);
 	}
-	MUTEX_THREAD_UNLOCK(dbmp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 
 	/* Complain if pinned blocks never returned. */
 	if (dbmfp->pinref != 0)
@@ -594,8 +639,21 @@ memp_fclose(dbmfp)
 	 */
 	R_LOCK(dbenv, dbmp->reginfo);
 	mfp = dbmfp->mfp;
-	if (--mfp->ref_cnt == 0)
-		__memp_mf_discard(dbmp, mfp);
+	if (--mfp->mpf_cnt == 0) {
+		if (F_ISSET(mfp, MP_UNLINK)) {
+			MEMP_FREMOVE(mfp);
+			if ((t_ret = __db_appname(dbmp->dbenv,
+			    DB_APP_DATA, NULL, R_ADDR(dbmp->reginfo,
+			    mfp->path_off), 0, NULL, &rpath)) != 0 && ret == 0)
+				ret = t_ret;
+			if (t_ret == 0 && (t_ret =
+			    __os_unlink(dbmp->dbenv, rpath) != 0 && ret == 0))
+				ret = t_ret;
+			__os_free(rpath, 0);
+		}
+		if (mfp->block_cnt == 0)
+			__memp_mf_discard(dbmp, mfp);
+	}
 	else if (F_ISSET(mfp, MP_TEMP))
 		MEMP_FREMOVE(mfp);
 	R_UNLOCK(dbenv, dbmp->reginfo);

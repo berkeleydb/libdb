@@ -43,6 +43,18 @@ struct __env_create_reply {
 };
 typedef struct __env_create_reply __env_create_reply;
 
+struct __env_flags_msg {
+	u_int dbenvcl_id;
+	u_int flags;
+	u_int onoff;
+};
+typedef struct __env_flags_msg __env_flags_msg;
+
+struct __env_flags_reply {
+	u_int status;
+};
+typedef struct __env_flags_reply __env_flags_reply;
+
 struct __env_open_msg {
 	u_int dbenvcl_id;
 	char *home;
@@ -165,6 +177,17 @@ struct __db_del_reply {
 	u_int status;
 };
 typedef struct __db_del_reply __db_del_reply;
+
+struct __db_extentsize_msg {
+	u_int dbpcl_id;
+	u_int extentsize;
+};
+typedef struct __db_extentsize_msg __db_extentsize_msg;
+
+struct __db_extentsize_reply {
+	u_int status;
+};
+typedef struct __db_extentsize_reply __db_extentsize_reply;
 
 struct __db_flags_msg {
 	u_int dbpcl_id;
@@ -576,75 +599,79 @@ extern  __env_cachesize_reply * __db_env_cachesize_1();
 extern  __env_close_reply * __db_env_close_1();
 #define	__DB_env_create ((unsigned long)(3))
 extern  __env_create_reply * __db_env_create_1();
-#define	__DB_env_open ((unsigned long)(4))
+#define	__DB_env_flags ((unsigned long)(4))
+extern  __env_flags_reply * __db_env_flags_1();
+#define	__DB_env_open ((unsigned long)(5))
 extern  __env_open_reply * __db_env_open_1();
-#define	__DB_env_remove ((unsigned long)(5))
+#define	__DB_env_remove ((unsigned long)(6))
 extern  __env_remove_reply * __db_env_remove_1();
-#define	__DB_txn_abort ((unsigned long)(6))
+#define	__DB_txn_abort ((unsigned long)(7))
 extern  __txn_abort_reply * __db_txn_abort_1();
-#define	__DB_txn_begin ((unsigned long)(7))
+#define	__DB_txn_begin ((unsigned long)(8))
 extern  __txn_begin_reply * __db_txn_begin_1();
-#define	__DB_txn_commit ((unsigned long)(8))
+#define	__DB_txn_commit ((unsigned long)(9))
 extern  __txn_commit_reply * __db_txn_commit_1();
-#define	__DB_db_bt_maxkey ((unsigned long)(9))
+#define	__DB_db_bt_maxkey ((unsigned long)(10))
 extern  __db_bt_maxkey_reply * __db_db_bt_maxkey_1();
-#define	__DB_db_bt_minkey ((unsigned long)(10))
+#define	__DB_db_bt_minkey ((unsigned long)(11))
 extern  __db_bt_minkey_reply * __db_db_bt_minkey_1();
-#define	__DB_db_close ((unsigned long)(11))
+#define	__DB_db_close ((unsigned long)(12))
 extern  __db_close_reply * __db_db_close_1();
-#define	__DB_db_create ((unsigned long)(12))
+#define	__DB_db_create ((unsigned long)(13))
 extern  __db_create_reply * __db_db_create_1();
-#define	__DB_db_del ((unsigned long)(13))
+#define	__DB_db_del ((unsigned long)(14))
 extern  __db_del_reply * __db_db_del_1();
-#define	__DB_db_flags ((unsigned long)(14))
+#define	__DB_db_extentsize ((unsigned long)(15))
+extern  __db_extentsize_reply * __db_db_extentsize_1();
+#define	__DB_db_flags ((unsigned long)(16))
 extern  __db_flags_reply * __db_db_flags_1();
-#define	__DB_db_get ((unsigned long)(15))
+#define	__DB_db_get ((unsigned long)(17))
 extern  __db_get_reply * __db_db_get_1();
-#define	__DB_db_h_ffactor ((unsigned long)(16))
+#define	__DB_db_h_ffactor ((unsigned long)(18))
 extern  __db_h_ffactor_reply * __db_db_h_ffactor_1();
-#define	__DB_db_h_nelem ((unsigned long)(17))
+#define	__DB_db_h_nelem ((unsigned long)(19))
 extern  __db_h_nelem_reply * __db_db_h_nelem_1();
-#define	__DB_db_key_range ((unsigned long)(18))
+#define	__DB_db_key_range ((unsigned long)(20))
 extern  __db_key_range_reply * __db_db_key_range_1();
-#define	__DB_db_lorder ((unsigned long)(19))
+#define	__DB_db_lorder ((unsigned long)(21))
 extern  __db_lorder_reply * __db_db_lorder_1();
-#define	__DB_db_open ((unsigned long)(20))
+#define	__DB_db_open ((unsigned long)(22))
 extern  __db_open_reply * __db_db_open_1();
-#define	__DB_db_pagesize ((unsigned long)(21))
+#define	__DB_db_pagesize ((unsigned long)(23))
 extern  __db_pagesize_reply * __db_db_pagesize_1();
-#define	__DB_db_put ((unsigned long)(22))
+#define	__DB_db_put ((unsigned long)(24))
 extern  __db_put_reply * __db_db_put_1();
-#define	__DB_db_re_delim ((unsigned long)(23))
+#define	__DB_db_re_delim ((unsigned long)(25))
 extern  __db_re_delim_reply * __db_db_re_delim_1();
-#define	__DB_db_re_len ((unsigned long)(24))
+#define	__DB_db_re_len ((unsigned long)(26))
 extern  __db_re_len_reply * __db_db_re_len_1();
-#define	__DB_db_re_pad ((unsigned long)(25))
+#define	__DB_db_re_pad ((unsigned long)(27))
 extern  __db_re_pad_reply * __db_db_re_pad_1();
-#define	__DB_db_remove ((unsigned long)(26))
+#define	__DB_db_remove ((unsigned long)(28))
 extern  __db_remove_reply * __db_db_remove_1();
-#define	__DB_db_rename ((unsigned long)(27))
+#define	__DB_db_rename ((unsigned long)(29))
 extern  __db_rename_reply * __db_db_rename_1();
-#define	__DB_db_stat ((unsigned long)(28))
+#define	__DB_db_stat ((unsigned long)(30))
 extern  __db_stat_reply * __db_db_stat_1();
-#define	__DB_db_swapped ((unsigned long)(29))
+#define	__DB_db_swapped ((unsigned long)(31))
 extern  __db_swapped_reply * __db_db_swapped_1();
-#define	__DB_db_sync ((unsigned long)(30))
+#define	__DB_db_sync ((unsigned long)(32))
 extern  __db_sync_reply * __db_db_sync_1();
-#define	__DB_db_cursor ((unsigned long)(31))
+#define	__DB_db_cursor ((unsigned long)(33))
 extern  __db_cursor_reply * __db_db_cursor_1();
-#define	__DB_db_join ((unsigned long)(32))
+#define	__DB_db_join ((unsigned long)(34))
 extern  __db_join_reply * __db_db_join_1();
-#define	__DB_dbc_close ((unsigned long)(33))
+#define	__DB_dbc_close ((unsigned long)(35))
 extern  __dbc_close_reply * __db_dbc_close_1();
-#define	__DB_dbc_count ((unsigned long)(34))
+#define	__DB_dbc_count ((unsigned long)(36))
 extern  __dbc_count_reply * __db_dbc_count_1();
-#define	__DB_dbc_del ((unsigned long)(35))
+#define	__DB_dbc_del ((unsigned long)(37))
 extern  __dbc_del_reply * __db_dbc_del_1();
-#define	__DB_dbc_dup ((unsigned long)(36))
+#define	__DB_dbc_dup ((unsigned long)(38))
 extern  __dbc_dup_reply * __db_dbc_dup_1();
-#define	__DB_dbc_get ((unsigned long)(37))
+#define	__DB_dbc_get ((unsigned long)(39))
 extern  __dbc_get_reply * __db_dbc_get_1();
-#define	__DB_dbc_put ((unsigned long)(38))
+#define	__DB_dbc_put ((unsigned long)(40))
 extern  __dbc_put_reply * __db_dbc_put_1();
 extern int db_serverprog_1_freeresult();
 
@@ -655,6 +682,8 @@ extern bool_t xdr___env_close_msg();
 extern bool_t xdr___env_close_reply();
 extern bool_t xdr___env_create_msg();
 extern bool_t xdr___env_create_reply();
+extern bool_t xdr___env_flags_msg();
+extern bool_t xdr___env_flags_reply();
 extern bool_t xdr___env_open_msg();
 extern bool_t xdr___env_open_reply();
 extern bool_t xdr___env_remove_msg();
@@ -675,6 +704,8 @@ extern bool_t xdr___db_create_msg();
 extern bool_t xdr___db_create_reply();
 extern bool_t xdr___db_del_msg();
 extern bool_t xdr___db_del_reply();
+extern bool_t xdr___db_extentsize_msg();
+extern bool_t xdr___db_extentsize_reply();
 extern bool_t xdr___db_flags_msg();
 extern bool_t xdr___db_flags_reply();
 extern bool_t xdr___db_get_msg();

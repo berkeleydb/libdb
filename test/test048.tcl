@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test048.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test048.tcl,v 11.11 2000/12/11 17:42:18 sue Exp $
 #
 # Test048: Cursor stability across btree splits.
 proc test048 { method args } {
@@ -15,6 +15,14 @@ proc test048 { method args } {
 	if { [is_btree $method] != 1 } {
 		puts "Test$tstn skipping for method $method."
 		return
+	}
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		incr pgindex
+		if { [lindex $args $pgindex] > 8192 } {
+			puts "Test048: Skipping for large pagesizes"
+			return
+		}
 	}
 
 	set method "-btree"
@@ -33,11 +41,14 @@ proc test048 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tstn.db
+		set env NULL
 	} else {
 		set testfile test0$tstn.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags "-create -truncate -mode 0644 $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
@@ -123,7 +134,6 @@ proc test048 { method args } {
 		error_check_good dbc_close:$i [$dbc_set($i) close] 0
 	}
 	error_check_good dbclose [$db close] 0
-	cleanup $testdir
 
 	puts "\tTest$tstn complete."
 }

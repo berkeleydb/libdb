@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2000 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2001 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -16,7 +16,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.11';
+$VERSION = '0.13';
 
 require Exporter;
 require DynaLoader;
@@ -28,6 +28,7 @@ use IO ;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
+
 	DB_AFTER
 	DB_APPEND
 	DB_ARCH_ABS
@@ -35,6 +36,9 @@ use IO ;
 	DB_ARCH_LOG
 	DB_BEFORE
 	DB_BTREE
+	DB_BTREEMAGIC
+	DB_BTREEOLDVER
+	DB_BTREEVERSION
 	DB_CHECKPOINT
 	DB_CONSUME
 	DB_CREATE
@@ -43,6 +47,7 @@ use IO ;
 	DB_DBT_MALLOC
 	DB_DBT_PARTIAL
 	DB_DBT_USERMEM
+	DB_DELETED
 	DB_DELIMITER
 	DB_DUP
 	DB_DUPSORT
@@ -58,6 +63,9 @@ use IO ;
 	DB_GET_BOTH
 	DB_GET_RECNO
 	DB_HASH
+	DB_HASHMAGIC
+	DB_HASHOLDVER
+	DB_HASHVERSION
 	DB_INCOMPLETE
 	DB_INIT_CDB
 	DB_INIT_LOCK
@@ -70,6 +78,8 @@ use IO ;
 	DB_KEYFIRST
 	DB_KEYLAST
 	DB_LAST
+	DB_LOCKMAGIC
+	DB_LOCKVERSION
 	DB_LOCK_CONFLICT
 	DB_LOCK_DEADLOCK
 	DB_LOCK_DEFAULT
@@ -83,6 +93,8 @@ use IO ;
 	DB_LOCK_RIW_N
 	DB_LOCK_RW_N
 	DB_LOCK_YOUNGEST
+	DB_LOGMAGIC
+	DB_LOGOLDVER
 	DB_MAX_PAGES
 	DB_MAX_RECORDS
 	DB_MPOOL_CLEAN
@@ -93,6 +105,7 @@ use IO ;
 	DB_MPOOL_NEW
 	DB_MPOOL_PRIVATE
 	DB_MUTEXDEBUG
+	DB_MUTEXLOCKS
 	DB_NEEDSPLIT
 	DB_NEXT
 	DB_NEXT_DUP
@@ -101,6 +114,7 @@ use IO ;
 	DB_NOSYNC
 	DB_NOTFOUND
 	DB_PAD
+	DB_PAGEYIELD
 	DB_POSITION
 	DB_PREV
 	DB_PRIVATE
@@ -124,11 +138,14 @@ use IO ;
 	DB_TEMPORARY
 	DB_THREAD
 	DB_TRUNCATE
+	DB_TXNMAGIC
+	DB_TXNVERSION
 	DB_TXN_BACKWARD_ROLL
 	DB_TXN_CKP
 	DB_TXN_FORWARD_ROLL
 	DB_TXN_LOCK_2PL
 	DB_TXN_LOCK_MASK
+	DB_TXN_LOCK_OPTIMIST
 	DB_TXN_LOCK_OPTIMISTIC
 	DB_TXN_LOG_MASK
 	DB_TXN_LOG_REDO
@@ -136,9 +153,9 @@ use IO ;
 	DB_TXN_LOG_UNDOREDO
 	DB_TXN_NOSYNC
 	DB_TXN_NOWAIT
-	DB_TXN_SYNC
 	DB_TXN_OPENFILES
 	DB_TXN_REDO
+	DB_TXN_SYNC
 	DB_TXN_UNDO
 	DB_USE_ENVIRON
 	DB_USE_ENVIRON_ROOT
@@ -146,8 +163,7 @@ use IO ;
 	DB_VERSION_MINOR
 	DB_VERSION_PATCH
 	DB_WRITECURSOR
-
-);
+	);
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -306,16 +322,21 @@ sub new
     #			[ -ErrFile   	=> filename or filehandle, ]
     #			[ -ErrPrefix 	=> "string", ]
     #			[ -Flags	=> DB_INIT_LOCK| ]
+    #			[ -Cachesize	=> number ]
+    #			[ -LockDetect	=>  ]
     #			[ -Verbose	=> boolean ]
     #			;
 
     my $pkg = shift ;
     my $got = BerkeleyDB::ParseParameters({
 					Home		=> undef,
+					Server		=> undef,
 					Mode		=> 0666,
 					ErrFile  	=> undef,
 					ErrPrefix 	=> undef,
 					Flags     	=> 0,
+					Cachesize     	=> 0,
+					LockDetect     	=> 0,
 					Verbose		=> 0,
 					Config		=> undef,
 					}, @_) ;
@@ -603,6 +624,7 @@ sub new
 			Len		=> undef,
 			Pad		=> undef,
 			ArrayBase 	=> 1, # lowest index in array
+			ExtentSize      => undef,
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
@@ -1095,6 +1117,22 @@ sub db_join
 }
 
 package BerkeleyDB::Cursor ;
+
+sub c_close
+{
+    my $cursor = shift ;
+    $cursor->[1] = "" ;
+    return $cursor->_c_close() ;
+}
+
+sub c_dup
+{
+    my $cursor = shift ;
+    my ($addr) = $cursor->_c_dup(@_) ;
+    my $obj ;
+    $obj = bless [$addr, $cursor->[1]] , "BerkeleyDB::Cursor" if $addr ;
+    return $obj ;
+}
 
 sub DESTROY
 {

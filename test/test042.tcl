@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test042.tcl,v 11.23 2000/05/24 14:58:10 krinsky Exp $
+#	$Id: test042.tcl,v 11.24 2000/08/25 14:21:56 sue Exp $
 #
 # DB Test 42 {access method}
 #
@@ -60,7 +60,7 @@ proc test042 { method {nentries 1000} args } {
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	set env [berkdb env -create -cdb -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE

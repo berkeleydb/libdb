@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mutex.tcl,v 11.16 2000/05/24 14:58:10 krinsky Exp $
+#	$Id: mutex.tcl,v 11.18 2000/09/01 19:24:59 krinsky Exp $
 #
 # Exercise mutex functionality.
 # Options are:
@@ -67,7 +67,7 @@ proc mutex001 { dir nlocks } {
 	source ./include.tcl
 
 	puts "Mutex001: Basic functionality"
-	cleanup $dir
+	env_cleanup $dir
 
 	# Test open w/out create; should fail
 	error_check_bad \
@@ -107,7 +107,7 @@ proc mutex002 { dir nlocks } {
 	source ./include.tcl
 
 	puts "Mutex002: Basic synchronization"
-	cleanup $dir
+	env_cleanup $dir
 
 	# Fork off child before we open any files.
 	set f1 [open |$tclsh_path r+]
@@ -193,7 +193,7 @@ proc mutex003 { dir iter nmutex procs mdegree wait } {
 
 	puts "Mutex003: Multi-process random mutex test ($procs processes)"
 
-	cleanup $dir
+	env_cleanup $dir
 
 	# Now open the region we'll use for multiprocess testing.
 	set env [berkdb env -create -mode 0644 -lock -home $dir]

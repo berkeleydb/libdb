@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: crdel.src,v 11.11 2000/05/10 16:59:28 ubell Exp $
+ *	$Id: crdel.src,v 11.12 2000/12/12 17:41:48 bostic Exp $
  */
 
 PREFIX	crdel
@@ -86,7 +86,7 @@ END
  * name: name of the file being removed (relative to DBHOME).
  */
 BEGIN rename		145
-ARG	fileid		int32_t 	ld
+ARG	fileid		int32_t	ld
 DBT	name		DBT		s
 DBT	newname		DBT		s
 END
@@ -98,6 +98,6 @@ END
  * name: name of the file being removed (relative to DBHOME).
  */
 BEGIN delete		146
-ARG	fileid		int32_t 	ld
+ARG	fileid		int32_t	ld
 DBT	name		DBT		s
 END

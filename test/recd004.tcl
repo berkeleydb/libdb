@@ -3,17 +3,22 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd004.tcl,v 11.14 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: recd004.tcl,v 11.21 2000/12/11 17:24:55 sue Exp $
 #
 # Recovery Test #4.
 # Verify that we work correctly when big keys get elevated.
-proc recd004 { method {select 0} } {
+proc recd004 { method {select 0} args} {
 	source ./include.tcl
 	global rand_init
 
-	set opts [convert_args $method ""]
+	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Recd004: skipping for specific pagesizes"
+		return
+	}
 	if { [is_record_based $method] == 1 } {
 		puts "Recd004 skipping for method $method"
 		return
@@ -22,7 +27,7 @@ proc recd004 { method {select 0} } {
 
 	berkdb srand $rand_init
 
-	cleanup $testdir
+	env_cleanup $testdir
 	set testfile recd004.db
 	set testfile2 recd004-2.db
 	set eflags "-create -txn -home $testdir"
@@ -78,7 +83,8 @@ proc recd004 { method {select 0} } {
 
 	puts "\tRecd004.d: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

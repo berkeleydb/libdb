@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_tx_recover.so,v 10.21 2000/05/01 21:57:44 bostic Exp $-->
+<!--$Id: env_set_tx_recover.so,v 10.26 2000/07/09 19:13:19 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_tx_recover</h1>
@@ -25,36 +24,28 @@
 int
 DBENV-&gt;set_tx_recover(DB_ENV *dbenv,
     int (*tx_recover)(DB_ENV *dbenv,
-    DBT *log_rec, DB_LSN *lsnp, db_recops op, void *info));
+    DBT *log_rec, DB_LSN *lsn, db_recops op));
 </pre></h3>
 <h1>Description</h1>
-<p>Set the function that is called by <a href="../api_c/txn_abort.html">txn_abort</a> during transaction
-abort.
-<p>This function must return the value of <b>errno</b> on failure and 0
-on success.  It takes five arguments:
+<p>Set the application's function to be called during transaction abort
+and recovery.  This function must return 0 on success and either
+<b>errno</b> or a value outside of the Berkeley DB error name space on
+failure.  It takes four arguments:
 <p><dl compact>
-<p><dt>dbenv<dd>A pointer to the environment (DB_ENV *).
+<p><dt>dbenv  <dd>A Berkeley DB environment.
 <p><dt>log_rec<dd>A log record.
-<p><dt>lsnp<dd>A pointer to a log sequence number.
-<p><dt>op<dd>A variable set to one of the following values:
+<p><dt>lsn<dd>A log sequence number.
+<p><dt>op<dd>One of the following values:
 <p><dl compact>
 <p><dt><a name="DB_TXN_BACKWARD_ROLL">DB_TXN_BACKWARD_ROLL</a><dd>The log is being read backward to determine which transactions have been
-committed and to abort those operations that were not.  Undo the operation
+committed and to abort those operations that were not, undo the operation
 described by the log record.
-<p><dt><a name="DB_TXN_FORWARD_ROLL">DB_TXN_FORWARD_ROLL</a><dd>The log is being played forward, any transaction IDs encountered that
-have not been entered into the list referenced by <b>info</b> should be
-ignored. Redo the operation described by the log record.
-<p><dt><a name="DB_TXN_OPENFILES">DB_TXN_OPENFILES</a><dd>The log is being read to open all the files required to perform recovery.
-User defined operations will not normally see this operation.
-<p><dt><a name="DB_TXN_ABORT">DB_TXN_ABORT</a><dd>The log is being read backwards during a transaction abort.  Undo the
+<p><dt><a name="DB_TXN_FORWARD_ROLL">DB_TXN_FORWARD_ROLL</a><dd>The log is being played forward, redo the operation described by the log
+record.
+<p><dt><a name="DB_TXN_ABORT">DB_TXN_ABORT</a><dd>The log is being read backwards during a transaction abort, undo the
 operation described by the log record.
 </dl>
-<p><dt>info<dd>An opaque pointer used to reference the list of transaction IDs encountered
-during recovery.
 </dl>
-<p>If no recover function is specified, the default is that only Berkeley DB access
-method operations are transaction protected, and the default recover function
-will be used.
 <p>The DBENV-&gt;set_tx_recover interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <p>The DBENV-&gt;set_tx_recover function returns a non-zero error value on failure and 0 on success.

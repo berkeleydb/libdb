@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test047.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test047.tcl,v 11.10 2000/08/25 14:21:56 sue Exp $
 #
 # DB Test 47: test of the SET_RANGE interface to DB->c_get.
 proc test047 { method args } {
@@ -32,11 +32,18 @@ proc test047 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tstn.db
+		set testfile1 $testdir/test0$tstn.a.db
+		set testfile2 $testdir/test0$tstn.b.db
+		set env NULL
 	} else {
 		set testfile test0$tstn.db
+		set testfile1 test0$tstn.a.db
+		set testfile2 test0$tstn.b.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags "-create -truncate -mode 0644 -dup $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
@@ -83,15 +90,13 @@ proc test047 { method args } {
 	error_check_bad dbc2_get:set_range [llength $ret] 0
 	error_check_bad dbc2_get:set_range $ret $curr
 
-	# cleanup
-	puts "\tTest$tstn.e: Cleanup for second part of test, close db/cursors."
+	puts "\tTest$tstn.e: Close for second part of test, close db/cursors."
 	error_check_good dbc:close [$dbc close] 0
 	error_check_good dbc2:close [$dbcurs2 close] 0
 	error_check_good dbclose [$db close] 0
-	cleanup $testdir
 
 	# open db
-	set db [eval {berkdb_open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile1]
 	error_check_good dbopen2 [is_valid_db $db] TRUE
 
 	set nkeys 10
@@ -134,9 +139,8 @@ proc test047 { method args } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good dbc2_close [$dbc2 close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
-	set db [eval {berkdb_open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile2]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set dbc [$db cursor]
 	error_check_good db_cursor [is_substr $dbc $db] 1
@@ -183,7 +187,6 @@ proc test047 { method args } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good dbc2_close [$dbc2 close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	puts "\tTest$tstn complete."
 }

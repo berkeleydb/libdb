@@ -1,5 +1,5 @@
 /*
- * $Id: db_config.h,v 1.2 2000/05/09 19:08:06 bostic Exp $
+ * $Id: db_config.h,v 1.4 2000/12/12 18:39:26 bostic Exp $
  */
 
 /* Define if building VxWorks */
@@ -33,23 +33,27 @@
 /* #undef TIME_WITH_SYS_TIME */
 
 /* !!!
-   This is the ONLY option in this file that may be edited for VxWorks.
-
-   The user must set this according to VxWork's target arch.  We use an
-   x86 (little-endian) target. */
+ * WORDS_BIGENDIAN is the ONLY option in this file that may be edited
+ * for VxWorks.
+ *
+ * The user must set this according to VxWork's target arch.  We use an
+ * x86 (little-endian) target.
+ */
 /* Define if your processor stores words with the most significant
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 /* #undef WORDS_BIGENDIAN */
 
 /* !!!
-   This option may be added using the Tornado project build.  DO NOT
-   modify it here. */
+ * The CONFIG_TEST option may be added using the Tornado project build.
+ * DO NOT modify it here.
+ */
 /* Define if you are building a version for running the test suite. */
 /* #undef CONFIG_TEST */
 
 /* !!!
-   This option may be added using the Tornado project build.  DO NOT
-   modify it here. */
+ * The DEBUG option may be added using the Tornado project build.
+ * DO NOT modify it here.
+ */
 /* Define if you want a debugging version. */
 /* #undef DEBUG */
 
@@ -60,15 +64,19 @@
 /* #undef DEBUG_WOP */
 
 /* !!!
-   This option may be added using the Tornado project build.  DO NOT
-   modify it here. */
+ * The DIAGNOSTIC option may be added using the Tornado project build.
+ * DO NOT modify it here.
+ */
 /* Define if you want a version with run-time diagnostic checking. */
 /* #undef DIAGNOSTIC */
+
+/* Define if you want to mask harmless unitialized memory read/writes. */
+/* #undef UMRW */
 
 /* Define if fcntl/F_SETFD denies child access to file descriptors. */
 /* #undef HAVE_FCNTL_F_SETFD */
 
-/* Define if building big-file environment (e.g., Solaris, HP/UX). */
+/* Define if building big-file environment (e.g., AIX, HP/UX, Solaris). */
 /* #undef HAVE_FILE_OFFSET_BITS */
 
 /* Mutex possibilities. */
@@ -80,6 +88,7 @@
 /* #undef HAVE_MUTEX_IA64_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_MACOS */
 /* #undef HAVE_MUTEX_MSEM_INIT */
+/* #undef HAVE_MUTEX_PPC_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_PTHREADS */
 /* #undef HAVE_MUTEX_RELIANTUNIX_INITSPIN */
 /* #undef HAVE_MUTEX_SCO_X86_CC_ASSEMBLY */
@@ -97,9 +106,13 @@
 /* #undef HAVE_MUTEX_WIN32 */
 /* #undef HAVE_MUTEX_X86_GCC_ASSEMBLY */
 
+/* Define if building on QNX. */
+/* #undef HAVE_QNX */
+
 /* !!!
-   This option may be added using the Tornado project build.  DO NOT
-   modify it here. */
+ * The HAVE_RPC option may be added using the Tornado project build.
+ * DO NOT modify it here.
+ */
 /* Define if building RPC client/server. */
 /* #undef HAVE_RPC */
 
@@ -198,6 +211,9 @@
 
 /* Define if you have the <sys/time.h> header file.  */
 /* #undef HAVE_SYS_TIME_H */
+
+/* Define if you have the nsl library (-lnsl).  */
+/* #undef HAVE_LIBNSL */
 
 /*
  * !!!

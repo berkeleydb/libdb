@@ -222,6 +222,8 @@ umask(0) ;
     ok 30, $db->db_put(1, "some value") == 0 ;
     ok 31, $db->db_get(1, $value) == 0 ;
     ok 32, $value eq fillout("some value", $rec_len)  ;
+    undef $db ;
+    undef $env ;
     rmtree $home ;
 }
 

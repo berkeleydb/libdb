@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_compat.c,v 11.17 2000/05/22 18:36:50 sue Exp $";
+static const char revid[] = "$Id: tcl_compat.c,v 11.22 2001/01/11 18:19:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,7 +22,7 @@ static const char revid[] = "$Id: tcl_compat.c,v 11.17 2000/05/22 18:36:50 sue E
 
 #define	DB_DBM_HSEARCH 1
 
-#include "db.h"
+#include "db_int.h"
 #include "tcl_db.h"
 
 /*
@@ -136,7 +136,7 @@ bdb_HCommand(interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		(void) hdestroy();
+		(void)hdestroy();
 		res = Tcl_NewIntObj(0);
 		break;
 	}
@@ -869,9 +869,10 @@ tcl_Mutex(interp, objc, objv, envp, envip)
 	md->n_mutex = nitems;
 	md->size = sizeof(_MUTEX_ENTRY) * nitems;
 
-	md->reginfo.id = 128;
+	md->reginfo.type = REGION_TYPE_MUTEX;
+	md->reginfo.id = INVALID_REGION_TYPE;
 	md->reginfo.mode = mode;
-	F_SET(&md->reginfo, REGION_CREATE_OK);
+	md->reginfo.flags = REGION_CREATE_OK | REGION_JOIN_OK;
 	if ((ret = __db_r_attach(envp, &md->reginfo, md->size)) != 0)
 		goto posixout;
 	md->marray = md->reginfo.addr;
@@ -941,7 +942,8 @@ mutex_Cmd(clientData, interp, objc, objv)
 		MXRELE,
 		MXSETVAL
 	};
-	DBTCL_INFO *mpip;
+	DB_ENV *dbenv;
+	DBTCL_INFO *envip, *mpip;
 	_MUTEX_DATA *mp;
 	Tcl_Obj *res;
 	int cmdindex, id, result, newval;
@@ -949,6 +951,8 @@ mutex_Cmd(clientData, interp, objc, objv)
 	Tcl_ResetResult(interp);
 	mp = (_MUTEX_DATA *)clientData;
 	mpip = _PtrToInfo((void *)mp);
+	envip = mpip->i_parent;
+	dbenv = envip->i_envp;
 	result = TCL_OK;
 
 	if (mp == NULL) {
@@ -993,7 +997,7 @@ mutex_Cmd(clientData, interp, objc, objv)
 		result = Tcl_GetIntFromObj(interp, objv[2], &id);
 		if (result != TCL_OK)
 			break;
-		MUTEX_UNLOCK(&mp->marray[id].m);
+		MUTEX_UNLOCK(dbenv, &mp->marray[id].m);
 		res = Tcl_NewIntObj(0);
 		break;
 	case MXGET:
@@ -1007,7 +1011,7 @@ mutex_Cmd(clientData, interp, objc, objv)
 		result = Tcl_GetIntFromObj(interp, objv[2], &id);
 		if (result != TCL_OK)
 			break;
-		MUTEX_LOCK(&mp->marray[id].m, mp->env->lockfhp);
+		MUTEX_LOCK(dbenv, &mp->marray[id].m, mp->env->lockfhp);
 		res = Tcl_NewIntObj(0);
 		break;
 	case MXGETVAL:

@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_feedback.so,v 10.17.2.1 2000/06/09 16:47:34 krinsky Exp $-->
+<!--$Id: env_set_feedback.so,v 10.19 2000/07/09 19:12:39 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_feedback</h1>
@@ -31,18 +30,19 @@ DBENV-&gt;set_feedback(DB_ENV *,
 amounts of time.  The DBENV-&gt;set_feedback function can be used by
 applications to monitor progress within these operations.
 <p>When an operation is likely to take a long time, Berkeley DB will call the
-<b>db_feedback_fcn</b> function.  This function must be declared
-with three arguments: the first will be a reference to the enclosing
-environment, the second a flag value, and the third the percent of
-the operation that has been completed, specified as an integer value
-between 0 and 100.  It is up to the <b>db_feedback_fcn</b> function
-to display this information in an appropriate manner.
+specified callback function.  This function must be declared with
+three arguments: the first will be a reference to the enclosing
+environment, the second a flag value, and the third the percent of the
+operation that has been completed, specified as an integer value between
+0 and 100.  It is up to the callback function to display this
+information in an appropriate manner.
 <p>The <b>opcode</b> argument may take on any of the following values:
 <p><dl compact>
 <p><dt><a name="DB_RECOVER">DB_RECOVER</a><dd>The environment is being recovered.
 </dl>
 <p>The DBENV-&gt;set_feedback interface may be used to configure Berkeley DB at any time
 during the life of the application.
+<p>The DBENV-&gt;set_feedback function returns a non-zero error value on failure and 0 on success.
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -55,6 +55,8 @@ during the life of the application.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
+<a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a>,
+<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.

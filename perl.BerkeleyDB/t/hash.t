@@ -163,6 +163,8 @@ umask(0) ;
     ok 31, $db->db_put("some key", "some value") == 0 ;
     ok 32, $db->db_get("some key", $value) == 0 ;
     ok 33, $value eq "some value" ;
+    undef $db ;
+    undef $env ;
     rmtree $home ;
 }
 

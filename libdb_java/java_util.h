@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_util.h,v 11.13 2000/06/01 14:13:58 dda Exp $
+ * $Id: java_util.h,v 11.22 2001/01/11 18:19:53 bostic Exp $
  */
 
 #ifndef _JAVA_UTIL_H_
@@ -165,6 +165,11 @@ static const int EXCEPTION_FILE_NOT_FOUND = 0x0001;
 void report_exception(JNIEnv *jnienv, const char *text, int err,
 		      unsigned long expect_mask);
 
+/* Report an error via the errcall mechanism.
+ */
+void report_errcall(JNIEnv *jnienv, jobject errcall,
+		    jstring prefix, const char *message);
+
 /* If the object is null, report an exception and return false (0),
  * otherwise return true (1).
  */
@@ -189,15 +194,14 @@ jobject convert_object(JNIEnv *jnienv, const char *class_name, void *dbobj);
  */
 char *dup_string(const char *str);
 
+/* Create a malloc'ed copy of the java string.
+ * Caller must free it.
+ */
+char *get_c_string(JNIEnv *jnienv, jstring jstr);
+
 /* Create a java string from the given string
  */
 jstring get_java_string(JNIEnv *jnienv, const char* string);
-
-/* Storage allocator
- */
-void *java_alloc_memory(size_t n);
-void java_free_memory(void *p);
-void *java_realloc_memory(void *p, size_t n);
 
 /* Convert a java object to the various C pointers they represent.
  */
@@ -219,7 +223,7 @@ DB_TXN_STAT    *get_DB_TXN_STAT   (JNIEnv *jnienv, jobject obj);
 DBT            *get_DBT           (JNIEnv *jnienv, jobject obj);
 DBT_JAVAINFO   *get_DBT_JAVAINFO  (JNIEnv *jnienv, jobject obj);
 
-/* Convert a C object to the various java pointers they represent.
+/* From a C object, create a Java object.
  */
 jobject get_DbBtreeStat  (JNIEnv *jnienv, DB_BTREE_STAT *dbobj);
 jobject get_Dbc          (JNIEnv *jnienv, DBC *dbobj);
@@ -229,6 +233,7 @@ jobject get_DbLsn        (JNIEnv *jnienv, DB_LSN dbobj);
 jobject get_DbMpoolStat  (JNIEnv *jnienv, DB_MPOOL_STAT *dbobj);
 jobject get_DbMpoolFStat (JNIEnv *jnienv, DB_MPOOL_FSTAT *dbobj);
 jobject get_DbQueueStat  (JNIEnv *jnienv, DB_QUEUE_STAT *dbobj);
+jobject get_Dbt          (JNIEnv *jnienv, DBT *dbt);
 jobject get_DbTxn        (JNIEnv *jnienv, DB_TXN *dbobj);
 jobject get_DbTxnStat    (JNIEnv *jnienv, DB_TXN_STAT *dbobj);
 
@@ -253,10 +258,16 @@ extern const char * const name_DBT;
 extern const char * const name_DB_TXN;
 extern const char * const name_DB_TXN_STAT;
 extern const char * const name_DB_TXN_STAT_ACTIVE;
+extern const char * const name_DbAppendRecno;
+extern const char * const name_DbBtreeCompare;
+extern const char * const name_DbBtreePrefix;
+extern const char * const name_DbDupCompare;
 extern const char * const name_DbEnvFeedback;
 extern const char * const name_DbErrcall;
 extern const char * const name_DbFeedback;
+extern const char * const name_DbHash;
 extern const char * const name_DbRecoveryInit;
+extern const char * const name_DbTxnRecover;
 
 extern const char * const string_signature;
 
@@ -286,7 +297,10 @@ JNIEXPORT void JNICALL                                                      \
 }
 
 /* This is a variant of the JAVADB_WO_ACCESS macro to define a simple set_
- * method using a C "method" call.
+ * method using a C "method" call.  These should be used with set_
+ * methods that cannot invoke java 'callbacks' (no set_ method currently
+ * does that).  That assumption allows us to optimize (and simplify)
+ * by not calling API_BEGIN/END macros.
  */
 #define	JAVADB_WO_ACCESS_METHOD(j_class, j_fieldtype,                       \
 				j_field, c_type, c_field)		    \
@@ -294,10 +308,13 @@ JNIEXPORT void JNICALL                                                      \
   Java_com_sleepycat_db_##j_class##_set_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis, j_fieldtype value)                        \
 {                                                                           \
-	c_type *db_this = get_##c_type(jnienv, jthis);                      \
+	c_type *db_this;                                                    \
+	int err;                                                            \
 									    \
+	db_this = get_##c_type(jnienv, jthis);                              \
 	if (verify_non_null(jnienv, db_this)) {                             \
-		db_this->set_##c_field(db_this, value);                     \
+		err = db_this->set_##c_field(db_this, value);               \
+		verify_return(jnienv, err, 0);                              \
 	}                                                                   \
 }
 
@@ -310,31 +327,33 @@ JNIEXPORT void JNICALL                                                      \
   Java_com_sleepycat_db_##j_class##_set_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis, jstring value)                            \
 {                                                                           \
-	c_type *db_this = get_##c_type(jnienv, jthis);                      \
+	c_type *db_this;                                                    \
+	int err;                                                            \
 									    \
+	db_this = get_##c_type(jnienv, jthis);                              \
 	if (verify_non_null(jnienv, db_this)) {                             \
-		db_this->set_##c_field(db_this,                             \
+		err = db_this->set_##c_field(db_this,                       \
 			  (*jnienv)->GetStringUTFChars(jnienv, value, NULL)); \
+		verify_return(jnienv, err, 0);                              \
 	}                                                                   \
 }
 
-#define JAVADB_API_BEGIN(db, jthis) \
+#define	JAVADB_API_BEGIN(db, jthis) \
 	if ((db) != NULL) \
 	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
 	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = (jthis)
 
-#define JAVADB_API_END(db) \
+#define	JAVADB_API_END(db) \
 	if ((db) != NULL) \
 	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
 	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = 0
 
-#define JAVADB_ENV_API_BEGIN(dbenv, jthis) \
+#define	JAVADB_ENV_API_BEGIN(dbenv, jthis) \
 	if ((dbenv) != NULL) \
 	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = (jthis)
 
-#define JAVADB_ENV_API_END(dbenv) \
+#define	JAVADB_ENV_API_END(dbenv) \
 	if ((dbenv) != NULL) \
 	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = 0
-
 
 #endif /* !_JAVA_UTIL_H_ */

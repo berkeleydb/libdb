@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test066.tcl,v 11.6 2000/04/21 18:36:27 krinsky Exp $
+#	$Id: test066.tcl,v 11.7 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 66: Make sure a cursor put to DB_CURRENT acts as an overwrite in
 # a database with duplicates
@@ -28,10 +28,13 @@ proc test066 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test066.db
+		set env NULL
 	} else {
 		set testfile test066.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set key "test"
 	set data "olddata"

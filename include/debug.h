@@ -4,7 +4,7 @@
  * Copyright (c) 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: debug.h,v 11.16 2000/05/17 01:17:51 dda Exp $
+ * $Id: debug.h,v 11.17 2000/07/07 15:50:36 bostic Exp $
  */
 
 #if defined(__cplusplus)
@@ -28,10 +28,15 @@ extern "C" {
 #endif
 
 /*
- * Purify and similar run-time tools complain about unitialized reads/writes
- * for structure fields whose only purpose is padding.
+ * Purify and other run-time tools complain about uninitialized reads/writes
+ * of structure fields whose only purpose is padding, as well as when heap
+ * memory that was never initialized is written to disk.
  */
-#define	UMRW(v)		(v) = 0
+#ifdef	UMRW
+#define	UMRW_SET(v)	(v) = 0
+#else
+#define	UMRW_SET(v)
+#endif
 
 /*
  * Debugging macro to log operations.

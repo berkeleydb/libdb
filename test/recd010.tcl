@@ -3,12 +3,12 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd010.tcl,v 1.6 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: recd010.tcl,v 1.14 2000/12/11 17:24:55 sue Exp $
 #
 # Recovery Test 10.
 # Test stability of btree duplicates across btree off-page dup splits
 # and reverse splits and across recovery.
-proc recd010 { method {select 0} } {
+proc recd010 { method {select 0} args} {
 	global fixed_len
 	global kvals
 	global kvals_dups
@@ -19,13 +19,19 @@ proc recd010 { method {select 0} } {
 		return
 	}
 
-	set opts [convert_args $method]
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Recd010: skipping for specific pagesizes"
+		return
+	}
+
+	set opts [convert_args $method $args]
 	set method [convert_method $method]
 
 	puts "\tRecd010 ($opts): Test duplicates across splits and recovery"
 
 	set testfile recd010.db
-	cleanup $testdir
+	env_cleanup $testdir
 	#
 	# Set pagesize small to generate lots of off-page dups
 	#
@@ -96,7 +102,8 @@ proc recd010 { method {select 0} } {
 	}
 	puts "\tRecd010.e: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }
@@ -154,7 +161,7 @@ proc recd010_check { tdir testfile opts op reverse origdups } {
 		# - We have the number of keys.
 		#
 		error_check_bad stat:new0 [is_substr $stat \
-			"{{Btree internal pages} 0}"] 1
+			"{{Internal pages} 0}"] 1
 		error_check_good stat:new1 [is_substr $stat \
 			"{{Number of keys} $allkeys}"] 1
 	}

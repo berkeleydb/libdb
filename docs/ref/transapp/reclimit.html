@@ -1,18 +1,17 @@
- 
-<!--$Id: reclimit.so,v 11.17 2000/05/12 19:20:03 bostic Exp $-->
+<!--$Id: reclimit.so,v 11.19 2000/08/16 17:50:40 margo Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<title>Berkeley DB Reference Guide: Berkeley DB recoverability</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/transapp/recimp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/transapp/filesys.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Berkeley DB recoverability</h1>
@@ -45,7 +44,7 @@ requirements here are simple: the system call that Berkeley DB uses to flush
 data to disk (normally <b>fsync</b>(2)), must guarantee that all the
 information necessary for a file's recoverability has been written to
 stable storage before it returns to Berkeley DB, and that no possible
-application or system crash can cause that file to not be recoverable.
+application or system crash can cause that file to be unrecoverable.
 <p>In addition, Berkeley DB implicitly uses the interface between the operating
 system and the underlying hardware.  The interface requirements here are
 not as simple.
@@ -100,7 +99,7 @@ well as a performance enhancement.
 <p>Finally, if your hardware misbehaves, for example, a SCSI controller
 writes incorrect data to the disk, Berkeley DB will not detect this and your
 data may be corrupted.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/recimp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/filesys.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,5 +1,4 @@
- 
-<!--$Id: dbc_get.so,v 11.13 2000/04/24 17:31:58 sue Exp $-->
+<!--$Id: dbc_get.so,v 11.16 2000/11/28 20:12:30 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.17 2000/04/24 17:31:11 sue Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -10,7 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1><i>dbc</i> <b>get</b></h1>
@@ -21,7 +20,6 @@
 <hr size=1 noshade>
 <tt>
 <h3><pre>dbc get
-	[-consume]
 	[-current]
 	[-first]
 	[-get_recno]
@@ -55,12 +53,6 @@ of the record number.  In the case of the <b>-join_item</b> option,
 <i>dbc</i> <b>get</b> returns a list containing the joined key.
 <p>The options are as follows:
 <p><dl compact>
-<p><dt>-consume<dd>Return the record number and data from the available record closest to the
-head of the queue and delete the record. The cursor will be positioned on
-the deleted record.
-<p>A record is available if it is not deleted and is not currently locked.
-For the <b>-consume</b> option to be specified, the underlying database
-must be of type Queue.
 <p><dt>-current<dd>Return the key/data pair currently referenced by the cursor.
 <p>If the cursor key/data pair was deleted, <i>dbc</i> <b>get</b> will return an
 empty list.
@@ -159,6 +151,11 @@ cycle by immediately acquiring the write lock during the read part of the
 cycle so that another thread of control acquiring a read lock for the same
 item, in its own read-modify-write cycle, will not result in deadlock.
 </dl>
+<p>If a key is specified, and
+if the underlying database is a Queue or Recno database, then the given
+key will be interpreted by Tcl as an integer.  For all other database
+types, the key is interpreted by Tcl as a byte array unless indicated
+by a given option.
 <p>In the normal error case of attempting to retrieve a key that does not
 exist an empty list is returned.
 <p>In the case of error, a Tcl error is thrown.

@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_panicstate.so,v 10.1 2000/05/31 15:10:00 bostic Exp $-->
+<!--$Id: env_set_panicstate.so,v 10.2 2001/01/17 15:32:34 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_env_set_panicstate</h1>
@@ -23,10 +22,10 @@
 #include &lt;db.h&gt;
 <p>
 int
-db_env_set_panicstate(int do_lock);
+db_env_set_panicstate(int panic);
 </pre></h3>
 <h1>Description</h1>
-<p>Toggle the Berkeley DB panic state.  Setting <b>do_lock</b> to a non-zero value
+<p>Toggle the Berkeley DB panic state.  Setting <b>panic</b> to a non-zero value
 causes Berkeley DB to refuse attempts to call Berkeley DB functions with the
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> error return.
 <p>The db_env_set_panicstate interface affects the entire application, not a single
@@ -51,6 +50,8 @@ making any calls to the <a href="../api_c/env_create.html">db_env_create</a> or 
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
+<a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a>,
+<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.

@@ -3,7 +3,7 @@
 /* Header for class com_sleepycat_db_Db */
 
 #ifndef _Included_com_sleepycat_db_Db
-#define _Included_com_sleepycat_db_Db
+#define	_Included_com_sleepycat_db_Db
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,9 +26,9 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1notify_1internal
 /*
  * Class:     com_sleepycat_db_Db
  * Method:    _close
- * Signature: (I)V
+ * Signature: (I)I
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1close
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db__1close
   (JNIEnv *, jobject, jint);
 
 /*
@@ -74,10 +74,10 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_fd
 /*
  * Class:     com_sleepycat_db_Db
  * Method:    _finalize
- * Signature: (I)V
+ * Signature: (Lcom/sleepycat/db/DbErrcall;Ljava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1finalize
-  (JNIEnv *, jobject, jint);
+  (JNIEnv *, jobject, jobject, jstring);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -153,6 +153,22 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_remove
 
 /*
  * Class:     com_sleepycat_db_Db
+ * Method:    append_recno_changed
+ * Signature: (Lcom/sleepycat/db/DbAppendRecno;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_append_1recno_1changed
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    bt_compare_changed
+ * Signature: (Lcom/sleepycat/db/DbBtreeCompare;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_bt_1compare_1changed
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Db
  * Method:    set_bt_maxkey
  * Signature: (I)V
  */
@@ -169,11 +185,27 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1bt_1minkey
 
 /*
  * Class:     com_sleepycat_db_Db
+ * Method:    bt_prefix_changed
+ * Signature: (Lcom/sleepycat/db/DbBtreePrefix;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_bt_1prefix_1changed
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Db
  * Method:    set_cachesize
  * Signature: (III)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1cachesize
   (JNIEnv *, jobject, jint, jint, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    dup_compare_changed
+ * Signature: (Lcom/sleepycat/db/DbDupCompare;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_dup_1compare_1changed
+  (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -198,6 +230,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1flags
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1h_1ffactor
   (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    hash_changed
+ * Signature: (Lcom/sleepycat/db/DbHash;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_hash_1changed
+  (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -257,6 +297,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1re_1source
 
 /*
  * Class:     com_sleepycat_db_Db
+ * Method:    set_q_extentsize
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1q_1extentsize
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
  * Method:    stat
  * Signature: (I)Ljava/lang/Object;
  */
@@ -266,9 +314,9 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
 /*
  * Class:     com_sleepycat_db_Db
  * Method:    sync
- * Signature: (I)V
+ * Signature: (I)I
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_sync
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_sync
   (JNIEnv *, jobject, jint);
 
 /*
@@ -286,6 +334,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_upgrade
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_verify
   (JNIEnv *, jobject, jstring, jstring, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    one_time_init
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_one_1time_1init
+  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

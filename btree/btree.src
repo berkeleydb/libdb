@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: btree.src,v 10.21.2.1 2000/07/13 18:56:35 bostic Exp $
+ *	$Id: btree.src,v 10.26 2000/12/12 17:40:23 bostic Exp $
  */
 
 PREFIX	bam
@@ -31,12 +31,11 @@ INCLUDE
  * BTREE-pg_alloc: used to record allocating a new page.
  *
  * meta_lsn:	the meta-data page's original lsn.
- * alloc_lsn:	the meta-data page's original allocation lsn.
  * page_lsn:	the allocated page's original lsn.
  * pgno:	the page allocated.
  * next:	the next page on the free list.
  */
-DEPRECATED pg_alloc1	51
+BEGIN pg_alloc		51
 ARG	fileid		int32_t		ld
 POINTER	meta_lsn	DB_LSN *	lu
 POINTER	page_lsn	DB_LSN *	lu
@@ -45,7 +44,7 @@ ARG	ptype		u_int32_t	lu
 ARG	next		db_pgno_t	lu
 END
 
-BEGIN pg_alloc		60
+DEPRECATED pg_alloc1	60
 ARG	fileid		int32_t		ld
 POINTER	meta_lsn	DB_LSN *	lu
 POINTER	alloc_lsn	DB_LSN *	lu
@@ -60,11 +59,10 @@ END
  *
  * pgno:	the page being freed.
  * meta_lsn:	the meta-data page's original lsn.
- * alloc_lsn:	the meta-data page's original allocation lsn.
  * header:	the header from the free'd page.
  * next:	the previous next pointer on the metadata page.
  */
-DEPRECATED pg_free1	52
+BEGIN pg_free		52
 ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
@@ -72,7 +70,7 @@ DBT	header		DBT		s
 ARG	next		db_pgno_t	lu
 END
 
-BEGIN pg_free		61
+DEPRECATED pg_free1	61
 ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
@@ -254,14 +252,14 @@ POINTER	meta_lsn	DB_LSN *	lu
 END
 
 /*
- * BTREE-curadj: undo cursor adjustments on abort txn.
+ * BTREE-curadj: undo cursor adjustments on txn abort.
  *     Should only be processed during DB_TXN_ABORT.
  * NOTE: the first_indx field gets used to hold
- * 	signed index adjustment in one case.
+ *	signed index adjustment in one case.
  *	care should be taken if its size is changed.
  */
 BEGIN curadj		64
-/* Fileid of db effected. */
+/* Fileid of db affected. */
 ARG	fileid		int32_t		ld
 /* Which adjustment. */
 ARG	mode		db_ca_mode	ld
@@ -277,4 +275,22 @@ ARG	first_indx	u_int32_t	lu
 ARG	from_indx	u_int32_t	lu
 /* Index where entry went. */
 ARG	to_indx		u_int32_t	lu
+END
+
+/*
+ * BTREE-rcuradj: undo cursor adjustments on txn abort in
+ *     renumbering recno trees.
+ *     Should only be processed during DB_TXN_ABORT.
+ */
+BEGIN rcuradj	65
+/* Fileid of db affected. */
+ARG	fileid		int32_t		ld
+/* Which adjustment. */
+ARG	mode		ca_recno_arg	ld
+/* Root page number. */
+ARG	root		db_pgno_t	ld
+/* Recno of the adjustment. */
+ARG	recno		db_recno_t	ld
+/* Order number of the adjustment. */
+ARG	order		u_int32_t	ld
 END

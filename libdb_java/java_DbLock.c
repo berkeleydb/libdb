@@ -7,11 +7,10 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbLock.c,v 11.3 2000/05/25 04:18:11 dda Exp $";
+static const char revid[] = "$Id: java_DbLock.c,v 11.4 2000/11/30 00:58:39 ubell Exp $";
 #endif /* not lint */
 
 #include <jni.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 

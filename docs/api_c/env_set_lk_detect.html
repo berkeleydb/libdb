@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_lk_detect.so,v 10.18 2000/05/20 16:29:12 bostic Exp $-->
+<!--$Id: env_set_lk_detect.so,v 10.19 2000/12/08 20:43:15 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_lk_detect</h1>
@@ -23,7 +22,7 @@
 #include &lt;db.h&gt;
 <p>
 int
-DBENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t lk_detect);
+DBENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);
 </pre></h3>
 <h1>Description</h1>
 <p>Set if the deadlock detector is to be run whenever a lock conflict occurs,
@@ -38,12 +37,13 @@ The specified value must be one of the following list:
 <p>The DBENV-&gt;set_lk_detect interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <p>The DBENV-&gt;set_lk_detect function returns a non-zero error value on failure and 0 on success.
-<p>The environment's deadlock detector configuration may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
-line with the string "set_lk_detect", one or more whitespace characters, and the interface <b>lk_detect</b> argument as a string, for example,
-"set_lk_detect DB_LOCK_OLDEST".
-Configuration in the <b>DB_CONFIG</b> file silently overrules
-configuration done using the DBENV-&gt;set_lk_detect function.
+<p>The database environment's deadlock detector configuration may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_lk_detect", one or more whitespace characters,
+and the interface <b>detect</b> argument as a string, for example,
+"set_lk_detect DB_LOCK_OLDEST".  Because the <b>DB_CONFIG</b> file is read when the database
+environment is opened, it will silently overrule configuration done
+before that time.
 <h1>Errors</h1>
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
@@ -52,6 +52,9 @@ configuration done using the DBENV-&gt;set_lk_detect function.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a>,
+<a href="../api_c/env_set_lk_max_locks.html">DBENV-&gt;set_lk_max_locks</a>,
+<a href="../api_c/env_set_lk_max_lockers.html">DBENV-&gt;set_lk_max_lockers</a>,
+<a href="../api_c/env_set_lk_max_objects.html">DBENV-&gt;set_lk_max_objects</a>,
 <a href="../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a>,
 <a href="../api_c/lock_detect.html">lock_detect</a>,
 <a href="../api_c/lock_get.html">lock_get</a>,

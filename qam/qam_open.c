@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_open.c,v 11.23 2000/05/23 18:04:12 krinsky Exp $";
+static const char revid[] = "$Id: qam_open.c,v 11.31 2000/12/20 17:59:29 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -29,13 +28,14 @@ static const char revid[] = "$Id: qam_open.c,v 11.23 2000/05/23 18:04:12 krinsky
 /*
  * __qam_open
  *
- * PUBLIC: int __qam_open __P((DB *, const char *, db_pgno_t, u_int32_t));
+ * PUBLIC: int __qam_open __P((DB *, const char *, db_pgno_t, int, u_int32_t));
  */
 int
-__qam_open(dbp, name, base_pgno, flags)
+__qam_open(dbp, name, base_pgno, mode, flags)
 	DB *dbp;
 	const char *name;
 	db_pgno_t base_pgno;
+	int mode;
 	u_int32_t flags;
 {
 	QUEUE *t;
@@ -50,10 +50,18 @@ __qam_open(dbp, name, base_pgno, flags)
 	locked = 0;
 	t = dbp->q_internal;
 
+	if (name == NULL && t->page_ext != 0) {
+		__db_err(dbp->dbenv,
+	"Extent size may not be specified for in-memory queue database.");
+		return (EINVAL);
+	}
 	/* Initialize the remaining fields/methods of the DB. */
 	dbp->del = __qam_delete;
 	dbp->put = __qam_put;
 	dbp->stat = __qam_stat;
+	dbp->sync = __qam_sync;
+	dbp->db_am_remove = __qam_remove;
+	dbp->db_am_rename = __qam_rename;
 
 	metalock.off = LOCK_INVALID;
 
@@ -64,7 +72,7 @@ __qam_open(dbp, name, base_pgno, flags)
 	 * lock instead.
 	 */
 	if ((ret = dbp->cursor(dbp, dbp->open_txn,
-	    &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbp->dbenv) ? 
+	    &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbp->dbenv) ?
 	    DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
@@ -85,6 +93,7 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 		t->re_pad = qmeta->re_pad;
 		t->re_len = qmeta->re_len;
 		t->rec_page = qmeta->rec_page;
+		t->page_ext = qmeta->page_ext;
 
 		(void)memp_fput(dbp->mpf, (PAGE *)qmeta, 0);
 		goto done;
@@ -94,7 +103,7 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 	if (CDB_LOCKING(dbp->dbenv)) {
 		DB_ASSERT(LF_ISSET(DB_CREATE));
 		if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
-	    	    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
+		    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
 			goto err;
 	}
 
@@ -121,9 +130,11 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 	qmeta->dbmeta.pagesize = dbp->pgsize;
 	qmeta->dbmeta.type = P_QAMMETA;
 	qmeta->re_pad = t->re_pad;
-	qmeta->start = 1;
 	qmeta->re_len = t->re_len;
 	qmeta->rec_page = CALC_QAM_RECNO_PER_PAGE(dbp);
+	qmeta->cur_recno = 1;
+	qmeta->first_recno = 1;
+	qmeta->page_ext = t->page_ext;
 	t->rec_page = qmeta->rec_page;
 	memcpy(qmeta->dbmeta.uid, dbp->fileid, DB_FILE_ID_LEN);
 
@@ -162,6 +173,31 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 done:	t->q_meta = base_pgno;
 	t->q_root = base_pgno + 1;
 
+	/* Setup information needed to open extents. */
+	if (t->page_ext != 0) {
+		t->finfo.pgcookie = &t->pgcookie;
+		t->finfo.fileid = NULL;
+		t->finfo.lsn_offset = 0;
+
+		t->pginfo.db_pagesize = dbp->pgsize;
+		t->pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP);
+		t->pgcookie.data = &t->pginfo;
+		t->pgcookie.size = sizeof(DB_PGINFO);
+
+		if ((ret = __os_strdup(dbp->dbenv, name,  &t->path)) != 0)
+			goto err;
+		t->dir = t->path;
+		if ((t->name = __db_rpath(t->path)) == NULL) {
+			t->name = t->path;
+			t->dir = PATH_DOT;
+		} else
+			*t->name++ = '\0';
+
+		if (mode == 0)
+			mode = __db_omode("rwrw--");
+		t->mode = mode;
+	}
+
 err:
 DB_TEST_RECOVERY_LABEL
 	/* Don't hold the meta page long term. */
@@ -199,11 +235,12 @@ __qam_metachk(dbp, name, qmeta)
 		M_32_SWAP(vers);
 	switch (vers) {
 	case 1:
+	case 2:
 		__db_err(dbenv,
 		    "%s: queue version %lu requires a version upgrade",
 		    name, (u_long)vers);
 		return (DB_OLD_VERSION);
-	case 2:
+	case 3:
 		break;
 	default:
 		__db_err(dbenv,

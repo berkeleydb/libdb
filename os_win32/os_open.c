@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_open.c,v 11.6.2.1 2000/06/29 16:43:53 bostic Exp $";
+static const char revid[] = "$Id: os_open.c,v 11.9 2000/11/30 00:58:43 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
@@ -77,9 +76,10 @@ __os_open(dbenv, name, flags, mode, fhp)
 		return (__os_openhandle(dbenv, name, oflags, mode, fhp));
 	}
 
-	log_size = fhp->log_size;			/* XXX: Gag. */
+	if (LF_ISSET(DB_OSO_LOG))
+		log_size = fhp->log_size;			/* XXX: Gag. */
+
 	memset(fhp, 0, sizeof(*fhp));
-	fhp->log_size = log_size;			/* XXX: Gag. */
 
 	/*
 	 * Otherwise, use the Windows/32 CreateFile interface so that we can

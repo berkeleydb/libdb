@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbTxn.c,v 11.2 2000/02/14 02:59:57 bostic Exp $";
+static const char revid[] = "$Id: java_DbTxn.c,v 11.3 2000/09/18 18:32:25 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -49,11 +49,11 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbTxn_id
 	int retval = 0;
 	DB_TXN *dbtxn = get_DB_TXN(jnienv, jthis);
 	if (!verify_non_null(jnienv, dbtxn))
-		return -1;
+		return (-1);
 
 	/* No error to check for from txn_id */
 	retval = txn_id(dbtxn);
-	return retval;
+	return (retval);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test044.tcl,v 11.22.2.1 2000/06/28 12:18:46 krinsky Exp $
+#	$Id: test044.tcl,v 11.26 2000/10/27 13:23:56 sue Exp $
 #
 # DB Test 44 {access method}
 # System integration DB test: verify that locking, recovery, checkpoint,
@@ -58,7 +58,7 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 
 	if { $cont == 0 } {
 		# Create the database and open the dictionary
-		cleanup $testdir
+		env_cleanup $testdir
 
 		# Create an environment
 		puts "\tTest044.a: creating environment and $nfiles files"
@@ -102,8 +102,8 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 
 		# Fire off deadlock detector and checkpointer
 		puts "Beginning cycle $cycle"
-		set ddpid [exec ./db_deadlock -h $testdir -t 5 &]
-		set cppid [exec ./db_checkpoint -h $testdir -p 2 &]
+		set ddpid [exec $util_path/db_deadlock -h $testdir -t 5 &]
+		set cppid [exec $util_path/db_checkpoint -h $testdir -p 2 &]
 		puts "Deadlock detector: $ddpid Checkpoint daemon $cppid"
 
 		set pidlist {}
@@ -170,7 +170,7 @@ proc test044_verify { dir nfiles } {
 	# sure that they all look good.
 
 	puts "\tTest044.verify: Running recovery and verifying file contents"
-	set stat [catch {exec ./db_recover -h $dir} result]
+	set stat [catch {exec $util_path/db_recover -h $dir} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}

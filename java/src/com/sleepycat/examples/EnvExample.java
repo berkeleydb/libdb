@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.java,v 11.6 2000/04/01 15:52:15 dda Exp $
+ * $Id: EnvExample.java,v 11.7 2000/09/25 13:16:51 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -41,7 +41,6 @@ public class EnvExample
         // reporting.
         //
         DbEnv dbenv = new DbEnv(0);
-
         dbenv.set_error_stream(errs);
         dbenv.set_errpfx(progname);
 
@@ -51,19 +50,19 @@ public class EnvExample
         //
         dbenv.set_cachesize(0, 64 * 1024, 0);
 
-        //
-        // We have multiple processes reading/writing these files, so
-        // we need concurrency control and a shared buffer pool, but
-        // not logging or transactions.
+	// Databases are in a subdirectory.
+	dbenv.set_data_dir(data_dir);
+
+	// Open the environment with full transactional support.
         //
         // open() will throw a DbException if there is an error.
         //
         // open is declared to throw a FileNotFoundException, which normally
         // shouldn't occur with the DB_CREATE option.
         //
-	dbenv.set_data_dir(data_dir);
         dbenv.open(DATABASE_HOME,
-                   Db.DB_CREATE | Db.DB_INIT_LOCK | Db.DB_INIT_MPOOL, 0);
+                   Db.DB_CREATE | Db.DB_INIT_LOCK | Db.DB_INIT_LOG |
+                   Db.DB_INIT_MPOOL | Db.DB_INIT_TXN, 0);
 
         try {
 

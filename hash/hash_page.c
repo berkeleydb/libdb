@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_page.c,v 11.35 2000/05/24 17:54:30 bostic Exp $";
+static const char revid[] = "$Id: hash_page.c,v 11.46 2001/01/11 18:19:51 bostic Exp $";
 #endif /* not lint */
 
 /*
@@ -65,7 +65,6 @@ static const char revid[] = "$Id: hash_page.c,v 11.35 2000/05/24 17:54:30 bostic
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -162,7 +161,7 @@ __ham_item_reset(dbc)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 	if (hcp->page != NULL)
-		ret = __ham_put_page(dbp, hcp->page, 0);
+		ret = memp_fput(dbp->mpf, hcp->page, 0);
 
 	__ham_item_init(dbc);
 	return (ret);
@@ -542,9 +541,9 @@ __ham_del_pair(dbc, reclaim_page)
 	DBT data_dbt, key_dbt;
 	DB_ENV *dbenv;
 	DB_LSN new_lsn, *n_lsn, tmp_lsn;
-	PAGE *p;
+	PAGE *n_pagep, *nn_pagep, *p, *p_pagep;
 	db_indx_t ndx;
-	db_pgno_t chg_pgno, pgno;
+	db_pgno_t chg_pgno, pgno, tmp_pgno;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
@@ -553,8 +552,10 @@ __ham_del_pair(dbc, reclaim_page)
 	dbenv = dbp->dbenv;
 	ndx = hcp->indx;
 
-	if (hcp->page == NULL &&
-	    (ret = __ham_get_page(dbp, hcp->pgno, (PAGE **)&hcp->page)) != 0)
+	n_pagep = p_pagep = nn_pagep = NULL;
+
+	if (hcp->page == NULL && (ret = memp_fget(dbp->mpf,
+	    &hcp->pgno, DB_MPOOL_CREATE, &hcp->page)) != 0)
 		return (ret);
 	p = hcp->page;
 
@@ -611,7 +612,22 @@ __ham_del_pair(dbc, reclaim_page)
 		LSN(p) = new_lsn;
 	}
 
+	/* Do the delete. */
 	__ham_dpair(dbp, p, ndx);
+
+	/*
+	 * Mark item deleted so that we don't try to return it, and
+	 * so that we update the cursor correctly on the next call
+	 * to next.
+	 */
+	F_SET(hcp, H_DELETED);
+	F_CLR(hcp, H_OK);
+
+	/*
+	 * Update cursors that are on the page where the delete happend.
+	 */
+	if ((ret = __ham_c_update(dbc, 0, 0, 0)) != 0)
+		return (ret);
 
 	/*
 	 * If we are locking, we will not maintain this, because it is
@@ -629,28 +645,26 @@ __ham_del_pair(dbc, reclaim_page)
 	 * in the bucket (i.e., the bucket page) then we can simply remove
 	 * it. If it is the first chain in the bucket, then we need to copy
 	 * the second page into it and remove the second page.
+	 * If its the only page in the bucket we leave it alone.
 	 */
-	if (reclaim_page && NUM_ENT(p) == 0 && PREV_PGNO(p) == PGNO_INVALID &&
-	    NEXT_PGNO(p) != PGNO_INVALID) {
-		PAGE *n_pagep, *nn_pagep;
-		db_pgno_t tmp_pgno;
+	if (!reclaim_page ||
+	    NUM_ENT(p) != 0 ||
+	    (PREV_PGNO(p) == PGNO_INVALID && NEXT_PGNO(p) == PGNO_INVALID))
+		return (memp_fset(dbp->mpf, p, DB_MPOOL_DIRTY));
 
+	if (PREV_PGNO(p) == PGNO_INVALID) {
 		/*
 		 * First page in chain is empty and we know that there
 		 * are more pages in the chain.
 		 */
 		if ((ret =
-		    __ham_get_page(dbp, NEXT_PGNO(p), &n_pagep)) != 0)
+		    memp_fget(dbp->mpf, &NEXT_PGNO(p), 0, &n_pagep)) != 0)
 			return (ret);
 
-		if (NEXT_PGNO(n_pagep) != PGNO_INVALID) {
-			if ((ret =
-			    __ham_get_page(dbp, NEXT_PGNO(n_pagep),
-			    &nn_pagep)) != 0) {
-				(void) __ham_put_page(dbp, n_pagep, 0);
-				return (ret);
-			}
-		}
+		if (NEXT_PGNO(n_pagep) != PGNO_INVALID &&
+		    (ret = memp_fget(dbp->mpf, &NEXT_PGNO(n_pagep), 0,
+		    &nn_pagep)) != 0)
+			goto err;
 
 		if (DB_LOGGING(dbc)) {
 			key_dbt.data = n_pagep;
@@ -659,9 +673,9 @@ __ham_del_pair(dbc, reclaim_page)
 			    dbc->txn, &new_lsn, 0, dbp->log_fileid, PGNO(p),
 			    &LSN(p), PGNO(n_pagep), &LSN(n_pagep),
 			    NEXT_PGNO(n_pagep),
-			    NEXT_PGNO(n_pagep) == PGNO_INVALID ? NULL :
-			    &LSN(nn_pagep), &key_dbt)) != 0)
-				return (ret);
+			    nn_pagep == NULL ? NULL : &LSN(nn_pagep),
+			    &key_dbt)) != 0)
+				goto err;
 
 			/* Move lsn onto page. */
 			LSN(p) = new_lsn;	/* Structure assignment. */
@@ -669,9 +683,13 @@ __ham_del_pair(dbc, reclaim_page)
 			if (NEXT_PGNO(n_pagep) != PGNO_INVALID)
 				LSN(nn_pagep) = new_lsn;
 		}
-		if (NEXT_PGNO(n_pagep) != PGNO_INVALID) {
+		if (nn_pagep != NULL) {
 			PREV_PGNO(nn_pagep) = PGNO(p);
-			(void)__ham_put_page(dbp, nn_pagep, 1);
+			if ((ret = memp_fput(dbp->mpf,
+			    nn_pagep, DB_MPOOL_DIRTY)) != 0) {
+				nn_pagep = NULL;
+				goto err;
+			}
 		}
 
 		tmp_pgno = PGNO(p);
@@ -682,40 +700,30 @@ __ham_del_pair(dbc, reclaim_page)
 		PREV_PGNO(p) = PGNO_INVALID;
 
 		/*
-		 * We need to update this cursor and possibly all others.
-		 * The ordering of this is critical to avoid marking valid
-		 * entries as deleted.
-		 * First, we update all the relevant cursors to reflect
-		 * this deletion.
-		 * Second, we update all the cursors to reflect the fact
-		 * that some other entries changed pages.
-		 * Finally, we advance this cursor to the next page.
+		 * Update cursors to reflect the fact that records
+		 * on the second page have moved to the first page.
 		 */
-		__ham_c_update(dbc, PGNO(p), 0, 0, 0);
-		__ham_c_chgpg(dbc,
-		    PGNO(n_pagep), NDX_INVALID, PGNO(p), NDX_INVALID);
+		if ((ret = __ham_c_chgpg(dbc,
+		    PGNO(n_pagep), NDX_INVALID, PGNO(p), NDX_INVALID)) != 0)
+			return (ret);
+
+		/*
+		 * Update the cursor to reflect its new position.
+		 */
 		hcp->indx = 0;
 		hcp->pgno = PGNO(p);
-		F_SET(hcp, H_DELETED);
-		if ((ret = __ham_dirty_page(dbp, p)) != 0 ||
+		if ((ret = memp_fset(dbp->mpf, p, DB_MPOOL_DIRTY)) != 0 ||
 		    (ret = __db_free(dbc, n_pagep)) != 0)
 			return (ret);
-		F_CLR(hcp, H_OK);
-		return (ret);
-	} else if (reclaim_page &&
-	    NUM_ENT(p) == 0 && PREV_PGNO(p) != PGNO_INVALID) {
-		PAGE *n_pagep, *p_pagep;
-
+	} else {
 		if ((ret =
-		    __ham_get_page(dbp, PREV_PGNO(p), &p_pagep)) != 0)
-			return (ret);
+		    memp_fget(dbp->mpf, &PREV_PGNO(p), 0, &p_pagep)) != 0)
+			goto err;
 
 		if (NEXT_PGNO(p) != PGNO_INVALID) {
-			if ((ret = __ham_get_page(dbp,
-			    NEXT_PGNO(p), &n_pagep)) != 0) {
-				(void)__ham_put_page(dbp, p_pagep, 0);
-				return (ret);
-			}
+			if ((ret = memp_fget(dbp->mpf,
+			    &NEXT_PGNO(p), 0, &n_pagep)) != 0)
+				goto err;
 			n_lsn = &LSN(n_pagep);
 		} else {
 			n_pagep = NULL;
@@ -731,7 +739,7 @@ __ham_del_pair(dbc, reclaim_page)
 			    dbc->txn, &new_lsn, 0, DELOVFL,
 			    dbp->log_fileid, PREV_PGNO(p), &LSN(p_pagep),
 			    PGNO(p), &LSN(p), NEXT_PGNO(p), n_lsn)) != 0)
-				return (ret);
+				goto err;
 
 			/* Move lsn onto page. */
 			LSN(p_pagep) = new_lsn;	/* Structure assignment. */
@@ -739,8 +747,21 @@ __ham_del_pair(dbc, reclaim_page)
 				LSN(n_pagep) = new_lsn;
 			LSN(p) = new_lsn;
 		}
-		hcp->pgno = NEXT_PGNO(p);
-		hcp->indx = 0;
+		if (NEXT_PGNO(p) == PGNO_INVALID) {
+			/*
+			 * There is no next page; put the cursor on the
+			 * previous page as if we'd deleted the last item
+			 * on that page; index greater than number of
+			 * valid entries and H_DELETED set.
+			 */
+			hcp->pgno = PGNO(p_pagep);
+			hcp->indx = NUM_ENT(p_pagep);
+			F_SET(hcp, H_DELETED);
+		} else {
+			hcp->pgno = NEXT_PGNO(p);
+			hcp->indx = 0;
+		}
+
 		/*
 		 * Since we are about to delete the cursor page and we have
 		 * just moved the cursor, we need to make sure that the
@@ -749,26 +770,26 @@ __ham_del_pair(dbc, reclaim_page)
 		hcp->page = NULL;
 		chg_pgno = PGNO(p);
 		ret = __db_free(dbc, p);
-		if ((t_ret = __ham_put_page(dbp, p_pagep, 1)) != 0 && ret == 0)
+		if ((t_ret = memp_fput(dbp->mpf, p_pagep, DB_MPOOL_DIRTY)) != 0
+		    && ret == 0)
 			ret = t_ret;
-		if (n_pagep != NULL &&
-		    (t_ret = __ham_put_page(dbp, n_pagep, 1)) != 0 && ret == 0)
+		if (n_pagep != NULL && (t_ret = memp_fput(dbp->mpf,
+		    n_pagep, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
 			return (ret);
-	} else {
-		/*
-		 * Mark item deleted so that we don't try to return it, and
-		 * so that we update the cursor correctly on the next call
-		 * to next.
-		 */
-		F_SET(hcp, H_DELETED);
-		chg_pgno = hcp->pgno;
-		ret = __ham_dirty_page(dbp, p);
+		ret = __ham_c_chgpg(dbc,
+		    chg_pgno, 0, hcp->pgno, hcp->indx);
 	}
-	__ham_c_update(dbc, chg_pgno, 0, 0, 0);
+	return (ret);
 
-	F_CLR(hcp, H_OK);
+err:	/* Clean up any pages. */
+	if (n_pagep != NULL)
+		(void)memp_fput(dbp->mpf, n_pagep, 0);
+	if (nn_pagep != NULL)
+		(void)memp_fput(dbp->mpf, nn_pagep, 0);
+	if (p_pagep != NULL)
+		(void)memp_fput(dbp->mpf, p_pagep, 0);
 	return (ret);
 }
 
@@ -1009,7 +1030,7 @@ __ham_split_page(dbc, obucket, nbucket)
 	db_indx_t n;
 	db_pgno_t bucket_pgno, npgno, next_pgno;
 	u_int32_t big_len, len;
-	int i, ret, t_ret;
+	int found, i, ret, t_ret;
 	void *big_buf;
 
 	dbp = dbc->dbp;
@@ -1021,12 +1042,14 @@ __ham_split_page(dbc, obucket, nbucket)
 		return (ret);
 
 	bucket_pgno = BUCKET_TO_PAGE(hcp, obucket);
-	if ((ret = __ham_get_page(dbp, bucket_pgno, &old_pagep)) != 0)
+	if ((ret = memp_fget(dbp->mpf,
+	    &bucket_pgno, DB_MPOOL_CREATE, &old_pagep)) != 0)
 		goto err;
 
 	/* Properly initialize the new bucket page. */
 	npgno = BUCKET_TO_PAGE(hcp, nbucket);
-	if ((ret = __ham_get_page(dbp, npgno, &new_pagep)) != 0)
+	if ((ret = memp_fget(dbp->mpf,
+	    &npgno, DB_MPOOL_CREATE, &new_pagep)) != 0)
 		goto err;
 	P_INIT(new_pagep,
 	    dbp->pgsize, npgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
@@ -1095,6 +1118,7 @@ __ham_split_page(dbc, obucket, nbucket)
 
 			/* Check if we need to update a cursor. */
 			if (carray != NULL) {
+				found = 0;
 				for (i = 0; carray[i] != NULL; i++) {
 					cp =
 					    (HASH_CURSOR *)carray[i]->internal;
@@ -1102,7 +1126,18 @@ __ham_split_page(dbc, obucket, nbucket)
 					    && cp->indx == n) {
 						cp->pgno = PGNO(*pp);
 						cp->indx = NUM_ENT(*pp);
+						found = 1;
 					}
+				}
+				if (found && DB_LOGGING(dbc)
+				    && IS_SUBTRANSACTION(dbc->txn)) {
+					if ((ret =
+					    __ham_chgpg_log(dbp->dbenv,
+					    dbc->txn, &new_lsn, 0,
+					    dbp->log_fileid,
+					    DB_HAM_SPLIT, PGNO(temp_pagep),
+					    PGNO(*pp), n, NUM_ENT(*pp))) != 0)
+						goto err;
 				}
 			}
 			__ham_copy_item(dbp->pgsize,
@@ -1114,13 +1149,15 @@ __ham_split_page(dbc, obucket, nbucket)
 
 		/* Clear temp_page; if it's a link overflow page, free it. */
 		if (PGNO(temp_pagep) != bucket_pgno && (ret =
-		    __db_free(dbc, temp_pagep)) != 0)
+		    __db_free(dbc, temp_pagep)) != 0) {
+			temp_pagep = NULL;
 			goto err;
+		}
 
 		if (next_pgno == PGNO_INVALID)
 			temp_pagep = NULL;
-		else if ((ret =
-		    __ham_get_page(dbp, next_pgno, &temp_pagep)) != 0)
+		else if ((ret = memp_fget(dbp->mpf,
+		    &next_pgno, DB_MPOOL_CREATE, &temp_pagep)) != 0)
 			goto err;
 
 		if (temp_pagep != NULL && DB_LOGGING(dbc)) {
@@ -1143,8 +1180,10 @@ __ham_split_page(dbc, obucket, nbucket)
 	 * should be deleted.
 	 */
 	if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno &&
-	    (ret = __db_free(dbc, temp_pagep)) != 0)
+	    (ret = __db_free(dbc, temp_pagep)) != 0) {
+		temp_pagep = NULL;
 		goto err;
+	}
 
 	/*
 	 * Write new buckets out.
@@ -1165,17 +1204,18 @@ __ham_split_page(dbc, obucket, nbucket)
 			goto err;
 		LSN(new_pagep) = new_lsn;
 	}
-	ret = __ham_put_page(dbp, old_pagep, 1);
-	if ((t_ret = __ham_put_page(dbp, new_pagep, 1)) != 0 && ret == 0)
+	ret = memp_fput(dbp->mpf, old_pagep, DB_MPOOL_DIRTY);
+	if ((t_ret = memp_fput(dbp->mpf, new_pagep, DB_MPOOL_DIRTY)) != 0
+	    && ret == 0)
 		ret = t_ret;
 
 	if (0) {
 err:		if (old_pagep != NULL)
-			(void)__ham_put_page(dbp, old_pagep, 1);
+			(void)memp_fput(dbp->mpf, old_pagep, DB_MPOOL_DIRTY);
 		if (new_pagep != NULL)
-			(void)__ham_put_page(dbp, new_pagep, 1);
+			(void)memp_fput(dbp->mpf, new_pagep, DB_MPOOL_DIRTY);
 		if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno)
-			(void)__ham_put_page(dbp, temp_pagep, 1);
+			(void)memp_fput(dbp->mpf, temp_pagep, DB_MPOOL_DIRTY);
 	}
 	if (carray != NULL)		/* We never knew its size. */
 		__os_free(carray, 0);
@@ -1203,7 +1243,7 @@ __ham_add_el(dbc, key, val, type)
 	DBT key_dbt, data_dbt;
 	DB_LSN new_lsn;
 	HOFFPAGE doff, koff;
-	db_pgno_t next_pgno;
+	db_pgno_t next_pgno, pgno;
 	u_int32_t data_size, key_size, pairsize, rectype;
 	int do_expand, is_keybig, is_databig, ret;
 	int key_type, data_type;
@@ -1212,9 +1252,10 @@ __ham_add_el(dbc, key, val, type)
 	hcp = (HASH_CURSOR *)dbc->internal;
 	do_expand = 0;
 
-	if (hcp->page == NULL && (ret = __ham_get_page(dbp,
-	    hcp->seek_found_page != PGNO_INVALID ?  hcp->seek_found_page :
-	    hcp->pgno, (PAGE **)&hcp->page)) != 0)
+	pgno = hcp->seek_found_page != PGNO_INVALID ?  hcp->seek_found_page :
+	    hcp->pgno;
+	if (hcp->page == NULL && (ret = memp_fget(dbp->mpf, &pgno,
+	    DB_MPOOL_CREATE, &hcp->page)) != 0)
 		return (ret);
 
 	key_size = HKEYDATA_PSIZE(key->size);
@@ -1261,9 +1302,9 @@ __ham_add_el(dbc, key, val, type)
 	F_CLR(hcp, H_DELETED);
 	if (is_keybig) {
 		koff.type = H_OFFPAGE;
-		UMRW(koff.unused[0]);
-		UMRW(koff.unused[1]);
-		UMRW(koff.unused[2]);
+		UMRW_SET(koff.unused[0]);
+		UMRW_SET(koff.unused[1]);
+		UMRW_SET(koff.unused[2]);
 		if ((ret = __db_poff(dbc, key, &koff.pgno)) != 0)
 			return (ret);
 		koff.tlen = key->size;
@@ -1278,9 +1319,9 @@ __ham_add_el(dbc, key, val, type)
 
 	if (is_databig) {
 		doff.type = H_OFFPAGE;
-		UMRW(doff.unused[0]);
-		UMRW(doff.unused[1]);
-		UMRW(doff.unused[2]);
+		UMRW_SET(doff.unused[0]);
+		UMRW_SET(doff.unused[1]);
+		UMRW_SET(doff.unused[2]);
 		if ((ret = __db_poff(dbc, val, &doff.pgno)) != 0)
 			return (ret);
 		doff.tlen = val->size;
@@ -1410,64 +1451,10 @@ __ham_add_ovflpage(dbc, pagep, release, pp)
 	PREV_PGNO(new_pagep) = PGNO(pagep);
 
 	if (release)
-		ret = __ham_put_page(dbp, pagep, 1);
+		ret = memp_fput(dbp->mpf, pagep, DB_MPOOL_DIRTY);
 
 	*pp = new_pagep;
 	return (ret);
-}
-
-/*
- * PUBLIC: int __ham_put_page __P((DB *, PAGE *, int32_t));
- */
-int
-__ham_put_page(dbp, pagep, is_dirty)
-	DB *dbp;
-	PAGE *pagep;
-	int32_t is_dirty;
-{
-	return (memp_fput(dbp->mpf, pagep, (is_dirty ? DB_MPOOL_DIRTY : 0)));
-}
-
-/*
- * __ham_dirty_page --
- *	Mark a page dirty.
- *
- * PUBLIC: int __ham_dirty_page __P((DB *, PAGE *));
- */
-int
-__ham_dirty_page(dbp, pagep)
-	DB *dbp;
-	PAGE *pagep;
-{
-	return (memp_fset(dbp->mpf, pagep, DB_MPOOL_DIRTY));
-}
-
-/*
- * PUBLIC: int __ham_get_page __P((DB *, db_pgno_t, PAGE **));
- */
-int
-__ham_get_page(dbp, addr, pagep)
-	DB *dbp;
-	db_pgno_t addr;
-	PAGE **pagep;
-{
-	return (memp_fget(dbp->mpf, &addr, DB_MPOOL_CREATE, pagep));
-}
-
-/*
- * PUBLIC: db_pgno_t __bucket_to_page __P((HASH_CURSOR *, db_pgno_t));
- */
-db_pgno_t
-__bucket_to_page(hcp, n)
-	HASH_CURSOR *hcp;
-	db_pgno_t n;
-{
-	int ret_val;
-
-	ret_val = n + 1;
-	if (n != 0)
-		ret_val += hcp->hdr->spares[__db_log2(n + 1) - 1];
-	return (ret_val);
 }
 
 /*
@@ -1534,8 +1521,8 @@ __ham_get_cpage(dbc, mode)
 	if (ret == 0 && hcp->page == NULL) {
 		if (hcp->pgno == PGNO_INVALID)
 			hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
-		if ((ret =
-		    __ham_get_page(dbp, hcp->pgno, (PAGE **)&hcp->page)) != 0)
+		if ((ret = memp_fget(dbp->mpf,
+		    &hcp->pgno, DB_MPOOL_CREATE, &hcp->page)) != 0)
 			return (ret);
 	}
 
@@ -1563,11 +1550,11 @@ __ham_next_cpage(dbc, pgno, dirty)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
-	if (hcp->page != NULL &&
-	    (ret = __ham_put_page(dbp, hcp->page, dirty)) != 0)
+	if (hcp->page != NULL && (ret = memp_fput(dbp->mpf,
+	    hcp->page, dirty ? DB_MPOOL_DIRTY : 0)) != 0)
 		return (ret);
 
-	if ((ret = __ham_get_page(dbp, pgno, &p)) != 0)
+	if ((ret = memp_fget(dbp->mpf, &pgno, DB_MPOOL_CREATE, &p)) != 0)
 		return (ret);
 
 	hcp->page = p;

@@ -1,10 +1,10 @@
-# $Id: README,v 11.2 1999/11/22 13:44:36 bostic Exp $
+# $Id: README,v 11.3 2000/12/13 06:32:29 krinsky Exp $
 
 ex_access.c	Using just the DB access methods.
 
-ex_appinit.c	Setting up the DB environment.
-
 ex_btrec.c	Using the BTREE access method with record numbers.
+
+ex_env.c	Setting up the DB environment.
 
 ex_lock.c	Locking.
 

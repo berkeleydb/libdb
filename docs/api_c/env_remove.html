@@ -1,5 +1,4 @@
- 
-<!--$Id: env_remove.so,v 10.19.2.1 2000/07/24 19:18:36 bostic Exp $-->
+<!--$Id: env_remove.so,v 10.24 2000/12/06 14:40:11 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;remove</h1>
@@ -32,12 +31,12 @@ are removed.  Any log or database files and the environment directory are
 not removed.
 <p>The <b>db_home</b> argument to DBENV-&gt;remove is described in
 <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<p>If there are processes that have called <a href="../api_c/env_open.html">DBENV-&gt;open</a> without calling
-<a href="../api_c/env_close.html">DBENV-&gt;close</a> (i.e., there are processes currently using the
-environment), DBENV-&gt;remove will fail without further action,
+<p>If there are processes that have called <a href="../api_c/env_open.html">DBENV-&gt;open</a> without
+calling <a href="../api_c/env_close.html">DBENV-&gt;close</a> (i.e., there are processes currently using
+the environment), DBENV-&gt;remove will fail without further action,
 unless the <a href="../api_c/env_remove.html#DB_FORCE">DB_FORCE</a> flag is set, in which case
-DBENV-&gt;remove will attempt to remove the environment regardless of
-any processes still using it.
+DBENV-&gt;remove will attempt to remove the environment regardless
+of any processes still using it.
 <p>The result of attempting to forcibly destroy the environment when it is
 in use is unspecified.  Processes using an environment often maintain open
 file descriptors for shared regions within it.  On UNIX systems, the
@@ -62,7 +61,7 @@ required because no database state is maintained across failures, and
 the <a href="../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag was not specified when the environment
 was created, it is possible to clean up an environment by removing all
 of the files in the environment directory that begin with the string
-prefix ``__db'', as no backing files are created in any other directory.
+prefix "__db", as no backing files are created in any other directory.
 <p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
 <p><dl compact>
@@ -71,7 +70,7 @@ of any processes that may still using it, and, no locks are acquired
 during this process.  (Generally, the <a href="../api_c/env_remove.html#DB_FORCE">DB_FORCE</a> flag is only
 specified when applications were unable to shut down cleanly, and there
 is a risk that an application may have died holding a Berkeley DB lock.)
-<!--$Id: m4.env_flags,v 10.8 2000/03/18 21:43:04 bostic Exp $-->
+<!--$Id: m4.env_flags,v 10.9 2000/06/29 22:54:10 bostic Exp $-->
 <p><dt><a name="DB_USE_ENVIRON">DB_USE_ENVIRON</a><dd>The Berkeley DB process' environment may be permitted to specify information to
 be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB
 File Naming</a>.  As permitting users to specify which files are used can
@@ -82,11 +81,13 @@ be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB
 File Naming</a>.  As permitting users to specify which files are used can
 create security problems, if the DB_USE_ENVIRON_ROOT flag is set,
 environment information will be used for file naming only for users with
-appropriate permissions (e.g., on IEEE/ANSI Std 1003.1 (POSIX) systems, users with a
-user-ID of 0).
+appropriate permissions (e.g., on UNIX systems, users with a user-ID of 0).
 </dl>
 <p>In multi-threaded applications, only a single thread may call
 DBENV-&gt;remove.
+<p>A DB_ENV handle which has already been used to open an
+environment should not be used to call the DBENV-&gt;remove function, a new
+DB_ENV handle should be created for that purpose.
 <p>Once DBENV-&gt;remove has been called, regardless of its return,
 the Berkeley DB environment handle may not be accessed again.
 <p>The DBENV-&gt;remove function returns a non-zero error value on failure and 0 on success.
@@ -110,6 +111,8 @@ in the same way.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
+<a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a>,
+<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.

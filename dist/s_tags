@@ -1,11 +1,7 @@
 #!/bin/sh -
-#	$Id: s_tags,v 1.3 1999/12/11 22:12:49 bostic Exp $
+#	$Id: s_tags,v 1.5 2000/09/05 21:27:04 bostic Exp $
 #
 # Build tags files.
-
-f=tags
-echo "Building $f"
-rm -f $f
 
 files="../include/*.h \
 	../include/*.src \
@@ -18,6 +14,7 @@ files="../include/*.h \
 	../env/*.[ch] \
 	../hash/*.[ch] \
 	../hsearch/*.[ch] \
+	../libdb_java/*.[ch] \
 	../lock/*.[ch] \
 	../log/*.[ch] \
 	../mp/*.[ch] \
@@ -30,10 +27,21 @@ files="../include/*.h \
 	../txn/*.[ch] \
 	../xa/*.[ch]"
 
-if ctags -dw $files 2>/dev/null; then
-	:
-else
-	ctags $files 2>/dev/null
+f=tags
+echo "Building $f"
+rm -f $f
+
+# Figure out what flags this ctags accepts.
+flags=""
+if ctags -d ../db/db.c 2>/dev/null; then
+	flags="-d $flags"
+fi
+if ctags -t ../db/db.c 2>/dev/null; then
+	flags="-t $flags"
+fi
+if ctags -w ../db/db.c 2>/dev/null; then
+	flags="-w $flags"
 fi
 
+ctags $flags $files 2>/dev/null
 chmod 444 $f

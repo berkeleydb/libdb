@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test083.tcl,v 11.4 2000/05/22 19:16:05 bostic Exp $
+#	$Id: test083.tcl,v 11.6 2000/12/11 17:24:55 sue Exp $
 #
 # Test 83.
 # Test of DB->key_range
@@ -17,14 +17,22 @@ proc test083 { method {pgsz 512} {maxitems 5000} {step 2} args} {
 		puts "\tTest083: Skipping for method $method."
 		return
 	}
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Test083: skipping for specific pagesizes"
+		return
+	}
 
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
 		set testfile $testdir/test083.db
+		set env NULL
 	} else {
 		set testfile test083.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 
 	# We assume that numbers will be at most six digits wide
@@ -37,7 +45,7 @@ proc test083 { method {pgsz 512} {maxitems 5000} {step 2} args} {
 	    { set nitems [expr $nitems * $step] } {
 
 		puts "\tTest083.a: Opening new database"
-		cleanup $testdir
+		cleanup $testdir $env
 		set db [eval {berkdb_open -create -truncate -mode 0644} \
 		    -pagesize $pgsz $omethod $args $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE

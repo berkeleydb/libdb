@@ -26,6 +26,7 @@ db_serverprog_1(rqstp, transp)
 		__env_cachesize_msg __db_env_cachesize_1_arg;
 		__env_close_msg __db_env_close_1_arg;
 		__env_create_msg __db_env_create_1_arg;
+		__env_flags_msg __db_env_flags_1_arg;
 		__env_open_msg __db_env_open_1_arg;
 		__env_remove_msg __db_env_remove_1_arg;
 		__txn_abort_msg __db_txn_abort_1_arg;
@@ -36,6 +37,7 @@ db_serverprog_1(rqstp, transp)
 		__db_close_msg __db_db_close_1_arg;
 		__db_create_msg __db_db_create_1_arg;
 		__db_del_msg __db_db_del_1_arg;
+		__db_extentsize_msg __db_db_extentsize_1_arg;
 		__db_flags_msg __db_db_flags_1_arg;
 		__db_get_msg __db_db_get_1_arg;
 		__db_h_ffactor_msg __db_db_h_ffactor_1_arg;
@@ -88,6 +90,12 @@ db_serverprog_1(rqstp, transp)
 		xdr_argument = xdr___env_create_msg;
 		xdr_result = xdr___env_create_reply;
 		local = (char *(*)()) __db_env_create_1;
+		break;
+
+	case __DB_env_flags:
+		xdr_argument = xdr___env_flags_msg;
+		xdr_result = xdr___env_flags_reply;
+		local = (char *(*)()) __db_env_flags_1;
 		break;
 
 	case __DB_env_open:
@@ -148,6 +156,12 @@ db_serverprog_1(rqstp, transp)
 		xdr_argument = xdr___db_del_msg;
 		xdr_result = xdr___db_del_reply;
 		local = (char *(*)()) __db_db_del_1;
+		break;
+
+	case __DB_db_extentsize:
+		xdr_argument = xdr___db_extentsize_msg;
+		xdr_result = xdr___db_extentsize_reply;
+		local = (char *(*)()) __db_db_extentsize_1;
 		break;
 
 	case __DB_db_flags:

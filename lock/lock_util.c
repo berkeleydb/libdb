@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_util.c,v 11.4 2000/04/29 02:26:24 bostic Exp $";
+static const char revid[] = "$Id: lock_util.c,v 11.5 2000/07/04 18:28:24 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -100,7 +100,7 @@ __lock_ohash(dbt)
 	if (dbt->size == sizeof(DB_LOCK_ILOCK))
 		FAST_HASH(dbt->data);
 
-	return (__ham_func5(dbt->data, dbt->size));
+	return (__ham_func5(NULL, dbt->data, dbt->size));
 }
 
 /*
@@ -119,7 +119,7 @@ __lock_lhash(lock_obj)
 	if (lock_obj->lockobj.size == sizeof(DB_LOCK_ILOCK))
 		FAST_HASH(obj_data);
 
-	return (__ham_func5(obj_data, lock_obj->lockobj.size));
+	return (__ham_func5(NULL, obj_data, lock_obj->lockobj.size));
 }
 
 /*

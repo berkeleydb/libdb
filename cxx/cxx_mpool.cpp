@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_mpool.cpp,v 11.9 2000/05/17 01:17:53 dda Exp $";
+static const char revid[] = "$Id: cxx_mpool.cpp,v 11.11 2000/09/21 15:05:45 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -43,11 +43,11 @@ int DbMpoolFile::open(DbEnv *envp, const char *file,
 	if ((err = ::memp_fopen(env, file, flags, mode, pagesize,
 				finfop, &mpf)) != 0) {
 		DB_ERROR("DbMpoolFile::open", err, envp->error_policy());
-		return err;
+		return (err);
 	}
 	*result = new DbMpoolFile();
 	(*result)->imp_ = wrap(mpf);
-	return 0;
+	return (0);
 }
 
 int DbMpoolFile::close()
@@ -59,7 +59,7 @@ int DbMpoolFile::close()
 	}
 	else if ((err = ::memp_fclose(mpf)) != 0) {
 		DB_ERROR("DbMpoolFile::close", err, ON_ERROR_UNKNOWN);
-		return err;
+		return (err);
 	}
 	imp_ = 0;                   // extra safety
 
@@ -67,7 +67,7 @@ int DbMpoolFile::close()
 	// any data before returning.
 	//
 	delete this;
-	return 0;
+	return (0);
 }
 
 int DbMpoolFile::get(db_pgno_t *pgnoaddr, u_int32_t flags, void *pagep)
@@ -80,7 +80,7 @@ int DbMpoolFile::get(db_pgno_t *pgnoaddr, u_int32_t flags, void *pagep)
 	else if ((err = ::memp_fget(mpf, pgnoaddr, flags, pagep)) != 0) {
 		DB_ERROR("DbMpoolFile::get", err, ON_ERROR_UNKNOWN);
 	}
-	return err;
+	return (err);
 }
 
 int DbMpoolFile::put(void *pgaddr, u_int32_t flags)
@@ -93,7 +93,7 @@ int DbMpoolFile::put(void *pgaddr, u_int32_t flags)
 	else if ((err = ::memp_fput(mpf, pgaddr, flags)) != 0) {
 		DB_ERROR("DbMpoolFile::put", err, ON_ERROR_UNKNOWN);
 	}
-	return err;
+	return (err);
 }
 
 int DbMpoolFile::set(void *pgaddr, u_int32_t flags)
@@ -106,7 +106,7 @@ int DbMpoolFile::set(void *pgaddr, u_int32_t flags)
 	else if ((err = ::memp_fset(mpf, pgaddr, flags)) != 0) {
 		DB_ERROR("DbMpoolFile::set", err, ON_ERROR_UNKNOWN);
 	}
-	return err;
+	return (err);
 }
 
 int DbMpoolFile::sync()
@@ -116,10 +116,10 @@ int DbMpoolFile::sync()
 	if (!mpf) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fsync(mpf)) != 0) {
+	else if ((err = ::memp_fsync(mpf)) != 0 && err != DB_INCOMPLETE) {
 		DB_ERROR("DbMpoolFile::sync", err, ON_ERROR_UNKNOWN);
 	}
-	return err;
+	return (err);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -137,9 +137,9 @@ int DbEnv::memp_register(int ftype,
 
 	if ((err = ::memp_register(env, ftype, pgin_fcn, pgout_fcn)) != 0) {
 		DB_ERROR("DbEnv::memp_register", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp,
@@ -150,9 +150,9 @@ int DbEnv::memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp,
 
 	if ((err = ::memp_stat(env, gsp, fsp, db_malloc_fcn)) != 0) {
 		DB_ERROR("DbEnv::memp_stat", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::memp_sync(DbLsn *sn)
@@ -160,11 +160,11 @@ int DbEnv::memp_sync(DbLsn *sn)
 	DB_ENV *env = unwrap(this);
 	int err = 0;
 
-	if ((err = ::memp_sync(env, sn)) != 0) {
+	if ((err = ::memp_sync(env, sn)) != 0 && err != DB_INCOMPLETE) {
 		DB_ERROR("DbEnv::memp_sync", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::memp_trickle(int pct, int *nwrotep)
@@ -174,7 +174,7 @@ int DbEnv::memp_trickle(int pct, int *nwrotep)
 
 	if ((err = ::memp_trickle(env, pct, nwrotep)) != 0) {
 		DB_ERROR("DbEnv::memp_trickle", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }

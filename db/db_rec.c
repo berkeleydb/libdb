@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_rec.c,v 11.9 2000/02/17 20:24:07 bostic Exp $";
+static const char revid[] = "$Id: db_rec.c,v 11.10 2000/08/03 15:32:19 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -288,6 +288,8 @@ __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
 	REC_INTRO(__db_ovref_read, 1);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0) {
+		if (DB_UNDO(op))
+			goto done;
 		(void)__db_pgerr(file_dbp, argp->pgno);
 		goto out;
 	}

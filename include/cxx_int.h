@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: cxx_int.h,v 11.9 2000/05/10 04:12:40 dda Exp $
+ * $Id: cxx_int.h,v 11.13 2000/11/21 22:56:36 dda Exp $
  */
 
 #ifndef _CXX_INT_H_
@@ -32,19 +32,19 @@
 									   \
 	inline _WRAPPED_TYPE unwrap(_WRAPPER_CLASS *val)                   \
 	{                                                                  \
-		if (!val) return 0;                                        \
-		return (_WRAPPED_TYPE)((void *)(val->imp()));              \
+		if (!val) return (0);                                      \
+		return ((_WRAPPED_TYPE)((void *)(val->imp())));            \
 	}                                                                  \
 									   \
 	inline const _WRAPPED_TYPE unwrapConst(const _WRAPPER_CLASS *val)  \
 	{                                                                  \
-		if (!val) return 0;                                        \
-		return (const _WRAPPED_TYPE)((void *)(val->constimp()));   \
+		if (!val) return (0);                                      \
+		return ((const _WRAPPED_TYPE)((void *)(val->constimp()))); \
 	}                                                                  \
 									   \
 	inline _IMP_CLASS *wrap(_WRAPPED_TYPE val)                         \
 	{                                                                  \
-		return (_IMP_CLASS*)((void *)val);                         \
+		return ((_IMP_CLASS*)((void *)val));                       \
 	}
 
 WRAPPED_CLASS(DbMpoolFile, DbMpoolFileImp, DB_MPOOLFILE*)
@@ -69,35 +69,14 @@ WRAPPED_CLASS(DbTxn, DbTxnImp, DB_TXN*)
 #define	DB_ERROR(caller, ecode, policy) \
     DbEnv::runtime_error(caller, ecode, policy)
 
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+// These defines are for tedious field set/get access methods.
 //
-// These defines are for tedious flag or field set/get access methods.
-//
-
-// Define setName() and getName() methods that twiddle
-// the _flags field.
-//
-#define	DB_FLAG_METHODS(_class, _flags, _cxx_name, _flag_name) \
-							       \
-void _class::set##_cxx_name(int onOrOff)                       \
-{                                                              \
-	if (onOrOff)                                           \
-		_flags |= _flag_name;                          \
-	else                                                   \
-		_flags &= ~(_flag_name);                       \
-}                                                              \
-							       \
-int _class::get##_cxx_name() const                             \
-{                                                              \
-	return (_flags & _flag_name) ? 1 : 0;                  \
-}
 
 #define	DB_RO_ACCESS(_class, _type, _cxx_name, _field)         \
 							       \
 _type _class::get_##_cxx_name() const                          \
 {                                                              \
-	return _field;                                         \
+	return (_field);                                       \
 }
 
 #define	DB_WO_ACCESS(_class, _type, _cxx_name, _field)         \
@@ -110,5 +89,8 @@ void _class::set_##_cxx_name(_type value)                      \
 #define	DB_RW_ACCESS(_class, _type, _cxx_name, _field)         \
 	DB_RO_ACCESS(_class, _type, _cxx_name, _field)         \
 	DB_WO_ACCESS(_class, _type, _cxx_name, _field)
+
+/* values for Db::flags_ */
+#define	DB_CXX_PRIVATE_ENV      0x00000001
 
 #endif /* !_CXX_INT_H_ */

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test036.tcl,v 11.12 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test036.tcl,v 11.13 2000/08/25 14:21:55 sue Exp $
 #
 # DB Test 36 {access method}
 # Put nentries key/data pairs (from the dictionary) using a cursor
@@ -28,13 +28,16 @@ proc test036 { method {nentries 10000} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test036.db
+		set env NULL
 	} else {
 		set testfile test036.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE

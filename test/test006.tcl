@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test006.tcl,v 11.12 2000/04/30 05:07:56 krinsky Exp $
+#	$Id: test006.tcl,v 11.13 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 6 {access method}
 # Keyed delete test.
@@ -38,8 +38,11 @@ proc test006 { method {nentries 10000} {reopen 0} {tnum 6} args} {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/$dbname.db
+		set env NULL
 	} else {
 		set testfile $dbname.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 
 	set pflags ""
@@ -52,7 +55,7 @@ proc test006 { method {nentries 10000} {reopen 0} {tnum 6} args} {
 
 	# Here is the loop where we put and get each key/data pair
 
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE

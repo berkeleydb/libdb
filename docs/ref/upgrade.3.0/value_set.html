@@ -1,10 +1,9 @@
- 
 <!--$Id: value_set.so,v 11.6 2000/03/18 21:43:21 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Upgrading Berkeley DB Applications</title>
+<title>Berkeley DB Reference Guide: Release 3.0: db_value_set</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -21,7 +20,7 @@ replaced by method calls on the DB_ENV handle.
 applications and the methods that should now be used instead.
 <p><table border=1 align=center>
 <tr><th>db_value_set argument</th><th>Berkeley DB 3.X method</th></tr>
-<tr><td>DB_MUTEX_LOCKS</td><td><a href="../../api_c/env_set_mutexlocks.html">db_env_set_mutexlocks</a></td></tr>
+<tr><td>DB_MUTEX_LOCKS</td><td><a href="../../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a></td></tr>
 <tr><td>DB_REGION_ANON</td><td>The DB_REGION_ANON functionality has
 been replaced by the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> and <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flags
 to the <a href="../../api_c/env_open.html">DBENV-&gt;open</a> function.  A direct translation is not

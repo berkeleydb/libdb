@@ -16,7 +16,8 @@
 #include "hash.h"
 #include "txn.h"
 
-int __ham_insdel_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_insdel_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, fileid, pgno, ndx, pagelsn, key,
 	data)
 	DB_ENV *dbenv;
@@ -38,10 +39,11 @@ int __ham_insdel_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_insdel;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -122,7 +124,7 @@ __ham_insdel_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_insdel_read(dbenv, dbtp->data, &argp)) != 0)
@@ -209,7 +211,8 @@ __ham_insdel_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_newpage_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_newpage_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, fileid, prev_pgno, prevlsn, new_pgno, pagelsn,
 	next_pgno, nextlsn)
 	DB_ENV *dbenv;
@@ -231,10 +234,11 @@ int __ham_newpage_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_newpage;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -308,7 +312,7 @@ __ham_newpage_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_newpage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -393,7 +397,7 @@ __ham_splitmeta_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_splitmeta_read(dbenv, dbtp->data, &argp)) != 0)
@@ -452,7 +456,8 @@ __ham_splitmeta_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_splitdata_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_splitdata_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, opcode, pgno, pageimage, pagelsn)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -471,10 +476,11 @@ int __ham_splitdata_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_splitdata;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -541,7 +547,7 @@ __ham_splitdata_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_splitdata_read(dbenv, dbtp->data, &argp)) != 0)
@@ -611,7 +617,8 @@ __ham_splitdata_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_replace_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_replace_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, ndx, pagelsn, off, olditem,
 	newitem, makedup)
 	DB_ENV *dbenv;
@@ -634,10 +641,11 @@ int __ham_replace_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_replace;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -721,7 +729,7 @@ __ham_replace_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_replace_read(dbenv, dbtp->data, &argp)) != 0)
@@ -826,7 +834,7 @@ __ham_newpgno_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_newpgno_read(dbenv, dbtp->data, &argp)) != 0)
@@ -913,7 +921,7 @@ __ham_ovfl_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_ovfl_read(dbenv, dbtp->data, &argp)) != 0)
@@ -975,7 +983,8 @@ __ham_ovfl_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_copypage_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_copypage_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, pagelsn, next_pgno, nextlsn, nnext_pgno,
 	nnextlsn, page)
 	DB_ENV *dbenv;
@@ -998,10 +1007,11 @@ int __ham_copypage_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_copypage;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -1083,7 +1093,7 @@ __ham_copypage_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_copypage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -1164,7 +1174,8 @@ __ham_copypage_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_metagroup_log(dbenv, txnid, ret_lsnp, flags,
+int
+__ham_metagroup_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, bucket, pgno, metalsn, pagelsn)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -1182,10 +1193,11 @@ int __ham_metagroup_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_metagroup;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -1247,7 +1259,7 @@ __ham_metagroup_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_metagroup_read(dbenv, dbtp->data, &argp)) != 0)
@@ -1322,7 +1334,7 @@ __ham_groupalloc1_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_groupalloc1_read(dbenv, dbtp->data, &argp)) != 0)
@@ -1385,15 +1397,93 @@ __ham_groupalloc1_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __ham_groupalloc_log(dbenv, txnid, ret_lsnp, flags,
-	fileid, meta_lsn, alloc_lsn, start_pgno, num, free)
+int
+__ham_groupalloc2_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__ham_groupalloc2_args *argp;
+	u_int32_t i;
+	u_int ch;
+	int ret;
+
+	i = 0;
+	ch = 0;
+	notused2 = DB_TXN_ABORT;
+	notused3 = NULL;
+
+	if ((ret = __ham_groupalloc2_read(dbenv, dbtp->data, &argp)) != 0)
+		return (ret);
+	printf("[%lu][%lu]ham_groupalloc2: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file,
+	    (u_long)lsnp->offset,
+	    (u_long)argp->type,
+	    (u_long)argp->txnid->txnid,
+	    (u_long)argp->prev_lsn.file,
+	    (u_long)argp->prev_lsn.offset);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
+	printf("\tmeta_lsn: [%lu][%lu]\n",
+	    (u_long)argp->meta_lsn.file, (u_long)argp->meta_lsn.offset);
+	printf("\talloc_lsn: [%lu][%lu]\n",
+	    (u_long)argp->alloc_lsn.file, (u_long)argp->alloc_lsn.offset);
+	printf("\tstart_pgno: %lu\n", (u_long)argp->start_pgno);
+	printf("\tnum: %lu\n", (u_long)argp->num);
+	printf("\tfree: %lu\n", (u_long)argp->free);
+	printf("\n");
+	__os_free(argp, 0);
+	return (0);
+}
+
+int
+__ham_groupalloc2_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	__ham_groupalloc2_args **argpp;
+{
+	__ham_groupalloc2_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	ret = __os_malloc(dbenv, sizeof(__ham_groupalloc2_args) +
+	    sizeof(DB_TXN), NULL, &argp);
+	if (ret != 0)
+		return (ret);
+	argp->txnid = (DB_TXN *)&argp[1];
+	bp = recbuf;
+	memcpy(&argp->type, bp, sizeof(argp->type));
+	bp += sizeof(argp->type);
+	memcpy(&argp->txnid->txnid,  bp, sizeof(argp->txnid->txnid));
+	bp += sizeof(argp->txnid->txnid);
+	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+	memcpy(&argp->fileid, bp, sizeof(argp->fileid));
+	bp += sizeof(argp->fileid);
+	memcpy(&argp->meta_lsn, bp,  sizeof(argp->meta_lsn));
+	bp += sizeof(argp->meta_lsn);
+	memcpy(&argp->alloc_lsn, bp,  sizeof(argp->alloc_lsn));
+	bp += sizeof(argp->alloc_lsn);
+	memcpy(&argp->start_pgno, bp, sizeof(argp->start_pgno));
+	bp += sizeof(argp->start_pgno);
+	memcpy(&argp->num, bp, sizeof(argp->num));
+	bp += sizeof(argp->num);
+	memcpy(&argp->free, bp, sizeof(argp->free));
+	bp += sizeof(argp->free);
+	*argpp = argp;
+	return (0);
+}
+
+int
+__ham_groupalloc_log(dbenv, txnid, ret_lsnp, flags,
+	fileid, meta_lsn, start_pgno, num, free)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	int32_t fileid;
 	DB_LSN * meta_lsn;
-	DB_LSN * alloc_lsn;
 	db_pgno_t start_pgno;
 	u_int32_t num;
 	db_pgno_t free;
@@ -1404,10 +1494,11 @@ int __ham_groupalloc_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_ham_groupalloc;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -1417,7 +1508,6 @@ int __ham_groupalloc_log(dbenv, txnid, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(fileid)
 	    + sizeof(*meta_lsn)
-	    + sizeof(*alloc_lsn)
 	    + sizeof(start_pgno)
 	    + sizeof(num)
 	    + sizeof(free);
@@ -1438,11 +1528,6 @@ int __ham_groupalloc_log(dbenv, txnid, ret_lsnp, flags,
 	else
 		memset(bp, 0, sizeof(*meta_lsn));
 	bp += sizeof(*meta_lsn);
-	if (alloc_lsn != NULL)
-		memcpy(bp, alloc_lsn, sizeof(*alloc_lsn));
-	else
-		memset(bp, 0, sizeof(*alloc_lsn));
-	bp += sizeof(*alloc_lsn);
 	memcpy(bp, &start_pgno, sizeof(start_pgno));
 	bp += sizeof(start_pgno);
 	memcpy(bp, &num, sizeof(num));
@@ -1472,7 +1557,7 @@ __ham_groupalloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __ham_groupalloc_read(dbenv, dbtp->data, &argp)) != 0)
@@ -1487,8 +1572,6 @@ __ham_groupalloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\tmeta_lsn: [%lu][%lu]\n",
 	    (u_long)argp->meta_lsn.file, (u_long)argp->meta_lsn.offset);
-	printf("\talloc_lsn: [%lu][%lu]\n",
-	    (u_long)argp->alloc_lsn.file, (u_long)argp->alloc_lsn.offset);
 	printf("\tstart_pgno: %lu\n", (u_long)argp->start_pgno);
 	printf("\tnum: %lu\n", (u_long)argp->num);
 	printf("\tfree: %lu\n", (u_long)argp->free);
@@ -1523,14 +1606,315 @@ __ham_groupalloc_read(dbenv, recbuf, argpp)
 	bp += sizeof(argp->fileid);
 	memcpy(&argp->meta_lsn, bp,  sizeof(argp->meta_lsn));
 	bp += sizeof(argp->meta_lsn);
-	memcpy(&argp->alloc_lsn, bp,  sizeof(argp->alloc_lsn));
-	bp += sizeof(argp->alloc_lsn);
 	memcpy(&argp->start_pgno, bp, sizeof(argp->start_pgno));
 	bp += sizeof(argp->start_pgno);
 	memcpy(&argp->num, bp, sizeof(argp->num));
 	bp += sizeof(argp->num);
 	memcpy(&argp->free, bp, sizeof(argp->free));
 	bp += sizeof(argp->free);
+	*argpp = argp;
+	return (0);
+}
+
+int
+__ham_curadj_log(dbenv, txnid, ret_lsnp, flags,
+	fileid, pgno, indx, len, dup_off, add,
+	is_dup, order)
+	DB_ENV *dbenv;
+	DB_TXN *txnid;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	int32_t fileid;
+	db_pgno_t pgno;
+	u_int32_t indx;
+	u_int32_t len;
+	u_int32_t dup_off;
+	int add;
+	int is_dup;
+	u_int32_t order;
+{
+	DBT logrec;
+	DB_LSN *lsnp, null_lsn;
+	u_int32_t rectype, txn_num;
+	int ret;
+	u_int8_t *bp;
+
+	rectype = DB_ham_curadj;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
+	txn_num = txnid == NULL ? 0 : txnid->txnid;
+	if (txnid == NULL) {
+		ZERO_LSN(null_lsn);
+		lsnp = &null_lsn;
+	} else
+		lsnp = &txnid->last_lsn;
+	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
+	    + sizeof(fileid)
+	    + sizeof(pgno)
+	    + sizeof(indx)
+	    + sizeof(len)
+	    + sizeof(dup_off)
+	    + sizeof(add)
+	    + sizeof(is_dup)
+	    + sizeof(order);
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+		return (ret);
+
+	bp = logrec.data;
+	memcpy(bp, &rectype, sizeof(rectype));
+	bp += sizeof(rectype);
+	memcpy(bp, &txn_num, sizeof(txn_num));
+	bp += sizeof(txn_num);
+	memcpy(bp, lsnp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+	memcpy(bp, &fileid, sizeof(fileid));
+	bp += sizeof(fileid);
+	memcpy(bp, &pgno, sizeof(pgno));
+	bp += sizeof(pgno);
+	memcpy(bp, &indx, sizeof(indx));
+	bp += sizeof(indx);
+	memcpy(bp, &len, sizeof(len));
+	bp += sizeof(len);
+	memcpy(bp, &dup_off, sizeof(dup_off));
+	bp += sizeof(dup_off);
+	memcpy(bp, &add, sizeof(add));
+	bp += sizeof(add);
+	memcpy(bp, &is_dup, sizeof(is_dup));
+	bp += sizeof(is_dup);
+	memcpy(bp, &order, sizeof(order));
+	bp += sizeof(order);
+	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
+	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
+	if (txnid != NULL)
+		txnid->last_lsn = *ret_lsnp;
+	__os_free(logrec.data, logrec.size);
+	return (ret);
+}
+
+int
+__ham_curadj_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__ham_curadj_args *argp;
+	u_int32_t i;
+	u_int ch;
+	int ret;
+
+	i = 0;
+	ch = 0;
+	notused2 = DB_TXN_ABORT;
+	notused3 = NULL;
+
+	if ((ret = __ham_curadj_read(dbenv, dbtp->data, &argp)) != 0)
+		return (ret);
+	printf("[%lu][%lu]ham_curadj: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file,
+	    (u_long)lsnp->offset,
+	    (u_long)argp->type,
+	    (u_long)argp->txnid->txnid,
+	    (u_long)argp->prev_lsn.file,
+	    (u_long)argp->prev_lsn.offset);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
+	printf("\tpgno: %lu\n", (u_long)argp->pgno);
+	printf("\tindx: %lu\n", (u_long)argp->indx);
+	printf("\tlen: %lu\n", (u_long)argp->len);
+	printf("\tdup_off: %lu\n", (u_long)argp->dup_off);
+	printf("\tadd: %ld\n", (long)argp->add);
+	printf("\tis_dup: %ld\n", (long)argp->is_dup);
+	printf("\torder: %lu\n", (u_long)argp->order);
+	printf("\n");
+	__os_free(argp, 0);
+	return (0);
+}
+
+int
+__ham_curadj_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	__ham_curadj_args **argpp;
+{
+	__ham_curadj_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	ret = __os_malloc(dbenv, sizeof(__ham_curadj_args) +
+	    sizeof(DB_TXN), NULL, &argp);
+	if (ret != 0)
+		return (ret);
+	argp->txnid = (DB_TXN *)&argp[1];
+	bp = recbuf;
+	memcpy(&argp->type, bp, sizeof(argp->type));
+	bp += sizeof(argp->type);
+	memcpy(&argp->txnid->txnid,  bp, sizeof(argp->txnid->txnid));
+	bp += sizeof(argp->txnid->txnid);
+	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+	memcpy(&argp->fileid, bp, sizeof(argp->fileid));
+	bp += sizeof(argp->fileid);
+	memcpy(&argp->pgno, bp, sizeof(argp->pgno));
+	bp += sizeof(argp->pgno);
+	memcpy(&argp->indx, bp, sizeof(argp->indx));
+	bp += sizeof(argp->indx);
+	memcpy(&argp->len, bp, sizeof(argp->len));
+	bp += sizeof(argp->len);
+	memcpy(&argp->dup_off, bp, sizeof(argp->dup_off));
+	bp += sizeof(argp->dup_off);
+	memcpy(&argp->add, bp, sizeof(argp->add));
+	bp += sizeof(argp->add);
+	memcpy(&argp->is_dup, bp, sizeof(argp->is_dup));
+	bp += sizeof(argp->is_dup);
+	memcpy(&argp->order, bp, sizeof(argp->order));
+	bp += sizeof(argp->order);
+	*argpp = argp;
+	return (0);
+}
+
+int
+__ham_chgpg_log(dbenv, txnid, ret_lsnp, flags,
+	fileid, mode, old_pgno, new_pgno, old_indx, new_indx)
+	DB_ENV *dbenv;
+	DB_TXN *txnid;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	int32_t fileid;
+	db_ham_mode mode;
+	db_pgno_t old_pgno;
+	db_pgno_t new_pgno;
+	u_int32_t old_indx;
+	u_int32_t new_indx;
+{
+	DBT logrec;
+	DB_LSN *lsnp, null_lsn;
+	u_int32_t rectype, txn_num;
+	int ret;
+	u_int8_t *bp;
+
+	rectype = DB_ham_chgpg;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
+	txn_num = txnid == NULL ? 0 : txnid->txnid;
+	if (txnid == NULL) {
+		ZERO_LSN(null_lsn);
+		lsnp = &null_lsn;
+	} else
+		lsnp = &txnid->last_lsn;
+	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
+	    + sizeof(fileid)
+	    + sizeof(mode)
+	    + sizeof(old_pgno)
+	    + sizeof(new_pgno)
+	    + sizeof(old_indx)
+	    + sizeof(new_indx);
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
+		return (ret);
+
+	bp = logrec.data;
+	memcpy(bp, &rectype, sizeof(rectype));
+	bp += sizeof(rectype);
+	memcpy(bp, &txn_num, sizeof(txn_num));
+	bp += sizeof(txn_num);
+	memcpy(bp, lsnp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+	memcpy(bp, &fileid, sizeof(fileid));
+	bp += sizeof(fileid);
+	memcpy(bp, &mode, sizeof(mode));
+	bp += sizeof(mode);
+	memcpy(bp, &old_pgno, sizeof(old_pgno));
+	bp += sizeof(old_pgno);
+	memcpy(bp, &new_pgno, sizeof(new_pgno));
+	bp += sizeof(new_pgno);
+	memcpy(bp, &old_indx, sizeof(old_indx));
+	bp += sizeof(old_indx);
+	memcpy(bp, &new_indx, sizeof(new_indx));
+	bp += sizeof(new_indx);
+	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
+	ret = log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
+	if (txnid != NULL)
+		txnid->last_lsn = *ret_lsnp;
+	__os_free(logrec.data, logrec.size);
+	return (ret);
+}
+
+int
+__ham_chgpg_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__ham_chgpg_args *argp;
+	u_int32_t i;
+	u_int ch;
+	int ret;
+
+	i = 0;
+	ch = 0;
+	notused2 = DB_TXN_ABORT;
+	notused3 = NULL;
+
+	if ((ret = __ham_chgpg_read(dbenv, dbtp->data, &argp)) != 0)
+		return (ret);
+	printf("[%lu][%lu]ham_chgpg: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file,
+	    (u_long)lsnp->offset,
+	    (u_long)argp->type,
+	    (u_long)argp->txnid->txnid,
+	    (u_long)argp->prev_lsn.file,
+	    (u_long)argp->prev_lsn.offset);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
+	printf("\tmode: %ld\n", (long)argp->mode);
+	printf("\told_pgno: %lu\n", (u_long)argp->old_pgno);
+	printf("\tnew_pgno: %lu\n", (u_long)argp->new_pgno);
+	printf("\told_indx: %lu\n", (u_long)argp->old_indx);
+	printf("\tnew_indx: %lu\n", (u_long)argp->new_indx);
+	printf("\n");
+	__os_free(argp, 0);
+	return (0);
+}
+
+int
+__ham_chgpg_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	__ham_chgpg_args **argpp;
+{
+	__ham_chgpg_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	ret = __os_malloc(dbenv, sizeof(__ham_chgpg_args) +
+	    sizeof(DB_TXN), NULL, &argp);
+	if (ret != 0)
+		return (ret);
+	argp->txnid = (DB_TXN *)&argp[1];
+	bp = recbuf;
+	memcpy(&argp->type, bp, sizeof(argp->type));
+	bp += sizeof(argp->type);
+	memcpy(&argp->txnid->txnid,  bp, sizeof(argp->txnid->txnid));
+	bp += sizeof(argp->txnid->txnid);
+	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+	memcpy(&argp->fileid, bp, sizeof(argp->fileid));
+	bp += sizeof(argp->fileid);
+	memcpy(&argp->mode, bp, sizeof(argp->mode));
+	bp += sizeof(argp->mode);
+	memcpy(&argp->old_pgno, bp, sizeof(argp->old_pgno));
+	bp += sizeof(argp->old_pgno);
+	memcpy(&argp->new_pgno, bp, sizeof(argp->new_pgno));
+	bp += sizeof(argp->new_pgno);
+	memcpy(&argp->old_indx, bp, sizeof(argp->old_indx));
+	bp += sizeof(argp->old_indx);
+	memcpy(&argp->new_indx, bp, sizeof(argp->new_indx));
+	bp += sizeof(argp->new_indx);
 	*argpp = argp;
 	return (0);
 }
@@ -1572,7 +1956,16 @@ __ham_init_print(dbenv)
 	    __ham_groupalloc1_print, DB_ham_groupalloc1)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery(dbenv,
+	    __ham_groupalloc2_print, DB_ham_groupalloc2)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
 	    __ham_groupalloc_print, DB_ham_groupalloc)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
+	    __ham_curadj_print, DB_ham_curadj)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
+	    __ham_chgpg_print, DB_ham_chgpg)) != 0)
 		return (ret);
 	return (0);
 }
@@ -1614,7 +2007,16 @@ __ham_init_recover(dbenv)
 	    __deprecated_recover, DB_ham_groupalloc1)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery(dbenv,
+	    __deprecated_recover, DB_ham_groupalloc2)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
 	    __ham_groupalloc_recover, DB_ham_groupalloc)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
+	    __ham_curadj_recover, DB_ham_curadj)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv,
+	    __ham_chgpg_recover, DB_ham_chgpg)) != 0)
 		return (ret);
 	return (0);
 }

@@ -3,13 +3,31 @@
 #ifndef	bam_AUTO_H
 #define	bam_AUTO_H
 
-#define	DB_bam_pg_alloc1	51
+#define	DB_bam_pg_alloc	51
+typedef struct _bam_pg_alloc_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	DB_LSN	meta_lsn;
+	DB_LSN	page_lsn;
+	db_pgno_t	pgno;
+	u_int32_t	ptype;
+	db_pgno_t	next;
+} __bam_pg_alloc_args;
+
+int __bam_pg_alloc_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t));
+int __bam_pg_alloc_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __bam_pg_alloc_read __P((DB_ENV *, void *, __bam_pg_alloc_args **));
+
+#define	DB_bam_pg_alloc1	60
 typedef struct _bam_pg_alloc1_args {
 	u_int32_t type;
 	DB_TXN *txnid;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	DB_LSN	meta_lsn;
+	DB_LSN	alloc_lsn;
 	DB_LSN	page_lsn;
 	db_pgno_t	pgno;
 	u_int32_t	ptype;
@@ -19,40 +37,7 @@ typedef struct _bam_pg_alloc1_args {
 int __bam_pg_alloc1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __bam_pg_alloc1_read __P((DB_ENV *, void *, __bam_pg_alloc1_args **));
 
-#define	DB_bam_pg_alloc	60
-typedef struct _bam_pg_alloc_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	DB_LSN	meta_lsn;
-	DB_LSN	alloc_lsn;
-	DB_LSN	page_lsn;
-	db_pgno_t	pgno;
-	u_int32_t	ptype;
-	db_pgno_t	next;
-} __bam_pg_alloc_args;
-
-int __bam_pg_alloc_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, DB_LSN *, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t));
-int __bam_pg_alloc_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-int __bam_pg_alloc_read __P((DB_ENV *, void *, __bam_pg_alloc_args **));
-
-#define	DB_bam_pg_free1	52
-typedef struct _bam_pg_free1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DB_LSN	meta_lsn;
-	DBT	header;
-	db_pgno_t	next;
-} __bam_pg_free1_args;
-
-int __bam_pg_free1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-int __bam_pg_free1_read __P((DB_ENV *, void *, __bam_pg_free1_args **));
-
-#define	DB_bam_pg_free	61
+#define	DB_bam_pg_free	52
 typedef struct _bam_pg_free_args {
 	u_int32_t type;
 	DB_TXN *txnid;
@@ -60,14 +45,29 @@ typedef struct _bam_pg_free_args {
 	int32_t	fileid;
 	db_pgno_t	pgno;
 	DB_LSN	meta_lsn;
-	DB_LSN	alloc_lsn;
 	DBT	header;
 	db_pgno_t	next;
 } __bam_pg_free_args;
 
-int __bam_pg_free_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, DB_LSN *, const DBT *, db_pgno_t));
+int __bam_pg_free_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, const DBT *, db_pgno_t));
 int __bam_pg_free_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __bam_pg_free_read __P((DB_ENV *, void *, __bam_pg_free_args **));
+
+#define	DB_bam_pg_free1	61
+typedef struct _bam_pg_free1_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	DB_LSN	meta_lsn;
+	DB_LSN	alloc_lsn;
+	DBT	header;
+	db_pgno_t	next;
+} __bam_pg_free1_args;
+
+int __bam_pg_free1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __bam_pg_free1_read __P((DB_ENV *, void *, __bam_pg_free1_args **));
 
 #define	DB_bam_split1	53
 typedef struct _bam_split1_args {
@@ -246,6 +246,22 @@ typedef struct _bam_curadj_args {
 int __bam_curadj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_ca_mode, db_pgno_t, db_pgno_t, db_pgno_t, u_int32_t, u_int32_t, u_int32_t));
 int __bam_curadj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __bam_curadj_read __P((DB_ENV *, void *, __bam_curadj_args **));
+
+#define	DB_bam_rcuradj	65
+typedef struct _bam_rcuradj_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	ca_recno_arg	mode;
+	db_pgno_t	root;
+	db_recno_t	recno;
+	u_int32_t	order;
+} __bam_rcuradj_args;
+
+int __bam_rcuradj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, ca_recno_arg, db_pgno_t, db_recno_t, u_int32_t));
+int __bam_rcuradj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __bam_rcuradj_read __P((DB_ENV *, void *, __bam_rcuradj_args **));
 int __bam_init_print __P((DB_ENV *));
 int __bam_init_recover __P((DB_ENV *));
 #endif

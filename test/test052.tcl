@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test052.tcl,v 11.8 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test052.tcl,v 11.10 2000/10/06 19:29:52 krinsky Exp $
 #
 # Test52
 # Renumbering recno test.
@@ -33,11 +33,14 @@ proc test052 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test052.db
+		set env NULL
 	} else {
 		set testfile test052.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags "-create -truncate -mode 0644 $args $omethod"
 	set db [eval {berkdb_open} $oflags $testfile]
@@ -86,18 +89,25 @@ proc test052 { method args } {
 
 	puts "\t  Test052.b: Delete cursor item by key."
 	set i [expr $nkeys/2 ]
+
 	set ret [$dbc get -set $keys($i)]
 	error_check_bad dbc:get [llength $ret] 0
 	error_check_good dbc:get:curs [lindex [lindex $ret 0] 1] \
 	    $darray([expr $i + 1])
-
 	error_check_good db_del:curr [$db del $keys($i)] 0
 	set ret [$dbc get -current]
-	# cursor should be stable on record number, not data
+
+	# After a delete, cursor should return DB_NOTFOUND.
+	error_check_good dbc:get:key [llength [lindex [lindex $ret 0] 0]] 0
+	error_check_good dbc:get:data [llength [lindex [lindex $ret 0] 1]] 0
+
+	# And the item after the cursor should now be
 	# key: $nkeys/2, data: $nkeys/2 + 2
-	error_check_good dbc:get:data \
+	set ret [$dbc get -next]
+	error_check_bad dbc:getnext [llength $ret] 0
+	error_check_good dbc:getnext:data \
 	    [lindex [lindex $ret 0] 1] $darray([expr $i + 2])
-	error_check_good dbc:get:keys \
+	error_check_good dbc:getnext:keys \
 	    [lindex [lindex $ret 0] 0] $keys($i)
 
 	puts "\t  Test052.c: Delete item after cursor."
@@ -120,28 +130,40 @@ proc test052 { method args } {
 	set ret [$dbc get -first]
 	error_check_bad dbc_get:first [llength $ret] 0
 	error_check_good dbc_get:first [lindex [lindex $ret 0] 1] $darray($i)
-
 	error_check_good dbc_del [$dbc del] 0
 	set ret [$dbc get -current]
+	error_check_bad dbc_get:current [llength $ret] 0
+	error_check_good dbc:getcurrent:key \
+	    [llength [lindex [lindex $ret 0] 0]] 0
+	error_check_good dbc:getcurrent:data \
+	    [llength [lindex [lindex $ret 0] 1]] 0
+
+	set ret [$dbc get -next]
+	error_check_bad dbc_get:next [llength $ret] 0
 	error_check_good dbc:get:curs \
 	    [lindex [lindex $ret 0] 1] $darray([expr $i + 1])
 	error_check_good dbc:get:keys \
 	    [lindex [lindex $ret 0] 0] $keys($i)
 
-	set ret [$dbc get -next]
-	error_check_bad dbc_get:next [llength $ret] 0
-	error_check_good dbc_get:next:curs \
-	    [lindex [lindex $ret 0] 1] $darray([expr $i + 2])
+	# Move one more forward, so we're not on the first item.
+	error_check_bad dbc:getnext [llength [$dbc get -next]] 0
 
 	puts "\t  Test052.e: Delete, do DB_PREV."
 	error_check_good dbc:del [$dbc del] 0
 	set ret [$dbc get -current]
 	error_check_bad dbc:get:curr [llength $ret] 0
-	# current should now reference the record that was previously after
+	error_check_good dbc:getcurrent:key \
+	    [llength [lindex [lindex $ret 0] 0]] 0
+	error_check_good dbc:getcurrent:data \
+	    [llength [lindex [lindex $ret 0] 1]] 0
+
+	# next should now reference the record that was previously after
 	# old current
-	error_check_good dbc:get:curr:data \
+	set ret [$dbc get -next]
+	error_check_bad get:next [llength $ret] 0
+	error_check_good dbc:get:next:data \
 	    [lindex [lindex $ret 0] 1] $darray([expr $i + 3])
-	error_check_good dbc:get:curr:keys \
+	error_check_good dbc:get:next:keys \
 	    [lindex [lindex $ret 0] 0] $keys([expr $i + 1])
 
 	set ret [$dbc get -prev]
@@ -151,15 +173,12 @@ proc test052 { method args } {
 	error_check_good dbc:get:curr:keys \
 	    [lindex [lindex $ret 0] 0] $keys($i)
 
-	puts "\t  Test052.f: Delete, do DB_CURRENT."
-	error_check_good dbc_del:curr [$dbc del] 0
-	set ret [$dbc get -current]
-	# now current makes previous record 2, data is data(4)
-	error_check_bad dbc_get:curr [llength $ret] 0
-	error_check_good dbc_get:keys \
-	    [lindex [lindex $ret 0] 0] $keys($i)
-	error_check_good dbc_get:data \
-	    [lindex [lindex $ret 0] 1] $darray([expr $i + 3])
+	# The rest of the test was written with the old rrecno semantics,
+	# which required a separate c_del(CURRENT) test;  to leave
+	# the database in the expected state, we now delete the first item.
+	set ret [$dbc get -first]
+	error_check_bad getfirst [llength $ret] 0
+	error_check_good delfirst [$dbc del] 0
 
 	puts "\tTest052: Inserts."
 	puts "\t  Test052.g: Insert before (DB_BEFORE)."
@@ -230,7 +249,6 @@ proc test052 { method args } {
 
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	puts "\tTest052 complete."
 }

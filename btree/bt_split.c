@@ -40,13 +40,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_split.c,v 11.26.2.1 2000/07/13 18:56:34 bostic Exp $";
+static const char revid[] = "$Id: bt_split.c,v 11.31 2000/12/22 19:08:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #endif
@@ -130,8 +129,8 @@ __bam_split(dbc, arg)
 		 * guaranteed that two items will fit on the page, the split
 		 * is no longer necessary.
 		 */
-		if (cp->ovflsize * 2 <=
-		    (db_indx_t)P_FREESPACE(cp->csp[0].page)) {
+		if (2 * B_MAXSIZEONPAGE(cp->ovflsize)
+		    <= (db_indx_t)P_FREESPACE(cp->csp[0].page)) {
 			__bam_stkrel(dbc, STK_NOLOCK);
 			return (0);
 		}
@@ -223,7 +222,8 @@ __bam_root(dbc, cp)
 		    PGNO(rp), &LSN(rp), (u_int32_t)NUM_ENT(lp), 0, &log_lsn,
 		    dbc->internal->root, &log_dbt, opflags)) != 0)
 			goto err;
-		LSN(lp) = LSN(rp) = LSN(cp->page);
+		LSN(lp) = LSN(cp->page);
+		LSN(rp) = LSN(cp->page);
 	}
 
 	/* Clean up the new root page. */
@@ -393,7 +393,9 @@ __bam_page(dbc, pp, cp)
 			goto err;
 
 		/* Update the LSNs for all involved pages. */
-		LSN(alloc_rp) = LSN(lp) = LSN(rp) = LSN(cp->page);
+		LSN(alloc_rp) = LSN(cp->page);
+		LSN(lp) = LSN(cp->page);
+		LSN(rp) = LSN(cp->page);
 		if (tp != NULL)
 			LSN(tp) = LSN(cp->page);
 	}
@@ -678,7 +680,7 @@ __bam_pinsert(dbc, parent, lchild, rchild, space_check)
 	RINTERNAL ri;
 	db_indx_t off;
 	db_recno_t nrecs;
-	size_t (*func) __P((const DBT *, const DBT *));
+	size_t (*func) __P((DB *, const DBT *, const DBT *));
 	u_int32_t n, nbytes, nksize;
 	int ret;
 
@@ -791,7 +793,7 @@ __bam_pinsert(dbc, parent, lchild, rchild, space_check)
 			memset(&b, 0, sizeof(b));
 			b.size = child_bk->len;
 			b.data = child_bk->data;
-			nksize = func(&a, &b);
+			nksize = func(dbp, &a, &b);
 			if ((n = BINTERNAL_PSIZE(nksize)) < nbytes)
 				nbytes = n;
 			else

@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: txn.h,v 11.7 2000/02/14 02:59:55 bostic Exp $
+ * $Id: txn.h,v 11.12 2001/01/02 17:23:39 margo Exp $
  */
 
 #ifndef	_TXN_H_
@@ -35,13 +35,13 @@ struct __db_txn {
 	TAILQ_ENTRY(__db_txn) links;	/* Links transactions off manager. */
 	TAILQ_HEAD(__kids, __db_txn) kids; /* Child transactions. */
 	TAILQ_ENTRY(__db_txn) klinks;	/* Links child transactions. */
+	u_int32_t	cursors;	/* Number of cursors open for txn */
 
 #define	TXN_CHILDCOMMIT	0x01		/* Transaction that has committed. */
 #define	TXN_MALLOC	0x02		/* Structure allocated by TXN system. */
-#define	TXN_MUSTFLUSH	0x04		/* A child has committed. */
-#define	TXN_NOSYNC	0x08		/* Do not sync on prepare and commit. */
-#define	TXN_NOWAIT	0x10		/* Do not wait on locks. */
-#define	TXN_SYNC	0x20		/* Sync on prepare and commit. */
+#define	TXN_NOSYNC	0x04		/* Do not sync on prepare and commit. */
+#define	TXN_NOWAIT	0x08		/* Do not wait on locks. */
+#define	TXN_SYNC	0x10		/* Sync on prepare and commit. */
 	u_int32_t	flags;
 };
 
@@ -57,7 +57,6 @@ typedef struct __txn_detail {
 	DB_LSN	begin_lsn;		/* lsn of begin record */
 	roff_t	parent;			/* Offset of transaction's parent. */
 
-#define	TXN_UNALLOC		0
 #define	TXN_RUNNING		1
 #define	TXN_ABORTED		2
 #define	TXN_PREPARED		3
@@ -107,9 +106,6 @@ struct __db_txnmgr {
 /* These fields are never updated after creation, and so not protected. */
 	DB_ENV		*dbenv;		/* Environment. */
 	REGINFO		 reginfo;	/* Region information. */
-
-	int (*recover)			/* Recovery dispatch routine */
-	    __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 };
 
 /*
@@ -146,7 +142,6 @@ struct __db_txnregion {
  */
 #define	TXN_COMMIT	1
 #define	TXN_PREPARE	2
-#define	TXN_CHECKPOINT	3
 
 #include "txn_auto.h"
 #include "txn_ext.h"

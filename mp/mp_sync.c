@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_sync.c,v 11.23 2000/04/29 19:07:12 bostic Exp $";
+static const char revid[] = "$Id: mp_sync.c,v 11.29 2001/01/11 18:19:53 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #endif
 
@@ -62,11 +61,6 @@ memp_sync(dbenv, lsnp)
 	dbmp = dbenv->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 
-	if (!LOGGING_ON(dbenv)) {
-		__db_err(dbenv, "memp_sync: requires logging");
-		return (EINVAL);
-	}
-
 	/*
 	 * If no LSN is provided, flush the entire cache.
 	 *
@@ -79,6 +73,9 @@ memp_sync(dbenv, lsnp)
 		ZERO_LSN(tlsn);
 		lsnp = &tlsn;
 		F_SET(mp, MP_LSN_RETRY);
+	} else if (!LOGGING_ON(dbenv)) {
+		__db_err(dbenv, "memp_sync: requires logging");
+		return (EINVAL);
 	}
 
 	/*
@@ -89,7 +86,7 @@ memp_sync(dbenv, lsnp)
 	 * any application that has multiple checkpoint threads isn't what
 	 * I'd call trustworthy.
 	 */
-	MUTEX_LOCK(&mp->sync_mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &mp->sync_mutex, dbenv->lockfhp);
 
 	/*
 	 * If the application is asking about a previous call to memp_sync(),
@@ -109,7 +106,7 @@ memp_sync(dbenv, lsnp)
 			ret = DB_INCOMPLETE;
 
 		R_UNLOCK(dbenv, dbmp->reginfo);
-		MUTEX_UNLOCK(&mp->sync_mutex);
+		MUTEX_UNLOCK(dbenv, &mp->sync_mutex);
 		return (ret);
 	}
 
@@ -123,7 +120,7 @@ memp_sync(dbenv, lsnp)
 	 */
 	if ((ret =
 	    __memp_sballoc(dbenv, &bharray, &ndirty)) != 0 || ndirty == 0) {
-		MUTEX_UNLOCK(&mp->sync_mutex);
+		MUTEX_UNLOCK(dbenv, &mp->sync_mutex);
 		return (ret);
 	}
 
@@ -166,8 +163,8 @@ retry:	retry_need = 0;
 	 * the cache).  We do this in one pass while holding the region locked
 	 * so that processes can't make new buffers dirty, causing us to never
 	 * finish.  Since the application may have restarted the sync using a
-	 * different LSN value, clear any BH_WRITE flags that appear leftover
-	 * from previous calls.
+	 * different LSN value, clear any BH_SYNC | BH_SYNC_LOGFLSH flags that
+	 * appear leftover from previous calls.
 	 *
 	 * Keep a count of the total number of buffers we need to write in
 	 * MPOOL->lsn_cnt, and for each file, in MPOOLFILE->lsn_count.
@@ -177,7 +174,7 @@ retry:	retry_need = 0;
 		for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
 		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, q, __bh)) {
 			if (F_ISSET(bhp, BH_DIRTY) || bhp->ref != 0) {
-				F_SET(bhp, BH_WRITE);
+				F_SET(bhp, BH_SYNC);
 
 				++mp->lsn_cnt;
 
@@ -205,8 +202,8 @@ retry:	retry_need = 0;
 					}
 				}
 			} else
-				if (F_ISSET(bhp, BH_WRITE))
-					F_CLR(bhp, BH_WRITE);
+				if (F_ISSET(bhp, BH_SYNC))
+					F_CLR(bhp, BH_SYNC | BH_SYNC_LOGFLSH);
 		}
 		if (ar_cnt >= ndirty)
 			break;
@@ -229,6 +226,17 @@ retry:	retry_need = 0;
 	 */
 	if (ar_cnt > 1)
 		qsort(bharray, ar_cnt, sizeof(BH *), __bhcmp);
+
+	/*
+	 * Flush the log.  We have to ensure the log records reflecting the
+	 * changes on the database pages we're writing have already made it
+	 * to disk.  We usually do that as we write each page, but if we
+	 * are going to write a large number of pages, repeatedly acquiring
+	 * the log region lock is going to be expensive.  Flush the entire
+	 * log now, so that sync doesn't require any more log flushes.
+	 */
+	if (LOGGING_ON(dbenv) && (ret = log_flush(dbenv, NULL)) != 0)
+		goto done;
 
 	R_LOCK(dbenv, dbmp->reginfo);
 
@@ -269,12 +277,13 @@ retry:	retry_need = 0;
 
 		/*
 		 * On error, clear MPOOL->lsn and set MP_LSN_RETRY so that no
-		 * future checkpoint return can depend on this failure.  Don't
-		 * bother to reset/clear:
+		 * future checkpoint return can depend on this failure.  Clear
+		 * the buffer's BH_SYNC flag, because it's used to determine
+		 * if lsn_cnt values are incremented/decremented.  Don't bother
+		 * to reset/clear:
 		 *
 		 *	MPOOL->lsn_cnt
 		 *	MPOOLFILE->lsn_cnt
-		 *	buffer BH_WRITE flags
 		 *
 		 * they don't make any difference.
 		 */
@@ -282,8 +291,11 @@ retry:	retry_need = 0;
 		F_SET(mp, MP_LSN_RETRY);
 
 		/* Release any buffers we're still pinning down. */
-		while (++i < ar_cnt)
-			--bharray[i]->ref;
+		while (++i < ar_cnt) {
+			bhp = bharray[i];
+			--bhp->ref;
+			F_CLR(bhp, BH_SYNC | BH_SYNC_LOGFLSH);
+		}
 
 		goto done;
 	}
@@ -310,7 +322,7 @@ retry:	retry_need = 0;
 	}
 
 done:	R_UNLOCK(dbenv, dbmp->reginfo);
-	MUTEX_UNLOCK(&mp->sync_mutex);
+	MUTEX_UNLOCK(dbenv, &mp->sync_mutex);
 
 	__os_free(bharray, ndirty * sizeof(BH *));
 

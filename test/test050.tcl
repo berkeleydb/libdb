@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test050.tcl,v 11.14 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test050.tcl,v 11.15 2000/08/25 14:21:57 sue Exp $
 #
 # Test050: Overwrite test of small/big key/data with cursor checks for RECNO
 proc test050 { method args } {
@@ -36,11 +36,14 @@ proc test050 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tstn.db
+		set env NULL
 	} else {
 		set testfile test0$tstn.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags "-create -truncate -mode 0644 $args $omethod"
 	set db [eval {berkdb_open_noerr} $oflags $testfile]
@@ -183,7 +186,6 @@ proc test050 { method args } {
 	puts "\tTest$tstn.c: Cleanup and close cursor."
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	puts "\tTest$tstn complete."
 }

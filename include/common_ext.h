@@ -1,4 +1,4 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_common_ext_h_
 #define	_common_ext_h_
 #if defined(__cplusplus)
@@ -17,28 +17,18 @@ void __db_assert __P((const char *, const char *, int));
 #endif
 int __db_panic_msg __P((DB_ENV *));
 int __db_panic __P((DB_ENV *, int));
-#ifdef __STDC__
 void __db_err __P((const DB_ENV *, const char *, ...));
-#else
-void __db_err();
-#endif
 void __db_real_err
     __P((const DB_ENV *, int, int, int, const char *, va_list));
-#ifdef __STDC__
 void __db_logmsg __P((const DB_ENV *,
     DB_TXN *, const char *, u_int32_t, const char *, ...));
-#else
-void __db_logmsg();
-#endif
-#ifdef __STDC__
 void __db_real_log __P((const DB_ENV *,
     DB_TXN *, const char *, u_int32_t, const char *, va_list ap));
-#else
-void __db_real_log();
-#endif
 int __db_unknown_flag __P((DB_ENV *, char *, u_int32_t));
 int __db_unknown_type __P((DB_ENV *, char *, u_int32_t));
-int __db_child_active_err __P((DB_ENV *));
+#ifdef DIAGNOSTIC
+int __db_missing_txn_err __P((DB_ENV *));
+#endif
 int __db_getlong
     __P((DB *, const char *, char *, long, long, long *));
 int __db_getulong

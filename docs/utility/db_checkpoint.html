@@ -1,4 +1,3 @@
- 
 <!--$Id: db_checkpoint.so,v 10.22 2000/04/03 20:10:39 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_checkpoint</h1>
@@ -22,7 +21,7 @@
 <h3><pre>db_checkpoint [<b>-1Vv</b>]
     [<b>-h home</b>] [<b>-k kbytes</b>] [<b>-L file</b>] [<b>-p min</b>]</pre></h3>
 <h1>Description</h1>
-<a name="3"><!--meow--></a>
+        <a name="3"><!--meow--></a>    
 <p>The db_checkpoint utility is a daemon process that monitors the
 database log and periodically calls <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a> to checkpoint it.
 <p>The options are as follows:
@@ -35,7 +34,7 @@ default, the current working directory is used.
 file are written.
 <p><dt><b>-L</b><dd>Log the execution of the db_checkpoint utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
-is the time the utility starting running.
+is the time the utility was started.
 <p><blockquote><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
 This file will be removed if the db_checkpoint utility exits gracefully.
 <p><dt><b>-p</b><dd>Checkpoint the database at least every <b>min</b> minutes if

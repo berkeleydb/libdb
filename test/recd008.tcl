@@ -3,14 +3,15 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd008.tcl,v 1.16 2000/05/22 12:51:37 bostic Exp $
+#	$Id: recd008.tcl,v 1.22 2000/12/07 19:13:46 sue Exp $
 #
 # Recovery Test 8.
 # Test deeply nested transactions and many-child transactions.
-proc recd008 { method {breadth 4} {depth 4} } {
+proc recd008 { method {breadth 4} {depth 4} args} {
 	global kvals
 	source ./include.tcl
 
+	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
 	if { [is_record_based $method] == 1 } {
@@ -20,12 +21,12 @@ proc recd008 { method {breadth 4} {depth 4} } {
 	puts "Recd008: $method $breadth X $depth deeply nested transactions"
 
 	# Create the database and environment.
-	cleanup $testdir
+	env_cleanup $testdir
 
 	set dbfile recd008.db
 
 	puts "\tRecd008.a: create database"
-	set db [eval {berkdb_open -create} $omethod $testdir/$dbfile]
+	set db [eval {berkdb_open -create} $args $omethod $testdir/$dbfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Make sure that we have enough entries to span a couple of
@@ -81,7 +82,8 @@ proc recd008 { method {breadth 4} {depth 4} } {
 
 	puts "\tRecd008.e: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_info.c,v 11.8 2000/06/01 14:17:58 dda Exp $";
+static const char revid[] = "$Id: java_info.c,v 11.18 2000/10/28 13:09:39 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -29,24 +29,56 @@ static void Db_feedback_callback(DB *db, int opcode, int percent)
 {
 	DB_JAVAINFO *dbinfo;
 
-	if (db == NULL) {
-		/* Something is *really* wrong here... */
-		fprintf(stderr, "feedback callback failed!\n");
-		return;
-	}
+	DB_ASSERT(db != NULL);
 	dbinfo = (DB_JAVAINFO *)db->cj_internal;
 	dbji_call_feedback(dbinfo, db, dbinfo->jdbref_, opcode, percent);
+}
+
+static int Db_append_recno_callback(DB *db, DBT *dbt, db_recno_t recno)
+{
+	DB_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_JAVAINFO *)db->cj_internal;
+	return (dbji_call_append_recno(dbinfo, db, dbinfo->jdbref_, dbt, recno));
+}
+
+static int Db_bt_compare_callback(DB *db, const DBT *dbt1, const DBT *dbt2)
+{
+	DB_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_JAVAINFO *)db->cj_internal;
+	return (dbji_call_bt_compare(dbinfo, db, dbinfo->jdbref_, dbt1, dbt2));
+}
+
+static size_t Db_bt_prefix_callback(DB *db, const DBT *dbt1, const DBT *dbt2)
+{
+	DB_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_JAVAINFO *)db->cj_internal;
+	return (dbji_call_bt_prefix(dbinfo, db, dbinfo->jdbref_, dbt1, dbt2));
+}
+
+static int Db_dup_compare_callback(DB *db, const DBT *dbt1, const DBT *dbt2)
+{
+	DB_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_JAVAINFO *)db->cj_internal;
+	return (dbji_call_dup_compare(dbinfo, db, dbinfo->jdbref_, dbt1, dbt2));
+}
+
+static u_int32_t Db_h_hash_callback(DB *db, const void *data, u_int32_t len)
+{
+	DB_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_JAVAINFO *)db->cj_internal;
+	return (dbji_call_h_hash(dbinfo, db, dbinfo->jdbref_, data, len));
 }
 
 static void DbEnv_feedback_callback(DB_ENV *dbenv, int opcode, int percent)
 {
 	DB_ENV_JAVAINFO *dbinfo;
 
-	if (dbenv == NULL) {
-		/* Something is *really* wrong here... */
-		fprintf(stderr, "feedback callback failed!\n");
-		return;
-	}
+	DB_ASSERT(dbenv != NULL);
 	dbinfo = (DB_ENV_JAVAINFO *)dbenv->cj_internal;
 	dbjie_call_feedback(dbinfo, dbenv, dbinfo->jenvref_, opcode, percent);
 }
@@ -55,113 +87,19 @@ static int DbEnv_recovery_init_callback(DB_ENV *dbenv)
 {
 	DB_ENV_JAVAINFO *dbinfo;
 
-	if (dbenv == NULL) {
-		/* Something is *really* wrong here... */
-		fprintf(stderr, "recovery_init callback failed!\n");
-		return EINVAL;
-	}
 	dbinfo = (DB_ENV_JAVAINFO *)dbenv->cj_internal;
-	return dbjie_call_recovery_init(dbinfo, dbenv, dbinfo->jenvref_);
+	return (dbjie_call_recovery_init(dbinfo, dbenv, dbinfo->jenvref_));
 }
 
-/****************************************************************
- *
- * context_free_callback: utility class to de/allocate a callback slot,
- * used internally.
- *
- */
-
-static void cfc_internal_release(CONTEXT_FREE_CALLBACK *cfc, JNIEnv *jnienv)
+static int DbEnv_tx_recover_callback(DB_ENV *dbenv, DBT *dbt,
+				     DB_LSN *lsn, db_recops recops)
 {
-	if (cfc->callback_object_ != NULL) {
-		DELETE_GLOBAL_REF(jnienv, cfc->callback_object_);
-	}
-}
+	DB_ENV_JAVAINFO *dbinfo;
 
-int cfc_cfcget_slot(CONTEXT_FREE_CALLBACK *cfc)
-{
-	return cfc->callback_slot_;
-}
-
-jobject cfc_get_callback_object(CONTEXT_FREE_CALLBACK *cfc)
-{
-	return cfc->callback_object_;
-}
-
-CONTEXT_FREE_CALLBACK *cfc_construct(int size)
-{
-	CONTEXT_FREE_CALLBACK *cfc;
-
-	cfc = (CONTEXT_FREE_CALLBACK *)malloc(sizeof(CONTEXT_FREE_CALLBACK));
-	cfc->callback_object_ = NULL;
-	cfc->callback_slot_ = -1;
-	cfc->size_ = size;
-	return cfc;
-}
-
-void context_free_callback_destroy(CONTEXT_FREE_CALLBACK *cfc, JNIEnv *jnienv)
-{
-	/* Sanity check:
-	 *  We cannot free the object here because we don't have a JNIEnv.
-	 * The user of this class must call destroy() to dispose of it.
-	 */
-	if (cfc->callback_object_ != NULL) {
-		fprintf(stderr, "object is not freed\n");
-	}
-	cfc_internal_release(cfc, jnienv);
-	free(cfc);
-}
-
-int cfc_get_new_slot(CONTEXT_FREE_CALLBACK *cfc, jobject new_object,
-		     void **array_of_containers,
-		     void *this_container)
-{
-	int i;
-
-	/* Allocate/Deallocate a slot to take care of the callback.
-	 *
-	 * There are four cases:
-	 *  1) don't already have callback set, setting callback to null:
-	 *     nothing to do.
-	 *
-	 *  2) have callback set, setting callback to non-null.
-	 *     There is no need to change the C callback function,
-	 *     so nothing to do.
-	 *
-	 *  3) have callback set, setting callback to null
-	 *     must deallocate, code follows:
-	 */
-	if (cfc->callback_slot_ >= 0 && new_object == NULL) {
-		array_of_containers[cfc->callback_slot_] = 0;
-		cfc->callback_slot_ = -1;
-	}
-	/*
-	 *  4) don't already have callback set, setting callback to non-null.
-	 *     must allocate, code follows:
-	 */
-	else if (cfc->callback_slot_ < 0 && new_object != NULL) {
-		for (i=0; i<cfc->size_; i++) {
-			if (array_of_containers[i] == NULL) {
-
-				/* Note: Thread locking issues
-				 * are guarded against by having the
-				 * *_changed() native function called within
-				 * a synchronized section in Java.
-				 */
-				array_of_containers[i] = this_container;
-				cfc->callback_slot_ = i;
-				break;
-			}
-		}
-	}
-	return cfc->callback_slot_;
-}
-
-void cfc_set_callback_object(CONTEXT_FREE_CALLBACK *cfc,
-			     JNIEnv *jnienv, jobject val)
-{
-	cfc_internal_release(cfc, jnienv);
-	cfc->callback_object_ = NEW_GLOBAL_REF(jnienv, val);
+	DB_ASSERT(dbenv != NULL);
+	dbinfo = (DB_ENV_JAVAINFO *)dbenv->cj_internal;
+	return dbjie_call_tx_recover(dbinfo, dbenv, dbinfo->jenvref_, dbt,
+				     lsn, recops);
 }
 
 /****************************************************************
@@ -176,7 +114,7 @@ dbjit_construct()
 
 	dbjit = (DBT_JAVAINFO *)malloc(sizeof(DBT_JAVAINFO));
 	memset(dbjit, 0, sizeof(DBT_JAVAINFO));
-	return dbjit;
+	return (dbjit);
 }
 
 void dbjit_destroy(DBT_JAVAINFO *dbjit)
@@ -187,6 +125,9 @@ void dbjit_destroy(DBT_JAVAINFO *dbjit)
 	if (dbjit->array_ != NULL) {
 		fprintf(stderr, "object is not freed\n");
 	}
+
+	/* Extra paranoia */
+	memset(dbjit, 0, sizeof(DB_JAVAINFO));
 	free(dbjit);
 }
 
@@ -219,7 +160,7 @@ dbjie_construct(JNIEnv *jnienv,
 	if ((*jnienv)->GetJavaVM(jnienv, &dbjie->javavm_) != 0) {
 		free(dbjie);
 		report_exception(jnienv, "cannot get Java VM", 0, 0);
-		return NULL;
+		return (NULL);
 	}
 
 	/* The default error call just prints to the 'System.err'
@@ -233,20 +174,40 @@ dbjie_construct(JNIEnv *jnienv,
 	 */
 	dbjie->default_errcall_ = NEW_GLOBAL_REF(jnienv, default_errcall);
 	dbjie->errcall_ = NEW_GLOBAL_REF(jnienv, default_errcall);
-	return dbjie;
+	return (dbjie);
 }
 
 /* release all objects held by this this one */
 void dbjie_dealloc(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv)
 {
+	if (dbjie->recovery_init_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->recovery_init_);
+		dbjie->recovery_init_ = NULL;
+	}
+	if (dbjie->feedback_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->feedback_);
+		dbjie->feedback_ = NULL;
+	}
+	if (dbjie->tx_recover_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->tx_recover_);
+		dbjie->tx_recover_ = NULL;
+	}
 	if (dbjie->errcall_ != NULL) {
 		DELETE_GLOBAL_REF(jnienv, dbjie->errcall_);
+		dbjie->errcall_ = NULL;
 	}
 	if (dbjie->default_errcall_ != NULL) {
 		DELETE_GLOBAL_REF(jnienv, dbjie->default_errcall_);
+		dbjie->default_errcall_ = NULL;
 	}
+
 	if (dbjie->conflict_ != NULL) {
 		free(dbjie->conflict_);
+		dbjie->conflict_ = NULL;
+	}
+	if (dbjie->errpfx_ != NULL) {
+		free(dbjie->errpfx_);
+		dbjie->errpfx_ = NULL;
 	}
 }
 
@@ -254,6 +215,9 @@ void dbjie_dealloc(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv)
 void dbjie_destroy(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv)
 {
 	dbjie_dealloc(dbjie, jnienv);
+
+	/* Extra paranoia */
+	memset(dbjie, 0, sizeof(DB_ENV_JAVAINFO));
 	free(dbjie);
 }
 
@@ -280,15 +244,15 @@ dbjie_get_jnienv(DB_ENV_JAVAINFO *dbjie)
 	 * some Java activity.  I think therefore I am (a thread).
 	 */
 	if ((*dbjie->javavm_)->AttachCurrentThread(dbjie->javavm_, &attachret, 0) != 0)
-		return 0;
+		return (0);
 
-	return (JNIEnv *)attachret;
+	return ((JNIEnv *)attachret);
 }
 
 jstring
 dbjie_get_errpfx(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv)
 {
-	return get_java_string(jnienv, dbjie->errpfx_);
+	return (get_java_string(jnienv, dbjie->errpfx_));
 }
 
 void
@@ -307,13 +271,13 @@ dbjie_set_errcall(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv, jobject new_errcall)
 void
 dbjie_set_errpfx(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv, jstring errpfx)
 {
-	if (dbjie->errpfx_)
+	if (dbjie->errpfx_ != NULL)
 		free(dbjie->errpfx_);
 
 	if (errpfx)
-		dbjie->errpfx_ = dup_string((*jnienv)->GetStringUTFChars(jnienv, errpfx, NULL));
+		dbjie->errpfx_ = get_c_string(jnienv, errpfx);
 	else
-		dbjie->errpfx_ = 0;
+		dbjie->errpfx_ = NULL;
 }
 
 void
@@ -329,8 +293,9 @@ void dbjie_set_feedback_object(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv,
 {
 	int err;
 
-	COMPQUIET(jnienv, NULL);
-
+	if (dbjie->feedback_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->feedback_);
+	}
 	if (jfeedback == NULL) {
 		if ((err = dbenv->set_feedback(dbenv, NULL)) != 0)
 			report_exception(jnienv, "set_feedback failed",
@@ -343,10 +308,7 @@ void dbjie_set_feedback_object(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv,
 					 err, 0);
 	}
 
-	/* Note: we don't have to grab a global ref for the feedback
-	 * object since it is also referenced by the DbEnv object in java.
-	 */
-	dbjie->feedback_ = jfeedback;
+	dbjie->feedback_ = NEW_GLOBAL_REF(jnienv, jfeedback);
 }
 
 void dbjie_call_feedback(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv, jobject jenv,
@@ -382,24 +344,22 @@ void dbjie_set_recovery_init_object(DB_ENV_JAVAINFO *dbjie,
 {
 	int err;
 
-	COMPQUIET(jnienv, NULL);
-
+	if (dbjie->recovery_init_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->recovery_init_);
+	}
 	if (jrecovery_init == NULL) {
 		if ((err = dbenv->set_recovery_init(dbenv, NULL)) != 0)
-			report_exception(jnienv, "set_recover_init failed",
+			report_exception(jnienv, "set_recovery_init failed",
 					 err, 0);
 	}
 	else {
 		if ((err = dbenv->set_recovery_init(dbenv,
 					DbEnv_recovery_init_callback)) != 0)
-			report_exception(jnienv, "set_recover_init failed",
+			report_exception(jnienv, "set_recovery_init failed",
 					 err, 0);
 	}
 
-	/* Note: we don't have to grab a global ref for the recovery_init
-	 * object since it is also referenced by the DbEnv java.
-	 */
-	dbjie->recovery_init_ = jrecovery_init;
+	dbjie->recovery_init_ = NEW_GLOBAL_REF(jnienv, jrecovery_init);
 }
 
 int dbjie_call_recovery_init(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv,
@@ -413,7 +373,7 @@ int dbjie_call_recovery_init(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv,
 	jnienv = dbjie_get_jnienv(dbjie);
 	if (jnienv == NULL) {
 		fprintf(stderr, "Cannot attach to current thread!\n");
-		return EINVAL;
+		return (EINVAL);
 	}
 
 	recovery_init_class = get_class(jnienv, name_DbRecoveryInit);
@@ -422,20 +382,85 @@ int dbjie_call_recovery_init(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv,
 				    "(Lcom/sleepycat/db/DbEnv;)V");
 	if (!id) {
 		fprintf(stderr, "Cannot find callback class\n");
-		return EINVAL;
+		return (EINVAL);
 	}
 	return (*jnienv)->CallIntMethod(jnienv, dbjie->recovery_init_,
 					id, jenv);
 }
 
+void dbjie_set_tx_recover_object(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv,
+				 DB_ENV *dbenv, jobject jtx_recover)
+{
+	int err;
+
+	if (dbjie->tx_recover_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->tx_recover_);
+	}
+	if (jtx_recover == NULL) {
+		if ((err = dbenv->set_tx_recover(dbenv, NULL)) != 0)
+			report_exception(jnienv, "set_tx_recover failed",
+					 err, 0);
+	}
+	else {
+		if ((err = dbenv->set_tx_recover(dbenv,
+						 DbEnv_tx_recover_callback)) != 0)
+			report_exception(jnienv, "set_tx_recover failed",
+					 err, 0);
+	}
+
+	dbjie->tx_recover_ = NEW_GLOBAL_REF(jnienv, jtx_recover);
+}
+
+int dbjie_call_tx_recover(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv, jobject jenv,
+			  DBT *dbt, DB_LSN *lsn, int recops)
+{
+	JNIEnv *jnienv;
+	jclass tx_recover_class;
+	jmethodID id;
+	jobject jdbt;
+	jobject jlsn;
+
+	COMPQUIET(dbenv, NULL);
+	jnienv = dbjie_get_jnienv(dbjie);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	tx_recover_class = get_class(jnienv, name_DbTxnRecover);
+	id = (*jnienv)->GetMethodID(jnienv, tx_recover_class,
+				    "tx_recover",
+				    "(Lcom/sleepycat/db/DbEnv;"
+				    "Lcom/sleepycat/db/Dbt;"
+				    "Lcom/sleepycat/db/DbLsn;"
+				    "I)I");
+	if (!id) {
+		fprintf(stderr, "Cannot find callback class\n");
+		return (0);
+	}
+
+	if (dbt == NULL)
+		jdbt = NULL;
+	else
+		jdbt = get_Dbt(jnienv, dbt);
+
+	if (lsn == NULL)
+		jlsn = NULL;
+	else
+		jlsn = get_DbLsn(jnienv, *lsn);
+
+	return (*jnienv)->CallIntMethod(jnienv, dbjie->tx_recover_, id, jenv,
+					jdbt, jlsn, recops);
+}
+
 jobject dbjie_get_errcall(DB_ENV_JAVAINFO *dbjie)
 {
-	return dbjie->errcall_;
+	return (dbjie->errcall_);
 }
 
 int dbjie_is_dbopen(DB_ENV_JAVAINFO *dbjie)
 {
-	return dbjie->is_dbopen_;
+	return (dbjie->is_dbopen_);
 }
 
 /****************************************************************
@@ -454,17 +479,39 @@ DB_JAVAINFO *dbji_construct(JNIEnv *jnienv, jint flags)
 	if ((*jnienv)->GetJavaVM(jnienv, &dbji->javavm_) != 0) {
 		report_exception(jnienv, "cannot get Java VM", 0, 0);
 		free(dbji);
-		return NULL;
+		return (NULL);
 	}
-	dbji->flags_ = flags;
-	return dbji;
+	dbji->construct_flags_ = flags;
+	return (dbji);
 }
 
 void
 dbji_dealloc(DB_JAVAINFO *dbji, JNIEnv *jnienv)
 {
-	COMPQUIET(dbji, NULL);
-	COMPQUIET(jnienv, NULL);
+	if (dbji->append_recno_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->append_recno_);
+		dbji->append_recno_ = NULL;
+	}
+	if (dbji->bt_compare_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->bt_compare_);
+		dbji->bt_compare_ = NULL;
+	}
+	if (dbji->bt_prefix_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->bt_prefix_);
+		dbji->bt_prefix_ = NULL;
+	}
+	if (dbji->dup_compare_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->dup_compare_);
+		dbji->dup_compare_ = NULL;
+	}
+	if (dbji->feedback_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->feedback_);
+		dbji->feedback_ = NULL;
+	}
+	if (dbji->h_hash_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->h_hash_);
+		dbji->h_hash_ = NULL;
+	}
 }
 
 void
@@ -492,21 +539,42 @@ JNIEnv *dbji_get_jnienv(DB_JAVAINFO *dbji)
 	 * some Java activity.  I think therefore I am (a thread).
 	 */
 	if ((*dbji->javavm_)->AttachCurrentThread(dbji->javavm_, &attachret, 0) != 0)
-		return 0;
+		return (0);
 
-	return (JNIEnv *)attachret;
+	return ((JNIEnv *)attachret);
 }
 
 jint dbji_get_flags(DB_JAVAINFO *dbji)
 {
-	return dbji->flags_;
+	return (dbji->construct_flags_);
 }
 
 void dbji_set_feedback_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
 			      DB *db, jobject jfeedback)
 {
-	COMPQUIET(jnienv, NULL);
+	jclass feedback_class;
 
+	if (dbji->feedback_method_id_ == NULL) {
+		feedback_class = get_class(jnienv, name_DbFeedback);
+		dbji->feedback_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, feedback_class,
+					       "feedback",
+					       "(Lcom/sleepycat/db/Db;II)V");
+		if (dbji->feedback_method_id_ != NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
+	}
+
+	if (dbji->feedback_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->feedback_);
+	}
 	if (jfeedback == NULL) {
 		db->set_feedback(db, NULL);
 	}
@@ -514,17 +582,13 @@ void dbji_set_feedback_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
 		db->set_feedback(db, Db_feedback_callback);
 	}
 
-	/* Note: we don't have to grab a global ref for the feedback
-	 *  object since it is also referenced by the Db object in java.
-	 */
-	dbji->feedback_ = jfeedback;
+	dbji->feedback_ = NEW_GLOBAL_REF(jnienv, jfeedback);
+
 }
 
 void dbji_call_feedback(DB_JAVAINFO *dbji, DB *db, jobject jdb,
 			int opcode, int percent)
 {
-	jclass feedback_class;
-	jmethodID id;
 	JNIEnv *jnienv;
 
 	COMPQUIET(db, NULL);
@@ -534,15 +598,404 @@ void dbji_call_feedback(DB_JAVAINFO *dbji, DB *db, jobject jdb,
 		return;
 	}
 
-	feedback_class = get_class(jnienv, name_DbFeedback);
-	id = (*jnienv)->GetMethodID(jnienv, feedback_class,
-				    "feedback",
-				    "(Lcom/sleepycat/db/Db;II)V");
-	if (!id) {
-		fprintf(stderr, "Cannot find callback class\n");
-		return;
+	DB_ASSERT(dbji->feedback_method_id_ != NULL);
+	(*jnienv)->CallVoidMethod(jnienv, dbji->feedback_,
+				  dbji->feedback_method_id_,
+				  jdb, (jint)opcode, (jint)percent);
+}
+
+void dbji_set_append_recno_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
+				  DB *db, jobject jcallback)
+{
+	jclass append_recno_class;
+
+	if (dbji->append_recno_method_id_ == NULL) {
+		append_recno_class = get_class(jnienv, name_DbAppendRecno);
+		dbji->append_recno_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, append_recno_class,
+					       "db_append_recno",
+					       "(Lcom/sleepycat/db/Db;"
+					       "Lcom/sleepycat/db/Dbt;I)V");
+		if (dbji->append_recno_method_id_ == NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
 	}
 
-	(*jnienv)->CallVoidMethod(jnienv, dbji->feedback_, id,
-				  jdb, (jint)opcode, (jint)percent);
+	if (dbji->append_recno_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->append_recno_);
+	}
+	if (jcallback == NULL) {
+		db->set_append_recno(db, NULL);
+	}
+	else {
+		db->set_append_recno(db, Db_append_recno_callback);
+	}
+
+	dbji->append_recno_ = NEW_GLOBAL_REF(jnienv, jcallback);
+}
+
+extern int dbji_call_append_recno(DB_JAVAINFO *dbji, DB *db, jobject jdb,
+				  DBT *dbt, jint recno)
+{
+	JNIEnv *jnienv;
+	jobject jdbt;
+	DBT_JAVAINFO *dbtji;
+	jbyteArray arr;
+	unsigned int arraylen;
+	unsigned char *data;
+
+	COMPQUIET(db, NULL);
+	jnienv = dbji_get_jnienv(dbji);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	/* XXX
+	 * We should have a pool of Dbt objects used for this purpose
+	 * instead of creating new ones each time.  Because of
+	 * multithreading, we may need an arbitrary number (more than two).
+	 * We might also have a byte arrays that grow as needed,
+	 * so we don't need to allocate those either.
+	 *
+	 * Note, we do not set the 'create_array_' flag as on other
+	 * callbacks as we are creating the array here.
+	 */
+	jdbt = create_default_object(jnienv, name_DBT);
+	dbtji = get_DBT_JAVAINFO(jnienv, jdbt);
+	memcpy(&dbtji->dbt, dbt, sizeof(DBT));
+	dbtji->dbt.data = NULL;
+	arr = (*jnienv)->NewByteArray(jnienv, dbt->size);
+	(*jnienv)->SetByteArrayRegion(jnienv, arr, 0, dbt->size,
+				      (jbyte *)dbt->data);
+	dbtji->array_ = (jbyteArray)NEW_GLOBAL_REF(jnienv, arr);
+
+	DB_ASSERT(dbji->append_recno_method_id_ != NULL);
+	(*jnienv)->CallVoidMethod(jnienv, dbji->append_recno_,
+				  dbji->append_recno_method_id_,
+				  jdb, jdbt, recno);
+
+	/* The underlying C API requires that an errno be returned
+	 * on error.  Java users know nothing of errnos, so we
+	 * allow them to throw exceptions instead.  We leave the
+	 * exception in place and return DB_JAVA_CALLBACK to the C API
+	 * that called us.  Eventually the DB->get will fail and
+	 * when java prepares to throw an exception in
+	 * report_exception(), this will be spotted as a special case,
+	 * and the original exception will be preserved.
+	 *
+	 * Note: we have sometimes noticed strange behavior with
+	 * exceptions under Linux 1.1.7 JVM.  (i.e. multiple calls
+	 * to ExceptionOccurred() may report different results).
+	 * Currently we don't know of any problems related to this
+	 * in our code, but if it pops up in the future, users are
+	 * encouranged to get a more recent JVM.
+	 */
+	if ((*jnienv)->ExceptionOccurred(jnienv) != NULL)
+		return (DB_JAVA_CALLBACK);
+
+	if (dbtji->array_ == NULL) {
+		report_exception(jnienv, "Dbt.data is null", 0, 0);
+		return (EFAULT);
+	}
+
+	arraylen = (*jnienv)->GetArrayLength(jnienv, dbtji->array_);
+	if (dbtji->offset_ < 0 ) {
+		report_exception(jnienv, "Dbt.offset illegal", 0, 0);
+		return (EFAULT);
+	}
+	if (dbt->ulen + dbtji->offset_ > arraylen) {
+		report_exception(jnienv,
+		   "Dbt.ulen + Dbt.offset greater than array length", 0, 0);
+		return (EFAULT);
+	}
+
+	data = (*jnienv)->GetByteArrayElements(jnienv, dbtji->array_,
+					       (jboolean *)0);
+	dbt->data = data + dbtji->offset_;
+	return (0);
+}
+
+void dbji_set_bt_compare_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
+				DB *db, jobject jcompare)
+{
+	jclass bt_compare_class;
+
+	if (dbji->bt_compare_method_id_ == NULL) {
+		bt_compare_class = get_class(jnienv, name_DbBtreeCompare);
+		dbji->bt_compare_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, bt_compare_class,
+					       "bt_compare",
+					       "(Lcom/sleepycat/db/Db;"
+					       "Lcom/sleepycat/db/Dbt;"
+					       "Lcom/sleepycat/db/Dbt;)I");
+		if (dbji->bt_compare_method_id_ == NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
+	}
+
+	if (dbji->bt_compare_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->bt_compare_);
+	}
+	if (jcompare == NULL) {
+		db->set_bt_compare(db, NULL);
+	}
+	else {
+		db->set_bt_compare(db, Db_bt_compare_callback);
+	}
+
+	dbji->bt_compare_ = NEW_GLOBAL_REF(jnienv, jcompare);
+}
+
+int dbji_call_bt_compare(DB_JAVAINFO *dbji, DB *db, jobject jdb,
+			 const DBT *dbt1, const DBT *dbt2)
+{
+	JNIEnv *jnienv;
+	jobject jdbt1, jdbt2;
+	DBT_JAVAINFO *dbtji1, *dbtji2;
+
+	COMPQUIET(db, NULL);
+	jnienv = dbji_get_jnienv(dbji);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	/* XXX
+	 * We should have a pool of Dbt objects used for this purpose
+	 * instead of creating new ones each time.  Because of
+	 * multithreading, we may need an arbitrary number (more than two).
+	 * We might also have a byte arrays that grow as needed,
+	 * so we don't need to allocate those either.
+	 */
+	jdbt1 = create_default_object(jnienv, name_DBT);
+	jdbt2 = create_default_object(jnienv, name_DBT);
+	dbtji1 = get_DBT_JAVAINFO(jnienv, jdbt1);
+	memcpy(&dbtji1->dbt, dbt1, sizeof(DBT));
+	dbtji1->create_array_ = 1;
+	dbtji2 = get_DBT_JAVAINFO(jnienv, jdbt2);
+	memcpy(&dbtji2->dbt, dbt2, sizeof(DBT));
+	dbtji2->create_array_ = 1;
+
+	DB_ASSERT(dbji->bt_compare_method_id_ != NULL);
+	return (*jnienv)->CallIntMethod(jnienv, dbji->bt_compare_,
+					dbji->bt_compare_method_id_,
+					jdb, jdbt1, jdbt2);
+}
+
+void dbji_set_bt_prefix_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
+				DB *db, jobject jprefix)
+{
+	jclass bt_prefix_class;
+
+	if (dbji->bt_prefix_method_id_ == NULL) {
+		bt_prefix_class = get_class(jnienv, name_DbBtreePrefix);
+		dbji->bt_prefix_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, bt_prefix_class,
+					       "bt_prefix",
+					       "(Lcom/sleepycat/db/Db;"
+					       "Lcom/sleepycat/db/Dbt;"
+					       "Lcom/sleepycat/db/Dbt;)I");
+		if (dbji->bt_prefix_method_id_ == NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
+	}
+
+	if (dbji->bt_prefix_ != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->bt_prefix_);
+	}
+	if (jprefix == NULL) {
+		db->set_bt_prefix(db, NULL);
+	}
+	else {
+		db->set_bt_prefix(db, Db_bt_prefix_callback);
+	}
+
+	dbji->bt_prefix_ = NEW_GLOBAL_REF(jnienv, jprefix);
+}
+
+size_t dbji_call_bt_prefix(DB_JAVAINFO *dbji, DB *db, jobject jdb,
+			   const DBT *dbt1, const DBT *dbt2)
+{
+	JNIEnv *jnienv;
+	jobject jdbt1, jdbt2;
+	DBT_JAVAINFO *dbtji1, *dbtji2;
+
+	COMPQUIET(db, NULL);
+	jnienv = dbji_get_jnienv(dbji);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	/* XXX
+	 * We should have a pool of Dbt objects used for this purpose
+	 * instead of creating new ones each time.  Because of
+	 * multithreading, we may need an arbitrary number (more than two).
+	 * We might also have a byte arrays that grow as needed,
+	 * so we don't need to allocate those either.
+	 */
+	jdbt1 = create_default_object(jnienv, name_DBT);
+	jdbt2 = create_default_object(jnienv, name_DBT);
+	dbtji1 = get_DBT_JAVAINFO(jnienv, jdbt1);
+	memcpy(&dbtji1->dbt, dbt1, sizeof(DBT));
+	dbtji1->create_array_ = 1;
+	dbtji2 = get_DBT_JAVAINFO(jnienv, jdbt2);
+	memcpy(&dbtji2->dbt, dbt2, sizeof(DBT));
+	dbtji2->create_array_ = 1;
+
+	DB_ASSERT(dbji->bt_prefix_method_id_ != NULL);
+	return (size_t)(*jnienv)->CallIntMethod(jnienv, dbji->bt_prefix_,
+						dbji->bt_prefix_method_id_,
+						jdb, jdbt1, jdbt2);
+}
+
+void dbji_set_dup_compare_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
+				DB *db, jobject jcompare)
+{
+	jclass dup_compare_class;
+
+	if (dbji->dup_compare_method_id_ == NULL) {
+		dup_compare_class = get_class(jnienv, name_DbDupCompare);
+		dbji->dup_compare_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, dup_compare_class,
+					       "dup_compare",
+					       "(Lcom/sleepycat/db/Db;"
+					       "Lcom/sleepycat/db/Dbt;"
+					       "Lcom/sleepycat/db/Dbt;)I");
+		if (dbji->dup_compare_method_id_ == NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
+	}
+
+	if (dbji->dup_compare_ != NULL)
+		DELETE_GLOBAL_REF(jnienv, dbji->dup_compare_);
+
+	if (jcompare == NULL)
+		db->set_dup_compare(db, NULL);
+	else
+		db->set_dup_compare(db, Db_dup_compare_callback);
+
+	dbji->dup_compare_ = NEW_GLOBAL_REF(jnienv, jcompare);
+}
+
+int dbji_call_dup_compare(DB_JAVAINFO *dbji, DB *db, jobject jdb,
+			 const DBT *dbt1, const DBT *dbt2)
+{
+	JNIEnv *jnienv;
+	jobject jdbt1, jdbt2;
+	DBT_JAVAINFO *dbtji1, *dbtji2;
+
+	COMPQUIET(db, NULL);
+	jnienv = dbji_get_jnienv(dbji);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	/* XXX
+	 * We should have a pool of Dbt objects used for this purpose
+	 * instead of creating new ones each time.  Because of
+	 * multithreading, we may need an arbitrary number (more than two).
+	 * We might also have a byte arrays that grow as needed,
+	 * so we don't need to allocate those either.
+	 */
+	jdbt1 = create_default_object(jnienv, name_DBT);
+	jdbt2 = create_default_object(jnienv, name_DBT);
+	dbtji1 = get_DBT_JAVAINFO(jnienv, jdbt1);
+	memcpy(&dbtji1->dbt, dbt1, sizeof(DBT));
+	dbtji1->create_array_ = 1;
+	dbtji2 = get_DBT_JAVAINFO(jnienv, jdbt2);
+	memcpy(&dbtji2->dbt, dbt2, sizeof(DBT));
+	dbtji2->create_array_ = 1;
+
+	DB_ASSERT(dbji->dup_compare_method_id_ != NULL);
+	return (*jnienv)->CallIntMethod(jnienv, dbji->dup_compare_,
+					dbji->dup_compare_method_id_,
+					jdb, jdbt1, jdbt2);
+}
+
+void dbji_set_h_hash_object(DB_JAVAINFO *dbji, JNIEnv *jnienv,
+				DB *db, jobject jhash)
+{
+	jclass h_hash_class;
+
+	if (dbji->h_hash_method_id_ == NULL) {
+		h_hash_class = get_class(jnienv, name_DbHash);
+		dbji->h_hash_method_id_ =
+			(*jnienv)->GetMethodID(jnienv, h_hash_class,
+					       "hash",
+					       "(Lcom/sleepycat/db/Db;"
+					       "[BI)I");
+		if (dbji->h_hash_method_id_ == NULL) {
+			/* XXX
+			 * We should really have a better way
+			 * to translate this to a Java exception class.
+			 * In theory, it shouldn't happen.
+			 */
+			report_exception(jnienv, "Cannot find callback method",
+					 EFAULT, 0);
+			return;
+		}
+	}
+
+	if (dbji->h_hash_ != NULL)
+		DELETE_GLOBAL_REF(jnienv, dbji->h_hash_);
+
+	if (jhash == NULL)
+		db->set_h_hash(db, NULL);
+	else
+		db->set_h_hash(db, Db_h_hash_callback);
+
+	dbji->h_hash_ = NEW_GLOBAL_REF(jnienv, jhash);
+}
+
+int dbji_call_h_hash(DB_JAVAINFO *dbji, DB *db, jobject jdb,
+		     const void *data, int len)
+{
+	JNIEnv *jnienv;
+	jbyteArray jarray;
+
+	COMPQUIET(db, NULL);
+	jnienv = dbji_get_jnienv(dbji);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	DB_ASSERT(dbji->h_hash_method_id_ != NULL);
+
+	jarray = (*jnienv)->NewByteArray(jnienv, len);
+	(*jnienv)->SetByteArrayRegion(jnienv, jarray, 0, len, (void *)data);
+	return (*jnienv)->CallIntMethod(jnienv, dbji->h_hash_,
+					dbji->h_hash_method_id_,
+					jdb, jarray, len);
 }

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rw.c,v 11.13 2000/05/10 20:48:51 krinsky Exp $";
+static const char revid[] = "$Id: os_rw.c,v 11.15 2000/11/15 19:25:39 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -55,7 +55,7 @@ __os_io(dbenv, db_iop, op, niop)
 		return (0);
 slow:
 #endif
-	MUTEX_THREAD_LOCK(db_iop->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, db_iop->mutexp);
 
 	if ((ret = __os_seek(dbenv, db_iop->fhp,
 	    db_iop->pagesize, db_iop->pgno, 0, 0, DB_OS_SEEK_SET)) != 0)
@@ -71,7 +71,7 @@ slow:
 		break;
 	}
 
-err:	MUTEX_THREAD_UNLOCK(db_iop->mutexp);
+err:	MUTEX_THREAD_UNLOCK(dbenv, db_iop->mutexp);
 
 	return (ret);
 
@@ -136,7 +136,7 @@ __os_write(dbenv, fhp, addr, len, nwp)
 	    offset = 0; offset < len; taddr += nw, offset += nw)
 		if ((nw = __db_jump.j_write != NULL ?
 		    __db_jump.j_write(fhp->fd, taddr, len - offset) :
-		    write(fhp->fd, taddr, len - offset)) < 0){
+		    write(fhp->fd, taddr, len - offset)) < 0) {
 			ret = __os_get_errno();
 			__db_err(dbenv, "write: 0x%x, %lu: %s", taddr,
 			    (u_long)len-offset, strerror(ret));

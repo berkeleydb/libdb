@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fget.c,v 11.21 2000/04/20 21:14:18 bostic Exp $";
+static const char revid[] = "$Id: mp_fget.c,v 11.28 2001/01/10 04:50:53 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -76,12 +75,13 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * any attempt to actually write the file in memp_fput().
 	 */
 #define	OKFLAGS	\
-    (DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)
+    (DB_MPOOL_CREATE | DB_MPOOL_LAST | \
+    DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP | DB_MPOOL_EXTENT)
 	if (flags != 0) {
 		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
 			return (ret);
 
-		switch (flags) {
+		switch (flags & ~DB_MPOOL_EXTENT) {
 		case DB_MPOOL_CREATE:
 		case DB_MPOOL_LAST:
 		case DB_MPOOL_NEW:
@@ -136,8 +136,8 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 */
 	if (LF_ISSET(DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)) {
 		if (LF_ISSET(DB_MPOOL_NEW)) {
-			if ((ret = __os_fpinit(dbenv,
-			    &dbmfp->fh, mfp->last_pgno + 1,
+			if (F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
+			    __os_fpinit(dbenv, &dbmfp->fh, mfp->last_pgno + 1,
 			    1, mfp->stat.st_pagesize)) != 0) {
 				R_UNLOCK(dbenv, dbmp->reginfo);
 				return (ret);
@@ -145,8 +145,8 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			++mfp->last_pgno;
 		}
 		if (LF_ISSET(DB_MPOOL_NEW_GROUP)) {
-			if ((ret = __os_fpinit(dbenv,
-			    &dbmfp->fh, mfp->last_pgno + 1,
+			if (F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
+			    __os_fpinit(dbenv, &dbmfp->fh, mfp->last_pgno + 1,
 			    (int)*pgnoaddr, mfp->stat.st_pagesize)) != 0) {
 				R_UNLOCK(dbenv, dbmp->reginfo);
 				return (ret);
@@ -197,8 +197,10 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			 * the hash access method.
 			 */
 			if (!LF_ISSET(DB_MPOOL_CREATE)) {
-				__db_err(dbenv, "%s: page %lu doesn't exist",
-				    __memp_fn(dbmfp), (u_long)*pgnoaddr);
+				if (!LF_ISSET(DB_MPOOL_EXTENT))
+					__db_err(dbenv,
+					    "%s: page %lu doesn't exist",
+					    __memp_fn(dbmfp), (u_long)*pgnoaddr);
 				ret = EINVAL;
 				goto err;
 			}
@@ -256,9 +258,9 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			if (!first)
 				__os_yield(dbenv, 1);
 
-			MUTEX_LOCK(&bhp->mutex, dbenv->lockfhp);
+			MUTEX_LOCK(dbenv, &bhp->mutex, dbenv->lockfhp);
 			/* Wait for I/O to finish... */
-			MUTEX_UNLOCK(&bhp->mutex);
+			MUTEX_UNLOCK(dbenv, &bhp->mutex);
 			R_LOCK(dbenv, dbmp->reginfo);
 		}
 
@@ -303,7 +305,7 @@ alloc:	/* Allocate new buffer header and data space. */
 	bhp->mf_offset = mf_offset;
 
 	/* Increment the count of buffers referenced by this MPOOLFILE. */
-	++mfp->ref_cnt;
+	++mfp->block_cnt;
 
 	/*
 	 * Prepend the bucket header to the head of the appropriate MPOOL
@@ -322,8 +324,11 @@ alloc:	/* Allocate new buffer header and data space. */
 	}
 #endif
 
-	if ((ret = __db_mutex_init(dbenv, &bhp->mutex, R_OFFSET(
-	    dbmp->reginfo, &bhp->mutex) + DB_FCNTL_OFF_MPOOL, 0)) != 0) {
+	if ((ret = __db_shmutex_init(dbenv, &bhp->mutex,
+	    R_OFFSET(dbmp->reginfo, &bhp->mutex) + DB_FCNTL_OFF_MPOOL,
+	    0, &dbmp->reginfo[n_cache],
+	    (REGMAINT *)R_ADDR(&dbmp->reginfo[n_cache], c_mp->maint_off)))
+	    != 0) {
 		__memp_bhfree(dbmp, bhp, 1);
 		goto err;
 	}
@@ -336,6 +341,9 @@ alloc:	/* Allocate new buffer header and data space. */
 	 * If DB_MPOOL_CREATE is used, then the application's pgin function
 	 * has to be able to handle pages of 0's -- if it uses DB_MPOOL_NEW,
 	 * it can detect all of its page creates, and not bother.
+	 *
+	 * If we're running in diagnostic mode, smash any bytes on the
+	 * page that are unknown quantities for the caller.
 	 *
 	 * Otherwise, read the page into memory, optionally creating it if
 	 * DB_MPOOL_CREATE is set.
@@ -359,8 +367,8 @@ alloc:	/* Allocate new buffer header and data space. */
 		 * discards the region lock, so the buffer must be pinned
 		 * down so that it cannot move and its contents are unchanged.
 		 */
-reread:		if ((ret = __memp_pgread(
-		    dbmfp, bhp, LF_ISSET(DB_MPOOL_CREATE))) != 0) {
+reread:		if ((ret = __memp_pgread(dbmfp,
+		    bhp, LF_ISSET(DB_MPOOL_CREATE|DB_MPOOL_EXTENT))) != 0) {
 			/*
 			 * !!!
 			 * Discard the buffer unless another thread is waiting

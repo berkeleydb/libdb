@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test015.tcl,v 11.19 2000/04/21 18:36:24 krinsky Exp $
+#	$Id: test015.tcl,v 11.20 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 15 {access method}
 # Partial put test when item does not exist.
@@ -86,7 +86,7 @@ proc test015_body { method off_low off_hi rcount {nentries 10000} args } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]

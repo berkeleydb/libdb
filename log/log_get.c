@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_get.c,v 11.22 2000/05/02 20:35:29 ubell Exp $";
+static const char revid[] = "$Id: log_get.c,v 11.32 2001/01/11 18:19:53 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #endif
@@ -73,11 +72,24 @@ log_get(dbenv, alsn, dbt, flags)
 	R_LOCK(dbenv, &dblp->reginfo);
 
 	/*
+	 * The alsn field is only initialized if DB_SET is the flag, so this
+	 * assignment causes uninitialized memory complaints for other flag
+	 * values.
+	 */
+#ifdef	UMRW
+	if (flags == DB_SET)
+		saved_lsn = *alsn;
+	else
+		ZERO_LSN(saved_lsn);
+#else
+	saved_lsn = *alsn;
+#endif
+
+	/*
 	 * If we get one of the log's header records, repeat the operation.
 	 * This assumes that applications don't ever request the log header
 	 * records by LSN, but that seems reasonable to me.
 	 */
-	saved_lsn = *alsn;
 	if ((ret = __log_get(dblp,
 	    alsn, dbt, flags, 0)) == 0 && alsn->offset == 0) {
 		switch (flags) {
@@ -120,14 +132,14 @@ __log_get(dblp, alsn, dbt, flags, silent)
 	DB_LSN nlsn;
 	HDR hdr;
 	LOG *lp;
-	size_t len;
-	size_t nr;
-	int cnt, ret;
-	char *np, *tbuf;
 	const char *fail;
-	void *shortp, *readp;
+	char *np, *tbuf;
+	int cnt, ret;
+	logfile_validity status;
+	size_t len, nr;
 	u_int32_t offset;
 	u_int8_t *p;
+	void *shortp, *readp;
 
 	lp = dblp->reginfo.primary;
 	fail = np = tbuf = NULL;
@@ -152,8 +164,19 @@ __log_get(dblp, alsn, dbt, flags, silent)
 		/* FALLTHROUGH */
 	case DB_FIRST:				/* Find the first log record. */
 		/* Find the first log file. */
-		if ((ret = __log_find(dblp, 1, &cnt)) != 0)
+		if ((ret = __log_find(dblp, 1, &cnt, &status)) != 0)
 			goto err2;
+
+		/*
+		 * We want any readable version, so either DB_LV_NORMAL
+		 * or DB_LV_OLD_READABLE is acceptable here.  If it's
+		 * not one of those two, there is no first log record that
+		 * we can read.
+		 */
+		if (status != DB_LV_NORMAL && status != DB_LV_OLD_READABLE) {
+			ret = DB_NOTFOUND;
+			goto err2;
+		}
 
 		/*
 		 * We may have only entered records in the buffer, and not
@@ -173,7 +196,12 @@ __log_get(dblp, alsn, dbt, flags, silent)
 			/* If at start-of-file, move to the previous file. */
 			if (nlsn.offset == 0) {
 				if (nlsn.file == 1 ||
-				    __log_valid(dblp, nlsn.file - 1, 0) != 0)
+				    __log_valid(dblp,
+					nlsn.file - 1, 0, &status) != 0)
+					return (DB_NOTFOUND);
+
+				if (status != DB_LV_NORMAL &&
+				    status != DB_LV_OLD_READABLE)
 					return (DB_NOTFOUND);
 
 				--nlsn.file;
@@ -218,7 +246,7 @@ next_file:	++nlsn.file;
 		len = hdr.len - sizeof(HDR);
 		if ((ret = __db_retcopy(NULL, dbt, p + sizeof(HDR),
 		    len, &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-			goto alloc_err;
+			goto err2;
 		goto cksum;
 	}
 
@@ -329,7 +357,7 @@ got_header:	memcpy((u_int8_t *)&hdr,
 			goto corrupt;
 		if ((ret = __db_retcopy(NULL, dbt, shortp, len,
 		    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-			goto alloc_err;
+			goto err2;
 		goto cksum;
 	}
 
@@ -338,7 +366,7 @@ got_header:	memcpy((u_int8_t *)&hdr,
 			if ((ret = __db_retcopy(NULL, dbt, dblp->readbufp +
 			     (nlsn.offset - dblp->r_off) + sizeof(HDR),
 			     len, &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-				goto alloc_err;
+				goto err2;
 			goto cksum;
 		} else if ((ret = __os_seek(dblp->dbenv, &dblp->c_fh, 0,
 		    0, nlsn.offset + sizeof(HDR), 0, DB_OS_SEEK_SET)) != 0) {
@@ -389,11 +417,17 @@ got_header:	memcpy((u_int8_t *)&hdr,
 	/* Copy the record into the user's DBT. */
 	if ((ret = __db_retcopy(NULL, dbt, tbuf, len,
 	    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-		goto alloc_err;
+		goto err2;
 	__os_free(tbuf, 0);
 	tbuf = NULL;
 
-cksum:	if (hdr.cksum != __ham_func4(dbt->data, dbt->size)) {
+cksum:	/*
+	 * If the user specified a partial record read, the checksum can't
+	 * match.  It's not an obvious thing to do, but a user testing for
+	 * the length of a record might do it.
+	 */
+	if (!F_ISSET(dbt, DB_DBT_PARTIAL) &&
+	    hdr.cksum != __ham_func4(NULL, dbt->data, dbt->size)) {
 		if (!silent)
 			__db_err(dbenv, "log_get: checksum mismatch");
 		goto corrupt;
@@ -402,7 +436,8 @@ cksum:	if (hdr.cksum != __ham_func4(dbt->data, dbt->size)) {
 	/* Update the cursor and the return lsn. */
 	dblp->c_off = hdr.prev;
 	dblp->c_len = hdr.len;
-	dblp->c_lsn = *alsn = nlsn;
+	dblp->c_lsn = nlsn;
+	*alsn = nlsn;
 
 	return (0);
 
@@ -420,12 +455,6 @@ err1:	if (!silent) {
 		else
 			__db_err(dbenv,
 			    "log_get: %s: %s", fail, db_strerror(ret));
-	}
-
-	if (0) {
-alloc_err:	if (!silent)
-			__db_err(dbenv,
-			    "Allocation failed: %lu", (u_long)len);
 	}
 
 err2:	if (np != NULL)

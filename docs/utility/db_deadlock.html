@@ -1,5 +1,4 @@
- 
-<!--$Id: db_deadlock.so,v 10.21 2000/04/03 20:10:39 bostic Exp $-->
+<!--$Id: db_deadlock.so,v 10.22 2000/11/29 16:52:38 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_deadlock</h1>
@@ -20,31 +19,33 @@
 <hr size=1 noshade>
 <tt>
 <h3><pre>db_deadlock [<b>-Vvw</b>]
-    [<b>-a m | o | y</b>] [<b>-h home</b>] [<b>-L file</b>] [<b>-t sec</b>]</pre></h3>
+    [<b>-a o | y</b>] [<b>-h home</b>] [<b>-L file</b>] [<b>-t sec</b>]</pre></h3>
 <h1>Description</h1>
-<a name="3"><!--meow--></a>
+        <a name="3"><!--meow--></a>    
 <p>The db_deadlock utility traverses the database lock structures
-and aborts a lock request each time it detects a deadlock.  This utility
-should be run as a background daemon, or the underlying Berkeley DB deadlock
-detection interfaces should be called in some other way, whenever multiple
-threads or processes are using locking.
+and aborts a lock request each time it detects a deadlock.  By default,
+a random lock request is chosen to be aborted. This utility should be
+run as a background daemon, or the underlying Berkeley DB deadlock detection
+interfaces should be called in some other way, whenever there are
+multiple threads or processes accessing a database and at least one of
+them is modifying it.
 <p>The options are as follows:
 <p><dl compact>
-<p><dt><b>-a</b><dd>When a deadlock is detected, abort the oldest (o) lock request, the
-youngest (y) lock request, or the lock request whose locker holds the
-minimum number of locks (m).
+<p><dt><b>-a</b><dd>When a deadlock is detected, abort the oldest (o) lock request or the
+youngest (y) lock request.
 <p><dt><b>-h</b><dd>Specify a home directory for the database environment; by
 default, the current working directory is used.
 <p><dt><b>-L</b><dd>Log the execution of the db_deadlock utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
-is the time the utility starting running.
+is the time the utility was started.
 <p><blockquote><pre>db_deadlock: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
 This file will be removed if the db_deadlock utility exits gracefully.
-<p><dt><b>-t</b><dd>Initiate a pass over the database locks at least every <b>sec</b> seconds.
+<p><dt><b>-t</b><dd>Initiate a pass over the database locks at least every <b>sec</b>
+seconds.
 <p><dt><b>-V</b><dd>Write the version number to the standard output and exit.
 <p><dt><b>-v</b><dd>Run in verbose mode, generating messages each time the detector runs.
-<p><dt><b>-w</b><dd>Make a single pass over the database locks every time a process is forced
-to wait for a lock.
+<p><dt><b>-w</b><dd>Make a single pass over the database locks every time a process is
+forced to wait for a lock.
 </dl>
 <p>At least one of the <b>-t</b> and <b>-w</b> options must be specified.
 <p>The db_deadlock utility uses a Berkeley DB environment (as described for the

@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_register.c,v 11.11 2000/04/04 20:12:04 bostic Exp $";
+static const char revid[] = "$Id: mp_register.c,v 11.12 2000/11/15 19:25:39 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,7 +57,7 @@ memp_register(dbenv, ftype, pgin, pgout)
 	 * DB access methods are the folks that call this routine.  If already
 	 * registered, just update the entry, although it's probably unchanged.
 	 */
-	MUTEX_THREAD_LOCK(dbmp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 	for (mpreg = LIST_FIRST(&dbmp->dbregq);
 	    mpreg != NULL; mpreg = LIST_NEXT(mpreg, q))
 		if (mpreg->ftype == ftype) {
@@ -65,7 +65,7 @@ memp_register(dbenv, ftype, pgin, pgout)
 			mpreg->pgout = pgout;
 			break;
 		}
-	MUTEX_THREAD_UNLOCK(dbmp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 	if (mpreg != NULL)
 		return (0);
 
@@ -77,9 +77,9 @@ memp_register(dbenv, ftype, pgin, pgout)
 	mpreg->pgin = pgin;
 	mpreg->pgout = pgout;
 
-	MUTEX_THREAD_LOCK(dbmp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 	LIST_INSERT_HEAD(&dbmp->dbregq, mpreg, q);
-	MUTEX_THREAD_UNLOCK(dbmp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 
 	return (0);
 }

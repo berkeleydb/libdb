@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test065.tcl,v 11.7 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test065.tcl,v 11.8 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 65: Test of DB->stat(DB_RECORDCOUNT)
 proc test065 { method args } {
@@ -21,10 +21,13 @@ proc test065 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	puts "Test0$tnum: $method ($args) DB->stat(DB_RECORDCOUNT) test."
 

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_deadlock.c,v 11.18 2000/04/29 02:26:24 bostic Exp $";
+static const char revid[] = "$Id: lock_deadlock.c,v 11.23 2000/12/08 20:15:31 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -212,7 +211,7 @@ lock_detect(dbenv, flags, atype, abortp)
 			 * this isn't necessarily a problem, so do not treat
 			 * it as an error.
 			 */
-			if (ret == EINVAL)
+			if (ret == DB_ALREADY_ABORTED)
 				ret = 0;
 			else
 				__db_err(dbenv,
@@ -312,7 +311,7 @@ retry:	count = region->nlockers;
 	/*
 	 * First we go through and assign each locker a deadlock detector id.
 	 */
-	for (id = 0, i = 0; i < region->table_size; i++) {
+	for (id = 0, i = 0; i < region->locker_t_size; i++) {
 		for (lip = SH_TAILQ_FIRST(&lt->locker_tab[i], __db_locker);
 		    lip != NULL; lip = SH_TAILQ_NEXT(lip, links, __db_locker))
 			if (lip->master_locker == INVALID_ROFF) {
@@ -340,8 +339,7 @@ retry:	count = region->nlockers;
 		for (lp = SH_TAILQ_FIRST(&op->holders, __db_lock);
 		    lp != NULL;
 		    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
-			ndx = __lock_locker_hash(lp->holder) %
-			    region->table_size;
+			LOCKER_LOCK(lt, region, lp->holder, ndx);
 			if ((ret = __lock_getlocker(lt,
 			    lp->holder, ndx, 0, &lockerp)) != 0)
 				continue;
@@ -370,8 +368,7 @@ retry:	count = region->nlockers;
 		    lp != NULL;
 		    is_first = 0,
 		    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
-			ndx = __lock_locker_hash(lp->holder) %
-			     region->table_size;
+			LOCKER_LOCK(lt, region, lp->holder, ndx);
 			if ((ret = __lock_getlocker(lt,
 			    lp->holder, ndx, 0, &lockerp)) != 0)
 				continue;
@@ -408,7 +405,7 @@ retry:	count = region->nlockers;
 	for (id = 0; id < count; id++) {
 		if (!id_array[id].valid)
 			continue;
-		ndx = __lock_locker_hash(id_array[id].id) % region->table_size;
+		LOCKER_LOCK(lt, region, id_array[id].id, ndx);
 		if ((ret = __lock_getlocker(lt,
 		    id_array[id].id, ndx, 0, &lockerp)) != 0) {
 			__db_err(dbenv,
@@ -547,11 +544,11 @@ __dd_abort(dbenv, info)
 
 	LOCKREGION(dbenv, lt);
 	/* Find the locker's last lock. */
-	ndx = __lock_locker_hash(info->last_locker_id) % region->table_size;
+	LOCKER_LOCK(lt, region, info->last_locker_id, ndx);
 	if ((ret = __lock_getlocker(lt,
 	    info->last_locker_id, ndx, 0, &lockerp)) != 0 || lockerp == NULL) {
 		if (ret == 0)
-			ret = EINVAL;
+			ret = DB_ALREADY_ABORTED;
 		goto out;
 	}
 
@@ -568,7 +565,7 @@ __dd_abort(dbenv, info)
 		}
 	} else if (R_OFFSET(&lt->reginfo, lockp) != info->last_lock ||
 	    lockp->status != DB_LSTAT_WAITING) {
-		ret = EINVAL;
+		ret = DB_ALREADY_ABORTED;
 		goto out;
 	}
 
@@ -589,8 +586,8 @@ __dd_abort(dbenv, info)
 		SH_TAILQ_REMOVE(&region->dd_objs,
 		    sh_obj, dd_links, __db_lockobj);
 	else
-		ret = __lock_promote(lt, sh_obj);
-	MUTEX_UNLOCK(&lockp->mutex);
+		ret = __lock_promote(lt, sh_obj, 0);
+	MUTEX_UNLOCK(dbenv, &lockp->mutex);
 
 	region->ndeadlocks++;
 	UNLOCKREGION(dbenv, lt);

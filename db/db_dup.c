@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_dup.c,v 11.16 2000/02/19 20:57:55 bostic Exp $";
+static const char revid[] = "$Id: db_dup.c,v 11.18 2000/11/30 00:58:32 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -107,6 +107,10 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	int ret;
 	u_int8_t *p;
 
+	if (nbytes > P_FREESPACE(pagep)) {
+		DB_ASSERT(nbytes <= P_FREESPACE(pagep));
+		return (EINVAL);
+	}
 	/*
 	 * Put a single item onto a page.  The logic figuring out where to
 	 * insert and whether it fits is handled in the caller.  All we do

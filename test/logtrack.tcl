@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #       Sleepycat Software.  All rights reserved.
 #
-#       $Id: logtrack.tcl,v 11.3 2000/05/22 12:51:37 bostic Exp $
+#       $Id: logtrack.tcl,v 11.6 2000/10/27 15:30:39 krinsky Exp $
 #
 # logtrack.tcl:  A collection of routines, formerly implemented in Perl
 # as log.pl, to track which log record types the test suite hits.
@@ -34,13 +34,14 @@ proc logtrack_init { } {
 # Dump the logs for directory dirname and record which log
 # records were seen.
 proc logtrack_read { dirname } {
-	global ltsname tmpname
+	global ltsname tmpname util_path
 
 	set seendb [berkdb_open $ltsname]
 	error_check_good seendb_open [is_valid_db $seendb] TRUE
 
 	file delete -force $tmpname
-	set ret [catch {exec ./db_printlog -N -h "$dirname" > $tmpname} res]
+	set ret [catch {exec $util_path/db_printlog -N \
+	    -h "$dirname" > $tmpname} res]
 	error_check_good printlog $ret 0
 	error_check_good tmpfile_exists [file exists $tmpname] 1
 

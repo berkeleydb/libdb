@@ -53,23 +53,26 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 Release/libdb31.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb_java31.dll"
+# ADD LINK32 Release/libdb32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb_java32.dll"
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
-InputPath=.\Release\libdb_java31.dll
+InputPath=.\Release\libdb_java32.dll
 SOURCE=$(InputPath)
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	cd $(ProjDir)\..\java\src\com\sleepycat\db 
 	mkdir ..\..\..\..\classes 
 	echo compiling Berkeley DB classes 
-	javac -d ../../../../classes -classpath $(CLASSPATH);../../../../classes\
+	javac -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
    *.java 
 	echo compiling examples 
 	cd ..\examples 
-	javac -d ../../../../classes -classpath $(CLASSPATH);../../../../classes\
+	javac -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
     *.java 
-	echo Java compilation finished 
+	echo creating jar file 
+	cd ..\..\..\..\classes
+	jar cf db.jar com\sleepycat\db\*.class 
+	echo Java build finished 
 	
 # End Custom Build
 
@@ -98,23 +101,26 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 Debug/libdb31d.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb_java31d.dll" /fixed:no
+# ADD LINK32 Debug/libdb32d.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb_java32d.dll" /fixed:no
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
-InputPath=.\Debug\libdb_java31d.dll
+InputPath=.\Debug\libdb_java32d.dll
 SOURCE=$(InputPath)
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	cd $(ProjDir)\..\java\src\com\sleepycat\db 
 	mkdir ..\..\..\..\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d ../../../../classes -classpath $(CLASSPATH);../../../../classes\
+	javac -g -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
    *.java 
 	echo compiling examples 
-	javac -g -d ../../../../classes -classpath $(CLASSPATH);../../../../classes\
+	javac -g -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
     *.java 
 	cd ..\examples 
-	echo Java compilation finished 
+	echo creating jar file 
+	cd ..\..\..\..\classes
+	jar cf db.jar com\sleepycat\db\*.class 
+	echo Java build finished 
 	
 # End Custom Build
 
@@ -130,10 +136,6 @@ SOURCE=..\libdb_java\java_Db.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\libdb_java\java_Dbc.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\libdb_java\java_DbEnv.c
 # End Source File
 # Begin Source File
@@ -146,11 +148,15 @@ SOURCE=..\libdb_java\java_DbLsn.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\libdb_java\java_Dbt.c
+SOURCE=..\libdb_java\java_DbTxn.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\libdb_java\java_DbTxn.c
+SOURCE=..\libdb_java\java_Dbc.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\libdb_java\java_Dbt.c
 # End Source File
 # Begin Source File
 

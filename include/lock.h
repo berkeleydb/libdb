@@ -4,12 +4,10 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: lock.h,v 11.14 2000/05/30 15:43:22 ubell Exp $
+ * $Id: lock.h,v 11.20 2000/12/12 17:43:56 bostic Exp $
  */
 
-#ifndef DB_LOCK_DEFAULT_N
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
-#endif
 
 /*
  * Out of band value for a lock.  Locks contain an offset into a lock region,
@@ -40,10 +38,17 @@ typedef struct __db_lockregion {
 	SH_TAILQ_HEAD(__flocker) free_lockers;
 	SH_TAILQ_HEAD(__dobj) dd_objs;	/* objects with waiters */
 	u_int32_t	maxlocks;	/* maximum number of locks in table */
-	u_int32_t	table_size;	/* size of hash table */
+	u_int32_t	maxlockers;	/* maximum number of lockers in table */
+	u_int32_t	maxobjects;	/* maximum number of objects in table */
+	u_int32_t	locker_t_size;	/* size of locker hash table */
+	u_int32_t	object_t_size;	/* size of object hash table */
 	u_int32_t	nmodes;		/* number of lock modes */
-	u_int32_t	nlockers;	/* number of lockers */
-	u_int32_t	maxnlockers;	/* maximum number of lockers */
+	u_int32_t	nlocks;		/* current number of locks */
+	u_int32_t	maxnlocks;	/* maximum number of locks so far*/
+	u_int32_t	nlockers;	/* current number of lockers */
+	u_int32_t	maxnlockers;	/* maximum number of lockers so far */
+	u_int32_t	nobjects;	/* current number of objects */
+	u_int32_t	maxnobjects;	/* maximum number of objects so far */
 	roff_t		conf_off;	/* offset of conflicts array */
 	roff_t		obj_off;	/* offset of object hash table */
 	roff_t		osynch_off;	/* offset of the object mutex table */
@@ -55,6 +60,9 @@ typedef struct __db_lockregion {
 	u_int32_t	nnowaits;	/* number of lock requests that would
 					   have waited without nowait */
 	u_int32_t	ndeadlocks;	/* number of deadlocks */
+#ifdef MUTEX_SYSTEM_RESOURCES
+	roff_t		maint_off;	/* offset of region maintenance info */
+#endif
 } DB_LOCKREGION;
 
 /*
@@ -165,23 +173,17 @@ struct __db_lock {
 #define	DB_LOCK_IGNOREDEL	0x004
 #define	DB_LOCK_NOPROMOTE	0x008
 #define	DB_LOCK_UNLINK		0x010
+#define	DB_LOCK_NOWAITERS	0x020
 
 /*
  * Macros to get/release different types of mutexes.
  */
-#define	OBJECT_LOOKUP(lt, ndx, dbt, sh_obj)				\
-	HASHLOOKUP((lt)->objtab,					\
-	    ndx, __db_lockobj, links, dbt, sh_obj, __lock_cmp);
-
 #define	OBJECT_LOCK(lt, reg, obj, ndx)					\
-	ndx = __lock_ohash(obj) % (reg)->table_size
+	ndx = __lock_ohash(obj) % (reg)->object_t_size
 #define	SHOBJECT_LOCK(lt, reg, shobj, ndx)				\
-	ndx = __lock_lhash(shobj) % (reg)->table_size
-#define	OBJECT_UNLOCK(lt, ndx)
-
-#define	LOCKER_LOOKUP(lt, ndx, locker, sh_locker)			\
-	HASHLOOKUP((lt)->lockertab,					\
-	    ndx, __db_locker, links, locker, sh_locker, __lock_locker_cmp);
+	ndx = __lock_lhash(shobj) % (reg)->object_t_size
+#define	LOCKER_LOCK(lt, reg, locker, ndx)				\
+	ndx = __lock_locker_hash(locker) % (reg)->locker_t_size;
 
 #define	LOCKREGION(dbenv, lt)  R_LOCK((dbenv), &(lt)->reginfo)
 #define	UNLOCKREGION(dbenv, lt)  R_UNLOCK((dbenv), &(lt)->reginfo)

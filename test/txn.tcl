@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: txn.tcl,v 11.8 2000/02/14 03:00:22 bostic Exp $
+#	$Id: txn.tcl,v 11.12 2000/12/31 19:26:23 bostic Exp $
 #
 # Options are:
 # -dir <directory in which to store memp>
@@ -41,8 +41,6 @@ proc txntest { args } {
 		set max $iterations
 	}
 
-	cleanup $testdir
-
 	# Now run the various functionality tests
 	txn001 $testdir $max $iterations $flags
 	txn002 $testdir $max $iterations
@@ -54,7 +52,7 @@ proc txn001 { dir max ntxns flags} {
 	puts "Txn001: Basic begin, commit, abort"
 
 	# Open environment
-	cleanup $dir
+	env_cleanup $dir
 
 	set env [eval {berkdb \
 	    env -create -mode 0644 -txn -txn_max $max -home $dir} $flags]
@@ -64,8 +62,6 @@ proc txn001 { dir max ntxns flags} {
 	txn001_subc $ntxns $env
 	# Close and unlink the file
 	error_check_good env_close:$env [$env close] 0
-
-	cleanup $testdir
 }
 
 proc txn001_suba { ntxns env } {
@@ -151,7 +147,7 @@ proc txn002 { dir max ntxns } {
 
 	puts "Txn002: Read-only transaction test"
 
-	cleanup $dir
+	env_cleanup $dir
 	set env [berkdb \
 	    env -create -mode 0644 -txn -txn_max $max -home $dir]
 	error_check_good dbenv [is_valid_env $env] TRUE

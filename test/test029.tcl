@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test029.tcl,v 11.12 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test029.tcl,v 11.13 2000/08/25 14:21:55 sue Exp $
 #
 # DB Test 29 {method nentries}
 # Test the Btree and Record number renumbering.
@@ -32,10 +32,13 @@ proc test029 { method {nentries 10000} args} {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test029.db
+		set env NULL
 	} else {
 		set testfile test029.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	# Read the first nentries dictionary elements and reverse them.
 	# Keep a list of these (these will be the keys).

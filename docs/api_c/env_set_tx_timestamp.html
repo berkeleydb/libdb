@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_tx_timestamp.so,v 10.5 2000/05/01 21:57:44 bostic Exp $-->
+<!--$Id: env_set_tx_timestamp.so,v 10.6 2000/12/21 18:33:42 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_tx_timestamp</h1>
@@ -31,6 +30,9 @@ current possible date.
 The <b>timestamp</b> argument should be the number of seconds since 0
 hours, 0 minutes, 0 seconds, January 1, 1970, Coordinated Universal Time,
 i.e., the Epoch.
+<p>Once a database environment has been upgraded to a new version of Berkeley DB
+involving a log format change (see <a href="../ref/upgrade/process.html">Upgrading Berkeley DB installations</a>, it is no longer possible to recover
+to a specific time before that upgrade.
 <p>The DBENV-&gt;set_tx_timestamp interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <p>The DBENV-&gt;set_tx_timestamp function returns a non-zero error value on failure and 0 on success.

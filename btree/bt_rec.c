@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_rec.c,v 11.19.2.6 2000/07/17 02:20:54 bostic Exp $";
+static const char revid[] = "$Id: bt_rec.c,v 11.35 2001/01/10 16:24:47 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -51,7 +51,6 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	db_pgno_t pgno;
 	int cmp_n, cmp_p, level, modified, ret;
 
-	COMPQUIET(info, NULL);
 	REC_PRINT(__bam_pg_alloc_print);
 	REC_INTRO(__bam_pg_alloc_read, 0);
 
@@ -67,6 +66,7 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	 * it on the freelist.
 	 */
 	pgno = PGNO_BASE_MD;
+	meta = NULL;
 	if ((ret = memp_fget(mpf, &pgno, 0, &meta)) != 0) {
 		/* The metadata page must always exist on redo. */
 		if (DB_REDO(op)) {
@@ -83,16 +83,32 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 		 * which we're also fixing up.
 		 */
 		(void)__db_pgerr(file_dbp, argp->pgno);
-		(void)memp_fput(mpf, meta, 0);
-		goto out;
+		goto err;
 	}
 
 	/* Fix up the allocated page. */
 	modified = 0;
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 	cmp_p = log_compare(&LSN(pagep), &argp->page_lsn);
+
+	/*
+	 * If an inital allocation is aborted and then reallocated
+	 * during an archival restore the log record will have
+	 * an LSN for the page but the page will be empty.
+	 */
+	if (IS_ZERO_LSN(LSN(pagep)))
+		cmp_p = 0;
 	CHECK_LSN(op, cmp_p, &LSN(pagep), &argp->page_lsn);
-	if (cmp_p == 0 && DB_REDO(op)) {
+	/*
+	 * If we we rolled back this allocation previously during an
+	 * archive restore, the page may have the LSN of the meta page
+	 * at the point of the roll back.  This will be no more
+	 * than the LSN of the metadata page at the time of this allocation.
+	 */
+	if (DB_REDO(op) &&
+	    (cmp_p == 0 ||
+	    (IS_ZERO_LSN(argp->page_lsn) &&
+	    log_compare(&LSN(pagep), &argp->meta_lsn) <= 0))) {
 		/* Need to redo update described. */
 		switch (argp->ptype) {
 		case P_LBTREE:
@@ -109,42 +125,54 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 
 		pagep->lsn = *lsnp;
 		modified = 1;
-	} else if ((cmp_n == 0 && DB_UNDO(op)) || PGNO(pagep) == PGNO_INVALID) {
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
 		/*
-		 * Undo the allocation.
-		 * If the lsn is zero we created the page and
-		 * must reinit it here because it will be on the
-		 * free list.
+		 * Undo the allocation, reinitialize the page and
+		 * link its next pointer to the free list.
 		 */
 		P_INIT(pagep, file_dbp->pgsize,
-		    argp->pgno, PGNO_INVALID, meta->free, 0, P_INVALID);
+		    argp->pgno, PGNO_INVALID, argp->next, 0, P_INVALID);
 
 		pagep->lsn = argp->page_lsn;
 		modified = 1;
 	}
+
 	if ((ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0) {
-		(void)memp_fput(mpf, meta, 0);
-		goto out;
+		goto err;
+	}
+
+	/*
+	 * If the page was newly created, put it on the limbo list.
+	 */
+	if (IS_ZERO_LSN(LSN(pagep)) &&
+	     IS_ZERO_LSN(argp->page_lsn) && DB_UNDO(op)) {
+		/* Put the page in limbo.*/
+		if ((ret = __db_add_limbo(dbenv,
+		    info, argp->fileid, argp->pgno, 1)) != 0)
+			goto err;
 	}
 
 	/* Fix up the metadata page. */
 	modified = 0;
-	cmp_n = log_compare(lsnp, &meta->alloc_lsn);
-	cmp_p = log_compare(&meta->alloc_lsn, &argp->alloc_lsn);
-	CHECK_LSN(op, cmp_p, &meta->alloc_lsn, &argp->alloc_lsn);
+	cmp_n = log_compare(lsnp, &LSN(meta));
+	cmp_p = log_compare(&LSN(meta), &argp->meta_lsn);
+	CHECK_LSN(op, cmp_p, &LSN(meta), &argp->meta_lsn);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
-		meta->alloc_lsn = *lsnp;
-		if (log_compare(&LSN(meta), &argp->meta_lsn) == 0)
-			LSN(meta) = *lsnp;
+		LSN(meta) = *lsnp;
 		meta->free = argp->next;
 		modified = 1;
 	} else if (cmp_n == 0 && DB_UNDO(op)) {
 		/* Need to undo update described. */
-		meta->alloc_lsn = argp->alloc_lsn;
-		if (log_compare(lsnp, &LSN(meta)) == 0)
-			LSN(meta) = argp->meta_lsn;
-		meta->free = argp->pgno;
+		LSN(meta) = argp->meta_lsn;
+
+		/*
+		 * If the page has a zero LSN then its newly created
+		 * and will go into limbo rather than directly on the
+		 * free list.
+		 */
+		if (!IS_ZERO_LSN(argp->page_lsn))
+			meta->free = argp->pgno;
 		modified = 1;
 	}
 	if ((ret = memp_fput(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
@@ -153,18 +181,23 @@ __bam_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	 * This could be the metapage from a subdb which is read from disk
 	 * to recover its creation.
 	 */
-	if (F_ISSET(file_dbp, DB_AM_SUBDB)) {
+	if (F_ISSET(file_dbp, DB_AM_SUBDB))
 		switch (argp->type) {
-		   case P_HASHMETA:
-		   case P_BTREEMETA:
-		   case P_QAMMETA:
+		case P_BTREEMETA:
+		case P_HASHMETA:
+		case P_QAMMETA:
 			file_dbp->sync(file_dbp, 0);
+			break;
 		}
-	}
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
+	if (0) {
+err:
+		if (meta != NULL)
+			(void)memp_fput(mpf, meta, 0);
+	}
 out:	REC_CLOSE;
 }
 
@@ -190,7 +223,7 @@ __bam_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	DB_LSN copy_lsn;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
-	db_pgno_t nextpgno, pgno;
+	db_pgno_t pgno;
 	int cmp_n, cmp_p, modified, ret;
 
 	COMPQUIET(info, NULL);
@@ -201,64 +234,34 @@ __bam_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	 * Fix up the freed page.  If we're redoing the operation we get the
 	 * page and explicitly discard its contents, then update its LSN.  If
 	 * we're undoing the operation, we get the page and restore its header.
+	 * Create the page if necessary, we may be freeing an aborted
+	 * create.
 	 */
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0) {
-		/*
-		 * We don't automatically create the page.  The only way the
-		 * page might not exist is if the alloc never happened, and
-		 * the only way the alloc might never have happened is if we
-		 * are undoing, in which case there's no reason to create the
-		 * page.
-		 */
-		if (DB_UNDO(op))
-			goto done;
-		(void)__db_pgerr(file_dbp, argp->pgno);
+	if ((ret = memp_fget(mpf, &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 		goto out;
-	}
 	modified = 0;
-	nextpgno = argp->next;
 	__ua_memcpy(&copy_lsn, &LSN(argp->header.data), sizeof(DB_LSN));
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 	cmp_p = log_compare(&LSN(pagep), &copy_lsn);
 	CHECK_LSN(op, cmp_p, &LSN(pagep), &copy_lsn);
-	if (cmp_p == 0 && DB_REDO(op)) {
+	if (DB_REDO(op) &&
+	    (cmp_p == 0 ||
+	    (IS_ZERO_LSN(copy_lsn) &&
+	    log_compare(&LSN(pagep), &argp->meta_lsn) <= 0))) {
 		/* Need to redo update described. */
 		P_INIT(pagep, file_dbp->pgsize,
-		    pagep->pgno, PGNO_INVALID, argp->next, 0, P_INVALID);
+		    argp->pgno, PGNO_INVALID, argp->next, 0, P_INVALID);
 		pagep->lsn = *lsnp;
 
 		modified = 1;
 	} else if (cmp_n == 0 && DB_UNDO(op)) {
 		/* Need to undo update described. */
-		nextpgno = NEXT_PGNO(pagep);
 		memcpy(pagep, argp->header.data, argp->header.size);
 
 		modified = 1;
 	}
 	if ((ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
-
-	if (nextpgno != PGNO_INVALID) {
-		if ((ret = memp_fget(mpf,
-		    &nextpgno, DB_MPOOL_CREATE, &pagep)) != 0) {
-			/*
-			 * Try to create the next page in the free list.
-			 * It may have been the result of an aborted pg_alloc.
-			 */
-			(void)__db_pgerr(file_dbp, nextpgno);
-			goto out;
-		}
-
-		modified = 0;
-		if (PGNO(pagep) == PGNO_INVALID) {
-			P_INIT(pagep, file_dbp->pgsize,
-			    nextpgno, PGNO_INVALID, PGNO_INVALID, 0, P_INVALID);
-			modified = 1;
-		}
-		if ((ret = memp_fput(mpf,
-		    pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
-			goto out;
-	}
 
 	/*
 	 * Fix up the metadata page.  If we're redoing or undoing the operation
@@ -272,24 +275,18 @@ __bam_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	}
 
 	modified = 0;
-	cmp_n = log_compare(lsnp, &meta->alloc_lsn);
-	cmp_p = log_compare(&meta->alloc_lsn, &argp->alloc_lsn);
-	CHECK_LSN(op, cmp_p, &meta->alloc_lsn, &argp->alloc_lsn);
+	cmp_n = log_compare(lsnp, &LSN(meta));
+	cmp_p = log_compare(&LSN(meta), &argp->meta_lsn);
+	CHECK_LSN(op, cmp_p, &LSN(meta), &argp->meta_lsn);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo the deallocation. */
 		meta->free = argp->pgno;
-
-		meta->alloc_lsn = *lsnp;
-		if (log_compare(&LSN(meta), &argp->meta_lsn) == 0)
-			LSN(meta) = *lsnp;
+		LSN(meta) = *lsnp;
 		modified = 1;
 	} else if (cmp_n == 0 && DB_UNDO(op)) {
 		/* Need to undo the deallocation. */
-		meta->free = nextpgno;
-
-		meta->alloc_lsn = argp->alloc_lsn;
-		if (log_compare(lsnp, &LSN(meta)) == 0)
-			LSN(meta) = argp->meta_lsn;
+		meta->free = argp->next;
+		LSN(meta) = argp->meta_lsn;
 		modified = 1;
 	}
 	if ((ret = memp_fput(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
@@ -831,7 +828,7 @@ __bam_cadjust_recover(dbenv, dbtp, lsnp, op, info)
 		if (IS_BTREE_PAGE(pagep)) {
 			GET_BINTERNAL(pagep, argp->indx)->nrecs -= argp->adjust;
 			if (argp->opflags & CAD_UPDATEROOT)
-				RE_NREC_ADJ(pagep, argp->adjust);
+				RE_NREC_ADJ(pagep, -(argp->adjust));
 		} else {
 			GET_RINTERNAL(pagep, argp->indx)->nrecs -= argp->adjust;
 			if (argp->opflags & CAD_UPDATEROOT)
@@ -1137,4 +1134,86 @@ __bam_curadj_recover(dbenv, dbtp, lsnp, op, info)
 
 done:	*lsnp = argp->prev_lsn;
 out:	REC_CLOSE;
+}
+
+/*
+ * __bam_rcuradj_recover --
+ *	Transaction abort function to undo cursor adjustments in rrecno.
+ *	This should only be triggered by subtransaction aborts.
+ *
+ * PUBLIC: int __bam_rcuradj_recover
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__bam_rcuradj_recover(dbenv, dbtp, lsnp, op, info)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__bam_rcuradj_args *argp;
+	BTREE_CURSOR *cp;
+	DB *file_dbp;
+	DBC *dbc, *rdbc;
+	DB_MPOOLFILE *mpf;
+	int ret, t_ret;
+
+	COMPQUIET(info, NULL);
+	rdbc = NULL;
+
+	REC_PRINT(__bam_rcuradj_print);
+	REC_INTRO(__bam_rcuradj_read, 0);
+
+	ret = t_ret = 0;
+
+	if (op != DB_TXN_ABORT)
+		goto done;
+
+	/*
+	 * We don't know whether we're in an offpage dup set, and
+	 * thus don't know whether the dbc REC_INTRO has handed us is
+	 * of a reasonable type.  It's certainly unset, so if this is
+	 * an offpage dup set, we don't have an OPD cursor.  The
+	 * simplest solution is just to allocate a whole new cursor
+	 * for our use;  we're only really using it to hold pass some
+	 * state into __ram_ca, and this way we don't need to make
+	 * this function know anything about how offpage dups work.
+	 */
+	if ((ret =
+	    __db_icursor(file_dbp, NULL, DB_RECNO, argp->root, 0, &rdbc)) != 0)
+		goto out;
+
+	cp = (BTREE_CURSOR *)rdbc->internal;
+	F_SET(cp, C_RENUMBER);
+	cp->recno = argp->recno;
+
+	switch(argp->mode) {
+	case CA_DELETE:
+		/*
+		 * The way to undo a delete is with an insert.  Since
+		 * we're undoing it, the delete flag must be set.
+		 */
+		F_SET(cp, C_DELETED);
+		F_SET(cp, C_RENUMBER);	/* Just in case. */
+		cp->order = argp->order;
+		__ram_ca(rdbc, CA_ICURRENT);
+		break;
+	case CA_IAFTER:
+	case CA_IBEFORE:
+	case CA_ICURRENT:
+		/*
+		 * The way to undo an insert is with a delete.  The delete
+		 * flag is unset to start with.
+		 */
+		F_CLR(cp, C_DELETED);
+		cp->order = INVALID_ORDER;
+		__ram_ca(rdbc, CA_DELETE);
+		break;
+	}
+
+done:	*lsnp = argp->prev_lsn;
+out:	if (rdbc != NULL && (t_ret = rdbc->c_close(rdbc)) != 0 && ret == 0)
+		ret = t_ret;
+	REC_CLOSE;
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test075.tcl,v 11.8 2000/05/22 19:16:05 bostic Exp $
+#	$Id: test075.tcl,v 11.9 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 75 (replacement)
 # Test the DB->rename method.
@@ -21,7 +21,7 @@ proc test075 { method { tnum 75 } args } {
 	if { $eindex == -1 } {
 		set oldfile $testdir/test0$tnum-old.db
 		set newfile $testdir/test0$tnum.db
-		set noenv 1
+		set env NULL
 		set renargs ""
 	} else {
 		set oldfile test0$tnum-old.db
@@ -31,14 +31,14 @@ proc test075 { method { tnum 75 } args } {
 		# We use this to skip them, and turn our secondary check
 		# (opening the dbs and seeing that all is well) into the main
 		# one.
-		set noenv 0
 		incr eindex
-		set renargs " -env [lindex $args $eindex]"
+		set env [lindex $args $eindex]
+		set renargs " -env $env"
 	}
 
 	# Make sure we're starting from a clean slate.
-	cleanup $testdir
-	if { $noenv } {
+	cleanup $testdir $env
+	if { $env == "NULL" } {
 		error_check_bad "$oldfile exists" [file exists $oldfile] 1
 		error_check_bad "$newfile exists" [file exists $newfile] 1
 	}
@@ -48,7 +48,7 @@ proc test075 { method { tnum 75 } args } {
 	set db [eval {berkdb_open -create -mode 0644} $omethod $args $oldfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
-	if { $noenv } {
+	if { $env == "NULL" } {
 		error_check_bad "$oldfile exists" [file exists $oldfile] 0
 		error_check_bad "$newfile exists" [file exists $newfile] 1
 	}
@@ -62,20 +62,20 @@ proc test075 { method { tnum 75 } args } {
 	error_check_good dbclose [$db close] 0
 
 	puts "\t\tTest0$tnum.a.2: rename"
-	if { $noenv } {
+	if { $env == "NULL" } {
 		error_check_bad "$oldfile exists" [file exists $oldfile] 0
 		error_check_bad "$newfile exists" [file exists $newfile] 1
 	}
 	error_check_good rename_file [eval {berkdb dbrename}\
 	    $renargs $oldfile $newfile] 0
-	if { $noenv } {
+	if { $env == "NULL" } {
 		error_check_bad "$oldfile exists" [file exists $oldfile] 1
 		error_check_bad "$newfile exists" [file exists $newfile] 0
 	}
 
 	puts "\t\tTest0$tnum.a.3: check"
 	# Open again with create to make sure we're not caching or anything
-	# silly.  In the normal (noenv) case, we already know the file doesn't
+	# silly.  In the normal case (no env), we already know the file doesn't
 	# exist.
 	set odb [eval {berkdb_open -create -mode 0644} $omethod $args $oldfile]
 	set ndb [eval {berkdb_open -create -mode 0644} $omethod $args $newfile]
@@ -94,7 +94,7 @@ proc test075 { method { tnum 75 } args } {
 	error_check_good odb_close [$odb close] 0
 	error_check_good ndb_close [$ndb close] 0
 
-	if { $noenv == 0 } {
+	if { $env != "NULL" } {
 		puts "\tTest0$tnum: External environment present; \
 		    skipping remainder"
 		return
@@ -112,7 +112,7 @@ proc test075 { method { tnum 75 } args } {
 
 	# Verify and then start over from a clean slate.
 	verify_dir $testdir "\tTest0$tnum.c: "
-	cleanup $testdir
+	cleanup $testdir $env
 	error_check_bad "$oldfile exists" [file exists $oldfile] 1
 	error_check_bad "$newfile exists" [file exists $newfile] 1
 

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test017.tcl,v 11.10 2000/05/08 17:44:27 sue Exp $
+#	$Id: test017.tcl,v 11.13 2000/12/11 17:42:18 sue Exp $
 #
 # DB Test 17 {access method}
 # Run duplicates with small page size so that we test off page duplicates.
@@ -20,6 +20,14 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 		puts "Test0$tnum skipping for method $method"
 		return
 	}
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		incr pgindex
+		if { [lindex $args $pgindex] > 8192 } {
+			puts "Test0$tnum: Skipping for large pagesizes"
+			return
+		}
+	}
 
 	puts "Test0$tnum: $method ($args) Off page duplicate tests with $ndups duplicates"
 
@@ -30,15 +38,18 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	set t4 $testdir/t4
 
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
@@ -170,7 +181,7 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	set stat [$db stat]
 	if { [is_btree $method] } {
 		error_check_bad stat:offpage \
-		    [is_substr $stat "{{Btree internal pages} 0}"] 1
+		    [is_substr $stat "{{Internal pages} 0}"] 1
 	}
 	if {$contents == 0} {
 		# This check doesn't work in hash, since overflow

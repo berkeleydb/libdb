@@ -1,4 +1,3 @@
- 
 <!--$Id: env_set_data_dir.so,v 10.3 2000/05/20 16:29:11 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_data_dir</h1>
@@ -41,11 +40,12 @@ physical devices.
 <p>The DBENV-&gt;set_data_dir interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
 <p>The DBENV-&gt;set_data_dir function returns a non-zero error value on failure and 0 on success.
-<p>The environment's data directory may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
-line with the string "set_data_dir", one or more whitespace characters, and the directory name.
-Configuration in the <b>DB_CONFIG</b> file silently overrules
-configuration done using the DBENV-&gt;set_data_dir function.
+<p>The database environment's data directory may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_data_dir", one or more whitespace characters,
+and the directory name.  Because the <b>DB_CONFIG</b> file is read when the database
+environment is opened, it will silently overrule configuration done
+before that time.
 <h1>Errors</h1>
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
@@ -63,6 +63,8 @@ configuration done using the DBENV-&gt;set_data_dir function.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
+<a href="../api_c/env_set_flags.html">DBENV-&gt;set_flags</a>,
+<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.

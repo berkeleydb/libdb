@@ -4,7 +4,7 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_env.c,v 11.13 2000/05/22 15:17:03 sue Exp $
+ * $Id: ex_env.c,v 11.18 2000/10/27 20:32:00 dda Exp $
  */
 
 #include "db_config.h"
@@ -23,12 +23,12 @@
 #define	DATABASE_HOME	":database"
 #define	CONFIG_DATA_DIR	":database"
 #else
-#ifdef _WIN32
+#ifdef DB_WIN32
 #define	DATABASE_HOME	"\\tmp\\database"
 #define	CONFIG_DATA_DIR	"\\database\\files"
 #else
 #ifdef HAVE_VXWORKS
-#define	DATABASE_HOME	"/vxtmp/vxtmp/database"
+#define	DATABASE_HOME	"/ata0/vxtmp/database"
 #define	CONFIG_DATA_DIR	"/vxtmp/vxtmp/database/files"
 #else
 #define	DATABASE_HOME	"/tmp/database"
@@ -42,6 +42,7 @@ int	db_teardown __P((char *, char *, FILE *, char *));
 #ifdef HAVE_VXWORKS
 int	ex_env __P((void));
 #define	ERROR_RETURN	ERROR
+#define	VXSHM_KEY	11
 #else
 int	main __P((void));
 #define	ERROR_RETURN	1
@@ -98,6 +99,14 @@ db_setup(home, data_dir, errfp, progname)
 	dbenv->set_errfile(dbenv, errfp);
 	dbenv->set_errpfx(dbenv, progname);
 
+#ifdef HAVE_VXWORKS
+	/* VxWorks needs to specify a base segment ID. */
+	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
+		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
+		return (ERROR_RETURN);
+	}
+#endif
+
 	/*
 	 * We want to specify the shared memory buffer pool cachesize,
 	 * but everything else is the default.
@@ -108,14 +117,13 @@ db_setup(home, data_dir, errfp, progname)
 		return (ERROR_RETURN);
 	}
 
-	/*
-	 * We have multiple processes reading/writing these files, so
-	 * we need concurrency control and a shared buffer pool, but
-	 * not logging or transactions.
-	 */
+	/* Databases are in a subdirectory. */
 	(void)dbenv->set_data_dir(dbenv, data_dir);
+
+	/* Open the environment with full transactional support. */
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL, 0)) != 0) {
+    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN,
+	    0)) != 0) {
 		dbenv->err(dbenv, ret, "environment open: %s", home);
 		dbenv->close(dbenv, 0);
 		return (ERROR_RETURN);
@@ -146,6 +154,12 @@ db_teardown(home, data_dir, errfp, progname)
 	}
 	dbenv->set_errfile(dbenv, errfp);
 	dbenv->set_errpfx(dbenv, progname);
+#ifdef HAVE_VXWORKS
+	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
+		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
+		return (ERROR_RETURN);
+	}
+#endif
 
 	(void)dbenv->set_data_dir(dbenv, data_dir);
 	if ((ret = dbenv->remove(dbenv, home, 0)) != 0) {

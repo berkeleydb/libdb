@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test074.tcl,v 11.9 2000/05/18 19:30:46 sue Exp $
+#	$Id: test074.tcl,v 11.10 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 74: Test of DB_NEXT_NODUP.
 proc test074 { method {dir -nextnodup} {pagesize 512} {nitems 100} {tnum 74} args } {
@@ -14,7 +14,6 @@ proc test074 { method {dir -nextnodup} {pagesize 512} {nitems 100} {tnum 74} arg
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
-	cleanup $testdir
 	berkdb srand $rand_init
 
 	# Data prefix--big enough that we get a mix of on-page, off-page,
@@ -38,9 +37,13 @@ proc test074 { method {dir -nextnodup} {pagesize 512} {nitems 100} {tnum 74} arg
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum-nodup.db
+		set env NULL
 	} else {
 		set testfile test0$tnum-nodup.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 	set db [eval {berkdb_open -create -truncate -mode 0644} $omethod\
 	    $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: AccessExample.cpp,v 11.6 2000/02/14 02:59:51 bostic Exp $
+ * $Id: AccessExample.cpp,v 11.7 2000/12/06 18:58:23 bostic Exp $
  */
 
 #include "db_config.h"
@@ -121,8 +121,8 @@ void AccessExample::run()
 		if (ret == DB_KEYEXIST) {
 			cout << "Key " << buf << " already exists.\n";
 		}
-		cout << "\n";
 	}
+	cout << "\n";
 
 	// We put a try block around this section of code
 	// to ensure that our database is properly closed

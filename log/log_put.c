@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_put.c,v 11.19.2.1 2000/06/14 15:20:06 bostic Exp $";
+static const char revid[] = "$Id: log_put.c,v 11.26 2000/11/30 00:58:40 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,7 +24,6 @@ static const char revid[] = "$Id: log_put.c,v 11.19.2.1 2000/06/14 15:20:06 bost
 #endif
 #endif
 
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -163,8 +162,14 @@ __log_put(dbenv, lsn, dbt, flags)
 		    &t, lastoff == 0 ? 0 : lastoff - lp->len)) != 0)
 			return (ret);
 
-		/* Record files open in this log. */
-		if ((ret = __log_open_files(dbenv)) != 0)
+		/*
+		 * Record files open in this log.
+		 * If we are recovering then we are in the
+		 * process of outputting the files, don't do
+		 * it again.
+		 */
+		if (!F_ISSET(dblp, DBLOG_RECOVER) &&
+		    (ret = __log_open_files(dbenv)) != 0)
 			return (ret);
 
 		/* Update the LSN information returned to the user. */
@@ -233,7 +238,7 @@ __log_putr(dblp, lsn, dbt, prev)
 	 */
 	hdr.prev = prev;
 	hdr.len = sizeof(HDR) + dbt->size;
-	hdr.cksum = __ham_func4(dbt->data, dbt->size);
+	hdr.cksum = __ham_func4(NULL, dbt->data, dbt->size);
 
 	if ((ret = __log_fill(dblp, lsn, &hdr, sizeof(HDR))) != 0)
 		return (ret);
@@ -348,10 +353,8 @@ __log_flush(dblp, lsn)
 	}
 
 	/* Sync all writes to disk. */
-	if ((ret = __os_fsync(dblp->dbenv, &dblp->lfh)) != 0) {
-		__db_panic(dblp->dbenv, ret);
-		return (ret);
-	}
+	if ((ret = __os_fsync(dblp->dbenv, &dblp->lfh)) != 0)
+		return (__db_panic(dblp->dbenv, ret));
 	++lp->stat.st_scount;
 
 	/* Set the last-synced LSN, using the on-disk write offset. */
@@ -453,10 +456,8 @@ __log_write(dblp, addr, len)
 	if ((ret =
 	    __os_seek(dblp->dbenv,
 	    &dblp->lfh, 0, 0, lp->w_off, 0, DB_OS_SEEK_SET)) != 0 ||
-	    (ret = __os_write(dblp->dbenv, &dblp->lfh, addr, len, &nw)) != 0) {
-		__db_panic(dblp->dbenv, ret);
-		return (ret);
-	}
+	    (ret = __os_write(dblp->dbenv, &dblp->lfh, addr, len, &nw)) != 0)
+		return (__db_panic(dblp->dbenv, ret));
 	if (nw != len) {
 		__db_err(dblp->dbenv, "Short write while writing log");
 		return (EIO);
@@ -541,12 +542,19 @@ __log_newfh(dblp)
 	lp = dblp->reginfo.primary;
 	dblp->lfname = lp->lsn.file;
 
-	/* Adding DB_OSO_LOG to the flags may cause additional
-	 * platform-specific optimizations.  On WinNT, the logfile
-	 * is preallocated, which may have a time penalty at startup,
-	 * but may lead to overall better throughput.  We are not
-	 * certain that this works reliably, so enable at your own risk.
+	/*
+	 * Adding DB_OSO_LOG to the flags may add additional platform-specific
+	 * optimizations.  On WinNT, the logfile is preallocated, which may
+	 * have a time penalty at startup, but have better overall throughput.
+	 * We are not certain that this works reliably, so enable at your own
+	 * risk.
+	 *
+	 * XXX:
+	 * Initialize the log file size.  This is a hack to push the log's
+	 * maximum size down into the Windows __os_open routine, because it
+	 * wants to pre-allocate it.
 	 */
+	dblp->lfh.log_size = dblp->dbenv->lg_max;
 	if ((ret = __log_name(dblp, dblp->lfname,
 	    &name, &dblp->lfh,
 	    DB_OSO_CREATE |/* DB_OSO_LOG |*/ DB_OSO_SEQ)) != 0)
@@ -613,8 +621,7 @@ __log_name(dblp, filenumber, namep, fhp, flags)
 	if (!LF_ISSET(DB_OSO_RDONLY)) {
 		__db_err(dblp->dbenv,
 		    "%s: log file open failed: %s", *namep, db_strerror(ret));
-		__db_panic(dblp->dbenv, ret);
-		return (ret);
+		return (__db_panic(dblp->dbenv, ret));
 	}
 
 	/* Create an old-style file name. */
@@ -673,8 +680,19 @@ __log_open_files(dbenv)
 		memset(&fid_dbt, 0, sizeof(fid_dbt));
 		fid_dbt.data = fnp->ufid;
 		fid_dbt.size = DB_FILE_ID_LEN;
+		/*
+		 * Output LOG_CHECKPOINT records which will be
+		 * processed during the OPENFILES pass of recovery.
+		 * At the end of recovery we want to output the
+		 * files that were open so that a future recovery
+		 * run will have the correct files open during
+		 * a backward pass.  For this we output LOG_CLOSE
+		 * records so that the files will be closed on
+		 * the forward pass.
+		 */
 		if ((ret = __log_register_log(dbenv,
-		    NULL, &r_unused, 0, LOG_CHECKPOINT,
+		    NULL, &r_unused, 0,
+		    F_ISSET(dblp, DBLOG_RECOVER) ? LOG_CLOSE : LOG_CHECKPOINT,
 		    fnp->name_off == INVALID_ROFF ? NULL : &t,
 		    &fid_dbt, fnp->id, fnp->s_type, fnp->meta_pgno)) != 0)
 			return (ret);

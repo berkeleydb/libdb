@@ -1,5 +1,4 @@
- 
-<!--$Id: dbc_put.so,v 11.11 2000/02/19 20:57:57 bostic Exp $-->
+<!--$Id: dbc_put.so,v 11.12 2000/06/12 17:50:01 sue Exp $-->
 <!--$Id: m4.tcl,v 11.17 2000/04/24 17:31:11 sue Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -10,7 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1><i>dbc</i> <b>put</b></h1>
@@ -115,6 +114,10 @@ duplicate records must be done using a <i>dbc</i> <b>put</b> command.
 supplied data length values in Queue or Recno databases with fixed-length
 records.
 </dl>
+<p>If a key is specified, and
+if the underlying database is a Queue or Recno database, then the given
+key will be interpreted by Tcl as an integer.  For all other database
+types, the key is interpreted by Tcl as a byte array.
 <p>If <i>dbc</i> <b>put</b> fails for any reason, the state of the cursor will be
 unchanged. If <i>dbc</i> <b>put</b> succeeds and an item is inserted into the
 database, the cursor is always positioned to reference the newly inserted

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_deadlock.c,v 11.12 2000/04/28 19:32:01 bostic Exp $";
+    "$Id: db_deadlock.c,v 11.19 2001/01/18 18:36:57 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char revid[] =
 #endif
 #endif
 
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +39,7 @@ static const char revid[] =
 
 int	 main __P((int, char *[]));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV  *dbenv;
 const char
@@ -58,6 +58,8 @@ main(argc, argv)
 	u_int32_t flags;
 	int ch, e_close, exitval, ret, verbose;
 	char *home, *logfile;
+
+	version_check();
 
 	atype = DB_LOCK_DEFAULT;
 	home = logfile = NULL;
@@ -153,7 +155,7 @@ main(argc, argv)
 
 	/* An environment is required. */
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_INIT_LOCK | DB_USE_ENVIRON, 0)) != 0) {
+	    DB_JOINENV | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
 		goto shutdown;
 	}
@@ -198,6 +200,23 @@ void
 usage()
 {
 	(void)fprintf(stderr,
-    "usage: db_deadlock [-Vvw] [-a m | o | y] [-h home] [-L file] [-t sec]\n");
+    "usage: db_deadlock [-Vvw] [-a o | y] [-h home] [-L file] [-t sec]\n");
 	exit(1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test076.tcl,v 1.6 2000/05/02 19:27:52 dda Exp $
+#	$Id: test076.tcl,v 1.7 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 76: Test creation of many small databases in an env
 proc test076 { method { ndbs 1000  } { tnum 76 } args } {
@@ -12,7 +12,6 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
-	cleanup $testdir
 
 	if { [is_record_based $method] == 1 } {
 		set key ""
@@ -35,7 +34,10 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 		set args "$args -env $env"
 	} else {
 		set deleteenv 0
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 
 	for { set i 1 } { $i <= $ndbs } { incr i } {
 		set testfile test0$tnum.$i.db
@@ -52,9 +54,6 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 	if { $deleteenv == 1 } {
 		error_check_good env_close [$env close] 0
 	}
-
-	# We don't want the upgrade tests to grab all these dbs.  :-/
-	cleanup $testdir
 
 	puts "\tTest0$tnum passed."
 }

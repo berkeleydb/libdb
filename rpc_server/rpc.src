@@ -1,7 +1,7 @@
 #
-# $Id: rpc.src,v 1.21 2000/05/31 16:05:08 sue Exp $
+# $Id: rpc.src,v 1.30 2000/12/20 21:53:05 ubell Exp $
 # Syntax:
-# BEGIN	function_name  RPC # 	{CODE | NOCLNTCODE | RETCODE | NOFUNC}
+# BEGIN	function_name  RPC #	{CODE | NOCLNTCODE | RETCODE | NOFUNC}
 #	CODE:	generate XDR and client code, return status
 #		Used for functions that just return a status and nothing else.
 #	RETCODE:generate XDR and client code, call return function
@@ -73,6 +73,11 @@ ARG	ID	DB_ENV *	dbenv
 FUNCPROT	void (*)(DB_ENV *, int, int)
 FUNCARG	void (*func0) __P((DB_ENV *, int, int))
 END
+BEGIN	env_flags	1	CODE
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	flags
+ARG	INT	int		onoff
+END
 BEGIN	set_lg_bsize	1	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	bsize
@@ -95,6 +100,18 @@ ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	detect
 END
 BEGIN	set_lk_max	1	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	max
+END
+BEGIN	set_lk_max_locks	1	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	max
+END
+BEGIN	set_lk_max_lockers	1	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	max
+END
+BEGIN	set_lk_max_objects	1	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	max
 END
@@ -137,8 +154,8 @@ ARG	STRING	const char *	dir
 END
 BEGIN	set_tx_recover	1	NOFUNC
 ARG	ID	DB_ENV *	dbenv
-FUNCPROT	int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *)
-FUNCARG	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *))
+FUNCPROT	int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)
+FUNCARG	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops))
 END
 BEGIN	set_tx_max	1	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -190,8 +207,8 @@ END
 #
 BEGIN	db_bt_compare	1	NOFUNC
 ARG	ID	DB *		dbp
-FUNCPROT	int (*)(const DBT *, const DBT *)
-FUNCARG	int (*func0) __P((const DBT *, const DBT *))
+FUNCPROT	int (*)(DB *, const DBT *, const DBT *)
+FUNCARG	int (*func0) __P((DB *, const DBT *, const DBT *))
 END
 BEGIN	db_bt_maxkey	1	CODE
 ARG	ID	DB *		dbp
@@ -203,8 +220,13 @@ ARG	INT	u_int32_t	minkey
 END
 BEGIN	db_bt_prefix	1	NOFUNC
 ARG	ID	DB *		dbp
-FUNCPROT	size_t(*)(const DBT *, const DBT *)
-FUNCARG	size_t (*func0) __P((const DBT *, const DBT *))
+FUNCPROT	size_t(*)(DB *, const DBT *, const DBT *)
+FUNCARG	size_t (*func0) __P((DB *, const DBT *, const DBT *))
+END
+BEGIN	db_set_append_recno	1	NOFUNC
+ARG	ID	DB *		dbp
+FUNCPROT	int (*)(DB *, DBT *, db_recno_t)
+FUNCARG	int (*func0) __P((DB *, DBT *, db_recno_t))
 END
 BEGIN	db_cachesize	1	NOFUNC
 ARG	ID	DB *		dbp
@@ -226,6 +248,10 @@ ARG	ID	DB *		dbp
 ARG	ID	DB_TXN *	txnp
 ARG	DBT	DBT *		key
 ARG	INT	u_int32_t	flags
+END
+BEGIN	db_extentsize	1	CODE
+ARG	ID	DB *		dbp
+ARG	INT	u_int32_t	extentsize
 END
 BEGIN	db_fd		1	NOFUNC
 ARG	ID	DB *		dbp
@@ -255,8 +281,8 @@ ARG	INT	u_int32_t	ffactor
 END
 BEGIN	db_h_hash	1	NOFUNC
 ARG	ID	DB *		dbp
-FUNCPROT	u_int32_t(*)(const void *, u_int32_t)
-FUNCARG	u_int32_t (*func0) __P((const void *, u_int32_t))
+FUNCPROT	u_int32_t(*)(DB *, const void *, u_int32_t)
+FUNCARG	u_int32_t (*func0) __P((DB *, const void *, u_int32_t))
 END
 BEGIN	db_h_nelem	1	CODE
 ARG	ID	DB *		dbp
@@ -536,12 +562,12 @@ ARG	IGNORE	DB_MPOOLFILE **	mpf
 END
 BEGIN	memp_fput	1	NOFUNC
 ARG	ID	DB_MPOOLFILE *	mpf
-ARG	IGNORE	void * 		pgaddr
+ARG	IGNORE	void *		pgaddr
 ARG	INT	u_int32_t	flags
 END
 BEGIN	memp_fset	1	NOFUNC
 ARG	ID	DB_MPOOLFILE *	mpf
-ARG	IGNORE	void * 		pgaddr
+ARG	IGNORE	void *		pgaddr
 ARG	INT	u_int32_t	flags
 END
 BEGIN	memp_fsync	1	NOFUNC

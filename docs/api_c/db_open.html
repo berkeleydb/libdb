@@ -1,5 +1,4 @@
- 
-<!--$Id: db_open.so,v 10.59 2000/04/18 22:51:44 bostic Exp $-->
+<!--$Id: db_open.so,v 10.61 2000/10/25 15:24:44 dda Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;open</h1>
@@ -45,9 +44,11 @@ optional and allows applications to have multiple logical databases in a
 single physical file.  While no <b>database</b> argument needs to be
 specified, it is an error to attempt to open a second database in a
 <b>file</b> that was not initially created using a <b>database</b> name.
-In-memory databases never intended to be shared or preserved on disk may
+In-memory databases never intended to be preserved on disk may
 be created by setting both the <b>file</b> and <b>database</b> arguments
-to NULL.
+to NULL.  Note that in-memory databases can only ever be shared by
+sharing the single database handle that created them, in circumstances
+where doing so is safe.
 <p>The <b>type</b> argument is of type DBTYPE
 and must be set to one of DB_BTREE, DB_HASH,
 DB_QUEUE, DB_RECNO or DB_UNKNOWN, except
@@ -116,8 +117,8 @@ directory in which to create a temporary backing file.
 type, page size, hash function, pad byte, byte order) or a flag value
 or parameter that is incompatible with the specified database.
 <p>
-The DB_THREAD flag was specified and spinlocks are not implemented for
-this architecture.
+The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified and spinlocks are not
+implemented for this architecture.
 <p>The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified to DB-&gt;open, but was not
 specified to the <a href="../api_c/env_open.html">DBENV-&gt;open</a> call for the environment in which the
 DB handle was created.
@@ -161,6 +162,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

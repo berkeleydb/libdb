@@ -1,7 +1,5 @@
 #! perl -w
 
-# SCCS: %I%, %G%     
-
 # It should not be necessary to edit this file. The configuration for
 # BerkeleyDB is controlled from the file config.in
 
@@ -26,9 +24,6 @@ else {
     else
       { $LIBS = '-ldb' }
 }
-
-# Solaris is special.
-$LIBS .= " -lthread" if $^O eq 'solaris' ;
 
 # OS2 is a special case, so check for it now.
 my $OS2 = "" ;

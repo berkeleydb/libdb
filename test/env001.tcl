@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env001.tcl,v 11.17 2000/05/05 19:25:22 sue Exp $
+#	$Id: env001.tcl,v 11.21 2000/11/09 19:24:08 sue Exp $
 #
 # Test of env remove interface.
 proc env001 { } {
@@ -12,15 +12,11 @@ proc env001 { } {
 
 	source ./include.tcl
 
-	# Is this an HP-UX box?  We need to skip some tests if so.
-	global tcl_platform
-	set is_hp_test [is_substr $tcl_platform(os) "HP-UX"]
-
 	set testfile $testdir/env.db
 	set t1 $testdir/t1
 
 	puts "Env001: Test of environment remove interface."
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Try opening without Create flag should error
 	puts "\tEnv001.a: Open without create (should fail)."
@@ -77,8 +73,11 @@ proc env001 { } {
 		error_check_good env:$testdir [is_substr $env "env"] 1
 		set stat [catch {berkdb envremove -force -home $testdir} ret]
 		error_check_good env:remove(force) $ret 0
-		# Close the env handle though.
-		catch {$env close} ret
+		#
+		# Even though the underlying env is gone, we need to close
+		# the handle.
+		#
+		catch {$env close}
 	}
 
 	puts "\t\tEnv001.e.3: Env is open by 2 procs, remove no force."

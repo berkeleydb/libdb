@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: crdel_rec.c,v 11.36.2.1 2000/06/26 20:13:04 bostic Exp $";
+static const char revid[] = "$Id: crdel_rec.c,v 11.43 2000/12/13 08:06:34 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -120,7 +119,7 @@ done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, sizeof(*argp));
+		__os_free(argp, 0);
 	if (real_name != NULL)
 		__os_freestr(real_name);
 	return (ret);
@@ -146,7 +145,8 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
-	int cmp_p, modified, ret;
+	u_int8_t *file_uid, ptype;
+	int cmp_p, modified, reopen, ret;
 
 	COMPQUIET(info, NULL);
 	REC_PRINT(__crdel_metasub_print);
@@ -165,6 +165,7 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	}
 
 	modified = 0;
+	reopen = 0;
 	cmp_p = log_compare(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(op, cmp_p, &LSN(pagep), &argp->lsn);
 
@@ -172,6 +173,14 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		memcpy(pagep, argp->page.data, argp->page.size);
 		LSN(pagep) = *lsnp;
 		modified = 1;
+		/*
+		 * If this is a meta-data page, then we must reopen;
+		 * if it was a root page, then we do not.
+		 */
+		ptype = ((DBMETA *)argp->page.data)->type;
+		if (ptype == P_HASHMETA || ptype == P_BTREEMETA ||
+		    ptype == P_QAMMETA)
+			reopen = 1;
 	} else if (DB_UNDO(op)) {
 		/*
 		 * We want to undo this page creation.  The page creation
@@ -189,6 +198,29 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	}
 	if ((ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+
+	/*
+	 * If we are redoing a subdatabase create, we must close and reopen the
+	 * file to be sure that we have the proper meta information in the
+	 * in-memory structures
+	 */
+	if (reopen) {
+		/* Close cursor if it's open. */
+		 if (dbc != NULL) {
+			dbc->c_close(dbc);
+			dbc = NULL;
+		}
+
+		if ((ret = __os_malloc(dbenv,
+		    DB_FILE_ID_LEN, NULL, &file_uid)) != 0)
+			goto out;
+		memcpy(file_uid, &file_dbp->fileid[0], DB_FILE_ID_LEN);
+		ret = __log_reopen_file(dbenv,
+		     NULL, argp->fileid, file_uid, argp->pgno);
+		(void)__os_free(file_uid, DB_FILE_ID_LEN);
+		if (ret != 0)
+			goto out;
+	}
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
@@ -377,7 +409,7 @@ done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, sizeof(*argp));
+		__os_free(argp, 0);
 	if (real_name != NULL)
 		__os_freestr(real_name);
 	if (F_ISSET(&fh, DB_FH_VALID))
@@ -423,17 +455,27 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 			goto out;
 		if (__os_exists(real_name, NULL) == 0) {
 			/*
-			 * On Windows, the underlying file must be
-			 * closed to perform a remove.
+			 * If a file is deleted and then recreated, it's
+			 * possible for the __os_exists call above to
+			 * return success and for us to get here, but for
+			 * the fileid we're looking for to be marked
+			 * deleted.  In that case, we needn't redo the
+			 * unlink even though the file exists, and it's
+			 * not an error.
 			 */
-			if ((ret = __db_fileid_to_db(
-			    dbenv, &dbp, argp->fileid, 0)) != 0)
-				goto out;
-			(void)__memp_fremove(dbp->mpf);
-			if ((ret = memp_fclose(dbp->mpf)) != 0)
-				goto out;
-			dbp->mpf = NULL;
-			if ((ret = __os_unlink(dbenv, real_name)) != 0)
+			ret = __db_fileid_to_db(dbenv, &dbp, argp->fileid, 0);
+			if (ret == 0) {
+				/*
+				 * On Windows, the underlying file must be
+				 * closed to perform a remove.
+				 */
+				(void)__memp_fremove(dbp->mpf);
+				if ((ret = memp_fclose(dbp->mpf)) != 0)
+					goto out;
+				dbp->mpf = NULL;
+				if ((ret = __os_unlink(dbenv, real_name)) != 0)
+					goto out;
+			} else if (ret != DB_DELETED)
 				goto out;
 		}
 		/*
@@ -479,7 +521,7 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, sizeof(*argp));
+		__os_free(argp, 0);
 	if (backup != NULL)
 		__os_freestr(backup);
 	if (real_back != NULL)
@@ -592,7 +634,7 @@ __crdel_rename_recover(dbenv, dbtp, lsnp, op, info)
 	ret = 0;
 
 out:	if (argp != NULL)
-		__os_free(argp, sizeof(*argp));
+		__os_free(argp, 0);
 
 	if (new_name != NULL)
 		__os_free(new_name, 0);

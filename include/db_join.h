@@ -7,8 +7,8 @@
  *	@(#)db_join.h	11.1 (Sleepycat) 7/25/99
  */
 
-#ifndef _DB_JOIN_H
-#define	_DB_JOIN_H
+#ifndef _DB_JOIN_H_
+#define	_DB_JOIN_H_
 
 /*
  * Joins use a join cursor that is similar to a regular DB cursor except

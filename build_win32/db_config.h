@@ -1,5 +1,5 @@
 /*
- * $Id: db_config.h,v 11.17 2000/05/09 19:08:06 bostic Exp $
+ * $Id: db_config.h,v 11.24 2000/12/12 18:39:26 bostic Exp $
  */
 
 /* Define to empty if the keyword does not work.  */
@@ -53,10 +53,13 @@
 /* Define if you want a version with run-time diagnostic checking. */
 /* #undef DIAGNOSTIC */
 
+/* Define if you want to mask harmless unitialized memory read/writes. */
+/* #undef UMRW */
+
 /* Define if fcntl/F_SETFD denies child access to file descriptors. */
 /* #undef HAVE_FCNTL_F_SETFD */
 
-/* Define if building big-file environment (e.g., Solaris, HP/UX). */
+/* Define if building big-file environment (e.g., AIX, HP/UX, Solaris). */
 /* #undef HAVE_FILE_OFFSET_BITS */
 
 /* Mutex possibilities. */
@@ -68,6 +71,7 @@
 /* #undef HAVE_MUTEX_IA64_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_MACOS */
 /* #undef HAVE_MUTEX_MSEM_INIT */
+/* #undef HAVE_MUTEX_PPC_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_PTHREADS */
 /* #undef HAVE_MUTEX_RELIANTUNIX_INITSPIN */
 /* #undef HAVE_MUTEX_SCO_X86_CC_ASSEMBLY */
@@ -85,6 +89,9 @@
 #define HAVE_MUTEX_WIN32 1
 /* #undef HAVE_MUTEX_X86_GCC_ASSEMBLY */
 
+/* Define if building on QNX. */
+/* #undef HAVE_QNX */
+
 /* Define if building RPC client/server. */
 /* #undef HAVE_RPC */
 
@@ -92,19 +99,10 @@
 /* #undef SPRINTF_RET_CHARPNT */
 
 /* Define if you have the getcwd function.  */
-/* #undef HAVE_GETCWD */
+#define HAVE_GETCWD 1
 
 /* Define if you have the getopt function.  */
 /* #undef HAVE_GETOPT */
-#if defined(__cplusplus)
-extern "C" {
-#endif
-extern int optind;
-extern char *optarg;
-extern int getopt(int, char * const *, const char *);
-#if defined(__cplusplus)
-}
-#endif
 
 /* Define if you have the getuid function.  */
 /* #undef HAVE_GETUID */
@@ -193,15 +191,18 @@ extern int getopt(int, char * const *, const char *);
 /* Define if you have the <sys/time.h> header file.  */
 /* #undef HAVE_SYS_TIME_H */
 
+/* Define if you have the nsl library (-lnsl).  */
+/* #undef HAVE_LIBNSL */
+
 /*
  * XXX
  * The following is not part of the automatic configuration setup,
- * but provides the information necessary to build DB.
+ * but provides the information necessary to build DB on Windows.
  */
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <errno.h>
+#include <direct.h>
 #include <fcntl.h>
 #include <io.h>
 #include <limits.h>
@@ -211,6 +212,7 @@ extern int getopt(int, char * const *, const char *);
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
 
 #if defined(__cplusplus)
 #include <iostream.h>
@@ -228,12 +230,36 @@ extern int getopt(int, char * const *, const char *);
 #define	WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#define	fsync(fd)	_commit(fd);
+/*
+ * Win32 has fsync, getcwd, snprintf and vsnprintf, but under different names.
+ */
+#define	fsync(fd)		_commit(fd)
+#define	getcwd(buf, size)	_getcwd(buf, size)
+#define	snprintf		_snprintf
+#define	vsnprintf		_vsnprintf
 
-#define	snprintf	_snprintf
-#define	vsnprintf	_vsnprintf
+/*
+ * Win32 does not define getopt and friends in any header file, so we must.
+ */
+#if defined(__cplusplus)
+extern "C" {
+#endif
+extern int optind;
+extern char *optarg;
+extern int getopt(int, char * const *, const char *);
+#if defined(__cplusplus)
+}
+#endif
 
 #define	NO_SYSTEM_INCLUDES
+
+/*
+ * We use DB_WIN32 much as one would use _WIN32, to determine that we're
+ * using an operating system environment that supports Win32 calls
+ * and semantics.  We don't use _WIN32 because cygwin/gcc also defines
+ * that, even though it closely emulates the Unix environment.
+ */
+#define DB_WIN32 1
 
 /*
  * This is a grievous hack -- once we've included windows.h, we have no choice

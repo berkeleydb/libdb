@@ -4,7 +4,7 @@
  * Copyright (c) 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: region.h,v 11.7 2000/05/20 16:16:43 bostic Exp $
+ * $Id: region.h,v 11.13 2000/11/15 19:25:37 sue Exp $
  */
 
 /*
@@ -102,19 +102,23 @@ extern "C" {
 
 #define	DB_REGION_ENV	"__db.001"	/* Primary environment name. */
 
+#define	INVALID_REGION_ID	0	/* Out-of-band region ID. */
+#define	REGION_ID_ENV		1	/* Primary environment ID. */
+
+typedef enum {
+	INVALID_REGION_TYPE=0,		/* Region type. */
+	REGION_TYPE_ENV,
+	REGION_TYPE_LOCK,
+	REGION_TYPE_LOG,
+	REGION_TYPE_MPOOL,
+	REGION_TYPE_MUTEX,
+	REGION_TYPE_TXN } reg_type;
+
 #define	INVALID_REGION_SEGID	-1	/* Segment IDs are either shmget(2) or
 					 * Win16 segment identifiers.  They are
 					 * both stored in a "long", and we need
 					 * an out-of-band value.
 					 */
-/*
- * Currently, region offsets are limited to 32-bits.  I expect that's going
- * to have to be fixed in the not-too-distant future, since we won't want to
- * split 100Gb memory pools into that many different regions.  It's typedef'd
- * so it won't be too painful to upgrade.
- */
-typedef u_int32_t roff_t;
-
 /*
  * Nothing can live at region offset 0, because, in all cases, that's where
  * we store *something*.  Lots of code needs an out-of-band value for region
@@ -139,28 +143,15 @@ typedef struct __db_reg_env {
 
 	/*
 	 * !!!
-	 * Note, the magic and panic fields are NOT protected by the mutex,
+	 * Note, the magic and panic fields are NOT protected by any mutex,
 	 * and for this reason cannot be anything more complicated than a
 	 * zero/non-zero value.
-	 *
-	 * !!!
-	 * Some 64-bit architectures (e.g., the OSF/1 Alpha processor) do not
-	 * support 32-bit atomic reads and writes, and so have an interesting
-	 * bug where sequential 32-bit values can be accidentally overwritten,
-	 * i.e., a variable protected by a lock gets overwritten by a thread
-	 * that doesn't hold the lock, simply because the variable sequentially
-	 * followed a variable that didn't need the lock for protection. We do
-	 * not want setting the panic value to be overwritten by another thread
-	 * unlocking the region, or vice-versa, for that matter.  As the magic
-	 * variable is written only during region creation, list it first to
-	 * ensure this cannot happen.
 	 *
 	 * !!!
 	 * The valid region magic number must appear at the same byte offset
 	 * in both the environment and each shared region, as Windows/95 uses
 	 * it to determine if the memory has been zeroed since it was last used.
 	 */
-#define	DB_REGION_MAGIC	0x120897
 	u_int32_t  magic;		/* Valid region magic number. */
 
 	int	   panic;		/* Environment is dead. */
@@ -168,6 +159,8 @@ typedef struct __db_reg_env {
 	int	   majver;		/* Major DB version number. */
 	int	   minver;		/* Minor DB version number. */
 	int	   patch;		/* Patch DB version number. */
+
+	u_int32_t  init_flags;		/* Flags the env was initialized with.*/
 
 					/* List of regions. */
 	SH_LIST_HEAD(__db_regionh) regionq;
@@ -200,30 +193,22 @@ typedef struct __db_region {
 
 	SH_LIST_ENTRY q;		/* Linked list of REGIONs. */
 
+	reg_type   type;		/* Region type. */
+	u_int32_t  id;			/* Region id. */
+
 	roff_t	   size;		/* Region size in bytes. */
 
 	roff_t	   primary;		/* Primary data structure offset. */
 
 	long	   segid;		/* UNIX shmget(2), Win16 segment ID. */
-
-#define	REG_ID_INVALID	0		/* Invalid. */
-#define	REG_ID_ENV	1		/* Environment. */
-#define	REG_ID_LOCK	2		/* Lock region. */
-#define	REG_ID_LOG	3		/* Log region. */
-#define	REG_ID_MPOOL	4		/* Mpool region. */
-#define	REG_ID_TXN	5		/* Txn region. */
-#define	REG_ID_ASSIGN	(REG_ID_TXN + 1)/* First assignable region number. */
-	int	   id;			/* Region id. */
-
-#define	REG_DEAD	0x01		/* Region may be corrupted. */
-	u_int32_t  flags;
 } REGION;
 
 /*
  * Per-process/per-attachment information about a single region.
  */
 struct __db_reginfo_t {		/* __db_r_attach IN parameters. */
-	int	    id;			/* Region id: used for naming. */
+	reg_type    type;		/* Region type. */
+	u_int32_t   id;			/* Region id. */
 	int	    mode;		/* File creation mode. */
 
 				/* __db_r_attach OUT parameters. */
@@ -238,8 +223,29 @@ struct __db_reginfo_t {		/* __db_r_attach IN parameters. */
 
 #define	REGION_CREATE		0x01	/* Caller created region. */
 #define	REGION_CREATE_OK	0x02	/* Caller willing to create region. */
+#define	REGION_JOIN_OK		0x04	/* Caller is looking for a match. */
 	u_int32_t   flags;
 };
+
+/*
+ * Mutex maintenance information each subsystem region must keep track
+ * of to manage resources adequately.
+ */
+typedef struct __db_regmaint_stat_t {
+	u_int32_t	st_hint_hit;
+	u_int32_t	st_hint_miss;
+	u_int32_t	st_records;
+	u_int32_t	st_clears;
+	u_int32_t	st_destroys;
+	u_int32_t	st_max_locks;
+} REGMAINT_STAT;
+
+typedef struct __db_regmaint_t {
+	u_int32_t  reglocks;		/* Maximum # of mutexes we track. */
+	u_int32_t  regmutex_hint;	/* Hint for next slot */
+	REGMAINT_STAT stat;		/* Stats */
+	roff_t	   regmutexes[1];	/* Region mutexes in use. */
+} REGMAINT;
 
 /*
  * R_ADDR	Return a per-process address for a shared region offset.
@@ -259,9 +265,9 @@ struct __db_reginfo_t {		/* __db_r_attach IN parameters. */
  * R_UNLOCK
  */
 #define	R_LOCK(dbenv, reginfo)						\
-	MUTEX_LOCK(&(reginfo)->rp->mutex, (dbenv)->lockfhp)
+	MUTEX_LOCK(dbenv, &(reginfo)->rp->mutex, (dbenv)->lockfhp)
 #define	R_UNLOCK(dbenv, reginfo)					\
-	MUTEX_UNLOCK(&(reginfo)->rp->mutex)
+	MUTEX_UNLOCK(dbenv, &(reginfo)->rp->mutex)
 
 /* PANIC_CHECK:	Check to see if the DB environment is dead. */
 #define	PANIC_CHECK(dbenv)						\

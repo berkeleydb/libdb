@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_stat.c,v 11.25.2.1 2000/07/05 17:58:51 bostic Exp $";
+static const char revid[] = "$Id: bt_stat.c,v 11.29 2000/11/28 21:42:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -277,6 +277,17 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 				goto err;
 		}
 		break;
+	case P_LDUP:
+	case P_LRECNO:
+		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
+			bk = GET_BKEYDATA(h, indx);
+			if (B_TYPE(bk->type) == B_OVERFLOW &&
+			    (ret = __db_traverse_big(dbp,
+			    GET_BOVERFLOW(h, indx)->pgno,
+			    callback, cookie)) != 0)
+				goto err;
+		}
+		break;
 	}
 
 	already_put = 0;
@@ -340,11 +351,25 @@ __bam_stat_callback(dbp, h, cookie, putp)
 		 */
 		if (dbp->type == DB_RECNO) {
 			sp->bt_nkeys += top;
-			sp->bt_ndata += top;
+
+			/*
+			 * Correct for deleted items in non-renumbering
+			 * Recno databases.
+			 */
+			if (F_ISSET(dbp, DB_RE_RENUMBER))
+				sp->bt_ndata += top;
+			else
+				for (indx = 0; indx < top; indx += O_INDX) {
+					type = GET_BKEYDATA(h, indx)->type;
+					if (!B_DISSET(type))
+						++sp->bt_ndata;
+				}
+
 			++sp->bt_leaf_pg;
 			sp->bt_leaf_pgfree += P_FREESPACE(h);
 		} else {
 			sp->bt_ndata += top;
+
 			++sp->bt_dup_pg;
 			sp->bt_dup_pgfree += P_FREESPACE(h);
 		}

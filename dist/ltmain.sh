@@ -54,8 +54,8 @@ modename="$progname"
 # Constants.
 PROGRAM=ltmain.sh
 PACKAGE=libtool
-VERSION=1.3.4
-TIMESTAMP=" (1.385.2.196 1999/12/07 21:47:57)"
+VERSION=1.3.5
+TIMESTAMP=" (1.385.2.206 2000/05/27 11:12:27)"
 
 default_mode=
 help="Try \`$progname --help' for more information."
@@ -2935,13 +2935,21 @@ else
       # Run the actual program with our arguments.
 "
 	case $host in
-	*-*-cygwin* | *-*-mingw | *-*-os2*)
 	  # win32 systems need to use the prog path for dll
 	  # lookup to work
+	*-*-cygwin*)
+	  $echo >> $output "\
+      exec \$progdir/\$program \${1+\"\$@\"}
+"
+	  ;;
+
+	# Backslashes separate directories on plain windows
+	*-*-mingw | *-*-os2*)
 	  $echo >> $output "\
       exec \$progdir\\\\\$program \${1+\"\$@\"}
 "
 	  ;;
+
 	*)
 	  $echo >> $output "\
       # Export the path to the program.
@@ -4018,3 +4026,4 @@ exit 0
 # mode:shell-script
 # sh-indentation:2
 # End:
+#! /bin/bash

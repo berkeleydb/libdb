@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fput.c,v 11.12 2000/04/20 21:14:18 bostic Exp $";
+static const char revid[] = "$Id: mp_fput.c,v 11.16 2000/11/30 00:58:41 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #endif
 
 #ifdef  HAVE_RPC
@@ -119,6 +118,13 @@ memp_fput(dbmfp, pgaddr, flags)
 		F_SET(bhp, BH_DISCARD);
 
 	/*
+	 * If the page is dirty and being scheduled to be written as part of
+	 * a checkpoint, we no longer know that the log is up-to-date.
+	 */
+	if (F_ISSET(bhp, BH_DIRTY) && F_ISSET(bhp, BH_SYNC))
+		F_SET(bhp, BH_SYNC_LOGFLSH);
+
+	/*
 	 * Check for a reference count going to zero.  This can happen if the
 	 * application returns a page twice.
 	 */
@@ -162,13 +168,13 @@ memp_fput(dbmfp, pgaddr, flags)
 	 * writing it there, as the checkpoint thread of control better be able
 	 * to write all of the files.
 	 */
-	if (F_ISSET(bhp, BH_WRITE)) {
+	if (F_ISSET(bhp, BH_SYNC)) {
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			if (__memp_bhwrite(dbmp,
 			    dbmfp->mfp, bhp, NULL, &wrote) != 0 || !wrote)
 				F_SET(mp, MP_LSN_RETRY);
 		} else {
-			F_CLR(bhp, BH_WRITE);
+			F_CLR(bhp, BH_SYNC);
 
 			--mp->lsn_cnt;
 			--dbmfp->mfp->lsn_cnt;

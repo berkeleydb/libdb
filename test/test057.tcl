@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test057.tcl,v 11.16 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test057.tcl,v 11.17 2000/08/25 14:21:57 sue Exp $
 #
 # Test057:
 # Check if we handle the case where we delete a key with the cursor on it
@@ -32,10 +32,13 @@ proc test057 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test057.db
+		set env NULL
 	} else {
 		set testfile test057.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set flags ""
 	set txn ""

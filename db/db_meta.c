@@ -43,13 +43,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_meta.c,v 11.18 2000/03/01 16:35:46 ubell Exp $";
+static const char revid[] = "$Id: db_meta.c,v 11.26 2001/01/16 21:57:19 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -104,15 +103,19 @@ __db_new(dbc, type, pagepp)
 		(void)memp_fset(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
 	}
 
+	DB_ASSERT(TYPE(h) == P_INVALID);
+
+	if (TYPE(h) != P_INVALID)
+		return (__db_panic(dbp->dbenv, EINVAL));
+
 	/* Log the change. */
 	if (DB_LOGGING(dbc)) {
 		if ((ret = __db_pg_alloc_log(dbp->dbenv,
 		    dbc->txn, &LSN(meta), 0, dbp->log_fileid,
-		    &LSN(meta), &meta->alloc_lsn, &h->lsn, h->pgno,
+		    &LSN(meta), &h->lsn, h->pgno,
 		    (u_int32_t)type, meta->free)) != 0)
 			goto err;
 		LSN(h) = LSN(meta);
-		meta->alloc_lsn = LSN(meta);
 	}
 
 	(void)memp_fput(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
@@ -167,6 +170,7 @@ __db_free(dbc, h)
 		goto err;
 	}
 
+	DB_ASSERT(h->pgno != meta->free);
 	/* Log the change. */
 	if (DB_LOGGING(dbc)) {
 		memset(&ldbt, 0, sizeof(ldbt));
@@ -174,23 +178,23 @@ __db_free(dbc, h)
 		ldbt.size = P_OVERHEAD;
 		if ((ret = __db_pg_free_log(dbp->dbenv,
 		    dbc->txn, &LSN(meta), 0, dbp->log_fileid, h->pgno,
-		    &LSN(meta), &meta->alloc_lsn, &ldbt, meta->free)) != 0) {
+		    &LSN(meta), &ldbt, meta->free)) != 0) {
 			(void)memp_fput(dbp->mpf, (PAGE *)meta, 0);
 			(void)__TLPUT(dbc, metalock);
 			return (ret);
 		}
 		LSN(h) = LSN(meta);
-		meta->alloc_lsn = LSN(meta);
 	}
 
 	P_INIT(h, dbp->pgsize, h->pgno, PGNO_INVALID, meta->free, 0, P_INVALID);
 
-	/* Link the page on the metadata free list. */
 	meta->free = h->pgno;
 
 	/* Discard the metadata page. */
-	ret = memp_fput(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
-	if ((t_ret = __TLPUT(dbc, metalock)) != 0)
+	if ((t_ret = memp_fput(dbp->mpf,
+	    (PAGE *)meta, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the caller's page reference. */
@@ -246,7 +250,7 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 {
 	DB *dbp;
 	DB_ENV *dbenv;
-	DB_LOCKREQ couple[2];
+	DB_LOCKREQ couple[2], *reqp;
 	int ret;
 
 	dbp = dbc->dbp;
@@ -256,7 +260,8 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 	 * We do not always check if we're configured for locking before
 	 * calling __db_lget to acquire the lock.
 	 */
-	if (CDB_LOCKING(dbenv) || !LOCKING_ON(dbenv)
+	if (CDB_LOCKING(dbenv)
+	    || !LOCKING_ON(dbenv) || F_ISSET(dbc, DBC_COMPENSATE)
 	    || (!LF_ISSET(LCK_ROLLBACK) && F_ISSET(dbc, DBC_RECOVER))
 	    || (!LF_ISSET(LCK_ALWAYS) && F_ISSET(dbc, DBC_OPD))) {
 		lockp->off = LOCK_INVALID;
@@ -288,15 +293,17 @@ __db_lget(dbc, flags, pgno, mode, lkflags, lockp)
 		couple[1].op = DB_LOCK_PUT;
 		couple[1].lock = *lockp;
 
-		if ((ret = lock_vec(dbenv,
-		    dbc->locker, lkflags, couple, 2, NULL)) == 0)
+		ret = lock_vec(dbenv,
+		    dbc->locker, lkflags, couple, 2, &reqp);
+		if (ret == 0 || reqp == &couple[1])
 			*lockp = couple[0].lock;
-	} else
+	} else {
 		ret = lock_get(dbenv,
 		    dbc->locker, lkflags, &dbc->lock_dbt, mode, lockp);
 
-	if (ret != 0)
-		lockp->off = LOCK_INVALID;
+		if (ret != 0)
+			lockp->off = LOCK_INVALID;
+	}
 
 	return (ret);
 }

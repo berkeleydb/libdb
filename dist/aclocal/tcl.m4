@@ -1,4 +1,4 @@
-dnl $Id: tcl.m4,v 11.4 2000/05/11 18:36:08 bostic Exp $
+dnl $Id: tcl.m4,v 11.5 2000/06/27 13:21:28 bostic Exp $
 
 dnl The SC_* macros in this file are from the unix/tcl.m4 files in the Tcl
 dnl 8.3.0 distribution, with some minor changes.  For this reason, license
@@ -57,26 +57,9 @@ AC_DEFUN(SC_PATH_TCLCONFIG, [
 		fi
 	    fi
 
-	    # then check for a private Tcl installation
-	    if test x"${ac_cv_c_tclconfig}" = x ; then
-		for i in \
-			../tcl \
-			`ls -dr ../tcl[[8-9]].[[0-9]]* 2>/dev/null` \
-			../../tcl \
-			`ls -dr ../../tcl[[8-9]].[[0-9]]* 2>/dev/null` \
-			../../../tcl \
-			`ls -dr ../../../tcl[[8-9]].[[0-9]]* 2>/dev/null` ; do
-		    if test -f "$i/unix/tclConfig.sh" ; then
-			ac_cv_c_tclconfig=`(cd $i/unix; pwd)`
-			break
-		    fi
-		done
-	    fi
-
 	    # check in a few common install locations
 	    if test x"${ac_cv_c_tclconfig}" = x ; then
-		for i in `ls -d ${prefix}/lib 2>/dev/null` \
-			`ls -d /usr/local/lib 2>/dev/null` ; do
+		for i in `ls -d /usr/local/lib 2>/dev/null` ; do
 		    if test -f "$i/tclConfig.sh" ; then
 			ac_cv_c_tclconfig=`(cd $i; pwd)`
 			break
@@ -84,17 +67,6 @@ AC_DEFUN(SC_PATH_TCLCONFIG, [
 		done
 	    fi
 
-	    # check in a few other private locations
-	    if test x"${ac_cv_c_tcliconfig}" = x ; then
-		for i in \
-			${srcdir}/../tcl \
-			`ls -dr ${srcdir}/../tcl[[8-9]].[[0-9]]* 2>/dev/null` ; do
-		    if test -f "$i/unix/tclConfig.sh" ; then
-		    ac_cv_c_tclconfig=`(cd $i/unix; pwd)`
-		    break
-		fi
-		done
-	    fi
 	])
 
 	if test x"${ac_cv_c_tclconfig}" = x ; then

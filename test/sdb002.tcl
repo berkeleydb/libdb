@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb002.tcl,v 11.18 2000/05/22 12:51:37 bostic Exp $
+#	$Id: sdb002.tcl,v 11.20 2000/09/20 13:22:04 sue Exp $
 #
 # Sub DB Test 2 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -17,12 +17,13 @@ proc subdb002 { method {nentries 10000} args } {
 	set largs [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	puts "Subdb002: $method ($largs) basic subdb tests"
 	set testfile $testdir/subdb002.db
 	subdb002_body $method $omethod $nentries $largs $testfile NULL
-	cleanup $testdir
+
+	cleanup $testdir NULL
 	set env [berkdb env -create -mode 0644 -txn -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 	puts "Subdb002: $method ($largs) basic subdb tests in an environment"

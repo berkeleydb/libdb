@@ -1,11 +1,14 @@
-//--------------------------------------------------------------------------//
-//          Copyright (C) 1997 Netscape Communications Corporation          //
-//--------------------------------------------------------------------------//
 /*
- *	@(#)dllmain.c	8.1 (Sleepycat) 3/5/97
+ *  --------------------------------------------------------------------------
+ *	Copyright (C) 1997 Netscape Communications Corporation
+ *  --------------------------------------------------------------------------
+ *
+ *  dllmain.c
+ *
+ *  $Id: dllmain.c,v 1.3 2000/10/26 21:58:48 bostic Exp $
  */
 
-#define WIN32_LEAN_AND_MEAN
+#define	WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 static int				ProcessesAttached = 0;

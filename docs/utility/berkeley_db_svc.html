@@ -1,4 +1,3 @@
- 
 <!--$Id: berkeley_db_svc.so,v 10.11 2000/04/15 16:57:38 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>berkeley_db_svc</h1>
@@ -22,7 +21,7 @@
 <h3><pre>berkeley_db_svc [<b>-Vv</b>] [<b>-h home</b>]
     [<b>-I seconds</b>] [<b>-L file</b>] [<b>-t seconds</b>] [<b>-T seconds</b>]</pre></h3>
 <h1>Description</h1>
-<a name="3"><!--meow--></a>
+        <a name="3"><!--meow--></a>    
 <p>The berkeley_db_svc utility is the Berkeley DB RPC server.
 <p>The options are as follows:
 <p><dl compact>
@@ -39,7 +38,7 @@ always be single-threaded.
 number of seconds.  The default timeout is 24 hours.
 <p><dt><b>-L</b><dd>Log the execution of the berkeley_db_svc utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
-is the time the utility starting running.
+is the time the utility was started.
 <p><blockquote><pre>berkeley_db_svc: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
 This file will be removed if the berkeley_db_svc utility exits gracefully.
 <p><dt><b>-t</b><dd>Set the default timeout for client resources (idle transactions and

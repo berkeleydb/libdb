@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: DbEnv.java,v 11.16 2000/06/01 14:52:47 dda Exp $
+ *	$Id: DbEnv.java,v 11.25 2001/01/04 14:23:30 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -46,29 +46,37 @@ public class DbEnv
     }
 
     //
-    // When a Db is opened, it is kept in a private list,
+    // When a Db is created, it is kept in a private list,
     // so that Db's can be notified when the environment
-    // is closed.
+    // is closed.  This allows us to detect and guard
+    // against the following situation:
+    //    DbEnv env = new DbEnv(0);
+    //    Db db = new Db(0);
+    //    env.close();
+    //    db.close();
     //
-    /*package*/ void _add_open_db(Db db)
+    // This *is* a programming error, but not protecting
+    // against it will crash the VM.
+    //
+    /*package*/ void _add_db(Db db)
     {
         dblist_.addElement(db);
     }
     
     //
-    // Remove from the private list of open Db's.
+    // Remove from the private list of Db's.
     //
-    /*package*/ void _remove_open_db(Db db)
+    /*package*/ void _remove_db(Db db)
     {
         dblist_.removeElement(db);
     }
     
     //
-    // Iterate all the Db's in the open list, and
+    // Iterate all the Db's in the list, and
     // notify them that the environment is closing,
     // so they can clean up.
     //
-    /*package*/ void _notify_open_dbs()
+    /*package*/ void _notify_dbs()
     {
         Enumeration enum = dblist_.elements();
         while (enum.hasMoreElements()) {
@@ -84,9 +92,8 @@ public class DbEnv
     public synchronized void close(int flags)
         throws DbException
     {
-        _notify_open_dbs();
+        _notify_dbs();
         _close(flags);
-        _init(errstream_, constructor_flags_);
     }
 
     // (Internal)
@@ -101,19 +108,13 @@ public class DbEnv
     protected void finalize()
         throws Throwable
     {
-        is_finalized_ = true; 
-        _notify_open_dbs();
-        _finalize();
-    }
-
-    /*package*/ boolean is_finalized()
-    {
-        return is_finalized_;
+        _notify_dbs();
+        _finalize(errcall_, errpfx_);
     }
 
     // (Internal)
-    private native void _finalize()
-         throws Throwable;
+    protected native void _finalize(DbErrcall errcall, String errpfx)
+        throws Throwable;
 
     // (Internal)
     private native void _init(DbErrcall errcall, int flags);
@@ -132,7 +133,7 @@ public class DbEnv
     // create another one if needed.
     //
     public native synchronized void remove(String db_home, int flags)
-         throws DbException;
+         throws DbException, FileNotFoundException;
 
     ////////////////////////////////////////////////////////////////
     // simple get/set access methods
@@ -144,7 +145,13 @@ public class DbEnv
          throws DbException;
 
     // Error message callback.
-    public native void set_errcall(DbErrcall errcall);
+    public void set_errcall(DbErrcall errcall)
+    {
+        errcall_ = errcall;
+        _set_errcall(errcall);
+    }
+
+    public native void _set_errcall(DbErrcall errcall);
 
     // Error stream.
     public void set_error_stream(OutputStream s)
@@ -154,7 +161,13 @@ public class DbEnv
     }
 
     // Error message prefix.
-    public native void set_errpfx(String errpfx);
+    public void set_errpfx(String errpfx)
+    {
+        errpfx_ = errpfx;
+        _set_errpfx(errpfx);
+    }
+
+    private native void _set_errpfx(String errpfx);
 
     // Feedback
     public void set_feedback(DbFeedback feedback)
@@ -187,7 +200,7 @@ public class DbEnv
     public native void set_lg_max(/*u_int32_t*/ int lg_max)
          throws DbException;
 
-    // Maximum number of locks.
+    // Two dimensional conflict matrix.
     public native void set_lk_conflicts(byte[][] lk_conflicts)
          throws DbException;
 
@@ -195,15 +208,30 @@ public class DbEnv
     public native void set_lk_detect(/*u_int32_t*/ int lk_detect)
          throws DbException;
 
+    /**
+     * @deprecated DB 3.2.6, see the online documentation.
+     */
     // Maximum number of locks.
     public native void set_lk_max(/*unsigned*/ int lk_max)
+         throws DbException;
+
+    // Maximum number of lockers.
+    public native void set_lk_max_lockers(/*unsigned*/ int lk_max_lockers)
+         throws DbException;
+
+    // Maximum number of locks.
+    public native void set_lk_max_locks(/*unsigned*/ int lk_max_locks)
+         throws DbException;
+
+    // Maximum number of locked objects.
+    public native void set_lk_max_objects(/*unsigned*/ int lk_max_objects)
          throws DbException;
 
     // Maximum file size for mmap.
     public native void set_mp_mmapsize(/*size_t*/ long mmapsize)
          throws DbException;
 
-    public native static void set_mutexlocks(int mutexlocks)
+    public native void set_mutexlocks(int mutexlocks)
          throws DbException;
 
     public native static void set_pageyield(int pageyield)
@@ -226,6 +254,9 @@ public class DbEnv
     public native static void set_region_init(int region_init)
          throws DbException;
 
+    public native void set_flags(int flags, int onoff)
+         throws DbException;
+
     public native void set_server(String host, long cl_timeout,
                                   long sv_timeout, int flags)
          throws DbException;
@@ -237,6 +268,18 @@ public class DbEnv
          throws DbException;
 
     public native void set_tmp_dir(String tmp_dir)
+         throws DbException;
+
+    // Feedback
+    public void set_tx_recover(DbTxnRecover tx_recover)
+         throws DbException
+    {
+        tx_recover_ = tx_recover;
+        tx_recover_changed(tx_recover);
+    }
+
+    // (Internal)
+    private native void tx_recover_changed(DbTxnRecover tx_recover)
          throws DbException;
 
     // Maximum number of transactions.
@@ -317,7 +360,7 @@ public class DbEnv
     public native DbTxn txn_begin(DbTxn pid, int flags)
          throws DbException;
 
-    public native void txn_checkpoint(int kbyte, int min, int flags)
+    public native int txn_checkpoint(int kbyte, int min, int flags)
          throws DbException;
 
 
@@ -334,9 +377,11 @@ public class DbEnv
     private Vector dblist_ = new Vector();    // Db's that are open
     private DbFeedback feedback_ = null;
     private DbRecoveryInit recovery_init_ = null;
-    private boolean is_finalized_ = false;
+    private DbTxnRecover tx_recover_ = null;
     private DbOutputStreamErrcall errstream_ =
         new DbOutputStreamErrcall(System.err);
+    /*package*/ DbErrcall errcall_ = errstream_;
+    /*package*/ String errpfx_;
 
     static {
         Db.load_db();

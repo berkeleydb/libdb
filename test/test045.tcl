@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test045.tcl,v 11.15 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test045.tcl,v 11.17 2000/10/19 23:15:22 ubell Exp $
 #
 # DB Test 45 Run the random db tester on the specified access method.
 # Options are:
@@ -63,6 +63,8 @@ proc test045 { method {nops 10000} args } {
 			-errpct	 { incr i; set errpct [lindex $args $i] }
 			-init	 { incr i; set init [lindex $args $i] }
 			-keyavg	 { incr i; set keyavg [lindex $args $i] }
+			-extent	 { incr i; 
+				    lappend oargs "-extent" "100" }
 			default	 { lappend oargs [lindex $args $i] }
 		}
 	}
@@ -70,7 +72,7 @@ proc test045 { method {nops 10000} args } {
 	# Create the database and and initialize it.
 	set root $testdir/test045
 	set f $root.db
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Run the script with 3 times the number of initial elements to
 	# set it up.

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_stat.c,v 11.24 2000/05/31 15:09:58 bostic Exp $";
+    "$Id: db_stat.c,v 11.42 2001/01/18 18:36:59 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,7 +29,6 @@ static const char revid[] =
 #endif
 
 #include <ctype.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -48,7 +47,7 @@ static const char revid[] =
 typedef enum { T_NOTSET, T_DB, T_ENV, T_LOCK, T_LOG, T_MPOOL, T_TXN } test_t;
 
 int	 argcheck __P((char *, const char *));
-int	 btree_stats __P((DB_ENV *, DB *));
+int	 btree_stats __P((DB_ENV *, DB *, DB_BTREE_STAT *));
 int	 db_init __P((char *, test_t));
 void	 dl __P((const char *, u_long));
 void	 dl_bytes __P((const char *, u_long, u_long, u_long));
@@ -65,6 +64,7 @@ int	 queue_stats __P((DB_ENV *, DB *));
 int	 txn_compare __P((const void *, const void *));
 int	 txn_stats __P((DB_ENV *));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV	*dbenv;
 char	*internal;
@@ -78,13 +78,17 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB *dbp;
+	DB_BTREE_STAT *sp;
+	DB *alt_dbp, *dbp;
 	test_t ttype;
-	int ch, d_close, e_close, exitval, ret;
+	int ch, checked, d_close, e_close, exitval, nflag, ret;
 	char *db, *home, *subdb;
+
+	version_check();
 
 	dbp = NULL;
 	ttype = T_NOTSET;
+	nflag = 0;
 	d_close = e_close = exitval = 0;
 	db = home = subdb = NULL;
 	while ((ch = getopt(argc, argv, "C:cd:eh:lM:mNs:tV")) != EOF)
@@ -119,12 +123,7 @@ main(argc, argv)
 			ttype = T_MPOOL;
 			break;
 		case 'N':
-			if ((ret = db_env_set_mutexlocks(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_mutexlocks: %s\n",
-				    progname, db_strerror(ret));
-				return (1);
-			}
+			nflag = 1;
 			if ((ret = db_env_set_panicstate(0)) != 0) {
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
@@ -178,6 +177,11 @@ main(argc, argv)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
+	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+		dbenv->err(dbenv, ret, "set_mutexlocks");
+		goto shutdown;
+	}
+
 	/* Initialize the environment. */
 	if (db_init(home, ttype) != 0)
 		goto shutdown;
@@ -191,18 +195,46 @@ main(argc, argv)
 		}
 
 		if ((ret =
-		    dbp->open(dbp, db, subdb, DB_UNKNOWN, 0, 0)) != 0
-		    && (ret =
 		    dbp->open(dbp, db, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
 			dbp->err(dbp, ret, "open: %s", db);
 			goto shutdown;
+		}
+
+		/*
+		 * See if we can open this db read/write to update counts.
+		 * If its a master-db then we cannot.  So check to see,
+		 * if its btree then it might be.
+		 */
+		checked = 0;
+		if (subdb == NULL && dbp->type == DB_BTREE) {
+			if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+				dbp->err(dbp, ret, "dbp->stat");
+				return (1);
+			}
+			checked = 1;
+		}
+
+		if (subdb != NULL ||
+		    dbp->type != DB_BTREE ||
+		    (sp->bt_metaflags & BTM_SUBDB) == 0) {
+			if ((ret = db_create(&alt_dbp, dbenv, 0)) != 0) {
+				dbenv->err(dbenv, ret, "db_create");
+				goto shutdown;
+			}
+			if ((ret = dbp->open(alt_dbp,
+			    db, subdb, DB_UNKNOWN, 0, 0)) == 0) {
+				(void)dbp->close(dbp, 0);
+				dbp = alt_dbp;
+			}
+			/* Need to run again to update counts */
+			checked = 0;
 		}
 
 		d_close = 1;
 		switch (dbp->type) {
 		case DB_BTREE:
 		case DB_RECNO:
-			if (btree_stats(dbenv, dbp))
+			if (btree_stats(dbenv, dbp, checked == 1 ? sp : NULL))
 				goto shutdown;
 			break;
 		case DB_HASH:
@@ -297,24 +329,28 @@ env_stats(dbenvp)
 	while (n > 0) {
 		printf("%s\n", DB_LINE);
 		rp = &regs[--n];
-		switch (rp->id) {
-		case REG_ID_ENV:
+		switch (rp->type) {
+		case REGION_TYPE_ENV:
 			lable = "Environment";
 			break;
-		case REG_ID_LOCK:
+		case REGION_TYPE_LOCK:
 			lable = "Lock";
 			break;
-		case REG_ID_LOG:
+		case REGION_TYPE_LOG:
 			lable = "Log";
 			break;
-		case REG_ID_MPOOL:
+		case REGION_TYPE_MPOOL:
 			lable = "Mpool";
 			break;
-		case REG_ID_TXN:
+		case REGION_TYPE_MUTEX:
+			lable = "Mutex";
+			break;
+		case REGION_TYPE_TXN:
 			lable = "Txn";
 			break;
+		case INVALID_REGION_TYPE:
 		default:
-			lable = "Unknown";
+			lable = "Invalid";
 			break;
 		}
 		printf("%s Region: %d.\n", lable, rp->id);
@@ -334,9 +370,10 @@ env_stats(dbenvp)
  *	Display btree/recno statistics.
  */
 int
-btree_stats(dbenvp, dbp)
+btree_stats(dbenvp, dbp, msp)
 	DB_ENV *dbenvp;
 	DB *dbp;
+	DB_BTREE_STAT *msp;
 {
 	static const FN fn[] = {
 		{ BTM_DUP,	"duplicates" },
@@ -352,7 +389,9 @@ btree_stats(dbenvp, dbp)
 
 	COMPQUIET(dbenvp, NULL);
 
-	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+	if (msp != NULL)
+		sp = msp;
+	else if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
 		return (1);
 	}
@@ -368,7 +407,7 @@ btree_stats(dbenvp, dbp)
 	}
 	if (dbp->type == DB_RECNO) {
 		dl("Fixed-length record size.\n", (u_long)sp->bt_re_len);
-		if (isprint(sp->bt_re_pad))
+		if (isprint(sp->bt_re_pad) && !isspace(sp->bt_re_pad))
 			printf("%c\tFixed-length record pad.\n",
 			    (int)sp->bt_re_pad);
 		else
@@ -377,7 +416,9 @@ btree_stats(dbenvp, dbp)
 	}
 	dl("Underlying database page size.\n", (u_long)sp->bt_pagesize);
 	dl("Number of levels in the tree.\n", (u_long)sp->bt_levels);
-	dl("Number of unique keys in the tree.\n", (u_long)sp->bt_nkeys);
+	dl(dbp->type == DB_BTREE ?
+	    "Number of unique keys in the tree.\n" :
+	    "Number of records in the tree.\n", (u_long)sp->bt_nkeys);
 	dl("Number of data items in the tree.\n", (u_long)sp->bt_ndata);
 
 	dl("Number of tree internal pages.\n", (u_long)sp->bt_int_pg);
@@ -490,11 +531,11 @@ queue_stats(dbenvp, dbp)
 	printf("%lx\tQueue magic number.\n", (u_long)sp->qs_magic);
 	printf("%lu\tQueue version number.\n", (u_long)sp->qs_version);
 	dl("Fixed-length record size.\n", (u_long)sp->qs_re_len);
-	if (isprint(sp->qs_re_pad))
+	if (isprint(sp->qs_re_pad) && !isspace(sp->qs_re_pad))
 		printf("%c\tFixed-length record pad.\n", (int)sp->qs_re_pad);
 	else
 		printf("0x%x\tFixed-length record pad.\n", (int)sp->qs_re_pad);
-	dl("Underlying tree page size.\n", (u_long)sp->qs_pagesize);
+	dl("Underlying database page size.\n", (u_long)sp->qs_pagesize);
 	dl("Number of records in the database.\n", (u_long)sp->qs_nkeys);
 	dl("Number of database pages.\n", (u_long)sp->qs_pages);
 	dl("Number of bytes free in database pages", (u_long)sp->qs_pgfree);
@@ -503,7 +544,6 @@ queue_stats(dbenvp, dbp)
 	printf("%lu\tFirst undeleted record.\n", (u_long)sp->qs_first_recno);
 	printf(
 	    "%lu\tLast allocated record number.\n", (u_long)sp->qs_cur_recno);
-	printf("%lu\tStart offset.\n", (u_long)sp->qs_start);
 
 	return (0);
 }
@@ -532,8 +572,15 @@ lock_stats(dbenvp)
 	dl("Last allocated locker ID.\n", (u_long)sp->st_lastid);
 	dl("Number of lock modes.\n", (u_long)sp->st_nmodes);
 	dl("Maximum number of locks possible.\n", (u_long)sp->st_maxlocks);
-	dl("Current lockers.\n", (u_long)sp->st_nlockers);
-	dl("Maximum current lockers.\n", (u_long)sp->st_nlockers);
+	dl("Maximum number of lockers possible.\n", (u_long)sp->st_maxlockers);
+	dl("Maximum number of objects possible.\n", (u_long)sp->st_maxobjects);
+	dl("Current locks.\n", (u_long)sp->st_nlocks);
+	dl("Maximum number of locks so far.\n", (u_long)sp->st_maxnlocks);
+	dl("Current number of lockers.\n", (u_long)sp->st_nlockers);
+	dl("Maximum number  lockers so far.\n", (u_long)sp->st_maxnlockers);
+	dl("Current number lock objects.\n", (u_long)sp->st_nobjects);
+	dl("Maximum number of lock objects so far.\n",
+	    (u_long)sp->st_maxnobjects);
 	dl("Number of lock requests.\n", (u_long)sp->st_nrequests);
 	dl("Number of lock releases.\n", (u_long)sp->st_nreleases);
 	dl("Number of lock requests that would have waited.\n",
@@ -859,47 +906,18 @@ db_init(home, ttype)
 	char *home;
 	test_t ttype;
 {
-	u_int32_t flags;
 	int ret;
 
 	/*
-	 * Try and use the shared memory pool region when reporting statistics
-	 * on the DB databases, so our information is as up-to-date as possible,
-	 * even if the mpool cache hasn't been flushed.
+	 * If our environment open fails, and we're trying to look at a
+	 * shared region, it's a hard failure.
 	 */
-	ret = 0;
-	flags = DB_USE_ENVIRON;
-	switch (ttype) {
-	case T_ENV:
-		break;
-	case T_DB:
-	case T_MPOOL:
-		LF_SET(DB_INIT_MPOOL);
-		break;
-	case T_LOCK:
-		LF_SET(DB_INIT_LOCK);
-		break;
-	case T_LOG:
-		LF_SET(DB_INIT_LOG);
-		break;
-	case T_TXN:
-		LF_SET(DB_INIT_TXN);
-		break;
-	case T_NOTSET:
-		abort();
-		/* NOTREACHED */
-	}
-
-	/*
-	 * If that fails, and we're trying to look at a shared region, it's
-	 * a hard failure.
-	 */
-	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
+	if ((ret = dbenv->open(dbenv,
+	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) == 0)
 		return (0);
 	if (ttype != T_DB) {
-		if (ret == 0)
-			ret = EINVAL;
-		dbenv->err(dbenv, ret, "open");
+		dbenv->err(dbenv, ret, "DBENV->open%s%s",
+		    home == NULL ? "" : ": ", home == NULL ? "" : home);
 		return (1);
 	}
 
@@ -912,12 +930,17 @@ db_init(home, ttype)
 	 * but that seems like more work than it's worth.
 	 *
 	 *
-	 * No environment exists (or, at least no environment that includes
-	 * an mpool region exists).  Create one, but make it private so that
+	 * No environment exists.  Create one, but make it private so that
 	 * no files are actually created.
+	 *
+	 * Note that we will probably just drop core if the environment
+	 * we joined above does not include a memory pool.  This is probably
+	 * acceptable;  trying to use an existing shared environment that
+	 * does not contain a memory pool to look at a database can
+	 * be safely construed as operator error, I think.
 	 */
-	LF_SET(DB_CREATE | DB_PRIVATE);
-	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
+	if ((ret = dbenv->open(dbenv, home,
+	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) == 0)
 		return (0);
 
 	/* An environment is required. */
@@ -946,4 +969,21 @@ usage()
 	fprintf(stderr, "usage: db_stat %s\n",
 	    "[-celmNtV] [-C Acflmo] [-d file [-s file]] [-h home] [-M Ahlm]");
 	exit (1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

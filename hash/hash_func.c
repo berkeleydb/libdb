@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_func.c,v 11.5 2000/03/28 14:56:51 bostic Exp $";
+static const char revid[] = "$Id: hash_func.c,v 11.7 2000/08/16 18:26:19 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,18 +58,22 @@ static const char revid[] = "$Id: hash_func.c,v 11.5 2000/03/28 14:56:51 bostic 
  * __ham_func2 --
  *	Phong Vo's linear congruential hash.
  *
- * PUBLIC: u_int32_t __ham_func2 __P((const void *, u_int32_t));
+ * PUBLIC: u_int32_t __ham_func2 __P((DB *, const void *, u_int32_t));
  */
 #define	DCHARHASH(h, c)	((h) = 0x63c63cd9*(h) + 0x9c39c33d + (c))
 
 u_int32_t
-__ham_func2(key, len)
+__ham_func2(dbp, key, len)
+	DB *dbp;
 	const void *key;
 	u_int32_t len;
 {
 	const u_int8_t *e, *k;
 	u_int32_t h;
 	u_int8_t c;
+
+	if (dbp != NULL)
+		COMPQUIET(dbp, NULL);
 
 	k = key;
 	e = k + len;
@@ -91,15 +95,19 @@ __ham_func2(key, len)
  * iteration, perform 8 HASHC's so we handle all 8 bytes.  Essentially, this
  * saves us 7 cmp & branch instructions.
  *
- * PUBLIC: u_int32_t __ham_func3 __P((const void *, u_int32_t));
+ * PUBLIC: u_int32_t __ham_func3 __P((DB *, const void *, u_int32_t));
  */
 u_int32_t
-__ham_func3(key, len)
+__ham_func3(dbp, key, len)
+	DB *dbp;
 	const void *key;
 	u_int32_t len;
 {
 	const u_int8_t *k;
 	u_int32_t n, loop;
+
+	if (dbp != NULL)
+		COMPQUIET(dbp, NULL);
 
 	if (len == 0)
 		return (0);
@@ -138,15 +146,19 @@ __ham_func3(key, len)
  *	slightly worse than __ham_func5 on strings, it performs horribly on
  *	numbers.
  *
- * PUBLIC: u_int32_t __ham_func4 __P((const void *, u_int32_t));
+ * PUBLIC: u_int32_t __ham_func4 __P((DB *, const void *, u_int32_t));
  */
 u_int32_t
-__ham_func4(key, len)
+__ham_func4(dbp, key, len)
+	DB *dbp;
 	const void *key;
 	u_int32_t len;
 {
 	const u_int8_t *k;
 	u_int32_t h, loop;
+
+	if (dbp != NULL)
+		COMPQUIET(dbp, NULL);
 
 	if (len == 0)
 		return (0);
@@ -195,15 +207,19 @@ __ham_func4(key, len)
  * This hash produces the fewest collisions of any function that we've seen so
  * far, and works well on both numbers and strings.
  *
- * PUBLIC: u_int32_t __ham_func5 __P((const void *, u_int32_t));
+ * PUBLIC: u_int32_t __ham_func5 __P((DB *, const void *, u_int32_t));
  */
 u_int32_t
-__ham_func5(key, len)
+__ham_func5(dbp, key, len)
+	DB *dbp;
 	const void *key;
 	u_int32_t len;
 {
 	const u_int8_t *k, *e;
 	u_int32_t h;
+
+	if (dbp != NULL)
+		COMPQUIET(dbp, NULL);
 
 	k = key;
 	e = k + len;
@@ -212,4 +228,15 @@ __ham_func5(key, len)
 		h ^= *k;
 	}
 	return (h);
+}
+
+u_int32_t
+__ham_test(dbp, key, len)
+	DB *dbp;
+	const void *key;
+	u_int32_t len;
+{
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(len, 0);
+	return ((u_int32_t)*(char *)key);
 }

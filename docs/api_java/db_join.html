@@ -1,5 +1,4 @@
- 
-<!--$Id: db_join.so,v 10.28 2000/05/01 21:57:43 bostic Exp $-->
+<!--$Id: db_join.so,v 10.30 2000/12/20 15:34:50 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Db.join</h1>
@@ -27,7 +26,7 @@ public Dbc join(Dbc curslist[], int flags)
 </pre></h3>
 <h1>Description</h1>
 <p>The Db.join method creates a specialized cursor for use in performing
-joins on secondary indices.  For information on how to organize your data
+joins on secondary indexes.  For information on how to organize your data
 to use this functionality, see <a href="../ref/am/join.html">Logical
 join</a>.
 <p>The <b>primary</b> argument contains the <a href="../api_java/db_class.html">Db</a> handle of the primary
@@ -85,8 +84,9 @@ not result in deadlock.
 <p><dt><a href="../api_java/dbc_close.html">Dbc.close</a><dd>Close the returned cursor and release all resources.  (Closing the cursors
 in <b>curslist</b> is the responsibility of the caller.)
 </dl>
-<p>In a transaction protected environment, all of the cursors listed in
-<b>curslist</b> must have been created within the same transaction.
+<p>For the returned join cursor to be used in a transaction protected manner,
+the cursors listed in <b>curslist</b> must have been created within the
+context of the same transaction.
 <p>The Db.join method throws an exception that encapsulates a non-zero error value on
 failure.
 <h1>Errors</h1>
@@ -123,6 +123,7 @@ will fail in the same way.
 <a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
 <a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
 <a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a>,
 <a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
 <a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,

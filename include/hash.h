@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash.h,v 11.13 2000/05/07 14:00:34 bostic Exp $
+ * $Id: hash.h,v 11.19 2000/12/21 23:05:16 krinsky Exp $
  */
 
 /* Hash internal structure. */
@@ -48,7 +48,7 @@ typedef struct hash_t {
 	u_int32_t h_ffactor;	/* Fill factor. */
 	u_int32_t h_nelem;	/* Number of elements. */
 				/* Hash function. */
-	u_int32_t (*h_hash) __P((const void *, u_int32_t));
+	u_int32_t (*h_hash) __P((DB *, const void *, u_int32_t));
 } HASH;
 
 /* Cursor structure definitions. */
@@ -71,6 +71,7 @@ typedef struct cursor_t {
 	db_indx_t	dup_tlen;	/* Total length of duplicate entry. */
 	u_int32_t	seek_size;	/* Number of bytes we need for add. */
 	db_pgno_t	seek_found_page;/* Page on which we can insert. */
+	u_int32_t	order;		/* Relative order among deleted curs. */
 
 #define	H_CONTINUE	0x0001		/* Join--search strictly fwd for data */
 #define	H_DELETED	0x0002		/* Cursor item is deleted. */
@@ -84,8 +85,6 @@ typedef struct cursor_t {
 	u_int32_t	flags;
 } HASH_CURSOR;
 
-#define	IS_VALID(C) ((C)->bucket != BUCKET_INVALID)
-
 /* Test string. */
 #define	CHARKEY			"%$sniglet^&"
 
@@ -95,11 +94,12 @@ typedef struct cursor_t {
  * From this page number we subtract the number of buckets already allocated
  * so that we can do a simple addition to calculate the page number here.
  */
-#define	BUCKET_TO_PAGE(I, B)	((B) + (I)->hdr->spares[__db_log2((B)+1)])
+#define	BS_TO_PAGE(bucket, spares)		\
+	((bucket) + (spares)[__db_log2((bucket) + 1)])
+#define	BUCKET_TO_PAGE(I, B)	(BS_TO_PAGE((B), (I)->hdr->spares))
 
-/* Constraints about number of pages and how much data goes on a page. */
+/* Constraints about much data goes on a page. */
 
-#define	MAX_PAGES(H)	UINT32_T_MAX
 #define	MINFILL		4
 #define	ISBIG(I, N)	(((N) > ((I)->hdr->dbmeta.pagesize / MINFILL)) ? 1 : 0)
 
@@ -124,10 +124,16 @@ typedef struct cursor_t {
 #define	DELPAIR		0x30
 #define	PUTOVFL		0x40
 #define	DELOVFL		0x50
-#define	ALLOCPGNO	0x60
-#define	DELPGNO		0x70
+#define	HASH_UNUSED1	0x60
+#define	HASH_UNUSED2	0x70
 #define	SPLITOLD	0x80
 #define	SPLITNEW	0x90
+
+typedef enum {
+	DB_HAM_CHGPG = 1,
+	DB_HAM_SPLIT = 2,
+	DB_HAM_DUP   = 3
+} db_ham_mode;
 
 #include "hash_auto.h"
 #include "hash_ext.h"

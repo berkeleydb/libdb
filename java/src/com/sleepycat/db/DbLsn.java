@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: DbLsn.java,v 11.4 2000/05/25 04:18:13 dda Exp $
+ *	$Id: DbLsn.java,v 11.5 2000/09/11 16:21:37 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -17,7 +17,7 @@ public class DbLsn
 {
     // methods
     //
-    DbLsn()
+    public DbLsn()
     {
         init_lsn();
     }

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test026.tcl,v 11.11 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test026.tcl,v 11.13 2000/11/17 19:07:51 sue Exp $
 #
 # DB Test 26 {access method}
 # Keyed delete test through cursor.
@@ -30,9 +30,13 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 
 	set pflags ""
 	set gflags ""
@@ -41,8 +45,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 
 	# Here is the loop where we put and get each key/data pair
 
-	puts "Test0$tnum.a: Put loop"
-	cleanup $testdir
+	puts "\tTest0$tnum.a: Put loop"
 	set db [eval {berkdb_open -create -truncate \
 		-mode 0644} $args {$omethod -dup $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -68,7 +71,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1
 
-	puts "Test0$tnum.b: Get/delete loop"
+	puts "\tTest0$tnum.b: Get/delete loop"
 	set i 1
 	for { set ret [$dbc get -first] } {
 	    [string length $ret] != 0 } {
@@ -96,7 +99,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
 
-	puts "Test0$tnum.c: Verify empty file"
+	puts "\tTest0$tnum.c: Verify empty file"
 	# Double check that file is now empty
 	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE

@@ -4,19 +4,18 @@
  * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: hash_verify.c,v 1.20.2.1 2000/06/30 14:02:11 krinsky Exp $
+ * $Id: hash_verify.c,v 1.31 2000/11/30 00:58:37 ubell Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_verify.c,v 1.20.2.1 2000/06/30 14:02:11 krinsky Exp $";
+static const char revid[] = "$Id: hash_verify.c,v 1.31 2000/11/30 00:58:37 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -55,7 +54,7 @@ __ham_vrfy_meta(dbp, vdp, m, pgno, flags)
 	VRFY_PAGEINFO *pip;
 	int i, ret, t_ret, isbad;
 	u_int32_t pwr, mbucket;
-	u_int32_t (*hfunc) __P((const void *, u_int32_t));
+	u_int32_t (*hfunc) __P((DB *, const void *, u_int32_t));
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
 		return (ret);
@@ -82,7 +81,7 @@ __ham_vrfy_meta(dbp, vdp, m, pgno, flags)
 
 	/* h_charkey */
 	if (!LF_ISSET(DB_NOORDERCHK))
-		if (m->h_charkey != hfunc(CHARKEY, sizeof(CHARKEY))) {
+		if (m->h_charkey != hfunc(dbp, CHARKEY, sizeof(CHARKEY))) {
 			EPRINT((dbp->dbenv,
 "Database has different custom hash function; reverify with DB_NOORDERCHK set"
 			    ));
@@ -163,8 +162,7 @@ __ham_vrfy_meta(dbp, vdp, m, pgno, flags)
 		 * than last_pgno.
 		 */
 		mbucket = (1 << i) - 1;
-		if (mbucket + m->spares[__db_log2(mbucket + 1)] >
-		    vdp->last_pgno) {
+		if (BS_TO_PAGE(mbucket, m->spares) > vdp->last_pgno) {
 			EPRINT((dbp->dbenv,
 			    "Spares array entry %lu, page %lu is invalid",
 			    i, pgno));
@@ -436,12 +434,20 @@ __ham_vrfy_structure(dbp, vdp, meta_pgno, flags)
 
 	/*
 	 * There may be unused hash pages corresponding to buckets
-	 * that are part of the current doubling but which are higher
-	 * than max_bucket.  Loop through them, too, and make sure they're
-	 * all empty.
+	 * that have been allocated but not yet used.  These may be
+	 * part of the current doubling above max_bucket, or they may
+	 * correspond to buckets that were used in a transaction
+	 * that then aborted.
+	 *
+	 * Loop through them, as far as the spares array defines them,
+	 * and make sure they're all empty.
+	 *
+	 * Note that this should be safe, since we've already verified
+	 * that the spares array is sane.
 	 */
-	for (bucket = m->max_bucket + 1; bucket <= m->high_mask; bucket++) {
-		pgno = bucket + m->spares[__db_log2(bucket + 1)];
+	for (bucket = m->max_bucket + 1;
+	    m->spares[__db_log2(bucket + 1)] != 0; bucket++) {
+		pgno = BS_TO_PAGE(bucket, m->spares);
 		if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
 			goto err;
 
@@ -506,7 +512,7 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 	int ret, t_ret, isbad, p;
 	db_pgno_t pgno, next_pgno;
 	DBC *cc;
-	u_int32_t (*hfunc) __P((const void *, u_int32_t));
+	u_int32_t (*hfunc) __P((DB *, const void *, u_int32_t));
 
 	isbad = 0;
 	pip = NULL;
@@ -522,7 +528,7 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 		return (ret);
 
 	/* Calculate the first pgno for this bucket. */
-	pgno = bucket + m->spares[__db_log2(bucket + 1)];
+	pgno = BS_TO_PAGE(bucket, m->spares);
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
 		goto err;
@@ -550,6 +556,10 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 
 	/* Loop until we find a fatal bug, or until we run out of pages. */
 	for (;;) {
+		/* Provide feedback on our progress to the application. */
+		if (!LF_ISSET(DB_SALVAGE))
+			__db_vrfy_struct_feedback(dbp, vdp);
+
 		if ((ret = __db_vrfy_pgset_get(vdp->pgset, pgno, &p)) != 0)
 			goto err;
 		if (p != 0) {
@@ -615,7 +625,7 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 				}
 				if ((ret = __bam_vrfy_subtree(dbp, vdp,
 				    child->pgno, NULL, NULL,
-				    flags | ST_RECNUM, NULL,
+				    flags | ST_RECNUM | ST_DUPSET, NULL,
 				    NULL, NULL)) != 0) {
 					if (ret == DB_VERIFY_BAD)
 						isbad = 1;
@@ -684,7 +694,7 @@ err:	if (cc != NULL && ((t_ret = __db_vrfy_ccclose(cc)) != 0) && ret == 0)
  *
  * PUBLIC: int __ham_vrfy_hashing __P((DB *,
  * PUBLIC:     u_int32_t, HMETA *, u_int32_t, db_pgno_t, u_int32_t,
- * PUBLIC:     u_int32_t (*) __P((const void *, u_int32_t))));
+ * PUBLIC:     u_int32_t (*) __P((DB *, const void *, u_int32_t))));
  */
 int
 __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
@@ -694,7 +704,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 	u_int32_t thisbucket;
 	db_pgno_t pgno;
 	u_int32_t flags;
-	u_int32_t (*hfunc) __P((const void *, u_int32_t));
+	u_int32_t (*hfunc) __P((DB *, const void *, u_int32_t));
 {
 	DBT dbt;
 	PAGE *h;
@@ -720,7 +730,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 		 */
 		if ((ret = __db_ret(dbp, h, i, &dbt, NULL, NULL)) != 0)
 			goto err;
-		hval = hfunc(dbt.data, dbt.size);
+		hval = hfunc(dbp, dbt.data, dbt.size);
 
 		bucket = hval & m->high_mask;
 		if (bucket > m->max_bucket)
@@ -907,6 +917,7 @@ keydata:			memcpy(buf, HKEYDATA_DATA(hk), len);
 		}
 	}
 
+	__os_free(buf, 0);
 	if ((t_ret = __db_salvage_markdone(vdp, pgno)) != 0)
 		return (t_ret);
 	return ((ret == 0 && err_ret != 0) ? err_ret : ret);
@@ -947,7 +958,7 @@ int __ham_meta2pgset(dbp, vdp, hmeta, flags, pgset)
 	 * page(s) for each one.
 	 */
 	for (bucket = 0; bucket <= hmeta->max_bucket; bucket++) {
-		pgno = bucket + hmeta->spares[__db_log2(bucket + 1)];
+		pgno = BS_TO_PAGE(bucket, hmeta->spares);
 
 		/*
 		 * We know the initial pgno is safe because the spares array has
@@ -1012,7 +1023,7 @@ __ham_dups_unsorted(dbp, buf, len)
 {
 	DBT a, b;
 	db_indx_t offset, dlen;
-	int (*func) __P((const DBT *, const DBT *));
+	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	memset(&a, 0, sizeof(DBT));
 	memset(&b, 0, sizeof(DBT));
@@ -1029,7 +1040,7 @@ __ham_dups_unsorted(dbp, buf, len)
 		b.data = buf + offset + sizeof(db_indx_t);
 		b.size = dlen;
 
-		if (a.data != NULL && func(&a, &b) > 0)
+		if (a.data != NULL && func(dbp, &a, &b) > 0)
 			return (1);
 
 		a.data = b.data;

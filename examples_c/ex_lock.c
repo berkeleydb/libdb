@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_lock.c,v 11.5 2000/02/21 21:53:27 bostic Exp $
+ * $Id: ex_lock.c,v 11.6 2001/01/04 14:23:29 dda Exp $
  */
 
 #include "db_config.h"
@@ -216,7 +216,7 @@ db_init(home, maxlocks, do_unlink)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 	if (maxlocks != 0)
-		dbenv->set_lk_max(dbenv, maxlocks);
+		dbenv->set_lk_max_locks(dbenv, maxlocks);
 
 	if ((ret =
 	    dbenv->open(dbenv, home, DB_CREATE | DB_INIT_LOCK, 0)) != 0) {

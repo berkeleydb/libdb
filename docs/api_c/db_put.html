@@ -1,5 +1,4 @@
- 
-<!--$Id: db_put.so,v 10.33 2000/03/24 21:26:58 bostic Exp $-->
+<!--$Id: db_put.so,v 10.34 2000/09/16 22:27:56 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;put</h1>
@@ -50,11 +49,11 @@ DB-&gt;put operation with the DB_APPEND flag aborts, the
 record number may be decremented (and later re-allocated by a subsequent
 DB_APPEND operation) by the Recno access method, but will not be
 decremented or re-allocated by the Queue access method.
-<p><dt><a name="DB_NODUPDATA">DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, insert the specified
-key/data pair into the database unless it already exists in the database.
-If the key/data pair already appears in the database, <a href="../api_c/dbc_put.html#DB_KEYEXIST">DB_KEYEXIST</a>
-is returned.  The DB_NODUPDATA flag may only be specified if
-the underlying database has been configured to support sorted duplicates.
+<p><dt><a name="DB_NODUPDATA">DB_NODUPDATA</a><dd>In the case of the Btree and Hash access methods, enter the new key/data
+pair only if it does not already appear in the database.  If the
+key/data pair already appears in the database, <a href="../api_c/dbc_put.html#DB_KEYEXIST">DB_KEYEXIST</a> is
+returned.  The DB_NODUPDATA flag may only be specified if the
+underlying database has been configured to support sorted duplicates.
 <p>The DB_NODUPDATA flag may not be specified to the Queue or Recno
 access methods.
 <p><dt><a name="DB_NOOVERWRITE">DB_NOOVERWRITE</a><dd>Enter the new key/data pair only if the key does not already appear in
@@ -117,6 +116,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

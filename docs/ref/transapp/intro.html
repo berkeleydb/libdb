@@ -1,49 +1,41 @@
- 
-<!--$Id: intro.so,v 10.32 2000/03/18 21:43:18 bostic Exp $-->
+<!--$Id: intro.so,v 10.35 2000/12/04 18:05:44 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<title>Berkeley DB Reference Guide: Building transaction protected applications</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
-<td width="1%"><a href="../../ref/transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/app.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/cam/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/why.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Introduction</h1>
-<p>Creating transaction-protected applications using the Berkeley DB access methods
-is usually quite easy.  Applications first use <a href="../../api_c/env_open.html">DBENV-&gt;open</a> to
-initialize all of the Berkeley DB subsystems.  Transaction-protected
-applications normally require all five Berkeley DB subsystems, so the
-<a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>, <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a> and
-<a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flags should all be specified.
-<p>Once the application has called <a href="../../api_c/env_open.html">DBENV-&gt;open</a>, it uses
-<a href="../../api_c/db_open.html">DB-&gt;open</a> to open the databases it will use.  Once the databases
-are opened, the application makes changes to the databases inside of
-transactions.  Each set of changes that entail a unit of work should be
-surrounded by the appropriate <a href="../../api_c/txn_begin.html">txn_begin</a>, <a href="../../api_c/txn_commit.html">txn_commit</a> and
-<a href="../../api_c/txn_abort.html">txn_abort</a> calls.  Operations not surrounded by these calls will
-not be recoverable.
-<p>The Berkeley DB access methods will make the appropriate calls into the lock,
-log and memory pool subsystems in order to guarantee transaction
-semantics.  When the application is ready to exit, all outstanding
-transactions should have been committed or aborted.
-<p>Databases accessed by a transaction must not be closed during the
-transaction.  Once all outstanding transactions are finished, all open
-Berkeley DB files should be closed.  When the Berkeley DB database files have been
-closed, the environment should be closed by calling <a href="../../api_c/env_close.html">DBENV-&gt;close</a>.
-<p>It is not necessary to transaction-protect read-only operations, unless
-those operations require repeatable reads.  However, if there are update
-transactions present in the application, the reading transactions must
-still use locking, and should be prepared to repeat any operation
-(possibly closing and reopening a cursor) which fails with a return value
-of <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/app.html"><img src="../../images/next.gif" alt="Next"></a>
+<h1 align=center>Building transaction protected applications</h1>
+<p>It is difficult to write a useful transactional tutorial and still keep
+within reasonable bounds of documentation, that is, without writing a
+book on transactional programming.  We have two goals in this section:
+to familiarize readers with the transactional interfaces of Berkeley DB and
+to provide code building blocks that will be useful in creating
+applications.
+<p>We have not attempted to present this information using a real-world
+application.  First, transactional applications are often complex and
+time consuming to explain.  Also, one of our goals is to give you an
+understanding of the wide variety of tools Berkeley DB makes available to you,
+and no single application would use most of the interfaces included in
+the Berkeley DB library.  For these reasons, we have chosen to simply present
+the Berkeley DB data structures and programming solutions, using examples that
+differ from page to page.  All of the examples are included in a
+standalone program you can examine, modify and run, and from which you
+will be able to extract code blocks for your own applications.
+Fragments of the program will be presented throughout this chapter, and
+the complete text of the <a href="transapp.txt">example program</a>
+for IEEE/ANSI Std 1003.1 (POSIX) standard systems is included in the Berkeley DB
+distribution.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/cam/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/why.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: env_recover.c,v 11.25.2.1 2000/07/05 20:05:21 bostic Exp $";
+    "$Id: env_recover.c,v 11.33 2001/01/04 22:38:42 ubell Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char revid[] =
 #endif
 #endif
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -65,10 +64,6 @@ __db_apprec(dbenv, flags)
 
 	COMPQUIET(nfiles, (float)0);
 
-	/* Initialize the transaction list. */
-	if ((ret = __db_txnlist_init(dbenv, &txninfo)) != 0)
-		return (ret);
-
 	/*
 	 * Save the state of the thread flag -- we don't need it on at the
 	 * moment because we're single-threaded until recovery is complete.
@@ -86,13 +81,21 @@ __db_apprec(dbenv, flags)
 		if ((ret = __log_earliest(dbenv, &low, &lowlsn)) != 0)
 			return (ret);
 		if ((int32_t)dbenv->tx_timestamp < low) {
+			char t1[30], t2[30];
+
+			strcpy(t1, ctime(&dbenv->tx_timestamp));
 			tlow = (time_t)low;
-			__db_err(dbenv, "%s (%s, %s).\n",
-			    "Invalid recovery timestamp specified",
-			    ctime(&tlow));
+			strcpy(t2, ctime(&tlow));
+			__db_err(dbenv,
+		     "Invalid recovery timestamp %.*s; earliest time is %.*s",
+			    24, t1, 24, t2);
 			return (EINVAL);
 		}
 	}
+
+	/* Initialize the transaction list. */
+	if ((ret = __db_txnlist_init(dbenv, &txninfo)) != 0)
+		return (ret);
 
 	/*
 	 * Recovery is done in three passes:
@@ -215,12 +218,8 @@ first:		if ((ret = log_get(dbenv, &ckp_lsn, &data, DB_FIRST)) != 0) {
 			   &last_lsn, &lsn, dbenv->lg_max, 1) / nfiles));
 			dbenv->db_feedback(dbenv, DB_RECOVER, progress);
 		}
-		if (dbenv->tx_recover != NULL)
-			ret = dbenv->tx_recover(dbenv,
-			    &data, &lsn, DB_TXN_OPENFILES, txninfo);
-		else
-			ret = __db_dispatch(dbenv,
-			    &data, &lsn, DB_TXN_OPENFILES, txninfo);
+		ret = __db_dispatch(dbenv,
+		    &data, &lsn, DB_TXN_OPENFILES, txninfo);
 		if (ret != 0 && ret != DB_TXN_CKP)
 			goto msgerr;
 		if ((ret = log_get(dbenv, &lsn, &data, DB_NEXT)) != 0) {
@@ -268,12 +267,8 @@ first:		if ((ret = log_get(dbenv, &ckp_lsn, &data, DB_FIRST)) != 0) {
 			    &last_lsn, &lsn, dbenv->lg_max, 0) / nfiles));
 			dbenv->db_feedback(dbenv, DB_RECOVER, progress);
 		}
-		if (dbenv->tx_recover != NULL)
-			ret = dbenv->tx_recover(dbenv,
-			    &data, &lsn, DB_TXN_BACKWARD_ROLL, txninfo);
-		else
-			ret = __db_dispatch(dbenv,
-			    &data, &lsn, DB_TXN_BACKWARD_ROLL, txninfo);
+		ret = __db_dispatch(dbenv,
+		    &data, &lsn, DB_TXN_BACKWARD_ROLL, txninfo);
 		if (ret != 0) {
 			if (ret != DB_TXN_CKP)
 				goto msgerr;
@@ -294,12 +289,8 @@ first:		if ((ret = log_get(dbenv, &ckp_lsn, &data, DB_FIRST)) != 0) {
 			    &last_lsn, &lsn, dbenv->lg_max, 1) / nfiles));
 			dbenv->db_feedback(dbenv, DB_RECOVER, progress);
 		}
-		if (dbenv->tx_recover != NULL)
-			ret = dbenv->tx_recover(dbenv,
-			    &data, &lsn, DB_TXN_FORWARD_ROLL, txninfo);
-		else
-			ret = __db_dispatch(dbenv,
-			    &data, &lsn, DB_TXN_FORWARD_ROLL, txninfo);
+		ret = __db_dispatch(dbenv,
+		    &data, &lsn, DB_TXN_FORWARD_ROLL, txninfo);
 		if (ret != 0) {
 			if (ret != DB_TXN_CKP)
 				goto msgerr;
@@ -311,11 +302,20 @@ first:		if ((ret = log_get(dbenv, &ckp_lsn, &data, DB_FIRST)) != 0) {
 		goto out;
 
 	/*
+	 * Process any pages that were on the limbo list
+	 * and move them to the free list.  Do this
+	 * before checkpointing the database.
+	 */
+	 if ((ret = __db_do_the_limbo(dbenv, txninfo)) != 0)
+		goto out;
+
+	/*
 	 * Now set the last checkpoint lsn and the current time,
 	 * take a checkpoint, and reset the txnid.
 	 */
 	(void)time(&now);
 	region = ((DB_TXNMGR *)dbenv->tx_handle)->reginfo.primary;
+	region->last_txnid = ((DB_TXNHEAD *)txninfo)->maxid;
 	region->last_ckp = ckp_lsn;
 	region->time_ckp = (u_int32_t)now;
 

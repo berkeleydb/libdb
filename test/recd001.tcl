@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd001.tcl,v 11.17 2000/05/22 12:51:37 bostic Exp $
+#	$Id: recd001.tcl,v 11.28 2000/12/07 19:13:46 sue Exp $
 #
 # Recovery Test 1.
 # These are the most basic recovery tests.  We do individual recovery
@@ -14,19 +14,18 @@
 # original copy of the file.  In the second test, we restore the
 # original copy of the database and then run recovery and compare
 # this against the actual database.
-proc recd001 { method {select 0} } {
+proc recd001 { method {select 0} args} {
 	global fixed_len
 	source ./include.tcl
 
 	set orig_fixed_len $fixed_len
-	set fixed_len 1024
-	set opts [convert_args $method ""]
+	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
 
 	puts "Recd001: $method operation/transaction tests"
 
 	# Create the database and environment.
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# The recovery tests were originally written to
 	# do a command, abort, do it again, commit, and then
@@ -48,8 +47,31 @@ proc recd001 { method {select 0} } {
 	set dbenv [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
+	#
+	# We need to create a database to get the pagesize (either
+	# the default or whatever might have been specified).
+	# Then remove it so we can compute fixed_len and create the
+	# real database.
+	set oflags "-create $omethod -mode 0644 \
+	    -env $dbenv $opts $testfile"
+	set db [eval {berkdb_open} $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set stat [$db stat]
+	#
+	# Compute the fixed_len based on the pagesize being used.
+	# We want the fixed_len to be 1/4 the pagesize.
+	#
+	set pg [get_pagesize $stat]
+	error_check_bad get_pagesize $pg -1
+	set fixed_len [expr $pg / 4]
+	error_check_good db_close [$db close] 0
+	error_check_good dbremove [berkdb dbremove -env $dbenv $testfile] 0
+
+	# Convert the args again because fixed_len is now real.
 	# Create the databases and close the environment.
 	# cannot specify db truncate in txn protected env!!!
+	set opts [convert_args $method ""]
+	set omethod [convert_method $method]
 	set oflags "-create $omethod -mode 0644 \
 	    -env $dbenv $opts $testfile"
 	set db [eval {berkdb_open} $oflags]
@@ -66,7 +88,8 @@ proc recd001 { method {select 0} } {
 
 	puts "\tRecd001.a.1: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 
@@ -85,8 +108,8 @@ proc recd001 { method {select 0} } {
 	{ {DB put -txn TXNID $key $newdata}	"Recd001.k: overwrite (fix)"}
 	{ {DB put -txn TXNID -partial {$off $len} $key $partial_shrink}
 	  "Recd001.l: partial put shrinking"}
-	{ {DB put -append -txn TXNID $data}	"Recd001.m: put -append"}
-	{ {CURSOR get -consume}			"Recd001.n: dbc get -consume"}
+	{ {DB put -txn TXNID -append $data}	"Recd001.m: put -append"}
+	{ {DB get -txn TXNID -consume}		"Recd001.n: db get -consume"}
 	}
 
 	# These are all the data values that we're going to need to read
@@ -107,11 +130,11 @@ proc recd001 { method {select 0} } {
 		set len [string length $partial_grow]
 		set partial_shrink $partial_grow
 	}
-	set bigdata [replicate $key 1000]
+	set bigdata [replicate $key $fixed_len]
 	if { [is_record_based $method] == 1 } {
-		set bigkey 1000
+		set bigkey $fixed_len
 	} else {
-		set bigkey [replicate $key 1000]
+		set bigkey [replicate $key $fixed_len]
 	}
 
 	foreach pair $rlist {
@@ -150,7 +173,8 @@ proc recd001 { method {select 0} } {
 
 	puts "\tRecd001.o: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

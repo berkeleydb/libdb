@@ -1,4 +1,4 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_xa_ext_h_
 #define	_xa_ext_h_
 #if defined(__cplusplus)

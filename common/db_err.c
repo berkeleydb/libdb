@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_err.c,v 11.27.2.1 2000/07/16 18:59:49 bostic Exp $";
+static const char revid[] = "$Id: db_err.c,v 11.38 2001/01/22 21:50:25 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -192,15 +191,9 @@ __db_panic(dbenv, errval)
 	DB_ENV *dbenv;
 	int errval;
 {
-	/*
-	 * Drop core if we're running with DIAGNOSTIC defined.  Do so before
-	 * we set the panic bits, it's easier to run diagnostic tools on the
-	 * tree then.
-	 */
-	DB_ASSERT(0);
 
 	if (dbenv != NULL) {
-		((REGENV *)((REGINFO *)dbenv->reginfo)->addr)->panic = 1;
+		((REGENV *)((REGINFO *)dbenv->reginfo)->primary)->panic = 1;
 
 		dbenv->db_panic = errval;
 
@@ -274,7 +267,7 @@ db_strerror(error)
 		static char ebuf[40];
 
 		(void)snprintf(ebuf, sizeof(ebuf), "Unknown error: %d", error);
-		return(ebuf);
+		return (ebuf);
 	}
 	}
 }
@@ -284,11 +277,7 @@ db_strerror(error)
  *	Standard DB error routine.  The same as db_errx, except that we
  *	don't write to stderr if no output mechanism was specified.
  *
- * PUBLIC: #ifdef __STDC__
  * PUBLIC: void __db_err __P((const DB_ENV *, const char *, ...));
- * PUBLIC: #else
- * PUBLIC: void __db_err();
- * PUBLIC: #endif
  */
 void
 #ifdef __STDC__
@@ -431,12 +420,8 @@ __db_errfile(dbenv, error, error_set, fmt, ap)
  * __db_logmsg --
  *	Write information into the DB log.
  *
- * PUBLIC: #ifdef __STDC__
  * PUBLIC: void __db_logmsg __P((const DB_ENV *,
  * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, ...));
- * PUBLIC: #else
- * PUBLIC: void __db_logmsg();
- * PUBLIC: #endif
  */
 void
 #ifdef __STDC__
@@ -467,12 +452,8 @@ __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
  * __db_real_log --
  *	Write information into the DB log.
  *
- * PUBLIC: #ifdef __STDC__
  * PUBLIC: void __db_real_log __P((const DB_ENV *,
  * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, va_list ap));
- * PUBLIC: #else
- * PUBLIC: void __db_real_log();
- * PUBLIC: #endif
  */
 void
 #ifdef __STDC__
@@ -543,15 +524,21 @@ __db_unknown_type(dbenv, routine, type)
 	return (EINVAL);
 }
 
+#ifdef DIAGNOSTIC
 /*
- * __db_child_active_err -- cannot do an update with active child
+ * __db_missing_txn_err --
+ *	Cannot combine operations with and without transactions.
  *
- * PUBLIC: int __db_child_active_err __P((DB_ENV *));
+ * PUBLIC: #ifdef DIAGNOSTIC
+ * PUBLIC: int __db_missing_txn_err __P((DB_ENV *));
+ * PUBLIC: #endif
  */
 int
-__db_child_active_err(dbenv)
+__db_missing_txn_err(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_err(dbenv, "Child transaction is active");
-	return (EPERM);
+	__db_err(dbenv,
+    "DB handle previously used in transaction, missing transaction handle.");
+	return (EINVAL);
 }
+#endif

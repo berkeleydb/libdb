@@ -1,17 +1,16 @@
- 
-<!--$Id: error.so,v 11.11 2000/05/02 18:10:59 sue Exp $-->
+<!--$Id: error.so,v 11.13 2001/01/09 18:48:06 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Tcl</title>
+<title>Berkeley DB Reference Guide: Tcl error handling</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Tcl</dl></h3></td>
-<td width="1%"><a href="../../ref/tcl/program.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/sendmail/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/tcl/program.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/tcl/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Tcl error handling</h1>
@@ -48,12 +47,10 @@ three such "expected" error returns.  They are:
 DB_KEYEMPTY: Non-existent key/data pair
 DB_KEYEXIST: Key/data pair already exists</pre></blockquote>
 <p>Finally, in some cases, when a Berkeley DB error occurs Berkeley DB will output
-additional error information.
-All Berkeley DB error messages will be prefixed by default
-with the created command in
-whose context the error occurred (e.g., "env0", "db2", etc.)
-There are several ways to capture
-and access this information.
+additional error information.  By default, all Berkeley DB error messages will
+be prefixed with the created command in whose context the error occurred
+(e.g., "env0", "db2", etc.).  There are several ways to capture and
+access this information.
 <p>First, if Berkeley DB invokes the error callback function, the additional
 information will be placed in the error result returned from the
 command and in the errorInfo backtrace variable in Tcl.
@@ -65,7 +62,7 @@ open a database take an option, <b>-errpfx string</b>, which sets the
 error prefix to the given string.  This option may be useful
 in circumstances where a more descriptive prefix is desired or
 where a constant prefix indicating an error is desired.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/tcl/program.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/sendmail/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/tcl/program.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/tcl/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

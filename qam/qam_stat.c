@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_stat.c,v 11.9 2000/05/03 14:38:40 ubell Exp $";
+static const char revid[] = "$Id: qam_stat.c,v 11.16 2001/01/10 04:50:54 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -45,7 +45,7 @@ __qam_stat(dbp, spp, db_malloc, flags)
 	QAMDATA *qp, *ep;
 	QMETA *meta;
 	db_indx_t indx;
-	db_pgno_t lastpgno, pgno;
+	db_pgno_t first, last, pgno, pg_ext, stop;
 	u_int32_t re_len;
 	int ret, t_ret;
 
@@ -89,17 +89,46 @@ __qam_stat(dbp, spp, db_malloc, flags)
 	}
 
 	/* Determine the last page of the database. */
-	if ((ret = memp_fget(dbp->mpf, &lastpgno, DB_MPOOL_LAST, &h)) != 0)
+	if ((ret = __db_lget(dbc,
+	    0, t->q_meta, DB_LOCK_READ, 0, &lock)) != 0)
 		goto err;
-	if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+	if ((ret = memp_fget(dbp->mpf, &t->q_meta, 0, (PAGE **)&meta)) != 0)
 		goto err;
 
+	first = QAM_RECNO_PAGE(dbp, meta->first_recno);
+	last = QAM_RECNO_PAGE(dbp, meta->cur_recno);
+
+	if ((ret = memp_fput(dbp->mpf, meta, 0)) != 0)
+		goto err;
+	(void)__LPUT(dbc, lock);
+
+	pgno = first;
+	if (first > last)
+		stop = QAM_RECNO_PAGE(dbp, UINT32_T_MAX);
+	else
+		stop = last;
+
+	/* Dump each page. */
+	pg_ext = ((QUEUE *)dbp->q_internal)->page_ext;
+begin:
 	/* Walk through the pages and count. */
-	for (pgno = t->q_root; pgno <= lastpgno; ++pgno) {
+	for (; pgno <= stop; ++pgno) {
 		if ((ret =
-		    __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
+		    __db_lget(dbc,
+		    0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 			goto err;
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		ret = __qam_fget(dbp, &pgno, DB_MPOOL_EXTENT, &h);
+		if (ret == ENOENT) {
+			pgno += pg_ext - 1;
+			continue;
+		}
+		if (ret == EINVAL) {
+			pgno += pg_ext - ((pgno - 1) % pg_ext) - 1;
+			continue;
+		}
+		if (ret == EIO && first == last && pg_ext == 0)
+			break;
+		if (ret != 0)
 			goto err;
 
 		++sp->qs_pages;
@@ -114,9 +143,15 @@ __qam_stat(dbp, spp, db_malloc, flags)
 				sp->qs_pgfree += re_len;
 		}
 
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = __qam_fput(dbp, pgno, h, 0)) != 0)
 			goto err;
 		(void)__LPUT(dbc, lock);
+	}
+	if (first > last) {
+		pgno = 1;
+		stop = last;
+		first = last;
+		goto begin;
 	}
 
 	/* Get the meta-data page. */
@@ -134,7 +169,6 @@ __qam_stat(dbp, spp, db_malloc, flags)
 	sp->qs_pagesize = meta->dbmeta.pagesize;
 	sp->qs_re_len = meta->re_len;
 	sp->qs_re_pad = meta->re_pad;
-	sp->qs_start = meta->start;
 	sp->qs_first_recno = meta->first_recno;
 	sp->qs_cur_recno = meta->cur_recno;
 	sp->qs_nkeys = sp->qs_ndata;
@@ -144,7 +178,8 @@ __qam_stat(dbp, spp, db_malloc, flags)
 
 done:
 	/* Discard the meta-data page. */
-	if ((ret = memp_fput(dbp->mpf, meta, !F_ISSET(dbp, DB_AM_RDONLY))) != 0)
+	if ((ret = memp_fput(dbp->mpf,
+	    meta, F_ISSET(dbp, DB_AM_RDONLY) ? 0 : DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	(void)__LPUT(dbc, lock);
 

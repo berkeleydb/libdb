@@ -1,5 +1,5 @@
 /*
- * $Id: acconfig.h,v 11.25 2000/05/16 15:40:44 bostic Exp $
+ * $Id: acconfig.h,v 11.29 2000/09/20 16:30:33 bostic Exp $
  */
 
 /* Define if you are building a version for running the test suite. */
@@ -17,6 +17,9 @@
 /* Define if you want a version with run-time diagnostic checking. */
 #undef DIAGNOSTIC
 
+/* Define if you want to mask harmless unitialized memory read/writes. */
+#undef UMRW
+
 /* Define if fcntl/F_SETFD denies child access to file descriptors. */
 #undef HAVE_FCNTL_F_SETFD
 
@@ -32,6 +35,7 @@
 #undef HAVE_MUTEX_IA64_GCC_ASSEMBLY
 #undef HAVE_MUTEX_MACOS
 #undef HAVE_MUTEX_MSEM_INIT
+#undef HAVE_MUTEX_PPC_GCC_ASSEMBLY
 #undef HAVE_MUTEX_PTHREADS
 #undef HAVE_MUTEX_RELIANTUNIX_INITSPIN
 #undef HAVE_MUTEX_SCO_X86_CC_ASSEMBLY
@@ -48,6 +52,9 @@
 #undef HAVE_MUTEX_WIN16
 #undef HAVE_MUTEX_WIN32
 #undef HAVE_MUTEX_X86_GCC_ASSEMBLY
+
+/* Define if building on QNX. */
+#undef HAVE_QNX
 
 /* Define if building RPC client/server. */
 #undef HAVE_RPC

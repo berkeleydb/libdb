@@ -72,6 +72,7 @@ __crdel_fileopen_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __crdel_metasub_recover --
  *	Recovery function for metasub.
@@ -133,6 +134,7 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __crdel_metapage_recover --
  *	Recovery function for metapage.
@@ -194,6 +196,7 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __crdel_old_delete_recover --
  *	Recovery function for old_delete.
@@ -255,6 +258,7 @@ __crdel_old_delete_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __crdel_rename_recover --
  *	Recovery function for rename.
@@ -316,6 +320,7 @@ __crdel_rename_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+
 /*
  * __crdel_delete_recover --
  *	Recovery function for delete.
@@ -377,3 +382,4 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+

@@ -1,5 +1,4 @@
- 
-<!--$Id: memp_fopen.so,v 10.27 2000/04/24 16:33:54 bostic Exp $-->
+<!--$Id: memp_fopen.so,v 10.28 2000/12/18 21:05:12 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbMpoolFile::open</h1>
@@ -93,7 +92,7 @@ set and the mpool functions will simply use the file's device and inode
 numbers for this purpose.  On Windows systems, the mpool functions use
 the values returned by GetFileInformationByHandle() by default -- these
 values are known to be constant between processes and over reboot in the
-case of NTFS (where they are the NTFS MFT indices).
+case of NTFS (where they are the NTFS MFT indexes).
 <p>On other filesystems, (e.g., FAT or NFS) these default values are not
 necessarily unique between processes or across system reboots.
 <b>Applications wanting to maintain a shared memory buffer pool

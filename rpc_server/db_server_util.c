@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_server_util.c,v 1.23 2000/05/18 17:43:20 sue Exp $";
+static const char revid[] = "$Id: db_server_util.c,v 1.32 2001/01/18 18:36:59 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,11 +27,11 @@ static const char revid[] = "$Id: db_server_util.c,v 1.23 2000/05/18 17:43:20 su
 
 #include <rpc/rpc.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #endif
 #include "db_server.h"
@@ -45,6 +45,7 @@ static const char revid[] = "$Id: db_server_util.c,v 1.23 2000/05/18 17:43:20 su
 extern int __dbsrv_main	 __P((void));
 static int add_home __P((char *));
 static int env_recover __P((char *));
+static void __dbclear_child __P((ct_entry *));
 
 static LIST_HEAD(cthead, ct_entry) __dbsrv_head;
 static LIST_HEAD(homehead, home_entry) __dbsrv_home;
@@ -55,6 +56,7 @@ static char *logfile = NULL;
 static char *prog;
 
 static void usage __P((char *));
+static void version_check __P((void));
 
 int __dbsrv_verbose = 0;
 
@@ -68,8 +70,10 @@ main(argc, argv)
 	CLIENT *cl;
 	int ch, ret;
 
-	LIST_INIT(&__dbsrv_home);
 	prog = argv[0];
+
+	version_check();
+
 	/*
 	 * Check whether another server is running or not.  There
 	 * is a race condition where two servers could be racing to
@@ -82,16 +86,19 @@ main(argc, argv)
 	 * started at the same time and running recovery at the same
 	 * time on the same environments.
 	 */
-	if ((cl = clnt_create("localhost", DB_SERVERPROG, DB_SERVERVERS, "tcp"))
-	    != NULL) {
-		fprintf(stderr, "DB server already running.\n");
+	if ((cl = clnt_create("localhost",
+	    DB_SERVERPROG, DB_SERVERVERS, "tcp")) != NULL) {
+		fprintf(stderr,
+		    "%s: Berkeley DB RPC server already running.\n", prog);
 		clnt_destroy(cl);
 		exit(1);
 	}
+
+	LIST_INIT(&__dbsrv_home);
 	while ((ch = getopt(argc, argv, "h:I:L:t:T:Vv")) != EOF)
 		switch (ch) {
 		case 'h':
-			(void) add_home(optarg);
+			(void)add_home(optarg);
 			break;
 		case 'I':
 			(void)__db_getlong(NULL, prog, optarg, 1,
@@ -122,6 +129,14 @@ main(argc, argv)
 	 */
 	if (__dbsrv_defto > __dbsrv_maxto)
 		__dbsrv_defto = __dbsrv_maxto;
+
+	/*
+	 * Check default timeout against idle timeout
+	 * It would be bad to timeout environments sooner than txns.
+	 */
+	if (__dbsrv_defto > __dbsrv_idleto)
+printf("%s:  WARNING: Idle timeout %ld is less than resource timeout %ld\n",
+		    prog, __dbsrv_idleto, __dbsrv_defto);
 
 	LIST_INIT(&__dbsrv_head);
 
@@ -164,6 +179,23 @@ usage(prog)
 	exit(1);
 }
 
+static void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    prog, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
+}
+
 /*
  * PUBLIC: void __dbsrv_settimeout __P((ct_entry *, u_int32_t));
  */
@@ -204,14 +236,71 @@ __dbsrv_timeout(force)
 		return;
 	to_hint = -1;
 	/*
-	 * First timeout idle handles.
+	 * Timeout transactions or cursors holding DB resources.
+	 * Do this before timing out envs to properly release resources.
+	 *
+	 * !!!
+	 * We can just loop through this list looking for cursors and txns.
+	 * We do not need to verify txn and cursor relationships at this
+	 * point because we maintain the list in LIFO order *and* we
+	 * maintain activity in the ultimate txn parent of any cursor
+	 * so either everything in a txn is timing out, or nothing.
+	 * So, since we are LIFO, we will correctly close/abort all the
+	 * appropriate handles, in the correct order.
+	 */
+	for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL; ctp = nextctp) {
+		nextctp = LIST_NEXT(ctp, entries);
+		switch (ctp->ct_type) {
+		case CT_TXN:
+			to = *(ctp->ct_activep) + ctp->ct_timeout;
+			/* TIMEOUT */
+			if (to < t) {
+				if (__dbsrv_verbose)
+					printf("Timing out txn id %ld\n",
+					    ctp->ct_id);
+				(void)txn_abort((DB_TXN *)ctp->ct_anyp);
+				__dbdel_ctp(ctp);
+				/*
+				 * If we timed out an txn, we may have closed
+				 * all sorts of ctp's.
+				 * So start over with a guaranteed good ctp.
+				 */
+				nextctp = LIST_FIRST(&__dbsrv_head);
+			} else if ((to_hint > 0 && to_hint > to) ||
+			    to_hint == -1)
+				to_hint = to;
+			break;
+		case CT_CURSOR:
+		case (CT_JOINCUR | CT_CURSOR):
+			to = *(ctp->ct_activep) + ctp->ct_timeout;
+			/* TIMEOUT */
+			if (to < t) {
+				if (__dbsrv_verbose)
+					printf("Timing out cursor %ld\n",
+					    ctp->ct_id);
+				dbcp = (DBC *)ctp->ct_anyp;
+				(void)__dbc_close_int(ctp);
+				/*
+				 * Start over with a guaranteed good ctp.
+				 */
+				nextctp = LIST_FIRST(&__dbsrv_head);
+			} else if ((to_hint > 0 && to_hint > to) ||
+			    to_hint == -1)
+				to_hint = to;
+			break;
+		default:
+			break;
+		}
+	}
+	/*
+	 * Timeout idle handles.
 	 * If we are forcing a timeout, we'll close all env handles.
 	 */
 	for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL; ctp = nextctp) {
 		nextctp = LIST_NEXT(ctp, entries);
-		if (ctp->ct_type != H_ENV)
+		if (ctp->ct_type != CT_ENV)
 			continue;
-		to = ctp->ct_active + ctp->ct_idle;
+		to = *(ctp->ct_activep) + ctp->ct_idle;
 		/* TIMEOUT */
 		if (to < t || force) {
 			if (__dbsrv_verbose)
@@ -225,63 +314,13 @@ __dbsrv_timeout(force)
 			nextctp = LIST_FIRST(&__dbsrv_head);
 		}
 	}
-	/*
-	 * Next timeout transactions or cursors holding DB resources.
-	 */
-	for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL; ctp = nextctp) {
-		nextctp = LIST_NEXT(ctp, entries);
-		switch (ctp->ct_type) {
-		case H_TXN:
-			to = ctp->ct_active + ctp->ct_timeout;
-			/* TIMEOUT */
-			if (to < t) {
-				if (__dbsrv_verbose)
-					printf("Timing out txn id %ld\n",
-					    ctp->ct_id);
-				(void) txn_abort((DB_TXN *)ctp->ct_anyp);
-				__dbdel_ctp(ctp);
-				/*
-				 * If we timed out an txn, we may have closed
-				 * all sorts of ctp's.
-				 * So start over with a guaranteed good ctp.
-				 */
-				nextctp = LIST_FIRST(&__dbsrv_head);
-			} else if ((to_hint > 0 && to_hint > to) ||
-			    to_hint == -1)
-				to_hint = to;
-			break;
-		case H_CURSOR:
-			to = ctp->ct_active + ctp->ct_timeout;
-			/* TIMEOUT */
-			if (to < t) {
-				if (__dbsrv_verbose)
-					printf("Timing out cursor %ld\n",
-					    ctp->ct_id);
-				dbcp = (DBC *)ctp->ct_anyp;
-				(void) dbcp->c_close(dbcp);
-				__dbclear_ctp(ctp);
-				/*
-				 * Start over with a guaranteed good ctp.
-				 */
-				nextctp = LIST_FIRST(&__dbsrv_head);
-			} else if ((to_hint > 0 && to_hint > to) ||
-			    to_hint == -1)
-				to_hint = to;
-			break;
-		default:
-			break;
-		}
-	}
 }
 
 /*
- * RECURSIVE FUNCTION.  We need to abort any number of levels of nested
+ * RECURSIVE FUNCTION.  We need to clear/free any number of levels of nested
  * layers.
  */
-/*
- * PUBLIC: void __dbclear_child __P((ct_entry *));
- */
-void
+static void
 __dbclear_child(parent)
 	ct_entry *parent;
 {
@@ -359,6 +398,8 @@ new_ct_ent(errp)
 		t = octp->ct_id + 1;
 	ctp->ct_id = t;
 	ctp->ct_idle = __dbsrv_idleto;
+	ctp->ct_activep = &ctp->ct_active;
+	ctp->ct_origp = NULL;
 
 	LIST_INSERT_HEAD(&__dbsrv_head, ctp, entries);
 	return (ctp);
@@ -394,11 +435,48 @@ __dbsrv_active(ctp)
 		return;
 	if ((t = time(NULL)) == -1)
 		return;
-	ctp->ct_active = t;
+	*(ctp->ct_activep) = t;
 	if ((envctp = ctp->ct_envparent) == NULL)
 		return;
-	envctp->ct_active = t;
+	*(envctp->ct_activep) = t;
 	return;
+}
+
+/*
+ * PUBLIC: int __dbc_close_int __P((ct_entry *));
+ */
+int
+__dbc_close_int(dbc_ctp)
+	ct_entry *dbc_ctp;
+{
+	DBC *dbc;
+	int ret;
+	ct_entry *ctp;
+
+	dbc = (DBC *)dbc_ctp->ct_anyp;
+
+	ret = dbc->c_close(dbc);
+	/*
+	 * If this cursor is a join cursor then we need to fix up the
+	 * cursors that it was joined from so that they are independent again.
+	 */
+	if (dbc_ctp->ct_type & CT_JOINCUR)
+		for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL;
+		    ctp = LIST_NEXT(ctp, entries)) {
+			/*
+			 * Test if it is a join cursor, and if it is part
+			 * of this one.
+			 */
+			if ((ctp->ct_type & CT_JOIN) &&
+			    ctp->ct_activep == &dbc_ctp->ct_active) {
+				ctp->ct_type &= ~CT_JOIN;
+				ctp->ct_activep = ctp->ct_origp;
+				__dbsrv_active(ctp);
+			}
+		}
+	__dbclear_ctp(dbc_ctp);
+	return (ret);
+
 }
 
 /*
@@ -416,7 +494,7 @@ __dbenv_close_int(id, flags)
 	ctp = get_tableent(id);
 	if (ctp == NULL)
 		return (DB_NOSERVER_ID);
-	DB_ASSERT(ctp->ct_type == H_ENV);
+	DB_ASSERT(ctp->ct_type == CT_ENV);
 	dbenv = ctp->ct_envp;
 
 	ret = dbenv->close(dbenv, flags);

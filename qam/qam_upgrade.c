@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_upgrade.c,v 11.4 2000/06/01 22:40:48 krinsky Exp $";
+static const char revid[] = "$Id: qam_upgrade.c,v 11.7 2000/11/30 00:58:44 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #endif
@@ -60,10 +59,53 @@ __qam_31_qammeta(dbp, real_name, buf)
 	newmeta->dbmeta.flags = oldmeta->dbmeta.flags;
 	newmeta->dbmeta.record_count = 0;
 	newmeta->dbmeta.key_count = 0;
-	ZERO_LSN(newmeta->dbmeta.alloc_lsn);
+	ZERO_LSN(newmeta->dbmeta.unused3);
 
 	/* Update the version. */
 	newmeta->dbmeta.version = 2;
+
+	return (0);
+}
+
+/*
+ * __qam_32_qammeta --
+ *	Upgrade the database from version 2 to version 3.
+ *
+ * PUBLIC: int __qam_32_qammeta __P((DB *, char *, u_int8_t *));
+ */
+int
+__qam_32_qammeta(dbp, real_name, buf)
+	DB *dbp;
+	char *real_name;
+	u_int8_t *buf;
+{
+	QMETA32 *newmeta;
+	QMETA31 *oldmeta;
+
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(real_name, NULL);
+
+	newmeta = (QMETA32 *)buf;
+	oldmeta = (QMETA31 *)buf;
+
+	/*
+	 * Copy the fields to their new locations.
+	 * We are dropping the first field so move
+	 * from the top.
+	 */
+	newmeta->first_recno = oldmeta->first_recno;
+	newmeta->cur_recno = oldmeta->cur_recno;
+	newmeta->re_len = oldmeta->re_len;
+	newmeta->re_pad = oldmeta->re_pad;
+	newmeta->rec_page = oldmeta->rec_page;
+	newmeta->page_ext = 0;
+	/* cur_recno now points to the first free slot. */
+	newmeta->cur_recno++;
+	if (newmeta->first_recno == 0)
+		newmeta->first_recno = 1;
+
+	/* Update the version. */
+	newmeta->dbmeta.version = 3;
 
 	return (0);
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env003.tcl,v 11.11 2000/05/22 12:51:36 bostic Exp $
+#	$Id: env003.tcl,v 11.12 2000/08/25 14:21:50 sue Exp $
 #
 # Env Test 003
 # Test DB_TMP_DIR and env name resolution
@@ -50,7 +50,7 @@ proc env003 { } {
 proc env003_body { home_arg } {
 	source ./include.tcl
 
-	cleanup $testdir
+	env_cleanup $testdir
 	set tmpdir "tmpfiles_in_here"
 
 	file mkdir $testdir/$tmpdir
@@ -62,7 +62,7 @@ proc env003_body { home_arg } {
 	cd $curdir
 
 	# Run test with the temp dir. nonexistent--it checks for failure.
-	cleanup $testdir
+	env_cleanup $testdir
 
 	env003_make_config $tmpdir
 
@@ -70,7 +70,7 @@ proc env003_body { home_arg } {
 	env003_run_test a 1 "relative path, config file" $home_arg \
 		$testdir/$tmpdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	env003_make_config $fulltmpdir
 
@@ -78,7 +78,7 @@ proc env003_body { home_arg } {
 	env003_run_test a 2 "absolute path, config file" $home_arg \
 		$fulltmpdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now we try without a config file, but instead with db_config
 	# relative paths
@@ -86,14 +86,14 @@ proc env003_body { home_arg } {
 		-tmp_dir $tmpdir -data_dir ." \
 		$testdir/$tmpdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# absolute
 	env003_run_test b 2 "absolute path, db_config" "$home_arg \
 		-tmp_dir $fulltmpdir -data_dir ." \
 		$fulltmpdir
 
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now, set db_config -and- have a # DB_CONFIG file, and make
 	# sure only the latter is honored.
@@ -109,7 +109,7 @@ proc env003_body { home_arg } {
 	env003_run_test c 1 "relative path, both db_config and file" \
 		"$home_arg -tmp_dir $testdir/bogus -data_dir ." \
 		$testdir/$tmpdir
-	cleanup $testdir
+	env_cleanup $testdir
 
 	file mkdir $fulltmpdir
 	file mkdir $fulltmpdir/bogus

@@ -73,7 +73,9 @@ umask(0);
 
     eval { my $txn_mgr = $env->TxnMgr() ; } ;
     ok 4, $@ =~ /^BerkeleyDB Aborting: Transaction Manager not enabled at/ ;
+    undef $env ;
     rmtree $home ;
+
 }
 
 {
@@ -136,11 +138,11 @@ umask(0);
     my $stat = $env->txn_stat() ;
     ok 15, $stat->{'st_naborts'} == 1 ;
 
-    #undef $txn ;
-    #undef $cursor ;
-    #undef $db1 ;
-    #undef $env ;
-    #untie %hash ;
+    undef $txn ;
+    undef $cursor ;
+    undef $db1 ;
+    undef $env ;
+    untie %hash ;
     rmtree $home ;
 }
 
@@ -205,12 +207,12 @@ umask(0);
     my $stat = $txn_mgr->txn_stat() ;
     ok 27, $stat->{'st_naborts'} == 1 ;
 
-    #undef $txn ;
-    #undef $cursor ;
-    #undef $db1 ;
-    #undef $txn_mgr ;
-    #undef $env ;
-    #untie %hash ;
+    undef $txn ;
+    undef $cursor ;
+    undef $db1 ;
+    undef $txn_mgr ;
+    undef $env ;
+    untie %hash ;
     rmtree $home ;
 }
 
@@ -273,11 +275,11 @@ umask(0);
     my $stat = $env->txn_stat() ;
     ok 38, $stat->{'st_naborts'} == 0 ;
 
-    #undef $txn ;
-    #undef $cursor ;
-    #undef $db1 ;
-    #undef $env ;
-    #untie %hash ;
+    undef $txn ;
+    undef $cursor ;
+    undef $db1 ;
+    undef $env ;
+    untie %hash ;
     rmtree $home ;
 }
 
@@ -341,12 +343,12 @@ umask(0);
     my $stat = $txn_mgr->txn_stat() ;
     ok 50, $stat->{'st_naborts'} == 0 ;
 
-    #undef $txn ;
-    #undef $cursor ;
-    #undef $db1 ;
-    #undef $txn_mgr ;
-    #undef $env ;
-    #untie %hash ;
+    undef $txn ;
+    undef $cursor ;
+    undef $db1 ;
+    undef $txn_mgr ;
+    undef $env ;
+    untie %hash ;
     rmtree $home ;
 }
 

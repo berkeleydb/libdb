@@ -1,16 +1,12 @@
 /*-
- * $Id: LICENSE,v 11.6 2000/02/14 02:59:37 bostic Exp $
+ * $Id: LICENSE,v 11.7 2000/11/01 20:35:49 bostic Exp $
  */
 
 The following is the license that applies to this copy of the Berkeley DB
 software.  For a license to use the Berkeley DB software under conditions
 other than those described here, or to purchase support for this software,
-please contact Sleepycat Software at one of the following addresses:
-
-	Sleepycat Software	db@sleepycat.com
-	394 E. Riding Dr.	510-526-3972
-	Carlisle, MA 01741	877-SLEEPYCAT (toll-free, USA only)
-	USA
+please contact Sleepycat Software by email at db@sleepycat.com, or on the
+Web at http://www.sleepycat.com.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 /*

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.cpp,v 11.10 2000/04/01 15:52:15 dda Exp $
+ * $Id: EnvExample.cpp,v 11.12 2000/10/27 20:32:00 dda Exp $
  */
 
 #include "db_config.h"
@@ -27,7 +27,7 @@
 #define	DATABASE_HOME	":database"
 #define	CONFIG_DATA_DIR	":database"
 #else
-#ifdef _WIN32
+#ifdef DB_WIN32
 #define	DATABASE_HOME	"\\tmp\\database"
 #define	CONFIG_DATA_DIR	"\\database\\files"
 #else
@@ -80,10 +80,11 @@ main(int, char **)
 void
 db_setup(char *home, char *data_dir, ostream& err_stream)
 {
-	DbEnv *dbenv = new DbEnv(0);
-
-	// Output errors to the application's log.
 	//
+	// Create an environment object and initialize it for error
+	// reporting.
+	//
+	DbEnv *dbenv = new DbEnv(0);
 	dbenv->set_error_stream(&err_stream);
 	dbenv->set_errpfx(progname);
 
@@ -93,14 +94,12 @@ db_setup(char *home, char *data_dir, ostream& err_stream)
 	//
 	dbenv->set_cachesize(0, 64 * 1024, 0);
 
-	//
-	// We have multiple processes reading/writing these files, so
-	// we need concurrency control and a shared buffer pool, but
-	// not logging or transactions.
-	//
+	// Databases are in a subdirectory.
 	(void)dbenv->set_data_dir(data_dir);
+
+	// Open the environment with full transactional support.
 	dbenv->open(DATABASE_HOME,
-		    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL, 0);
+    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN, 0);
 
 	// Do something interesting...
 

@@ -1,13 +1,13 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_btree_ext_h_
 #define	_btree_ext_h_
 #if defined(__cplusplus)
 extern "C" {
 #endif
-int __bam_cmp __P((DB *, const DBT *,
-   PAGE *, u_int32_t, int (*)(const DBT *, const DBT *), int *));
-int __bam_defcmp __P((const DBT *, const DBT *));
-size_t __bam_defpfx __P((const DBT *, const DBT *));
+int __bam_cmp __P((DB *, const DBT *, PAGE *,
+   u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
+int __bam_defcmp __P((DB *, const DBT *, const DBT *));
+size_t __bam_defpfx __P((DB *, const DBT *, const DBT *));
 int __bam_pgin __P((DB_ENV *, db_pgno_t, void *, DBT *));
 int __bam_pgout __P((DB_ENV *, db_pgno_t, void *, DBT *));
 int __bam_mswap __P((PAGE *));
@@ -65,12 +65,15 @@ int __bam_root_recover
   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __bam_curadj_recover
   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __bam_rcuradj_recover
+  __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __bam_reclaim __P((DB *, DB_TXN *));
 int __ram_open __P((DB *, const char *, db_pgno_t, u_int32_t));
 int __ram_c_del __P((DBC *));
 int __ram_c_get
     __P((DBC *, DBT *, DBT *, u_int32_t, db_pgno_t *));
 int __ram_c_put __P((DBC *, DBT *, DBT *, u_int32_t, db_pgno_t *));
+int __ram_ca __P((DBC *, ca_recno_arg));
 int __ram_getno __P((DBC *, const DBT *, db_recno_t *, int));
 int __ram_writeback __P((DB *));
 int __bam_rsearch __P((DBC *, db_recno_t *, u_int32_t, int, int *));

@@ -1,5 +1,4 @@
- 
-<!--$Id: env_open.so,v 10.58 2000/05/01 21:57:43 bostic Exp $-->
+<!--$Id: env_open.so,v 10.61 2000/12/01 15:50:31 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv.open</h1>
@@ -42,6 +41,9 @@ of the following values.
 grouped together by functionality.  The first group of flags indicate
 which of the Berkeley DB subsystems should be initialized:
 <p><dl compact>
+<p><dt><a name="Db.DB_JOINENV">Db.DB_JOINENV</a><dd>Join an existing environment.  This option allows applications to
+join an existing environment without knowing which Berkeley DB subsystems
+the environment supports.
 <p><dt><a name="Db.DB_INIT_CDB">Db.DB_INIT_CDB</a><dd>Initialize locking for the <a href="../ref/cam/intro.html">Berkeley DB Concurrent Data Store</a>
 product.  In this mode, Berkeley DB provides multiple reader/single writer
 access.  The only other subsystem that should be specified with the
@@ -108,7 +110,7 @@ recovery.  For further information, consult <a href="../utility/db_archive.html"
 <a href="../utility/db_recover.html">db_recover</a>.
 <p>The third group of flags govern file naming extensions in the environment:
 <p><dl compact>
-<!--$Id: m4.env_flags,v 10.8 2000/03/18 21:43:04 bostic Exp $-->
+<!--$Id: m4.env_flags,v 10.9 2000/06/29 22:54:10 bostic Exp $-->
 <p><dt><a name="Db.DB_USE_ENVIRON">Db.DB_USE_ENVIRON</a><dd>The Berkeley DB process' environment may be permitted to specify information to
 be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB
 File Naming</a>.  As permitting users to specify which files are used can
@@ -119,16 +121,12 @@ be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB
 File Naming</a>.  As permitting users to specify which files are used can
 create security problems, if the DB_USE_ENVIRON_ROOT flag is set,
 environment information will be used for file naming only for users with
-appropriate permissions (e.g., on IEEE/ANSI Std 1003.1 (POSIX) systems, users with a
-user-ID of 0).
+appropriate permissions (e.g., on UNIX systems, users with a user-ID of 0).
 </dl>
 <p>Finally, there are a few additional, unrelated flags:
 <p><dl compact>
 <p><dt><a name="Db.DB_CREATE">Db.DB_CREATE</a><dd>Cause Berkeley DB subsystems to create any underlying files, as necessary.
 <p><dt><a name="Db.DB_LOCKDOWN">Db.DB_LOCKDOWN</a><dd>Lock shared Berkeley DB environment files and memory mapped databases into memory.
-<p><dt><a name="Db.DB_NOMMAP">Db.DB_NOMMAP</a><dd>Always copy read-only database files in this environment into the local
-cache instead of potentially mapping them into process memory (see the
-description of the <a href="../api_java/env_set_mp_mmapsize.html">DbEnv.set_mp_mmapsize</a> method for further information).
 <p><dt><a name="Db.DB_PRIVATE">Db.DB_PRIVATE</a><dd>Specify that the environment will only be accessed by a single process
 (although that process may be multi-threaded).  This flag has two effects
 on the Berkeley DB environment.  First, all underlying data structures are
@@ -145,19 +143,10 @@ by the filesystem.  See <a href="../ref/env/region.html">Shared Memory
 Regions</a> for more information.
 <p><dt><a name="Db.DB_THREAD">Db.DB_THREAD</a><dd>Cause the <a href="../api_java/dbenv_class.html">DbEnv</a> handle returned by DbEnv.open to be
 <i>free-threaded</i>, that is, useable by multiple threads within a
-single address space.  
+single address space.
 <p>Threading is always assumed in the Java API, so no special flags are
 required and Berkeley DB functions will always behave as if the Db.DB_THREAD
 flag was specified.
-<p><dt><a name="Db.DB_TXN_NOSYNC">Db.DB_TXN_NOSYNC</a><dd>Do not synchronously flush the log on transaction commit or prepare.
-This means that transactions exhibit the ACI (atomicity, consistency and
-isolation) properties, but not D (durability), i.e., database integrity
-will be maintained but it is possible that some number of the most
-recently committed transactions may be undone during recovery instead of
-being redone.
-<p>The number of transactions that are potentially at risk is governed by
-how often the log is checkpointed (see <a href="../utility/db_checkpoint.html">db_checkpoint</a> for more
-information) and how many log updates can fit on a single log page.
 </dl>
 <p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by Berkeley DB
 are created with mode <b>mode</b> (as described in <b>chmod</b>(2)) and
@@ -182,8 +171,8 @@ the database home as described in
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>
-The DB_THREAD flag was specified and spinlocks are not implemented for
-this architecture.
+The Db.DB_THREAD flag was specified and spinlocks are not
+implemented for this architecture.
 <p>The DB_HOME or TMPDIR environment variables were set but empty.
 <p>An incorrectly formatted <b>NAME VALUE</b> entry or line was found.
 </dl>
@@ -210,6 +199,8 @@ will fail in the same way.
 <a href="../api_java/env_set_errcall.html">DbEnv.set_errcall</a>,
 <a href="../api_java/env_set_error_stream.html">DbEnv.set_error_stream</a>,
 <a href="../api_java/env_set_errpfx.html">DbEnv.set_errpfx</a>,
+<a href="../api_java/env_set_flags.html">DbEnv.set_flags</a>,
+<a href="../api_java/env_set_mutexlocks.html">DbEnv.set_mutexlocks</a>,
 and
 <a href="../api_java/env_set_verbose.html">DbEnv.set_verbose</a>.
 </tt>

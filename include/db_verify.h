@@ -4,10 +4,10 @@
  * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_verify.h,v 1.10 2000/05/25 16:18:46 bostic Exp $
+ * $Id: db_verify.h,v 1.18 2000/12/31 17:51:52 bostic Exp $
  */
 
-#ifndef _DB_VERIFY_H
+#ifndef _DB_VERIFY_H_
 #define	_DB_VERIFY_H_
 
 /*
@@ -25,9 +25,10 @@
 			__db_err x;					\
 	} while (0)
 
-#define	TYPE_ERR_PRINT(dbp, func, pgno, type)				\
-    EPRINT(((dbp), "%s called on nonsensical page %lu of type %lu",	\
-	(func), (u_long)(pgno), (u_long)(type)));
+/* For fatal type errors--i.e., verifier bugs. */
+#define	TYPE_ERR_PRINT(dbenv, func, pgno, ptype)			\
+    EPRINT(((dbenv), "%s called on nonsensical page %lu of type %lu",	\
+	(func), (u_long)(pgno), (u_long)(ptype)));
 
 /* Is x a power of two?  (Tests true for zero, which doesn't matter here.) */
 #define	POWER_OF_TWO(x)	(((x) & ((x) - 1)) == 0)
@@ -46,22 +47,20 @@
  * These share the same space as the global flags to __db_verify, and must not
  * dip below 0x00010000.
  */
-#define	ST_DUPOK	0x00010000
-#define	ST_DUPSORT	0x00020000
-#define	ST_IS_RECNO	0x00040000
-#define	ST_OVFL_LEAF	0x00080000	/* Overflow reffed from leaf page. */
-#define	ST_RECNUM	0x00100000
-#define	ST_RELEN	0x00200000
-#define	ST_TOPLEVEL	0x00400000	/* subtree == entire tree */
+#define	ST_DUPOK	0x00010000	/* Duplicates are acceptable. */
+#define	ST_DUPSET	0x00020000	/* Subtree is in a duplicate tree. */
+#define	ST_DUPSORT	0x00040000	/* Duplicates are sorted. */
+#define	ST_IS_RECNO	0x00080000	/* Subtree is a recno. */
+#define	ST_OVFL_LEAF	0x00100000	/* Overflow reffed from leaf page. */
+#define	ST_RECNUM	0x00200000	/* Subtree has record numbering on. */
+#define	ST_RELEN	0x00400000	/* Subtree has fixed-length records. */
+#define	ST_TOPLEVEL	0x00800000	/* Subtree == entire tree */
 
 /*
  * Flags understood by __bam_salvage and __db_salvage.  These need not share
  * the same space with the __bam_vrfy_subtree flags, but must share with
  * __db_verify.
  */
-#define	SA_HASDUPS	0x00010000
-#define	SA_MARKDATAPGS	0x00020000
-#define	SA_PRINTHEADER	0x00040000
 #define	SA_SKIPFIRSTKEY	0x00080000
 
 /*
@@ -110,6 +109,7 @@ struct __vrfy_dbinfo {
 	DB *salvage_pages;
 
 	db_pgno_t	last_pgno;
+	db_pgno_t	pgs_remaining;	/* For dbp->db_feedback(). */
 
 	/* Queue needs these to verify data pages in the first pass. */
 	u_int32_t	re_len;

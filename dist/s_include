@@ -1,9 +1,9 @@
 #!/bin/sh -
-#	$Id: s_include,v 1.6 2000/05/17 13:15:18 bostic Exp $
+#	$Id: s_include,v 1.7 2000/07/13 18:38:46 bostic Exp $
 #
 # Build the automatically generated function prototype files.
 
-msgc="/* DO NOT EDIT: automatically built by dist/distrib. */"
+msgc="/* DO NOT EDIT: automatically built by dist/s_include. */"
 cxx_if="#if defined(__cplusplus)"
 cxx_head="extern \"C\" {"
 cxx_foot="}"

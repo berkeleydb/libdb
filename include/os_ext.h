@@ -1,4 +1,4 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_os_ext_h_
 #define	_os_ext_h_
 #if defined(__cplusplus)
@@ -31,6 +31,7 @@ int __os_unmapfile __P((DB_ENV *, void *, size_t));
 u_int32_t __db_oflags __P((int));
 int __db_omode __P((const char *));
 int __os_open __P((DB_ENV *, const char *, u_int32_t, int, DB_FH *));
+int __os_shmname __P((DB_ENV *, const char *, char **));
 int __os_r_attach __P((DB_ENV *, REGINFO *, REGION *));
 int __os_r_detach __P((DB_ENV *, REGINFO *, int));
 int __os_rename __P((DB_ENV *, const char *, const char *));
@@ -49,7 +50,8 @@ int __os_ioinfo __P((DB_ENV *, const char *,
    DB_FH *, u_int32_t *, u_int32_t *, u_int32_t *));
 int __os_tmpdir __P((DB_ENV *, u_int32_t));
 int __os_unlink __P((DB_ENV *, const char *));
-#if defined(_WIN32)
+int __os_region_unlink __P((DB_ENV *, const char *));
+#if defined(DB_WIN32)
 int __os_win32_errno __P((void));
 #endif
 int __os_fpinit __P((DB_ENV *, DB_FH *, db_pgno_t, int, int));

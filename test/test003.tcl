@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test003.tcl,v 11.17 2000/04/21 18:36:23 krinsky Exp $
+#	$Id: test003.tcl,v 11.18 2000/08/25 14:21:54 sue Exp $
 #
 # DB Test 3 {access method}
 # Take the source files and dbtest executable and enter their names as the
@@ -40,7 +40,7 @@ proc test003 { method args} {
 	set t3 $testdir/t3
 	set t4 $testdir/t4
 
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE

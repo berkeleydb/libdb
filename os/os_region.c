@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_region.c,v 11.5 2000/03/28 21:50:17 ubell Exp $";
+static const char revid[] = "$Id: os_region.c,v 11.9 2000/11/30 00:58:42 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -32,6 +31,7 @@ __os_r_attach(dbenv, infop, rp)
 	REGINFO *infop;
 	REGION *rp;
 {
+	int ret;
 	/* Round off the requested size for the underlying VM. */
 	OS_VMROUNDOFF(rp->size);
 
@@ -69,7 +69,13 @@ __os_r_attach(dbenv, infop, rp)
 			return (EINVAL);
 		}
 #endif
-		return (__os_malloc(dbenv, rp->size, NULL, &infop->addr));
+		if ((ret =
+		    __os_malloc(dbenv, rp->size, NULL, &infop->addr)) != 0)
+			return (ret);
+#if defined(UMRW) && !defined(DIAGNOSTIC)
+		memset(infop->addr, CLEAR_BYTE, rp->size);
+#endif
+		return (0);
 	}
 
 	/* If the user replaced the map call, call through their interface. */

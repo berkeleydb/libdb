@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_locked.c,v 11.8 2000/05/25 04:18:12 dda Exp $";
+static const char revid[] = "$Id: java_locked.c,v 11.11 2000/10/25 19:54:55 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -39,7 +39,7 @@ jdbt_lock(JDBT *jdbt, JNIEnv *jnienv, jobject obj, OpKind kind)
 
 	if (!verify_non_null(jnienv, jdbt->dbt)) {
 		jdbt->has_error_ = 1;
-		return EINVAL;
+		return (EINVAL);
 	}
 	dbt = &jdbt->dbt->dbt;
 
@@ -50,7 +50,7 @@ jdbt_lock(JDBT *jdbt, JNIEnv *jnienv, jobject obj, OpKind kind)
 				 "Db.DB_DBT_MALLOC or Db.DB_DBT_REALLOC",
 				 0, 0);
 		jdbt->has_error_ = 1;
-		return EINVAL;
+		return (EINVAL);
 	}
 
 	/* If this is requested to be realloc, we cannot use the
@@ -80,7 +80,7 @@ jdbt_lock(JDBT *jdbt, JNIEnv *jnienv, jobject obj, OpKind kind)
 		if (!jdbt->dbt->array_) {
 			report_exception(jnienv, "Dbt.data is null", 0, 0);
 			jdbt->has_error_ = 1;
-			return EINVAL;
+			return (EINVAL);
 		}
 
 		/* Verify other parameters */
@@ -88,13 +88,13 @@ jdbt_lock(JDBT *jdbt, JNIEnv *jnienv, jobject obj, OpKind kind)
 		if (jdbt->dbt->offset_ < 0 ) {
 			report_exception(jnienv, "Dbt.offset illegal", 0, 0);
 			jdbt->has_error_ = 1;
-			return EINVAL;
+			return (EINVAL);
 		}
 		if (dbt->ulen + jdbt->dbt->offset_ > jdbt->java_array_len_) {
 			report_exception(jnienv,
 			 "Dbt.ulen + Dbt.offset greater than array length", 0, 0);
 			jdbt->has_error_ = 1;
-			return EINVAL;
+			return (EINVAL);
 		}
 
 		jdbt->java_data_ = (*jnienv)->GetByteArrayElements(jnienv, jdbt->dbt->array_,
@@ -108,7 +108,7 @@ jdbt_lock(JDBT *jdbt, JNIEnv *jnienv, jobject obj, OpKind kind)
 		 */
 		dbt->data = jdbt->before_data_ = 0;
 	}
-	return 0;
+	return (0);
 }
 
 /* The LockedDBT destructor is called when the java handler returns
@@ -193,7 +193,7 @@ int jdbt_realloc(JDBT *jdbt, JNIEnv *jnienv)
 	dbt = &jdbt->dbt->dbt;
 
 	if (!jdbt->do_realloc_ || jdbt->has_error_ || dbt->size <= dbt->ulen)
-		return 0;
+		return (0);
 
 	(*jnienv)->ReleaseByteArrayElements(jnienv, jdbt->dbt->array_, jdbt->java_data_, 0);
 	dbjit_release(jdbt->dbt, jnienv);
@@ -211,7 +211,7 @@ int jdbt_realloc(JDBT *jdbt, JNIEnv *jnienv)
 						     jdbt->dbt->array_,
 						     (jboolean *)0);
 	dbt->data = jdbt->before_data_ = jdbt->java_data_;
-	return 1;
+	return (1);
 }
 
 /****************************************************************
@@ -229,7 +229,7 @@ jstr_lock(JSTR *js, JNIEnv *jnienv, jstring jstr)
 	else
 		js->string = (*jnienv)->GetStringUTFChars(jnienv, jstr,
 							  (jboolean *)0);
-	return 0;
+	return (0);
 }
 
 void jstr_unlock(JSTR *js, JNIEnv *jnienv)
@@ -273,7 +273,7 @@ jstrarray_lock(JSTRARRAY *jsa, JNIEnv *jnienv, jobjectArray arr)
 		new_array[count] = 0;
 		jsa->array = new_array;
 	}
-	return 0;
+	return (0);
 }
 
 void jstrarray_unlock(JSTRARRAY *jsa, JNIEnv *jnienv)

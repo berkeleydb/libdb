@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test028.tcl,v 11.10 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test028.tcl,v 11.12 2000/08/25 14:21:55 sue Exp $
 #
 # Put after cursor delete test.
 proc test028 { method args } {
@@ -36,11 +36,14 @@ proc test028 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test028.db
+		set env NULL
 	} else {
 		set testfile test028.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -202,13 +205,4 @@ proc test028.check { key data } {
 	error_check_good "Bad key" $key put_after_cursor_del
 	error_check_good "data mismatch for $key" $data $dupnum$dupstr
 	incr dupnum
-}
-
-proc repeat { str n } {
-	set ret ""
-	while { $n > 0 } {
-		set ret $str$ret
-		incr n -1
-	}
-	return $ret
 }

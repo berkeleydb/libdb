@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_region.c,v 11.15 2000/05/17 16:31:54 bostic Exp $";
+static const char revid[] = "$Id: mp_region.c,v 11.26 2000/11/30 00:58:41 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -22,6 +21,9 @@ static const char revid[] = "$Id: mp_region.c,v 11.15 2000/05/17 16:31:54 bostic
 #include "mp.h"
 
 static int __mpool_init __P((DB_ENV *, DB_MPOOL *, int, int));
+#ifdef MUTEX_SYSTEM_RESOURCES
+static size_t __mpool_region_maint __P((REGINFO *));
+#endif
 
 /*
  * __memp_open --
@@ -41,8 +43,9 @@ __memp_open(dbenv)
 	int htab_buckets, ret;
 
 	/* Figure out how big each cache region is. */
-	reg_size = dbenv->mp_gbytes / dbenv->mp_ncache;
-	reg_size += (dbenv->mp_gbytes % dbenv->mp_ncache) / dbenv->mp_ncache;
+	reg_size = (dbenv->mp_gbytes / dbenv->mp_ncache) * GIGABYTE;
+	reg_size += ((dbenv->mp_gbytes %
+	    dbenv->mp_ncache) * GIGABYTE) / dbenv->mp_ncache;
 	reg_size += dbenv->mp_bytes / dbenv->mp_ncache;
 
 	/*
@@ -62,8 +65,11 @@ __memp_open(dbenv)
 	dbmp->dbenv = dbenv;
 
 	/* Join/create the first mpool region. */
-	reginfo.id = REG_ID_MPOOL;
+	memset(&reginfo, 0, sizeof(REGINFO));
+	reginfo.type = REGION_TYPE_MPOOL;
+	reginfo.id = INVALID_REGION_ID;
 	reginfo.mode = dbenv->db_mode;
+	reginfo.flags = REGION_JOIN_OK;
 	if (F_ISSET(dbenv, DB_ENV_CREATE))
 		F_SET(&reginfo, REGION_CREATE_OK);
 	if ((ret = __db_r_attach(dbenv, &reginfo, reg_size)) != 0)
@@ -83,8 +89,9 @@ __memp_open(dbenv)
 		if ((ret = __os_calloc(dbenv,
 		    dbmp->nreg, sizeof(REGINFO), &dbmp->reginfo)) != 0)
 			goto err;
+		/* Make sure we don't clear the wrong entries on error. */
 		for (i = 0; i < dbmp->nreg; ++i)
-			dbmp->reginfo[i].id = REG_ID_INVALID;
+			dbmp->reginfo[i].id = INVALID_REGION_ID;
 		dbmp->reginfo[0] = reginfo;
 
 		/* Initialize the first region. */
@@ -98,9 +105,10 @@ __memp_open(dbenv)
 		mp = R_ADDR(dbmp->reginfo, dbmp->reginfo[0].rp->primary);
 		regids = R_ADDR(dbmp->reginfo, mp->regids);
 		for (i = 1; i < dbmp->nreg; ++i) {
-			dbmp->reginfo[i].id = REG_ID_INVALID;
+			dbmp->reginfo[i].type = REGION_TYPE_MPOOL;
+			dbmp->reginfo[i].id = INVALID_REGION_ID;
 			dbmp->reginfo[i].mode = dbenv->db_mode;
-			F_SET(&dbmp->reginfo[i], REGION_CREATE_OK);
+			dbmp->reginfo[i].flags = REGION_CREATE_OK;
 			if ((ret = __db_r_attach(
 			    dbenv, &dbmp->reginfo[i], reg_size)) != 0)
 				goto err;
@@ -115,23 +123,25 @@ __memp_open(dbenv)
 		/*
 		 * Determine how many regions there are going to be, allocate
 		 * the REGINFO structures and fill in local copies of that
-		 * information.  Make sure we don't clear the wrong entries on
-		 * error.
+		 * information.
 		 */
 		mp = R_ADDR(&reginfo, reginfo.rp->primary);
 		dbmp->nreg = mp->nreg;
 		if ((ret = __os_calloc(dbenv,
 		    dbmp->nreg, sizeof(REGINFO), &dbmp->reginfo)) != 0)
 			goto err;
+		/* Make sure we don't clear the wrong entries on error. */
 		for (i = 0; i < dbmp->nreg; ++i)
-			dbmp->reginfo[i].id = REG_ID_INVALID;
+			dbmp->reginfo[i].id = INVALID_REGION_ID;
 		dbmp->reginfo[0] = reginfo;
 
-		/* Join/initialize remaining regions. */
+		/* Join remaining regions. */
 		regids = R_ADDR(dbmp->reginfo, mp->regids);
 		for (i = 1; i < dbmp->nreg; ++i) {
+			dbmp->reginfo[i].type = REGION_TYPE_MPOOL;
 			dbmp->reginfo[i].id = regids[i];
 			dbmp->reginfo[i].mode = 0;
+			dbmp->reginfo[i].flags = REGION_JOIN_OK;
 			if ((ret = __db_r_attach(
 			    dbenv, &dbmp->reginfo[i], 0)) != 0)
 				goto err;
@@ -144,8 +154,6 @@ __memp_open(dbenv)
 		dbmp->reginfo[i].primary =
 		    R_ADDR(&dbmp->reginfo[i], dbmp->reginfo[i].rp->primary);
 
-	R_UNLOCK(dbenv, dbmp->reginfo);
-
 	/* If the region is threaded, allocate a mutex to lock the handles. */
 	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
 		if ((ret = __db_mutex_alloc(
@@ -157,24 +165,26 @@ __memp_open(dbenv)
 			goto err;
 	}
 
+	R_UNLOCK(dbenv, dbmp->reginfo);
+
 	dbenv->mp_handle = dbmp;
 	return (0);
 
-err:	if (dbmp->reginfo[0].addr != NULL) {
+err:	if (dbmp->reginfo != NULL && dbmp->reginfo[0].addr != NULL) {
 		if (F_ISSET(dbmp->reginfo, REGION_CREATE))
-			for (i = 0; i < dbmp->nreg; ++i)
-				if (dbmp->reginfo[i].id != REG_ID_INVALID)
-					F_SET(dbmp->reginfo[i].rp, REG_DEAD);
+			ret = __db_panic(dbenv, ret);
 
 		R_UNLOCK(dbenv, dbmp->reginfo);
 
 		for (i = 0; i < dbmp->nreg; ++i)
-			if (dbmp->reginfo[i].id != REG_ID_INVALID)
+			if (dbmp->reginfo[i].id != INVALID_REGION_ID)
 				(void)__db_r_detach(
 				    dbenv, &dbmp->reginfo[i], 0);
 		__os_free(dbmp->reginfo,
 		    dbmp->nreg * sizeof(*dbmp->reginfo));
 	}
+	if (dbmp->mutexp != NULL)
+		__db_mutex_free(dbenv, dbmp->reginfo, dbmp->mutexp);
 	__os_free(dbmp, sizeof(*dbmp));
 	return (ret);
 }
@@ -192,6 +202,9 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	DB_HASHTAB *htab;
 	MPOOL *mp;
 	REGINFO *reginfo;
+#ifdef MUTEX_SYSTEM_RESOURCES
+	size_t maint_size;
+#endif
 	int ret;
 	void *p;
 
@@ -205,12 +218,23 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	mp = reginfo->primary;
 	memset(mp, 0, sizeof(*mp));
 
+#ifdef	MUTEX_SYSTEM_RESOURCES
+	maint_size = __mpool_region_maint(reginfo);
+	/* Allocate room for the maintenance info and initialize it. */
+	if ((ret = __db_shalloc(reginfo->addr,
+	    sizeof(REGMAINT) + maint_size, 0, &p)) != 0)
+		goto mem_err;
+	__db_maintinit(reginfo, p, maint_size);
+	mp->maint_off = R_OFFSET(reginfo, p);
+#endif
+
 	if (reginfo_off == 0) {
 		SH_TAILQ_INIT(&mp->mpfq);
 
-		if ((ret = __db_mutex_init(dbenv, &mp->sync_mutex,
-		    R_OFFSET(dbmp->reginfo,
-		    &mp->sync_mutex) + DB_FCNTL_OFF_MPOOL, 0)) != 0)
+		if ((ret = __db_shmutex_init(dbenv, &mp->sync_mutex,
+		    R_OFFSET(dbmp->reginfo, &mp->sync_mutex) +
+		    DB_FCNTL_OFF_MPOOL, 0, dbmp->reginfo,
+		    (REGMAINT *)R_ADDR(dbmp->reginfo, mp->maint_off))) != 0)
 			goto err;
 
 		ZERO_LSN(mp->lsn);
@@ -286,4 +310,48 @@ __memp_close(dbenv)
 
 	dbenv->mp_handle = NULL;
 	return (ret);
+}
+
+#ifdef MUTEX_SYSTEM_RESOURCES
+/*
+ * __mpool_region_maint --
+ *	Return the amount of space needed for region maintenance info.
+ *
+ */
+static size_t
+__mpool_region_maint(infop)
+	REGINFO *infop;
+{
+	size_t s;
+	int numlocks;
+
+	/*
+	 * For mutex maintenance we need one mutex per possible page.
+	 * Compute the maximum number of pages this cache can have.
+	 * Also add in an mpool mutex.
+	 */
+	numlocks = ((infop->rp->size / DB_MIN_PGSIZE) + 1);
+	s = sizeof(roff_t) * numlocks;
+	return (s);
+}
+#endif
+
+/*
+ * __mpool_region_destroy
+ *	Destroy any region maintenance info.
+ *
+ * PUBLIC: void __mpool_region_destroy __P((DB_ENV *, REGINFO *));
+ */
+void
+__mpool_region_destroy(dbenv, infop)
+	DB_ENV *dbenv;
+	REGINFO *infop;
+{
+	MPOOL *mp;
+
+	COMPQUIET(dbenv, NULL);
+	mp = R_ADDR(infop, infop->rp->primary);
+
+	__db_shlocks_destroy(infop, (REGMAINT *)R_ADDR(infop, mp->maint_off));
+	return;
 }

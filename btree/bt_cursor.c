@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_cursor.c,v 11.75.2.6 2000/07/26 14:14:04 bostic Exp $";
+static const char revid[] = "$Id: bt_cursor.c,v 11.88 2001/01/11 18:19:49 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #endif
@@ -184,6 +183,7 @@ __bam_c_reset(cp)
 	cp->lock.off = LOCK_INVALID;
 	cp->lock_mode = DB_LOCK_NG;
 	cp->recno = RECNO_OOB;
+	cp->order = INVALID_ORDER;
 	cp->flags = 0;
 }
 
@@ -201,8 +201,8 @@ __bam_c_init(dbc, dbtype)
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	u_int32_t minkey;
 	int ret;
+	u_int32_t minkey;
 
 	dbp = dbc->dbp;
 
@@ -688,6 +688,11 @@ __bam_c_del(dbc)
 		return (DB_KEYEMPTY);
 
 	/*
+	 * This code is always called with a page lock but no page.
+	 */
+	DB_ASSERT(cp->page == NULL);
+
+	/*
 	 * We don't physically delete the record until the cursor moves, so
 	 * we have to have a long-lived write lock on the page instead of a
 	 * a long-lived read lock.  Note, we have to have a read lock to even
@@ -699,6 +704,7 @@ __bam_c_del(dbc)
 	if (F_ISSET(cp, C_RECNUM)) {
 		if ((ret = __bam_c_getstack(dbc)) != 0)
 			goto err;
+		cp->page = cp->csp->page;
 	} else {
 		ACQUIRE_CUR(dbc, DB_LOCK_WRITE, ret);
 		if (ret != 0)
@@ -711,7 +717,7 @@ __bam_c_del(dbc)
 	    dbp->log_fileid, PGNO(cp->page), &LSN(cp->page), cp->indx)) != 0)
 		goto err;
 
-	/* Set the intent-to-delete flag on the page and update all cursors. */
+	/* Set the intent-to-delete flag on the page. */
 	if (TYPE(cp->page) == P_LBTREE)
 		B_DSET(GET_BKEYDATA(cp->page, cp->indx + O_INDX)->type);
 	else
@@ -722,17 +728,18 @@ __bam_c_del(dbc)
 
 err:	/*
 	 * If we've been successful so far and the tree has record numbers,
-	 * adjust the record counts.  Either way, release any acquired pages.
+	 * adjust the record counts.  Either way, release acquired page(s).
 	 */
 	if (F_ISSET(cp, C_RECNUM)) {
 		if (ret == 0)
 			ret = __bam_adjust(dbc, -1);
-		(void)__bam_stkrel(dbc, STK_CLRDBC);
-	} else {
-		DISCARD_CUR(dbc, t_ret);
-		if (t_ret != 0 && ret == 0)
+		(void)__bam_stkrel(dbc, 0);
+	} else
+		if (cp->page != NULL &&
+		    (t_ret = memp_fput(dbp->mpf, cp->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
-	}
+
+	cp->page = NULL;
 
 	/* Update the cursors last, after all chance of failure is past. */
 	if (ret == 0)
@@ -1145,24 +1152,38 @@ split:	needkey = ret = stack = 0;
 		iiop = flags;
 
 		/*
-		 * If the tree has record numbers (and we're not just replacing
-		 * an existing record), we need a complete stack so that we can
-		 * adjust the record counts.
+		 * If the Btree has record numbers (and we're not replacing an
+		 * existing record), we need a complete stack so that we can
+		 * adjust the record counts.  The check for flags == DB_CURRENT
+		 * is superfluous but left in for clarity.  (If C_RECNUM is set
+		 * we know that flags must be DB_CURRENT, as DB_AFTER/DB_BEFORE
+		 * are illegal in a Btree unless it's configured for duplicates
+		 * and you cannot configure a Btree for both record renumbering
+		 * and duplicates.)
 		 */
-		if (F_ISSET(cp, C_RECNUM) &&
-		    (flags != DB_CURRENT || F_ISSET(cp, C_DELETED))) {
+		if (flags == DB_CURRENT &&
+		    F_ISSET(cp, C_RECNUM) && F_ISSET(cp, C_DELETED)) {
 			if ((ret = __bam_c_getstack(dbc)) != 0)
 				goto err;
+			/*
+			 * Initialize the cursor from the stack.  Don't take
+			 * the page number or page index, they should already
+			 * be set.
+			 */
+			cp->page = cp->csp->page;
+			cp->lock = cp->csp->lock;
+			cp->lock_mode = cp->csp->lock_mode;
+
 			stack = 1;
-		} else {
-			/* Acquire the current page with a write lock. */
-			ACQUIRE_WRITE_LOCK(dbc, ret);
-			if (ret != 0)
-				goto err;
-			if ((ret = memp_fget(
-			    dbp->mpf, &cp->pgno, 0, &cp->page)) != 0)
-				goto err;
+			break;
 		}
+
+		/* Acquire the current page with a write lock. */
+		ACQUIRE_WRITE_LOCK(dbc, ret);
+		if (ret != 0)
+			goto err;
+		if ((ret = memp_fget(dbp->mpf, &cp->pgno, 0, &cp->page)) != 0)
+			goto err;
 		break;
 	case DB_KEYFIRST:
 	case DB_KEYLAST:
@@ -2082,18 +2103,6 @@ __bam_c_getstack(dbc)
 err:	/* Discard the key and the page. */
 	if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
-
-	if (ret == 0) {
-		/*
-		 * Initialize the cursor from the stack.  We don't take the
-		 * page number or page index.  The former is unchanged, but
-		 * the latter may have been explicitly set by our caller and
-		 * we can't change it.
-		 */
-		cp->page = cp->csp->page;
-		cp->lock = cp->csp->lock;
-		cp->lock_mode = cp->csp->lock_mode;
-	}
 
 	return (ret);
 }

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: mpool.tcl,v 11.31 2000/05/24 14:58:10 krinsky Exp $
+#	$Id: mpool.tcl,v 11.34 2001/01/18 04:58:07 krinsky Exp $
 #
 # Options are:
 # -cachesize {gbytes bytes ncache}
@@ -81,7 +81,7 @@ proc mpool { args } {
 	}
 
 	# Clean out old directory
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Open the memp with region init specified
 	set ret [catch {eval {berkdb env -create -mode 0644}\
@@ -91,10 +91,13 @@ proc mpool { args } {
 	} else {
 		# If the env open failed, it may be because we're on a platform
 		# such as HP-UX 10 that won't support mutexes in shmget memory.
-		# Verify that the return value was EINVAL and bail
-		# gracefully.
+		# Or QNX, which doesn't support system memory at all.
+		# Verify that the return value was EINVAL or EOPNOTSUPP
+		# and bail gracefully.
 		error_check_good is_shm_test [is_substr $flags -system_mem] 1
-		error_check_good returned_einval [is_substr $errorCode EINVAL] 1
+		error_check_good returned_error [expr \
+		    [is_substr $errorCode EINVAL] || \
+		    [is_substr $errorCode EOPNOTSUPP]] 1
 		puts "Warning:\
 		     platform does not support mutexes in shmget memory."
 		puts "Skipping shared memory mpool test."
@@ -103,7 +106,7 @@ proc mpool { args } {
 	error_check_good env_open [is_substr $env env] 1
 
 	reset_env $env
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# Now open without region init
 	set env [eval {berkdb env -create -mode 0644}\
@@ -115,19 +118,19 @@ proc mpool { args } {
 	reset_env $env
 	set ret [berkdb envremove -home $testdir]
 	error_check_good env_remove $ret 0
-	cleanup $testdir
+	env_cleanup $testdir
 
 	memp002 $testdir \
 	    $procs $pagesize $iterations $npages $seeds $dostat $flags
 	set ret [berkdb envremove -home $testdir]
 	error_check_good env_remove $ret 0
-	cleanup $testdir
+	env_cleanup $testdir
 
 	memp003 $testdir $iterations $flags
 	set ret [berkdb envremove -home $testdir]
 	error_check_good env_remove $ret 0
 
-	cleanup $testdir
+	env_cleanup $testdir
 }
 
 proc memp001 {env dir n iter psize dostat flags} {
@@ -240,8 +243,6 @@ proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 
 	puts "Memp002: {$flags} Multiprocess mpool tester"
 
-	cleanup $dir
-
 	if { [is_substr $flags -private] != 0 } {
 		puts "Memp002 skipping\
 		    multiple processes not supported by private memory"
@@ -250,7 +251,7 @@ proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 	set iter [expr $iterations / $procs]
 
 	# Clean up old stuff and create new.
-	cleanup $dir
+	env_cleanup $dir
 
 	for { set i 0 } { $i < [llength $psizes] } { incr i } {
 		fileremove -f $dir/file$i
@@ -295,7 +296,7 @@ proc memp003 { dir {nentries 10000} flags } {
 		return
 	}
 
-	cleanup $dir
+	env_cleanup $dir
 	set psize 1024
 	set testfile mpool.db
 	set t1 $dir/t1
@@ -347,6 +348,14 @@ proc memp003 { dir {nentries 10000} flags } {
 			incr i -1
 			continue;
 		}
+
+		# The remote process stuff is unhappy with
+		# zero-length keys;  make sure we don't pick one.
+		if { [llength $key] == 0 } {
+			incr i -1
+			continue
+		}
+
 		lappend testset $key
 
 		set ret [eval {$db get} $txn {$key}]

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test063.tcl,v 11.10 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test063.tcl,v 11.11 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 63:  Test that the DB_RDONLY flag is respected.
 #	Attempt to both DB->put and DBC->c_put into a database
@@ -22,10 +22,13 @@ proc test063 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set key "key"
 	set data "data"

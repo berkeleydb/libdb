@@ -1,25 +1,25 @@
- 
-<!--$Id: partial.so,v 10.16 2000/03/27 18:04:53 bostic Exp $-->
+<!--$Id: partial.so,v 10.18 2000/12/18 21:05:14 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Access Methods</title>
+<title>Berkeley DB Reference Guide: Partial record storage and retrieval</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am/curclose.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/verify.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/am/stability.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/verify.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Partial record storage and retrieval</h1>
-<p>It is possible to both store and retrieve parts of data items in all Berkeley DB
-access methods.  This is done by specifying the <a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a>
-flag to the <a href="../../api_c/dbt.html">DBT</a> structure passed to the Berkeley DB interface.
-<p>The <a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag is based on the values of two elements
+<p>It is possible to both store and retrieve parts of data items in all
+Berkeley DB access methods.  This is done by setting the
+<a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag in the <a href="../../api_c/dbt.html">DBT</a> structure passed to the
+Berkeley DB interface.
+<p>The <a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag is based on the values of two fields
 of the <a href="../../api_c/dbt.html">DBT</a> structure, <b>dlen</b> and <b>doff</b>.  The value
 of <b>dlen</b> is the number of bytes of the record in which the
 application is interested.  The value of <b>doff</b> is the offset from
@@ -29,14 +29,15 @@ value of 3 would indicate that the bytes of interest started at
 <b>D</b>, and a <b>dlen</b> value of 4 would indicate that the bytes
 of interest were <b>DEFG</b>.
 <p>When retrieving a data item from a database, the <b>dlen</b> bytes
-starting <b>doff</b> bytes from the beginning of the record are returned,
-as if they comprised the entire record.  If any or all of the specified
-bytes do not exist in the record, the retrieval is still successful and
-the existing bytes or nul bytes are returned.
+starting <b>doff</b> bytes from the beginning of the record are
+returned, as if they comprised the entire record.  If any or all of the
+specified bytes do not exist in the record, the retrieval is still
+successful and any existing bytes (and nul bytes for any non-existent
+bytes) are returned.
 <p>When storing a data item into the database, the <b>dlen</b> bytes
 starting <b>doff</b> bytes from the beginning of the specified key's
-data record are replaced by the data specified by the data and size
-structure elements.  If <b>dlen</b> is smaller than <b>size</b>, the
+data record are replaced by the data specified by the <b>data</b> and
+<b>size</b> fields.  If <b>dlen</b> is smaller than <b>size</b>, the
 record will grow, and if <b>dlen</b> is larger than <b>size</b>, the
 record will shrink. If the specified bytes do not exist, the record will
 be extended using nul bytes as necessary, and the store call will still
@@ -121,12 +122,12 @@ data = abcdefghij
 <p>
 Result: The 0 bytes at offset 25 are replaced by the 10 bytes of data,
 i.e., 10 bytes are inserted into the record past the end of the current
-data.
+data (\0 represents a nul byte).
 <p>
 ABCDEFGHIJ0123456789 -&gt; ABCDEFGHIJ0123456789\0\0\0\0\0abcdefghij
 </pre></blockquote>
 </ol>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am/curclose.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/verify.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/am/stability.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/verify.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

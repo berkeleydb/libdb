@@ -110,7 +110,7 @@ __dbcl_rpc_illegal(dbenv, name)
 {
 	__db_err(dbenv,
 	    "%s method meaningless in RPC environment", name);
-	return(__db_eopnotsup(dbenv));
+	return (__db_eopnotsup(dbenv));
 }
 
 int
@@ -119,7 +119,7 @@ __dbcl_set_data_dir(dbenv, dir)
 	const char * dir;
 {
 	COMPQUIET(dir, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "set_data_dir"));
+	return (__dbcl_rpc_illegal(dbenv, "set_data_dir"));
 }
 
 int
@@ -128,7 +128,48 @@ __dbcl_env_set_feedback(dbenv, func0)
 	void (*func0) __P((DB_ENV *, int, int));
 {
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "env_set_feedback"));
+	return (__dbcl_rpc_illegal(dbenv, "env_set_feedback"));
+}
+
+int
+__dbcl_env_flags(dbenv, flags, onoff)
+	DB_ENV * dbenv;
+	u_int32_t flags;
+	int onoff;
+{
+	CLIENT *cl;
+	__env_flags_msg req;
+	static __env_flags_reply *replyp = NULL;
+	int ret;
+
+	ret = 0;
+	if (dbenv == NULL || dbenv->cl_handle == NULL) {
+		__db_err(dbenv, "No server environment.");
+		return (DB_NOSERVER);
+	}
+
+	if (replyp != NULL) {
+		xdr_free((xdrproc_t)xdr___env_flags_reply, (void *)replyp);
+		replyp = NULL;
+	}
+	cl = (CLIENT *)dbenv->cl_handle;
+
+	if (dbenv == NULL)
+		req.dbenvcl_id = 0;
+	else
+		req.dbenvcl_id = dbenv->cl_id;
+	req.flags = flags;
+	req.onoff = onoff;
+
+	replyp = __db_env_flags_1(&req, cl);
+	if (replyp == NULL) {
+		__db_err(dbenv, clnt_sperror(cl, "Berkeley DB"));
+		ret = DB_NOSERVER;
+		goto out;
+	}
+	ret = replyp->status;
+out:
+	return (ret);
 }
 
 int
@@ -137,7 +178,7 @@ __dbcl_set_lg_bsize(dbenv, bsize)
 	u_int32_t bsize;
 {
 	COMPQUIET(bsize, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_lg_bsize"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lg_bsize"));
 }
 
 int
@@ -146,7 +187,7 @@ __dbcl_set_lg_dir(dbenv, dir)
 	const char * dir;
 {
 	COMPQUIET(dir, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "set_lg_dir"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lg_dir"));
 }
 
 int
@@ -155,7 +196,7 @@ __dbcl_set_lg_max(dbenv, max)
 	u_int32_t max;
 {
 	COMPQUIET(max, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_lg_max"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lg_max"));
 }
 
 int
@@ -166,7 +207,7 @@ __dbcl_set_lk_conflict(dbenv, conflicts, modes)
 {
 	COMPQUIET(conflicts, 0);
 	COMPQUIET(modes, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_lk_conflict"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_conflict"));
 }
 
 int
@@ -175,7 +216,7 @@ __dbcl_set_lk_detect(dbenv, detect)
 	u_int32_t detect;
 {
 	COMPQUIET(detect, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_lk_detect"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_detect"));
 }
 
 int
@@ -184,7 +225,34 @@ __dbcl_set_lk_max(dbenv, max)
 	u_int32_t max;
 {
 	COMPQUIET(max, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_lk_max"));
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_max"));
+}
+
+int
+__dbcl_set_lk_max_locks(dbenv, max)
+	DB_ENV * dbenv;
+	u_int32_t max;
+{
+	COMPQUIET(max, 0);
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_max_locks"));
+}
+
+int
+__dbcl_set_lk_max_lockers(dbenv, max)
+	DB_ENV * dbenv;
+	u_int32_t max;
+{
+	COMPQUIET(max, 0);
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_max_lockers"));
+}
+
+int
+__dbcl_set_lk_max_objects(dbenv, max)
+	DB_ENV * dbenv;
+	u_int32_t max;
+{
+	COMPQUIET(max, 0);
+	return (__dbcl_rpc_illegal(dbenv, "set_lk_max_objects"));
 }
 
 int
@@ -193,7 +261,7 @@ __dbcl_set_mp_mmapsize(dbenv, mmapsize)
 	size_t mmapsize;
 {
 	COMPQUIET(mmapsize, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_mp_mmapsize"));
+	return (__dbcl_rpc_illegal(dbenv, "set_mp_mmapsize"));
 }
 
 int
@@ -202,7 +270,7 @@ __dbcl_set_mutex_locks(dbenv, do_lock)
 	int do_lock;
 {
 	COMPQUIET(do_lock, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_mutex_locks"));
+	return (__dbcl_rpc_illegal(dbenv, "set_mutex_locks"));
 }
 
 int
@@ -257,7 +325,7 @@ __dbcl_env_paniccall(dbenv, func0)
 	void (*func0) __P((DB_ENV *, int));
 {
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "env_paniccall"));
+	return (__dbcl_rpc_illegal(dbenv, "env_paniccall"));
 }
 
 int
@@ -266,7 +334,7 @@ __dbcl_set_recovery_init(dbenv, func0)
 	int (*func0) __P((DB_ENV *));
 {
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_recovery_init"));
+	return (__dbcl_rpc_illegal(dbenv, "set_recovery_init"));
 }
 
 int
@@ -319,7 +387,7 @@ __dbcl_set_shm_key(dbenv, shm_key)
 	long shm_key;
 {
 	COMPQUIET(shm_key, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_shm_key"));
+	return (__dbcl_rpc_illegal(dbenv, "set_shm_key"));
 }
 
 int
@@ -328,16 +396,16 @@ __dbcl_set_tmp_dir(dbenv, dir)
 	const char * dir;
 {
 	COMPQUIET(dir, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "set_tmp_dir"));
+	return (__dbcl_rpc_illegal(dbenv, "set_tmp_dir"));
 }
 
 int
 __dbcl_set_tx_recover(dbenv, func0)
 	DB_ENV * dbenv;
-	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
 {
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_tx_recover"));
+	return (__dbcl_rpc_illegal(dbenv, "set_tx_recover"));
 }
 
 int
@@ -346,7 +414,7 @@ __dbcl_set_tx_max(dbenv, max)
 	u_int32_t max;
 {
 	COMPQUIET(max, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_tx_max"));
+	return (__dbcl_rpc_illegal(dbenv, "set_tx_max"));
 }
 
 int
@@ -355,7 +423,7 @@ __dbcl_set_tx_timestamp(dbenv, max)
 	time_t * max;
 {
 	COMPQUIET(max, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_tx_timestamp"));
+	return (__dbcl_rpc_illegal(dbenv, "set_tx_timestamp"));
 }
 
 int
@@ -366,7 +434,7 @@ __dbcl_set_verbose(dbenv, which, onoff)
 {
 	COMPQUIET(which, 0);
 	COMPQUIET(onoff, 0);
-	return(__dbcl_rpc_illegal(dbenv, "set_verbose"));
+	return (__dbcl_rpc_illegal(dbenv, "set_verbose"));
 }
 
 int
@@ -462,7 +530,7 @@ __dbcl_txn_checkpoint(dbenv, kbyte, min)
 {
 	COMPQUIET(kbyte, 0);
 	COMPQUIET(min, 0);
-	return(__dbcl_rpc_illegal(dbenv, "txn_checkpoint"));
+	return (__dbcl_rpc_illegal(dbenv, "txn_checkpoint"));
 }
 
 int
@@ -514,7 +582,7 @@ __dbcl_txn_prepare(txnp)
 	DB_ENV *dbenv;
 
 	dbenv = txnp->mgrp->dbenv;
-	return(__dbcl_rpc_illegal(dbenv, "txn_prepare"));
+	return (__dbcl_rpc_illegal(dbenv, "txn_prepare"));
 }
 
 int
@@ -525,19 +593,19 @@ __dbcl_txn_stat(dbenv, statp, func0)
 {
 	COMPQUIET(statp, 0);
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "txn_stat"));
+	return (__dbcl_rpc_illegal(dbenv, "txn_stat"));
 }
 
 int
 __dbcl_db_bt_compare(dbp, func0)
 	DB * dbp;
-	int (*func0) __P((const DBT *, const DBT *));
+	int (*func0) __P((DB *, const DBT *, const DBT *));
 {
 	DB_ENV *dbenv;
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_bt_compare"));
+	return (__dbcl_rpc_illegal(dbenv, "db_bt_compare"));
 }
 
 int
@@ -627,13 +695,25 @@ out:
 int
 __dbcl_db_bt_prefix(dbp, func0)
 	DB * dbp;
-	size_t (*func0) __P((const DBT *, const DBT *));
+	size_t (*func0) __P((DB *, const DBT *, const DBT *));
 {
 	DB_ENV *dbenv;
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_bt_prefix"));
+	return (__dbcl_rpc_illegal(dbenv, "db_bt_prefix"));
+}
+
+int
+__dbcl_db_set_append_recno(dbp, func0)
+	DB * dbp;
+	int (*func0) __P((DB *, DBT *, db_recno_t));
+{
+	DB_ENV *dbenv;
+
+	dbenv = dbp->dbenv;
+	COMPQUIET(func0, 0);
+	return (__dbcl_rpc_illegal(dbenv, "db_set_append_recno"));
 }
 
 int
@@ -649,7 +729,7 @@ __dbcl_db_cachesize(dbp, gbytes, bytes, ncache)
 	COMPQUIET(gbytes, 0);
 	COMPQUIET(bytes, 0);
 	COMPQUIET(ncache, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_cachesize"));
+	return (__dbcl_rpc_illegal(dbenv, "db_cachesize"));
 }
 
 int
@@ -748,6 +828,48 @@ out:
 }
 
 int
+__dbcl_db_extentsize(dbp, extentsize)
+	DB * dbp;
+	u_int32_t extentsize;
+{
+	CLIENT *cl;
+	__db_extentsize_msg req;
+	static __db_extentsize_reply *replyp = NULL;
+	int ret;
+	DB_ENV *dbenv;
+
+	ret = 0;
+	dbenv = NULL;
+	dbenv = dbp->dbenv;
+	if (dbenv == NULL || dbenv->cl_handle == NULL) {
+		__db_err(dbenv, "No server environment.");
+		return (DB_NOSERVER);
+	}
+
+	if (replyp != NULL) {
+		xdr_free((xdrproc_t)xdr___db_extentsize_reply, (void *)replyp);
+		replyp = NULL;
+	}
+	cl = (CLIENT *)dbenv->cl_handle;
+
+	if (dbp == NULL)
+		req.dbpcl_id = 0;
+	else
+		req.dbpcl_id = dbp->cl_id;
+	req.extentsize = extentsize;
+
+	replyp = __db_db_extentsize_1(&req, cl);
+	if (replyp == NULL) {
+		__db_err(dbenv, clnt_sperror(cl, "Berkeley DB"));
+		ret = DB_NOSERVER;
+		goto out;
+	}
+	ret = replyp->status;
+out:
+	return (ret);
+}
+
+int
 __dbcl_db_fd(dbp, fdp)
 	DB * dbp;
 	int * fdp;
@@ -756,7 +878,7 @@ __dbcl_db_fd(dbp, fdp)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(fdp, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_fd"));
+	return (__dbcl_rpc_illegal(dbenv, "db_fd"));
 }
 
 int
@@ -768,7 +890,7 @@ __dbcl_db_feedback(dbp, func0)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_feedback"));
+	return (__dbcl_rpc_illegal(dbenv, "db_feedback"));
 }
 
 int
@@ -917,13 +1039,13 @@ out:
 int
 __dbcl_db_h_hash(dbp, func0)
 	DB * dbp;
-	u_int32_t (*func0) __P((const void *, u_int32_t));
+	u_int32_t (*func0) __P((DB *, const void *, u_int32_t));
 {
 	DB_ENV *dbenv;
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_h_hash"));
+	return (__dbcl_rpc_illegal(dbenv, "db_h_hash"));
 }
 
 int
@@ -1073,7 +1195,7 @@ __dbcl_db_malloc(dbp, func0)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_malloc"));
+	return (__dbcl_rpc_illegal(dbenv, "db_malloc"));
 }
 
 int
@@ -1183,7 +1305,7 @@ __dbcl_db_panic(dbp, func0)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_panic"));
+	return (__dbcl_rpc_illegal(dbenv, "db_panic"));
 }
 
 int
@@ -1254,7 +1376,7 @@ __dbcl_db_realloc(dbp, func0)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_realloc"));
+	return (__dbcl_rpc_illegal(dbenv, "db_realloc"));
 }
 
 int
@@ -1392,7 +1514,7 @@ __dbcl_db_re_source(dbp, re_source)
 
 	dbenv = dbp->dbenv;
 	COMPQUIET(re_source, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "db_re_source"));
+	return (__dbcl_rpc_illegal(dbenv, "db_re_source"));
 }
 
 int
@@ -1645,7 +1767,7 @@ __dbcl_db_upgrade(dbp, fname, flags)
 	dbenv = dbp->dbenv;
 	COMPQUIET(fname, NULL);
 	COMPQUIET(flags, 0);
-	return(__dbcl_rpc_illegal(dbenv, "db_upgrade"));
+	return (__dbcl_rpc_illegal(dbenv, "db_upgrade"));
 }
 
 int
@@ -2082,7 +2204,7 @@ __dbcl_lock_detect(dbenv, flags, atype, aborted)
 	COMPQUIET(flags, 0);
 	COMPQUIET(atype, 0);
 	COMPQUIET(aborted, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_detect"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_detect"));
 }
 
 int
@@ -2099,7 +2221,7 @@ __dbcl_lock_get(dbenv, locker, flags, obj, mode, lock)
 	COMPQUIET(obj, NULL);
 	COMPQUIET(mode, 0);
 	COMPQUIET(lock, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_get"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_get"));
 }
 
 int
@@ -2108,7 +2230,7 @@ __dbcl_lock_id(dbenv, idp)
 	u_int32_t * idp;
 {
 	COMPQUIET(idp, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_id"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_id"));
 }
 
 int
@@ -2117,7 +2239,7 @@ __dbcl_lock_put(dbenv, lock)
 	DB_LOCK * lock;
 {
 	COMPQUIET(lock, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_put"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_put"));
 }
 
 int
@@ -2128,7 +2250,7 @@ __dbcl_lock_stat(dbenv, statp, func0)
 {
 	COMPQUIET(statp, 0);
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_stat"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_stat"));
 }
 
 int
@@ -2145,7 +2267,7 @@ __dbcl_lock_vec(dbenv, locker, flags, list, nlist, elistp)
 	COMPQUIET(list, 0);
 	COMPQUIET(nlist, 0);
 	COMPQUIET(elistp, 0);
-	return(__dbcl_rpc_illegal(dbenv, "lock_vec"));
+	return (__dbcl_rpc_illegal(dbenv, "lock_vec"));
 }
 
 int
@@ -2158,7 +2280,7 @@ __dbcl_log_archive(dbenv, listp, flags, func0)
 	COMPQUIET(listp, 0);
 	COMPQUIET(flags, 0);
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_archive"));
+	return (__dbcl_rpc_illegal(dbenv, "log_archive"));
 }
 
 int
@@ -2171,7 +2293,7 @@ __dbcl_log_file(dbenv, lsn, namep, len)
 	COMPQUIET(lsn, NULL);
 	COMPQUIET(namep, NULL);
 	COMPQUIET(len, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_file"));
+	return (__dbcl_rpc_illegal(dbenv, "log_file"));
 }
 
 int
@@ -2180,7 +2302,7 @@ __dbcl_log_flush(dbenv, lsn)
 	const DB_LSN * lsn;
 {
 	COMPQUIET(lsn, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "log_flush"));
+	return (__dbcl_rpc_illegal(dbenv, "log_flush"));
 }
 
 int
@@ -2193,7 +2315,7 @@ __dbcl_log_get(dbenv, lsn, data, flags)
 	COMPQUIET(lsn, 0);
 	COMPQUIET(data, NULL);
 	COMPQUIET(flags, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_get"));
+	return (__dbcl_rpc_illegal(dbenv, "log_get"));
 }
 
 int
@@ -2206,7 +2328,7 @@ __dbcl_log_put(dbenv, lsn, data, flags)
 	COMPQUIET(lsn, 0);
 	COMPQUIET(data, NULL);
 	COMPQUIET(flags, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_put"));
+	return (__dbcl_rpc_illegal(dbenv, "log_put"));
 }
 
 int
@@ -2217,7 +2339,7 @@ __dbcl_log_register(dbenv, dbp, namep)
 {
 	COMPQUIET(dbp, 0);
 	COMPQUIET(namep, NULL);
-	return(__dbcl_rpc_illegal(dbenv, "log_register"));
+	return (__dbcl_rpc_illegal(dbenv, "log_register"));
 }
 
 int
@@ -2228,7 +2350,7 @@ __dbcl_log_stat(dbenv, statp, func0)
 {
 	COMPQUIET(statp, 0);
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_stat"));
+	return (__dbcl_rpc_illegal(dbenv, "log_stat"));
 }
 
 int
@@ -2237,7 +2359,7 @@ __dbcl_log_unregister(dbenv, dbp)
 	DB * dbp;
 {
 	COMPQUIET(dbp, 0);
-	return(__dbcl_rpc_illegal(dbenv, "log_unregister"));
+	return (__dbcl_rpc_illegal(dbenv, "log_unregister"));
 }
 
 int
@@ -2247,7 +2369,7 @@ __dbcl_memp_fclose(mpf)
 	DB_ENV *dbenv;
 
 	dbenv = mpf->dbmp->dbenv;
-	return(__dbcl_rpc_illegal(dbenv, "memp_fclose"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fclose"));
 }
 
 int
@@ -2263,7 +2385,7 @@ __dbcl_memp_fget(mpf, pgno, flags, pagep)
 	COMPQUIET(pgno, 0);
 	COMPQUIET(flags, 0);
 	COMPQUIET(pagep, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_fget"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fget"));
 }
 
 int
@@ -2282,13 +2404,13 @@ __dbcl_memp_fopen(dbenv, file, flags, mode, pagesize, finfop, mpf)
 	COMPQUIET(pagesize, 0);
 	COMPQUIET(finfop, 0);
 	COMPQUIET(mpf, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_fopen"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fopen"));
 }
 
 int
 __dbcl_memp_fput(mpf, pgaddr, flags)
 	DB_MPOOLFILE * mpf;
-	void *  pgaddr;
+	void * pgaddr;
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
@@ -2296,13 +2418,13 @@ __dbcl_memp_fput(mpf, pgaddr, flags)
 	dbenv = mpf->dbmp->dbenv;
 	COMPQUIET(pgaddr, 0);
 	COMPQUIET(flags, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_fput"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fput"));
 }
 
 int
 __dbcl_memp_fset(mpf, pgaddr, flags)
 	DB_MPOOLFILE * mpf;
-	void *  pgaddr;
+	void * pgaddr;
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
@@ -2310,7 +2432,7 @@ __dbcl_memp_fset(mpf, pgaddr, flags)
 	dbenv = mpf->dbmp->dbenv;
 	COMPQUIET(pgaddr, 0);
 	COMPQUIET(flags, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_fset"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fset"));
 }
 
 int
@@ -2320,7 +2442,7 @@ __dbcl_memp_fsync(mpf)
 	DB_ENV *dbenv;
 
 	dbenv = mpf->dbmp->dbenv;
-	return(__dbcl_rpc_illegal(dbenv, "memp_fsync"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_fsync"));
 }
 
 int
@@ -2333,7 +2455,7 @@ __dbcl_memp_register(dbenv, ftype, func0, func1)
 	COMPQUIET(ftype, 0);
 	COMPQUIET(func0, 0);
 	COMPQUIET(func1, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_register"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_register"));
 }
 
 int
@@ -2346,7 +2468,7 @@ __dbcl_memp_stat(dbenv, gstatp, fstatp, func0)
 	COMPQUIET(gstatp, 0);
 	COMPQUIET(fstatp, 0);
 	COMPQUIET(func0, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_stat"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_stat"));
 }
 
 int
@@ -2355,7 +2477,7 @@ __dbcl_memp_sync(dbenv, lsn)
 	DB_LSN * lsn;
 {
 	COMPQUIET(lsn, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_sync"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_sync"));
 }
 
 int
@@ -2366,7 +2488,7 @@ __dbcl_memp_trickle(dbenv, pct, nwrotep)
 {
 	COMPQUIET(pct, 0);
 	COMPQUIET(nwrotep, 0);
-	return(__dbcl_rpc_illegal(dbenv, "memp_trickle"));
+	return (__dbcl_rpc_illegal(dbenv, "memp_trickle"));
 }
 
 #endif /* HAVE_RPC */

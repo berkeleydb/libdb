@@ -4,7 +4,7 @@
  * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: qam.src,v 11.11 2000/02/17 20:24:10 bostic Exp $
+ *	$Id: qam.src,v 11.15 2001/01/16 20:10:55 ubell Exp $
  */
 
 PREFIX	qam
@@ -89,4 +89,36 @@ ARG	recno		db_recno_t	lu
 DBT	data		DBT		s
 ARG	vflag		u_int32_t	lu
 DBT	olddata		DBT		s
+END
+
+/*
+ * delete
+ * Used when we remove a Queue extent file.
+ */
+BEGIN delete		81
+DBT	name		DBT		s
+POINTER	lsn		DB_LSN *	lu
+END
+
+/*
+ * rename
+ * Used when we rename a Queue extent file.
+ */
+BEGIN rename		82
+DBT	name		DBT		s
+DBT	newname		DBT		s
+END
+
+/*
+ * delext
+ * Used when we delete a record in extent based queue.
+ * recno is the record that is being deleted.
+ */
+BEGIN delext		83
+ARG	fileid		int32_t		ld
+POINTER	lsn		DB_LSN *	lu
+ARG	pgno		db_pgno_t	lu
+ARG	indx		u_int32_t	lu
+ARG	recno		db_recno_t	lu
+DBT	data		DBT		s
 END

@@ -1,15 +1,14 @@
- 
-<!--$Id: join.so,v 10.19 2000/03/18 21:43:08 bostic Exp $-->
+<!--$Id: join.so,v 10.21 2000/12/18 21:05:13 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Access Methods</title>
+<title>Berkeley DB Reference Guide: Logical join</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
 <td width="1%"><a href="../../ref/am/curdup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/count.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -17,53 +16,49 @@
 <p>
 <h1 align=center>Logical join</h1>
 <p>A logical join is a method of retrieving data from a primary database
-using criteria stored in a set of secondary databases.  A logical join
-requires that your data be organized as a primary database which contains
-the primary key and primary data field, and a set of secondary databases.
-Each of the secondary databases is indexed by a different secondary key,
-and, for each key in a secondary database, there is a set of duplicate
-data items that match the primary keys in the primary database.
-<p>For example, consider a database that lists types of fruit as the key
-item, and the store where you can buy them as the data item:
-<p><blockquote><pre><b>Key:</b>		<b>Data:</b>
+using criteria stored in a set of secondary indexes.  A logical join
+requires that your data be organized as a primary database which
+contains the primary key and primary data field, and a set of secondary
+indexes.  Each of the secondary indexes is indexed by a different
+secondary key, and, for each key in a secondary index, there is a set
+of duplicate data items that match the primary keys in the primary
+database.
+<p>For example, let's assume the need for an application that will return
+the names of stores in which one can buy fruit of a given color.  We
+would first construct a primary database that lists types of fruit as
+the key item, and the store where you can buy them as the data item:
+<p><blockquote><pre><b>Primary key:</b>		<b>Primary data:</b>
 apple		Convenience Store
+blueberry	Farmer's Market
 peach		Shopway
 pear		Farmer's Market
 raspberry	Shopway
-strawberry	Farmer's Market
-blueberry	Farmer's Market</pre></blockquote>
-<p>A secondary index might have a key <b>color</b>, and, as the data items,
-the list of fruits of different colors.
-<p><blockquote><pre><b>Key:</b>		<b>Data:</b>
-red		apple, raspberry, strawberry
-yellow		peach, pear
-blue		blueberry</pre></blockquote>
+strawberry	Farmer's Market</pre></blockquote>
+<p>We would then create a secondary index with the key <b>color</b>, and,
+as the data items, the names of fruits of different colors.
+<p><blockquote><pre><b>Secondary key:</b>		<b>Secondary data:</b>
+blue		blueberry
+red		apple
+red		raspberry
+red		strawberry
+yellow		peach
+yellow		pear</pre></blockquote>
 <p>This secondary index would allow an application to look up a color, and
 then use the data items to look up the stores where the colored fruit
-could be purchased.  For example, by first looking up <b>blue</b>, the
-data item <b>blueberry</b> could be used as the lookup key in the
+could be purchased.  For example, by first looking up <b>blue</b>,
+the data item <b>blueberry</b> could be used as the lookup key in the
 primary database, returning <b>Farmer's Market</b>.
-<p>If there were a another secondary index that had as its key the
-<b>cost</b> of the fruit, a similar lookup could be done on stores
-where inexpensive fruit could be purchased:
-<p><blockquote><pre><b>Key:</b>		<b>Data:</b>
-expensive	blueberry, peach, pear, strawberry
-inexpensive	apple, pear, raspberry</pre></blockquote>
-<p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> function provides logical join functionality.  While not
-strictly cursor functionality, in that it is not a method off a cursor
-handle, it is more related to the cursor operations than to the standard
-DB operations.
 <p>Your data must be organized in the following manner in order to use the
 <a href="../../api_c/db_join.html">DB-&gt;join</a> function:
 <p><ol>
 <p><li>The actual data should be stored in the database represented by the
 DB object used to invoke this function.  Generally, this
 DB object is called the <i>primary</i>.
-<p><li>Secondary indices should be stored in separate database files, whose keys
-are the values of the secondary indices and whose data items are the
-primary keys corresponding to the records having the designated secondary
-key value.  It is acceptable (and expected) that there may be duplicate
-entries in the secondary indices.
+<p><li>Secondary indexes should be stored in separate databases, whose keys
+are the values of the secondary indexes and whose data items are the
+primary keys corresponding to the records having the designated
+secondary key value.  It is acceptable (and expected) that there may be
+duplicate entries in the secondary indexes.
 <p>These duplicate entries should be sorted for performance reasons, although
 it is not required.  For more information see the <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a> flag
 to the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function.
@@ -72,13 +67,27 @@ to the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function.
 when it finds a data item that appears as a data item for all of the
 secondary keys, it uses that data items as a lookup into the primary
 database, and returns the associated data item.
-<p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> function, makes it possible to do lookups based on multiple
-criteria in a single operation, e.g., it would be possible to look up
-fruits that were both red and expensive in a single operation.  If the
-same fruit appeared as a data item in both the color and expense indices,
-then that fruit name would be used as the key for retrieval from the
-primary index, and would then return the store where expensive, red fruit
-could be purchased.
+<p>If there were a another secondary index that had as its key the
+<b>cost</b> of the fruit, a similar lookup could be done on stores
+where inexpensive fruit could be purchased:
+<p><blockquote><pre><b>Secondary key:</b>		<b>Secondary data:</b>
+expensive	blueberry
+expensive	peach
+expensive	pear
+expensive	strawberry
+inexpensive	apple
+inexpensive	pear
+inexpensive	raspberry</pre></blockquote>
+<p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> function provides logical join functionality.  While not
+strictly cursor functionality, in that it is not a method off a cursor
+handle, it is more closely related to the cursor operations than to the
+standard DB operations.
+<p>It is also possible to do lookups based on multiple criteria in a single
+operation, e.g., it is possible to look up fruits that are both red and
+expensive in a single operation.  If the same fruit appeared as a data
+item in both the color and expense indexes, then that fruit name would
+be used as the key for retrieval from the primary index, and would then
+return the store where expensive, red fruit could be purchased.
 <h3>Example</h3>
 <p>Consider the following three databases:
 <p><dl compact>
@@ -96,7 +105,8 @@ could be purchased.
 </ul>
 </dl>
 <p>Consider the following query:
-<p><blockquote><pre>Return the personnel records of all smiths who are managers.</pre></blockquote>
+<p><blockquote><pre>Return the personnel records of all people named smith with the job
+title manager.</pre></blockquote>
 <p>This query finds are all the records in the primary database (personnel)
 for whom the criteria <b>lastname=smith and job title=manager</b> is
 true.
@@ -135,7 +145,7 @@ carray[1] = job_curs;
 carray[2] = NULL;
 <p>
 if ((ret =
-    pers_db-&gt;join(pers_db, carray, 0, &join_curs)) != 0)
+    pers_db-&gt;join(pers_db, carray, &join_curs, 0)) != 0)
 	goto err;
 while ((ret =
     join_curs-&gt;c_get(join_curs, &key, &data, 0)) == 0) {
@@ -162,9 +172,9 @@ if (job_curs != NULL &&
 <p>
 return (ret);
 </pre></blockquote>
-<p>The name cursor is placed at the beginning of the duplicate list for
-<b>smith</b> and the job cursor is placed at the beginning of the
-duplicate list for <b>manager</b>.  The join cursor is returned
+<p>The name cursor is positioned at the beginning of the duplicate list
+for <b>smith</b> and the job cursor is placed at the beginning of
+the duplicate list for <b>manager</b>.  The join cursor is returned
 from the logical join call.  This code then loops over the join cursor
 getting the personnel records of each one until there are no more.
 <table><tr><td><br></td><td width="1%"><a href="../../ref/am/curdup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/count.html"><img src="../../images/next.gif" alt="Next"></a>

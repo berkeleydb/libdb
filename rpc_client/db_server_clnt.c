@@ -61,6 +61,23 @@ __db_env_create_1(argp, clnt)
 	return (&clnt_res);
 }
 
+__env_flags_reply *
+__db_env_flags_1(argp, clnt)
+	__env_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_flags,
+		(xdrproc_t) xdr___env_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __env_open_reply *
 __db_env_open_1(argp, clnt)
 	__env_open_msg *argp;
@@ -225,6 +242,23 @@ __db_db_del_1(argp, clnt)
 	if (clnt_call(clnt, __DB_db_del,
 		(xdrproc_t) xdr___db_del_msg, (caddr_t) argp,
 		(xdrproc_t) xdr___db_del_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
+__db_extentsize_reply *
+__db_db_extentsize_1(argp, clnt)
+	__db_extentsize_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_extentsize_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_extentsize,
+		(xdrproc_t) xdr___db_extentsize_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_extentsize_reply, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}

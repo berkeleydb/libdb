@@ -81,6 +81,49 @@ typedef struct _qam_add_args {
 int __qam_add_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, db_pgno_t, u_int32_t, db_recno_t, const DBT *, u_int32_t, const DBT *));
 int __qam_add_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __qam_add_read __P((DB_ENV *, void *, __qam_add_args **));
+
+#define	DB_qam_delete	81
+typedef struct _qam_delete_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	DBT	name;
+	DB_LSN	lsn;
+} __qam_delete_args;
+
+int __qam_delete_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, DB_LSN *));
+int __qam_delete_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __qam_delete_read __P((DB_ENV *, void *, __qam_delete_args **));
+
+#define	DB_qam_rename	82
+typedef struct _qam_rename_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	DBT	name;
+	DBT	newname;
+} __qam_rename_args;
+
+int __qam_rename_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *));
+int __qam_rename_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __qam_rename_read __P((DB_ENV *, void *, __qam_rename_args **));
+
+#define	DB_qam_delext	83
+typedef struct _qam_delext_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	DB_LSN	lsn;
+	db_pgno_t	pgno;
+	u_int32_t	indx;
+	db_recno_t	recno;
+	DBT	data;
+} __qam_delext_args;
+
+int __qam_delext_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, db_pgno_t, u_int32_t, db_recno_t, const DBT *));
+int __qam_delext_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __qam_delext_read __P((DB_ENV *, void *, __qam_delext_args **));
 int __qam_init_print __P((DB_ENV *));
 int __qam_init_recover __P((DB_ENV *));
 #endif

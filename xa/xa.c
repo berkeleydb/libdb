@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa.c,v 11.9 2000/04/29 02:55:36 bostic Exp $";
+static const char revid[] = "$Id: xa.c,v 11.10 2000/12/14 07:39:14 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -481,7 +481,7 @@ __db_xa_recover(xids, count, rmid, flags)
 		switch (rectype) {
 		case DB_txn_regop:
 			if (err == DB_NOTFOUND)
-				__db_txnlist_add(env, log->xa_info, txnid);
+				__db_txnlist_add(env, log->xa_info, txnid, 0);
 			err = 0;
 			break;
 		case DB_txn_xa_regop:

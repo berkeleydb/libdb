@@ -1,10 +1,9 @@
- 
-<!--$Id: get.so,v 10.22 2000/03/18 21:43:17 bostic Exp $-->
+<!--$Id: get.so,v 10.23 2000/12/14 21:42:18 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Simple Tutorial</title>
+<title>Berkeley DB Reference Guide: Retrieving elements from a database</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -76,21 +75,20 @@ main()
 		goto err;
 	}
 </b></pre></blockquote>
-<p>Normally, it is not necessary to clear the <a href="../../api_c/dbt.html">DBT</a> structures passed
-to the Berkeley DB functions between calls.  This is not necessarily true, when
-some of the less commonly used flags for those structures are specified,
-and the <a href="../../api_c/dbt.html">DBT</a> manual page should be consulted for details in those
-cases.
+<p>It is not usually necessary to clear the <a href="../../api_c/dbt.html">DBT</a> structures passed
+to the Berkeley DB functions between calls.  This is not always true, when
+some of the less commonly used flags for <a href="../../api_c/dbt.html">DBT</a> structures are
+used.  The <a href="../../api_c/dbt.html">DBT</a> manual page specified the details of those cases.
 <p>It is possible, of course, to distinguish between system errors and the
 key/data pair simply not existing in the database.  There are three
-possible returns from <a href="../../api_c/db_get.html">DB-&gt;get</a>:
+standard returns from <a href="../../api_c/db_get.html">DB-&gt;get</a>:
 <p><ol>
 <p><li>The call might be successful and the key found, in which case the return
 value will be 0.
-<li>The call might be successful, but the key not found, in which
-case the return value will be <a href="../../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a>.
-<li>The call might not be successful, in which case the return value
-with be a system error.
+<li>The call might be successful, but the key not found, in which case the
+return value will be <a href="../../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a>.
+<li>The call might not be successful, in which case the return value will
+be a system error.
 </ol>
 <table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/del.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

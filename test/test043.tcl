@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test043.tcl,v 11.11 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test043.tcl,v 11.12 2000/08/25 14:21:56 sue Exp $
 #
 # DB Test 43 {method nentries}
 # Test the Record number implicit creation and renumbering options.
@@ -28,10 +28,13 @@ proc test043 { method {nentries 10000} args} {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test043.db
+		set env NULL
 	} else {
 		set testfile test043.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	# Create the database
 	set db [eval {berkdb_open -create -truncate -mode 0644} $args \

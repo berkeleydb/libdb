@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_lock.cpp,v 11.8 2000/05/17 01:17:53 dda Exp $";
+static const char revid[] = "$Id: cxx_lock.cpp,v 11.9 2000/09/21 15:05:45 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -24,9 +24,9 @@ int DbEnv::lock_detect(u_int32_t flags, u_int32_t atype, int *aborted)
 
 	if ((err = ::lock_detect(env, flags, atype, aborted)) != 0) {
 		DB_ERROR("DbEnv::lock_detect", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::lock_get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
@@ -38,9 +38,9 @@ int DbEnv::lock_get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
 	if ((err = ::lock_get(env, locker, flags, obj,
 			      lock_mode, &lock->lock_)) != 0) {
 		DB_ERROR("DbEnv::lock_get", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::lock_id(u_int32_t *idp)
@@ -51,7 +51,7 @@ int DbEnv::lock_id(u_int32_t *idp)
 	if ((err = ::lock_id(env, idp)) != 0) {
 		DB_ERROR("DbEnv::lock_id", err, error_policy());
 	}
-	return err;
+	return (err);
 }
 
 int DbEnv::lock_stat(DB_LOCK_STAT **statp,
@@ -62,9 +62,9 @@ int DbEnv::lock_stat(DB_LOCK_STAT **statp,
 
 	if ((err = ::lock_stat(env, statp, db_malloc_fcn)) != 0) {
 		DB_ERROR("DbEnv::lock_stat", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
@@ -77,9 +77,9 @@ int DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
 	if ((err = ::lock_vec(env, locker, flags, list,
 			      nlist, elist_returned)) != 0) {
 		DB_ERROR("DbEnv::lock_vec", err, error_policy());
-		return err;
+		return (err);
 	}
-	return err;
+	return (err);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ DbLock::DbLock(const DbLock &that)
 DbLock &DbLock::operator = (const DbLock &that)
 {
 	lock_ = that.lock_;
-	return *this;
+	return (*this);
 }
 
 int DbLock::put(DbEnv *env)
@@ -114,12 +114,12 @@ int DbLock::put(DbEnv *env)
 	DB_ENV *envp = unwrap(env);
 
 	if (!env) {
-		return EINVAL;        // handle never assigned
+		return (EINVAL);        // handle never assigned
 	}
 
 	int err;
 	if ((err = lock_put(envp, &lock_)) != 0) {
 		DB_ERROR("DbLock::put", err, env->error_policy());
 	}
-	return err;
+	return (err);
 }

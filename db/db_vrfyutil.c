@@ -4,13 +4,13 @@
  * Copyright (c) 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfyutil.c,v 11.9 2000/05/24 22:32:43 krinsky Exp $
+ * $Id: db_vrfyutil.c,v 11.11 2000/11/28 21:36:04 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfyutil.c,v 11.9 2000/05/24 22:32:43 krinsky Exp $";
+static const char revid[] = "$Id: db_vrfyutil.c,v 11.11 2000/11/28 21:36:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -775,9 +775,15 @@ __db_salvage_markdone(vdp, pgno)
 	 * If it's there and is marked anything else, that's fine--we
 	 * want to mark it done, but db_salvage_isdone only lets
 	 * us know if it's marked IGNORE.
+	 *
+	 * We don't want to return DB_KEYEXIST, though;  this will
+	 * likely get passed up all the way and make no sense to the
+	 * application.  Instead, use DB_VERIFY_BAD to indicate that
+	 * we've seen this page already--it probably indicates a
+	 * multiply-linked page.
 	 */
 	if ((ret = __db_salvage_isdone(vdp, pgno)) != 0)
-		return (ret);
+		return (ret == DB_KEYEXIST ? DB_VERIFY_BAD : ret);
 
 	data.size = sizeof(u_int32_t);
 	data.data = &pgtype;

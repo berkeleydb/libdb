@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test055.tcl,v 11.10 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test055.tcl,v 11.11 2000/08/25 14:21:57 sue Exp $
 #
 # Test055:
 # This test checks basic cursor operations.
@@ -27,10 +27,13 @@ proc test055 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test055.db
+		set env NULL
 	} else {
 		set testfile test055.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set flags ""
 	set txn ""

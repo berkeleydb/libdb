@@ -4,7 +4,7 @@
  * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	$Id: DbQueueStat.java,v 11.4 2000/05/04 02:54:56 dda Exp $
+ *	$Id: DbQueueStat.java,v 11.5 2000/11/07 18:45:27 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -25,7 +25,6 @@ public class DbQueueStat
     public int qs_re_len;		// Fixed-length record length.
     public int qs_re_pad;		// Fixed-length record pad.
     public int qs_pgfree;		// Bytes free in data pages.
-    public int qs_start;		// Start offset.
     public int qs_first_recno;		// First not deleted record.
     public int qs_cur_recno;		// Last allocated record number.
 }

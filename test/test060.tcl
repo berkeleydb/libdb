@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test060.tcl,v 11.5 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test060.tcl,v 11.6 2000/08/25 14:21:57 sue Exp $
 #
 # Test060: Test of the DB_EXCL flag to DB->open.
 #     1) Attempt to open and create a nonexistent database; verify success.
@@ -24,10 +24,13 @@ proc test060 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test060.db
+		set env NULL
 	} else {
 		set testfile test060.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
-	cleanup $testdir
+	cleanup $testdir $env
 
 	# Create the database and check success
 	puts "\tTest060.a: open and close non-existent file with DB_EXCL"

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rpath.c,v 11.3.2.1 2000/06/27 16:37:34 bostic Exp $";
+static const char revid[] = "$Id: os_rpath.c,v 11.5 2000/06/30 13:40:30 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -39,6 +39,14 @@ __db_rpath(path)
 	 * VxWorks devices can be rooted at any name.  We want to
 	 * skip over the device name and not take into account any
 	 * PATH_SEPARATOR characters that might be in that name.
+	 *
+	 * XXX [#2393]
+	 * VxWorks supports having a filename directly follow a device
+	 * name with no separator.  I.e. to access a file 'xxx' in
+	 * the top level directory of a device mounted at "mydrive"
+	 * you could say "mydrivexxx" or "mydrive/xxx" or "mydrive\xxx".
+	 * We do not support the first usage here.
+	 * XXX
 	 */
 	if ((dummy = iosDevFind((char *)path, &ptail)) == NULL)
 		s = path;

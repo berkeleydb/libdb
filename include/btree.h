@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: btree.h,v 11.25.2.2 2000/07/13 18:40:33 bostic Exp $
+ * $Id: btree.h,v 11.37 2001/01/17 17:09:52 bostic Exp $
  */
 
 /* Forward structure declarations. */
@@ -49,6 +49,12 @@ struct __epg;		typedef struct __epg EPG;
 struct __recno;		typedef struct __recno RECNO;
 
 #define	DEFMINKEYPAGE	 (2)
+
+/*
+ * A recno order of 0 indicates that we don't have an order, not that we've
+ * an order less than 1.
+ */
+#define	INVALID_ORDER	0
 
 #define	ISINTERNAL(p)	(TYPE(p) == P_IBTREE || TYPE(p) == P_IRECNO)
 #define	ISLEAF(p)	(TYPE(p) == P_LBTREE ||				\
@@ -67,11 +73,12 @@ struct __recno;		typedef struct __recno RECNO;
 #define	STK_CLRDBC	0x01		/* Clear dbc->page reference. */
 #define	STK_NOLOCK	0x02		/* Don't retain locks. */
 
-/* Flags for __ram_ca(). */
+/* Flags for __ram_ca(). These get logged, so make the values explicit. */
 typedef enum {
-	CA_DELETE,
-	CA_IAFTER,
-	CA_IBEFORE
+	CA_DELETE = 0,			/* Delete the current record. */
+	CA_IAFTER = 1,			/* Insert before the current record. */
+	CA_IBEFORE = 2,			/* Insert after the current record. */
+	CA_ICURRENT = 3			/* Overwrite the current record. */
 } ca_recno_arg;
 
 /*
@@ -129,9 +136,16 @@ struct __epg {
 /*
  * We maintain a stack of the pages that we're locking in the tree.  Grow
  * the stack as necessary.
+ *
+ * XXX
+ * Temporary fix for #3243 -- clear the page and lock from the stack entry.
+ * The correct fix is to never release a stack that doesn't hold items.
  */
-#define	BT_STK_CLR(c)							\
-	((c)->csp = (c)->sp)
+#define	BT_STK_CLR(c) do {						\
+	(c)->csp = (c)->sp;						\
+	(c)->csp->page = NULL;						\
+	(c)->csp->lock.off = LOCK_INVALID;				\
+} while (0)
 
 #define	BT_STK_ENTER(dbenv, c, pagep, page_indx, l, mode, ret) do {	\
 	if ((ret =							\
@@ -166,7 +180,7 @@ struct __epg {
 } while (0)
 
 #define	BT_STK_POP(c)							\
-	((c)->csp == (c)->stack ? NULL : --(c)->csp)
+	((c)->csp == (c)->sp ? NULL : --(c)->csp)
 
 /* Btree/Recno cursor. */
 struct __cursor {
@@ -182,6 +196,7 @@ struct __cursor {
 	db_indx_t	 ovflsize;	/* Maximum key/data on-page size. */
 
 	db_recno_t	 recno;		/* Current record number. */
+	u_int32_t	 order;		/* Relative order among deleted curs. */
 
 	/*
 	 * Btree:
@@ -213,6 +228,24 @@ struct __cursor {
 };
 
 /*
+ * Threshhold value, as a function of bt_minkey, of the number of
+ * bytes a key/data pair can use before being placed on an overflow
+ * page.  Assume every item requires the maximum alignment for
+ * padding, out of sheer paranoia.
+ */
+#define	B_MINKEY_TO_OVFLSIZE(minkey, pgsize)				\
+	((u_int16_t)(((pgsize) - P_OVERHEAD) / ((minkey) * P_INDX) -	\
+	    (BKEYDATA_PSIZE(0) + ALIGN(1, sizeof(int32_t)))))
+
+/*
+ * The maximum space that a single item can ever take up on one page.
+ * Used by __bam_split to determine whether a split is still necessary.
+ */
+#define	B_MAX(a,b)	(((a) > (b)) ? (a) : (b))
+#define	B_MAXSIZEONPAGE(ovflsize)					\
+	(B_MAX(BOVERFLOW_PSIZE, BKEYDATA_PSIZE(ovflsize)))
+
+/*
  * The in-memory, per-tree btree/recno data structure.
  */
 struct __btree {			/* Btree access method. */
@@ -228,9 +261,9 @@ struct __btree {			/* Btree access method. */
 	u_int32_t bt_minkey;		/* Minimum keys per page. */
 
 					/* Btree comparison function. */
-	int (*bt_compare) __P((const DBT *, const DBT *));
+	int (*bt_compare) __P((DB *, const DBT *, const DBT *));
 					/* Btree prefix function. */
-	size_t (*bt_prefix) __P((const DBT *, const DBT *));
+	size_t (*bt_prefix) __P((DB *, const DBT *, const DBT *));
 
 					/* Recno access method. */
 	int	  re_pad;		/* Fixed-length padding byte. */
@@ -262,19 +295,13 @@ struct __btree {			/* Btree access method. */
 	 * There are no transaction semantics associated with backing files,
 	 * nor is there any thread protection.
 	 */
-	DB_FH		 re_fh;		/* Source file handle. */
+	FILE		*re_fp;		/* Source file handle. */
 	int		 re_eof;	/* Backing source file EOF reached. */
 	db_recno_t	 re_last;	/* Last record number read. */
-	void		*re_cmap;	/* Current point in mapped space. */
-	void		*re_smap;	/* Start of mapped space. */
-	void		*re_emap;	/* End of mapped space. */
-	size_t		 re_msize;	/* Size of mapped region. */
-					/* Recno input function. */
-	int (*re_irec) __P((DBC *, db_recno_t));
 };
 
 /*
- * Modes for the __bam_curadj recovery records.
+ * Modes for the __bam_curadj recovery records (btree_curadj).
  * These appear in log records, so we wire the values and
  * do not leave it up to the compiler.
  */

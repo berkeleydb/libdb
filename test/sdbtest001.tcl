@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdbtest001.tcl,v 11.12 2000/04/21 18:36:23 krinsky Exp $
+#	$Id: sdbtest001.tcl,v 11.13 2000/08/25 14:21:53 sue Exp $
 #
 # Sub DB All-Method Test 1
 # Make several subdb's of different access methods all in one DB.
@@ -42,7 +42,7 @@ proc subdbtest001 { {nentries 10000} } {
 	lappend method_list [list "-dbtree" "-ddbtree" "-btree" "-rbtree"]
 	lappend method_list [list "-ddbtree" "-dbtree" "-rbtree" "-btree"]
 	foreach methods $method_list {
-		cleanup $testdir
+		cleanup $testdir NULL
 		puts "\tSubdbtest001.a: create subdbs of different access methods:"
 		puts "\tSubdbtest001.a: $methods"
 		set psize {8192 4096}

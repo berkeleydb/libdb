@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test039.tcl,v 11.10 2000/05/16 19:46:20 krinsky Exp $
+#	$Id: test039.tcl,v 11.11 2000/08/25 14:21:56 sue Exp $
 #
 # DB Test 39 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -33,14 +33,17 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
 		set checkdb $testdir/checkdb.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
 		set checkdb checkdb.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	puts "Test0$tnum: $method $nentries small unsorted dup key/data pairs"
 	if { [is_record_based $method] == 1 || \

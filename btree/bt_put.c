@@ -43,13 +43,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_put.c,v 11.36.2.2 2000/07/13 18:56:34 bostic Exp $";
+static const char revid[] = "$Id: bt_put.c,v 11.46 2001/01/17 18:48:46 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -266,9 +265,6 @@ len_err:		__db_err(dbp->dbenv,
 			cp->indx += 2;
 		} else {
 			++indx;
-			if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
-				return (ret);
-
 			cp->indx += 1;
 		}
 		break;
@@ -282,11 +278,18 @@ len_err:		__db_err(dbp->dbenv,
 
 			++indx;
 			dupadjust = 1;
-		} else
-			if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
-				return (ret);
+		}
 		break;
 	case DB_CURRENT:
+		 /*
+		  * Clear the cursor's deleted flag.  The problem is that if
+		  * we deadlock or fail while deleting the overflow item or
+		  * replacing the non-overflow item, a subsequent cursor close
+		  * will try and remove the item because the cursor's delete
+		  * flag is set
+		  */
+		(void)__bam_ca_delete(dbp, PGNO(h), indx, 0);
+
 		if (TYPE(h) == P_LBTREE) {
 			++indx;
 			dupadjust = 1;
@@ -348,13 +351,10 @@ len_err:		__db_err(dbp->dbenv,
 		return (ret);
 
 	/*
-	 * Adjust the cursors in general.  After that's done, reset the current
-	 * cursor to point to the new item.
+	 * Re-position the cursors if necessary and reset the current cursor
+	 * to point to the new item.
 	 */
-	if (op == DB_CURRENT)
-		(void)__bam_ca_delete(dbp, PGNO(h),
-		    TYPE(h) == P_LBTREE ? indx - O_INDX : indx, 0);
-	else {
+	if (op != DB_CURRENT) {
 		if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
 			return (ret);
 		cp->indx = TYPE(h) == P_LBTREE ? indx - O_INDX : indx;
@@ -697,7 +697,7 @@ __bam_dup_convert(dbc, h, indx)
 	int ret;
 
 	dbp = dbc->dbp;
-	cp = (BTREE_CURSOR *) dbc->internal;
+	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/*
 	 * Count the duplicate records and calculate how much room they're
@@ -759,14 +759,28 @@ __bam_dup_convert(dbc, h, indx)
 
 		/*
 		 * Copy the entry to the new page.  If the off-duplicate page
-		 * is a Btree page, deleted entries move normally.  If it's a
-		 * Recno page, deleted entries are discarded.
+		 * If the off-duplicate page is a Btree page (i.e. dup_compare
+		 * will be non-NULL, we use Btree pages for sorted dups,
+		 * and Recno pages for unsorted dups), move all entries
+		 * normally, even deleted ones.  If it's a Recno page,
+		 * deleted entries are discarded (if the deleted entry is
+		 * overflow, then free up those pages).
 		 */
 		bk = GET_BKEYDATA(h, dindx + 1);
 		hdr.data = bk;
 		hdr.size = B_TYPE(bk->type) == B_KEYDATA ?
 		    BKEYDATA_SIZE(bk->len) : BOVERFLOW_SIZE;
-		if (dbp->dup_compare != NULL || !B_DISSET(bk->type)) {
+		if (dbp->dup_compare == NULL && B_DISSET(bk->type)) {
+			/*
+			 * Unsorted dups, i.e. recno page, and we have
+			 * a deleted entry, don't move it, but if it was
+			 * an overflow entry, we need to free those pages.
+			 */
+			if (B_TYPE(bk->type) == B_OVERFLOW &&
+			    (ret = __db_doff(dbc,
+			    (GET_BOVERFLOW(h, dindx + 1))->pgno)) != 0)
+				goto err;
+		} else {
 			if ((ret = __db_pitem(
 			    dbc, dp, cpindx, hdr.size, &hdr, NULL)) != 0)
 				goto err;
@@ -819,9 +833,9 @@ __bam_ovput(dbc, type, pgno, h, indx, item)
 	DBT hdr;
 	int ret;
 
-	UMRW(bo.unused1);
+	UMRW_SET(bo.unused1);
 	B_TSET(bo.type, type, 0);
-	UMRW(bo.unused2);
+	UMRW_SET(bo.unused2);
 
 	/*
 	 * If we're creating an overflow item, do so and acquire the page

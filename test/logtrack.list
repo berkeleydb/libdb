@@ -15,10 +15,10 @@ DEPRECATED	addpage	46
 BEGIN	debug	47
 BEGIN	noop	48
 PREFIX	bam
-DEPRECATED	pg_alloc1	51
-BEGIN	pg_alloc	60
-DEPRECATED	pg_free1	52
-BEGIN	pg_free	61
+BEGIN	pg_alloc	51
+DEPRECATED	pg_alloc1	60
+BEGIN	pg_free	52
+DEPRECATED	pg_free1	61
 DEPRECATED	split1	53
 BEGIN	split	62
 DEPRECATED	rsplit1	54
@@ -29,6 +29,7 @@ BEGIN	cdel	57
 BEGIN	repl	58
 BEGIN	root	59
 BEGIN	curadj	64
+BEGIN	rcuradj	65
 PREFIX	ham
 BEGIN	insdel	21
 BEGIN	newpage	22
@@ -40,7 +41,10 @@ DEPRECATED	ovfl	27
 BEGIN	copypage	28
 BEGIN	metagroup	29
 DEPRECATED	groupalloc1	30
-BEGIN	groupalloc	31
+DEPRECATED	groupalloc2	31
+BEGIN	groupalloc	32
+BEGIN	curadj	33
+BEGIN	chgpg	34
 PREFIX	log
 DEPRECATED	register1	1
 BEGIN	register	2
@@ -50,10 +54,15 @@ BEGIN	incfirst	77
 BEGIN	mvptr	78
 BEGIN	del	79
 BEGIN	add	80
+BEGIN	delete	81
+BEGIN	rename	82
+BEGIN	delext	83
 PREFIX	txn
 DEPRECATED	old_regop	6
 BEGIN	regop	10
 DEPRECATED	old_ckp	7
 BEGIN	ckp	11
-BEGIN	xa_regop	8
-BEGIN	child	9
+DEPRECATED	xa_regop_old	8
+BEGIN	xa_regop	13
+DEPRECATED	child_old	9
+BEGIN	child	12

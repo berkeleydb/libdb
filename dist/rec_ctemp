@@ -59,3 +59,4 @@ __PREF_FUNC_recover(dbenv, dbtp, lsnp, op, info)
 
 out:	REC_CLOSE;
 }
+

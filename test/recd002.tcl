@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: recd002.tcl,v 11.16 2000/05/22 12:51:37 bostic Exp $
+#	$Id: recd002.tcl,v 11.22 2000/12/11 17:24:54 sue Exp $
 #
 # Recovery Test #2.  Verify that splits can be recovered.
 proc recd002 { method {select 0} args} {
@@ -13,6 +13,11 @@ proc recd002 { method {select 0} args} {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Recd002: skipping for specific pagesizes"
+		return
+	}
 	berkdb srand $rand_init
 
 	# Queues don't do splits, so we don't really need the small page
@@ -25,7 +30,7 @@ proc recd002 { method {select 0} args} {
 	}
 	puts "Recd002: $method split recovery tests"
 
-	cleanup $testdir
+	env_cleanup $testdir
 	set testfile recd002.db
 	set testfile2 recd002-2.db
 	set eflags \
@@ -84,7 +89,8 @@ proc recd002 { method {select 0} args} {
 
 	puts "\tRecd002.d: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
-	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	set stat [catch {exec $util_path/db_printlog -h $testdir \
+	    > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
 	fileremove $tmpfile
 }

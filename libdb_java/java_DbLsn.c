@@ -7,27 +7,28 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbLsn.c,v 11.3 2000/05/25 04:18:11 dda Exp $";
+static const char revid[] = "$Id: java_DbLsn.c,v 11.5 2000/11/30 00:58:39 ubell Exp $";
 #endif /* not lint */
 
 #include <jni.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>              /* needed for FILENAME_MAX */
 
 #include "db.h"
+#include "db_int.h"
 #include "java_util.h"
 #include "com_sleepycat_db_DbLsn.h"
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLsn_init_1lsn
   (JNIEnv *jnienv, /*DbLsn*/ jobject jthis)
 {
-	DB_LSN *lsn;
+	/* Note: the DB_LSN object stored in the private_dbobj_
+	 * is allocated in get_DbLsn().
+	 */
 
-	lsn = (DB_LSN *)malloc(sizeof(DB_LSN));
-	memset(lsn, 0, sizeof(DB_LSN));
-	set_private_dbobj(jnienv, name_DB_LSN, jthis, lsn);
+	COMPQUIET(jnienv, NULL);
+	COMPQUIET(jthis, NULL);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLsn_finalize

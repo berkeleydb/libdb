@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_mpool.c,v 11.11 2000/05/22 15:17:03 sue Exp $
+ * $Id: ex_mpool.c,v 11.13 2000/10/27 20:32:00 dda Exp $
  */
 
 #include "db_config.h"
@@ -39,6 +39,7 @@ int	run_mpool __P((int, int, int, int, char *));
 int	ex_mpool __P((void));
 #define	MPOOL	"/vxtmp/vxtmp/mpool"			/* File. */
 #define	ERROR_RETURN	ERROR
+#define	VXSHM_KEY	12
 #else
 int	main __P((int, char *[]));
 void	usage __P((char *));
@@ -150,7 +151,7 @@ init(file, pagesize, npages, progname)
 	 * number on each page.
 	 */
 	flags = O_CREAT | O_RDWR | O_TRUNC;
-#ifdef _WIN32
+#ifdef DB_WIN32
 	flags |= O_BINARY;
 #endif
 	if ((fd = open(file, flags, 0666)) < 0) {
@@ -207,6 +208,12 @@ run(hits, cachesize, pagesize, npages, progname)
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
+#ifdef HAVE_VXWORKS
+	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
+		dbenv->err(dbenv, ret, "set_shm_key");
+		return (ERROR_RETURN);
+	}
+#endif
 
 	/* Set the cachesize. */
 	if ((ret = dbenv->set_cachesize(dbenv, 0, cachesize, 0)) != 0) {

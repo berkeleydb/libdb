@@ -1,5 +1,4 @@
- 
-<!--$Id: lock_vec.so,v 10.30 2000/04/24 16:33:54 bostic Exp $-->
+<!--$Id: lock_vec.so,v 10.31 2000/12/04 18:05:39 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv::lock_vec</h1>
@@ -48,17 +47,16 @@ which must be initialized before calling DbEnv::lock_vec:
 <p><dt>lockop_t <a name="op">op</a>;<dd>The operation to be performed, which must be set to one of the
 following values:
 <p><dl compact>
-<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get a lock, as defined by the values of <b>locker</b>, <b>obj</b>, and
-<b>mode</b>.
-Upon return from DbEnv::lock_vec, if the <b>lock</b> field is non-NULL,
-a reference to the acquired lock is stored there.
-(This reference is invalidated by any call to DbEnv::lock_vec or
-<a href="../api_cxx/lock_put.html">DbLock::put</a> that releases the lock.)
+<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get a lock, as defined by the values of <b>locker</b>, <b>obj</b>,
+and <b>mode</b>.  Upon return from DbEnv::lock_vec, if the
+<b>lock</b> field is non-NULL, a reference to the acquired lock is
+stored there.  (This reference is invalidated by any call to
+DbEnv::lock_vec or <a href="../api_cxx/lock_put.html">DbLock::put</a> that releases the lock.)
 <p><dt><a name="DB_LOCK_PUT">DB_LOCK_PUT</a><dd>The lock referenced by the contents of the <b>lock</b> field is released.
-<p><dt><a name="DB_LOCK_PUT_ALL">DB_LOCK_PUT_ALL</a><dd>All locks held by the <b>locker</b> are released.
-(Any locks acquired as a part of the current call to DbEnv::lock_vec that
-appear after the DB_LOCK_PUT_ALL entry are not considered for
-this operation).
+<p><dt><a name="DB_LOCK_PUT_ALL">DB_LOCK_PUT_ALL</a><dd>All locks held by the <b>locker</b> are released.  (Any locks acquired
+as a part of the current call to DbEnv::lock_vec that appear after the
+DB_LOCK_PUT_ALL entry are not considered for this
+operation).
 <p><dt><a name="DB_LOCK_PUT_OBJ">DB_LOCK_PUT_OBJ</a><dd>All locks held on the object <b>obj</b> are released.  The <b>mode</b>
 and <b>locker</b> parameters are ignored.  Note that any locks acquired
 as a part of the current call to DbEnv::lock_vec that occur before the
@@ -109,6 +107,9 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
 <a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
+<a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
+<a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
+<a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
 <a href="../api_cxx/env_set_lk_max.html">DbEnv::set_lk_max</a>,
 <a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
 <a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,

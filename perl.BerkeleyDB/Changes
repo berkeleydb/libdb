@@ -79,11 +79,34 @@ Revision history for Perl extension BerkeleyDB.
 	  Problem traced to the strdup function.
 
 0.11  4th June 2000
-	* When built with Berkeley Db 3.x there can ba a clash with the close
+	* When built with Berkeley Db 3.x there can be a clash with the close
 	  macro.
 	* Typo in the definition of DB_WRITECURSOR
 	* The flags parameter wasn't getting sent to db_cursor
-	* Plugged small mempory leak in db_cursor (DESTROY wasn't freeing
+	* Plugged small memory leak in db_cursor (DESTROY wasn't freeing
 	  memory)
 	* Can be built with Berkeley DB 3.1
    
+
+0.12  2nd August 2000
+	* Serious bug with get fixed. Spotted by Sleepycat.
+	* Added hints file for Solaris & Irix (courtesy of Albert Chin-A-Young)
+
+0.13 15th January 2001
+        * Added support to allow this module to build with Berkeley DB 3.2  
+        * Updated dbinfo to support Berkeley DB 3.1 & 3.2 file format
+          changes.  
+        * Documented the Solaris 2.7 core dump problem in README.
+        * Tidied up the test harness to fix a problem on Solaris where the
+          "fred" directory wasn't being deleted when it should have been.
+        * two calls to "open" clashed with a win32 macro.
+        * size argument for hash_cb is different for Berkeley DB 3.x 
+        * Documented the issue of building on Linux.
+        * Added -Server, -CacheSize & -LockDetect options 
+          [original patch supplied by Graham Barr]
+        * Added support for set_mutexlocks, c_count, set_q_extentsize,
+          key_range, c_dup
+	* Dropped the "attempted to close a Cursor with an open transaction"
+	  error in c_close. The correct behaviour is that the cursor
+	  should be closed before committing/aborting the transaction.
+

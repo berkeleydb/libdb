@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb004.tcl,v 11.13 2000/05/22 12:51:38 bostic Exp $
+#	$Id: sdb004.tcl,v 11.14 2000/08/25 14:21:53 sue Exp $
 #
 # SubDB Test 4 {access method}
 # Create 1 db with many large subdbs.  Use the contents as subdb names.
@@ -32,7 +32,7 @@ proc subdb004 { method args} {
 	set t3 $testdir/t3
 	set t4 $testdir/t4
 
-	cleanup $testdir
+	cleanup $testdir NULL
 	set pflags ""
 	set gflags ""
 	set txn ""

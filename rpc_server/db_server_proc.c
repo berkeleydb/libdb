@@ -9,7 +9,7 @@
 
 #ifdef HAVE_RPC
 #ifndef lint
-static const char revid[] = "$Id: db_server_proc.c,v 1.36 2000/05/18 17:43:20 sue Exp $";
+static const char revid[] = "$Id: db_server_proc.c,v 1.48 2001/01/06 16:08:01 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,7 +17,6 @@ static const char revid[] = "$Id: db_server_proc.c,v 1.36 2000/05/18 17:43:20 su
 
 #include <rpc/rpc.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 #include "db_server.h"
@@ -31,7 +30,7 @@ static int __db_stats_list __P((DB_ENV *,
 
 /* BEGIN __env_cachesize_1_proc */
 void
-__env_cachesize_1_proc(dbenvcl_id, gbytes, bytes, 
+__env_cachesize_1_proc(dbenvcl_id, gbytes, bytes,
 		ncache, replyp)
 	long dbenvcl_id;
 	u_int32_t gbytes;
@@ -44,7 +43,7 @@ __env_cachesize_1_proc(dbenvcl_id, gbytes, bytes,
 	DB_ENV * dbenv;
 	ct_entry *dbenv_ctp;
 
-	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, H_ENV);
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 
 	ret = dbenv->set_cachesize(dbenv, gbytes, bytes, ncache);
@@ -81,7 +80,7 @@ __env_create_1_proc(timeout, replyp)
 		return;
 	if ((ret = db_env_create(&dbenv, 0)) == 0) {
 		ctp->ct_envp = dbenv;
-		ctp->ct_type = H_ENV;
+		ctp->ct_type = CT_ENV;
 		ctp->ct_parent = NULL;
 		ctp->ct_envparent = ctp;
 		__dbsrv_settimeout(ctp, timeout);
@@ -94,9 +93,30 @@ __env_create_1_proc(timeout, replyp)
 	return;
 }
 
+/* BEGIN __env_flags_1_proc */
+void
+__env_flags_1_proc(dbenvcl_id, flags, onoff, replyp)
+	long dbenvcl_id;
+	u_int32_t flags;
+	u_int32_t onoff;
+	__env_flags_reply *replyp;
+/* END __env_flags_1_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	ret = dbenv->set_flags(dbenv, flags, onoff);
+
+	replyp->status = ret;
+	return;
+}
 /* BEGIN __env_open_1_proc */
 void
-__env_open_1_proc(dbenvcl_id, home, flags, 
+__env_open_1_proc(dbenvcl_id, home, flags,
 		mode, replyp)
 	long dbenvcl_id;
 	char *home;
@@ -110,7 +130,7 @@ __env_open_1_proc(dbenvcl_id, home, flags,
 	ct_entry *dbenv_ctp;
 	char *fullhome;
 
-	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, H_ENV);
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 	fullhome = get_home(home);
 	if (fullhome == NULL) {
@@ -137,7 +157,7 @@ __env_remove_1_proc(dbenvcl_id, home, flags, replyp)
 	ct_entry *dbenv_ctp;
 	char *fullhome;
 
-	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, H_ENV);
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 	fullhome = get_home(home);
 	if (fullhome == NULL) {
@@ -158,23 +178,22 @@ __txn_abort_1_proc(txnpcl_id, replyp)
 	__txn_abort_reply *replyp;
 /* END __txn_abort_1_proc */
 {
-	int ret;
 	DB_TXN * txnp;
 	ct_entry *txnp_ctp;
+	int ret;
 
-	ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
-	ret = txn_abort(txnp);
+	ret =  txn_abort(txnp);
 	__dbdel_ctp(txnp_ctp);
-
 	replyp->status = ret;
 	return;
 }
 
 /* BEGIN __txn_begin_1_proc */
 void
-__txn_begin_1_proc(envpcl_id, parentcl_id, 
+__txn_begin_1_proc(envpcl_id, parentcl_id,
 		flags, replyp)
 	long envpcl_id;
 	long parentcl_id;
@@ -190,23 +209,25 @@ __txn_begin_1_proc(envpcl_id, parentcl_id,
 	DB_TXN *txnp;
 	ct_entry *ctp;
 
-	ACTIVATE_CTP(envp_ctp, envpcl_id, H_ENV);
+	ACTIVATE_CTP(envp_ctp, envpcl_id, CT_ENV);
 	envp = (DB_ENV *)envp_ctp->ct_anyp;
 	parent_ctp = NULL;
-	if (parentcl_id != 0) {
-		ACTIVATE_CTP(parent_ctp, parentcl_id, H_TXN);
-		parent = (DB_TXN *)parent_ctp->ct_anyp;
-	} else
-		parent = NULL;
 
 	ctp = new_ct_ent(&replyp->status);
 	if (ctp == NULL)
 		return;
 
+	if (parentcl_id != 0) {
+		ACTIVATE_CTP(parent_ctp, parentcl_id, CT_TXN);
+		parent = (DB_TXN *)parent_ctp->ct_anyp;
+		ctp->ct_activep = parent_ctp->ct_activep;
+	} else
+		parent = NULL;
+
 	ret = txn_begin(envp, parent, &txnp, flags);
 	if (ret == 0) {
 		ctp->ct_txnp = txnp;
-		ctp->ct_type = H_TXN;
+		ctp->ct_type = CT_TXN;
 		ctp->ct_parent = parent_ctp;
 		ctp->ct_envparent = envp_ctp;
 		replyp->txnidcl_id = ctp->ct_id;
@@ -231,7 +252,7 @@ __txn_commit_1_proc(txnpcl_id, flags, replyp)
 	DB_TXN * txnp;
 	ct_entry *txnp_ctp;
 
-	ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
 	ret = txn_commit(txnp, flags);
@@ -253,7 +274,7 @@ __db_bt_maxkey_1_proc(dbpcl_id, maxkey, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_bt_maxkey(dbp, maxkey);
@@ -274,7 +295,7 @@ __db_bt_minkey_1_proc(dbpcl_id, minkey, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_bt_minkey(dbp, minkey);
@@ -295,7 +316,7 @@ __db_close_1_proc(dbpcl_id, flags, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->close(dbp, flags);
@@ -318,7 +339,7 @@ __db_create_1_proc(flags, envpcl_id, replyp)
 	DB *dbp;
 	ct_entry *envp_ctp, *dbp_ctp;
 
-	ACTIVATE_CTP(envp_ctp, envpcl_id, H_ENV);
+	ACTIVATE_CTP(envp_ctp, envpcl_id, CT_ENV);
 	envp = (DB_ENV *)envp_ctp->ct_anyp;
 
 	dbp_ctp = new_ct_ent(&replyp->status);
@@ -331,7 +352,7 @@ __db_create_1_proc(flags, envpcl_id, replyp)
 	DB_ASSERT(envp != NULL);
 	if ((ret = db_create(&dbp, envp, flags)) == 0) {
 		dbp_ctp->ct_dbp = dbp;
-		dbp_ctp->ct_type = H_DB;
+		dbp_ctp->ct_type = CT_DB;
 		dbp_ctp->ct_parent = envp_ctp;
 		dbp_ctp->ct_envparent = envp_ctp;
 		replyp->dbpcl_id = dbp_ctp->ct_id;
@@ -343,8 +364,8 @@ __db_create_1_proc(flags, envpcl_id, replyp)
 
 /* BEGIN __db_del_1_proc */
 void
-__db_del_1_proc(dbpcl_id, txnpcl_id, keydlen, 
-		keydoff, keyflags, keydata, keysize, 
+__db_del_1_proc(dbpcl_id, txnpcl_id, keydlen,
+		keydoff, keyflags, keydata, keysize,
 		flags, replyp)
 	long dbpcl_id;
 	long txnpcl_id;
@@ -364,10 +385,10 @@ __db_del_1_proc(dbpcl_id, txnpcl_id, keydlen,
 	ct_entry *txnp_ctp;
 	DBT key;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	if (txnpcl_id != 0) {
-		ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+		ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 	} else
 		txnp = NULL;
@@ -387,6 +408,27 @@ __db_del_1_proc(dbpcl_id, txnpcl_id, keydlen,
 	return;
 }
 
+/* BEGIN __db_extentsize_1_proc */
+void
+__db_extentsize_1_proc(dbpcl_id, extentsize, replyp)
+	long dbpcl_id;
+	u_int32_t extentsize;
+	__db_extentsize_reply *replyp;
+/* END __db_extentsize_1_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	ret = dbp->set_q_extentsize(dbp, extentsize);
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_flags_1_proc */
 void
 __db_flags_1_proc(dbpcl_id, flags, replyp)
@@ -399,7 +441,7 @@ __db_flags_1_proc(dbpcl_id, flags, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_flags(dbp, flags);
@@ -410,9 +452,9 @@ __db_flags_1_proc(dbpcl_id, flags, replyp)
 
 /* BEGIN __db_get_1_proc */
 void
-__db_get_1_proc(dbpcl_id, txnpcl_id, keydlen, 
-		keydoff, keyflags, keydata, keysize, 
-		datadlen, datadoff, dataflags, datadata, 
+__db_get_1_proc(dbpcl_id, txnpcl_id, keydlen,
+		keydoff, keyflags, keydata, keysize,
+		datadlen, datadoff, dataflags, datadata,
 		datasize, flags, replyp, freep)
 	long dbpcl_id;
 	long txnpcl_id;
@@ -438,10 +480,10 @@ __db_get_1_proc(dbpcl_id, txnpcl_id, keydlen,
 	ct_entry *txnp_ctp;
 	DBT key, data;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	if (txnpcl_id != 0) {
-		ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+		ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 	} else
 		txnp = NULL;
@@ -549,7 +591,7 @@ __db_h_ffactor_1_proc(dbpcl_id, ffactor, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_h_ffactor(dbp, ffactor);
@@ -570,7 +612,7 @@ __db_h_nelem_1_proc(dbpcl_id, nelem, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_h_nelem(dbp, nelem);
@@ -581,8 +623,8 @@ __db_h_nelem_1_proc(dbpcl_id, nelem, replyp)
 
 /* BEGIN __db_key_range_1_proc */
 void
-__db_key_range_1_proc(dbpcl_id, txnpcl_id, keydlen, 
-		keydoff, keyflags, keydata, keysize, 
+__db_key_range_1_proc(dbpcl_id, txnpcl_id, keydlen,
+		keydoff, keyflags, keydata, keysize,
 		flags, replyp)
 	long dbpcl_id;
 	long txnpcl_id;
@@ -603,10 +645,10 @@ __db_key_range_1_proc(dbpcl_id, txnpcl_id, keydlen,
 	DBT key;
 	DB_KEY_RANGE range;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	if (txnpcl_id != 0) {
-		ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+		ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 	} else
 		txnp = NULL;
@@ -640,7 +682,7 @@ __db_lorder_1_proc(dbpcl_id, lorder, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_lorder(dbp, lorder);
@@ -666,7 +708,7 @@ __db_open_1_proc(dbpcl_id, name, subdb,
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->open(dbp, name, subdb, (DBTYPE)type, flags, mode);
@@ -694,7 +736,7 @@ __db_pagesize_1_proc(dbpcl_id, pagesize, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_pagesize(dbp, pagesize);
@@ -705,9 +747,9 @@ __db_pagesize_1_proc(dbpcl_id, pagesize, replyp)
 
 /* BEGIN __db_put_1_proc */
 void
-__db_put_1_proc(dbpcl_id, txnpcl_id, keydlen, 
-		keydoff, keyflags, keydata, keysize, 
-		datadlen, datadoff, dataflags, datadata, 
+__db_put_1_proc(dbpcl_id, txnpcl_id, keydlen,
+		keydoff, keyflags, keydata, keysize,
+		datadlen, datadoff, dataflags, datadata,
 		datasize, flags, replyp, freep)
 	long dbpcl_id;
 	long txnpcl_id;
@@ -733,10 +775,10 @@ __db_put_1_proc(dbpcl_id, txnpcl_id, keydlen,
 	ct_entry *txnp_ctp;
 	DBT key, data;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	if (txnpcl_id != 0) {
-		ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
+		ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 	} else
 		txnp = NULL;
@@ -815,7 +857,7 @@ __db_re_delim_1_proc(dbpcl_id, delim, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_re_delim(dbp, delim);
@@ -836,7 +878,7 @@ __db_re_len_1_proc(dbpcl_id, len, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_re_len(dbp, len);
@@ -857,7 +899,7 @@ __db_re_pad_1_proc(dbpcl_id, pad, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_re_pad(dbp, pad);
@@ -868,7 +910,7 @@ __db_re_pad_1_proc(dbpcl_id, pad, replyp)
 
 /* BEGIN __db_remove_1_proc */
 void
-__db_remove_1_proc(dbpcl_id, name, subdb, 
+__db_remove_1_proc(dbpcl_id, name, subdb,
 		flags, replyp)
 	long dbpcl_id;
 	char *name;
@@ -881,7 +923,7 @@ __db_remove_1_proc(dbpcl_id, name, subdb,
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->remove(dbp, name, subdb, flags);
@@ -893,7 +935,7 @@ __db_remove_1_proc(dbpcl_id, name, subdb,
 
 /* BEGIN __db_rename_1_proc */
 void
-__db_rename_1_proc(dbpcl_id, name, subdb, 
+__db_rename_1_proc(dbpcl_id, name, subdb,
 		newname, flags, replyp)
 	long dbpcl_id;
 	char *name;
@@ -907,7 +949,7 @@ __db_rename_1_proc(dbpcl_id, name, subdb,
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->rename(dbp, name, subdb, newname, flags);
@@ -919,7 +961,7 @@ __db_rename_1_proc(dbpcl_id, name, subdb,
 
 /* BEGIN __db_stat_1_proc */
 void
-__db_stat_1_proc(dbpcl_id, 
+__db_stat_1_proc(dbpcl_id,
 		flags, replyp, freep)
 	long dbpcl_id;
 	u_int32_t flags;
@@ -934,7 +976,7 @@ __db_stat_1_proc(dbpcl_id,
 	void *sp;
 	int len;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->stat(dbp, &sp, NULL, flags);
@@ -996,10 +1038,10 @@ __db_stats_list(dbenv, locp, pp, len)
 		nl->ent.ent_len = sizeof(u_int32_t);
 		nlp = &nl->next;
 	}
-	return(0);
+	return (0);
 out:
 	__db_stats_freelist(locp);
-	return(ret);
+	return (ret);
 }
 
 /*
@@ -1031,7 +1073,7 @@ __db_swapped_1_proc(dbpcl_id, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->get_byteswapped(dbp);
@@ -1052,7 +1094,7 @@ __db_sync_1_proc(dbpcl_id, flags, replyp)
 	DB * dbp;
 	ct_entry *dbp_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->sync(dbp, flags);
@@ -1063,7 +1105,7 @@ __db_sync_1_proc(dbpcl_id, flags, replyp)
 
 /* BEGIN __db_cursor_1_proc */
 void
-__db_cursor_1_proc(dbpcl_id, txnpcl_id, 
+__db_cursor_1_proc(dbpcl_id, txnpcl_id,
 		flags, replyp)
 	long dbpcl_id;
 	long txnpcl_id;
@@ -1079,21 +1121,22 @@ __db_cursor_1_proc(dbpcl_id, txnpcl_id,
 	DBC *dbc;
 	ct_entry *dbc_ctp, *env_ctp;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
-	if (txnpcl_id != 0) {
-		ACTIVATE_CTP(txnp_ctp, txnpcl_id, H_TXN);
-		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
-	} else
-		txnp = NULL;
-
 	dbc_ctp = new_ct_ent(&replyp->status);
 	if (dbc_ctp == NULL)
 		return;
 
+	if (txnpcl_id != 0) {
+		ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
+		txnp = (DB_TXN *)txnp_ctp->ct_anyp;
+		dbc_ctp->ct_activep = txnp_ctp->ct_activep;
+	} else
+		txnp = NULL;
+
 	if ((ret = dbp->cursor(dbp, txnp, &dbc, flags)) == 0) {
 		dbc_ctp->ct_dbc = dbc;
-		dbc_ctp->ct_type = H_CURSOR;
+		dbc_ctp->ct_type = CT_CURSOR;
 		dbc_ctp->ct_parent = dbp_ctp;
 		env_ctp = dbp_ctp->ct_envparent;
 		dbc_ctp->ct_envparent = env_ctp;
@@ -1109,7 +1152,7 @@ __db_cursor_1_proc(dbpcl_id, txnpcl_id,
 
 /* BEGIN __db_join_1_proc */
 void
-__db_join_1_proc(dbpcl_id, curslist, 
+__db_join_1_proc(dbpcl_id, curslist,
 		flags, replyp)
 	long dbpcl_id;
 	u_int32_t * curslist;
@@ -1117,16 +1160,16 @@ __db_join_1_proc(dbpcl_id, curslist,
 	__db_join_reply *replyp;
 /* END __db_join_1_proc */
 {
-	int ret;
 	DB * dbp;
 	ct_entry *dbp_ctp;
 	DBC *dbc;
 	DBC **jcurs, **c;
 	ct_entry *dbc_ctp, *ctp;
 	size_t size;
+	int ret;
 	u_int32_t *cl;
 
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, H_DB);
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	dbc_ctp = new_ct_ent(&replyp->status);
@@ -1140,24 +1183,68 @@ __db_join_1_proc(dbpcl_id, curslist,
 		__dbclear_ctp(dbc_ctp);
 		return;
 	}
+	/*
+	 * If our curslist has a parent txn, we need to use it too
+	 * for the activity timeout.  All cursors must be part of
+	 * the same transaction, so just check the first.
+	 */
+	ctp = get_tableent(*curslist);
+	DB_ASSERT(ctp->ct_type == CT_CURSOR);
+	/*
+	 * If we are using a transaction, set the join activity timer
+	 * to point to the parent transaction.
+	 */
+	if (ctp->ct_activep != &ctp->ct_active)
+		dbc_ctp->ct_activep = ctp->ct_activep;
 	for (cl = curslist, c = jcurs; *cl != 0; cl++, c++) {
 		ctp = get_tableent(*cl);
 		if (ctp == NULL) {
 			replyp->status = DB_NOSERVER_ID;
 			goto out;
 		}
-		DB_ASSERT(ctp->ct_type == H_CURSOR);
+		/*
+		 * If we are using a txn, the join cursor points to the
+		 * transaction timeout.  If we are not using a transaction,
+		 * then all the curslist cursors must point to the join
+		 * cursor's timeout so that we do not timeout any of the
+		 * curlist cursors while the join cursor is active.
+		 * Change the type of the curslist ctps to CT_JOIN so that
+		 * we know they are part of a join list and we can distinguish
+		 * them and later restore them when the join cursor is closed.
+		 */
+		DB_ASSERT(ctp->ct_type == CT_CURSOR);
+		ctp->ct_type |= CT_JOIN;
+		ctp->ct_origp = ctp->ct_activep;
+		/*
+		 * Setting this to the ct_active field of the dbc_ctp is
+		 * really just a way to distinguish which join dbc this
+		 * cursor is part of.  The ct_activep of this cursor is
+		 * not used at all during its lifetime as part of a join
+		 * cursor.
+		 */
+		ctp->ct_activep = &dbc_ctp->ct_active;
 		*c = ctp->ct_dbc;
 	}
 	*c = NULL;
 	if ((ret = dbp->join(dbp, jcurs, &dbc, flags)) == 0) {
 		dbc_ctp->ct_dbc = dbc;
-		dbc_ctp->ct_type = H_CURSOR;
+		dbc_ctp->ct_type = (CT_JOINCUR | CT_CURSOR);
 		dbc_ctp->ct_parent = dbp_ctp;
 		dbc_ctp->ct_envparent = dbp_ctp->ct_envparent;
+		__dbsrv_settimeout(dbc_ctp, dbp_ctp->ct_envparent->ct_timeout);
+		__dbsrv_active(dbc_ctp);
 		replyp->dbcidcl_id = dbc_ctp->ct_id;
-	} else
+	} else {
 		__dbclear_ctp(dbc_ctp);
+		/*
+		 * If we get an error, undo what we did above to any cursors.
+		 */
+		for (cl = curslist; *cl != 0; cl++) {
+			ctp = get_tableent(*cl);
+			ctp->ct_type = CT_CURSOR;
+			ctp->ct_activep = ctp->ct_origp;
+		}
+	}
 
 	replyp->status = ret;
 out:
@@ -1172,17 +1259,10 @@ __dbc_close_1_proc(dbccl_id, replyp)
 	__dbc_close_reply *replyp;
 /* END __dbc_close_1_proc */
 {
-	int ret;
-	DBC * dbc;
 	ct_entry *dbc_ctp;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
-	dbc = (DBC *)dbc_ctp->ct_anyp;
-
-	ret = dbc->c_close(dbc);
-	__dbclear_ctp(dbc_ctp);
-
-	replyp->status = ret;
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
+	replyp->status = __dbc_close_int(dbc_ctp);
 	return;
 }
 
@@ -1199,7 +1279,7 @@ __dbc_count_1_proc(dbccl_id, flags, replyp)
 	ct_entry *dbc_ctp;
 	db_recno_t num;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
 	dbc = (DBC *)dbc_ctp->ct_anyp;
 
 	ret = dbc->c_count(dbc, &num, flags);
@@ -1221,7 +1301,7 @@ __dbc_del_1_proc(dbccl_id, flags, replyp)
 	DBC * dbc;
 	ct_entry *dbc_ctp;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
 	dbc = (DBC *)dbc_ctp->ct_anyp;
 
 	ret = dbc->c_del(dbc, flags);
@@ -1244,7 +1324,7 @@ __dbc_dup_1_proc(dbccl_id, flags, replyp)
 	DBC *newdbc;
 	ct_entry *new_ctp;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
 	dbc = (DBC *)dbc_ctp->ct_anyp;
 
 	new_ctp = new_ct_ent(&replyp->status);
@@ -1253,9 +1333,16 @@ __dbc_dup_1_proc(dbccl_id, flags, replyp)
 
 	if ((ret = dbc->c_dup(dbc, &newdbc, flags)) == 0) {
 		new_ctp->ct_dbc = newdbc;
-		new_ctp->ct_type = H_CURSOR;
+		new_ctp->ct_type = CT_CURSOR;
 		new_ctp->ct_parent = dbc_ctp->ct_parent;
 		new_ctp->ct_envparent = dbc_ctp->ct_envparent;
+		/*
+		 * If our cursor has a parent txn, we need to use it too.
+		 */
+		if (dbc_ctp->ct_activep != &dbc_ctp->ct_active)
+			new_ctp->ct_activep = dbc_ctp->ct_activep;
+		__dbsrv_settimeout(new_ctp, dbc_ctp->ct_timeout);
+		__dbsrv_active(new_ctp);
 		replyp->dbcidcl_id = new_ctp->ct_id;
 	} else
 		__dbclear_ctp(new_ctp);
@@ -1266,9 +1353,9 @@ __dbc_dup_1_proc(dbccl_id, flags, replyp)
 
 /* BEGIN __dbc_get_1_proc */
 void
-__dbc_get_1_proc(dbccl_id, keydlen, keydoff, 
-		keyflags, keydata, keysize, datadlen, 
-		datadoff, dataflags, datadata, datasize, 
+__dbc_get_1_proc(dbccl_id, keydlen, keydoff,
+		keyflags, keydata, keysize, datadlen,
+		datadoff, dataflags, datadata, datasize,
 		flags, replyp, freep)
 	long dbccl_id;
 	u_int32_t keydlen;
@@ -1292,7 +1379,7 @@ __dbc_get_1_proc(dbccl_id, keydlen, keydoff,
 	ct_entry *dbc_ctp;
 	int key_alloc, ret;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
 	dbc = (DBC *)dbc_ctp->ct_anyp;
 	dbenv = dbc->dbp->dbenv;
 
@@ -1387,9 +1474,9 @@ err:		replyp->keydata.keydata_val = NULL;
 
 /* BEGIN __dbc_put_1_proc */
 void
-__dbc_put_1_proc(dbccl_id, keydlen, keydoff, 
-		keyflags, keydata, keysize, datadlen, 
-		datadoff, dataflags, datadata, datasize, 
+__dbc_put_1_proc(dbccl_id, keydlen, keydoff,
+		keyflags, keydata, keysize, datadlen,
+		datadoff, dataflags, datadata, datasize,
 		flags, replyp, freep)
 	long dbccl_id;
 	u_int32_t keydlen;
@@ -1413,7 +1500,7 @@ __dbc_put_1_proc(dbccl_id, keydlen, keydoff,
 	ct_entry *dbc_ctp;
 	DBT key, data;
 
-	ACTIVATE_CTP(dbc_ctp, dbccl_id, H_CURSOR);
+	ACTIVATE_CTP(dbc_ctp, dbccl_id, CT_CURSOR);
 	dbc = (DBC *)dbc_ctp->ct_anyp;
 	dbp = (DB *)dbc_ctp->ct_parent->ct_anyp;
 

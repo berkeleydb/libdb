@@ -11,13 +11,12 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_dump.c,v 11.31 2000/05/31 15:09:58 bostic Exp $";
+    "$Id: db_dump.c,v 11.41 2001/01/18 18:36:57 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +38,7 @@ int	 is_sub __P((DB *, int *));
 int	 main __P((int, char *[]));
 int	 show_subs __P((DB *));
 void	 usage __P((void));
+void	 version_check __P((void));
 
 DB_ENV	*dbenv;
 const char
@@ -54,11 +54,13 @@ main(argc, argv)
 	DB *dbp;
 	int ch, d_close;
 	int e_close, exitval;
-	int lflag, pflag, ret, rflag, Rflag, subs, keyflag;
+	int lflag, nflag, pflag, ret, rflag, Rflag, subs, keyflag;
 	char *dopt, *home, *subname;
 
+	version_check();
+
 	dbp = NULL;
-	d_close = e_close = exitval = lflag = pflag = rflag = Rflag = 0;
+	d_close = e_close = exitval = lflag = nflag = pflag = rflag = Rflag = 0;
 	keyflag = 0;
 	dopt = home = subname = NULL;
 	while ((ch = getopt(argc, argv, "d:f:h:klNprRs:V")) != EOF)
@@ -83,12 +85,7 @@ main(argc, argv)
 			lflag = 1;
 			break;
 		case 'N':
-			if ((ret = db_env_set_mutexlocks(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_mutexlocks: %s\n",
-				    progname, db_strerror(ret));
-				return (1);
-			}
+			nflag = 1;
 			if ((ret = db_env_set_panicstate(0)) != 0) {
 				fprintf(stderr,
 				    "%s: db_env_set_panicstate: %s\n",
@@ -165,6 +162,11 @@ main(argc, argv)
 
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
+
+	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+		dbenv->err(dbenv, ret, "set_mutexlocks");
+		goto err;
+	}
 
 	/* Initialize the environment. */
 	if (db_init(home) != 0)
@@ -251,16 +253,21 @@ int
 db_init(home)
 	char *home;
 {
-	u_int32_t flags;
 	int ret;
 
 	/*
-	 * Try and use the shared memory pool region when dumping a database,
-	 * so our information is as up-to-date as possible, even if the mpool
-	 * cache hasn't been flushed.
+	 * Try and use the underlying environment when opening a database.  We
+	 * wish to use the buffer pool so our information is as up-to-date as
+	 * possible, even if the mpool cache hasn't been flushed;  we wish to
+	 * use the locking system, if present, so that we are safe to use with
+	 * transactions.  (We don't need to use transactions explicitly, as
+	 * we're read-only.)
+	 *
+	 * Note that in CDB, too, this will configure our environment
+	 * appropriately, and our cursors will (correctly) do locking as CDB
+	 * read cursors.
 	 */
-	flags = DB_USE_ENVIRON | DB_INIT_MPOOL;
-	if (dbenv->open(dbenv, home, flags, 0) == 0)
+	if (dbenv->open(dbenv, home, DB_JOINENV | DB_USE_ENVIRON, 0) == 0)
 		return (0);
 
 	/*
@@ -273,8 +280,8 @@ db_init(home)
 	 * an mpool region exists).  Create one, but make it private so that
 	 * no files are actually created.
 	 */
-	LF_SET(DB_CREATE | DB_PRIVATE);
-	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
+	if ((ret = dbenv->open(dbenv, home,
+	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) == 0)
 		return (0);
 
 	/* An environment is required. */
@@ -369,7 +376,7 @@ dump_sub(parent_dbp, parent_name, pflag, keyflag)
 		if (ret == 0 &&
 		    (__db_prheader(dbp, subdb, pflag, keyflag, stdout,
 		    __db_verify_callback, NULL, 0) ||
-		     dump(dbp, pflag, keyflag)))
+		    dump(dbp, pflag, keyflag)))
 			ret = 1;
 		(void)dbp->close(dbp, 0);
 		free(subdb);
@@ -488,6 +495,23 @@ void
 usage()
 {
 	(void)fprintf(stderr, "usage: %s\n",
-"db_dump [-klNprRV] [-d ahr] [-f output] [-h home] [-s database] db_file\n");
+"db_dump [-klNprRV] [-d ahr] [-f output] [-h home] [-s database] db_file");
 	exit(1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

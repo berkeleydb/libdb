@@ -1,15 +1,14 @@
- 
-<!--$Id: notes.so,v 10.35 2000/05/15 20:18:21 bostic Exp $-->
+<!--$Id: notes.so,v 10.42 2001/01/09 18:49:53 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Building Berkeley DB for UNIX systems</title>
+<title>Berkeley DB Reference Guide: Architecture independent FAQs</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
+        <a name="2"><!--meow--></a>        <a name="3"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_unix/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/aix.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -17,32 +16,6 @@
 <p>
 <h1 align=center>Architecture independent FAQs</h1>
 <p><ol>
-<p><li><b>Berkeley DB was configured using --enable-tcl or --with-tcl and fails
-to build.</b>
-<p>The Berkeley DB Tcl interface requires Tcl version 8.1 or greater.  You can
-download a copy of Tcl from the <a href="http://www.scriptics.com">Scriptics Corporation</a> web site.
-<hr size=1 noshade>
-<p><li><b>I have several versions of Tcl installed. How do I configure
-Berkeley DB to use a particular version?</b>
-<p>To compile the Tcl interface with a particular version of Tcl, use the
---with-tcl option to specify the Tcl installation directory that contains
-the tclConfig.sh file.
-<p>See <a href="../../ref/build_unix/flags.html">Changing compile or load options</a>
-for more information.
-<hr size=1 noshade>
-<p><li><b>Berkeley DB was configured using --enable-tcl or --with-tcl and fails
-to build.</b>
-<p>If the Tcl installation was moved after it was configured and installed,
-try re-configuring and re-installing Tcl.
-<p>Also, some systems do not search for shared libraries by default, or
-do not search for shared libraries named the way the Tcl installation
-names them, or are searching for a different kind of library than those
-in your Tcl installation.  For example, Linux systems often require
-linking "libtcl.a" to "libtcl#.#.a", while AIX systems often require
-adding the "-brtl" flag to the linker.  A simpler solution that almost
-always works on all systems is to link "libtcl.#.#.a" or "libtcl.so" (or
-whatever you happen to have) to "libtcl.a" and reconfigure.
-<hr size=1 noshade>
 <p><li><b>When compiling with gcc, I get unreferenced symbols, e.g.,:
 <p><blockquote><pre>symbol __muldi3: referenced symbol not found
 symbol __cmpdi2: referenced symbol not found</pre></blockquote></b>
@@ -77,11 +50,11 @@ exception.
 threaded programs.</b>
 <p><b>I get error messages that mutex (e.g., pthread_mutex_XXX or
 mutex_XXX) functions are undefined when linking applications with Berkeley DB.</b>
-<p>On some architectures, the Berkeley DB library uses the POSIX pthreads and UI
-threads interfaces for underlying mutex support, e.g., Solaris and HP-UX.
-You can specify compilers, compiler flags or link with the appropriate
-thread library when loading your application, to resolve the undefined
-references:
+<p>On some architectures, the Berkeley DB library uses the ISO POSIX standard
+pthreads and UNIX International (UI) threads interfaces for underlying
+mutex support, e.g., Solaris and HP-UX.  You can specify compilers,
+compiler flags or link with the appropriate thread library when loading
+your application, to resolve the undefined references:
 <p><blockquote><pre>cc ... -lpthread ...
 cc ... -lthread ...
 xlc_r ...
@@ -126,7 +99,7 @@ tool).</b>
 <p>For performance reasons, Berkeley DB does not write the unused portions of
 database pages or fill in unused structure fields.  To turn off these
 errors when running software analysis tools, build with the
---enable-diagnostic configuration option.
+--enable-umrw configuration option.
 <hr size=1 noshade>
 <p><li><b>Berkeley DB programs or the test suite fail unexpectedly.</b>
 <p>The Berkeley DB architecture does not support placing the shared memory regions
@@ -139,20 +112,24 @@ information.
 TESTDIR is not on a remote mounted filesystem.
 <hr size=1 noshade>
 <p><li><b>The <a href="../../utility/db_dump.html">db_dump185</a> utility fails to build.</b>
-<p>If the errors look something like:
+<p>The <a href="../../utility/db_dump.html">db_dump185</a> utility is the utility that supports conversion
+of Berkeley DB 1.85 and earlier databases to current database formats.  If
+the errors look something like:
 <p><blockquote><pre>cc -o db_dump185 db_dump185.o
 ld:
 Unresolved:
 dbopen</pre></blockquote>
-<p>it means that the Berkeley DB 1.85 code was not found in the standard libraries.
-To build <a href="../../utility/db_dump.html">db_dump185</a> (the utility that converts Berkeley DB 1.85 and
-earlier databases to Berkeley DB version 2.X), you must have already built and
-installed the Berkeley DB version 1.85 code on the system.  If the Berkeley DB 1.85
-code is not part of the standard libraries used for loading, you will need
-to edit your Makefile, and change the line:
-<p><blockquote><pre>DB185LIB=</pre></blockquote>
-<p>So that the library where the Berkeley DB 1.85 code is found is loaded, e.g.,
-<p><blockquote><pre>DB185LIB=-ldb185</pre></blockquote>
+<p>it means that the Berkeley DB 1.85 code was not found in the standard
+libraries.  To build <a href="../../utility/db_dump.html">db_dump185</a>, the Berkeley DB version 1.85 code
+must have already been built and installed on the system.  If the Berkeley DB
+1.85 header file is not found in a standard place, or the library is
+not part of the standard libraries used for loading, you will need to
+edit your Makefile, and change the lines:
+<p><blockquote><pre>DB185INC=
+DB185LIB=</pre></blockquote>
+<p>So that the system Berkeley DB 1.85 header file and library are found, e.g.,
+<p><blockquote><pre>DB185INC=/usr/local/include
+DB185LIB=-ldb185</pre></blockquote>
 </ol>
 <table><tr><td><br></td><td width="1%"><a href="../../ref/build_unix/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/aix.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

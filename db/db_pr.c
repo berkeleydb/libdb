@@ -8,14 +8,13 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_pr.c,v 11.29.2.1 2000/07/07 16:13:19 bostic Exp $";
+static const char revid[] = "$Id: db_pr.c,v 11.46 2001/01/22 17:25:06 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -177,11 +176,6 @@ __db_prdb(dbp, fp, flags)
 			    bt->re_source == NULL ? "" : bt->re_source);
 			fprintf(fp, "re_modified: %d re_eof: %d re_last: %lu\n",
 			    bt->re_modified, bt->re_eof, (u_long)bt->re_last);
-			fprintf(fp,
-			    "cmap: %#lx smap: %#lx emap: %#lx msize: %lu\n",
-			    (u_long)bt->re_cmap, (u_long)bt->re_smap,
-			    (u_long)bt->re_emap, (u_long)bt->re_msize);
-			fprintf(fp, "re_irec: %#lx\n", (u_long)bt->re_irec);
 		}
 		break;
 	case DB_HASH:
@@ -198,6 +192,7 @@ __db_prdb(dbp, fp, flags)
 		fprintf(fp, "re_pad: %#lx re_len: %lu\n",
 		    (u_long)q->re_pad, (u_long)q->re_len);
 		fprintf(fp, "rec_page: %lu\n", (u_long)q->rec_page);
+		fprintf(fp, "page_ext: %lu\n", (u_long)q->page_ext);
 		break;
 	default:
 		break;
@@ -220,6 +215,11 @@ __db_prtree(dbp, flags)
 	if (set_psize == PSIZE_BOUNDARY)
 		__db_psize(dbp);
 
+	if (dbp->type == DB_QUEUE) {
+		ret = __db_prqueue(dbp, flags);
+		goto done;
+	}
+
 	/* Find out the page number of the last page in the database. */
 	if ((ret = memp_fget(dbp->mpf, &last, DB_MPOOL_LAST, &h)) != 0)
 		return (ret);
@@ -235,6 +235,7 @@ __db_prtree(dbp, flags)
 			return (ret);
 	}
 
+done:
 	(void)fflush(__db_prinit(NULL));
 	return (0);
 }
@@ -264,8 +265,6 @@ __db_meta(dbp, dbmeta, fp, fn, flags)
 	fprintf(fp, "\ttype: %lu\n", (u_long)dbmeta->type);
 	fprintf(fp, "\tkeys: %lu\trecords: %lu\n",
 	    (u_long)dbmeta->key_count, (u_long)dbmeta->record_count);
-	fprintf(fp, "\talloc_lsn(lsn.file: %lu lsn.offset: %lu)\n",
-	    (u_long)dbmeta->alloc_lsn.file, (u_long)dbmeta->alloc_lsn.offset);
 
 	if (!LF_ISSET(DB_PR_RECOVERYTEST)) {
 		/*
@@ -391,12 +390,12 @@ __db_qmeta(dbp, fp, h, flags)
 {
 	__db_meta(dbp, (DBMETA *)h, fp, NULL, flags);
 
-	fprintf(fp, "\tstart: %lu\n", (u_long)h->start);
 	fprintf(fp, "\tfirst_recno: %lu\n", (u_long)h->first_recno);
 	fprintf(fp, "\tcur_recno: %lu\n", (u_long)h->cur_recno);
 	fprintf(fp, "\tre_len: %#lx re_pad: %lu\n",
 	    (u_long)h->re_len, (u_long)h->re_pad);
 	fprintf(fp, "\trec_page: %lu\n", (u_long)h->rec_page);
+	fprintf(fp, "\tpage_ext: %lu\n", (u_long)h->page_ext);
 
 	return (0);
 }
@@ -483,8 +482,9 @@ __db_prpage(dbp, h, flags)
 		fprintf(fp, " records: %lu", (u_long)RE_NREC(h));
 
 	/* LSN. */
-	fprintf(fp, " (lsn.file: %lu lsn.offset: %lu)\n",
-	    (u_long)LSN(h).file, (u_long)LSN(h).offset);
+	if (!LF_ISSET(DB_PR_RECOVERYTEST))
+		fprintf(fp, " (lsn.file: %lu lsn.offset: %lu)\n",
+		    (u_long)LSN(h).file, (u_long)LSN(h).offset);
 
 	switch (TYPE(h)) {
 	case P_BTREEMETA:
@@ -514,6 +514,11 @@ __db_prpage(dbp, h, flags)
 		}
 		return (0);
 	}
+
+	/* LSN. */
+	if (LF_ISSET(DB_PR_RECOVERYTEST))
+		fprintf(fp, " (lsn.file: %lu lsn.offset: %lu)\n",
+		    (u_long)LSN(h).file, (u_long)LSN(h).offset);
 
 	t = dbp->bt_internal;
 
@@ -616,7 +621,8 @@ __db_prpage(dbp, h, flags)
 		case P_IBTREE:
 			bi = sp;
 			fprintf(fp, "count: %4lu pgno: %4lu type: %4lu",
-			    (u_long)bi->nrecs, (u_long)bi->pgno, (u_long)bi->type);
+			    (u_long)bi->nrecs, (u_long)bi->pgno,
+			    (u_long)bi->type);
 			switch (B_TYPE(bi->type)) {
 			case B_KEYDATA:
 				__db_pr(bi->data, bi->len);
@@ -686,7 +692,7 @@ __db_pr(p, len)
 		fprintf(fp, " data: ");
 		for (i = len <= 20 ? len : 20; i > 0; --i, ++p) {
 			lastch = *p;
-			if (isprint(*p) || *p == '\n')
+			if (isprint((int)*p) || *p == '\n')
 				fprintf(fp, "%c", *p);
 			else
 				fprintf(fp, "0x%.2x", (u_int)*p);
@@ -718,12 +724,11 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 	VRFY_DBINFO *vdp;
 {
 	static const char hex[] = "0123456789abcdef";
-#define	DBTBUFLEN	100
-	char buf[DBTBUFLEN];
 	db_recno_t recno;
-	int ret;
 	u_int32_t len;
-	u_int8_t *p;
+	int ret;
+#define	DBTBUFLEN	100
+	char *p, *hp, buf[DBTBUFLEN], hbuf[DBTBUFLEN];
 
 	if (vdp != NULL) {
 		/*
@@ -757,11 +762,24 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 		 */
 		__ua_memcpy(&recno, dbtp->data, sizeof(recno));
 		snprintf(buf, DBTBUFLEN, "%lu", (u_long)recno);
-		if ((ret = callback(handle, buf)) != 0)
+
+		/* If we're printing data as hex, print keys as hex too. */
+		if (!checkprint) {
+			for (len = strlen(buf), p = buf, hp = hbuf;
+			    len-- > 0; ++p) {
+				*hp++ = hex[(u_int8_t)(*p & 0xf0) >> 4];
+				*hp++ = hex[*p & 0x0f];
+			}
+			*hp = '\0';
+			ret = callback(handle, hbuf);
+		} else
+			ret = callback(handle, buf);
+
+		if (ret != 0)
 			return (ret);
 	} else if (checkprint) {
 		for (len = dbtp->size, p = dbtp->data; len--; ++p)
-			if (isprint(*p)) {
+			if (isprint((int)*p)) {
 				if (*p == '\\' &&
 				    (ret = callback(handle, "\\")) != 0)
 					return (ret);
@@ -984,7 +1002,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	DB_QUEUE_STAT *qsp;
 	VRFY_PAGEINFO *pip;
 	char *buf;
-	int ret, t_ret, buflen;
+	int buflen, ret, t_ret;
 	u_int32_t dbtype;
 
 	btsp = NULL;
@@ -1030,15 +1048,20 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			dbtype = DB_HASH;
 			break;
 		default:
-			/* Shouldn't happen. */
-			DB_ASSERT(0);
-			ret = EINVAL;
-			goto err;
+			/*
+			 * If the meta page is of a bogus type, it's
+			 * because we have a badly corrupt database.
+			 * (We must be in the verifier for pip to be non-NULL.)
+			 * Pretend we're a Btree and salvage what we can.
+			 */
+			DB_ASSERT(F_ISSET(dbp, DB_AM_VERIFYING));
+			dbtype = DB_BTREE;
+			break;
 		}
 	else
 		dbtype = dbp->type;
 
-	if ((ret = callback(handle, "VERSION=2\n")) != 0)
+	if ((ret = callback(handle, "VERSION=3\n")) != 0)
 		goto err;
 	if (pflag) {
 		if ((ret = callback(handle, "format=print\n")) != 0)
@@ -1069,15 +1092,15 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				    callback(handle, "recnum=1\n")) != 0)
 					goto err;
 			if (pip->bt_maxkey != 0) {
-				snprintf(buf, buflen, "bt_maxkey=%lu\n",
-				    (u_long)pip->bt_maxkey);
+				snprintf(buf, buflen,
+				    "bt_maxkey=%lu\n", (u_long)pip->bt_maxkey);
 				if ((ret = callback(handle, buf)) != 0)
 					goto err;
 			}
 			if (pip->bt_minkey != 0 &&
 			    pip->bt_minkey != DEFMINKEYPAGE) {
-				snprintf(buf, buflen, "bt_minkey=%lu\n",
-				    (u_long)pip->bt_minkey);
+				snprintf(buf, buflen,
+				    "bt_minkey=%lu\n", (u_long)pip->bt_minkey);
 				if ((ret = callback(handle, buf)) != 0)
 					goto err;
 			}
@@ -1108,14 +1131,14 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			goto err;
 		if (pip != NULL) {
 			if (pip->h_ffactor != 0) {
-				snprintf(buf, buflen, "h_ffactor=%lu\n",
-				    (u_long)pip->h_ffactor);
+				snprintf(buf, buflen,
+				    "h_ffactor=%lu\n", (u_long)pip->h_ffactor);
 				if ((ret = callback(handle, buf)) != 0)
 					goto err;
 			}
 			if (pip->h_nelem != 0) {
-				snprintf(buf, buflen, "h_nelem=%lu\n",
-				    (u_long)pip->h_nelem);
+				snprintf(buf, buflen,
+				    "h_nelem=%lu\n", (u_long)pip->h_nelem);
 				if ((ret = callback(handle, buf)) != 0)
 					goto err;
 			}
@@ -1154,7 +1177,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			goto err;
 		}
 		snprintf(buf, buflen, "re_len=%lu\n", (u_long)qsp->qs_re_len);
-		if (qsp->qs_re_pad != 0 && qsp->qs_re_pad != ' ') 
+		if (qsp->qs_re_pad != 0 && qsp->qs_re_pad != ' ')
 			snprintf(buf, buflen, "re_pad=%#x\n", qsp->qs_re_pad);
 		if ((ret = callback(handle, buf)) != 0)
 			goto err;
@@ -1168,8 +1191,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				    callback(handle, "renumber=1\n")) != 0)
 					goto err;
 			if (pip->re_len > 0) {
-				snprintf(buf, buflen, "re_len=%lu\n",
-				    (u_long)pip->re_len);
+				snprintf(buf, buflen,
+				    "re_len=%lu\n", (u_long)pip->re_len);
 				if ((ret = callback(handle, buf)) != 0)
 					goto err;
 			}
@@ -1217,16 +1240,15 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			if ((ret = callback(handle, "dupsort=1\n")) != 0)
 				goto err;
 		if (!F_ISSET(dbp, DB_AM_PGDEF)) {
-			snprintf(buf, buflen, "db_pagesize=%lu\n",
-			    (u_long)dbp->pgsize);
+			snprintf(buf, buflen,
+			    "db_pagesize=%lu\n", (u_long)dbp->pgsize);
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}
 	}
 
-	if (keyflag)
-		if ((ret = callback(handle, "keys=1\n")) != 0)
-			goto err;
+	if (keyflag && (ret = callback(handle, "keys=1\n")) != 0)
+		goto err;
 
 	ret = callback(handle, "HEADER=END\n");
 

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_verify.c,v 1.8 2000/04/07 14:18:32 bostic Exp $";
+static const char revid[] = "$Id: qam_verify.c,v 1.17 2000/12/12 17:39:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -51,27 +51,16 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	if (!F_ISSET(pip, VRFY_INCOMPLETE))
 		EPRINT((dbp->dbenv, "Queue databases must be one-per-file."));
 
-	/* start */
-	if (meta->start != 1) {
+	/*
+	 * cur_recno/rec_page
+	 * Cur_recno may be one beyond the end of the page and
+	 * we start numbering from 1.
+	 */
+	if (vdp->last_pgno > 0 && meta->cur_recno > 0 &&
+	    meta->cur_recno - 1 > meta->rec_page * vdp->last_pgno) {
 		EPRINT((dbp->dbenv,
-		    "Queue start offset of %lu", meta->start));
-		isbad = 1;
-	}
-
-	/* first_recno, cur_recno */
-	if (meta->cur_recno < meta->first_recno) {
-		EPRINT((dbp->dbenv,
-		    "Wrongly ordered first/current recnos, %lu/%lu",
-		     meta->first_recno, meta->cur_recno));
-		isbad = 1;
-	}
-
-	/* cur_recno/rec_page */
-	if (vdp->last_pgno > 0 &&
-	    (1 + ((meta->cur_recno - meta->start) / meta->rec_page)) !=
-	    vdp->last_pgno) {
-		EPRINT((dbp->dbenv,
-		    "Incorrect last page number in queue database"));
+	    "Current recno %lu references record past last page number %lu",
+		    meta->cur_recno, vdp->last_pgno));
 		isbad = 1;
 	}
 
@@ -181,6 +170,10 @@ __qam_vrfy_structure(dbp, vdp, flags)
 		goto err;
 
 	for (i = 1; i <= vdp->last_pgno; i++) {
+		/* Send feedback to the application about our progress. */
+		if (!LF_ISSET(DB_SALVAGE))
+			__db_vrfy_struct_feedback(dbp, vdp);
+
 		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 ||
 		    (ret = __db_vrfy_getpageinfo(vdp, i, &pip)) != 0)
 			return (ret);

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_stat.c,v 11.6.2.1 2000/06/27 17:52:57 bostic Exp $";
+static const char revid[] = "$Id: os_stat.c,v 11.8 2000/10/27 20:32:02 dda Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -44,7 +44,7 @@ __os_exists(path, isdirp)
 		return (__os_get_errno());
 
 #if !defined(S_ISDIR) || defined(STAT_MACROS_BROKEN)
-#if defined(_WIN32) || defined(WIN16)
+#ifdef DB_WIN32
 #define	S_ISDIR(m)	(_S_IFDIR & (m))
 #else
 #define	S_ISDIR(m)	(((m) & 0170000) == 0040000)

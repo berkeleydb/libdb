@@ -1,5 +1,4 @@
- 
-<!--$Id: db_cursor.so,v 10.24 2000/03/17 01:53:57 bostic Exp $-->
+<!--$Id: db_cursor.so,v 10.25 2000/07/11 19:11:25 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;cursor</h1>
@@ -30,9 +29,6 @@ DB-&gt;cursor(DB *db,
 <p>The DB-&gt;cursor function
 creates a cursor and copies a pointer to it into the memory referenced
 by <b>cursorp</b>.
-<p>A cursor is a structure used to provide sequential access through a database.
-This interface and its associated functions replaces the functionality
-provided by the <b>seq</b> function in previous releases of Berkeley DB.
 <p>If the file is being accessed under transaction protection, the
 <b>txnid</b> parameter is a transaction ID returned from
 <a href="../api_c/txn_begin.html">txn_begin</a>, otherwise, NULL.
@@ -87,6 +83,7 @@ in the same way.
 <a href="../api_c/db_set_malloc.html">DB-&gt;set_malloc</a>,
 <a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
 <a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
+<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
 <a href="../api_c/db_set_realloc.html">DB-&gt;set_realloc</a>,
 <a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
 <a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,

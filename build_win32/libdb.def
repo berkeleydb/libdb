@@ -1,6 +1,6 @@
-; $Id: libdb.def,v 11.17 2000/06/01 16:48:25 bostic Exp $
+; $Id: libdb.def,v 11.21 2001/01/04 15:07:33 dda Exp $
 
-DESCRIPTION	'Berkeley DB 3.1 Library'
+DESCRIPTION	'Berkeley DB 3.2 Library'
 EXPORTS
 	lock_get				@1
 	lock_id					@2
@@ -57,7 +57,7 @@ EXPORTS
 	db_env_set_func_unmap			@53
 	db_env_set_func_write			@54
 	db_env_set_func_yield			@55
-	db_env_set_mutexlocks			@56
+;	FREE					@56
 	db_env_set_pageyield			@57
 	db_env_set_panicstate			@58
 	db_env_set_region_init			@59
@@ -108,6 +108,7 @@ EXPORTS
 	__os_malloc				@243
 	__os_freestr				@244
 	__os_calloc				@245
+	__ham_test				@246
 ; these are needed for linking tools
 	__db_dump				@401
 	__db_rpath				@402
@@ -126,8 +127,6 @@ EXPORTS
 	__db_omode				@415
 	__db_prdbt				@416
 	__os_sleep				@417
-	__ham_get_page				@418
-	__ham_put_page				@419
 	__db_e_stat				@420
 	__db_getlong				@421
 	__os_get_errno				@422
@@ -148,3 +147,5 @@ EXPORTS
 	__db_prfooter				@437
 	__db_verify_callback			@438
 	__db_verify_internal			@439
+	__os_yield				@440
+	__db_global_values			@441

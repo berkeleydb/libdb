@@ -4,19 +4,18 @@
  * Copyright (c) 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfy.c,v 1.31.2.3 2000/07/27 15:52:12 krinsky Exp $
+ * $Id: db_vrfy.c,v 1.53 2001/01/11 18:19:51 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfy.c,v 1.31.2.3 2000/07/27 15:52:12 krinsky Exp $";
+static const char revid[] = "$Id: db_vrfy.c,v 1.53 2001/01/11 18:19:51 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -48,7 +47,7 @@ static int  __db_vrfy_invalid
 static int  __db_vrfy_orderchkonly __P((DB *,
 		VRFY_DBINFO *, const char *, const char *, u_int32_t));
 static int  __db_vrfy_pagezero __P((DB *, VRFY_DBINFO *, DB_FH *, u_int32_t));
-static int  __db_vrfy_subdbs 
+static int  __db_vrfy_subdbs
 		__P((DB *, VRFY_DBINFO *, const char *, u_int32_t));
 static int  __db_vrfy_structure
 		__P((DB *, VRFY_DBINFO *, const char *, db_pgno_t, u_int32_t));
@@ -191,10 +190,35 @@ __db_verify_internal(dbp_orig, name, subdb, handle, callback, flags)
 	if ((ret = db_create(&dbp, dbenv, 0)) != 0)
 		goto err;
 
+	F_SET(dbp, DB_AM_VERIFYING);
+
 	/* Copy the supplied pagesize, which we use if the file one is bogus. */
 	if (dbp_orig->pgsize >= DB_MIN_PGSIZE &&
 	    dbp_orig->pgsize <= DB_MAX_PGSIZE)
 		dbp->set_pagesize(dbp, dbp_orig->pgsize);
+
+	/* Copy the feedback function, if present, and initialize it. */
+	if (!LF_ISSET(DB_SALVAGE) && dbp_orig->db_feedback != NULL) {
+		dbp->set_feedback(dbp, dbp_orig->db_feedback);
+		dbp->db_feedback(dbp, DB_VERIFY, 0);
+	}
+
+	/*
+	 * Copy the comparison and hashing functions.  Note that
+	 * even if the database is not a hash or btree, the respective
+	 * internal structures will have been initialized.
+	 */
+	if (dbp_orig->dup_compare != NULL &&
+	    (ret = dbp->set_dup_compare(dbp, dbp_orig->dup_compare)) != 0)
+		goto err;
+	if (((BTREE *)dbp_orig->bt_internal)->bt_compare != NULL &&
+	    (ret = dbp->set_bt_compare(dbp,
+	    ((BTREE *)dbp_orig->bt_internal)->bt_compare)) != 0)
+		goto err;
+	if (((HASH *)dbp_orig->h_internal)->h_hash != NULL &&
+	    (ret = dbp->set_h_hash(dbp,
+	    ((HASH *)dbp_orig->h_internal)->h_hash)) != 0)
+		goto err;
 
 	/*
 	 * We don't know how large the cache is, and if the database
@@ -250,6 +274,9 @@ __db_verify_internal(dbp_orig, name, subdb, handle, callback, flags)
 	if ((ret = __db_dbenv_setup(dbp,
 	    name, DB_ODDFILESIZE | DB_RDONLY)) != 0)
 		return (ret);
+
+	/* Mark the dbp as opened, so that we correctly handle its close. */
+	F_SET(dbp, DB_OPEN_CALLED);
 
 	/*
 	 * Find out the page number of the last page in the database.
@@ -353,7 +380,11 @@ err:		(void)__db_err(dbenv, "%s: %s", name, db_strerror(ret));
 	    (has == 0 || F_ISSET(vdp, SALVAGE_PRINTFOOTER)))
 		(void)__db_prfooter(handle, callback);
 
-done:	if (F_ISSET(fhp, DB_FH_VALID))
+	/* Send feedback that we're done. */
+done:	if (!LF_ISSET(DB_SALVAGE) && dbp->db_feedback != NULL)
+		dbp->db_feedback(dbp, DB_VERIFY, 100);
+
+	if (F_ISSET(fhp, DB_FH_VALID))
 		(void)__os_closehandle(fhp);
 	if (dbp)
 		(void)dbp->close(dbp, 0);
@@ -409,7 +440,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 
 	if (nr != DBMETASIZE) {
 		EPRINT((dbp->dbenv,
-		    "Incomplete metadata page %lu", PGNO_BASE_MD));
+		    "Incomplete metadata page %lu", (u_long)PGNO_BASE_MD));
 		t_ret = DB_VERIFY_FATAL;
 		goto err;
 	}
@@ -422,7 +453,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	/* Note that endianness doesn't matter--it's zero. */
 	if (meta->pgno != PGNO_BASE_MD) {
 		EPRINT((dbp->dbenv, "Bad pgno: was %lu, should be %lu",
-		    meta->pgno, PGNO_BASE_MD));
+		    (u_long)meta->pgno, (u_long)PGNO_BASE_MD));
 		ret = DB_VERIFY_BAD;
 	}
 
@@ -435,7 +466,8 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 		    &dbp->type))
 			swapped = 1;
 		else {
-			EPRINT((dbp->dbenv, "Bad magic no.: %lu", meta->magic));
+			EPRINT((dbp->dbenv,
+			    "Bad magic number: %lu", (u_long)meta->magic));
 			ret = DB_VERIFY_BAD;
 		}
 	}
@@ -463,8 +495,8 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	if (IS_VALID_PAGESIZE(meta->pagesize))
 		dbp->pgsize = meta->pagesize;
 	else {
-		EPRINT((dbp->dbenv, "Bad page size: %lu",
-		    meta->pagesize));
+		EPRINT((dbp->dbenv,
+		    "Bad page size: %lu", (u_long)meta->pagesize));
 		ret = DB_VERIFY_BAD;
 
 		/*
@@ -485,7 +517,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	    (dbp->type == DB_HASH && meta->type != P_HASHMETA) ||
 	    (dbp->type == DB_QUEUE && meta->type != P_QAMMETA)) {
 		ret = DB_VERIFY_BAD;
-		EPRINT((dbp->dbenv, "Bad page type: %lu", meta->type));
+		EPRINT((dbp->dbenv, "Bad page type: %lu", (u_long)meta->type));
 	}
 
 	/*
@@ -517,6 +549,9 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 
 	if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
 		return (ret);
+
+	/* Set up the dbp's fileid.  We don't use the regular open path. */
+	memcpy(dbp->fileid, meta->uid, DB_FILE_ID_LEN);
 
 	if (0) {
 err:		__db_err(dbenv, "%s", db_strerror(ret));
@@ -600,7 +635,8 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 			case __P_DUPLICATE:
 				isbad = 1;
 				EPRINT((dbp->dbenv,
-				    "Old-style dup page %lu", i));
+				    "Old-style duplicate page: %lu",
+				    (u_long)i));
 				break;
 			case P_HASH:
 				t_ret = __ham_vrfy(dbp,
@@ -639,7 +675,7 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 				break;
 			default:
 				EPRINT((dbp->dbenv,
-				    "Unknown page type: %lu", TYPE(h)));
+				    "Unknown page type: %lu", (u_long)TYPE(h)));
 				isbad = 1;
 				break;
 			}
@@ -653,6 +689,16 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 				goto err;
 			else
 				ret = t_ret;
+
+			/*
+			 * Provide feedback to the application about our
+			 * progress.  The range 0-50% comes from the fact
+			 * that this is the first of two passes through the
+			 * database (front-to-back, then top-to-bottom).
+			 */
+			if (dbp->db_feedback != NULL)
+				dbp->db_feedback(dbp, DB_VERIFY,
+				    (i + 1) * 50 / (vdp->last_pgno + 1));
 		}
 
 		if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
@@ -702,6 +748,23 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 		__db_err(dbenv, "__db_vrfy_structure called with DB_SALVAGE");
 		return (EINVAL);
 	}
+
+	/*
+	 * Providing feedback here is tricky;  in most situations,
+	 * we fetch each page one more time, but we do so in a top-down
+	 * order that depends on the access method.  Worse, we do this
+	 * recursively in btree, such that on any call where we're traversing
+	 * a subtree we don't know where that subtree is in the whole database;
+	 * worse still, any given database may be one of several subdbs.
+	 *
+	 * The solution is to decrement a counter vdp->pgs_remaining each time
+	 * we verify (and call feedback on) a page.  We may over- or
+	 * under-count, but the structure feedback function will ensure that we
+	 * never give a percentage under 50 or over 100.  (The first pass
+	 * covered the range 0-50%.)
+	 */
+	if (dbp->db_feedback != NULL)
+		vdp->pgs_remaining = vdp->last_pgno + 1;
 
 	/*
 	 * Call the appropriate function to downwards-traverse the db type.
@@ -792,15 +855,14 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 		if ((ret = __db_vrfy_pgset_get(pgset, i, &p)) != 0)
 			goto err;
 		if (p == 0) {
-			EPRINT((dbp->dbenv, "Unreferenced page %lu", i));
-			/* isbad = 1;  */
-			/* XXX: this is a db bug */
-			if (pip->type != P_LRECNO && pip->type != P_LDUP)
-				isbad = 1;
+			EPRINT((dbp->dbenv,
+			    "Unreferenced page %lu", (u_long)i));
+			isbad = 1;
 		}
 
 		if (F_ISSET(pip, VRFY_IS_ALLZEROES)) {
-			EPRINT((dbp->dbenv, "Totally zeroed page %lu", i));
+			EPRINT((dbp->dbenv,
+			    "Totally zeroed page %lu", (u_long)i));
 			isbad = 1;
 		}
 		if ((ret = __db_vrfy_putpageinfo(vdp, pip)) != 0)
@@ -889,19 +951,23 @@ __db_vrfy_common(dbp, vdp, h, pgno, flags)
 	 * old last and the new last totally zeroed.  Its pgin function
 	 * should fix things, but we might not be using that (e.g. if
 	 * we're a subdatabase).
+	 *
+	 * Queue will create sparse files if sparse record numbers are used.
 	 */
 	if (pgno != 0 && PGNO(h) == 0) {
 		for (p = (u_int8_t *)h; p < (u_int8_t *)h + dbp->pgsize; p++)
 			if (*p != 0) {
 				EPRINT((dbp->dbenv,
-				    "Hash page %lu should be zeroed and is not",
-				    pgno));
+				    "Page %lu should be zeroed and is not",
+				    (u_long)pgno));
 				ret = DB_VERIFY_BAD;
 				goto err;
 			}
 		/*
 		 * It's totally zeroed;  mark it as a hash, and we'll
 		 * check that that makes sense structurally later.
+		 * (The queue verification doesn't care, since queues
+		 * don't really have much in the way of structure.)
 		 */
 		pip->type = P_HASH;
 		F_SET(pip, VRFY_IS_ALLZEROES);
@@ -911,12 +977,13 @@ __db_vrfy_common(dbp, vdp, h, pgno, flags)
 
 	if (PGNO(h) != pgno) {
 		EPRINT((dbp->dbenv,
-		    "Bad page number: %lu should be %lu", h->pgno, pgno));
+		    "Bad page number: %lu should be %lu",
+		    (u_long)h->pgno, (u_long)pgno));
 		ret = DB_VERIFY_BAD;
 	}
 
 	if (!__db_is_valid_pagetype(h->type)) {
-		EPRINT((dbp->dbenv, "Bad page type: %lu", h->type));
+		EPRINT((dbp->dbenv, "Bad page type: %lu", (u_long)h->type));
 		ret = DB_VERIFY_BAD;
 	}
 	pip->type = h->type;
@@ -949,7 +1016,8 @@ __db_vrfy_invalid(dbp, vdp, h, pgno, flags)
 
 	if (!IS_VALID_PGNO(NEXT_PGNO(h))) {
 		EPRINT((dbp->dbenv,
-		    "Invalid next_pgno %lu on page %lu", NEXT_PGNO(h), pgno));
+		    "Invalid next_pgno %lu on page %lu",
+		    (u_long)NEXT_PGNO(h), (u_long)pgno));
 		ret = DB_VERIFY_BAD;
 	} else
 		pip->next_pgno = NEXT_PGNO(h);
@@ -999,12 +1067,12 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 		if (!IS_VALID_PGNO(PREV_PGNO(h)) || PREV_PGNO(h) == pip->pgno) {
 			isbad = 1;
 			EPRINT((dbp->dbenv, "Page %lu: Invalid prev_pgno %lu",
-			    pip->pgno, PREV_PGNO(h)));
+			    (u_long)pip->pgno, (u_long)PREV_PGNO(h)));
 		}
 		if (!IS_VALID_PGNO(NEXT_PGNO(h)) || NEXT_PGNO(h) == pip->pgno) {
 			isbad = 1;
 			EPRINT((dbp->dbenv, "Page %lu: Invalid next_pgno %lu",
-			    pip->pgno, NEXT_PGNO(h)));
+			    (u_long)pip->pgno, (u_long)NEXT_PGNO(h)));
 		}
 		pip->prev_pgno = PREV_PGNO(h);
 		pip->next_pgno = NEXT_PGNO(h);
@@ -1023,7 +1091,7 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 			isbad = 1;
 			EPRINT((dbp->dbenv,
 			    "Page %lu: Too many entries: %lu",
-			    pgno, NUM_ENT(h)));
+			    (u_long)pgno, (u_long)NUM_ENT(h)));
 		}
 		pip->entries = NUM_ENT(h);
 	}
@@ -1039,7 +1107,7 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 		if (LEVEL(h) < LEAFLEVEL + 1 || LEVEL(h) > MAXBTREELEVEL) {
 			isbad = 1;
 			EPRINT((dbp->dbenv, "Bad btree level %lu on page %lu",
-			    LEVEL(h), pgno));
+			    (u_long)LEVEL(h), (u_long)pgno));
 		}
 		pip->bt_level = LEVEL(h);
 		break;
@@ -1050,7 +1118,7 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 			isbad = 1;
 			EPRINT((dbp->dbenv,
 			    "Btree leaf page %lu has incorrect level %lu",
-			    pgno, LEVEL(h)));
+			    (u_long)pgno, (u_long)LEVEL(h)));
 		}
 		break;
 	default:
@@ -1058,7 +1126,7 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 			isbad = 1;
 			EPRINT((dbp->dbenv,
 			    "Nonzero level %lu in non-btree database page %lu",
-			    LEVEL(h), pgno));
+			    (u_long)LEVEL(h), (u_long)pgno));
 		}
 		break;
 	}
@@ -1122,12 +1190,14 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	/* magic number valid */
 	if (!__db_is_valid_magicno(meta->magic, &magtype)) {
 		isbad = 1;
-		EPRINT((dbp->dbenv, "Magic number invalid on page %lu", pgno));
+		EPRINT((dbp->dbenv,
+		    "Magic number invalid on page %lu", (u_long)pgno));
 	}
 	if (magtype != dbtype) {
 		isbad = 1;
 		EPRINT((dbp->dbenv,
-		    "Magic number does not match type of page %lu", pgno));
+		    "Magic number does not match type of page %lu",
+		    (u_long)pgno));
 	}
 
 	/* version */
@@ -1143,10 +1213,22 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	if (meta->pagesize != dbp->pgsize) {
 		isbad = 1;
 		EPRINT((dbp->dbenv,
-		    "Invalid pagesize %lu on page %lu", meta->pagesize, pgno));
+		    "Invalid pagesize %lu on page %lu",
+		    (u_long)meta->pagesize, (u_long)pgno));
 	}
 
 	/* free list */
+	/*
+	 * If this is not the main, master-database meta page, it
+	 * should not have a free list.
+	 */
+	if (pgno != PGNO_BASE_MD && meta->free != PGNO_INVALID) {
+		isbad = 1;
+		EPRINT((dbp->dbenv,
+		    "Nonempty free list on subdatabase metadata page %lu",
+		    pgno));
+	}
+
 	/* Can correctly be PGNO_INVALID--that's just the end of the list. */
 	if (meta->free != PGNO_INVALID && IS_VALID_PGNO(meta->free))
 		pip->free = meta->free;
@@ -1154,11 +1236,11 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		isbad = 1;
 		EPRINT((dbp->dbenv,
 		    "Nonsensical free list pgno %lu on page %lu",
-		    meta->free, pgno));
+		    (u_long)meta->free, (u_long)pgno));
 	}
 
-	/*                                                                    
-	 * We have now verified the common fields of the metadata page.  
+	/*
+	 * We have now verified the common fields of the metadata page.
 	 * Clear the flag that told us they had been incompletely checked.
 	 */
 	F_CLR(pip, VRFY_INCOMPLETE);
@@ -1198,7 +1280,8 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 		/* This shouldn't happen, but just in case. */
 		if (!IS_VALID_PGNO(pgno)) {
 			EPRINT((dbp->dbenv,
-			    "Invalid next_pgno on free list page %lu", pgno));
+			    "Invalid next_pgno on free list page %lu",
+			    (u_long)pgno));
 			return (DB_VERIFY_BAD);
 		}
 
@@ -1208,7 +1291,7 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 		if (p != 0) {
 			EPRINT((dbp->dbenv,
 			    "Page %lu encountered a second time on free list",
-			    pgno));
+			    (u_long)pgno));
 			return (DB_VERIFY_BAD);
 		}
 		if ((ret = __db_vrfy_pgset_inc(pgset, pgno)) != 0)
@@ -1218,8 +1301,8 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 			return (ret);
 
 		if (pip->type != P_INVALID) {
-			EPRINT((dbp->dbenv, "Non-invalid page %lu on free list",
-			    pgno, pip->type));
+			EPRINT((dbp->dbenv,
+			    "Non-invalid page %lu on free list", (u_long)pgno));
 			ret = DB_VERIFY_BAD;	  /* unsafe to continue */
 			break;
 		}
@@ -1277,7 +1360,7 @@ __db_vrfy_subdbs(dbp, vdp, dbname, flags)
 		if (meta_pgno == PGNO_INVALID || meta_pgno > vdp->last_pgno) {
 			EPRINT((dbp->dbenv,
 			    "Database entry references invalid page %lu",
-			    meta_pgno));
+			    (u_long)meta_pgno));
 			isbad = 1;
 			goto err;
 		}
@@ -1309,7 +1392,7 @@ __db_vrfy_subdbs(dbp, vdp, dbname, flags)
 		default:
 			EPRINT((dbp->dbenv,
 	    "Database entry references page %lu of invalid type %lu",
-			    meta_pgno, type));
+			    (u_long)meta_pgno, (u_long)type));
 			ret = DB_VERIFY_BAD;
 			goto err;
 			/* NOTREACHED */
@@ -1326,6 +1409,33 @@ err:	if (dbc != NULL && (t_ret = __db_c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
+}
+
+/*
+ * __db_vrfy_struct_feedback --
+ *	Provide feedback during top-down database structure traversal.
+ *	(See comment at the beginning of __db_vrfy_structure.)
+ *
+ * PUBLIC: int __db_vrfy_struct_feedback __P((DB *, VRFY_DBINFO *));
+ */
+int
+__db_vrfy_struct_feedback(dbp, vdp)
+	DB *dbp;
+	VRFY_DBINFO *vdp;
+{
+	int progress;
+
+	if (dbp->db_feedback == NULL)
+		return (0);
+
+	if (vdp->pgs_remaining > 0)
+		vdp->pgs_remaining--;
+
+	/* Don't allow a feedback call of 100 until we're really done. */
+	progress = 100 - (vdp->pgs_remaining * 50 / (vdp->last_pgno + 1));
+	dbp->db_feedback(dbp, DB_VERIFY, progress == 100 ? 99 : progress);
+
+	return (0);
 }
 
 /*
@@ -1422,7 +1532,7 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 			goto err;
 		}
 		if (hmeta->h_charkey !=
-		    h_internal->h_hash(CHARKEY, sizeof(CHARKEY))) {
+		    h_internal->h_hash(dbp, CHARKEY, sizeof(CHARKEY))) {
 			EPRINT((dbp->dbenv,
 			    "Incorrect hash function for database"));
 			ret = DB_VERIFY_BAD;
@@ -1434,7 +1544,7 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		 * corresponding chain of pages.
 		 */
 		for (bucket = 0; bucket <= hmeta->max_bucket; bucket++) {
-			pgno = hmeta->spares[__db_log2(bucket + 1)];
+			pgno = BS_TO_PAGE(bucket, hmeta->spares);
 			while (pgno != PGNO_INVALID) {
 				if ((ret = memp_fget(dbp->mpf,
 				    &pgno, 0, &currpg)) != 0)
@@ -1452,7 +1562,7 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		break;
 	default:
 		EPRINT((dbp->dbenv, "Database meta page %lu of bad type %lu",
-		    meta_pgno, TYPE(h)));
+		    (u_long)meta_pgno, (u_long)TYPE(h)));
 		ret = DB_VERIFY_BAD;
 		break;
 	}
@@ -1669,10 +1779,11 @@ __db_vrfy_inpitem(dbp, h, pgno, i, is_btree, flags, himarkp, offsetp)
 	 * page forward, has not collided with the data, which grow from the
 	 * end of the page backward.
 	 */
-	if ((u_int8_t *)h->inp + i >= (u_int8_t *)h + *himarkp) {
+	if (h->inp + i >= (db_indx_t *)((u_int8_t *)h + *himarkp)) {
 		/* We've collided with the data.  We need to bail. */
 		EPRINT((dbp->dbenv,
-		    "Page %lu entries listing %lu overlaps data", pgno, i));
+		    "Page %lu entries listing %lu overlaps data",
+		    (u_long)pgno, (u_long)i));
 		return (DB_VERIFY_FATAL);
 	}
 
@@ -1684,7 +1795,8 @@ __db_vrfy_inpitem(dbp, h, pgno, i, is_btree, flags, himarkp, offsetp)
 	 */
 	if (offset <= INP_OFFSET(h, i) || offset > dbp->pgsize) {
 		EPRINT((dbp->dbenv,
-		    "Bad offset %lu at page %lu index %lu", offset, pgno, i));
+		    "Bad offset %lu at page %lu index %lu",
+		    (u_long)offset, (u_long)pgno, (u_long)i));
 		return (DB_VERIFY_BAD);
 	}
 
@@ -1697,11 +1809,33 @@ __db_vrfy_inpitem(dbp, h, pgno, i, is_btree, flags, himarkp, offsetp)
 		 * Check that the item length remains on-page.
 		 */
 		bk = GET_BKEYDATA(h, i);
-		len = B_TYPE(bk->type) == B_KEYDATA ? bk->len : BOVERFLOW_SIZE;
+
+		/*
+		 * We need to verify the type of the item here;
+		 * we can't simply assume that it will be one of the
+		 * expected three.  If it's not a recognizable type,
+		 * it can't be considered to have a verifiable
+		 * length, so it's not possible to certify it as safe.
+		 */
+		switch (B_TYPE(bk->type)) {
+		case B_KEYDATA:
+			len = bk->len;
+			break;
+		case B_DUPLICATE:
+		case B_OVERFLOW:
+			len = BOVERFLOW_SIZE;
+			break;
+		default:
+			EPRINT((dbp->dbenv,
+			    "Item %lu on page %lu of unrecognizable type",
+			    i, pgno));
+			return (DB_VERIFY_BAD);
+		}
+
 		if ((size_t)(offset + len) > dbp->pgsize) {
 			EPRINT((dbp->dbenv,
 			    "Item %lu on page %lu extends past page boundary",
-			    i, pgno));
+			    (u_long)i, (u_long)pgno));
 			return (DB_VERIFY_BAD);
 		}
 	}
@@ -1741,7 +1875,7 @@ __db_vrfy_duptype(dbp, vdp, pgno, flags)
 		if (!LF_ISSET(ST_DUPSORT)) {
 			EPRINT((dbp->dbenv,
 	    "Sorted duplicate set at page %lu in unsorted-dup database",
-			    pgno));
+			    (u_long)pgno));
 			isbad = 1;
 		}
 		break;
@@ -1750,13 +1884,14 @@ __db_vrfy_duptype(dbp, vdp, pgno, flags)
 		if (LF_ISSET(ST_DUPSORT)) {
 			EPRINT((dbp->dbenv,
 	    "Unsorted duplicate set at page %lu in sorted-dup database",
-			    pgno));
+			    (u_long)pgno));
 			isbad = 1;
 		}
 		break;
 	default:
-		EPRINT((dbp->dbenv, "Duplicate page %lu of inappropriate type %lu",
-		    pgno, pip->type));
+		EPRINT((dbp->dbenv,
+		    "Duplicate page %lu of inappropriate type %lu",
+		    (u_long)pgno, (u_long)pip->type));
 		isbad = 1;
 		break;
 	}
@@ -2178,12 +2313,12 @@ __db_guesspgsize(dbenv, fhp)
 		 * and make sure we have plausible types for all of them.
 		 * If the seeks fail, continue with a smaller size;
 		 * we're probably just looking past the end of the database.
-		 * If they succeed but the types are wrong, also continue
+		 * If they succeed and the types are reasonable, also continue
 		 * with a size smaller;  we may be looking at pages N,
 		 * 2N, and 3N for some N > 1.
 		 *
 		 * As soon as we hit an invalid type, we stop and return
-		 * our best guess; the last one was probably the page size.
+		 * our previous guess; that last one was probably the page size.
 		 */
 		for (i = 1; i <= 3; i++) {
 			if ((ret = __os_seek(dbenv, fhp, guess,
@@ -2193,9 +2328,13 @@ __db_guesspgsize(dbenv, fhp)
 			    fhp, &type, 1, &nr)) != 0 || nr == 0)
 				break;
 			if (type == P_INVALID || type >= P_PAGETYPE_MAX)
-				break;
+				return (guess << 1);
 		}
 	}
 
-	return (guess);
+	/*
+	 * If we're just totally confused--the corruption takes up most of the
+	 * beginning pages of the database--go with the default size.
+	 */
+	return (DB_DEF_IOSIZE);
 }

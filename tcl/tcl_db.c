@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_db.c,v 11.48 2000/05/22 18:36:50 sue Exp $";
+static const char revid[] = "$Id: tcl_db.c,v 11.55 2000/11/28 20:12:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -128,10 +128,6 @@ db_Cmd(clientData, interp, objc, objv)
 	switch ((enum dbcmds)cmdindex) {
 	case DBCLOSE:
 		result = tcl_DbClose(interp, objc, objv, dbp, dbip);
-		if (result == TCL_OK) {
-			(void)Tcl_DeleteCommand(interp, dbip->i_name);
-			_DeleteInfo(dbip);
-		}
 		break;
 	case DBDELETE:
 		result = tcl_DbDelete(interp, objc, objv, dbp);
@@ -312,7 +308,7 @@ tcl_DbStat(interp, objc, objv, dbp)
 	ret = dbp->stat(dbp, &sp, NULL, flag);
 	result = _ReturnSetup(interp, ret, "db stat");
 	if (result == TCL_ERROR)
-		return(result);
+		return (result);
 
 	type = dbp->get_type(dbp);
 	/*
@@ -352,7 +348,6 @@ tcl_DbStat(interp, objc, objv, dbp)
 		MAKE_STAT_LIST("Bytes free", qsp->qs_pgfree);
 		MAKE_STAT_LIST("Record length", qsp->qs_re_len);
 		MAKE_STAT_LIST("Record pad", qsp->qs_re_pad);
-		MAKE_STAT_LIST("Start offset", qsp->qs_start);
 		MAKE_STAT_LIST("First record number", qsp->qs_first_recno);
 		MAKE_STAT_LIST("Last record number", qsp->qs_cur_recno);
 	} else {	/* BTREE and RECNO are same stats */
@@ -439,6 +434,8 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 			_DeleteInfo(p);
 		}
 	}
+	(void)Tcl_DeleteCommand(interp, dbip->i_name);
+	_DeleteInfo(dbip);
 	_debug_check();
 	ret = (dbp)->close(dbp, flag);
 	result = _ReturnSetup(interp, ret, "db close");
@@ -533,7 +530,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 	while (i < end) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
 		    dbputopts, "option", TCL_EXACT, &optindex) != TCL_OK)
-			return(IS_HELP(objv[i]));
+			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum dbputopts)optindex) {
 		case DBPUT_TXN:
@@ -663,6 +660,8 @@ tcl_DbGet(interp, objc, objv, dbp)
 	DB *dbp;			/* Database pointer */
 {
 	static char *dbgetopts[] = {
+		"-consume",
+		"-consume_wait",
 		"-get_both",
 		"-glob",
 		"-partial",
@@ -672,6 +671,8 @@ tcl_DbGet(interp, objc, objv, dbp)
 		NULL
 	};
 	enum dbgetopts {
+		DBGET_CONSUME,
+		DBGET_CONSUME_WAIT,
 		DBGET_BOTH,
 		DBGET_GLOB,
 		DBGET_PART,
@@ -709,13 +710,15 @@ tcl_DbGet(interp, objc, objv, dbp)
 	 * defined above.
 	 */
 	i = 2;
-	end = objc - 1;
 	type = dbp->get_type(dbp);
+	end = objc;
 	while (i < end) {
 		if (Tcl_GetIndexFromObj(interp, objv[i], dbgetopts, "option",
 		    TCL_EXACT, &optindex) != TCL_OK) {
-			result = IS_HELP(objv[i]);
-			goto out;
+			if (IS_HELP(objv[i]) == TCL_OK)
+				return (TCL_OK);
+			Tcl_ResetResult(interp);
+			break;
 		}
 		i++;
 		switch ((enum dbgetopts)optindex) {
@@ -735,7 +738,7 @@ tcl_DbGet(interp, objc, objv, dbp)
 			flag = DB_GET_BOTH;
 			break;
 		case DBGET_TXN:
-			if (i == end) {
+			if (i == end - 1) {
 				Tcl_WrongNumArgs(interp, 2, objv, "?-txn id?");
 				result = TCL_ERROR;
 				break;
@@ -751,8 +754,18 @@ tcl_DbGet(interp, objc, objv, dbp)
 			break;
 		case DBGET_GLOB:
 			useglob = 1;
+			end = objc - 1;
+			break;
+		case DBGET_CONSUME:
+			FLAG_CHECK(flag);
+			flag = DB_CONSUME;
+			break;
+		case DBGET_CONSUME_WAIT:
+			FLAG_CHECK(flag);
+			flag = DB_CONSUME_WAIT;
 			break;
 		case DBGET_RECNO:
+			end = objc - 1;
 			userecno = 1;
 			if (type != DB_RECNO && type != DB_QUEUE) {
 				FLAG_CHECK(flag);
@@ -763,6 +776,7 @@ tcl_DbGet(interp, objc, objv, dbp)
 			rmw = DB_RMW;
 			break;
 		case DBGET_PART:
+			end = objc - 1;
 			if (i == end) {
 				Tcl_WrongNumArgs(interp, 2, objv,
 				    "?-partial {offset length}?");
@@ -849,7 +863,8 @@ tcl_DbGet(interp, objc, objv, dbp)
 	 * instead of a cursor operation.
 	 */
 	if (pattern == NULL && (isdup == 0 ||
-	    flag == DB_SET_RECNO || flag == DB_GET_BOTH)) {
+	    flag == DB_SET_RECNO || flag == DB_GET_BOTH ||
+	    flag == DB_CONSUME || flag == DB_CONSUME_WAIT)) {
 		if (flag == DB_GET_BOTH) {
 			if (userecno) {
 				result = Tcl_GetIntFromObj(interp,
@@ -874,18 +889,20 @@ tcl_DbGet(interp, objc, objv, dbp)
 			save.data =
 			    Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
 			save.size = itmp;
-		} else if (userecno) {
-			result = Tcl_GetIntFromObj(
-			    interp, objv[(objc - 1)], &itmp);
-			recno = itmp;
-			if (result == TCL_OK) {
-				key.data = &recno;
-				key.size = sizeof(db_recno_t);
-			} else
-				return (result);
-		} else {
-			key.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
-			key.size = itmp;
+		} else if (flag != DB_CONSUME && flag != DB_CONSUME_WAIT) {
+			if (userecno) {
+				result = Tcl_GetIntFromObj(
+				    interp, objv[(objc - 1)], &itmp);
+				recno = itmp;
+				if (result == TCL_OK) {
+					key.data = &recno;
+					key.size = sizeof(db_recno_t);
+				} else
+					return (result);
+			} else {
+				key.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
+				key.size = itmp;
+			}
 		}
 
 		memset(&data, 0, sizeof(data));
@@ -1080,7 +1097,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			 * an errant error message if there is another error.
 			 */
 			if (IS_HELP(objv[i]) == TCL_OK)
-				return(TCL_OK);
+				return (TCL_OK);
 			Tcl_ResetResult(interp);
 			break;
 		}

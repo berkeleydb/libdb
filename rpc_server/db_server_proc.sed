@@ -1,7 +1,7 @@
 /^\/\* BEGIN __env_cachesize_1_proc/,/^\/\* END __env_cachesize_1_proc/c\
 /* BEGIN __env_cachesize_1_proc */\
 void\
-__env_cachesize_1_proc(dbenvcl_id, gbytes, bytes, \
+__env_cachesize_1_proc(dbenvcl_id, gbytes, bytes,\
 \	\	ncache, replyp)\
 \	long dbenvcl_id;\
 \	u_int32_t gbytes;\
@@ -24,10 +24,19 @@ __env_create_1_proc(timeout, replyp)\
 \	u_int32_t timeout;\
 \	__env_create_reply *replyp;\
 /* END __env_create_1_proc */
+/^\/\* BEGIN __env_flags_1_proc/,/^\/\* END __env_flags_1_proc/c\
+/* BEGIN __env_flags_1_proc */\
+void\
+__env_flags_1_proc(dbenvcl_id, flags, onoff, replyp)\
+\	long dbenvcl_id;\
+\	u_int32_t flags;\
+\	u_int32_t onoff;\
+\	__env_flags_reply *replyp;\
+/* END __env_flags_1_proc */
 /^\/\* BEGIN __env_open_1_proc/,/^\/\* END __env_open_1_proc/c\
 /* BEGIN __env_open_1_proc */\
 void\
-__env_open_1_proc(dbenvcl_id, home, flags, \
+__env_open_1_proc(dbenvcl_id, home, flags,\
 \	\	mode, replyp)\
 \	long dbenvcl_id;\
 \	char *home;\
@@ -54,7 +63,7 @@ __txn_abort_1_proc(txnpcl_id, replyp)\
 /^\/\* BEGIN __txn_begin_1_proc/,/^\/\* END __txn_begin_1_proc/c\
 /* BEGIN __txn_begin_1_proc */\
 void\
-__txn_begin_1_proc(envpcl_id, parentcl_id, \
+__txn_begin_1_proc(envpcl_id, parentcl_id,\
 \	\	flags, replyp)\
 \	long envpcl_id;\
 \	long parentcl_id;\
@@ -104,8 +113,8 @@ __db_create_1_proc(flags, envpcl_id, replyp)\
 /^\/\* BEGIN __db_del_1_proc/,/^\/\* END __db_del_1_proc/c\
 /* BEGIN __db_del_1_proc */\
 void\
-__db_del_1_proc(dbpcl_id, txnpcl_id, keydlen, \
-\	\	keydoff, keyflags, keydata, keysize, \
+__db_del_1_proc(dbpcl_id, txnpcl_id, keydlen,\
+\	\	keydoff, keyflags, keydata, keysize,\
 \	\	flags, replyp)\
 \	long dbpcl_id;\
 \	long txnpcl_id;\
@@ -117,6 +126,14 @@ __db_del_1_proc(dbpcl_id, txnpcl_id, keydlen, \
 \	u_int32_t flags;\
 \	__db_del_reply *replyp;\
 /* END __db_del_1_proc */
+/^\/\* BEGIN __db_extentsize_1_proc/,/^\/\* END __db_extentsize_1_proc/c\
+/* BEGIN __db_extentsize_1_proc */\
+void\
+__db_extentsize_1_proc(dbpcl_id, extentsize, replyp)\
+\	long dbpcl_id;\
+\	u_int32_t extentsize;\
+\	__db_extentsize_reply *replyp;\
+/* END __db_extentsize_1_proc */
 /^\/\* BEGIN __db_flags_1_proc/,/^\/\* END __db_flags_1_proc/c\
 /* BEGIN __db_flags_1_proc */\
 void\
@@ -128,9 +145,9 @@ __db_flags_1_proc(dbpcl_id, flags, replyp)\
 /^\/\* BEGIN __db_get_1_proc/,/^\/\* END __db_get_1_proc/c\
 /* BEGIN __db_get_1_proc */\
 void\
-__db_get_1_proc(dbpcl_id, txnpcl_id, keydlen, \
-\	\	keydoff, keyflags, keydata, keysize, \
-\	\	datadlen, datadoff, dataflags, datadata, \
+__db_get_1_proc(dbpcl_id, txnpcl_id, keydlen,\
+\	\	keydoff, keyflags, keydata, keysize,\
+\	\	datadlen, datadoff, dataflags, datadata,\
 \	\	datasize, flags, replyp, freep)\
 \	long dbpcl_id;\
 \	long txnpcl_id;\
@@ -167,8 +184,8 @@ __db_h_nelem_1_proc(dbpcl_id, nelem, replyp)\
 /^\/\* BEGIN __db_key_range_1_proc/,/^\/\* END __db_key_range_1_proc/c\
 /* BEGIN __db_key_range_1_proc */\
 void\
-__db_key_range_1_proc(dbpcl_id, txnpcl_id, keydlen, \
-\	\	keydoff, keyflags, keydata, keysize, \
+__db_key_range_1_proc(dbpcl_id, txnpcl_id, keydlen,\
+\	\	keydoff, keyflags, keydata, keysize,\
 \	\	flags, replyp)\
 \	long dbpcl_id;\
 \	long txnpcl_id;\
@@ -191,7 +208,7 @@ __db_lorder_1_proc(dbpcl_id, lorder, replyp)\
 /^\/\* BEGIN __db_open_1_proc/,/^\/\* END __db_open_1_proc/c\
 /* BEGIN __db_open_1_proc */\
 void\
-__db_open_1_proc(dbpcl_id, name, subdb, \
+__db_open_1_proc(dbpcl_id, name, subdb,\
 \	\	type, flags, mode, replyp)\
 \	long dbpcl_id;\
 \	char *name;\
@@ -212,9 +229,9 @@ __db_pagesize_1_proc(dbpcl_id, pagesize, replyp)\
 /^\/\* BEGIN __db_put_1_proc/,/^\/\* END __db_put_1_proc/c\
 /* BEGIN __db_put_1_proc */\
 void\
-__db_put_1_proc(dbpcl_id, txnpcl_id, keydlen, \
-\	\	keydoff, keyflags, keydata, keysize, \
-\	\	datadlen, datadoff, dataflags, datadata, \
+__db_put_1_proc(dbpcl_id, txnpcl_id, keydlen,\
+\	\	keydoff, keyflags, keydata, keysize,\
+\	\	datadlen, datadoff, dataflags, datadata,\
 \	\	datasize, flags, replyp, freep)\
 \	long dbpcl_id;\
 \	long txnpcl_id;\
@@ -259,7 +276,7 @@ __db_re_pad_1_proc(dbpcl_id, pad, replyp)\
 /^\/\* BEGIN __db_remove_1_proc/,/^\/\* END __db_remove_1_proc/c\
 /* BEGIN __db_remove_1_proc */\
 void\
-__db_remove_1_proc(dbpcl_id, name, subdb, \
+__db_remove_1_proc(dbpcl_id, name, subdb,\
 \	\	flags, replyp)\
 \	long dbpcl_id;\
 \	char *name;\
@@ -270,7 +287,7 @@ __db_remove_1_proc(dbpcl_id, name, subdb, \
 /^\/\* BEGIN __db_rename_1_proc/,/^\/\* END __db_rename_1_proc/c\
 /* BEGIN __db_rename_1_proc */\
 void\
-__db_rename_1_proc(dbpcl_id, name, subdb, \
+__db_rename_1_proc(dbpcl_id, name, subdb,\
 \	\	newname, flags, replyp)\
 \	long dbpcl_id;\
 \	char *name;\
@@ -282,7 +299,7 @@ __db_rename_1_proc(dbpcl_id, name, subdb, \
 /^\/\* BEGIN __db_stat_1_proc/,/^\/\* END __db_stat_1_proc/c\
 /* BEGIN __db_stat_1_proc */\
 void\
-__db_stat_1_proc(dbpcl_id, \
+__db_stat_1_proc(dbpcl_id,\
 \	\	flags, replyp, freep)\
 \	long dbpcl_id;\
 \	u_int32_t flags;\
@@ -307,7 +324,7 @@ __db_sync_1_proc(dbpcl_id, flags, replyp)\
 /^\/\* BEGIN __db_cursor_1_proc/,/^\/\* END __db_cursor_1_proc/c\
 /* BEGIN __db_cursor_1_proc */\
 void\
-__db_cursor_1_proc(dbpcl_id, txnpcl_id, \
+__db_cursor_1_proc(dbpcl_id, txnpcl_id,\
 \	\	flags, replyp)\
 \	long dbpcl_id;\
 \	long txnpcl_id;\
@@ -317,7 +334,7 @@ __db_cursor_1_proc(dbpcl_id, txnpcl_id, \
 /^\/\* BEGIN __db_join_1_proc/,/^\/\* END __db_join_1_proc/c\
 /* BEGIN __db_join_1_proc */\
 void\
-__db_join_1_proc(dbpcl_id, curslist, \
+__db_join_1_proc(dbpcl_id, curslist,\
 \	\	flags, replyp)\
 \	long dbpcl_id;\
 \	u_int32_t * curslist;\
@@ -358,9 +375,9 @@ __dbc_dup_1_proc(dbccl_id, flags, replyp)\
 /^\/\* BEGIN __dbc_get_1_proc/,/^\/\* END __dbc_get_1_proc/c\
 /* BEGIN __dbc_get_1_proc */\
 void\
-__dbc_get_1_proc(dbccl_id, keydlen, keydoff, \
-\	\	keyflags, keydata, keysize, datadlen, \
-\	\	datadoff, dataflags, datadata, datasize, \
+__dbc_get_1_proc(dbccl_id, keydlen, keydoff,\
+\	\	keyflags, keydata, keysize, datadlen,\
+\	\	datadoff, dataflags, datadata, datasize,\
 \	\	flags, replyp, freep)\
 \	long dbccl_id;\
 \	u_int32_t keydlen;\
@@ -380,9 +397,9 @@ __dbc_get_1_proc(dbccl_id, keydlen, keydoff, \
 /^\/\* BEGIN __dbc_put_1_proc/,/^\/\* END __dbc_put_1_proc/c\
 /* BEGIN __dbc_put_1_proc */\
 void\
-__dbc_put_1_proc(dbccl_id, keydlen, keydoff, \
-\	\	keyflags, keydata, keysize, datadlen, \
-\	\	datadoff, dataflags, datadata, datasize, \
+__dbc_put_1_proc(dbccl_id, keydlen, keydoff,\
+\	\	keyflags, keydata, keysize, datadlen,\
+\	\	datadoff, dataflags, datadata, datasize,\
 \	\	flags, replyp, freep)\
 \	long dbccl_id;\
 \	u_int32_t keydlen;\

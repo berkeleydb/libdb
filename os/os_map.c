@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 11.24.2.1 2000/07/05 13:57:56 bostic Exp $";
+static const char revid[] = "$Id: os_map.c,v 11.32 2000/11/30 00:58:42 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,7 +22,6 @@ static const char revid[] = "$Id: os_map.c,v 11.24.2.1 2000/07/05 13:57:56 bosti
 #include <sys/shm.h>
 #endif
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -83,7 +82,7 @@ __os_r_sysattach(dbenv, infop, rp)
 		if (F_ISSET(infop, REGION_CREATE)) {
 			/*
 			 * The application must give us a base System V IPC key
-			 * value.  Adjust that value based on the regions ID,
+			 * value.  Adjust that value based on the region's ID,
 			 * and correct so the user's original value appears in
 			 * the ipcs output.
 			 */
@@ -144,12 +143,13 @@ __os_r_sysattach(dbenv, infop, rp)
 	int ret;
 
 	/*
-	 * Try to open/create the file.  We DO NOT need to ensure that multiple
-	 * threads/processes attempting to simultaneously create the region are
-	 * properly ordered, our caller has already taken care of that.
+	 * Try to open/create the shared region file.  We DO NOT need to
+	 * ensure that multiple threads/processes attempting to
+	 * simultaneously create the region are properly ordered,
+	 * our caller has already taken care of that.
 	 */
-	if ((ret = __os_open(dbenv, infop->name,
-	    F_ISSET(infop, REGION_CREATE_OK) ? DB_OSO_CREATE: 0,
+	if ((ret = __os_open(dbenv, infop->name, DB_OSO_REGION |
+	    (F_ISSET(infop, REGION_CREATE_OK) ? DB_OSO_CREATE : 0),
 	    infop->mode, &fh)) != 0)
 		__db_err(dbenv, "%s: %s", infop->name, db_strerror(ret));
 
@@ -243,7 +243,7 @@ __os_r_sysdetach(dbenv, infop, destroy)
 		return (ret);
 	}
 
-	if (destroy && __os_unlink(dbenv, infop->name) != 0)
+	if (destroy && __os_region_unlink(dbenv, infop->name) != 0)
 		return (__os_get_errno());
 
 	return (0);
@@ -269,7 +269,7 @@ __os_mapfile(dbenv, path, fhp, len, is_rdonly, addrp)
 	size_t len;
 	void **addrp;
 {
-#ifdef HAVE_MMAP
+#if defined(HAVE_MMAP) && !defined(HAVE_QNX)
 	return (__os_map(dbenv, path, fhp, len, 0, is_rdonly, addrp));
 #else
 	COMPQUIET(dbenv, NULL);
@@ -381,7 +381,7 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 	 */
 #ifdef VMS
 	if (__os_fsync(dbenv, fhp) == -1)
-		return(__os_get_errno());
+		return (__os_get_errno());
 #endif
 
 	/* MAP_FAILED was not defined in early mmap implementations. */

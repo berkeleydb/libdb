@@ -1,15 +1,15 @@
- 
-<!--$Id: dbt.so,v 10.31 2000/05/16 19:00:36 bostic Exp $-->
+<!--$Id: dbt.so,v 10.37 2000/12/18 21:05:12 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: Dbt</title>
+<title>Berkeley DB: DBT</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 <tt>
+        <a name="2"><!--meow--></a>    
 <h3>Key/Data Pairs</h3>
 <p>Storage and retrieval for the Berkeley DB access methods are based on key/data
 pairs.  Both key and data items are represented by the DBT data structure.
@@ -21,7 +21,6 @@ zero length up to strings of essentially unlimited length.  See
 information.
 <p><blockquote><pre>typedef struct {
 	void *data;
-	void *app_private;
 	u_int32_t size;
 	u_int32_t ulen;
 	u_int32_t dlen;
@@ -43,8 +42,6 @@ the memory referenced by the pointer will be allocated and managed by Berkeley D
 <p>The elements of the DBT structure are defined as follows:
 <p><dl compact>
 <p><dt>void *<a name="data">data</a>;<dd>A pointer to a byte string.
-<p><dt>void *<a name="app_private">app_private</a>;<dd>This field is provided for the use of the application program, and is not
-used in any way by Berkeley DB.
 <p><dt>u_int32_t <a name="size">size</a>;<dd>The length of <b>data</b>, in bytes.
 <p><dt>u_int32_t <a name="ulen">ulen</a>;<dd>The size of the user's buffer (referenced by <b>data</b>), in bytes.
 This location is not written by the Berkeley DB functions.
@@ -59,47 +56,40 @@ in bytes.  See the DB_DBT_PARTIAL flag for more information.
 <p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
 <p><dl compact>
-<p><dt><a name="DB_DBT_MALLOC">DB_DBT_MALLOC</a><dd>Ignored except when retrieving information from a database (a
-<a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> call).  When this flag is set Berkeley DB
-will allocate memory for the returned key or data item (using
-<b>malloc</b>(3), or the user-specified malloc function) and return
-a pointer to it in the <b>data</b> field of the key or data DBT
-structure.  As any allocated memory becomes the responsibility of the
-calling application, the caller must be able to determine if memory was
-allocated.
+<p><dt><a name="DB_DBT_MALLOC">DB_DBT_MALLOC</a><dd>When this flag is set Berkeley DB will allocate memory for the returned key
+or data item (using <b>malloc</b>(3), or the user-specified malloc
+function) and return a pointer to it in the <b>data</b> field of the
+key or data DBT structure.  As any allocated memory becomes the
+responsibility of the calling application, the caller must be able to
+determine if memory was allocated.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
 DB_DBT_REALLOC and DB_DBT_USERMEM.
-<p><dt><a name="DB_DBT_REALLOC">DB_DBT_REALLOC</a><dd>Ignored except when retrieving information from a database (a
-<a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> call).  When this flag is set Berkeley DB
-will allocate memory for the returned key or data item (using
-<b>realloc</b>(3), or the user-specified realloc function) and return
-a pointer to it in the <b>data</b> field of the key or data DBT
-structure.  As any allocated memory becomes the responsibility of the
-calling application, the caller must be able to determine if memory was
-allocated.
+<p><dt><a name="DB_DBT_REALLOC">DB_DBT_REALLOC</a><dd>When this flag is set Berkeley DB will allocate memory for the returned key
+or data item (using <b>realloc</b>(3), or the user-specified realloc
+function) and return a pointer to it in the <b>data</b> field of the
+key or data DBT structure.  As any allocated memory becomes the
+responsibility of the calling application, the caller must be able to
+determine if memory was allocated.
 <p>The difference between DB_DBT_MALLOC and DB_DBT_REALLOC
 is that the latter will call <b>realloc</b>(3) instead of
 <b>malloc</b>(3), so the allocated memory will be grown as necessary
 instead of the application doing repeated free/malloc calls.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
 DB_DBT_REALLOC and DB_DBT_USERMEM.
-<p><dt><a name="DB_DBT_USERMEM">DB_DBT_USERMEM</a><dd>Ignored except when retrieving information from a database
-(<a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> call).  The <b>data</b> field of the
-key or data structure must reference memory that is at least <b>ulen</b>
-bytes in length.  If the length of the requested item is less than or
-equal to that number of bytes, the item is copied into the memory
-referenced by the <b>data</b> field.  Otherwise, the <b>size</b> field
-is set to the length needed for the requested item, and the error ENOMEM
-is returned.
+<p><dt><a name="DB_DBT_USERMEM">DB_DBT_USERMEM</a><dd>The <b>data</b> field of the key or data structure must reference
+memory that is at least <b>ulen</b> bytes in length.  If the length of
+the requested item is less than or equal to that number of bytes, the
+item is copied into the memory referenced by the <b>data</b> field.
+Otherwise, the <b>size</b> field is set to the length needed for the
+requested item, and the error ENOMEM is returned.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
 DB_DBT_REALLOC and DB_DBT_USERMEM.
-<p><dt><a name="DB_DBT_PARTIAL">DB_DBT_PARTIAL</a><dd>Ignored except when specified for a data parameter,
-where this flag causes the partial retrieval or storage of an item.
-If the calling application is doing a get, the <b>dlen</b> bytes
-starting <b>doff</b> bytes from the beginning of the retrieved data
-record are returned as if they comprised the entire record.
-If any or all of the specified bytes do not exist in the record,
-the get is successful and the existing bytes or 0 bytes are returned.
+<p><dt><a name="DB_DBT_PARTIAL">DB_DBT_PARTIAL</a><dd>Do partial retrieval or storage of an item.  If the calling application
+is doing a get, the <b>dlen</b> bytes starting <b>doff</b> bytes from
+the beginning of the retrieved data record are returned as if they
+comprised the entire record.  If any or all of the specified bytes do
+not exist in the record, the get is successful and the existing bytes
+or nul bytes are returned.
 <p>For example, if the data portion of a retrieved record was 100 bytes,
 and a partial retrieval was done using a DBT having a <b>dlen</b>
 field of 20 and a <b>doff</b> field of 85, the get call would succeed,
@@ -126,6 +116,7 @@ record would be 115 bytes in length, where the last 30 bytes would be
 those specified by the put call.
 </dl>
 </dl>
+        <a name="3"><!--meow--></a>        <a name="4"><!--meow--></a>    
 <h3>Retrieved key/data permanence</h3>
 <p>When using the non-cursor Berkeley DB calls to retrieve key/data items (e.g.,
 <a href="../api_c/db_get.html">DB-&gt;get</a>), the memory referenced by the pointer stored into the
@@ -140,12 +131,14 @@ with any non-cursor Dbt used for key or data retrieval.)
 <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a>), the memory referenced by the pointer into the
 Dbt is only valid until the next call to Berkeley DB using the
 DBC handle returned by <a href="../api_c/db_cursor.html">DB-&gt;cursor</a>.
+        <a name="5"><!--meow--></a>    
 <h3>Data alignment</h3>
 <p>The Berkeley DB access methods provide no guarantees about key/data byte string
 alignment, and applications are responsible for arranging any necessary
 alignment.  The DB_DBT_MALLOC, DB_DBT_REALLOC and
 DB_DBT_USERMEM flags may be used to store returned items in memory
 of arbitrary alignment.
+        <a name="6"><!--meow--></a>    
 <h3>Logical Record Numbers</h3>
 <p>In all cases for the Queue and Recno access methods, and when calling the
 <a href="../api_c/db_get.html">DB-&gt;get</a> and <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> functions with the

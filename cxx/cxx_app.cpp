@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_app.cpp,v 11.28 2000/06/01 14:52:46 dda Exp $";
+static const char revid[] = "$Id: cxx_app.cpp,v 11.38 2000/12/21 20:30:18 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -38,26 +38,36 @@ static int last_known_error_policy = ON_ERROR_UNKNOWN;
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-// A truism for the DbEnv object is that there is always a valid
-// DB_ENV handle for as long as the DbEnv object is live.  That means
-// that when the underlying handle is invalidated, during
-// DbEnv::close() and DbEnv::remove(), a new one is obtained immediately.
-// This strategy is necessary to correctly allow reopen, and have
-// a valid handle available for other set calls, e.g.:
-//
-//    DbEnv dbenv(0);
-//    dbenv.open(...);
-//    dbenv.close(...);
-//    dbenv.set_errpfx(...);
-//    dbenv.open(...);
-//
-// An odd side effect is that even if the user does a final close,
-// we'll still have a DB_ENV handle that we must close in the destructor.
-// Getting and Freeing of the handle correspond to internal calls of
-// DbEnv::initialize() and DbEnv::cleanup().  Note that this strategy
-// is also used with Db:: and DB handles.
-
 ostream *DbEnv::error_stream_ = 0;
+
+// _destroy_check is called when there is a user error in a
+// destructor, specifically when close has not been called for an
+// object (even if it was never opened).  If the DbEnv is being
+// destroyed we cannot always use DbEnv::error_stream_, so we'll
+// use cerr in that case.
+//
+void DbEnv::_destroy_check(const char *str, int isDbEnv)
+{
+	ostream *out;
+
+	out = error_stream_;
+	if (out == NULL || isDbEnv == 1)
+		out = &cerr;
+
+	(*out) << "DbEnv::_destroy_check: open " << str << " object destroyed\n";
+}
+
+// A truism for the DbEnv object is that there is a valid
+// DB_ENV handle from the constructor until close().
+// After the close, the DB_ENV handle is invalid and
+// no operations are permitted on the DbEnv (other than
+// destructor).  Leaving the DbEnv handle open and not
+// doing a close is generally considered an error.
+//
+// We used to allow DbEnv objects to be closed and reopened.
+// This implied always keeping a valid DB_ENV object, and
+// coordinating the open objects between Db/DbEnv turned
+// out to be overly complicated.  Now we do not allow this.
 
 DbEnv::DbEnv(u_int32_t flags)
 :	imp_(0)
@@ -87,31 +97,32 @@ DbEnv::DbEnv(DB_ENV *env, u_int32_t flags)
 		DB_ERROR("DbEnv::DbEnv", err, error_policy());
 }
 
-// Note: we don't check for error codes in this destructor,
-// since we can't return an error and throwing an exception
-// in a destructor is unexpected.  If the user is curious
-// about errors, they will call close() directly.
+// Note: if the user has not closed, we call _destroy_check
+// to warn against this non-safe programming practice,
+// and call close anyway.
 //
 DbEnv::~DbEnv()
 {
 	DB_ENV *env = unwrap(this);
 
-	cleanup();
-	if (env != NULL)
+	if (env != NULL) {
+		_destroy_check("DbEnv", 1);
 		(void)env->close(env, 0);
+
+		// extra safety
+		cleanup();
+	}
 }
 
-// used internally (and also by Db) before closing and in destructor.
+// called by Db destructor when the DbEnv is owned by DB.
 void DbEnv::cleanup()
 {
 	DB_ENV *env = unwrap(this);
 
 	if (env != NULL) {
-		// extra safety
 		env->cj_internal = 0;
 		imp_ = 0;
 	}
-	construct_error_ = 0;
 }
 
 int DbEnv::close(u_int32_t flags)
@@ -134,14 +145,7 @@ int DbEnv::close(u_int32_t flags)
 	if ((err = env->close(env, flags)) != 0) {
 		DB_ERROR("DbEnv::close", err, error_policy());
 	}
-	if ((init_err = initialize(0)) != 0) {
-		if (err == 0) {
-			err = init_err;
-			DB_ERROR("DbEnv::close", err, error_policy());
-		}
-	}
-
-	return err;
+	return (err);
 }
 
 void DbEnv::err(int error, const char *format, ...)
@@ -164,7 +168,7 @@ void DbEnv::errx(const char *format, ...)
 	va_end(args);
 }
 
-// used internally during constructor or after a close,
+// used internally during constructor
 // to associate an existing DB_ENV with this DbEnv,
 // or create a new one.  If there is an error,
 // construct_error_ is set; this is examined during open.
@@ -180,12 +184,12 @@ int DbEnv::initialize(DB_ENV *env)
 		if ((err = ::db_env_create(&env,
 			construct_flags_ & ~DB_CXX_NO_EXCEPTIONS)) != 0) {
 			construct_error_ = err;
-			return err;
+			return (err);
 		}
 	}
 	imp_ = wrap(env);
 	env->cj_internal = this;    // for DB_ENV* to DbEnv* conversion
-	return 0;
+	return (0);
 }
 
 // Return a tristate value corresponding to whether we should
@@ -197,10 +201,10 @@ int DbEnv::initialize(DB_ENV *env)
 int DbEnv::error_policy()
 {
 	if ((construct_flags_ & DB_CXX_NO_EXCEPTIONS) != 0) {
-		return ON_ERROR_RETURN;
+		return (ON_ERROR_RETURN);
 	}
 	else {
-		return ON_ERROR_THROW;
+		return (ON_ERROR_THROW);
 	}
 }
 
@@ -217,7 +221,7 @@ int DbEnv::open(const char *db_home, u_int32_t flags, int mode)
 	else if ((err = env->open(env, db_home, flags, mode)) != 0)
 		DB_ERROR("DbEnv::open", err, error_policy());
 
-	return err;
+	return (err);
 }
 
 int DbEnv::remove(const char *db_home, u_int32_t flags)
@@ -226,11 +230,17 @@ int DbEnv::remove(const char *db_home, u_int32_t flags)
 	int ret;
 
 	env = unwrap(this);
+
+	// after a remove (no matter if success or failure),
+	// the underlying DB_ENV object must not be accessed,
+	// so we clean up in advance.
+	//
 	cleanup();
+
 	if ((ret = env->remove(env, db_home, flags)) != 0)
 		DB_ERROR("DbEnv::remove", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 // Report an error associated with the DbEnv.
@@ -254,7 +264,7 @@ void DbEnv::runtime_error(const char *caller, int error, int error_policy)
 // static method
 char *DbEnv::strerror(int error)
 {
-	return db_strerror(error);
+	return (db_strerror(error));
 }
 
 // This is a 'glue' function declared as extern "C" so it will
@@ -299,7 +309,7 @@ void DbEnv::set_error_stream(ostream *stream)
 // static method
 char *DbEnv::version(int *major, int *minor, int *patch)
 {
-	return db_version(major, minor, patch);
+	return (db_version(major, minor, patch));
 }
 
 // This is a variant of the DB_WO_ACCESS macro to define a simple set_
@@ -318,7 +328,7 @@ int DbEnv::set_##_name(_argspec)                               \
 	if ((ret = (*(dbenv->set_##_name))(dbenv, arg)) != 0) {\
 		DB_ERROR("DbEnv::set_" # _name, ret, error_policy()); \
 	}                                                      \
-	return ret;                                            \
+	return (ret);                                          \
 }
 
 #define	DB_DBENV_ACCESS_NORET(_name, _argspec)                 \
@@ -333,13 +343,21 @@ void DbEnv::set_##_name(_argspec)                              \
 
 DB_DBENV_ACCESS_NORET(errfile, FILE *arg)
 DB_DBENV_ACCESS_NORET(errpfx, const char *arg)
+
+// We keep these alphabetical by field name,
+// for comparison with Java's list.
+//
 DB_DBENV_ACCESS(data_dir, const char *arg)
 DB_DBENV_ACCESS(lg_bsize, u_int32_t arg)
 DB_DBENV_ACCESS(lg_dir, const char *arg)
 DB_DBENV_ACCESS(lg_max, u_int32_t arg)
 DB_DBENV_ACCESS(lk_detect, u_int32_t arg)
 DB_DBENV_ACCESS(lk_max, u_int32_t arg)
+DB_DBENV_ACCESS(lk_max_lockers, u_int32_t arg)
+DB_DBENV_ACCESS(lk_max_locks, u_int32_t arg)
+DB_DBENV_ACCESS(lk_max_objects, u_int32_t arg)
 DB_DBENV_ACCESS(mp_mmapsize, size_t arg)
+DB_DBENV_ACCESS(mutexlocks, int arg)
 DB_DBENV_ACCESS(tmp_dir, const char *arg)
 DB_DBENV_ACCESS(tx_max, u_int32_t arg)
 
@@ -375,10 +393,22 @@ int DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache)
 	int ret;
 	DB_ENV *dbenv = unwrap(this);
 
-	if ((ret = (*(dbenv->set_cachesize))(dbenv, gbytes, bytes, ncache)) != 0)
+	if ((ret =
+	    (*(dbenv->set_cachesize))(dbenv, gbytes, bytes, ncache)) != 0)
 		DB_ERROR("DbEnv::set_cachesize", ret, error_policy());
 
-	return ret;
+	return (ret);
+}
+
+int DbEnv::set_flags(u_int32_t flags, int onoff)
+{
+	int ret;
+	DB_ENV *dbenv = unwrap(this);
+
+	if ((ret = (dbenv->set_flags)(dbenv, flags, onoff)) != 0)
+		DB_ERROR("DbEnv::set_flags", ret, error_policy());
+
+	return (ret);
 }
 
 int DbEnv::set_lk_conflicts(u_int8_t *lk_conflicts, int lk_max)
@@ -390,18 +420,7 @@ int DbEnv::set_lk_conflicts(u_int8_t *lk_conflicts, int lk_max)
 	     (dbenv, lk_conflicts, lk_max)) != 0)
 		DB_ERROR("DbEnv::set_lk_conflicts", ret, error_policy());
 
-	return ret;
-}
-
-// static method
-int DbEnv::set_mutexlocks(int arg)
-{
-	int ret;
-
-	if ((ret = db_env_set_mutexlocks(arg)) != 0)
-		DB_ERROR("DbEnv::set_mutexlocks", ret, last_known_error_policy);
-
-	return ret;
+	return (ret);
 }
 
 // static method
@@ -412,7 +431,7 @@ int DbEnv::set_pageyield(int arg)
 	if ((ret = db_env_set_pageyield(arg)) != 0)
 		DB_ERROR("DbEnv::set_pageyield", ret, last_known_error_policy);
 
-	return ret;
+	return (ret);
 }
 
 // static method
@@ -423,7 +442,7 @@ int DbEnv::set_panicstate(int arg)
 	if ((ret = db_env_set_panicstate(arg)) != 0)
 		DB_ERROR("DbEnv::set_panicstate", ret, last_known_error_policy);
 
-	return ret;
+	return (ret);
 }
 
 // static method
@@ -434,7 +453,7 @@ int DbEnv::set_region_init(int arg)
 	if ((ret = db_env_set_region_init(arg)) != 0)
 		DB_ERROR("DbEnv::set_region_init", ret, last_known_error_policy);
 
-	return ret;
+	return (ret);
 }
 
 int DbEnv::set_server(char *host, long tsec, long ssec, u_int32_t flags)
@@ -445,7 +464,7 @@ int DbEnv::set_server(char *host, long tsec, long ssec, u_int32_t flags)
 	if ((ret = dbenv->set_server(dbenv, host, tsec, ssec, flags)) != 0)
 		DB_ERROR("DbEnv::set_server", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 int DbEnv::set_shm_key(long shm_key)
@@ -456,7 +475,7 @@ int DbEnv::set_shm_key(long shm_key)
 	if ((ret = dbenv->set_shm_key(dbenv, shm_key)) != 0)
 		DB_ERROR("DbEnv::set_shm_key", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 // static method
@@ -467,7 +486,7 @@ int DbEnv::set_tas_spins(u_int32_t arg)
 	if ((ret = db_env_set_tas_spins(arg)) != 0)
 		DB_ERROR("DbEnv::set_tas_spins", ret, last_known_error_policy);
 
-	return ret;
+	return (ret);
 }
 
 int DbEnv::set_verbose(u_int32_t which, int onoff)
@@ -478,7 +497,7 @@ int DbEnv::set_verbose(u_int32_t which, int onoff)
 	if ((ret = (*(dbenv->set_verbose))(dbenv, which, onoff)) != 0)
 		DB_ERROR("DbEnv::set_verbose", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 // This is a 'glue' function declared as extern "C" so it will
@@ -488,34 +507,34 @@ int DbEnv::set_verbose(u_int32_t which, int onoff)
 //
 extern "C"
 int _tx_recover_intercept_c(DB_ENV *env, DBT *dbt,
-			    DB_LSN *lsn, db_recops op, void *info)
+			    DB_LSN *lsn, db_recops op)
 {
-	return DbEnv::_tx_recover_intercept(env, dbt, lsn, op, info);
+	return (DbEnv::_tx_recover_intercept(env, dbt, lsn, op));
 }
 
 int DbEnv::_tx_recover_intercept(DB_ENV *env, DBT *dbt,
-				DB_LSN *lsn, db_recops op, void *info)
+				DB_LSN *lsn, db_recops op)
 {
 	if (env == 0) {
 		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, ON_ERROR_UNKNOWN);
-		return EINVAL;
+		return (EINVAL);
 	}
 	DbEnv *cxxenv = (DbEnv *)env->cj_internal;
 	if (cxxenv == 0) {
 		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, ON_ERROR_UNKNOWN);
-		return EINVAL;
+		return (EINVAL);
 	}
 	if (cxxenv->tx_recover_callback_ == 0) {
 		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, cxxenv->error_policy());
-		return EINVAL;
+		return (EINVAL);
 	}
 	Dbt *cxxdbt = (Dbt *)dbt;
 	DbLsn *cxxlsn = (DbLsn *)lsn;
-	return (*cxxenv->tx_recover_callback_)(cxxenv, cxxdbt, cxxlsn, op, info);
+	return ((*cxxenv->tx_recover_callback_)(cxxenv, cxxdbt, cxxlsn, op));
 }
 
 int DbEnv::set_tx_recover
-    (int (*arg)(DbEnv *, Dbt *, DbLsn *, db_recops, void *))
+    (int (*arg)(DbEnv *, Dbt *, DbLsn *, db_recops))
 {
 	int ret;
 	DB_ENV *dbenv = unwrap(this);
@@ -525,7 +544,7 @@ int DbEnv::set_tx_recover
 	    (*(dbenv->set_tx_recover))(dbenv, _tx_recover_intercept_c)) != 0)
 		DB_ERROR("DbEnv::set_tx_recover", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 int DbEnv::set_tx_timestamp(time_t *timestamp)
@@ -536,7 +555,7 @@ int DbEnv::set_tx_timestamp(time_t *timestamp)
 	if ((ret = dbenv->set_tx_timestamp(dbenv, timestamp)) != 0)
 		DB_ERROR("DbEnv::set_tx_timestamp", ret, error_policy());
 
-	return ret;
+	return (ret);
 }
 
 // This is a 'glue' function declared as extern "C" so it will
@@ -571,7 +590,7 @@ int DbEnv::set_paniccall(void (*arg)(DbEnv *, int))
 
 	paniccall_callback_ = arg;
 
-	return (*(dbenv->set_paniccall))(dbenv, _paniccall_intercept_c);
+	return ((*(dbenv->set_paniccall))(dbenv, _paniccall_intercept_c));
 }
 
 // This is a 'glue' function declared as extern "C" so it will
@@ -582,7 +601,7 @@ int DbEnv::set_paniccall(void (*arg)(DbEnv *, int))
 extern "C"
 int _recovery_init_intercept_c(DB_ENV *env)
 {
-	return DbEnv::_recovery_init_intercept(env);
+	return (DbEnv::_recovery_init_intercept(env));
 }
 
 int DbEnv::_recovery_init_intercept(DB_ENV *env)
@@ -600,7 +619,7 @@ int DbEnv::_recovery_init_intercept(DB_ENV *env)
 		DB_ERROR("DbEnv::recovery_init_callback", EINVAL,
 			 cxxenv->error_policy());
 	}
-	return (*cxxenv->recovery_init_callback_)(cxxenv);
+	return ((*cxxenv->recovery_init_callback_)(cxxenv));
 }
 
 int DbEnv::set_recovery_init(int (*arg)(DbEnv *))
@@ -609,7 +628,7 @@ int DbEnv::set_recovery_init(int (*arg)(DbEnv *))
 
 	recovery_init_callback_ = arg;
 
-	return (*(dbenv->set_recovery_init))(dbenv, _recovery_init_intercept_c);
+	return ((*(dbenv->set_recovery_init))(dbenv, _recovery_init_intercept_c));
 }
 
 // This is a 'glue' function declared as extern "C" so it will
@@ -648,5 +667,5 @@ int DbEnv::set_feedback(void (*arg)(DbEnv *, int, int))
 
 	feedback_callback_ = arg;
 
-	return (*(dbenv->set_feedback))(dbenv, _feedback_intercept_c);
+	return ((*(dbenv->set_feedback))(dbenv, _feedback_intercept_c));
 }

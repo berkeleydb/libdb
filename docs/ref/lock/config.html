@@ -1,71 +1,45 @@
- 
-<!--$Id: config.so,v 10.13 2000/03/18 21:43:13 bostic Exp $-->
+<!--$Id: config.so,v 10.15 2000/12/08 20:43:16 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Locking Subsystem</title>
+<title>Berkeley DB Reference Guide: Configuring locking</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
-<td width="1%"><a href="../../ref/lock/dead.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/nondb.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/lock/dead.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/max.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Configuring locking</h1>
-<p>The lock system is configured using the following interfaces:
-<p><blockquote><pre><a href="../../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a>
-<a href="../../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a>
-<a href="../../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a></pre></blockquote>
-<p>The <a href="../../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a> interface specifies the number of locks that
-will be allocated in the locking subsystem.  If this number is too small,
-then requests for locks in an application will fail.  If this number is
-too large, then the lock subsystem will consume more resources than is
-necessary.  Selecting an appropriate value requires an understanding of
-your application and its databases.
-<p>For Btree and Recno access methods, you will need, at a minimum, one lock
-per level of the tree.  Unless keys are quite large or pages are quite
-small, neither Recno nor Btree files should be deeper than five levels.
-You may also need an additional lock for the Btree/Recno metadata page.
-The Hash access method never requires more than two locks.
-<p>For the Queue access method you will need one lock per record accessed by
-a transaction plus one page lock.  Note that deleted records that are
-skipped by a <a href="../../api_c/dbc_get.html#DB_NEXT">DB_NEXT</a> or <a href="../../api_c/dbc_get.html#DB_PREV">DB_PREV</a> operation are not locked.
-If you are not using transactions then an operation will never use more
-than three locks at a time.
-<p>In addition, for all access methods, you should assume one lock for every
-open cursor.
-<p>To estimate the number of locks required for an application, estimate the
-maximum number of locks needed per transaction (if running with
-transactions) or operation (if running without transactions).  Multiply
-this number by the maximum number of concurrent threads and processes you
-expect your application to support.  Then, for good measure, double this
-estimate.
 <p>The <a href="../../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a> function specifies that the deadlock detector
 should be run whenever a lock blocks.  This option provides for rapid
-detection of deadlocks at the expense of potentially frequent invocations
-of the deadlock detector.  On a fast processor with a highly contentious
-application, where response time is critical, this is a good choice.  An
-argument to the <a href="../../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a> function indicates which transaction
-to abort when a deadlock is detected.  It can take on any one of the
-following values:
+detection of deadlocks at the expense of potentially frequent
+invocations of the deadlock detector.  On a fast processor with a highly
+contentious application, where response time is critical, this is a good
+choice.  An argument to the <a href="../../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a> function indicates which
+transaction to abort when a deadlock is detected.  It can take on any
+one of the following values:
 <p><dl compact>
-<p><dt><a href="../../api_c/env_open.html#DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Abort the most recently started transaction.
-<dt><a href="../../api_c/env_open.html#DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Abort the longest lived transaction.
-<dt><a href="../../api_c/env_open.html#DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Abort whatever transaction the deadlock detector happens to find first.
-<dt><a href="../../api_c/env_open.html#DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use the default policy (currently DB_RANDOM).
+<p><dt><a href="../../api_c/env_set_lk_detect.html#DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Abort the most recently started transaction.
+<dt><a href="../../api_c/env_set_lk_detect.html#DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Abort the longest lived transaction.
+<dt><a href="../../api_c/env_set_lk_detect.html#DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Abort whatever transaction the deadlock detector happens to find first.
+<dt><a href="../../api_c/env_set_lk_detect.html#DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use the default policy (currently DB_RANDOM).
 </dl>
-<p>In general, <a href="../../api_c/env_open.html#DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a> is probably the correct choice.  If an
-application has long-running transactions, then <a href="../../api_c/env_open.html#DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a> will
-guarantee that transactions eventually complete, but it may do so at the
-expense of a large number of aborts.
+<p>In general, <a href="../../api_c/env_set_lk_detect.html#DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a> is probably the correct choice.  If
+an application has long-running transactions, then
+<a href="../../api_c/env_set_lk_detect.html#DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a> will guarantee that transactions eventually
+complete, but it may do so at the expense of a large number of aborts.
+<p>The alternative to using the <a href="../../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a> interface is
+to run the deadlock detector manually, using the Berkeley DB
+<a href="../../api_c/lock_detect.html">lock_detect</a> interface.
 <p>The <a href="../../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a> function allows you to specify your own locking
 conflicts matrix.  This is an advanced configuration option, and rarely
 necessary.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/lock/dead.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/nondb.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/lock/dead.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/max.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

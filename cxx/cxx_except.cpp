@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_except.cpp,v 11.6 2000/06/06 17:54:44 dda Exp $";
+static const char revid[] = "$Id: cxx_except.cpp,v 11.7 2000/09/21 15:05:45 dda Exp $";
 #endif /* not lint */
 
 #include <string.h>
@@ -50,7 +50,7 @@ public:
 			strcat(s_, str5);
 	}
 	~tmpString()                      { delete [] s_; }
-	operator const char *()           { return s_; }
+	operator const char *()           { return (s_); }
 
 private:
 	char *s_;
@@ -64,7 +64,7 @@ static char *dupString(const char *s)
 {
 	char *r = new char[strlen(s)+1];
 	strcpy(r, s);
-	return r;
+	return (r);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -118,15 +118,15 @@ DbException &DbException::operator = (const DbException &that)
 		what_ = 0;           // in case new throws exception
 		what_ = dupString(that.what_);
 	}
-	return *this;
+	return (*this);
 }
 
 int DbException::get_errno() const
 {
-	return err_;
+	return (err_);
 }
 
 const char *DbException::what() const
 {
-	return what_;
+	return (what_);
 }

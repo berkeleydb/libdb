@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fid.c,v 11.6 2000/05/25 18:28:48 dda Exp $";
+static const char revid[] = "$Id: os_fid.c,v 11.7 2000/10/26 14:18:08 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -47,18 +47,18 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	/* Clear the buffer. */
 	memset(fidp, 0, DB_FILE_ID_LEN);
 
-	/* 
+	/*
 	 * Initialize/increment the serial number we use to help avoid
 	 * fileid collisions.  Note that we don't bother with locking;
 	 * it's unpleasant to do from down in here, and if we race on
 	 * this no real harm will be done, since the finished fileid
 	 * has so many other components.
-	 * 
+	 *
 	 * We increment by 100000 on each call as a simple way of
 	 * randomizing;  simply incrementing seems potentially less useful
 	 * if pids are also simply incremented, since this is process-local
 	 * and we may be one of a set of processes starting up.  100000
-	 * pushes us out of pid space on most platforms, and has few 
+	 * pushes us out of pid space on most platforms, and has few
 	 * interesting properties in base 2.
 	 */
 	if (fid_serial == SERIAL_INIT)
@@ -132,7 +132,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 			st.wMilliseconds;
 		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 			*fidp++ = *p++;
-		for (p = (u_int8_t *)&fid_serial, i = sizeof(u_int32_t); 
+		for (p = (u_int8_t *)&fid_serial, i = sizeof(u_int32_t);
 		    i > 0; --i)
 			*fidp++ = *p++;
 	} else {

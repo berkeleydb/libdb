@@ -15,7 +15,8 @@
 #include "db_am.h"
 #include "txn.h"
 
-int __crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
+int
+__crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
 	name, mode)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -31,10 +32,11 @@ int __crdel_fileopen_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_crdel_fileopen;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -89,7 +91,7 @@ __crdel_fileopen_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_fileopen_read(dbenv, dbtp->data, &argp)) != 0)
@@ -149,7 +151,8 @@ __crdel_fileopen_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
+int
+__crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, page, lsn)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -167,10 +170,11 @@ int __crdel_metasub_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_crdel_metasub;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -234,7 +238,7 @@ __crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_metasub_read(dbenv, dbtp->data, &argp)) != 0)
@@ -301,7 +305,8 @@ __crdel_metasub_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
+int
+__crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name, pgno, page)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -319,10 +324,11 @@ int __crdel_metapage_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_crdel_metapage;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -391,7 +397,7 @@ __crdel_metapage_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_metapage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -483,7 +489,7 @@ __crdel_old_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_old_delete_read(dbenv, dbtp->data, &argp)) != 0)
@@ -540,7 +546,8 @@ __crdel_old_delete_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
+int
+__crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name, newname)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -557,10 +564,11 @@ int __crdel_rename_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_crdel_rename;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -626,7 +634,7 @@ __crdel_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_rename_read(dbenv, dbtp->data, &argp)) != 0)
@@ -700,7 +708,8 @@ __crdel_rename_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
+int
+__crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, name)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -716,10 +725,11 @@ int __crdel_delete_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_crdel_delete;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -774,7 +784,7 @@ __crdel_delete_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __crdel_delete_read(dbenv, dbtp->data, &argp)) != 0)

@@ -1,5 +1,4 @@
- 
-<!--$Id: dbc_get.so,v 10.43 2000/05/18 18:31:54 bostic Exp $-->
+<!--$Id: dbc_get.so,v 10.46 2001/01/19 17:29:46 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DBcursor-&gt;c_get</h1>
@@ -42,17 +41,9 @@ skipped during a sequential scan.
 <p>If multiple threads or processes insert items into the same database file
 without using locking, the results are undefined.
 For more detail,
-see <a href="../ref/txn/stability.html">cursor stability</a>.
+see <a href="../ref/am/stability.html">Cursor stability</a>.
 <p>The <b>flags</b> parameter must be set to one of the following values:
 <p><dl compact>
-<p><dt><a name="DB_CONSUME">DB_CONSUME</a><dd>Return the record number and data from the available record closest to
-the head of the queue and delete the record.  The cursor will be
-positioned on the deleted record.  The record number will be returned in
-<b>key</b> as described in <a href="../api_c/dbt.html">DBT</a>.  The data will be returned in
-the <b>data</b> parameter.
-<p>A record is available if it is not deleted and is not currently locked.
-For DB_CONSUME to be specified, the underlying database must be
-of type Queue.
 <p><dt><a name="DB_CURRENT">DB_CURRENT</a><dd>Return the key/data pair currently referenced by the cursor.
 <p>If the cursor key/data pair was deleted, DBcursor-&gt;c_get will return
 <a href="../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.

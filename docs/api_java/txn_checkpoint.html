@@ -1,5 +1,4 @@
- 
-<!--$Id: txn_checkpoint.so,v 10.23 2000/03/17 01:53:59 bostic Exp $-->
+<!--$Id: txn_checkpoint.so,v 10.25 2000/09/08 15:20:28 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv.txn_checkpoint</h1>
@@ -23,7 +22,7 @@
 import com.sleepycat.db.*;
 <p>
 int
-public void txn_checkpoint(int kbyte, int min, int flags)
+public int txn_checkpoint(int kbyte, int min, int flags)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
@@ -42,8 +41,8 @@ last checkpoint.
 </dl>
 <p>The DbEnv.txn_checkpoint method throws an exception that encapsulates a non-zero error value on
 failure, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">Db.DB_INCOMPLETE</a> if there were pages that needed to be
-written but that <a href="../api_java/memp_sync.html">DbEnv.memp_sync</a> was unable to write immediately.  In
-this case, the DbEnv.txn_checkpoint call should be retried.
+written to complete the checkpoint but that <a href="../api_java/memp_sync.html">DbEnv.memp_sync</a> was unable
+to write immediately.
 <h1>Errors</h1>
 <p>The DbEnv.txn_checkpoint method may fail and throw an exception encapsulating a non-zero error for the following conditions:
 <p><dl compact>

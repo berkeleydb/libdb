@@ -8,13 +8,11 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_method.c,v 11.13.2.2 2000/07/07 16:13:16 bostic Exp $";
+static const char revid[] = "$Id: bt_method.c,v 11.20 2000/11/30 00:58:28 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -22,10 +20,12 @@ static const char revid[] = "$Id: bt_method.c,v 11.13.2.2 2000/07/07 16:13:16 bo
 #include "btree.h"
 #include "qam.h"
 
-static int __bam_set_bt_compare __P((DB *, int (*)(const DBT *, const DBT *)));
+static int __bam_set_bt_compare
+	       __P((DB *, int (*)(DB *, const DBT *, const DBT *)));
 static int __bam_set_bt_maxkey __P((DB *, u_int32_t));
 static int __bam_set_bt_minkey __P((DB *, u_int32_t));
-static int __bam_set_bt_prefix __P((DB *, size_t(*)(const DBT *, const DBT *)));
+static int __bam_set_bt_prefix
+	       __P((DB *, size_t(*)(DB *, const DBT *, const DBT *)));
 static int __ram_set_re_delim __P((DB *, int));
 static int __ram_set_re_len __P((DB *, u_int32_t));
 static int __ram_set_re_pad __P((DB *, int));
@@ -84,13 +84,9 @@ __bam_db_close(dbp)
 
 	t = dbp->bt_internal;
 						/* Recno */
-	/* Close any underlying mmap region. */
-	if (t->re_smap != NULL)
-		(void)__os_unmapfile(dbp->dbenv, t->re_smap, t->re_msize);
-
 	/* Close any backing source file descriptor. */
-	if (F_ISSET(&t->re_fh, DB_FH_VALID))
-		(void)__os_closehandle(&t->re_fh);
+	if (t->re_fp != NULL)
+		(void)fclose(t->re_fp);
 
 	/* Free any backing source file name. */
 	if (t->re_source != NULL)
@@ -173,7 +169,7 @@ incompat:
 static int
 __bam_set_bt_compare(dbp, func)
 	DB *dbp;
-	int (*func) __P((const DBT *, const DBT *));
+	int (*func) __P((DB *, const DBT *, const DBT *));
 {
 	BTREE *t;
 
@@ -228,8 +224,6 @@ __bam_set_bt_minkey(dbp, bt_minkey)
 	u_int32_t bt_minkey;
 {
 	BTREE *t;
-	int defsz;
-	u_int32_t pgsize;
 
 	DB_ILLEGAL_AFTER_OPEN(dbp, "set_bt_minkey");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE);
@@ -238,23 +232,6 @@ __bam_set_bt_minkey(dbp, bt_minkey)
 
 	if (bt_minkey < 2) {
 		__db_err(dbp->dbenv, "minimum bt_minkey value is 2");
-		return (EINVAL);
-	}
-	
-	/* 
-	 * Verify that the bt_minkey value specified won't cause the
-	 * calculation of ovflsize to underflow [#2406].  If pagesize
-	 * has not yet been set, perform the calculation on the minimum page
-	 * size for safety's sake.
-	 */
-	defsz = (dbp->pgsize == 0);
-	pgsize = defsz ? DB_MIN_PGSIZE : dbp->pgsize;
-	if (B_MINKEY_TO_OVFLSIZE(bt_minkey, pgsize) >
-	    B_MINKEY_TO_OVFLSIZE(DEFMINKEYPAGE, pgsize)) {
-		__db_err(dbp->dbenv, 
-		    "%sbt_minkey value too high for %s page size",
-		    defsz ? "page size still unset;  " : "",
-		    defsz ? "minimum" : "specified");
 		return (EINVAL);
 	}
 
@@ -269,7 +246,7 @@ __bam_set_bt_minkey(dbp, bt_minkey)
 static int
 __bam_set_bt_prefix(dbp, func)
 	DB *dbp;
-	size_t (*func) __P((const DBT *, const DBT *));
+	size_t (*func) __P((DB *, const DBT *, const DBT *));
 {
 	BTREE *t;
 

@@ -4,42 +4,11 @@
  * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_shash.h,v 11.4 2000/02/14 02:59:55 bostic Exp $
+ * $Id: db_shash.h,v 11.7 2000/12/12 17:43:56 bostic Exp $
  */
 
 /* Hash Headers */
 typedef	SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
-
-/*
- * HASHACCESS --
- *
- * Figure out to which bucket an item belongs and lock that bucket,
- * returning the bucket index.
- *
- * synch:  beginning of the array of mutexes that protect the table.
- * elt:	   the item on which we're computing the hash function.
- * nelems: the number of buckets in the hash table.
- * hash:   the hash function that operates on elements of the type of elt
- * ndx:	   the index into the hash/synch array that we're locking.
- * fh:	   the locking file handle.
- */
-#define	HASHACCESS(synch, elt, nelems, hash, ndx, fh) do {		\
-	ndx = hash(elt) % (nelems);					\
-	MUTEX_LOCK(&synch[ndx], fh);					\
-} while(0)
-
-/*
- * HASHRELEASE --
- *
- * Release a hash bucket that we have locked.
- *
- * synch: beginning of the array of mutexes that protect the table.
- * ndx:	  the index into the hash/synch array that we're locking.
- * fh:	  the locking file handle.
- */
-#define	HASHRELEASE(synch, ndx, fh) do {				\
-	MUTEX_UNLOCK(&synch[ndx]);					\
-} while(0)
 
 /*
  * HASHLOOKUP --
@@ -67,7 +36,7 @@ typedef	SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 	    res != NULL; res = SH_TAILQ_NEXT(res, field, type))		\
 		if (cmp(elt, res))					\
 			break;						\
-} while(0)
+} while (0)
 
 /*
  * HASHINSERT --
@@ -88,7 +57,7 @@ typedef	SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 									\
 	__bucket = &begin[ndx];						\
 	SH_TAILQ_INSERT_HEAD(__bucket, elt, field, type);		\
-} while(0)
+} while (0)
 
 /*
  * HASHREMOVE_EL --

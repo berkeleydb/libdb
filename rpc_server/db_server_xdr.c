@@ -84,6 +84,32 @@ xdr___env_create_reply(xdrs, objp)
 }
 
 bool_t
+xdr___env_flags_msg(xdrs, objp)
+	register XDR *xdrs;
+	__env_flags_msg *objp;
+{
+
+	if (!xdr_u_int(xdrs, &objp->dbenvcl_id))
+		return (FALSE);
+	if (!xdr_u_int(xdrs, &objp->flags))
+		return (FALSE);
+	if (!xdr_u_int(xdrs, &objp->onoff))
+		return (FALSE);
+	return (TRUE);
+}
+
+bool_t
+xdr___env_flags_reply(xdrs, objp)
+	register XDR *xdrs;
+	__env_flags_reply *objp;
+{
+
+	if (!xdr_u_int(xdrs, &objp->status))
+		return (FALSE);
+	return (TRUE);
+}
+
+bool_t
 xdr___env_open_msg(xdrs, objp)
 	register XDR *xdrs;
 	__env_open_msg *objp;
@@ -336,6 +362,30 @@ bool_t
 xdr___db_del_reply(xdrs, objp)
 	register XDR *xdrs;
 	__db_del_reply *objp;
+{
+
+	if (!xdr_u_int(xdrs, &objp->status))
+		return (FALSE);
+	return (TRUE);
+}
+
+bool_t
+xdr___db_extentsize_msg(xdrs, objp)
+	register XDR *xdrs;
+	__db_extentsize_msg *objp;
+{
+
+	if (!xdr_u_int(xdrs, &objp->dbpcl_id))
+		return (FALSE);
+	if (!xdr_u_int(xdrs, &objp->extentsize))
+		return (FALSE);
+	return (TRUE);
+}
+
+bool_t
+xdr___db_extentsize_reply(xdrs, objp)
+	register XDR *xdrs;
+	__db_extentsize_reply *objp;
 {
 
 	if (!xdr_u_int(xdrs, &objp->status))

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_stat.c,v 11.20 2000/06/01 22:40:48 krinsky Exp $";
+static const char revid[] = "$Id: hash_stat.c,v 11.24 2000/12/21 21:54:35 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -177,10 +176,8 @@ __ham_traverse(dbp, dbc, mode, callback, cookie)
 				case H_OFFDUP:
 					memcpy(&opgno, HOFFDUP_PGNO(hk),
 					    sizeof(db_pgno_t));
-					if ((ret = __db_icursor(dbp, dbc->txn,
-					    dbp->dup_compare == NULL ?
-					    DB_RECNO : DB_BTREE, opgno, 1,
-					    &opd)) != 0)
+					if ((ret = __db_c_newopd(dbc,
+					    opgno, &opd)) != 0)
 						return (ret);
 					if ((ret = __bam_traverse(opd,
 					    DB_LOCK_READ, opgno,
@@ -227,7 +224,7 @@ __ham_traverse(dbp, dbc, mode, callback, cookie)
 			(void)lock_put(dbp->dbenv, &hcp->lock);
 
 		if (hcp->page != NULL) {
-			if ((ret = __ham_put_page(dbc->dbp, hcp->page, 0)) != 0)
+			if ((ret = memp_fput(dbc->dbp->mpf, hcp->page, 0)) != 0)
 				return (ret);
 			hcp->page = NULL;
 		}
@@ -256,8 +253,8 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 
 	switch (pagep->type) {
 	case P_INVALID:
-		/* 
-		 * Hash pages may be wholly zeroed;  this is not a bug. 
+		/*
+		 * Hash pages may be wholly zeroed;  this is not a bug.
 		 * Obviously such pages have no data, so we can just proceed.
 		 */
 		break;

@@ -8,12 +8,11 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_meta.c,v 11.8 2000/03/22 04:21:03 ubell Exp $";
+static const char revid[] = "$Id: hash_meta.c,v 11.10 2000/12/21 21:54:35 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -50,8 +49,8 @@ __ham_get_meta(dbc)
 			return (ret);
 	}
 
-	if ((ret = __ham_get_page(dbc->dbp,
-	    hashp->meta_pgno, (PAGE **)&(hcp->hdr))) != 0 &&
+	if ((ret = memp_fget(dbc->dbp->mpf,
+	    &hashp->meta_pgno, DB_MPOOL_CREATE, &(hcp->hdr))) != 0 &&
 	    hcp->hlock.off != LOCK_INVALID) {
 		(void)lock_put(dbc->dbp->dbenv, &hcp->hlock);
 		hcp->hlock.off = LOCK_INVALID;
@@ -74,8 +73,8 @@ __ham_release_meta(dbc)
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if (hcp->hdr)
-		(void)__ham_put_page(dbc->dbp, (PAGE *)hcp->hdr,
-		    F_ISSET(hcp, H_DIRTY) ? 1 : 0);
+		(void)memp_fput(dbc->dbp->mpf, hcp->hdr,
+		    F_ISSET(hcp, H_DIRTY) ? DB_MPOOL_DIRTY : 0);
 	hcp->hdr = NULL;
 	if (!F_ISSET(dbc, DBC_RECOVER) &&
 	    dbc->txn == NULL && hcp->hlock.off != LOCK_INVALID)

@@ -8,12 +8,8 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_errno.c,v 11.3 2000/02/14 03:00:06 bostic Exp $";
+static const char revid[] = "$Id: os_errno.c,v 11.5 2000/11/30 00:58:43 ubell Exp $";
 #endif /* not lint */
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <errno.h>
-#endif
 
 #include "db_int.h"
 
@@ -52,7 +48,7 @@ __os_set_errno(evalue)
  *	  error.  More information is only available by setting a breakpoint
  *	  here.
  *
- * PUBLIC: #if defined(_WIN32)
+ * PUBLIC: #if defined(DB_WIN32)
  * PUBLIC: int __os_win32_errno __P((void));
  * PUBLIC: #endif
  */

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb005.tcl,v 11.11 2000/04/24 04:50:30 krinsky Exp $
+#	$Id: sdb005.tcl,v 11.12 2000/08/25 14:21:53 sue Exp $
 #
 # Test cursor operations between subdbs.
 #
@@ -21,7 +21,7 @@ proc subdb005 {method {nentries 100} args } {
 
 	puts "Subdb005: $method ( $args ) subdb cursor operations test"
 	set txn ""
-	cleanup $testdir
+	cleanup $testdir NULL
 	set psize 8192
 	set testfile $testdir/subdb005.db
 	set duplist {-1 -1 -1 -1 -1}

@@ -15,7 +15,8 @@
 #include "db_am.h"
 #include "txn.h"
 
-int __db_addrem_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_addrem_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, fileid, pgno, indx, nbytes, hdr,
 	dbt, pagelsn)
 	DB_ENV *dbenv;
@@ -38,10 +39,11 @@ int __db_addrem_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_addrem;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -125,7 +127,7 @@ __db_addrem_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_addrem_read(dbenv, dbtp->data, &argp)) != 0)
@@ -230,7 +232,7 @@ __db_split_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_split_read(dbenv, dbtp->data, &argp)) != 0)
@@ -300,7 +302,8 @@ __db_split_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __db_big_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_big_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, fileid, pgno, prev_pgno, next_pgno, dbt,
 	pagelsn, prevlsn, nextlsn)
 	DB_ENV *dbenv;
@@ -324,10 +327,11 @@ int __db_big_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_big;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -412,7 +416,7 @@ __db_big_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_big_read(dbenv, dbtp->data, &argp)) != 0)
@@ -496,7 +500,8 @@ __db_big_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __db_ovref_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_ovref_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, adjust, lsn)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -513,10 +518,11 @@ int __db_ovref_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_ovref;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -572,7 +578,7 @@ __db_ovref_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_ovref_read(dbenv, dbtp->data, &argp)) != 0)
@@ -628,7 +634,8 @@ __db_ovref_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __db_relink_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_relink_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, fileid, pgno, lsn, prev, lsn_prev,
 	next, lsn_next)
 	DB_ENV *dbenv;
@@ -650,10 +657,11 @@ int __db_relink_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_relink;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -727,7 +735,7 @@ __db_relink_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_relink_read(dbenv, dbtp->data, &argp)) != 0)
@@ -812,7 +820,7 @@ __db_addpage_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_addpage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -872,7 +880,8 @@ __db_addpage_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __db_debug_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_debug_log(dbenv, txnid, ret_lsnp, flags,
 	op, fileid, key, data, arg_flags)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -891,10 +900,11 @@ int __db_debug_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_debug;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -974,7 +984,7 @@ __db_debug_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_debug_read(dbenv, dbtp->data, &argp)) != 0)
@@ -1065,7 +1075,8 @@ __db_debug_read(dbenv, recbuf, argpp)
 	return (0);
 }
 
-int __db_noop_log(dbenv, txnid, ret_lsnp, flags,
+int
+__db_noop_log(dbenv, txnid, ret_lsnp, flags,
 	fileid, pgno, prevlsn)
 	DB_ENV *dbenv;
 	DB_TXN *txnid;
@@ -1081,10 +1092,11 @@ int __db_noop_log(dbenv, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
-	if (txnid != NULL &&
-	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (__db_child_active_err(dbenv));
 	rectype = DB_db_noop;
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL &&
+	    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+		return (ret);
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
 		ZERO_LSN(null_lsn);
@@ -1137,7 +1149,7 @@ __db_noop_print(dbenv, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused2 = 0;
+	notused2 = DB_TXN_ABORT;
 	notused3 = NULL;
 
 	if ((ret = __db_noop_read(dbenv, dbtp->data, &argp)) != 0)

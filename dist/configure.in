@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 11.64.2.1 2000/07/27 13:54:09 krinsky Exp $
+dnl $Id: configure.in,v 11.77 2001/01/18 19:05:25 bostic Exp $
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT(../db/db.c)
@@ -16,6 +16,7 @@ Berkeley DB cannot be built in the top-level distribution directory.])
 AC_MSG_RESULT(no)
 
 dnl Substitution variables.
+AC_SUBST(ADDITIONAL_INCS)
 AC_SUBST(ADDITIONAL_LANG)
 AC_SUBST(ADDITIONAL_LIBS)
 AC_SUBST(ADDITIONAL_OBJS)
@@ -29,6 +30,7 @@ AC_SUBST(DEFAULT_INSTALL)
 AC_SUBST(DEFAULT_LIB)
 AC_SUBST(INSTALLER)
 AC_SUBST(INSTALL_LIBS)
+AC_SUBST(JAR)
 AC_SUBST(JAVAC)
 AC_SUBST(JAVACFLAGS)
 AC_SUBST(LDFLAGS)
@@ -68,7 +70,10 @@ AM_OPTIONS_SET
 
 dnl This is where we handle stuff that autoconf can't handle: compiler,
 dnl preprocessor and load flags, libraries that the standard tests don't
-dnl look for.  The default optimization is -O.
+dnl look for.  The default optimization is -O.  We would like to set the
+dnl default optimization for systems using gcc to -O2, but we can't.  By
+dnl the time we know we're using gcc, it's too late to set optimization
+dnl flags.
 dnl
 dnl There are additional libraries we need for some compiler/architecture
 dnl combinations.
@@ -98,10 +103,12 @@ hpux*)	   CPPFLAGS="-D_REENTRANT $CPPFLAGS";;
 irix*)	   optimize_def="-O2"
 	   CPPFLAGS="-D_SGI_MP_SOURCE $CPPFLAGS";;
 linux*)	   optimize_def="-O2"
+	   CFLAGS="-D_GNU_SOURCE"
 	   CPPFLAGS="-D_REENTRANT $CPPFLAGS";;
 mpeix*)	   CPPFLAGS="-D_POSIX_SOURCE -D_SOCKET_SOURCE $CPPFLAGS"
 	   LIBS="-lsocket -lsvipc $LIBS";;
 osf*)	   CPPFLAGS="-D_REENTRANT $CPPFLAGS";;
+*qnx)	   AC_DEFINE(HAVE_QNX);;
 sco3.2v4*) CC=${CC-"cc -belf"}
 	   LIBS="-lsocket -lnsl_s $LIBS";;
 sco*)	   CC=${CC-"cc -belf"}
@@ -109,6 +116,9 @@ sco*)	   CC=${CC-"cc -belf"}
 solaris*)  CPPFLAGS="-D_REENTRANT $CPPFLAGS";;
 esac
 
+dnl Set CFLAGS/CXXFLAGS.  We MUST set the flags before we call autoconf
+dnl compiler configuration macros, because if we don't, they set CFLAGS
+dnl to no optimization and -g, which isn't what we want.
 CFLAGS=${CFLAGS-$optimize_def}
 CXXFLAGS=${CXXFLAGS-"$CFLAGS"}
 
@@ -147,6 +157,9 @@ fi
 if test "$db_cv_debug_wop" = yes; then
 	AC_DEFINE(DEBUG_WOP)
 fi
+if test "$db_cv_umrw" = yes; then
+	AC_DEFINE(UMRW)
+fi
 if test "$db_cv_test" = yes; then
 	AC_DEFINE(CONFIG_TEST)
 fi
@@ -180,8 +193,8 @@ if test "$GXX" = "yes"; then
 	CXXVERSION=`${MAKEFILE_CXX} --version`
 	case ${CXXVERSION} in
 	1.*|2.[[01234567]].*|*-1.*|*-2.[[01234567]].* )
-		CXXFLAGS="-fhandle-exceptions $CXXFLAGS" ;;
-	* )	CXXFLAGS="-fexceptions $CXXFLAGS" ;;
+		CXXFLAGS="-fhandle-exceptions $CXXFLAGS";;
+	* )	CXXFLAGS="-fexceptions $CXXFLAGS";;
 	esac
 fi
 
@@ -246,6 +259,10 @@ if test "$db_cv_java" = "yes"; then
 	if test "$JAVAC" = "nojavac"; then
 		AC_MSG_ERROR([no javac compiler in PATH])
 	fi
+	AC_CHECK_PROG(JAR, jar, jar, nojar)
+	if test "$JAR" = "nojar"; then
+		AC_MSG_ERROR([no jar utility in PATH])
+	fi
 	AC_PATH_PROG(JAVACABS, javac, nojavac)
 	ADDITIONAL_LIBS="$ADDITIONAL_LIBS \$(libjso_target)"
 	ADDITIONAL_LANG="$ADDITIONAL_LANG java"
@@ -262,7 +279,7 @@ dnl 'X' avoids triggering unwanted echo options.
 		esac
 		AC_MSG_RESULT($JAVACABS)
 	done
-	JTOPDIR=`echo "$JAVACABS" | sed -e 's:/[[^/]]*$::'`
+	JTOPDIR=`echo "$JAVACABS" | sed -e 's://*:/:g' -e 's:/[[^/]]*$::'`
 	if test -f "$JTOPDIR/include/jni.h"; then
 		CPPFLAGS="$CPPFLAGSS -I$JTOPDIR/include"
 	else
@@ -276,9 +293,9 @@ dnl 'X' avoids triggering unwanted echo options.
 
 dnl get the likely subdirectories for system specific java includes
 	case "$host_os" in
-	solaris*)	JINCSUBDIRS="solaris" ;;
-	linux*)		JINCSUBDIRS="linux genunix" ;;
-	*)		JINCSUBDIRS="genunix" ;;
+	solaris*)	JINCSUBDIRS="solaris";;
+	linux*)		JINCSUBDIRS="linux genunix";;
+	*)		JINCSUBDIRS="genunix";;
 	esac
 
 	for JINCSUBDIR in $JINCSUBDIRS
@@ -299,8 +316,12 @@ if test "$db_cv_rpc" = "yes"; then
 	ADDITIONAL_PROGS="berkeley_db_svc $ADDITIONAL_PROGS"
 
 	case "$host_os" in
-	solaris*)	AC_CHECK_LIB(nsl, main, LIBS="-lnsl $LIBS");;
-	hpux*)		AC_CHECK_LIB(nsl, main, LIBS="-lnsl $LIBS"; LIBTSO_LIBS="-lnsl $LIBTSO_LIBS");;
+	hpux*)	
+		AC_CHECK_FUNC(svc_run,,
+		    AC_CHECK_LIB(nsl, svc_run,
+		    LIBS="-lnsl $LIBS"; LIBTSO_LIBS="-lnsl $LIBTSO_LIBS"));;
+	solaris*)
+		AC_CHECK_FUNC(svc_run,, AC_CHECK_LIB(nsl, svc_run));;
 	esac
 fi
 
@@ -308,6 +329,7 @@ AM_TCL_LOAD
 
 dnl Optional DB 1.85 compatibility API.
 if test "$db_cv_compat185" = "yes"; then
+	ADDITIONAL_INCS="db_185.h $ADDITIONAL_INCS"
 	ADDITIONAL_OBJS="db185${o} $ADDITIONAL_OBJS"
 fi
 
@@ -364,11 +386,8 @@ AC_CHECK_FUNCS(getuid pstat_getdynamic sysconf sched_yield strtoul yield)
 dnl Pread/pwrite.
 dnl
 dnl HP-UX has pread/pwrite, but it doesn't work with bigfile support.
-dnl
-dnl Linux has pread/pwrite, but the man pages say it requires a special
-dnl #ifdef before the #include file, and even then it won't compile.
 case "$host_os" in
-hpux*|linux*)
+hpux*)
 	AC_MSG_WARN([pread/pwrite interfaces ignored on $host_os.]);;
 *)	AC_CHECK_FUNCS(pread pwrite)
 esac
@@ -406,8 +425,8 @@ if test "$db_cv_sprintf_count" = no; then
 fi
 
 dnl Vendors are doing 64-bit lseek in different ways.
-dnl AIX, HP/UX and Solaris all use _FILE_OFFSET_BITS to specify a "big-file"
-dnl environment.
+dnl AIX, HP/UX, Solaris and Linux all use _FILE_OFFSET_BITS
+dnl to specify a "big-file" environment.
 dnl
 dnl You can't build C++ with big-file support on HP-UX, the include files
 dnl are wrong.  On Solaris 8, <fcntl.h> included with big-file support
@@ -421,7 +440,7 @@ if test "$db_cv_bigfile" = no; then
 		else
 			AC_DEFINE(HAVE_FILE_OFFSET_BITS)
 		fi;;
-	aix*|solaris*)
+	aix*|solaris*|linux*)
 		AC_DEFINE(HAVE_FILE_OFFSET_BITS);;
 	esac
 fi
@@ -472,6 +491,11 @@ fi
 dnl Check for programs used in building and installation.
 AM_PROGRAMS_SET
 
-AC_OUTPUT(Makefile include.tcl:../test/include.tcl \
-    db.h:../include/db.src db_int.h:../include/db_int.src \
-    db_185.h:../include/db_185.h)
+CREATE_LIST="Makefile
+    include.tcl:../test/include.tcl
+    db.h:../include/db.src
+    db_int.h:../include/db_int.src"
+if test "$db_cv_compat185" = "yes"; then
+	CREATE_LIST="${CREATE_LIST} db_185.h:../include/db_185.h"
+fi
+AC_OUTPUT(${CREATE_LIST})

@@ -43,13 +43,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_overflow.c,v 11.15 2000/05/16 16:27:10 bostic Exp $";
+static const char revid[] = "$Id: db_overflow.c,v 11.21 2000/11/30 00:58:32 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -304,11 +303,12 @@ __db_doff(dbc, pgno)
 			return (ret);
 		}
 
+		DB_ASSERT(TYPE(pagep) == P_OVERFLOW);
 		/*
-		 * If it's an overflow page and it's referenced by more than
-		 * one key/data item, decrement the reference count and return.
+		 * If it's referenced by more than one key/data item,
+		 * decrement the reference count and return.
 		 */
-		if (TYPE(pagep) == P_OVERFLOW && OV_REF(pagep) > 1) {
+		if (OV_REF(pagep) > 1) {
 			(void)memp_fput(dbp->mpf, pagep, 0);
 			return (__db_ovref(dbc, pgno, -1));
 		}
@@ -342,7 +342,7 @@ __db_doff(dbc, pgno)
  * the entire object and call their comparison routine.
  *
  * PUBLIC: int __db_moff __P((DB *, const DBT *, db_pgno_t, u_int32_t,
- * PUBLIC:     int (*)(const DBT *, const DBT *), int *));
+ * PUBLIC:     int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
 __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
@@ -350,7 +350,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 	const DBT *dbt;
 	db_pgno_t pgno;
 	u_int32_t tlen;
-	int (*cmpfunc) __P((const DBT *, const DBT *)), *cmpp;
+	int (*cmpfunc) __P((DB *, const DBT *, const DBT *)), *cmpp;
 {
 	PAGE *pagep;
 	DBT local_dbt;
@@ -372,7 +372,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 		    &local_dbt, tlen, pgno, &buf, &bufsize)) != 0)
 			return (ret);
 		/* Pass the key as the first argument */
-		*cmpp = cmpfunc(dbt, &local_dbt);
+		*cmpp = cmpfunc(dbp, dbt, &local_dbt);
 		__os_free(buf, bufsize);
 		return (0);
 	}
@@ -439,8 +439,9 @@ __db_vrfy_overflow(dbp, vdp, h, pgno, flags)
 
 	pip->refcount = OV_REF(h);
 	if (pip->refcount < 1) {
-		EPRINT((dbp->dbenv, "Overflow page %lu has zero reference count",
-		    pgno));
+		EPRINT((dbp->dbenv,
+		    "Overflow page %lu has zero reference count",
+		    (u_long)pgno));
 		isbad = 1;
 	}
 
@@ -494,7 +495,8 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 
 	if (pip->type != P_OVERFLOW) {
 		EPRINT((dbp->dbenv,
-		    "Overflow page %lu of invalid type", pgno, pip->type));
+		    "Overflow page %lu of invalid type",
+		    (u_long)pgno, (u_long)pip->type));
 		ret = DB_VERIFY_BAD;
 		goto err;		/* Unsafe to continue. */
 	}
@@ -502,7 +504,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 	prev = pip->prev_pgno;
 	if (prev != PGNO_INVALID) {
 		EPRINT((dbp->dbenv,
-		    "First overflow page %lu has a prev_pgno", pgno));
+		    "First overflow page %lu has a prev_pgno", (u_long)pgno));
 		isbad = 1;
 	}
 
@@ -542,7 +544,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 		if ((u_int32_t)p > refcount) {
 			EPRINT((dbp->dbenv,
 			    "Page %lu encountered twice in overflow traversal",
-			    pgno));
+			    (u_long)pgno));
 			ret = DB_VERIFY_BAD;
 			goto err;
 		}
@@ -551,6 +553,10 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 
 		/* Keep a running tab on how much of the item we've seen. */
 		tlen -= pip->olen;
+
+		/* Send feedback to the application about our progress. */
+		if (!LF_ISSET(DB_SALVAGE))
+			__db_vrfy_struct_feedback(dbp, vdp);
 
 		next = pip->next_pgno;
 
@@ -566,7 +572,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 			DB_ASSERT(0);
 			EPRINT((dbp->dbenv,
 			    "Overflow page %lu has bad next_pgno",
-			    pgno));
+			    (u_long)pgno));
 			ret = DB_VERIFY_BAD;
 			goto err;
 		}
@@ -577,7 +583,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 		if (pip->prev_pgno != pgno) {
 			EPRINT((dbp->dbenv,
 			    "Overflow page %lu has bogus prev_pgno value",
-			    next));
+			    (u_long)next));
 			isbad = 1;
 			/*
 			 * It's safe to continue because we have separate
@@ -591,7 +597,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 	if (tlen > 0) {
 		isbad = 1;
 		EPRINT((dbp->dbenv,
-		    "Overflow item incomplete on page %lu", pgno));
+		    "Overflow item incomplete on page %lu", (u_long)pgno));
 	}
 
 err:	if ((t_ret = __db_vrfy_putpageinfo(vdp, pip)) != 0 && ret == 0)

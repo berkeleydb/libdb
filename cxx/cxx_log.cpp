@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_log.cpp,v 11.8 2000/05/17 01:17:53 dda Exp $";
+static const char revid[] = "$Id: cxx_log.cpp,v 11.9 2000/09/21 15:05:45 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -30,14 +30,14 @@ int DbEnv::log_archive(char **list[], u_int32_t flags,
 
 	if ((err = ::log_archive(env, list, flags, db_malloc_fcn)) != 0) {
 		DB_ERROR("DbEnv::log_archive", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_compare(const DbLsn *lsn0, const DbLsn *lsn1)
 {
-	return ::log_compare(lsn0, lsn1);
+	return (::log_compare(lsn0, lsn1));
 }
 
 int DbEnv::log_file(DbLsn *lsn, char *namep, size_t len)
@@ -47,9 +47,9 @@ int DbEnv::log_file(DbLsn *lsn, char *namep, size_t len)
 
 	if ((err = ::log_file(env, lsn, namep, len)) != 0) {
 		DB_ERROR("DbEnv::log_file", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_flush(const DbLsn *lsn)
@@ -59,9 +59,9 @@ int DbEnv::log_flush(const DbLsn *lsn)
 
 	if ((err = ::log_flush(env, lsn)) != 0) {
 		DB_ERROR("DbEnv::log_flush", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_get(DbLsn *lsn, Dbt *data, u_int32_t flags)
@@ -71,9 +71,9 @@ int DbEnv::log_get(DbLsn *lsn, Dbt *data, u_int32_t flags)
 
 	if ((err = ::log_get(env, lsn, data, flags)) != 0) {
 		DB_ERROR("DbEnv::log_get", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags)
@@ -83,9 +83,9 @@ int DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags)
 
 	if ((err = ::log_put(env, lsn, data, flags)) != 0) {
 		DB_ERROR("DbEnv::log_put", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_register(Db *dbp, const char *name)
@@ -95,9 +95,9 @@ int DbEnv::log_register(Db *dbp, const char *name)
 
 	if ((err = ::log_register(env, unwrap(dbp), name)) != 0) {
 		DB_ERROR("DbEnv::log_register", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_stat(DB_LOG_STAT **spp, db_malloc_fcn_type db_malloc_fcn)
@@ -107,9 +107,9 @@ int DbEnv::log_stat(DB_LOG_STAT **spp, db_malloc_fcn_type db_malloc_fcn)
 
 	if ((err = ::log_stat(env, spp, db_malloc_fcn)) != 0) {
 		DB_ERROR("DbEnv::log_stat", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }
 
 int DbEnv::log_unregister(Db *dbp)
@@ -119,7 +119,7 @@ int DbEnv::log_unregister(Db *dbp)
 
 	if ((err = ::log_unregister(env, unwrap(dbp))) != 0) {
 		DB_ERROR("DbEnv::log_unregister", err, error_policy());
-		return err;
+		return (err);
 	}
-	return 0;
+	return (0);
 }

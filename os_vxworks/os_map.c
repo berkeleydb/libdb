@@ -11,12 +11,11 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 1.4 2000/04/26 19:17:41 sue Exp $";
+static const char revid[] = "$Id: os_map.c,v 1.14 2000/12/04 19:01:43 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -43,6 +42,7 @@ typedef struct {
 	void *segment;			/* Segment address. */
 	u_int32_t size;			/* Segment size. */
 	char *name;			/* Segment name. */
+	long segid;			/* Segment ID. */
 } os_segdata_t;
 
 static os_segdata_t *__os_segdata;	/* Segment table. */
@@ -57,7 +57,7 @@ static int __os_segdata_find_byname
 	       __P((DB_ENV *, const char *, REGINFO *, REGION *));
 static int __os_segdata_init __P((DB_ENV *));
 static int __os_segdata_new __P((DB_ENV *, int *));
-static int __os_segdata_release __P((DB_ENV *, int));
+static int __os_segdata_release __P((DB_ENV *, REGION *, int));
 
 /*
  * __os_r_sysattach --
@@ -76,25 +76,53 @@ __os_r_sysattach(dbenv, infop, rp)
 	if (__os_segdata == NULL)
 		__os_segdata_init(dbenv);
 
-	/* Try to find an already existing segment. */
 	DB_BEGIN_SINGLE_THREAD;
-	if (__os_segdata_find_byname(dbenv, infop->name, infop, rp) == 0) {
-		DB_END_SINGLE_THREAD;
-		return (0);
+
+	/* Try to find an already existing segment. */
+	ret = __os_segdata_find_byname(dbenv, infop->name, infop, rp);
+
+	/*
+	 * If we are trying to join a region, it is easy, either we
+	 * found it and we return, or we didn't find it and we return
+	 * an error that it doesn't exist.
+	 */
+	if (!F_ISSET(infop, REGION_CREATE)) {
+		if (ret != 0) {
+			__db_err(dbenv, "segment %s does not exist",
+			    infop->name);
+			ret = EAGAIN;
+		}
+		goto out;
 	}
 
 	/*
-	 * If we're trying to join the region and failing, assume
-	 * that there was a reboot and the region no longer exists.
+	 * If we get here, we are trying to create the region.
+	 * There are several things to consider:
+	 * - if we have an error (not a found or not-found value), return.
+	 * - they better have shm_key set.
+	 * - if the region is already there (ret == 0 from above),
+	 * assume the application crashed and we're restarting.
+	 * Delete the old region.
+	 * - try to create the region.
 	 */
-	if (!F_ISSET(infop, REGION_CREATE)) {
-		__db_err(dbenv, "segment %s does not exist", infop->name);
-		DB_END_SINGLE_THREAD;
-		return (EAGAIN);
+	if (ret != 0 && ret != ENOENT)
+		goto out;
+
+	if (dbenv->shm_key == INVALID_REGION_SEGID) {
+		__db_err(dbenv, "no base shared memory ID specified");
+		ret = EAGAIN;
+		goto out;
+	}
+	if (ret == 0 && __os_segdata_release(dbenv, rp, 1) != 0) {
+		__db_err(dbenv,
+		    "key: %ld: shared memory region already exists",
+		    dbenv->shm_key + (infop->id - 1));
+		ret = EAGAIN;
+		goto out;
 	}
 
-	/* Create a new segment. */
 	ret = __os_segdata_allocate(dbenv, infop->name, infop, rp);
+out:
 	DB_END_SINGLE_THREAD;
 	return (ret);
 }
@@ -111,16 +139,13 @@ __os_r_sysdetach(dbenv, infop, destroy)
 	REGINFO *infop;
 	int destroy;
 {
-	REGION *rp;
-
-	rp = infop->rp;
 	/*
 	 * If just detaching, there is no mapping to discard.
 	 * If destroying, remove the region.
 	 */
 	if (destroy)
-		return (__os_segdata_release(dbenv, rp->segid));
-	return(0);
+		return (__os_segdata_release(dbenv, infop->rp, 0));
+	return (0);
 }
 
 /*
@@ -140,15 +165,13 @@ __os_mapfile(dbenv, path, fhp, len, is_rdonly, addrp)
 	void **addrp;
 {
 	/* We cannot map in regular files in VxWorks. */
-
+	COMPQUIET(dbenv, NULL);
 	COMPQUIET(path, NULL);
 	COMPQUIET(fhp, NULL);
 	COMPQUIET(is_rdonly, 0);
 	COMPQUIET(len, 0);
 	COMPQUIET(addrp, NULL);
-
-	__db_err(dbenv, "architecture doesn't support mapping in files");
-	return (__db_eopnotsup(dbenv));
+	return (EINVAL);
 }
 
 /*
@@ -164,12 +187,9 @@ __os_unmapfile(dbenv, addr, len)
 	size_t len;
 {
 	/* We cannot map in regular files in VxWorks. */
-
 	COMPQUIET(addr, NULL);
 	COMPQUIET(len, 0);
-
-	__db_err(dbenv, "architecture doesn't support mapping in files");
-	return (__db_eopnotsup(dbenv));
+	return (EINVAL);
 }
 
 /*
@@ -189,18 +209,14 @@ __os_segdata_init(dbenv)
 	}
 
 	/*
-	 * The lock init call returns a locked lock
+	 * The lock init call returns a locked lock.
 	 */
 	DB_BEGIN_SINGLE_THREAD;
 	__os_segdata_size = OS_SEGDATA_STARTING_SIZE;
-	if ((ret = __os_calloc(dbenv, __os_segdata_size,
-	    sizeof(os_segdata_t), &__os_segdata)) != 0) {
-		DB_END_SINGLE_THREAD;
-		return (ret);
-	}
+	ret = __os_calloc(dbenv,
+	    __os_segdata_size, sizeof(os_segdata_t), &__os_segdata);
 	DB_END_SINGLE_THREAD;
-
-	return (0);
+	return (ret);
 }
 
 /*
@@ -258,13 +274,13 @@ __os_segdata_allocate(dbenv, name, infop, rp)
 	REGION *rp;
 {
 	os_segdata_t *p;
-	int segid, ret;
+	int id, ret;
 
-	if ((ret = __os_segdata_new(dbenv, &segid)) != 0)
+	if ((ret = __os_segdata_new(dbenv, &id)) != 0)
 		return (ret);
 
-	p = &__os_segdata[segid];
-	if ((ret = __os_calloc(dbenv, rp->size, 1, &p->segment)) != 0)
+	p = &__os_segdata[id];
+	if ((ret = __os_calloc(dbenv, 1, rp->size, &p->segment)) != 0)
 		return (ret);
 	if ((ret = __os_strdup(dbenv, name, &p->name)) != 0) {
 		__os_free(p->segment, rp->size);
@@ -272,9 +288,10 @@ __os_segdata_allocate(dbenv, name, infop, rp)
 		return (ret);
 	}
 	p->size = rp->size;
+	p->segid = dbenv->shm_key + infop->id - 1;
 
 	infop->addr = p->segment;
-	rp->segid = segid;
+	rp->segid = id;
 
 	return (0);
 }
@@ -325,7 +342,7 @@ __os_segdata_new(dbenv, segidp)
 
 /*
  * __os_segdata_find_byname --
- *	Finds a segment by its name.
+ *	Finds a segment by its name and shm_key.
  *
  * Assumes it is called with the SEGDATA lock taken.
  *
@@ -340,6 +357,7 @@ __os_segdata_find_byname(dbenv, name, infop, rp)
 	REGION *rp;
 {
 	os_segdata_t *p;
+	long segid;
 	int i;
 
 	if (__os_segdata == NULL) {
@@ -349,12 +367,28 @@ __os_segdata_find_byname(dbenv, name, infop, rp)
 
 	if (name == NULL) {
 		__db_err(dbenv, "no segment name given");
-		return (ENOENT);
+		return (EAGAIN);
 	}
 
+	/*
+	 * If we are creating the region, compute the segid.
+	 * If we are joining the region, we use the segid in the
+	 * index we are given.
+	 */
+	if (F_ISSET(infop, REGION_CREATE))
+		segid = dbenv->shm_key + (infop->id - 1);
+	else {
+		if (rp->segid >= __os_segdata_size ||
+		    rp->segid == INVALID_REGION_SEGID) {
+			__db_err(dbenv, "Invalid segment id given");
+			return (EAGAIN);
+		}
+		segid = __os_segdata[rp->segid].segid;
+	}
 	for (i = 0; i < __os_segdata_size; i++) {
 		p = &__os_segdata[i];
-		if (p->name != NULL && strcmp(name, p->name) == 0) {
+		if (p->name != NULL && strcmp(name, p->name) == 0 &&
+		    p->segid == segid) {
 			infop->addr = p->segment;
 			rp->segid = i;
 			return (0);
@@ -368,9 +402,10 @@ __os_segdata_find_byname(dbenv, name, infop, rp)
  *	Free a segdata entry.
  */
 static int
-__os_segdata_release(dbenv, segid)
+__os_segdata_release(dbenv, rp, is_locked)
 	DB_ENV *dbenv;
-	int segid;
+	REGION *rp;
+	int is_locked;
 {
 	os_segdata_t *p;
 
@@ -379,13 +414,14 @@ __os_segdata_release(dbenv, segid)
 		return (EAGAIN);
 	}
 
-	if (segid < 0 || segid >= __os_segdata_size) {
-		__db_err(dbenv, "segment id %d out of range", segid);
+	if (rp->segid < 0 || rp->segid >= __os_segdata_size) {
+		__db_err(dbenv, "segment id %ld out of range", rp->segid);
 		return (EINVAL);
 	}
 
-	DB_BEGIN_SINGLE_THREAD;
-	p = &__os_segdata[segid];
+	if (is_locked == 0)
+		DB_BEGIN_SINGLE_THREAD;
+	p = &__os_segdata[rp->segid];
 	if (p->name != NULL) {
 		__os_freestr(p->name);
 		p->name = NULL;
@@ -395,7 +431,8 @@ __os_segdata_release(dbenv, segid)
 		p->segment = NULL;
 	}
 	p->size = 0;
-	DB_END_SINGLE_THREAD;
+	if (is_locked == 0)
+		DB_END_SINGLE_THREAD;
 
 	/* Any shrink-table logic could go here */
 

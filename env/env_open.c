@@ -8,14 +8,13 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_open.c,v 11.20.2.1 2000/06/30 02:52:24 krinsky Exp $";
+static const char revid[] = "$Id: env_open.c,v 11.34 2000/12/21 19:20:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -71,18 +70,30 @@ __dbenv_open(dbenv, db_home, flags, mode)
 {
 	DB_ENV *rm_dbenv;
 	int ret;
+	u_int32_t init_flags;
 
 #undef	OKFLAGS
 #define	OKFLAGS								\
 	DB_CREATE | DB_INIT_CDB | DB_INIT_LOCK | DB_INIT_LOG |		\
-	DB_INIT_MPOOL | DB_INIT_TXN | DB_LOCKDOWN | DB_NOMMAP |		\
+	DB_INIT_MPOOL | DB_INIT_TXN | DB_JOINENV | DB_LOCKDOWN |	\
 	DB_PRIVATE | DB_RECOVER | DB_RECOVER_FATAL | DB_SYSTEM_MEM |	\
-	DB_THREAD | DB_TXN_NOSYNC | DB_USE_ENVIRON | DB_USE_ENVIRON_ROOT
+	DB_THREAD | DB_USE_ENVIRON | DB_USE_ENVIRON_ROOT
 #undef	OKFLAGS_CDB
 #define	OKFLAGS_CDB							\
 	DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_LOCKDOWN |		\
-	DB_NOMMAP | DB_PRIVATE | DB_SYSTEM_MEM | DB_THREAD |		\
+	DB_PRIVATE | DB_SYSTEM_MEM | DB_THREAD |			\
 	DB_USE_ENVIRON | DB_USE_ENVIRON_ROOT
+
+	/*
+	 * Flags saved in the init_flags field of the environment, representing
+	 * flags to DBENV->set_flags and DBENV->open that need to be set.
+	 */
+#define	DB_INITENV_CDB		0x0001	/* DB_INIT_CDB */
+#define	DB_INITENV_CDB_ALLDB	0x0002	/* DB_INIT_CDB_ALLDB */
+#define	DB_INITENV_LOCK		0x0004	/* DB_INIT_LOCK */
+#define	DB_INITENV_LOG		0x0008	/* DB_INIT_LOG */
+#define	DB_INITENV_MPOOL	0x0010	/* DB_INIT_MPOOL */
+#define	DB_INITENV_TXN		0x0020	/* DB_INIT_TXN */
 
 	if ((ret = __db_fchk(dbenv, "DBENV->open", flags, OKFLAGS)) != 0)
 		return (ret);
@@ -91,6 +102,10 @@ __dbenv_open(dbenv, db_home, flags, mode)
 		return (ret);
 	if ((ret = __db_fcchk(dbenv,
 	    "DBENV->open", flags, DB_PRIVATE, DB_SYSTEM_MEM)) != 0)
+		return (ret);
+	if ((ret = __db_fcchk(dbenv, "DBENV->open", flags, DB_JOINENV,
+	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
+	    DB_INIT_TXN | DB_PRIVATE)) != 0)
 		return (ret);
 
 	/*
@@ -127,19 +142,51 @@ __dbenv_open(dbenv, db_home, flags, mode)
 		F_SET(dbenv, DB_ENV_CREATE);
 	if (LF_ISSET(DB_LOCKDOWN))
 		F_SET(dbenv, DB_ENV_LOCKDOWN);
-	if (LF_ISSET(DB_NOMMAP))
-		F_SET(dbenv, DB_ENV_NOMMAP);
 	if (LF_ISSET(DB_PRIVATE))
 		F_SET(dbenv, DB_ENV_PRIVATE);
 	if (LF_ISSET(DB_SYSTEM_MEM))
 		F_SET(dbenv, DB_ENV_SYSTEM_MEM);
 	if (LF_ISSET(DB_THREAD))
 		F_SET(dbenv, DB_ENV_THREAD);
-	if (LF_ISSET(DB_TXN_NOSYNC))
-		F_SET(dbenv, DB_ENV_TXN_NOSYNC);
 
 	/* Default permissions are read-write for both owner and group. */
 	dbenv->db_mode = mode == 0 ? __db_omode("rwrw--") : mode;
+
+	/*
+	 * Create/join the environment.  We pass in the flags that
+	 * will be of interest to an environment joining later;  if
+	 * we're not the ones to do the create, we
+	 * pull out whatever has been stored, if we don't do a create.
+	 */
+	init_flags = 0;
+	init_flags |= (LF_ISSET(DB_INIT_CDB) ? DB_INITENV_CDB : 0);
+	init_flags |= (LF_ISSET(DB_INIT_LOCK) ? DB_INITENV_LOCK : 0);
+	init_flags |= (LF_ISSET(DB_INIT_LOG) ? DB_INITENV_LOG : 0);
+	init_flags |= (LF_ISSET(DB_INIT_MPOOL) ? DB_INITENV_MPOOL : 0);
+	init_flags |= (LF_ISSET(DB_INIT_TXN) ? DB_INITENV_TXN : 0);
+	init_flags |=
+	    (F_ISSET(dbenv, DB_ENV_CDB_ALLDB) ? DB_INITENV_CDB_ALLDB : 0);
+
+	if ((ret = __db_e_attach(dbenv, &init_flags)) != 0)
+		goto err;
+
+	/*
+	 * __db_e_attach will return the saved init_flags field, which
+	 * contains the DB_INIT_* flags used when we were created.
+	 */
+	if (LF_ISSET(DB_JOINENV)) {
+		LF_CLR(DB_JOINENV);
+
+		LF_SET((init_flags & DB_INITENV_CDB) ? DB_INIT_CDB : 0);
+		LF_SET((init_flags & DB_INITENV_LOCK) ? DB_INIT_LOCK : 0);
+		LF_SET((init_flags & DB_INITENV_LOG) ? DB_INIT_LOG : 0);
+		LF_SET((init_flags & DB_INITENV_MPOOL) ? DB_INIT_MPOOL : 0);
+		LF_SET((init_flags & DB_INITENV_TXN) ? DB_INIT_TXN : 0);
+
+		if (LF_ISSET(DB_INITENV_CDB_ALLDB) &&
+		    (ret = dbenv->set_flags(dbenv, DB_CDB_ALLDB, 1)) != 0)
+			goto err;
+	}
 
 	/* Initialize for CDB product. */
 	if (LF_ISSET(DB_INIT_CDB)) {
@@ -147,9 +194,19 @@ __dbenv_open(dbenv, db_home, flags, mode)
 		F_SET(dbenv, DB_ENV_CDB);
 	}
 
-	/* Create/join the environment. */
-	if ((ret = __db_e_attach(dbenv)) != 0)
-		goto err;
+	/* Initialize the DB list, and its mutex if appropriate. */
+	LIST_INIT(&dbenv->dblist);
+	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
+		if ((ret = __db_mutex_alloc(dbenv,
+		    dbenv->reginfo, (MUTEX **)&dbenv->dblist_mutexp)) != 0)
+			return (ret);
+		if ((ret = __db_mutex_init(dbenv,
+		    dbenv->dblist_mutexp, 0, MUTEX_THREAD)) != 0) {
+			__db_mutex_free(dbenv, dbenv->reginfo,
+			    dbenv->dblist_mutexp);
+			return (ret);
+		}
+	}
 
 	/*
 	 * Initialize the subsystems.  Transactions imply logging but do not
@@ -230,7 +287,18 @@ __dbenv_remove(dbenv, db_home, flags)
 
 	/* Validate arguments. */
 	if ((ret = __db_fchk(dbenv, "DBENV->remove", flags, OKFLAGS)) != 0)
-		return (ret);
+		goto err;
+
+	/*
+	 * A hard-to-debug error is calling DBENV->remove after open.  That's
+	 * not legal.  You have to close the original, already opened handle
+	 * and then allocate a new DBENV handle to use for DBENV->remove.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_OPEN_CALLED)) {
+		__db_err(dbenv,
+		    "DBENV handle opened, not usable for remove method.");
+		return (EINVAL);
+	}
 
 	/* Initialize the DB_ENV structure. */
 	if ((ret = __dbenv_config(dbenv, db_home, flags)) != 0)
@@ -396,6 +464,11 @@ __dbenv_refresh(dbenv)
 		if ((t_ret = __memp_close(dbenv)) != 0 && ret == 0)
 			ret = t_ret;
 	}
+
+	/* Discard DB list and its mutex. */
+	LIST_INIT(&dbenv->dblist);
+	if (dbenv->dblist_mutexp != NULL)
+		__db_mutex_free(dbenv, dbenv->reginfo, dbenv->dblist_mutexp);
 
 	/* Detach from the region. */
 	if (dbenv->reginfo != NULL) {
@@ -572,9 +645,7 @@ retry:	switch (appname) {
 			tmp_create = 1;
 			goto tmp;
 		}
-		if (dbenv == NULL || !F_ISSET(dbenv, DB_ENV_OPEN_CALLED))
-			a = PATH_DOT;
-		else {
+		if (dbenv != NULL && F_ISSET(dbenv, DB_ENV_OPEN_CALLED)) {
 			a = dbenv->db_home;
 			if (dbenv->db_data_dir != NULL &&
 			    (b = dbenv->db_data_dir[++data_entry]) == NULL) {
@@ -767,6 +838,19 @@ illegal:	__db_err(dbenv, "mis-formatted name-value pair: %s", s);
 	    !strcasecmp(name, "db_data_dir"))		/* Compatibility. */
 		return (dbenv->set_data_dir(dbenv, value));
 
+	if (!strcasecmp(name, "set_flags")) {
+		if (sscanf(value, "%40s %c", arg, &v4) != 1)
+			goto badarg;
+
+		if (!strcasecmp(value, "db_cdb_alldb"))
+			return (dbenv->set_flags(dbenv, DB_CDB_ALLDB, 1));
+		if (!strcasecmp(value, "db_nommap"))
+			return (dbenv->set_flags(dbenv, DB_NOMMAP, 1));
+		if (!strcasecmp(value, "db_txn_nosync"))
+			return (dbenv->set_flags(dbenv, DB_TXN_NOSYNC, 1));
+		goto badarg;
+	}
+
 	if (!strcasecmp(name, "set_lg_bsize")) {
 		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
 			goto badarg;
@@ -803,6 +887,24 @@ illegal:	__db_err(dbenv, "mis-formatted name-value pair: %s", s);
 		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
 			goto badarg;
 		return (dbenv->set_lk_max(dbenv, v1));
+	}
+
+	if (!strcasecmp(name, "set_lk_max_locks")) {
+		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
+			goto badarg;
+		return (dbenv->set_lk_max_locks(dbenv, v1));
+	}
+
+	if (!strcasecmp(name, "set_lk_max_lockers")) {
+		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
+			goto badarg;
+		return (dbenv->set_lk_max_lockers(dbenv, v1));
+	}
+
+	if (!strcasecmp(name, "set_lk_max_objects")) {
+		if (sscanf(value, "%lu %c", &v1, &v4) != 1)
+			goto badarg;
+		return (dbenv->set_lk_max_objects(dbenv, v1));
 	}
 
 	if (!strcasecmp(name, "set_mp_mmapsize")) {

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test046.tcl,v 11.25 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test046.tcl,v 11.26 2000/08/25 14:21:56 sue Exp $
 #
 # DB Test 46: Overwrite test of small/big key/data with cursor checks.
 proc test046 { method args } {
@@ -39,11 +39,14 @@ proc test046 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test046.db
+		set env NULL
 	} else {
 		set testfile test046.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set oflags "-create -mode 0644 $args $omethod"
 	set db [eval {berkdb_open} $oflags $testfile.a]

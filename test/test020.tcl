@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test020.tcl,v 11.10 2000/04/21 18:36:24 krinsky Exp $
+#	$Id: test020.tcl,v 11.12 2000/10/19 23:15:22 ubell Exp $
 #
 # DB Test 20 {access method}
 # Test in-memory databases.
@@ -12,13 +12,27 @@ proc test020 { method {nentries 10000} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	if { [is_queueext $method] == 1 || \
+	    [is_rbtree $method] == 1 } {
+		puts "Test020 skipping for method $method"
+		return
+	}
 	puts "Test020: $method ($args) $nentries equal key/data pairs"
 
 	# Create the database and open the dictionary
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# Check if we are using an env.
+	if { $eindex == -1 } {
+		set env NULL
+	} else {
+		incr eindex
+		set env [lindex $args $eindex]
+	}
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod}]
 	error_check_good dbopen [is_valid_db $db] TRUE

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb001.tcl,v 11.11 2000/04/21 18:36:22 krinsky Exp $
+#	$Id: sdb001.tcl,v 11.12 2000/08/25 14:21:52 sue Exp $
 #
 # Sub DB Test 1 {access method}
 # Test non-subdb and subdb operations
@@ -20,7 +20,7 @@ proc subdb001 { method args } {
 	# Create the database and open the dictionary
 	set testfile $testdir/subdb001.db
 	set subdb subdb0
-	cleanup $testdir
+	cleanup $testdir NULL
 	puts "\tSubdb001.a: Non-subdb database and subdb operations"
 	#
 	# Create a db with no subdbs.  Add some data.  Close.  Try to
@@ -68,7 +68,7 @@ proc subdb001 { method args } {
 	# Create a db with no subdbs.  Add no data.  Close.  Try to
 	# open/add with a subdb.  Should fail.
 	#
-	cleanup $testdir
+	set testfile $testdir/subdb001a.db
 	puts "\tSubdb001.a.1: Create db, close, try subdb"
 	set db [eval {berkdb_open -create -truncate -mode 0644} $args \
 	    {$omethod $testfile}]
@@ -88,7 +88,6 @@ proc subdb001 { method args } {
 	# Test naming, db and subdb names beginning with -.
 	#
 	puts "\tSubdb001.b: Naming"
-	cleanup $testdir
 	set cwd [pwd]
 	cd $testdir
 	set testfile1 -subdb001.db
@@ -110,8 +109,7 @@ proc subdb001 { method args } {
 	# the same name.  Should fail.
 	#
 	puts "\tSubdb001.c: Existence check"
-	cleanup $testdir
-	set testfile $testdir/subdb001.db
+	set testfile $testdir/subdb001c.db
 	set subdb subdb
 	set ret [catch {eval {berkdb_open -create -excl -mode 0644} $args \
 	    {$omethod $testfile $subdb}} db]

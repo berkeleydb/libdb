@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test033.tcl,v 11.9 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test033.tcl,v 11.11 2000/10/25 15:45:20 sue Exp $
 #
 # DB Test 33 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -32,13 +32,16 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum 33} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open -create -truncate -mode 0644 \
 		$omethod -dup} $args {$testfile}]
@@ -50,7 +53,7 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum 33} args } {
 	set txn ""
 	set count 0
 
-	puts "Test0$tnum.a: Put/get loop."
+	puts "\tTest0$tnum.a: Put/get loop."
 	# Here is the loop where we put and get each key/data pair
 	while { [gets $did str] != -1 && $count < $nentries } {
 		for { set i 1 } { $i <= $ndups } { incr i } {
@@ -78,7 +81,7 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum 33} args } {
 
 	set did [open $dict]
 	set count 0
-	puts "Test0$tnum.b: Verifying DB_GET_BOTH after creation."
+	puts "\tTest0$tnum.b: Verifying DB_GET_BOTH after creation."
 	while { [gets $did str] != -1 && $count < $nentries } {
 		# Now retrieve all the keys matching this key and dup
 		for {set i 1} {$i <= $ndups } { incr i } {

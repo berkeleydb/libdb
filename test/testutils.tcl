@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: testutils.tcl,v 11.65 2000/06/06 18:06:32 krinsky Exp $
+#	$Id: testutils.tcl,v 11.86 2001/01/18 23:21:14 krinsky Exp $
 #
 # Test system utilities
 #
@@ -490,6 +490,15 @@ proc replicate { str times } {
 	return $res
 }
 
+proc repeat { str n } {
+	set ret ""
+	while { $n > 0 } {
+		set ret $str$ret
+		incr n -1
+	}
+	return $ret
+}
+
 proc isqrt { l } {
 	set s [expr sqrt($l)]
 	set ndx [expr [string first "." $s] - 1]
@@ -967,31 +976,127 @@ proc esetup { dir } {
 	error_check_good lock_close [$lp close] 0
 }
 
-proc cleanup { dir } {
+proc cleanup { dir env } {
 	global gen_upgrade
 	global upgrade_dir
 	global upgrade_be
 	global upgrade_method
+	global upgrade_name
 	source ./include.tcl
 
 	if { $gen_upgrade == 1 } {
+		set vers [berkdb version]
+		set maj [lindex $vers 0]
+		set min [lindex $vers 1]
+
 		if { $upgrade_be == 1 } {
-			set version_dir "3.1be"
+			set version_dir "$maj.${min}be"
 		} else {
-			set version_dir "3.1le"
+			set version_dir "$maj.${min}le"
 		}
 
-		catch {exec \
-		    mkdir -p $upgrade_dir/$version_dir/$upgrade_method}
-		catch {exec sh -c \
-		    "mv $dir/*.db $upgrade_dir/$version_dir/$upgrade_method"}
+		set dest $upgrade_dir/$version_dir/$upgrade_method/$upgrade_name
+
+		catch {exec mkdir -p $dest}
+		catch {exec sh -c "mv $dir/*.db $dest"}
+		catch {exec sh -c "mv $dir/__dbq.* $dest"}
 	}
 
 #	check_handles
+	set remfiles {}
 	set ret [catch { glob $dir/* } result]
 	if { $ret == 0 } {
-		eval fileremove -f $result
+		foreach file $result {
+			#
+			# We:
+			# - Ignore any env-related files, which are
+			# those that have __db.* or log.* if we are
+			# running in an env.
+			# - Call 'dbremove' on any databases.
+			# Remove any remaining temp files.
+			#
+			switch -glob -- $file {
+			*/__db.* -
+			*/log.*	{
+				if { $env != "NULL" } {
+					continue
+				} else {
+					lappend remfiles $file
+				}
+				}
+			*.db	{
+				set envargs ""
+				if { $env != "NULL"} {
+					set file [file tail $file]
+					set envargs " -env $env "
+				}
+
+				# If a database is left in a corrupt
+				# state, dbremove might not be able to handle
+				# it (it does an open before the remove).
+				# Be prepared for this, and if necessary,
+				# just forcibly remove the file with a warning
+				# message.
+				set ret [catch \
+				    {eval {berkdb dbremove} $envargs $file} res]
+				if { $ret != 0 } {
+					puts \
+				    "FAIL: dbremove in cleanup failed: $res"
+					lappend remfiles $file
+				}
+				}
+			default	{
+				lappend remfiles $file
+				}
+			}
+		}
+		if {[llength $remfiles] > 0} {
+			eval fileremove -f $remfiles
+		}
 	}
+}
+
+proc log_cleanup { dir } {
+	source ./include.tcl
+
+	set files [glob -nocomplain $dir/log.*]
+	if { [llength $files] != 0} {
+		foreach f $files {
+			fileremove -f $f
+		}
+	}
+}
+
+proc env_cleanup { dir } {
+	source ./include.tcl
+
+	set stat [catch {berkdb envremove -home $dir} ret]
+	#
+	# If something failed and we are left with a region entry
+	# in /dev/shmem that is zero-length, the envremove will
+	# succeed, and the shm_unlink will succeed, but it will not
+	# remove the zero-length entry from /dev/shmem.  Remove it
+	# using fileremove or else all other tests using an env
+	# will immediately fail.
+	#
+	if { $is_qnx_test == 1 } {
+		set region_files [glob -nocomplain /dev/shmem/$dir*]
+		if { [llength $region_files] != 0 } {
+			foreach f $region_files {
+				fileremove -f $f
+			}
+		}
+	}
+	log_cleanup $dir
+	cleanup $dir NULL
+}
+
+proc remote_cleanup { server dir localdir } {
+	set home [file tail $dir]
+	error_check_good cleanup:remove [berkdb envremove -home $home \
+	    -server $server] 0
+	catch {exec rsh $server rm -f $dir/*} ret
+	cleanup $localdir NULL
 }
 
 proc help { cmd } {
@@ -1038,7 +1143,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	global recd_op
 	source ./include.tcl
 
-#	puts "op_recover: $encodedop $dir $env_cmd $dbfile $cmd $msg"
+	#puts "op_recover: $encodedop $dir $env_cmd $dbfile $cmd $msg"
 
 	set init_file $dir/t1
 	set afterop_file $dir/t2
@@ -1065,6 +1170,8 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 
 	# Save the initial file and open the environment and the file
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.init } res
+	copy_extent_file $dir $dbfile init
+
 	set env [eval $env_cmd]
 	set db [berkdb open -env $env $dbfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -1084,36 +1191,24 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	set i [lsearch $cmd ENV]
 	if { $i != -1 } {
 		set exec_cmd [lreplace $exec_cmd $i $i $env]
-	} else {
-		set exec_cmd $exec_cmd
 	}
 
 	set i [lsearch $cmd TXNID]
 	if { $i != -1 } {
 		set exec_cmd [lreplace $exec_cmd $i $i $t]
-	} else {
-		set exec_cmd $exec_cmd
 	}
 
 	set i [lsearch $exec_cmd DB]
 	if { $i != -1 } {
 		set exec_cmd [lreplace $exec_cmd $i $i $db]
-	} else {
-		set exec_cmd $exec_cmd
 	}
 
-	# To test DB_CONSUME, we need a cursor.
-	set i [lsearch $exec_cmd CURSOR]
+	# To test DB_CONSUME, we need to expect a record return, not "0".
+	set i [lsearch $exec_cmd "-consume"]
 	if { $i	!= -1 } {
-		set dbc [$db cursor -txn $t]
-		# We also need to expect a record return, not "0".
 		set record_exec_cmd_ret 1
-		error_check_good dbc_open [is_valid_cursor $dbc $db] TRUE
-		set exec_cmd [lreplace $exec_cmd $i $i $dbc]
 	} else {
-		set dbc "NONE"
 		set record_exec_cmd_ret 0
-		set exec_cmd $exec_cmd
 	}
 
 	# For the DB_APPEND test, we need to expect a return other than
@@ -1137,16 +1232,13 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 
 	set record_exec_cmd_ret 0
 	set lenient_exec_cmd_ret 0
-	if { $dbc != "NONE" } {
-		error_check_good dbc_close [$dbc close] 0
-	}
 
 	# Sync the file so that we can capture a snapshot to test
 	# recovery.
-	#
 	error_check_good sync:$db [$db sync] 0
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.afterop } res
+	copy_extent_file $dir $dbfile afterop
 
 	#set tflags "-txn $t"
 	open_and_dump_file $dir/$dbfile.afterop NULL $tflags \
@@ -1177,6 +1269,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	    dump_file_direction "-first" "-next"
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.final } res
+	copy_extent_file $dir $dbfile final
 
 	# If this is an abort or prepare-abort, it should match the
 	#   original file.
@@ -1221,14 +1314,18 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	}
 
 	berkdb debug_check
-	puts -nonewline "\t\tAbout to run recovery ... "
+	puts -nonewline "\t\tRunning recovery ... "
 	flush stdout
 
-	set stat [catch {exec ./db_recover -h $dir -c} result]
+	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}
-	puts "complete"
+	puts -nonewline "complete ... "
+
+	error_check_good db_verify [verify_dir $testdir "\t\t" 0 1] 0
+
+	puts "verified"
 
 	berkdb debug_check
 	set env [eval $env_cmd]
@@ -1253,21 +1350,27 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	# recovery and try running recovery again.
 	reset_env $env
 	if { $op == "commit" || $op2 == "commit" } {
-	    catch { file copy -force $dir/$dbfile.init $dir/$dbfile } res
+		catch { file copy -force $dir/$dbfile.init $dir/$dbfile } res
+		move_file_extent $dir $dbfile init copy
 	} else {
 		catch { file copy -force $dir/$dbfile.afterop $dir/$dbfile } res
+		move_file_extent $dir $dbfile afterop copy
 	}
 
 	berkdb debug_check
 	puts -nonewline \
-	    "\t\tAbout to run recovery on pre-operation database ... "
+	    "\t\tRunning recovery on pre-op database ... "
 	flush stdout
 
-	set stat [catch {exec ./db_recover -h $dir -c} result]
+	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}
-	puts "complete"
+	puts -nonewline "complete ... "
+
+	error_check_good db_verify_preop [verify_dir $testdir "\t\t" 0 1] 0
+
+	puts "verified"
 
 	set env [eval $env_cmd]
 
@@ -1711,6 +1814,14 @@ proc convert_method { method } {
 		qam -
 		queue { return "-queue" }
 
+		-queueextent -
+		QUEUEEXTENT -
+		qe -
+		qamext -
+		-queueext -
+		queueextent - 
+		queueext { return "-queue" }
+
 		-frecno -
 		-recno -
 		-rrecno -
@@ -1754,6 +1865,8 @@ proc convert_args { method {largs ""} } {
 
 	if { $gen_upgrade == 1 && $upgrade_be == 1 } {
 		append largs " -lorder 4321 "
+	} elseif { $gen_upgrade == 1 && $upgrade_be != 1 } {
+		append largs " -lorder 1234 "
 	}
 
 	if { [is_rrecno $method] == 1 } {
@@ -1767,6 +1880,8 @@ proc convert_args { method {largs ""} } {
 		append largs " -dupsort "
 	} elseif { [is_dhash $method] == 1 } {
 		append largs " -dup "
+	} elseif { [is_queueext $method] == 1 } {
+		append largs " -extent 2 "
 	}
 
 	if {[is_fixed_length $method] == 1} {
@@ -1857,7 +1972,21 @@ proc is_dhash { method } {
 }
 
 proc is_queue { method } {
+	if { [is_queueext $method] == 1 } {
+		return 1
+	}
+
 	set names { -queue DB_QUEUE QUEUE db_queue q queue qam }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_queueext { method } {
+	set names { -queueextent queueextent QUEUEEXTENT qe qamext \
+	    queueext -queueext }
 	if { [lsearch $names $method] >= 0 } {
 		return 1
 	} else {
@@ -1971,7 +2100,11 @@ proc findfail { args } {
 
 # Sleep for s seconds.
 proc tclsleep { s } {
-	after [expr $s * 1000]
+	# On Windows, the system time-of-day clock may update as much
+	# as 55 ms late due to interrupt timing.  Don't take any
+	# chances;  sleep extra-long so that when tclsleep 1 returns,
+	# it's guaranteed to be a new second.
+	after [expr $s * 1000 + 56]
 }
 
 # Compare two files, a la diff.  Returns 1 if non-identical, 0 if identical.
@@ -2001,7 +2134,24 @@ proc filecmp { file_a file_b } {
 }
 
 # Verify all .db files in the specified directory.
-proc verify_dir { {directory "./TESTDIR"} { pref "" } } {
+proc verify_dir { \
+    {directory "./TESTDIR"} { pref "" } { noredo 0 } { quiet 0 } } {
+	# If we're doing database verification between tests, we don't
+	# want to do verification twice without an intervening cleanup--some
+	# test was skipped.  Always verify by default (noredo == 0) so
+	# that explicit calls to verify_dir during tests don't require
+	# cleanup commands.
+	if { $noredo == 1 } { 
+		if { [file exists $directory/NOREVERIFY] == 1 } {
+			if { $quiet == 0 } { 
+				puts "Skipping verification."
+			}
+			return
+		}
+		set f [open $directory/NOREVERIFY w]
+		close $f
+	}
+
 	if { [catch {glob $directory/*.db} dbs] != 0 } {
 		# No files matched
 		return
@@ -2013,15 +2163,20 @@ proc verify_dir { {directory "./TESTDIR"} { pref "" } } {
 	}
 	set errpfxarg {-errpfx "FAIL: verify" }
 	set errarg $errfilearg$errpfxarg
+	set ret 0
 	foreach db $dbs {
 		if { [catch {eval {berkdb dbverify} $errarg $db} res] != 0 } {
 			puts $res
 			puts "FAIL:[timestamp] Verification of $db failed."
+			set ret 1
 		} else {
 			error_check_good verify:$db $res 0
-			puts "${pref}Verification of $db succeeded."
+			if { $quiet == 0 } { 
+				puts "${pref}Verification of $db succeeded."
+			}
 		}
 	}
+	return $ret
 }
 
 # Generate randomly ordered, guaranteed-unique four-character strings that can
@@ -2156,4 +2311,70 @@ proc check_handles { {outf stdout} } {
 
 proc open_handles { } {
 	return [llength [berkdb handles]]
+}
+
+proc move_file_extent { dir dbfile tag op } {
+	set files [get_extfiles $dir $dbfile $tag]
+	foreach extfile $files {
+		set i [string last "." $extfile]
+		incr i
+		set extnum [string range $extfile $i end]
+		set dbq [make_ext_filename $dir $dbfile $extnum]
+		#
+		# We can either copy or rename
+		#
+		file $op -force $extfile $dbq
+	}
+}
+
+proc copy_extent_file { dir dbfile tag { op copy } } {
+	set files [get_extfiles $dir $dbfile ""]
+	foreach extfile $files {
+		set i [string last "." $extfile]
+		incr i
+		set extnum [string range $extfile $i end]
+		file $op -force $extfile $dir/__dbq.$dbfile.$tag.$extnum
+	}
+}
+
+proc get_extfiles { dir dbfile tag } {
+	if { $tag == "" } {
+		set filepat $dir/__dbq.$dbfile.\[0-9\]*
+	} else {
+		set filepat $dir/__dbq.$dbfile.$tag.\[0-9\]*
+	}
+	return [glob -nocomplain -- $filepat]
+}
+
+proc make_ext_filename { dir dbfile extnum } {
+	return $dir/__dbq.$dbfile.$extnum
+}
+
+# All pids for Windows 9X are negative values.  When we want to have
+# unsigned int values, unique to the process, we'll take the absolute
+# value of the pid.  This avoids unsigned/signed mistakes, yet
+# guarantees uniqueness, since each system has pids that are all
+# either positive or negative.
+#
+proc sanitized_pid { } {
+	set mypid [pid]
+	if { $mypid < 0 } {
+		set mypid [expr - $mypid]
+	}
+	puts "PID: [pid] $mypid\n"
+	return $mypid
+}
+
+#
+# Extract the page size field from a stat record.  Return -1 if
+# none is found.
+#
+proc get_pagesize { stat } {
+	foreach field $stat {
+		set title [lindex $field 0]
+		if {[string compare $title "Page size"] == 0} {
+			return [lindex $field 1]
+		}
+	}
+	return -1
 }

@@ -1,5 +1,4 @@
- 
-<!--$Id: db_put.so,v 11.9 1999/12/20 08:52:34 bostic Exp $-->
+<!--$Id: db_put.so,v 11.10 2000/06/12 17:50:01 sue Exp $-->
 <!--$Id: m4.tcl,v 11.17 2000/04/24 17:31:11 sue Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
@@ -10,7 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1><i>db</i> <b>put</b></h1>
@@ -63,6 +62,9 @@ records.
 (the record number is returned if the <b>-append</b> option was specified).
 If an error occurs, a Berkeley DB error message is returned or a Tcl error is
 thrown.
+<p>If the underlying database is a Queue or Recno database, then the given
+key will be interpreted by Tcl as an integer.  For all other database
+types, the key is interpreted by Tcl as a byte array.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_tcl/tcl_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 11.17.2.1 2000/06/09 14:11:32 bostic Exp $
+ * $Id: ex_tpcb.c,v 11.21 2000/10/27 20:32:00 dda Exp $
  */
 
 #include "db_config.h"
@@ -29,7 +29,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
+#ifdef DB_WIN32
 #include <sys/types.h>
 #include <sys/timeb.h>
 #endif
@@ -50,6 +50,7 @@ int	  tp_txn __P((DB_ENV *, DB *, DB *, DB *, DB *, int, int, int, int));
 #ifdef HAVE_VXWORKS
 #define	ERROR_RETURN	ERROR
 #define	HOME	"/vxtmp/vxtmp/TESTDIR"
+#define	VXSHM_KEY	13
 int	  ex_tpcb_init __P(());
 int	  ex_tpcb __P(());
 #else
@@ -346,6 +347,12 @@ db_init(home, prefix, cachesize, initializing, flags)
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, prefix);
+#ifdef HAVE_VXWORKS
+	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
+		dbenv->err(dbenv, ret, "set_shm_key");
+		return (NULL);
+	}
+#endif
 	(void)dbenv->set_cachesize(dbenv, 0,
 	    cachesize == 0 ? 4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
 
@@ -603,7 +610,7 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 	double gtps, itps;
 	int failed, ifailed, ret, txns;
 	time_t starttime, curtime, lasttime;
-#ifndef _WIN32
+#ifndef DB_WIN32
 	pid_t pid;
 
 	pid = getpid();

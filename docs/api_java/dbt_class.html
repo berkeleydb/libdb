@@ -1,5 +1,4 @@
- 
-<!--$Id: dbt_class.so,v 10.29 2000/05/16 19:00:37 bostic Exp $-->
+<!--$Id: dbt_class.so,v 10.33 2000/12/18 21:05:13 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>Dbt</h1>
@@ -55,6 +54,7 @@ public class Dbt extends Object
 <h1>Description</h1>
 <p>This manual page describes the specific details of the Dbt class,
 used to encode keys and data items in a database.
+        <a name="3"><!--meow--></a>    
 <h3>Key/Data Pairs</h3>
 <p>Storage and retrieval for the Db access methods are based on
 key/data pairs.  Both key and data items are represented by Dbt
@@ -121,9 +121,9 @@ Dbt.set_flags.
 <p>The <b>flags</b> value must be set by bitwise inclusively <b>OR</b>'ing together one or more of the
 following values.
 <p><dl compact>
-<p><dt><a name="Db.DB_DBT_MALLOC">Db.DB_DBT_MALLOC</a><dd>Ignored except when retrieving information from a database (a
-<a href="../api_java/db_get.html">Db.get</a> or <a href="../api_java/dbc_get.html">Dbc.get</a> call).  When this flag is set Berkeley DB
-will allocate memory for the returned key or data item and return a byte array containing the data in the <b>data</b> field of
+<p><dt><a name="Db.DB_DBT_MALLOC">Db.DB_DBT_MALLOC</a><dd>When this flag is set Berkeley DB will allocate memory for the returned key
+or data item
+and return a byte array containing the data in the <b>data</b> field of
 the key or data Dbt object.
 <p>If Db.DB_DBT_MALLOC is specified, Berkeley DB allocates a properly sized
 byte array to contain the data.  This can be convenient if you know little
@@ -138,20 +138,16 @@ whenever your retrieval API call
 throws a <a href="../api_java/mem_class.html">DbMemoryException</a>.
 <p>It is an error to specify more than one of Db.DB_DBT_MALLOC,
 Db.DB_DBT_REALLOC and Db.DB_DBT_USERMEM.
-<p><dt><a name="Db.DB_DBT_REALLOC">Db.DB_DBT_REALLOC</a><dd>Ignored except when retrieving information from a database (a
-<a href="../api_java/db_get.html">Db.get</a> or <a href="../api_java/dbc_get.html">Dbc.get</a> call).  When this flag is set Berkeley DB
+<p><dt><a name="Db.DB_DBT_REALLOC">Db.DB_DBT_REALLOC</a><dd>When this flag is set Berkeley DB
 will return the data in the <b>data</b> field of the key or data
 Dbt object, reusing the existing byte array if it is large
 enough, or allocating a new one of the appropriate size.
 <p>It is an error to specify more than one of Db.DB_DBT_MALLOC,
 Db.DB_DBT_REALLOC and Db.DB_DBT_USERMEM.
-<p><dt><a name="Db.DB_DBT_USERMEM">Db.DB_DBT_USERMEM</a><dd>Ignored except when retrieving information from a database, e.g., a
-<a href="../api_java/db_get.html">Db.get</a> or <a href="../api_java/dbc_get.html">Dbc.get</a> call.
-The <b>data</b> field of the key or data object must reference memory
-that is at least <b>ulen</b> bytes in length.
-If the length of the requested item is less than or equal to that number
-of bytes, the item is copied into the memory referenced by the <b>data</b>
-field.
+<p><dt><a name="Db.DB_DBT_USERMEM">Db.DB_DBT_USERMEM</a><dd>The <b>data</b> field of the key or data object must reference memory
+that is at least <b>ulen</b> bytes in length.  If the length of the
+requested item is less than or equal to that number of bytes, the item
+is copied into the memory referenced by the <b>data</b> field.
 Otherwise, the <b>size</b> field is set to the length needed for the
 requested item, and the error ENOMEM is returned.
 <p>If Db.DB_DBT_USERMEM is specified, the data field of the Dbt
@@ -171,13 +167,12 @@ Db.DB_DBT_USERMEM.  Even if you don't know the maximum size, you can
 use this option and reallocate your array whenever your retrieval API call
 throws a <a href="../api_java/mem_class.html">DbMemoryException</a>.
 <p><dl compact>
-<p><dt><a name="Db.DB_DBT_PARTIAL">Db.DB_DBT_PARTIAL</a><dd>Ignored except when specified for a data parameter, where this flag causes
-the partial retrieval or storage of an item.
-If the calling application is doing a get, the <b>dlen</b> bytes starting
-<b>doff</b> bytes from the beginning of the retrieved data record are
-returned as if they comprised the entire record.
-If any or all of the specified bytes do not exist in the record,
-the get is successful and the existing bytes or 0 bytes are returned.
+<p><dt><a name="Db.DB_DBT_PARTIAL">Db.DB_DBT_PARTIAL</a><dd>Do partial retrieval or storage of an item.  If the calling application
+is doing a get, the <b>dlen</b> bytes starting <b>doff</b> bytes from
+the beginning of the retrieved data record are returned as if they
+comprised the entire record.  If any or all of the specified bytes do
+not exist in the record, the get is successful and the existing bytes
+or nul bytes are returned.
 <p>For example, if the data portion of a retrieved record was 100 bytes,
 and a partial retrieval was done using a Dbt having a <b>dlen</b>
 field of 20 and a <b>doff</b> field of 85, the get call would succeed,
@@ -208,6 +203,7 @@ bytes would be those specified by the put call.
 set_offset method can be used to specify unaligned addresses.  Unaligned
 address accesses that are not supported by the underlying hardware may be
 reported as an exception, or may stop the running Java program.
+        <a name="4"><!--meow--></a>    
 <h3>Logical Record Numbers</h3>
 <p>In all cases for the Queue and Recno access methods, and when calling the
 <a href="../api_java/db_get.html">Db.get</a> and <a href="../api_java/dbc_get.html">Dbc.get</a> functions with the

@@ -3,7 +3,7 @@
 /* Header for class com_sleepycat_db_DbEnv */
 
 #ifndef _Included_com_sleepycat_db_DbEnv
-#define _Included_com_sleepycat_db_DbEnv
+#define	_Included_com_sleepycat_db_DbEnv
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,10 +34,10 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_errx
 /*
  * Class:     com_sleepycat_db_DbEnv
  * Method:    _finalize
- * Signature: ()V
+ * Signature: (Lcom/sleepycat/db/DbErrcall;Ljava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1finalize
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jobject, jstring);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
@@ -89,18 +89,18 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1cachesize
 
 /*
  * Class:     com_sleepycat_db_DbEnv
- * Method:    set_errcall
+ * Method:    _set_errcall
  * Signature: (Lcom/sleepycat/db/DbErrcall;)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1errcall
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1set_1errcall
   (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
- * Method:    set_errpfx
+ * Method:    _set_errpfx
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1errpfx
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1set_1errpfx
   (JNIEnv *, jobject, jstring);
 
 /*
@@ -177,6 +177,30 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1max
 
 /*
  * Class:     com_sleepycat_db_DbEnv
+ * Method:    set_lk_max_lockers
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1max_1lockers
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
+ * Method:    set_lk_max_locks
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1max_1locks
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
+ * Method:    set_lk_max_objects
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1max_1objects
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
  * Method:    set_mp_mmapsize
  * Signature: (J)V
  */
@@ -189,7 +213,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1mp_1mmapsize
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1mutexlocks
-  (JNIEnv *, jclass, jint);
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
@@ -225,6 +249,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1region_1init
 
 /*
  * Class:     com_sleepycat_db_DbEnv
+ * Method:    set_flags
+ * Signature: (II)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1flags
+  (JNIEnv *, jobject, jint, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
  * Method:    set_server
  * Signature: (Ljava/lang/String;JJI)V
  */
@@ -254,6 +286,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1tas_1spins
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1tmp_1dir
   (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     com_sleepycat_db_DbEnv
+ * Method:    tx_recover_changed
+ * Signature: (Lcom/sleepycat/db/DbTxnRecover;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_tx_1recover_1changed
+  (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_sleepycat_db_DbEnv
@@ -450,9 +490,9 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1begin
 /*
  * Class:     com_sleepycat_db_DbEnv
  * Method:    txn_checkpoint
- * Signature: (III)V
+ * Signature: (III)I
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_txn_1checkpoint
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_txn_1checkpoint
   (JNIEnv *, jobject, jint, jint, jint);
 
 /*

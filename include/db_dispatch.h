@@ -32,14 +32,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.h,v 11.11 2000/05/07 14:00:33 bostic Exp $
+ * $Id: db_dispatch.h,v 11.17 2000/12/14 07:39:13 ubell Exp $
  */
 
-#ifndef _DB_DISPATCH_H
-#define	_DB_DISPATCH_H
-
-struct __db_txnhead;	typedef struct __db_txnhead DB_TXNHEAD;
-struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
+#ifndef _DB_DISPATCH_H_
+#define	_DB_DISPATCH_H_
 
 /*
  * Declarations and typedefs for the list of transaction IDs used during
@@ -54,12 +51,13 @@ struct __db_txnhead {
 
 #define	TXNLIST_INVALID_ID	0xffffffff
 struct __db_txnlist {
-	enum { TXNLIST_DELETE, TXNLIST_TXNID } type;
+	db_txnlist_type type;
 	LIST_ENTRY(__db_txnlist) links;
 	union {
 		struct {
 			u_int32_t txnid;
 			int32_t	generation;
+			int32_t aborted;
 		} t;
 		struct {
 #define	TXNLIST_FLAG_DELETED	0x1
@@ -69,8 +67,28 @@ struct __db_txnlist {
 			u_int32_t count;
 			char *fname;
 		} d;
+		struct {
+			int32_t ntxns;
+			int32_t maxn;
+			DB_LSN *lsn_array;
+		} l;
+		struct {
+			int32_t nentries;
+			int32_t maxentry;
+			char *fname;
+			int32_t fileid;
+			db_pgno_t *pgno_array;
+			u_int8_t uid[DB_FILE_ID_LEN];
+		} p;
 	} u;
 };
+
+/*
+ * Flag value for __db_txnlist_lsnadd. Distinguish whether we are replacing
+ * an entry in the transaction list or adding a new one.
+ */
+
+#define	TXNLIST_NEW	0x1
 
 #define	DB_user_BEGIN		10000
 

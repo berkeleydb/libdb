@@ -21,6 +21,7 @@ and some are higher level functions that are useful to provide the user.
 <I>mode</I>] [-errfile <I>filename</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-dup] [-dupsort] [-recnum] [-renumber] [-revsplitoff]
 [-snapshot]</B>
+<BR><B>&nbsp;&nbsp;&nbsp; [-extent <I>size</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-ffactor <I>density</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-nelem <I>size</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-lorder <I>order</I>]</B>
@@ -116,6 +117,12 @@ splitting of pages on deletion</LI>
 <B>-snapshot </B>selects the DB_SNAPSHOT flag to support database snapshots</LI>
 
 <LI>
+<B>-extent </B>sets the size of a Queue database extent to the given <B><I>size
+</I></B>using
+the <A HREF="../../docs/api_c/db_set_q_extentsize.html">DB->set_q_extentsize</A>
+method</LI>
+
+<LI>
 <B>-ffactor</B> sets the hash table key density to the given <B><I>density
 </I></B>using
 the <A HREF="../../docs/api_c/db_set_h_ffactor.html">DB->set_h_ffactor</A>
@@ -182,9 +189,9 @@ method</LI>
 <P>This command will invoke the <A HREF="../../docs/api_c/db_upgrade.html">DB->upgrade</A>
 function.&nbsp; If the command is given the <B>-env</B> option, then we
 will accordingly upgrade the database filename within the context of that
-environment. The <B>-dupsort</B> option selects the DB_DUPSORT&nbsp;flag
-for upgrading. The use of --<B> </B>terminates the list of options, thus
-allowing filenames beginning with a dash.
+environment. The <B>-dupsort</B> option selects the DB_DUPSORT flag for
+upgrading. The use of --<B> </B>terminates the list of options, thus allowing
+filenames beginning with a dash.
 <P>
 <HR WIDTH="100%"><B>> berkdb verify [-env <I>env</I>] [--] [<I>filename</I>]</B>
 <P>This command will invoke the <A HREF="../../docs/api_c/db_verify.html">DB->verify</A>
@@ -227,7 +234,6 @@ key, <B><I>equal</I></B> is the percentage equal to the given key and <B><I>grea
 is the percentage greater than the given key.&nbsp; If the -txn option
 is specified it performs this operation under transaction protection.
 <BR>
-
 <HR WIDTH="100%"><B>> <I>db</I> put</B>
 <P>The <B>undocumented</B> options are:
 <UL>
@@ -242,9 +248,8 @@ database has been configured to support sorted duplicates.</LI>
 <P>The <B>undocumented</B> options are:
 <UL>
 <LI>
-<B>-cachedcounts</B>
-This flag causes DB to return the cached key/record counts, similar to
-the DB_CACHED_COUNTS flags to DB->stat.
+<B>-cachedcounts</B> This flag causes DB to return the cached key/record
+counts, similar to the DB_CACHED_COUNTS flags to DB->stat.</LI>
 </UL>
 
 <HR WIDTH="100%"><B>> <I>dbc</I> put</B>

@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_join.c,v 11.27 2000/05/22 19:17:33 bostic Exp $";
+static const char revid[] = "$Id: db_join.c,v 11.31 2000/12/20 22:41:54 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #endif
@@ -91,11 +90,8 @@ __db_join(primary, curslist, dbcp, flags)
 
 	PANIC_CHECK(primary->dbenv);
 
-	if ((ret = __db_joinchk(primary, flags)) != 0)
+	if ((ret = __db_joinchk(primary, curslist, flags)) != 0)
 		return (ret);
-
-	if (curslist == NULL || curslist[0] == NULL)
-		return (EINVAL);
 
 	dbc = NULL;
 	jc = NULL;
@@ -222,9 +218,9 @@ __db_join(primary, curslist, dbcp, flags)
 
 	*dbcp = dbc;
 
-	MUTEX_THREAD_LOCK(primary->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, primary->mutexp);
 	TAILQ_INSERT_TAIL(&primary->join_queue, dbc, links);
-	MUTEX_THREAD_UNLOCK(primary->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, primary->mutexp);
 
 	return (0);
 
@@ -603,9 +599,9 @@ __db_join_close(dbc)
 	 * must happen before any action that can fail and return, or else
 	 * __db_close may loop indefinitely.
 	 */
-	MUTEX_THREAD_LOCK(dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbp->dbenv, dbp->mutexp);
 	TAILQ_REMOVE(&dbp->join_queue, dbc, links);
-	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
 
 	PANIC_CHECK(dbc->dbp->dbenv);
 
@@ -664,10 +660,9 @@ __db_join_getnext(dbc, key, data, exhausted)
 	int ret, cmp;
 	DB *dbp;
 	DBT ldata;
-	int (*func) __P((const DBT *, const DBT *));
+	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
-
 	func = (dbp->dup_compare == NULL) ? __bam_defcmp : dbp->dup_compare;
 
 	switch (exhausted) {
@@ -677,7 +672,7 @@ __db_join_getnext(dbc, key, data, exhausted)
 		F_SET(&ldata, DB_DBT_MALLOC);
 		if ((ret = dbc->c_get(dbc, key, &ldata, DB_CURRENT)) != 0)
 			break;
-		cmp = func(data, &ldata);
+		cmp = func(dbp, data, &ldata);
 		if (cmp == 0) {
 			/*
 			 * We have to return the real data value.  Copy

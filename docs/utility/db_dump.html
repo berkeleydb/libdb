@@ -1,5 +1,4 @@
- 
-<!--$Id: db_dump.so,v 10.25 2000/04/03 20:10:39 bostic Exp $-->
+<!--$Id: db_dump.so,v 10.26 2000/09/04 16:00:50 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>db_dump</h1>
@@ -23,7 +22,7 @@
 	[<b>-f output</b>] [<b>-h home</b>] [<b>-s database</b>] file
 db_dump185 [<b>-p</b>] [<b>-f output</b>] file</pre></h3>
 <h1>Description</h1>
-<a name="3"><!--meow--></a>
+        <a name="3"><!--meow--></a>    
 <p>The db_dump utility reads the database file <b>file</b> and
 writes it to the standard output using a portable flat-text format
 understood by the <a href="../utility/db_load.html">db_load</a> utility.  The argument <b>file</b>
@@ -99,6 +98,10 @@ environment, db_dump should always be given the chance to detach from
 the environment and exit gracefully.  To cause db_dump to release all
 environment resources and exit cleanly, send it an interrupt signal
 (SIGINT).
+<p>When using an Berkeley DB database environment, the db_dump utility
+does not configure for any kind of database locking and so should not
+be used with active Berkeley DB environments.  If db_dump is used in
+an active database environment, corruption may result.
 <p>The db_dump utility exits 0 on success, and &gt;0 if an error occurs.
 <p>The <a href="../utility/db_dump.html">db_dump185</a> utility exits 0 on success, and &gt;0 if an error occurs.
 <h1>Environment Variables</h1>

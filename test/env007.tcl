@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env007.tcl,v 11.4 2000/05/22 14:23:36 sue Exp $
+#	$Id: env007.tcl,v 11.5 2000/08/25 14:21:50 sue Exp $
 #
 # Env Test 007
 # Test various config file options.
@@ -47,7 +47,7 @@ proc env007 { } {
 		set statcmd [lindex $item 5]
 		set statstr [lindex $item 6]
 
-		cleanup $testdir
+		env_cleanup $testdir
 		# First verify using just env args
 		puts "\t$msg Environment argument only"
 		set env [eval $e $envarg $envval]
@@ -55,7 +55,7 @@ proc env007 { } {
 		env007_check $env $statcmd $statstr $envval
 		error_check_good envclose:0 [$env close] 0
 
-		cleanup $testdir
+		env_cleanup $testdir
 		env007_make_config $configarg $configval
 
 		#  verify using just config file

@@ -10,6 +10,17 @@ my $DB_NAME ;
 my $LIBS ;
 my $COMPAT185 = "" ;
 
+my @files = ('DB_File.pm', glob "t/*.t") ;
+# See if warnings is available
+eval 'use warnings;';
+if ($@) {
+    # not there, so write a dummy warnings.pm
+    oldWarnings(@files) ;
+} else {
+    # is there, 
+    newWarnings(@files) ;
+}
+
 ParseCONFIG() ;
 
 if (defined $DB_NAME)
@@ -124,6 +135,53 @@ EOM
 
     print "Looks Good.\n" ;
 
+}
+
+sub oldWarnings
+{
+    local ($^I) = ".bak" ;
+    local (@ARGV) = @_ ;
+
+    while (<>)
+    {
+	if (/^__END__/)
+	{
+	    print ;
+	    my $this = $ARGV ;
+    	    while (<>)
+	    {
+		last if $ARGV ne $this ;
+		print ;
+	    }
+	}
+
+	s/^(\s*)(no\s+warnings)/${1}local (\$^W) = 0; #$2/ ;
+	s/^(\s*)(use\s+warnings)/${1}local (\$^W) = 1; #$2/ ;
+	print ;
+    }
+}
+
+sub newWarnings
+{
+    local ($^I) = ".bak" ;
+    local (@ARGV) = @_ ;
+
+    while (<>)
+    {
+	if (/^__END__/)
+	{
+	    my $this = $ARGV ;
+	    print ;
+    	    while (<>)
+	    {
+		last if $ARGV ne $this ;
+		print ;
+	    }
+	}
+
+	s/^(\s*)local\s*\(\$\^W\)\s*=\s*\d+\s*;\s*#\s*((no|use)\s+warnings.*)/$1$2/ ;
+	print ;
+    }
 }
 
 # end of file Makefile.PL

@@ -8,41 +8,22 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_tas.c,v 11.10 2000/05/31 21:38:14 krinsky Exp $";
+static const char revid[] = "$Id: mut_tas.c,v 11.18 2000/11/30 00:58:41 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #endif
 
+/*
+ * This is where we load in the actual test-and-set mutex code.
+ */
+#define	LOAD_ACTUAL_MUTEX_CODE
 #include "db_int.h"
-
-#ifdef HAVE_MUTEX_68K_GCC_ASSEMBLY
-#include "68K.gcc"
-#endif
-#ifdef HAVE_MUTEX_ALPHA_GCC_ASSEMBLY
-#include "alpha.gcc"
-#endif
-#ifdef HAVE_MUTEX_HPPA_GCC_ASSEMBLY
-#include "parisc.gcc"
-#endif
-#ifdef HAVE_MUTEX_IA64_GCC_ASSEMBLY
-#include "ia64.gcc"
-#endif
-#ifdef HAVE_MUTEX_SCO_X86_CC_ASSEMBLY
-#include "sco.cc"
-#endif
-#ifdef HAVE_MUTEX_SPARC_GCC_ASSEMBLY
-#include "sparc.gcc"
-#endif
-#ifdef HAVE_MUTEX_X86_GCC_ASSEMBLY
-#include "x86.gcc"
-#endif
 
 #ifdef DIAGNOSTIC
 #undef	MSG1
@@ -92,6 +73,10 @@ __db_tas_mutex_init(dbenv, mutexp, flags)
 		return (__os_get_errno());
 
 	mutexp->spins = __os_spin();
+#ifdef MUTEX_SYSTEM_RESOURCES
+	mutexp->reg_off = INVALID_ROFF;
+#endif
+	F_SET(mutexp, MUTEX_INITED);
 
 	return (0);
 }
@@ -100,16 +85,17 @@ __db_tas_mutex_init(dbenv, mutexp, flags)
  * __db_tas_mutex_lock
  *	Lock on a mutex, logically blocking if necessary.
  *
- * PUBLIC: int __db_tas_mutex_lock __P((MUTEX *));
+ * PUBLIC: int __db_tas_mutex_lock __P((DB_ENV *, MUTEX *));
  */
 int
-__db_tas_mutex_lock(mutexp)
+__db_tas_mutex_lock(dbenv, mutexp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 {
 	u_long ms;
 	int nspins;
 
-	if (!DB_GLOBAL(db_mutexlocks) || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 	ms = 1;
@@ -122,7 +108,7 @@ relock:
 		if (!MUTEX_SET(&mutexp->tas))
 			continue;
 #ifdef HAVE_MUTEX_HPPA_MSEM_INIT
-		/* 
+		/*
 		 * HP semaphores are unlocked automatically when a holding
 		 * process exits.  If the mutex appears to be locked
 		 * (mutexp->locked != 0) but we got here, assume this has
@@ -136,7 +122,7 @@ relock:
 			mutexp->locked = (u_int32_t)getpid();
 			goto relock;
 		}
-		/* 
+		/*
 		 * If we make it here, locked == 0, the diagnostic won't fire,
 		 * and we were really unlocked by someone calling the
 		 * DB mutex unlock function.
@@ -172,13 +158,14 @@ relock:
  * __db_tas_mutex_unlock --
  *	Release a lock.
  *
- * PUBLIC: int __db_tas_mutex_unlock __P((MUTEX *));
+ * PUBLIC: int __db_tas_mutex_unlock __P((DB_ENV *, MUTEX *));
  */
 int
-__db_tas_mutex_unlock(mutexp)
+__db_tas_mutex_unlock(dbenv, mutexp)
+	DB_ENV *dbenv;
 	MUTEX *mutexp;
 {
-	if (!DB_GLOBAL(db_mutexlocks) || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 #ifdef DIAGNOSTIC
@@ -190,6 +177,24 @@ __db_tas_mutex_unlock(mutexp)
 #endif
 
 	MUTEX_UNSET(&mutexp->tas);
+
+	return (0);
+}
+
+/*
+ * __db_tas_mutex_destroy --
+ *	Destroy a MUTEX.
+ *
+ * PUBLIC: int __db_tas_mutex_destroy __P((MUTEX *));
+ */
+int
+__db_tas_mutex_destroy(mutexp)
+	MUTEX *mutexp;
+{
+	if (F_ISSET(mutexp, MUTEX_IGNORE))
+		return (0);
+
+	MUTEX_DESTROY(&mutexp->tas);
 
 	return (0);
 }

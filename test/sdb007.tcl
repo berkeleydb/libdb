@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: sdb007.tcl,v 11.11 2000/04/21 18:36:23 krinsky Exp $
+#	$Id: sdb007.tcl,v 11.13 2000/12/11 17:24:55 sue Exp $
 #
 # Sub DB Test 7 {access method}
 # Use the first 10,000 entries from the dictionary spread across each subdb.
@@ -21,6 +21,11 @@ proc subdb007 { method {nentries 10000} args } {
 		puts "Subdb007: skipping for method $method"
 		return
 	}
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Subdb007: skipping for specific pagesizes"
+		return
+	}
 
 	puts "Subdb007: $method ($args) subdb tests with different pagesizes"
 
@@ -30,7 +35,7 @@ proc subdb007 { method {nentries 10000} args } {
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	set t4 $testdir/t4
-	cleanup $testdir
+	cleanup $testdir NULL
 
 	set txn ""
 	set count 0

@@ -3,7 +3,7 @@
 # Copyright (c) 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test077.tcl,v 1.3 2000/04/21 18:36:27 krinsky Exp $
+#	$Id: test077.tcl,v 1.4 2000/08/25 14:21:58 sue Exp $
 #
 # DB Test 77: Test of DB_GET_RECNO [#1206].
 proc test077 { method { nkeys 1000 } { pagesize 512 } { tnum 77 } args } {
@@ -21,14 +21,17 @@ proc test077 { method { nkeys 1000 } { pagesize 512 } { tnum 77 } args } {
 	}
 
 	set data $alphabet
-	cleanup $testdir
 
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 
 	set db [eval {berkdb_open -create -truncate -mode 0644\
 	    -pagesize $pagesize} $omethod $args {$testfile}]

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test037.tcl,v 11.10 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test037.tcl,v 11.11 2000/08/25 14:21:55 sue Exp $
 #
 # Test037: RMW functionality.
 proc test037 { method {nentries 100} args } {
@@ -24,7 +24,7 @@ proc test037 { method {nentries 100} args } {
 	set omethod [convert_method $method]
 
 	# Create the database
-	cleanup $testdir
+	env_cleanup $testdir
 	set testfile test037.db
 
 	set local_env \

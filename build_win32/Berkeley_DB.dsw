@@ -38,6 +38,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -137,6 +140,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -152,6 +158,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -166,6 +175,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -197,6 +209,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -211,6 +226,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -227,6 +245,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -241,6 +262,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -290,6 +314,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -304,6 +331,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -320,6 +350,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -332,6 +365,12 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -344,6 +383,12 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -358,6 +403,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -374,6 +422,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -388,6 +439,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -404,6 +458,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -416,6 +473,12 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -428,6 +491,12 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -442,6 +511,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 
@@ -458,6 +530,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name DB_DLL
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -472,6 +547,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name DB_DLL
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name DB_Static
     End Project Dependency
 }}}
 

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_oflags.c,v 11.5 2000/02/14 03:00:05 bostic Exp $";
+static const char revid[] = "$Id: os_oflags.c,v 11.6 2000/10/27 20:32:02 dda Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -73,7 +73,7 @@ __db_omode(perm)
 	int mode;
 
 #ifndef	S_IRUSR
-#if defined(_WIN32) || defined(WIN16)
+#ifdef DB_WIN32
 #define	S_IRUSR	S_IREAD		/* R for owner */
 #define	S_IWUSR	S_IWRITE	/* W for owner */
 #define	S_IRGRP	0		/* R for group */
@@ -87,7 +87,7 @@ __db_omode(perm)
 #define	S_IWGRP	0000020		/* W for group */
 #define	S_IROTH	0000004		/* R for other */
 #define	S_IWOTH	0000002		/* W for other */
-#endif /* _WIN32 || WIN16 */
+#endif /* DB_WIN32 */
 #endif
 	mode = 0;
 	if (perm[0] == 'r')

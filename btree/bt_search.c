@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_search.c,v 11.28 2000/03/28 21:50:04 ubell Exp $";
+static const char revid[] = "$Id: bt_search.c,v 11.32 2001/01/17 20:19:46 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -83,7 +83,7 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 	db_pgno_t pg;
 	db_recno_t recno;
 	int adjust, cmp, deloffset, ret, stack;
-	int (*func) __P((const DBT *, const DBT *));
+	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
@@ -169,8 +169,8 @@ try_again:
 		for (base = 0,
 		    lim = NUM_ENT(h) / (db_indx_t)adjust; lim != 0; lim >>= 1) {
 			indx = base + ((lim >> 1) * adjust);
-			if ((ret = __bam_cmp(dbp,
-			    key, h, indx, func, &cmp)) != 0)
+			if ((ret =
+			    __bam_cmp(dbp, key, h, indx, func, &cmp)) != 0)
 				goto err;
 			if (cmp == 0) {
 				if (TYPE(h) == P_LBTREE || TYPE(h) == P_LDUP)
@@ -380,10 +380,8 @@ notfound:
 	(void)__TLPUT(dbc, lock);
 	ret = DB_NOTFOUND;
 
-err:	if (cp->csp > cp->sp) {
-		BT_STK_POP(cp);
-		__bam_stkrel(dbc, 0);
-	}
+err:	BT_STK_POP(cp);
+	__bam_stkrel(dbc, 0);
 	return (ret);
 }
 
@@ -421,6 +419,14 @@ __bam_stkrel(dbc, flags)
 			if ((t_ret = memp_fput(
 			    dbp->mpf, epg->page, 0)) != 0 && ret == 0)
 				ret = t_ret;
+			/*
+			 * XXX
+			 * Temporary fix for #3243 -- under certain deadlock
+			 * conditions we call here again and re-free the page.
+			 * The correct fix is to never release a stack that
+			 * doesn't hold items.
+			 */
+			epg->page = NULL;
 		}
 		if (epg->lock.off != LOCK_INVALID) {
 			if (LF_ISSET(STK_NOLOCK))

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_symlink,v 1.7 2000/05/08 17:57:38 bostic Exp $
+#	$Id: s_symlink,v 1.9 2000/09/05 21:27:04 bostic Exp $
 
 echo 'Creating Berkeley DB source tree symbolic links...'
 
@@ -66,6 +66,7 @@ build docs_src/ref/txn/spell.ok ../spell.ok
 build docs_src/ref/upgrade.2.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.1/spell.ok ../spell.ok
+build docs_src/ref/upgrade.3.2/spell.ok ../spell.ok
 build docs_src/ref/xa/spell.ok ../spell.ok
 build env/tags ../dist/tags
 build examples_c/tags ../dist/tags
@@ -74,6 +75,7 @@ build examples_java java/src/com/sleepycat/examples
 build hash/tags ../dist/tags
 build hsearch/tags ../dist/tags
 build include/tags ../dist/tags
+build libdb_java/tags ../dist/tags
 build lock/tags ../dist/tags
 build log/tags ../dist/tags
 build mp/tags ../dist/tags

@@ -5,7 +5,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: gen_rec.awk,v 11.22 2000/05/22 20:56:15 bostic Exp $
+# $Id: gen_rec.awk,v 11.26 2001/01/08 21:06:46 bostic Exp $
 #
 
 # This awk script generates all the log, print, and read routines for the DB
@@ -215,7 +215,8 @@ function log_function() {
 	printf("));\n") >> HFILE;
 
 	# Function declaration
-	printf("int __%s_log(dbenv, txnid, ret_lsnp, flags", funcname) >> CFILE;
+	printf("int\n__%s_log(dbenv, txnid, ret_lsnp, flags", \
+	    funcname) >> CFILE;
 	for (i = 0; i < nvars; i++) {
 		printf(",") >> CFILE;
 		if ((i % 6) == 0)
@@ -248,11 +249,12 @@ function log_function() {
 	printf("\tu_int8_t *bp;\n\n") >> CFILE;
 
 	# Initialization
-	printf("\tif (txnid != NULL &&\n") >> CFILE;
-	printf("\t    TAILQ_FIRST(&txnid->kids) != NULL &&") >> CFILE;
-	printf(" __txn_activekids(txnid) != 0)\n") >> CFILE;
-	printf("\t\treturn (__db_child_active_err(dbenv));\n") >> CFILE;
 	printf("\trectype = DB_%s;\n", funcname) >> CFILE;
+	printf("\tif (txnid != NULL &&\n") >> CFILE;
+	printf("\t    TAILQ_FIRST(&txnid->kids) != NULL &&\n") >> CFILE;
+	printf("\t    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)\n")\
+	    >> CFILE;
+	printf("\t\treturn (ret);\n") >> CFILE;
 	printf("\ttxn_num = txnid == NULL ? 0 : txnid->txnid;\n") >> CFILE;
 	printf("\tif (txnid == NULL) {\n") >> CFILE;
 	printf("\t\tZERO_LSN(null_lsn);\n") >> CFILE;
@@ -352,7 +354,7 @@ function print_function() {
 
 	# Get rid of complaints about unused parameters.
 	printf("\ti = 0;\n\tch = 0;\n") >> CFILE;
-	printf("\tnotused2 = 0;\n\tnotused3 = NULL;\n\n") >> CFILE;
+	printf("\tnotused2 = DB_TXN_ABORT;\n\tnotused3 = NULL;\n\n") >> CFILE;
 
 	# Call read routine to initialize structure
 	printf("\tif ((ret = __%s_read(dbenv, dbtp->data, &argp)) != 0)\n", \

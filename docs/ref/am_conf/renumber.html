@@ -1,82 +1,79 @@
- 
-<!--$Id: renumber.so,v 10.19 2000/03/18 21:43:09 bostic Exp $-->
+<!--$Id: renumber.so,v 10.23 2000/12/18 21:05:14 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Access Methods</title>
+<title>Berkeley DB Reference Guide: Logically renumbering records</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/bigpic.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Logically renumbering records</h1>
 <p>Records stored in the Queue and Recno access methods are accessed by
-logical record number.  Invariably in Queue databases, and by default in
-Recno databases, these record numbers are not mutable.  That is to say,
-if you delete record number 5, record number 6 is not automatically
-renumbered to be record number 5 and 7 renumbered to be record number 6
-and so on.  For this same reason, new records cannot be inserted between
-already-existing records.
-<p>Record numbers in Btree databases are always mutable, and as records are
-deleted or inserted, the logical record number for other records in the
-database can change.
-<p>In Recno databases, it is possible to make the logical record numbers
-mutable by calling the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function with the <a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a>
-flag.  This means that the record numbers may change as records
-are added to and deleted from the database.
-When record numbers are mutable, cursors behave quite a bit differently
-than usual.
-<p>For example, the deletion of record number 4 causes records numbered 5
-and greater to be renumbered downward by 1.  If a cursor is positioned at
-a record less than 4 before the deletion, it will be unchanged.  If a
-cursor is positioned at a record greater than 4 before the deletion, it
-will be shifted downward 1 logical record number, continuing to reference
-the same record as it did before.
-<p>If a cursor was positioned at record 4 when it was deleted, one of
-two things happens: if there were records greater than 4 when the
-delete happened, the cursor will suddenly reference what was
-previously record 5 and is now record number 4.  If there were no
-records greater than 4 when the delete happened, the cursor will
-suddenly reference record 3, that is, the largest record in the
-database that exists.  When a delete removes the single remaining
-record from a database, any open cursors will reference an invalid
-record number, and operations relative to the current cursor
-position, e.g., <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> with the <a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a> flag,
-will fail.
-<p>Similarly, if a created record is not at the end of the database, all
-records following the new record will be automatically renumbered upward
-by 1. For example, the creation of a new record numbered 8 causes records
-numbered 8 and greater to be renumbered upward by 1. If a cursor was
-positioned to record number 8 or greater before the insertion, it will be
-shifted upward 1 logical record, continuing to reference the same record
-as it did before.
-<p>For these reasons, concurrent access to a Recno database with the
-<a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a> flag specified is rarely useful (because threads of
-control may renumber records being accessed by other threads of control),
-although it is supported.
-<p>In the case of Queue and Recno databases where record numbers are not
-mutable, any attempt to retrieve deleted records will result in a special
-error return, <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.
-<p>When using both mutable and immutable record numbers, creating new records
-will cause the creation of multiple records if the record number is more
+logical record number.  In all cases in Btree databases, and optionally
+in Recno databases (see the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function and the
+<a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a> flag for more information), record numbers are
+mutable.  This means that the record numbers may change as records are
+added to and deleted from the database.  The deletion of record number
+4 causes any records numbered 5 and higher to be renumbered downward by
+1;  the addition of a new record after record number 4 causes any
+records numbered 5 and higher to be renumbered upward by 1.  In all
+cases in Queue databases, and by default in Recno databases, record
+numbers are not mutable, and the addition or deletion of records to the
+database will not cause already-existing record numbers to change.  For
+this reason, new records cannot be inserted between already-existing
+records in databases with immutable record numbers.
+<p>Cursors pointing into a Btree database or a Recno database with mutable
+record numbers maintain a reference to a specific record, rather than
+a record number, that is, the record they reference does not change as
+other records are added or deleted.  For example, if a database contains
+three records with the record numbers 1, 2, and 3, and the data items
+"A", "B", and "C", respectively, the deletion of record number 2 ("B")
+will cause the record "C" to be renumbered downward to record number 2.
+A cursor positioned at record number 3 ("C") will be adjusted and
+continue to point to "C" after the deletion.  Similarly, a cursor
+previously referencing the now deleted record number 2 will be
+positioned between the new record numbers 1 and 2, and an insertion
+using that cursor will appear between those records.   In this manner
+records can be added and deleted to a database without disrupting the
+sequential traversal of the database by a cursor.
+<p>Only cursors created using a single DB handle can adjust each
+other's position in this way, however.  If multiple DB handles
+have a renumbering Recno database open simultaneously (as when multiple
+processes share a single database environment), a record referred to by
+one cursor could change underfoot if a cursor created using another
+DB handle inserts or deletes records into the database.  For
+this reason, applications using Recno databases with mutable record
+numbers will usually make all accesses to the database using a single
+DB handle and cursors created from that handle, or will
+otherwise single-thread access to the database, e.g., by using the
+Berkeley DB Concurrent Data Store product.
+<p>In any Queue or Recno databases, creating new records will cause the
+creation of multiple records if the record number being created is more
 than one greater than the largest record currently in the database. For
 example, creating record number 28, when record 25 was previously the
-last record in the database, will implicitly create records 26 and 27 as
-well as 28.
-<p>First, last, next and previous cursor operations will automatically skip
-over implicitly created records.  For example, if record number 5 is the
-only record the application has created, implicitly creating records 1
-through 4, the <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> interface with the <a href="../../api_c/dbc_get.html#DB_FIRST">DB_FIRST</a> flag
-will return record number 5, not record number 1.  Attempts to explicitly
-retrieve records that were created in this manner will result in a special
-error return, <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/bigpic.html"><img src="../../images/next.gif" alt="Next"></a>
+last record in the database, will implicitly create records 26 and 27
+as well as 28.  All first, last, next and previous cursor operations
+will automatically skip over these implicitly created records.  So, if
+record number 5 is the only record the application has created,
+implicitly creating records 1 through 4, the <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> interface
+with the <a href="../../api_c/dbc_get.html#DB_FIRST">DB_FIRST</a> flag will return record number 5, not record
+number 1.  Attempts to explicitly retrieve implicitly created records
+by their record number will result in a special error return,
+<a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.
+<p>In any Berkeley DB database, attempting to retrieve a deleted record, using
+a cursor positioned on the record, results in a special error return,
+<a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.  In addition, when using Queue databases or Recno
+databases with immutable record numbers, attempting to retrieve a deleted
+record by its record number will also result in the <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>
+return.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

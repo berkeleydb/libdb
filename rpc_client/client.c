@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: client.c,v 1.17 2000/05/17 19:38:23 bostic Exp $";
+static const char revid[] = "$Id: client.c,v 1.21 2000/11/30 00:58:44 ubell Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -18,7 +18,6 @@ static const char revid[] = "$Id: client.c,v 1.17 2000/05/17 19:38:23 bostic Exp
 #include <rpc/rpc.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -145,8 +144,7 @@ __dbcl_txn_close(dbenv)
 	 * so the server has already closed/aborted any transactions that
 	 * were open on its side.  We only need to do local cleanup.
 	 */
-	while ((txnp =
-	    TAILQ_FIRST(&tmgrp->txn_chain)) != TAILQ_END(&tmgrp->txn_chain))
+	while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL)
 		__dbcl_txn_end(txnp);
 
 	__os_free(tmgrp, sizeof(*tmgrp));
@@ -175,7 +173,7 @@ __dbcl_txn_end(txnp)
 	/*
 	 * First take care of any kids we have
 	 */
-	for(kids = TAILQ_FIRST(&txnp->kids);
+	for (kids = TAILQ_FIRST(&txnp->kids);
 	    kids != NULL;
 	    kids = TAILQ_FIRST(&txnp->kids))
 		__dbcl_txn_end(kids);
@@ -368,6 +366,6 @@ __dbcl_dbclose_common(dbp)
 
 	memset(dbp, CLEAR_BYTE, sizeof(*dbp));
 	__os_free(dbp, sizeof(*dbp));
-	return(ret);
+	return (ret);
 }
 #endif /* HAVE_RPC */

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test021.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
+#	$Id: test021.tcl,v 11.10 2000/08/25 14:21:55 sue Exp $
 #
 # DB Test 21 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -26,13 +26,16 @@ proc test021 { method {nentries 10000} args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test021.db
+		set env NULL
 	} else {
 		set testfile test021.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE

@@ -1,15 +1,14 @@
- 
-<!--$Id: create.so,v 10.21 2000/04/03 11:56:49 bostic Exp $-->
+<!--$Id: create.so,v 10.23 2000/12/04 18:05:41 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Environment</title>
+<title>Berkeley DB Reference Guide: Creating an Environment</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
 <td width="1%"><a href="../../ref/env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/naming.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -26,16 +25,16 @@ There are a large number of options that you can set to customize
 broad categories:
 <p><dl compact>
 <p><dt>Subsystem Initialization:<dd>These flags indicate which Berkeley DB subsystems will be initialized for the
-environment, and, what operations will happen automatically when databases
-are accessed within the environment.  The flags include
-<a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a>, <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a>,
-<a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> and <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a>.  The <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a>
-flag does initialization for Berkeley DB Concurrent Data Store applications, see
-<a href="../../ref/cam/intro.html">Building Berkeley DB Concurrent Data Store
-applications</a> for more information.  The rest of the flags initialize a
-single subsystem, e.g., when <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> is specified,
-applications reading and writing databases opened in this environment will
-be using locking to ensure that they do not overwrite each other's
+environment, and, what operations will happen automatically when
+databases are accessed within the environment.  The flags include
+<a href="../../api_c/env_open.html#DB_JOINENV">DB_JOINENV</a>, <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a>, <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>,
+<a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a>, <a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> and <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a>.
+The <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flag does initialization for Berkeley DB Concurrent Data Store
+applications, see <a href="../../ref/cam/intro.html">Building Berkeley DB Concurrent Data Store
+applications</a> for more information.  The rest of the flags initialize
+a single subsystem, e.g., when <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> is specified,
+applications reading and writing databases opened in this environment
+will be using locking to ensure that they do not overwrite each other's
 changes.
 <p><dt>Recovery options:<dd>These flags indicate what recovery is to be performed on the environment
 before it is opened for normal use, and include <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> and

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test058.tcl,v 11.13 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test058.tcl,v 11.14 2000/08/25 14:21:57 sue Exp $
 #
 proc test058 { method args } {
 	source ./include.tcl
@@ -27,7 +27,7 @@ proc test058 { method args } {
 	puts "Test058: $method delete dups after inserting after duped key."
 
 	# environment
-	cleanup $testdir
+	env_cleanup $testdir
 	set eflags "-create -txn -home $testdir"
 	set env [eval {berkdb env} $eflags]
 	error_check_good env [is_valid_env $env] TRUE
@@ -96,5 +96,4 @@ proc test058 { method args } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
 	reset_env $env
-	cleanup $testdir
 }

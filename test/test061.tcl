@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test061.tcl,v 11.8 2000/04/21 18:36:26 krinsky Exp $
+#	$Id: test061.tcl,v 11.12 2000/10/27 13:23:56 sue Exp $
 #
 # Test061: Test of transaction abort and commit for in-memory databases.
 #	a) Put + abort: verify absence of data
@@ -28,6 +28,10 @@ proc test061 { method args } {
 	}
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	if { [is_queueext $method] == 1} {
+		puts "Test061 skipping for method $method"
+		return
+	}
 
 	puts "Test061: Transaction abort and commit test for in-memory data."
 	puts "Test061: $method $args"
@@ -45,7 +49,7 @@ proc test061 { method args } {
 	}
 
 	puts "\tTest061: Create environment and $method database."
-	cleanup $testdir
+	env_cleanup $testdir
 
 	# create environment
 	set eflags "-create -txn -home $testdir"
@@ -199,13 +203,13 @@ proc test061 { method args } {
 
 	# Now run db_recover and ensure that it runs cleanly.
 	puts "\tTest061.g: Running db_recover -h"
-	set ret [catch {exec ./db_recover -h $testdir} res]
+	set ret [catch {exec $util_path/db_recover -h $testdir} res]
 	if { $ret != 0 } {
 		puts "FAIL: db_recover outputted $res"
 	}
 	error_check_good db_recover $ret 0
 
 	puts "\tTest061.h: Running db_recover -c -h"
-	set ret [catch {exec ./db_recover -c -h $testdir} res]
+	set ret [catch {exec $util_path/db_recover -c -h $testdir} res]
 	error_check_good db_recover-c $ret 0
 }

@@ -39,7 +39,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn.c,v 11.35.2.1 2000/07/05 18:58:57 bostic Exp $";
+static const char revid[] = "$Id: txn.c,v 11.61 2001/01/10 18:18:52 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,7 +56,6 @@ static const char revid[] = "$Id: txn.c,v 11.35.2.1 2000/07/05 18:58:57 bostic E
 #endif
 #endif
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -70,6 +69,8 @@ static const char revid[] = "$Id: txn.c,v 11.35.2.1 2000/07/05 18:58:57 bostic E
 #include "lock.h"
 #include "log.h"
 #include "db_dispatch.h"
+#include "db_page.h"
+#include "db_ext.h"
 
 #ifdef HAVE_RPC
 #include "gen_client_ext.h"
@@ -77,24 +78,8 @@ static const char revid[] = "$Id: txn.c,v 11.35.2.1 2000/07/05 18:58:57 bostic E
 #endif
 
 static int  __txn_begin __P((DB_TXN *));
-static int  __txn_check_running __P((const DB_TXN *, TXN_DETAIL **));
-static int  __txn_count __P((DB_TXN *));
-static void __txn_freekids __P((DB_TXN *));
-static void __txn_lsn __P((DB_TXN *, DB_LSN **));
-static int  __txn_makefamily __P((DB_ENV *, DB_TXN *, int *, DB_LSN **));
+static int  __txn_isvalid __P((const DB_TXN *, TXN_DETAIL **, u_int32_t));
 static int  __txn_undo __P((DB_TXN *));
-
-#define	TXN_BUBBLE(AP, MAX) {						\
-	int __j;							\
-	DB_LSN __tmp;							\
-									\
-	for (__j = 0; __j < MAX - 1; __j++)				\
-		if (log_compare(&AP[__j], &AP[__j + 1]) < 0) {		\
-			__tmp = AP[__j];				\
-			AP[__j] = AP[__j + 1];				\
-			AP[__j + 1] = __tmp;				\
-		}							\
-}
 
 /*
  * txn_begin --
@@ -212,9 +197,8 @@ __txn_begin(txn)
 
 	/* Make sure that last_txnid is not going to wrap around. */
 	if (region->last_txnid == TXN_INVALID) {
-		__db_err(dbenv, "txn_begin: %s  %s",
-		    "Transaction ID wrapping.",
-		    "Snapshot your database and start a new log.");
+		__db_err(dbenv,
+"txn_begin: transaction ID wrapped.  Exit the database environment\nand restart the application as if application failure had occurred");
 		ret = EINVAL;
 		goto err1;
 	}
@@ -261,9 +245,9 @@ __txn_begin(txn)
 			goto err2;
 
 	if (F_ISSET(txn, TXN_MALLOC)) {
-		MUTEX_THREAD_LOCK(mgr->mutexp);
+		MUTEX_THREAD_LOCK(dbenv, mgr->mutexp);
 		TAILQ_INSERT_TAIL(&mgr->txn_chain, txn, links);
-		MUTEX_THREAD_UNLOCK(mgr->mutexp);
+		MUTEX_THREAD_UNLOCK(dbenv, mgr->mutexp);
 	}
 
 	return (0);
@@ -283,12 +267,10 @@ txn_commit(txnp, flags)
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
-	DB_TXN *kids;
-	DB_TXNMGR *mgr;
-	int ret;
+	DB_TXN *kid;
+	int is_commit, ret, t_ret;
 
-	mgr = txnp->mgrp;
-	dbenv = mgr->dbenv;
+	dbenv = txnp->mgrp->dbenv;
 
 #ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
@@ -296,17 +278,23 @@ txn_commit(txnp, flags)
 #endif
 
 	PANIC_CHECK(dbenv);
-	if ((ret = __db_fchk(dbenv,
-	    "txn_commit", flags, DB_TXN_NOSYNC | DB_TXN_SYNC)) != 0)
+
+	if ((ret = __txn_isvalid(txnp, NULL, TXN_COMMITTED)) != 0)
 		return (ret);
 
-	if ((ret = __db_fcchk(dbenv,
-	    "txn_commit", flags, DB_TXN_NOSYNC, DB_TXN_SYNC)) != 0)
-		return (ret);
-
-	if ((ret = __txn_check_running(txnp, NULL)) != 0)
-		return (ret);
-
+	/*
+	 * We clear flags that are incorrect, ignoring any flag errors, and
+	 * default to synchronous operations.  By definition, transaction
+	 * handles are dead when we return, and this error should never
+	 * happen, but we don't want to fail in the field 'cause the app is
+	 * specifying the wrong flag for some reason.
+	 */
+	if (__db_fchk(dbenv,
+	    "txn_commit", flags, DB_TXN_NOSYNC | DB_TXN_SYNC) != 0)
+		flags = DB_TXN_SYNC;
+	if (__db_fcchk(dbenv,
+	    "txn_commit", flags, DB_TXN_NOSYNC, DB_TXN_SYNC) != 0)
+		flags = DB_TXN_SYNC;
 	if (LF_ISSET(DB_TXN_NOSYNC)) {
 		F_CLR(txnp, TXN_SYNC);
 		F_SET(txnp, TXN_NOSYNC);
@@ -316,13 +304,17 @@ txn_commit(txnp, flags)
 		F_SET(txnp, TXN_SYNC);
 	}
 
-	/* Commit any uncommitted children. */
-	for (kids = TAILQ_FIRST(&txnp->kids);
-	    kids != NULL;
-	    kids = TAILQ_NEXT(kids, klinks))
-		if (!F_ISSET(kids, TXN_CHILDCOMMIT) &&
-		    (ret = txn_commit(kids, flags)) != 0)
-			return (ret);
+	/*
+	 * Commit any unresolved children.  If there's an error, abort any
+	 * unresolved children and the parent.
+	 */
+	while ((kid = TAILQ_FIRST(&txnp->kids)) != NULL)
+		if ((ret = txn_commit(kid, flags)) != 0) {
+			while ((kid = TAILQ_FIRST(&txnp->kids)) != NULL)
+				(void)txn_abort(kid);
+			(void)txn_abort(txnp);
+			goto err;
+		}
 
 	/*
 	 * If there are any log records, write a log record and sync the log,
@@ -330,34 +322,41 @@ txn_commit(txnp, flags)
 	 * we do not need to commit the child synchronously since it may still
 	 * abort (if its parent aborts), and otherwise its parent or ultimate
 	 * ancestor will write synchronously.
+	 *
+	 * I'd rather return a logging error than a flag-wrong error, so if
+	 * the log routines fail, set "ret" without regard to previous value.
 	 */
-	if (LOGGING_ON(dbenv) &&
-	    (F_ISSET(txnp, TXN_MUSTFLUSH) || !IS_ZERO_LSN(txnp->last_lsn))) {
-		if (txnp->parent == NULL)
-			ret = __txn_regop_log(dbenv, txnp, &txnp->last_lsn,
-			    (F_ISSET(mgr->dbenv, DB_ENV_TXN_NOSYNC) &&
+	if (LOGGING_ON(dbenv) && !IS_ZERO_LSN(txnp->last_lsn)) {
+		if (txnp->parent == NULL) {
+			if ((t_ret = __txn_regop_log(dbenv,
+			    txnp, &txnp->last_lsn,
+			    (F_ISSET(dbenv, DB_ENV_TXN_NOSYNC) &&
 			    !F_ISSET(txnp, TXN_SYNC)) ||
 			    F_ISSET(txnp, TXN_NOSYNC) ?  0 : DB_FLUSH,
-			    TXN_COMMIT, (int32_t)time(NULL));
-		else {
-			F_SET(txnp->parent, TXN_MUSTFLUSH);
-			ret = __txn_child_log(dbenv, txnp, &txnp->last_lsn, 0,
-			    TXN_COMMIT, txnp->parent->txnid);
+			    TXN_COMMIT, (int32_t)time(NULL))) != 0) {
+				ret = t_ret;
+				goto err;
+			}
+		} else {
+			/* Log the commit in the parent! */
+			if ((t_ret = __txn_child_log(dbenv,
+			    txnp->parent, &txnp->parent->last_lsn,
+			    0, txnp->txnid, &txnp->last_lsn)) != 0) {
+				ret = t_ret;
+				goto err;
+			}
+
+			F_SET(txnp->parent, TXN_CHILDCOMMIT);
 		}
-		if (ret != 0)
-			return (ret);
 	}
 
-	/*
-	 * If this is the senior ancestor (i.e., it has no parent), then we
-	 * can release all the child transactions since everyone is committing.
-	 * Then we can release this transaction.  If this is not the ultimate
-	 * ancestor, then we can neither free it or its children.
-	 */
-	if (txnp->parent == NULL)
-		__txn_freekids(txnp);
-
-	return (__txn_end(txnp, 1));
+	is_commit = 1;
+	if (0) {
+err:		is_commit = 0;
+	}
+	if ((t_ret = __txn_end(txnp, is_commit)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
 }
 
 /*
@@ -368,21 +367,33 @@ int
 txn_abort(txnp)
 	DB_TXN *txnp;
 {
-	int ret;
+	DB_ENV *dbenv;
+	DB_TXN *kid;
+	int ret, t_ret;
+
+	dbenv = txnp->mgrp->dbenv;
 
 #ifdef HAVE_RPC
-	if (F_ISSET(txnp->mgrp->dbenv, DB_ENV_RPCCLIENT))
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
 		return (__dbcl_txn_abort(txnp));
 #endif
 
-	PANIC_CHECK(txnp->mgrp->dbenv);
-	if ((ret = __txn_check_running(txnp, NULL)) != 0)
+	PANIC_CHECK(dbenv);
+
+	if ((ret = __txn_isvalid(txnp, NULL, TXN_ABORTED)) != 0)
 		return (ret);
 
-	if ((ret = __txn_undo(txnp)) != 0) {
-		return (ret);
-	}
-	return (__txn_end(txnp, 0));
+	/* Abort any unresolved children. */
+	while ((kid = TAILQ_FIRST(&txnp->kids)) != NULL)
+		if ((t_ret = txn_abort(kid)) != 0 && ret == 0)
+			ret = t_ret;
+
+	if ((t_ret = __txn_undo(txnp)) != 0 && ret == 0)
+		ret = t_ret;
+
+	if ((t_ret = __txn_end(txnp, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
 }
 
 /*
@@ -395,40 +406,63 @@ txn_prepare(txnp)
 {
 	DBT xid;
 	DB_ENV *dbenv;
+	DB_TXN *kid;
 	TXN_DETAIL *td;
 	int ret;
 
 	dbenv = txnp->mgrp->dbenv;
+
 #ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
 		return (__dbcl_txn_prepare(txnp));
 #endif
 
-	if ((ret = __txn_check_running(txnp, &td)) != 0)
+	PANIC_CHECK(dbenv);
+
+	if ((ret = __txn_isvalid(txnp, &td, TXN_PREPARED)) != 0)
 		return (ret);
 
-	memset(&xid, 0, sizeof(xid));
-	xid.data = td->xid;
-	xid.size = sizeof(td->xid);
-	if (LOGGING_ON(dbenv) &&
-	    (ret = __txn_xa_regop_log(dbenv, txnp, &txnp->last_lsn,
-	    (F_ISSET(dbenv, DB_ENV_TXN_NOSYNC) &&
-	    !F_ISSET(txnp, TXN_SYNC)) ||
-	    F_ISSET(txnp, TXN_NOSYNC) ? 0 : DB_FLUSH, TXN_PREPARE,
-	    &xid, td->format, td->gtrid, td->bqual)) != 0) {
-		__db_err(dbenv,
-		    "txn_prepare: log_write failed %s\n", db_strerror(ret));
-		return (ret);
+	/* Prepare any unresolved children. */
+	while ((kid = TAILQ_FIRST(&txnp->kids)) != NULL)
+		if ((ret = txn_prepare(kid)) != 0)
+			return (ret);
+
+	/*
+	 * We indicate that a transaction is an XA transaction by putting
+	 * a valid size in the xid.size fiels.  XA requires that the transaction
+	 * be either ENDED or SUSPENDED when prepare is called, so we know
+	 * that if the xa_status isn't in one of those states, but we are
+	 * calling prepare that we are not an XA transaction.
+	 */
+
+	if (LOGGING_ON(dbenv)) {
+		memset(&xid, 0, sizeof(xid));
+		xid.data = td->xid;
+		xid.size = td->xa_status != TXN_XA_ENDED &&
+		    td->xa_status != TXN_XA_SUSPENDED ?  0 : sizeof(td->xid);
+		if ((ret = __txn_xa_regop_log(dbenv, txnp, &txnp->last_lsn,
+		    (F_ISSET(dbenv, DB_ENV_TXN_NOSYNC) &&
+		    !F_ISSET(txnp, TXN_SYNC)) ||
+		    F_ISSET(txnp, TXN_NOSYNC) ? 0 : DB_FLUSH, TXN_PREPARE,
+		    &xid, td->format, td->gtrid, td->bqual,
+		    &td->begin_lsn)) != 0) {
+			__db_err(dbenv, "txn_prepare: log_write failed %s",
+			    db_strerror(ret));
+			return (ret);
+		}
+		if (txnp->parent != NULL)
+			F_SET(txnp->parent, TXN_CHILDCOMMIT);
 	}
 
-	MUTEX_THREAD_LOCK(txnp->mgrp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, txnp->mgrp->mutexp);
 	td->status = TXN_PREPARED;
-	MUTEX_THREAD_UNLOCK(txnp->mgrp->mutexp);
-	return (ret);
+	MUTEX_THREAD_UNLOCK(dbenv, txnp->mgrp->mutexp);
+	return (0);
 }
 
 /*
- * Return the transaction ID associated with a particular transaction
+ * txn_id --
+ *	Return the transaction ID.
  */
 u_int32_t
 txn_id(txnp)
@@ -437,34 +471,56 @@ txn_id(txnp)
 	return (txnp->txnid);
 }
 
-/* Internal routines. */
-
 /*
- * Return 0 if the txnp is reasonable, otherwise returns EINVAL.
+ * __txn_isvalid --
+ *	Return 0 if the txnp is reasonable, otherwise panic.
  */
 static int
-__txn_check_running(txnp, tdp)
+__txn_isvalid(txnp, tdp, op)
 	const DB_TXN *txnp;
 	TXN_DETAIL **tdp;
+	u_int32_t op;
 {
 	DB_TXNMGR *mgrp;
 	TXN_DETAIL *tp;
 
-	tp = NULL;
 	mgrp = txnp->mgrp;
-	if (txnp != NULL && mgrp != NULL && mgrp->reginfo.primary != NULL) {
-		tp = (TXN_DETAIL *)R_ADDR(&mgrp->reginfo, txnp->off);
-		/*
-		 * Child transactions could be marked committed which is OK.
-		 */
-		if (tp->status != TXN_RUNNING &&
-		    tp->status != TXN_PREPARED && tp->status != TXN_COMMITTED)
-			tp = NULL;
-		if (tdp != NULL)
-			*tdp = tp;
+
+	/* Check for live cursors. */
+	if (txnp->cursors != 0) {
+		__db_err(mgrp->dbenv, "transaction has active cursors");
+		goto err;
 	}
 
-	return (tp == NULL ? EINVAL : 0);
+	/* Check transaction's status. */
+	tp = (TXN_DETAIL *)R_ADDR(&mgrp->reginfo, txnp->off);
+	if (tdp != NULL)
+		*tdp = tp;
+
+	switch (tp->status) {
+	case TXN_ABORTED:
+	case TXN_COMMITTED:
+	default:
+		__db_err(mgrp->dbenv, "transaction already %s",
+		    tp->status == TXN_COMMITTED ? "committed" : "aborted");
+		goto err;
+	case TXN_PREPARED:
+		if (op == TXN_PREPARED) {
+			__db_err(mgrp->dbenv, "transaction already prepared");
+			goto err;
+		}
+	case TXN_RUNNING:
+		break;
+	}
+
+	return (0);
+
+err:	/*
+	 * If there's a serious problem with the transaction, panic.  TXN
+	 * handles are dead by definition when we return, and if you use
+	 * a cursor you forgot to close, we have no idea what will happen.
+	 */
+	return (__db_panic(mgrp->dbenv, EINVAL));
 }
 
 /*
@@ -480,7 +536,6 @@ __txn_end(txnp, is_commit)
 {
 	DB_ENV *dbenv;
 	DB_LOCKREQ request;
-	DB_TXN *kids;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *tp;
@@ -489,16 +544,6 @@ __txn_end(txnp, is_commit)
 	mgr = txnp->mgrp;
 	dbenv = mgr->dbenv;
 	region = mgr->reginfo.primary;
-
-	/*
-	 * On aborts, we've undone the children, but we still need
-	 * to free the up.
-	 */
-	if (!is_commit) {
-		while ((kids = TAILQ_FIRST(&txnp->kids)) != NULL)
-			if ((ret = __txn_end(kids, is_commit)) != 0)
-				return (DB_RUNRECOVERY);
-	}
 
 	/* Release the locks. */
 	request.op = txnp->parent == NULL ||
@@ -510,27 +555,16 @@ __txn_end(txnp, is_commit)
 			__db_err(dbenv, "%s: release locks failed %s",
 			    is_commit ? "txn_commit" : "txn_abort",
 			    db_strerror(ret));
-			return (ret);
+			__db_panic(dbenv, ret);
 		}
 	}
 
 	/* End the transaction. */
 	R_LOCK(dbenv, &mgr->reginfo);
 
-	/*
-	 * Child transactions that are committing cannot be released until
-	 * the parent commits, since the parent may abort, causing the child
-	 * to abort as well.
-	 */
 	tp = (TXN_DETAIL *)R_ADDR(&mgr->reginfo, txnp->off);
-	if (txnp->parent == NULL || !is_commit) {
-		SH_TAILQ_REMOVE(&region->active_txn, tp, links, __txn_detail);
-
-		__db_shalloc_free(mgr->reginfo.addr, tp);
-	} else {
-		tp->status = TXN_COMMITTED;
-		F_SET(txnp, TXN_CHILDCOMMIT);
-	}
+	SH_TAILQ_REMOVE(&region->active_txn, tp, links, __txn_detail);
+	__db_shalloc_free(mgr->reginfo.addr, tp);
 
 	if (is_commit)
 		region->ncommits++;
@@ -541,23 +575,18 @@ __txn_end(txnp, is_commit)
 	R_UNLOCK(dbenv, &mgr->reginfo);
 
 	/*
-	 * If the transaction aborted, we can remove it from its parent links.
-	 * If it committed, then we need to leave it on, since the parent can
-	 * still abort.
 	 * The transaction cannot get more locks, remove its locker info.
 	 */
-	if (txnp->parent != NULL) {
-		if (LOCKING_ON(dbenv))
-			__lock_freefamilylocker(dbenv->lk_handle, txnp->txnid);
-		 if (!is_commit)
-			TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
-	}
+	if (LOCKING_ON(dbenv))
+		__lock_freefamilylocker(dbenv->lk_handle, txnp->txnid);
+	if (txnp->parent != NULL)
+		TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
 
 	/* Free the space. */
-	if (F_ISSET(txnp, TXN_MALLOC) && (txnp->parent == NULL || !is_commit)) {
-		MUTEX_THREAD_LOCK(mgr->mutexp);
+	if (F_ISSET(txnp, TXN_MALLOC)) {
+		MUTEX_THREAD_LOCK(dbenv, mgr->mutexp);
 		TAILQ_REMOVE(&mgr->txn_chain, txnp, links);
-		MUTEX_THREAD_UNLOCK(mgr->mutexp);
+		MUTEX_THREAD_UNLOCK(dbenv, mgr->mutexp);
 
 		__os_free(txnp, sizeof(*txnp));
 	}
@@ -576,13 +605,14 @@ __txn_undo(txnp)
 {
 	DBT rdbt;
 	DB_ENV *dbenv;
-	DB_LSN *lsn_array, *key_lsnp;
+	DB_LSN key_lsn;
 	DB_TXNMGR *mgr;
-	int ntxns, ret, threaded;
+	void *txnlist;
+	int ret, threaded;
 
 	mgr = txnp->mgrp;
 	dbenv = mgr->dbenv;
-	lsn_array = NULL;
+	txnlist = NULL;
 
 	if (!LOGGING_ON(dbenv))
 		return (0);
@@ -597,41 +627,48 @@ __txn_undo(txnp)
 	if (threaded)
 		F_SET(&rdbt, DB_DBT_MALLOC);
 
-	key_lsnp = &txnp->last_lsn;
+	key_lsn = txnp->last_lsn;
 
-	if (TAILQ_FIRST(&txnp->kids) != NULL) {
-		if ((ret = __txn_makefamily(dbenv,
-		     txnp, &ntxns, &lsn_array)) != 0)
-			return (ret);
-		key_lsnp = &lsn_array[0];
-	}
+	/* Allocate a transaction list for children or aborted page creates. */
+	if ((ret = __db_txnlist_init(dbenv, &txnlist)) != 0)
+		return (ret);
 
-	for (ret = 0; ret == 0 && !IS_ZERO_LSN(*key_lsnp);) {
+	if (F_ISSET(txnp, TXN_CHILDCOMMIT) &&
+	    (ret = __db_txnlist_lsninit(dbenv,
+	    txnlist, &txnp->last_lsn)) != 0)
+		return (ret);
+
+	for (ret = 0; ret == 0 && !IS_ZERO_LSN(key_lsn);) {
 		/*
 		 * The dispatch routine returns the lsn of the record
-		 * before the current one in the key_lsnp argument.
+		 * before the current one in the key_lsn argument.
 		 */
-		if ((ret = log_get(dbenv, key_lsnp, &rdbt, DB_SET)) == 0) {
-			ret = mgr->recover(dbenv,
-			    &rdbt, key_lsnp, DB_TXN_ABORT, NULL);
+		if ((ret = log_get(dbenv, &key_lsn, &rdbt, DB_SET)) == 0) {
+			ret = __db_dispatch(dbenv,
+			    &rdbt, &key_lsn, DB_TXN_ABORT, txnlist);
 			if (threaded && rdbt.data != NULL) {
 				__os_free(rdbt.data, rdbt.size);
 				rdbt.data = NULL;
 			}
-			if (lsn_array != NULL)
-				TXN_BUBBLE(lsn_array, ntxns);
+			if (F_ISSET(txnp, TXN_CHILDCOMMIT))
+				(void)__db_txnlist_lsnadd(dbenv,
+				    txnlist, &key_lsn, 0);
 		}
 		if (ret != 0) {
 			__db_err(txnp->mgrp->dbenv,
 			    "txn_abort: Log undo failed for LSN: %lu %lu: %s",
-			    (u_long)key_lsnp->file, (u_long)key_lsnp->offset,
+			    (u_long)key_lsn.file, (u_long)key_lsn.offset,
 			    db_strerror(ret));
-			goto out;
+			if (txnlist != NULL)
+				__db_txnlist_end(dbenv, txnlist);
+			return (ret);
 		}
 	}
 
-out:	if (lsn_array != NULL)
-		(void)__os_free(lsn_array, ntxns * sizeof(DB_LSN));
+	if (txnlist != NULL) {
+		__db_do_the_limbo(dbenv, txnlist);
+		__db_txnlist_end(dbenv, txnlist);
+	}
 
 	return (ret);
 }
@@ -659,7 +696,7 @@ txn_checkpoint(dbenv, kbytes, minutes, flags)
 	TXN_DETAIL *txnp;
 	time_t last_ckp_time, now;
 	u_int32_t bytes, mbytes;
-	int ret;
+	int interval, ret;
 
 #ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
@@ -683,7 +720,11 @@ txn_checkpoint(dbenv, kbytes, minutes, flags)
 
 	R_LOCK(dbenv, &dblp->reginfo);
 	mbytes = lp->stat.st_wc_mbytes;
-	bytes = lp->stat.st_wc_bytes;
+	/*
+	 * We add the current buffer offset so as to count bytes that
+	 * have not yet been written, but are sitting in the log buffer.
+	 */
+	bytes = lp->stat.st_wc_bytes + lp->b_off;
 	ckp_lsn = lp->lsn;
 	R_UNLOCK(dbenv, &dblp->reginfo);
 
@@ -746,21 +787,37 @@ do_ckp:
 	R_UNLOCK(dbenv, &mgr->reginfo);
 
 	/*
-	 * memp_sync may change the lsn you pass it, so don't pass it
-	 * the actual ckp_lsn, pass it a temp instead.
+	 * Try three times to sync the mpool buffers up to the specified LSN,
+	 * sleeping 1, 2 and 4 seconds between attempts.
 	 */
-	sync_lsn = ckp_lsn;
-	if (MPOOL_ON(dbenv) && (ret = memp_sync(dbenv, &sync_lsn)) != 0) {
-		/*
-		 * ret == DB_INCOMPLETE means that there are still buffers to
-		 * flush, the checkpoint is not complete.  Wait and try again.
-		 */
-		if (ret > 0)
-			__db_err(dbenv,
-			    "txn_checkpoint: system failure in memp_sync %s\n",
-			    db_strerror(ret));
-		return (ret);
-	}
+	if (MPOOL_ON(dbenv))
+		for (interval = 1;;) {
+			/*
+			 * memp_sync may change the lsn you pass it, so don't
+			 * pass it the actual ckp_lsn, pass it a local instead.
+			 */
+			sync_lsn = ckp_lsn;
+			if ((ret = memp_sync(dbenv, &sync_lsn)) == 0)
+				break;
+
+			/*
+			 * ret == DB_INCOMPLETE means there are still buffers
+			 * to flush, the checkpoint is not complete.
+			 */
+			if (ret == DB_INCOMPLETE) {
+				if (interval > 4)
+					return (ret);
+
+				(void)__os_sleep(dbenv, interval, 0);
+				interval *= 2;
+			} else {
+				__db_err(dbenv,
+				    "txn_checkpoint: failure in memp_sync %s",
+				    db_strerror(ret));
+				return (ret);
+			}
+		}
+
 	if (LOGGING_ON(dbenv)) {
 		R_LOCK(dbenv, &mgr->reginfo);
 		last_ckp = region->last_ckp;
@@ -771,7 +828,7 @@ do_ckp:
 		    NULL, &ckp_lsn, DB_CHECKPOINT, &ckp_lsn,
 		    &last_ckp, (int32_t)time(NULL))) != 0) {
 			__db_err(dbenv,
-			    "txn_checkpoint: log failed at LSN [%ld %ld] %s\n",
+			    "txn_checkpoint: log failed at LSN [%ld %ld] %s",
 			    (long)ckp_lsn.file, (long)ckp_lsn.offset,
 			    db_strerror(ret));
 			return (ret);
@@ -785,143 +842,28 @@ do_ckp:
 	return (0);
 }
 
-static void
-__txn_freekids(txnp)
-	DB_TXN *txnp;
-{
-	DB_ENV *dbenv;
-	DB_TXN *kids;
-	DB_TXNMGR *mgr;
-	DB_TXNREGION *region;
-	TXN_DETAIL *tp;
-
-	mgr = txnp->mgrp;
-	dbenv = mgr->dbenv;
-	region = mgr->reginfo.primary;
-
-	for (kids = TAILQ_FIRST(&txnp->kids);
-	    kids != NULL;
-	    kids = TAILQ_FIRST(&txnp->kids)) {
-		/* Free any children of this transaction. */
-		__txn_freekids(kids);
-
-		/* Free the transaction detail in the region. */
-		R_LOCK(dbenv, &mgr->reginfo);
-		tp = (TXN_DETAIL *)R_ADDR(&mgr->reginfo, kids->off);
-		SH_TAILQ_REMOVE(&region->active_txn, tp, links, __txn_detail);
-
-		__db_shalloc_free(mgr->reginfo.addr, tp);
-		R_UNLOCK(dbenv, &mgr->reginfo);
-
-		/* Now remove from its parent. */
-		TAILQ_REMOVE(&txnp->kids, kids, klinks);
-		if (F_ISSET(txnp, TXN_MALLOC)) {
-			MUTEX_THREAD_LOCK(mgr->mutexp);
-			TAILQ_REMOVE(&mgr->txn_chain, kids, links);
-			MUTEX_THREAD_UNLOCK(mgr->mutexp);
-			__os_free(kids, sizeof(*kids));
-		}
-	}
-}
-
-/*
- * __txn_makefamily --
- *	Create an array of DB_LSNs for every member of the family being
- * aborted so that we can undo the records in the appropriate order.  We
- * allocate memory here and expect our caller to free it when they're done.
- */
-static int
-__txn_makefamily(dbenv, txnp, np, arrayp)
-	DB_ENV *dbenv;
-	DB_TXN *txnp;
-	int *np;
-	DB_LSN **arrayp;
-{
-	DB_LSN *ap, *tmpp;
-	int i, ret;
-
-	/* Figure out how many we have. */
-	*np = __txn_count(txnp);
-
-	/* Malloc space. */
-	if ((ret = __os_malloc(dbenv, *np * sizeof(DB_LSN), NULL, arrayp)) != 0)
-		return (ret);
-
-	/* Fill in the space. */
-	tmpp = *arrayp;
-	__txn_lsn(txnp, &tmpp);
-
-	/* Sort the LSNs. */
-	ap = *arrayp;
-	for (i = 0; i < *np; i++)
-		TXN_BUBBLE(ap, *np - i);
-
-	return (0);
-}
-
-/*
- * __txn_count --
- *	Routine to count the number of members in a transaction family.  We
- * include the incoming transaction in the count.  We assume that we never
- * call this routine with NULL.
- */
-static int
-__txn_count(txnp)
-	DB_TXN *txnp;
-{
-	DB_TXN *kids;
-	int n;
-
-	n = 1;
-	for (kids = TAILQ_FIRST(&txnp->kids);
-	    kids != NULL;
-	    kids = TAILQ_NEXT(kids, klinks))
-		n += __txn_count(kids);
-
-	return (n);
-}
-
-/*
- * __txn_lsn ---
- *	Fill in the array with the last_lsn field of every transaction
- * in the family.  Array is an in/out parameter that leaves you pointing
- * to the next space in which to place an LSN.
- */
-static void
-__txn_lsn(txnp, array)
-	DB_TXN *txnp;
-	DB_LSN **array;
-{
-	DB_LSN *lsn;
-	DB_TXN *kids;
-
-	lsn = *array;
-	lsn[0] = txnp->last_lsn;
-	*array = &lsn[1];
-
-	for (kids = TAILQ_FIRST(&txnp->kids);
-	    kids != NULL;
-	    kids = TAILQ_NEXT(kids, klinks))
-		__txn_lsn(kids, array);
-}
-
 /*
  * __txn_activekids --
- *	Determine if this transaction has any active children.  Returns 1
- * if any active children are present; 0 otherwise.
+ *	Return if this transaction has any active children.
  *
- * PUBLIC: int __txn_activekids __P((DB_TXN *));
+ * PUBLIC: int __txn_activekids __P((DB_ENV *, u_int32_t, DB_TXN *));
  */
 int
-__txn_activekids(txnp)
+__txn_activekids(dbenv, rectype, txnp)
+	DB_ENV *dbenv;
+	u_int32_t rectype;
 	DB_TXN *txnp;
 {
-	DB_TXN *kids;
+	/*
+	 * On a child commit, we know that there are children (i.e., the
+	 * commiting child at the least.  In that case, skip this check.
+	 */
+	if (rectype == DB_txn_child)
+		return (0);
 
-	for (kids = TAILQ_FIRST(&txnp->kids);
-	    kids != NULL;
-	    kids = TAILQ_NEXT(kids, klinks))
-		if (!F_ISSET(kids, TXN_CHILDCOMMIT))
-			return (1);
+	if (TAILQ_FIRST(&txnp->kids) != NULL) {
+		__db_err(dbenv, "Child transaction is active");
+		return (EPERM);
+	}
 	return (0);
 }

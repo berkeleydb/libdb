@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_method.c,v 11.6 2000/03/28 21:50:10 ubell Exp $";
+static const char revid[] = "$Id: hash_method.c,v 11.7 2000/07/04 18:28:23 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,8 @@ static const char revid[] = "$Id: hash_method.c,v 11.6 2000/03/28 21:50:10 ubell
 #include "hash.h"
 
 static int __ham_set_h_ffactor __P((DB *, u_int32_t));
-static int __ham_set_h_hash __P((DB *, u_int32_t(*)(const void *, u_int32_t)));
+static int __ham_set_h_hash
+	       __P((DB *, u_int32_t(*)(DB *, const void *, u_int32_t)));
 static int __ham_set_h_nelem __P((DB *, u_int32_t));
 
 /*
@@ -93,7 +94,7 @@ __ham_set_h_ffactor(dbp, h_ffactor)
 static int
 __ham_set_h_hash(dbp, func)
 	DB *dbp;
-	u_int32_t (*func) __P((const void *, u_int32_t));
+	u_int32_t (*func) __P((DB *, const void *, u_int32_t));
 {
 	HASH *hashp;
 

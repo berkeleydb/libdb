@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_upgrade.c,v 11.20 2000/06/01 22:40:48 krinsky Exp $";
+static const char revid[] = "$Id: hash_upgrade.c,v 11.25 2000/12/14 19:18:32 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #endif
@@ -41,7 +40,7 @@ __ham_30_hashmeta(dbp, real_name, obuf)
 	HMETA30 newmeta;
 	u_int32_t *o_spares, *n_spares;
 	u_int32_t fillf, maxb, nelem;
-	int i, non_zero, ret;
+	int i, max_entry, ret;
 
 	dbenv = dbp->dbenv;
 	memset(&newmeta, 0, sizeof(newmeta));
@@ -62,6 +61,9 @@ __ham_30_hashmeta(dbp, real_name, obuf)
 
 	/* Move flags */
 	newmeta.dbmeta.flags = oldmeta->flags;
+
+	/* Copy the free list, which has changed its name but works the same. */
+	newmeta.dbmeta.free = oldmeta->last_freed;
 
 	/* Copy: max_bucket, high_mask, low-mask, ffactor, nelem, h_charkey */
 	newmeta.max_bucket = oldmeta->max_bucket;
@@ -94,15 +96,10 @@ __ham_30_hashmeta(dbp, real_name, obuf)
 	 */
 	o_spares = oldmeta->spares;
 	n_spares = newmeta.spares;
-	non_zero = 0;
+	max_entry = __db_log2(maxb + 1);   /* highest spares entry in use */
 	n_spares[0] = 1;
-	for (i = 1; i < NCACHED; i++) {
-		non_zero = non_zero || o_spares[i - 1] != 0;
-		if (o_spares[i - 1] == 0 && non_zero)
-			n_spares[i] = 0;
-		else
-			n_spares[i] = 1 + o_spares[i - 1];
-	}
+	for (i = 1; i < NCACHED && i <= max_entry; i++)
+		n_spares[i] = 1 + o_spares[i - 1];
 
 					/* Replace the unique ID. */
 	if ((ret = __os_fileid(dbenv, real_name, 1, newmeta.dbmeta.uid)) != 0)
@@ -110,6 +107,67 @@ __ham_30_hashmeta(dbp, real_name, obuf)
 
 	/* Overwrite the original. */
 	memcpy(oldmeta, &newmeta, sizeof(newmeta));
+
+	return (0);
+}
+
+/*
+ * __ham_30_sizefix --
+ *	Make sure that all hash pages belonging to the current
+ *	hash doubling are within the bounds of the file.
+ *
+ * PUBLIC: int __ham_30_sizefix __P((DB *, DB_FH *, char *, u_int8_t *));
+ */
+int
+__ham_30_sizefix(dbp, fhp, realname, metabuf)
+	DB *dbp;
+	DB_FH *fhp;
+	char *realname;
+	u_int8_t *metabuf;
+{
+	u_int8_t buf[DB_MAX_PGSIZE];
+	DB_ENV *dbenv;
+	HMETA30 *meta;
+	db_pgno_t last_actual, last_desired;
+	int ret;
+	size_t nw;
+	u_int32_t pagesize;
+
+	dbenv = dbp->dbenv;
+	memset(buf, 0, DB_MAX_PGSIZE);
+
+	meta = (HMETA30 *)metabuf;
+	pagesize = meta->dbmeta.pagesize;
+
+	/*
+	 * Get the last page number.  To do this, we'll need dbp->pgsize
+	 * to be set right, so slam it into place.
+	 */
+	dbp->pgsize = pagesize;
+	if ((ret = __db_lastpgno(dbp, realname, fhp, &last_actual)) != 0)
+		return (ret);
+
+	/*
+	 * The last bucket in the doubling is equal to high_mask;  calculate
+	 * the page number that implies.
+	 */
+	last_desired = BS_TO_PAGE(meta->high_mask, meta->spares);
+
+	/*
+	 * If last_desired > last_actual, we need to grow the file.  Write
+	 * a zeroed page where last_desired would go.
+	 */
+	if (last_desired > last_actual) {
+		if ((ret = __os_seek(dbenv,
+		    fhp, pagesize, last_desired, 0, 0, DB_OS_SEEK_SET)) != 0)
+			return (ret);
+		if ((ret = __os_write(dbenv, fhp, buf, pagesize, &nw)) != 0)
+			return (ret);
+		if (nw != pagesize) {
+			__db_err(dbenv, "Short write during upgrade");
+			return (EIO);
+		}
+	}
 
 	return (0);
 }
@@ -156,7 +214,7 @@ __ham_31_hashmeta(dbp, real_name, flags, fhp, h, dirtyp)
 	newmeta->dbmeta.flags = oldmeta->dbmeta.flags;
 	newmeta->dbmeta.record_count = 0;
 	newmeta->dbmeta.key_count = 0;
-	ZERO_LSN(newmeta->dbmeta.alloc_lsn);
+	ZERO_LSN(newmeta->dbmeta.unused3);
 
 	/* Update the version. */
 	newmeta->dbmeta.version = 7;

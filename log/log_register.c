@@ -7,13 +7,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_register.c,v 11.30.2.2 2000/06/12 16:26:16 krinsky Exp $";
+static const char revid[] = "$Id: log_register.c,v 11.35 2001/01/10 16:04:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -97,7 +96,7 @@ log_register(dbenv, dbp, name)
 				}
 				if (found_fnp != NULL) {
 					fnp = found_fnp;
-					goto found;    
+					goto found;
 				}
 				ok = 1;
 			}
@@ -161,7 +160,7 @@ log_register(dbenv, dbp, name)
 		if ((ret =
 		    __db_shalloc(dblp->reginfo.addr, len, 0, &namep)) != 0) {
 mem_err:		__db_err(dbenv,
-			    "Unable to allocate memory to register %s", namep);
+			    "Unable to allocate memory to register %s", name);
 			goto err;
 	}
 		fnp->name_off = R_OFFSET(&dblp->reginfo, namep);
@@ -248,13 +247,13 @@ log_unregister(dbenv, dbp)
  * PUBLIC:    __P((DB_ENV *, DB *, int32_t, const char *, int *));
  *
  *  Utility player for updating and logging the file list.  Called
- *	for 3 reasons:
- *		1) mark file closed: newname == NULL.
- *		2) change filename: newname != NULL.
- *		3) from recovery to verify and change filename if
- *			neessary, set != NULL.
+ *  for 3 reasons:
+ *	1) mark file closed: newname == NULL.
+ *	2) change filename: newname != NULL.
+ *	3) from recovery to verify & change filename if necessary, set != NULL.
  */
-int __log_filelist_update(dbenv, dbp, fid, newname, set)
+int
+__log_filelist_update(dbenv, dbp, fid, newname, set)
 	DB_ENV *dbenv;
 	DB *dbp;
 	int32_t fid;
@@ -290,8 +289,7 @@ int __log_filelist_update(dbenv, dbp, fid, newname, set)
 	/*
 	 * Log the unregistry only if this is the last one and we are
 	 * really closing the file or if this is an abort of a created
-	 * file and we need to make sure that there is a record in the
-	 * log.
+	 * file and we need to make sure there is a record in the log.
 	 */
 	namep = NULL;
 	len = 0;
@@ -353,7 +351,7 @@ int __log_filelist_update(dbenv, dbp, fid, newname, set)
 			    dblp->reginfo.addr, newlen, 0, &namep)) != 0) {
 				__db_err(dbenv,
 				    "Unable to allocate memory to register %s",
-				    namep);
+				    newname);
 				goto ret1;
 			}
 			fnp->name_off = R_OFFSET(&dblp->reginfo, namep);

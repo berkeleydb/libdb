@@ -8,13 +8,12 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_getlong.c,v 11.9 2000/04/07 14:26:39 bostic Exp $";
+static const char revid[] = "$Id: db_getlong.c,v 11.11 2000/12/22 19:16:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,9 +101,8 @@ __db_getulong(dbp, progname, p, min, max, storep)
 #if !defined(HAVE_STRTOUL)
 	COMPQUIET(min, 0);
 
-	return (__db_getlong(dbp, progname, p, 0, max, storep));
+	return (__db_getlong(dbp, progname, p, 0, max, (long *)storep));
 #else
-
 	u_long val;
 	char *end;
 

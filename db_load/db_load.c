@@ -11,13 +11,12 @@
 static const char copyright[] =
     "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_load.c,v 11.24 2000/05/17 19:18:44 bostic Exp $";
+    "$Id: db_load.c,v 11.33 2001/01/22 17:25:07 krinsky Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,12 +35,13 @@ int	configure __P((DB *, char **, char **, int *));
 int	db_init __P((char *));
 int	dbt_rdump __P((DBT *));
 int	dbt_rprint __P((DBT *));
-int	dbt_rrecno __P((DBT *));
+int	dbt_rrecno __P((DBT *, int));
 int	digitize __P((int, int *));
 int	load __P((char *, DBTYPE, char **, int, u_int32_t));
 int	main __P((int, char *[]));
-int	rheader __P((DB *, DBTYPE *, char **, int *, int*));
+int	rheader __P((DB *, DBTYPE *, char **, int *, int *));
 void	usage __P((void));
+void	version_check __P((void));
 
 int	endodata;			/* Reached the end of a database. */
 int	endofile;			/* Reached the end of the input. */
@@ -64,6 +64,8 @@ main(argc, argv)
 	u_int32_t db_nooverwrite;
 	int ch, exitval, no_header, ret;
 	char **clist, **clp, *home;
+
+	version_check();
 
 	home = NULL;
 	db_nooverwrite = 0;
@@ -182,15 +184,18 @@ load(name, argtype, clist, no_header, db_nooverwrite)
 	DB *dbp;
 	DBT key, rkey, data, *readp, *writep;
 	DBTYPE dbtype;
+	DB_TXN *ctxn, *txn;
 	db_recno_t recno, datarecno;
-	int checkprint, ret, rval, keys;
+	int checkprint, hexkeys, keys, ret, rval;
 	int keyflag, ascii_recno;
 	char *subdb;
 
 	endodata = 0;
 	subdb = NULL;
+	ctxn = txn = NULL;
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
+	memset(&rkey, 0, sizeof(DBT));
 
 	/* Create the DB object. */
 	if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
@@ -200,6 +205,7 @@ load(name, argtype, clist, no_header, db_nooverwrite)
 
 	dbtype = DB_UNKNOWN;
 	keys = -1;
+	hexkeys = -1;
 	keyflag = -1;
 	/* Read the header -- if there's no header, we expect flat text. */
 	if (no_header) {
@@ -245,7 +251,7 @@ load(name, argtype, clist, no_header, db_nooverwrite)
 
 		if (dbtype == DB_RECNO || dbtype == DB_QUEUE)
 			if (keyflag != 1 && argtype != DB_RECNO
-			     && argtype != DB_QUEUE){
+			     && argtype != DB_QUEUE) {
 				dbenv->errx(dbenv,
 			   "improper database type conversion specified");
 				goto err;
@@ -260,6 +266,16 @@ load(name, argtype, clist, no_header, db_nooverwrite)
 
 	if (keyflag == -1)
 		keyflag = 0;
+
+	/* 
+	 * Recno keys have only been printed in hexadecimal starting
+	 * with db_dump format version 3 (DB 3.2).  
+	 *
+	 * !!! 
+	 * Note that version is set in rheader(), which must be called before 
+	 * this assignment.
+	 */
+	hexkeys = (version >= 3 && keyflag == 1 && checkprint == 0);
 
 	if (keyflag == 1 && (dbtype == DB_RECNO || dbtype == DB_QUEUE))
 		ascii_recno = 1;
@@ -298,6 +314,9 @@ key_data:	if ((readp->data =
 		goto err;
 	}
 
+	if (TXN_ON(dbenv) && (ret = txn_begin(dbenv, NULL, &txn, 0)) != 0)
+		goto err;
+
 	/* Get each key/data pair and add them to the database. */
 	for (recno = 1; !__db_util_interrupted(); ++recno) {
 		if (!keyflag)
@@ -316,7 +335,7 @@ key_data:	if ((readp->data =
 					goto fmt;
 			} else {
 				if (ascii_recno) {
-					if (dbt_rrecno(readp))
+					if (dbt_rrecno(readp, hexkeys))
 						goto err;
 				} else
 					if (dbt_rdump(readp))
@@ -339,9 +358,18 @@ fmt:					dbenv->errx(dbenv,
 				    name,
 				    !keyflag ? recno : recno * 2 - 1);
 		}
+retry:		if (txn != NULL)
+			if ((ret = txn_begin(dbenv, txn, &ctxn, 0)) != 0)
+				goto err;
 		switch (ret =
-		    dbp->put(dbp, NULL, writep, &data, db_nooverwrite)) {
+		    dbp->put(dbp, txn, writep, &data, db_nooverwrite)) {
 		case 0:
+			if (ctxn != NULL) {
+				if ((ret =
+				    txn_commit(ctxn, DB_TXN_NOSYNC)) != 0)
+					goto err;
+				ctxn = NULL;
+			}
 			break;
 		case DB_KEYEXIST:
 			existed = 1;
@@ -353,15 +381,41 @@ fmt:					dbenv->errx(dbenv,
 			(void)__db_prdbt(&key, checkprint, 0, stderr,
 			    __db_verify_callback, 0, NULL);
 			break;
+		case DB_LOCK_DEADLOCK:
+			/* If we have a child txn, retry--else it's fatal. */
+			if (ctxn != NULL) {
+				if ((ret = txn_abort(ctxn)) != 0)
+					goto err;
+				ctxn = NULL;
+				goto retry;
+			}
+			/* FALLTHROUGH */
 		default:
 			dbenv->err(dbenv, ret, NULL);
+			if (ctxn != NULL) {
+				(void)txn_abort(ctxn);
+				ctxn = NULL;
+			}
 			goto err;
+		}
+		if (ctxn != NULL) {
+			if ((ret = txn_abort(ctxn)) != 0)
+				goto err;
+			ctxn = NULL;
 		}
 	}
 done:	rval = 0;
+	DB_ASSERT(ctxn == NULL);
+	if (txn != NULL && (ret = txn_commit(txn, 0)) != 0) {
+		txn = NULL;
+		goto err;
+	}
 
 	if (0) {
 err:		rval = 1;
+		DB_ASSERT(ctxn == NULL);
+		if (txn != NULL)
+			(void)txn_abort(txn);
 	}
 
 	/* Close the database. */
@@ -375,6 +429,8 @@ err:		rval = 1;
 		free(subdb);
 	if (dbtype != DB_RECNO && dbtype != DB_QUEUE)
 		free(key.data);
+	if (rkey.data != NULL)
+		free(rkey.data);
 	free(data.data);
 
 	return (rval);
@@ -531,8 +587,7 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 	DB *dbp;
 	DBTYPE *dbtypep;
 	char **subdbp;
-	int *checkprintp;
-	int *keysp;
+	int *checkprintp, *keysp;
 {
 	long val;
 	int first, ret;
@@ -564,12 +619,12 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 			break;
 		if (strcmp(name, "VERSION") == 0) {
 			/*
-			 * Version 1 didn't have a "VERSION" header line, we
-			 * only support versions 1 and 2 of the dump format.
+			 * Version 1 didn't have a "VERSION" header line.  We
+			 * only support versions 1, 2, and 3 of the dump format.
 			 */
 			version = atoi(value);
 
-			if (version != 2) {
+			if (version > 3) {
 				dbp->errx(dbp,
 				    "line %lu: VERSION %d is unsupported",
 				    lineno, version);
@@ -805,10 +860,11 @@ dbt_rdump(dbtp)
  *	Read a record number dump line into a DBT structure.
  */
 int
-dbt_rrecno(dbtp)
+dbt_rrecno(dbtp, ishex)
 	DBT *dbtp;
+	int ishex;
 {
-	char buf[32];
+	char buf[32], *p, *q;
 
 	++lineno;
 
@@ -822,9 +878,34 @@ dbt_rrecno(dbtp)
 		return (0);
 	}
 
-	if (buf[0] != ' ' || __db_getulong(NULL,
+	if (buf[0] != ' ')
+		goto bad;
+
+	/*
+	 * If we're expecting a hex key, do an in-place conversion
+	 * of hex to straight ASCII before calling __db_getulong().
+	 */
+	if (ishex) {
+		for (p = q = buf + 1; *q != '\0' && *q != '\n';) {
+			/*
+			 * 0-9 in hex are 0x30-0x39, so this is easy.
+			 * We should alternate between 3's and [0-9], and
+			 * if the [0-9] are something unexpected,
+			 * __db_getulong will fail, so we only need to catch
+			 * end-of-string conditions.
+			 */
+			if (*q++ != '3')
+				goto bad;
+			if (*q == '\n' || *q == '\0')
+				goto bad;
+			*p++ = *q++;
+		}
+		*p = '\0';
+	}
+
+	if (__db_getulong(NULL,
 	    progname, buf + 1, 0, 0, (u_long *)dbtp->data)) {
-		badend();
+bad:		badend();
 		return (1);
 	}
 
@@ -897,4 +978,21 @@ usage()
 	    "usage: db_load [-nTV]",
     "[-c name=value] [-f file] [-h home] [-t btree | hash | recno] db_file");
 	exit(1);
+}
+
+void
+version_check()
+{
+	int v_major, v_minor, v_patch;
+
+	/* Make sure we're loaded with the right version of the DB library. */
+	(void)db_version(&v_major, &v_minor, &v_patch);
+	if (v_major != DB_VERSION_MAJOR ||
+	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+		fprintf(stderr,
+	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		exit (1);
+	}
 }

@@ -1,10 +1,11 @@
-/* DO NOT EDIT: automatically built by dist/distrib. */
+/* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_env_ext_h_
 #define	_env_ext_h_
 #if defined(__cplusplus)
 extern "C" {
 #endif
 void __db_shalloc_init __P((void *, size_t));
+int __db_shalloc_size __P((size_t, size_t));
 int __db_shalloc __P((void *, size_t, size_t, void *));
 void __db_shalloc_free __P((void *, void *));
 size_t __db_shalloc_count __P((void *));
@@ -22,7 +23,7 @@ int __dbenv_close __P((DB_ENV *, u_int32_t));
 int __db_appname __P((DB_ENV *, APPNAME,
    const char *, const char *, u_int32_t, DB_FH *, char **));
 int __db_apprec __P((DB_ENV *, u_int32_t));
-int __db_e_attach __P((DB_ENV *));
+int __db_e_attach __P((DB_ENV *, u_int32_t *));
 int __db_e_detach __P((DB_ENV *, int));
 int __db_e_remove __P((DB_ENV *, int));
 int __db_e_stat __P((DB_ENV *, REGENV *, REGION *, int *));

@@ -4,7 +4,7 @@
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_cxx.h,v 11.33 2000/06/01 14:52:46 dda Exp $
+ * $Id: db_cxx.h,v 11.44 2000/12/21 20:30:18 dda Exp $
  */
 
 #ifndef _DB_CXX_H_
@@ -112,8 +112,8 @@ class DbTxnImp;
 // private section also emphasizes that they are off limits to user code.
 //
 #define	DEFINE_DB_CLASS(name) \
-	public: class name##Imp* imp() { return imp_; } \
-	public: const class name##Imp* constimp() const { return imp_; } \
+	public: class name##Imp* imp() { return (imp_); } \
+	public: const class name##Imp* constimp() const { return (imp_); } \
 	private: class name##Imp* imp_
 
 ////////////////////////////////////////////////////////////////
@@ -150,13 +150,13 @@ extern "C" {
 	typedef void * (*db_realloc_fcn_type)
 		(void *, size_t);
 	typedef int (*bt_compare_fcn_type)
-		(const DBT *, const DBT *);
+		(DB *, const DBT *, const DBT *);
 	typedef size_t (*bt_prefix_fcn_type)
-		(const DBT *, const DBT *);
+		(DB *, const DBT *, const DBT *);
 	typedef int (*dup_compare_fcn_type)
-		(const DBT *, const DBT *);
+		(DB *, const DBT *, const DBT *);
 	typedef u_int32_t (*h_hash_fcn_type)
-		(const void *bytes, u_int32_t length);
+		(DB *, const void *, u_int32_t);
 	typedef int (*pgin_fcn_type)(DB_ENV *dbenv,
 		 db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
 	typedef int (*pgout_fcn_type)(DB_ENV *dbenv,
@@ -351,6 +351,7 @@ public:
 	void set_errcall(void (*)(const char *, char *));
 	void set_errfile(FILE *);
 	void set_errpfx(const char *);
+	int set_flags(u_int32_t, int);
 	int set_feedback(void (*)(DbEnv *, int, int));
 	int set_recovery_init(int (*)(DbEnv *));
 	int set_lg_bsize(u_int32_t);
@@ -359,8 +360,11 @@ public:
 	int set_lk_conflicts(u_int8_t *, int);
 	int set_lk_detect(u_int32_t);
 	int set_lk_max(u_int32_t);
+	int set_lk_max_lockers(u_int32_t);
+	int set_lk_max_locks(u_int32_t);
+	int set_lk_max_objects(u_int32_t);
 	int set_mp_mmapsize(size_t);
-	static int set_mutexlocks(int);
+	int set_mutexlocks(int);
 	static int set_pageyield(int);
 	int set_paniccall(void (*)(DbEnv *, int));
 	static int set_panicstate(int);
@@ -370,7 +374,7 @@ public:
 	int set_tmp_dir(const char *);
 	static int set_tas_spins(u_int32_t);
 	int set_tx_max(u_int32_t);
-	int set_tx_recover(int (*)(DbEnv *, Dbt *, DbLsn *, db_recops, void *));
+	int set_tx_recover(int (*)(DbEnv *, Dbt *, DbLsn *, db_recops));
 	int set_tx_timestamp(time_t *);
 	int set_verbose(u_int32_t which, int onoff);
 
@@ -442,15 +446,17 @@ public:
 	//
 	static void _stream_error_function(const char *, char *);
 	static int _tx_recover_intercept(DB_ENV *env, DBT *dbt, DB_LSN *lsn,
-					db_recops op, void *info);
+					db_recops op);
 	static void _paniccall_intercept(DB_ENV *env, int errval);
 	static int _recovery_init_intercept(DB_ENV *env);
 	static void _feedback_intercept(DB_ENV *env, int opcode, int pct);
+	static void _destroy_check(const char *str, int isDbEnv);
 
 private:
 	void cleanup();
 	int initialize(DB_ENV *env);
 	int error_policy();
+
 	// Used internally
 	DbEnv(DB_ENV *, u_int32_t flags);
 
@@ -463,7 +469,9 @@ private:
 	// instance data
 	int construct_error_;
 	u_int32_t construct_flags_;
-	int (*tx_recover_callback_)(DbEnv *, Dbt *, DbLsn *, db_recops, void *);
+	Db *headdb_;
+	Db *taildb_;
+	int (*tx_recover_callback_)(DbEnv *, Dbt *, DbLsn *, db_recops);
 	int (*recovery_init_callback_)(DbEnv *);
 	void (*paniccall_callback_)(DbEnv *, int);
 	void (*feedback_callback_)(DbEnv *, int, int);
@@ -515,6 +523,7 @@ public:
 	void set_errcall(void (*)(const char *, char *));
 	void set_errfile(FILE *);
 	void set_errpfx(const char *);
+	int set_append_recno(int (*)(Db *, Dbt *, db_recno_t));
 	int set_feedback(void (*)(Db *, int, int));
 	int set_flags(u_int32_t);
 	int set_h_ffactor(u_int32_t);
@@ -529,6 +538,7 @@ public:
 	int set_re_len(u_int32_t);
 	int set_re_pad(int);
 	int set_re_source(char *);
+	int set_q_extentsize(u_int32_t);
 	int stat(void *sp, db_malloc_fcn_type db_malloc_fcn, u_int32_t flags);
 	int sync(u_int32_t flags);
 	int upgrade(const char *name, u_int32_t flags);
@@ -538,11 +548,12 @@ public:
 	//
 	void set_error_stream(ostream *);
 
-	// This is public only because it needs to be called
+	// These are public only because it needs to be called
 	// via C functions.  It should never be called by users
 	// of this class.
 	//
 	static void _feedback_intercept(DB *db, int opcode, int pct);
+	static int _append_recno_intercept(DB *db, DBT *data, db_recno_t recno);
 private:
 
 	// no copying
@@ -557,10 +568,13 @@ private:
 
 	// instance data
 	DbEnv *env_;
+	Db *next_;
+	Db *prev_;
 	int construct_error_;
-	int have_private_env_;
+	u_int32_t flags_;
 	u_int32_t construct_flags_;
 	void (*feedback_callback_)(Db *, int, int);
+	int (*append_recno_callback_)(Db *, Dbt *, db_recno_t);
 };
 
 //

@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: env004.tcl,v 11.13 2000/04/21 18:36:21 krinsky Exp $
+#	$Id: env004.tcl,v 11.14 2000/08/25 14:21:50 sue Exp $
 #
 # Env Test 4
 # Test multiple data directories.  Do a bunch of different opens
@@ -17,7 +17,7 @@ proc env004 { } {
 
 	puts "Env004: Multiple data directory test."
 
-	cleanup $testdir
+	env_cleanup $testdir
 	file mkdir $testdir/data1
 	file mkdir $testdir/data2
 	file mkdir $testdir/data3
@@ -44,7 +44,7 @@ proc env004 { } {
 	error_check_good env_close [$e close] 0
 
 	puts "\tEnv004.b: Multiple data directories in berkdb env call."
-	cleanup $testdir
+	env_cleanup $testdir
 	file mkdir $testdir/data1
 	file mkdir $testdir/data2
 	file mkdir $testdir/data3
@@ -57,7 +57,7 @@ proc env004 { } {
 	ddir_test $fulldir $method $e $args
 	error_check_good env_close [$e close] 0
 
-	cleanup $testdir
+	env_cleanup $testdir
 }
 
 proc ddir_test { fulldir method e args } {

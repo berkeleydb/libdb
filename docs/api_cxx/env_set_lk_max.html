@@ -1,5 +1,4 @@
- 
-<!--$Id: env_set_lk_max.so,v 10.18 2000/05/20 16:29:12 bostic Exp $-->
+<!--$Id: env_set_lk_max.so,v 10.21 2000/12/21 19:11:27 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv::set_lk_max</h1>
@@ -23,22 +22,29 @@
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::set_lk_max(u_int32_t lk_max);
+DbEnv::set_lk_max(u_int32_t max);
 </pre></h3>
 <h1>Description</h1>
-<p>Set the maximum number of locks to be held or requested in the table.
-This value is used by <a href="../api_cxx/env_open.html">DbEnv::open</a> to estimate how much space to
-allocate for various lock-table data structures.  If no value is
-specified, a default value is used.
+<p><b>The DbEnv::set_lk_max method interface has been deprecated in favor of
+the <a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>, <a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
+and <a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a> methods.  Please update your applications.</b>
+<p>Set each of the maximum number of locks, lockers and lock objects
+supported by the Berkeley DB lock subsystem to <b>max</b>.  This value is
+used by <a href="../api_cxx/env_open.html">DbEnv::open</a> to estimate how much space to allocate for
+various lock-table data structures.  For specific information on
+configuring the size of the lock subsystem, see
+<a href="../ref/lock/max.html">Configuring locking:  sizing the
+system</a>.
 <p>The DbEnv::set_lk_max interface may only be used to configure Berkeley DB before
 the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
 <p>The DbEnv::set_lk_max method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>The environment's maximum number of locks may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
-line with the string "set_lk_max", one or more whitespace characters, and the number of locks.
-Configuration in the <b>DB_CONFIG</b> file silently overrules
-configuration done using the DbEnv::set_lk_max method.
+<p>The database environment's maximum number of locks may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_lk_max", one or more whitespace characters,
+and the number of locks.  Because the <b>DB_CONFIG</b> file is read when the database
+environment is opened, it will silently overrule configuration done
+before that time.
 <h1>Errors</h1>
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
@@ -49,6 +55,9 @@ configuration done using the DbEnv::set_lk_max method.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
 <a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
+<a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
+<a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
+<a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
 <a href="../api_cxx/env_set_lk_max.html">DbEnv::set_lk_max</a>,
 <a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
 <a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,

@@ -1,18 +1,17 @@
- 
-<!--$Id: mt.so,v 10.35 2000/05/31 15:10:03 bostic Exp $-->
+<!--$Id: mt.so,v 10.37 2000/12/04 18:05:42 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<title>Berkeley DB Reference Guide: Building multi-threaded applications</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
-<td width="1%"><a href="../../ref/program/environ.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/namespace.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/program/environ.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/scope.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Building multi-threaded applications</h1>
@@ -61,13 +60,14 @@ specifying <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a>.
 handles returned by <a href="../../api_c/db_open.html">DB-&gt;open</a> and <a href="../../api_c/db_cursor.html">DB-&gt;cursor</a>) is normally
 performed on behalf of a unique locker.  If, within a single thread of
 control, multiple calls on behalf of the same locker are desired, then
-transactions must be used.  For example, consider the case where a cursor
-scan locates a record, and then based on that record, accesses some other
-item in the database.  If these operations are done using the default
-lockers for the handle, they may conflict.  If the application wishes to
-guarantee that the operations do not conflict, locks must be obtained on
-behalf of a transaction, instead of the default locker ID, and a
-transaction must be specified to the <a href="../../api_c/db_cursor.html">cursor creation</a> and the subsequent Berkeley DB calls.
+transactions must be used.  For example, consider the case where a
+cursor scan locates a record, and then based on that record, accesses
+some other item in the database.  If these operations are done using
+the default lockers for the handle, they may conflict.  If the
+application wishes to guarantee that the operations do not conflict,
+locks must be obtained on behalf of a transaction, instead of the
+default locker ID, and a transaction must be specified to subsequent
+<a href="../../api_c/db_cursor.html">DB-&gt;cursor</a> and other Berkeley DB calls.
 <p><li>Transactions may not span threads.  Each transaction must begin and end
 in the same thread, and each transaction may only be used by a single
 thread.
@@ -88,7 +88,7 @@ See <a href="../../api_c/set_func_yield.html">db_env_set_func_yield</a> for more
 acquire the mutex before waiting.  Se <a href="../../api_c/env_set_tas_spins.html">db_env_set_tas_spins</a> for
 more information.
 </ol>
-<table><tr><td><br></td><td width="1%"><a href="../../ref/program/environ.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/namespace.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/program/environ.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/scope.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -3,7 +3,7 @@
 # Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test073.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
+#	$Id: test073.tcl,v 11.17 2000/12/11 17:24:55 sue Exp $
 #
 # DB Test 73: Test of cursor stability on duplicate pages.
 # Does the following:
@@ -27,20 +27,22 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
-	cleanup $testdir
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test0$tnum.db
+		set env NULL
 	} else {
 		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
+	cleanup $testdir $env
 
 	set key "the key"
 
-	append args " -pagesize $pagesize -dup"
 
 	puts -nonewline "Test0$tnum $omethod ($args): "
 	if { [is_record_based $method] || [is_rbtree $method] } {
@@ -49,6 +51,13 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	} else {
 		puts "cursor stability on duplicate pages."
 	}
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Test073: skipping for specific pagesizes"
+		return
+	}
+
+	append args " -pagesize $pagesize -dup"
 
 	set db [eval {berkdb_open \
 	     -create -truncate -mode 0644} $omethod $args $testfile]
@@ -169,8 +178,11 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 		set is_long($keys) 0
 		incr keys
 
-		verify_t73 is_long dbc $keys $key
+		if { $i % 10 == 1 } {
+			verify_t73 is_long dbc $keys $key
+		}
 	}
+	verify_t73 is_long dbc $keys $key
 
 	puts "\tTest0$tnum.f: Cursor put (DB_CURRENT), first to last,\
 	    growing $keys data."
@@ -192,8 +204,11 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 
 		set is_long($i) 1
 
-		verify_t73 is_long dbc $keys $key
+		if { $i % 10 == 1 } {
+			verify_t73 is_long dbc $keys $key
+		}
 	}
+	verify_t73 is_long dbc $keys $key
 
 	# Close cursors.
 	puts "\tTest0$tnum.g: Closing cursors."
@@ -203,6 +218,7 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	error_check_good "db close" [$db close] 0
 }
 
+# !!!: This procedure is also used by test087.
 proc makedatum_t73 { num is_long } {
 	global alphabet
 	if { $is_long == 1 } {
@@ -225,6 +241,7 @@ proc makedatum_t73 { num is_long } {
 	return $i$a
 }
 
+# !!!: This procedure is also used by test087.
 proc verify_t73 { is_long_array curs_array numkeys key } {
 	upvar $is_long_array is_long
 	upvar $curs_array dbc

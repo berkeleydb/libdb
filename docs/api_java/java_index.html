@@ -1,5 +1,4 @@
- 
-<!--$Id: cxx_index.so,v 10.54.2.3 2000/07/30 18:27:00 bostic Exp $-->
+<!--$Id: cxx_index.so,v 10.65 2000/12/21 19:11:27 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -22,12 +21,16 @@
 <tr><td><br></td><td><a href="../api_java/env_set_error_stream.html">DbEnv.set_error_stream</a></td><td>Set error message output stream</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_errpfx.html">DbEnv.set_errpfx</a></td><td>Set error message prefix</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_feedback.html">DbEnv.set_feedback</a></td><td>Set feedback callback</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_flags.html">DbEnv.set_flags</a></td><td>Environment configuration</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_lg_bsize.html">DbEnv.set_lg_bsize</a></td><td>Set log buffer size</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_lg_dir.html">DbEnv.set_lg_dir</a></td><td>Set the environment logging directory</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_lg_max.html">DbEnv.set_lg_max</a></td><td>Set log file size</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a></td><td>Set lock conflicts matrix</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a></td><td>Set automatic deadlock detection</td></tr>
-<tr><td><br></td><td><a href="../api_java/env_set_lk_max.html">DbEnv.set_lk_max</a></td><td>Set maximum number of locks</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_lk_max.html">DbEnv.set_lk_max</a></td><td>Set maximum number of locks (<b>Deprecated</b>)</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_lk_max_locks.html">DbEnv.set_lk_max_locks</a></td><td>Set maximum number of locks</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_lk_max_lockers.html">DbEnv.set_lk_max_lockers</a></td><td>Set maximum number of lockers</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_lk_max_objects.html">DbEnv.set_lk_max_objects</a></td><td>Set maximum number of lock objects</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_mp_mmapsize.html">DbEnv.set_mp_mmapsize</a></td><td>Set maximum mapped-in database file size</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_mutexlocks.html">DbEnv.set_mutexlocks</a></td><td>Turn off mutual exclusion locking</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_pageyield.html">DbEnv.set_pageyield</a></td><td>Yield the processor on each page access</td></tr>
@@ -39,6 +42,7 @@
 <tr><td><br></td><td><a href="../api_java/env_set_tas_spins.html">DbEnv.set_tas_spins</a></td><td>Set the number of test-and-set spins</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_tmp_dir.html">DbEnv.set_tmp_dir</a></td><td>Set the environment temporary file directory</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a></td><td>Set maximum number of transactions</td></tr>
+<tr><td><br></td><td><a href="../api_java/env_set_tx_recover.html">DbEnv.set_tx_recover</a></td><td>Set transaction abort recover function</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a></td><td>Set recovery timestamp</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_set_verbose.html">DbEnv.set_verbose</a></td><td>Set verbose messages</td></tr>
 <tr><td><br></td><td><a href="../api_java/env_strerror.html">DbEnv.strerror</a></td><td>Error strings</td></tr>
@@ -76,16 +80,22 @@
 <tr><td><br></td><td><a href="../api_java/db_put.html">Db.put</a></td><td>Store items into a database</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_remove.html">Db.remove</a></td><td>Remove a database</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_rename.html">Db.rename</a></td><td>Rename a database</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_append_recno.html">Db.set_append_recno</a></td><td>Set record append callback</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_bt_compare.html">Db.set_bt_compare</a></td><td>Set a Btree comparison function</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_bt_minkey.html">Db.set_bt_minkey</a></td><td>Set the minimum number of keys per Btree page</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_bt_prefix.html">Db.set_bt_prefix</a></td><td>Set a Btree prefix comparison function</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_cachesize.html">Db.set_cachesize</a></td><td>Set the database cache size</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_dup_compare.html">Db.set_dup_compare</a></td><td>Set a duplicate comparison function</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_errcall.html">Db.set_errcall</a></td><td>Set error message callback</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_errpfx.html">Db.set_errpfx</a></td><td>Set error message prefix</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_feedback.html">Db.set_feedback</a></td><td>Set feedback callback</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_flags.html">Db.set_flags</a></td><td>General database configuration</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_h_ffactor.html">Db.set_h_ffactor</a></td><td>Set the Hash table density</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_h_hash.html">Db.set_h_hash</a></td><td>Set a hashing function</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a></td><td>Set the Hash table size</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_lorder.html">Db.set_lorder</a></td><td>Set the database byte order</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a></td><td>Set the underlying database page size</td></tr>
+<tr><td><br></td><td><a href="../api_java/db_set_q_extentsize.html">Db.set_q_extentsize</a></td><td>Set Queue database extent size</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a></td><td>Set the variable-length record delimiter</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_re_len.html">Db.set_re_len</a></td><td>Set the fixed-length record length</td></tr>
 <tr><td><br></td><td><a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a></td><td>Set the fixed-length record pad byte</td></tr>

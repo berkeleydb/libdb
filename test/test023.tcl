@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: test023.tcl,v 11.11 2000/04/21 18:36:25 krinsky Exp $
+#	$Id: test023.tcl,v 11.13 2000/08/25 14:21:55 sue Exp $
 #
 # Duplicate delete test.
 # Add a key with duplicates (first time on-page, second time off-page)
@@ -32,11 +32,14 @@ proc test023 { method args } {
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test023.db
+		set env NULL
 	} else {
 		set testfile test023.db
+		incr eindex
+		set env [lindex $args $eindex]
 	}
 	set t1 $testdir/t1
-	cleanup $testdir
+	cleanup $testdir $env
 	set db [eval {berkdb_open \
 	    -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -198,13 +201,4 @@ proc test023.check { key data } {
 	error_check_good "bad key" $key duplicate_val_test
 	error_check_good "data mismatch for $key" $data $dupnum$dupstr
 	incr dupnum
-}
-
-proc repeat { str n } {
-	set ret ""
-	while { $n > 0 } {
-		set ret $str$ret
-		incr n -1
-	}
-	return $ret
 }

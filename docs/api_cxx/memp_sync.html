@@ -1,5 +1,4 @@
- 
-<!--$Id: memp_sync.so,v 10.24 2000/03/01 21:41:30 bostic Exp $-->
+<!--$Id: memp_sync.so,v 10.25 2000/09/08 15:20:28 bostic Exp $-->
 <!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -9,7 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<a name="2"><!--meow--></a>
+        <a name="2"><!--meow--></a>    
 <table><tr valign=top>
 <td>
 <h1>DbEnv::memp_sync</h1>
@@ -46,11 +45,12 @@ for each file type.  This location should be specified when the file is
 opened using the <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a> function.  It is not required that
 the log sequence number be aligned on the page in any way.
 <p>The DbEnv::memp_sync method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, 0 on success, and <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which need to be written
-but which DbEnv::memp_sync was unable to write immediately.  In addition,
-if DbEnv::memp_sync returns success, the value of <b>lsn</b> will be
-overwritten with the largest log sequence number from any page which was
-written by DbEnv::memp_sync to satisfy this request.
+encapsulates a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which need to be
+written but which DbEnv::memp_sync was unable to write immediately.
+In addition, if DbEnv::memp_sync returns success, the value of
+<b>lsn</b> will be overwritten with the largest log sequence number
+from any page which was written by DbEnv::memp_sync to satisfy this
+request.
 <h1>Errors</h1>
 <p>The DbEnv::memp_sync method may fail and throw an exception or return a non-zero error for the following conditions:
 <p><dl compact>

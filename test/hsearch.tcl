@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: hsearch.tcl,v 11.6 2000/02/14 03:00:13 bostic Exp $
+#	$Id: hsearch.tcl,v 11.7 2000/08/25 14:21:50 sue Exp $
 #
 # Historic Hsearch interface test.
 # Use the first 1000 entries from the dictionary.
@@ -20,7 +20,7 @@ proc hsearch { { nentries 1000 } } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	cleanup $testdir
+	cleanup $testdir NULL
 
 	error_check_good hcreate [berkdb hcreate $nentries] 0
 	set did [open $dict]
