@@ -10,8 +10,7 @@
 
 Component INCLUDE_BERKELEYDB {
 	ENTRY_POINTS	ALL_GLOBAL_SYMBOLS
-	MODULES			aes_method.o \
-			bt_compare.o \
+	MODULES			bt_compare.o \
 			bt_conv.o \
 			bt_curadj.o \
 			bt_cursor.o \
@@ -32,7 +31,7 @@ Component INCLUDE_BERKELEYDB {
 			client.o \
 			crdel_auto.o \
 			crdel_rec.o \
-			crypto.o \
+			crypto_stub.o \
 			db.o \
 			db_am.o \
 			db_auto.o \
@@ -123,7 +122,6 @@ Component INCLUDE_BERKELEYDB {
 			mp_stat.o \
 			mp_sync.o \
 			mp_trickle.o \
-			mt19937db.o \
 			mut_tas.o \
 			mutex.o \
 			os_alloc.o \
@@ -165,8 +163,6 @@ Component INCLUDE_BERKELEYDB {
 			rep_record.o \
 			rep_region.o \
 			rep_util.o \
-			rijndael-alg-fst.o \
-			rijndael-api-fst.o \
 			sha1.o \
 			snprintf.o \
 			strcasecmp.o \
@@ -334,6 +330,12 @@ Module vsnprintf.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/vsnprintf.c
 }
 
+Module crypto_stub.o {
+
+	NAME		crypto_stub.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/crypto_stub.c
+}
+
 Module db_byteorder.o {
 
 	NAME		db_byteorder.o
@@ -386,36 +388,6 @@ Module util_sig.o {
 
 	NAME		util_sig.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_sig.c
-}
-
-Module aes_method.o {
-
-	NAME		aes_method.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/aes_method.c
-}
-
-Module crypto.o {
-
-	NAME		crypto.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/crypto.c
-}
-
-Module mt19937db.o {
-
-	NAME		mt19937db.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c
-}
-
-Module rijndael-alg-fst.o {
-
-	NAME		rijndael-alg-fst.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c
-}
-
-Module rijndael-api-fst.o {
-
-	NAME		rijndael-api-fst.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c
 }
 
 Module crdel_auto.o {

@@ -30,7 +30,7 @@
 
 /* Define to 1 if Berkeley DB release includes strong cryptography. */
 #ifndef HAVE_SMALLBUILD
-#define HAVE_CRYPTO 1
+/* #undef HAVE_CRYPTO */
 #endif
 
 /* Define to 1 if you have the `directio' function. */
