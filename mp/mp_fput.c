@@ -168,6 +168,11 @@ __memp_fput(dbmfp, pgaddr, flags)
 	 * to the correct position in the list.
 	 */
 	argbhp = bhp;
+	/* Move the buffer if there are others in the bucket. */
+	if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == bhp
+	    && SH_TAILQ_NEXT(bhp, hq, __bh) != NULL)
+	    	goto done;
+
 	SH_TAILQ_REMOVE(&hp->hash_bucket, argbhp, hq, __bh);
 
 	prev = NULL;
@@ -180,6 +185,7 @@ __memp_fput(dbmfp, pgaddr, flags)
 	else
 		SH_TAILQ_INSERT_AFTER(&hp->hash_bucket, prev, argbhp, hq, __bh);
 
+done:
 	/* Reset the hash bucket's priority. */
 	hp->hash_priority = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)->priority;
 
