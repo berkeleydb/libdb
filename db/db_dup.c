@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_dup.c,v 11.32 2002/08/08 03:57:47 bostic Exp $";
+static const char revid[] = "$Id: db_dup.c,v 11.36 2003/06/30 17:19:44 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -21,6 +21,7 @@ static const char revid[] = "$Id: db_dup.c,v 11.32 2002/08/08 03:57:47 bostic Ex
 #include "dbinc/db_page.h"
 #include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
+#include "dbinc/mp.h"
 #include "dbinc/db_am.h"
 
 /*
@@ -202,8 +203,8 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if (needlock && (ret = __db_lget(dbc,
 		    0, pagep->next_pgno, DB_LOCK_WRITE, 0, &npl)) != 0)
 			goto err;
-		if ((ret = mpf->get(mpf, &pagep->next_pgno, 0, &np)) != 0) {
-			__db_pgerr(dbp, pagep->next_pgno, ret);
+		if ((ret = __memp_fget(mpf, &pagep->next_pgno, 0, &np)) != 0) {
+			ret = __db_pgerr(dbp, pagep->next_pgno, ret);
 			goto err;
 		}
 		nlsnp = &np->lsn;
@@ -212,8 +213,8 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if (needlock && (ret = __db_lget(dbc,
 		    0, pagep->prev_pgno, DB_LOCK_WRITE, 0, &ppl)) != 0)
 			goto err;
-		if ((ret = mpf->get(mpf, &pagep->prev_pgno, 0, &pp)) != 0) {
-			__db_pgerr(dbp, pagep->next_pgno, ret);
+		if ((ret = __memp_fget(mpf, &pagep->prev_pgno, 0, &pp)) != 0) {
+			ret = __db_pgerr(dbp, pagep->prev_pgno, ret);
 			goto err;
 		}
 		plsnp = &pp->lsn;
@@ -248,10 +249,10 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		else
 			np->prev_pgno = pagep->prev_pgno;
 		if (new_next == NULL)
-			ret = mpf->put(mpf, np, DB_MPOOL_DIRTY);
+			ret = __memp_fput(mpf, np, DB_MPOOL_DIRTY);
 		else {
 			*new_next = np;
-			ret = mpf->set(mpf, np, DB_MPOOL_DIRTY);
+			ret = __memp_fset(mpf, np, DB_MPOOL_DIRTY);
 		}
 		if (ret != 0)
 			goto err;
@@ -262,7 +263,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 	if (pp != NULL) {
 		pp->next_pgno = pagep->next_pgno;
-		if ((ret = mpf->put(mpf, pp, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = __memp_fput(mpf, pp, DB_MPOOL_DIRTY)) != 0)
 			goto err;
 		if (needlock)
 			(void)__TLPUT(dbc, ppl);
@@ -270,11 +271,11 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 	return (0);
 
 err:	if (np != NULL)
-		(void)mpf->put(mpf, np, 0);
+		(void)__memp_fput(mpf, np, 0);
 	if (needlock)
 		(void)__TLPUT(dbc, npl);
 	if (pp != NULL)
-		(void)mpf->put(mpf, pp, 0);
+		(void)__memp_fput(mpf, pp, 0);
 	if (needlock)
 		(void)__TLPUT(dbc, ppl);
 	return (ret);

@@ -1,21 +1,22 @@
-<!--$Id: env_set_data_dir.so,v 10.10 2002/08/18 21:16:26 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_data_dir.so,v 10.23 2003/11/08 19:17:28 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::set_data_dir</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>DbEnv::set_data_dir</h1>
+<h3>DbEnv::set_data_dir</h3>
 </td>
 <td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -24,56 +25,87 @@
 <p>
 int
 DbEnv::set_data_dir(const char *dir);
+<p>
+int
+DbEnv::get_data_dirs(const char ***dirpp);
 </pre></h3>
-<h1>Description</h1>
+<hr size=1 noshade>
+<h3>Description: DbEnv::set_data_dir</h3>
+<a name="3"><!--meow--></a>
 <p>Set the path of a directory to be used as the location of the access
 method database files.  Paths specified to the <a href="../api_cxx/db_open.html">Db::open</a> function
-will be searched relative to this path.  Paths set using this interface
+will be searched relative to this path.  Paths set using this method
 are additive, and specifying more than one will result in each specified
 directory being searched for database files.  If any directories are
-specified, created database files will always be created in the first path
-specified.
+specified, created database files will always be created in the first
+path specified.</p>
 <p>If no database directories are specified, database files can exist only
-in the environment home directory.   See <a href="../ref/env/naming.html">Berkeley DB File Naming</a> for more information.
+in the environment home directory.   See <a href="../ref/env/naming.html">Berkeley DB File Naming</a> for more information.</p>
 <p>For the greatest degree of recoverability from system or application
 failure, database files and log files should be located on separate
-physical devices.
+physical devices.</p>
+<p>The database environment's data directories may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_data_dir", one or more whitespace characters,
+and the directory name.
+</p>
 <p>The DbEnv::set_data_dir method configures operations performed using the specified
 <a href="../api_cxx/env_class.html">DbEnv</a> handle, not all operations performed on the underlying
-database environment.
-<p>The DbEnv::set_data_dir interface may not be called after the <a href="../api_cxx/env_open.html">DbEnv::open</a>
-interface is called.
+database environment.</p>
+<p>The DbEnv::set_data_dir method may not be called after the <a href="../api_cxx/env_open.html">DbEnv::open</a> method is
+called.
 If the database environment already exists when
 <a href="../api_cxx/env_open.html">DbEnv::open</a> is called, the information specified to DbEnv::set_data_dir
 must be consistent with the existing environment or corruption can
-occur.
-<p>The DbEnv::set_data_dir method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>The database environment's data directory may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
-single line with the string "set_data_dir", one or more whitespace characters,
-and the directory name.  Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.
-<h1>Errors</h1>
-<p>The DbEnv::set_data_dir method may fail and throw an exception or return a non-zero error for the following conditions:
+occur.</p>
+<p>The DbEnv::set_data_dir method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Parameters</h3>
 <p><dl compact>
-<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>Called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called.
+<p><dt><b>dir</b><dd>
+The <b>dir</b> parameter is a directory to be used as a location for
+database files.
 </dl>
-<p>The DbEnv::set_data_dir method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::set_data_dir method may fail and
-either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
-<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<h3>Errors</h3>
+<p>The DbEnv::set_data_dir method
+may fail and throw
+<a href="../api_cxx/except_class.html">DbException</a>,
+encapsulating one of the following non-zero errors, or return one of
+the following non-zero errors:</p>
+<p><dl compact>
+<p><dt>EINVAL<dd>If the method was called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called; or if an
+invalid flag value or parameter was specified.
+</dl>
+<hr size=1 noshade>
+<h3>Description: DbEnv::get_data_dirs</h3>
+<p>The DbEnv::get_data_dirs method returns the NULL-terminated
+array of directories.</p>
+<p>The DbEnv::get_data_dirs method may be called at any time during the life of the
+application.</p>
+<p>The DbEnv::get_data_dirs method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>dirpp</b><dd>
+The DbEnv::get_data_dirs method returns a reference to the
+NULL-terminated
+array of directories in <b>dirpp</b>.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,35 +1,35 @@
-<!--$Id: faq.so,v 10.19 2002/02/23 20:05:31 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: faq.so,v 10.20 2003/10/18 19:16:21 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: XA FAQ</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Distributed Transactions</dl></h3></td>
-<td align=right><a href="../../ref/xa/xa_config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/apprec/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../xa/xa_config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../apprec/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>XA FAQ</h1>
-<p><ol>
+<h3 align=center>XA FAQ</h3>
+<ol>
 <p><li><b>Is it possible to mix XA and non-XA transactions?</b>
 <p>Yes.  It is also possible for XA and non-XA transactions to coexist in
 the same Berkeley DB environment.  To do this, specify the same environment
 to the non-XA <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> calls as was specified in the Tuxedo
-configuration file.
+configuration file.</p>
 <hr size=1 noshade>
 <p><li><b>Does converting an application to run within XA change any of
 the already existing C/C++ API calls it does?</b>
 <p>When converting an application to run under XA, the application's Berkeley DB
-calls are unchanged, with three exceptions:
-<p><ol>
-<p><li>The application must specify the <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a> flag to
-the <a href="../../api_c/db_create.html">db_create</a> interface.
+calls are unchanged, with three exceptions:</p>
+<ol>
+<p><li>The application must specify the <a href="../../api_c/db_class.html#DB_XA_CREATE">DB_XA_CREATE</a> flag to
+the <a href="../../api_c/db_class.html">db_create</a> function.
 <p><li>Unless the application is performing an operation for a non-XA
 transaction, the application should never explicitly call
 <a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a>, <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> or <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>, and those
@@ -39,7 +39,7 @@ transaction, the application should specify a transaction argument of NULL
 to Berkeley DB methods taking transaction arguments (for example, <a href="../../api_c/db_put.html">DB-&gt;put</a>
 or <a href="../../api_c/db_cursor.html">DB-&gt;cursor</a>).
 </ol>
-<p>Otherwise, the application should be unchanged.
+<p>Otherwise, the application should be unchanged.</p>
 <hr size=1 noshade>
 <p><li><b>How does Berkeley DB recovery interact with recovery by the Tuxedo
 transaction manager?</b>
@@ -55,12 +55,12 @@ each resource manager has recovered, then Tuxedo recovery may begin.
 Tuxedo will interact with each resource manager via the __db_xa_recover
 function which returns the list of prepared, but not yet completed
 transactions. It should issue a commit or abort for each one, and only
-after having completed each transaction will normal processing resume.
+after having completed each transaction will normal processing resume.</p>
 <p>Finally, standard log file archival and catastrophic recovery procedures
-should occur independently of XA operation.
+should occur independently of XA operation.</p>
 </ol>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/xa/xa_config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/apprec/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xa/xa_config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../apprec/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

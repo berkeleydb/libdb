@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: ndbm.tcl,v 11.16 2002/07/08 13:11:30 mjc Exp $
+# $Id: ndbm.tcl,v 11.17 2003/01/08 05:50:56 bostic Exp $
 #
 # Historic NDBM interface test.
 # Use the first 1000 entries from the dictionary.

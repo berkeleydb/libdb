@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2002
+# Copyright (c) 1999-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test088.tcl,v 11.12 2002/08/05 19:23:51 sandstro Exp $
+# $Id: test088.tcl,v 11.13 2003/01/08 05:54:07 bostic Exp $
 #
 # TEST	test088
 # TEST	Test of cursor stability across btree splits with very

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2002
+# Copyright (c) 1999-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test052.tcl,v 11.16 2002/07/08 20:48:58 sandstro Exp $
+# $Id: test052.tcl,v 11.17 2003/01/08 05:53:57 bostic Exp $
 #
 # TEST	test052
 # TEST	Renumbering record Recno test.

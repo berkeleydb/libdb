@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test056.tcl,v 11.18 2002/05/22 15:42:55 sue Exp $
+# $Id: test056.tcl,v 11.19 2003/01/08 05:53:58 bostic Exp $
 #
 # TEST	test056
 # TEST	Cursor maintenance during deletes.

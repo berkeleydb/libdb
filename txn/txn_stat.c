@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_stat.c,v 11.15 2002/04/26 23:00:36 bostic Exp $";
+static const char revid[] = "$Id: txn_stat.c,v 11.22 2003/09/13 19:20:43 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,14 +18,46 @@ static const char revid[] = "$Id: txn_stat.c,v 11.15 2002/04/26 23:00:36 bostic 
 #endif
 
 #include "db_int.h"
+#include "dbinc/log.h"
 #include "dbinc/txn.h"
+
+static int __txn_stat __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
+
+/*
+ * __txn_stat_pp --
+ *	DB_ENV->txn_stat pre/post processing.
+ *
+ * PUBLIC: int __txn_stat_pp __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
+ */
+int
+__txn_stat_pp(dbenv, statp, flags)
+	DB_ENV *dbenv;
+	DB_TXN_STAT **statp;
+	u_int32_t flags;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, "txn_stat", DB_INIT_TXN);
+
+	if ((ret = __db_fchk(dbenv,
+	    "DB_ENV->txn_stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __txn_stat(dbenv, statp, flags);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
 
 /*
  * __txn_stat --
- *
- * PUBLIC: int __txn_stat __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
+ *	DB_ENV->txn_stat.
  */
-int
+static int
 __txn_stat(dbenv, statp, flags)
 	DB_ENV *dbenv;
 	DB_TXN_STAT **statp;
@@ -36,17 +68,10 @@ __txn_stat(dbenv, statp, flags)
 	DB_TXN_STAT *stats;
 	TXN_DETAIL *txnp;
 	size_t nbytes;
-	u_int32_t ndx;
+	u_int32_t maxtxn, ndx;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, "txn_stat", DB_INIT_TXN);
-
 	*statp = NULL;
-	if ((ret = __db_fchk(dbenv,
-	    "DB_ENV->txn_stat", flags, DB_STAT_CLEAR)) != 0)
-		return (ret);
-
 	mgr = dbenv->tx_handle;
 	region = mgr->reginfo.primary;
 
@@ -56,8 +81,12 @@ __txn_stat(dbenv, statp, flags)
 	 * not going to be that large.  Don't have to lock anything to look
 	 * at the region's maximum active transactions value, it's read-only
 	 * and never changes after the region is created.
+	 *
+	 * The maximum active transactions isn't a hard limit, so allocate
+	 * some extra room, and don't walk off the end.
 	 */
-	nbytes = sizeof(DB_TXN_STAT) + sizeof(DB_TXN_ACTIVE) * region->maxtxns;
+	maxtxn = region->maxtxns + (region->maxtxns / 10) + 10;
+	nbytes = sizeof(DB_TXN_STAT) + sizeof(DB_TXN_ACTIVE) * maxtxn;
 	if ((ret = __os_umalloc(dbenv, nbytes, &stats)) != 0)
 		return (ret);
 
@@ -68,10 +97,10 @@ __txn_stat(dbenv, statp, flags)
 	stats->st_time_ckp = region->time_ckp;
 	stats->st_txnarray = (DB_TXN_ACTIVE *)&stats[1];
 
-	ndx = 0;
-	for (txnp = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
-	    txnp != NULL;
-	    txnp = SH_TAILQ_NEXT(txnp, links, __txn_detail)) {
+	for (ndx = 0,
+	    txnp = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
+	    txnp != NULL && ndx < maxtxn;
+	    txnp = SH_TAILQ_NEXT(txnp, links, __txn_detail), ++ndx) {
 		stats->st_txnarray[ndx].txnid = txnp->txnid;
 		if (txnp->parent == INVALID_ROFF)
 			stats->st_txnarray[ndx].parentid = TXN_INVALID;
@@ -80,7 +109,9 @@ __txn_stat(dbenv, statp, flags)
 			    ((TXN_DETAIL *)R_ADDR(&mgr->reginfo,
 			    txnp->parent))->txnid;
 		stats->st_txnarray[ndx].lsn = txnp->begin_lsn;
-		ndx++;
+		if ((stats->st_txnarray[ndx].xa_status = txnp->xa_status) != 0)
+			memcpy(stats->st_txnarray[ndx].xid,
+			    txnp->xid, DB_XIDDATASIZE);
 	}
 
 	stats->st_region_wait = mgr->reginfo.rp->mutex.mutex_set_wait;

@@ -1,22 +1,22 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_err.c,v 11.80 2002/07/30 01:21:53 bostic Exp $";
+static const char revid[] = "$Id: db_err.c,v 11.100 2003/10/07 18:55:38 mjc Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>				/* Declare STDERR_FILENO. */
 #endif
 
 #include "db_int.h"
@@ -77,12 +77,28 @@ __db_ferr(dbenv, name, iscombo)
 }
 
 /*
+ * __db_fnl --
+ *	Common flag-needs-locking message.
+ *
+ * PUBLIC: int __db_fnl __P((const DB_ENV *, const char *));
+ */
+int
+__db_fnl(dbenv, name)
+	const DB_ENV *dbenv;
+	const char *name;
+{
+	__db_err(dbenv,
+	    "%s: the DB_DIRTY_READ and DB_RMW flags require locking", name);
+	return (EINVAL);
+}
+
+/*
  * __db_pgerr --
  *	Error when unable to retrieve a specified page.
  *
- * PUBLIC: void __db_pgerr __P((DB *, db_pgno_t, int));
+ * PUBLIC: int __db_pgerr __P((DB *, db_pgno_t, int));
  */
-void
+int
 __db_pgerr(dbp, pgno, errval)
 	DB *dbp;
 	db_pgno_t pgno;
@@ -95,7 +111,7 @@ __db_pgerr(dbp, pgno, errval)
 	 */
 	__db_err(dbp->dbenv,
 	    "unable to create/retrieve page %lu", (u_long)pgno);
-	(void)__db_panic(dbp->dbenv, errval);
+	return (__db_panic(dbp->dbenv, errval));
 }
 
 /*
@@ -111,24 +127,6 @@ __db_pgfmt(dbenv, pgno)
 {
 	__db_err(dbenv, "page %lu: illegal page type or format", (u_long)pgno);
 	return (__db_panic(dbenv, EINVAL));
-}
-
-/*
- * __db_eopnotsup --
- *	Common operation not supported message.
- *
- * PUBLIC: int __db_eopnotsup __P((const DB_ENV *));
- */
-int
-__db_eopnotsup(dbenv)
-	const DB_ENV *dbenv;
-{
-	__db_err(dbenv, "operation not supported");
-#ifdef EOPNOTSUPP
-	return (EOPNOTSUPP);
-#else
-	return (EINVAL);
-#endif
 }
 
 #ifdef DIAGNOSTIC
@@ -167,7 +165,11 @@ int
 __db_panic_msg(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_err(dbenv, "fatal region error detected; run recovery");
+	__db_err(dbenv, "PANIC: fatal region error detected; run recovery");
+
+	if (dbenv->db_paniccall != NULL)
+		dbenv->db_paniccall(dbenv, DB_RUNRECOVERY);
+
 	return (DB_RUNRECOVERY);
 }
 
@@ -184,8 +186,6 @@ __db_panic(dbenv, errval)
 {
 	if (dbenv != NULL) {
 		PANIC_SET(dbenv, 1);
-
-		dbenv->panic_errval = errval;
 
 		__db_err(dbenv, "PANIC: %s", db_strerror(errval));
 
@@ -222,10 +222,15 @@ char *
 db_strerror(error)
 	int error;
 {
+	char *p;
+
 	if (error == 0)
 		return ("Successful return: 0");
-	if (error > 0)
-		return (strerror(error));
+	if (error > 0) {
+		if ((p = strerror(error)) != NULL)
+			return (p);
+		goto unknown_err;
+	}
 
 	/*
 	 * !!!
@@ -237,6 +242,8 @@ db_strerror(error)
 	switch (error) {
 	case DB_DONOTINDEX:
 		return ("DB_DONOTINDEX: Secondary index callback returns null");
+	case DB_FILEOPEN:
+		return ("DB_FILEOPEN: Rename or remove while file is open.");
 	case DB_KEYEMPTY:
 		return ("DB_KEYEMPTY: Non-existent key/data pair");
 	case DB_KEYEXIST:
@@ -247,7 +254,7 @@ db_strerror(error)
 	case DB_LOCK_NOTGRANTED:
 		return ("DB_LOCK_NOTGRANTED: Lock not granted");
 	case DB_NOSERVER:
-		return ("DB_NOSERVER: Fatal error, no server");
+		return ("DB_NOSERVER: Fatal error, no RPC server");
 	case DB_NOSERVER_HOME:
 		return ("DB_NOSERVER_HOME: Home unrecognized at server");
 	case DB_NOSERVER_ID:
@@ -260,12 +267,18 @@ db_strerror(error)
 		return ("DB_PAGE_NOTFOUND: Requested page not found");
 	case DB_REP_DUPMASTER:
 		return ("DB_REP_DUPMASTER: A second master site appeared");
+	case DB_REP_HANDLE_DEAD:
+		return ("DB_REP_HANDLE_DEAD: Handle is no longer valid.");
 	case DB_REP_HOLDELECTION:
 		return ("DB_REP_HOLDELECTION: Need to hold an election");
+	case DB_REP_ISPERM:
+		return ("DB_REP_ISPERM: Permanent record written");
 	case DB_REP_NEWMASTER:
 		return ("DB_REP_NEWMASTER: A new master has declared itself");
 	case DB_REP_NEWSITE:
 		return ("DB_REP_NEWSITE: A new site has entered the system");
+	case DB_REP_NOTPERM:
+		return ("DB_REP_NOTPERM: Permanent log record not written.");
 	case DB_REP_OUTDATED:
 		return
 		    ("DB_REP_OUTDATED: Insufficient logs on master to recover");
@@ -275,10 +288,14 @@ db_strerror(error)
 		return ("DB_RUNRECOVERY: Fatal error, run database recovery");
 	case DB_SECONDARY_BAD:
 		return
-	    ("DB_SECONDARY_BAD: Secondary index item missing from primary");
+	    ("DB_SECONDARY_BAD: Secondary index inconsistent with primary");
 	case DB_VERIFY_BAD:
 		return ("DB_VERIFY_BAD: Database verification failed");
-	default: {
+	default:
+		break;
+	}
+
+unknown_err: {
 		/*
 		 * !!!
 		 * Room for a 64-bit number + slop.  This buffer is only used
@@ -290,7 +307,6 @@ db_strerror(error)
 		(void)snprintf(ebuf, sizeof(ebuf), "Unknown error: %d", error);
 		return (ebuf);
 	}
-	}
 }
 
 /*
@@ -298,10 +314,11 @@ db_strerror(error)
  *	Standard DB error routine.  The same as errx, except we don't write
  *	to stderr if no output mechanism was specified.
  *
- * PUBLIC: void __db_err __P((const DB_ENV *, const char *, ...));
+ * PUBLIC: void __db_err __P((const DB_ENV *, const char *, ...))
+ * PUBLIC:    __attribute__ ((__format__ (__printf__, 2, 3)));
  */
 void
-#ifdef __STDC__
+#ifdef STDC_HEADERS
 __db_err(const DB_ENV *dbenv, const char *fmt, ...)
 #else
 __db_err(dbenv, fmt, va_alist)
@@ -312,6 +329,11 @@ __db_err(dbenv, fmt, va_alist)
 {
 	DB_REAL_ERR(dbenv, 0, 0, 0, fmt);
 }
+
+#define	OVERFLOW_ERROR	"internal buffer overflow, process aborted\n"
+#ifndef	STDERR_FILENO
+#define	STDERR_FILENO	2
+#endif
 
 /*
  * __db_errcall --
@@ -335,7 +357,9 @@ __db_errcall(dbenv, error, error_set, fmt, ap)
 		p += vsnprintf(errbuf, sizeof(errbuf), fmt, ap);
 	if (error_set)
 		p += snprintf(p,
-		    sizeof(errbuf) - (p - errbuf), ": %s", db_strerror(error));
+		    sizeof(errbuf) - (size_t)(p - errbuf), ": %s",
+		    db_strerror(error));
+#ifndef HAVE_VSNPRINTF
 	/*
 	 * !!!
 	 * We're potentially manipulating strings handed us by the application,
@@ -347,13 +371,12 @@ __db_errcall(dbenv, error, error_set, fmt, ap)
 	 * are pretty rare anymore.
 	 */
 	if ((size_t)(p - errbuf) > sizeof(errbuf)) {
-		(void)fprintf(stderr,
-		    "Berkeley DB: error callback interface buffer overflow\n");
-		(void)fflush(stderr);
-
+		write(
+		    STDERR_FILENO, OVERFLOW_ERROR, sizeof(OVERFLOW_ERROR) - 1);
 		abort();
 		/* NOTREACHED */
 	}
+#endif
 
 	dbenv->db_errcall(dbenv->db_errpfx, errbuf);
 }
@@ -395,10 +418,11 @@ __db_errfile(dbenv, error, error_set, fmt, ap)
  *	Write information into the DB log.
  *
  * PUBLIC: void __db_logmsg __P((const DB_ENV *,
- * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, ...));
+ * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, ...))
+ * PUBLIC:    __attribute__ ((__format__ (__printf__, 5, 6)));
  */
 void
-#ifdef __STDC__
+#ifdef STDC_HEADERS
 __db_logmsg(const DB_ENV *dbenv,
     DB_TXN *txnid, const char *opname, u_int32_t flags, const char *fmt, ...)
 #else
@@ -418,7 +442,7 @@ __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
 	if (!LOGGING_ON(dbenv))
 		return;
 
-#ifdef __STDC__
+#ifdef STDC_HEADERS
 	va_start(ap, fmt);
 #else
 	va_start(ap);
@@ -429,14 +453,33 @@ __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
 
 	memset(&msgdbt, 0, sizeof(msgdbt));
 	msgdbt.data = __logbuf;
-	msgdbt.size = vsnprintf(__logbuf, sizeof(__logbuf), fmt, ap);
+	msgdbt.size = (u_int32_t)vsnprintf(__logbuf, sizeof(__logbuf), fmt, ap);
+
+#ifndef HAVE_VSNPRINTF
+	/*
+	 * !!!
+	 * We're potentially manipulating strings handed us by the application,
+	 * and on systems without a real snprintf() the sprintf() calls could
+	 * have overflowed the buffer.  We can't do anything about it now, but
+	 * we don't want to return control to the application, we might have
+	 * overwritten the stack with a Trojan horse.  We're not trying to do
+	 * anything recoverable here because systems without snprintf support
+	 * are pretty rare anymore.
+	 */
+	if (msgdbt.size > sizeof(__logbuf)) {
+		write(
+		    STDERR_FILENO, OVERFLOW_ERROR, sizeof(OVERFLOW_ERROR) - 1);
+		abort();
+		/* NOTREACHED */
+	}
+#endif
 
 	/*
 	 * XXX
 	 * Explicitly discard the const.  Otherwise, we have to const DB_ENV
 	 * references throughout the logging subsystem.
 	 */
-	__db_debug_log(
+	(void)__db_debug_log(
 	    (DB_ENV *)dbenv, txnid, &lsn, flags, &opdbt, -1, &msgdbt, NULL, 0);
 
 	va_end(ap);
@@ -453,7 +496,7 @@ __db_unknown_flag(dbenv, routine, flag)
 	char *routine;
 	u_int32_t flag;
 {
-	__db_err(dbenv, "%s: Unknown flag: 0x%x", routine, flag);
+	__db_err(dbenv, "%s: Unknown flag: 0x%x", routine, (u_int)flag);
 	DB_ASSERT(0);
 	return (EINVAL);
 }
@@ -469,7 +512,7 @@ __db_unknown_type(dbenv, routine, type)
 	char *routine;
 	DBTYPE type;
 {
-	__db_err(dbenv, "%s: Unknown db type: 0x%x", routine, type);
+	__db_err(dbenv, "%s: Unknown db type: 0x%x", routine, (u_int)type);
 	DB_ASSERT(0);
 	return (EINVAL);
 }
@@ -575,5 +618,38 @@ __db_not_txn_env(dbenv)
 	DB_ENV *dbenv;
 {
 	__db_err(dbenv, "DB environment not configured for transactions");
+	return (EINVAL);
+}
+
+/*
+ * __db_rec_toobig --
+ *	Fixed record length exceeded error message.
+ *
+ * PUBLIC: int __db_rec_toobig __P((DB_ENV *, u_int32_t, u_int32_t));
+ */
+int
+__db_rec_toobig(dbenv, data_len, fixed_rec_len)
+	DB_ENV *dbenv;
+	u_int32_t data_len, fixed_rec_len;
+{
+	__db_err(dbenv, "%s: length of %lu larger than database's value of %lu",
+	    "Record length error", (u_long)data_len, (u_long)fixed_rec_len);
+	return (EINVAL);
+}
+
+/*
+ * __db_rec_repl --
+ *	Fixed record replacement length error message.
+ *
+ * PUBLIC: int __db_rec_repl __P((DB_ENV *, u_int32_t, u_int32_t));
+ */
+int
+__db_rec_repl(dbenv, data_size, data_dlen)
+	DB_ENV *dbenv;
+	u_int32_t data_size, data_dlen;
+{
+	__db_err(dbenv,
+	    "%s: replacement length %lu differs from replaced length %lu",
+	    "Record length error", (u_long)data_size, (u_long)data_dlen);
 	return (EINVAL);
 }

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fid.c,v 11.14 2002/08/26 14:37:38 margo Exp $";
+static const char revid[] = "$Id: os_fid.c,v 11.17 2003/05/05 19:55:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char revid[] = "$Id: os_fid.c,v 11.14 2002/08/26 14:37:38 margo Exp
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -56,9 +55,11 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 {
 	struct stat sb;
 	size_t i;
-	int ret;
+	int ret, retries;
 	u_int32_t tmp;
 	u_int8_t *p;
+
+	retries = 0;
 
 	/* Clear the buffer. */
 	memset(fidp, 0, DB_FILE_ID_LEN);
@@ -70,7 +71,8 @@ retry:
 #else
 	if (stat(fname, &sb) != 0) {
 #endif
-		if ((ret = __os_get_errno()) == EINTR)
+		if (((ret = __os_get_errno()) == EINTR || ret == EBUSY) &&
+		    ++retries < DB_RETRY)
 			goto retry;
 		__db_err(dbenv, "%s: %s", fname, strerror(ret));
 		return (ret);

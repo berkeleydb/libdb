@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_win32,v 1.25 2002/05/20 19:18:14 bostic Exp $
+#	$Id: s_win32,v 1.28 2003/05/20 23:37:20 mjc Exp $
 #
 # Build Windows/32 include files.
 
@@ -17,6 +17,7 @@ trap 'rm -f $s $t ; exit 1' 1 2 3 13 15
 # Build the Win32 automatically generated files.
 f=../build_win32/db.h
 cat <<ENDOFSEDTEXT > $s
+/@inttypes_decl@/d
 s/@u_int8_decl@/typedef unsigned char u_int8_t;/
 s/@int16_decl@/typedef short int16_t;/
 s/@u_int16_decl@/typedef unsigned short u_int16_t;/
@@ -48,6 +49,9 @@ s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
+s/@DB_CONST@//
+s/@DB_PROTO1@/#undef __P/
+s/@DB_PROTO2@/#define	__P(protos)	protos/
 ENDOFSEDTEXT
 (echo "$msgc" &&
     sed -f $s ../dbinc/db.in &&
@@ -66,7 +70,7 @@ cmp $t $f > /dev/null 2>&1 ||
 
 f=../build_win32/db_int.h
 cat <<ENDOFSEDTEXT > $s
-s/\(PATH_SEPARATOR[^"]*"\)\/"/\1\\\\\\\\\\/:\"/
+s/@PATH_SEPARATOR@/\\\\\\\\\/:/
 s/@db_align_t_decl@/typedef unsigned long db_align_t;/
 s/@db_alignp_t_decl@/typedef unsigned long db_alignp_t;/
 s/@db_int_def@//
@@ -104,5 +108,10 @@ for i in `sed -e '/^$/d' -e '/^#/d' win_exports.in`; do
 done) > $t
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+
+f=../build_win32/win_db.h
+i=win_db.in
+cmp $i $f > /dev/null 2>&1 ||
+    (echo "Building $f" && rm -f $f && cp $i $f && chmod 444 $f)
 
 rm -f $s $t

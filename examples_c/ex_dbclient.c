@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_dbclient.c,v 1.28 2002/08/06 06:11:24 bostic Exp $
+ * $Id: ex_dbclient.c,v 1.30 2003/05/16 15:06:20 sue Exp $
  */
 
 #include <sys/types.h>
@@ -80,7 +80,7 @@ ex_dbclient_run(home, errfp, host, progname)
 	 * Create an environment object and initialize it for error
 	 * reporting.
 	 */
-	if ((ret = db_env_create(&dbenv, DB_CLIENT)) != 0) {
+	if ((ret = db_env_create(&dbenv, DB_RPCCLIENT)) != 0) {
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
 		return (1);
 	}

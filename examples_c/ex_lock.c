@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_lock.c,v 11.18 2002/04/10 21:48:20 bostic Exp $
+ * $Id: ex_lock.c,v 11.19 2003/01/08 04:43:59 bostic Exp $
  */
 
 #include <sys/types.h>

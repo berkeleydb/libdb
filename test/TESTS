@@ -1,5 +1,6 @@
 # Automatically built by dist/s_test; may require local editing.
 
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 bigfile001
 	Create a database greater than 4 GB in size.  Close, verify.
@@ -45,7 +46,7 @@ dead006
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dead007
-	use timeouts rather than the normal dd algorithm.
+	Tests for locker and txn id wraparound.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env001
@@ -94,12 +95,14 @@ env006
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env007
-	Test various DB_CONFIG config file options.
+	Test DB_CONFIG config file options for berkdb env.
 	1) Make sure command line option is respected
 	2) Make sure that config file option is respected
 	3) Make sure that if -both- DB_CONFIG and the set_<whatever>
-	method is used,	only the file is respected.
+	method is used, only the file is respected.
 	Then test all known config options.
+	Also test config options on berkdb open.  This isn't
+	really env testing, but there's no better place to put it.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env008
@@ -119,6 +122,42 @@ env010
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env011
 	Run with region overwrite flag.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop001.tcl
+	Test file system operations, combined in a transaction. [#7363]
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop002.tcl
+	Test file system operations in the presence of bad permissions.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop003
+
+	Test behavior of create and truncate for compatibility
+	with sendmail.
+	1.  DB_TRUNCATE is not allowed with locking or transactions.
+	2.  Can -create into zero-length existing file.
+	3.  Can -create into non-zero-length existing file if and
+	only if DB_TRUNCATE is specified.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop004
+	Test of DB->rename().
+	(formerly test075)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop005
+	Test of DB->remove()
+	Formerly test080.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+fop006.tcl
+	Test file system operations in multiple simultaneous
+	transactions.  Start one transaction, do a file operation.
+	Start a second transaction, do a file operation.  Abort
+	or commit txn1, then abort or commit txn2, and check for
+	appropriate outcome.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 jointest
@@ -159,6 +198,17 @@ lock005
 	Check that page locks are being released properly.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+lock006
+	Test lock_vec interface.  We do all the same things that
+	lock001 does, using lock_vec instead of lock_get and lock_put,
+	plus a few more things like lock-coupling.
+	1.  Get and release one at a time.
+	2.  Release with put_obj (all locks for a given locker/obj).
+	3.  Release with put_all (all locks for a given locker).
+	Regularly check lock_stat to verify all locks have been
+	released.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 log001
 	Read/write log records.
 
@@ -182,6 +232,16 @@ log005
 	Check that log file sizes can change on the fly.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+log006
+	Test log file auto-remove.
+	Test normal operation.
+	Test a long-lived txn.
+	Test log_archive flags.
+	Test db_archive flags.
+	Test turning on later.
+	Test setting via DB_CONFIG.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 memp001
 	Randomly updates pages.
 
@@ -193,6 +253,10 @@ memp002
 memp003
 	Test reader-only/writer process combinations; we use the access methods
 	for testing.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+memp004
+	Test that small read-only databases are mapped into memory.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 mutex001
@@ -304,9 +368,7 @@ recd015
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 recd016
-	This is a recovery test for testing running recovery while
-	recovery is already running.  While bad things may or may not
-	happen, if recovery is then run properly, things should be correct.
+	Test recovery after checksum error.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 recd017
@@ -323,18 +385,14 @@ recd019
 	Test txn id wrap-around and recovery.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-recd020
-	Test recovery after checksum error.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep001
 	Replication rename and forced-upgrade test.
 
-	Run a modified version of test001 in a replicated master environment;
-	verify that the database on the client is correct.
-	Next, remove the database, close the master, upgrade the 
-	client, reopen the master, and make sure the new master can correctly
-	run test001 and propagate it in the other direction.
+	Run a modified version of test001 in a replicated master
+	environment; verify that the database on the client is correct.
+	Next, remove the database, close the master, upgrade the
+	client, reopen the master, and make sure the new master can
+	correctly run test001 and propagate it in the other direction.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep002
@@ -348,7 +406,7 @@ rep002
 rep003
 	Repeated shutdown/restart replication test
 
-	Run a quick put test in a replicated master environment;  start up, 
+	Run a quick put test in a replicated master environment;  start up,
 	shut down, and restart client processes, with and without recovery.
 	To ensure that environment state is transient, use DB_PRIVATE.
 
@@ -370,14 +428,97 @@ rep005
 	locations in the election path.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep006
+	Replication and non-rep env handles.
+
+	Run a modified version of test001 in a replicated master environment;
+	verify that the database on the client is correct.
+	Next, create a non-rep env handle to the master env.
+	Attempt to open the database r/w to force error.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep007
+	Replication and bad LSNs
+
+	Run a modified version of test001 in a replicated master env.
+	Close the client.  Make additional changes to master.
+	Close the master.  Open the client as the new master.
+	Make several different changes.  Open the old master as
+	the client.  Verify periodically that contents are correct.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep008
+	Replication, back up and synchronizing
+
+	Run a modified version of test001 in a replicated master environment;
+	Close master and client.
+	Copy the master log to the client.
+	Clean the master.
+	Reopen the master and client.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep009
+	Replication and DUPMASTERs
+	Run test001 in a replicated environment.
+
+	Declare one of the clients to also be a master.
+	Close a client, clean it and then declare it a 2nd master.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep010
+	Replication and ISPERM
+
+	With consecutive message processing, make sure every 
+	DB_REP_PERMANENT is responded to with an ISPERM when 
+	processed.  With gaps in the processing, make sure 
+	every DB_REP_PERMANENT is responded to with an ISPERM
+	or a NOTPERM.  Verify in both cases that the LSN returned 
+	with ISPERM is found in the log.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep011
+	Replication: test open handle across an upgrade.
+
+	Open and close test database in master environment. 
+	Update the client.  Check client, and leave the handle
+	to the client open as we close the masterenv and upgrade
+	the client to master.  Reopen the old master as client
+	and catch up.  Test that we can still do a put to the 
+	handle we created on the master while it was still a 
+	client, and then make sure that the change can be 
+	propagated back to the new client. 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep012
+	Replication and dead DB handles.
+
+	Run a modified version of test001 in a replicated master env.
+	Make additional changes to master, but not to the client.
+	Downgrade the master and upgrade the client with open db handles.
+	Verify that the roll back on clients gives dead db handles.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep013
+	Replication and swapping master/clients with open dbs.
+
+	Run a modified version of test001 in a replicated master env.
+	Make additional changes to master, but not to the client.
+	Swap master and client.
+	Verify that the roll back on clients gives dead db handles.
+	Swap and verify several times.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc001
 	Test RPC server timeouts for cursor, txn and env handles.
-	Test RPC specifics, primarily that unsupported functions return
-	errors and such.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc002
 	Test invalid RPC functions and make sure we error them correctly
+	Test server home directory error cases
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rpc003
+	Test RPC and secondary indices.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc004
@@ -412,6 +553,115 @@ scr###
 	The scr### directories are shell scripts that test a variety of
 	things, including things about the distribution itself.  These
 	tests won't run on most systems, so don't even try to run them.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb001	Tests mixing db and subdb operations
+	Tests mixing db and subdb operations
+	Create a db, add data, try to create a subdb.
+	Test naming db and subdb with a leading - for correct parsing
+	Existence check -- test use of -excl with subdbs
+
+	Test non-subdb and subdb operations
+	Test naming (filenames begin with -)
+	Test existence (cannot create subdb of same name with -excl)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb002
+	Tests basic subdb functionality
+	Small keys, small data
+	Put/get per key
+	Dump file
+	Close, reopen
+	Dump file
+
+	Use the first 10,000 entries from the dictionary.
+	Insert each with self as key and data; retrieve each.
+	After all are entered, retrieve all; compare output to original.
+	Close file, reopen, do retrieve and re-verify.
+	Then repeat using an environment.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb003
+	Tests many subdbs
+	Creates many subdbs and puts a small amount of
+	data in each (many defaults to 1000)
+
+	Use the first 1000 entries from the dictionary as subdbnames.
+	Insert each with entry as name of subdatabase and a partial list
+	as key/data.  After all are entered, retrieve all; compare output
+	to original.  Close file, reopen, do retrieve and re-verify.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb004
+	Tests large subdb names
+	subdb name = filecontents,
+	key = filename, data = filecontents
+	Put/get per key
+	Dump file
+	Dump subdbs, verify data and subdb name match
+
+	Create 1 db with many large subdbs.  Use the contents as subdb names.
+	Take the source files and dbtest executable and enter their names as
+	the key with their contents as data.  After all are entered, retrieve
+	all; compare output to original. Close file, reopen, do retrieve and
+	re-verify.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb005
+	Tests cursor operations in subdbs
+	Put/get per key
+	Verify cursor operations work within subdb
+	Verify cursor operations do not work across subdbs
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb006
+	Tests intra-subdb join
+
+	We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
+	everything else does as well.  We'll create test databases called
+	sub1.db, sub2.db, sub3.db, and sub4.db.  The number on the database
+	describes the duplication -- duplicates are of the form 0, N, 2N, 3N,
+	...  where N is the number of the database.  Primary.db is the primary
+	database, and sub0.db is the database that has no matching duplicates.
+	All of these are within a single database.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb007
+	Tests page size difference errors between subdbs.
+	Test 3 different scenarios for page sizes.
+	1.  Create/open with a default page size, 2nd subdb create with
+	specified different one, should error.
+	2.  Create/open with specific page size, 2nd subdb create with
+	different one, should error.
+	3.  Create/open with specified page size, 2nd subdb create with
+	same specified size, should succeed.
+	(4th combo of using all defaults is a basic test, done elsewhere)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb008
+	Tests explicit setting of lorders for subdatabases -- the
+	lorder should be ignored.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb009
+	Test DB->rename() method for subdbs
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb010
+	Test DB->remove() method and DB->truncate() for subdbs
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb011
+	Test deleting Subdbs with overflow pages
+	Create 1 db with many large subdbs.
+	Test subdatabases with overflow pages.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdb012
+	Test subdbs with locking and transactions
+	Tests creating and removing subdbs while handles
+	are open works correctly, and in the face of txns.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 sdbtest001
@@ -461,144 +711,48 @@ sec002
 	face of attackers overwriting parts of existing files.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-sindex001
+si001
 	Basic secondary index put/delete test
 
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-sindex002
-	Basic cursor-based secondary index put/delete test
+	Put data in primary db and check that pget on secondary
+	index finds the right entries.  Alter the primary in the
+	following ways, checking for correct data each time:
+	Overwrite data in primary database.
+	Delete half of entries through primary.
+	Delete half of remaining entries through secondary.
+	Append data (for record-based primaries only).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-sindex003
-	sindex001 with secondaries created and closed mid-test
+si002
+	Basic cursor-based secondary index put/delete test
+
+	Cursor put data in primary db and check that pget
+	on secondary index finds the right entries.
+	Overwrite while walking primary, check pget again.
+	Overwrite while walking secondary (use c_pget), check
+	pget again.
+	Cursor delete half of entries through primary, check.
+	Cursor delete half of remainder through secondary, check.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+si003
+	si001 with secondaries created and closed mid-test
 	Basic secondary index put/delete test with secondaries
 	created mid-test.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-sindex004
-	sindex002 with secondaries created and closed mid-test
+si004
+	si002 with secondaries created and closed mid-test
 	Basic cursor-based secondary index put/delete test, with
 	secondaries created mid-test.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-sindex006
+si005
 	Basic secondary index put/delete test with transactions
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb001	Tests mixing db and subdb operations
-	Tests mixing db and subdb operations
-	Create a db, add data, try to create a subdb.
-	Test naming db and subdb with a leading - for correct parsing
-	Existence check -- test use of -excl with subdbs
-
-	Test non-subdb and subdb operations
-	Test naming (filenames begin with -)
-	Test existence (cannot create subdb of same name with -excl)
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb002
-	Tests basic subdb functionality
-	Small keys, small data
-	Put/get per key
-	Dump file
-	Close, reopen
-	Dump file
-
-	Use the first 10,000 entries from the dictionary.
-	Insert each with self as key and data; retrieve each.
-	After all are entered, retrieve all; compare output to original.
-	Close file, reopen, do retrieve and re-verify.
-	Then repeat using an environment.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb003
-	Tests many subdbs
-	Creates many subdbs and puts a small amount of
-	data in each (many defaults to 2000)
-
-	Use the first 10,000 entries from the dictionary as subdbnames.
-	Insert each with entry as name of subdatabase and a partial list
-	as key/data.  After all are entered, retrieve all; compare output
-	to original.  Close file, reopen, do retrieve and re-verify.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb004
-	Tests large subdb names
-	subdb name = filecontents,
-	key = filename, data = filecontents
-	Put/get per key
-	Dump file
-	Dump subdbs, verify data and subdb name match
-
-	Create 1 db with many large subdbs.  Use the contents as subdb names.
-	Take the source files and dbtest executable and enter their names as
-	the key with their contents as data.  After all are entered, retrieve
-	all; compare output to original. Close file, reopen, do retrieve and
-	re-verify.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb005
-	Tests cursor operations in subdbs
-	Put/get per key
-	Verify cursor operations work within subdb
-	Verify cursor operations do not work across subdbs
-
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb006
-	Tests intra-subdb join
-
-	We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
-	everything else does as well.  We'll create test databases called
-	sub1.db, sub2.db, sub3.db, and sub4.db.  The number on the database
-	describes the duplication -- duplicates are of the form 0, N, 2N, 3N,
-	...  where N is the number of the database.  Primary.db is the primary
-	database, and sub0.db is the database that has no matching duplicates.
-	All of these are within a single database.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb007
-	Tests page size difference errors between subdbs.
-	Test 3 different scenarios for page sizes.
-	1.  Create/open with a default page size, 2nd subdb create with
-	specified different one, should error.
-	2.  Create/open with specific page size, 2nd subdb create with
-	different one, should error.
-	3.  Create/open with specified page size, 2nd subdb create with
-	same specified size, should succeed.
-	(4th combo of using all defaults is a basic test, done elsewhere)
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb008
-	Tests lorder difference errors between subdbs.
-	Test 3 different scenarios for lorder.
-	1.  Create/open with specific lorder, 2nd subdb create with
-	different one, should error.
-	2.  Create/open with a default lorder 2nd subdb create with
-	specified different one, should error.
-	3.  Create/open with specified lorder, 2nd subdb create with
-	same specified lorder, should succeed.
-	(4th combo of using all defaults is a basic test, done elsewhere)
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb009
-	Test DB->rename() method for subdbs
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb010
-	Test DB->remove() method and DB->truncate() for subdbs
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb011
-	Test deleting Subdbs with overflow pages
-	Create 1 db with many large subdbs.
-	Test subdatabases with overflow pages.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdb012
-	Test subdbs with locking and transactions
-	Tests creating and removing subdbs while handles
-	are open works correctly, and in the face of txns.
+sijointest: Secondary index and join test.
+	This used to be si005.tcl.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
@@ -669,6 +823,7 @@ test006
 	Keyed delete test.
 	Create database.
 	Go through database, deleting all entries by key.
+	Then do the same for unsorted and sorted dups.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test007
@@ -679,7 +834,7 @@ test007
 
 	Check that delete operations work.  Create a database; close
 	database and reopen it.  Then issues delete by key for each
-	entry.
+	entry.  (Test006 plus reopen)
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test008
@@ -1366,11 +1521,18 @@ test094
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test095
-	Bulk get test. [#2934]
+	Bulk get test for methods supporting dups. [#2934]
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test096
 	Db->truncate test.
+	For all methods:
+	Test that truncate empties an existing database.
+	Test that truncate-write in an aborted txn doesn't
+	change the original contents.
+	Test that truncate-write in a committed txn does
+	overwrite the original contents.
+	For btree and hash, do the same in a database with offpage dups.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test097
@@ -1398,6 +1560,10 @@ test099
 	Verify that set_recno sets the record number position properly.
 	Verify that get_recno returns the correct record numbers.
 
+	Using the same database, open 3 cursors and position one at
+	the beginning, one in the middle, and one at the end.  Delete
+	by cursor and check that record renumbering is done properly.
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test100
 	Test for functionality near the end of the queue
@@ -1405,8 +1571,31 @@ test100
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test101
-	Test for functionality near the end of the queue 
+	Test for functionality near the end of the queue
 	using test070 (DB_CONSUME).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test102
+	Bulk get test for record-based methods. [#2934]
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test103
+	Test bulk get when record numbers wrap around.
+
+	Load database with items starting before and ending after
+	the record number wrap around point.  Run bulk gets (-multi_key)
+	with various buffer sizes and verify the contents returned match
+	the results from a regular cursor get.
+
+	Then delete items to create a sparse database and make sure it
+	still works.  Test both -multi and -multi_key since they behave
+	differently.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test106
+
+
+
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001
@@ -1435,3 +1624,18 @@ txn008
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn009
 	Test of wraparound txnids (txn003)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn010
+	Test DB_ENV->txn_checkpoint arguments/flags
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn011
+	Test durable and non-durable txns.
+	Test a mixed env (with both durable and non-durable
+	dbs), then a purely non-durable env.  Make sure commit
+	and abort work, and that only the log records we
+	expect are written.
+	Test that we can't get a durable handle on a ND
+	database, or vice versa.  Test that all subdb's
+	must be of the same type (D or ND).

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 11.22 2002/01/11 15:52:15 bostic Exp $
+ * $Id: LockExample.cpp,v 11.24 2003/04/24 15:46:04 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -184,7 +184,8 @@ void LockExample::run()
 			}
 			else {
 				DbLock *newlocks = new DbLock[lockcount];
-				for (int lockno = 0; lockno < lockid; lockno++) {
+				for (int lockno = 0;
+				    lockno < lockid; lockno++) {
 					newlocks[lockno] = locks[lockno];
 				}
 				delete locks;

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_region.c,v 11.69 2002/08/06 05:05:22 bostic Exp $";
+static const char revid[] = "$Id: lock_region.c,v 11.73 2003/07/23 13:13:12 mjc Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -194,6 +194,7 @@ __lock_init(dbenv, lt)
 	}
 
 	region->need_dd = 0;
+	LOCK_SET_TIME_INVALID(&region->next_timeout);
 	region->detect = DB_LOCK_NORUN;
 	region->lk_timeout = dbenv->lk_timeout;
 	region->tx_timeout = dbenv->tx_timeout;
@@ -251,7 +252,8 @@ __lock_init(dbenv, lt)
 		lp->status = DB_LSTAT_FREE;
 		lp->gen = 0;
 		if ((ret = __db_mutex_setup(dbenv, &lt->reginfo, &lp->mutex,
-		    MUTEX_NO_RLOCK | MUTEX_SELF_BLOCK)) != 0)
+		    MUTEX_LOGICAL_LOCK | MUTEX_NO_RLOCK | MUTEX_SELF_BLOCK))
+		    != 0)
 			return (ret);
 		MUTEX_LOCK(dbenv, &lp->mutex);
 		SH_TAILQ_INSERT_HEAD(&region->free_locks, lp, links, __db_lock);
@@ -388,7 +390,6 @@ __lock_region_destroy(dbenv, infop)
 	COMPQUIET(infop, NULL);
 }
 
-#ifdef CONFIG_TEST
 /*
  * __lock_id_set --
  *	Set the current locker ID and current maximum unused ID (for
@@ -414,4 +415,3 @@ __lock_id_set(dbenv, cur_id, max_id)
 
 	return (0);
 }
-#endif

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_stat.c,v 11.51 2002/08/06 06:13:47 bostic Exp $";
+static const char revid[] = "$Id: mp_stat.c,v 11.58 2003/09/13 19:20:41 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -15,28 +15,60 @@ static const char revid[] = "$Id: mp_stat.c,v 11.51 2002/08/06 06:13:47 bostic E
 
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
+#include "dbinc/log.h"
 #include "dbinc/mp.h"
 
 static void __memp_dumpcache __P((DB_ENV *,
 		DB_MPOOL *, REGINFO *, size_t *, FILE *, u_int32_t));
 static void __memp_pbh __P((DB_MPOOL *, BH *, size_t *, FILE *));
+static int  __memp_stat __P((DB_ENV *,
+		DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
 static void __memp_stat_wait __P((REGINFO *, MPOOL *, DB_MPOOL_STAT *, int));
 
 /*
- * __memp_stat --
- *	Display MPOOL statistics.
+ * __memp_stat_pp --
+ *	DB_ENV->memp_stat pre/post processing.
  *
- * PUBLIC: int __memp_stat
+ * PUBLIC: int __memp_stat_pp
  * PUBLIC:     __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
  */
 int
+__memp_stat_pp(dbenv, gspp, fspp, flags)
+	DB_ENV *dbenv;
+	DB_MPOOL_STAT **gspp;
+	DB_MPOOL_FSTAT ***fspp;
+	u_int32_t flags;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->mp_handle, "memp_stat", DB_INIT_MPOOL);
+
+	if ((ret = __db_fchk(dbenv,
+	    "DB_ENV->memp_stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __memp_stat(dbenv, gspp, fspp, flags);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
+ * __memp_stat --
+ *	DB_ENV->memp_stat.
+ */
+static int
 __memp_stat(dbenv, gspp, fspp, flags)
 	DB_ENV *dbenv;
 	DB_MPOOL_STAT **gspp;
@@ -52,14 +84,6 @@ __memp_stat(dbenv, gspp, fspp, flags)
 	u_int32_t pages, i;
 	int ret;
 	char *name, *tname;
-
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "memp_stat", DB_INIT_MPOOL);
-
-	if ((ret = __db_fchk(dbenv,
-	    "DB_ENV->memp_stat", flags, DB_STAT_CLEAR)) != 0)
-		return (ret);
 
 	dbmp = dbenv->mp_handle;
 	mp = dbmp->reginfo[0].primary;
@@ -132,10 +156,13 @@ __memp_stat(dbenv, gspp, fspp, flags)
 			if (LF_ISSET(DB_STAT_CLEAR)) {
 				dbmp->reginfo[i].rp->mutex.mutex_set_wait = 0;
 				dbmp->reginfo[i].rp->mutex.mutex_set_nowait = 0;
+
+				R_LOCK(dbenv, dbmp->reginfo);
 				pages = c_mp->stat.st_pages;
 				memset(&c_mp->stat, 0, sizeof(c_mp->stat));
 				c_mp->stat.st_hash_buckets = c_mp->htab_buckets;
 				c_mp->stat.st_pages = pages;
+				R_UNLOCK(dbenv, dbmp->reginfo);
 			}
 		}
 
@@ -240,21 +267,23 @@ __memp_stat(dbenv, gspp, fspp, flags)
  * __memp_dump_region --
  *	Display MPOOL structures.
  *
- * PUBLIC: int __memp_dump_region __P((DB_ENV *, char *, FILE *));
+ * PUBLIC: int __memp_dump_region __P((DB_ENV *, const char *, FILE *));
  */
 int
 __memp_dump_region(dbenv, area, fp)
 	DB_ENV *dbenv;
-	char *area;
+	const char *area;
 	FILE *fp;
 {
 	static const FN fn[] = {
-		{ MP_CAN_MMAP,	"mmapped" },
-		{ MP_DEADFILE,	"dead" },
-		{ MP_DIRECT,	"no buffer" },
-		{ MP_EXTENT,	"extent" },
-		{ MP_TEMP,	"temporary" },
-		{ MP_UNLINK,	"unlink" },
+		{ MP_CAN_MMAP,		"mmapped" },
+		{ MP_DIRECT,		"no buffer" },
+		{ MP_EXTENT,		"extent" },
+		{ MP_FAKE_DEADFILE,	"deadfile" },
+		{ MP_FAKE_FILEWRITTEN,	"file written" },
+		{ MP_FAKE_NB,		"no backing file" },
+		{ MP_FAKE_UOC,		"unlink on close" },
+		{ MP_TEMP,		"temporary" },
 		{ 0,		NULL }
 	};
 	DB_MPOOL *dbmp;
@@ -262,7 +291,7 @@ __memp_dump_region(dbenv, area, fp)
 	MPOOL *mp;
 	MPOOLFILE *mfp;
 	size_t fmap[FMAP_ENTRIES + 1];
-	u_int32_t i, flags;
+	u_int32_t i, flags, mfp_flags;
 	int cnt;
 	u_int8_t *p;
 
@@ -304,7 +333,16 @@ __memp_dump_region(dbenv, area, fp)
 		(void)fprintf(fp, "\t type %ld; ref %lu; blocks %lu; last %lu;",
 		    (long)mfp->ftype, (u_long)mfp->mpf_cnt,
 		    (u_long)mfp->block_cnt, (u_long)mfp->last_pgno);
-		__db_prflags(mfp->flags, fn, fp);
+		mfp_flags = 0;
+		if (mfp->deadfile)
+			FLD_SET(mfp_flags, MP_FAKE_DEADFILE);
+		if (mfp->file_written)
+			FLD_SET(mfp_flags, MP_FAKE_FILEWRITTEN);
+		if (mfp->no_backing_file)
+			FLD_SET(mfp_flags, MP_FAKE_NB);
+		if (mfp->unlink_on_close)
+			FLD_SET(mfp_flags, MP_FAKE_UOC);
+		__db_prflags(mfp_flags, fn, fp);
 
 		(void)fprintf(fp, "\n\t UID: ");
 		p = R_ADDR(dbmp->reginfo, mfp->fileid_off);

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_compat.c,v 11.39 2002/08/15 14:05:38 bostic Exp $";
+static const char revid[] = "$Id: tcl_compat.c,v 11.41 2003/03/10 18:22:09 bostic Exp $";
 #endif /* not lint */
 
 #if CONFIG_TEST
@@ -39,7 +39,7 @@ bdb_HCommand(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *hcmds[] = {
+	static const char *hcmds[] = {
 		"hcreate",
 		"hdestroy",
 		"hsearch",
@@ -50,7 +50,7 @@ bdb_HCommand(interp, objc, objv)
 		HHDESTROY,
 		HHSEARCH
 	};
-	static char *srchacts[] = {
+	static const char *srchacts[] = {
 		"enter",
 		"find",
 		NULL
@@ -162,7 +162,7 @@ bdb_NdbmOpen(interp, objc, objv, dbpp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DBM **dbpp;			/* Dbm pointer */
 {
-	static char *ndbopen[] = {
+	static const char *ndbopen[] = {
 		"-create",
 		"-mode",
 		"-rdonly",
@@ -307,7 +307,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 	int flag;			/* Which db interface */
 	DBM *dbm;			/* DBM pointer */
 {
-	static char *dbmcmds[] = {
+	static const char *dbmcmds[] = {
 		"dbmclose",
 		"dbminit",
 		"delete",
@@ -326,7 +326,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 		DBMNEXT,
 		DBMSTORE
 	};
-	static char *stflag[] = {
+	static const char *stflag[] = {
 		"insert",	"replace",
 		NULL
 	};
@@ -593,7 +593,7 @@ ndbm_Cmd(clientData, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *ndbcmds[] = {
+	static const char *ndbcmds[] = {
 		"clearerr",
 		"close",
 		"delete",
@@ -717,7 +717,8 @@ ndbm_Cmd(clientData, interp, objc, objv)
 		_debug_check();
 		ret = dbm_error(dbp);
 		Tcl_SetErrno(ret);
-		Tcl_SetResult(interp, Tcl_PosixError(interp), TCL_STATIC);
+		Tcl_SetResult(interp,
+		    (char *)Tcl_PosixError(interp), TCL_STATIC);
 		break;
 	case NDBRDONLY:
 		/*

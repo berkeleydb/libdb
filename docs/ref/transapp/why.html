@@ -1,27 +1,27 @@
-<!--$Id: why.so,v 1.5 2002/05/17 15:48:42 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: why.so,v 1.7 2003/11/04 14:53:27 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Why transactions?</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/term.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/term.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Why transactions?</h1>
+<h3 align=center>Why transactions?</h3>
 <p>Perhaps the first question to answer is "Why transactions?"  There are
 a number of reasons to include transactional support in your applications.
-The most common ones are the following:
+The most common ones are the following:</p>
 <p><dl compact>
 <p><dt>Recoverability<dd>Applications often need to ensure that no matter how the system or
 application fails, previously saved data is available the next time the
-application runs.
+application runs.  This is often called Durability.
 <p><dt>Atomicity<dd>Applications may need to make multiple changes to one or more databases,
 but ensure that either all of the changes happen, or none of them
 happens.  Transactions guarantee that a group of changes are atomic;
@@ -33,8 +33,8 @@ only a single thread of control is modifying a key/data pair at a time.
 Transactions ensure each thread of control sees all records as if all
 other transactions either completed before or after its transaction.
 </dl>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/term.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/term.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

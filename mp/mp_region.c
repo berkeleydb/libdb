@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_region.c,v 11.49 2002/05/07 18:42:20 bostic Exp $";
+static const char revid[] = "$Id: mp_region.c,v 11.55 2003/06/30 17:20:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -301,7 +301,7 @@ __memp_dbenv_refresh(dbenv)
 
 	/* Discard DB_MPOOLFILEs. */
 	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
-		if ((t_ret = __memp_fclose_int(dbmfp, 0)) != 0 && ret == 0)
+		if ((t_ret = __memp_fclose(dbmfp, 0)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* Discard the thread mutex. */
@@ -363,104 +363,4 @@ __mpool_region_destroy(dbenv, infop)
 
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
-}
-
-/*
- * __memp_nameop
- *	Remove or rename a file in the pool.
- *
- * PUBLIC: int  __memp_nameop __P((DB_ENV *,
- * PUBLIC:     u_int8_t *, const char *, const char *, const char *));
- *
- * XXX
- * Undocumented interface: DB private.
- */
-int
-__memp_nameop(dbenv, fileid, newname, fullold, fullnew)
-	DB_ENV *dbenv;
-	u_int8_t *fileid;
-	const char *newname, *fullold, *fullnew;
-{
-	DB_MPOOL *dbmp;
-	MPOOL *mp;
-	MPOOLFILE *mfp;
-	roff_t newname_off;
-	int locked, ret;
-	void *p;
-
-	locked = 0;
-	dbmp = NULL;
-
-	if (!MPOOL_ON(dbenv))
-		goto fsop;
-
-	dbmp = dbenv->mp_handle;
-	mp = dbmp->reginfo[0].primary;
-
-	/*
-	 * Remove or rename a file that the mpool might know about.  We assume
-	 * that the fop layer has the file locked for exclusive access, so we
-	 * don't worry about locking except for the mpool mutexes.  Checkpoint
-	 * can happen at any time, independent of file locking, so we have to
-	 * do the actual unlink or rename system call to avoid any race.
-	 *
-	 * If this is a rename, allocate first, because we can't recursively
-	 * grab the region lock.
-	 */
-	if (newname == NULL)
-		p = NULL;
-	else {
-		if ((ret = __memp_alloc(dbmp, dbmp->reginfo,
-		    NULL, strlen(newname) + 1, &newname_off, &p)) != 0)
-			return (ret);
-		memcpy(p, newname, strlen(newname) + 1);
-	}
-
-	locked = 1;
-	R_LOCK(dbenv, dbmp->reginfo);
-
-	/*
-	 * Find the file -- if mpool doesn't know about this file, that's not
-	 * an error-- we may not have it open.
-	 */
-	for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
-	    mfp != NULL; mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
-		/* Ignore non-active files. */
-		if (F_ISSET(mfp, MP_DEADFILE | MP_TEMP))
-			continue;
-
-		/* Ignore non-matching files. */
-		if (memcmp(fileid, R_ADDR(
-		    dbmp->reginfo, mfp->fileid_off), DB_FILE_ID_LEN) != 0)
-			continue;
-
-		/* If newname is NULL, we're removing the file. */
-		if (newname == NULL) {
-			MUTEX_LOCK(dbenv, &mfp->mutex);
-			MPOOLFILE_IGNORE(mfp);
-			MUTEX_UNLOCK(dbenv, &mfp->mutex);
-		} else {
-			/*
-			 * Else, it's a rename.  We've allocated memory
-			 * for the new name.  Swap it with the old one.
-			 */
-			p = R_ADDR(dbmp->reginfo, mfp->path_off);
-			mfp->path_off = newname_off;
-		}
-		break;
-	}
-
-	/* Delete the memory we no longer need. */
-	if (p != NULL)
-		__db_shalloc_free(dbmp->reginfo[0].addr, p);
-
-fsop:	if (newname == NULL)
-		(void)__os_unlink(dbenv, fullold);
-	else
-		(void)__os_rename(dbenv, fullold, fullnew, 1);
-
-	if (locked)
-		R_UNLOCK(dbenv, dbmp->reginfo);
-
-	return (0);
 }

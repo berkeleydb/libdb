@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fget.c,v 11.68 2002/08/06 04:58:09 bostic Exp $";
+static const char revid[] = "$Id: mp_fget.c,v 11.81 2003/09/25 02:15:16 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,12 +18,72 @@ static const char revid[] = "$Id: mp_fget.c,v 11.68 2002/08/06 04:58:09 bostic E
 
 #include "db_int.h"
 #include "dbinc/db_shash.h"
+#include "dbinc/log.h"
 #include "dbinc/mp.h"
 
-#ifdef HAVE_FILESYSTEM_NOTZERO
-static int __memp_fs_notzero
-    __P((DB_ENV *, DB_MPOOLFILE *, MPOOLFILE *, db_pgno_t *));
-#endif
+/*
+ * __memp_fget_pp --
+ *	DB_MPOOLFILE->get pre/post processing.
+ *
+ * PUBLIC: int __memp_fget_pp
+ * PUBLIC:     __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
+ */
+int
+__memp_fget_pp(dbmfp, pgnoaddr, flags, addrp)
+	DB_MPOOLFILE *dbmfp;
+	db_pgno_t *pgnoaddr;
+	u_int32_t flags;
+	void *addrp;
+{
+	DB_ENV *dbenv;
+	int rep_check, ret;
+
+	dbenv = dbmfp->dbenv;
+
+	PANIC_CHECK(dbenv);
+	MPF_ILLEGAL_BEFORE_OPEN(dbmfp, "DB_MPOOLFILE->get");
+
+	/*
+	 * Validate arguments.
+	 *
+	 * !!!
+	 * Don't test for DB_MPOOL_CREATE and DB_MPOOL_NEW flags for readonly
+	 * files here, and create non-existent pages in readonly files if the
+	 * flags are set, later.  The reason is that the hash access method
+	 * wants to get empty pages that don't really exist in readonly files.
+	 * The only alternative is for hash to write the last "bucket" all the
+	 * time, which we don't want to do because one of our big goals in life
+	 * is to keep database files small.  It's sleazy as hell, but we catch
+	 * any attempt to actually write the file in memp_fput().
+	 */
+#define	OKFLAGS		(DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW)
+	if (flags != 0) {
+		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
+			return (ret);
+
+		switch (flags) {
+		case DB_MPOOL_CREATE:
+		case DB_MPOOL_LAST:
+		case DB_MPOOL_NEW:
+			break;
+		default:
+			return (__db_ferr(dbenv, "memp_fget", 1));
+		}
+	}
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__op_rep_enter(dbenv);
+	ret = __memp_fget(dbmfp, pgnoaddr, flags, addrp);
+	/*
+	 * We only decrement the count in op_rep_exit if the operattion fails.
+	 * Otherwise the count will be decremeneted when the page
+	 * is no longer pinned in memp_fput.
+	 */
+	if (ret != 0 && rep_check)
+		__op_rep_exit(dbenv);
+	return (ret);
+}
 
 /*
  * __memp_fget --
@@ -52,11 +112,10 @@ __memp_fget(dbmfp, pgnoaddr, flags, addrp)
 
 	*(void **)addrp = NULL;
 
-	dbmp = dbmfp->dbmp;
-	dbenv = dbmp->dbenv;
+	dbenv = dbmfp->dbenv;
+	dbmp = dbenv->mp_handle;
 
-	PANIC_CHECK(dbenv);
-
+	c_mp = NULL;
 	mp = dbmp->reginfo[0].primary;
 	mfp = dbmfp->mfp;
 	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
@@ -64,46 +123,26 @@ __memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	hp = NULL;
 	b_incr = extending = ret = 0;
 
-	/*
-	 * Validate arguments.
-	 *
-	 * !!!
-	 * Don't test for DB_MPOOL_CREATE and DB_MPOOL_NEW flags for readonly
-	 * files here, and create non-existent pages in readonly files if the
-	 * flags are set, later.  The reason is that the hash access method
-	 * wants to get empty pages that don't really exist in readonly files.
-	 * The only alternative is for hash to write the last "bucket" all the
-	 * time, which we don't want to do because one of our big goals in life
-	 * is to keep database files small.  It's sleazy as hell, but we catch
-	 * any attempt to actually write the file in memp_fput().
-	 */
-#define	OKFLAGS		(DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW)
-	if (flags != 0) {
-		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
-			return (ret);
-
-		switch (flags) {
-		case DB_MPOOL_CREATE:
-			break;
-		case DB_MPOOL_LAST:
-			/* Get the last page number in the file. */
-			if (flags == DB_MPOOL_LAST) {
-				R_LOCK(dbenv, dbmp->reginfo);
-				*pgnoaddr = mfp->last_pgno;
-				R_UNLOCK(dbenv, dbmp->reginfo);
-			}
-			break;
-		case DB_MPOOL_NEW:
-			/*
-			 * If always creating a page, skip the first search
-			 * of the hash bucket.
-			 */
-			if (flags == DB_MPOOL_NEW)
-				goto alloc;
-			break;
-		default:
-			return (__db_ferr(dbenv, "memp_fget", 1));
+	switch (flags) {
+	case DB_MPOOL_LAST:
+		/* Get the last page number in the file. */
+		if (flags == DB_MPOOL_LAST) {
+			R_LOCK(dbenv, dbmp->reginfo);
+			*pgnoaddr = mfp->last_pgno;
+			R_UNLOCK(dbenv, dbmp->reginfo);
 		}
+		break;
+	case DB_MPOOL_NEW:
+		/*
+		 * If always creating a page, skip the first search
+		 * of the hash bucket.
+		 */
+		if (flags == DB_MPOOL_NEW)
+			goto alloc;
+		break;
+	case DB_MPOOL_CREATE:
+	default:
+		break;
 	}
 
 	/*
@@ -272,10 +311,21 @@ alloc:		/*
 		switch (flags) {
 		case DB_MPOOL_NEW:
 			extending = 1;
-			*pgnoaddr = mfp->last_pgno + 1;
+			if (mfp->maxpgno != 0 &&
+			    mfp->last_pgno >= mfp->maxpgno) {
+				__db_err(dbenv, "%s: file limited to %lu pages",
+				    __memp_fn(dbmfp), (u_long)mfp->maxpgno);
+				ret = ENOSPC;
+			} else
+				*pgnoaddr = mfp->last_pgno + 1;
 			break;
 		case DB_MPOOL_CREATE:
-			extending = *pgnoaddr > mfp->last_pgno;
+			if (mfp->maxpgno != 0 && *pgnoaddr > mfp->maxpgno) {
+				__db_err(dbenv, "%s: file limited to %lu pages",
+				    __memp_fn(dbmfp), (u_long)mfp->maxpgno);
+				ret = ENOSPC;
+			} else
+				extending = *pgnoaddr > mfp->last_pgno;
 			break;
 		default:
 			ret = *pgnoaddr > mfp->last_pgno ? DB_PAGE_NOTFOUND : 0;
@@ -292,6 +342,7 @@ alloc:		/*
 		 */
 		mf_offset = R_OFFSET(dbmp->reginfo, mfp);
 		n_cache = NCACHE(mp, mf_offset, *pgnoaddr);
+		c_mp = dbmp->reginfo[n_cache].primary;
 
 		/* Allocate a new buffer header and data space. */
 		if ((ret = __memp_alloc(dbmp,
@@ -300,7 +351,7 @@ alloc:		/*
 #ifdef DIAGNOSTIC
 		if ((db_alignp_t)alloc_bhp->buf & (sizeof(size_t) - 1)) {
 			__db_err(dbenv,
-			    "Error: buffer data is NOT size_t aligned");
+		    "DB_MPOOLFILE->get: buffer data is NOT size_t aligned");
 			ret = EINVAL;
 			goto err;
 		}
@@ -340,13 +391,17 @@ alloc:		/*
 		if (flags == DB_MPOOL_NEW && *pgnoaddr != mfp->last_pgno + 1) {
 			*pgnoaddr = mfp->last_pgno + 1;
 			if (n_cache != NCACHE(mp, mf_offset, *pgnoaddr)) {
-				__db_shalloc_free(
-				    dbmp->reginfo[n_cache].addr, alloc_bhp);
 				/*
 				 * flags == DB_MPOOL_NEW, so extending is set
 				 * and we're holding the region locked.
 				 */
 				R_UNLOCK(dbenv, dbmp->reginfo);
+
+				R_LOCK(dbenv, &dbmp->reginfo[n_cache]);
+				__db_shalloc_free(
+				    dbmp->reginfo[n_cache].addr, alloc_bhp);
+				c_mp->stat.st_pages--;
+				R_UNLOCK(dbenv, &dbmp->reginfo[n_cache]);
 
 				alloc_bhp = NULL;
 				goto alloc;
@@ -359,16 +414,7 @@ alloc:		/*
 		 * the file, as necessary, if we extended the file.
 		 */
 		if (extending) {
-#ifdef HAVE_FILESYSTEM_NOTZERO
-			if (*pgnoaddr > mfp->last_pgno &&
-			    __os_fs_notzero() &&
-			    F_ISSET(dbmfp->fhp, DB_FH_VALID))
-				ret = __memp_fs_notzero(
-				    dbenv, dbmfp, mfp, pgnoaddr);
-			else
-				ret = 0;
-#endif
-			if (ret == 0 && *pgnoaddr > mfp->last_pgno)
+			if (*pgnoaddr > mfp->last_pgno)
 				mfp->last_pgno = *pgnoaddr;
 
 			R_UNLOCK(dbenv, dbmp->reginfo);
@@ -391,6 +437,7 @@ alloc:		/*
 		MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
 		R_LOCK(dbenv, &dbmp->reginfo[n_cache]);
 		__db_shalloc_free(dbmp->reginfo[n_cache].addr, alloc_bhp);
+		c_mp->stat.st_pages--;
 		alloc_bhp = NULL;
 		R_UNLOCK(dbenv, &dbmp->reginfo[n_cache]);
 		MUTEX_LOCK(dbenv, &hp->hash_mutex);
@@ -506,12 +553,8 @@ alloc:		/*
 	 */
 	if (state != SECOND_MISS && bhp->ref == 1) {
 		bhp->priority = UINT32_T_MAX;
-		/* Move the buffer if there are others in the bucket. */
-		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) != bhp
-		    || SH_TAILQ_NEXT(bhp, hq, __bh) != NULL) {
-			SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
-			SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
-		}
+		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
+		SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
 		hp->hash_priority =
 		    SH_TAILQ_FIRST(&hp->hash_bucket, __bh)->priority;
 	}
@@ -579,80 +622,12 @@ err:	/*
 	}
 
 	/* If alloc_bhp is set, free the memory. */
-	if (alloc_bhp != NULL)
+	if (alloc_bhp != NULL) {
+		R_LOCK(dbenv, &dbmp->reginfo[n_cache]);
 		__db_shalloc_free(dbmp->reginfo[n_cache].addr, alloc_bhp);
+		c_mp->stat.st_pages--;
+		R_UNLOCK(dbenv, &dbmp->reginfo[n_cache]);
+	}
 
 	return (ret);
 }
-
-#ifdef HAVE_FILESYSTEM_NOTZERO
-/*
- * __memp_fs_notzero --
- *	Initialize the underlying allocated pages in the file.
- */
-static int
-__memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
-	DB_ENV *dbenv;
-	DB_MPOOLFILE *dbmfp;
-	MPOOLFILE *mfp;
-	db_pgno_t *pgnoaddr;
-{
-	DB_IO db_io;
-	u_int32_t i, npages;
-	size_t nw;
-	int ret;
-	u_int8_t *page;
-	char *fail;
-
-	/*
-	 * Pages allocated by writing pages past end-of-file are not zeroed,
-	 * on some systems.  Recovery could theoretically be fooled by a page
-	 * showing up that contained garbage.  In order to avoid this, we
-	 * have to write the pages out to disk, and flush them.  The reason
-	 * for the flush is because if we don't sync, the allocation of another
-	 * page subsequent to this one might reach the disk first, and if we
-	 * crashed at the right moment, leave us with this page as the one
-	 * allocated by writing a page past it in the file.
-	 *
-	 * Hash is the only access method that allocates groups of pages.  We
-	 * know that it will use the existence of the last page in a group to
-	 * signify that the entire group is OK; so, write all the pages but
-	 * the last one in the group, flush them to disk, and then write the
-	 * last one to disk and flush it.
-	 */
-	if ((ret = __os_calloc(dbenv, 1, mfp->stat.st_pagesize, &page)) != 0)
-		return (ret);
-
-	db_io.fhp = dbmfp->fhp;
-	db_io.mutexp = dbmfp->mutexp;
-	db_io.pagesize = db_io.bytes = mfp->stat.st_pagesize;
-	db_io.buf = page;
-
-	npages = *pgnoaddr - mfp->last_pgno;
-	for (i = 1; i < npages; ++i) {
-		db_io.pgno = mfp->last_pgno + i;
-		if ((ret = __os_io(dbenv, &db_io, DB_IO_WRITE, &nw)) != 0) {
-			fail = "write";
-			goto err;
-		}
-	}
-	if (i != 1 && (ret = __os_fsync(dbenv, dbmfp->fhp)) != 0) {
-		fail = "sync";
-		goto err;
-	}
-
-	db_io.pgno = mfp->last_pgno + npages;
-	if ((ret = __os_io(dbenv, &db_io, DB_IO_WRITE, &nw)) != 0) {
-		fail = "write";
-		goto err;
-	}
-	if ((ret = __os_fsync(dbenv, dbmfp->fhp)) != 0) {
-		fail = "sync";
-err:		__db_err(dbenv, "%s: %s failed for page %lu",
-		    __memp_fn(dbmfp), fail, (u_long)db_io.pgno);
-	}
-
-	__os_free(dbenv, page);
-	return (ret);
-}
-#endif

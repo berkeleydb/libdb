@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 11.50 2002/07/02 19:26:57 sue Exp $
+# $Id: gen_rpc.awk,v 11.54 2003/09/04 23:59:03 bostic Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -169,7 +169,32 @@ END {
 		retlist_type[rvars] = $5;
 	} else
 		retlist_type[rvars] = 0;
+	ret_isarg[rvars] = 0;
 
+	++rvars;
+}
+/^[	 ]*ARET/ {
+	ret_type[rvars] = $2;
+	rpc_type[nvars] = "IGNORE";
+	retc_type[rvars] = $3;
+	c_type[nvars] = sprintf("%s *", $3);
+	pr_type[nvars] = c_type[nvars];
+	retargs[rvars] = $4;
+	args[nvars] = sprintf("%sp", $4);
+	if (ret_type[rvars] == "LIST" || ret_type[rvars] == "DBT") {
+		xdr_free = 1;
+	}
+	func_arg[nvars] = 0;
+	if (ret_type[nvars] == "LIST") {
+		retlist_type[rvars] =  $5;
+		list_type[nvars] = $5;
+	} else {
+		retlist_type[rvars] = 0;
+		list_type[nvars] = 0;
+	}
+	ret_isarg[rvars] = 1;
+
+	++nvars;
 	++rvars;
 }
 /^[	 ]*END/ {
@@ -275,9 +300,9 @@ END {
 			printf("__dbcl_rpc_illegal(dbenv, name)\n") >> CFILE
 			printf("\tDB_ENV *dbenv;\n\tchar *name;\n") >> CFILE
 			printf("{\n\t__db_err(dbenv,") >> CFILE
-			printf(" \"%%s method meaningless in an RPC") >> CFILE
-			printf(" environment\", name);\n") >> CFILE
-			printf("\treturn (__db_eopnotsup(dbenv));\n") >> CFILE
+			printf(" \"%%s method unsupported in RPC") >> CFILE
+			printf(" environments\", name);\n") >> CFILE
+			printf("\treturn (DB_OPNOTSUP);\n") >> CFILE
 			printf("}\n\n") >> CFILE
 
 			first_nofunc = 1
@@ -336,7 +361,7 @@ END {
 				printf("\tdbenv = %s->mgrp->dbenv;\n", \
 				    args[txn_idx]) >> CFILE
 			else if (mp_handle)
-				printf("\tdbenv = %s->dbmp->dbenv;\n", \
+				printf("\tdbenv = %s->dbenv;\n", \
 				    args[mp_idx]) >> CFILE
 			else
 				printf("\tdbenv = NULL;\n") >> CFILE
@@ -413,6 +438,7 @@ END {
 	# Generate the reply message
 	#
 	printf("struct __%s_reply {\n", name) >> XFILE
+	printf("\t/* num return vars: %d */\n", rvars) >> XFILE
 	printf("\tint status;\n") >> XFILE
 	for (i = 0; i < rvars; ++i) {
 		if (ret_type[i] == "ID") {
@@ -574,6 +600,10 @@ END {
 			p[pi++] = "u_int32_t";
 			p[pi++] = ", ";
 		}
+		if (rpc_type[i] == "INTRET") {
+			p[pi++] = "u_int32_t *";
+			p[pi++] = ", ";
+		}
 		if (rpc_type[i] == "LIST" && list_type[i] == "GID") {
 			p[pi++] = "u_int8_t *";
 			p[pi++] = ", ";
@@ -645,6 +675,10 @@ END {
 			printf("%s%s", sep, args[i]) >> SEDFILE
 		}
 		if (rpc_type[i] == "INT") {
+			printf("%s%s", sep, args[i]) >> PFILE
+			printf("%s%s", sep, args[i]) >> SEDFILE
+		}
+		if (rpc_type[i] == "INTRET") {
 			printf("%s%s", sep, args[i]) >> PFILE
 			printf("%s%s", sep, args[i]) >> SEDFILE
 		}
@@ -1034,6 +1068,18 @@ END {
 
 	if (ret_code == 0) {
 		printf("\tret = replyp->status;\n") >> CFILE
+
+		#
+		# Set any arguments that are returned
+		#
+		for (i = 0; i < rvars; ++i) {
+			if (ret_isarg[i]) {
+				printf("\tif (%sp != NULL)\n", \
+				    retargs[i]) >> CFILE;
+				printf("\t\t*%sp = replyp->%s;\n", \
+				    retargs[i], retargs[i]) >> CFILE;
+			}
+		}
 	} else {
 		printf("\tret = __dbcl_%s_ret(", name) >> CFILE
 		sep = "";

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: MpoolExample.cpp,v 11.23 2002/01/11 15:52:15 bostic Exp $
+ * $Id: MpoolExample.cpp,v 11.24 2003/01/08 04:47:01 bostic Exp $
  */
 
 #include <sys/types.h>

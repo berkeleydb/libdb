@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -36,7 +36,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_rec.c,v 11.41 2002/08/06 04:42:37 bostic Exp $";
+static const char revid[] = "$Id: txn_rec.c,v 11.54 2003/10/31 23:26:11 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -49,7 +49,6 @@ static const char revid[] = "$Id: txn_rec.c,v 11.41 2002/08/06 04:42:37 bostic E
 #include "dbinc/db_page.h"
 #include "dbinc/txn.h"
 #include "dbinc/db_am.h"
-#include "dbinc/db_dispatch.h"
 
 #define	IS_XA_TXN(R) (R->xid.size != 0)
 
@@ -105,7 +104,9 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 		ret = __db_txnlist_update(dbenv,
 		    info, argp->txnid->txnid, TXN_ABORT, NULL);
 
-		if (ret == TXN_NOTFOUND)
+		if (ret == TXN_IGNORE)
+			ret = TXN_OK;
+		else if (ret == TXN_NOTFOUND)
 			ret = __db_txnlist_add(dbenv,
 			    info, argp->txnid->txnid, TXN_IGNORE, NULL);
 		else if (ret != TXN_OK)
@@ -116,7 +117,9 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 		ret = __db_txnlist_update(dbenv,
 		    info, argp->txnid->txnid, argp->opcode, lsnp);
 
-		if (ret == TXN_NOTFOUND)
+		if (ret == TXN_IGNORE)
+			ret = TXN_OK;
+		else if (ret == TXN_NOTFOUND)
 			ret = __db_txnlist_add(dbenv,
 			    info, argp->txnid->txnid,
 			    argp->opcode == TXN_ABORT ?
@@ -132,7 +135,7 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 	if (0) {
 err:		__db_err(dbenv,
 		    "txnid %lx commit record found, already on commit list",
-		    argp->txnid->txnid);
+		    (u_long)argp->txnid->txnid);
 		ret = EINVAL;
 	}
 	__os_free(dbenv, argp);
@@ -164,7 +167,7 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = __txn_xa_regop_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
-	if (argp->opcode != TXN_PREPARE) {
+	if (argp->opcode != TXN_PREPARE && argp->opcode != TXN_ABORT) {
 		ret = EINVAL;
 		goto err;
 	}
@@ -184,21 +187,31 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 			goto txn_err;
 	} else if (op == DB_TXN_BACKWARD_ROLL && ret == TXN_PREPARE) {
 		/*
-		 * On the backward pass, we have three possibilities:
+		 * On the backward pass, we have four possibilities:
 		 * 1. The transaction is already committed, no-op.
 		 * 2. The transaction is already aborted, no-op.
-		 * 3. The transaction is neither committed nor aborted.
+		 * 3. The prepare failed and was aborted, mark as abort.
+		 * 4. The transaction is neither committed nor aborted.
 		 *	 Treat this like a commit and roll forward so that
 		 *	 the transaction can be resurrected in the region.
-		 * We handle case 3 here; cases 1 and 2 are the final clause
-		 * below.
+		 * We handle cases 3 and 4 here; cases 1 and 2
+		 * are the final clause below.
+		 */
+		if (argp->opcode == TXN_ABORT) {
+			if ((ret = __db_txnlist_update(dbenv,
+			     info, argp->txnid->txnid,
+			     TXN_ABORT, NULL)) != TXN_PREPARE)
+				goto txn_err;
+			ret = 0;
+		}
+		/*
 		 * This is prepared, but not yet committed transaction.  We
 		 * need to add it to the transaction list, so that it gets
 		 * rolled forward. We also have to add it to the region's
 		 * internal state so it can be properly aborted or committed
 		 * after recovery (see txn_recover).
 		 */
-		if ((ret = __db_txnlist_remove(dbenv,
+		else if ((ret = __db_txnlist_remove(dbenv,
 		   info, argp->txnid->txnid)) != TXN_OK) {
 txn_err:		__db_err(dbenv,
 			    "Transaction not in list %x", argp->txnid->txnid);
@@ -229,19 +242,29 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	db_recops op;
 	void *info;
 {
+	DB_REP *db_rep;
+	REP *rep;
 	__txn_ckp_args *argp;
 	int ret;
 
 #ifdef DEBUG_RECOVER
 	__txn_ckp_print(dbenv, dbtp, lsnp, op, info);
 #endif
-	COMPQUIET(dbenv, NULL);
-
 	if ((ret = __txn_ckp_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	if (op == DB_TXN_BACKWARD_ROLL)
 		__db_txnlist_ckp(dbenv, info, lsnp);
+
+	if (op == DB_TXN_FORWARD_ROLL) {
+		/* Record the max generation number that we've seen. */
+		if (REP_ON(dbenv)) {
+			db_rep = dbenv->rep_handle;
+			rep = db_rep->region;
+			if (argp->rep_gen > rep->recover_gen)
+				rep->recover_gen = argp->rep_gen;
+		}
+	}
 
 	*lsnp = argp->last_ckp;
 	__os_free(dbenv, argp);
@@ -296,10 +319,16 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
 			 * parent succeeded, we don't want to redo; if the
 			 * parent aborted, we do want to undo.
 			 */
+			switch (p_stat) {
+			case TXN_COMMIT:
+			case TXN_IGNORE:
+				c_stat = TXN_IGNORE;
+				break;
+			default:
+				c_stat = TXN_ABORT;
+			}
 			ret = __db_txnlist_update(dbenv,
-			    info, argp->child,
-			    p_stat == TXN_COMMIT ? TXN_IGNORE : TXN_ABORT,
-			    NULL);
+			    info, argp->child, c_stat, NULL);
 			if (ret > 0)
 				ret = 0;
 		} else if (c_stat == TXN_UNEXPECTED) {
@@ -316,16 +345,42 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
 			if (ret > 0)
 				ret = 0;
 		} else if (c_stat != TXN_IGNORE) {
-			ret = __db_txnlist_add(dbenv, info, argp->child,
-			    p_stat == TXN_COMMIT ? TXN_COMMIT : TXN_ABORT,
-			    NULL);
+			switch (p_stat) {
+			case TXN_COMMIT:
+				c_stat = TXN_COMMIT;
+				break;
+			case TXN_IGNORE:
+				c_stat = TXN_IGNORE;
+				break;
+			default:
+				c_stat = TXN_ABORT;
+			}
+
+			ret = __db_txnlist_add(dbenv,
+			     info, argp->child, c_stat, NULL);
 		}
-	} else {
+	} else if (op == DB_TXN_OPENFILES) {
+		/*
+		 * If we have a partial subtransaction, then the whole
+		 * transaction should be ignored.
+		 */
+		c_stat = __db_txnlist_find(dbenv, info, argp->child);
+		if (c_stat == TXN_NOTFOUND) {
+			p_stat =
+			     __db_txnlist_find(dbenv, info, argp->txnid->txnid);
+			if (p_stat == TXN_NOTFOUND)
+				ret = __db_txnlist_add(dbenv, info,
+				     argp->txnid->txnid, TXN_IGNORE, NULL);
+			else
+				ret = __db_txnlist_update(dbenv, info,
+				     argp->txnid->txnid, TXN_IGNORE, NULL);
+		}
+	} else if (DB_REDO(op)) {
 		/* Forward Roll */
 		if ((ret =
 		    __db_txnlist_remove(dbenv, info, argp->child)) != TXN_OK) {
 			__db_err(dbenv,
-			    "Transaction not in list %x", argp->txnid->txnid);
+			    "Transaction not in list %x", argp->child);
 			ret = DB_NOTFOUND;
 		}
 	}
@@ -363,7 +418,7 @@ __txn_restore_txn(dbenv, lsnp, argp)
 	int ret;
 
 	if (argp->xid.size == 0)
-	return (0);
+		return (0);
 
 	mgr = dbenv->tx_handle;
 	region = mgr->reginfo.primary;
@@ -390,7 +445,7 @@ __txn_restore_txn(dbenv, lsnp, argp)
 	td->gtrid = argp->gtrid;
 	td->format = argp->formatID;
 	td->flags = 0;
-	F_SET(td, TXN_RESTORED);
+	F_SET(td, TXN_DTL_RESTORED);
 
 	region->stat.st_nrestores++;
 	region->stat.st_nactive++;

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test016.tcl,v 11.23 2002/05/22 15:42:46 sue Exp $
+# $Id: test016.tcl,v 11.24 2003/01/08 05:53:43 bostic Exp $
 #
 # TEST	test016
 # TEST	Partial put test

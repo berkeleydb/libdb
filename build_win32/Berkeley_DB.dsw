@@ -86,7 +86,6 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name db_lib
     End Project Dependency
-    Begin Project Dependency
 }}}
 
 ###############################################################################
@@ -197,21 +196,6 @@ Package=<4>
 ###############################################################################
 
 Project: "db_load"=.\db_load.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-    Begin Project Dependency
-    Project_Dep_Name db_lib
-    End Project Dependency
-}}}
-
-###############################################################################
-
-Project: "db_perf"=.\db_perf.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -407,6 +391,21 @@ Package=<4>
 ###############################################################################
 
 Project: "ex_mpool"=.\ex_mpool.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name db_lib
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "ex_repquote"=.\ex_repquote.dsp - Package Owner=<4>
 
 Package=<5>
 {{{

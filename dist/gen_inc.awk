@@ -24,14 +24,14 @@
 		next
 	}
 	pline = sprintf("%s %s", pline, $0)
-	if (pline ~ "));") {
+	if (pline ~ "\\)\\);") {
 		sub("^[	 ]*", "", pline)
 		print pline >> i_pfile
 		if (pline !~ db_version_unique_name) {
-			def = gensub("[	 ][	 ]*__P.*", "", 1, pline)
-			sub("^.*[	 ][*]*", "", def)
+			gsub("[	 ][	 ]*__P.*", "", pline)
+			sub("^.*[	 ][*]*", "", pline)
 			printf("#define	%s %s@DB_VERSION_UNIQUE_NAME@\n",
-			    def, def) >> i_dfile
+			    pline, pline) >> i_dfile
 		}
 		pline = ""
 	}
@@ -59,14 +59,14 @@
 		next
 	}
 	eline = sprintf("%s %s", eline, $0)
-	if (eline ~ "));") {
+	if (eline ~ "\\)\\);") {
 		sub("^[	 ]*", "", eline)
 		print eline >> e_pfile
 		if (eline !~ db_version_unique_name && eline !~ "^int txn_") {
-			def = gensub("[	 ][	 ]*__P.*", "", 1, eline)
-			sub("^.*[	 ][*]*", "", def)
+			gsub("[	 ][	 ]*__P.*", "", eline)
+			sub("^.*[	 ][*]*", "", eline)
 			printf("#define	%s %s@DB_VERSION_UNIQUE_NAME@\n",
-			    def, def) >> e_dfile
+			    eline, eline) >> e_dfile
 		}
 		eline = ""
 	}

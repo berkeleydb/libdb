@@ -1,20 +1,20 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2002
+# Copyright (c) 2000-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test078.tcl,v 1.18 2002/06/20 19:01:02 sue Exp $
+# $Id: test078.tcl,v 1.20 2003/01/08 05:54:03 bostic Exp $
 #
 # TEST	test078
 # TEST	Test of DBC->c_count(). [#303]
-proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
+proc test078 { method { nkeys 100 } { pagesize 512 } { tnum "078" } args } {
 	source ./include.tcl
 	global alphabet rand_init
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Test0$tnum: Test of key counts."
+	puts "Test$tnum: Test of key counts."
 
 	berkdb srand $rand_init
 
@@ -25,10 +25,10 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 	}
 
 	if { $eindex == -1 } {
-		set testfile $testdir/test0$tnum-a.db
+		set testfile $testdir/test$tnum-a.db
 		set env NULL
 	} else {
-		set testfile test0$tnum-a.db
+		set testfile test$tnum-a.db
 		set env [lindex $args $eindex]
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
@@ -38,7 +38,7 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 	}
 	cleanup $testdir $env
 
-	puts "\tTest0$tnum.a: No duplicates, trivial answer."
+	puts "\tTest$tnum.a: No duplicates, trivial answer."
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		puts "Test078: skipping for specific pagesizes"
@@ -68,7 +68,7 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts \
-	    "\tTest0$tnum.b: Duplicates not supported in $method, skipping."
+	    "\tTest$tnum.b: Duplicates not supported in $method, skipping."
 		return
 	}
 
@@ -77,18 +77,18 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 		set dupopt [lindex $tuple 2]
 
 		if { $eindex == -1 } {
-			set testfile $testdir/test0$tnum-b.db
+			set testfile $testdir/test$tnum-b.db
 			set env NULL
 		} else {
-			set testfile test0$tnum-b.db
+			set testfile test$tnum-b.db
 			set env [lindex $args $eindex]
 			set testdir [get_home $env]
 		}
 		cleanup $testdir $env
 
-		puts "\tTest0$tnum.$letter: Duplicates ([lindex $tuple 1])."
+		puts "\tTest$tnum.$letter: Duplicates ([lindex $tuple 1])."
 
-		puts "\t\tTest0$tnum.$letter.1: Populating database."
+		puts "\t\tTest$tnum.$letter.1: Populating database."
 
 		set db [eval {berkdb_open -create -mode 0644\
 		    -pagesize $pagesize} $dupopt $omethod $args {$testfile}]
@@ -111,14 +111,14 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum 78 } args } {
 			}
 		}
 
-		puts -nonewline "\t\tTest0$tnum.$letter.2: "
+		puts -nonewline "\t\tTest$tnum.$letter.2: "
 		puts "Verifying dup counts on first dup."
 		for { set i 1 } { $i < $nkeys } { incr i } {
 			error_check_good count.$letter,$i \
 			    [$db count $i] $i
 		}
 
-		puts -nonewline "\t\tTest0$tnum.$letter.3: "
+		puts -nonewline "\t\tTest$tnum.$letter.3: "
 		puts "Verifying dup counts on random dup."
 		for { set i 1 } { $i < $nkeys } { incr i } {
 			set key [berkdb random_int 1 $nkeys]

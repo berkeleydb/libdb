@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: ddscript.tcl,v 11.12 2002/02/20 16:35:18 sandstro Exp $
+# $Id: ddscript.tcl,v 11.13 2003/01/08 05:49:30 bostic Exp $
 #
 # Deadlock detector script tester.
 # Usage: ddscript dir test lockerid objid numprocs

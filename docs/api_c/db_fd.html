@@ -1,21 +1,22 @@
-<!--$Id: db_fd.so,v 10.25 2002/08/18 21:15:48 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: db_fd.so,v 10.30 2003/10/31 15:17:43 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB-&gt;fd</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>DB-&gt;fd</h1>
+<h3>DB-&gt;fd</h3>
 </td>
 <td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -25,32 +26,37 @@
 int
 DB-&gt;fd(DB *db, int *fdp);
 </pre></h3>
-<h1>Description</h1>
-<p>The DB-&gt;fd method
-copies a file descriptor representative of the underlying database into
-the memory to which <b>fdp</b> refers.  A file descriptor referring to
-the same file will be returned to all processes that call
-<a href="../api_c/db_open.html">DB-&gt;open</a> with the same <b>file</b> argument.  This file
-descriptor may be safely used as an argument to the <b>fcntl</b>(2)
-and <b>flock</b>(2) locking functions.  The file descriptor is not
-necessarily associated with any of the underlying files actually used
-by the access method.
+<hr size=1 noshade>
+<h3>Description: DB-&gt;fd</h3>
+<p>The DB-&gt;fd method provides access to a file descriptor representative
+of the underlying database.  A file descriptor referring to the same
+file will be returned to all processes that call <a href="../api_c/db_open.html">DB-&gt;open</a> with
+the same <b>file</b> parameter.</p>
+<p>This file descriptor may be safely used as a parameter to the
+<b>fcntl</b>(2) and <b>flock</b>(2) locking functions.  The file
+descriptor is not necessarily associated with any of the underlying
+files actually used by the access method.</p>
 <p>The DB-&gt;fd method only supports a coarse-grained form of locking.
-Applications should use the lock manager where possible.
-<p>The DB-&gt;fd method returns a non-zero error value on failure and 0 on success.
-<h1>Errors</h1>
-<p>The DB-&gt;fd method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB-&gt;fd method may fail and
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+Applications should instead use the Berkeley DB lock manager where possible.</p>
+<p>The DB-&gt;fd method
+returns a non-zero error value on failure
+and 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>fdp</b><dd>
+The <b>fdp</b> parameter references memory into which
+ the current file descriptor is copied.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_c/db_class.html">DB</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_c/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

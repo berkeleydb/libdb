@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_mp.c,v 11.39 2002/08/06 06:21:27 bostic Exp $";
+static const char revid[] = "$Id: tcl_mp.c,v 11.50 2003/09/04 20:45:45 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,6 +25,7 @@ static const char revid[] = "$Id: tcl_mp.c,v 11.39 2002/08/06 06:21:27 bostic Ex
 /*
  * Prototypes for procedures defined later in this file:
  */
+#if CONFIG_TEST
 static int      mp_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int      pg_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int      tcl_MpGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
@@ -35,6 +36,7 @@ static int      tcl_PgInit __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     void *, DBTCL_INFO *));
 static int      tcl_PgIsset __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     void *, DBTCL_INFO *));
+#endif
 
 /*
  * _MpInfoDelete --
@@ -161,7 +163,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 	DB_ENV *envp;			/* Environment pointer */
 	DBTCL_INFO *envip;		/* Info pointer */
 {
-	static char *mpopts[] = {
+	static const char *mpopts[] = {
 		"-create",
 		"-mode",
 		"-nommap",
@@ -413,9 +415,9 @@ tcl_MpStat(interp, objc, objv, envp)
 	}
 	Tcl_SetObjResult(interp, res1);
 error:
-	free(sp);
+	(void)__os_ufree(envp, sp);
 	if (savefsp != NULL)
-		free(savefsp);
+		(void)__os_ufree(envp, savefsp);
 	return (result);
 }
 
@@ -430,22 +432,36 @@ mp_Cmd(clientData, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *mpcmds[] = {
+	static const char *mpcmds[] = {
 		"close",
 		"fsync",
 		"get",
+		"get_clear_len",
+		"get_fileid",
+		"get_ftype",
+		"get_lsn_offset",
+		"get_pgcookie",
 		NULL
 	};
 	enum mpcmds {
 		MPCLOSE,
 		MPFSYNC,
-		MPGET
+		MPGET,
+		MPGETCLEARLEN,
+		MPGETFILEID,
+		MPGETFTYPE,
+		MPGETLSNOFFSET,
+		MPGETPGCOOKIE
 	};
 	DB_MPOOLFILE *mp;
-	int cmdindex, length, result, ret;
+	int cmdindex, ftype, length, result, ret;
 	DBTCL_INFO *mpip;
 	Tcl_Obj *res;
 	char *obj_name;
+	u_int32_t value;
+	int32_t intval;
+	u_int8_t fileid[DB_FILE_ID_LEN];
+	DBT cookie;
 
 	Tcl_ResetResult(interp);
 	mp = (DB_MPOOLFILE *)clientData;
@@ -497,6 +513,59 @@ mp_Cmd(clientData, interp, objc, objv)
 	case MPGET:
 		result = tcl_MpGet(interp, objc, objv, mp, mpip);
 		break;
+	case MPGETCLEARLEN:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = mp->get_clear_len(mp, &value);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp get_clear_len")) == TCL_OK)
+			res = Tcl_NewIntObj(value);
+		break;
+	case MPGETFILEID:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = mp->get_fileid(mp, fileid);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp get_fileid")) == TCL_OK)
+			res = Tcl_NewStringObj((char *)fileid,
+			    (int)DB_FILE_ID_LEN);
+		break;
+	case MPGETFTYPE:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = mp->get_ftype(mp, &ftype);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp get_ftype")) == TCL_OK)
+			res = Tcl_NewIntObj(ftype);
+		break;
+	case MPGETLSNOFFSET:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = mp->get_lsn_offset(mp, &intval);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp get_lsn_offset")) == TCL_OK)
+			res = Tcl_NewIntObj(intval);
+		break;
+	case MPGETPGCOOKIE:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		memset(&cookie, 0, sizeof(DBT));
+		ret = mp->get_pgcookie(mp, &cookie);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp get_pgcookie")) == TCL_OK)
+			res = Tcl_NewByteArrayObj((u_char *)cookie.data,
+			    cookie.size);
+		break;
 	}
 	/*
 	 * Only set result if we have a res.  Otherwise, lower
@@ -518,7 +587,7 @@ tcl_MpGet(interp, objc, objv, mp, mpip)
 	DB_MPOOLFILE *mp;		/* mp pointer */
 	DBTCL_INFO *mpip;		/* mp info pointer */
 {
-	static char *mpget[] = {
+	static const char *mpget[] = {
 		"-create",
 		"-last",
 		"-new",
@@ -629,7 +698,7 @@ pg_Cmd(clientData, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *pgcmds[] = {
+	static const char *pgcmds[] = {
 		"init",
 		"is_setto",
 		"pgnum",
@@ -684,10 +753,10 @@ pg_Cmd(clientData, interp, objc, objv)
 	res = NULL;
 	switch ((enum pgcmds)cmdindex) {
 	case PGNUM:
-		res = Tcl_NewLongObj((long)pgip->i_pgno);
+		res = Tcl_NewWideIntObj((Tcl_WideInt)pgip->i_pgno);
 		break;
 	case PGSIZE:
-		res = Tcl_NewLongObj(pgip->i_pgsz);
+		res = Tcl_NewWideIntObj((Tcl_WideInt)pgip->i_pgsz);
 		break;
 	case PGSET:
 	case PGPUT:
@@ -701,11 +770,12 @@ pg_Cmd(clientData, interp, objc, objv)
 		result = tcl_PgIsset(interp, objc, objv, page, pgip);
 		break;
 	}
+
 	/*
 	 * Only set result if we have a res.  Otherwise, lower
 	 * functions have already done so.
 	 */
-	if (result == TCL_OK && res)
+	if (result == TCL_OK && res != NULL)
 		Tcl_SetObjResult(interp, res);
 	return (result);
 }
@@ -720,7 +790,7 @@ tcl_Pg(interp, objc, objv, page, mp, pgip, putop)
 	DBTCL_INFO *pgip;		/* Info pointer */
 	int putop;			/* Operation */
 {
-	static char *pgopt[] = {
+	static const char *pgopt[] = {
 		"-clean",
 		"-dirty",
 		"-discard",

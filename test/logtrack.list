@@ -10,6 +10,9 @@ BEGIN	noop	48
 BEGIN	pg_alloc	49
 BEGIN	pg_free	50
 BEGIN	cksum	51
+BEGIN	pg_freedata	52
+BEGIN	pg_prepare	53
+BEGIN	pg_new	54
 PREFIX	__dbreg
 BEGIN	register	2
 PREFIX	__bam

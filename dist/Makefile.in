@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 11.175 2002/08/29 14:22:20 margo Exp $
+# $Id: Makefile.in,v 11.226 2003/11/28 18:50:05 bostic Exp $
 
 srcdir=	@srcdir@/..
 builddir=.
@@ -44,13 +44,14 @@ LIBTOOL=	@LIBTOOL@
 POSTLINK=	@POSTLINK@
 SOLINK=		@MAKEFILE_SOLINK@
 SOFLAGS=	@SOFLAGS@
-SOMAJOR=	@DB_VERSION_MAJOR@
-SOVERSION=	@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@
+LIBMAJOR=	@DB_VERSION_MAJOR@
+LIBVERSION=	@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@
+
+CPPFLAGS=	-I$(builddir) -I$(srcdir) @CPPFLAGS@
 
 ##################################################
 # C API.
 ##################################################
-CPPFLAGS=	-I$(builddir) -I$(srcdir) -I$(srcdir)/dbinc @CPPFLAGS@
 CFLAGS=	 	-c $(CPPFLAGS) @CFLAGS@
 CC=		@MAKEFILE_CC@
 CCLINK=		@MAKEFILE_CCLINK@
@@ -59,13 +60,13 @@ LDFLAGS=	@LDFLAGS@
 LIBS=		@LIBS@
 LIBSO_LIBS=	@LIBSO_LIBS@
 
-libdb=		libdb.a
-libso_base=	libdb
-libso=		$(libso_base)-$(SOVERSION).@SOSUFFIX@
-libso_static=	$(libso_base)-$(SOVERSION).a
-libso_target=	$(libso_base)-$(SOVERSION).la
-libso_default=	$(libso_base).@SOSUFFIX@
-libso_major=	$(libso_base)-$(SOMAJOR).@SOSUFFIX@
+libdb_base=	libdb
+libdb=		$(libdb_base).a
+libdb_version=	$(libdb_base)-$(LIBVERSION).a
+libso=		$(libdb_base)-$(LIBVERSION)@SOSUFFIX@
+libso_target=	$(libdb_base)-$(LIBVERSION).la
+libso_default=	$(libdb_base)@SOSUFFIX@
+libso_major=	$(libdb_base)-$(LIBMAJOR)@SOSUFFIX@
 
 ##################################################
 # C++ API.
@@ -78,13 +79,13 @@ CXXLINK=	@MAKEFILE_CXXLINK@
 XSOLINK=	@MAKEFILE_XSOLINK@
 LIBXSO_LIBS=	@LIBXSO_LIBS@
 
-libcxx=		libdb_cxx.a
-libxso_base=	libdb_cxx
-libxso=		$(libxso_base)-$(SOVERSION).@SOSUFFIX@
-libxso_static=	$(libxso_base)-$(SOVERSION).a
-libxso_target=	$(libxso_base)-$(SOVERSION).la
-libxso_default=	$(libxso_base).@SOSUFFIX@
-libxso_major=	$(libxso_base)-$(SOMAJOR).@SOSUFFIX@
+libcxx_base=	libdb_cxx
+libcxx=		$(libcxx_base).a
+libcxx_version=	$(libcxx_base)-$(LIBVERSION).a
+libxso=		$(libcxx_base)-$(LIBVERSION)@SOSUFFIX@
+libxso_target=	$(libcxx_base)-$(LIBVERSION).la
+libxso_default=	$(libcxx_base)@SOSUFFIX@
+libxso_major=	$(libcxx_base)-$(LIBMAJOR)@SOSUFFIX@
 
 ##################################################
 # Java API.
@@ -98,25 +99,25 @@ JAR=		@JAR@
 JAVAC=		env CLASSPATH="$(CLASSPATH)" @JAVAC@
 JAVACFLAGS=	@JAVACFLAGS@
 JAVA_CLASSTOP=	./classes
-JAVA_RPCCLASSES=./classes.rpc
+JAVA_RPCCLASSTOP=./classes.rpc
+JAVA_EXCLASSTOP=./classes.ex
 JAVA_SRCDIR=	$(srcdir)/java/src
 JAVA_DBREL=	com/sleepycat/db
 JAVA_EXREL=	com/sleepycat/examples
 JAVA_RPCREL=	com/sleepycat/db/rpcserver
-JAVA_DBDIR=	$(JAVA_SRCDIR)/$(JAVA_DBREL)
-JAVA_EXDIR=	$(JAVA_SRCDIR)/$(JAVA_EXREL)
+JAVA_EXDIR=	$(srcdir)/examples_java/src/com/sleepycat/examples
 JAVA_RPCDIR=	$(srcdir)/rpc_server/java
 
 libj_jarfile=	db.jar
 libj_exjarfile=	dbexamples.jar
 rpc_jarfile=	dbsvc.jar
 libjso_base=	libdb_java
-libjso=		$(libjso_base)-$(SOVERSION).@JMODSUFFIX@
-libjso_static=	$(libjso_base)-$(SOVERSION).a
-libjso_target=	$(libjso_base)-$(SOVERSION).la
-libjso_default=	$(libjso_base).@JMODSUFFIX@
-libjso_major=	$(libjso_base)-$(SOMAJOR).@JMODSUFFIX@
-libjso_g=	$(libjso_base)-$(SOVERSION)_g.@JMODSUFFIX@
+libjso=		$(libjso_base)-$(LIBVERSION)@JMODSUFFIX@
+libjso_static=	$(libjso_base)-$(LIBVERSION).a
+libjso_target=	$(libjso_base)-$(LIBVERSION).la
+libjso_default=	$(libjso_base)@JMODSUFFIX@
+libjso_major=	$(libjso_base)-$(LIBMAJOR)@JMODSUFFIX@
+libjso_g=	$(libjso_base)-$(LIBVERSION)_g@JMODSUFFIX@
 
 ##################################################
 # TCL API.
@@ -126,11 +127,11 @@ libjso_g=	$(libjso_base)-$(SOVERSION)_g.@JMODSUFFIX@
 TCFLAGS=	@TCFLAGS@
 LIBTSO_LIBS=	@LIBTSO_LIBS@
 libtso_base=	libdb_tcl
-libtso=		$(libtso_base)-$(SOVERSION).@MODSUFFIX@
-libtso_static=	$(libtso_base)-$(SOVERSION).a
-libtso_target=	$(libtso_base)-$(SOVERSION).la
-libtso_default=	$(libtso_base).@MODSUFFIX@
-libtso_major=	$(libtso_base)-$(SOMAJOR).@MODSUFFIX@
+libtso=		$(libtso_base)-$(LIBVERSION)@MODSUFFIX@
+libtso_static=	$(libtso_base)-$(LIBVERSION).a
+libtso_target=	$(libtso_base)-$(LIBVERSION).la
+libtso_default=	$(libtso_base)@MODSUFFIX@
+libtso_major=	$(libtso_base)-$(LIBMAJOR)@MODSUFFIX@
 
 ##################################################
 # db_dump185 UTILITY
@@ -152,24 +153,38 @@ DB185LIB=
 ##################################################
 # Object and utility lists.
 ##################################################
-C_OBJS= @ADDITIONAL_OBJS@ @LTLIBOBJS@ @RPC_CLIENT_OBJS@ \
+BTREE_OBJS=\
 	bt_compare@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ bt_delete@o@ \
 	bt_method@o@ bt_open@o@ bt_put@o@ bt_rec@o@ bt_reclaim@o@ \
 	bt_recno@o@ bt_rsearch@o@ bt_search@o@ bt_split@o@ bt_stat@o@ \
-	bt_upgrade@o@ bt_verify@o@ btree_auto@o@ crdel_auto@o@ \
-	crdel_rec@o@ db@o@ db_am@o@ db_auto@o@ db_byteorder@o@ db_cam@o@ \
-	db_conv@o@ db_dispatch@o@ db_dup@o@ db_err@o@ db_getlong@o@ \
-	db_idspace@o@ db_iface@o@ db_join@o@ db_log2@o@ db_meta@o@ \
-	db_method@o@ db_open@o@ db_overflow@o@ db_pr@o@ db_rec@o@ \
-	db_reclaim@o@ db_rename@o@ db_remove@o@ db_ret@o@ db_salloc@o@ \
-	db_shash@o@ db_truncate@o@ db_upg@o@ db_upg_opd@o@ db_vrfy@o@ \
-	db_vrfyutil@o@ dbm@o@ dbreg@o@ dbreg_auto@o@ dbreg_rec@o@ \
-	dbreg_util@o@ env_file@o@ env_method@o@ env_open@o@ env_recover@o@ \
-	env_region@o@ fileops_auto@o@ fop_basic@o@ fop_rec@o@ \
-	fop_util@o@ hash@o@ hash_auto@o@ hash_conv@o@ hash_dup@o@ \
-	hash_func@o@ hash_meta@o@ hash_method@o@ hash_open@o@ \
-	hash_page@o@ hash_rec@o@ hash_reclaim@o@ hash_stat@o@ \
-	hash_upgrade@o@ hash_verify@o@ hmac@o@ hsearch@o@ lock@o@ \
+	bt_upgrade@o@ btree_auto@o@
+BTREE_VRFY_OBJS=\
+	db_ovfl_vrfy@o@ db_vrfy@o@ db_vrfyutil@o@ bt_verify@o@
+HASH_OBJS=\
+	hash@o@ hash_auto@o@ hash_conv@o@ hash_dup@o@ hash_meta@o@ \
+	hash_method@o@ hash_open@o@ hash_page@o@ hash_rec@o@ \
+	hash_reclaim@o@ hash_stat@o@ hash_upgrade@o@
+HASH_VRFY_OBJS=\
+	hash_verify@o@
+QUEUE_OBJS=\
+	qam@o@ qam_auto@o@ qam_conv@o@ qam_files@o@ qam_method@o@ \
+	qam_open@o@ qam_rec@o@ qam_stat@o@ qam_upgrade@o@
+QUEUE_VRFY_OBJS=\
+	qam_verify@o@
+REP_OBJS=\
+	rep_method@o@ rep_record@o@ rep_region@o@ rep_util@o@
+
+C_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ @RPC_CLIENT_OBJS@ \
+	crdel_auto@o@ crdel_rec@o@ db@o@ db_am@o@ db_auto@o@ \
+	db_byteorder@o@ db_cam@o@ db_conv@o@ db_dispatch@o@ db_dup@o@ \
+	db_err@o@ db_getlong@o@ db_idspace@o@ db_iface@o@ db_join@o@ \
+	db_log2@o@ db_meta@o@ db_method@o@ db_open@o@ db_overflow@o@ \
+	db_pr@o@ db_rec@o@ db_reclaim@o@ db_rename@o@ db_remove@o@ \
+	db_ret@o@ db_salloc@o@ db_shash@o@ db_truncate@o@ db_upg@o@ \
+	db_upg_opd@o@ dbm@o@ dbreg@o@ dbreg_auto@o@ dbreg_rec@o@ \
+	dbreg_util@o@ env_file@o@ env_method@o@ env_open@o@ \
+	env_recover@o@ env_region@o@ fileops_auto@o@ fop_basic@o@ \
+	fop_rec@o@ fop_util@o@ hash_func@o@ hmac@o@ hsearch@o@ lock@o@ \
 	lock_deadlock@o@ lock_method@o@ lock_region@o@ lock_stat@o@ \
 	lock_util@o@ log@o@ log_archive@o@ log_compare@o@ log_get@o@ \
 	log_method@o@ log_put@o@ mp_alloc@o@ mp_bh@o@ mp_fget@o@ \
@@ -180,57 +195,225 @@ C_OBJS= @ADDITIONAL_OBJS@ @LTLIBOBJS@ @RPC_CLIENT_OBJS@ \
 	os_map@o@ os_method@o@ os_oflags@o@ os_open@o@ os_region@o@ \
 	os_rename@o@ os_root@o@ os_rpath@o@ os_rw@o@ os_seek@o@ \
 	os_sleep@o@ os_spin@o@ os_stat@o@ os_tmpdir@o@ os_unlink@o@ \
-	qam@o@ qam_auto@o@ qam_conv@o@ qam_files@o@ qam_method@o@ \
-	qam_open@o@ qam_rec@o@ qam_stat@o@ qam_upgrade@o@ qam_verify@o@ \
-	rep_method@o@ rep_record@o@ rep_region@o@ rep_util@o@ sha1@o@ \
-	txn@o@ txn_auto@o@ txn_method@o@ txn_rec@o@ txn_recover@o@ \
-	txn_region@o@ txn_stat@o@ txn_util@o@ xa@o@ xa_db@o@ xa_map@o@
+	sha1@o@ txn@o@ txn_auto@o@ txn_method@o@ txn_rec@o@ \
+	txn_recover@o@ txn_region@o@ txn_stat@o@ txn_util@o@ xa@o@ \
+	xa_db@o@ xa_map@o@
 
 CXX_OBJS=\
 	cxx_db@o@ cxx_dbc@o@ cxx_dbt@o@ cxx_env@o@ cxx_except@o@ \
-	cxx_lock@o@ cxx_logc@o@ cxx_mpool@o@ cxx_txn@o@
+	cxx_lock@o@ cxx_logc@o@ cxx_mpool@o@ cxx_txn@o@ cxx_multi@o@
+
+CRYPTO_OBJS=\
+	aes_method@o@ crypto@o@ mt19937db@o@ rijndael-alg-fst@o@ \
+	rijndael-api-fst@o@
 
 JAVA_OBJS=\
-	java_Db@o@ java_DbEnv@o@ java_DbLock@o@ java_DbLogc@o@ \
-	java_DbLsn@o@ java_DbTxn@o@ java_DbUtil@o@ java_Dbc@o@ \
-	java_Dbt@o@ \
-	java_info@o@ java_locked@o@ java_util@o@ java_stat_auto@o@
+	db_java_wrap@o@
 
+JAVA_SLEEPYCAT=$(JAVA_SRCDIR)/com/sleepycat
 JAVA_DBSRCS=\
-	$(JAVA_DBDIR)/Db.java $(JAVA_DBDIR)/DbAppendRecno.java \
-	$(JAVA_DBDIR)/DbAppDispatch.java \
-	$(JAVA_DBDIR)/DbBtreeCompare.java $(JAVA_DBDIR)/DbBtreePrefix.java \
-	$(JAVA_DBDIR)/DbBtreeStat.java $(JAVA_DBDIR)/DbClient.java \
-	$(JAVA_DBDIR)/DbConstants.java $(JAVA_DBDIR)/DbDeadlockException.java \
-	$(JAVA_DBDIR)/DbDupCompare.java $(JAVA_DBDIR)/DbEnv.java \
-	$(JAVA_DBDIR)/DbEnvFeedback.java $(JAVA_DBDIR)/DbErrcall.java \
-	$(JAVA_DBDIR)/DbException.java $(JAVA_DBDIR)/DbFeedback.java \
-	$(JAVA_DBDIR)/DbHash.java $(JAVA_DBDIR)/DbHashStat.java \
-	$(JAVA_DBDIR)/DbKeyRange.java $(JAVA_DBDIR)/DbLock.java \
-	$(JAVA_DBDIR)/DbLockNotGrantedException.java \
-	$(JAVA_DBDIR)/DbLockRequest.java $(JAVA_DBDIR)/DbLockStat.java \
-	$(JAVA_DBDIR)/DbLogc.java $(JAVA_DBDIR)/DbLogStat.java \
-	$(JAVA_DBDIR)/DbLsn.java $(JAVA_DBDIR)/DbMemoryException.java \
-	$(JAVA_DBDIR)/DbMpoolFStat.java $(JAVA_DBDIR)/DbMpoolStat.java \
-	$(JAVA_DBDIR)/DbMultipleDataIterator.java \
-	$(JAVA_DBDIR)/DbMultipleIterator.java \
-	$(JAVA_DBDIR)/DbMultipleKeyDataIterator.java \
-	$(JAVA_DBDIR)/DbMultipleRecnoDataIterator.java \
-	$(JAVA_DBDIR)/DbOutputStreamErrcall.java \
-	$(JAVA_DBDIR)/DbPreplist.java $(JAVA_DBDIR)/DbQueueStat.java \
-	$(JAVA_DBDIR)/DbRepStat.java $(JAVA_DBDIR)/DbRepTransport.java \
-	$(JAVA_DBDIR)/DbRunRecoveryException.java \
-	$(JAVA_DBDIR)/DbSecondaryKeyCreate.java $(JAVA_DBDIR)/DbTxn.java \
-	$(JAVA_DBDIR)/DbTxnStat.java \
-	$(JAVA_DBDIR)/DbUtil.java $(JAVA_DBDIR)/Dbc.java $(JAVA_DBDIR)/Dbt.java
+	$(JAVA_SLEEPYCAT)/bdb/bind/ByteArrayBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/ByteArrayFormat.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/DataBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/DataBuffer.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/DataFormat.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/DataType.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/EntityBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/KeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/SimpleBuffer.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/ClassCatalog.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialFormat.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialInput.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialOutput.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialSerialBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/SerialSerialKeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/TupleSerialBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/TupleSerialKeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/TupleSerialMarshalledBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/serial/TupleSerialMarshalledKeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/MarshalledTupleData.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/MarshalledTupleKeyEntity.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleFormat.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleInput.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleInputBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleMarshalledBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleOutput.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleTupleBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleTupleKeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleTupleMarshalledBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/bind/tuple/TupleTupleMarshalledKeyExtractor.java \
+	$(JAVA_SLEEPYCAT)/db/@db_cv_build_type@/DbConstants.java \
+	$(JAVA_SLEEPYCAT)/db/db_java.java \
+	$(JAVA_SLEEPYCAT)/db/db_javaJNI.java \
+	$(JAVA_SLEEPYCAT)/db/Db.java \
+	$(JAVA_SLEEPYCAT)/db/DbAppDispatch.java \
+	$(JAVA_SLEEPYCAT)/db/DbAppendRecno.java \
+	$(JAVA_SLEEPYCAT)/db/DbBtreeCompare.java \
+	$(JAVA_SLEEPYCAT)/db/DbBtreePrefix.java \
+	$(JAVA_SLEEPYCAT)/db/DbBtreeStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbClient.java \
+	$(JAVA_SLEEPYCAT)/db/DbDeadlockException.java \
+	$(JAVA_SLEEPYCAT)/db/DbDupCompare.java \
+	$(JAVA_SLEEPYCAT)/db/DbEnv.java \
+	$(JAVA_SLEEPYCAT)/db/DbEnvFeedback.java \
+	$(JAVA_SLEEPYCAT)/db/DbEnvFeedbackHandler.java \
+	$(JAVA_SLEEPYCAT)/db/DbErrcall.java \
+	$(JAVA_SLEEPYCAT)/db/DbErrorHandler.java \
+	$(JAVA_SLEEPYCAT)/db/DbException.java \
+	$(JAVA_SLEEPYCAT)/db/DbFeedback.java \
+	$(JAVA_SLEEPYCAT)/db/DbFeedbackHandler.java \
+	$(JAVA_SLEEPYCAT)/db/DbHash.java \
+	$(JAVA_SLEEPYCAT)/db/DbHashStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbKeyRange.java \
+	$(JAVA_SLEEPYCAT)/db/DbLock.java \
+	$(JAVA_SLEEPYCAT)/db/DbLockNotGrantedException.java \
+	$(JAVA_SLEEPYCAT)/db/DbLockRequest.java \
+	$(JAVA_SLEEPYCAT)/db/DbLockStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbLogStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbLogc.java \
+	$(JAVA_SLEEPYCAT)/db/DbLsn.java \
+	$(JAVA_SLEEPYCAT)/db/DbMemoryException.java \
+	$(JAVA_SLEEPYCAT)/db/DbMpoolFStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbMpoolFile.java \
+	$(JAVA_SLEEPYCAT)/db/DbMpoolStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbMultipleDataIterator.java \
+	$(JAVA_SLEEPYCAT)/db/DbMultipleIterator.java \
+	$(JAVA_SLEEPYCAT)/db/DbMultipleKeyDataIterator.java \
+	$(JAVA_SLEEPYCAT)/db/DbMultipleRecnoDataIterator.java \
+	$(JAVA_SLEEPYCAT)/db/DbPanicHandler.java \
+	$(JAVA_SLEEPYCAT)/db/DbPreplist.java \
+	$(JAVA_SLEEPYCAT)/db/DbQueueStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbRepStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbRepTransport.java \
+	$(JAVA_SLEEPYCAT)/db/DbRunRecoveryException.java \
+	$(JAVA_SLEEPYCAT)/db/DbSecondaryKeyCreate.java \
+	$(JAVA_SLEEPYCAT)/db/DbTxn.java \
+	$(JAVA_SLEEPYCAT)/db/DbTxnStat.java \
+	$(JAVA_SLEEPYCAT)/db/DbUtil.java \
+	$(JAVA_SLEEPYCAT)/db/Dbc.java \
+	$(JAVA_SLEEPYCAT)/db/Dbt.java \
+	$(JAVA_SLEEPYCAT)/bdb/CurrentTransaction.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataCursor.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataDb.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataEnvironment.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataIndex.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataStore.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataThang.java \
+	$(JAVA_SLEEPYCAT)/bdb/DataView.java \
+	$(JAVA_SLEEPYCAT)/bdb/ForeignKeyIndex.java \
+	$(JAVA_SLEEPYCAT)/bdb/IntegrityConstraintException.java \
+	$(JAVA_SLEEPYCAT)/bdb/KeyRange.java \
+	$(JAVA_SLEEPYCAT)/bdb/KeyRangeException.java \
+	$(JAVA_SLEEPYCAT)/bdb/PrimaryKeyAssigner.java \
+	$(JAVA_SLEEPYCAT)/bdb/RecordNumberBinding.java \
+	$(JAVA_SLEEPYCAT)/bdb/RecordNumberFormat.java \
+	$(JAVA_SLEEPYCAT)/bdb/StoredClassCatalog.java \
+	$(JAVA_SLEEPYCAT)/bdb/TransactionRunner.java \
+	$(JAVA_SLEEPYCAT)/bdb/TransactionWorker.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/MapEntry.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredCollection.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredCollections.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredContainer.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredEntrySet.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredIterator.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredKeySet.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredList.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredMap.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredMapEntry.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredSortedEntrySet.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredSortedKeySet.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredSortedMap.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredSortedValueSet.java \
+	$(JAVA_SLEEPYCAT)/bdb/collection/StoredValueSet.java \
+	$(JAVA_SLEEPYCAT)/bdb/factory/TupleSerialDbFactory.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/ExceptionUnwrapper.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/ExceptionWrapper.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/FastInputStream.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/FastOutputStream.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/IOExceptionWrapper.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/RuntimeExceptionWrapper.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/TimeUnits.java \
+	$(JAVA_SLEEPYCAT)/bdb/util/UtfOps.java
 
 JAVA_EXSRCS=\
-	$(JAVA_EXDIR)/AccessExample.java \
-	$(JAVA_EXDIR)/BtRecExample.java \
-	$(JAVA_EXDIR)/BulkAccessExample.java \
-	$(JAVA_EXDIR)/EnvExample.java \
-	$(JAVA_EXDIR)/LockExample.java \
-	$(JAVA_EXDIR)/TpcbExample.java
+	$(JAVA_EXDIR)/db/AccessExample.java \
+	$(JAVA_EXDIR)/db/BtRecExample.java \
+	$(JAVA_EXDIR)/db/BulkAccessExample.java \
+	$(JAVA_EXDIR)/db/EnvExample.java \
+	$(JAVA_EXDIR)/db/LockExample.java \
+	$(JAVA_EXDIR)/db/TpcbExample.java \
+	$(JAVA_EXDIR)/bdb/access/AccessExample.java \
+	$(JAVA_EXDIR)/bdb/helloworld/HelloDatabaseWorld.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/PartValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/ShipmentValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/SupplierValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/basic/Weight.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/Part.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/PartValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/Shipment.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/ShipmentValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/Supplier.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/SupplierValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/entity/Weight.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/Part.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/PartValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/Shipment.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/ShipmentValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/Supplier.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/SupplierValue.java \
+	$(JAVA_EXDIR)/bdb/shipment/tuple/Weight.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/Part.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/Shipment.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/Supplier.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/sentity/Weight.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/MarshalledEntity.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/MarshalledKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/Part.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/Shipment.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/Supplier.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/marshal/Weight.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/Part.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/PartKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/Sample.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/SampleDatabase.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/SampleViews.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/Shipment.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/ShipmentKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/Supplier.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/SupplierKey.java \
+	$(JAVA_EXDIR)/bdb/shipment/factory/Weight.java
 
 TCL_OBJS=\
 	tcl_compat@o@ tcl_db@o@ tcl_db_pkg@o@ tcl_dbcursor@o@ tcl_env@o@ \
@@ -280,7 +463,33 @@ RPC_JAVASRV_SRCS=\
 	$(JAVA_RPCDIR)/gen/__db_extentsize_reply.java \
 	$(JAVA_RPCDIR)/gen/__db_flags_msg.java \
 	$(JAVA_RPCDIR)/gen/__db_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_bt_minkey_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_bt_minkey_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_encrypt_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_encrypt_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_extentsize_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_extentsize_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_h_ffactor_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_h_ffactor_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_h_nelem_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_h_nelem_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_lorder_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_lorder_reply.java \
 	$(JAVA_RPCDIR)/gen/__db_get_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_name_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_name_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_open_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_open_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_pagesize_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_pagesize_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_delim_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_delim_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_len_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_len_reply.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_pad_msg.java \
+	$(JAVA_RPCDIR)/gen/__db_get_re_pad_reply.java \
 	$(JAVA_RPCDIR)/gen/__db_get_reply.java \
 	$(JAVA_RPCDIR)/gen/__db_h_ffactor_msg.java \
 	$(JAVA_RPCDIR)/gen/__db_h_ffactor_reply.java \
@@ -344,6 +553,16 @@ RPC_JAVASRV_SRCS=\
 	$(JAVA_RPCDIR)/gen/__env_encrypt_reply.java \
 	$(JAVA_RPCDIR)/gen/__env_flags_msg.java \
 	$(JAVA_RPCDIR)/gen/__env_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__env_get_cachesize_msg.java \
+	$(JAVA_RPCDIR)/gen/__env_get_cachesize_reply.java \
+	$(JAVA_RPCDIR)/gen/__env_get_encrypt_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__env_get_encrypt_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__env_get_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__env_get_flags_reply.java \
+	$(JAVA_RPCDIR)/gen/__env_get_home_msg.java \
+	$(JAVA_RPCDIR)/gen/__env_get_home_reply.java \
+	$(JAVA_RPCDIR)/gen/__env_get_open_flags_msg.java \
+	$(JAVA_RPCDIR)/gen/__env_get_open_flags_reply.java \
 	$(JAVA_RPCDIR)/gen/__env_open_msg.java \
 	$(JAVA_RPCDIR)/gen/__env_open_reply.java \
 	$(JAVA_RPCDIR)/gen/__env_remove_msg.java \
@@ -375,13 +594,13 @@ LIB_INSTALL_FILE_LIST=\
 	$(libso) \
 	$(libso_default) \
 	$(libso_major) \
-	$(libso_static) \
+	$(libdb_version) \
 	$(libso_target) \
 	$(libcxx) \
 	$(libxso) \
 	$(libxso_default) \
 	$(libxso_major) \
-	$(libxso_static) \
+	$(libcxx_version) \
 	$(libxso_target) \
 	$(libtso) \
 	$(libtso_default) \
@@ -398,8 +617,8 @@ LIB_INSTALL_FILE_LIST=\
 	$(libj_jarfile)
 
 ##################################################
-# We're building a standard library or a RPM file hierarchy, potentially
-# for Embedix.  Note: "all" must be the first target in the Makefile.
+# We're building a standard library or a RPM file hierarchy.
+# Note: "all" must be the first target in the Makefile.
 ##################################################
 all: @BUILD_TARGET@
 
@@ -410,28 +629,50 @@ install-strip install: all @INSTALL_TARGET@
 ##################################################
 library_build: @INSTALL_LIBS@ @ADDITIONAL_LANG@ $(UTIL_PROGS)
 
-$(libdb): $(C_OBJS)
+# Static C library named libdb.a.
+$(libdb): $(DEF_LIB)
+	$(rm) -f $@
+	test ! -f .libs/$(libdb_version) || \
+		$(ln) -s .libs/$(libdb_version) $@
+	test -f .libs/$(libdb_version) || \
+		(test -f $(libdb_version) && $(ln) -s $(libdb_version) $@)
+
+# Real static C library.
+$(libdb_version): $(C_OBJS)
 	$(ar) cr $@ $(C_OBJS)
 	test ! -f $(ranlib) || $(ranlib) $@
 
-$(libcxx): $(CXX_OBJS) $(C_OBJS)
-	$(ar) cr $@ $(CXX_OBJS) $(C_OBJS)
-	test ! -f $(ranlib) || $(ranlib) $@
-
+# Shared C library.
 $(libso_target): $(C_OBJS)
 	$(SOLINK) $(SOFLAGS) $(LDFLAGS) -o $@ $(C_OBJS) $(LIBSO_LIBS)
 
-$(libjso_target): $(JAVA_OBJS) $(C_OBJS)
-	$(SOLINK) -jnimodule $(SOFLAGS) $(LDFLAGS) \
-	    -o $@ $(JAVA_OBJS) $(C_OBJS) $(LIBJSO_LIBS)
+# Static C++ library named libdb_cxx.a.
+$(libcxx): $(DEF_LIB_CXX)
+	$(rm) -f $@
+	test ! -f .libs/$(libcxx_version) || \
+		$(ln) -s .libs/$(libcxx_version) $@
+	test -f .libs/$(libcxx_version) || \
+		(test -f $(libcxx_version) && $(ln) -s $(libcxx_version) $@)
 
-$(libtso_target): $(TCL_OBJS) $(C_OBJS)
-	$(SOLINK) -module $(SOFLAGS) $(LDFLAGS) \
-	    -o $@ $(TCL_OBJS) $(C_OBJS) $(LIBTSO_LIBS)
+# Real static C++ library.
+$(libcxx_version): $(CXX_OBJS) $(C_OBJS)
+	$(ar) cr $@ $(CXX_OBJS) $(C_OBJS)
+	test ! -f $(ranlib) || $(ranlib) $@
 
+# Shared C++ library.
 $(libxso_target): $(CXX_OBJS) $(C_OBJS)
 	$(XSOLINK) $(SOFLAGS) $(LDFLAGS) \
 	    -o $@ $(CXX_OBJS) $(C_OBJS) $(LIBXSO_LIBS)
+
+# Shared Java library.
+$(libjso_target): $(JAVA_OBJS) $(C_OBJS)
+	$(SOLINK) -shrext @JMODSUFFIX@ $(SOFLAGS) $(LDFLAGS) \
+	    -o $@ $(JAVA_OBJS) $(C_OBJS) $(LIBJSO_LIBS)
+
+# Shared Tcl library.
+$(libtso_target): $(TCL_OBJS) $(C_OBJS)
+	$(SOLINK) @LIBTSO_MODULE@ $(SOFLAGS) $(LDFLAGS) \
+	    -o $@ $(TCL_OBJS) $(C_OBJS) $(LIBTSO_LIBS)
 
 ##################################################
 # Creating individual dependencies and actions for building class
@@ -443,22 +684,23 @@ $(libj_jarfile): $(JAVA_DBSRCS)
 	@test -d $(JAVA_CLASSTOP) || \
 	   ($(mkdir) -p $(JAVA_CLASSTOP) && $(chmod) $(dmode) $(JAVA_CLASSTOP))
 	$(JAVAC) -d $(JAVA_CLASSTOP) $(JAVACFLAGS) $(JAVA_DBSRCS)
-	cd $(JAVA_CLASSTOP) && $(JAR) cf ../$(libj_jarfile) $(JAVA_DBREL)
+	cd $(JAVA_CLASSTOP) && $(JAR) cf ../$(libj_jarfile) ./com/sleepycat
 
 $(libj_exjarfile): $(libj_jarfile) $(JAVA_EXSRCS)
-	@test -d $(JAVA_CLASSTOP) || \
-	   ($(mkdir) -p $(JAVA_CLASSTOP) && $(chmod) $(dmode) $(JAVA_CLASSTOP))
-	$(JAVAC) -d $(JAVA_CLASSTOP) $(JAVACFLAGS) $(JAVA_EXSRCS)
-	cd $(JAVA_CLASSTOP) && $(JAR) cf ../$(libj_exjarfile) $(JAVA_EXREL)
+	@test -d $(JAVA_EXCLASSTOP) || \
+	   ($(mkdir) -p $(JAVA_EXCLASSTOP) && \
+		$(chmod) $(dmode) $(JAVA_EXCLASSTOP))
+	$(JAVAC) -classpath $(libj_jarfile) -d $(JAVA_EXCLASSTOP) \
+		$(JAVACFLAGS) $(JAVA_EXSRCS)
+	cd $(JAVA_EXCLASSTOP) && $(JAR) cf ../$(libj_exjarfile) .
 
 $(rpc_jarfile): $(libj_jarfile) $(RPC_JAVASRV_SRCS)
-	@test -d $(JAVA_RPCCLASSES) || \
-	   ($(mkdir) -p $(JAVA_RPCCLASSES) && \
-	       $(chmod) $(dmode) $(JAVA_RPCCLASSES))
+	@test -d $(JAVA_RPCCLASSTOP) || \
+	   ($(mkdir) -p $(JAVA_RPCCLASSTOP) && \
+	       $(chmod) $(dmode) $(JAVA_RPCCLASSTOP))
 	env CLASSPATH=$(CLASSPATH):$(JAVA_RPCDIR)/oncrpc.jar \
-	    @JAVAC@ -d $(JAVA_RPCCLASSES) $(JAVACFLAGS) $(RPC_JAVASRV_SRCS)
-	cd $(JAVA_RPCCLASSES) && $(JAR) cf ../$(rpc_jarfile) $(JAVA_RPCREL)
-
+	    @JAVAC@ -d $(JAVA_RPCCLASSTOP) $(JAVACFLAGS) $(RPC_JAVASRV_SRCS)
+	cd $(JAVA_RPCCLASSTOP) && $(JAR) cf ../$(rpc_jarfile) $(JAVA_RPCREL)
 
 ##################################################
 # Utilities
@@ -497,15 +739,17 @@ db_deadlock: db_deadlock@o@ util_log@o@ util_sig@o@ $(DEF_LIB)
 	$(POSTLINK) $@
 
 db_dump: db_dump@o@ util_cache@o@ util_sig@o@ $(DEF_LIB)
-	$(CCLINK) -o $@ $(LDFLAGS) db_dump@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
+	$(CCLINK) -o $@ $(LDFLAGS) \
+	    db_dump@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
-db_dump185: db_dump185@o@ @LTLIBOBJS@
-	$(CCLINK) -o $@ $(LDFLAGS) db_dump185@o@ @LTLIBOBJS@ $(DB185LIB)
+db_dump185: db_dump185@o@ @REPLACEMENT_OBJS@
+	$(CCLINK) -o $@ $(LDFLAGS) db_dump185@o@ @REPLACEMENT_OBJS@ $(DB185LIB)
 	$(POSTLINK) $@
 
 db_load: db_load@o@ util_cache@o@ util_sig@o@ $(DEF_LIB)
-	$(CCLINK) -o $@ $(LDFLAGS) db_load@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
+	$(CCLINK) -o $@ $(LDFLAGS) \
+	    db_load@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 db_printlog: db_printlog@o@ util_sig@o@ $(DEF_LIB)
@@ -519,7 +763,8 @@ db_recover: db_recover@o@ util_sig@o@ $(DEF_LIB)
 	$(POSTLINK) $@
 
 db_stat: db_stat@o@ util_cache@o@ util_sig@o@ $(DEF_LIB)
-	$(CCLINK) -o $@ $(LDFLAGS) db_stat@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
+	$(CCLINK) -o $@ $(LDFLAGS) \
+	    db_stat@o@ util_cache@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 db_upgrade: db_upgrade@o@ util_sig@o@ $(DEF_LIB)
@@ -541,103 +786,96 @@ library_install: install_include install_lib install_utilities install_docs
 uninstall: uninstall_include uninstall_lib uninstall_utilities uninstall_docs
 
 install_setup:
-	@test -d $(prefix) || \
-	    ($(mkdir) -p $(prefix) && $(chmod) $(dmode) $(prefix))
+	@test -d $(DESTDIR)$(prefix) || \
+	    ($(mkdir) -p $(DESTDIR)$(prefix) && \
+	    $(chmod) $(dmode) $(DESTDIR)$(prefix))
 
 INCDOT=	db.h db_cxx.h @ADDITIONAL_INCS@
-INCINC=	cxx_common.h cxx_except.h
 install_include:
-	@echo "Installing DB include files: $(includedir) ..."
-	@test -d $(includedir) || \
-	    ($(mkdir) -p $(includedir) && $(chmod) $(dmode) $(includedir))
-	@cd $(includedir) && $(rm) -f $(INCDOT) $(INCINC)
-	@$(cp) -p $(INCDOT) $(includedir)
-	@cd $(srcdir)/dbinc/ && $(cp) -p $(INCINC) $(includedir)
-	@cd $(includedir) && $(chmod) $(fmode) $(INCDOT) $(INCINC)
+	@echo "Installing DB include files: $(DESTDIR)$(includedir) ..."
+	@test -d $(DESTDIR)$(includedir) || \
+	    ($(mkdir) -p $(DESTDIR)$(includedir) && \
+	    $(chmod) $(dmode) $(DESTDIR)$(includedir))
+	@cd $(DESTDIR)$(includedir) && $(rm) -f $(INCDOT)
+	@$(cp) -p $(INCDOT) $(DESTDIR)$(includedir)
+	@cd $(DESTDIR)$(includedir) && $(chmod) $(fmode) $(INCDOT)
 
 uninstall_include:
-	@cd $(includedir) && $(rm) -f $(INCDOT) $(INCINC)
+	@cd $(DESTDIR)$(includedir) && $(rm) -f $(INCDOT)
 
 install_lib:
-	@echo "Installing DB library: $(libdir) ..."
-	@test -d $(libdir) || \
-	    ($(mkdir) -p $(libdir) && $(chmod) $(dmode) $(libdir))
-	@cd $(libdir) && $(rm) -f $(LIB_INSTALL_FILE_LIST)
-	@$(INSTALLER) @INSTALL_LIBS@ $(libdir)
-	@(cd $(libdir) && \
+	@echo "Installing DB library: $(DESTDIR)$(libdir) ..."
+	@test -d $(DESTDIR)$(libdir) || \
+	    ($(mkdir) -p $(DESTDIR)$(libdir) && \
+	    $(chmod) $(dmode) $(DESTDIR)$(libdir))
+	@cd $(DESTDIR)$(libdir) && $(rm) -f $(LIB_INSTALL_FILE_LIST)
+	@$(INSTALLER) @INSTALL_LIBS@ $(DESTDIR)$(libdir)
+	@(cd $(DESTDIR)$(libdir) && \
 	    test -f $(libso) && $(ln) -s $(libso) $(libso_default); \
 	    test -f $(libso) && $(ln) -s $(libso) $(libso_major); \
-	    test -f $(libso_static) && $(ln) -s $(libso_static) $(libdb); \
 	    test -f $(libxso) && $(ln) -s $(libxso) $(libxso_default); \
 	    test -f $(libxso) && $(ln) -s $(libxso) $(libxso_major); \
-	    test -f $(libxso_static) && $(ln) -s $(libxso_static) $(libcxx); \
 	    test -f $(libtso) && $(ln) -s $(libtso) $(libtso_default); \
 	    test -f $(libtso) && $(ln) -s $(libtso) $(libtso_major); \
 	    test -f $(libjso) && $(ln) -s $(libjso) $(libjso_default); \
 	    test -f $(libjso) && $(ln) -s $(libjso) $(libjso_major); \
 	    test -f $(libjso) && $(ln) -s $(libjso) $(libjso_g)) || true
 	@(test -f $(libj_jarfile) && \
-	    $(cp) $(libj_jarfile) $(libdir) && \
-	    $(chmod) $(fmode) $(libdir)/$(libj_jarfile)) || true
+	    $(cp) $(libj_jarfile) $(DESTDIR)$(libdir) && \
+	    $(chmod) $(fmode) $(DESTDIR)$(libdir)/$(libj_jarfile)) || true
 
 uninstall_lib:
-	@cd $(libdir) && $(rm) -f $(LIB_INSTALL_FILE_LIST)
+	@cd $(DESTDIR)$(libdir) && $(rm) -f $(LIB_INSTALL_FILE_LIST)
 
 install_utilities:
-	echo "Installing DB utilities: $(bindir) ..."
-	@test -d $(bindir) || \
-	    ($(mkdir) -p $(bindir) && $(chmod) $(dmode) $(bindir))
+	@echo "Installing DB utilities: $(DESTDIR)$(bindir) ..."
+	@test -d $(DESTDIR)$(bindir) || \
+	    ($(mkdir) -p $(DESTDIR)$(bindir) && \
+	    $(chmod) $(dmode) $(DESTDIR)$(bindir))
 	@for i in $(UTIL_PROGS); do \
-		$(rm) -f $(bindir)/$$i $(bindir)/$$i.exe; \
+		$(rm) -f $(DESTDIR)$(bindir)/$$i $(DESTDIR)$(bindir)/$$i.exe; \
 		test -f $$i.exe && i=$$i.exe || true; \
-		$(INSTALLER) $$i $(bindir)/$$i; \
-		test -f $(strip) && $(strip) $(bindir)/$$i || true; \
-		$(chmod) $(emode) $(bindir)/$$i; \
+		$(INSTALLER) $$i $(DESTDIR)$(bindir)/$$i; \
+		test -f $(strip) && $(strip) $(DESTDIR)$(bindir)/$$i || true; \
+		$(chmod) $(emode) $(DESTDIR)$(bindir)/$$i; \
 	done
 
 uninstall_utilities:
-	@(cd $(bindir); for i in $(UTIL_PROGS); do \
+	@(cd $(DESTDIR)$(bindir); for i in $(UTIL_PROGS); do \
 		$(rm) -f $$i $$i.exe; \
 	done)
 
-DOCLIST=\
-	api_c api_cxx api_java api_tcl images index.html ref reftoc.html \
-	sleepycat utility
+DOCLIST=api_c api_cxx api_tcl images index.html java ref sleepycat utility
 install_docs:
-	@echo "Installing documentation: $(docdir) ..."
-	@test -d $(docdir) || \
-	    ($(mkdir) -p $(docdir) && $(chmod) $(dmode) $(docdir))
-	@cd $(docdir) && $(rm) -rf $(DOCLIST)
-	@cd $(srcdir)/docs && $(cp) -pr $(DOCLIST) $(docdir)/
+	@echo "Installing documentation: $(DESTDIR)$(docdir) ..."
+	@test -d $(DESTDIR)$(docdir) || \
+	    ($(mkdir) -p $(DESTDIR)$(docdir) && \
+	    $(chmod) $(dmode) $(DESTDIR)$(docdir))
+	@cd $(DESTDIR)$(docdir) && $(rm) -rf $(DOCLIST)
+	@cd $(srcdir)/docs && $(cp) -pr $(DOCLIST) $(DESTDIR)$(docdir)/
 
 uninstall_docs:
-	@cd $(docdir) && $(rm) -rf $(DOCLIST)
+	@cd $(docdir) && $(rm) -rf $(DESTDIR)$(DOCLIST)
 
 ##################################################
-# RPM, Embedix build and install.
+# RPM, build and install.
 ##################################################
-RPM_ARCHIVE=db-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@.@DB_VERSION_PATCH@.tar.gz
 rpm_build:
+	@test -f @db_cv_path_rpm_archive@ || \
+	    (echo "@db_cv_path_rpm_archive@: archive file not found" && false)
 	@$(rm) -rf BUILD RPMS SOURCES SPECS SRPMS RPM_INSTALL
 	@$(mkdir) -p BUILD && $(chmod) $(dmode) BUILD
 	@$(mkdir) -p RPMS/i386 && $(chmod) $(dmode) RPMS RPMS/i386
 	@$(mkdir) -p SOURCES && $(chmod) $(dmode) SOURCES
 	@$(mkdir) -p SPECS && $(chmod) $(dmode) SPECS
 	@$(mkdir) -p SRPMS && $(chmod) $(dmode) SRPMS
-	$(cp) @db_cv_path_rpm_archive@/$(RPM_ARCHIVE) SOURCES/
+	$(cp) @db_cv_path_rpm_archive@ SOURCES/
 	$(cp) db.spec SPECS/db.spec
-	$(rpm) --rcfile @CONFIGURATION_PATH@/rpmrc -ba SPECS/db.spec
+	@RPM_BUILD@ --define="`cat rpm-macro-defines`" -ba SPECS/db.spec
 
 rpm_install:
 
 RPM_SRPMS=db-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@.@DB_VERSION_PATCH@-1.src.rpm
-embedix_install:
-	$(cp) db.ecd @db_cv_path_embedix_install@/config-data/ecds/db.ecd
-	$(chmod) $(fmode) @db_cv_path_embedix_install@/config-data/ecds/db.ecd
-	$(cp) SRPMS/$(RPM_SRPMS) \
-	    @db_cv_path_embedix_install@/Packages/SRPMS/$(RPM_SRPMS)
-	$(chmod) $(fmode) \
-	    @db_cv_path_embedix_install@/Packages/SRPMS/$(RPM_SRPMS)
 
 ##################################################
 # Remaining standard Makefile targets.
@@ -654,16 +892,17 @@ mostly-clean clean:
 	$(rm) -rf $(CXX_OBJS) $(JAVA_OBJS) $(TCL_OBJS)
 	$(rm) -rf $(RPC_CLIENT_OBJS) $(RPC_SRV_OBJS) $(RPC_CXXSRV_OBJS)
 	$(rm) -rf $(UTIL_PROGS) *.exe $(CLEAN_LIST)
-	$(rm) -rf $(JAVA_CLASSTOP) $(JAVA_RPCCLASSES) $(rpc_jarfile)
+	$(rm) -rf $(JAVA_CLASSTOP) $(JAVA_EXCLASSTOP)
+	$(rm) -rf $(JAVA_RPCCLASSES) $(rpc_jarfile)
 	$(rm) -rf tags *@o@ *.o *.o.lock *.lo core *.core
 	$(rm) -rf ALL.OUT.* BUILD PARALLEL_TESTDIR.* RPMS RPM_INSTALL
 	$(rm) -rf RUN_LOG RUNQUEUE SOURCES SPECS SRPMS TESTDIR TESTDIR.A
-	$(rm) -rf logtrack_seen.db tm .libs $(LIB_INSTALL_FILE_LIST)
+	$(rm) -rf TEST.LIST logtrack_seen.db tm .libs $(LIB_INSTALL_FILE_LIST)
 
 REALCLEAN_LIST=\
-	Makefile confdefs.h config.cache config.log config.status db.h \
-	db.spec db185_int.h db_185.h db_config.h db_cxx.h db_int.h \
-	db_int_def.h include.tcl
+	Makefile confdefs.h config.cache config.log config.status \
+	configure.lineno db.h db.spec db185_int.h db_185.h db_config.h \
+	db_cxx.h db_int.h db_int_def.h include.tcl rpm-macro-defines win_db.h
 
 distclean maintainer-clean realclean: clean
 	$(rm) -rf $(REALCLEAN_LIST)
@@ -711,13 +950,13 @@ dbs: $(DBS_OBJS) $(DEF_LIB)
 
 db_perf@o@: $(srcdir)/test_perf/db_perf.c
 	$(CC) $(CFLAGS) $?
-perf_cache_check@o@: $(srcdir)/test_perf/perf_cache_check.c
-	$(CC) $(CFLAGS) $?
 perf_checkpoint@o@: $(srcdir)/test_perf/perf_checkpoint.c
 	$(CC) $(CFLAGS) $?
 perf_config@o@: $(srcdir)/test_perf/perf_config.c
 	$(CC) $(CFLAGS) $?
 perf_dbs@o@: $(srcdir)/test_perf/perf_dbs.c
+	$(CC) $(CFLAGS) $?
+perf_dead@o@: $(srcdir)/test_perf/perf_dead.c
 	$(CC) $(CFLAGS) $?
 perf_debug@o@: $(srcdir)/test_perf/perf_debug.c
 	$(CC) $(CFLAGS) $?
@@ -737,6 +976,10 @@ perf_rand@o@: $(srcdir)/test_perf/perf_rand.c
 	$(CC) $(CFLAGS) $?
 perf_spawn@o@: $(srcdir)/test_perf/perf_spawn.c
 	$(CC) $(CFLAGS) $?
+perf_stat@o@: $(srcdir)/test_perf/perf_stat.c
+	$(CC) $(CFLAGS) $?
+perf_sync@o@: $(srcdir)/test_perf/perf_sync.c
+	$(CC) $(CFLAGS) $?
 perf_thread@o@: $(srcdir)/test_perf/perf_thread.c
 	$(CC) $(CFLAGS) $?
 perf_trickle@o@: $(srcdir)/test_perf/perf_trickle.c
@@ -748,11 +991,12 @@ perf_util@o@: $(srcdir)/test_perf/perf_util.c
 perf_vx@o@: $(srcdir)/test_perf/perf_vx.c
 	$(CC) $(CFLAGS) $?
 DBPERF_OBJS=\
-	db_perf@o@ perf_cache_check@o@ perf_checkpoint@o@ perf_config@o@ \
-	perf_dbs@o@ perf_debug@o@ perf_file@o@ perf_key@o@ perf_log@o@ \
-	perf_misc@o@ perf_op@o@ perf_parse@o@ perf_rand@o@ \
-	perf_spawn@o@ perf_thread@o@ perf_trickle@o@ perf_txn@o@ \
-	perf_util@o@ perf_vx@o@
+	db_perf@o@ perf_checkpoint@o@ perf_config@o@ perf_dbs@o@ \
+	perf_dead@o@ perf_debug@o@ perf_file@o@ perf_key@o@ perf_log@o@ \
+	perf_misc@o@ perf_op@o@ perf_parse@o@ perf_rand@o@ perf_spawn@o@ \
+	perf_stat@o@ perf_sync@o@ perf_thread@o@ perf_trickle@o@ \
+	perf_txn@o@ perf_util@o@ perf_vx@o@
+
 db_perf: $(DBPERF_OBJS) $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) $(DBPERF_OBJS) $(DEF_LIB) @LOAD_LIBS@ $(LIBS)
@@ -922,8 +1166,6 @@ bt_search@o@: $(srcdir)/btree/bt_search.c
 	 $(CC) $(CFLAGS) $?
 bt_split@o@: $(srcdir)/btree/bt_split.c
 	 $(CC) $(CFLAGS) $?
-bt_stack@o@: $(srcdir)/btree/bt_stack.c
-	 $(CC) $(CFLAGS) $?
 bt_stat@o@: $(srcdir)/btree/bt_stat.c
 	 $(CC) $(CFLAGS) $?
 bt_upgrade@o@: $(srcdir)/btree/bt_upgrade.c
@@ -937,6 +1179,8 @@ crdel_auto@o@: $(srcdir)/db/crdel_auto.c
 crdel_rec@o@: $(srcdir)/db/crdel_rec.c
 	 $(CC) $(CFLAGS) $?
 crypto@o@: $(srcdir)/crypto/crypto.c
+	 $(CC) $(CFLAGS) $?
+crypto_stub@o@: $(srcdir)/common/crypto_stub.c
 	 $(CC) $(CFLAGS) $?
 db185@o@: $(srcdir)/db185/db185.c
 	 $(CC) $(CFLAGS) $?
@@ -976,6 +1220,8 @@ db_open@o@: $(srcdir)/db/db_open.c
 	 $(CC) $(CFLAGS) $?
 db_overflow@o@: $(srcdir)/db/db_overflow.c
 	 $(CC) $(CFLAGS) $?
+db_ovfl_vrfy@o@: $(srcdir)/db/db_ovfl_vrfy.c
+	 $(CC) $(CFLAGS) $?
 db_pr@o@: $(srcdir)/db/db_pr.c
 	 $(CC) $(CFLAGS) $?
 db_rec@o@: $(srcdir)/db/db_rec.c
@@ -1002,6 +1248,8 @@ db_vrfy@o@: $(srcdir)/db/db_vrfy.c
 	 $(CC) $(CFLAGS) $?
 db_vrfyutil@o@: $(srcdir)/db/db_vrfyutil.c
 	 $(CC) $(CFLAGS) $?
+db_vrfy_stub@o@: $(srcdir)/db/db_vrfy_stub.c
+	$(CC) $(CFLAGS) $?
 dbm@o@: $(srcdir)/dbm/dbm.c
 	 $(CC) $(CFLAGS) $?
 dbreg@o@: $(srcdir)/dbreg/dbreg.c
@@ -1053,6 +1301,8 @@ hash_rec@o@: $(srcdir)/hash/hash_rec.c
 hash_reclaim@o@: $(srcdir)/hash/hash_reclaim.c
 	 $(CC) $(CFLAGS) $?
 hash_stat@o@: $(srcdir)/hash/hash_stat.c
+	 $(CC) $(CFLAGS) $?
+hash_stub@o@: $(srcdir)/hash/hash_stub.c
 	 $(CC) $(CFLAGS) $?
 hash_upgrade@o@: $(srcdir)/hash/hash_upgrade.c
 	 $(CC) $(CFLAGS) $?
@@ -1118,53 +1368,55 @@ mut_pthread@o@: $(srcdir)/mutex/mut_pthread.c
 	 $(CC) $(CFLAGS) $?
 mut_tas@o@: $(srcdir)/mutex/mut_tas.c
 	 $(CC) $(CFLAGS) $?
+mut_win32@o@: $(srcdir)/mutex/mut_win32.c
+	 $(CC) $(CFLAGS) $?
 mutex@o@: $(srcdir)/mutex/mutex.c
 	 $(CC) $(CFLAGS) $?
-os_abs@o@: $(srcdir)/os/os_abs.c
+os_abs@o@: $(srcdir)/@OSDIR@/os_abs.c
 	 $(CC) $(CFLAGS) $?
 os_alloc@o@: $(srcdir)/os/os_alloc.c
 	 $(CC) $(CFLAGS) $?
-os_clock@o@: $(srcdir)/os/os_clock.c
+os_clock@o@: $(srcdir)/@OSDIR@/os_clock.c
 	 $(CC) $(CFLAGS) $?
-os_config@o@: $(srcdir)/os/os_config.c
+os_config@o@: $(srcdir)/@OSDIR@/os_config.c
 	 $(CC) $(CFLAGS) $?
-os_dir@o@: $(srcdir)/os/os_dir.c
+os_dir@o@: $(srcdir)/@OSDIR@/os_dir.c
 	 $(CC) $(CFLAGS) $?
-os_errno@o@: $(srcdir)/os/os_errno.c
+os_errno@o@: $(srcdir)/@OSDIR@/os_errno.c
 	 $(CC) $(CFLAGS) $?
-os_fid@o@: $(srcdir)/os/os_fid.c
+os_fid@o@: $(srcdir)/@OSDIR@/os_fid.c
 	 $(CC) $(CFLAGS) $?
-os_fsync@o@: $(srcdir)/os/os_fsync.c
+os_fsync@o@: $(srcdir)/@OSDIR@/os_fsync.c
 	 $(CC) $(CFLAGS) $?
 os_id@o@: $(srcdir)/os/os_id.c
 	 $(CC) $(CFLAGS) $?
-os_handle@o@: $(srcdir)/os/os_handle.c
+os_handle@o@: $(srcdir)/@OSDIR@/os_handle.c
 	 $(CC) $(CFLAGS) $?
-os_map@o@: $(srcdir)/os/os_map.c
+os_map@o@: $(srcdir)/@OSDIR@/os_map.c
 	 $(CC) $(CFLAGS) $?
 os_method@o@: $(srcdir)/os/os_method.c
 	 $(CC) $(CFLAGS) $?
 os_oflags@o@: $(srcdir)/os/os_oflags.c
 	 $(CC) $(CFLAGS) $?
-os_open@o@: $(srcdir)/os/os_open.c
+os_open@o@: $(srcdir)/@OSDIR@/os_open.c
 	 $(CC) $(CFLAGS) $?
 os_region@o@: $(srcdir)/os/os_region.c
 	 $(CC) $(CFLAGS) $?
-os_rename@o@: $(srcdir)/os/os_rename.c
+os_rename@o@: $(srcdir)/@OSDIR@/os_rename.c
 	 $(CC) $(CFLAGS) $?
 os_root@o@: $(srcdir)/os/os_root.c
 	 $(CC) $(CFLAGS) $?
 os_rpath@o@: $(srcdir)/os/os_rpath.c
 	 $(CC) $(CFLAGS) $?
-os_rw@o@: $(srcdir)/os/os_rw.c
+os_rw@o@: $(srcdir)/@OSDIR@/os_rw.c
 	 $(CC) $(CFLAGS) $?
-os_seek@o@: $(srcdir)/os/os_seek.c
+os_seek@o@: $(srcdir)/@OSDIR@/os_seek.c
 	 $(CC) $(CFLAGS) $?
-os_sleep@o@: $(srcdir)/os/os_sleep.c
+os_sleep@o@: $(srcdir)/@OSDIR@/os_sleep.c
 	 $(CC) $(CFLAGS) $?
-os_spin@o@: $(srcdir)/os/os_spin.c
+os_spin@o@: $(srcdir)/@OSDIR@/os_spin.c
 	 $(CC) $(CFLAGS) $?
-os_stat@o@: $(srcdir)/os/os_stat.c
+os_stat@o@: $(srcdir)/@OSDIR@/os_stat.c
 	 $(CC) $(CFLAGS) $?
 os_tmpdir@o@: $(srcdir)/os/os_tmpdir.c
 	 $(CC) $(CFLAGS) $?
@@ -1186,6 +1438,8 @@ qam_rec@o@: $(srcdir)/qam/qam_rec.c
 	 $(CC) $(CFLAGS) $?
 qam_stat@o@: $(srcdir)/qam/qam_stat.c
 	 $(CC) $(CFLAGS) $?
+qam_stub@o@: $(srcdir)/qam/qam_stub.c
+	 $(CC) $(CFLAGS) $?
 qam_upgrade@o@: $(srcdir)/qam/qam_upgrade.c
 	 $(CC) $(CFLAGS) $?
 qam_verify@o@: $(srcdir)/qam/qam_verify.c
@@ -1195,6 +1449,8 @@ rep_method@o@: $(srcdir)/rep/rep_method.c
 rep_record@o@: $(srcdir)/rep/rep_record.c
 	 $(CC) $(CFLAGS) $?
 rep_region@o@: $(srcdir)/rep/rep_region.c
+	 $(CC) $(CFLAGS) $?
+rep_stub@o@: $(srcdir)/rep/rep_stub.c
 	 $(CC) $(CFLAGS) $?
 rep_util@o@: $(srcdir)/rep/rep_util.c
 	 $(CC) $(CFLAGS) $?
@@ -1256,35 +1512,13 @@ cxx_mpool@o@: $(srcdir)/cxx/cxx_mpool.cpp
 	$(CXX) $(CXXFLAGS) $?
 cxx_txn@o@: $(srcdir)/cxx/cxx_txn.cpp
 	$(CXX) $(CXXFLAGS) $?
+cxx_multi@o@: $(srcdir)/cxx/cxx_multi.cpp
+	$(CXX) $(CXXFLAGS) $?
 
 ##################################################
 # Java API build rules.
 ##################################################
-java_Db@o@::$(srcdir)/libdb_java/java_Db.c
-	$(CC) $(CFLAGS) $?
-java_DbEnv@o@: $(srcdir)/libdb_java/java_DbEnv.c
-	$(CC) $(CFLAGS) $?
-java_DbLock@o@: $(srcdir)/libdb_java/java_DbLock.c
-	$(CC) $(CFLAGS) $?
-java_DbLogc@o@: $(srcdir)/libdb_java/java_DbLogc.c
-	$(CC) $(CFLAGS) $?
-java_DbLsn@o@: $(srcdir)/libdb_java/java_DbLsn.c
-	$(CC) $(CFLAGS) $?
-java_DbTxn@o@: $(srcdir)/libdb_java/java_DbTxn.c
-	$(CC) $(CFLAGS) $?
-java_DbUtil@o@: $(srcdir)/libdb_java/java_DbUtil.c
-	$(CC) $(CFLAGS) $?
-java_Dbc@o@: $(srcdir)/libdb_java/java_Dbc.c
-	$(CC) $(CFLAGS) $?
-java_Dbt@o@: $(srcdir)/libdb_java/java_Dbt.c
-	$(CC) $(CFLAGS) $?
-java_info@o@: $(srcdir)/libdb_java/java_info.c
-	$(CC) $(CFLAGS) $?
-java_locked@o@: $(srcdir)/libdb_java/java_locked.c
-	$(CC) $(CFLAGS) $?
-java_util@o@: $(srcdir)/libdb_java/java_util.c
-	$(CC) $(CFLAGS) $?
-java_stat_auto@o@: $(srcdir)/libdb_java/java_stat_auto.c
+db_java_wrap@o@::$(srcdir)/libdb_java/db_java_wrap.c
 	$(CC) $(CFLAGS) $?
 
 ##################################################

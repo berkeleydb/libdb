@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_win32_dsp,v 1.8 2002/03/26 23:37:55 bostic Exp $
+#	$Id: s_win32_dsp,v 1.10 2003/03/24 10:35:21 mjc Exp $
 #
 # Build Windows/32 .dsp files.
 
@@ -75,6 +75,14 @@ do
         create_dsp db_dll " $module " $TMPA \
 		$BUILDDIR/dynamic_dsp.src $BUILDDIR/srcfile_dsp.src
         ;;
+    small )
+        create_dsp db_small " $module " $TMPA \
+		$BUILDDIR/small_dsp.src $BUILDDIR/srcfile_dsp.src
+        ;;
+    static )
+        create_dsp db_static " $module " $TMPA \
+		$BUILDDIR/static_dsp.src $BUILDDIR/srcfile_dsp.src
+        ;;
     java )
         create_dsp db_java " $module " $TMPA \
 		$BUILDDIR/java_dsp.src $BUILDDIR/srcfile_dsp.src
@@ -87,14 +95,15 @@ do
         create_dsp db_test " $module " $TMPA \
 		$BUILDDIR/db_test.src $BUILDDIR/srcfile_dsp.src
         ;;
-    static )
-        create_dsp db_static " $module " $TMPA \
-		$BUILDDIR/static_dsp.src $BUILDDIR/srcfile_dsp.src
-        ;;
     app=* )
 	appname=`echo $module | sed -e 's/^app=//'`
+	if [ -f $BUILDDIR/$appname.src ] ; then
+		srcname=$BUILDDIR/$appname.src
+	else
+		srcname=$BUILDDIR/app_dsp.src
+	fi
         create_dsp $appname " $module " $TMPA \
-		$BUILDDIR/app_dsp.src $BUILDDIR/srcfile_dsp.src
+		$srcname $BUILDDIR/srcfile_dsp.src
         ;;
     vx )
 	;;

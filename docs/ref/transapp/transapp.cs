@@ -26,7 +26,6 @@ void  usage(void);
 int
 main(int argc, char *argv[])
 {
-	extern char *optarg;
 	extern int optind;
 	DB *db_cats, *db_color, *db_fruit;
 	DB_ENV *dbenv;
@@ -128,6 +127,7 @@ env_open(DB_ENV **dbenvp)
 
 	/* Set up error handling. */
 	dbenv->set_errpfx(dbenv, "txnapp");
+	dbenv->set_errfile(dbenv, stderr);
 
 	/* Do deadlock detection internally. */
 	if ((ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
@@ -261,8 +261,9 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	 *	free-threaded handle
 	 *	read/write owner only
 	 */
-	if ((ret = db->open(db, NULL, name, NULL,
-	    DB_BTREE, DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
+	if ((ret = db->open(db, NULL, name, NULL, DB_BTREE,
+	    DB_AUTO_COMMIT | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
+		(void)db->close(db, 0);
 		dbenv->err(dbenv, ret, "db->open: %s", name);
 		exit (1);
 	}

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2002
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_errno.c,v 11.10 2002/07/12 04:05:00 mjc Exp $";
+static const char revid[] = "$Id: os_errno.c,v 11.12 2003/11/16 20:10:19 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -92,6 +92,7 @@ __os_win32_errno(void)
 
 	case ERROR_DISK_FULL:
 		ret = ENOSPC;
+		break;
 
 	case ERROR_ARENA_TRASHED:
 	case ERROR_BAD_COMMAND:

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test021.tcl,v 11.15 2002/05/22 15:42:47 sue Exp $
+# $Id: test021.tcl,v 11.16 2003/01/08 05:53:45 bostic Exp $
 #
 # TEST	test021
 # TEST	Btree range tests.

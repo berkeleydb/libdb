@@ -1,21 +1,22 @@
-<!--"@(#)env_set_rpc_server.so	10.1 (Sleepycat) 8/25/99"-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_rpc_server.so,v 10.28 2003/11/08 19:17:32 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;set_rpc_server</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>DB_ENV-&gt;set_rpc_server</h1>
+<h3>DB_ENV-&gt;set_rpc_server</h3>
 </td>
 <td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -26,21 +27,43 @@ int
 DB_ENV-&gt;set_rpc_server(DB_ENV *dbenv, CLIENT *client, char *host,
     long cl_timeout, long sv_timeout, u_int32_t flags);
 </pre></h3>
-<h1>Description</h1>
-<p>Establishes a connection for this <b>dbenv</b> to a RPC server.  If
-the <b>client</b> argument is NULL, this call creates a connection to
-the Berkeley DB server on the indicated hostname and sets up a channel for
-communication.
-If the <b>client</b> channel has been provided by the
-application then Berkeley DB will use it as its connection and the <b>host</b> and
-<b>cl_timeout</b> fields are ignored.
+<hr size=1 noshade>
+<h3>Description: DB_ENV-&gt;set_rpc_server</h3>
+<p>Establishes a connection for this <b>dbenv</b> to a RPC server.</p>
+<p>When the DB_ENV-&gt;set_rpc_server method has been called, subsequent calls
+to Berkeley DB library interfaces may return or throw exceptions encapsulating
+<a name="DB_NOSERVER">DB_NOSERVER</a>, <a name="DB_NOSERVER_ID">DB_NOSERVER_ID</a>, or
+<a name="DB_NOSERVER_HOME">DB_NOSERVER_HOME</a>.</p>
+<p>The DB_ENV-&gt;set_rpc_server method configures operations performed using the specified
+<a href="../api_c/env_class.html">DB_ENV</a> handle, not all operations performed on the underlying
+database environment.</p>
+<p>The DB_ENV-&gt;set_rpc_server method may not be called after the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> method is
+called.
+</p>
+<p>The DB_ENV-&gt;set_rpc_server method
+returns a non-zero error value on failure
+and 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>cl_timeout</b><dd>
 <a name="3"><!--meow--></a>
-<p>The <b>cl_timeout</b> argument specifies the number of seconds the client
+The <b>cl_timeout</b> parameter specifies the number of seconds the client
 should wait for results to come back from the server.  Once the timeout
 has expired on any communication with the server, DB_NOSERVER will
 be returned.  If this value is zero, a default timeout is used.
+<p><dt><b>client</b><dd>
+If the <b>client</b> channel has been provided by the application then
+Berkeley DB will use it as its connection and the <b>host</b> and
+<b>cl_timeout</b> fields are ignored.
+<p><dt><b>host</b><dd>
+The <b>host</b> parameter is the host to which the Berkeley DB server will
+connect and create a channel for communication.
+<p><dt><b>flags</b><dd>
+The <b>flags</b> parameter is currently unused, and must be set to 0.
 <a name="4"><!--meow--></a>
-<p>The <b>sv_timeout</b> argument specifies the number of seconds the server
+<p><dt><b>sv_timeout</b><dd>
+The <b>sv_timeout</b> parameter specifies the number of seconds the server
 should allow a client connection to remain idle before assuming that the
 client is gone.  Once that timeout has been reached, the server releases
 all resources associated with that client connection.  Subsequent attempts
@@ -49,34 +72,23 @@ DB_NOSERVER_ID, indicating that an invalid identifier has been
 given to the server.  This value can be considered a hint to the server.
 The server may alter this value based on its own policies or allowed
 values.  If this value is zero, a default timeout is used.
-<p>The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>When the DB_ENV-&gt;set_rpc_server method has been called, subsequent calls
-to Berkeley DB library interfaces may return or throw exceptions encapsulating
-<a name="DB_NOSERVER">DB_NOSERVER</a>, <a name="DB_NOSERVER_ID">DB_NOSERVER_ID</a>, or
-<a name="DB_NOSERVER_HOME">DB_NOSERVER_HOME</a>.
-<p>The DB_ENV-&gt;set_rpc_server method configures operations performed using the specified
-<a href="../api_c/env_class.html">DB_ENV</a> handle, not all operations performed on the underlying
-database environment.
-<p>The DB_ENV-&gt;set_rpc_server interface may not be called after the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>
-interface is called.
-<p>The DB_ENV-&gt;set_rpc_server method returns a non-zero error value on failure and 0 on success.
-<h1>Errors</h1>
-<p>The DB_ENV-&gt;set_rpc_server method may fail and return a non-zero error for the following conditions:
-<p><dl compact>
-<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>The DB_ENV-&gt;set_rpc_server method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;set_rpc_server method may fail and
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<h3>Errors</h3>
+<p>The DB_ENV-&gt;set_rpc_server method
+may fail and return one of the following non-zero errors:</p>
+<p><dl compact>
+<p><dt>EINVAL<dd>An
+invalid flag value or parameter was specified.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_c/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

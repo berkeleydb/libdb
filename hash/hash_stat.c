@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_stat.c,v 11.48 2002/08/06 06:11:28 bostic Exp $";
+static const char revid[] = "$Id: hash_stat.c,v 11.52 2003/06/30 17:20:13 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,8 +19,11 @@ static const char revid[] = "$Id: hash_stat.c,v 11.48 2002/08/06 06:11:28 bostic
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
+#include "dbinc/lock.h"
+#include "dbinc/mp.h"
 
 static int __ham_stat_callback __P((DB *, PAGE *, void *, int *));
 
@@ -28,15 +31,15 @@ static int __ham_stat_callback __P((DB *, PAGE *, void *, int *));
  * __ham_stat --
  *	Gather/print the hash statistics
  *
- * PUBLIC: int __ham_stat __P((DB *, void *, u_int32_t));
+ * PUBLIC: int __ham_stat __P((DBC *, void *, u_int32_t));
  */
 int
-__ham_stat(dbp, spp, flags)
-	DB *dbp;
+__ham_stat(dbc, spp, flags)
+	DBC *dbc;
 	void *spp;
 	u_int32_t flags;
 {
-	DBC *dbc;
+	DB *dbp;
 	DB_ENV *dbenv;
 	DB_HASH_STAT *sp;
 	DB_MPOOLFILE *mpf;
@@ -45,20 +48,12 @@ __ham_stat(dbp, spp, flags)
 	db_pgno_t pgno;
 	int ret;
 
+	dbp = dbc->dbp;
 	dbenv = dbp->dbenv;
-
-	PANIC_CHECK(dbenv);
-	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
 
 	mpf = dbp->mpf;
 	sp = NULL;
 
-	/* Check for invalid flags. */
-	if ((ret = __db_statchk(dbp, flags)) != 0)
-		return (ret);
-
-	if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
-		return (ret);
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
@@ -86,11 +81,11 @@ __ham_stat(dbp, spp, flags)
 	    pgno != PGNO_INVALID;) {
 		++sp->hash_free;
 
-		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 
 		pgno = h->next_pgno;
-		(void)mpf->put(mpf, h, 0);
+		(void)__memp_fput(mpf, h, 0);
 	}
 
 	/* Now traverse the rest of the table. */
@@ -107,10 +102,7 @@ __ham_stat(dbp, spp, flags)
 		hcp->hdr->dbmeta.record_count = sp->hash_ndata;
 	}
 
-done:
-	if ((ret = __ham_release_meta(dbc)) != 0)
-		goto err;
-	if ((ret = dbc->c_close(dbc)) != 0)
+done:	if ((ret = __ham_release_meta(dbc)) != 0)
 		goto err;
 
 	*(DB_HASH_STAT **)spp = sp;
@@ -118,11 +110,11 @@ done:
 
 err:	if (sp != NULL)
 		__os_ufree(dbenv, sp);
+
 	if (hcp->hdr != NULL)
 		(void)__ham_release_meta(dbc);
-	(void)dbc->c_close(dbc);
-	return (ret);
 
+	return (ret);
 }
 
 /*
@@ -198,7 +190,7 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 			/*
 			 * If we are cleaning up pages past the max_bucket,
 			 * then they may be on the free list and have their
-			 * next pointers set, but the should be ignored.  In
+			 * next pointers set, but they should be ignored.  In
 			 * fact, we really ought to just skip anybody who is
 			 * not a valid page.
 			 */
@@ -226,7 +218,7 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 					    callback, cookie))
 					    != 0)
 						goto err;
-					if ((ret = opd->c_close(opd)) != 0)
+					if ((ret = __db_c_close(opd)) != 0)
 						return (ret);
 					opd = NULL;
 					break;
@@ -263,17 +255,17 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 			goto err;
 
 		if (STD_LOCKING(dbc))
-			(void)dbp->dbenv->lock_put(dbp->dbenv, &hcp->lock);
+			(void)__lock_put(dbp->dbenv, &hcp->lock);
 
 		if (hcp->page != NULL) {
-			if ((ret = mpf->put(mpf, hcp->page, 0)) != 0)
+			if ((ret = __memp_fput(mpf, hcp->page, 0)) != 0)
 				return (ret);
 			hcp->page = NULL;
 		}
 
 	}
 err:	if (opd != NULL &&
-	    (t_ret = opd->c_close(opd)) != 0 && ret == 0)
+	    (t_ret = __db_c_close(opd)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -319,8 +311,8 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 		for (indx = 0; indx < top; indx += P_INDX) {
 			switch (*H_PAIRDATA(dbp, pagep, indx)) {
 			case H_OFFDUP:
-			case H_OFFPAGE:
 				break;
+			case H_OFFPAGE:
 			case H_KEYDATA:
 				sp->hash_ndata++;
 				break;
@@ -349,10 +341,6 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 		 * fields into our stat structure.
 		 */
 		memset(&bstat, 0, sizeof(bstat));
-		bstat.bt_dup_pgfree = 0;
-		bstat.bt_int_pgfree = 0;
-		bstat.bt_leaf_pgfree = 0;
-		bstat.bt_ndata = 0;
 		if ((ret = __bam_stat_callback(dbp, pagep, &bstat, putp)) != 0)
 			return (ret);
 		sp->hash_dup++;

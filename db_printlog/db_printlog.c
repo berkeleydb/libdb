@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2003\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_printlog.c,v 11.52 2002/08/08 03:50:38 bostic Exp $";
+    "$Id: db_printlog.c,v 11.59 2003/08/18 18:00:31 ubell Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,7 +31,6 @@ static const char revid[] =
 #include "dbinc/hash.h"
 #include "dbinc/log.h"
 #include "dbinc/qam.h"
-#include "dbinc/rep.h"
 #include "dbinc/txn.h"
 
 int main __P((int, char *[]));
@@ -56,16 +55,17 @@ main(argc, argv)
 	size_t dtabsize;
 	DBT data, keydbt;
 	DB_LSN key;
-	int ch, e_close, exitval, nflag, rflag, ret, repflag;
+	int ch, exitval, nflag, rflag, ret, repflag;
 	char *home, *passwd;
 
 	if ((ret = version_check(progname)) != 0)
 		return (ret);
 
+	dbenv = NULL;
 	dbp = NULL;
 	dbc = NULL;
 	logc = NULL;
-	e_close = exitval = nflag = rflag = repflag = 0;
+	exitval = nflag = rflag = repflag = 0;
 	home = passwd = NULL;
 	dtabsize = 0;
 	dtab = NULL;
@@ -117,7 +117,6 @@ main(argc, argv)
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
 		goto shutdown;
 	}
-	e_close = 1;
 
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
@@ -247,11 +246,14 @@ shutdown:	exitval = 1;
 	 */
 	if (dtab != NULL)
 		__os_free(dbenv, dtab);
-	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
+	if (dbenv != NULL && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
 		fprintf(stderr,
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
+
+	if (passwd != NULL)
+		free(passwd);
 
 	/* Resend any caught signal. */
 	__db_util_sigresend();
@@ -275,12 +277,11 @@ version_check(progname)
 
 	/* Make sure we're loaded with the right version of the DB library. */
 	(void)db_version(&v_major, &v_minor, &v_patch);
-	if (v_major != DB_VERSION_MAJOR ||
-	    v_minor != DB_VERSION_MINOR || v_patch != DB_VERSION_PATCH) {
+	if (v_major != DB_VERSION_MAJOR || v_minor != DB_VERSION_MINOR) {
 		fprintf(stderr,
-	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
+	"%s: version %d.%d doesn't match library version %d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
-		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
+		    v_major, v_minor);
 		return (EXIT_FAILURE);
 	}
 	return (0);
@@ -298,7 +299,9 @@ print_app_record(dbenv, dbt, lsnp, op)
 	u_int32_t i, rectype;
 
 	DB_ASSERT(op == DB_TXN_PRINT);
+
 	COMPQUIET(dbenv, NULL);
+	COMPQUIET(op, DB_TXN_PRINT);
 
 	/*
 	 * Fetch the rectype, which always must be at the beginning of the

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_env.c,v 11.27 2002/08/15 14:34:11 bostic Exp $
+ * $Id: ex_env.c,v 11.28 2003/01/08 04:43:57 bostic Exp $
  */
 
 #include <sys/types.h>

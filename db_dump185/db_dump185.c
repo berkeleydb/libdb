@@ -1,15 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #ifndef lint
 static char copyright[] =
-    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2003\nSleepycat Software Inc.  All rights reserved.\n";
 static char revid[] =
-    "$Id: db_dump185.c,v 11.17 2002/08/08 03:50:35 bostic Exp $";
+    "$Id: db_dump185.c,v 11.18 2003/01/08 04:19:32 bostic Exp $";
 #endif
 
 #include <sys/types.h>

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_alloc.c,v 11.31 2002/08/14 17:21:37 ubell Exp $";
+static const char revid[] = "$Id: mp_alloc.c,v 11.40 2003/07/03 02:24:34 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -346,7 +346,7 @@ static void
 __memp_bad_buffer(hp)
 	DB_MPOOL_HASH *hp;
 {
-	BH *bhp, *t_bhp;
+	BH *bhp;
 	u_int32_t priority;
 
 	/* Remove the first buffer from the bucket. */
@@ -356,14 +356,10 @@ __memp_bad_buffer(hp)
 	/*
 	 * Find the highest priority buffer in the bucket.  Buffers are
 	 * sorted by priority, so it's the last one in the bucket.
-	 *
-	 * XXX
-	 * Should use SH_TAILQ_LAST, but I think that macro is broken.
 	 */
 	priority = bhp->priority;
-	for (t_bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh);
-	    t_bhp != NULL; t_bhp = SH_TAILQ_NEXT(t_bhp, hq, __bh))
-		priority = t_bhp->priority;
+	if (!SH_TAILQ_EMPTY(&hp->hash_bucket))
+	  priority = SH_TAILQ_LAST(&hp->hash_bucket, hq, __bh)->priority;
 
 	/*
 	 * Set our buffer's priority to be just as bad, and append it to

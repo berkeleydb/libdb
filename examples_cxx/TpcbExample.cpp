@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 11.30 2002/02/13 06:08:34 mjc Exp $
+ * $Id: TpcbExample.cpp,v 11.32 2003/04/24 15:46:05 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -209,7 +209,7 @@ main(int argc, char *argv[])
 		// change the error model in the environment options.
 		//
 		TpcbExample app(home, mpool, iflag,
-		                txn_no_sync ? DB_TXN_NOSYNC : 0);
+				txn_no_sync ? DB_TXN_NOSYNC : 0);
 
 		if (iflag) {
 			if (ntxns != 0)
@@ -257,7 +257,7 @@ TpcbExample::TpcbExample(const char *home, int cachesize,
 	set_error_stream(&cerr);
 	set_errpfx("TpcbExample");
 	(void)set_cachesize(0, cachesize == 0 ?
-	                    4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
+			    4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
 
 	if (flags & (DB_TXN_NOSYNC))
 		set_flags(DB_TXN_NOSYNC, 1);
@@ -290,7 +290,7 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	dbp->set_h_nelem((unsigned int)accounts);
 
 	if ((err = dbp->open(NULL, "account", NULL, DB_HASH,
-	                     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
+			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
 		DbException except("Account file create failed", err);
 		throw except;
 	}
@@ -319,7 +319,7 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	dbp->set_pagesize(512);
 
 	if ((err = dbp->open(NULL, "branch", NULL, DB_HASH,
-	                     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
+			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
 		DbException except("Branch file create failed", err);
 		throw except;
 	}
@@ -347,7 +347,7 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	dbp->set_pagesize(512);
 
 	if ((err = dbp->open(NULL, "teller", NULL, DB_HASH,
-	                     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
+			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
 		DbException except("Teller file create failed", err);
 		throw except;
 	}
@@ -368,7 +368,7 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	dbp = new Db(this, 0);
 	dbp->set_re_len(HISTORY_LEN);
 	if ((err = dbp->open(NULL, "history", NULL, DB_RECNO,
-	                     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
+			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
 		DbException except("Create of history file failed", err);
 		throw except;
 	}
@@ -383,8 +383,8 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 
 void
 TpcbExample::populateTable(Db *dbp,
-                           u_int32_t start_id, u_int32_t balance,
-                           int nrecs, const char *msg)
+			   u_int32_t start_id, u_int32_t balance,
+			   int nrecs, const char *msg)
 {
 	Defrec drec;
 	memset(&drec.pad[0], 1, sizeof(drec.pad));
@@ -408,7 +408,7 @@ TpcbExample::populateTable(Db *dbp,
 
 void
 TpcbExample::populateHistory(Db *dbp, int nrecs, u_int32_t accounts,
-                             u_int32_t branches, u_int32_t tellers)
+			     u_int32_t branches, u_int32_t tellers)
 {
 	Histrec hrec;
 	memset(&hrec.pad[0], 1, sizeof(hrec.pad));
@@ -427,7 +427,7 @@ TpcbExample::populateHistory(Db *dbp, int nrecs, u_int32_t accounts,
 		key = (db_recno_t)i;
 		if ((err = dbp->put(NULL, &kdbt, &ddbt, DB_APPEND)) != 0) {
 			DbException except("failure initializing history file",
-			                   err);
+					   err);
 			throw except;
 		}
 	}
@@ -453,7 +453,7 @@ random_id(FTYPE type, u_int32_t accounts, u_int32_t branches, u_int32_t tellers)
 
 	max = min = BEGID;
 	num = accounts;
-	switch(type) {
+	switch (type) {
 	case TELLER:
 		min += branches;
 		num = tellers;
@@ -484,28 +484,28 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 	int err;
 	adb = new Db(this, 0);
 	if ((err = adb->open(NULL, "account", NULL, DB_UNKNOWN,
-	                     DB_AUTO_COMMIT, 0)) != 0) {
+			     DB_AUTO_COMMIT, 0)) != 0) {
 		DbException except("Open of account file failed", err);
 		throw except;
 	}
 
 	bdb = new Db(this, 0);
 	if ((err = bdb->open(NULL, "branch", NULL, DB_UNKNOWN,
-	                     DB_AUTO_COMMIT, 0)) != 0) {
+			     DB_AUTO_COMMIT, 0)) != 0) {
 		DbException except("Open of branch file failed", err);
 		throw except;
 	}
 
 	tdb = new Db(this, 0);
 	if ((err = tdb->open(NULL, "teller", NULL, DB_UNKNOWN,
-	                     DB_AUTO_COMMIT, 0)) != 0) {
+			     DB_AUTO_COMMIT, 0)) != 0) {
 		DbException except("Open of teller file failed", err);
 		throw except;
 	}
 
 	hdb = new Db(this, 0);
 	if ((err = hdb->open(NULL, "history", NULL, DB_UNKNOWN,
-	                     DB_AUTO_COMMIT, 0)) != 0) {
+			     DB_AUTO_COMMIT, 0)) != 0) {
 		DbException except("Open of history file failed", err);
 		throw except;
 	}
@@ -550,7 +550,7 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 //
 int
 TpcbExample::txn(Db *adb, Db *bdb, Db *tdb, Db *hdb,
-                 int accounts, int branches, int tellers)
+		 int accounts, int branches, int tellers)
 {
 	Dbc *acurs = NULL;
 	Dbc *bcurs = NULL;

@@ -1,24 +1,24 @@
-<!--$Id: app.so,v 10.7 2001/06/09 13:39:04 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: app.so,v 10.8 2003/01/07 20:02:51 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Application structure</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Application structure</h1>
+<h3 align=center>Application structure</h3>
 <p>When building transactionally protected applications, there are some
 special issues that must be considered.  The most important one is that
 if any thread of control exits for any reason while holding Berkeley DB
-resources, recovery must be performed to do the following:
+resources, recovery must be performed to do the following:</p>
 <p><ul type=disc>
 <li>Recover the Berkeley DB resources.
 <li>Release any locks or mutexes that may have been held to avoid starvation
@@ -32,8 +32,8 @@ cannot determine whether recovery is required; the application itself
 <b>must</b> make that decision.  A further complication is that
 recovery must be single-threaded; that is, one thread of control or
 process must perform recovery before any other thread of control or
-processes attempts to create or join the Berkeley DB environment.
-<p>There are two approaches to handling this problem:
+processes attempts to create or join the Berkeley DB environment.</p>
+<p>There are two approaches to handling this problem:</p>
 <p><dl compact>
 <p><dt>The hard way:<dd>An application can track its own state carefully enough that it knows
 when recovery needs to be performed.  Specifically, the rule to use is
@@ -46,14 +46,14 @@ on the type of environment created.  If the environment is public and
 persistent (that is, the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was not specified to
 the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method), recovery must be performed if any transaction
 was not committed or aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method was not called
-for any open <a href="../../api_c/env_class.html">DB_ENV</a> handle.
+for any open <a href="../../api_c/env_class.html">DB_ENV</a> handle.</p>
 <p>If the environment is private and temporary (that is, the
 <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method),
 recovery must be performed if any transaction was not committed or
 aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method was not called for any open
 <a href="../../api_c/env_class.html">DB_ENV</a> handle.  In addition, at least one transaction checkpoint
 must be performed after all existing transactions have been committed
-or aborted.
+or aborted.</p>
 <p><dt>The easy way:<dd>It greatly simplifies matters that recovery may be performed regardless
 of whether recovery strictly needs to be performed; that is, it is not
 an error to run recovery on a database for which no recovery is
@@ -75,10 +75,10 @@ control as it chooses.  All threads of control share the open Berkeley DB
 rarely opened or closed when more than a single thread of control is
 running; that is, they are opened when only a single thread is running,
 and closed after all threads but one have exited.  The last thread of
-control to exit closes the databases and the environment.
+control to exit closes the databases and the environment.</p>
 <p>An alternative way to build Berkeley DB applications is as a set of
 cooperating processes, which may or may not be multithreaded.  This
-architecture is more complicated.
+architecture is more complicated.</p>
 <p>First, this architecture requires that the order in which threads of
 control are created and subsequently access the Berkeley DB environment be
 controlled because recovery must be single-threaded.  The first thread
@@ -87,14 +87,14 @@ thread should attempt to access the environment until recovery is
 complete.  (Note that this ordering requirement does not apply to
 environment creation without recovery.  If multiple threads attempt to
 create a Berkeley DB environment, only one will perform the creation and the
-others will join the already existing environment.)
+others will join the already existing environment.)</p>
 <p>Second, this architecture requires that threads of control be monitored.
 If any thread of control that owns Berkeley DB resources exits without first
 cleanly discarding those resources, recovery is usually necessary.
 Before running recovery, all threads using the Berkeley DB environment must
 relinquish all of their Berkeley DB resources (it does not matter if they do
 so gracefully or because they are forced to exit).  Then, recovery can
-be run and the threads of control continued or restarted.
+be run and the threads of control continued or restarted.</p>
 <p>We have found that the safest way to structure groups of cooperating
 processes is to first create a single process (often a shell script)
 that opens/creates the Berkeley DB environment and runs recovery, and that
@@ -103,7 +103,7 @@ The initial thread has no further responsibilities other than to monitor
 the threads of control it has created, to ensure that none of them
 unexpectedly exits.  If one exits, the initial process then forces all
 of the threads of control using the Berkeley DB environment to exit, runs
-recovery, and restarts the working threads of control.
+recovery, and restarts the working threads of control.</p>
 <p>If it is not practical to have a single parent for the processes sharing
 a Berkeley DB environment, each process sharing the environment should log
 their connection to and exit from the environment in a way that allows
@@ -115,16 +115,16 @@ to use the Berkeley DB environment checks for the sentinel file; if the
 sentinel file exists, the other process registers its process ID with
 the watcher and joins the database environment.  When the other process
 finishes with the environment, it unregisters its process ID with the
-water.  The watcher periodically checks to ensure that no process has
+watcher.  The watcher periodically checks to ensure that no process has
 failed while using the environment.  If a process does fail while using
 the environment, the watcher removes the sentinel file, kills all
 processes currently using the environment, runs recovery, and re-creates
-the sentinel file.
+the sentinel file.</p>
 <p>Obviously, it is important that the monitoring process in either case
 be as simple and well-tested as possible because there is no recourse
-if it fails.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
+if it fails.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/term.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

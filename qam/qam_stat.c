@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2002
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_stat.c,v 11.32 2002/05/11 13:40:11 bostic Exp $";
+static const char revid[] = "$Id: qam_stat.c,v 11.38 2003/09/04 18:06:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,22 +22,22 @@ static const char revid[] = "$Id: qam_stat.c,v 11.32 2002/05/11 13:40:11 bostic 
 #include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
+#include "dbinc/mp.h"
 #include "dbinc/qam.h"
 
 /*
  * __qam_stat --
  *	Gather/print the qam statistics
  *
- * PUBLIC: int __qam_stat __P((DB *, void *, u_int32_t));
+ * PUBLIC: int __qam_stat __P((DBC *, void *, u_int32_t));
  */
 int
-__qam_stat(dbp, spp, flags)
-	DB *dbp;
+__qam_stat(dbc, spp, flags)
+	DBC *dbc;
 	void *spp;
 	u_int32_t flags;
 {
-	DBC *dbc;
+	DB *dbp;
 	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
 	DB_QUEUE_STAT *sp;
@@ -48,28 +48,17 @@ __qam_stat(dbp, spp, flags)
 	db_indx_t indx;
 	db_pgno_t first, last, pgno, pg_ext, stop;
 	u_int32_t re_len;
-	int ret, t_ret;
+	int ret;
 
-	PANIC_CHECK(dbp->dbenv);
-	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
+	dbp = dbc->dbp;
 
 	LOCK_INIT(lock);
 	mpf = dbp->mpf;
 	sp = NULL;
 	t = dbp->q_internal;
 
-	/* Check for invalid flags. */
-	if ((ret = __db_statchk(dbp, flags)) != 0)
-		return (ret);
-
 	if (spp == NULL)
 		return (0);
-
-	/* Acquire a cursor. */
-	if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
-		return (ret);
-
-	DEBUG_LWRITE(dbc, NULL, "qam_stat", NULL, NULL, flags);
 
 	/* Allocate and clear the structure. */
 	if ((ret = __os_umalloc(dbp->dbenv, sizeof(*sp), &sp)) != 0)
@@ -79,10 +68,9 @@ __qam_stat(dbp, spp, flags)
 	re_len = ((QUEUE *)dbp->q_internal)->re_len;
 
 	/* Determine the last page of the database. */
-	if ((ret = __db_lget(dbc,
-	    0, t->q_meta, DB_LOCK_READ, 0, &lock)) != 0)
+	if ((ret = __db_lget(dbc, 0, t->q_meta, DB_LOCK_READ, 0, &lock)) != 0)
 		goto err;
-	if ((ret = mpf->get(mpf, &t->q_meta, 0, (PAGE **)&meta)) != 0)
+	if ((ret = __memp_fget(mpf, &t->q_meta, 0, &meta)) != 0)
 		goto err;
 
 	if (flags == DB_FAST_STAT || flags == DB_CACHED_COUNTS) {
@@ -94,7 +82,7 @@ __qam_stat(dbp, spp, flags)
 	first = QAM_RECNO_PAGE(dbp, meta->first_recno);
 	last = QAM_RECNO_PAGE(dbp, meta->cur_recno);
 
-	if ((ret = mpf->put(mpf, meta, 0)) != 0)
+	if ((ret = __memp_fput(mpf, meta, 0)) != 0)
 		goto err;
 	(void)__LPUT(dbc, lock);
 
@@ -160,7 +148,7 @@ begin:
 	    0, t->q_meta, F_ISSET(dbp, DB_AM_RDONLY) ?
 	    DB_LOCK_READ : DB_LOCK_WRITE, 0, &lock)) != 0)
 		goto err;
-	if ((ret = mpf->get(mpf, &t->q_meta, 0, (PAGE **)&meta)) != 0)
+	if ((ret = __memp_fget(mpf, &t->q_meta, 0, &meta)) != 0)
 		goto err;
 
 	if (!F_ISSET(dbp, DB_AM_RDONLY))
@@ -181,7 +169,7 @@ meta_only:
 	sp->qs_cur_recno = meta->cur_recno;
 
 	/* Discard the meta-data page. */
-	if ((ret = mpf->put(mpf,
+	if ((ret = __memp_fput(mpf,
 	    meta, F_ISSET(dbp, DB_AM_RDONLY) ? 0 : DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	(void)__LPUT(dbc, lock);
@@ -195,9 +183,6 @@ err:		if (sp != NULL)
 	}
 
 	(void)__LPUT(dbc, lock);
-
-	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
-		ret = t_ret;
 
 	return (ret);
 }

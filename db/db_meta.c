@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_meta.c,v 11.61 2002/08/08 03:57:48 bostic Exp $";
+static const char revid[] = "$Id: db_meta.c,v 11.77 2003/09/09 16:42:06 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,9 +56,10 @@ static const char revid[] = "$Id: db_meta.c,v 11.61 2002/08/08 03:57:48 bostic E
 #include "dbinc/db_page.h"
 #include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
+#include "dbinc/mp.h"
 #include "dbinc/db_am.h"
 
-static void __db_init_meta __P((void *, u_int32_t, db_pgno_t, u_int32_t));
+static void __db_init_meta __P((DB *, void *, db_pgno_t, u_int32_t));
 
 /*
  * __db_init_meta --
@@ -67,9 +68,9 @@ static void __db_init_meta __P((void *, u_int32_t, db_pgno_t, u_int32_t));
  * retain the page number and LSN of the existing page.
  */
 static void
-__db_init_meta(p, pgsize, pgno, pgtype)
+__db_init_meta(dbp, p, pgno, pgtype)
+	DB *dbp;
 	void *p;
-	u_int32_t pgsize;
 	db_pgno_t pgno;
 	u_int32_t pgtype;
 {
@@ -80,7 +81,9 @@ __db_init_meta(p, pgsize, pgno, pgtype)
 	save_lsn = meta->lsn;
 	memset(meta, 0, sizeof(DBMETA));
 	meta->lsn = save_lsn;
-	meta->pagesize = pgsize;
+	meta->pagesize = dbp->pgsize;
+	if (F_ISSET(dbp, DB_AM_CHKSUM))
+		FLD_SET(meta->metaflags, DBMETA_CHKSUM);
 	meta->pgno = pgno;
 	meta->type = (u_int8_t)pgtype;
 }
@@ -103,8 +106,9 @@ __db_new(dbc, type, pagepp)
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	db_pgno_t pgno, newnext;
-	int meta_flags, extend, ret;
+	db_pgno_t last, pgno, newnext;
+	u_int32_t meta_flags;
+	int extend, ret;
 
 	meta = NULL;
 	meta_flags = 0;
@@ -117,15 +121,16 @@ __db_new(dbc, type, pagepp)
 	if ((ret = __db_lget(dbc,
 	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = mpf->get(mpf, &pgno, 0, (PAGE **)&meta)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, 0, &meta)) != 0)
 		goto err;
+	last = meta->last_pgno;
 	if (meta->free == PGNO_INVALID) {
-		pgno = meta->last_pgno + 1;
+		last = pgno = meta->last_pgno + 1;
 		ZERO_LSN(lsn);
 		extend = 1;
 	} else {
 		pgno = meta->free;
-		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 
 		/*
@@ -155,12 +160,12 @@ __db_new(dbc, type, pagepp)
 	meta->free = newnext;
 
 	if (extend == 1) {
-		meta->last_pgno++;
-		if ((ret = mpf->get(mpf, &pgno, DB_MPOOL_NEW, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, DB_MPOOL_NEW, &h)) != 0)
 			goto err;
+		DB_ASSERT(last == pgno);
+		meta->last_pgno = pgno;
 		ZERO_LSN(h->lsn);
 		h->pgno = pgno;
-		DB_ASSERT(pgno == meta->last_pgno);
 	}
 	LSN(h) = LSN(meta);
 
@@ -169,14 +174,14 @@ __db_new(dbc, type, pagepp)
 	if (TYPE(h) != P_INVALID)
 		return (__db_panic(dbp->dbenv, EINVAL));
 
-	(void)mpf->put(mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
+	(void)__memp_fput(mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
 	(void)__TLPUT(dbc, metalock);
 
 	switch (type) {
 		case P_BTREEMETA:
 		case P_HASHMETA:
 		case P_QAMMETA:
-			__db_init_meta(h, dbp->pgsize, h->pgno, type);
+			__db_init_meta(dbp, h, h->pgno, type);
 			break;
 		default:
 			P_INIT(h, dbp->pgsize,
@@ -201,9 +206,9 @@ __db_new(dbc, type, pagepp)
 	return (0);
 
 err:	if (h != NULL)
-		(void)mpf->put(mpf, h, 0);
+		(void)__memp_fput(mpf, h, 0);
 	if (meta != NULL)
-		(void)mpf->put(mpf, meta, meta_flags);
+		(void)__memp_fput(mpf, meta, meta_flags);
 	(void)__TLPUT(dbc, metalock);
 	return (ret);
 }
@@ -221,7 +226,7 @@ __db_free(dbc, h)
 {
 	DBMETA *meta;
 	DB *dbp;
-	DBT ldbt;
+	DBT ddbt, ldbt;
 	DB_LOCK metalock;
 	DB_MPOOLFILE *mpf;
 	db_pgno_t pgno;
@@ -242,7 +247,7 @@ __db_free(dbc, h)
 	if ((ret = __db_lget(dbc,
 	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = mpf->get(mpf, &pgno, 0, (PAGE **)&meta)) != 0) {
+	if ((ret = __memp_fget(mpf, &pgno, 0, &meta)) != 0) {
 		(void)__TLPUT(dbc, metalock);
 		goto err;
 	}
@@ -253,10 +258,41 @@ __db_free(dbc, h)
 		memset(&ldbt, 0, sizeof(ldbt));
 		ldbt.data = h;
 		ldbt.size = P_OVERHEAD(dbp);
-		if ((ret = __db_pg_free_log(dbp,
-		    dbc->txn, &LSN(meta), 0, h->pgno,
-		    &LSN(meta), PGNO_BASE_MD, &ldbt, meta->free)) != 0) {
-			(void)mpf->put(mpf, (PAGE *)meta, 0);
+		switch (h->type) {
+		case P_HASH:
+		case P_IBTREE:
+		case P_IRECNO:
+		case P_LBTREE:
+		case P_LRECNO:
+		case P_LDUP:
+			if (h->entries > 0) {
+				ldbt.size += h->entries * sizeof(db_indx_t);
+				ddbt.data = (u_int8_t *)h + h->hf_offset;
+				ddbt.size = dbp->pgsize - h->hf_offset;
+				ret = __db_pg_freedata_log(dbp, dbc->txn,
+				     &LSN(meta), 0, h->pgno, &LSN(meta),
+				     PGNO_BASE_MD, &ldbt, meta->free, &ddbt);
+				break;
+			}
+			goto log;
+		case P_HASHMETA:
+			ldbt.size = sizeof(HMETA);
+			goto log;
+		case P_BTREEMETA:
+			ldbt.size = sizeof(BTMETA);
+			goto log;
+		case P_OVERFLOW:
+			ldbt.size += OV_LEN(h);
+			goto log;
+		default:
+			DB_ASSERT(h->type != P_QAMDATA);
+
+log:			ret = __db_pg_free_log(dbp,
+			    dbc->txn, &LSN(meta), 0, h->pgno,
+			    &LSN(meta), PGNO_BASE_MD, &ldbt, meta->free);
+		}
+		if (ret != 0) {
+			(void)__memp_fput(mpf, (PAGE *)meta, 0);
 			(void)__TLPUT(dbc, metalock);
 			goto err;
 		}
@@ -265,19 +301,23 @@ __db_free(dbc, h)
 	LSN(h) = LSN(meta);
 
 	P_INIT(h, dbp->pgsize, h->pgno, PGNO_INVALID, meta->free, 0, P_INVALID);
+#ifdef DIAGNOSTIC
+	memset((u_int8_t *)
+	    h + P_OVERHEAD(dbp), CLEAR_BYTE, dbp->pgsize - P_OVERHEAD(dbp));
+#endif
 
 	meta->free = h->pgno;
 
 	/* Discard the metadata page. */
 	if ((t_ret =
-	    mpf->put(mpf, (PAGE *)meta, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	    __memp_fput(mpf, (PAGE *)meta, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the caller's page reference. */
 	dirty_flag = DB_MPOOL_DIRTY;
-err:	if ((t_ret = mpf->put(mpf, h, dirty_flag)) != 0 && ret == 0)
+err:	if ((t_ret = __memp_fput(mpf, h, dirty_flag)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/*
@@ -298,14 +338,16 @@ int
 __db_lprint(dbc)
 	DBC *dbc;
 {
+	DB_ENV *dbenv;
 	DB *dbp;
 	DB_LOCKREQ req;
 
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 
-	if (LOCKING_ON(dbp->dbenv)) {
+	if (LOCKING_ON(dbenv)) {
 		req.op = DB_LOCK_DUMP;
-		dbp->dbenv->lock_vec(dbp->dbenv, dbc->locker, 0, &req, 1, NULL);
+		(void)__lock_vec(dbenv, dbc->locker, 0, &req, 1, NULL);
 	}
 	return (0);
 }
@@ -359,7 +401,7 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	if (CDB_LOCKING(dbenv) ||
 	    !LOCKING_ON(dbenv) || F_ISSET(dbc, DBC_COMPENSATE) ||
 	    (F_ISSET(dbc, DBC_RECOVER) &&
-	    (action != LCK_ROLLBACK || F_ISSET(dbenv, DB_ENV_REP_CLIENT))) ||
+	    (action != LCK_ROLLBACK || IS_REP_CLIENT(dbenv))) ||
 	    (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
 		LOCK_INIT(*lockp);
 		return (0);
@@ -382,7 +424,8 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	if (F_ISSET(dbc, DBC_DIRTY_READ) && mode == DB_LOCK_READ)
 		mode = DB_LOCK_DIRTY;
 
-	has_timeout = txn != NULL && F_ISSET(txn, TXN_LOCKTIMEOUT);
+	has_timeout = F_ISSET(dbc, DBC_RECOVER) ||
+	    (txn != NULL && F_ISSET(txn, TXN_LOCKTIMEOUT));
 
 	switch (DB_PUT_ACTION(dbc, action, lockp)) {
 	case LCK_COUPLE:
@@ -393,31 +436,33 @@ lck_couple:	couple[0].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 			action = LCK_COUPLE;
 		UMRW_SET(couple[0].timeout);
 		if (has_timeout)
-			couple[0].timeout = txn->lock_timeout;
+			couple[0].timeout =
+			     F_ISSET(dbc, DBC_RECOVER) ? 0 : txn->lock_timeout;
 		if (action == LCK_COUPLE) {
 			couple[1].op = DB_LOCK_PUT;
 			couple[1].lock = *lockp;
 		}
 
-		ret = dbenv->lock_vec(dbenv, dbc->locker,
+		ret = __lock_vec(dbenv, dbc->locker,
 		    lkflags, couple, action == LCK_COUPLE ? 2 : 1, &reqp);
 		if (ret == 0 || reqp == &couple[1])
 			*lockp = couple[0].lock;
 		break;
 	case LCK_DOWNGRADE:
-		if ((ret = dbenv->lock_downgrade(
+		if ((ret = __lock_downgrade(
 		    dbenv, lockp, DB_LOCK_WWRITE, 0)) != 0)
 			return (ret);
 		/* FALL THROUGH */
 	default:
 		if (has_timeout)
 			goto lck_couple;
-		ret = dbenv->lock_get(dbenv,
+		ret = __lock_get(dbenv,
 		    dbc->locker, lkflags, &dbc->lock_dbt, mode, lockp);
 		break;
 	}
 
-	return (ret);
+	return ((ret == DB_LOCK_NOTGRANTED &&
+	     !F_ISSET(dbenv, DB_ENV_TIME_NOTGRANTED)) ? DB_LOCK_DEADLOCK : ret);
 }
 
 /*
@@ -438,7 +483,7 @@ __db_lput(dbc, lockp)
 
 	switch (DB_PUT_ACTION(dbc, LCK_COUPLE, lockp)) {
 	case LCK_COUPLE:
-		ret = dbenv->lock_put(dbenv, lockp);
+		ret = __lock_put(dbenv, lockp);
 		break;
 	case LCK_DOWNGRADE:
 		ret = __lock_downgrade(dbenv, lockp, DB_LOCK_WWRITE, 0);

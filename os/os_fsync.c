@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fsync.c,v 11.14 2002/07/12 18:56:50 bostic Exp $";
+static const char revid[] = "$Id: os_fsync.c,v 11.18 2003/02/16 15:53:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -69,7 +69,7 @@ __os_fsync(dbenv, fhp)
 	DB_ENV *dbenv;
 	DB_FH *fhp;
 {
-	int ret;
+	int ret, retries;
 
 	/*
 	 * Do nothing if the file descriptor has been marked as not requiring
@@ -78,10 +78,16 @@ __os_fsync(dbenv, fhp)
 	if (F_ISSET(fhp, DB_FH_NOSYNC))
 		return (0);
 
+	/* Check for illegal usage. */
+	DB_ASSERT(F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+
+	retries = 0;
 	do {
 		ret = DB_GLOBAL(j_fsync) != NULL ?
 		    DB_GLOBAL(j_fsync)(fhp->fd) : fsync(fhp->fd);
-	} while (ret != 0 && (ret = __os_get_errno()) == EINTR);
+	} while (ret != 0 &&
+	    ((ret = __os_get_errno()) == EINTR || ret == EBUSY) &&
+	    ++retries < DB_RETRY);
 
 	if (ret != 0)
 		__db_err(dbenv, "fsync %s", strerror(ret));

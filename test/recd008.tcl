@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd008.tcl,v 1.26 2002/02/25 16:44:26 sandstro Exp $
+# $Id: recd008.tcl,v 1.27 2003/01/08 05:51:41 bostic Exp $
 #
 # TEST	recd008
 # TEST	Test deeply nested transactions and many-child transactions.

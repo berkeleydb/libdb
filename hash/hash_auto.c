@@ -14,7 +14,6 @@
 #include "dbinc/db_dispatch.h"
 #include "dbinc/db_am.h"
 #include "dbinc/hash.h"
-#include "dbinc/rep.h"
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
 
@@ -40,17 +39,25 @@ __ham_insdel_log(dbp, txnid, ret_lsnp, flags,
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t zero;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_insdel;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -78,10 +85,28 @@ __ham_insdel_log(dbp, txnid, ret_lsnp, flags,
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -146,19 +171,52 @@ __ham_insdel_log(dbp, txnid, ret_lsnp, flags,
 	}
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_insdel_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_insdel_getpgnos __P((DB_ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
@@ -171,39 +229,27 @@ __ham_insdel_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_insdel_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_insdel_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
+
 	t->npages++;
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_insdel_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -228,9 +274,10 @@ __ham_insdel_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_insdel_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_insdel: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_insdel%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -255,6 +302,7 @@ __ham_insdel_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -275,7 +323,6 @@ __ham_insdel_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_insdel_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -346,16 +393,25 @@ __ham_newpage_log(dbp, txnid, ret_lsnp, flags,
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_newpage;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -384,10 +440,28 @@ __ham_newpage_log(dbp, txnid, ret_lsnp, flags,
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -446,19 +520,52 @@ __ham_newpage_log(dbp, txnid, ret_lsnp, flags,
 	bp += sizeof(*nextlsn);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_newpage_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_newpage_getpgnos __P((DB_ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
@@ -471,61 +578,27 @@ __ham_newpage_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_newpage_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_newpage_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
+	t->array[t->npages].lsn = *lsnp;
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
 
-	if ((ret = __rep_check_alloc(dbenv, t, 3)) != 0)
-		goto err;
+	t->npages++;
 
-	if (argp->prev_pgno != PGNO_INVALID) {
-		t->array[t->npages].flags = 0;
-		t->array[t->npages].fid = argp->fileid;
-		t->array[t->npages].lsn = *lsnp;
-		t->array[t->npages].pgdesc.pgno = argp->prev_pgno;
-		t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-		memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-		    DB_FILE_ID_LEN);
-		t->npages++;
-	}
-	if (argp->new_pgno != PGNO_INVALID) {
-		t->array[t->npages].flags = 0;
-		t->array[t->npages].fid = argp->fileid;
-		t->array[t->npages].lsn = *lsnp;
-		t->array[t->npages].pgdesc.pgno = argp->new_pgno;
-		t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-		memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-		    DB_FILE_ID_LEN);
-		t->npages++;
-	}
-	if (argp->next_pgno != PGNO_INVALID) {
-		t->array[t->npages].flags = 0;
-		t->array[t->npages].fid = argp->fileid;
-		t->array[t->npages].lsn = *lsnp;
-		t->array[t->npages].pgdesc.pgno = argp->next_pgno;
-		t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-		memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-		    DB_FILE_ID_LEN);
-		t->npages++;
-	}
-
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_newpage_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -548,9 +621,10 @@ __ham_newpage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_newpage_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_newpage: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_newpage%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -568,6 +642,7 @@ __ham_newpage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->nextlsn.file, (u_long)argp->nextlsn.offset);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -589,7 +664,6 @@ __ham_newpage_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_newpage_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -652,17 +726,25 @@ __ham_splitdata_log(dbp, txnid, ret_lsnp, flags, opcode, pgno, pageimage, pagels
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t zero;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_splitdata;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -688,10 +770,28 @@ __ham_splitdata_log(dbp, txnid, ret_lsnp, flags, opcode, pgno, pageimage, pagels
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -741,19 +841,52 @@ __ham_splitdata_log(dbp, txnid, ret_lsnp, flags, opcode, pgno, pageimage, pagels
 	bp += sizeof(*pagelsn);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_splitdata_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_splitdata_getpgnos __P((DB_ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
@@ -766,39 +899,27 @@ __ham_splitdata_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_splitdata_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_splitdata_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
+
 	t->npages++;
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_splitdata_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -823,9 +944,10 @@ __ham_splitdata_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_splitdata_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_splitdata: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_splitdata%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -843,6 +965,7 @@ __ham_splitdata_print(dbenv, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->pagelsn.file, (u_long)argp->pagelsn.offset);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -864,7 +987,6 @@ __ham_splitdata_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_splitdata_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -924,17 +1046,25 @@ __ham_replace_log(dbp, txnid, ret_lsnp, flags, pgno, ndx, pagelsn, off, olditem,
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t zero;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_replace;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -963,10 +1093,28 @@ __ham_replace_log(dbp, txnid, ret_lsnp, flags, pgno, ndx, pagelsn, off, olditem,
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -1035,19 +1183,52 @@ __ham_replace_log(dbp, txnid, ret_lsnp, flags, pgno, ndx, pagelsn, off, olditem,
 	bp += sizeof(uinttmp);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_replace_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_replace_getpgnos __P((DB_ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
@@ -1060,39 +1241,27 @@ __ham_replace_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_replace_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_replace_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
+
 	t->npages++;
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_replace_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -1117,9 +1286,10 @@ __ham_replace_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_replace_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_replace: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_replace%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -1145,6 +1315,7 @@ __ham_replace_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tmakedup: %lu\n", (u_long)argp->makedup);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -1166,7 +1337,6 @@ __ham_replace_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_replace_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -1240,17 +1410,25 @@ __ham_copypage_log(dbp, txnid, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextls
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t zero;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_copypage;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -1279,10 +1457,28 @@ __ham_copypage_log(dbp, txnid, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextls
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -1348,19 +1544,52 @@ __ham_copypage_log(dbp, txnid, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextls
 	}
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_copypage_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_copypage_getpgnos __P((DB_ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
@@ -1373,57 +1602,27 @@ __ham_copypage_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_copypage_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_copypage_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 3)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
-	t->npages++;
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
-	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->next_pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
-	t->npages++;
-	if (argp->nnext_pgno != PGNO_INVALID) {
-		t->array[t->npages].flags = 0;
-		t->array[t->npages].fid = argp->fileid;
-		t->array[t->npages].lsn = *lsnp;
-		t->array[t->npages].pgdesc.pgno = argp->nnext_pgno;
-		t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-		memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-		    DB_FILE_ID_LEN);
-		t->npages++;
-	}
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	t->npages++;
+
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_copypage_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -1448,9 +1647,10 @@ __ham_copypage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_copypage_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_copypage: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_copypage%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -1473,6 +1673,7 @@ __ham_copypage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -1494,7 +1695,6 @@ __ham_copypage_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_copypage_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -1565,16 +1765,25 @@ __ham_metagroup_log(dbp, txnid, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_metagroup;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -1604,10 +1813,28 @@ __ham_metagroup_log(dbp, txnid, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -1670,19 +1897,52 @@ __ham_metagroup_log(dbp, txnid, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno
 	bp += sizeof(uinttmp);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_metagroup_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_metagroup_getpgnos __P((DB_ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
@@ -1695,57 +1955,27 @@ __ham_metagroup_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_metagroup_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_metagroup_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 3)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->mmpgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
-	t->npages++;
-	if (argp->mpgno != PGNO_INVALID) {
-		t->array[t->npages].flags = 0;
-		t->array[t->npages].fid = argp->fileid;
-		t->array[t->npages].lsn = *lsnp;
-		t->array[t->npages].pgdesc.pgno = argp->mpgno;
-		t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-		memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-		    DB_FILE_ID_LEN);
-		t->npages++;
-	}
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
-	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
+
 	t->npages++;
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_metagroup_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -1768,9 +1998,10 @@ __ham_metagroup_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_metagroup_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_metagroup: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_metagroup%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -1789,6 +2020,7 @@ __ham_metagroup_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tnewalloc: %lu\n", (u_long)argp->newalloc);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -1810,7 +2042,6 @@ __ham_metagroup_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_metagroup_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -1877,16 +2108,25 @@ __ham_groupalloc_log(dbp, txnid, ret_lsnp, flags, meta_lsn, start_pgno, num, fre
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_groupalloc;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -1912,10 +2152,28 @@ __ham_groupalloc_log(dbp, txnid, ret_lsnp, flags, meta_lsn, start_pgno, num, fre
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -1958,19 +2216,52 @@ __ham_groupalloc_log(dbp, txnid, ret_lsnp, flags, meta_lsn, start_pgno, num, fre
 	bp += sizeof(uinttmp);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_groupalloc_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_groupalloc_getpgnos __P((DB_ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
@@ -1983,39 +2274,27 @@ __ham_groupalloc_getpgnos(dbenv, rec, lsnp, notused1, summary)
 	db_recops notused1;
 	void *summary;
 {
-	DB *dbp;
 	TXN_RECS *t;
-	__ham_groupalloc_args *argp;
-	u_int32_t ret;
-
+	int ret;
+	COMPQUIET(rec, NULL);
 	COMPQUIET(notused1, DB_TXN_ABORT);
 
-	argp = NULL;
 	t = (TXN_RECS *)summary;
 
-	if ((ret = __ham_groupalloc_read(dbenv, rec->data, &argp)) != 0)
+	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
 		return (ret);
 
-	if ((ret = __dbreg_id_to_db(dbenv,
-	    argp->txnid, &dbp, argp->fileid, 0)) != 0)
-		goto err;
-
-	if ((ret = __rep_check_alloc(dbenv, t, 1)) != 0)
-		goto err;
-
-	t->array[t->npages].flags = 0;
-	t->array[t->npages].fid = argp->fileid;
+	t->array[t->npages].flags = LSN_PAGE_NOLOCK;
 	t->array[t->npages].lsn = *lsnp;
-	t->array[t->npages].pgdesc.pgno = argp->start_pgno;
-	t->array[t->npages].pgdesc.type = DB_PAGE_LOCK;
-	memcpy(t->array[t->npages].pgdesc.fileid, dbp->fileid,
-	    DB_FILE_ID_LEN);
+	t->array[t->npages].fid = DB_LOGFILEID_INVALID;
+	memset(&t->array[t->npages].pgdesc, 0,
+	    sizeof(t->array[t->npages].pgdesc));
+
 	t->npages++;
 
-err:	if (argp != NULL)
-	__os_free(dbenv, argp);
-	return (ret);
+	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_groupalloc_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -2038,9 +2317,10 @@ __ham_groupalloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_groupalloc_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_groupalloc: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_groupalloc%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -2053,6 +2333,7 @@ __ham_groupalloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tfree: %lu\n", (u_long)argp->free);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -2074,7 +2355,6 @@ __ham_groupalloc_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_groupalloc_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -2132,16 +2412,25 @@ __ham_curadj_log(dbp, txnid, ret_lsnp, flags, pgno, indx, len, dup_off, add,
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_curadj;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -2170,10 +2459,28 @@ __ham_curadj_log(dbp, txnid, ret_lsnp, flags, pgno, indx, len, dup_off, add,
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -2226,19 +2533,52 @@ __ham_curadj_log(dbp, txnid, ret_lsnp, flags, pgno, indx, len, dup_off, add,
 	bp += sizeof(uinttmp);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_curadj_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_curadj_getpgnos __P((DB_ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
@@ -2271,6 +2611,7 @@ __ham_curadj_getpgnos(dbenv, rec, lsnp, notused1, summary)
 
 	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_curadj_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -2293,9 +2634,10 @@ __ham_curadj_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_curadj_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_curadj: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_curadj%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -2310,6 +2652,7 @@ __ham_curadj_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\torder: %lu\n", (u_long)argp->order);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -2330,7 +2673,6 @@ __ham_curadj_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_curadj_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -2398,16 +2740,25 @@ __ham_chgpg_log(dbp, txnid, ret_lsnp, flags, mode, old_pgno, new_pgno, old_indx,
 {
 	DBT logrec;
 	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn;
-	u_int32_t uinttmp;
-	u_int32_t npad, rectype, txn_num;
-	int ret;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
 	u_int8_t *bp;
+	int is_durable, ret;
 
 	dbenv = dbp->dbenv;
 	rectype = DB___ham_chgpg;
 	npad = 0;
 
+	is_durable = 1;
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (F_ISSET(dbenv, DB_ENV_TXN_NOT_DURABLE) && txnid == NULL)
+			return (0);
+		is_durable = 0;
+	}
 	if (txnid == NULL) {
 		txn_num = 0;
 		null_lsn.file = 0;
@@ -2434,10 +2785,28 @@ __ham_chgpg_log(dbp, txnid, ret_lsnp, flags, mode, old_pgno, new_pgno, old_indx,
 		logrec.size += npad;
 	}
 
-	if ((ret = __os_malloc(dbenv,
-	    logrec.size, &logrec.data)) != 0)
-		return (ret);
-
+	if (!is_durable && txnid != NULL) {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		goto do_malloc;
+#else
+		logrec.data = &lr->data;
+#endif
+	} else {
+#ifdef DIAGNOSTIC
+do_malloc:
+#endif
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+#ifdef DIAGNOSTIC
+			if (!is_durable && txnid != NULL)
+				(void)__os_free(dbenv, lr);
+#endif
+			return (ret);
+		}
+	}
 	if (npad > 0)
 		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
 
@@ -2482,19 +2851,52 @@ __ham_chgpg_log(dbp, txnid, ret_lsnp, flags, mode, old_pgno, new_pgno, old_indx,
 	bp += sizeof(uinttmp);
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
-	ret = dbenv->log_put(dbenv,
-	   ret_lsnp, (DBT *)&logrec, flags | DB_NOCOPY);
-	if (txnid != NULL && ret == 0)
-		txnid->last_lsn = *ret_lsnp;
+
+#ifdef DIAGNOSTIC
+	if (!is_durable && txnid != NULL) {
+		 /*
+		 * We set the debug bit if we are going
+		 * to log non-durable transactions so
+		 * they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+	}
+#endif
+
+	if (!is_durable && txnid != NULL) {
+		ret = 0;
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+#ifdef DIAGNOSTIC
+		goto do_put;
+#endif
+	} else{
+#ifdef DIAGNOSTIC
+do_put:
+#endif
+		ret = __log_put(dbenv,
+		    ret_lsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+		if (ret == 0 && txnid != NULL)
+			txnid->last_lsn = *ret_lsnp;
+	}
+
+	if (!is_durable)
+		LSN_NOT_LOGGED(*ret_lsnp);
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__ham_chgpg_print(dbenv,
 		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
 #endif
-	__os_free(dbenv, logrec.data);
+#ifndef DIAGNOSTIC
+	if (is_durable || txnid == NULL)
+#endif
+		__os_free(dbenv, logrec.data);
+
 	return (ret);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_chgpg_getpgnos __P((DB_ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
@@ -2527,6 +2929,7 @@ __ham_chgpg_getpgnos(dbenv, rec, lsnp, notused1, summary)
 
 	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_chgpg_print __P((DB_ENV *, DBT *, DB_LSN *,
@@ -2549,9 +2952,10 @@ __ham_chgpg_print(dbenv, dbtp, lsnp, notused2, notused3)
 	if ((ret = __ham_chgpg_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-	    "[%lu][%lu]__ham_chgpg: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    "[%lu][%lu]__ham_chgpg%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
 	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
@@ -2564,6 +2968,7 @@ __ham_chgpg_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tnew_indx: %lu\n", (u_long)argp->new_indx);
 	(void)printf("\n");
 	__os_free(dbenv, argp);
+
 	return (0);
 }
 
@@ -2584,7 +2989,6 @@ __ham_chgpg_read(dbenv, recbuf, argpp)
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(__ham_chgpg_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
-
 	argp->txnid = (DB_TXN *)&argp[1];
 
 	bp = recbuf;
@@ -2667,6 +3071,7 @@ __ham_init_print(dbenv, dtabp, dtabsizep)
 	return (0);
 }
 
+#ifdef HAVE_REPLICATION
 /*
  * PUBLIC: int __ham_init_getpgnos __P((DB_ENV *, int (***)(DB_ENV *,
  * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
@@ -2708,6 +3113,7 @@ __ham_init_getpgnos(dbenv, dtabp, dtabsizep)
 		return (ret);
 	return (0);
 }
+#endif /* HAVE_REPLICATION */
 
 /*
  * PUBLIC: int __ham_init_recover __P((DB_ENV *, int (***)(DB_ENV *,

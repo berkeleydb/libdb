@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_sleep.c,v 11.15 2002/07/12 18:56:52 bostic Exp $";
+static const char revid[] = "$Id: os_sleep.c,v 11.18 2003/05/14 17:01:23 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -65,13 +65,25 @@ __os_sleep(dbenv, secs, usecs)
 	/*
 	 * It's important that we yield the processor here so that other
 	 * processes or threads are permitted to run.
+	 *
+	 * Sheer raving paranoia -- don't select for 0 time.
 	 */
 	t.tv_sec = secs;
-	t.tv_usec = usecs;
-	do {
-		ret = select(0, NULL, NULL, NULL, &t) == -1 ?
-		    __os_get_errno() : 0;
-	} while (ret == EINTR);
+	if (secs == 0 && usecs == 0)
+		t.tv_usec = 1;
+	else
+		t.tv_usec = usecs;
+
+	/*
+	 * We don't catch interrupts and restart the system call here, unlike
+	 * other Berkeley DB system calls.  This may be a user attempting to
+	 * interrupt a sleeping DB utility (for example, db_checkpoint), and
+	 * we want the utility to see the signal and quit.  This assumes it's
+	 * always OK for DB to sleep for less time than originally scheduled.
+	 */
+	if ((ret = select(0, NULL, NULL, NULL, &t)) != 0)
+		if ((ret = __os_get_errno()) == EINTR)
+			ret = 0;
 
 	if (ret != 0)
 		__db_err(dbenv, "select: %s", strerror(ret));

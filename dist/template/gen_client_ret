@@ -13,28 +13,6 @@
 #include "dbinc/txn.h"
 
 /*
- * PUBLIC: int __dbcl_env_close_ret __P((DB_ENV *, u_int32_t,
- * PUBLIC:      __env_close_reply *));
- */
-int
-__dbcl_env_close_ret(dbenv, flags, replyp)
-	DB_ENV * dbenv;
-	u_int32_t flags;
-	__env_close_reply *replyp;
-{
-	int ret;
-
-	if (replyp->status != 0)
-		return (replyp->status);
-
-	/*
-	 * XXX Code goes here
-	 */
-
-	return (replyp->status);
-}
-
-/*
  * PUBLIC: int __dbcl_env_create_ret __P((DB_ENV *, long,
  * PUBLIC:      __env_create_reply *));
  */

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test092.tcl,v 11.13 2002/02/22 15:26:28 sandstro Exp $
+# $Id: test092.tcl,v 11.14 2003/01/08 05:54:09 bostic Exp $
 #
 # TEST	test092
 # TEST	Test of DB_DIRTY_READ [#3395]

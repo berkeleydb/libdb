@@ -1,26 +1,26 @@
-<!--$Id: inc.so,v 1.15 2002/06/24 14:51:07 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: inc.so,v 1.16 2003/11/20 02:19:33 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Isolation</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/atomicity.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/atomicity.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Isolation</h1>
+<h3 align=center>Isolation</h3>
 <p>The third reason listed for using transactions was <i>isolation</i>.
 Consider an application suite in which multiple threads of control
 (multiple processes or threads in one or more processes) are changing
 the values associated with a key in one or more databases.  Specifically,
 they are taking the current value, incrementing it, and then storing it
-back into the database.
+back into the database.</p>
 <p>Such an application requires isolation.  Because we want to change a value
 in the database, we must make sure that after we read it, no other thread
 of control modifies it.  For example, assume that both thread #1 and
@@ -28,8 +28,8 @@ thread #2 are doing similar operations in the database, where thread #1
 is incrementing records by 3, and thread #2 is incrementing records by
 5.  We want to increment the record by a total of 8.  If the operations
 interleave in the right (well, wrong) order, that is not what will
-happen:
-<p><blockquote><pre>thread #1  <b>read</b> record: the value is 2
+happen:</p>
+<blockquote><pre>thread #1  <b>read</b> record: the value is 2
 thread #2  <b>read</b> record: the value is 2
 thread #2  <b>write</b> record + 5 back into the database (new value 7)
 thread #1  <b>write</b> record + 3 back into the database (new value 5)</pre></blockquote>
@@ -40,17 +40,15 @@ cannot happen.  In a transaction, when the first thread reads the
 record, locks are acquired that will not be released until the
 transaction finishes, guaranteeing that all other readers and writers
 will block, waiting for the first thread's transaction to complete (or
-to be aborted).
+to be aborted).</p>
 <p>Here is an example function that does transaction-protected increments
-on database records to ensure isolation:
-<p><blockquote><pre>int
+on database records to ensure isolation:</p>
+<blockquote><pre>int
 main(int argc, char *argv)
 {
-	extern char *optarg;
 	extern int optind;
 	DB *db_cats, *db_color, *db_fruit;
 	DB_ENV *dbenv;
-	pthread_t ptid;
 	int ch;
 <p>
 	while ((ch = getopt(argc, argv, "")) != EOF)
@@ -111,7 +109,7 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 		 * Get the key.  If it exists, we increment the value.  If it
 		 * doesn't exist, we create it.
 		 */
-		switch (ret = dbp-&gt;get(dbp, tid, &key, &data, 0)) {
+		switch (ret = dbp-&gt;get(dbp, tid, &key, &data, DB_RMW)) {
 		case 0:
 			original = atoi(data.data);
 			break;
@@ -122,7 +120,7 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
-			if (++fail == MAXIMUM_RETRY)
+			if (fail++ == MAXIMUM_RETRY)
 				return (ret);
 			continue;
 		case DB_NOTFOUND:
@@ -153,14 +151,20 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
-			if (++fail == MAXIMUM_RETRY)
+			if (fail++ == MAXIMUM_RETRY)
 				return (ret);
 			break;
 		}
 	}
 }</b></pre></blockquote>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/atomicity.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
+<p>The <a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a> flag in the <a href="../../api_c/db_get.html">DB-&gt;get</a> call specifies a write lock
+should be acquired on the key/data pair, instead of the more obvious read
+lock.  We do this because the application expects to write the key/data
+pair in a subsequent operation, and the transaction is much more likely to
+deadlock if we first obtain a read lock and subsequently a write lock, than
+if we obtain the write lock initially.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/atomicity.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/read.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

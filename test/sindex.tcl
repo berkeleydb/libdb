@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2002
+# Copyright (c) 2001-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sindex.tcl,v 1.8 2002/05/07 17:15:46 krinsky Exp $
+# $Id: sindex.tcl,v 1.9 2003/01/08 05:53:30 bostic Exp $
 #
 # Secondary index test driver and maintenance routines.
 #

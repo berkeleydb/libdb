@@ -14,6 +14,29 @@
 #include "dbinc/db_server_int.h"
 #include "dbinc_auto/rpc_server_ext.h"
 
+/* BEGIN __env_get_cachesize_proc */
+void
+__env_get_cachesize_proc(dbenvcl_id,
+		replyp)
+	long dbenvcl_id;
+	__env_get_cachesize_reply *replyp;
+/* END __env_get_cachesize_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __env_cachesize_proc */
 void
 __env_cachesize_proc(dbenvcl_id, gbytes, bytes,
@@ -144,6 +167,28 @@ __env_dbrename_proc(dbenvcl_id, txnpcl_id, name,
 	return;
 }
 
+/* BEGIN __env_get_encrypt_flags_proc */
+void
+__env_get_encrypt_flags_proc(dbenvcl_id, replyp)
+	long dbenvcl_id;
+	__env_get_encrypt_flags_reply *replyp;
+/* END __env_get_encrypt_flags_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __env_encrypt_proc */
 void
 __env_encrypt_proc(dbenvcl_id, passwd, flags, replyp)
@@ -168,6 +213,28 @@ __env_encrypt_proc(dbenvcl_id, passwd, flags, replyp)
 	return;
 }
 
+/* BEGIN __env_get_flags_proc */
+void
+__env_get_flags_proc(dbenvcl_id, replyp)
+	long dbenvcl_id;
+	__env_get_flags_reply *replyp;
+/* END __env_get_flags_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __env_flags_proc */
 void
 __env_flags_proc(dbenvcl_id, flags, onoff, replyp)
@@ -176,6 +243,50 @@ __env_flags_proc(dbenvcl_id, flags, onoff, replyp)
 	u_int32_t onoff;
 	__env_flags_reply *replyp;
 /* END __env_flags_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_get_home_proc */
+void
+__env_get_home_proc(dbenvcl_id, replyp)
+	long dbenvcl_id;
+	__env_get_home_reply *replyp;
+/* END __env_get_home_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_get_open_flags_proc */
+void
+__env_get_open_flags_proc(dbenvcl_id, replyp)
+	long dbenvcl_id;
+	__env_get_open_flags_reply *replyp;
+/* END __env_get_open_flags_proc */
 {
 	int ret;
 	DB_ENV * dbenv;
@@ -445,6 +556,28 @@ __db_bt_maxkey_proc(dbpcl_id, maxkey, replyp)
 	return;
 }
 
+/* BEGIN __db_get_bt_minkey_proc */
+void
+__db_get_bt_minkey_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_bt_minkey_reply *replyp;
+/* END __db_get_bt_minkey_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_bt_minkey_proc */
 void
 __db_bt_minkey_proc(dbpcl_id, minkey, replyp)
@@ -550,6 +683,28 @@ __db_del_proc(dbpcl_id, txnpcl_id, keydlen,
 	return;
 }
 
+/* BEGIN __db_get_encrypt_flags_proc */
+void
+__db_get_encrypt_flags_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_encrypt_flags_reply *replyp;
+/* END __db_get_encrypt_flags_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_encrypt_proc */
 void
 __db_encrypt_proc(dbpcl_id, passwd, flags, replyp)
@@ -574,6 +729,28 @@ __db_encrypt_proc(dbpcl_id, passwd, flags, replyp)
 	return;
 }
 
+/* BEGIN __db_get_extentsize_proc */
+void
+__db_get_extentsize_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_extentsize_reply *replyp;
+/* END __db_get_extentsize_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_extentsize_proc */
 void
 __db_extentsize_proc(dbpcl_id, extentsize, replyp)
@@ -581,6 +758,28 @@ __db_extentsize_proc(dbpcl_id, extentsize, replyp)
 	u_int32_t extentsize;
 	__db_extentsize_reply *replyp;
 /* END __db_extentsize_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_flags_proc */
+void
+__db_get_flags_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_flags_reply *replyp;
+/* END __db_get_flags_proc */
 {
 	int ret;
 	DB * dbp;
@@ -664,6 +863,72 @@ __db_get_proc(dbpcl_id, txnpcl_id, keydlen,
 	return;
 }
 
+/* BEGIN __db_get_name_proc */
+void
+__db_get_name_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_name_reply *replyp;
+/* END __db_get_name_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_open_flags_proc */
+void
+__db_get_open_flags_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_open_flags_reply *replyp;
+/* END __db_get_open_flags_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_h_ffactor_proc */
+void
+__db_get_h_ffactor_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_h_ffactor_reply *replyp;
+/* END __db_get_h_ffactor_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_h_ffactor_proc */
 void
 __db_h_ffactor_proc(dbpcl_id, ffactor, replyp)
@@ -671,6 +936,28 @@ __db_h_ffactor_proc(dbpcl_id, ffactor, replyp)
 	u_int32_t ffactor;
 	__db_h_ffactor_reply *replyp;
 /* END __db_h_ffactor_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_h_nelem_proc */
+void
+__db_get_h_nelem_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_h_nelem_reply *replyp;
+/* END __db_get_h_nelem_proc */
 {
 	int ret;
 	DB * dbp;
@@ -746,6 +1033,28 @@ __db_key_range_proc(dbpcl_id, txnpcl_id, keydlen,
 	return;
 }
 
+/* BEGIN __db_get_lorder_proc */
+void
+__db_get_lorder_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_lorder_reply *replyp;
+/* END __db_get_lorder_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_lorder_proc */
 void
 __db_lorder_proc(dbpcl_id, lorder, replyp)
@@ -793,6 +1102,28 @@ __db_open_proc(dbpcl_id, txnpcl_id, name,
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_pagesize_proc */
+void
+__db_get_pagesize_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_pagesize_reply *replyp;
+/* END __db_get_pagesize_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	/*
 	 * XXX Code goes here
@@ -921,6 +1252,28 @@ __db_put_proc(dbpcl_id, txnpcl_id, keydlen,
 	return;
 }
 
+/* BEGIN __db_get_re_delim_proc */
+void
+__db_get_re_delim_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_re_delim_reply *replyp;
+/* END __db_get_re_delim_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
 /* BEGIN __db_re_delim_proc */
 void
 __db_re_delim_proc(dbpcl_id, delim, replyp)
@@ -928,6 +1281,28 @@ __db_re_delim_proc(dbpcl_id, delim, replyp)
 	u_int32_t delim;
 	__db_re_delim_reply *replyp;
 /* END __db_re_delim_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_re_len_proc */
+void
+__db_get_re_len_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_re_len_reply *replyp;
+/* END __db_get_re_len_proc */
 {
 	int ret;
 	DB * dbp;
@@ -974,6 +1349,28 @@ __db_re_pad_proc(dbpcl_id, pad, replyp)
 	u_int32_t pad;
 	__db_re_pad_reply *replyp;
 /* END __db_re_pad_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_get_re_pad_proc */
+void
+__db_get_re_pad_proc(dbpcl_id, replyp)
+	long dbpcl_id;
+	__db_get_re_pad_reply *replyp;
+/* END __db_get_re_pad_proc */
 {
 	int ret;
 	DB * dbp;

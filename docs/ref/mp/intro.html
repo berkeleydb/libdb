@@ -1,29 +1,29 @@
 <!--$Id: intro.so,v 10.23 2002/08/30 20:02:01 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Berkeley DB and the memory pool</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a><a name="4"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Memory Pool Subsystem</dl></h3></td>
-<td align=right><a href="../../ref/log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Berkeley DB and the memory pool</h1>
+<h3 align=center>Berkeley DB and the memory pool</h3>
 <p>The Memory Pool subsystem is the general-purpose shared memory buffer
 pool used by Berkeley DB.  This module is useful outside of the Berkeley DB package
-for processes that require page-oriented, shared and cached file access.
+for processes that require page-oriented, shared and cached file access.</p>
 <p>A <i>memory pool</i> is a memory cache shared among any number of
 threads of control.  The <a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> flag to the
 <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method opens and optionally creates a memory pool.  When
 that pool is no longer in use, it should be closed using the
-<a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method.
+<a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method.</p>
 <p>The <a href="../../api_c/memp_fcreate.html">DB_ENV-&gt;memp_fcreate</a> method returns a <a href="../../api_c/mempfile_class.html">DB_MPOOLFILE</a> handle on an
 underlying file within the memory pool.  The file may be opened using
 the <a href="../../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a> method.  The <a href="../../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a> method is used to retrieve
@@ -36,9 +36,9 @@ to be discarded from the pool using a least-recently-used algorithm.
 Pages in files may also be explicitly marked clean or dirty using the
 <a href="../../api_c/memp_fset.html">DB_MPOOLFILE-&gt;set</a> method.  All dirty pages in the pool from the file may be
 flushed using the <a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> method.  When the file handle is no
-longer in use, it should be closed using the <a href="../../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a> method.
+longer in use, it should be closed using the <a href="../../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a> method.</p>
 <p>There are additional configuration interfaces that apply when opening
-a new file in the memory pool:
+a new file in the memory pool:</p>
 <p><ul type=disc>
 <li>The <a href="../../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a> method specifies the number of bytes to clear
 when creating a new page in the memory pool.
@@ -51,7 +51,7 @@ checkpoints.
 <li>The <a href="../../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a> method specifies an application provided argument
 for the purposes of page input and output processing.
 </ul>
-<p>There are additional interfaces for the memory pool as a whole:
+<p>There are additional interfaces for the memory pool as a whole:</p>
 <p><ul type=disc>
 <li>It is possible to gradually flush buffers from the pool in order to
 maintain a consistent percentage of clean buffers in the pool using
@@ -69,7 +69,7 @@ a specified log sequence number (<a href="../../api_c/lsn_class.html">DB_LSN</a>
 <li>The entire pool may be discarded using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> method.
 </ul>
 <!--$Id: m4.methods,v 1.1 2002/08/30 20:01:28 bostic Exp $-->
-<p><table border=1 align=center>
+<table border=1 align=center>
 <tr><th>Memory Pools and Related Methods</th><th>Description</th></tr>
 <tr><td><a href="../../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a></td><td>Set the environment cache size</td></tr>
 <tr><td><a href="../../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a></td><td>Set maximum mapped-in database file size</td></tr>
@@ -90,8 +90,8 @@ a specified log sequence number (<a href="../../api_c/lsn_class.html">DB_LSN</a>
 <tr><td><a href="../../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a></td><td>Set file log-sequence-number offset</td></tr>
 <tr><td><a href="../../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a></td><td>Set file cookie for pgin/pgout</td></tr>
 </table>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_oflags.c,v 11.9 2002/01/11 15:53:00 bostic Exp $";
+static const char revid[] = "$Id: os_oflags.c,v 11.11 2003/01/08 05:29:23 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -94,10 +94,20 @@ __db_omode(perm)
 #else
 #ifndef	S_IRUSR
 #define	S_IRUSR	0000400		/* R for owner */
+#endif
+#ifndef	S_IWUSR
 #define	S_IWUSR	0000200		/* W for owner */
+#endif
+#ifndef	S_IRGRP
 #define	S_IRGRP	0000040		/* R for group */
+#endif
+#ifndef	S_IWGRP
 #define	S_IWGRP	0000020		/* W for group */
+#endif
+#ifndef	S_IROTH
 #define	S_IROTH	0000004		/* R for other */
+#endif
+#ifndef	S_IWOTH
 #define	S_IWOTH	0000002		/* W for other */
 #endif
 #endif /* DB_WIN32 */

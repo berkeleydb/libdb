@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /I "../dbinc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -53,22 +53,22 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 Release/libdb41.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb_java41.dll"
+# ADD LINK32 Release/libdb42.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb_java42.dll"
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
-InputPath=.\Release\libdb_java41.dll
+InputPath=.\Release\libdb_java42.dll
 SOURCE="$(InputPath)"
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	mkdir $(ProjDir)\Release\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d $(ProjDir)/Release/classes -classpath "$(CLASSPATH);$(ProjDir)/Release/classes" ..\java\src\com\sleepycat\db\*.java 
+	mkdir "$(OUTDIR)\classes"
+	javac -g -d "$(OUTDIR)\classes" -classpath "$(OUTDIR)/classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\$(OUTDIR)\*.java ..\java\src\com\sleepycat\bdb\bind\*.java ..\java\src\com\sleepycat\bdb\bind\serial\*.java ..\java\src\com\sleepycat\bdb\bind\tuple\*.java ..\java\src\com\sleepycat\bdb\*.java ..\java\src\com\sleepycat\bdb\collection\*.java ..\java\src\com\sleepycat\bdb\factory\*.java ..\java\src\com\sleepycat\bdb\util\*.java
 	echo compiling examples 
-	javac -g -d $(ProjDir)/Release/classes -classpath "$(CLASSPATH);$(ProjDir)/Release/classes" ..\java\src\com\sleepycat\examples\*.java 
+	mkdir "$(OUTDIR)\classes.ex"
+	javac -g -d "$(OUTDIR)\classes.ex" -classpath "$(OUTDIR)\classes;$(OUTDIR)\classes.ex" ..\examples_java\src\com\sleepycat\examples\db\*.java ..\examples_java\src\com\sleepycat\examples\bdb\access\*.java ..\examples_java\src\com\sleepycat\examples\bdb\helloworld\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\basic\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\entity\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\tuple\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\sentity\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\marshal\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\factory\*.java
 	echo creating jar files 
-	cd $(ProjDir)\Release\classes 
-	jar cf ../db.jar com\sleepycat\db\*.class 
-	jar cf ../dbexamples.jar com\sleepycat\examples\*.class 
+	jar cf "$(OUTDIR)\db.jar" -C "$(OUTDIR)\classes" .
+	jar cf "$(OUTDIR)\dbexamples.jar" -C "$(OUTDIR)\classes.ex" .
 	echo Java build finished 
 	
 # End Custom Build
@@ -87,7 +87,7 @@ SOURCE="$(InputPath)"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /I "../dbinc" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /D "_WINDLL" /D "_AFXDLL" /YX"config.h" /FD /c
+# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /D "_WINDLL" /D "_AFXDLL" /YX"config.h" /FD /c
 # SUBTRACT CPP /Fr
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
@@ -98,24 +98,24 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 Debug/libdb41d.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb_java41d.dll" /fixed:no
+# ADD LINK32 Debug/libdb42d.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb_java42d.dll" /fixed:no
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
-InputPath=.\Debug\libdb_java41d.dll
+InputPath=.\Debug\libdb_java42d.dll
 SOURCE="$(InputPath)"
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	mkdir $(ProjDir)\Debug\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d $(ProjDir)/Debug/classes -classpath "$(CLASSPATH);$(ProjDir)/Debug/classes" ..\java\src\com\sleepycat\db\*.java 
+	mkdir "$(OUTDIR)\classes"
+	javac -g -d "$(OUTDIR)\classes" -classpath "$(OUTDIR)/classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\$(OUTDIR)\*.java ..\java\src\com\sleepycat\bdb\bind\*.java ..\java\src\com\sleepycat\bdb\bind\serial\*.java ..\java\src\com\sleepycat\bdb\bind\tuple\*.java ..\java\src\com\sleepycat\bdb\*.java ..\java\src\com\sleepycat\bdb\collection\*.java ..\java\src\com\sleepycat\bdb\factory\*.java ..\java\src\com\sleepycat\bdb\util\*.java
 	echo compiling examples 
-	javac -g -d $(ProjDir)/Debug/classes -classpath "$(CLASSPATH);$(ProjDir)/Debug/classes" ..\java\src\com\sleepycat\examples\*.java 
+	mkdir "$(OUTDIR)\classes.ex"
+	javac -g -d "$(OUTDIR)\classes.ex" -classpath "$(OUTDIR)\classes;$(OUTDIR)\classes.ex" ..\examples_java\src\com\sleepycat\examples\db\*.java ..\examples_java\src\com\sleepycat\examples\bdb\access\*.java ..\examples_java\src\com\sleepycat\examples\bdb\helloworld\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\basic\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\entity\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\tuple\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\sentity\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\marshal\*.java ..\examples_java\src\com\sleepycat\examples\bdb\shipment\factory\*.java
 	echo creating jar files 
-	cd $(ProjDir)\Debug\classes 
-	jar cf ../db.jar com\sleepycat\db\*.class 
-	jar cf ../dbexamples.jar com\sleepycat\examples\*.class 
+	jar cf "$(OUTDIR)\db.jar" -C "$(OUTDIR)\classes" .
+	jar cf "$(OUTDIR)\dbexamples.jar" -C "$(OUTDIR)\classes.ex" .
 	echo Java build finished 
-	
+
 # End Custom Build
 
 !ENDIF 
@@ -126,55 +126,7 @@ SOURCE="$(InputPath)"
 # Name "db_java - Win32 Debug"
 # Begin Source File
 
-SOURCE=..\libdb_java\java_Db.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbEnv.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbLock.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbLogc.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbLsn.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbTxn.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_DbUtil.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_Dbc.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_Dbt.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_info.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_locked.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_stat_auto.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\libdb_java\java_util.c
+SOURCE=..\libdb_java\db_java_wrap.c
 # End Source File
 # End Target
 # End Project

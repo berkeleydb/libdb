@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_pr.c,v 11.84 2002/09/10 02:45:20 bostic Exp $";
+static const char revid[] = "$Id: db_pr.c,v 11.94 2003/06/30 17:19:46 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,7 +17,6 @@ static const char revid[] = "$Id: db_pr.c,v 11.84 2002/09/10 02:45:20 bostic Exp
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -94,9 +93,9 @@ __db_dump(dbp, op, name)
 
 	ret = __db_prtree(dbp, fp, flags);
 
-	fflush(fp);
+	(void)fflush(fp);
 	if (name != NULL)
-		fclose(fp);
+		(void)fclose(fp);
 
 	return (ret);
 }
@@ -207,6 +206,7 @@ __db_prdb(dbp, fp)
 		fprintf(fp, "rec_page: %lu\n", (u_long)q->rec_page);
 		fprintf(fp, "page_ext: %lu\n", (u_long)q->page_ext);
 		break;
+	case DB_UNKNOWN:
 	default:
 		break;
 	}
@@ -236,12 +236,12 @@ __db_prtree(dbp, fp, flags)
 	 * Find out the page number of the last page in the database, then
 	 * dump each page.
 	 */
-	mpf->last_pgno(mpf, &last);
+	__memp_last_pgno(mpf, &last);
 	for (i = 0; i <= last; ++i) {
-		if ((ret = mpf->get(mpf, &i, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &i, 0, &h)) != 0)
 			return (ret);
 		(void)__db_prpage(dbp, h, fp, flags);
-		if ((ret = mpf->put(mpf, h, 0)) != 0)
+		if ((ret = __memp_fput(mpf, h, 0)) != 0)
 			return (ret);
 	}
 
@@ -285,14 +285,14 @@ __db_meta(dbp, dbmeta, fp, fn, flags)
 		fprintf(fp, "\tfree list: %lu", (u_long)dbmeta->free);
 		for (pgno = dbmeta->free,
 		    cnt = 0, sep = ", "; pgno != PGNO_INVALID;) {
-			if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0) {
+			if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0) {
 				fprintf(fp,
 			    "Unable to retrieve free-list page: %lu: %s\n",
 				    (u_long)pgno, db_strerror(ret));
 				break;
 			}
 			pgno = h->next_pgno;
-			(void)mpf->put(mpf, h, 0);
+			(void)__memp_fput(mpf, h, 0);
 			fprintf(fp, "%s%lu", sep, (u_long)pgno);
 			if (++cnt % 10 == 0) {
 				fprintf(fp, "\n");
@@ -429,12 +429,12 @@ __db_prnpage(dbp, pgno, fp)
 
 	mpf = dbp->mpf;
 
-	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0)
 		return (ret);
 
 	ret = __db_prpage(dbp, h, fp, DB_PR_PAGE);
 
-	if ((t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
+	if ((t_ret = __memp_fput(mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -531,6 +531,8 @@ __db_prpage(dbp, h, fp, flags)
 			__db_pr(qp->data, qlen, fp);
 		}
 		return (0);
+	default:
+		break;
 	}
 
 	/* LSN. */
@@ -585,10 +587,7 @@ __db_prpage(dbp, h, fp, flags)
 			deleted = B_DISSET(GET_BKEYDATA(dbp, h, i)->type);
 			break;
 		default:
-			fprintf(fp,
-			    "ILLEGAL PAGE ITEM: %lu\n", (u_long)TYPE(h));
-			ret = EINVAL;
-			continue;
+			goto type_err;
 		}
 		fprintf(fp, "%s", deleted ? "       D" : "\t");
 		fprintf(fp, "[%03lu] %4lu ", (u_long)i, (u_long)inp[i]);
@@ -634,6 +633,11 @@ __db_prpage(dbp, h, fp, flags)
 				fprintf(fp,
 				    "overflow: total len: %4lu page: %4lu\n",
 				    (u_long)a_hkd.tlen, (u_long)a_hkd.pgno);
+				break;
+			default:
+				fprintf(fp, "ILLEGAL HASH PAGE TYPE: %lu\n",
+				    (u_long)HPAGE_PTYPE(hk));
+				ret = EINVAL;
 				break;
 			}
 			break;
@@ -682,6 +686,11 @@ __db_prpage(dbp, h, fp, flags)
 				break;
 			}
 			break;
+		default:
+type_err:		fprintf(fp,
+			    "ILLEGAL PAGE TYPE: %lu\n", (u_long)TYPE(h));
+			ret = EINVAL;
+			continue;
 		}
 	}
 	(void)fflush(fp);
@@ -700,8 +709,8 @@ __db_pr(p, len, fp)
 	u_int32_t len;
 	FILE *fp;
 {
-	u_int lastch;
-	int i;
+	u_int32_t i;
+	int lastch;
 
 	fprintf(fp, "len: %3lu", (u_long)len);
 	lastch = '.';
@@ -740,12 +749,13 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 	int is_recno;
 	VRFY_DBINFO *vdp;
 {
-	static const char hex[] = "0123456789abcdef";
+	static const u_char hex[] = "0123456789abcdef";
 	db_recno_t recno;
-	u_int32_t len;
+	size_t len;
 	int ret;
 #define	DBTBUFLEN	100
-	char *p, *hp, buf[DBTBUFLEN], hbuf[DBTBUFLEN];
+	u_int8_t *p, *hp;
+	char buf[DBTBUFLEN], hbuf[DBTBUFLEN];
 
 	if (vdp != NULL) {
 		/*
@@ -789,8 +799,8 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 
 		/* If we're printing data as hex, print keys as hex too. */
 		if (!checkprint) {
-			for (len = (u_int32_t)strlen(buf), p = buf, hp = hbuf;
-			    len-- > 0; ++p) {
+			for (len = strlen(buf), p = (u_int8_t *)buf,
+			    hp = (u_int8_t *)hbuf; len-- > 0; ++p) {
 				*hp++ = hex[(u_int8_t)(*p & 0xf0) >> 4];
 				*hp++ = hex[*p & 0x0f];
 			}
@@ -849,6 +859,9 @@ __db_proff(vp, fp)
 	case B_DUPLICATE:
 		fprintf(fp, "duplicate: page: %4lu\n", (u_long)bo->pgno);
 		break;
+	default:
+		/* NOTREACHED */
+		break;
 	}
 }
 
@@ -904,6 +917,7 @@ __db_dbtype_to_string(type)
 		return ("recno");
 	case DB_QUEUE:
 		return ("queue");
+	case DB_UNKNOWN:
 	default:
 		return ("UNKNOWN TYPE");
 	}
@@ -982,15 +996,16 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	VRFY_DBINFO *vdp;
 	db_pgno_t meta_pgno;
 {
+	DBT dbt;
 	DB_BTREE_STAT *btsp;
 	DB_ENV *dbenv;
 	DB_HASH_STAT *hsp;
 	DB_QUEUE_STAT *qsp;
-	DBT dbt;
+	DBTYPE dbtype;
 	VRFY_PAGEINFO *pip;
+	size_t buflen;
 	char *buf;
-	int buflen, ret, t_ret;
-	u_int32_t dbtype;
+	int using_vdp, ret, t_ret;
 
 	btsp = NULL;
 	hsp = NULL;
@@ -999,18 +1014,27 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	buf = NULL;
 	COMPQUIET(buflen, 0);
 
+	/*
+	 * If dbp is NULL, then pip is guaranteed to be non-NULL; we only ever
+	 * call __db_prheader with a NULL dbp from one case inside __db_prdbt,
+	 * and this is a special subdatabase for "lost" items.  In this case
+	 * we have a vdp (from which we'll get a pip).  In all other cases, we
+	 * will have a non-NULL dbp (and vdp may or may not be NULL depending
+	 * on whether we're salvaging).
+	 */
+	DB_ASSERT(dbp != NULL || vdp != NULL);
+
 	if (dbp == NULL)
 		dbenv = NULL;
 	else
 		dbenv = dbp->dbenv;
 
 	/*
-	 * If we've been passed a verifier statistics object, use
-	 * that;  we're being called in a context where dbp->stat
-	 * is unsafe.
+	 * If we've been passed a verifier statistics object, use that;  we're
+	 * being called in a context where dbp->stat is unsafe.
 	 *
-	 * Also, the verifier may set the pflag on a per-salvage basis.
-	 * If so, respect that.
+	 * Also, the verifier may set the pflag on a per-salvage basis.  If so,
+	 * respect that.
 	 */
 	if (vdp != NULL) {
 		if ((ret = __db_vrfy_getpageinfo(vdp, meta_pgno, &pip)) != 0)
@@ -1018,18 +1042,19 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 
 		if (F_ISSET(vdp, SALVAGE_PRINTABLE))
 			pflag = 1;
-	} else
+		using_vdp = 1;
+	} else {
 		pip = NULL;
+		using_vdp = 0;
+	}
 
 	/*
-	 * If dbp is NULL, we're being called from inside __db_prdbt,
-	 * and this is a special subdatabase for "lost" items.  Make it a btree.
-	 * Otherwise, set dbtype to the appropriate type for the specified
-	 * meta page, or the type of the dbp.
+	 * If dbp is NULL, make it a btree.  Otherwise, set dbtype to whatever
+	 * appropriate type for the specified meta page, or the type of the dbp.
 	 */
 	if (dbp == NULL)
 		dbtype = DB_BTREE;
-	else if (pip != NULL)
+	else if (using_vdp)
 		switch (pip->type) {
 		case P_BTREEMETA:
 			if (F_ISSET(pip, VRFY_IS_RECNO))
@@ -1040,12 +1065,15 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		case P_HASHMETA:
 			dbtype = DB_HASH;
 			break;
+		case P_QAMMETA:
+			dbtype = DB_QUEUE;
+			break;
 		default:
 			/*
-			 * If the meta page is of a bogus type, it's
-			 * because we have a badly corrupt database.
-			 * (We must be in the verifier for pip to be non-NULL.)
-			 * Pretend we're a Btree and salvage what we can.
+			 * If the meta page is of a bogus type, it's because
+			 * we have a badly corrupt database.  (We must be in
+			 * the verifier for pip to be non-NULL.) Pretend we're
+			 * a Btree and salvage what we can.
 			 */
 			DB_ASSERT(F_ISSET(dbp, DB_AM_VERIFYING));
 			dbtype = DB_BTREE;
@@ -1085,7 +1113,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	case DB_BTREE:
 		if ((ret = callback(handle, "type=btree\n")) != 0)
 			goto err;
-		if (pip != NULL) {
+		if (using_vdp) {
 			if (F_ISSET(pip, VRFY_HAS_RECNUMS))
 				if ((ret =
 				    callback(handle, "recnum=1\n")) != 0)
@@ -1105,8 +1133,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &btsp, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
+		if ((ret = __db_stat(dbp, &btsp, 0)) != 0) {
+			__db_err(dbp->dbenv, "DB->stat: %s", db_strerror(ret));
 			goto err;
 		}
 		if (F_ISSET(dbp, DB_AM_RECNUM))
@@ -1128,7 +1156,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	case DB_HASH:
 		if ((ret = callback(handle, "type=hash\n")) != 0)
 			goto err;
-		if (pip != NULL) {
+		if (using_vdp) {
 			if (pip->h_ffactor != 0) {
 				snprintf(buf, buflen,
 				    "h_ffactor=%lu\n", (u_long)pip->h_ffactor);
@@ -1143,8 +1171,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &hsp, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
+		if ((ret = __db_stat(dbp, &hsp, 0)) != 0) {
+			__db_err(dbp->dbenv, "DB->stat: %s", db_strerror(ret));
 			goto err;
 		}
 		if (hsp->hash_ffactor != 0) {
@@ -1170,8 +1198,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				goto err;
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &qsp, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
+		if ((ret = __db_stat(dbp, &qsp, 0)) != 0) {
+			__db_err(dbp->dbenv, "DB->stat: %s", db_strerror(ret));
 			goto err;
 		}
 		snprintf(buf, buflen, "re_len=%lu\n", (u_long)qsp->qs_re_len);
@@ -1192,7 +1220,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	case DB_RECNO:
 		if ((ret = callback(handle, "type=recno\n")) != 0)
 			goto err;
-		if (pip != NULL) {
+		if (using_vdp) {
 			if (F_ISSET(pip, VRFY_IS_RRECNO))
 				if ((ret =
 				    callback(handle, "renumber=1\n")) != 0)
@@ -1205,8 +1233,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 			break;
 		}
-		if ((ret = dbp->stat(dbp, &btsp, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
+		if ((ret = __db_stat(dbp, &btsp, 0)) != 0) {
+			__db_err(dbp->dbenv, "DB->stat: %s", db_strerror(ret));
 			goto err;
 		}
 		if (F_ISSET(dbp, DB_AM_RENUMBER))
@@ -1226,12 +1254,12 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		break;
 	case DB_UNKNOWN:
 		DB_ASSERT(0);			/* Impossible. */
-		__db_err(dbp->dbenv, "Impossible DB type in __db_prheader");
+		__db_err(dbenv, "Impossible DB type in __db_prheader");
 		ret = EINVAL;
 		goto err;
 	}
 
-	if (pip != NULL) {
+	if (using_vdp) {
 		if (F_ISSET(pip, VRFY_HAS_DUPS))
 			if ((ret = callback(handle, "duplicates=1\n")) != 0)
 				goto err;
@@ -1262,7 +1290,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 
 	ret = callback(handle, "HEADER=END\n");
 
-err:	if (pip != NULL &&
+err:	if (using_vdp &&
 	    (t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (btsp != NULL)
@@ -1291,4 +1319,27 @@ __db_prfooter(handle, callback)
 	int (*callback) __P((void *, const void *));
 {
 	return (callback(handle, "DATA=END\n"));
+}
+
+/*
+ * __db_pr_callback --
+ *	Callback function for using pr_* functions from C.
+ *
+ * PUBLIC: int  __db_pr_callback __P((void *, const void *));
+ */
+int
+__db_pr_callback(handle, str_arg)
+	void *handle;
+	const void *str_arg;
+{
+	char *str;
+	FILE *f;
+
+	str = (char *)str_arg;
+	f = (FILE *)handle;
+
+	if (fprintf(f, "%s", str) != (int)strlen(str))
+		return (EIO);
+
+	return (0);
 }

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_except.cpp,v 11.17 2002/08/23 01:07:27 mjc Exp $";
+static const char revid[] = "$Id: cxx_except.cpp,v 11.21 2003/05/19 15:38:51 mjc Exp $";
 #endif /* not lint */
 
 #include <string.h>
@@ -88,24 +88,28 @@ DbException::~DbException()
 
 DbException::DbException(int err)
 :	err_(err)
+,	env_(0)
 {
 	what_ = dupString(db_strerror(err));
 }
 
 DbException::DbException(const char *description)
 :	err_(0)
+,	env_(0)
 {
 	what_ = dupString(tmpString(description));
 }
 
 DbException::DbException(const char *prefix, int err)
 :	err_(err)
+,	env_(0)
 {
 	what_ = dupString(tmpString(prefix, ": ", db_strerror(err)));
 }
 
 DbException::DbException(const char *prefix1, const char *prefix2, int err)
 :	err_(err)
+,	env_(0)
 {
 	what_ = dupString(tmpString(prefix1, ": ", prefix2, ": ",
 	    db_strerror(err)));
@@ -113,6 +117,7 @@ DbException::DbException(const char *prefix1, const char *prefix2, int err)
 
 DbException::DbException(const DbException &that)
 :	err_(that.err_)
+,	env_(0)
 {
 	what_ = dupString(that.what_);
 }
@@ -137,6 +142,16 @@ int DbException::get_errno() const
 const char *DbException::what() const
 {
 	return (what_);
+}
+
+DbEnv *DbException::get_env() const
+{
+	return env_;
+}
+
+void DbException::set_env(DbEnv *env)
+{
+	env_= env;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -248,6 +263,11 @@ DbLockNotGrantedException::DbLockNotGrantedException(const char *prefix,
 	lock_ = new DbLock(lock);
 }
 
+DbLockNotGrantedException::DbLockNotGrantedException(const char *description)
+:	DbException(description, DB_LOCK_NOTGRANTED)
+{
+}
+
 DbLockNotGrantedException::DbLockNotGrantedException
     (const DbLockNotGrantedException &that)
 :	DbException(that)
@@ -297,8 +317,6 @@ int DbLockNotGrantedException::get_index() const
 {
 	return index_;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////
 //                                                                    //

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_search.c,v 11.43 2002/07/03 19:03:50 bostic Exp $";
+static const char revid[] = "$Id: bt_search.c,v 11.47 2003/06/30 17:19:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,6 +57,7 @@ static const char revid[] = "$Id: bt_search.c,v 11.43 2002/07/03 19:03:50 bostic
 #include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
+#include "dbinc/mp.h"
 
 /*
  * __bam_search --
@@ -117,7 +118,7 @@ try_again:
 	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0) {
+	if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0) {
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
@@ -134,12 +135,12 @@ try_again:
 	if (!stack &&
 	    ((LF_ISSET(S_PARENT) && (u_int8_t)(stop + 1) >= h->level) ||
 	    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
-		(void)mpf->put(mpf, h, 0);
+		(void)__memp_fput(mpf, h, 0);
 		(void)__LPUT(dbc, lock);
 		lock_mode = DB_LOCK_WRITE;
 		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0) {
+		if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0) {
 			/* Did not read it, so we can release the lock */
 			(void)__LPUT(dbc, lock);
 			return (ret);
@@ -148,7 +149,7 @@ try_again:
 		    (u_int8_t)(stop + 1) >= h->level) ||
 		    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
 			/* Someone else split the root, start over. */
-			(void)mpf->put(mpf, h, 0);
+			(void)__memp_fput(mpf, h, 0);
 			(void)__LPUT(dbc, lock);
 			goto try_again;
 		}
@@ -203,7 +204,7 @@ try_again:
 			if (LF_ISSET(S_STK_ONLY)) {
 				BT_STK_NUM(dbp->dbenv, cp, h, base, ret);
 				__LPUT(dbc, lock);
-				(void)mpf->put(mpf, h, 0);
+				(void)__memp_fput(mpf, h, 0);
 				return (ret);
 			}
 
@@ -244,11 +245,11 @@ next:		if (recnop != NULL)
 			if (stop == h->level) {
 				BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
 				__LPUT(dbc, lock);
-				(void)mpf->put(mpf, h, 0);
+				(void)__memp_fput(mpf, h, 0);
 				return (ret);
 			}
 			BT_STK_NUMPUSH(dbp->dbenv, cp, h, indx, ret);
-			(void)mpf->put(mpf, h, 0);
+			(void)__memp_fput(mpf, h, 0);
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
 				/*
@@ -288,7 +289,7 @@ next:		if (recnop != NULL)
 			    (h->level - 1) == LEAFLEVEL)
 				stack = 1;
 
-			(void)mpf->put(mpf, h, 0);
+			(void)__memp_fput(mpf, h, 0);
 
 			lock_mode = stack &&
 			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
@@ -303,20 +304,12 @@ next:		if (recnop != NULL)
 				goto err;
 			}
 		}
-		if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
 
 found:	*exactp = 1;
-
-	/*
-	 * If we're trying to calculate the record number, add in the
-	 * offset on this page and correct for the fact that records
-	 * in the tree are 0-based.
-	 */
-	if (recnop != NULL)
-		*recnop = recno + (indx / P_INDX) + 1;
 
 	/*
 	 * If we got here, we know that we have a Btree leaf or off-page
@@ -345,6 +338,7 @@ found:	*exactp = 1;
 	 * not move from the original found key on the basis of the S_DELNO
 	 * flag.)
 	 */
+	DB_ASSERT(recnop == NULL || LF_ISSET(S_DELNO));
 	if (LF_ISSET(S_DELNO)) {
 		deloffset = TYPE(h) == P_LBTREE ? O_INDX : 0;
 		if (LF_ISSET(S_DUPLAST))
@@ -365,12 +359,30 @@ found:	*exactp = 1;
 		 */
 		if (B_DISSET(GET_BKEYDATA(dbp, h, indx + deloffset)->type))
 			goto notfound;
+
+		/*
+		 * Increment the record counter to point to the found element.
+		 * Ignore any deleted key/data pairs.  There doesn't need to
+		 * be any correction for duplicates, as Btree doesn't support
+		 * duplicates and record numbers in the same tree.
+		 */
+		if (recnop != NULL) {
+			DB_ASSERT(TYPE(h) == P_LBTREE);
+
+			for (i = 0; i < indx; i += P_INDX)
+				if (!B_DISSET(
+				    GET_BKEYDATA(dbp, h, i + O_INDX)->type))
+					++recno;
+
+			/* Correct the number for a 0-base. */
+			*recnop = recno + 1;
+		}
 	}
 
 	if (LF_ISSET(S_STK_ONLY)) {
 		BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
 		__LPUT(dbc, lock);
-		(void)mpf->put(mpf, h, 0);
+		(void)__memp_fput(mpf, h, 0);
 	} else {
 		BT_STK_ENTER(dbp->dbenv, cp, h, indx, lock, lock_mode, ret);
 		if (ret != 0)
@@ -380,7 +392,7 @@ found:	*exactp = 1;
 
 notfound:
 	/* Keep the page locked for serializability. */
-	(void)mpf->put(mpf, h, 0);
+	(void)__memp_fput(mpf, h, 0);
 	(void)__TLPUT(dbc, lock);
 	ret = DB_NOTFOUND;
 
@@ -423,7 +435,7 @@ __bam_stkrel(dbc, flags)
 				LOCK_INIT(cp->lock);
 			}
 			if ((t_ret =
-			    mpf->put(mpf, epg->page, 0)) != 0 && ret == 0)
+			    __memp_fput(mpf, epg->page, 0)) != 0 && ret == 0)
 				ret = t_ret;
 			/*
 			 * XXX

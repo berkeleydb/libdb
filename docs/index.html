@@ -1,7 +1,7 @@
-<!--$Id: index.html,v 1.36 2002/09/13 17:16:03 bostic Exp $-->
+<!--$Id: index_db.html,v 1.51 2003/11/27 18:25:53 bostic Exp $-->
 <html>
 <head>
-<title>Berkeley DB (Version: 4.1.25)</title>
+<title>Berkeley DB (Version: 4.2.52)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -18,18 +18,17 @@
 <p>
 <table align=center cellpadding=4 border=2>
 <tr>
-	<th align=center width="50%">Interface Documentation</th>
+	<th align=center width="50%">API Documentation</th>
 	<th align=center width="50%">Building Berkeley DB</th>
 </tr><tr valign=top>
 	<td>
-	<a href="api_c/c_index.html">C API</a><br>
-	<a href="api_c/c_pindex.html">C API Topic Index</a><br>
+	<a href="api_c/api_index.html">C API</a><br>
+	<a href="api_c/c_pindex.html">C API Permuted Index</a><br>
 	<p>
-	<a href="api_cxx/c_index.html">C++ API</a><br>
-	<a href="api_cxx/cxx_pindex.html">C++ API Topic Index</a><br>
+	<a href="api_cxx/api_index.html">C++ API</a><br>
+	<a href="api_cxx/cxx_pindex.html">C++ API Permuted Index</a><br>
 	<p>
-	<a href="api_java/c_index.html">Java API</a><br>
-	<a href="api_java/java_pindex.html">Java API Topic Index</a><br>
+	<a href="java/index.html">Javadoc</a><br>
 	<p>
 	<a href="api_tcl/tcl_index.html">Tcl API</a><br>
 	</td><td>
@@ -37,7 +36,7 @@
 	<a href="ref/build_vxworks/intro.html">Building for VxWorks</a><p>
 	<a href="ref/build_win/intro.html">Building for Win32</a><br>
 	<p>
-	<a href="ref/upgrade.4.1/toc.html">Upgrading Applications to the 4.1 release</a><br>
+	<a href="ref/upgrade.4.2/toc.html">Upgrading Applications to the 4.2 release</a><br>
 	</td>
 
 </tr><tr valign=top>
@@ -45,15 +44,17 @@
 	<th align=center>Company and Product Information</th>
 </tr><tr valign=top>
 	<td>
+	<a href="ref/debug/common.html">Troubleshooting common Berkeley DB problems</a>
+	<p>
 	<a href="utility/index.html">Supporting Utilities</a><br>
 	<p>
-	<a href="reftoc.html">Programmer's Tutorial and Reference Guide</a><br>
+	<a href="ref/toc.html">Programmer's Tutorial and Reference Guide</a><br>
 	</td><td>
 	<a href="sleepycat/contact.html">Contacting Sleepycat Software</a><br>
 	<a href="http://www.sleepycat.com">Sleepycat Software Home Page</a><br>
 	<a href="ref/intro/products.html">Sleepycat Software Product List</a><br>
 	<a href="http://www.sleepycat.com/update/index.html">Release Patches and Change Logs</a><br>
-	<a href="sleepycat/license.html">License</a>,&nbsp;&nbsp;<a href="ref/env/encrypt.html">Cryptography</a>,&nbsp;&nbsp;<a href="sleepycat/legal.html">Legal Notices</a><br>
+	<a href="sleepycat/license.html">License</a>,&nbsp;&nbsp;<a href="sleepycat/legal.html">Legal Notices</a><br>
 	</td>
 </tr>
 
@@ -61,9 +62,23 @@
 
 <p>
 <center><b>
-Version 4.1.25, December 19, 2002<br>
-Copyright 1997-2002 Sleepycat Software, Inc. All Rights Reserved
+Version 4.2.52, December  3, 2003<br>
+Copyright 1997-2003 Sleepycat Software, Inc. All Rights Reserved
 </b></center>
+
+<p>
+<hr size=1 noshade>
+
+<p>
+Berkeley DB releases optionally include strong cryptographic
+support; this release <b>DOES</b> contain cryptographic support.
+Export/import and/or use of cryptography software, or even
+communicating technical details about cryptography software, is
+illegal in some parts of the world. You are strongly advised to
+pay close attention to any export/import and/or use laws which
+apply to you when you import a release of Berkeley DB including
+cryptography to your country or re-distribute source code from
+it in any way.
 
 </body>
 </html>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_txn.cpp,v 11.27 2002/07/20 13:50:11 dda Exp $";
+static const char revid[] = "$Id: cxx_txn.cpp,v 11.29 2003/03/11 15:39:40 merrells Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -17,6 +17,7 @@ static const char revid[] = "$Id: cxx_txn.cpp,v 11.27 2002/07/20 13:50:11 dda Ex
 #include "dbinc/cxx_int.h"
 
 #include "db_int.h"
+#include "dbinc/txn.h"
 
 // Helper macro for simple methods that pass through to the
 // underlying C method. It may return an error or raise an exception.
@@ -35,7 +36,8 @@ int DbTxn::_name _argspec						\
 	if (_delete)							\
 		delete this;						\
 	if (!DB_RETOK_STD(ret))						\
-		DB_ERROR("DbTxn::" # _name, ret, ON_ERROR_UNKNOWN);	\
+	DB_ERROR(DbEnv::get_DbEnv(txn->mgrp->dbenv), \
+		"DbTxn::" # _name, ret, ON_ERROR_UNKNOWN);	\
 	return (ret);							\
 }
 

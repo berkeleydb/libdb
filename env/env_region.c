@@ -1,22 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_region.c,v 11.64 2002/07/17 15:09:19 bostic Exp $";
+static const char revid[] = "$Id: env_region.c,v 11.79 2003/10/31 01:56:10 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <ctype.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -24,10 +22,9 @@ static const char revid[] = "$Id: env_region.c,v 11.64 2002/07/17 15:09:19 bosti
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
-#include "dbinc/rep.h"
 #include "dbinc/txn.h"
 
-static int  __db_des_destroy __P((DB_ENV *, REGION *));
+static int  __db_des_destroy __P((DB_ENV *, REGION *, int));
 static int  __db_des_get __P((DB_ENV *, REGINFO *, REGINFO *, REGION **));
 static int  __db_e_remfile __P((DB_ENV *));
 static int  __db_faultmem __P((DB_ENV *, void *, size_t, int));
@@ -131,7 +128,7 @@ loop:	renv = NULL;
 	if (F_ISSET(dbenv, DB_ENV_CREATE)) {
 		if ((ret = __os_open(dbenv, infop->name,
 		    DB_OSO_CREATE | DB_OSO_DIRECT | DB_OSO_EXCL | DB_OSO_REGION,
-		    dbenv->db_mode, dbenv->lockfhp)) == 0)
+		    dbenv->db_mode, &dbenv->lockfhp)) == 0)
 			goto creation;
 		if (ret != EEXIST) {
 			__db_err(dbenv,
@@ -145,8 +142,11 @@ loop:	renv = NULL;
 	 * we're done.)
 	 */
 	if ((ret = __os_open(dbenv, infop->name, DB_OSO_REGION | DB_OSO_DIRECT,
-	    dbenv->db_mode, dbenv->lockfhp)) != 0)
+	    dbenv->db_mode, &dbenv->lockfhp)) != 0)
 		goto err;
+
+	/* The region exists, it's not okay to recreate it. */
+	F_CLR(infop, REGION_CREATE_OK);
 
 	/*
 	 * !!!
@@ -231,7 +231,8 @@ loop:	renv = NULL;
 	 * the better.
 	 */
 #ifdef HAVE_MUTEX_THREADS
-	 __os_closehandle(dbenv, dbenv->lockfhp);
+	 (void)__os_closehandle(dbenv, dbenv->lockfhp);
+	 dbenv->lockfhp = NULL;
 #endif
 
 	/* Call the region join routine to acquire the region. */
@@ -250,6 +251,19 @@ loop:	renv = NULL;
 	 */
 	infop->primary = R_ADDR(infop, 0);
 	infop->addr = (u_int8_t *)infop->addr + sizeof(REGENV);
+	renv = infop->primary;
+
+	/* Make sure the region matches our build. */
+	if (renv->majver != DB_VERSION_MAJOR ||
+	    renv->minver != DB_VERSION_MINOR) {
+		__db_err(dbenv,
+	"Program version %d.%d doesn't match environment version",
+		    DB_VERSION_MAJOR, DB_VERSION_MINOR);
+#ifndef DIAGNOSTIC
+		ret = EINVAL;
+		goto err;
+#endif
+	}
 
 	/*
 	 * Check if the environment has had a catastrophic failure.
@@ -265,27 +279,12 @@ loop:	renv = NULL;
 	 * I'd rather play permissions games using the underlying file, but I
 	 * can't because Windows/NT filesystems won't open files mode 0.
 	 */
-	renv = infop->primary;
 	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_NOPANIC)) {
 		ret = __db_panic_msg(dbenv);
 		goto err;
 	}
 	if (renv->magic != DB_REGION_MAGIC)
 		goto retry;
-
-	/* Make sure the region matches our build. */
-	if (renv->majver != DB_VERSION_MAJOR ||
-	    renv->minver != DB_VERSION_MINOR ||
-	    renv->patch != DB_VERSION_PATCH) {
-		__db_err(dbenv,
-	"Program version %d.%d.%d doesn't match environment version %d.%d.%d",
-		    DB_VERSION_MAJOR, DB_VERSION_MINOR, DB_VERSION_PATCH,
-		    renv->majver, renv->minver, renv->patch);
-#ifndef DIAGNOSTIC
-		ret = EINVAL;
-		goto err;
-#endif
-	}
 
 	/* Lock the environment. */
 	MUTEX_LOCK(dbenv, &renv->mutex);
@@ -481,8 +480,10 @@ find_err:	__db_err(dbenv,
 	 * the better.
 	 */
 #if defined(HAVE_MUTEX_THREADS)
-	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
-		 __os_closehandle(dbenv, dbenv->lockfhp);
+	if (dbenv->lockfhp != NULL) {
+		 (void)__os_closehandle(dbenv, dbenv->lockfhp);
+		 dbenv->lockfhp = NULL;
+	}
 #endif
 
 	/* Validate the file. */
@@ -497,8 +498,10 @@ find_err:	__db_err(dbenv,
 
 err:
 retry:	/* Close any open file handle. */
-	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
+	if (dbenv->lockfhp != NULL) {
 		(void)__os_closehandle(dbenv, dbenv->lockfhp);
+		dbenv->lockfhp = NULL;
+	}
 
 	/*
 	 * If we joined or created the region, detach from it.  If we created
@@ -528,7 +531,7 @@ retry:	/* Close any open file handle. */
 			__db_err(dbenv, "unable to join the environment");
 			ret = EAGAIN;
 		} else {
-			__os_sleep(dbenv, retry_cnt * 3, 0);
+			(void)__os_sleep(dbenv, retry_cnt * 3, 0);
 			goto loop;
 		}
 	}
@@ -562,7 +565,7 @@ __db_e_detach(dbenv, destroy)
 	if (renv->refcnt == 0) {
 		__db_err(dbenv,
 		    "region %lu (environment): reference count went negative",
-		    infop->rp->id);
+		    (u_long)infop->rp->id);
 	} else
 		--renv->refcnt;
 
@@ -570,8 +573,10 @@ __db_e_detach(dbenv, destroy)
 	MUTEX_UNLOCK(dbenv, &renv->mutex);
 
 	/* Close the locking file handle. */
-	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
+	if (dbenv->lockfhp != NULL) {
 		(void)__os_closehandle(dbenv, dbenv->lockfhp);
+		dbenv->lockfhp = NULL;
+	}
 
 	/* Reset the addr value that we "corrected" above. */
 	infop->addr = infop->primary;
@@ -585,7 +590,7 @@ __db_e_detach(dbenv, destroy)
 	 * Do these now before we free the memory in __os_r_detach.
 	 */
 	if (destroy) {
-		__rep_region_destroy(dbenv);
+		(void)__rep_region_destroy(dbenv);
 		__db_mutex_destroy(&renv->mutex);
 		__db_mutex_destroy(&infop->rp->mutex);
 	}
@@ -705,31 +710,22 @@ __db_e_remove(dbenv, flags)
 		 * callers be prepared to create the region in order to join it.
 		 */
 		memset(&reginfo, 0, sizeof(reginfo));
-restart:	for (rp = SH_LIST_FIRST(&renv->regionq, __db_region);
+		for (rp = SH_LIST_FIRST(&renv->regionq, __db_region);
 		    rp != NULL; rp = SH_LIST_NEXT(rp, q, __db_region)) {
 			if (rp->type == REGION_TYPE_ENV)
 				continue;
 
+			/*
+			 * If we get here and can't attach and/or detach to the
+			 * region, it's a mess.  Ignore errors, there's nothing
+			 * we can do about them.
+			 */
 			reginfo.id = rp->id;
 			reginfo.flags = REGION_CREATE_OK;
-			if ((ret = __db_r_attach(dbenv, &reginfo, 0)) != 0) {
-				__db_err(dbenv,
-				    "region %s attach: %s", db_strerror(ret));
-				continue;
+			if (__db_r_attach(dbenv, &reginfo, 0) == 0) {
+				R_UNLOCK(dbenv, &reginfo);
+				(void)__db_r_detach(dbenv, &reginfo, 1);
 			}
-			R_UNLOCK(dbenv, &reginfo);
-			if ((ret = __db_r_detach(dbenv, &reginfo, 1)) != 0) {
-				__db_err(dbenv,
-				    "region detach: %s", db_strerror(ret));
-				continue;
-			}
-			/*
-			 * If we have an error, we continue so we eventually
-			 * reach the end of the list.  If we succeed, restart
-			 * the list because it was relinked when we destroyed
-			 * the entry.
-			 */
-			goto restart;
 		}
 
 		/* Destroy the environment's region. */
@@ -761,13 +757,6 @@ static int
 __db_e_remfile(dbenv)
 	DB_ENV *dbenv;
 {
-	static char *old_region_names[] = {
-		"__db_lock.share",
-		"__db_log.share",
-		"__db_mpool.share",
-		"__db_txn.share",
-		NULL
-	};
 	int cnt, fcnt, lastrm, ret;
 	u_int8_t saved_byte;
 	const char *dir;
@@ -803,26 +792,41 @@ __db_e_remfile(dbenv)
 		return (ret);
 
 	/*
-	 * Search for valid region names, and remove them.  We remove the
-	 * environment region last, because it's the key to this whole mess.
+	 * Remove files from the region directory.
 	 */
 	for (lastrm = -1, cnt = fcnt; --cnt >= 0;) {
-		if (strlen(names[cnt]) != DB_REGION_NAME_LENGTH ||
-		    memcmp(names[cnt], DB_REGION_FMT, DB_REGION_NAME_NUM) != 0)
+		/* Skip anything outside our name space. */
+		if (strncmp(names[cnt],
+		    DB_REGION_PREFIX, sizeof(DB_REGION_PREFIX) - 1))
 			continue;
+
+		/* Skip queue extent files. */
+		if (strncmp(names[cnt], "__dbq.", 6) == 0)
+			continue;
+
+		/*
+		 * Remove the primary environment region last, because it's
+		 * the key to this whole mess.
+		 */
 		if (strcmp(names[cnt], DB_REGION_ENV) == 0) {
 			lastrm = cnt;
 			continue;
 		}
-		for (p = names[cnt] + DB_REGION_NAME_NUM;
-		    *p != '\0' && isdigit((int)*p); ++p)
-			;
-		if (*p != '\0')
-			continue;
 
+		/* Remove the file. */
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, names[cnt], 0, NULL, &path) == 0) {
-			if (F_ISSET(dbenv, DB_ENV_OVERWRITE))
+			/*
+			 * Overwrite region files.  Temporary files would have
+			 * been maintained in encrypted format, so there's no
+			 * reason to overwrite them.  This is not an exact
+			 * check on the file being a region file, but it's
+			 * not likely to be wrong, and the worst thing that can
+			 * happen is we overwrite a file that didn't need to be
+			 * overwritten.
+			 */
+			if (F_ISSET(dbenv, DB_ENV_OVERWRITE) &&
+			    strlen(names[cnt]) == DB_REGION_NAME_LENGTH)
 				(void)__db_overwrite(dbenv, path);
 			(void)__os_unlink(dbenv, path);
 			__os_free(dbenv, path);
@@ -838,18 +842,6 @@ __db_e_remfile(dbenv)
 			__os_free(dbenv, path);
 		}
 	__os_dirfree(dbenv, names, fcnt);
-
-	/*
-	 * !!!
-	 * Backward compatibility -- remove region files from releases
-	 * before 2.8.XX.
-	 */
-	for (names = (char **)old_region_names; *names != NULL; ++names)
-		if (__db_appname(dbenv,
-		    DB_APP_NONE, *names, 0, NULL, &path) == 0) {
-			(void)__os_unlink(dbenv, path);
-			__os_free(dbenv, path);
-		}
 
 	return (0);
 }
@@ -972,11 +964,8 @@ __db_r_attach(dbenv, infop, size)
 	 *
 	 * If we created the region, initialize it for allocation.
 	 */
-	if (F_ISSET(infop, REGION_CREATE)) {
-		((REGION *)(infop->addr))->magic = DB_REGION_MAGIC;
-
+	if (F_ISSET(infop, REGION_CREATE))
 		(void)__db_shalloc_init(infop->addr, rp->size);
-	}
 
 	/*
 	 * If the underlying REGION isn't the environment, acquire a lock
@@ -998,7 +987,7 @@ err:	if (infop->addr != NULL)
 
 	/* Discard the REGION structure if we created it. */
 	if (F_ISSET(infop, REGION_CREATE)) {
-		(void)__db_des_destroy(dbenv, rp);
+		(void)__db_des_destroy(dbenv, rp, 1);
 		F_CLR(infop, REGION_CREATE);
 	}
 
@@ -1048,9 +1037,15 @@ __db_r_detach(dbenv, infop, destroy)
 	/* Release the REGION lock. */
 	MUTEX_UNLOCK(dbenv, &rp->mutex);
 
-	/* If we destroyed the region, discard the REGION structure. */
+	/*
+	 * If we destroyed the region, discard the REGION structure.  The only
+	 * time this routine is called with the destroy flag set is when the
+	 * environment is being removed, and it's likely that the only reason
+	 * the environment is being removed is because we crashed.  Don't do
+	 * any unnecessary shared memory manipulation.
+	 */
 	if (destroy &&
-	    ((t_ret = __db_des_destroy(dbenv, rp)) != 0) && ret == 0)
+	    ((t_ret = __db_des_destroy(dbenv, rp, 0)) != 0) && ret == 0)
 		ret = t_ret;
 
 	/* Release the environment lock. */
@@ -1163,9 +1158,10 @@ __db_des_get(dbenv, env_infop, infop, rpp)
  *	Destroy a reference to a REGION.
  */
 static int
-__db_des_destroy(dbenv, rp)
+__db_des_destroy(dbenv, rp, shmem_safe)
 	DB_ENV *dbenv;
 	REGION *rp;
+	int shmem_safe;
 {
 	REGINFO *infop;
 
@@ -1175,9 +1171,22 @@ __db_des_destroy(dbenv, rp)
 	 */
 	infop = dbenv->reginfo;
 
-	SH_LIST_REMOVE(rp, q, __db_region);
+	/*
+	 * If we're calling during recovery, it may not be safe to access the
+	 * shared memory, as the shared memory may have been corrupted during
+	 * the crash.  If the shared memory is safe, remove the REGION entry
+	 * from its linked list, destroy the mutex, and free the allocated
+	 * memory.  On systems that require system mutex support, we don't
+	 * have a choice -- safe or not, we have to destroy the mutex or we'll
+	 * leak memory.
+	 */
+	if (shmem_safe)
+		SH_LIST_REMOVE(rp, q, __db_region);
+
 	__db_mutex_destroy(&rp->mutex);
-	__db_shalloc_free(infop->addr, rp);
+
+	if (shmem_safe)
+		__db_shalloc_free(infop->addr, rp);
 
 	return (0);
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2002
+# Copyright (c) 1999-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test065.tcl,v 11.16 2002/08/22 18:18:50 sandstro Exp $
+# $Id: test065.tcl,v 11.19 2003/09/04 23:41:17 bostic Exp $
 #
 # TEST	test065
 # TEST	Test of DB->stat(DB_FASTSTAT)
@@ -15,7 +15,7 @@ proc test065 { method args } {
 	set nentries 10000
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
-	set tnum 65
+	set tnum "065"
 
 	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
@@ -23,17 +23,17 @@ proc test065 { method args } {
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
-		set testfile $testdir/test0$tnum.db
+		set testfile $testdir/test$tnum.db
 		set env NULL
 	} else {
-		set testfile test0$tnum.db
+		set testfile test$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
 			append args " -auto_commit "
 			#
-			# If we are using txns and running with the 
+			# If we are using txns and running with the
 			# default, set the default down a bit.
 			#
 			if { $nentries == 10000 } {
@@ -44,9 +44,9 @@ proc test065 { method args } {
 	}
 	cleanup $testdir $env
 
-	puts "Test0$tnum: $method ($args) DB->stat(DB_FAST_STAT) test."
+	puts "Test$tnum: $method ($args) DB->stat(DB_FAST_STAT) test."
 
-	puts "\tTest0$tnum.a: Create database and check it while empty."
+	puts "\tTest$tnum.a: Create database and check it while empty."
 
 	set db [eval {berkdb_open_noerr -create -mode 0644} \
 	    $omethod $args $testfile]
@@ -61,7 +61,7 @@ proc test065 { method args } {
 		error_check_good recordcount_ok [is_substr $res \
 		    "{{Number of keys} 0}"] 1
 	} else {
-		puts "\tTest0$tnum: Test complete for method $method."
+		puts "\tTest$tnum: Test complete for method $method."
 		return
 	}
 
@@ -70,7 +70,7 @@ proc test065 { method args } {
 	# catch EINVALs, and no longer care about __db_errs.
 	set db [eval {berkdb_open -create -mode 0644} $omethod $args $testfile]
 
-	puts "\tTest0$tnum.b: put $nentries keys."
+	puts "\tTest$tnum.b: put $nentries keys."
 
 	if { [is_record_based $method] } {
 		set gflags " -recno "
@@ -100,7 +100,7 @@ proc test065 { method args } {
 	error_check_good recordcount_after_puts \
 	    [is_substr $ret "{{Number of keys} $nentries}"] 1
 
-	puts "\tTest0$tnum.c: delete 90% of keys."
+	puts "\tTest$tnum.c: delete 90% of keys."
 	set end [expr {$nentries / 10 * 9}]
 	for { set ndx 1 } { $ndx <= $end } { incr ndx } {
 		if { $txnenv == 1 } {
@@ -134,7 +134,7 @@ proc test065 { method args } {
 		    [is_substr $ret "{{Number of keys} $nentries}"] 1
 	}
 
-	puts "\tTest0$tnum.d: put new keys at the beginning."
+	puts "\tTest$tnum.d: put new keys at the beginning."
 	set end [expr {$nentries / 10 * 8}]
 	for { set ndx 1 } { $ndx <= $end } {incr ndx } {
 		if { $txnenv == 1 } {
@@ -151,7 +151,7 @@ proc test065 { method args } {
 
 	set ret [$db stat -faststat]
 	if { [is_rrecno $method] == 1 } {
-		# With renumbering we're back up to 80% of $nentries 
+		# With renumbering we're back up to 80% of $nentries
 		error_check_good recordcount_after_dels [is_substr $ret \
 		    "{{Number of keys} [expr {$nentries / 10 * 8}]}"] 1
 	} elseif { [is_rbtree $method] == 1 } {
@@ -164,7 +164,7 @@ proc test065 { method args } {
 		    "{{Number of keys} $nentries}"] 1
 	}
 
-	puts "\tTest0$tnum.e: put new keys at the end."
+	puts "\tTest$tnum.e: put new keys at the end."
 	set start [expr {1 + $nentries / 10 * 9}]
 	set end [expr {($nentries / 10 * 9) + ($nentries / 10 * 8)}]
 	for { set ndx $start } { $ndx <= $end } { incr ndx } {
@@ -189,7 +189,7 @@ proc test065 { method args } {
 		    "{{Number of keys} [expr {$start - 1 + $nentries / 10 * 8}]}"] 1
 	} else {
 		# In an rbtree, 1000 of those keys were overwrites, so there
-		# are (.7 x nentries) new keys and (.9 x nentries) old keys 
+		# are (.7 x nentries) new keys and (.9 x nentries) old keys
 		# for a total of (1.6 x nentries).
 		error_check_good recordcount_after_puts2 [is_substr $ret \
 		    "{{Number of keys} [expr {$start -1 + $nentries / 10 * 7}]}"] 1

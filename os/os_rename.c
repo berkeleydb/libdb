@@ -1,21 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rename.c,v 11.12 2002/07/12 18:56:52 bostic Exp $";
+static const char revid[] = "$Id: os_rename.c,v 11.15 2003/05/05 19:55:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -34,12 +33,15 @@ __os_rename(dbenv, old, new, flags)
 	const char *old, *new;
 	u_int32_t flags;
 {
-	int ret;
+	int ret, retries;
 
+	retries = 0;
 	do {
 		ret = DB_GLOBAL(j_rename) != NULL ?
 		    DB_GLOBAL(j_rename)(old, new) : rename(old, new);
-	} while (ret != 0 && (ret = __os_get_errno()) == EINTR);
+	} while (ret != 0 &&
+	    ((ret = __os_get_errno()) == EINTR || ret == EBUSY) &&
+	    ++retries < DB_RETRY);
 
 	if (ret != 0 && flags == 0)
 		__db_err(dbenv, "rename %s %s: %s", old, new, strerror(ret));

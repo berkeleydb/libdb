@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2002
+ * Copyright (c) 2000-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: gen_client_ret.c,v 1.57 2002/08/06 06:18:37 bostic Exp $";
+static const char revid[] = "$Id: gen_client_ret.c,v 1.59 2003/06/14 17:56:02 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -27,28 +27,6 @@ static const char revid[] = "$Id: gen_client_ret.c,v 1.57 2002/08/06 06:18:37 bo
 
 #include "dbinc_auto/db_server.h"
 #include "dbinc_auto/rpc_client_ext.h"
-
-/*
- * PUBLIC: int __dbcl_env_close_ret
- * PUBLIC:     __P((DB_ENV *, u_int32_t, __env_close_reply *));
- */
-int
-__dbcl_env_close_ret(dbenv, flags, replyp)
-	DB_ENV *dbenv;
-	u_int32_t flags;
-	__env_close_reply *replyp;
-{
-	int ret;
-
-	COMPQUIET(flags, 0);
-
-	ret = __dbcl_refresh(dbenv);
-	__os_free(NULL, dbenv);
-	if (replyp->status == 0 && ret != 0)
-		return (ret);
-	else
-		return (replyp->status);
-}
 
 /*
  * PUBLIC: int __dbcl_env_create_ret

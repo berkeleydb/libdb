@@ -1,21 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2002
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_pthread.c,v 11.53 2002/08/13 19:56:47 sue Exp $";
+static const char revid[] = "$Id: mut_pthread.c,v 11.57 2003/05/05 19:55:03 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -73,7 +72,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	ret = 0;
 
 	/*
-	 * The only setting/checking of the MUTEX_MPOOL flags is in the mutex
+	 * The only setting/checking of the MUTEX_MPOOL flag is in the mutex
 	 * mutex allocation code (__db_mutex_alloc/free).  Preserve only that
 	 * flag.  This is safe because even if this flag was never explicitly
 	 * set, but happened to be set in memory, it will never be checked or
@@ -184,7 +183,6 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	}}
 #endif
 
-	mutexp->spins = __os_spin(dbenv);
 #ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 	mutexp->reg_off = INVALID_ROFF;
 #endif
@@ -215,7 +213,7 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 		return (0);
 
 	/* Attempt to acquire the resource for N spins. */
-	for (nspins = mutexp->spins; nspins > 0; --nspins)
+	for (nspins = dbenv->tas_spins; nspins > 0; --nspins)
 		if (pthread_mutex_trylock(&mutexp->mutex) == 0)
 			break;
 
@@ -271,11 +269,11 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 		if (ret != 0)
 			goto err;
 	} else {
-		if (nspins == mutexp->spins)
+		if (nspins == dbenv->tas_spins)
 			++mutexp->mutex_set_nowait;
 		else if (nspins > 0) {
 			++mutexp->mutex_set_spin;
-			mutexp->mutex_set_spins += mutexp->spins - nspins;
+			mutexp->mutex_set_spins += dbenv->tas_spins - nspins;
 		} else
 			++mutexp->mutex_set_wait;
 #ifdef DIAGNOSTIC

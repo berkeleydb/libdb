@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_spin.c,v 11.13 2002/08/07 02:02:07 bostic Exp $";
+static const char revid[] = "$Id: os_spin.c,v 11.17 2003/11/07 16:30:57 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,11 +58,11 @@ __os_sysconf()
 
 /*
  * __os_spin --
- *	Return the number of default spins before blocking.
+ *	Set the number of default spins before blocking.
  *
- * PUBLIC: int __os_spin __P((DB_ENV *));
+ * PUBLIC: void __os_spin __P((DB_ENV *));
  */
-int
+void
 __os_spin(dbenv)
 	DB_ENV *dbenv;
 {
@@ -70,13 +70,12 @@ __os_spin(dbenv)
 	 * If the application specified a value or we've already figured it
 	 * out, return it.
 	 *
-	 * XXX
-	 * We don't want to repeatedly call the underlying function because
-	 * it can be expensive (e.g., requiring multiple filesystem accesses
-	 * under Debian Linux).
+	 * Don't repeatedly call the underlying function because it can be
+	 * expensive (for example, taking multiple filesystem accesses under
+	 * Debian Linux).
 	 */
 	if (dbenv->tas_spins != 0)
-		return (dbenv->tas_spins);
+		return;
 
 	dbenv->tas_spins = 1;
 #if defined(HAVE_PSTAT_GETDYNAMIC)
@@ -92,8 +91,6 @@ __os_spin(dbenv)
 	 */
 	if (dbenv->tas_spins != 1)
 		dbenv->tas_spins *= 50;
-
-	return (dbenv->tas_spins);
 }
 
 /*
@@ -109,5 +106,8 @@ __os_yield(dbenv, usecs)
 {
 	if (DB_GLOBAL(j_yield) != NULL && DB_GLOBAL(j_yield)() == 0)
 		return;
+#ifdef HAVE_VXWORKS
+	taskDelay(1);
+#endif
 	(void)__os_sleep(dbenv, 0, usecs);
 }

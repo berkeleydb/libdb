@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_internal.c,v 11.54 2002/08/15 02:47:46 bostic Exp $";
+static const char revid[] = "$Id: tcl_internal.c,v 11.59 2003/08/14 17:55:29 mjc Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -184,7 +184,7 @@ _DeleteInfo(p)
 	LIST_REMOVE(p, entries);
 	if (p->i_lockobj.data != NULL)
 		__os_free(NULL, p->i_lockobj.data);
-	if (p->i_err != NULL) {
+	if (p->i_err != NULL && p->i_err != stderr) {
 		fclose(p->i_err);
 		p->i_err = NULL;
 	}
@@ -270,7 +270,7 @@ _SetListRecnoElem(interp, list, elem1, elem2, e2size)
 	int myobjc;
 
 	myobjc = 2;
-	myobjv[0] = Tcl_NewLongObj((long)elem1);
+	myobjv[0] = Tcl_NewWideIntObj((Tcl_WideInt)elem1);
 	myobjv[1] = Tcl_NewByteArrayObj(elem2, e2size);
 	thislist = Tcl_NewListObj(myobjc, myobjv);
 	if (thislist == NULL)
@@ -306,13 +306,15 @@ _Set3DBTList(interp, list, elem1, is1recno, elem2, is2recno, elem3)
 	Tcl_Obj *myobjv[3], *thislist;
 
 	if (is1recno)
-		myobjv[0] = Tcl_NewLongObj((long)*(db_recno_t *)elem1->data);
+		myobjv[0] = Tcl_NewWideIntObj(
+		    (Tcl_WideInt)*(db_recno_t *)elem1->data);
 	else
 		myobjv[0] =
 		    Tcl_NewByteArrayObj((u_char *)elem1->data, elem1->size);
 
 	if (is2recno)
-		myobjv[1] = Tcl_NewLongObj((long)*(db_recno_t *)elem2->data);
+		myobjv[1] = Tcl_NewWideIntObj(
+		    (Tcl_WideInt)*(db_recno_t *)elem2->data);
 	else
 		myobjv[1] =
 		    Tcl_NewByteArrayObj((u_char *)elem2->data, elem2->size);
@@ -330,14 +332,15 @@ _Set3DBTList(interp, list, elem1, is1recno, elem2, is2recno, elem3)
  * _SetMultiList -- build a list for return from multiple get.
  *
  * PUBLIC: int _SetMultiList __P((Tcl_Interp *,
- * PUBLIC:	    Tcl_Obj *, DBT *, DBT*, int, int));
+ * PUBLIC:	    Tcl_Obj *, DBT *, DBT*, DBTYPE, u_int32_t));
  */
 int
 _SetMultiList(interp, list, key, data, type, flag)
 	Tcl_Interp *interp;
 	Tcl_Obj *list;
 	DBT *key, *data;
-	int type, flag;
+	DBTYPE type;
+	u_int32_t flag;
 {
 	db_recno_t recno;
 	u_int32_t dlen, klen;
@@ -374,6 +377,9 @@ _SetMultiList(interp, list, key, data, type, flag)
 			result =
 			    _SetListRecnoElem(interp, list, recno, dp, dlen);
 			recno++;
+			/* Wrap around and skip zero. */
+			if (recno == 0)
+				recno++;
 		} else
 			result = _SetListElem(interp, list, kp, klen, dp, dlen);
 	} while (result == TCL_OK);

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_stat.c,v 11.20 2002/07/12 18:56:53 bostic Exp $";
+static const char revid[] = "$Id: os_stat.c,v 11.24 2003/02/16 15:54:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,12 +31,13 @@ __os_exists(path, isdirp)
 	const char *path;
 	int *isdirp;
 {
-	int ret;
+	int ret, retries;
 	struct stat sb;
 
 	if (DB_GLOBAL(j_exists) != NULL)
 		return (DB_GLOBAL(j_exists)(path, isdirp));
 
+	retries = 0;
 	do {
 		ret =
 #ifdef HAVE_VXWORKS
@@ -46,7 +47,8 @@ __os_exists(path, isdirp)
 #endif
 		if (ret != 0)
 			ret = __os_get_errno();
-	} while (ret == EINTR);
+		} while ((ret == EINTR || ret == EBUSY) &&
+		    ++retries < DB_RETRY);
 
 	if (ret != 0)
 		return (ret);
@@ -80,16 +82,21 @@ __os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
 	DB_FH *fhp;
 	u_int32_t *mbytesp, *bytesp, *iosizep;
 {
-	int ret;
+	int ret, retries;
 	struct stat sb;
 
 	if (DB_GLOBAL(j_ioinfo) != NULL)
 		return (DB_GLOBAL(j_ioinfo)(path,
 		    fhp->fd, mbytesp, bytesp, iosizep));
 
+	/* Check for illegal usage. */
+	DB_ASSERT(F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+
+	retries = 0;
 retry:
 	if (fstat(fhp->fd, &sb) == -1) {
-		if ((ret = __os_get_errno()) == EINTR)
+		if (((ret = __os_get_errno()) == EINTR || ret == EBUSY) &&
+		    ++retries < DB_RETRY)
 			goto retry;
 		__db_err(dbenv, "fstat: %s", strerror(ret));
 		return (ret);

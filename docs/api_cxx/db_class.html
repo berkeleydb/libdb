@@ -1,21 +1,22 @@
-<!--$Id: db_class.so,v 10.36 2002/08/29 03:24:30 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: db_class.so,v 10.47 2003/11/08 19:17:16 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Db</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>Db</h1>
+<h3>Db</h3>
 </td>
 <td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -34,33 +35,52 @@ public:
 	...
 };
 </pre></h3>
-<h1>Description</h1>
+<hr size=1 noshade>
+<h3>Description: Db</h3>
 <p>The Db handle is the handle for a Berkeley DB database, which may or
-may not be part of a database environment.  Db handles are
-free-threaded if the <a href="../api_cxx/env_open.html#DB_THREAD">DB_THREAD</a> flag is specified to the
-<a href="../api_cxx/db_open.html">Db::open</a> method when the database is opened or if the database
-environment in which the database is opened is free-threaded.  The
-handle should not be closed while any other handle that refers to the
-database is in use; for example, database handles must not be closed
+may not be part of a database environment.</p>
+<p>Db handles are free-threaded if the <a href="../api_cxx/env_open.html#DB_THREAD">DB_THREAD</a> flag is
+specified to the <a href="../api_cxx/db_open.html">Db::open</a> method when the database is opened or if the
+database environment in which the database is opened is free-threaded.
+The handle should not be closed while any other handle that refers to
+the database is in use; for example, database handles must not be closed
 while cursor handles into the database remain open, or transactions that
 include operations on the database have not yet been committed or
 aborted.  Once the <a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a>, or
 <a href="../api_cxx/db_rename.html">Db::rename</a> methods are called, the handle may not be accessed again,
-regardless of the method's return.
+regardless of the method's return.</p>
 <p>The constructor creates a Db object that is the handle for a
 Berkeley DB database.  The constructor allocates memory internally; calling
 the <a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a> or <a href="../api_cxx/db_rename.html">Db::rename</a> methods will
-free that memory.
-<p>If no <b>dbenv</b> value is specified, the database is standalone; that
+free that memory.</p>
+<p>Each Db object has an associated DB struct, which is
+used by the underlying implementation of Berkeley DB and its C-language API.
+The Db::get_DB method returns a pointer to this struct.  Given a const
+Db object, Db::get_const_DB returns a const pointer to the
+same struct.</p>
+<p>Given a DB struct, the Db::get_Db method returns the
+corresponding Db object, if there is one.  If the DB
+object was not associated with a Db (that is, it was not
+returned from a call to Db::get_DB), then the result of Db::get_Db is
+undefined.  Given a const DB struct, Db::get_const_Db returns
+the associated const Db object, if there is one.</p>
+<p>These methods may be useful for Berkeley DB applications including  both C
+and C++ language software.  It should not be necessary to use these
+calls in a purely C++ application.</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>dbenv</b><dd>
+If no <b>dbenv</b> value is specified, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
 <p>If a <b>dbenv</b> value is specified, the database is created within
 the specified Berkeley DB environment. The database access methods
 automatically make calls to the other subsystems in Berkeley DB based on the
 enclosing environment. For example, if the environment has been
 configured to use locking, the access methods will automatically acquire
-the correct locks when reading and writing pages of the database.
-<p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or
-more of the following values:
+the correct locks when reading and writing pages of the database.</p>
+<p><dt><b>flags</b><dd>
+The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
 <p><dl compact>
 <p><dt><a name="DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a><dd>The Berkeley DB C++ API supports two different error behaviors.  By default,
 whenever an error occurs, an exception is thrown that encapsulates the
@@ -70,7 +90,7 @@ transaction.  However, if DB_CXX_NO_EXCEPTIONS is specified,
 exceptions are not thrown; instead, each individual function returns an
 error code.
 <p>If <b>dbenv</b> is not null, this flag is ignored, and the error behavior
-of the specified environment is used instead.
+of the specified environment is used instead.</p>
 <p><dt><a name="DB_XA_CREATE">DB_XA_CREATE</a><dd>Instead of creating a standalone database, create a database intended to
 be accessed via applications running under a X/Open conformant Transaction
 Manager.  The database will be opened in the environment specified by the
@@ -78,28 +98,16 @@ OPENINFO parameter of the GROUPS section of the ubbconfig file.  See the
 <a href="../ref/xa/intro.html">XA Resource Manager</a> chapter in the
 Reference Guide for more information.
 </dl>
-<p>Each Db object has an associated DB struct, which is
-used by the underlying implementation of Berkeley DB and its C-language API.
-The Db::get_DB method returns a pointer to this struct.  Given a const
-Db object, Db::get_const_DB returns a const pointer to the
-same struct.
-<p>Given a DB struct, the Db::get_Db method returns the
-corresponding Db object, if there is one.  If the DB
-object was not associated with a Db (that is, it was not
-returned from a call to Db::get_DB), then the result of Db::get_Db is
-undefined.  Given a const DB struct, Db::get_const_Db returns
-the associated const Db object, if there is one.
-<p>These methods may be useful for Berkeley DB applications including  both C
-and C++ language software.  It should not be necessary to use these
-calls in a purely C++ application.
-<h1>Class</h1>
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 Db
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

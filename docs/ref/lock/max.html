@@ -1,23 +1,23 @@
-<!--$Id: max.so,v 10.4 2001/05/22 19:39:31 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: max.so,v 10.7 2003/10/30 19:38:48 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Configuring locking: sizing the system</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
-<td align=right><a href="../../ref/lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Configuring locking: sizing the system</h1>
-<p>The lock system is sized using the following three functions:
-<p><blockquote><pre><a href="../../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>
+<h3 align=center>Configuring locking: sizing the system</h3>
+<p>The lock system is sized using the following three methods:</p>
+<blockquote><pre><a href="../../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>
 <a href="../../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>
 <a href="../../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a></pre></blockquote>
 <p>The <a href="../../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>, <a href="../../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
@@ -34,15 +34,15 @@ application will fail.  If the values are too large, the locking
 subsystem will consume more resources than is necessary.  It is better
 to err in the direction of allocating too many locks, lockers, and
 objects because increasing the number of locks does not require large
-amounts of additional resources.
+amounts of additional resources.</p>
 <p>The recommended algorithm for selecting the maximum number of locks,
 lockers, and lock objects is to run the application under stressful
 conditions and then review the lock system's statistics to determine
 the maximum number of locks, lockers, and lock objects that were used.
 Then, double these values for safety.  However, in some large
 applications, finer granularity of control is necessary in order to
-minimize the size of the Lock subsystem.
-<p>The maximum number of lockers can be estimated as follows:
+minimize the size of the Lock subsystem.</p>
+<p>The maximum number of lockers can be estimated as follows:</p>
 <p><ul type=disc>
 <li>If the database environment is configured to use transactions, the
 maximum number of lockers needed is the number of simultaneously active
@@ -51,9 +51,10 @@ until its parent commits or aborts, not until it commits or aborts).
 <li>If the database environment is not configured to use transactions, the
 maximum number of lockers needed is the number of simultaneous
 non-cursor operations plus an additional locker for every simultaneously
-open cursor.
+open cursor or database handle.
 </ul>
-<p>The maximum number of lock objects needed can be estimated as follows:
+<p>The maximum number of lock objects needed for a single database
+operation can be estimated as follows:</p>
 <p><ul type=disc>
 <li>For Btree and Recno access methods, you will need one lock object per
 level of the database tree, at a minimum.  (Unless keys are quite large
@@ -73,16 +74,22 @@ operation will ever use more than three lock objects at any time.
 <li>For the Hash access method, you only need a single lock object.
 </ul>
 <p>For all access methods, you should then add an additional lock object
-per database for the database's metadata page.
+per database for the database's metadata page.</p>
+<p>Note that transactions accumulate locks over the transaction lifetime,
+and the lock objects required by a single transaction is the total lock
+objects required by all of the database operations in the transaction.
+However, a database page (or record, in the case of the Queue access
+method), that is accessed multiple times within a transaction only
+requires a single lock object for the entire transaction.</p>
 <p>The maximum number of locks required by an application cannot be easily
 estimated.  It is possible to calculate a maximum number of locks by
 multiplying the maximum number of lockers, times the maximum number of
 lock objects, times two (two for the two possible lock modes for each
 object, read and write).  However, this is a pessimal value, and real
 applications are unlikely to actually need that many locks.  Reviewing
-the Lock subsystem statistics is the best way to determine this value.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
+the Lock subsystem statistics is the best way to determine this value.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,26 +1,25 @@
-<!--$Id: curput.so,v 10.17 2002/09/05 16:03:53 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: curput.so,v 10.18 2003/10/18 19:15:52 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Storing records with a cursor</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td align=right><a href="../../ref/am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Storing records with a cursor</h1>
-<p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> method is the standard interface for storing records into
-the database with a cursor.  In general, <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> takes a key and
-inserts the associated data into the database, at a location controlled
-by a specified flag.
-<p>There are several flags that you can set to customize storage:
+<h3 align=center>Storing records with a cursor</h3>
+<p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> method stores records into the database using a cursor.  In
+general, <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> takes a key and inserts the associated data
+into the database, at a location controlled by a specified flag.</p>
+<p>There are several flags that you can set to customize storage:</p>
 <p><dl compact>
 <p><dt><a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a><dd>Create a new record, immediately after the record to which the cursor
 refers.
@@ -33,10 +32,10 @@ supplied key.
 key.
 </dl>
 <p>In all cases, the cursor is repositioned by a <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> operation
-to point to the newly inserted key/data pair in the database.
+to point to the newly inserted key/data pair in the database.</p>
 <p>The following is a code example showing a cursor storing two data items
-in a database that supports duplicate data items:
-<p><blockquote><pre>int
+in a database that supports duplicate data items:</p>
+<blockquote><pre>int
 store(dbp)
 	DB *dbp;
 {
@@ -84,8 +83,8 @@ err:	if ((ret = dbcp-&gt;c_close(dbcp)) != 0)
 <p>
 	return (0);
 }</pre></blockquote>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

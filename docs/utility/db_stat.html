@@ -1,30 +1,28 @@
 <!--$Id: db_stat.so,v 10.40 2002/08/24 18:24:53 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_stat</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>db_stat</h1>
+<h3>db_stat</h3>
 </td>
-<td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
 <h3><pre>db_stat <b>-d</b> <b>file</b> [<b>-fN</b>] [<b>-h home</b>] [<b>-P password</b>] [<b>-s database</b>]
 db_stat [<b>-celmNrtVZ</b>] [<b>-C Aclmop</b>] [<b>-h home</b>] [<b>-M Ahm</b>] [<b>-P password</b>]</pre></h3>
-<h1>Description</h1>
+<h3>Description</h3>
 <a name="3"><!--meow--></a>
-<p>The db_stat utility displays statistics for Berkeley DB environments.
-<p>The options are as follows:
+<p>The db_stat utility displays statistics for Berkeley DB environments.</p>
+<p>The options are as follows:</p>
 <p><dl compact>
 <p><dt><b>-C</b><dd>Display internal information about the lock region.  (The output from this
 option is often both voluminous and meaningless, and is intended only for
@@ -42,7 +40,7 @@ debugging.)
 <a href="../api_c/db_stat.html">DB-&gt;stat</a>.
 <p>If the database contains multiple databases and the <b>-s</b> flag is
 not specified, the statistics are for the internal database that describes
-the other databases the file contains, and not for the file as a whole.
+the other databases the file contains, and not for the file as a whole.</p>
 <p><dt><b>-e</b><dd>Display current environment statistics.
 <p><dt><b>-f</b><dd>Display only those database statistics that can be
 acquired without traversing the database.
@@ -81,7 +79,7 @@ options.
 combination of gigabytes (GB), megabytes (MB), kilobytes (KB), and bytes
 (B).  Otherwise, values smaller than 10 million are displayed without
 any special notation, and values larger than 10 million are displayed
-as a number followed by "M".
+as a number followed by "M".</p>
 <p>The db_stat utility may be used with a Berkeley DB environment (as described for the
 <b>-h</b> option, the environment variable <b>DB_HOME</b>, or
 because the utility was run in a directory containing a Berkeley DB
@@ -89,15 +87,15 @@ environment).  In order to avoid environment corruption when using a
 Berkeley DB environment, db_stat should always be given the chance to
 detach from the environment and exit gracefully.  To cause db_stat
 to release all environment resources and exit cleanly, send it an
-interrupt signal (SIGINT).
-<p>The db_stat utility exits 0 on success, and &gt;0 if an error occurs.
-<h1>Environment Variables</h1>
+interrupt signal (SIGINT).</p>
+<p>The db_stat utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<h3>Environment Variables</h3>
 <p><dl compact>
 <p><dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
 </tt>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

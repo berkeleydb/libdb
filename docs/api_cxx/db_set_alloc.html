@@ -1,22 +1,23 @@
 <!--$Id: db_set_alloc.so,v 10.3 2002/08/18 21:15:51 bostic Exp $-->
-<!--$Id: env_set_alloc.so,v 1.13 2002/08/24 18:22:35 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_alloc.so,v 1.21 2003/11/08 19:17:28 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Db::set_alloc</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>Db::set_alloc</h1>
+<h3>Db::set_alloc</h3>
 </td>
 <td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -34,9 +35,10 @@ Db::set_alloc(db_malloc_fcn_type app_malloc,
     db_realloc_fcn_type app_realloc,
     db_free_fcn_type app_free);
 </pre></h3>
-<h1>Description</h1>
+<hr size=1 noshade>
+<h3>Description: Db::set_alloc</h3>
 <p>Set the allocation functions used by the <a href="../api_cxx/env_class.html">DbEnv</a> and <a href="../api_cxx/db_class.html">Db</a>
-methods to allocate or free memory owned by the application.
+methods to allocate or free memory owned by the application.</p>
 <p>There are a number of interfaces in Berkeley DB where memory is allocated by
 the library and then given to the application.  For example, the
 <a href="../api_cxx/dbt_class.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> flag, when specified in the <a href="../api_cxx/dbt_class.html">Dbt</a> object,
@@ -45,49 +47,52 @@ which then becomes the responsibility of the calling application.  (See
 <a href="../api_cxx/dbt_class.html">Dbt</a> for more information.)  Other examples are the Berkeley DB
 interfaces which return statistical information to the application:
 <a href="../api_cxx/db_stat.html">Db::stat</a>, <a href="../api_cxx/lock_stat.html">DbEnv::lock_stat</a>, <a href="../api_cxx/log_archive.html">DbEnv::log_archive</a>,
-<a href="../api_cxx/log_stat.html">DbEnv::log_stat</a>, <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>, and <a href="../api_cxx/txn_stat.html">DbEnv::txn_stat</a>.  There is
-one interface in the Berkeley DB where memory is allocated by the application
-and then given to the library: <a href="../api_cxx/db_associate.html">Db::associate</a>.
+<a href="../api_cxx/log_stat.html">DbEnv::log_stat</a>, <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>, and <a href="../api_cxx/txn_stat.html">DbEnv::txn_stat</a>.  There is one
+method in Berkeley DB where memory is allocated by the application and then
+given to the library: <a href="../api_cxx/db_associate.html">Db::associate</a>.</p>
 <p>On systems in which there may be multiple library versions of the
 standard allocation routines (notably Windows NT), transferring memory
 between the library and the application will fail because the Berkeley DB
 library allocates memory from a different heap than the application uses
 to free it.  To avoid this problem, the <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> and
 Db::set_alloc methods can be used to pass Berkeley DB references to the
-application's allocation routines.
+application's allocation routines.</p>
 <p>It is not an error to specify only one or two of the possible allocation
-function arguments to these interfaces; however, in that case the
+function parameters to these interfaces; however, in that case the
 specified interfaces must be compatible with the standard library
-interfaces, as they will be used together.  The methods specified
-must match the calling conventions of the ANSI C X3.159-1989 (ANSI C) library routines
-of the same name.
+interfaces, as they will be used together.  The functions specified must
+match the calling conventions of the ANSI C X3.159-1989 (ANSI C) library routines of
+the same name.</p>
 <p>Because databases opened within Berkeley DB environments use the allocation
 interfaces specified to the environment, it is an error to attempt to
-set those interfaces in a database created within an environment.
-<p>The Db::set_alloc interface may not be called after the <a href="../api_cxx/db_open.html">Db::open</a>
-interface is called.
-<p>The Db::set_alloc method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, and returns 0 on success.
-<h1>Errors</h1>
-<p>The Db::set_alloc method may fail and throw an exception or return a non-zero error for the following conditions:
+set those interfaces in a database created within an environment.</p>
+<p>The Db::set_alloc method may not be called after the <a href="../api_cxx/db_open.html">Db::open</a> method is called.
+</p>
+<p>The Db::set_alloc method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Errors</h3>
+<p>The Db::set_alloc method
+may fail and throw
+<a href="../api_cxx/except_class.html">DbException</a>,
+encapsulating one of the following non-zero errors, or return one of
+the following non-zero errors:</p>
 <p><dl compact>
-<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>Called in a database environment.
-<p>Called after <a href="../api_cxx/db_open.html">Db::open</a> was called.
+<p><dt>EINVAL<dd>If Called in a database environment.
+<p>Called after <a href="../api_cxx/db_open.html">Db::open</a> was called.</p>; or if an
+invalid flag value or parameter was specified.
 </dl>
-<p>The Db::set_alloc method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Db::set_alloc method may fail and
-either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
-<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_cxx/db_class.html">Db</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

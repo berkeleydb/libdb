@@ -1,20 +1,20 @@
 <!--$Id: read.so,v 1.7 2002/05/17 15:48:42 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Degrees of isolation</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Degrees of isolation</h1>
+<h3 align=center>Degrees of isolation</h3>
 <a name="2"><!--meow--></a>
 <p>Transactions can be isolated from each other to different degrees.
 <i>Repeatable reads</i> provide the most isolation, and mean that,
@@ -22,7 +22,7 @@ for the life of the transaction, every time a thread of control reads
 a data item, it will be unchanged from its previous value (assuming, of
 course, the thread of control does not itself modify the item).  Berkeley DB
 enforces repeatable reads whenever database reads are wrapped in
-transactions.
+transactions.</p>
 <p>Most applications do not need to enclose reads in transactions, and when
 possible, transactionally protected reads should be avoided as they can
 cause performance problems.  For example, a transactionally protected
@@ -36,7 +36,7 @@ closing and reopening a cursor) that fails with a return value of
 <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.  Applications that need repeatable reads are
 ones that require the ability to repeatedly access a data item knowing
 that it will not have changed (for example, an operation modifying a
-data item based on its existing value).
+data item based on its existing value).</p>
 <a name="3"><!--meow--></a>
 <a name="4"><!--meow--></a>
 <p>Berkeley DB optionally supports reading uncommitted data; that is, read
@@ -48,9 +48,9 @@ transaction, opening a cursor, or performing a read operation.  The
 advantage of using <a href="../../api_c/db_open.html#DB_DIRTY_READ">DB_DIRTY_READ</a> is that read operations will
 not block when another transaction holds a write lock on the requested
 data; the disadvantage is that read operations may return data that will
-disappear should the transaction holding the write lock abort.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
+disappear should the transaction holding the write lock abort.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

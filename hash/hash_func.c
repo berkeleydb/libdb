@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_func.c,v 11.12 2002/03/28 19:49:42 bostic Exp $";
+static const char revid[] = "$Id: hash_func.c,v 11.14 2003/01/08 05:03:34 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -51,6 +51,8 @@ static const char revid[] = "$Id: hash_func.c,v 11.12 2002/03/28 19:49:42 bostic
 #endif
 
 #include "db_int.h"
+#include "dbinc/db_page.h"
+#include "dbinc/hash.h"
 
 /*
  * __ham_func2 --

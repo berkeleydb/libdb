@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_lock.c,v 11.47 2002/08/08 15:27:10 bostic Exp $";
+static const char revid[] = "$Id: tcl_lock.c,v 11.53 2003/11/26 23:14:22 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,30 +25,13 @@ static const char revid[] = "$Id: tcl_lock.c,v 11.47 2002/08/08 15:27:10 bostic 
 /*
  * Prototypes for procedures defined later in this file:
  */
+#if CONFIG_TEST
 static int      lock_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int	_LockMode __P((Tcl_Interp *, Tcl_Obj *, db_lockmode_t *));
 static int	_GetThisLock __P((Tcl_Interp *, DB_ENV *, u_int32_t,
 				     u_int32_t, DBT *, db_lockmode_t, char *));
 static void	_LockPutInfo __P((Tcl_Interp *, db_lockop_t, DB_LOCK *,
 				     u_int32_t, DBT *));
-#if CONFIG_TEST
-static char *lkmode[] = {
-	"ng",
-	"read",
-	"write",
-	"iwrite",
-	"iread",
-	"iwr",
-	 NULL
-};
-enum lkmode {
-	LK_NG,
-	LK_READ,
-	LK_WRITE,
-	LK_IWRITE,
-	LK_IREAD,
-	LK_IWR
-};
 
 /*
  * tcl_LockDetect --
@@ -63,7 +46,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_ENV *envp;			/* Environment pointer */
 {
-	static char *ldopts[] = {
+	static const char *ldopts[] = {
 		"expire",
 		"default",
 		"maxlocks",
@@ -150,7 +133,7 @@ tcl_LockGet(interp, objc, objv, envp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_ENV *envp;			/* Environment pointer */
 {
-	static char *lgopts[] = {
+	static const char *lgopts[] = {
 		"-nowait",
 		 NULL
 	};
@@ -285,7 +268,7 @@ tcl_LockStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Number of transaction timeouts", sp->st_ntxntimeouts);
 	Tcl_SetObjResult(interp, res);
 error:
-	free(sp);
+	(void)__os_ufree(envp, sp);
 	return (result);
 }
 
@@ -332,7 +315,7 @@ lock_Cmd(clientData, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *lkcmds[] = {
+	static const char *lkcmds[] = {
 		"put",
 		NULL
 	};
@@ -400,14 +383,14 @@ tcl_LockVec(interp, objc, objv, envp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_ENV *envp;			/* environment pointer */
 {
-	static char *lvopts[] = {
+	static const char *lvopts[] = {
 		"-nowait",
 		 NULL
 	};
 	enum lvopts {
 		LVNOWAIT
 	};
-	static char *lkops[] = {
+	static const char *lkops[] = {
 		"get",
 		"put",
 		"put_all",
@@ -422,6 +405,7 @@ tcl_LockVec(interp, objc, objv, envp)
 		LKPUTOBJ,
 		LKTIMEOUT
 	};
+
 	DB_LOCK *lock;
 	DB_LOCKREQ list;
 	DBT obj;
@@ -433,6 +417,7 @@ tcl_LockVec(interp, objc, objv, envp)
 
 	result = TCL_OK;
 	memset(newname, 0, MSG_SIZE);
+	memset(&list, 0, sizeof(DB_LOCKREQ));
 	flag = 0;
 	freeobj = 0;
 
@@ -615,6 +600,23 @@ _LockMode(interp, obj, mode)
 	Tcl_Obj *obj;
 	db_lockmode_t *mode;
 {
+	static const char *lkmode[] = {
+		"ng",
+		"read",
+		"write",
+		"iwrite",
+		"iread",
+		"iwr",
+		 NULL
+	};
+	enum lkmode {
+		LK_NG,
+		LK_READ,
+		LK_WRITE,
+		LK_IWRITE,
+		LK_IREAD,
+		LK_IWR
+	};
 	int optindex;
 
 	if (Tcl_GetIndexFromObj(interp, obj, lkmode, "option",

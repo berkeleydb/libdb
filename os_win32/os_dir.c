@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_dir.c,v 11.12 2002/07/12 18:56:54 bostic Exp $";
+static const char revid[] = "$Id: os_dir.c,v 11.14 2003/02/28 17:25:26 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -36,7 +36,8 @@ __os_dirlist(dbenv, dir, namesp, cntp)
 	if (DB_GLOBAL(j_dirlist) != NULL)
 		return (DB_GLOBAL(j_dirlist)(dir, namesp, cntp));
 
-	(void)snprintf(filespec, sizeof(filespec), "%s/*", dir);
+	(void)snprintf(filespec,
+	    sizeof(filespec), "%s%c*", dir, PATH_SEPARATOR[0]);
 	if ((dirhandle = _findfirst(filespec, &fdata)) == -1)
 		return (__os_get_errno());
 

@@ -1,19 +1,20 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead005.tcl,v 11.10 2002/09/05 17:23:05 sandstro Exp $
+# $Id: dead005.tcl,v 11.13 2003/05/28 14:33:48 sandstro Exp $
 #
 # Deadlock Test 5.
 # Test out the minlocks, maxlocks, and minwrites options
 # to the deadlock detector.
-proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
+proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } \
+    { tnum "005" } } {
 	source ./include.tcl
 
-	puts "Dead005: minlocks, maxlocks, and minwrites deadlock detection tests"
+	puts "Dead$tnum: minlocks, maxlocks, and minwrites deadlock detection tests"
 	foreach t $tests {
-		puts "Dead005.$t: creating environment"
+		puts "Dead$tnum.$t: creating environment"
 		env_cleanup $testdir
 
 		# Create the environment.
@@ -31,15 +32,15 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 			set pidlist ""
 
 			# Fire off the tests
-			puts "\tDead005: $t test with $n procs"
+			puts "\tDead$tnum: $t test with $n procs"
 			for { set i 0 } { $i < $n } { incr i } {
 				set locker [$env lock_id]
 				puts "$tclsh_path $test_path/wrap.tcl \
-				    $testdir/dead005.log.$i \
+				    $testdir/dead$tnum.log.$i \
 				    ddscript.tcl $testdir $t $locker $i $n"
 				set p [exec $tclsh_path \
 					$test_path/wrap.tcl \
-					ddscript.tcl $testdir/dead005.log.$i \
+					ddscript.tcl $testdir/dead$tnum.log.$i \
 					$testdir $t $locker $i $n &]
 				lappend pidlist $p
 			}
@@ -50,7 +51,7 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 			set clean 0
 			set other 0
 			for { set i 0 } { $i < $n } { incr i } {
-				set did [open $testdir/dead005.log.$i]
+				set did [open $testdir/dead$tnum.log.$i]
 				while { [gets $did val] != -1 } {
 					switch $val {
 						DEADLOCK { incr dead }
@@ -61,7 +62,7 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 				close $did
 			}
 			tclkill $dpid
-			puts "dead check..."
+			puts "\tDead$tnum: dead check..."
 			dead_check $t $n 0 $dead $clean $other
 			# Now verify that the correct participant
 			# got deadlocked.
@@ -70,7 +71,7 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 				minwrites {set f 1}
 				maxlocks {set f [expr $n - 1]}
 			}
-			set did [open $testdir/dead005.log.$f]
+			set did [open $testdir/dead$tnum.log.$f]
 			error_check_bad file:$t [gets $did val] -1
 			error_check_good read($f):$t $val DEADLOCK
 			close $did

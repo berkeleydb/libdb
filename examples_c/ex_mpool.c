@@ -1,16 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_mpool.c,v 11.26 2002/08/15 14:34:56 bostic Exp $
+ * $Id: ex_mpool.c,v 11.29 2003/09/04 18:06:47 bostic Exp $
  */
 
 #include <sys/types.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -119,6 +118,7 @@ init(file, pagesize, npages, progname)
 	 * Create a file with the right number of pages, and store a page
 	 * number on each page.
 	 */
+	(void)remove(file);
 	if ((fp = fopen(file, "wb")) == NULL) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, file, strerror(errno));
@@ -129,9 +129,14 @@ init(file, pagesize, npages, progname)
 		return (1);
 	}
 
-	/* The pages are numbered from 0. */
-	for (cnt = 0; cnt <= npages; ++cnt) {
-		*(int *)p = cnt;
+	/*
+	 * The pages are numbered from 0, not 1.
+	 *
+	 * Write the index of the page at the beginning of the page in order
+	 * to verify the retrieved page (see run()).
+	 */
+	for (cnt = 0; cnt < npages; ++cnt) {
+		*(db_pgno_t *)p = cnt;
 		if (fwrite(p, pagesize, 1, fp) != 1) {
 			fprintf(stderr,
 			    "%s: %s: %s\n", progname, file, strerror(errno));
@@ -210,12 +215,13 @@ run(hits, cachesize, pagesize, npages, progname)
 
 	srand((u_int)time(NULL));
 	for (cnt = 0; cnt < hits; ++cnt) {
-		pageno = (rand() % npages) + 1;
+		pageno = rand() % npages;
 		if ((ret = mfp->get(mfp, &pageno, 0, &p)) != 0) {
 			dbenv->err(dbenv, ret,
 			    "unable to retrieve page %lu", (u_long)pageno);
 			goto err;
 		}
+		/* Verify the page's number that was written in init(). */
 		if (*(db_pgno_t *)p != pageno) {
 			dbenv->errx(dbenv,
 			    "wrong page retrieved (%lu != %d)",

@@ -1,20 +1,20 @@
-<!--$Id: put.so,v 1.15 2002/06/24 14:51:07 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: put.so,v 1.16 2003/11/05 19:05:10 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Recoverability and deadlock handling</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/data_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/atomicity.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/data_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/atomicity.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Recoverability and deadlock handling</h1>
+<h3 align=center>Recoverability and deadlock handling</h3>
 <p>The first reason listed for using transactions was recoverability.  Any
 logical change to a database may require multiple changes to underlying
 data structures.  For example, modifying a record in a Btree may require
@@ -23,7 +23,7 @@ call can potentially require that multiple physical database pages be
 written.  If only some of those pages are written and then the system
 or application fails, the database is left inconsistent and cannot be
 used until it has been recovered; that is, until the partially completed
-changes have been undone.
+changes have been undone.</p>
 <p><i>Write-ahead-logging</i> is the term that describes the underlying
 implementation that Berkeley DB uses to ensure recoverability.  What it means
 is that before any change is made to a database, information about the
@@ -31,24 +31,22 @@ change is written to a database log.  During recovery, the log is read,
 and databases are checked to ensure that changes described in the log
 for committed transactions appear in the database.  Changes that appear
 in the database but are related to aborted or unfinished transactions
-in the log are undone from the database.
+in the log are undone from the database.</p>
 <p>For recoverability after application or system failure, operations that
 modify the database must be protected by transactions.  More
 specifically, operations are not recoverable unless a transaction is
 begun and each operation is associated with the transaction via the
 Berkeley DB interfaces, and then the transaction successfully committed.  This
-is true even if logging is turned on in the database environment.
+is true even if logging is turned on in the database environment.</p>
 <p>Here is an example function that updates a record in a database in a
 transactionally protected manner.  The function takes a key and data
-items as arguments and then attempts to store them into the database.
-<p><blockquote><pre>int
+items as arguments and then attempts to store them into the database.</p>
+<blockquote><pre>int
 main(int argc, char *argv)
 {
-	extern char *optarg;
 	extern int optind;
 	DB *db_cats, *db_color, *db_fruit;
 	DB_ENV *dbenv;
-	pthread_t ptid;
 	int ch;
 <p>
 	while ((ch = getopt(argc, argv, "")) != EOF)
@@ -118,7 +116,7 @@ add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
-			if (++fail == MAXIMUM_RETRY)
+			if (fail++ == MAXIMUM_RETRY)
 				return (ret);
 			break;
 		}
@@ -134,28 +132,28 @@ scan locates a record and then accesses some other item in the database,
 based on that record.  If these operations are done using the handle's
 default locker IDs, they may conflict.  If the locks are obtained on
 behalf of a transaction, using the transaction's locker ID instead of
-the handle's locker ID, the operations will not conflict.
+the handle's locker ID, the operations will not conflict.</p>
 <p>There is a new error return in this function that you may not have seen
 before.  In transactional (not Concurrent Data Store) applications
 supporting both readers and writers, or just multiple writers, Berkeley DB
 functions have an additional possible error return:
-<a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.  This means that two thread of controls
-deadlocked, and the thread receiving the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> error
-return has been selected to discard its locks in order to resolve the
-problem.  When an application receives a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>
-return, the correct action is to close any cursors involved in the
-operation and abort any enclosing transaction.  In the sample code, any
-time the <a href="../../api_c/db_put.html">DB-&gt;put</a> method returns <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>,
-<a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> is called (which releases the transaction's Berkeley DB
-resources and undoes any partial changes to the databases), and then
-the transaction is retried from the beginning.
+<a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.  This means two threads of control deadlocked,
+and the thread receiving the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> error return has
+been selected to discard its locks in order to resolve the problem.
+When an application receives a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return, the
+correct action is to close any cursors involved in the operation and
+abort any enclosing transaction.  In the sample code, any time the
+<a href="../../api_c/db_put.html">DB-&gt;put</a> method returns <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>, <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> is
+called (which releases the transaction's Berkeley DB resources and undoes any
+partial changes to the databases), and then the transaction is retried
+from the beginning.</p>
 <p>There is no requirement that the transaction be attempted again, but
 that is a common course of action for applications.  Applications may
 want to set an upper bound on the number of times an operation will be
 retried because some operations on some data sets may simply be unable
 to succeed.  For example, updating all of the pages on a large Web site
 during prime business hours may simply be impossible because of the high
-access rate to the database.
+access rate to the database.</p>
 <p>The <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> method is called in error cases other than deadlock.
 Any time an error occurs, such that a transactionally protected set of
 operations cannot complete successfully, the transaction must be
@@ -175,15 +173,15 @@ which likely indicates that the filesystem has no available disk space.
 Applications must immediately call <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> when these returns
 occur, as it is not possible to proceed otherwise.  The only
 unrecoverable error is <a href="../../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, which indicates that the
-system must stop and recovery must be run.
+system must stop and recovery must be run.</p>
 <p>It is possible to simplify the above code in the case of a transaction
 comprised entirely of a single database put or delete operation.  The
 <a href="../../api_c/db_put.html">DB-&gt;put</a> and <a href="../../api_c/db_del.html">DB-&gt;del</a> method (and other) calls support the
 <a href="../../api_c/env_set_flags.html#DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> flag that allows applications to implicitly wrap
 the operation in a transaction.  For example, with the
 <a href="../../api_c/env_set_flags.html#DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> flag, the above code could be more simply written
-as:
-<p><blockquote><pre><b>	for (fail = 0; fail++ &lt;= MAXIMUM_RETRY && (ret =
+as:</p>
+<blockquote><pre><b>	for (fail = 0; fail++ &lt;= MAXIMUM_RETRY && (ret =
 	    db-&gt;put(db, NULL, &key, &data, DB_AUTO_COMMIT)) == DB_LOCK_DEADLOCK;)
 		;
 	return (ret == 0 ? 0 : 1);</b></pre></blockquote>
@@ -197,9 +195,9 @@ situation.  Alternatively, using the <a href="../../api_c/env_set_paniccall.html
 handle an unrecoverable error and simply doing some number of
 abort-and-retry cycles for any unexpected Berkeley DB or system error in the
 mainline code often results in the simplest and cleanest application
-code.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/data_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/atomicity.html"><img src="../../images/next.gif" alt="Next"></a>
+code.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/data_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/atomicity.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

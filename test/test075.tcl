@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2002
+# Copyright (c) 2000-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test075.tcl,v 11.21 2002/08/08 15:38:11 bostic Exp $
+# $Id: test075.tcl,v 11.23 2003/01/08 05:54:03 bostic Exp $
 #
 # TEST	test075
 # TEST	Test of DB->rename().
 # TEST	(formerly test of DB_TRUNCATE cached page invalidation [#1487])
-proc test075 { method { tnum 75 } args } {
+proc test075 { method { tnum "075" } args } {
 	global encrypt
 	global errorCode
 	global errorInfo
@@ -17,7 +17,7 @@ proc test075 { method { tnum 75 } args } {
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
-	puts "Test0$tnum: $method ($args): Test of DB->rename()"
+	puts "Test$tnum: $method ($args): Test of DB->rename()"
 	# If we are using an env, then testfile should just be the
 	# db name.  Otherwise it is the test directory and the name.
 	set eindex [lsearch -exact $args "-env"]
@@ -44,9 +44,9 @@ proc test075 { method { tnum 75 } args } {
 	# Set up absolute and relative pathnames for test
 	set paths [list $fulldir $reldir]
 	foreach path $paths {
-		puts "\tTest0$tnum: starting test of $path path"
-		set oldfile $path/test0$tnum-old.db
-		set newfile $path/test0$tnum.db
+		puts "\tTest$tnum: starting test of $path path"
+		set oldfile $path/test$tnum-old.db
+		set newfile $path/test$tnum.db
 		set env NULL
 		set envargs ""
 
@@ -59,7 +59,7 @@ proc test075 { method { tnum 75 } args } {
 
 		foreach op "noenv env auto commit abort" {
 
-			puts "\tTest0$tnum.a: Create/rename file with $op"
+			puts "\tTest$tnum.a: Create/rename file with $op"
 
 			# Make sure we're starting with a clean slate.
 
@@ -87,7 +87,7 @@ proc test075 { method { tnum 75 } args } {
 				error_check_good env_open [is_valid_env $env] TRUE
 			}
 
-			puts "\t\tTest0$tnum.a.1: create"
+			puts "\t\tTest$tnum.a.1: create"
 			set db [eval {berkdb_open -create -mode 0644} \
 			    $omethod $envargs $args $oldfile]
 			error_check_good dbopen [is_valid_db $db] TRUE
@@ -108,7 +108,7 @@ proc test075 { method { tnum 75 } args } {
 			error_check_good dbput [$db put $key $data] 0
 			error_check_good dbclose [$db close] 0
 
-			puts "\t\tTest0$tnum.a.2: rename"
+			puts "\t\tTest$tnum.a.2: rename"
 			if { $env == "NULL" } {
 				error_check_bad \
 				    "$oldfile exists" [file exists $oldfile] 0
@@ -139,7 +139,7 @@ proc test075 { method { tnum 75 } args } {
 				    "$newfile exists" [file exists $newfile] 0
 			}
 
-			puts "\t\tTest0$tnum.a.3: check"
+			puts "\t\tTest$tnum.a.3: check"
 			# Open again with create to make sure we're not caching or
 			# anything silly.  In the normal case (no env), we already
 			# know the file doesn't exist.
@@ -171,7 +171,7 @@ proc test075 { method { tnum 75 } args } {
 			# XXX Ideally we'd do this test even when there's
 			# an external environment, but that env has
 			# errpfx/errfile set now.  :-(
-			puts "\tTest0$tnum.b: Make sure rename fails\
+			puts "\tTest$tnum.b: Make sure rename fails\
 			    instead of overwriting"
 			if { $env != "NULL" } {
 				error_check_good env_close [$env close] 0
@@ -186,7 +186,7 @@ proc test075 { method { tnum 75 } args } {
 			}
 
 			# Verify and then start over from a clean slate.
-			verify_dir $path "\tTest0$tnum.c: "
+			verify_dir $path "\tTest$tnum.c: "
 			cleanup $path $env
 			if { $env != "NULL" } {
 				error_check_good env_close [$env close] 0
@@ -197,8 +197,8 @@ proc test075 { method { tnum 75 } args } {
 				error_check_bad "$newfile exists" \
 				    [file exists $newfile] 1
 
-				set oldfile test0$tnum-old.db
-				set newfile test0$tnum.db
+				set oldfile test$tnum-old.db
+				set newfile test$tnum.db
 			}
 		}
 	}

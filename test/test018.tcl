@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test018.tcl,v 11.6 2002/01/11 15:53:43 bostic Exp $
+# $Id: test018.tcl,v 11.9 2003/01/27 18:15:01 sandstro Exp $
 #
 # TEST	test018
 # TEST	Offpage duplicate test
@@ -12,5 +12,10 @@
 # TEST	duplicates.
 proc test018 { method {nentries 10000} args} {
 	puts "Test018: Off page duplicate tests"
-	eval {test011 $method $nentries 19 18 -pagesize 512} $args
+	set pgindex [lsearch -exact $args "-pagesize"]
+	if { $pgindex != -1 } {
+		puts "Test018: Skipping for specific pagesizes"
+		return
+	}
+	eval {test011 $method $nentries 19 "018" -pagesize 512} $args
 }

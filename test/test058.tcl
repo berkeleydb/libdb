@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test058.tcl,v 11.20 2002/02/22 15:26:27 sandstro Exp $
+# $Id: test058.tcl,v 11.21 2003/01/08 05:53:59 bostic Exp $
 #
 # TEST	test058
 # TEST	Verify that deleting and reading duplicates results in correct ordering.

@@ -40,16 +40,16 @@ RSC=rc.exe
 # PROP Output_Dir "Release_static"
 # PROP Intermediate_Dir "Release_static"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /I "../dbinc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /I "../dbinc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 # ADD BASE RSC /l 0xc09
 # ADD RSC /l 0xc09
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release/libdb41s.lib"
-# ADD LIB32 /nologo /out:"Release_static/libdb41s.lib"
+# ADD BASE LIB32 /nologo /out:"Release/libdb42s.lib"
+# ADD LIB32 /nologo /out:"Release_static/libdb42s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug Static"
 
@@ -63,16 +63,16 @@ LIB32=link.exe -lib
 # PROP Output_Dir "Debug_static"
 # PROP Intermediate_Dir "Debug_static"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I ".." /I "../dbinc" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
-# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I ".." /I "../dbinc" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD BASE CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I ".." /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I ".." /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 # ADD BASE RSC /l 0xc09
 # ADD RSC /l 0xc09
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug/libdb41sd.lib"
-# ADD LIB32 /nologo /out:"Debug_static/libdb41sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug/libdb42sd.lib"
+# ADD LIB32 /nologo /out:"Debug_static/libdb42sd.lib"
 
 !ENDIF 
 
@@ -242,6 +242,10 @@ SOURCE=..\cxx\cxx_mpool.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\cxx\cxx_multi.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\cxx\cxx_txn.cpp
 # End Source File
 # Begin Source File
@@ -303,6 +307,10 @@ SOURCE=..\db\db_open.c
 # Begin Source File
 
 SOURCE=..\db\db_overflow.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_ovfl_vrfy.c
 # End Source File
 # Begin Source File
 
@@ -683,10 +691,6 @@ SOURCE=..\os_win32\os_spin.c
 # Begin Source File
 
 SOURCE=..\os_win32\os_stat.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os_win32\os_type.c
 # End Source File
 # Begin Source File
 

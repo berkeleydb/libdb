@@ -1,21 +1,22 @@
-<!--$Id: lock_stat.so,v 10.43 2002/08/18 21:16:37 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: lock_stat.so,v 10.54 2003/11/08 19:17:35 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;lock_stat</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>DB_ENV-&gt;lock_stat</h1>
+<h3>DB_ENV-&gt;lock_stat</h3>
 </td>
 <td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -25,24 +26,20 @@
 int
 DB_ENV-&gt;lock_stat(DB_ENV *env, DB_LOCK_STAT **statp, u_int32_t flags);
 </pre></h3>
-<h1>Description</h1>
-<p>The DB_ENV-&gt;lock_stat method returns the locking subsystem statistics.
-<p>The <b>flags</b> value must be set to 0 or
-the following value:
-<p><dl compact>
-<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
-</dl>
+<hr size=1 noshade>
+<h3>Description: DB_ENV-&gt;lock_stat</h3>
+<p>The DB_ENV-&gt;lock_stat method returns the locking subsystem statistics.</p>
 <p>The DB_ENV-&gt;lock_stat method creates a statistical structure of type
 DB_LOCK_STAT and copies a pointer to it into a user-specified memory
-location.
-<p>Statistical structures are created in allocated memory.  If application-specific allocation
+location.</p>
+<p>Statistical structures are stored in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
-library <b>malloc</b>(3) interface is used.  The caller is
+standard C library <b>malloc</b>(3) is used.  The caller is
 responsible for deallocating the memory.  To deallocate the memory, free
 the memory reference; references inside the returned memory need not be
-individually freed.
-<p>The following DB_LOCK_STAT fields will be filled in:
+individually freed.</p>
+<p>The following DB_LOCK_STAT fields will be filled in:</p>
 <p><dl compact>
 <dt>u_int32_t st_id;<dd>The last allocated locker ID.
 <dt>u_int32_t st_cur_maxid;<dd>The current maximum unused locker ID.
@@ -63,7 +60,7 @@ individually freed.
 <dt>u_int32_t st_nconflicts;<dd>The total number of locks not immediately available due to conflicts.
 <dt>u_int32_t st_ndeadlocks;<dd>The number of deadlocks.
 <dt>u_int32_t st_locktimeout;<dd>Lock timeout value.
-<dt>u_int32_t st_nlocktimeouts;<dd>The number of locks that have timed out.
+<dt>u_int32_t st_nlocktimeouts;<dd>The number of lock requests that have timed out.
 <dt>u_int32_t st_txntimeout;<dd>Transaction timeout value.
 <dt>u_int32_t st_ntxntimeouts;<dd>The number of transactions that have timed out.  This value is also a
 component of <b>st_ndeadlocks</b>, the total number of deadlocks
@@ -74,20 +71,38 @@ obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-<p>The DB_ENV-&gt;lock_stat method returns a non-zero error value on failure and 0 on success.
-<h1>Errors</h1>
-<p>The DB_ENV-&gt;lock_stat method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;lock_stat method may fail and
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<p>The DB_ENV-&gt;lock_stat method
+returns a non-zero error value on failure
+and 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>flags</b><dd>
+The <b>flags</b> parameter must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
+<p><dt><b>statp</b><dd>
+The <b>statp</b> parameter references memory into which
+a pointer to the allocated statistics structure is copied.
+</dl>
+<h3>Errors</h3>
+<p>The DB_ENV-&gt;lock_stat method
+may fail and return one of the following non-zero errors:</p>
+<p><dl compact>
+<p><dt>EINVAL<dd>An
+invalid flag value or parameter was specified.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/lock_class.html">DB_LOCK</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_c/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

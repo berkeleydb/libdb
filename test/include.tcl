@@ -1,7 +1,7 @@
 # Automatically built by dist/s_test; may require local editing.
 
 set tclsh_path @TCL_TCLSH@
-set tcllib .libs/libdb_tcl-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@.@MODSUFFIX@
+set tcllib .libs/libdb_tcl-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@@LIBTSO_MODSUFFIX@
 
 set rpc_server localhost
 set rpc_path .

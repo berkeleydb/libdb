@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2002
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_method.c,v 11.12 2002/03/27 04:32:12 bostic Exp $";
+static const char revid[] = "$Id: hash_method.c,v 11.15 2003/04/18 08:36:37 mjc Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,9 +19,11 @@ static const char revid[] = "$Id: hash_method.c,v 11.12 2002/03/27 04:32:12 bost
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
 
+static int __ham_get_h_ffactor __P((DB *, u_int32_t *));
 static int __ham_set_h_ffactor __P((DB *, u_int32_t));
 static int __ham_set_h_hash
 	       __P((DB *, u_int32_t(*)(DB *, const void *, u_int32_t)));
+static int __ham_get_h_nelem __P((DB *, u_int32_t *));
 static int __ham_set_h_nelem __P((DB *, u_int32_t));
 
 /*
@@ -47,8 +49,10 @@ __ham_db_create(dbp)
 	hashp->h_ffactor = 0;
 	hashp->h_hash = NULL;
 
+	dbp->get_h_ffactor = __ham_get_h_ffactor;
 	dbp->set_h_ffactor = __ham_set_h_ffactor;
 	dbp->set_h_hash = __ham_set_h_hash;
+	dbp->get_h_nelem = __ham_get_h_nelem;
 	dbp->set_h_nelem = __ham_set_h_nelem;
 
 	return (0);
@@ -69,6 +73,21 @@ __ham_db_close(dbp)
 }
 
 /*
+ * __db_get_h_ffactor --
+ */
+static int
+__ham_get_h_ffactor(dbp, h_ffactorp)
+	DB *dbp;
+	u_int32_t *h_ffactorp;
+{
+	HASH *hashp;
+
+	hashp = dbp->h_internal;
+	*h_ffactorp = hashp->h_ffactor;
+	return (0);
+}
+
+/*
  * __ham_set_h_ffactor --
  *	Set the fill factor.
  */
@@ -79,7 +98,7 @@ __ham_set_h_ffactor(dbp, h_ffactor)
 {
 	HASH *hashp;
 
-	DB_ILLEGAL_AFTER_OPEN(dbp, "set_h_ffactor");
+	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->set_h_ffactor");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_HASH);
 
 	hashp = dbp->h_internal;
@@ -98,11 +117,28 @@ __ham_set_h_hash(dbp, func)
 {
 	HASH *hashp;
 
-	DB_ILLEGAL_AFTER_OPEN(dbp, "set_h_hash");
+	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->set_h_hash");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_HASH);
 
 	hashp = dbp->h_internal;
 	hashp->h_hash = func;
+	return (0);
+}
+
+/*
+ * __db_get_h_nelem --
+ */
+static int
+__ham_get_h_nelem(dbp, h_nelemp)
+	DB *dbp;
+	u_int32_t *h_nelemp;
+{
+	HASH *hashp;
+
+	DB_ILLEGAL_METHOD(dbp, DB_OK_HASH);
+
+	hashp = dbp->h_internal;
+	*h_nelemp = hashp->h_nelem;
 	return (0);
 }
 
@@ -117,7 +153,7 @@ __ham_set_h_nelem(dbp, h_nelem)
 {
 	HASH *hashp;
 
-	DB_ILLEGAL_AFTER_OPEN(dbp, "set_h_nelem");
+	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->set_h_nelem");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_HASH);
 
 	hashp = dbp->h_internal;

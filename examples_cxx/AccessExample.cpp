@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: AccessExample.cpp,v 11.18 2002/01/23 15:33:20 bostic Exp $
+ * $Id: AccessExample.cpp,v 11.22 2003/01/08 04:46:49 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -15,7 +15,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+extern "C" {
+  extern int getopt(int, char * const *, const char *);
+  extern int optind;
+}
+#else
+#include <unistd.h>
+#endif
+
 #include <db_cxx.h>
+
+#define	DATABASE	"access.db"
 
 using std::cin;
 using std::cout;
@@ -25,18 +36,43 @@ class AccessExample
 {
 public:
 	AccessExample();
-	void run();
+	void run(bool removeExistingDatabase, const char *fileName);
 
 private:
-	static const char FileName[];
-
 	// no need for copy and assignment
 	AccessExample(const AccessExample &);
 	void operator = (const AccessExample &);
 };
 
-int main()
+int
+usage()
 {
+	(void)fprintf(stderr, "usage: AccessExample [-r] [database]\n");
+	return (EXIT_FAILURE);
+}
+
+int
+main(int argc, char *argv[])
+{
+	int ch, rflag;
+	const char *database;
+
+	rflag = 0;
+	while ((ch = getopt(argc, argv, "r")) != EOF)
+		switch (ch) {
+		case 'r':
+			rflag = 1;
+			break;
+		case '?':
+		default:
+			return (usage());
+		}
+	argc -= optind;
+	argv += optind;
+
+	/* Accept optional database name. */
+	database = *argv == NULL ? DATABASE : argv[0];
+
 	// Use a try block just to report any errors.
 	// An alternate approach to using exceptions is to
 	// use error models (see DbEnv::set_error_model()) so
@@ -44,7 +80,7 @@ int main()
 	//
 	try {
 		AccessExample app;
-		app.run();
+		app.run((bool)(rflag == 1 ? true : false), database);
 		return (EXIT_SUCCESS);
 	}
 	catch (DbException &dbe) {
@@ -53,16 +89,15 @@ int main()
 	}
 }
 
-const char AccessExample::FileName[] = "access.db";
-
 AccessExample::AccessExample()
 {
 }
 
-void AccessExample::run()
+void AccessExample::run(bool removeExistingDatabase, const char *fileName)
 {
 	// Remove the previous database.
-	(void)remove(FileName);
+	if (removeExistingDatabase)
+		(void)remove(fileName);
 
 	// Create the database object.
 	// There is no environment for this simple example.
@@ -72,7 +107,7 @@ void AccessExample::run()
 	db.set_errpfx("AccessExample");
 	db.set_pagesize(1024);		/* Page size: 1K. */
 	db.set_cachesize(0, 32 * 1024, 0);
-	db.open(NULL, FileName, NULL, DB_BTREE, DB_CREATE, 0664);
+	db.open(NULL, fileName, NULL, DB_BTREE, DB_CREATE, 0664);
 
 	//
 	// Insert records into the database, where the key is the user

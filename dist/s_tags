@@ -1,9 +1,9 @@
 #!/bin/sh -
-#	$Id: s_tags,v 1.16 2002/03/28 20:13:07 krinsky Exp $
+#	$Id: s_tags,v 1.17 2003/03/18 02:16:32 bostic Exp $
 #
 # Build tags files.
 
-files="../dbinc/*.h \
+files=`echo ../dbinc/*.h \
 	../dbinc/*.in \
 	../btree/*.[ch] \
 	../clib/*.[ch] \
@@ -33,7 +33,7 @@ files="../dbinc/*.h \
 	../txn/*.[ch] \
 	../xa/*.[ch] \
 	../cxx/*.cpp \
-	../libdb_java/*.[ch]"
+	../libdb_java/*.[ch] | sed 's/[^ ]*stub.c//g'`
 
 f=tags
 echo "Building $f"

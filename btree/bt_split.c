@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_split.c,v 11.58 2002/07/03 19:03:50 bostic Exp $";
+static const char revid[] = "$Id: bt_split.c,v 11.60 2003/06/30 17:19:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -54,6 +54,7 @@ static const char revid[] = "$Id: bt_split.c,v 11.58 2002/07/03 19:03:50 bostic 
 #include "dbinc/db_page.h"
 #include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
+#include "dbinc/mp.h"
 #include "dbinc/btree.h"
 
 static int __bam_broot __P((DBC *, PAGE *, PAGE *, PAGE *));
@@ -242,18 +243,18 @@ __bam_root(dbc, cp)
 		goto err;
 
 	/* Success -- write the real pages back to the store. */
-	(void)mpf->put(mpf, cp->page, DB_MPOOL_DIRTY);
+	(void)__memp_fput(mpf, cp->page, DB_MPOOL_DIRTY);
 	(void)__TLPUT(dbc, cp->lock);
-	(void)mpf->put(mpf, lp, DB_MPOOL_DIRTY);
-	(void)mpf->put(mpf, rp, DB_MPOOL_DIRTY);
+	(void)__memp_fput(mpf, lp, DB_MPOOL_DIRTY);
+	(void)__memp_fput(mpf, rp, DB_MPOOL_DIRTY);
 
 	return (0);
 
 err:	if (lp != NULL)
-		(void)mpf->put(mpf, lp, 0);
+		(void)__memp_fput(mpf, lp, 0);
 	if (rp != NULL)
-		(void)mpf->put(mpf, rp, 0);
-	(void)mpf->put(mpf, cp->page, 0);
+		(void)__memp_fput(mpf, rp, 0);
+	(void)__memp_fput(mpf, cp->page, 0);
 	(void)__TLPUT(dbc, cp->lock);
 	return (ret);
 }
@@ -358,7 +359,7 @@ __bam_page(dbc, pp, cp)
 		if ((ret = __db_lget(dbc,
 		    0, NEXT_PGNO(cp->page), DB_LOCK_WRITE, 0, &tplock)) != 0)
 			goto err;
-		if ((ret = mpf->get(mpf, &NEXT_PGNO(cp->page), 0, &tp)) != 0)
+		if ((ret = __memp_fget(mpf, &NEXT_PGNO(cp->page), 0, &tp)) != 0)
 			goto err;
 	}
 
@@ -456,18 +457,21 @@ __bam_page(dbc, pp, cp)
 	 * releasing locks on the pages that reference it.  We're finished
 	 * modifying the page so it's not really necessary, but it's neater.
 	 */
-	if ((t_ret = mpf->put(mpf, alloc_rp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret =
+	    __memp_fput(mpf, alloc_rp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	(void)__TLPUT(dbc, rplock);
-	if ((t_ret = mpf->put(mpf, pp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret =
+	    __memp_fput(mpf, pp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	(void)__TLPUT(dbc, pp->lock);
-	if ((t_ret = mpf->put(mpf, cp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret =
+	    __memp_fput(mpf, cp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	(void)__TLPUT(dbc, cp->lock);
 	if (tp != NULL) {
 		if ((t_ret =
-		    mpf->put(mpf, tp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		    __memp_fput(mpf, tp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 			ret = t_ret;
 		(void)__TLPUT(dbc, tplock);
 	}
@@ -478,21 +482,21 @@ err:	if (lp != NULL)
 	if (rp != NULL)
 		__os_free(dbp->dbenv, rp);
 	if (alloc_rp != NULL)
-		(void)mpf->put(mpf, alloc_rp, 0);
+		(void)__memp_fput(mpf, alloc_rp, 0);
 	if (tp != NULL)
-		(void)mpf->put(mpf, tp, 0);
+		(void)__memp_fput(mpf, tp, 0);
 
 	/* We never updated the new or next pages, we can release them. */
 	(void)__LPUT(dbc, rplock);
 	(void)__LPUT(dbc, tplock);
 
-	(void)mpf->put(mpf, pp->page, 0);
+	(void)__memp_fput(mpf, pp->page, 0);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, pp->lock);
 	else
 		(void)__TLPUT(dbc, pp->lock);
 
-	(void)mpf->put(mpf, cp->page, 0);
+	(void)__memp_fput(mpf, cp->page, 0);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, cp->lock);
 	else

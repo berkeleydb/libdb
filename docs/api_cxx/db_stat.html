@@ -1,21 +1,22 @@
-<!--$Id: db_stat.so,v 10.57 2002/08/29 03:24:32 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: db_stat.so,v 10.75 2003/11/08 19:17:23 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Db::stat</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>Db::stat</h1>
+<h3>Db::stat</h3>
 </td>
 <td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -25,24 +26,146 @@
 int
 Db::stat(void *sp, u_int32_t flags);
 </pre></h3>
-<h1>Description</h1>
+<hr size=1 noshade>
+<h3>Description: Db::stat</h3>
 <p>The Db::stat method creates a statistical structure and
 copies a pointer to it into user-specified memory locations.
 Specifically, if <b>sp</b> is non-NULL, a pointer to the statistics
-for the database are copied into the memory location to which it refers.
-<p>Statistical structures are created in allocated memory.  If application-specific allocation
+for the database are copied into the memory location to which it refers.</p>
+<p>Statistical structures are stored in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
-library <b>malloc</b>(3) interface is used.  The caller is
+standard C library <b>malloc</b>(3) is used.  The caller is
 responsible for deallocating the memory.  To deallocate the memory, free
 the memory reference; references inside the returned memory need not be
-individually freed.
-<p>The <b>flags</b> value must be set to 0 or
+individually freed.</p>
+<p>If the DB_FAST_STAT flag has not been specified, the
+Db::stat method will access some of or all the pages in the database,
+incurring a severe performance penalty as well as possibly flushing the
+underlying buffer pool.</p>
+<p>In the presence of multiple threads or processes accessing an active
+database, the information returned by Db::stat may be out-of-date.</p>
+<p>If the database was not opened read-only and the DB_FAST_STAT
+flag was not specified, the cached key and record numbers will be
+updated after the statistical information has been gathered.</p>
+<p>The Db::stat method cannot be transaction-protected.  For this reason,
+it should be called in a thread of control that has no open cursors or
+active transactions.</p>
+<p>The Db::stat method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Hash Statistics</h3>
+<p>In the case of a Hash database,
+the statistics are stored in a structure of type DB_HASH_STAT.  The
+following fields will be filled in:</p>
+<p><dl compact>
+<dt>u_int32_t hash_magic;<dd>Magic number that identifies the file as a Hash file.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t hash_version;<dd>The version of the Hash database.  Returned if DB_FAST_STAT is
+set.
+<dt>u_int32_t hash_nkeys;<dd>The number of unique keys in the database.  If DB_FAST_STAT was
+specified the count will be the last saved value unless it has never
+been calculated, in which case it will be 0. Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t hash_ndata;<dd>The number of key/data pairs in the database.  If DB_FAST_STAT
+was specified the count will be the last saved value unless it has never
+been calculated, in which case it will be 0. Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t hash_pagesize;<dd>The underlying Hash database page (and bucket) size, in bytes.
+Returned if DB_FAST_STAT is set.
+<dt>u_int32_t hash_ffactor;<dd>The desired fill factor (number of items per bucket) specified at
+database-creation time.  Returned if DB_FAST_STAT is set.
+<dt>u_int32_t hash_buckets;<dd>The number of hash buckets.  Returned if DB_FAST_STAT is set.
+<dt>u_int32_t hash_free;<dd>The number of pages on the free list.
+<dt>u_int32_t hash_bfree;<dd>The number of bytes free on bucket pages.
+<dt>u_int32_t hash_bigpages;<dd>The number of big key/data pages.
+<dt>u_int32_t hash_big_bfree;<dd>The number of bytes free on big item pages.
+<dt>u_int32_t hash_overflows;<dd>The number of overflow pages (overflow pages are pages that contain items
+that did not fit in the main bucket page).
+<dt>u_int32_t hash_ovfl_free;<dd>The number of bytes free on overflow pages.
+<dt>u_int32_t hash_dup;<dd>The number of duplicate pages.
+<dt>u_int32_t hash_dup_free;<dd>The number of bytes free on duplicate pages.
+</dl>
+<h3>Btree and Recno Statistics</h3>
+<p>In the case of a Btree or Recno database,
+the statistics are stored in a structure of type DB_BTREE_STAT.  The
+following fields will be filled in:</p>
+<p><dl compact>
+<dt>u_int32_t bt_magic;<dd>Magic number that identifies the file as a Btree database.  Returned
+if DB_FAST_STAT is set.
+<dt>u_int32_t bt_version;<dd>The version of the Btree database.  Returned if DB_FAST_STAT
+is set.
+<dt>u_int32_t bt_nkeys;<dd>For the Btree Access Method, the number of unique keys in the database.
+If DB_FAST_STAT was specified and the database was created with
+the <a href="../api_cxx/db_set_flags.html#DB_RECNUM">DB_RECNUM</a> flag, the count will be exact, otherwise, the
+count will be the last saved value unless it has never been calculated,
+in which case it will be 0.  For the Recno Access Method, the exact
+number of records in the database.  Returned if DB_FAST_STAT is
+set.
+<dt>u_int32_t bt_ndata;<dd>For the Btree Access Method, the number of key/data pairs in the
+database.  If DB_FAST_STAT was specified the count will be the
+last saved value unless it has never been calculated, in which case it
+will be 0.  For the Recno Access Method, the exact number of records in
+the database. If the database has been configured to not renumber
+records during deletion, the count of records will only reflect
+undeleted records.  Returned if DB_FAST_STAT is set.
+<dt>u_int32_t bt_pagesize;<dd>Underlying database page size, in bytes.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t bt_minkey;<dd>The minimum keys per page.  Returned if DB_FAST_STAT is set.
+<dt>u_int32_t bt_re_len;<dd>The length of fixed-length records.  Returned if DB_FAST_STAT
+is set.
+<dt>u_int32_t bt_re_pad;<dd>The padding byte value for fixed-length records.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t bt_levels;<dd>Number of levels in the database.
+<dt>u_int32_t bt_int_pg;<dd>Number of database internal pages.
+<dt>u_int32_t bt_leaf_pg;<dd>Number of database leaf pages.
+<dt>u_int32_t bt_dup_pg;<dd>Number of database duplicate pages.
+<dt>u_int32_t bt_over_pg;<dd>Number of database overflow pages.
+<dt>u_int32_t bt_free;<dd>Number of pages on the free list.
+<dt>u_int32_t bt_int_pgfree;<dd>Number of bytes free in database internal pages.
+<dt>u_int32_t bt_leaf_pgfree;<dd>Number of bytes free in database leaf pages.
+<dt>u_int32_t bt_dup_pgfree;<dd>Number of bytes free in database duplicate pages.
+<dt>u_int32_t bt_over_pgfree;<dd>Number of bytes free in database overflow pages.
+</dl>
+<h3>Queue Statistics</h3>
+<p>In the case of a Queue database,
+the statistics are stored in a structure of type DB_QUEUE_STAT.  The
+following fields will be filled in:</p>
+<p><dl compact>
+<dt>u_int32_t qs_magic;<dd>Magic number that identifies the file as a Queue file.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_version;<dd>The version of the Queue file type.  Returned if DB_FAST_STAT
+is set.
+<dt>u_int32_t qs_nkeys;<dd>The number of records in the database.  If DB_FAST_STAT was
+specified the count will be the last saved value unless it has never
+been calculated, in which case it will be 0.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_ndata;<dd>The number of records in the database.  If DB_FAST_STAT was
+specified the count will be the last saved value unless it has never
+been calculated, in which case it will be 0.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_pagesize;<dd>Underlying database page size, in bytes.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_extentsize;<dd>Underlying database extent size, in pages.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_pages;<dd>Number of pages in the database.
+<dt>u_int32_t qs_re_len;<dd>The length of the records.  Returned if DB_FAST_STAT is set.
+<dt>u_int32_t qs_re_pad;<dd>The padding byte value for the records.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_pgfree;<dd>Number of bytes free in database pages.
+<dt>u_int32_t qs_first_recno;<dd>First undeleted record in the database.  Returned if
+DB_FAST_STAT is set.
+<dt>u_int32_t qs_cur_recno;<dd>Next available record number.  Returned if DB_FAST_STAT is set.
+</dl>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>flags</b><dd>
+The <b>flags</b> parameter must be set to 0 or
 one of the following values:
 <p><dl compact>
 <p><dt><a name="DB_FAST_STAT">DB_FAST_STAT</a><dd>Return only the values which do not require traversal of the database.
-Fields returned when this flag is set are noted with an asterisk (*)
-below.
 <p>Among other things, this flag makes it possible for applications to
 request key and record counts without incurring the performance penalty
 of traversing the entire database.  If the underlying database is of
@@ -53,124 +176,32 @@ was traversed, or 0 if no count of keys has ever been made.  If the
 underlying database is of type Recno, the count of data items will be
 exact, otherwise, the count of data items will be the value saved the
 last time the database was traversed, or 0 if no count of data items
-has ever been done.
+has ever been done.</p>
 </dl>
-<p>If the DB_FAST_STAT flag has not been specified, the
-Db::stat method will access some of or all the pages in the database,
-incurring a severe performance penalty as well as possibly flushing the
-underlying buffer pool.
-<p>In the presence of multiple threads or processes accessing an active
-database, the information returned by Db::stat may be out-of-date.
-<p>If the database was not opened read-only and the DB_FAST_STAT
-flag was not specified, the cached key and record numbers will be
-updated after the statistical information has been gathered.
-<p>The Db::stat method cannot be transaction-protected.  For this reason,
-it should be called in a thread of control that has no open cursors or
-active transactions.
-<p>The Db::stat method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, and returns 0 on success.
-<h3>Hash Statistics</h3>
-<p>In the case of a Hash database,
-the statistics are stored in a structure of type DB_HASH_STAT.  The
-following fields will be filled in:
+</dl>
+<h3>Errors</h3>
+<p>The Db::stat method
+may fail and throw
+<a href="../api_cxx/except_class.html">DbException</a>,
+encapsulating one of the following non-zero errors, or return one of
+the following non-zero errors:</p>
 <p><dl compact>
-<p><dt>u_int32_t hash_magic*<dd>Magic number that identifies the file as a Hash file.
-<dt>u_int32_t hash_version*<dd>The version of the Hash database.
-<dt>u_int32_t hash_nkeys*<dd>The number of unique keys in the database.  If DB_FAST_STAT was
-specified the count will be the last saved value unless it has never
-been calculated, in which case it will be 0.
-<dt>u_int32_t hash_ndata*<dd>The number of key/data pairs in the database.  If DB_FAST_STAT
-was specified the count will be the last saved value unless it has never
-been calculated, in which case it will be 0.
-<dt>u_int32_t hash_pagesize*<dd>The underlying Hash database page (and bucket) size, in bytes.
-<dt>u_int32_t hash_ffactor*<dd>The desired fill factor (number of items per bucket) specified at
-database-creation time.
-<dt>u_int32_t hash_buckets*<dd>The number of hash buckets.
-<dt>u_int32_t hash_free<dd>The number of pages on the free list.
-<dt>u_int32_t hash_bfree<dd>The number of bytes free on bucket pages.
-<dt>u_int32_t hash_bigpages<dd>The number of big key/data pages.
-<dt>u_int32_t hash_big_bfree<dd>The number of bytes free on big item pages.
-<dt>u_int32_t hash_overflows<dd>The number of overflow pages (overflow pages are pages that contain items
-that did not fit in the main bucket page).
-<dt>u_int32_t hash_ovfl_free<dd>The number of bytes free on overflow pages.
-<dt>u_int32_t hash_dup<dd>The number of duplicate pages.
-<dt>u_int32_t hash_dup_free<dd>The number of bytes free on duplicate pages.
+<p><dt>DB_REP_HANDLE_DEAD<dd>The database handle has been invalidated because a replication election
+unrolled a committed transaction.
 </dl>
-<h3>Btree and Recno Statistics</h3>
-<p>In the case of a Btree or Recno database,
-the statistics are stored in a structure of type DB_BTREE_STAT.  The
-following fields will be filled in:
 <p><dl compact>
-<p><dt>u_int32_t bt_magic*<dd>Magic number that identifies the file as a Btree database.
-<dt>u_int32_t bt_version*<dd>The version of the Btree database.
-<dt>u_int32_t bt_nkeys*<dd>For the Btree Access Method, the number of unique keys in the database.
-If DB_FAST_STAT was specified and the database was created with
-the <a href="../api_cxx/db_set_flags.html#DB_RECNUM">DB_RECNUM</a> flag, the count will be exact, otherwise, the
-count will be the last saved value unless it has never been calculated,
-in which case it will be 0.
-<p>For the Recno Access Method, the exact number of records in the
-database.
-<dt>u_int32_t bt_ndata*<dd>For the Btree Access Method, the number of key/data pairs in the
-database.  If DB_FAST_STAT was specified the count will be the
-last saved value unless it has never been calculated, in which case it
-will be 0.
-<p>For the Recno Access Method, the exact number of records in the
-database. If the database has been configured to not renumber records
-during deletion, the count of records will only reflect undeleted
-records.
-<dt>u_int32_t bt_pagesize*<dd>Underlying database page size, in bytes.
-<dt>u_int32_t bt_minkey*<dd>The minimum keys per page.
-<dt>u_int32_t bt_re_len*<dd>The length of fixed-length records.
-<dt>u_int32_t bt_re_pad*<dd>The padding byte value for fixed-length records.
-<dt>u_int32_t bt_levels<dd>Number of levels in the database.
-<dt>u_int32_t bt_int_pg<dd>Number of database internal pages.
-<dt>u_int32_t bt_leaf_pg<dd>Number of database leaf pages.
-<dt>u_int32_t bt_dup_pg<dd>Number of database duplicate pages.
-<dt>u_int32_t bt_over_pg<dd>Number of database overflow pages.
-<dt>u_int32_t bt_free<dd>Number of pages on the free list.
-<dt>u_int32_t bt_int_pgfree<dd>Number of bytes free in database internal pages.
-<dt>u_int32_t bt_leaf_pgfree<dd>Number of bytes free in database leaf pages.
-<dt>u_int32_t bt_dup_pgfree<dd>Number of bytes free in database duplicate pages.
-<dt>u_int32_t bt_over_pgfree<dd>Number of bytes free in database overflow pages.
+<p><dt>EINVAL<dd>An
+invalid flag value or parameter was specified.
 </dl>
-<h3>Queue Statistics</h3>
-<p>In the case of a Queue database,
-the statistics are stored in a structure of type DB_QUEUE_STAT.  The
-following fields will be filled in:
-<p><dl compact>
-<p><dt>u_int32_t qs_magic*<dd>Magic number that identifies the file as a Queue file.
-<dt>u_int32_t qs_version*<dd>The version of the Queue file type.
-<dt>u_int32_t qs_nkeys*<dd>The number of records in the database.  If DB_FAST_STAT was
-specified the count will be the last saved value unless it has never
-been calculated, in which case it will be 0.
-<dt>u_int32_t qs_ndata*<dd>The number of records in the database.  If DB_FAST_STAT was
-specified the count will be the last saved value unless it has never
-been calculated, in which case it will be 0.
-<dt>u_int32_t qs_pagesize*<dd>Underlying database page size, in bytes.
-<dt>u_int32_t qs_extentsize*<dd>Underlying database extent size, in pages.
-<dt>u_int32_t qs_pages<dd>Number of pages in the database.
-<dt>u_int32_t qs_re_len*<dd>The length of the records.
-<dt>u_int32_t qs_re_pad*<dd>The padding byte value for the records.
-<dt>u_int32_t qs_pgfree<dd>Number of bytes free in database pages.
-<dt>u_int32_t qs_first_recno*<dd>First undeleted record in the database.
-<dt>u_int32_t qs_cur_recno*<dd>Next available record number.
-</dl>
-<p>The Db::stat method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, and returns 0 on success.
-<h1>Errors</h1>
-<p>The Db::stat method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Db::stat method may fail and
-either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
-<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_cxx/db_class.html">Db</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

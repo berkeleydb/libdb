@@ -1,21 +1,22 @@
-<!--$Id: env_set_verbose.so,v 10.32 2002/08/18 21:16:32 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_verbose.so,v 10.45 2003/11/08 19:17:33 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;set_verbose</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>DB_ENV-&gt;set_verbose</h1>
+<h3>DB_ENV-&gt;set_verbose</h3>
 </td>
 <td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -24,52 +25,89 @@
 <p>
 int
 DB_ENV-&gt;set_verbose(DB_ENV *dbenv, u_int32_t which, int onoff);
+<p>
+int
+DB_ENV-&gt;get_verbose(DB_ENV *dbenv, u_int32_t which, int *onoffp);
 </pre></h3>
-<h1>Description</h1>
-<p>The DB_ENV-&gt;set_verbose method turns additional informational and
-debugging messages in the Berkeley DB message output on and off.  If
-<b>onoff</b> is set to
-non-zero,
-the additional messages are output.
-<p>The <b>which</b> parameter must be set to one of the following values:
+<hr size=1 noshade>
+<h3>Description: DB_ENV-&gt;set_verbose</h3>
+<a name="3"><!--meow--></a>
+<p>The DB_ENV-&gt;set_verbose method turns specific additional informational
+and debugging messages in the Berkeley DB message output on and off.  To see
+the additional messages, verbose messages must also be configured for
+the application.  For more information on verbose messages, see the
+<a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a> method.</p>
+<p>The database environment's messages may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
+single line with the string "set_verbose", one or more whitespace characters,
+and the method <b>which</b> parameter as a string; for example,
+"set_verbose DB_VERB_CHKPOINT".
+Because the <b>DB_CONFIG</b> file is read when the database
+environment is opened, it will silently overrule configuration done
+before that time.</p>
+<p>The DB_ENV-&gt;set_verbose method configures operations performed using the specified
+<a href="../api_c/env_class.html">DB_ENV</a> handle, not all operations performed on the underlying
+database environment.</p>
+<p>The DB_ENV-&gt;set_verbose method may be called at any time during the life of the
+application.</p>
+<p>The DB_ENV-&gt;set_verbose method
+returns a non-zero error value on failure
+and 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>onoff</b><dd>
+If the <b>onoff</b> parameter is set to non-zero, the additional messages are output.
+<p><dt><b>which</b><dd>
+The <b>which</b> parameter must be set to one of the following values:
 <p><dl compact>
 <p><dt><a name="DB_VERB_CHKPOINT">DB_VERB_CHKPOINT</a><dd>Display checkpoint location information when searching the log for
 checkpoints.
 <p><dt><a name="DB_VERB_DEADLOCK">DB_VERB_DEADLOCK</a><dd>Display additional information when doing deadlock detection.
 <p><dt><a name="DB_VERB_RECOVERY">DB_VERB_RECOVERY</a><dd>Display additional information when performing recovery.
 <p><dt><a name="DB_VERB_REPLICATION">DB_VERB_REPLICATION</a><dd>Display additional information when processing replication messages.
+<p>Note, to get complete replication logging when debugging replication
+applications, you must also configure and build the Berkeley DB library with
+the <a href="../ref/build_unix/conf.html">--enable-diagnostic</a>
+configuration option as well as call the DB_ENV-&gt;set_verbose method.</p>
 <p><dt><a name="DB_VERB_WAITSFOR">DB_VERB_WAITSFOR</a><dd>Display the waits-for table when doing deadlock detection.
 </dl>
-<p>The DB_ENV-&gt;set_verbose method configures operations performed using the specified
-<a href="../api_c/env_class.html">DB_ENV</a> handle, not all operations performed on the underlying
-database environment.
-<p>The DB_ENV-&gt;set_verbose interface may be called at any time during the life of
-the application.
-<p>The DB_ENV-&gt;set_verbose method returns a non-zero error value on failure and 0 on success.
-<p>The database environment's verbosity may also be set using the environment's
-<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
-single line with the string "set_verbose", one or more whitespace characters,
-and the interface <b>which</b> argument as a string; for example,
-"set_verbose DB_VERB_CHKPOINT".  Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.
-<h1>Errors</h1>
-<p>The DB_ENV-&gt;set_verbose method may fail and return a non-zero error for the following conditions:
-<p><dl compact>
-<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>The DB_ENV-&gt;set_verbose method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;set_verbose method may fail and
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<h3>Errors</h3>
+<p>The DB_ENV-&gt;set_verbose method
+may fail and return one of the following non-zero errors:</p>
+<p><dl compact>
+<p><dt>EINVAL<dd>An
+invalid flag value or parameter was specified.
+</dl>
+<hr size=1 noshade>
+<h3>Description: dbenv_get_verbose</h3>
+<p>The DB_ENV-&gt;get_verbose method returns whether the specified <b>which</b>
+parameter is currently set or not.</p>
+<p>The DB_ENV-&gt;get_verbose method may be called at any time during the life of the
+application.</p>
+<p>The DB_ENV-&gt;get_verbose method
+returns a non-zero error value on failure
+and 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>which</b><dd>
+The <b>which</b> parameter is the message value for which configuration
+is being checked.
+<p><dt><b>onoffp</b><dd>
+The <b>onoffp</b> parameter references memory into which
+ the configuration of the specified <b>which</b> parameter is copied.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_c/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_c/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,40 +1,38 @@
 <!--$Id: cursor.so,v 1.11 2002/06/24 14:51:05 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Transactional cursors</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/read.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/nested.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/read.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/nested.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Transactional cursors</h1>
+<h3 align=center>Transactional cursors</h3>
 <p>Berkeley DB cursors may be used inside a transaction, exactly as any other
 <a href="../../api_c/db_class.html">DB</a> method.  The enclosing transaction ID must be specified when
 the cursor is created, but it does not then need to be further specified
 on operations performed using the cursor.  One important point to
 remember is that a cursor <b>must be closed</b> before the enclosing
-transaction is committed or aborted.
+transaction is committed or aborted.</p>
 <p>The following code fragment uses a cursor to store a new key in the cats
 database with four associated data items.  The key is a name.  The data
 items are a company name, an address, and a list of the breeds of cat
 owned.  Each of the data entries is stored as a duplicate data item.
 In this example, transactions are necessary to ensure that either all or none
-of the data items appear in case of system or application failure.
-<p><blockquote><pre>int
+of the data items appear in case of system or application failure.</p>
+<blockquote><pre>int
 main(int argc, char *argv)
 {
-	extern char *optarg;
 	extern int optind;
 	DB *db_cats, *db_color, *db_fruit;
 	DB_ENV *dbenv;
-	pthread_t ptid;
 	int ch;
 <p>
 	while ((ch = getopt(argc, argv, "")) != EOF)
@@ -113,7 +111,7 @@ retry:	/* Begin the transaction. */
 			dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 			exit (1);
 		}
-		if (++fail == MAXIMUM_RETRY)
+		if (fail++ == MAXIMUM_RETRY)
 			return (ret);
 		goto retry;
 	}
@@ -146,7 +144,7 @@ retry:	/* Begin the transaction. */
 				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
-			if (++fail == MAXIMUM_RETRY)
+			if (fail++ == MAXIMUM_RETRY)
 				return (ret);
 			goto retry;
 		}
@@ -164,8 +162,8 @@ retry:	/* Begin the transaction. */
 	}
 	return (0);
 }</b></pre></blockquote>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/read.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/nested.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/read.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/nested.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+int __xa_get_txn __P((DB_ENV *, DB_TXN **, int));
 int __db_xa_create __P((DB *));
 int __db_rmid_to_env __P((int rmid, DB_ENV **envp));
 int __db_xid_to_txn __P((DB_ENV *, XID *, size_t *));

@@ -1,21 +1,21 @@
-<!--$Id: dead.so,v 10.19 2002/08/31 20:07:03 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: dead.so,v 10.20 2003/10/18 19:16:02 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Deadlock detection</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
-<td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Deadlock detection</h1>
+<h3 align=center>Deadlock detection</h3>
 <p>Practically any application that uses locking may deadlock.  The
 exceptions to this rule are when all the threads of control accessing
 the database are read-only or when the Berkeley DB Concurrent Data Store product is used; the
@@ -23,7 +23,7 @@ Berkeley DB Concurrent Data Store product guarantees deadlock-free operation at 
 reduced concurrency.  While there are data access patterns that are
 deadlock free (for example, an application doing nothing but overwriting
 fixed-length records in an already existing database), they are
-extremely rare.
+extremely rare.</p>
 <p>When a deadlock exists in the system, all the threads of control
 involved in the deadlock are, by definition, waiting on a lock.  The
 deadlock detector examines the state of the lock manager and identifies
@@ -32,8 +32,8 @@ a deadlock, and selects one of the lock requests to reject.  (See
 discussion of how a participant is selected).  The <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> or
 <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> call for which the selected participant is waiting then
 returns a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> error.  When using the Berkeley DB access
-methods, this error return is propagated back through the Berkeley DB
-interface database handle interface to the calling application.
+methods, this error return is propagated back through the Berkeley DB database
+handle method to the calling application.</p>
 <p>The deadlock detector identifies deadlocks by looking for a cycle in
 what is commonly referred to as its "waits-for" graph.  More precisely,
 the deadlock detector reads through the lock table, and reviews each
@@ -46,7 +46,7 @@ release its lock before the waiting locker can make forward progress.
 Conceptually, after each object has been examined, the partial orderings
 are topologically sorted.  If this topological sort reveals any cycles,
 the lockers forming the cycle are involved in a deadlock.  One of the
-lockers is selected for rejection.
+lockers is selected for rejection.</p>
 <p>It is possible that rejecting a single lock request involved in a
 deadlock is not enough to allow other lockers to make forward progress.
 Unfortunately, at the time a lock request is selected for rejection,
@@ -61,7 +61,7 @@ cycles, one lock request from each cycle is selected for rejection.
 Only after the enclosing transactions have received the lock request
 rejection return and aborted their transactions can it be determined
 whether it is necessary to reject additional lock requests in order to
-allow forward progress.
+allow forward progress.</p>
 <p>The <a href="../../utility/db_deadlock.html">db_deadlock</a> utility performs deadlock detection by calling
 the underlying Berkeley DB <a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> method at regular intervals
 (<a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> runs a single iteration of the Berkeley DB deadlock
@@ -76,9 +76,9 @@ as soon as the lock request blocks), however, automatic deadlock
 detection often runs the deadlock detector when there is no need for
 it, and for applications with large numbers of locks and/or where many
 operations block temporarily on locks but are soon able to proceed,
-automatic detection can decrease performance.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
+automatic detection can decrease performance.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

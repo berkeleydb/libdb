@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: client.c,v 1.51 2002/08/06 06:18:15 bostic Exp $";
+static const char revid[] = "$Id: client.c,v 1.54 2003/06/14 17:56:01 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -23,7 +23,6 @@ static const char revid[] = "$Id: client.c,v 1.51 2002/08/06 06:18:15 bostic Exp
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -89,6 +88,30 @@ __dbcl_envrpcserver(dbenv, clnt, host, tsec, ssec, flags)
 	dbenv->cl_handle = cl;
 
 	return (__dbcl_env_create(dbenv, ssec));
+}
+
+/*
+ * __dbcl_env_close_wrap --
+ *	Wrapper function for DB_ENV->close function for clients.
+ *	We need a wrapper function to deal with the case where we
+ *	either don't call dbenv->open or close gets an error.
+ *	We need to release the handle no matter what.
+ *
+ * PUBLIC: int __dbcl_env_close_wrap
+ * PUBLIC:     __P((DB_ENV *, u_int32_t));
+ */
+int
+__dbcl_env_close_wrap(dbenv, flags)
+	DB_ENV * dbenv;
+	u_int32_t flags;
+{
+	int ret, t_ret;
+
+	ret = __dbcl_env_close(dbenv, flags);
+	t_ret = __dbcl_refresh(dbenv);
+	if (ret == 0 && t_ret != 0)
+		ret = t_ret;
+	return (ret);
 }
 
 /*

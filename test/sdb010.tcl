@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2002
+# Copyright (c) 2000-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb010.tcl,v 11.14 2002/07/11 18:53:47 sandstro Exp $
+# $Id: sdb010.tcl,v 11.16 2003/01/08 05:53:07 bostic Exp $
 #
-# TEST	subdb010
+# TEST	sdb010
 # TEST	Test DB->remove() method and DB->truncate() for subdbs
-proc subdb010 { method args } {
+proc sdb010 { method args } {
 	global errorCode
 	source ./include.tcl
 

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2002
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_db_pkg.c,v 11.141 2002/08/14 20:15:47 bostic Exp $";
+static const char revid[] = "$Id: tcl_db_pkg.c,v 11.164 2003/11/14 18:45:11 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -42,23 +42,23 @@ static int	bdb_DbOpen __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     DBTCL_INFO *, DB **));
 static int	bdb_DbRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int	bdb_DbRename __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int	bdb_Version __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+
+#if CONFIG_TEST
 static int	bdb_DbUpgrade __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int	bdb_DbVerify __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
-static int	bdb_Version __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int	bdb_Handles __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 
 static int	tcl_bt_compare __P((DB *, const DBT *, const DBT *));
 static int	tcl_compare_callback __P((DB *, const DBT *, const DBT *,
     Tcl_Obj *, char *));
+static void	tcl_db_free __P((void *));
+static void *	tcl_db_malloc __P((size_t));
+static void *	tcl_db_realloc __P((void *, size_t));
 static int	tcl_dup_compare __P((DB *, const DBT *, const DBT *));
 static u_int32_t tcl_h_hash __P((DB *, const void *, u_int32_t));
 static int	tcl_rep_send __P((DB_ENV *,
-    const DBT *, const DBT *, int, u_int32_t));
-
-#ifdef TEST_ALLOC
-static void *	tcl_db_malloc __P((size_t));
-static void *	tcl_db_realloc __P((void *, size_t));
-static void	tcl_db_free __P((void *));
+    const DBT *, const DBT *, const DB_LSN *, int, u_int32_t));
 #endif
 
 /*
@@ -75,8 +75,10 @@ Db_tcl_Init(interp)
 					 * to be made available. */
 {
 	int code;
+	char pkg[12];
 
-	code = Tcl_PkgProvide(interp, "Db_tcl", "1.0");
+	snprintf(pkg, sizeof(pkg), "%d.%d", DB_VERSION_MAJOR, DB_VERSION_MINOR);
+	code = Tcl_PkgProvide(interp, "Db_tcl", pkg);
 	if (code != TCL_OK)
 		return (code);
 
@@ -116,7 +118,7 @@ berkdb_Cmd(notused, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *berkdbcmds[] = {
+	static const char *berkdbcmds[] = {
 #if CONFIG_TEST
 		"dbverify",
 		"handles",
@@ -342,8 +344,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	DBTCL_INFO *ip;			/* Our internal info */
 	DB_ENV **env;			/* Environment pointer */
 {
-	static char *envopen[] = {
+	static const char *envopen[] = {
 #if CONFIG_TEST
+		"-alloc",
 		"-auto_commit",
 		"-cdb",
 		"-cdb_alldb",
@@ -360,8 +363,10 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-log_buffer",
 		"-log_max",
 		"-log_regionmax",
+		"-log_remove",
 		"-mmapsize",
 		"-nommap",
+		"-notdurable",
 		"-overwrite",
 		"-region_init",
 		"-rep_client",
@@ -370,6 +375,8 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-rep_transport",
 		"-server",
 		"-server_timeout",
+		"-thread",
+		"-time_notgranted",
 		"-txn_timeout",
 		"-txn_timestamp",
 		"-verbose",
@@ -404,6 +411,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	 */
 	enum envopen {
 #if CONFIG_TEST
+		ENV_ALLOC,
 		ENV_AUTO_COMMIT,
 		ENV_CDB,
 		ENV_CDB_ALLDB,
@@ -420,8 +428,10 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_LOG_BUFFER,
 		ENV_LOG_MAX,
 		ENV_LOG_REGIONMAX,
+		ENV_LOG_REMOVE,
 		ENV_MMAPSIZE,
 		ENV_NOMMAP,
+		ENV_NOTDURABLE,
 		ENV_OVERWRITE,
 		ENV_REGION_INIT,
 		ENV_REP_CLIENT,
@@ -430,6 +440,8 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_REP_TRANSPORT,
 		ENV_SERVER,
 		ENV_SERVER_TO,
+		ENV_THREAD,
+		ENV_TIME_NOTGRANTED,
 		ENV_TXN_TIMEOUT,
 		ENV_TXN_TIME,
 		ENV_VERBOSE,
@@ -456,41 +468,40 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_USE_ENVIRON,
 		ENV_USE_ENVIRON_ROOT
 	};
-	Tcl_Obj **myobjv, **myobjv1;
-	time_t timestamp;
-	u_int32_t detect, gbytes, bytes, ncaches, logbufset, logmaxset;
-	u_int32_t open_flags, rep_flags, set_flags, size, uintarg;
-	u_int8_t *conflicts;
-	int i, intarg, j, mode, myobjc, nmodes, optindex;
-	int result, ret, temp;
+	Tcl_Obj **myobjv;
+	u_int32_t cr_flags, gbytes, bytes, ncaches, logbufset, logmaxset;
+	u_int32_t open_flags, rep_flags, set_flags, uintarg;
+	int i, mode, myobjc, optindex, result, ret;
 	long client_to, server_to, shm;
 	char *arg, *home, *passwd, *server;
+#if CONFIG_TEST
+	Tcl_Obj **myobjv1;
+	time_t timestamp;
+	u_int32_t detect, size;
+	u_int8_t *conflicts;
+	int intarg, j, nmodes, temp;
+#endif
 
 	result = TCL_OK;
 	mode = 0;
-	rep_flags = set_flags = 0;
+	rep_flags = set_flags = cr_flags = 0;
 	home = NULL;
 
 	/*
 	 * XXX
 	 * If/when our Tcl interface becomes thread-safe, we should enable
-	 * DB_THREAD here in all cases.  For now, turn it on only when testing
-	 * so that we exercise MUTEX_THREAD_LOCK cases.
+	 * DB_THREAD here in all cases.  For now, we turn it on later in this
+	 * function, and only when we're in testing and we specify the
+	 * -thread flag, so that we can exercise MUTEX_THREAD_LOCK cases.
 	 *
-	 * Historically, a key stumbling block was the log_get interface,
-	 * which could only do relative operations in a non-threaded
-	 * environment.  This is no longer an issue, thanks to log cursors,
-	 * but we need to look at making sure DBTCL_INFO structs
-	 * are safe to share across threads (they're not mutex-protected)
-	 * before we declare the Tcl interface thread-safe.  Meanwhile,
-	 * there's no strong reason to enable DB_THREAD.
+	 * In order to become truly thread-safe, we need to look at making sure
+	 * DBTCL_INFO structs are safe to share across threads (they're not
+	 * mutex-protected) before we declare the Tcl interface thread-safe.
+	 * Meanwhile, there's no strong reason to enable DB_THREAD when not
+	 * testing.
 	 */
-	open_flags = DB_JOINENV |
-#ifdef TEST_THREAD
-	    DB_THREAD;
-#else
-	    0;
-#endif
+	open_flags = DB_JOINENV;
+
 	logmaxset = logbufset = 0;
 
 	if (objc <= 2) {
@@ -519,6 +530,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				result = TCL_ERROR;
 				break;
 			}
+			FLD_SET(cr_flags, DB_RPCCLIENT);
 			server = Tcl_GetStringFromObj(objv[i++], NULL);
 			break;
 		case ENV_SERVER_TO:
@@ -528,6 +540,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				result = TCL_ERROR;
 				break;
 			}
+			FLD_SET(cr_flags, DB_RPCCLIENT);
 			result = Tcl_GetLongFromObj(interp, objv[i++],
 			    &server_to);
 			break;
@@ -538,6 +551,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				result = TCL_ERROR;
 				break;
 			}
+			FLD_SET(cr_flags, DB_RPCCLIENT);
 			result = Tcl_GetLongFromObj(interp, objv[i++],
 			    &client_to);
 			break;
@@ -546,11 +560,17 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			break;
 		}
 	}
+	if (result != TCL_OK)
+		return (TCL_ERROR);
+	ret = db_env_create(env, cr_flags);
+	if (ret)
+		return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "db_env_create"));
+	/*
+	 * From here on we must 'goto error' in order to clean up the
+	 * env from db_env_create.
+	 */
 	if (server != NULL) {
-		ret = db_env_create(env, DB_CLIENT);
-		if (ret)
-			return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
-			    "db_env_create"));
 		(*env)->set_errpfx((*env), ip->i_name);
 		(*env)->set_errcall((*env), _ErrorFunc);
 		if ((ret = (*env)->set_rpc_server((*env), NULL, server,
@@ -563,24 +583,12 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		 * Create the environment handle before parsing the args
 		 * since we'll be modifying the environment as we parse.
 		 */
-		ret = db_env_create(env, 0);
-		if (ret)
-			return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
-			    "db_env_create"));
 		(*env)->set_errpfx((*env), ip->i_name);
 		(*env)->set_errcall((*env), _ErrorFunc);
 	}
 
 	/* Hang our info pointer on the env handle, so we can do callbacks. */
 	(*env)->app_private = ip;
-
-	/*
-	 * Use a Tcl-local alloc and free function so that we're sure to
-	 * test whether we use umalloc/ufree in the right places.
-	 */
-#ifdef TEST_ALLOC
-	(*env)->set_alloc(*env, tcl_db_malloc, tcl_db_realloc, tcl_db_free);
-#endif
 
 	/*
 	 * Get the command name index from the object based on the bdbcmds
@@ -604,6 +612,15 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			 * Already handled these, skip them and their arg.
 			 */
 			i++;
+			break;
+		case ENV_ALLOC:
+			/*
+			 * Use a Tcl-local alloc and free function so that
+			 * we're sure to test whether we use umalloc/ufree in
+			 * the right places.
+			 */
+			(void)(*env)->set_alloc(*env,
+			    tcl_db_malloc, tcl_db_realloc, tcl_db_free);
 			break;
 		case ENV_AUTO_COMMIT:
 			FLD_SET(set_flags, DB_AUTO_COMMIT);
@@ -832,6 +849,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 					"log_regionmax");
 			}
 			break;
+		case ENV_LOG_REMOVE:
+			FLD_SET(set_flags, DB_LOG_AUTOREMOVE);
+			break;
 		case ENV_MMAPSIZE:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -862,12 +882,15 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			break;
 		case ENV_REP_CLIENT:
 			rep_flags = DB_REP_CLIENT;
+			FLD_SET(open_flags, DB_INIT_REP);
 			break;
 		case ENV_REP_LOGSONLY:
 			rep_flags = DB_REP_LOGSONLY;
+			FLD_SET(open_flags, DB_INIT_REP);
 			break;
 		case ENV_REP_MASTER:
 			rep_flags = DB_REP_MASTER;
+			FLD_SET(open_flags, DB_INIT_REP);
 			break;
 		case ENV_REP_TRANSPORT:
 			if (i >= objc) {
@@ -899,6 +922,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				break;
 			}
 
+			FLD_SET(open_flags, DB_INIT_REP);
 			/*
 			 * Check that the machine ID is an int.  Note that
 			 * we do want to use GetIntFromObj;  the machine
@@ -919,6 +943,13 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 			    "set_rep_transport");
 			break;
+		case ENV_THREAD:
+			/* Enable DB_THREAD when specified in testing. */
+			FLD_SET(open_flags, DB_THREAD);
+			break;
+		case ENV_TIME_NOTGRANTED:
+			FLD_SET(set_flags, DB_TIME_NOTGRANTED);
+			break;
 		case ENV_VERBOSE:
 			result = Tcl_ListObjGetElements(interp, objv[i],
 			    &myobjc, &myobjv);
@@ -934,6 +965,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			}
 			result = tcl_EnvVerbose(interp, *env,
 			    myobjv[0], myobjv[1]);
+			break;
+		case ENV_NOTDURABLE:
+			FLD_SET(set_flags, DB_TXN_NOT_DURABLE);
 			break;
 		case ENV_WRNOSYNC:
 			FLD_SET(set_flags, DB_TXN_WRITE_NOSYNC);
@@ -1097,9 +1131,16 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			/*
 			 * If the user already set one, close it.
 			 */
-			if (ip->i_err != NULL)
+			if (ip->i_err != NULL &&
+			    ip->i_err != stdout && ip->i_err != stderr)
 				fclose(ip->i_err);
-			ip->i_err = fopen(arg, "a");
+
+			if (strcmp(arg, "/dev/stdout") == 0)
+				ip->i_err = stdout;
+			else if (strcmp(arg, "/dev/stderr") == 0)
+				ip->i_err = stderr;
+			else
+				ip->i_err = fopen(arg, "a");
 			if (ip->i_err != NULL) {
 				_debug_check();
 				(*env)->set_errfile(*env, ip->i_err);
@@ -1226,7 +1267,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	}
 
 error:	if (result == TCL_ERROR) {
-		if (ip->i_err) {
+		if (ip->i_err && ip->i_err != stdout && ip->i_err != stderr) {
 			fclose(ip->i_err);
 			ip->i_err = NULL;
 		}
@@ -1257,13 +1298,13 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 	DBTCL_INFO *ip;			/* Our internal info */
 	DB **dbp;			/* DB handle */
 {
-	static char *bdbenvopen[] = {
+	static const char *bdbenvopen[] = {
 		"-env",	NULL
 	};
 	enum bdbenvopen {
 		TCL_DB_ENV0
 	};
-	static char *bdbopen[] = {
+	static const char *bdbopen[] = {
 #if CONFIG_TEST
 		"-btcompare",
 		"-dirty",
@@ -1272,8 +1313,10 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		"-lorder",
 		"-minkey",
 		"-nommap",
+		"-notdurable",
 		"-revsplitoff",
 		"-test",
+		"-thread",
 #endif
 		"-auto_commit",
 		"-btree",
@@ -1294,6 +1337,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		"-ffactor",
 		"-hash",
 		"-len",
+		"-maxsize",
 		"-mode",
 		"-nelem",
 		"-pad",
@@ -1320,8 +1364,10 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		TCL_DB_LORDER,
 		TCL_DB_MINKEY,
 		TCL_DB_NOMMAP,
+		TCL_DB_NOTDURABLE,
 		TCL_DB_REVSPLIT,
 		TCL_DB_TEST,
+		TCL_DB_THREAD,
 #endif
 		TCL_DB_AUTO_COMMIT,
 		TCL_DB_BTREE,
@@ -1342,6 +1388,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		TCL_DB_FFACTOR,
 		TCL_DB_HASH,
 		TCL_DB_LEN,
+		TCL_DB_MAXSIZE,
 		TCL_DB_MODE,
 		TCL_DB_NELEM,
 		TCL_DB_PAD,
@@ -1379,16 +1426,18 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 	/*
 	 * XXX
 	 * If/when our Tcl interface becomes thread-safe, we should enable
-	 * DB_THREAD here in all cases.  See comment in bdb_EnvOpen().
-	 * For now, just turn it on when testing so that we exercise
-	 * MUTEX_THREAD_LOCK cases.
+	 * DB_THREAD here in all cases.  For now, we turn it on later in this
+	 * function, and only when we're in testing and we specify the
+	 * -thread flag, so that we can exercise MUTEX_THREAD_LOCK cases.
+	 *
+	 * In order to become truly thread-safe, we need to look at making sure
+	 * DBTCL_INFO structs are safe to share across threads (they're not
+	 * mutex-protected) before we declare the Tcl interface thread-safe.
+	 * Meanwhile, there's no strong reason to enable DB_THREAD when not
+	 * testing.
 	 */
-	open_flags =
-#ifdef TEST_THREAD
-	    DB_THREAD;
-#else
-	    0;
-#endif
+	open_flags = 0;
+
 	envp = NULL;
 	txn = NULL;
 
@@ -1576,11 +1625,18 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		case TCL_DB_NOMMAP:
 			open_flags |= DB_NOMMAP;
 			break;
+		case TCL_DB_NOTDURABLE:
+			set_flags |= DB_TXN_NOT_DURABLE;
+			break;
 		case TCL_DB_REVSPLIT:
 			set_flags |= DB_REVSPLITOFF;
 			break;
 		case TCL_DB_TEST:
 			(*dbp)->set_h_hash(*dbp, __ham_test);
+			break;
+		case TCL_DB_THREAD:
+			/* Enable DB_THREAD when specified in testing. */
+			open_flags |= DB_THREAD;
 			break;
 #endif
 		case TCL_DB_AUTO_COMMIT:
@@ -1694,7 +1750,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			set_flags |= DB_SNAPSHOT;
 			break;
 		case TCL_DB_CHKSUM:
-			set_flags |= DB_CHKSUM_SHA1;
+			set_flags |= DB_CHKSUM;
 			break;
 		case TCL_DB_ENCRYPT:
 			set_flags |= DB_ENCRYPT;
@@ -1783,6 +1839,22 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			if (result == TCL_OK) {
 				_debug_check();
 				ret = (*dbp)->set_re_len(*dbp, uintarg);
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_STD(ret), "set_re_len");
+			}
+			break;
+		case TCL_DB_MAXSIZE:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-len length");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &uintarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*dbp)->mpf->set_maxsize(
+				    (*dbp)->mpf, 0, uintarg);
 				result = _ReturnSetup(interp, ret,
 				    DB_RETOK_STD(ret), "set_re_len");
 			}
@@ -1883,9 +1955,15 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			/*
 			 * If the user already set one, close it.
 			 */
-			if (errip->i_err != NULL)
+			if (errip->i_err != NULL &&
+			    errip->i_err != stdout && errip->i_err != stderr)
 				fclose(errip->i_err);
-			errip->i_err = fopen(arg, "a");
+			if (strcmp(arg, "/dev/stdout") == 0)
+				errip->i_err = stdout;
+			else if (strcmp(arg, "/dev/stderr") == 0)
+				errip->i_err = stderr;
+			else
+				errip->i_err = fopen(arg, "a");
 			if (errip->i_err != NULL) {
 				_debug_check();
 				(*dbp)->set_errfile(*dbp, errip->i_err);
@@ -1999,7 +2077,8 @@ error:
 		 * if (ip->i_err)
 		 *	fclose(ip->i_err);
 		 */
-		if (set_err && errip && errip->i_err != NULL) {
+		if (set_err && errip && errip->i_err != NULL &&
+		    errip->i_err != stdout && errip->i_err != stderr) {
 			fclose(errip->i_err);
 			errip->i_err = NULL;
 		}
@@ -2022,7 +2101,7 @@ bdb_DbRemove(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *bdbrem[] = {
+	static const char *bdbrem[] = {
 		"-auto_commit",
 		"-encrypt",
 		"-encryptaes",
@@ -2200,7 +2279,7 @@ bdb_DbRemove(interp, objc, objv)
 	}
 
 	/*
-	 * No matter what, we NULL out dbp after this call.
+	 * The dbremove method is a destructor, NULL out the dbp.
 	 */
 	_debug_check();
 	if (dbp == NULL)
@@ -2220,7 +2299,7 @@ error:
 
 /*
  * bdb_DbRename --
- *	Implements the DBENV->dbrename and DB->rename commands.
+ *	Implements the DB_ENV->dbrename and DB->rename commands.
  */
 static int
 bdb_DbRename(interp, objc, objv)
@@ -2228,7 +2307,7 @@ bdb_DbRename(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *bdbmv[] = {
+	static const char *bdbmv[] = {
 		"-auto_commit",
 		"-encrypt",
 		"-encryptaes",
@@ -2418,8 +2497,9 @@ bdb_DbRename(interp, objc, objv)
 	}
 
 	/*
-	 * No matter what, we NULL out dbp after this call.
+	 * The dbrename method is a destructor, NULL out the dbp.
 	 */
+	_debug_check();
 	if (dbp == NULL)
 		ret = envp->dbrename(envp, txn, db, subdb, newname, iflags);
 	else
@@ -2447,7 +2527,7 @@ bdb_DbVerify(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *bdbverify[] = {
+	static const char *bdbverify[] = {
 		"-encrypt",
 		"-encryptaes",
 		"-encryptany",
@@ -2553,9 +2633,14 @@ bdb_DbVerify(interp, objc, objv)
 			/*
 			 * If the user already set one, close it.
 			 */
-			if (errf != NULL)
+			if (errf != NULL && errf != stdout && errf != stderr)
 				fclose(errf);
-			errf = fopen(arg, "a");
+			if (strcmp(arg, "/dev/stdout") == 0)
+				errf = stdout;
+			else if (strcmp(arg, "/dev/stderr") == 0)
+				errf = stderr;
+			else
+				errf = fopen(arg, "a");
 			break;
 		case TCL_DBVRFY_ERRPFX:
 			if (i >= objc) {
@@ -2624,10 +2709,14 @@ bdb_DbVerify(interp, objc, objv)
 	if (errpfx != NULL)
 		dbp->set_errpfx(dbp, errpfx);
 
+	/*
+	 * The verify method is a destructor, NULL out the dbp.
+	 */
 	ret = dbp->verify(dbp, db, NULL, NULL, flags);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "db verify");
+	dbp = NULL;
 error:
-	if (errf != NULL)
+	if (errf != NULL && errf != stdout && errf != stderr)
 		fclose(errf);
 	if (errpfx != NULL)
 		__os_free(envp, errpfx);
@@ -2647,7 +2736,7 @@ bdb_Version(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *bdbver[] = {
+	static const char *bdbver[] = {
 		"-string", NULL
 	};
 	enum bdbver {
@@ -2744,9 +2833,7 @@ bdb_Handles(interp, objc, objv)
 	Tcl_SetObjResult(interp, res);
 	return (TCL_OK);
 }
-#endif
 
-#if CONFIG_TEST
 /*
  * bdb_DbUpgrade --
  *	Implements the DB->upgrade command.
@@ -2757,7 +2844,7 @@ bdb_DbUpgrade(interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *bdbupg[] = {
+	static const char *bdbupg[] = {
 		"-dupsort", "-env", "--", NULL
 	};
 	enum bdbupg {
@@ -2848,7 +2935,6 @@ error:
 		(void)dbp->close(dbp, 0);
 	return (result);
 }
-#endif
 
 /*
  * tcl_bt_compare and tcl_dup_compare --
@@ -2993,18 +3079,19 @@ panic:		__db_err(dbp->dbenv, "Tcl h_hash callback failed");
  *	Replication send callback.
  */
 static int
-tcl_rep_send(dbenv, control, rec, eid, flags)
+tcl_rep_send(dbenv, control, rec, lsnp, eid, flags)
 	DB_ENV *dbenv;
 	const DBT *control, *rec;
+	const DB_LSN *lsnp;
 	int eid;
 	u_int32_t flags;
 {
+#define	TCLDB_SENDITEMS	7
 	DBTCL_INFO *ip;
 	Tcl_Interp *interp;
-	Tcl_Obj *control_o, *eid_o, *origobj, *rec_o, *resobj, *objv[5];
-	int result, ret;
-
-	COMPQUIET(flags, 0);
+	Tcl_Obj *control_o, *eid_o, *flags_o, *lsn_o, *origobj, *rec_o;
+	Tcl_Obj *myobjv[2], *resobj, *objv[TCLDB_SENDITEMS];
+	int myobjc, result, ret;
 
 	ip = (DBTCL_INFO *)dbenv->app_private;
 	interp = ip->i_interp;
@@ -3019,10 +3106,25 @@ tcl_rep_send(dbenv, control, rec, eid, flags)
 	eid_o = Tcl_NewIntObj(eid);
 	Tcl_IncrRefCount(eid_o);
 
+	if (LF_ISSET(DB_REP_PERMANENT))
+		flags_o = Tcl_NewStringObj("perm", strlen("perm"));
+	else if (LF_ISSET(DB_REP_NOBUFFER))
+		flags_o = Tcl_NewStringObj("nobuffer", strlen("nobuffer"));
+	else
+		flags_o = Tcl_NewStringObj("none", strlen("none"));
+	Tcl_IncrRefCount(flags_o);
+
+	myobjc = 2;
+	myobjv[0] = Tcl_NewLongObj((long)lsnp->file);
+	myobjv[1] = Tcl_NewLongObj((long)lsnp->offset);
+	lsn_o = Tcl_NewListObj(myobjc, myobjv);
+
 	objv[1] = control_o;
 	objv[2] = rec_o;
 	objv[3] = ip->i_rep_eid;	/* From ID */
 	objv[4] = eid_o;		/* To ID */
+	objv[5] = flags_o;		/* Flags */
+	objv[6] = lsn_o;		/* LSN */
 
 	/*
 	 * We really want to return the original result to the
@@ -3032,7 +3134,7 @@ tcl_rep_send(dbenv, control, rec, eid, flags)
 	 */
 	origobj = Tcl_GetObjResult(interp);
 	Tcl_IncrRefCount(origobj);
-	result = Tcl_EvalObjv(interp, 5, objv, 0);
+	result = Tcl_EvalObjv(interp, TCLDB_SENDITEMS, objv, 0);
 	if (result != TCL_OK) {
 		/*
 		 * XXX
@@ -3054,11 +3156,13 @@ err:		__db_err(dbenv, "Tcl rep_send failure");
 	Tcl_DecrRefCount(control_o);
 	Tcl_DecrRefCount(rec_o);
 	Tcl_DecrRefCount(eid_o);
+	Tcl_DecrRefCount(flags_o);
 
 	return (ret);
 }
+#endif
 
-#ifdef TEST_ALLOC
+#ifdef CONFIG_TEST
 /*
  * tcl_db_malloc, tcl_db_realloc, tcl_db_free --
  *	Tcl-local malloc, realloc, and free functions to use for user data

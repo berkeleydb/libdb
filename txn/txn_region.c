@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_region.c,v 11.73 2002/08/06 04:42:37 bostic Exp $";
+static const char revid[] = "$Id: txn_region.c,v 11.79 2003/07/23 13:13:12 mjc Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -152,13 +152,6 @@ __txn_init(dbenv, tmgrp)
 	region->last_ckp = last_ckp;
 	region->time_ckp = time(NULL);
 
-	/*
-	 * XXX
-	 * If we ever do more types of locking and logging, this changes.
-	 */
-	region->logtype = 0;
-	region->locktype = 0;
-
 	memset(&region->stat, 0, sizeof(region->stat));
 	region->stat.st_maxtxns = region->maxtxns;
 
@@ -194,12 +187,12 @@ __txn_findlastckp(dbenv, lsnp)
 	int ret, t_ret;
 	u_int32_t rectype;
 
-	if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0)
+	if ((ret = __log_cursor(dbenv, &logc)) != 0)
 		return (ret);
 
 	/* Get the last LSN. */
 	memset(&dbt, 0, sizeof(dbt));
-	if ((ret = logc->get(logc, &lsn, &dbt, DB_LAST)) != 0)
+	if ((ret = __log_c_get(logc, &lsn, &dbt, DB_LAST)) != 0)
 		goto err;
 
 	/*
@@ -210,7 +203,7 @@ __txn_findlastckp(dbenv, lsnp)
 	lsn.offset = 0;
 
 	/* Read backwards, looking for checkpoints. */
-	while ((ret = logc->get(logc, &lsn, &dbt, DB_PREV)) == 0) {
+	while ((ret = __log_c_get(logc, &lsn, &dbt, DB_PREV)) == 0) {
 		if (dbt.size < sizeof(u_int32_t))
 			continue;
 		memcpy(&rectype, dbt.data, sizeof(u_int32_t));
@@ -220,7 +213,7 @@ __txn_findlastckp(dbenv, lsnp)
 		}
 	}
 
-err:	if ((t_ret = logc->close(logc, 0)) != 0 && ret == 0)
+err:	if ((t_ret = __log_c_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
 	/*
 	 * Not finding a checkpoint is not an error;  there may not exist
@@ -242,8 +235,9 @@ __txn_dbenv_refresh(dbenv)
 {
 	DB_TXN *txnp;
 	DB_TXNMGR *tmgrp;
+	TXN_DETAIL *td;
 	u_int32_t txnid;
-	int ret, t_ret;
+	int aborted, ret, t_ret;
 
 	ret = 0;
 	tmgrp = dbenv->tx_handle;
@@ -252,19 +246,30 @@ __txn_dbenv_refresh(dbenv)
 	 * This function can only be called once per process (i.e., not
 	 * once per thread), so no synchronization is required.
 	 *
-	 * The caller is doing something wrong if close is called with
-	 * active transactions.  Try and abort any active transactions,
-	 * but it's quite likely the aborts will fail because recovery
-	 * won't find open files.  If we can't abort any transaction,
-	 * panic, we have to run recovery to get back to a known state.
+	 * The caller is probably doing something wrong if close is called with
+	 * active transactions.  Try and abort any active transactions that are
+	 * not prepared, but it's quite likely the aborts will fail because
+	 * recovery won't find open files.  If we can't abort any of the
+	 * unprepared transaction, panic, we have to run recovery to get back
+	 * to a known state.
 	 */
+	aborted = 0;
 	if (TAILQ_FIRST(&tmgrp->txn_chain) != NULL) {
-		__db_err(dbenv,
-	"Error: closing the transaction region with active transactions");
-		ret = EINVAL;
 		while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL) {
+			/* Prepared transactions are OK. */
+			td = (TXN_DETAIL *)R_ADDR(&tmgrp->reginfo, txnp->off);
 			txnid = txnp->txnid;
-			if ((t_ret = txnp->abort(txnp)) != 0) {
+			if (td->status == TXN_PREPARED) {
+				if ((ret = __txn_discard(txnp, 0)) != 0) {
+					__db_err(dbenv,
+					    "Unable to discard txn 0x%x: %s",
+					    txnid, db_strerror(ret));
+					break;
+				}
+				continue;
+			}
+			aborted = 1;
+			if ((t_ret = __txn_abort(txnp)) != 0) {
 				__db_err(dbenv,
 				    "Unable to abort transaction 0x%x: %s",
 				    txnid, db_strerror(t_ret));
@@ -272,11 +277,17 @@ __txn_dbenv_refresh(dbenv)
 				break;
 			}
 		}
+		if (aborted) {
+			__db_err(dbenv,
+	"Error: closing the transaction region with active transactions");
+			if (ret == 0)
+				ret = EINVAL;
+		}
 	}
 
 	/* Flush the log. */
 	if (LOGGING_ON(dbenv) &&
-	    (t_ret = dbenv->log_flush(dbenv, NULL)) != 0 && ret == 0)
+	    (t_ret = __log_flush(dbenv, NULL)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the per-thread lock. */
@@ -334,7 +345,6 @@ __txn_region_destroy(dbenv, infop)
 	COMPQUIET(infop, NULL);
 }
 
-#ifdef CONFIG_TEST
 /*
  * __txn_id_set --
  *	Set the current transaction ID and current maximum unused ID (for
@@ -361,14 +371,13 @@ __txn_id_set(dbenv, cur_txnid, max_txnid)
 	ret = 0;
 	if (cur_txnid < TXN_MINIMUM) {
 		__db_err(dbenv, "Current ID value %lu below minimum",
-		    cur_txnid);
+		    (u_long)cur_txnid);
 		ret = EINVAL;
 	}
 	if (max_txnid < TXN_MINIMUM) {
 		__db_err(dbenv, "Maximum ID value %lu below minimum",
-		    max_txnid);
+		    (u_long)max_txnid);
 		ret = EINVAL;
 	}
 	return (ret);
 }
-#endif

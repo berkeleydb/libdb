@@ -1,32 +1,30 @@
 <!--$Id: db_checkpoint.so,v 10.26 2002/08/24 18:24:51 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_checkpoint</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>db_checkpoint</h1>
+<h3>db_checkpoint</h3>
 </td>
-<td align=right>
-<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
 <h3><pre>db_checkpoint [<b>-1Vv</b>] [<b>-h home</b>]
     [<b>-k kbytes</b>] [<b>-L file</b>] [<b>-P password</b>] [<b>-p min</b>]</pre></h3>
-<h1>Description</h1>
+<h3>Description</h3>
 <a name="3"><!--meow--></a>
 <p>The db_checkpoint utility is a daemon process that monitors the
 database log, and periodically calls <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> to checkpoint
-it.
-<p>The options are as follows:
+it.</p>
+<p>The options are as follows:</p>
 <p><dl compact>
 <p><dt><b>-1</b><dd>Checkpoint the log once, regardless of whether or not there has been
 activity since the last checkpoint and then exit.
@@ -37,7 +35,7 @@ file are written.
 <p><dt><b>-L</b><dd>Log the execution of the db_checkpoint utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
 is the time the utility was started.
-<p><blockquote><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
+<blockquote><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
 This file will be removed if the db_checkpoint utility exits gracefully.
 <p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
 password strings as soon as possible, be aware there may be a window of
@@ -50,7 +48,7 @@ been any activity since the last checkpoint.
 <p><dt><b>-v</b><dd>Write the time of each checkpoint attempt to the standard output.
 </dl>
 <p>At least one of the <b>-1</b>, <b>-k</b>, and <b>-p</b> options
-must be specified.
+must be specified.</p>
 <p>The db_checkpoint utility uses a Berkeley DB environment (as described for the
 <b>-h</b> option, the environment variable <b>DB_HOME</b>, or
 because the utility was run in a directory containing a Berkeley DB
@@ -58,22 +56,22 @@ environment).  In order to avoid environment corruption when using a
 Berkeley DB environment, db_checkpoint should always be given the chance to
 detach from the environment and exit gracefully.  To cause db_checkpoint
 to release all environment resources and exit cleanly, send it an
-interrupt signal (SIGINT).
+interrupt signal (SIGINT).</p>
 <p>The db_checkpoint utility does not attempt to create the Berkeley DB
 shared memory regions if they do not already exist.  The application
 that creates the region should be started first, and once the region is
-created, the db_checkpoint utility should be started.
-<p>The <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> method is the underlying interface used by the db_checkpoint utility.
+created, the db_checkpoint utility should be started.</p>
+<p>The <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> method is the underlying method used by the db_checkpoint utility.
 See the db_checkpoint utility source code for an example of using <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a>
-in a IEEE/ANSI Std 1003.1 (POSIX) environment.
-<p>The db_checkpoint utility exits 0 on success, and &gt;0 if an error occurs.
-<h1>Environment Variables</h1>
+in a IEEE/ANSI Std 1003.1 (POSIX) environment.</p>
+<p>The db_checkpoint utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<h3>Environment Variables</h3>
 <p><dl compact>
 <p><dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
 </tt>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

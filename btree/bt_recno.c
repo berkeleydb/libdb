@@ -1,21 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_recno.c,v 11.106 2002/08/16 04:56:30 ubell Exp $";
+static const char revid[] = "$Id: bt_recno.c,v 11.113 2003/06/30 17:19:34 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <limits.h>
-#include <stdio.h>
 #include <string.h>
 #endif
 
@@ -58,7 +56,7 @@ static int  __ram_update __P((DBC *, db_recno_t, int));
 	}								\
 }
 #define	CD_ISSET(cp)							\
-	(F_ISSET(cp, C_RENUMBER) && F_ISSET(cp, C_DELETED))
+	(F_ISSET(cp, C_RENUMBER) && F_ISSET(cp, C_DELETED) ? 1 : 0)
 
 /*
  * Macros for comparing the ordering of two cursors.
@@ -122,9 +120,6 @@ __ram_open(dbp, txn, name, base_pgno, flags)
 	COMPQUIET(name, NULL);
 	t = dbp->bt_internal;
 
-	/* Initialize the remaining fields/methods of the DB. */
-	dbp->stat = __bam_stat;
-
 	/* Start up the tree. */
 	if ((ret = __bam_read_root(dbp, txn, base_pgno, flags)) != 0)
 		return (ret);
@@ -143,7 +138,7 @@ __ram_open(dbp, txn, name, base_pgno, flags)
 	/* If we're snapshotting an underlying source file, do it now. */
 	if (F_ISSET(dbp, DB_AM_SNAPSHOT)) {
 		/* Allocate a cursor. */
-		if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
+		if ((ret = __db_cursor(dbp, NULL, &dbc, 0)) != 0)
 			return (ret);
 
 		/* Do the snapshot. */
@@ -152,7 +147,7 @@ __ram_open(dbp, txn, name, base_pgno, flags)
 			ret = 0;
 
 		/* Discard the cursor. */
-		if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
+		if ((t_ret = __db_c_close(dbc)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 
@@ -209,7 +204,7 @@ __ram_c_del(dbc)
 	DB_LSN lsn;
 	DBT hdr, data;
 	EPG *epg;
-	int exact, ret, stack;
+	int exact, ret, stack, t_ret;
 
 	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
@@ -262,7 +257,8 @@ __ram_c_del(dbc)
 		/* Delete the item, adjust the counts, adjust the cursors. */
 		if ((ret = __bam_ditem(dbc, cp->page, cp->indx)) != 0)
 			goto err;
-		__bam_adjust(dbc, -1);
+		if ((ret = __bam_adjust(dbc, -1)) != 0)
+			goto err;
 		if (__ram_ca(dbc, CA_DELETE) > 0 &&
 		    CURADJ_LOG(dbc) && (ret = __bam_rcuradj_log(dbp, dbc->txn,
 		    &lsn, 0, CA_DELETE, cp->root, cp->recno, cp->order)) != 0)
@@ -325,8 +321,8 @@ __ram_c_del(dbc)
 
 	t->re_modified = 1;
 
-err:	if (stack)
-		__bam_stkrel(dbc, STK_CLRDBC);
+err:	if (stack && (t_ret = __bam_stkrel(dbc, STK_CLRDBC)) != 0 && ret == 0)
+		ret = t_ret;
 
 	return (ret);
 }
@@ -388,8 +384,13 @@ retry:	switch (flags) {
 		 * we have to avoid incrementing the record number so that we
 		 * return the right record by virtue of renumbering the tree.
 		 */
-		if (CD_ISSET(cp))
+		if (CD_ISSET(cp)) {
+			/*
+			 * Clear the flag, we've moved off the deleted record.
+			 */
+			CD_CLR(cp);
 			break;
+		}
 
 		if (cp->recno != RECNO_OOB) {
 			++cp->recno;
@@ -607,9 +608,11 @@ __ram_c_put(dbc, key, data, flags, pgnop)
 				return (ret);
 			if (CURADJ_LOG(dbc) &&
 			    (ret = __bam_rcuradj_log(dbp, dbc->txn, &lsn, 0,
-			    CA_ICURRENT, cp->root, cp->recno, cp->order)))
+			    CA_ICURRENT, cp->root, cp->recno, cp->order)) != 0)
 				return (ret);
 			return (0);
+		default:
+			break;
 		}
 
 	/*
@@ -707,6 +710,8 @@ split:	if ((ret = __bam_rsearch(dbc, &cp->recno, S_INSERT, 1, &exact)) != 0)
 		    (ret = __bam_rcuradj_log(dbp, dbc->txn, &lsn, 0,
 		    CA_ICURRENT, cp->root, cp->recno, cp->order)) != 0)
 			goto err;
+		break;
+	default:
 		break;
 	}
 
@@ -1027,7 +1032,7 @@ __ram_writeback(dbp)
 	}
 
 	/* Allocate a cursor. */
-	if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
+	if ((ret = __db_cursor(dbp, NULL, &dbc, 0)) != 0)
 		return (ret);
 
 	/*
@@ -1094,7 +1099,7 @@ __ram_writeback(dbp)
 		memset(pad, t->re_pad, t->re_len);
 	}
 	for (keyno = 1;; ++keyno) {
-		switch (ret = dbp->get(dbp, NULL, &key, &data, 0)) {
+		switch (ret = __db_get(dbp, NULL, &key, &data, 0)) {
 		case 0:
 			if (data.size != 0 && (u_int32_t)fwrite(
 			    data.data, 1, data.size, fp) != data.size)
@@ -1131,7 +1136,7 @@ done:	/* Close the file descriptor. */
 	}
 
 	/* Discard the cursor. */
-	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
+	if ((t_ret = __db_c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard memory allocated to hold the data items. */
@@ -1259,7 +1264,7 @@ __ram_add(dbc, recnop, data, flags, bi_flags)
 	u_int32_t flags, bi_flags;
 {
 	BTREE_CURSOR *cp;
-	int exact, ret, stack;
+	int exact, ret, stack, t_ret;
 
 	cp = (BTREE_CURSOR *)dbc->internal;
 
@@ -1320,8 +1325,8 @@ retry:	/* Find the slot for insertion. */
 		goto err;
 	}
 
-err:	if (stack)
-		__bam_stkrel(dbc, STK_CLRDBC);
+err:	if (stack && (t_ret = __bam_stkrel(dbc, STK_CLRDBC)) != 0 && ret == 0)
+		ret = t_ret;
 
 	return (ret);
 }

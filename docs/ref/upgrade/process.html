@@ -1,20 +1,20 @@
-<!--$Id: process.so,v 1.7 2002/05/09 20:36:07 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: process.so,v 1.11 2003/11/26 14:31:29 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Upgrading Berkeley DB installations</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></h3></td>
-<td align=right><a href="../../ref/upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.2.0/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Upgrading Berkeley DB installations</h1>
+<h3 align=center>Upgrading Berkeley DB installations</h3>
 <p>The following information describes the general process of upgrading
 Berkeley DB installations.  There are four areas to be considered when
 upgrading Berkeley DB applications and database environments: the application
@@ -26,7 +26,7 @@ minor number of the version changed), or a patch release (in which only
 the patch number in the version changed).  Berkeley DB major and minor
 releases may optionally include changes in all four areas, that is, the
 application API, region files, database formats, and log files may not
-be backward-compatible with previous releases.
+be backward-compatible with previous releases.</p>
 <p>Each Berkeley DB major or minor release has information in this chapter of
 the Reference Guide, describing how to upgrade to the new release.  The
 section describes any API changes made in the release.  Application
@@ -39,7 +39,7 @@ and they do not all necessarily change in the same release, changes to
 a database format in a release may not affect any particular
 application.  Further, database and log file formats may have changed
 but be entirely backward-compatible, in which case no upgrade will be
-necessary.
+necessary.</p>
 <p>A Berkeley DB patch release will never modify the API, regions, log files, or
 database formats in incompatible ways, and so applications need only be
 relinked (or, in the case of a shared library, pointed at the new
@@ -49,9 +49,14 @@ internal Berkeley DB interfaces may change at any time and in any release
 be entirely recompiled and reinstalled when upgrading to new releases
 of the library because there is no guarantee that modules from one
 version of the library will interact correctly with modules from another
-release.
-<p>If the release is a patch release, do the following:
-<p><ol>
+release.  We recommend using the same compiler release when building
+patch releases as was used to build the original release; in the default
+configuration, the Berkeley DB library shares data structures from underlying
+shared memory between threads of control, and should the compiler
+re-order fields or otherwise change those data structures between the
+two builds, errors may result.</p>
+<p>If the release is a patch release, do the following:</p>
+<ol>
 <p><li>Shut down the old version of the application.
 <li>Install the new version of the application by relinking or installing
 a new version of the Berkeley DB shared library.
@@ -59,8 +64,8 @@ a new version of the Berkeley DB shared library.
 </ol>
 <p>Otherwise, if the application <b>does not</b> have a Berkeley DB
 transactional environment, the application may be installed in the field
-using the following steps:
-<p><ol>
+using the following steps:</p>
+<ol>
 <p><li>Shut down the old version of the application.
 <li>Remove any Berkeley DB environment using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> method or an
 appropriate system utility.
@@ -72,8 +77,8 @@ information.
 </ol>
 <p>Otherwise, if the application has a Berkeley DB transactional environment,
 but neither the log file nor database formats need upgrading, the
-application may be installed in the field using the following steps:
-<p><ol>
+application may be installed in the field using the following steps:</p>
+<ol>
 <p><li>Shut down the old version of the application.
 <li>Run recovery on the database environment using the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method
 or the <a href="../../utility/db_recover.html">db_recover</a> utility.
@@ -83,9 +88,9 @@ appropriate system utility.
 <li>Restart the application.
 </ol>
 <p>If the application has a Berkeley DB transactional environment, and the log
-files needs upgrading but the databases do not, the application may be
-installed in the field using the following steps:
-<p><ol>
+files need upgrading but the databases do not, the application may be
+installed in the field using the following steps:</p>
+<ol>
 <p><li>Shut down the old version of the application.
 <li>Run recovery on the database environment using the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method
 or the <a href="../../utility/db_recover.html">db_recover</a> utility.
@@ -99,8 +104,8 @@ information.
 </ol>
 <p>Otherwise, if the application has a Berkeley DB transactional environment and
 the databases need upgrading, the application may be installed in the
-field using the following steps:
-<p><ol>
+field using the following steps:</p>
+<ol>
 <p><li>Shut down the old version of the application.
 <li>Run recovery on the database environment using the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method
 or the <a href="../../utility/db_recover.html">db_recover</a> utility.
@@ -124,8 +129,23 @@ the basis of your recovery, and you have to do a full upgrade on it
 before you can apply log files created after the upgrade to it.
 <li>Restart the application.
 </ol>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.2.0/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<p>Finally, upgrading a Berkeley DB replication group requires a few additional
+steps.  To upgrade a replication group, you must:</p>
+<ol>
+<p><li>Bring all clients up to date with the master (that is, all
+clients must be brought up to the most current log record as measured
+by the master's log sequence number (LSN)).
+<li>Perform the upgrade procedures described previously on each
+of the individual database environments that are part of the replication
+group.
+<li>Restart the replication group.
+</ol>
+<p>Alternatively, it may be simpler to discard the contents of all of the
+client database environments, upgrade the master database environment,
+and then re-add all of the clients to the replication group using the
+standard replication procedures for new sites.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

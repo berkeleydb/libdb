@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_dbcursor.c,v 11.51 2002/08/06 06:20:59 bostic Exp $";
+static const char revid[] = "$Id: tcl_dbcursor.c,v 11.57 2003/05/17 15:15:45 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -42,7 +42,7 @@ dbc_Cmd(clientData, interp, objc, objv)
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
-	static char *dbccmds[] = {
+	static const char *dbccmds[] = {
 #if CONFIG_TEST
 		"pget",
 #endif
@@ -151,7 +151,7 @@ tcl_DbcPut(interp, objc, objv, dbc)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DBC *dbc;			/* Cursor pointer */
 {
-	static char *dbcutopts[] = {
+	static const char *dbcutopts[] = {
 #if CONFIG_TEST
 		"-nodupdata",
 #endif
@@ -358,7 +358,7 @@ tcl_DbcPut(interp, objc, objv, dbc)
 	    "dbc put");
 	if (ret == 0 &&
 	    (flag == DB_AFTER || flag == DB_BEFORE) && type == DB_RECNO) {
-		res = Tcl_NewLongObj((long)*(db_recno_t *)key.data);
+		res = Tcl_NewWideIntObj((Tcl_WideInt)*(db_recno_t *)key.data);
 		Tcl_SetObjResult(interp, res);
 	}
 out:
@@ -380,7 +380,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	DBC *dbc;			/* Cursor pointer */
 	int ispget;			/* 1 for pget, 0 for get */
 {
-	static char *dbcgetopts[] = {
+	static const char *dbcgetopts[] = {
 #if CONFIG_TEST
 		"-dirty",
 		"-get_both_range",
@@ -437,7 +437,10 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	void *dtmp, *ktmp;
 	db_recno_t precno, recno;
 	u_int32_t flag, op;
-	int bufsize, elemc, freekey, freedata, i, optindex, result, ret;
+	int elemc, freekey, freedata, i, optindex, result, ret;
+#if CONFIG_TEST
+	int bufsize;
+#endif
 
 	result = TCL_OK;
 	flag = 0;
@@ -700,11 +703,13 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			result = TCL_ERROR;
 			goto out;
 		}
+#if CONFIG_TEST
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY)) {
 			(void)__os_malloc(NULL, bufsize, &data.data);
 			data.ulen = bufsize;
 			data.flags |= DB_DBT_USERMEM;
 		} else
+#endif
 			data.flags |= DB_DBT_MALLOC;
 		if (op == DB_SET_RECNO ||
 		    type == DB_RECNO || type == DB_QUEUE) {
@@ -734,11 +739,13 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			goto out;
 		}
 		key.flags |= DB_DBT_MALLOC;
+#if CONFIG_TEST
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY)) {
 			(void)__os_malloc(NULL, bufsize, &data.data);
 			data.ulen = bufsize;
 			data.flags |= DB_DBT_USERMEM;
 		} else
+#endif
 			data.flags |= DB_DBT_MALLOC;
 	}
 
@@ -758,7 +765,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		goto out1;
 	if (op == DB_GET_RECNO) {
 		recno = *((db_recno_t *)data.data);
-		myobj = Tcl_NewLongObj((long)recno);
+		myobj = Tcl_NewWideIntObj((Tcl_WideInt)recno);
 		result = Tcl_ListObjAppendElement(interp, retlist, myobj);
 	} else {
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY))
@@ -816,7 +823,7 @@ tcl_DbcDup(interp, objc, objv, dbc)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DBC *dbc;			/* Cursor pointer */
 {
-	static char *dbcdupopts[] = {
+	static const char *dbcdupopts[] = {
 		"-position",
 		NULL
 	};

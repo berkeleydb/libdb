@@ -18,8 +18,25 @@
 /* Default timeout can be changed using clnt_control() */
 static struct timeval TIMEOUT = { 25, 0 };
 
+__env_get_cachesize_reply *
+__db_env_get_cachesize_4002(argp, clnt)
+	__env_get_cachesize_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_get_cachesize_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_get_cachesize,
+		(xdrproc_t) xdr___env_get_cachesize_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_get_cachesize_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __env_cachesize_reply *
-__db_env_cachesize_4001(argp, clnt)
+__db_env_cachesize_4002(argp, clnt)
 	__env_cachesize_msg *argp;
 	CLIENT *clnt;
 {
@@ -36,7 +53,7 @@ __db_env_cachesize_4001(argp, clnt)
 }
 
 __env_close_reply *
-__db_env_close_4001(argp, clnt)
+__db_env_close_4002(argp, clnt)
 	__env_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -53,7 +70,7 @@ __db_env_close_4001(argp, clnt)
 }
 
 __env_create_reply *
-__db_env_create_4001(argp, clnt)
+__db_env_create_4002(argp, clnt)
 	__env_create_msg *argp;
 	CLIENT *clnt;
 {
@@ -70,7 +87,7 @@ __db_env_create_4001(argp, clnt)
 }
 
 __env_dbremove_reply *
-__db_env_dbremove_4001(argp, clnt)
+__db_env_dbremove_4002(argp, clnt)
 	__env_dbremove_msg *argp;
 	CLIENT *clnt;
 {
@@ -87,7 +104,7 @@ __db_env_dbremove_4001(argp, clnt)
 }
 
 __env_dbrename_reply *
-__db_env_dbrename_4001(argp, clnt)
+__db_env_dbrename_4002(argp, clnt)
 	__env_dbrename_msg *argp;
 	CLIENT *clnt;
 {
@@ -103,8 +120,25 @@ __db_env_dbrename_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__env_get_encrypt_flags_reply *
+__db_env_get_encrypt_flags_4002(argp, clnt)
+	__env_get_encrypt_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_get_encrypt_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_get_encrypt_flags,
+		(xdrproc_t) xdr___env_get_encrypt_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_get_encrypt_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __env_encrypt_reply *
-__db_env_encrypt_4001(argp, clnt)
+__db_env_encrypt_4002(argp, clnt)
 	__env_encrypt_msg *argp;
 	CLIENT *clnt;
 {
@@ -120,8 +154,25 @@ __db_env_encrypt_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__env_get_flags_reply *
+__db_env_get_flags_4002(argp, clnt)
+	__env_get_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_get_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_get_flags,
+		(xdrproc_t) xdr___env_get_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_get_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __env_flags_reply *
-__db_env_flags_4001(argp, clnt)
+__db_env_flags_4002(argp, clnt)
 	__env_flags_msg *argp;
 	CLIENT *clnt;
 {
@@ -137,8 +188,42 @@ __db_env_flags_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__env_get_home_reply *
+__db_env_get_home_4002(argp, clnt)
+	__env_get_home_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_get_home_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_get_home,
+		(xdrproc_t) xdr___env_get_home_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_get_home_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
+__env_get_open_flags_reply *
+__db_env_get_open_flags_4002(argp, clnt)
+	__env_get_open_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __env_get_open_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_env_get_open_flags,
+		(xdrproc_t) xdr___env_get_open_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___env_get_open_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __env_open_reply *
-__db_env_open_4001(argp, clnt)
+__db_env_open_4002(argp, clnt)
 	__env_open_msg *argp;
 	CLIENT *clnt;
 {
@@ -155,7 +240,7 @@ __db_env_open_4001(argp, clnt)
 }
 
 __env_remove_reply *
-__db_env_remove_4001(argp, clnt)
+__db_env_remove_4002(argp, clnt)
 	__env_remove_msg *argp;
 	CLIENT *clnt;
 {
@@ -172,7 +257,7 @@ __db_env_remove_4001(argp, clnt)
 }
 
 __txn_abort_reply *
-__db_txn_abort_4001(argp, clnt)
+__db_txn_abort_4002(argp, clnt)
 	__txn_abort_msg *argp;
 	CLIENT *clnt;
 {
@@ -189,7 +274,7 @@ __db_txn_abort_4001(argp, clnt)
 }
 
 __txn_begin_reply *
-__db_txn_begin_4001(argp, clnt)
+__db_txn_begin_4002(argp, clnt)
 	__txn_begin_msg *argp;
 	CLIENT *clnt;
 {
@@ -206,7 +291,7 @@ __db_txn_begin_4001(argp, clnt)
 }
 
 __txn_commit_reply *
-__db_txn_commit_4001(argp, clnt)
+__db_txn_commit_4002(argp, clnt)
 	__txn_commit_msg *argp;
 	CLIENT *clnt;
 {
@@ -223,7 +308,7 @@ __db_txn_commit_4001(argp, clnt)
 }
 
 __txn_discard_reply *
-__db_txn_discard_4001(argp, clnt)
+__db_txn_discard_4002(argp, clnt)
 	__txn_discard_msg *argp;
 	CLIENT *clnt;
 {
@@ -240,7 +325,7 @@ __db_txn_discard_4001(argp, clnt)
 }
 
 __txn_prepare_reply *
-__db_txn_prepare_4001(argp, clnt)
+__db_txn_prepare_4002(argp, clnt)
 	__txn_prepare_msg *argp;
 	CLIENT *clnt;
 {
@@ -257,7 +342,7 @@ __db_txn_prepare_4001(argp, clnt)
 }
 
 __txn_recover_reply *
-__db_txn_recover_4001(argp, clnt)
+__db_txn_recover_4002(argp, clnt)
 	__txn_recover_msg *argp;
 	CLIENT *clnt;
 {
@@ -274,7 +359,7 @@ __db_txn_recover_4001(argp, clnt)
 }
 
 __db_associate_reply *
-__db_db_associate_4001(argp, clnt)
+__db_db_associate_4002(argp, clnt)
 	__db_associate_msg *argp;
 	CLIENT *clnt;
 {
@@ -291,7 +376,7 @@ __db_db_associate_4001(argp, clnt)
 }
 
 __db_bt_maxkey_reply *
-__db_db_bt_maxkey_4001(argp, clnt)
+__db_db_bt_maxkey_4002(argp, clnt)
 	__db_bt_maxkey_msg *argp;
 	CLIENT *clnt;
 {
@@ -307,8 +392,25 @@ __db_db_bt_maxkey_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_bt_minkey_reply *
+__db_db_get_bt_minkey_4002(argp, clnt)
+	__db_get_bt_minkey_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_bt_minkey_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_bt_minkey,
+		(xdrproc_t) xdr___db_get_bt_minkey_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_bt_minkey_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_bt_minkey_reply *
-__db_db_bt_minkey_4001(argp, clnt)
+__db_db_bt_minkey_4002(argp, clnt)
 	__db_bt_minkey_msg *argp;
 	CLIENT *clnt;
 {
@@ -325,7 +427,7 @@ __db_db_bt_minkey_4001(argp, clnt)
 }
 
 __db_close_reply *
-__db_db_close_4001(argp, clnt)
+__db_db_close_4002(argp, clnt)
 	__db_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -342,7 +444,7 @@ __db_db_close_4001(argp, clnt)
 }
 
 __db_create_reply *
-__db_db_create_4001(argp, clnt)
+__db_db_create_4002(argp, clnt)
 	__db_create_msg *argp;
 	CLIENT *clnt;
 {
@@ -359,7 +461,7 @@ __db_db_create_4001(argp, clnt)
 }
 
 __db_del_reply *
-__db_db_del_4001(argp, clnt)
+__db_db_del_4002(argp, clnt)
 	__db_del_msg *argp;
 	CLIENT *clnt;
 {
@@ -375,8 +477,25 @@ __db_db_del_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_encrypt_flags_reply *
+__db_db_get_encrypt_flags_4002(argp, clnt)
+	__db_get_encrypt_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_encrypt_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_encrypt_flags,
+		(xdrproc_t) xdr___db_get_encrypt_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_encrypt_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_encrypt_reply *
-__db_db_encrypt_4001(argp, clnt)
+__db_db_encrypt_4002(argp, clnt)
 	__db_encrypt_msg *argp;
 	CLIENT *clnt;
 {
@@ -392,8 +511,25 @@ __db_db_encrypt_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_extentsize_reply *
+__db_db_get_extentsize_4002(argp, clnt)
+	__db_get_extentsize_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_extentsize_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_extentsize,
+		(xdrproc_t) xdr___db_get_extentsize_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_extentsize_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_extentsize_reply *
-__db_db_extentsize_4001(argp, clnt)
+__db_db_extentsize_4002(argp, clnt)
 	__db_extentsize_msg *argp;
 	CLIENT *clnt;
 {
@@ -409,8 +545,25 @@ __db_db_extentsize_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_flags_reply *
+__db_db_get_flags_4002(argp, clnt)
+	__db_get_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_flags,
+		(xdrproc_t) xdr___db_get_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_flags_reply *
-__db_db_flags_4001(argp, clnt)
+__db_db_flags_4002(argp, clnt)
 	__db_flags_msg *argp;
 	CLIENT *clnt;
 {
@@ -427,7 +580,7 @@ __db_db_flags_4001(argp, clnt)
 }
 
 __db_get_reply *
-__db_db_get_4001(argp, clnt)
+__db_db_get_4002(argp, clnt)
 	__db_get_msg *argp;
 	CLIENT *clnt;
 {
@@ -443,8 +596,59 @@ __db_db_get_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_name_reply *
+__db_db_get_name_4002(argp, clnt)
+	__db_get_name_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_name_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_name,
+		(xdrproc_t) xdr___db_get_name_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_name_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
+__db_get_open_flags_reply *
+__db_db_get_open_flags_4002(argp, clnt)
+	__db_get_open_flags_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_open_flags_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_open_flags,
+		(xdrproc_t) xdr___db_get_open_flags_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_open_flags_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
+__db_get_h_ffactor_reply *
+__db_db_get_h_ffactor_4002(argp, clnt)
+	__db_get_h_ffactor_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_h_ffactor_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_h_ffactor,
+		(xdrproc_t) xdr___db_get_h_ffactor_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_h_ffactor_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_h_ffactor_reply *
-__db_db_h_ffactor_4001(argp, clnt)
+__db_db_h_ffactor_4002(argp, clnt)
 	__db_h_ffactor_msg *argp;
 	CLIENT *clnt;
 {
@@ -460,8 +664,25 @@ __db_db_h_ffactor_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_h_nelem_reply *
+__db_db_get_h_nelem_4002(argp, clnt)
+	__db_get_h_nelem_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_h_nelem_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_h_nelem,
+		(xdrproc_t) xdr___db_get_h_nelem_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_h_nelem_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_h_nelem_reply *
-__db_db_h_nelem_4001(argp, clnt)
+__db_db_h_nelem_4002(argp, clnt)
 	__db_h_nelem_msg *argp;
 	CLIENT *clnt;
 {
@@ -478,7 +699,7 @@ __db_db_h_nelem_4001(argp, clnt)
 }
 
 __db_key_range_reply *
-__db_db_key_range_4001(argp, clnt)
+__db_db_key_range_4002(argp, clnt)
 	__db_key_range_msg *argp;
 	CLIENT *clnt;
 {
@@ -494,8 +715,25 @@ __db_db_key_range_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_lorder_reply *
+__db_db_get_lorder_4002(argp, clnt)
+	__db_get_lorder_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_lorder_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_lorder,
+		(xdrproc_t) xdr___db_get_lorder_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_lorder_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_lorder_reply *
-__db_db_lorder_4001(argp, clnt)
+__db_db_lorder_4002(argp, clnt)
 	__db_lorder_msg *argp;
 	CLIENT *clnt;
 {
@@ -512,7 +750,7 @@ __db_db_lorder_4001(argp, clnt)
 }
 
 __db_open_reply *
-__db_db_open_4001(argp, clnt)
+__db_db_open_4002(argp, clnt)
 	__db_open_msg *argp;
 	CLIENT *clnt;
 {
@@ -528,8 +766,25 @@ __db_db_open_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_pagesize_reply *
+__db_db_get_pagesize_4002(argp, clnt)
+	__db_get_pagesize_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_pagesize_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_pagesize,
+		(xdrproc_t) xdr___db_get_pagesize_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_pagesize_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_pagesize_reply *
-__db_db_pagesize_4001(argp, clnt)
+__db_db_pagesize_4002(argp, clnt)
 	__db_pagesize_msg *argp;
 	CLIENT *clnt;
 {
@@ -546,7 +801,7 @@ __db_db_pagesize_4001(argp, clnt)
 }
 
 __db_pget_reply *
-__db_db_pget_4001(argp, clnt)
+__db_db_pget_4002(argp, clnt)
 	__db_pget_msg *argp;
 	CLIENT *clnt;
 {
@@ -563,7 +818,7 @@ __db_db_pget_4001(argp, clnt)
 }
 
 __db_put_reply *
-__db_db_put_4001(argp, clnt)
+__db_db_put_4002(argp, clnt)
 	__db_put_msg *argp;
 	CLIENT *clnt;
 {
@@ -579,8 +834,25 @@ __db_db_put_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_re_delim_reply *
+__db_db_get_re_delim_4002(argp, clnt)
+	__db_get_re_delim_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_re_delim_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_re_delim,
+		(xdrproc_t) xdr___db_get_re_delim_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_re_delim_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_re_delim_reply *
-__db_db_re_delim_4001(argp, clnt)
+__db_db_re_delim_4002(argp, clnt)
 	__db_re_delim_msg *argp;
 	CLIENT *clnt;
 {
@@ -596,8 +868,25 @@ __db_db_re_delim_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_re_len_reply *
+__db_db_get_re_len_4002(argp, clnt)
+	__db_get_re_len_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_re_len_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_re_len,
+		(xdrproc_t) xdr___db_get_re_len_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_re_len_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_re_len_reply *
-__db_db_re_len_4001(argp, clnt)
+__db_db_re_len_4002(argp, clnt)
 	__db_re_len_msg *argp;
 	CLIENT *clnt;
 {
@@ -614,7 +903,7 @@ __db_db_re_len_4001(argp, clnt)
 }
 
 __db_re_pad_reply *
-__db_db_re_pad_4001(argp, clnt)
+__db_db_re_pad_4002(argp, clnt)
 	__db_re_pad_msg *argp;
 	CLIENT *clnt;
 {
@@ -630,8 +919,25 @@ __db_db_re_pad_4001(argp, clnt)
 	return (&clnt_res);
 }
 
+__db_get_re_pad_reply *
+__db_db_get_re_pad_4002(argp, clnt)
+	__db_get_re_pad_msg *argp;
+	CLIENT *clnt;
+{
+	static __db_get_re_pad_reply clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof (clnt_res));
+	if (clnt_call(clnt, __DB_db_get_re_pad,
+		(xdrproc_t) xdr___db_get_re_pad_msg, (caddr_t) argp,
+		(xdrproc_t) xdr___db_get_re_pad_reply, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
 __db_remove_reply *
-__db_db_remove_4001(argp, clnt)
+__db_db_remove_4002(argp, clnt)
 	__db_remove_msg *argp;
 	CLIENT *clnt;
 {
@@ -648,7 +954,7 @@ __db_db_remove_4001(argp, clnt)
 }
 
 __db_rename_reply *
-__db_db_rename_4001(argp, clnt)
+__db_db_rename_4002(argp, clnt)
 	__db_rename_msg *argp;
 	CLIENT *clnt;
 {
@@ -665,7 +971,7 @@ __db_db_rename_4001(argp, clnt)
 }
 
 __db_stat_reply *
-__db_db_stat_4001(argp, clnt)
+__db_db_stat_4002(argp, clnt)
 	__db_stat_msg *argp;
 	CLIENT *clnt;
 {
@@ -682,7 +988,7 @@ __db_db_stat_4001(argp, clnt)
 }
 
 __db_sync_reply *
-__db_db_sync_4001(argp, clnt)
+__db_db_sync_4002(argp, clnt)
 	__db_sync_msg *argp;
 	CLIENT *clnt;
 {
@@ -699,7 +1005,7 @@ __db_db_sync_4001(argp, clnt)
 }
 
 __db_truncate_reply *
-__db_db_truncate_4001(argp, clnt)
+__db_db_truncate_4002(argp, clnt)
 	__db_truncate_msg *argp;
 	CLIENT *clnt;
 {
@@ -716,7 +1022,7 @@ __db_db_truncate_4001(argp, clnt)
 }
 
 __db_cursor_reply *
-__db_db_cursor_4001(argp, clnt)
+__db_db_cursor_4002(argp, clnt)
 	__db_cursor_msg *argp;
 	CLIENT *clnt;
 {
@@ -733,7 +1039,7 @@ __db_db_cursor_4001(argp, clnt)
 }
 
 __db_join_reply *
-__db_db_join_4001(argp, clnt)
+__db_db_join_4002(argp, clnt)
 	__db_join_msg *argp;
 	CLIENT *clnt;
 {
@@ -750,7 +1056,7 @@ __db_db_join_4001(argp, clnt)
 }
 
 __dbc_close_reply *
-__db_dbc_close_4001(argp, clnt)
+__db_dbc_close_4002(argp, clnt)
 	__dbc_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -767,7 +1073,7 @@ __db_dbc_close_4001(argp, clnt)
 }
 
 __dbc_count_reply *
-__db_dbc_count_4001(argp, clnt)
+__db_dbc_count_4002(argp, clnt)
 	__dbc_count_msg *argp;
 	CLIENT *clnt;
 {
@@ -784,7 +1090,7 @@ __db_dbc_count_4001(argp, clnt)
 }
 
 __dbc_del_reply *
-__db_dbc_del_4001(argp, clnt)
+__db_dbc_del_4002(argp, clnt)
 	__dbc_del_msg *argp;
 	CLIENT *clnt;
 {
@@ -801,7 +1107,7 @@ __db_dbc_del_4001(argp, clnt)
 }
 
 __dbc_dup_reply *
-__db_dbc_dup_4001(argp, clnt)
+__db_dbc_dup_4002(argp, clnt)
 	__dbc_dup_msg *argp;
 	CLIENT *clnt;
 {
@@ -818,7 +1124,7 @@ __db_dbc_dup_4001(argp, clnt)
 }
 
 __dbc_get_reply *
-__db_dbc_get_4001(argp, clnt)
+__db_dbc_get_4002(argp, clnt)
 	__dbc_get_msg *argp;
 	CLIENT *clnt;
 {
@@ -835,7 +1141,7 @@ __db_dbc_get_4001(argp, clnt)
 }
 
 __dbc_pget_reply *
-__db_dbc_pget_4001(argp, clnt)
+__db_dbc_pget_4002(argp, clnt)
 	__dbc_pget_msg *argp;
 	CLIENT *clnt;
 {
@@ -852,7 +1158,7 @@ __db_dbc_pget_4001(argp, clnt)
 }
 
 __dbc_put_reply *
-__db_dbc_put_4001(argp, clnt)
+__db_dbc_put_4002(argp, clnt)
 	__dbc_put_msg *argp;
 	CLIENT *clnt;
 {

@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2002
+# Copyright (c) 2000-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test085.tcl,v 1.13 2002/08/08 17:23:46 sandstro Exp $
+# $Id: test085.tcl,v 1.15 2003/01/08 05:54:05 bostic Exp $
 #
 # TEST	test085
 # TEST	Test of cursor behavior when a cursor is pointing to a deleted
 # TEST	btree key which then has duplicates added. [#2473]
-proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
+proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum "085"} args } {
 	source ./include.tcl
 	global alphabet
 
@@ -23,10 +23,10 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
-		set testfile $testdir/test0$tnum.db
+		set testfile $testdir/test$tnum.db
 		set env NULL
 	} else {
-		set testfile test0$tnum.db
+		set testfile test$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
 		set txnenv [is_txnenv $env]
@@ -57,7 +57,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 
 	append args " -pagesize $pagesize -dup"
 
-	puts -nonewline "Test0$tnum $omethod ($args): "
+	puts -nonewline "Test$tnum $omethod ($args): "
 
 	# Skip for all non-btrees.  (Rbtrees don't count as btrees, for
 	# now, since they don't support dups.)
@@ -112,7 +112,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 		set txn ""
 		foreach pair $getops {
 			set op [lindex $pair 0]
-			puts "\tTest0$tnum: Get ($op) with $ndups duplicates,\
+			puts "\tTest$tnum: Get ($op) with $ndups duplicates,\
 			    cursor at the [lindex $pair 4]."
 			set db [eval {berkdb_open -create \
 			    -mode 0644} $omethod $encargs $args $testfile]
@@ -187,7 +187,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 		foreach pair $putops {
 			# Open and set up database.
 			set op [lindex $pair 0]
-			puts "\tTest0$tnum: Put ($op) with $ndups duplicates,\
+			puts "\tTest$tnum: Put ($op) with $ndups duplicates,\
 			    cursor at the [lindex $pair 4]."
 			set db [eval {berkdb_open -create \
 			    -mode 0644} $omethod $args $encargs $testfile]

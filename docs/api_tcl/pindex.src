@@ -26,5 +26,6 @@ __APIREL__/api_tcl/env_open.html__OCT__2 @berkdb env
 __APIREL__/api_tcl/env_remove.html__OCT__2 @berkdb envremove
 __APIREL__/api_tcl/txn.html__OCT__2 @env txn
 __APIREL__/api_tcl/txn_abort.html__OCT__2 @txn abort
+__APIREL__/api_tcl/txn_checkpoint.html__OCT__2 @env txn_checkpoint
 __APIREL__/api_tcl/txn_commit.html__OCT__2 @txn commit
 __APIREL__/api_tcl/version.html__OCT__2 @berkdb version

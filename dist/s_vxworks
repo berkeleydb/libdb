@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_vxworks,v 1.37 2002/08/19 21:27:06 bostic Exp $
+#	$Id: s_vxworks,v 1.42 2003/08/27 16:23:33 sue Exp $
 #
 # Build the VxWorks files.
 
@@ -30,6 +30,7 @@ i\\
 s/@u_int8_decl@/typedef unsigned char u_int8_t;/
 s/@u_int16_decl@/typedef unsigned short u_int16_t;/
 s/@u_int32_decl@/typedef unsigned int u_int32_t;/
+/@inttypes_decl@/d
 /@int16_decl@/d
 /@int32_decl@/d
 /@u_char_decl@/d
@@ -42,6 +43,9 @@ s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
+s/@DB_CONST@//
+s/@DB_PROTO1@/#undef __P/
+s/@DB_PROTO2@/#define	__P(protos)	protos/
 ENDOFSEDTEXT
 (echo "$msgc" &&
     sed -f $s ../dbinc/db.in &&
@@ -52,7 +56,7 @@ cmp $t $f > /dev/null 2>&1 ||
 
 f=../build_vxworks/db_int.h
 cat <<ENDOFSEDTEXT > $s
-s/\(PATH_SEPARATOR[^"]*"\)\/"/\1\/\\\\\\\\\\"/
+s/@PATH_SEPARATOR@/\/\\\\\\\\/
 s/@db_align_t_decl@/typedef unsigned long db_align_t;/
 s/@db_alignp_t_decl@/typedef unsigned long db_alignp_t;/
 s/@db_int_def@//
@@ -164,7 +168,11 @@ for i in $PROGRAM_LIST; do
 	fi
 
 	sed "s/__DB_APPLICATION_NAME__/$target/g" < vx_2.0/wpj.in > $t
-	f=../build_vxworks/$target/$target.wpj
+	f=../build_vxworks/$target/${target}20.wpj
+	cmp $t $f > /dev/null 2>&1 ||
+	    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+	sed "s/__DB_APPLICATION_NAME__/$target/g" < vx_2.2/wpj.in > $t
+	f=../build_vxworks/$target/${target}22.wpj
 	cmp $t $f > /dev/null 2>&1 ||
 	    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 done
@@ -175,40 +183,42 @@ sed -e '/^$/d' -e '/^[	 #]/d' srcfiles.in |
     sed 's/[	 ].*//' > $vxfilelist
 
 # Build VxWorks Tornado 2.0 project files for the library itself.
-(cat vx_2.0/BerkeleyDB.wpj
-for i in `cat $vxfilelist`; do
-	o="<BEGIN> FILE_\$(PRJ_DIR)/../$i"
-	echo "${o}_dependDone"
-	echo "TRUE"
+for v in 0 2 ; do
+	(cat vx_2.${v}/BerkeleyDB.wpj
+	for i in `cat $vxfilelist`; do
+		o="<BEGIN> FILE_\$(PRJ_DIR)/../$i"
+		echo "${o}_dependDone"
+		echo "TRUE"
+		echo "<END>"
+		echo
+		echo "${o}_dependencies"
+		echo "\$(PRJ_DIR)/db_config.h \\"
+		echo "	\$(PRJ_DIR)/db_int.h \\"
+		echo "	\$(PRJ_DIR)/db.h"
+		echo "<END>"
+		echo
+		echo "${o}_objects"
+		echo "`basename $i .c`.o"
+		echo "<END>"
+		echo
+		echo "${o}_tool"
+		echo "C/C++ compiler"
+		echo "<END>"
+		echo
+	done
+	echo "<BEGIN> PROJECT_FILES"
+	sed -e '$!s/$/ \\/' \
+	    -e 's/^/$(PRJ_DIR)\/..\//' \
+	    -e '1!s/^/	/' < $vxfilelist
 	echo "<END>"
 	echo
-	echo "${o}_dependencies"
-	echo "\$(PRJ_DIR)/db_config.h \\"
-	echo "	\$(PRJ_DIR)/db_int.h \\"
-	echo "	\$(PRJ_DIR)/db.h"
-	echo "<END>"
-	echo
-	echo "${o}_objects"
-	echo "`basename $i .c`.o"
-	echo "<END>"
-	echo
-	echo "${o}_tool"
-	echo "C/C++ compiler"
-	echo "<END>"
-	echo
+	echo "<BEGIN> userComments"
+	echo "BerkeleyDB"
+	echo "<END>") > $t
+	f=../build_vxworks/BerkeleyDB2${v}.wpj
+	cmp $t $f > /dev/null 2>&1 ||
+	    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 done
-echo "<BEGIN> PROJECT_FILES"
-sed -e '$!s/$/ \\/' \
-    -e 's/^/$(PRJ_DIR)\/..\//' \
-    -e '1!s/^/	/' < $vxfilelist
-echo "<END>"
-echo
-echo "<BEGIN> userComments"
-echo "BerkeleyDB"
-echo "<END>") > $t
-f=../build_vxworks/BerkeleyDB.wpj
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 # Build VxWorks Tornado 3.1 project files for the utilities.
 for i in $PROGRAM_LIST; do

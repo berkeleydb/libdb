@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BtRecExample.cpp,v 11.21 2002/01/23 15:33:20 bostic Exp $
+ * $Id: BtRecExample.cpp,v 11.22 2003/01/08 04:46:52 bostic Exp $
  */
 
 #include <sys/types.h>

@@ -1,28 +1,27 @@
 <!--$Id: data_open.so,v 1.12 2002/06/24 14:51:06 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Opening the databases</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Opening the databases</h1>
+<h3 align=center>Opening the databases</h3>
 <p>Next, we open three databases ("color" and "fruit" and "cats"), in the
 database environment.  Again, our <a href="../../api_c/db_class.html">DB</a> database handles are
 declared to be free-threaded using the <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag, and so
-may be used by any number of threads we subsequently create.
-<p><blockquote><pre>int
+may be used by any number of threads we subsequently create.</p>
+<blockquote><pre>int
 main(int argc, char *argv)
 {
-	extern char *optarg;
 	extern int optind;
 	DB *db_cats, *db_color, *db_fruit;
 	DB_ENV *dbenv;
@@ -84,7 +83,7 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	 *	read/write owner only
 	 */
 	if ((ret = db-&gt;open(db, NULL, name, NULL, DB_BTREE,
-	    DB_CREATE | DB_THREAD | DB_AUTO_COMMIT, S_IRUSR | S_IWUSR)) != 0) {
+	    DB_AUTO_COMMIT | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
 		(void)db-&gt;close(db, 0);
 		dbenv-&gt;err(dbenv, ret, "db-&gt;open: %s", name);
 		return (1);
@@ -94,8 +93,8 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	return (0);
 }</b></pre></blockquote>
 <p>After opening the database, we can use the <a href="../../utility/db_stat.html">db_stat</a> utility to
-display information about a database we have created:
-<p><blockquote><pre>prompt&gt; db_stat -h TXNAPP -d color
+display information about a database we have created:</p>
+<blockquote><pre>prompt&gt; db_stat -h TXNAPP -d color
 53162   Btree magic number.
 8       Btree version number.
 Flags:
@@ -122,22 +121,22 @@ the open is the only operation in the transaction, an application can
 set the <a href="../../api_c/env_set_flags.html#DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> flag instead of creating and managing
 its own transaction handle.  The <a href="../../api_c/env_set_flags.html#DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> flag will
 internally wrap the operation in a transaction, simplifying application
-code.
+code.</p>
 <p>The previous example is the simplest case of transaction protection for
 database open.  Obviously, additional database operations can be done
 in the scope of the same transaction.  For example, an application
 maintaining a list of the databases in a database environment in a
 well-known file might include an update of the list in the same
 transaction in which the database is created.  Or, an application might
-create both a primary and secondary database in a single transaction.
+create both a primary and secondary database in a single transaction.</p>
 <p><a href="../../api_c/db_class.html">DB</a> handles that will later be used for transactionally protected
 operations must be opened within a transaction.  Specifying a
 transaction handle to operations using handles not opened within a
 transaction will return an error.  Similarly, not specifying a
 transaction handle to operations using handles that were opened within
-a transaction will also return an error.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
+a transaction will also return an error.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../transapp/env_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/put.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,29 +1,29 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock.c,v 11.108 2002/08/06 06:11:34 bostic Exp $";
+static const char revid[] = "$Id: lock.c,v 11.134 2003/11/18 21:30:38 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <string.h>
+#include <stdlib.h>
 #endif
 
 #include "db_int.h"
 #include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
-#include "dbinc/txn.h"
 
-static int  __lock_checklocker __P((DB_LOCKTAB *,
+static int  __lock_freelock __P((DB_LOCKTAB *,
 		struct __db_lock *, u_int32_t, u_int32_t));
 static void __lock_expires __P((DB_ENV *, db_timeval_t *, db_timeout_t));
 static void __lock_freelocker
@@ -32,23 +32,54 @@ static int  __lock_get_internal __P((DB_LOCKTAB *, u_int32_t, u_int32_t,
 		const DBT *, db_lockmode_t, db_timeout_t, DB_LOCK *));
 static int  __lock_getobj
 		__P((DB_LOCKTAB *, const DBT *, u_int32_t, int, DB_LOCKOBJ **));
+static int  __lock_inherit_locks __P ((DB_LOCKTAB *, u_int32_t, u_int32_t));
 static int  __lock_is_parent __P((DB_LOCKTAB *, u_int32_t, DB_LOCKER *));
 static int  __lock_put_internal __P((DB_LOCKTAB *,
 		struct __db_lock *, u_int32_t,  u_int32_t));
 static int  __lock_put_nolock __P((DB_ENV *, DB_LOCK *, int *, u_int32_t));
 static void __lock_remove_waiter __P((DB_LOCKTAB *,
 		DB_LOCKOBJ *, struct __db_lock *, db_status_t));
+static int __lock_set_timeout_internal  __P(( DB_ENV *,
+		u_int32_t, db_timeout_t, u_int32_t));
 static int __lock_trade __P((DB_ENV *, DB_LOCK *, u_int32_t));
+static int __lock_sort_cmp __P((const void *, const void *));
+static int __lock_fix_list __P((DB_ENV *, DBT *, u_int32_t));
 
 static const char __db_lock_err[] = "Lock table is out of available %s";
 static const char __db_lock_invalid[] = "%s: Lock is no longer valid";
 static const char __db_locker_invalid[] = "Locker is not valid";
 
 /*
- * __lock_id --
- *	Generate a unique locker id.
+ * __lock_id_pp --
+ *	DB_ENV->lock_id pre/post processing.
  *
- * PUBLIC: int __lock_id __P((DB_ENV *, u_int32_t *));
+ * PUBLIC: int __lock_id_pp __P((DB_ENV *, u_int32_t *));
+ */
+int
+__lock_id_pp(dbenv, idp)
+	DB_ENV *dbenv;
+	u_int32_t *idp;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_ENV->lock_id", DB_INIT_LOCK);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __lock_id(dbenv, idp);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
+ * __lock_id --
+ *	DB_ENV->lock_id.
+ *
+ * PUBLIC: int  __lock_id __P((DB_ENV *, u_int32_t *));
  */
 int
 __lock_id(dbenv, idp)
@@ -60,10 +91,6 @@ __lock_id(dbenv, idp)
 	DB_LOCKREGION *region;
 	u_int32_t *ids, locker_ndx;
 	int nids, ret;
-
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lk_handle, "DB_ENV->lock_id", DB_INIT_LOCK);
 
 	lt = dbenv->lk_handle;
 	region = lt->reginfo.primary;
@@ -111,10 +138,36 @@ err:	UNLOCKREGION(dbenv, lt);
 }
 
 /*
+ * __lock_id_free_pp --
+ *	DB_ENV->lock_id_free pre/post processing.
+ *
+ * PUBLIC: int __lock_id_free_pp __P((DB_ENV *, u_int32_t));
+ */
+int
+__lock_id_free_pp(dbenv, id)
+	DB_ENV *dbenv;
+	u_int32_t id;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_ENV->lock_id_free", DB_INIT_LOCK);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __lock_id_free(dbenv, id);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
  * __lock_id_free --
  *	Free a locker id.
  *
- * PUBLIC: int __lock_id_free __P((DB_ENV *, u_int32_t));
+ * PUBLIC: int  __lock_id_free __P((DB_ENV *, u_int32_t));
  */
 int
 __lock_id_free(dbenv, id)
@@ -157,7 +210,43 @@ err:	UNLOCKREGION(dbenv, lt);
 }
 
 /*
+ * __lock_vec_pp --
+ *	DB_ENV->lock_vec pre/post processing.
+ *
+ * PUBLIC: int __lock_vec_pp __P((DB_ENV *,
+ * PUBLIC:     u_int32_t, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
+ */
+int
+__lock_vec_pp(dbenv, locker, flags, list, nlist, elistp)
+	DB_ENV *dbenv;
+	u_int32_t locker, flags;
+	int nlist;
+	DB_LOCKREQ *list, **elistp;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_ENV->lock_vec", DB_INIT_LOCK);
+
+	/* Validate arguments. */
+	if ((ret = __db_fchk(dbenv,
+	     "DB_ENV->lock_vec", flags, DB_LOCK_NOWAIT)) != 0)
+		return (ret);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __lock_vec(dbenv, locker, flags, list, nlist, elistp);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
  * __lock_vec --
+ *	DB_ENV->lock_vec.
+ *
  *	Vector lock routine.  This function takes a set of operations
  *	and performs them all at once.  In addition, lock_vec provides
  *	functionality for lock inheritance, releasing all locks for a
@@ -176,25 +265,17 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 {
 	struct __db_lock *lp, *next_lock;
 	DB_LOCK lock;
-	DB_LOCKER *sh_locker, *sh_parent;
-	DB_LOCKOBJ *obj, *sh_obj;
+	DB_LOCKER *sh_locker;
+	DB_LOCKOBJ *sh_obj;
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
+	DBT *objlist, *np;
 	u_int32_t lndx, ndx;
 	int did_abort, i, ret, run_dd, upgrade, writes;
-
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lk_handle, "DB_ENV->lock_vec", DB_INIT_LOCK);
 
 	/* Check if locks have been globally turned off. */
 	if (F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
-
-	/* Validate arguments. */
-	if ((ret = __db_fchk(dbenv, "DB_ENV->lock_vec",
-	    flags, DB_LOCK_FREE_LOCKER | DB_LOCK_NOWAIT)) != 0)
-		return (ret);
 
 	lt = dbenv->lk_handle;
 	region = lt->reginfo.primary;
@@ -206,76 +287,16 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 		case DB_LOCK_GET_TIMEOUT:
 			LF_SET(DB_LOCK_SET_TIMEOUT);
 		case DB_LOCK_GET:
+			if (IS_RECOVERING(dbenv)) {
+				LOCK_INIT(list[i].lock);
+				break;
+			}
 			ret = __lock_get_internal(dbenv->lk_handle,
 			    locker, flags, list[i].obj,
 			    list[i].mode, list[i].timeout, &list[i].lock);
 			break;
 		case DB_LOCK_INHERIT:
-			/*
-			 * Get the committing locker and mark it as deleted.
-			 * This allows us to traverse the locker links without
-			 * worrying that someone else is deleting locks out
-			 * from under us.  However, if the locker doesn't
-			 * exist, that just means that the child holds no
-			 * locks, so inheritance is easy!
-			 */
-			LOCKER_LOCK(lt, region, locker, ndx);
-			if ((ret = __lock_getlocker(lt,
-			    locker, ndx, 0, &sh_locker)) != 0 ||
-			    sh_locker == NULL ||
-			    F_ISSET(sh_locker, DB_LOCKER_DELETED)) {
-				if (ret == 0 && sh_locker != NULL)
-					ret = EINVAL;
-				__db_err(dbenv, __db_locker_invalid);
-				break;
-			}
-
-			/* Make sure we are a child transaction. */
-			if (sh_locker->parent_locker == INVALID_ROFF) {
-				__db_err(dbenv, "Not a child transaction");
-				ret = EINVAL;
-				break;
-			}
-			sh_parent = (DB_LOCKER *)
-			    R_ADDR(&lt->reginfo, sh_locker->parent_locker);
-			F_SET(sh_locker, DB_LOCKER_DELETED);
-
-			/*
-			 * Now, lock the parent locker; move locks from
-			 * the committing list to the parent's list.
-			 */
-			LOCKER_LOCK(lt, region, locker, ndx);
-			if (F_ISSET(sh_parent, DB_LOCKER_DELETED)) {
-				if (ret == 0) {
-					__db_err(dbenv,
-					    "Parent locker is not valid");
-					ret = EINVAL;
-				}
-				break;
-			}
-
-			for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
-			    lp != NULL;
-			    lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock)) {
-				SH_LIST_REMOVE(lp, locker_links, __db_lock);
-				SH_LIST_INSERT_HEAD(&sh_parent->heldby, lp,
-				    locker_links, __db_lock);
-				lp->holder = sh_parent->id;
-
-				/* Get the object associated with this lock. */
-				obj = (DB_LOCKOBJ *)((u_int8_t *)lp + lp->obj);
-
-				(void)__lock_promote(lt, obj,
-				    LF_ISSET(DB_LOCK_NOWAITERS));
-			}
-
-			/* Transfer child counts to parent. */
-			sh_parent->nlocks += sh_locker->nlocks;
-			sh_parent->nwrites += sh_locker->nwrites;
-
-			/* Now free the original locker. */
-			ret = __lock_checklocker(lt,
-			    NULL, locker, DB_LOCK_IGNOREDEL);
+			ret = __lock_inherit_locks(lt, locker, flags);
 			break;
 		case DB_LOCK_PUT:
 			ret = __lock_put_nolock(dbenv,
@@ -313,15 +334,35 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 					upgrade = 1;
 				writes = 0;
 			}
+			objlist = list[i].obj;
+			if (objlist != NULL) {
+				/*
+				 * We know these should be ilocks,
+				 * but they could be something else,
+				 * so allocate room for the size too.
+				 */
+				objlist->size = 
+				     sh_locker->nwrites * sizeof(DBT);
+				if ((ret = __os_malloc(dbenv,
+				     objlist->size, &objlist->data)) != 0)
+					goto up_done;
+				memset(objlist->data, 0, objlist->size);
+				np = (DBT *) objlist->data;
+			} else
+				np = NULL;
 
 			F_SET(sh_locker, DB_LOCKER_DELETED);
 
 			/* Now traverse the locks, releasing each one. */
 			for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
-			    lp != NULL;) {
+			    lp != NULL; lp = next_lock) {
 				sh_obj = (DB_LOCKOBJ *)
 				    ((u_int8_t *)lp + lp->obj);
-				if (writes == 1 || lp->mode == DB_LOCK_READ) {
+				next_lock = SH_LIST_NEXT(lp,
+				    locker_links, __db_lock);
+				if (writes == 1 ||
+				    lp->mode == DB_LOCK_READ ||
+				    lp->mode == DB_LOCK_DIRTY) {
 					SH_LIST_REMOVE(lp,
 					    locker_links, __db_lock);
 					sh_obj = (DB_LOCKOBJ *)
@@ -339,12 +380,24 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 					    lndx, DB_LOCK_FREE | DB_LOCK_DOALL);
 					if (ret != 0)
 						break;
-					lp = SH_LIST_FIRST(
-					    &sh_locker->heldby, __db_lock);
-				} else
-					lp = SH_LIST_NEXT(lp,
-					    locker_links, __db_lock);
+					continue;
+				}
+				if (objlist != NULL) {
+					DB_ASSERT((char *)np <
+					     (char *)objlist->data +
+					     objlist->size);
+					np->data = SH_DBT_PTR(&sh_obj->lockobj);
+					np->size =  sh_obj->lockobj.size;
+					np++;
+				}
 			}
+			if (ret != 0)
+				goto up_done;
+
+			if (objlist != NULL)
+				if ((ret = __lock_fix_list(dbenv,
+				     objlist, sh_locker->nwrites)) != 0)
+					goto up_done;
 			switch (list[i].op) {
 			case DB_LOCK_UPGRADE_WRITE:
 				if (upgrade != 1)
@@ -354,25 +407,21 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 				    lp != NULL;
 				    lp = SH_LIST_NEXT(lp,
 					    locker_links, __db_lock)) {
-					if (ret != 0)
-						break;
+					if (lp->mode != DB_LOCK_WWRITE)
+						continue;
 					lock.off = R_OFFSET(&lt->reginfo, lp);
 					lock.gen = lp->gen;
 					F_SET(sh_locker, DB_LOCKER_INABORT);
-					ret = __lock_get_internal(lt,
+					if ((ret = __lock_get_internal(lt,
 					    locker, DB_LOCK_UPGRADE,
-					    NULL, DB_LOCK_WRITE, 0, &lock);
+					    NULL, DB_LOCK_WRITE, 0, &lock)) !=0)
+						break;
 				}
 			up_done:
 				/* FALL THROUGH */
 			case DB_LOCK_PUT_READ:
-				F_CLR(sh_locker, DB_LOCKER_DELETED);
-				break;
-
 			case DB_LOCK_PUT_ALL:
-				if (ret == 0)
-					ret = __lock_checklocker(lt,
-					    NULL, locker, DB_LOCK_IGNOREDEL);
+				F_CLR(sh_locker, DB_LOCKER_DELETED);
 				break;
 			default:
 				break;
@@ -417,9 +466,8 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 			break;
 
 		case DB_LOCK_TIMEOUT:
-			ret = __lock_set_timeout(dbenv,
+			ret = __lock_set_timeout_internal(dbenv,
 			    locker, 0, DB_SET_TXN_NOW);
-			region->need_dd = 1;
 			break;
 
 		case DB_LOCK_TRADE:
@@ -452,7 +500,7 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 			for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
 			    lp != NULL;
 			    lp = SH_LIST_NEXT(lp, locker_links, __db_lock)) {
-				__lock_printlock(lt, lp, 1);
+				__lock_printlock(lt, lp, 1, NULL);
 			}
 			break;
 #endif
@@ -463,12 +511,13 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 			break;
 		}
 
-	if (ret == 0 && region->need_dd && region->detect != DB_LOCK_NORUN)
+	if (ret == 0 && region->detect != DB_LOCK_NORUN &&
+	     (region->need_dd || LOCK_TIME_ISVALID(&region->next_timeout)))
 		run_dd = 1;
 	UNLOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
 
 	if (run_dd)
-		(void)dbenv->lock_detect(dbenv, 0, region->detect, &did_abort);
+		(void)__lock_detect(dbenv, region->detect, &did_abort);
 
 	if (ret != 0 && elistp != NULL)
 		*elistp = &list[i - 1];
@@ -477,13 +526,43 @@ __lock_vec(dbenv, locker, flags, list, nlist, elistp)
 }
 
 /*
- * Lock acquisition routines.  There are two library interfaces:
+ * __lock_get_pp --
+ *	DB_ENV->lock_get pre/post processing.
  *
+ * PUBLIC: int __lock_get_pp __P((DB_ENV *,
+ * PUBLIC:     u_int32_t, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
+ */
+int
+__lock_get_pp(dbenv, locker, flags, obj, lock_mode, lock)
+	DB_ENV *dbenv;
+	u_int32_t locker, flags;
+	const DBT *obj;
+	db_lockmode_t lock_mode;
+	DB_LOCK *lock;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_ENV->lock_get", DB_INIT_LOCK);
+
+	/* Validate arguments. */
+	if ((ret = __db_fchk(dbenv, "DB_ENV->lock_get", flags,
+	    DB_LOCK_NOWAIT | DB_LOCK_UPGRADE | DB_LOCK_SWITCH)) != 0)
+		return (ret);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __lock_get(dbenv, locker, flags, obj, lock_mode, lock);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
  * __lock_get --
- *	original lock get interface that takes a locker id.
- *
- * All the work for lock_get (and for the GET option of lock_vec) is done
- * inside of lock_get_internal.
+ *	DB_ENV->lock_get.
  *
  * PUBLIC: int __lock_get __P((DB_ENV *,
  * PUBLIC:     u_int32_t, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
@@ -498,19 +577,10 @@ __lock_get(dbenv, locker, flags, obj, lock_mode, lock)
 {
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lk_handle, "DB_ENV->lock_get", DB_INIT_LOCK);
-
 	if (IS_RECOVERING(dbenv)) {
 		LOCK_INIT(*lock);
 		return (0);
 	}
-
-	/* Validate arguments. */
-	if ((ret = __db_fchk(dbenv, "DB_ENV->lock_get", flags,
-	    DB_LOCK_NOWAIT | DB_LOCK_UPGRADE | DB_LOCK_SWITCH)) != 0)
-		return (ret);
 
 	LOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
 	ret = __lock_get_internal(dbenv->lk_handle,
@@ -519,6 +589,12 @@ __lock_get(dbenv, locker, flags, obj, lock_mode, lock)
 	return (ret);
 }
 
+/*
+ * __lock_get_internal --
+ *
+ * All the work for lock_get (and for the GET option of lock_vec) is done
+ * inside of lock_get_internal.
+ */
 static int
 __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 	DB_LOCKTAB *lt;
@@ -533,20 +609,34 @@ __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 	DB_LOCKER *sh_locker;
 	DB_LOCKOBJ *sh_obj;
 	DB_LOCKREGION *region;
-	u_int32_t locker_ndx, obj_ndx;
-	int did_abort, ihold, on_locker_list, no_dd, ret;
+	u_int32_t holder, locker_ndx, obj_ndx;
+	int did_abort, ihold, grant_dirty, no_dd, ret, t_ret;
+	/*
+	 * We decide what action to take based on what
+	 * locks are already held and what locks are
+	 * in the wait queue.
+	 */
+	enum {
+		GRANT,		/* Grant the lock. */
+		UPGRADE,	/* Upgrade the lock. */
+		HEAD,		/* Wait at head of wait queue. */
+		SECOND,		/* Wait as the second waiter. */
+		TAIL		/* Wait at tail of the wait queue. */
+	} action;
 
 	dbenv = lt->dbenv;
 	region = lt->reginfo.primary;
-	on_locker_list = no_dd = ret = 0;
 
 	/* Check if locks have been globally turned off. */
 	if (F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
+	no_dd = ret = 0;
+	newl = NULL;
+
 	/*
-	 * If we are not going to reuse this lock, initialize the offset to
-	 * invalid so that if we fail it will not look like a valid lock.
+	 * If we are not going to reuse this lock, invalidate it
+	 * so that if we fail it will not look like a valid lock.
 	 */
 	if (!LF_ISSET(DB_LOCK_UPGRADE | DB_LOCK_SWITCH))
 		LOCK_INIT(*lock);
@@ -557,17 +647,7 @@ __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 		    (u_long)lock_mode);
 		return (EINVAL);
 	}
-
-	/* Allocate a new lock.  Optimize for the common case of a grant. */
 	region->stat.st_nrequests++;
-	if ((newl = SH_TAILQ_FIRST(&region->free_locks, __db_lock)) != NULL)
-		SH_TAILQ_REMOVE(&region->free_locks, newl, links, __db_lock);
-	if (newl == NULL) {
-		__db_err(dbenv, __db_lock_err, "locks");
-		return (ENOMEM);
-	}
-	if (++region->stat.st_nlocks > region->stat.st_maxnlocks)
-		region->stat.st_maxnlocks = region->stat.st_nlocks;
 
 	if (obj == NULL) {
 		DB_ASSERT(LOCK_ISSET(*lock));
@@ -598,35 +678,45 @@ __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 	}
 
 	/*
-	 * Now we have a lock and an object and we need to see if we should
-	 * grant the lock.  We use a FIFO ordering so we can only grant a
-	 * new lock if it does not conflict with anyone on the holders list
-	 * OR anyone on the waiters list.  The reason that we don't grant if
-	 * there's a conflict is that this can lead to starvation (a writer
-	 * waiting on a popularly read item will never be granted).  The
-	 * downside of this is that a waiting reader can prevent an upgrade
-	 * from reader to writer, which is not uncommon.
+	 * Figure out if we can grant this lock or if it should wait.
+	 * By default, we can grant the new lock if it does not conflict with
+	 * anyone on the holders list OR anyone on the waiters list.
+	 * The reason that we don't grant if there's a conflict is that
+	 * this can lead to starvation (a writer waiting on a popularly
+	 * read item will never be granted).  The downside of this is that
+	 * a waiting reader can prevent an upgrade from reader to writer,
+	 * which is not uncommon.
 	 *
-	 * There is one exception to the no-conflict rule.  If a lock is held
-	 * by the requesting locker AND the new lock does not conflict with
-	 * any other holders, then we grant the lock.  The most common place
-	 * this happens is when the holder has a WRITE lock and a READ lock
-	 * request comes in for the same locker.  If we do not grant the read
-	 * lock, then we guarantee deadlock.
+	 * There are two exceptions to the no-conflict rule.  First, if
+	 * a lock is held by the requesting locker AND the new lock does
+	 * not conflict with any other holders, then we grant the lock.
+	 * The most common place this happens is when the holder has a
+	 * WRITE lock and a READ lock request comes in for the same locker.
+	 * If we do not grant the read lock, then we guarantee deadlock.
+	 * Second, dirty readers are granted if at all possible while
+	 * avoiding starvation, see below.
 	 *
 	 * In case of conflict, we put the new lock on the end of the waiters
-	 * list, unless we are upgrading in which case the locker goes on the
-	 * front of the list.
+	 * list, unless we are upgrading or this is a dirty reader in which
+	 * case the locker goes at or near the front of the list.
 	 */
 	ihold = 0;
-	lp = NULL;
-	if (LF_ISSET(DB_LOCK_SWITCH))
-		goto put_lock;
-
+	grant_dirty = 0;
+	holder = 0;
 	wwrite = NULL;
-	for (lp = SH_TAILQ_FIRST(&sh_obj->holders, __db_lock);
-	    lp != NULL;
-	    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
+
+	/*
+	 * SWITCH is a special case, used by the queue access method
+	 * when we want to get an entry which is past the end of the queue.
+	 * We have a DB_READ_LOCK and need to switch it to DB_LOCK_WAIT and
+	 * join the waiters queue.  This must be done as a single operation
+	 * so that another locker cannot get in and fail to wake us up.
+	 */
+	if (LF_ISSET(DB_LOCK_SWITCH))
+		lp = NULL;
+	else
+		lp = SH_TAILQ_FIRST(&sh_obj->holders, __db_lock);
+	for (; lp != NULL; lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
 		if (locker == lp->holder) {
 			if (lp->mode == lock_mode &&
 			    lp->status == DB_LSTAT_HELD) {
@@ -635,16 +725,15 @@ __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 
 				/*
 				 * Lock is held, so we can increment the
-				 * reference count and return this lock.
-				 * We do not count reference increments
-				 * towards the locks held by the locker.
+				 * reference count and return this lock
+				 * to the caller.  We do not count reference
+				 * increments towards the locks held by
+				 * the locker.
 				 */
 				lp->refcount++;
 				lock->off = R_OFFSET(&lt->reginfo, lp);
 				lock->gen = lp->gen;
 				lock->mode = lp->mode;
-
-				ret = 0;
 				goto done;
 			} else {
 				ihold = 1;
@@ -656,106 +745,189 @@ __lock_get_internal(lt, locker, flags, obj, lock_mode, timeout, lock)
 			ihold = 1;
 		else if (CONFLICTS(lt, region, lp->mode, lock_mode))
 			break;
+		else if (lp->mode == DB_LOCK_READ ||
+		     lp->mode == DB_LOCK_WWRITE) {
+			grant_dirty = 1;
+			holder = lp->holder;
+		}
 	}
 
 	/*
-	 * If we are looking to upgrade a WWRITE to a WRITE lock
-	 * and there were no conflicting locks then we can just
-	 * upgrade this lock to the one we want.
+	 * If there are conflicting holders we will have to wait.
+	 * An upgrade or dirty reader goes to the head
+	 * of the queue, everone else to the back.
 	 */
-	if (wwrite != NULL && lp == NULL) {
-		lp = wwrite;
-		lp->mode = lock_mode;
-		lp->refcount++;
-		lock->off = R_OFFSET(&lt->reginfo, lp);
-		lock->gen = lp->gen;
-		lock->mode = lp->mode;
+	if (lp != NULL) {
+		if (LF_ISSET(DB_LOCK_UPGRADE) ||
+		     wwrite != NULL || lock_mode == DB_LOCK_DIRTY)
+			action = HEAD;
+		else
+			action = TAIL;
+	} else {
+		if (LF_ISSET(DB_LOCK_SWITCH))
+			action = TAIL;
+		else if (LF_ISSET(DB_LOCK_UPGRADE) || wwrite != NULL)
+			action = UPGRADE;
+		else  if (ihold)
+			action = GRANT;
+		else {
+			/*
+			 * Look for conflicting waiters.
+			 */
+			for (lp = SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock);
+			    lp != NULL;
+			    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
+				if (CONFLICTS(lt, region, lp->mode,
+				     lock_mode) && locker != lp->holder)
+					break;
+			}
+			/*
+			 * If there are no conflicting holders or waiters,
+			 * then we grant. Normally when we wait, we
+			 * wait at the end (TAIL).  However, the goal of
+			 * DIRTY_READ locks to allow forward progress in the
+			 * face of updating transactions, so we try to allow
+			 * all DIRTY_READ requests to proceed as rapidly
+			 * as possible, so long as we can prevent starvation.
+			 *
+			 * When determining how to queue a DIRTY_READ
+			 * request:
+			 *
+			 *	1. If there is a waiting upgrading writer,
+			 *	   then we enqueue the dirty reader BEHIND it
+			 *	   (second in the queue).
+			 *	2. Else, if the current holders are either
+			 *	   READ or WWRITE, we grant
+			 *	3. Else queue SECOND i.e., behind the first
+			 *	   waiter.
+			 *
+			 * The end result is that dirty_readers get to run
+			 * so long as other lockers are blocked.  Once
+			 * there is a locker which is only waiting on
+			 * dirty readers then they queue up behind that
+			 * locker so that it gets to run.  In general
+			 * this locker will be a WRITE which will shortly
+			 * get downgraded to a WWRITE, permitting the
+			 * DIRTY locks to be granted.
+			 */
+			if (lp == NULL)
+				action = GRANT;
+			else if (lock_mode == DB_LOCK_DIRTY && grant_dirty) {
+				/*
+				 * An upgrade will be at the head of the
+				 * queue.
+				 */
+				lp = SH_TAILQ_FIRST(
+				     &sh_obj->waiters, __db_lock);
+				if (lp->mode == DB_LOCK_WRITE &&
+				     lp->holder == holder)
+					action = SECOND;
+				else
+					action = GRANT;
+			} else if (lock_mode == DB_LOCK_DIRTY)
+				action = SECOND;
+			else
+				action = TAIL;
+		}
+	}
 
-		ret = 0;
+	switch (action) {
+	case HEAD:
+	case TAIL:
+	case SECOND:
+	case GRANT:
+		/* Allocate a new lock. */
+		if (++region->stat.st_nlocks > region->stat.st_maxnlocks)
+			region->stat.st_maxnlocks = region->stat.st_nlocks;
+
+		if ((newl =
+		    SH_TAILQ_FIRST(&region->free_locks, __db_lock)) != NULL)
+			SH_TAILQ_REMOVE(
+			    &region->free_locks, newl, links, __db_lock);
+		if (newl == NULL) {
+			__db_err(dbenv, __db_lock_err, "locks");
+			return (ENOMEM);
+		}
+		newl->holder = locker;
+		newl->refcount = 1;
+		newl->mode = lock_mode;
+		newl->obj = SH_PTR_TO_OFF(newl, sh_obj);
+		/*
+		 * Now, insert the lock onto its locker's list.
+		 * If the locker does not currently hold any locks,
+		 * there's no reason to run a deadlock
+		 * detector, save that information.
+		 */
+		no_dd = sh_locker->master_locker == INVALID_ROFF &&
+		    SH_LIST_FIRST(
+		    &sh_locker->child_locker, __db_locker) == NULL &&
+		    SH_LIST_FIRST(&sh_locker->heldby, __db_lock) == NULL;
+
+		SH_LIST_INSERT_HEAD(
+		    &sh_locker->heldby, newl, locker_links, __db_lock);
+		break;
+
+	case UPGRADE:
+upgrade:
+		if (wwrite != NULL) {
+			lp = wwrite;
+			lp->refcount++;
+			lock->off = R_OFFSET(&lt->reginfo, lp);
+			lock->gen = lp->gen;
+			lock->mode = lock_mode;
+		}
+		else
+			lp =
+			    (struct __db_lock *)R_ADDR(&lt->reginfo, lock->off);
+		if (IS_WRITELOCK(lock_mode) && !IS_WRITELOCK(lp->mode))
+			sh_locker->nwrites++;
+		lp->mode = lock_mode;
 		goto done;
 	}
 
-	/*
-	 * Make the new lock point to the new object, initialize fields.
-	 *
-	 * This lock is not linked in anywhere, so we can muck with it
-	 * without holding any mutexes.
-	 */
-put_lock:
-	newl->holder = locker;
-	newl->refcount = 1;
-	newl->mode = lock_mode;
-	newl->obj = SH_PTR_TO_OFF(newl, sh_obj);
-	newl->status = DB_LSTAT_HELD;
-
-	/*
-	 * If we are upgrading, then there are two scenarios.  Either
-	 * we had no conflicts, so we can do the upgrade.  Or, there
-	 * is a conflict and we should wait at the HEAD of the waiters
-	 * list.
-	 */
-	if (LF_ISSET(DB_LOCK_UPGRADE)) {
-		if (lp == NULL)
-			goto upgrade;
-
-		/*
-		 * There was a conflict, wait.  If this is the first waiter,
-		 * add the object to the deadlock detector's list.
-		 */
-		if (SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL)
-			SH_TAILQ_INSERT_HEAD(&region->dd_objs,
-			    sh_obj, dd_links, __db_lockobj);
-
-		SH_TAILQ_INSERT_HEAD(&sh_obj->waiters, newl, links, __db_lock);
-		goto llist;
-	}
-
-	if (lp == NULL && !ihold)
-		for (lp = SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock);
-		    lp != NULL;
-		    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
-			if (CONFLICTS(lt, region, lp->mode, lock_mode) &&
-			    locker != lp->holder)
-				break;
-		}
-	if (!LF_ISSET(DB_LOCK_SWITCH) && lp == NULL)
+	switch (action) {
+	case UPGRADE:
+		DB_ASSERT(0);
+		break;
+	case GRANT:
+		newl->status = DB_LSTAT_HELD;
 		SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
-	else if (!LF_ISSET(DB_LOCK_NOWAIT)) {
-		/*
-		 * If this is the first waiter, add the object to the
-		 * deadlock detector's list.
-		 */
-		if (SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL)
+		break;
+	case HEAD:
+	case TAIL:
+	case SECOND:
+		if (LF_ISSET(DB_LOCK_NOWAIT)) {
+			ret = DB_LOCK_NOTGRANTED;
+			region->stat.st_nnowaits++;
+			goto err;
+		}
+		if ((lp = SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock)) == NULL)
 			SH_TAILQ_INSERT_HEAD(&region->dd_objs,
-			    sh_obj, dd_links, __db_lockobj);
-		SH_TAILQ_INSERT_TAIL(&sh_obj->waiters, newl, links);
-	} else {
-		ret = DB_LOCK_NOTGRANTED;
-		if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) == NULL &&
-		    LF_ISSET(DB_LOCK_FREE_LOCKER))
-			__lock_freelocker(lt, region, sh_locker, locker_ndx);
-		region->stat.st_nnowaits++;
-		goto err;
-	}
+				    sh_obj, dd_links, __db_lockobj);
+		switch (action) {
+		case HEAD:
+			SH_TAILQ_INSERT_HEAD(
+			     &sh_obj->waiters, newl, links, __db_lock);
+			break;
+		case SECOND:
+			SH_TAILQ_INSERT_AFTER(
+			     &sh_obj->waiters, lp, newl, links, __db_lock);
+			break;
+		case TAIL:
+			SH_TAILQ_INSERT_TAIL(&sh_obj->waiters, newl, links);
+			break;
+		default:
+			DB_ASSERT(0);
+		}
 
-llist:
-	/*
-	 * Now, insert the lock onto its locker's list.  If the locker does
-	 * not currently hold any locks, there's no reason to run a deadlock
-	 * detector, save that information.
-	 */
-	on_locker_list = 1;
-	no_dd = sh_locker->master_locker == INVALID_ROFF &&
-	    SH_LIST_FIRST(&sh_locker->child_locker, __db_locker) == NULL &&
-	    SH_LIST_FIRST(&sh_locker->heldby, __db_lock) == NULL;
-
-	SH_LIST_INSERT_HEAD(&sh_locker->heldby, newl, locker_links, __db_lock);
-
-	if (LF_ISSET(DB_LOCK_SWITCH) || lp != NULL) {
+		/* If we are switching drop the lock we had. */
 		if (LF_ISSET(DB_LOCK_SWITCH) &&
 		    (ret = __lock_put_nolock(dbenv,
-		    lock, &ihold, DB_LOCK_NOWAITERS)) != 0)
+		    lock, &ihold, DB_LOCK_NOWAITERS)) != 0) {
+			__lock_remove_waiter(lt, sh_obj, newl, DB_LSTAT_FREE);
 			goto err;
+		}
+
 		/*
 		 * This is really a blocker for the thread.  It should be
 		 * initialized locked, so that when we try to acquire it, we
@@ -773,25 +945,10 @@ llist:
 		 */
 		if (__lock_expired(dbenv,
 		    &sh_locker->lk_expire, &sh_locker->tx_expire)) {
-			newl->status = DB_LSTAT_ABORTED;
-			region->stat.st_ndeadlocks++;
-			region->stat.st_ntxntimeouts++;
+			newl->status = DB_LSTAT_EXPIRED;
+			sh_locker->lk_expire = sh_locker->tx_expire;
 
-			/*
-			 * Remove the lock from the wait queue and if
-			 * this was the only lock on the wait queue remove
-			 * this object from the deadlock detector object
-			 * list.
-			 */
-			SH_LIST_REMOVE(newl, locker_links, __db_lock);
-			SH_TAILQ_REMOVE(
-			    &sh_obj->waiters, newl, links, __db_lock);
-			if (SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL)
-				SH_TAILQ_REMOVE(&region->dd_objs,
-				    sh_obj, dd_links, __db_lockobj);
-
-			/* Clear the timeout, we are done. */
-			LOCK_SET_TIME_INVALID(&sh_locker->tx_expire);
+			/* We are done. */
 			goto expired;
 		}
 
@@ -816,6 +973,11 @@ llist:
 			(timeout == 0 || __lock_expired(dbenv,
 			    &sh_locker->lk_expire, &sh_locker->tx_expire)))
 				sh_locker->lk_expire = sh_locker->tx_expire;
+		if (LOCK_TIME_ISVALID(&sh_locker->lk_expire) &&
+		    (!LOCK_TIME_ISVALID(&region->next_timeout) ||
+		    LOCK_TIME_GREATER(
+		    &region->next_timeout, &sh_locker->lk_expire)))
+			region->next_timeout = sh_locker->lk_expire;
 		UNLOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
 
 		/*
@@ -823,44 +985,41 @@ llist:
 		 * detector should be run.
 		 */
 		if (region->detect != DB_LOCK_NORUN && !no_dd)
-			(void)dbenv->lock_detect(
-			    dbenv, 0, region->detect, &did_abort);
+			(void)__lock_detect(dbenv, region->detect, &did_abort);
 
 		MUTEX_LOCK(dbenv, &newl->mutex);
 		LOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
 
-expired:	/* Turn off lock timeout. */
-		LOCK_SET_TIME_INVALID(&sh_locker->lk_expire);
+		/* Turn off lock timeout. */
+		if (newl->status != DB_LSTAT_EXPIRED)
+			LOCK_SET_TIME_INVALID(&sh_locker->lk_expire);
 
 		if (newl->status != DB_LSTAT_PENDING) {
-			(void)__lock_checklocker(lt, newl, newl->holder, 0);
 			switch (newl->status) {
-				case DB_LSTAT_ABORTED:
-					on_locker_list = 0;
-					ret = DB_LOCK_DEADLOCK;
-					break;
-				case DB_LSTAT_NOTEXIST:
-					ret = DB_LOCK_NOTEXIST;
-					break;
-				case DB_LSTAT_EXPIRED:
-					SHOBJECT_LOCK(lt,
-					    region, sh_obj, obj_ndx);
-					if ((ret = __lock_put_internal(
-					    lt, newl, obj_ndx, 0) != 0))
-						goto err;
-					if (LOCK_TIME_EQUAL(
-					    &sh_locker->lk_expire,
-					    &sh_locker->tx_expire)) {
-						region->stat.st_ndeadlocks++;
-						region->stat.st_ntxntimeouts++;
-						return (DB_LOCK_DEADLOCK);
-					} else {
-						region->stat.st_nlocktimeouts++;
-						return (DB_LOCK_NOTGRANTED);
-					}
-				default:
-					ret = EINVAL;
-					break;
+			case DB_LSTAT_ABORTED:
+				ret = DB_LOCK_DEADLOCK;
+				break;
+			case DB_LSTAT_NOTEXIST:
+				ret = DB_LOCK_NOTEXIST;
+				break;
+			case DB_LSTAT_EXPIRED:
+expired:			SHOBJECT_LOCK(lt, region, sh_obj, obj_ndx);
+				if ((ret = __lock_put_internal(
+				    lt, newl, obj_ndx,
+				    DB_LOCK_UNLINK | DB_LOCK_FREE) != 0))
+					goto err;
+				if (LOCK_TIME_EQUAL(
+				    &sh_locker->lk_expire,
+				    &sh_locker->tx_expire)) {
+					region->stat.st_ntxntimeouts++;
+					return (DB_LOCK_NOTGRANTED);
+				} else {
+					region->stat.st_nlocktimeouts++;
+					return (DB_LOCK_NOTGRANTED);
+				}
+			default:
+				ret = EINVAL;
+				break;
 			}
 			goto err;
 		} else if (LF_ISSET(DB_LOCK_UPGRADE)) {
@@ -890,33 +1049,45 @@ expired:	/* Turn off lock timeout. */
 
 	return (0);
 
-upgrade:/*
-	 * This was an upgrade, so return the new lock to the free list and
-	 * upgrade the mode of the original lock.
-	 */
-	lp = (struct __db_lock *)R_ADDR(&lt->reginfo, lock->off);
-	if (IS_WRITELOCK(lock_mode) && !IS_WRITELOCK(lp->mode))
-		sh_locker->nwrites++;
-	lp->mode = lock_mode;
-
-	ret = 0;
-	/* FALLTHROUGH */
-
 done:
-err:	newl->status = DB_LSTAT_FREE;
-	region->stat.st_nlocks--;
-	if (on_locker_list) {
-		SH_LIST_REMOVE(newl, locker_links, __db_lock);
-	}
-	SH_TAILQ_INSERT_HEAD(&region->free_locks, newl, links, __db_lock);
+	ret = 0;
+err:
+	if (newl != NULL &&
+	     (t_ret = __lock_freelock(lt, newl, locker,
+	     DB_LOCK_FREE | DB_LOCK_UNLINK)) != 0 && ret == 0)
+		ret = t_ret;
 	return (ret);
 }
 
 /*
- * Lock release routines.
+ * __lock_put_pp --
+ *	DB_ENV->lock_put pre/post processing.
  *
- * The user callable one is lock_put and the three we use internally are
- * __lock_put_nolock, __lock_put_internal and __lock_downgrade.
+ * PUBLIC: int  __lock_put_pp __P((DB_ENV *, DB_LOCK *));
+ */
+int
+__lock_put_pp(dbenv, lock)
+	DB_ENV *dbenv;
+	DB_LOCK *lock;
+{
+	int rep_check, ret;
+
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_LOCK->lock_put", DB_INIT_LOCK);
+
+	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
+	if (rep_check)
+		__env_rep_enter(dbenv);
+	ret = __lock_put(dbenv, lock);
+	if (rep_check)
+		__env_rep_exit(dbenv);
+	return (ret);
+}
+
+/*
+ * __lock_put --
+ *	DB_ENV->lock_put.
  *
  * PUBLIC: int  __lock_put __P((DB_ENV *, DB_LOCK *));
  */
@@ -927,10 +1098,6 @@ __lock_put(dbenv, lock)
 {
 	DB_LOCKTAB *lt;
 	int ret, run_dd;
-
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lk_handle, "DB_LOCK->lock_put", DB_INIT_LOCK);
 
 	if (IS_RECOVERING(dbenv))
 		return (0);
@@ -948,7 +1115,7 @@ __lock_put(dbenv, lock)
 	 * actually abort anything.
 	 */
 	if (ret == 0 && run_dd)
-		(void)dbenv->lock_detect(dbenv, 0,
+		(void)__lock_detect(dbenv,
 		    ((DB_LOCKREGION *)lt->reginfo.primary)->detect, NULL);
 	return (ret);
 }
@@ -983,7 +1150,8 @@ __lock_put_nolock(dbenv, lock, runp, flags)
 	    lockp, lock->ndx, flags | DB_LOCK_UNLINK | DB_LOCK_FREE);
 
 	*runp = 0;
-	if (ret == 0 && region->need_dd && region->detect != DB_LOCK_NORUN)
+	if (ret == 0 && region->detect != DB_LOCK_NORUN &&
+	     (region->need_dd || LOCK_TIME_ISVALID(&region->next_timeout)))
 		*runp = 1;
 
 	return (ret);
@@ -991,10 +1159,11 @@ __lock_put_nolock(dbenv, lock, runp, flags)
 
 /*
  * __lock_downgrade --
- *	Used to downgrade locks.  Currently this is used in two places,
- * 1) by the concurrent access product to downgrade write locks
- * back to iwrite locks and 2) to downgrade write-handle locks to read-handle
- * locks at the end of an open/create.
+ *
+ * Used to downgrade locks.  Currently this is used in two places: 1) by the
+ * Concurrent Data Store product to downgrade write locks back to iwrite locks
+ * and 2) to downgrade write-handle locks to read-handle locks at the end of
+ * an open/create.
  *
  * PUBLIC: int __lock_downgrade __P((DB_ENV *,
  * PUBLIC:     DB_LOCK *, db_lockmode_t, u_int32_t));
@@ -1081,10 +1250,7 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
 		 * already been done; all we need to do is return it to the
 		 * free list.
 		 */
-		lockp->status = DB_LSTAT_FREE;
-		SH_TAILQ_INSERT_HEAD(
-		    &region->free_locks, lockp, links, __db_lock);
-		region->stat.st_nlocks--;
+		(void)__lock_freelock(lt, lockp, 0, DB_LOCK_FREE);
 		return (0);
 	}
 
@@ -1118,9 +1284,6 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
 		state_changed = __lock_promote(lt,
 		    sh_obj, LF_ISSET(DB_LOCK_REMOVE | DB_LOCK_NOWAITERS));
 
-	if (LF_ISSET(DB_LOCK_UNLINK))
-		ret = __lock_checklocker(lt, lockp, lockp->holder, flags);
-
 	/* Check if object should be reclaimed. */
 	if (SH_TAILQ_FIRST(&sh_obj->holders, __db_lock) == NULL &&
 	    SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL) {
@@ -1136,12 +1299,8 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
 	}
 
 	/* Free lock. */
-	if (!LF_ISSET(DB_LOCK_UNLINK) && LF_ISSET(DB_LOCK_FREE)) {
-		lockp->status = DB_LSTAT_FREE;
-		SH_TAILQ_INSERT_HEAD(
-		    &region->free_locks, lockp, links, __db_lock);
-		region->stat.st_nlocks--;
-	}
+	if (LF_ISSET(DB_LOCK_UNLINK | DB_LOCK_FREE))
+		ret = __lock_freelock(lt, lockp, lockp->holder, flags);
 
 	/*
 	 * If we did not promote anyone; we need to run the deadlock
@@ -1158,14 +1317,12 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
  */
 
 /*
- * __lock_checklocker --
- *	If a locker has no more locks, then we can free the object.
- * Return a boolean indicating whether we freed the object or not.
+ * __lock_freelock --
+ *	Free a lock.  Unlink it from its locker if necessary.
  *
- * Must be called without the locker's lock set.
  */
 static int
-__lock_checklocker(lt, lockp, locker, flags)
+__lock_freelock(lt, lockp, locker, flags)
 	DB_LOCKTAB *lt;
 	struct __db_lock *lockp;
 	u_int32_t locker, flags;
@@ -1180,24 +1337,16 @@ __lock_checklocker(lt, lockp, locker, flags)
 	region = lt->reginfo.primary;
 	ret = 0;
 
-	LOCKER_LOCK(lt, region, locker, indx);
-
-	/* If the locker's list is NULL, free up the locker. */
-	if ((ret = __lock_getlocker(lt,
-	    locker, indx, 0, &sh_locker)) != 0 || sh_locker == NULL) {
-		if (ret == 0)
-			ret = EINVAL;
-		__db_err(dbenv, __db_locker_invalid);
-		goto freelock;
-	}
-
-	if (F_ISSET(sh_locker, DB_LOCKER_DELETED)) {
-		LF_CLR(DB_LOCK_FREE);
-		if (!LF_ISSET(DB_LOCK_IGNOREDEL))
-			goto freelock;
-	}
-
 	if (LF_ISSET(DB_LOCK_UNLINK)) {
+		LOCKER_LOCK(lt, region, locker, indx);
+		if ((ret = __lock_getlocker(lt,
+		    locker, indx, 0, &sh_locker)) != 0 || sh_locker == NULL) {
+			if (ret == 0)
+				ret = EINVAL;
+			__db_err(dbenv, __db_locker_invalid);
+			return (ret);
+		}
+
 		SH_LIST_REMOVE(lockp, locker_links, __db_lock);
 		if (lockp->status == DB_LSTAT_HELD) {
 			sh_locker->nlocks--;
@@ -1206,11 +1355,6 @@ __lock_checklocker(lt, lockp, locker, flags)
 		}
 	}
 
-	if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) == NULL &&
-	    LF_ISSET(DB_LOCK_FREE_LOCKER))
-		__lock_freelocker( lt, region, sh_locker, indx);
-
-freelock:
 	if (LF_ISSET(DB_LOCK_FREE)) {
 		lockp->status = DB_LSTAT_FREE;
 		SH_TAILQ_INSERT_HEAD(
@@ -1312,12 +1456,12 @@ __lock_freefamilylocker(lt, locker)
 
 	if ((ret = __lock_getlocker(lt,
 	    locker, indx, 0, &sh_locker)) != 0 || sh_locker == NULL)
-		goto freelock;
+		goto err;
 
 	if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) != NULL) {
 		ret = EINVAL;
 		__db_err(dbenv, "Freeing locker with locks");
-		goto freelock;
+		goto err;
 	}
 
 	/* If this is part of a family, we must fix up its links. */
@@ -1326,7 +1470,7 @@ __lock_freefamilylocker(lt, locker)
 
 	__lock_freelocker(lt, region, sh_locker, indx);
 
-freelock:
+err:
 	UNLOCKREGION(dbenv, lt);
 	return (ret);
 }
@@ -1371,6 +1515,32 @@ __lock_set_timeout(dbenv, locker, timeout, op)
 	db_timeout_t timeout;
 	u_int32_t op;
 {
+	DB_LOCKTAB *lt;
+	int ret;
+
+	lt = dbenv->lk_handle;
+
+	LOCKREGION(dbenv, lt);
+	ret = __lock_set_timeout_internal(dbenv, locker, timeout, op);
+	UNLOCKREGION(dbenv, lt);
+	return (ret);
+}
+/*
+ * __lock_set_timeout_internal
+ *		-- set timeout values in shared memory.
+ * This is the internal version called from the lock system.
+ * We either set the time that this tranaction expires or the
+ * amount of time that a lock for this transaction is permitted
+ * to wait.
+ *
+ */
+static int
+__lock_set_timeout_internal(dbenv, locker, timeout, op)
+	DB_ENV *dbenv;
+	u_int32_t locker;
+	db_timeout_t timeout;
+	u_int32_t op;
+{
 	DB_LOCKER *sh_locker;
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
@@ -1379,11 +1549,10 @@ __lock_set_timeout(dbenv, locker, timeout, op)
 
 	lt = dbenv->lk_handle;
 	region = lt->reginfo.primary;
-	LOCKREGION(dbenv, lt);
 
 	LOCKER_LOCK(lt, region, locker, locker_ndx);
 	ret = __lock_getlocker(lt, locker, locker_ndx, 1, &sh_locker);
-	UNLOCKREGION(dbenv, lt);
+
 	if (ret != 0)
 		return (ret);
 
@@ -1399,6 +1568,10 @@ __lock_set_timeout(dbenv, locker, timeout, op)
 		LOCK_SET_TIME_INVALID(&sh_locker->tx_expire);
 		__lock_expires(dbenv, &sh_locker->tx_expire, 0);
 		sh_locker->lk_expire = sh_locker->tx_expire;
+		if (!LOCK_TIME_ISVALID(&region->next_timeout) ||
+		    LOCK_TIME_GREATER(
+		    &region->next_timeout, &sh_locker->lk_expire))
+			region->next_timeout = sh_locker->lk_expire;
 	} else
 		return (EINVAL);
 
@@ -1523,9 +1696,6 @@ __lock_getlocker(lt, locker, indx, create, retp)
 		sh_locker->nwrites = 0;
 		sh_locker->lk_timeout = 0;
 		LOCK_SET_TIME_INVALID(&sh_locker->tx_expire);
-		if (locker < TXN_MINIMUM && region->tx_timeout != 0)
-			__lock_expires(dbenv,
-			    &sh_locker->tx_expire, region->tx_timeout);
 		LOCK_SET_TIME_INVALID(&sh_locker->lk_expire);
 
 		HASHINSERT(lt->locker_tab, indx, __db_locker, links, sh_locker);
@@ -1636,6 +1806,123 @@ __lock_is_parent(lt, locker, sh_locker)
 	}
 
 	return (0);
+}
+
+/*
+ * __lock_inherit_locks --
+ * Called on child commit to merge child's locks with parent's.
+ */
+
+static int
+__lock_inherit_locks(lt, locker, flags)
+	DB_LOCKTAB *lt;
+	u_int32_t locker;
+	u_int32_t flags;
+{
+	DB_ENV *dbenv;
+	DB_LOCKER *sh_locker, *sh_parent;
+	DB_LOCKOBJ *obj;
+	DB_LOCKREGION *region;
+	int ret;
+	struct __db_lock *hlp, *lp;
+	u_int32_t ndx;
+
+	region = lt->reginfo.primary;
+	dbenv = lt->dbenv;
+
+	/*
+	 * Get the committing locker and mark it as deleted.
+	 * This allows us to traverse the locker links without
+	 * worrying that someone else is deleting locks out
+	 * from under us.  However, if the locker doesn't
+	 * exist, that just means that the child holds no
+	 * locks, so inheritance is easy!
+	 */
+	LOCKER_LOCK(lt, region, locker, ndx);
+	if ((ret = __lock_getlocker(lt,
+	    locker, ndx, 0, &sh_locker)) != 0 ||
+	    sh_locker == NULL ||
+	    F_ISSET(sh_locker, DB_LOCKER_DELETED)) {
+		if (ret == 0 && sh_locker != NULL)
+			ret = EINVAL;
+		__db_err(dbenv, __db_locker_invalid);
+		goto err;
+	}
+
+	/* Make sure we are a child transaction. */
+	if (sh_locker->parent_locker == INVALID_ROFF) {
+		__db_err(dbenv, "Not a child transaction");
+		ret = EINVAL;
+		goto err;
+	}
+	sh_parent = (DB_LOCKER *)
+	    R_ADDR(&lt->reginfo, sh_locker->parent_locker);
+	F_SET(sh_locker, DB_LOCKER_DELETED);
+
+	/*
+	 * Now, lock the parent locker; move locks from
+	 * the committing list to the parent's list.
+	 */
+	LOCKER_LOCK(lt, region, locker, ndx);
+	if (F_ISSET(sh_parent, DB_LOCKER_DELETED)) {
+		if (ret == 0) {
+			__db_err(dbenv,
+			    "Parent locker is not valid");
+			ret = EINVAL;
+		}
+		goto err;
+	}
+
+	/*
+	 * In order to make it possible for a parent to have
+	 * many, many children who lock the same objects, and
+	 * not require an inordinate number of locks, we try
+	 * to merge the child's locks with its parent's.
+	 */
+	for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
+	    lp != NULL;
+	    lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock)) {
+		SH_LIST_REMOVE(lp, locker_links, __db_lock);
+
+		/* See if the parent already has a lock. */
+		obj = (DB_LOCKOBJ *)((u_int8_t *)lp + lp->obj);
+		for (hlp = SH_TAILQ_FIRST(&obj->holders, __db_lock);
+		    hlp != NULL;
+		    hlp = SH_TAILQ_NEXT(hlp, links, __db_lock))
+			if (hlp->holder == sh_parent->id &&
+			    lp->mode == hlp->mode)
+				break;
+
+		if (hlp != NULL) {
+			/* Parent already holds lock. */
+			hlp->refcount += lp->refcount;
+
+			/* Remove lock from object list and free it. */
+			DB_ASSERT(lp->status == DB_LSTAT_HELD);
+			SH_TAILQ_REMOVE(&obj->holders, lp, links, __db_lock);
+			(void)__lock_freelock(lt, lp, locker, DB_LOCK_FREE);
+		} else {
+			/* Just move lock to parent chains. */
+			SH_LIST_INSERT_HEAD(&sh_parent->heldby,
+			    lp, locker_links, __db_lock);
+			lp->holder = sh_parent->id;
+		}
+
+		/*
+		 * We may need to promote regardless of whether we simply
+		 * moved the lock to the parent or changed the parent's
+		 * reference count, because there might be a sibling waiting,
+		 * who will now be allowed to make forward progress.
+		 */
+		(void)__lock_promote(lt, obj,
+		    LF_ISSET(DB_LOCK_NOWAITERS));
+	}
+
+	/* Transfer child counts to parent. */
+	sh_parent->nlocks += sh_locker->nlocks;
+	sh_parent->nwrites += sh_locker->nwrites;
+
+err:	return (ret);
 }
 
 /*
@@ -1765,9 +2052,6 @@ __lock_remove_waiter(lt, sh_obj, lockp, status)
 
 	/*
 	 * Wake whoever is waiting on this lock.
-	 *
-	 * The MUTEX_UNLOCK macro normally resolves to a single argument,
-	 * keep the compiler quiet.
 	 */
 	if (do_wakeup)
 		MUTEX_UNLOCK(lt->dbenv, &lockp->mutex);
@@ -1860,7 +2144,7 @@ __lock_trade(dbenv, lock, new_locker)
 	}
 
 	/* Remove the lock from its current locker. */
-	if ((ret = __lock_checklocker(lt, lp, lp->holder, DB_LOCK_UNLINK)) != 0)
+	if ((ret = __lock_freelock(lt, lp, lp->holder, DB_LOCK_UNLINK)) != 0)
 		return (ret);
 
 	/* Add lock to its new locker. */
@@ -1871,4 +2155,286 @@ __lock_trade(dbenv, lock, new_locker)
 	lp->holder = new_locker;
 
 	return (0);
+}
+
+/*
+ * Lock list routines.
+ *	The list is composed of a 32-bit count of locks followed by
+ * each lock.  A lock is represented by a 16-bit page-count, a lock
+ * object and a page list.  A lock object consists of a 16-bit size
+ * and the object itself.   In a pseudo BNF notation, you get:
+ *
+ * LIST = COUNT32 LOCK*
+ * LOCK = COUNT16 LOCKOBJ PAGELIST
+ * LOCKOBJ = COUNT16 OBJ
+ * PAGELIST = COUNT32*
+ *
+ * (Recall that X* means "0 or more X's")
+ *
+ * In most cases, the OBJ is a struct __db_ilock and the page list is
+ * a series of (32-bit) page numbers that should get written into the
+ * pgno field of the __db_ilock.  So, the actual number of pages locked
+ * is the number of items in the PAGELIST plus 1. If this is an application-
+ * specific lock, then we cannot interpret obj and the pagelist must
+ * be empty.
+ *
+ * Consider a lock list for: File A, pages 1&2, File B pages 3-5, Applock
+ * This would be represented as:
+ *	5 1 [fid=A;page=1] 2 2 [fid=B;page=3] 4 5 0 APPLOCK
+ *        ------------------ -------------------- ---------
+ *         LOCK for file A    LOCK for file B     application-specific lock
+ */
+
+#define MAX_PGNOS	0xffff
+
+/*
+ * These macros are bigger than one might exepect becasue the
+ * Solaris compiler says that a cast does not return an lvalue,
+ * so constructs like *(u_int32_t*)dp = count; generate warnings.
+ */
+
+#define RET_SIZE(size, count)  ((size) + 			\
+     sizeof(u_int32_t) + (count) * 2 * sizeof(u_int16_t))
+
+#define PUT_COUNT(dp, count) 	do {	u_int32_t *ip = (u_int32_t *)dp;\
+					*ip = count;			\
+					dp = (u_int8_t *)dp +		\
+					     sizeof(u_int32_t);		\
+				} while (0)
+#define PUT_PCOUNT(dp, count) 	do {	u_int16_t *ip = (u_int16_t *)dp;\
+					*ip = count;			\
+					dp = (u_int8_t *)dp +		\
+					    sizeof(u_int16_t);		\
+				} while (0)
+#define PUT_SIZE(dp, size) 	do {	u_int16_t *ip = (u_int16_t *)dp;\
+					*ip = size;			\
+					dp = (u_int8_t *)dp +		\
+					    sizeof(u_int16_t);		\
+				} while (0)
+#define PUT_PGNO(dp, pgno) 	do {	db_pgno_t *ip = (db_pgno_t *)dp;\
+					*ip = pgno;			\
+					dp = (u_int8_t *)dp +		\
+					    sizeof(db_pgno_t);		\
+				} while (0)
+#define COPY_OBJ(dp, obj)	do {					   \
+					memcpy(dp, obj->data, obj->size);  \
+					dp = (u_int8_t *)dp +		   \
+					     ALIGN(obj->size,		   \
+					     sizeof(u_int32_t)); 	   \
+				} while (0)
+
+#define GET_COUNT(dp, count)	do {					\
+					(count) = *(u_int32_t *) dp;	\
+					dp = (u_int8_t *)dp +		\
+					     sizeof(u_int32_t); 	\
+				} while (0);
+#define GET_PCOUNT(dp, count)	do {					\
+					(count) = *(u_int16_t *) dp;	\
+					dp = (u_int8_t *)dp +		\
+					     sizeof(u_int16_t); 	\
+				} while (0);
+#define GET_SIZE(dp, size)	do {					\
+					(size) = *(u_int16_t *) dp;	\
+					dp = (u_int8_t *)dp +		\
+					     sizeof(u_int16_t); 	\
+				} while (0);
+#define GET_PGNO(dp, pgno)	do {					\
+					(pgno) = *(db_pgno_t *) dp;	\
+					dp = (u_int8_t *)dp +		\
+					     sizeof(db_pgno_t); 	\
+				} while (0);
+
+static int 
+__lock_fix_list(dbenv, list_dbt, nlocks)
+	DB_ENV *dbenv;
+	DBT *list_dbt;
+	u_int32_t nlocks;
+{
+	DBT *obj;
+	DB_LOCK_ILOCK *lock, *plock;
+	u_int32_t i, j, nfid, npgno, size;
+	int ret;
+	u_int8_t *data, *dp;
+
+	size = list_dbt->size;
+	if (size == 0)
+		return (0);
+
+	obj = (DBT *) list_dbt->data;
+
+	/*
+	 * If necessary sort the list of locks so that locks
+	 * on the same fileid are together.  We do not sort
+	 * 1 or 2 locks because by definition if there are
+	 * locks on the same fileid they will be together.
+	 * The sort will also move any locks that do not
+	 * look like page locks to the end of the list
+	 * so we can stop looking for locks we can combine
+	 * when we hit one.
+	 */
+	switch (nlocks) {
+	case 1:
+		size = RET_SIZE(obj->size, 1);
+		if ((ret = __os_malloc(dbenv, size, &data)) != 0)
+			return (ret);
+
+		dp = data;
+		PUT_COUNT(dp, 1);
+		PUT_PCOUNT(dp, 0);
+		PUT_SIZE(dp, obj->size);
+		COPY_OBJ(dp, obj);
+		break;
+
+	default:
+		/* Sort so that all locks with same fileid are together. */
+		qsort(list_dbt->data, nlocks, sizeof(DBT), __lock_sort_cmp);
+		/* FALL THROUGH */
+	case 2:
+		nfid = npgno = 0;
+		i = 0;
+		if (obj->size != sizeof(DB_LOCK_ILOCK))
+			goto not_ilock;
+
+		nfid = 1;
+		plock = (DB_LOCK_ILOCK *)obj->data;
+
+		/* We use ulen to keep track of the number of pages. */
+		j = 0;
+		obj[0].ulen = 0;
+		for (i = 1; i < nlocks; i++) {
+			if (obj[i].size != sizeof(DB_LOCK_ILOCK))
+				break;
+			lock = (DB_LOCK_ILOCK *)obj[i].data;
+			if (obj[j].ulen < MAX_PGNOS &&
+			     lock->type == plock->type &&
+			     memcmp(lock->fileid,
+			     plock->fileid, DB_FILE_ID_LEN) == 0) {
+				obj[j].ulen++;
+				npgno++;
+			} else {
+				nfid++;
+				plock = lock;
+				j = i;
+				obj[j].ulen = 0;
+			}
+		}
+
+not_ilock:
+		size = nfid * sizeof(DB_LOCK_ILOCK);
+		size += npgno * sizeof(db_pgno_t);
+		/* Add the number of nonstandard locks and get their size. */
+		nfid += nlocks - i;
+		for (; i < nlocks; i++) {
+			size += obj[i].size;
+			obj[i].ulen = 0;
+		}
+
+		size = RET_SIZE(size, nfid);
+		if ((ret = __os_malloc(dbenv, size, &data)) != 0)
+			return (ret);
+
+		dp = data;
+		PUT_COUNT(dp, nfid);
+
+		for (i = 0; i < nlocks; i = j) {
+			PUT_PCOUNT(dp, obj[i].ulen);
+			PUT_SIZE(dp, obj[i].size);
+			COPY_OBJ(dp, obj);
+			lock = (DB_LOCK_ILOCK *)obj[i].data;
+			for (j = i + 1; j <= i + obj[i].ulen; j++) {
+				lock = (DB_LOCK_ILOCK *)obj[j].data;
+				PUT_PGNO(dp, lock->pgno);
+			}
+		}
+	}
+
+	(void)__os_free(dbenv, list_dbt->data);
+
+	list_dbt->data = data;
+	list_dbt->size = size;
+
+	return (0);
+}
+
+/*
+ * PUBLIC: int __lock_get_list __P((DB_ENV *, u_int32_t, u_int32_t,
+ * PUBLIC:	      db_lockmode_t, DBT *));
+ */
+int
+__lock_get_list(dbenv, locker, flags, lock_mode, list)
+	DB_ENV *dbenv;
+	u_int32_t locker, flags;
+	db_lockmode_t lock_mode;
+	DBT *list;
+{
+	DBT obj_dbt;
+	DB_LOCK ret_lock;
+	DB_LOCK_ILOCK *lock;
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	db_pgno_t save_pgno;
+	u_int16_t npgno, size;
+	u_int32_t i, nlocks;
+	int ret;
+	void *dp;
+
+	if (list->size == 0)
+		return (0);
+	ret = 0;
+	lt = dbenv->lk_handle;
+	region = lt->reginfo.primary;
+	dp = list->data;
+
+	GET_COUNT(dp, nlocks);
+	LOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
+
+	for (i = 0; i < nlocks; i++) {
+		GET_PCOUNT(dp, npgno);
+		GET_SIZE(dp, size);
+		lock = (DB_LOCK_ILOCK *) dp;
+		save_pgno = lock->pgno;
+		obj_dbt.data = dp;
+		obj_dbt.size = size;
+		dp = ((u_int8_t *)dp) + ALIGN(size, sizeof(u_int32_t));
+		do {
+			if ((ret = __lock_get_internal(lt, locker,
+			     flags, &obj_dbt, lock_mode, 0, &ret_lock)) != 0) {
+			     lock->pgno = save_pgno;
+			     goto err;
+			}
+			if (npgno != 0)
+				GET_PGNO(dp, lock->pgno);
+		} while (npgno-- != 0);
+		lock->pgno = save_pgno;
+	}
+
+err:
+	UNLOCKREGION(dbenv, (DB_LOCKTAB *)dbenv->lk_handle);
+	return (ret);
+}
+
+static int
+__lock_sort_cmp(a, b)
+	const void *a, *b;
+{
+	const DBT *d1, *d2;
+	DB_LOCK_ILOCK *l1, *l2;
+
+	d1 = a;
+	d2 = b;
+
+	/* Force all non-standard locks to sort at end. */
+	if (d1->size != sizeof(DB_LOCK_ILOCK)) {
+		if (d2->size != sizeof(DB_LOCK_ILOCK))
+			return (d1->size - d2->size);
+		else
+			return (1);
+	} else if (d2->size != sizeof(DB_LOCK_ILOCK))
+		return (-1);
+
+	l1 = d1->data;
+	l2 = d2->data;
+	if (l1->type != l2->type)
+		return (l1->type - l2->type);
+	return (memcmp(l1->fileid, l2->fileid, DB_FILE_ID_LEN));
 }

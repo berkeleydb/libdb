@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_fcntl.c,v 11.21 2002/05/31 19:37:45 bostic Exp $";
+static const char revid[] = "$Id: mut_fcntl.c,v 11.24 2003/05/05 19:55:03 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,7 +17,6 @@ static const char revid[] = "$Id: mut_fcntl.c,v 11.21 2002/05/31 19:37:45 bostic
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_int.h"
@@ -37,7 +36,7 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
 	u_int32_t save;
 
 	/*
-	 * The only setting/checking of the MUTEX_MPOOL flags is in the mutex
+	 * The only setting/checking of the MUTEX_MPOOL flag is in the mutex
 	 * mutex allocation code (__db_mutex_alloc/free).  Preserve only that
 	 * flag.  This is safe because even if this flag was never explicitly
 	 * set, but happened to be set in memory, it will never be checked or

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2002
+# Copyright (c) 1996-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: memp002.tcl,v 11.47 2002/09/05 17:23:06 sandstro Exp $
+# $Id: memp002.tcl,v 11.48 2003/01/08 05:50:32 bostic Exp $
 #
 
 # TEST	memp002

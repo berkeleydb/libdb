@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_curadj.c,v 11.30 2002/07/03 19:03:48 bostic Exp $";
+static const char revid[] = "$Id: bt_curadj.c,v 11.34 2003/07/09 02:32:24 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -98,6 +98,19 @@ __bam_ca_delete(dbp, pgno, indx, delete)
 		    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
 			cp = (BTREE_CURSOR *)dbc->internal;
 			if (cp->pgno == pgno && cp->indx == indx) {
+				/*
+				 * [#8032] This assert is checking
+				 * for possible race conditions where we
+				 * hold a cursor position without a lock.
+				 * Unfortunately, there are paths in the
+				 * Btree code that do not satisfy these
+				 * conditions. None of them are known to
+				 * be a problem, but this assert should
+				 * be re-activated when the Btree stack
+				 * code is re-written.
+				DB_ASSERT(!STD_LOCKING(dbc) ||
+				    cp->lock_mode != DB_LOCK_NG);
+				 */
 				if (delete)
 					F_SET(cp, C_DELETED);
 				else
@@ -192,7 +205,10 @@ __bam_ca_di(my_dbc, pgno, indx, adjust)
 			if (cp->pgno == pgno && cp->indx >= indx) {
 				/* Cursor indices should never be negative. */
 				DB_ASSERT(cp->indx != 0 || adjust > 0);
-
+				/* [#8032]
+				DB_ASSERT(!STD_LOCKING(dbc) ||
+				    cp->lock_mode != DB_LOCK_NG);
+				*/
 				cp->indx += adjust;
 				if (my_txn != NULL && dbc->txn != my_txn)
 					found = 1;
@@ -319,6 +335,10 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 				continue;
 
 			MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
+			/* [#8032]
+			DB_ASSERT(!STD_LOCKING(dbc) ||
+			    orig_cp->lock_mode != DB_LOCK_NG);
+			*/
 			if ((ret = __bam_opd_cursor(dbp,
 			    dbc, first, tpgno, ti)) !=0)
 				return (ret);
@@ -388,7 +408,7 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 			    != ti)
 				continue;
 			MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
-			if ((ret = orig_cp->opd->c_close(orig_cp->opd)) != 0)
+			if ((ret = __db_c_close(orig_cp->opd)) != 0)
 				return (ret);
 			orig_cp->opd = NULL;
 			orig_cp->indx = fi;
@@ -442,6 +462,10 @@ __bam_ca_rsplit(my_dbc, fpgno, tpgno)
 				continue;
 			if (dbc->internal->pgno == fpgno) {
 				dbc->internal->pgno = tpgno;
+				/* [#8032]
+				DB_ASSERT(!STD_LOCKING(dbc) ||
+				    dbc->internal->lock_mode != DB_LOCK_NG);
+				*/
 				if (my_txn != NULL && dbc->txn != my_txn)
 					found = 1;
 			}
@@ -506,6 +530,10 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 				continue;
 			cp = dbc->internal;
 			if (cp->pgno == ppgno) {
+				/* [#8032]
+				DB_ASSERT(!STD_LOCKING(dbc) ||
+				    cp->lock_mode != DB_LOCK_NG);
+				*/
 				if (my_txn != NULL && dbc->txn != my_txn)
 					found = 1;
 				if (cp->indx < split_indx) {

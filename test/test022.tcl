@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2002
+# Copyright (c) 1999-2003
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test022.tcl,v 11.14 2002/05/22 15:42:48 sue Exp $
+# $Id: test022.tcl,v 11.15 2003/01/08 05:53:46 bostic Exp $
 #
 # TEST	test022
 # TEST	Test of DB->getbyteswapped().

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2002
+ * Copyright (c) 1996-2003
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_delete.c,v 11.44 2002/07/03 19:03:49 bostic Exp $";
+static const char revid[] = "$Id: bt_delete.c,v 11.46 2003/06/30 17:19:29 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,6 +57,7 @@ static const char revid[] = "$Id: bt_delete.c,v 11.44 2002/07/03 19:03:49 bostic
 #include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
+#include "dbinc/mp.h"
 
 /*
  * __bam_ditem --
@@ -161,7 +162,7 @@ __bam_ditem(dbc, h, indx)
 	/* Delete the item and mark the page dirty. */
 	if ((ret = __db_ditem(dbc, h, indx, nbytes)) != 0)
 		return (ret);
-	if ((ret = mpf->set(mpf, h, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = __memp_fset(mpf, h, DB_MPOOL_DIRTY)) != 0)
 		return (ret);
 
 	return (0);
@@ -211,7 +212,7 @@ __bam_adjindx(dbc, h, indx, indx_copy, is_insert)
 			memmove(&inp[indx], &inp[indx + O_INDX],
 			    sizeof(db_indx_t) * (NUM_ENT(h) - indx));
 	}
-	if ((ret = mpf->set(mpf, h, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = __memp_fset(mpf, h, DB_MPOOL_DIRTY)) != 0)
 		return (ret);
 
 	return (0);
@@ -260,7 +261,7 @@ __bam_dpages(dbc, stack_epg)
 	 */
 	ret = 0;
 	for (epg = cp->sp; epg < stack_epg; ++epg) {
-		if ((t_ret = mpf->put(mpf, epg->page, 0)) != 0 && ret == 0)
+		if ((t_ret = __memp_fput(mpf, epg->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		(void)__TLPUT(dbc, epg->lock);
 	}
@@ -295,7 +296,7 @@ __bam_dpages(dbc, stack_epg)
 	pgno = PGNO(epg->page);
 	nitems = NUM_ENT(epg->page);
 
-	if ((ret = mpf->put(mpf, epg->page, 0)) != 0)
+	if ((ret = __memp_fput(mpf, epg->page, 0)) != 0)
 		goto err_inc;
 	(void)__TLPUT(dbc, epg->lock);
 
@@ -325,7 +326,7 @@ __bam_dpages(dbc, stack_epg)
 err_inc:	++epg;
 err:		for (; epg <= cp->csp; ++epg) {
 			if (epg->page != NULL)
-				(void)mpf->put(mpf, epg->page, 0);
+				(void)__memp_fput(mpf, epg->page, 0);
 			(void)__TLPUT(dbc, epg->lock);
 		}
 		BT_STK_CLR(cp);
@@ -354,7 +355,7 @@ err:		for (; epg <= cp->csp; ++epg) {
 		if ((ret =
 		    __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, &p_lock)) != 0)
 			goto stop;
-		if ((ret = mpf->get(mpf, &pgno, 0, &parent)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, 0, &parent)) != 0)
 			goto stop;
 
 		if (NUM_ENT(parent) != 1)
@@ -384,7 +385,7 @@ err:		for (; epg <= cp->csp; ++epg) {
 		if ((ret =
 		    __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, &c_lock)) != 0)
 			goto stop;
-		if ((ret = mpf->get(mpf, &pgno, 0, &child)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, 0, &child)) != 0)
 			goto stop;
 
 		/* Log the change. */
@@ -423,9 +424,9 @@ err:		for (; epg <= cp->csp; ++epg) {
 			RE_NREC_SET(parent, rcnt);
 
 		/* Mark the pages dirty. */
-		if ((ret = mpf->set(mpf, parent, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = __memp_fset(mpf, parent, DB_MPOOL_DIRTY)) != 0)
 			goto stop;
-		if ((ret = mpf->set(mpf, child, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = __memp_fset(mpf, child, DB_MPOOL_DIRTY)) != 0)
 			goto stop;
 
 		/* Adjust the cursors. */
@@ -448,11 +449,11 @@ stop:			done = 1;
 		}
 		(void)__TLPUT(dbc, p_lock);
 		if (parent != NULL &&
-		    (t_ret = mpf->put(mpf, parent, 0)) != 0 && ret == 0)
+		    (t_ret = __memp_fput(mpf, parent, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		(void)__TLPUT(dbc, c_lock);
 		if (child != NULL &&
-		    (t_ret = mpf->put(mpf, child, 0)) != 0 && ret == 0)
+		    (t_ret = __memp_fput(mpf, child, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 

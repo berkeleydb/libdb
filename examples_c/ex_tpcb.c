@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2002
+ * Copyright (c) 1997-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 11.42 2002/08/06 05:39:00 bostic Exp $
+ * $Id: ex_tpcb.c,v 11.44 2003/04/24 15:44:15 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -477,7 +477,7 @@ random_id(type, accounts, branches, tellers)
 
 	max = min = BEGID;
 	num = accounts;
-	switch(type) {
+	switch (type) {
 	case TELLER:
 		min += branches;
 		num = tellers;

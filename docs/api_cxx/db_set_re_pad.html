@@ -1,21 +1,22 @@
-<!--$Id: db_set_re_pad.so,v 10.23 2002/08/18 21:15:57 bostic Exp $-->
-<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--$Id: db_set_re_pad.so,v 10.34 2003/11/08 19:17:22 bostic Exp $-->
+<!--Copyright 1997-2003 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Db::set_re_pad</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>Db::set_re_pad</h1>
+<h3>Db::set_re_pad</h3>
 </td>
 <td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -24,40 +25,70 @@
 <p>
 int
 Db::set_re_pad(int re_pad);
+<p>
+int
+Db::get_re_pad(int *re_padp);
 </pre></h3>
-<h1>Description</h1>
+<hr size=1 noshade>
+<h3>Description: Db::set_re_pad</h3>
+<a name="3"><!--meow--></a>
 <p>Set the padding character for short, fixed-length records for the Queue
-and Recno access methods.
+and Recno access methods.</p>
 <p>If no pad character is specified, &lt;space&gt; characters (that
-is, ASCII 0x20) are used for padding.
+is, ASCII 0x20) are used for padding.</p>
 <p>The Db::set_re_pad method configures a database, not only operations performed
-using the specified <a href="../api_cxx/db_class.html">Db</a> handle.
-<p>The Db::set_re_pad interface may not be called after the <a href="../api_cxx/db_open.html">Db::open</a>
-interface is called.
+using the specified <a href="../api_cxx/db_class.html">Db</a> handle.</p>
+<p>The Db::set_re_pad method may not be called after the <a href="../api_cxx/db_open.html">Db::open</a> method is called.
 If the database already exists when
 <a href="../api_cxx/db_open.html">Db::open</a> is called, the information specified to Db::set_re_pad will
 be ignored.
-<p>The Db::set_re_pad method either returns a non-zero error value or throws an exception that
-encapsulates a non-zero error value on failure, and returns 0 on success.
-<h1>Errors</h1>
-<p>The Db::set_re_pad method may fail and throw an exception or return a non-zero error for the following conditions:
+</p>
+<p>The Db::set_re_pad method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Parameters</h3>
 <p><dl compact>
-<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>Called after <a href="../api_cxx/db_open.html">Db::open</a> was called.
+<p><dt><b>re_pad</b><dd>
+The <b>re_pad</b> parameter is the pad character for fixed-length
+records for the Queue and Recno access methods.
 </dl>
-<p>The Db::set_re_pad method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Db::set_re_pad method may fail and
-either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
-<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
-in which case all subsequent Berkeley DB calls will fail in the same way.
-<h1>Class</h1>
+<h3>Errors</h3>
+<p>The Db::set_re_pad method
+may fail and throw
+<a href="../api_cxx/except_class.html">DbException</a>,
+encapsulating one of the following non-zero errors, or return one of
+the following non-zero errors:</p>
+<p><dl compact>
+<p><dt>EINVAL<dd>If the method was called after <a href="../api_cxx/db_open.html">Db::open</a> was called; or if an
+invalid flag value or parameter was specified.
+</dl>
+<hr size=1 noshade>
+<h3>Description: Db::get_re_pad</h3>
+<p>The Db::get_re_pad method returns the pad character.</p>
+<p>The Db::get_re_pad method may be called at any time during the life of the
+application.</p>
+<p>The Db::get_re_pad method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<h3>Parameters</h3>
+<p><dl compact>
+<p><dt><b>re_padp</b><dd>
+The Db::get_re_pad method returns  the
+pad character in <b>re_padp</b>.
+</dl>
+<hr size=1 noshade>
+<h3>Class</h3>
 <a href="../api_cxx/db_class.html">Db</a>
-<h1>See Also</h1>
+<h3>See Also</h3>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/api_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2003</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>
