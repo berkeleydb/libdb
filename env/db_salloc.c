@@ -94,8 +94,7 @@ __db_shalloc(p, len, align, retp)
          */
         ++len;
 #endif
-	align = align <= sizeof(size_t) ?
-	    sizeof(size_t) : ALIGN(align, sizeof(size_t));
+	align = 8;
 
 	/* Walk the list, looking for a slot. */
 	for (elp = SH_LIST_FIRST((struct __head *)p, __data);
