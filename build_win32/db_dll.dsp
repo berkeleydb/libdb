@@ -210,26 +210,6 @@ SOURCE=..\common\util_sig.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\crypto\aes_method.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\crypto\crypto.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\crypto\mersenne\mt19937db.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\crypto\rijndael\rijndael-alg-fst.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\crypto\rijndael\rijndael-api-fst.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\cxx\cxx_db.cpp
 # End Source File
 # Begin Source File

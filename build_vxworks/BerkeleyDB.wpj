@@ -825,96 +825,6 @@ util_sig.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_objects
-aes_method.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_objects
-crypto.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_objects
-mt19937db.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_objects
-rijndael-alg-fst.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_objects
-rijndael-api-fst.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_auto.c_dependDone
 TRUE
 <END>
@@ -3450,11 +3360,6 @@ $(PRJ_DIR)/../btree/bt_compare.c \
 	$(PRJ_DIR)/../common/util_cache.c \
 	$(PRJ_DIR)/../common/util_log.c \
 	$(PRJ_DIR)/../common/util_sig.c \
-	$(PRJ_DIR)/../crypto/aes_method.c \
-	$(PRJ_DIR)/../crypto/crypto.c \
-	$(PRJ_DIR)/../crypto/mersenne/mt19937db.c \
-	$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c \
-	$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c \
 	$(PRJ_DIR)/../db/crdel_auto.c \
 	$(PRJ_DIR)/../db/crdel_rec.c \
 	$(PRJ_DIR)/../db/db.c \

@@ -72,11 +72,6 @@ common/util_arg.c				vx
 common/util_cache.c				dynamic static vx
 common/util_log.c				dynamic static vx
 common/util_sig.c				dynamic static vx
-crypto/aes_method.c				dynamic static vx
-crypto/crypto.c					dynamic static vx
-crypto/mersenne/mt19937db.c			dynamic static vx
-crypto/rijndael/rijndael-alg-fst.c		dynamic static vx
-crypto/rijndael/rijndael-api-fst.c		dynamic static vx
 cxx/cxx_db.cpp					dynamic static
 cxx/cxx_dbc.cpp					dynamic static
 cxx/cxx_dbt.cpp					dynamic static

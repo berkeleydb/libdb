@@ -29,7 +29,7 @@
 #define HAVE_CLOCK_GETTIME 1
 
 /* Define to 1 if Berkeley DB release includes strong cryptography. */
-#define HAVE_CRYPTO 1
+/* #undef HAVE_CRYPTO */
 
 /* Define to 1 if you have the `directio' function. */
 /* #undef HAVE_DIRECTIO */

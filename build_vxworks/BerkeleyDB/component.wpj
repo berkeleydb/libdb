@@ -404,66 +404,6 @@ util_sig.o
 CC
 <END>
 
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_objects
-aes_method.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_objects
-crypto.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_objects
-mt19937db.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_objects
-rijndael-alg-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_objects
-rijndael-api-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_toolMacro
-CC
-<END>
-
 <BEGIN> BUILD_PENTIUM2gnu.debug_FILE_$(PRJ_DIR)/../../db/crdel_auto.c_infoTags
 toolMacro objects
 <END>
@@ -2643,66 +2583,6 @@ util_sig.o
 <END>
 
 <BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../common/util_sig.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_objects
-aes_method.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/crypto.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/crypto.c_objects
-crypto.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/crypto.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_objects
-mt19937db.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_objects
-rijndael-alg-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_objects
-rijndael-api-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUM2gnu.release_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_toolMacro
 CC
 <END>
 
@@ -4886,66 +4766,6 @@ util_sig.o
 CC
 <END>
 
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_objects
-aes_method.o
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/aes_method.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_objects
-crypto.o
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/crypto.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_objects
-mt19937db.o
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_objects
-rijndael-alg-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c_toolMacro
-CC
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_infoTags
-toolMacro objects
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_objects
-rijndael-api-fst.o
-<END>
-
-<BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c_toolMacro
-CC
-<END>
-
 <BEGIN> BUILD_PENTIUMgnu.debug_FILE_$(PRJ_DIR)/../../db/crdel_auto.c_infoTags
 toolMacro objects
 <END>
@@ -6781,11 +6601,6 @@ $(PRJ_DIR)/../../btree/bt_compare.c \
 	$(PRJ_DIR)/../../common/util_cache.c \
 	$(PRJ_DIR)/../../common/util_log.c \
 	$(PRJ_DIR)/../../common/util_sig.c \
-	$(PRJ_DIR)/../../crypto/aes_method.c \
-	$(PRJ_DIR)/../../crypto/crypto.c \
-	$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c \
-	$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c \
-	$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c \
 	$(PRJ_DIR)/../../db/crdel_auto.c \
 	$(PRJ_DIR)/../../db/crdel_rec.c \
 	$(PRJ_DIR)/../../db/db.c \
