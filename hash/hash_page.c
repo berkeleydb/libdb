@@ -1,4 +1,14 @@
 /*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996, 1997, 1998
+ *	Sleepycat Software.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994
+ *	Margo Seltzer.  All rights reserved.
+ */
+/*
  * Copyright (c) 1990, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -34,9 +44,11 @@
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash_page.c	8.11 (Berkeley) 11/7/95";
-#endif /* LIBC_SCCS and not lint */
+#include "config.h"
+
+#ifndef lint
+static const char sccsid[] = "@(#)hash_page.c	10.40 (Sleepycat) 6/2/98";
+#endif /* not lint */
 
 /*
  * PACKAGE:  hashing
@@ -49,633 +61,1288 @@ static char sccsid[] = "@(#)hash_page.c	8.11 (Berkeley) 11/7/95";
  * External
  *      __get_page
  *      __add_ovflpage
+ *      __overflow_page
  * Internal
- *      overflow_page
  *      open_temp
  */
 
+#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#ifdef DEBUG
-#include <assert.h>
-#endif
-#include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
 #include <string.h>
-#include <unistd.h>
+#endif
 
-#include <db.h>
+#include "db_int.h"
+#include "db_page.h"
 #include "hash.h"
-#include "page.h"
-#include "extern.h"
-#include "compat.h"
 
-static void	 adjust_cursor __P((HTAB *, int32_t, pgno_t, pgno_t, int));
-static int32_t	 add_bigptr __P((HTAB *, ITEM_INFO *, indx_t));
-static u_int32_t *fetch_bitmap __P((HTAB *, int32_t));
-static u_int32_t first_free __P((u_int32_t));
-static indx_t	 next_realkey __P((PAGE16 *, indx_t));
-static u_int16_t overflow_page __P((HTAB *));
-static void	 page_init __P((HTAB *, PAGE16 *, pgno_t, u_int8_t));
-static indx_t	 prev_realkey __P((PAGE16 *, indx_t));
-static void	 putpair __P((PAGE8 *, const DBT *, const DBT *));
-static void	 swap_page_header_in __P((PAGE16 *));
-static void	 swap_page_header_out __P((PAGE16 *));
+static int __ham_lock_bucket __P((DB *, HASH_CURSOR *, db_lockmode_t));
 
 #ifdef DEBUG_SLOW
-static void	 account_page(HTAB *, pgno_t, int);
+static void  __account_page(HTAB *, db_pgno_t, int);
 #endif
 
-u_int32_t
-__get_item(hashp, cursorp, key, val, item_info)
+/*
+ * PUBLIC: int __ham_item __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
+ */
+int
+__ham_item(hashp, cursorp, mode)
 	HTAB *hashp;
-	CURSOR *cursorp;
-	DBT *key, *val;
-	ITEM_INFO *item_info;
+	HASH_CURSOR *cursorp;
+	db_lockmode_t mode;
 {
-	pgno_t next_pgno;
-	int32_t i;
+	db_pgno_t next_pgno;
+	int ret;
 
-	/* Check if we need to get a page. */
-	if (!cursorp->pagep) {
-		if (cursorp->pgno == INVALID_PGNO) {
-			cursorp->pagep =
-			    __get_page(hashp, cursorp->bucket, A_BUCKET);
-			cursorp->pgno = ADDR(cursorp->pagep);
-			cursorp->ndx = 0;
-			cursorp->pgndx = 0;
-		} else 
-			cursorp->pagep =
-			    __get_page(hashp, cursorp->pgno, A_RAW);
-		if (!cursorp->pagep) {
-			item_info->status = ITEM_ERROR;
-			return (-1);
+	if (F_ISSET(cursorp, H_DELETED))
+		return (EINVAL);
+	F_CLR(cursorp, H_OK | H_NOMORE);
+
+	/* Check if we need to get a page for this cursor. */
+	if ((ret = __ham_get_cpage(hashp, cursorp, mode)) != 0)
+		return (ret);
+
+	/* Check if we are looking for space in which to insert an item. */
+	if (cursorp->seek_size && cursorp->seek_found_page == PGNO_INVALID
+	    && cursorp->seek_size < P_FREESPACE(cursorp->pagep))
+		cursorp->seek_found_page = cursorp->pgno;
+
+	/* Check if we need to go on to the next page. */
+	if (F_ISSET(cursorp, H_ISDUP) && cursorp->dpgno == PGNO_INVALID)
+		/*
+		 * ISDUP is set, and offset is at the beginning of the datum.
+		 * We need to grab the length of the datum, then set the datum
+		 * pointer to be the beginning of the datum.
+		 */
+		memcpy(&cursorp->dup_len,
+		    HKEYDATA_DATA(H_PAIRDATA(cursorp->pagep, cursorp->bndx)) +
+		    cursorp->dup_off, sizeof(db_indx_t));
+	else if (F_ISSET(cursorp, H_ISDUP)) {
+		/* Make sure we're not about to run off the page. */
+		if (cursorp->dpagep == NULL && (ret = __ham_get_page(hashp->dbp,
+		    cursorp->dpgno, &cursorp->dpagep)) != 0)
+			return (ret);
+
+		if (cursorp->dndx >= NUM_ENT(cursorp->dpagep)) {
+			if (NEXT_PGNO(cursorp->dpagep) == PGNO_INVALID) {
+				if ((ret = __ham_put_page(hashp->dbp,
+				    cursorp->dpagep, 0)) != 0)
+					return (ret);
+				F_CLR(cursorp, H_ISDUP);
+				cursorp->dpagep = NULL;
+				cursorp->dpgno = PGNO_INVALID;
+				cursorp->dndx = NDX_INVALID;
+				cursorp->bndx++;
+			} else if ((ret = __ham_next_cpage(hashp, cursorp,
+			    NEXT_PGNO(cursorp->dpagep), 0, H_ISDUP)) != 0)
+				return (ret);
 		}
 	}
-	if (item_info->seek_size &&
-	    FREESPACE(cursorp->pagep) > item_info->seek_size)
-		item_info->seek_found_page = cursorp->pgno;
 
-	if (cursorp->pgndx == NUM_ENT(cursorp->pagep)) {
+	if (cursorp->bndx >= (db_indx_t)H_NUMPAIRS(cursorp->pagep)) {
 		/* Fetch next page. */
-		if (NEXT_PGNO(cursorp->pagep) == INVALID_PGNO) {
-			item_info->status = ITEM_NO_MORE;
-			return (-1);
+		if (NEXT_PGNO(cursorp->pagep) == PGNO_INVALID) {
+			F_SET(cursorp, H_NOMORE);
+			if (cursorp->dpagep != NULL &&
+			    (ret = __ham_put_page(hashp->dbp,
+			    cursorp->dpagep, 0)) != 0)
+				return (ret);
+			cursorp->dpgno = PGNO_INVALID;
+			return (DB_NOTFOUND);
 		}
 		next_pgno = NEXT_PGNO(cursorp->pagep);
-		cursorp->pgndx = 0;
-		__put_page(hashp, cursorp->pagep, A_RAW, 0);
-		cursorp->pagep = __get_page(hashp, next_pgno, A_RAW);
-		if (!cursorp->pagep) {
-			item_info->status = ITEM_ERROR;
-			return (-1);
-		}
-		cursorp->pgno = next_pgno;
-	}
-	if (KEY_OFF(cursorp->pagep, cursorp->pgndx) != BIGPAIR) {
-		if ((i = prev_realkey(cursorp->pagep, cursorp->pgndx)) ==
-		    cursorp->pgndx)
-			key->size = hashp->hdr.bsize -
-			    KEY_OFF(cursorp->pagep, cursorp->pgndx);
-		else
-			key->size = DATA_OFF(cursorp->pagep, i) -
-			    KEY_OFF(cursorp->pagep, cursorp->pgndx);
+		cursorp->bndx = 0;
+		if ((ret = __ham_next_cpage(hashp,
+		    cursorp, next_pgno, 0, 0)) != 0)
+			return (ret);
 	}
 
-	/* 
-	 * All of this information will be set incorrectly for big keys, but
-	 * it will be ignored anyway.
+	F_SET(cursorp, H_OK);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __ham_item_reset __P((HTAB *, HASH_CURSOR *));
+ */
+int
+__ham_item_reset(hashp, cursorp)
+	HTAB *hashp;
+	HASH_CURSOR *cursorp;
+{
+	int ret;
+
+	if (cursorp->pagep)
+		ret = __ham_put_page(hashp->dbp, cursorp->pagep, 0);
+	else
+		ret = 0;
+
+	__ham_item_init(cursorp);
+	return (ret);
+}
+
+/*
+ * PUBLIC: void __ham_item_init __P((HASH_CURSOR *));
+ */
+void
+__ham_item_init(cursorp)
+	HASH_CURSOR *cursorp;
+{
+	cursorp->pagep = NULL;
+	cursorp->bucket = BUCKET_INVALID;
+	cursorp->lock = 0;
+	cursorp->bndx = NDX_INVALID;
+	cursorp->pgno = PGNO_INVALID;
+	cursorp->dpgno = PGNO_INVALID;
+	cursorp->dndx = NDX_INVALID;
+	cursorp->dpagep = NULL;
+	cursorp->flags = 0;
+	cursorp->seek_size = 0;
+	cursorp->seek_found_page = PGNO_INVALID;
+}
+
+/*
+ * PUBLIC: int __ham_item_done __P((HTAB *, HASH_CURSOR *, int));
+ */
+int
+__ham_item_done(hashp, cursorp, dirty)
+	HTAB *hashp;
+	HASH_CURSOR *cursorp;
+	int dirty;
+{
+	int ret, t_ret;
+
+	t_ret = ret = 0;
+
+	if (cursorp->pagep)
+		ret = __ham_put_page(hashp->dbp, cursorp->pagep,
+		    dirty && cursorp->dpagep == NULL);
+	cursorp->pagep = NULL;
+
+	if (cursorp->dpagep)
+		t_ret = __ham_put_page(hashp->dbp, cursorp->dpagep, dirty);
+	cursorp->dpagep = NULL;
+
+	if (ret == 0 && t_ret != 0)
+		ret = t_ret;
+
+	/*
+	 * If we are running with transactions, then we must
+	 * not relinquish locks explicitly.
 	 */
-	val->size = KEY_OFF(cursorp->pagep, cursorp->pgndx) -
-	    DATA_OFF(cursorp->pagep, cursorp->pgndx);
-	key->data = KEY(cursorp->pagep, cursorp->pgndx);
-	val->data = DATA(cursorp->pagep, cursorp->pgndx);
-	item_info->pgno = cursorp->pgno;
-	item_info->bucket = cursorp->bucket;
-	item_info->ndx = cursorp->ndx;
-	item_info->pgndx = cursorp->pgndx;
-	item_info->key_off = KEY_OFF(cursorp->pagep, cursorp->pgndx);
-	item_info->data_off = DATA_OFF(cursorp->pagep, cursorp->pgndx);
-	item_info->status = ITEM_OK;
+	if (cursorp->lock && hashp->dbp->txn == NULL)
+	    t_ret = lock_put(hashp->dbp->dbenv->lk_info, cursorp->lock);
+	cursorp->lock = 0;
 
-	return (0);
-}
 
-u_int32_t
-__get_item_reset(hashp, cursorp)
-	HTAB *hashp;
-	CURSOR *cursorp;
-{
-	if (cursorp->pagep)
-		__put_page(hashp, cursorp->pagep, A_RAW, 0);
-	cursorp->pagep = NULL;
-	cursorp->bucket = -1;
-	cursorp->ndx = 0;
-	cursorp->pgndx = 0;
-	cursorp->pgno = INVALID_PGNO;
-	return (0);
-}
-
-u_int32_t
-__get_item_done(hashp, cursorp)
-	HTAB *hashp;
-	CURSOR *cursorp;
-{
-	if (cursorp->pagep)
-		__put_page(hashp, cursorp->pagep, A_RAW, 0);
-	cursorp->pagep = NULL;
-
-	/* 
+	/*
 	 * We don't throw out the page number since we might want to
 	 * continue getting on this page.
 	 */
-	return (0);
+	return (ret != 0 ? ret : t_ret);
 }
 
-u_int32_t
-__get_item_first(hashp, cursorp, key, val, item_info)
+/*
+ * Returns the last item in a bucket.
+ *
+ * PUBLIC: int __ham_item_last __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
+ */
+int
+__ham_item_last(hashp, cursorp, mode)
 	HTAB *hashp;
-	CURSOR *cursorp;
-	DBT *key, *val;
-	ITEM_INFO *item_info;
+	HASH_CURSOR *cursorp;
+	db_lockmode_t mode;
 {
-	__get_item_reset(hashp, cursorp);
+	int ret;
+
+	if ((ret = __ham_item_reset(hashp, cursorp)) != 0)
+		return (ret);
+
+	cursorp->bucket = hashp->hdr->max_bucket;
+	F_SET(cursorp, H_OK);
+	return (__ham_item_prev(hashp, cursorp, mode));
+}
+
+/*
+ * PUBLIC: int __ham_item_first __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
+ */
+int
+__ham_item_first(hashp, cursorp, mode)
+	HTAB *hashp;
+	HASH_CURSOR *cursorp;
+	db_lockmode_t mode;
+{
+	int ret;
+
+	if ((ret = __ham_item_reset(hashp, cursorp)) != 0)
+		return (ret);
+	F_SET(cursorp, H_OK);
 	cursorp->bucket = 0;
-	return (__get_item_next(hashp, cursorp, key, val, item_info));
+	return (__ham_item_next(hashp, cursorp, mode));
 }
 
 /*
- * Returns a pointer to key/data pair on a page.  In the case of bigkeys,
- * just returns the page number and index of the bigkey pointer pair.
+ * __ham_item_prev --
+ *	Returns a pointer to key/data pair on a page.  In the case of
+ *	bigkeys, just returns the page number and index of the bigkey
+ *	pointer pair.
+ *
+ * PUBLIC: int __ham_item_prev __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
  */
-u_int32_t
-__get_item_next(hashp, cursorp, key, val, item_info)
+int
+__ham_item_prev(hashp, cursorp, mode)
 	HTAB *hashp;
-	CURSOR *cursorp;
-	DBT *key, *val;
-	ITEM_INFO *item_info;
+	HASH_CURSOR *cursorp;
+	db_lockmode_t mode;
 {
-	int stat;
+	db_pgno_t next_pgno;
+	int ret;
 
-	stat = __get_item(hashp, cursorp, key, val, item_info);
-	cursorp->ndx++;
-	cursorp->pgndx++;
-	return (stat);
-}
+	/*
+	 * There are N cases for backing up in a hash file.
+	 * Case 1: In the middle of a page, no duplicates, just dec the index.
+	 * Case 2: In the middle of a duplicate set, back up one.
+	 * Case 3: At the beginning of a duplicate set, get out of set and
+	 *	back up to next key.
+	 * Case 4: At the beginning of a page; go to previous page.
+	 * Case 5: At the beginning of a bucket; go to prev bucket.
+	 */
+	F_CLR(cursorp, H_OK | H_NOMORE | H_DELETED);
 
-/*
- * Put a non-big pair on a page.
- */
-static void
-putpair(p, key, val)
-	PAGE8 *p;
-	const DBT *key, *val;
-{
-	u_int16_t *pagep, n, off;
-
-	pagep = (PAGE16 *)p;
-
-	/* Items on the page are 0-indexed. */
-	n = NUM_ENT(pagep);
-	off = OFFSET(pagep) - key->size + 1;
-	memmove(p + off, key->data, key->size);
-	KEY_OFF(pagep, n) = off;
-
-	off -= val->size;
-	memmove(p + off, val->data, val->size);
-	DATA_OFF(pagep, n) = off;
-
-	/* Adjust page info. */
-	NUM_ENT(pagep) = n + 1;
-	OFFSET(pagep) = off - 1;
-}
-
-/*
- * Returns the index of the next non-bigkey pair after n on the page.
- * Returns -1 if there are no more non-big things on the page.
- */
-indx_t
-#ifdef __STDC__
-next_realkey(PAGE16 * pagep, indx_t n)
-#else
-next_realkey(pagep, n)
-	PAGE16 *pagep;
-	u_int32_t n;
-#endif
-{
-	indx_t i;
-
-	for (i = n + 1; i < NUM_ENT(pagep); i++)
-		if (KEY_OFF(pagep, i) != BIGPAIR)
-			return (i);
-	return (-1);
-}
-
-/*
- * Returns the index of the previous non-bigkey pair after n on the page.
- * Returns n if there are no previous non-big things on the page.
- */
-static indx_t
-#ifdef __STDC__
-prev_realkey(PAGE16 * pagep, indx_t n)
-#else
-prev_realkey(pagep, n)
-	PAGE16 *pagep;
-	u_int32_t n;
-#endif
-{
-	int32_t i;
-
-	/* Need a signed value to do the compare properly. */
-	for (i = n - 1; i > -1; i--)
-		if (KEY_OFF(pagep, i) != BIGPAIR)
-			return (i);
-	return (n);
-}
-
-/*
- * Returns:
- *       0 OK
- *      -1 error
- */
-extern int32_t
-__delpair(hashp, cursorp, item_info)
-	HTAB *hashp;
-	CURSOR *cursorp;
-	ITEM_INFO *item_info;
-{
-	PAGE16 *pagep;
-	PAGE16 *empty_page;
-	pgno_t to_find, next_pgno, link_page;
-	indx_t ndx;
-	short check_ndx;
-	int16_t delta, len, next_key;
-	int32_t n;
-	u_int8_t *src, *dest;
-	pgno_t move_pgno;
-	int page_deleted;
-
-	ndx = cursorp->pgndx;
-	if (!cursorp->pagep) {
-		pagep = __get_page(hashp, cursorp->pgno, A_RAW);
-		if (!pagep)
-			return (-1);
-		/*
-		 * KLUGE: pgndx has gone one too far, because cursor points
-		 * to the _next_ item.  Use pgndx - 1.
-		 */
-		--ndx;
-	} else
-		pagep = cursorp->pagep;
-#ifdef DEBUG
-	assert(ADDR(pagep) == cursorp->pgno);
-#endif
-
-	if (KEY_OFF(pagep, ndx) == BIGPAIR) {
-		delta = 0;
-		__big_delete(hashp, pagep, ndx);
-	} else {
-		/*
-		 * Compute "delta", the amount we have to shift all of the
-		 * offsets.  To find the delta, we need to make sure that
-		 * we aren't looking at the DATA_OFF of a big/keydata pair.
-		 */
-		for (check_ndx = (short)(ndx - 1);
-		    check_ndx >= 0 && KEY_OFF(pagep, check_ndx) == BIGPAIR;
-		    check_ndx--);
-		if (check_ndx < 0)
-			delta = hashp->hdr.bsize - DATA_OFF(pagep, ndx);
-		else
-			delta =
-			    DATA_OFF(pagep, check_ndx) - DATA_OFF(pagep, ndx);
-
-		/*
-		 * The hard case: we want to remove something other than
-		 * the last item on the page.  We need to shift data and
-		 * offsets down.
-		 */
-		if (ndx != NUM_ENT(pagep) - 1) {
-			/*
-			 * Move the data: src is the address of the last data
-			 * item on the page.
-			 */
-			src = (u_int8_t *)pagep + OFFSET(pagep) + 1;
-			/* 
-			 * Length is the distance between where to start
-			 * deleting and end of the data on the page.
-			 */
-			len = DATA_OFF(pagep, ndx) - (OFFSET(pagep) + 1);
-			/*
-			 * Dest is the location of the to-be-deleted item
-			 * occupied - length.
-			 */
-			if (check_ndx < 0)
-				dest =
-				    (u_int8_t *)pagep + hashp->hdr.bsize - len;
-			else
-				dest = (u_int8_t *)pagep +
-				    DATA_OFF(pagep, (check_ndx)) - len;
-			memmove(dest, src, len);
+	/*
+	 * First handle the duplicates.  Either you'll get the key here
+	 * or you'll exit the duplicate set and drop into the code below
+	 * to handle backing up through keys.
+	 */
+	if (F_ISSET(cursorp, H_ISDUP)) {
+		if (cursorp->dpgno == PGNO_INVALID) {
+			/* Duplicates are on-page. */
+			if (cursorp->dup_off != 0)
+				if ((ret = __ham_get_cpage(hashp,
+				    cursorp, mode)) != 0)
+					return (ret);
+				else {
+					HASH_CURSOR *h;
+					h = cursorp;
+					memcpy(&h->dup_len, HKEYDATA_DATA(
+					    H_PAIRDATA(h->pagep, h->bndx))
+					    + h->dup_off - sizeof(db_indx_t),
+					    sizeof(db_indx_t));
+					cursorp->dup_off -=
+					    DUP_SIZE(cursorp->dup_len);
+					cursorp->dndx--;
+					return (__ham_item(hashp,
+					    cursorp, mode));
+				}
+		} else if (cursorp->dndx > 0) {	/* Duplicates are off-page. */
+			cursorp->dndx--;
+			return (__ham_item(hashp, cursorp, mode));
+		} else if ((ret = __ham_get_cpage(hashp, cursorp, mode)) != 0)
+			return (ret);
+		else if (PREV_PGNO(cursorp->dpagep) == PGNO_INVALID) {
+			F_CLR(cursorp, H_ISDUP); /* End of dups */
+			cursorp->dpgno = PGNO_INVALID;
+			if (cursorp->dpagep != NULL)
+				(void)__ham_put_page(hashp->dbp,
+				    cursorp->dpagep, 0);
+			cursorp->dpagep = NULL;
+		} else if ((ret = __ham_next_cpage(hashp, cursorp,
+		    PREV_PGNO(cursorp->dpagep), 0, H_ISDUP)) != 0)
+			return (ret);
+		else {
+			cursorp->dndx = NUM_ENT(cursorp->pagep) - 1;
+			return (__ham_item(hashp, cursorp, mode));
 		}
 	}
 
-	/* Adjust the offsets. */
-	for (n = ndx; n < NUM_ENT(pagep) - 1; n++)
-		if (KEY_OFF(pagep, (n + 1)) != BIGPAIR) {
-			next_key = next_realkey(pagep, n);
-#ifdef DEBUG
-			assert(next_key != -1);
-#endif
-			KEY_OFF(pagep, n) = KEY_OFF(pagep, (n + 1)) + delta;
-			DATA_OFF(pagep, n) = DATA_OFF(pagep, (n + 1)) + delta;
-		} else {
-			KEY_OFF(pagep, n) = KEY_OFF(pagep, (n + 1));
-			DATA_OFF(pagep, n) = DATA_OFF(pagep, (n + 1));
+	/*
+	 * If we get here, we are not in a duplicate set, and just need
+	 * to back up the cursor.  There are still three cases:
+	 * midpage, beginning of page, beginning of bucket.
+	 */
+
+	if (cursorp->bndx == 0) { 		/* Beginning of page. */
+		if ((ret = __ham_get_cpage(hashp, cursorp, mode)) != 0)
+			return (ret);
+		cursorp->pgno = PREV_PGNO(cursorp->pagep);
+		if (cursorp->pgno == PGNO_INVALID) {
+			/* Beginning of bucket. */
+			F_SET(cursorp, H_NOMORE);
+			return (DB_NOTFOUND);
+		} else if ((ret = __ham_next_cpage(hashp,
+		    cursorp, cursorp->pgno, 0, 0)) != 0)
+			return (ret);
+		else
+			cursorp->bndx = H_NUMPAIRS(cursorp->pagep);
+	}
+
+	/*
+	 * Either we've got the cursor set up to be decremented, or we
+	 * have to find the end of a bucket.
+	 */
+	if (cursorp->bndx == NDX_INVALID) {
+		if (cursorp->pagep == NULL)
+			next_pgno = BUCKET_TO_PAGE(hashp, cursorp->bucket);
+		else
+			goto got_page;
+
+		do {
+			if ((ret = __ham_next_cpage(hashp,
+			    cursorp, next_pgno, 0, 0)) != 0)
+				return (ret);
+got_page:		next_pgno = NEXT_PGNO(cursorp->pagep);
+			cursorp->bndx = H_NUMPAIRS(cursorp->pagep);
+		} while (next_pgno != PGNO_INVALID);
+
+		if (cursorp->bndx == 0) {
+			/* Bucket was empty. */
+			F_SET(cursorp, H_NOMORE);
+			return (DB_NOTFOUND);
 		}
+	}
 
-	/* Adjust page metadata. */
-	OFFSET(pagep) = OFFSET(pagep) + delta;
-	NUM_ENT(pagep) = NUM_ENT(pagep) - 1;
+	cursorp->bndx--;
 
-	--hashp->hdr.nkeys;
+	return (__ham_item(hashp, cursorp, mode));
+}
 
-	/* Is this page now an empty overflow page?  If so, free it. */
-	if (TYPE(pagep) == HASH_OVFLPAGE && NUM_ENT(pagep) == 0) {
-
-		page_deleted = 1;
-		/*
-		 * We need to go back to the first page in the chain and 
-		 * look for this page so that we can update the previous
-		 * page's NEXT_PGNO field.
-		 */
-		to_find = ADDR(pagep);
-		empty_page = pagep;
-		link_page = NEXT_PGNO(empty_page);
-		pagep = __get_page(hashp, item_info->bucket, A_BUCKET);
-		if (!pagep)
-			return (-1);
-		while (NEXT_PGNO(pagep) != to_find) {
-			next_pgno = NEXT_PGNO(pagep);
-#ifdef DEBUG
-			assert(next_pgno != INVALID_PGNO);
-#endif
-			__put_page(hashp, pagep, A_RAW, 0);
-			pagep = __get_page(hashp, next_pgno, A_RAW);
-			if (!pagep)
-				return (-1);
+/*
+ * Sets the cursor to the next key/data pair on a page.
+ *
+ * PUBLIC: int __ham_item_next __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
+ */
+int
+__ham_item_next(hashp, cursorp, mode)
+	HTAB *hashp;
+	HASH_CURSOR *cursorp;
+	db_lockmode_t mode;
+{
+	/*
+	 * Deleted on-page duplicates are a weird case. If we delete the last
+	 * one, then our cursor is at the very end of a duplicate set and
+	 * we actually need to go on to the next key.
+	 */
+	if (F_ISSET(cursorp, H_DELETED)) {
+		if (cursorp->bndx != NDX_INVALID &&
+		    F_ISSET(cursorp, H_ISDUP) &&
+		    cursorp->dpgno == PGNO_INVALID &&
+		    cursorp->dup_tlen == cursorp->dup_off) {
+			F_CLR(cursorp, H_ISDUP);
+			cursorp->dpgno = PGNO_INVALID;
+			cursorp->bndx++;
 		}
-
-		/*
-		 * At this point, pagep should point to the page before the
-		 * page to be deleted.
-		 */
-		NEXT_PGNO(pagep) = link_page;
-		if (item_info->pgno == to_find) {
-			item_info->pgno = ADDR(pagep);
-			item_info->pgndx = NUM_ENT(pagep);
-			item_info->seek_found_page = ADDR(pagep);
+		F_CLR(cursorp, H_DELETED);
+	} else if (cursorp->bndx == NDX_INVALID) {
+		cursorp->bndx = 0;
+		cursorp->dpgno = PGNO_INVALID;
+		F_CLR(cursorp, H_ISDUP);
+	} else if (F_ISSET(cursorp, H_ISDUP) && cursorp->dpgno != PGNO_INVALID)
+		cursorp->dndx++;
+	else if (F_ISSET(cursorp, H_ISDUP)) {
+		cursorp->dndx++;
+		cursorp->dup_off += DUP_SIZE(cursorp->dup_len);
+		if (cursorp->dup_off >= cursorp->dup_tlen) {
+			F_CLR(cursorp, H_ISDUP);
+			cursorp->dpgno = PGNO_INVALID;
+			cursorp->bndx++;
 		}
-		__delete_page(hashp, empty_page, A_OVFL);
 	} else
-		page_deleted = 0;
-	__put_page(hashp, pagep, A_RAW, 1);
-	adjust_cursor(hashp, ndx, cursorp->pgno, link_page, page_deleted);
+		cursorp->bndx++;
+
+	return (__ham_item(hashp, cursorp, mode));
+}
+
+/*
+ * PUBLIC: void __ham_putitem __P((PAGE *p, const DBT *, int));
+ *
+ * This is a little bit sleazy in that we're overloading the meaning
+ * of the H_OFFPAGE type here.  When we recover deletes, we have the
+ * entire entry instead of having only the DBT, so we'll pass type
+ * H_OFFPAGE to mean, "copy the whole entry" as opposed to constructing
+ * an H_KEYDATA around it.
+ */
+void
+__ham_putitem(p, dbt, type)
+	PAGE *p;
+	const DBT *dbt;
+	int type;
+{
+	u_int16_t n, off;
+
+	n = NUM_ENT(p);
+
+	/* Put the item element on the page. */
+	if (type == H_OFFPAGE) {
+		off = HOFFSET(p) - dbt->size;
+		HOFFSET(p) = p->inp[n] = off;
+		memcpy(P_ENTRY(p, n), dbt->data, dbt->size);
+	} else {
+		off = HOFFSET(p) - HKEYDATA_SIZE(dbt->size);
+		HOFFSET(p) = p->inp[n] = off;
+		PUT_HKEYDATA(P_ENTRY(p, n), dbt->data, dbt->size, type);
+	}
+
+	/* Adjust page info. */
+	NUM_ENT(p) += 1;
+}
+
+/*
+ * PUBLIC: void __ham_reputpair
+ * PUBLIC:    __P((PAGE *p, u_int32_t, u_int32_t, const DBT *, const DBT *));
+ *
+ * This is a special case to restore a key/data pair to its original
+ * location during recovery.  We are guaranteed that the pair fits
+ * on the page and is not the last pair on the page (because if it's
+ * the last pair, the normal insert works).
+ */
+void
+__ham_reputpair(p, psize, ndx, key, data)
+	PAGE *p;
+	u_int32_t psize, ndx;
+	const DBT *key, *data;
+{
+	db_indx_t i, movebytes, newbytes;
+	u_int8_t *from;
+
+	/* First shuffle the existing items up on the page.  */
+	movebytes =
+	    (ndx == 0 ? psize : p->inp[H_DATAINDEX(ndx - 1)]) - HOFFSET(p);
+	newbytes = key->size + data->size;
+	from = (u_int8_t *)p + HOFFSET(p);
+	memmove(from - newbytes, from, movebytes);
+
+	/*
+	 * Adjust the indices and move them up 2 spaces. Note that we
+	 * have to check the exit condition inside the loop just in case
+	 * we are dealing with index 0 (db_indx_t's are unsigned).
+	 */
+	for (i = NUM_ENT(p) - 1; ; i-- ) {
+		p->inp[i + 2] = p->inp[i] - newbytes;
+		if (i == H_KEYINDEX(ndx))
+			break;
+	}
+
+	/* Put the key and data on the page. */
+	p->inp[H_KEYINDEX(ndx)] =
+	    (ndx == 0 ? psize : p->inp[H_DATAINDEX(ndx - 1)]) - key->size;
+	p->inp[H_DATAINDEX(ndx)] = p->inp[H_KEYINDEX(ndx)] - data->size;
+	memcpy(P_ENTRY(p, H_KEYINDEX(ndx)), key->data, key->size);
+	memcpy(P_ENTRY(p, H_DATAINDEX(ndx)), data->data, data->size);
+
+	/* Adjust page info. */
+	HOFFSET(p) -= newbytes;
+	NUM_ENT(p) += 2;
+}
+
+
+/*
+ * PUBLIC: int __ham_del_pair __P((HTAB *, HASH_CURSOR *, int));
+ *
+ * XXX
+ * TODO: if the item is an offdup, delete the other pages and then remove
+ * the pair. If the offpage page is 0, then you can just remove the pair.
+ */
+int
+__ham_del_pair(hashp, cursorp, reclaim_page)
+	HTAB *hashp;
+	HASH_CURSOR *cursorp;
+	int reclaim_page;
+{
+	DBT data_dbt, key_dbt;
+	DB_ENV *dbenv;
+	DB_LSN new_lsn, *n_lsn, tmp_lsn;
+	PAGE *p;
+	db_indx_t ndx;
+	db_pgno_t chg_pgno, pgno;
+	int ret, tret;
+
+	dbenv = hashp->dbp->dbenv;
+	ndx = cursorp->bndx;
+	if (cursorp->pagep == NULL && (ret =
+	    __ham_get_page(hashp->dbp, cursorp->pgno, &cursorp->pagep)) != 0)
+		return (ret);
+
+	p = cursorp->pagep;
+
+	/*
+	 * We optimize for the normal case which is when neither the key nor
+	 * the data are large.  In this case, we write a single log record
+	 * and do the delete.  If either is large, we'll call __big_delete
+	 * to remove the big item and then update the page to remove the
+	 * entry referring to the big item.
+	 */
+	ret = 0;
+	if (HPAGE_PTYPE(H_PAIRKEY(p, ndx)) == H_OFFPAGE) {
+		memcpy(&pgno, HOFFPAGE_PGNO(P_ENTRY(p, H_KEYINDEX(ndx))),
+		    sizeof(db_pgno_t));
+		ret = __db_doff(hashp->dbp, pgno, __ham_del_page);
+	}
+
+	if (ret == 0)
+		switch (HPAGE_PTYPE(H_PAIRDATA(p, ndx))) {
+		case H_OFFPAGE:
+			memcpy(&pgno,
+			    HOFFPAGE_PGNO(P_ENTRY(p, H_DATAINDEX(ndx))),
+			    sizeof(db_pgno_t));
+			ret = __db_doff(hashp->dbp, pgno, __ham_del_page);
+			break;
+		case H_OFFDUP:
+			memcpy(&pgno,
+			    HOFFDUP_PGNO(P_ENTRY(p, H_DATAINDEX(ndx))),
+			    sizeof(db_pgno_t));
+			ret = __db_ddup(hashp->dbp, pgno, __ham_del_page);
+			F_CLR(cursorp, H_ISDUP);
+			break;
+		case H_DUPLICATE:
+			/*
+			 * If we delete a pair that is/was a duplicate, then
+			 * we had better clear the flag so that we update the
+			 * cursor appropriately.
+			 */
+			F_CLR(cursorp, H_ISDUP);
+			break;
+		}
+
+	if (ret)
+		return (ret);
+
+	/* Now log the delete off this page. */
+	if (DB_LOGGING(hashp->dbp)) {
+		key_dbt.data = P_ENTRY(p, H_KEYINDEX(ndx));
+		key_dbt.size =
+		    LEN_HITEM(p, hashp->hdr->pagesize, H_KEYINDEX(ndx));
+		data_dbt.data = P_ENTRY(p, H_DATAINDEX(ndx));
+		data_dbt.size =
+		    LEN_HITEM(p, hashp->hdr->pagesize, H_DATAINDEX(ndx));
+
+		if ((ret = __ham_insdel_log(dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, DELPAIR,
+		    hashp->dbp->log_fileid, PGNO(p), (u_int32_t)ndx,
+		    &LSN(p), &key_dbt, &data_dbt)) != 0)
+			return (ret);
+
+		/* Move lsn onto page. */
+		LSN(p) = new_lsn;
+	}
+
+	__ham_dpair(hashp->dbp, p, ndx);
+
+	/*
+	 * If we are locking, we will not maintain this.
+	 * XXXX perhaps we can retain incremental numbers and apply them
+	 * later.
+	 */
+	if (!F_ISSET(hashp->dbp, DB_AM_LOCKING))
+		--hashp->hdr->nelem;
+
+	/*
+	 * If we need to reclaim the page, then check if the page is empty.
+	 * There are two cases.  If it's empty and it's not the first page
+	 * in the bucket (i.e., the bucket page) then we can simply remove
+	 * it. If it is the first chain in the bucket, then we need to copy
+	 * the second page into it and remove the second page.
+	 */
+	if (reclaim_page && NUM_ENT(p) == 0 && PREV_PGNO(p) == PGNO_INVALID &&
+	    NEXT_PGNO(p) != PGNO_INVALID) {
+		PAGE *n_pagep, *nn_pagep;
+		db_pgno_t tmp_pgno;
+
+		/*
+		 * First page in chain is empty and we know that there
+		 * are more pages in the chain.
+		 */
+		if ((ret =
+		    __ham_get_page(hashp->dbp, NEXT_PGNO(p), &n_pagep)) != 0)
+			return (ret);
+
+		if (NEXT_PGNO(n_pagep) != PGNO_INVALID) {
+			if ((ret =
+			    __ham_get_page(hashp->dbp, NEXT_PGNO(n_pagep),
+			    &nn_pagep)) != 0) {
+				(void) __ham_put_page(hashp->dbp, n_pagep, 0);
+				return (ret);
+			}
+		}
+
+		if (DB_LOGGING(hashp->dbp)) {
+			key_dbt.data = n_pagep;
+			key_dbt.size = hashp->hdr->pagesize;
+			if ((ret = __ham_copypage_log(dbenv->lg_info,
+			    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+			    hashp->dbp->log_fileid, PGNO(p), &LSN(p),
+			    PGNO(n_pagep), &LSN(n_pagep), NEXT_PGNO(n_pagep),
+			    NEXT_PGNO(n_pagep) == PGNO_INVALID ? NULL :
+			    &LSN(nn_pagep), &key_dbt)) != 0)
+				return (ret);
+
+			/* Move lsn onto page. */
+			LSN(p) = new_lsn;	/* Structure assignment. */
+			LSN(n_pagep) = new_lsn;
+			if (NEXT_PGNO(n_pagep) != PGNO_INVALID)
+				LSN(nn_pagep) = new_lsn;
+		}
+		if (NEXT_PGNO(n_pagep) != PGNO_INVALID) {
+			PREV_PGNO(nn_pagep) = PGNO(p);
+			(void)__ham_put_page(hashp->dbp, nn_pagep, 1);
+		}
+
+		tmp_pgno = PGNO(p);
+		tmp_lsn = LSN(p);
+		memcpy(p, n_pagep, hashp->hdr->pagesize);
+		PGNO(p) = tmp_pgno;
+		LSN(p) = tmp_lsn;
+		PREV_PGNO(p) = PGNO_INVALID;
+
+		/*
+		 * Cursor is advanced to the beginning of the next page.
+		 */
+		cursorp->bndx = 0;
+		cursorp->pgno = PGNO(p);
+		F_SET(cursorp, H_DELETED);
+		chg_pgno = PGNO(p);
+		if ((ret = __ham_dirty_page(hashp, p)) != 0 ||
+		    (ret = __ham_del_page(hashp->dbp, n_pagep)) != 0)
+			return (ret);
+	} else if (reclaim_page &&
+	    NUM_ENT(p) == 0 && PREV_PGNO(p) != PGNO_INVALID) {
+		PAGE *n_pagep, *p_pagep;
+
+		if ((ret =
+		    __ham_get_page(hashp->dbp, PREV_PGNO(p), &p_pagep)) != 0)
+			return (ret);
+
+		if (NEXT_PGNO(p) != PGNO_INVALID) {
+			if ((ret = __ham_get_page(hashp->dbp,
+			    NEXT_PGNO(p), &n_pagep)) != 0) {
+				(void)__ham_put_page(hashp->dbp, p_pagep, 0);
+				return (ret);
+			}
+			n_lsn = &LSN(n_pagep);
+		} else {
+			n_pagep = NULL;
+			n_lsn = NULL;
+		}
+
+		NEXT_PGNO(p_pagep) = NEXT_PGNO(p);
+		if (n_pagep != NULL)
+			PREV_PGNO(n_pagep) = PGNO(p_pagep);
+
+		if (DB_LOGGING(hashp->dbp)) {
+			if ((ret = __ham_newpage_log(dbenv->lg_info,
+			    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, DELOVFL,
+			    hashp->dbp->log_fileid, PREV_PGNO(p), &LSN(p_pagep),
+			    PGNO(p), &LSN(p), NEXT_PGNO(p), n_lsn)) != 0)
+				return (ret);
+
+			/* Move lsn onto page. */
+			LSN(p_pagep) = new_lsn;	/* Structure assignment. */
+			if (n_pagep)
+				LSN(n_pagep) = new_lsn;
+			LSN(p) = new_lsn;
+		}
+		cursorp->pgno = NEXT_PGNO(p);
+		cursorp->bndx = 0;
+		/*
+		 * Since we are about to delete the cursor page and we have
+		 * just moved the cursor, we need to make sure that the
+		 * old page pointer isn't left hanging around in the cursor.
+		 */
+		cursorp->pagep = NULL;
+		chg_pgno = PGNO(p);
+		ret = __ham_del_page(hashp->dbp, p);
+		if ((tret = __ham_put_page(hashp->dbp, p_pagep, 1)) != 0 &&
+		    ret == 0)
+			ret = tret;
+		if (n_pagep != NULL &&
+		    (tret = __ham_put_page(hashp->dbp, n_pagep, 1)) != 0 &&
+		    ret == 0)
+			ret = tret;
+		if (ret != 0)
+			return (ret);
+	} else {
+		/*
+		 * Mark item deleted so that we don't try to return it, and
+		 * so that we update the cursor correctly on the next call
+		 * to next.
+		 */
+		F_SET(cursorp, H_DELETED);
+		chg_pgno = cursorp->pgno;
+		ret = __ham_dirty_page(hashp, p);
+	}
+	__ham_c_update(cursorp, chg_pgno, 0, 0, 0);
+
+	/*
+	 * Since we just deleted a pair from the master page, anything
+	 * in cursorp->dpgno should be cleared.
+	 */
+	cursorp->dpgno = PGNO_INVALID;
+
+	F_CLR(cursorp, H_OK);
+	return (ret);
+}
+
+/*
+ * __ham_replpair --
+ *	Given the key data indicated by the cursor, replace part/all of it
+ *	according to the fields in the dbt.
+ *
+ * PUBLIC: int __ham_replpair __P((HTAB *, HASH_CURSOR *, DBT *, u_int32_t));
+ */
+int
+__ham_replpair(hashp, hcp, dbt, make_dup)
+	HTAB *hashp;
+	HASH_CURSOR *hcp;
+	DBT *dbt;
+	u_int32_t make_dup;
+{
+	DBT old_dbt, tdata, tmp;
+	DB_LSN	new_lsn;
+	int32_t change;			/* XXX: Possible overflow. */
+	u_int32_t len;
+	int is_big, ret, type;
+	u_int8_t *beg, *dest, *end, *hk, *src;
+
+	/*
+	 * Big item replacements are handled in generic code.
+	 * Items that fit on the current page fall into 4 classes.
+	 * 1. On-page element, same size
+	 * 2. On-page element, new is bigger (fits)
+	 * 3. On-page element, new is bigger (does not fit)
+	 * 4. On-page element, old is bigger
+	 * Numbers 1, 2, and 4 are essentially the same (and should
+	 * be the common case).  We handle case 3 as a delete and
+	 * add.
+	 */
+
+	/*
+	 * We need to compute the number of bytes that we are adding or
+	 * removing from the entry.  Normally, we can simply substract
+	 * the number of bytes we are replacing (dbt->dlen) from the
+	 * number of bytes we are inserting (dbt->size).  However, if
+	 * we are doing a partial put off the end of a record, then this
+	 * formula doesn't work, because we are essentially adding
+	 * new bytes.
+	 */
+	change = dbt->size - dbt->dlen;
+
+	hk = H_PAIRDATA(hcp->pagep, hcp->bndx);
+	is_big = HPAGE_PTYPE(hk) == H_OFFPAGE;
+
+	if (is_big)
+		memcpy(&len, HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
+	else
+		len = LEN_HKEYDATA(hcp->pagep,
+		    hashp->dbp->pgsize, H_DATAINDEX(hcp->bndx));
+
+	if (dbt->doff + dbt->dlen > len)
+		change += dbt->doff + dbt->dlen - len;
+
+
+	if (change > (int32_t)P_FREESPACE(hcp->pagep) || is_big) {
+		/*
+		 * Case 3 -- two subcases.
+		 * A. This is not really a partial operation, but an overwrite.
+		 *    Simple del and add works.
+		 * B. This is a partial and we need to construct the data that
+		 *    we are really inserting (yuck).
+		 * In both cases, we need to grab the key off the page (in
+		 * some cases we could do this outside of this routine; for
+		 * cleanliness we do it here.  If you happen to be on a big
+		 * key, this could be a performance hit).
+		 */
+		tmp.flags = 0;
+		F_SET(&tmp, DB_DBT_MALLOC | DB_DBT_INTERNAL);
+		if ((ret =
+		    __db_ret(hashp->dbp, hcp->pagep, H_KEYINDEX(hcp->bndx),
+		    &tmp, &hcp->big_key, &hcp->big_keylen)) != 0)
+			return (ret);
+
+		if (dbt->doff == 0 && dbt->dlen == len) {
+			ret = __ham_del_pair(hashp, hcp, 0);
+			if (ret == 0)
+			    ret = __ham_add_el(hashp,
+			        hcp, &tmp, dbt, H_KEYDATA);
+		} else {					/* Case B */
+			type = HPAGE_PTYPE(hk) != H_OFFPAGE ?
+			    HPAGE_PTYPE(hk) : H_KEYDATA;
+			tdata.flags = 0;
+			F_SET(&tdata, DB_DBT_MALLOC | DB_DBT_INTERNAL);
+
+			if ((ret = __db_ret(hashp->dbp, hcp->pagep,
+			    H_DATAINDEX(hcp->bndx), &tdata, &hcp->big_data,
+			    &hcp->big_datalen)) != 0)
+				goto err;
+
+			/* Now we can delete the item. */
+			if ((ret = __ham_del_pair(hashp, hcp, 0)) != 0) {
+				__db_free(tdata.data);
+				goto err;
+			}
+
+			/* Now shift old data around to make room for new. */
+			if (change > 0) {
+				tdata.data = (void *)__db_realloc(tdata.data,
+				    tdata.size + change);
+				memset((u_int8_t *)tdata.data + tdata.size,
+				    0, change);
+			}
+			if (tdata.data == NULL)
+				return (ENOMEM);
+			end = (u_int8_t *)tdata.data + tdata.size;
+
+			src = (u_int8_t *)tdata.data + dbt->doff + dbt->dlen;
+			if (src < end && tdata.size > dbt->doff + dbt->dlen) {
+				len = tdata.size - dbt->doff - dbt->dlen;
+				dest = src + change;
+				memmove(dest, src, len);
+			}
+			memcpy((u_int8_t *)tdata.data + dbt->doff,
+			    dbt->data, dbt->size);
+			tdata.size += change;
+
+			/* Now add the pair. */
+			ret = __ham_add_el(hashp, hcp, &tmp, &tdata, type);
+			__db_free(tdata.data);
+		}
+err:		__db_free(tmp.data);
+		return (ret);
+	}
+
+	/*
+	 * Set up pointer into existing data. Do it before the log
+	 * message so we can use it inside of the log setup.
+	 */
+	beg = HKEYDATA_DATA(H_PAIRDATA(hcp->pagep, hcp->bndx));
+	beg += dbt->doff;
+
+	/*
+	 * If we are going to have to move bytes at all, figure out
+	 * all the parameters here.  Then log the call before moving
+	 * anything around.
+	 */
+	if (DB_LOGGING(hashp->dbp)) {
+		old_dbt.data = beg;
+		old_dbt.size = dbt->dlen;
+		if ((ret = __ham_replace_log(hashp->dbp->dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+		    hashp->dbp->log_fileid, PGNO(hcp->pagep),
+		    (u_int32_t)H_DATAINDEX(hcp->bndx), &LSN(hcp->pagep),
+		    (u_int32_t)dbt->doff, &old_dbt, dbt, make_dup)) != 0)
+			return (ret);
+
+		LSN(hcp->pagep) = new_lsn;	/* Structure assignment. */
+	}
+
+	__ham_onpage_replace(hcp->pagep, hashp->dbp->pgsize,
+	    (u_int32_t)H_DATAINDEX(hcp->bndx), (int32_t)dbt->doff, change, dbt);
 
 	return (0);
 }
 
-extern int32_t
-__split_page(hashp, obucket, nbucket)
+/*
+ * Replace data on a page with new data, possibly growing or shrinking what's
+ * there.  This is called on two different occasions. On one (from replpair)
+ * we are interested in changing only the data.  On the other (from recovery)
+ * we are replacing the entire data (header and all) with a new element.  In
+ * the latter case, the off argument is negative.
+ * pagep: the page that we're changing
+ * ndx: page index of the element that is growing/shrinking.
+ * off: Offset at which we are beginning the replacement.
+ * change: the number of bytes (+ or -) that the element is growing/shrinking.
+ * dbt: the new data that gets written at beg.
+ * PUBLIC: void __ham_onpage_replace __P((PAGE *, size_t, u_int32_t, int32_t,
+ * PUBLIC:     int32_t,  DBT *));
+ */
+void
+__ham_onpage_replace(pagep, pgsize, ndx, off, change, dbt)
+	PAGE *pagep;
+	size_t pgsize;
+	u_int32_t ndx;
+	int32_t off;
+	int32_t change;
+	DBT *dbt;
+{
+	db_indx_t i;
+	int32_t len;
+	u_int8_t *src, *dest;
+	int zero_me;
+
+	if (change != 0) {
+		zero_me = 0;
+		src = (u_int8_t *)(pagep) + HOFFSET(pagep);
+		if (off < 0)
+			len = pagep->inp[ndx] - HOFFSET(pagep);
+		else if ((u_int32_t)off >= LEN_HKEYDATA(pagep, pgsize, ndx)) {
+			len = HKEYDATA_DATA(P_ENTRY(pagep, ndx)) +
+			    LEN_HKEYDATA(pagep, pgsize, ndx) - src;
+			zero_me = 1;
+		} else
+			len = (HKEYDATA_DATA(P_ENTRY(pagep, ndx)) + off) - src;
+		dest = src - change;
+		memmove(dest, src, len);
+		if (zero_me)
+			memset(dest + len, 0, change);
+
+		/* Now update the indices. */
+		for (i = ndx; i < NUM_ENT(pagep); i++)
+			pagep->inp[i] -= change;
+		HOFFSET(pagep) -= change;
+	}
+	if (off >= 0)
+		memcpy(HKEYDATA_DATA(P_ENTRY(pagep, ndx)) + off,
+		    dbt->data, dbt->size);
+	else
+		memcpy(P_ENTRY(pagep, ndx), dbt->data, dbt->size);
+}
+
+/*
+ * PUBLIC: int __ham_split_page __P((HTAB *, u_int32_t, u_int32_t));
+ */
+int
+__ham_split_page(hashp, obucket, nbucket)
 	HTAB *hashp;
 	u_int32_t obucket, nbucket;
 {
-	DBT key, val;
-	ITEM_INFO old_ii, new_ii;
-	PAGE16 *old_pagep, *temp_pagep;
-	pgno_t next_pgno;
-	int32_t off;
-	u_int16_t n;
-	int8_t base_page;
+	DBT key, page_dbt;
+	DB_ENV *dbenv;
+	DB_LSN new_lsn;
+	PAGE **pp, *old_pagep, *temp_pagep, *new_pagep;
+	db_indx_t n;
+	db_pgno_t bucket_pgno, next_pgno;
+	u_int32_t big_len, len;
+	int ret, tret;
+	void *big_buf;
 
-	off = hashp->hdr.bsize;
-	old_pagep = __get_page(hashp, obucket, A_BUCKET);
+	dbenv = hashp->dbp->dbenv;
+	temp_pagep = old_pagep = new_pagep = NULL;
 
-	base_page = 1;
+	bucket_pgno = BUCKET_TO_PAGE(hashp, obucket);
+	if ((ret = __ham_get_page(hashp->dbp, bucket_pgno, &old_pagep)) != 0)
+		return (ret);
+	if ((ret = __ham_new_page(hashp, BUCKET_TO_PAGE(hashp, nbucket), P_HASH,
+	    &new_pagep)) != 0)
+		goto err;
 
 	temp_pagep = hashp->split_buf;
-	memcpy(temp_pagep, old_pagep, hashp->hdr.bsize);
+	memcpy(temp_pagep, old_pagep, hashp->hdr->pagesize);
 
-	page_init(hashp, old_pagep, ADDR(old_pagep), HASH_PAGE);
-	__put_page(hashp, old_pagep, A_RAW, 1);
+	if (DB_LOGGING(hashp->dbp)) {
+		page_dbt.size = hashp->hdr->pagesize;
+		page_dbt.data = old_pagep;
+		if ((ret = __ham_splitdata_log(dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+		    hashp->dbp->log_fileid, SPLITOLD, PGNO(old_pagep),
+		    &page_dbt, &LSN(old_pagep))) != 0)
+			goto err;
+	}
 
-	old_ii.pgno = BUCKET_TO_PAGE(obucket);
-	new_ii.pgno = BUCKET_TO_PAGE(nbucket);
-	old_ii.bucket = obucket;
-	new_ii.bucket = nbucket;
-	old_ii.seek_found_page = new_ii.seek_found_page = 0;
+	P_INIT(old_pagep, hashp->hdr->pagesize, PGNO(old_pagep), PGNO_INVALID,
+	    PGNO_INVALID, 0, P_HASH);
 
-	while (temp_pagep != 0) {
-		off = hashp->hdr.bsize;
-		for (n = 0; n < NUM_ENT(temp_pagep); n++) {
-			if (KEY_OFF(temp_pagep, n) == BIGPAIR) {
-				__get_bigkey(hashp, temp_pagep, n, &key);
-				if (__call_hash(hashp,
-				    key.data, key.size) == obucket)
-					add_bigptr(hashp, &old_ii,
-					    DATA_OFF(temp_pagep, n));
-				else
-					add_bigptr(hashp, &new_ii,
-					    DATA_OFF(temp_pagep, n));
-			} else {
-				key.size = off - KEY_OFF(temp_pagep, n);
-				key.data = KEY(temp_pagep, n);
-				off = KEY_OFF(temp_pagep, n);
-				val.size = off - DATA_OFF(temp_pagep, n);
-				val.data = DATA(temp_pagep, n);
-				if (__call_hash(hashp,
-				    key.data, key.size) == obucket)
-					__addel(hashp, &old_ii, &key, &val,
-					    NO_EXPAND, 1);
-				else
-					__addel(hashp, &new_ii, &key, &val,
-					    NO_EXPAND, 1);
-				off = DATA_OFF(temp_pagep, n);
+	if (DB_LOGGING(hashp->dbp))
+		LSN(old_pagep) = new_lsn;	/* Structure assignment. */
+
+	big_len = 0;
+	big_buf = NULL;
+	key.flags = 0;
+	while (temp_pagep != NULL) {
+		for (n = 0; n < (db_indx_t)H_NUMPAIRS(temp_pagep); n++) {
+			if ((ret =
+			    __db_ret(hashp->dbp, temp_pagep, H_KEYINDEX(n),
+			    &key, &big_buf, &big_len)) != 0)
+				goto err;
+
+			if (__ham_call_hash(hashp, key.data, key.size)
+			    == obucket)
+				pp = &old_pagep;
+			else
+				pp = &new_pagep;
+
+			/*
+			 * Figure out how many bytes we need on the new
+			 * page to store the key/data pair.
+			 */
+
+			len = LEN_HITEM(temp_pagep, hashp->hdr->pagesize,
+			    H_DATAINDEX(n)) +
+			    LEN_HITEM(temp_pagep, hashp->hdr->pagesize,
+			    H_KEYINDEX(n)) +
+			    2 * sizeof(db_indx_t);
+
+			if (P_FREESPACE(*pp) < len) {
+				if (DB_LOGGING(hashp->dbp)) {
+					page_dbt.size = hashp->hdr->pagesize;
+					page_dbt.data = *pp;
+					if ((ret = __ham_splitdata_log(
+					    dbenv->lg_info,
+					    (DB_TXN *)hashp->dbp->txn,
+					    &new_lsn, 0,
+					    hashp->dbp->log_fileid, SPLITNEW,
+					    PGNO(*pp), &page_dbt,
+					    &LSN(*pp))) != 0)
+						goto err;
+					LSN(*pp) = new_lsn;
+				}
+				if ((ret = __ham_add_ovflpage(hashp,
+				    *pp, 1, pp)) != 0)
+					goto err;
 			}
+			__ham_copy_item(hashp, temp_pagep, H_KEYINDEX(n), *pp);
+			__ham_copy_item(hashp, temp_pagep, H_DATAINDEX(n), *pp);
 		}
 		next_pgno = NEXT_PGNO(temp_pagep);
 
-		/* Clear temp_page; if it's an overflow page, free it. */
-		if (!base_page)
-			__delete_page(hashp, temp_pagep, A_OVFL);
-		else
-			base_page = 0;
-		if (next_pgno != INVALID_PGNO)
-			temp_pagep = __get_page(hashp, next_pgno, A_RAW);
-		else
-			break;
+		/* Clear temp_page; if it's a link overflow page, free it. */
+		if (PGNO(temp_pagep) != bucket_pgno && (ret =
+		    __ham_del_page(hashp->dbp, temp_pagep)) != 0)
+			goto err;
+
+		if (next_pgno == PGNO_INVALID)
+			temp_pagep = NULL;
+		else if ((ret =
+		    __ham_get_page(hashp->dbp, next_pgno, &temp_pagep)) != 0)
+			goto err;
+
+		if (temp_pagep != NULL && DB_LOGGING(hashp->dbp)) {
+			page_dbt.size = hashp->hdr->pagesize;
+			page_dbt.data = temp_pagep;
+			if ((ret = __ham_splitdata_log(dbenv->lg_info,
+			    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+			    hashp->dbp->log_fileid, SPLITOLD, PGNO(temp_pagep),
+			    &page_dbt, &LSN(temp_pagep))) != 0)
+				goto err;
+			LSN(temp_pagep) = new_lsn;
+		}
 	}
-	return (0);
+	if (big_buf != NULL)
+		__db_free(big_buf);
+
+	/*
+	 * If the original bucket spanned multiple pages, then we've got
+	 * a pointer to a page that used to be on the bucket chain.  It
+	 * should be deleted.
+	 */
+	if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno &&
+	    (ret = __ham_del_page(hashp->dbp, temp_pagep)) != 0)
+		goto err;
+
+	/*
+	 * Write new buckets out.
+	 */
+	if (DB_LOGGING(hashp->dbp)) {
+		page_dbt.size = hashp->hdr->pagesize;
+		page_dbt.data = old_pagep;
+		if ((ret = __ham_splitdata_log(dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+		    hashp->dbp->log_fileid, SPLITNEW, PGNO(old_pagep),
+		    &page_dbt, &LSN(old_pagep))) != 0)
+			goto err;
+		LSN(old_pagep) = new_lsn;
+
+		page_dbt.data = new_pagep;
+		if ((ret = __ham_splitdata_log(dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0,
+		    hashp->dbp->log_fileid, SPLITNEW, PGNO(new_pagep),
+		    &page_dbt, &LSN(new_pagep))) != 0)
+			goto err;
+		LSN(new_pagep) = new_lsn;
+	}
+	ret = __ham_put_page(hashp->dbp, old_pagep, 1);
+	if ((tret = __ham_put_page(hashp->dbp, new_pagep, 1)) != 0 &&
+	    ret == 0)
+		ret = tret;
+
+	if (0) {
+err:		if (old_pagep != NULL)
+			(void)__ham_put_page(hashp->dbp, old_pagep, 1);
+		if (new_pagep != NULL)
+			(void)__ham_put_page(hashp->dbp, new_pagep, 1);
+		if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno)
+			(void)__ham_put_page(hashp->dbp, temp_pagep, 1);
+	}
+	return (ret);
 }
 
 /*
- * Add the given pair to the page.  
+ * Add the given pair to the page.  The page in question may already be
+ * held (i.e. it was already gotten).  If it is, then the page is passed
+ * in via the pagep parameter.  On return, pagep will contain the page
+ * to which we just added something.  This allows us to link overflow
+ * pages and return the new page having correctly put the last page.
  *
- *
- * Returns:
- *       0 ==> OK
- *	-1 ==> failure
+ * PUBLIC: int __ham_add_el
+ * PUBLIC:    __P((HTAB *, HASH_CURSOR *, const DBT *, const DBT *, int));
  */
-extern  int32_t
-#ifdef __STDC__
-__addel(HTAB *hashp, ITEM_INFO *item_info, const DBT *key, const DBT *val,
-    u_int32_t num_items, const u_int8_t expanding)
-#else
-__addel(hashp, item_info, key, val, num_items, expanding)
+int
+__ham_add_el(hashp, hcp, key, val, type)
 	HTAB *hashp;
-	ITEM_INFO *item_info;
+	HASH_CURSOR *hcp;
 	const DBT *key, *val;
-	u_int32_t num_items;
-	const u_int32_t expanding;
-#endif
+	int type;
 {
-	PAGE16 *pagep;
-	int32_t do_expand;
-	pgno_t next_pgno;
+	const DBT *pkey, *pdata;
+	DBT key_dbt, data_dbt;
+	DB_LSN new_lsn;
+	HOFFPAGE doff, koff;
+	db_pgno_t next_pgno;
+	u_int32_t data_size, key_size, pairsize, rectype;
+	int do_expand, is_keybig, is_databig, ret;
+	int key_type, data_type;
 
 	do_expand = 0;
 
-	pagep = __get_page(hashp,
-	    item_info->seek_found_page != 0 ?
-	    item_info->seek_found_page : item_info->pgno, A_RAW);
-	if (!pagep)
-		return (-1);
+	if (hcp->pagep == NULL && (ret = __ham_get_page(hashp->dbp,
+	    hcp->seek_found_page != PGNO_INVALID ?  hcp->seek_found_page :
+	    hcp->pgno, &hcp->pagep)) != 0)
+		return (ret);
+
+	key_size = HKEYDATA_PSIZE(key->size);
+	data_size = HKEYDATA_PSIZE(val->size);
+	is_keybig = ISBIG(hashp, key->size);
+	is_databig = ISBIG(hashp, val->size);
+	if (is_keybig)
+		key_size = HOFFPAGE_PSIZE;
+	if (is_databig)
+		data_size = HOFFPAGE_PSIZE;
+
+	pairsize = key_size + data_size;
 
 	/* Advance to first page in chain with room for item. */
-	while (NUM_ENT(pagep) && NEXT_PGNO(pagep) != INVALID_PGNO) {
-		/* 
+	while (H_NUMPAIRS(hcp->pagep) && NEXT_PGNO(hcp->pagep) !=
+	    PGNO_INVALID) {
+		/*
 		 * This may not be the end of the chain, but the pair may fit
-		 * anyway.
+		 * anyway.  Check if it's a bigpair that fits or a regular
+		 * pair that fits.
 		 */
-		if (ISBIG(PAIRSIZE(key, val), hashp) && BIGPAIRFITS(pagep))
+		if (P_FREESPACE(hcp->pagep) >= pairsize)
 			break;
-		if (PAIRFITS(pagep, key, val))
-			break;
-		next_pgno = NEXT_PGNO(pagep);
-		__put_page(hashp, pagep, A_RAW, 0);
-		pagep = (PAGE16 *)__get_page(hashp, next_pgno, A_RAW);
-		if (!pagep)
-			return (-1);
+		next_pgno = NEXT_PGNO(hcp->pagep);
+		if ((ret =
+		    __ham_next_cpage(hashp, hcp, next_pgno, 0, 0)) != 0)
+			return (ret);
 	}
 
-	if (ISBIG(PAIRSIZE(key, val), hashp)) {
-		if (__big_insert(hashp, pagep, key, val))
-			return (-1);
-	} else if (PAIRFITS(pagep, key, val))
-		putpair((PAGE8 *)pagep, key, val);
-	else {
+	/*
+	 * Check if we need to allocate a new page.
+	 */
+	if (P_FREESPACE(hcp->pagep) < pairsize) {
 		do_expand = 1;
-		pagep = __add_ovflpage(hashp, pagep);
-		if (!pagep)
-			return (-1);
-
-		if (!PAIRFITS(pagep, key, val)) {
-			__put_page(hashp, pagep, A_RAW, 0);
-			return (-1);
-		}
-		putpair((PAGE8 *)pagep, key, val);
+		if ((ret = __ham_add_ovflpage(hashp,
+		    hcp->pagep, 1, &hcp->pagep)) !=  0)
+			return (ret);
+		hcp->pgno = PGNO(hcp->pagep);
 	}
+
+	/*
+	 * Update cursor.
+	 */
+	hcp->bndx = H_NUMPAIRS(hcp->pagep);
+	F_CLR(hcp, H_DELETED);
+	if (is_keybig) {
+		if ((ret = __db_poff(hashp->dbp,
+		    key, &koff.pgno, __ham_overflow_page)) != 0)
+			return (ret);
+		koff.type = H_OFFPAGE;
+		koff.tlen = key->size;
+		key_dbt.data = &koff;
+		key_dbt.size = sizeof(koff);
+		pkey = &key_dbt;
+		key_type = H_OFFPAGE;
+	} else {
+		pkey = key;
+		key_type = H_KEYDATA;
+	}
+
+	if (is_databig) {
+		if ((ret = __db_poff(hashp->dbp,
+		    val, &doff.pgno, __ham_overflow_page)) != 0)
+			return (ret);
+		doff.type = H_OFFPAGE;
+		doff.tlen = val->size;
+		data_dbt.data = &doff;
+		data_dbt.size = sizeof(doff);
+		pdata = &data_dbt;
+		data_type = H_OFFPAGE;
+	} else {
+		pdata = val;
+		data_type = type;
+	}
+
+	if (DB_LOGGING(hashp->dbp)) {
+		rectype = PUTPAIR;
+		if (is_databig)
+			rectype |= PAIR_DATAMASK;
+		if (is_keybig)
+			rectype |= PAIR_KEYMASK;
+
+		if ((ret = __ham_insdel_log(hashp->dbp->dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, rectype,
+		    hashp->dbp->log_fileid, PGNO(hcp->pagep),
+		    (u_int32_t)H_NUMPAIRS(hcp->pagep),
+		    &LSN(hcp->pagep), pkey, pdata)) != 0)
+			return (ret);
+
+		/* Move lsn onto page. */
+		LSN(hcp->pagep) = new_lsn;	/* Structure assignment. */
+	}
+
+	__ham_putitem(hcp->pagep, pkey, key_type);
+	__ham_putitem(hcp->pagep, pdata, data_type);
 
 	/*
 	 * For splits, we are going to update item_info's page number
 	 * field, so that we can easily return to the same page the
 	 * next time we come in here.  For other operations, this shouldn't
-	 * matter, since adds are the last thing that happens before we
-	 * return to the user program.
+	 * matter, since odds are this is the last thing that happens before
+	 * we return to the user program.
 	 */
-	item_info->pgno = ADDR(pagep);
+	hcp->pgno = PGNO(hcp->pagep);
 
-	if (!expanding)
-		hashp->hdr.nkeys++;
+	/*
+	 * XXX Maybe keep incremental numbers here
+	 */
+	if (!F_ISSET(hashp->dbp, DB_AM_LOCKING))
+		hashp->hdr->nelem++;
 
-	/* Kludge: if this is a big page, then it's already been put. */
-	if (!ISBIG(PAIRSIZE(key, val), hashp))
-		__put_page(hashp, pagep, A_RAW, 1);
-
-	if (expanding)
-		item_info->caused_expand = 0;
-	else
-		switch (num_items) {
-		case NO_EXPAND:
-			item_info->caused_expand = 0;
-			break;
-		case UNKNOWN:
-			item_info->caused_expand =
-			    (hashp->hdr.nkeys / hashp->hdr.max_bucket) >
-			    hashp->hdr.ffactor ||
-			    item_info->pgndx > hashp->hdr.ffactor;
-			break;
-		default:
-			item_info->caused_expand =
-			    num_items > hashp->hdr.ffactor ? 1 : do_expand;
-			break;
-		}
+	if (do_expand || (hashp->hdr->ffactor != 0 &&
+	    (u_int32_t)H_NUMPAIRS(hcp->pagep) > hashp->hdr->ffactor))
+		F_SET(hcp, H_EXPAND);
 	return (0);
 }
 
-/* 
- * Special __addel used in big splitting; this one just puts the pointer
- * to an already-allocated big page in the appropriate bucket.
- */
-int32_t
-#ifdef __STDC__
-add_bigptr(HTAB * hashp, ITEM_INFO * item_info, indx_t big_pgno)
-#else
-add_bigptr(hashp, item_info, big_pgno)
-	HTAB *hashp;
-	ITEM_INFO *item_info;
-	u_int32_t big_pgno;
-#endif
-{
-	PAGE16 *pagep;
-	pgno_t next_pgno;
 
-	pagep = __get_page(hashp, item_info->bucket, A_BUCKET);
-	if (!pagep)
-		return (-1);
+/*
+ * Special __putitem call used in splitting -- copies one entry to
+ * another.  Works for all types of hash entries (H_OFFPAGE, H_KEYDATA,
+ * H_DUPLICATE, H_OFFDUP).  Since we log splits at a high level, we
+ * do not need to do any logging here.
+ *
+ * PUBLIC: void __ham_copy_item __P((HTAB *, PAGE *, u_int32_t, PAGE *));
+ */
+void
+__ham_copy_item(hashp, src_page, src_ndx, dest_page)
+	HTAB *hashp;
+	PAGE *src_page;
+	u_int32_t src_ndx;
+	PAGE *dest_page;
+{
+	u_int32_t len;
+	void *src, *dest;
 
 	/*
-	 * Note: in __addel(), we used item_info->pgno for the beginning of
-	 * our search for space.  Now, we use item_info->bucket, since we
-	 * know that the space required by a big pair on the base page is
-	 * quite small, and we may very well find that space early in the
-	 * chain.
+	 * Copy the key and data entries onto this new page.
 	 */
+	src = P_ENTRY(src_page, src_ndx);
 
-	/* Find first page in chain that has space for a big pair. */
-	while (NUM_ENT(pagep) && (NEXT_PGNO(pagep) != INVALID_PGNO)) {
-		if (BIGPAIRFITS(pagep))
-			break;
-		next_pgno = NEXT_PGNO(pagep);
-		__put_page(hashp, pagep, A_RAW, 0);
-		pagep = __get_page(hashp, next_pgno, A_RAW);
-		if (!pagep)
-			return (-1);
-	}
-	if (!BIGPAIRFITS(pagep)) {
-		pagep = __add_ovflpage(hashp, pagep);
-		if (!pagep)
-			return (-1);
-#ifdef DEBUG
-		assert(BIGPAIRFITS(pagep));
-#endif
-	}
-	KEY_OFF(pagep, NUM_ENT(pagep)) = BIGPAIR;
-	DATA_OFF(pagep, NUM_ENT(pagep)) = big_pgno;
-	NUM_ENT(pagep) = NUM_ENT(pagep) + 1;
+	/* Set up space on dest. */
+	len = LEN_HITEM(src_page, hashp->hdr->pagesize, src_ndx);
+	HOFFSET(dest_page) -= len;
+	dest_page->inp[NUM_ENT(dest_page)] = HOFFSET(dest_page);
+	dest = P_ENTRY(dest_page, NUM_ENT(dest_page));
+	NUM_ENT(dest_page)++;
 
-	__put_page(hashp, pagep, A_RAW, 1);
-
-	return (0);
+	memcpy(dest, src, len);
 }
 
 /*
@@ -683,702 +1350,492 @@ add_bigptr(hashp, item_info, big_pgno)
  * Returns:
  *      pointer on success
  *      NULL on error
+ *
+ * PUBLIC: int __ham_add_ovflpage __P((HTAB *, PAGE *, int, PAGE **));
  */
-extern PAGE16 *
-__add_ovflpage(hashp, pagep)
+int
+__ham_add_ovflpage(hashp, pagep, release, pp)
 	HTAB *hashp;
-	PAGE16 *pagep;
+	PAGE *pagep;
+	int release;
+	PAGE **pp;
 {
-	PAGE16 *new_pagep;
-	u_int16_t ovfl_num;
+	DB_ENV *dbenv;
+	DB_LSN new_lsn;
+	PAGE *new_pagep;
+	int ret;
 
-	/* Check if we are dynamically determining the fill factor. */
-	if (hashp->hdr.ffactor == DEF_FFACTOR) {
-		hashp->hdr.ffactor = NUM_ENT(pagep) >> 1;
-		if (hashp->hdr.ffactor < MIN_FFACTOR)
-			hashp->hdr.ffactor = MIN_FFACTOR;
+	dbenv = hashp->dbp->dbenv;
+
+	if ((ret = __ham_overflow_page(hashp->dbp, P_HASH, &new_pagep)) != 0)
+		return (ret);
+
+	if (DB_LOGGING(hashp->dbp)) {
+		if ((ret = __ham_newpage_log(dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, PUTOVFL,
+		    hashp->dbp->log_fileid, PGNO(pagep), &LSN(pagep),
+		    PGNO(new_pagep), &LSN(new_pagep), PGNO_INVALID, NULL)) != 0)
+			return (ret);
+
+		/* Move lsn onto page. */
+		LSN(pagep) = LSN(new_pagep) = new_lsn;
 	}
-	ovfl_num = overflow_page(hashp);
+	NEXT_PGNO(pagep) = PGNO(new_pagep);
+	PREV_PGNO(new_pagep) = PGNO(pagep);
 
-	if (__new_page(hashp, (u_int32_t)ovfl_num, A_OVFL) != 0)
-		return (NULL);
+	if (release)
+		ret = __ham_put_page(hashp->dbp, pagep, 1);
 
-	if (!ovfl_num || !(new_pagep = __get_page(hashp, ovfl_num, A_OVFL)))
-		return (NULL);
-
-	NEXT_PGNO(pagep) = (pgno_t)OADDR_TO_PAGE(ovfl_num);
-	TYPE(new_pagep) = HASH_OVFLPAGE;
-
-	__put_page(hashp, pagep, A_RAW, 1);
-
-#ifdef HASH_STATISTICS
-	hash_overflows++;
-#endif
-	return (new_pagep);
+	hashp->hash_overflows++;
+	*pp = new_pagep;
+	return (ret);
 }
+
 
 /*
- *
- * Returns:
- *      pointer on success
- *      NULL on error
+ * PUBLIC: int __ham_new_page __P((HTAB *, u_int32_t, u_int32_t, PAGE **));
  */
-extern PAGE16 *
-#ifdef __STDC__
-__add_bigpage(HTAB * hashp, PAGE16 * pagep, indx_t ndx, const u_int8_t
-    is_basepage)
-#else
-__add_bigpage(hashp, pagep, ndx, is_basepage)
+int
+__ham_new_page(hashp, addr, type, pp)
 	HTAB *hashp;
-	PAGE16 *pagep;
-	u_int32_t ndx;
-	const u_int32_t is_basepage;
-#endif
+	u_int32_t addr, type;
+	PAGE **pp;
 {
-	PAGE16 *new_pagep;
-	u_int16_t ovfl_num;
+	PAGE *pagep;
+	int ret;
 
-	ovfl_num = overflow_page(hashp);
+	if ((ret = memp_fget(hashp->dbp->mpf,
+	    &addr, DB_MPOOL_CREATE, &pagep)) != 0)
+		return (ret);
 
-	if (__new_page(hashp, (u_int32_t)ovfl_num, A_OVFL) != 0)
-		return (NULL);
-
-	if (!ovfl_num || !(new_pagep = __get_page(hashp, ovfl_num, A_OVFL)))
-		return (NULL);
-
-	if (is_basepage) {
-		KEY_OFF(pagep, ndx) = BIGPAIR;
-		DATA_OFF(pagep, ndx) = (indx_t)ovfl_num;
-	} else
-		NEXT_PGNO(pagep) = ADDR(new_pagep);
-
-	__put_page(hashp, pagep, A_RAW, 1);
-
-	TYPE(new_pagep) = HASH_BIGPAGE;
-
-#ifdef HASH_STATISTICS
-	hash_bigpages++;
+#ifdef DEBUG_SLOW
+	__account_page(hashp, addr, 1);
 #endif
-	return (new_pagep);
-}
+	/* This should not be necessary because page-in should do it. */
+	P_INIT(pagep,
+	    hashp->hdr->pagesize, addr, PGNO_INVALID, PGNO_INVALID, 0, type);
 
-static void
-#ifdef __STDC__
-page_init(HTAB * hashp, PAGE16 * pagep, pgno_t pgno, u_int8_t type)
-#else
-page_init(hashp, pagep, pgno, type)
-	HTAB *hashp;
-	PAGE16 *pagep;
-	pgno_t pgno;
-	u_int32_t type;
-#endif
-{
-	NUM_ENT(pagep) = 0;
-	PREV_PGNO(pagep) = NEXT_PGNO(pagep) = INVALID_PGNO;
-	TYPE(pagep) = type;
-	OFFSET(pagep) = hashp->hdr.bsize - 1;
-	/*
-	 * Note: since in the current version ADDR(pagep) == PREV_PGNO(pagep),
-	 * make sure that ADDR(pagep) is set after resetting PREV_PGNO(pagep).
-	 * We reset PREV_PGNO(pagep) just in case the macros are changed.
-	 */
-	ADDR(pagep) = pgno;
-
-	return;
-}
-
-int32_t
-__new_page(hashp, addr, addr_type)
-	HTAB *hashp;
-	u_int32_t addr;
-	int32_t addr_type;
-{
-	pgno_t paddr;
-	PAGE16 *pagep;
-
-	switch (addr_type) {		/* Convert page number. */
-	case A_BUCKET:
-		paddr = BUCKET_TO_PAGE(addr);
-		break;
-	case A_OVFL:
-	case A_BITMAP:
-		paddr = OADDR_TO_PAGE(addr);
-		break;
-	default:
-		paddr = addr;
-		break;
-	}
-	pagep = mpool_new(hashp->mp, &paddr, MPOOL_PAGE_REQUEST);
-	if (!pagep)
-		return (-1);
-#if DEBUG_SLOW
-	account_page(hashp, paddr, 1);
-#endif
-
-	if (addr_type != A_BITMAP)
-		page_init(hashp, pagep, paddr, HASH_PAGE);
-
-	__put_page(hashp, pagep, addr_type, 1);
-
+	*pp = pagep;
 	return (0);
 }
 
-int32_t
-__delete_page(hashp, pagep, page_type)
-	HTAB *hashp;
-	PAGE16 *pagep;
-	int32_t page_type;
+/*
+ * PUBLIC: int __ham_del_page __P((DB *, PAGE *));
+ */
+int
+__ham_del_page(dbp, pagep)
+	DB *dbp;
+	PAGE *pagep;
 {
-	if (page_type == A_OVFL)
-		__free_ovflpage(hashp, pagep);
-	return (mpool_delete(hashp->mp, pagep));
-}
-
-u_int8_t
-is_bitmap_pgno(hashp, pgno)
+	DB_LSN new_lsn;
 	HTAB *hashp;
-	pgno_t pgno;
-{
-	int32_t i;
+	int ret;
 
-	for (i = 0; i < hashp->nmaps; i++)
-		if (OADDR_TO_PAGE(hashp->hdr.bitmaps[i]) == pgno)
-			return (1);
-	return (0);
-}
-
-void
-__pgin_routine(pg_cookie, pgno, page)
-	void *pg_cookie;
-	pgno_t pgno;
-	void *page;
-{
-	HTAB *hashp;
-	PAGE16 *pagep;
-	int32_t max, i;
-
-	pagep = (PAGE16 *)page;
-	hashp = (HTAB *)pg_cookie;
-
-	/* 
-	 * There are the following cases for swapping: 
-	 * 0) New page that may be unitialized.
-	 * 1) Bucket page or overflow page.  Either swap
-	 *	the header or initialize the page.
-	 * 2) Bitmap page.  Swap the whole page!
-	 * 3) Header pages.  Not handled here; these are written directly
-	 *    to the file.
-	 */
-
-	if (NUM_ENT(pagep) == 0 && NEXT_PGNO(pagep) == 0 &&
-	    !is_bitmap_pgno(hashp, pgno)) {
-		/* XXX check for !0 LSN */
-		page_init(hashp, pagep, pgno, HASH_PAGE);
-		return;
+	hashp = (HTAB *)dbp->internal;
+	ret = 0;
+	DIRTY_META(hashp, ret);
+	if (ret != 0) {
+		if (ret != EAGAIN)
+			__db_err(hashp->dbp->dbenv,
+			    "free_ovflpage: unable to lock meta data page %s\n",
+			    strerror(ret));
+		/*
+		 * If we are going to return an error, then we should free
+		 * the page, so it doesn't stay pinned forever.
+		 */
+		(void)__ham_put_page(hashp->dbp, pagep, 0);
+		return (ret);
 	}
 
-	if (hashp->hdr.lorder == BYTE_ORDER)
-		return;
-	if (is_bitmap_pgno(hashp, pgno)) {
-		max = hashp->hdr.bsize >> 2;	/* divide by 4 bytes */
-		for (i = 0; i < max; i++)
-			M_32_SWAP(((int32_t *)pagep)[i]);
-	} else
-		swap_page_header_in(pagep);
+	if (DB_LOGGING(hashp->dbp)) {
+		if ((ret = __ham_newpgno_log(hashp->dbp->dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, DELPGNO,
+		    hashp->dbp->log_fileid, PGNO(pagep), hashp->hdr->last_freed,
+		    (u_int32_t)TYPE(pagep), NEXT_PGNO(pagep), P_INVALID,
+		    &LSN(pagep), &hashp->hdr->lsn)) != 0)
+			return (ret);
+
+		hashp->hdr->lsn = new_lsn;
+		LSN(pagep) = new_lsn;
+	}
+
+#ifdef DIAGNOSTIC
+	{
+		db_pgno_t __pgno;
+		DB_LSN __lsn;
+		__pgno = pagep->pgno;
+		__lsn = pagep->lsn;
+		memset(pagep, 0xff, dbp->pgsize);
+		pagep->pgno = __pgno;
+		pagep->lsn = __lsn;
+	}
+#endif
+	TYPE(pagep) = P_INVALID;
+	NEXT_PGNO(pagep) = hashp->hdr->last_freed;
+	hashp->hdr->last_freed = PGNO(pagep);
+
+	return (__ham_put_page(hashp->dbp, pagep, 1));
 }
 
-void
-__pgout_routine(pg_cookie, pgno, page)
-	void *pg_cookie;
-	pgno_t pgno;
-	void *page;
-{
-	HTAB *hashp;
-	PAGE16 *pagep;
-	int32_t i, max;
-
-	pagep = (PAGE16 *)page;
-	hashp = (HTAB *)pg_cookie;
-
-	/* 
-	 * There are the following cases for swapping: 
-	 * 1) Bucket page or overflow page.  Just swap the header.
-	 * 2) Bitmap page.  Swap the whole page!
-	 * 3) Header pages.  Not handled here; these are written directly
-	 *    to the file.
-	 */
-
-	if (hashp->hdr.lorder == BYTE_ORDER)
-		return;
-	if (is_bitmap_pgno(hashp, pgno)) {
-		max = hashp->hdr.bsize >> 2;	/* divide by 4 bytes */
-		for (i = 0; i < max; i++)
-			M_32_SWAP(((int32_t *)pagep)[i]);
-	} else
-		swap_page_header_out(pagep);
-}
 
 /*
- *
- * Returns:
- *       0 ==> OK
- *      -1 ==>failure
+ * PUBLIC: int __ham_put_page __P((DB *, PAGE *, int32_t));
  */
-extern int32_t
-__put_page(hashp, pagep, addr_type, is_dirty)
-	HTAB *hashp;
-	PAGE16 *pagep;
-	int32_t addr_type, is_dirty;
+int
+__ham_put_page(dbp, pagep, is_dirty)
+	DB *dbp;
+	PAGE *pagep;
+	int32_t is_dirty;
 {
-#if DEBUG_SLOW
-	account_page(hashp,
+#ifdef DEBUG_SLOW
+	__account_page((HTAB *)dbp->cookie,
 	    ((BKT *)((char *)pagep - sizeof(BKT)))->pgno, -1);
 #endif
-
-	return (mpool_put(hashp->mp, pagep, (is_dirty ? MPOOL_DIRTY : 0)));
+	return (memp_fput(dbp->mpf, pagep, (is_dirty ? DB_MPOOL_DIRTY : 0)));
 }
 
 /*
- * Returns:
- *       0 indicates SUCCESS
- *      -1 indicates FAILURE
+ * __ham_dirty_page --
+ *	Mark a page dirty.
+ *
+ * PUBLIC: int __ham_dirty_page __P((HTAB *, PAGE *));
  */
-extern PAGE16 *
-__get_page(hashp, addr, addr_type)
+int
+__ham_dirty_page(hashp, pagep)
 	HTAB *hashp;
-	u_int32_t addr;
-	int32_t addr_type;
+	PAGE *pagep;
 {
-	PAGE16 *pagep;
-	pgno_t paddr;
-
-	switch (addr_type) {			/* Convert page number. */
-	case A_BUCKET:
-		paddr = BUCKET_TO_PAGE(addr);
-		break;
-	case A_OVFL:
-	case A_BITMAP:
-		paddr = OADDR_TO_PAGE(addr);
-		break;
-	default:
-		paddr = addr;
-		break;
-	}
-	pagep = (PAGE16 *)mpool_get(hashp->mp, paddr, 0);
-
-#if DEBUG_SLOW
-	account_page(hashp, paddr, 1);
-#endif
-#ifdef DEBUG
-	assert(ADDR(pagep) == paddr || ADDR(pagep) == 0 ||
-	    addr_type == A_BITMAP || addr_type == A_HEADER);
-#endif
-
-	return (pagep);
+	return (memp_fset(hashp->dbp->mpf, pagep, DB_MPOOL_DIRTY));
 }
 
-void
-swap_page_header_in(pagep)
-	PAGE16 *pagep;
-{
-	u_int32_t i;
-
-	/* can leave type and filler alone, since they're 1-byte quantities */
-
-	M_32_SWAP(PREV_PGNO(pagep));
-	M_32_SWAP(NEXT_PGNO(pagep));
-	M_16_SWAP(NUM_ENT(pagep));
-	M_16_SWAP(OFFSET(pagep));
-
-	for (i = 0; i < NUM_ENT(pagep); i++) {
-		M_16_SWAP(KEY_OFF(pagep, i));
-		M_16_SWAP(DATA_OFF(pagep, i));
-	}
-}
-
-void
-swap_page_header_out(pagep)
-	PAGE16 *pagep;
-{
-	u_int32_t i;
-
-	for (i = 0; i < NUM_ENT(pagep); i++) {
-		M_16_SWAP(KEY_OFF(pagep, i));
-		M_16_SWAP(DATA_OFF(pagep, i))
-	}
-
-	/* can leave type and filler alone, since they're 1-byte quantities */
-
-	M_32_SWAP(PREV_PGNO(pagep));
-	M_32_SWAP(NEXT_PGNO(pagep));
-	M_16_SWAP(NUM_ENT(pagep));
-	M_16_SWAP(OFFSET(pagep));
-}
-
-#define BYTE_MASK	((1 << INT32_T_BYTE_SHIFT) -1)
 /*
- * Initialize a new bitmap page.  Bitmap pages are left in memory
- * once they are read in.
+ * PUBLIC: int __ham_get_page __P((DB *, db_pgno_t, PAGE **));
  */
-extern int32_t
-__ibitmap(hashp, pnum, nbits, ndx)
-	HTAB *hashp;
-	int32_t pnum, nbits, ndx;
+int
+__ham_get_page(dbp, addr, pagep)
+	DB *dbp;
+	db_pgno_t addr;
+	PAGE **pagep;
 {
-	u_int32_t *ip;
-	int32_t clearbytes, clearints;
+	int ret;
 
-	/* make a new bitmap page */
-	if (__new_page(hashp, pnum, A_BITMAP) != 0)
-		return (1);
-	if (!(ip = (u_int32_t *)__get_page(hashp, pnum, A_BITMAP)))
-		return (1);
-	hashp->nmaps++;
-	clearints = ((nbits - 1) >> INT32_T_BYTE_SHIFT) + 1;
-	clearbytes = clearints << INT32_T_TO_BYTE;
-	(void)memset((int8_t *)ip, 0, clearbytes);
-	(void)memset((int8_t *)ip + clearbytes,
-	    0xFF, hashp->hdr.bsize - clearbytes);
-	ip[clearints - 1] = ALL_SET << (nbits & BYTE_MASK);
-	SETBIT(ip, 0);
-	hashp->hdr.bitmaps[ndx] = (u_int16_t)pnum;
-	hashp->mapp[ndx] = ip;
+	ret = memp_fget(dbp->mpf, &addr, DB_MPOOL_CREATE, pagep);
+#ifdef DEBUG_SLOW
+	if (*pagep != NULL)
+		__account_page((HTAB *)dbp->internal, addr, 1);
+#endif
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __ham_overflow_page __P((DB *, u_int32_t, PAGE **));
+ */
+int
+__ham_overflow_page(dbp, type, pp)
+	DB *dbp;
+	u_int32_t type;
+	PAGE **pp;
+{
+	DB_LSN *lsnp, new_lsn;
+	HTAB *hashp;
+	PAGE *p;
+	db_pgno_t new_addr, next_free, newalloc_flag;
+	u_int32_t offset, splitnum;
+	int ret;
+
+	hashp = (HTAB *)dbp->internal;
+
+	ret = 0;
+	DIRTY_META(hashp, ret);
+	if (ret != 0)
+		return (ret);
+
+	/*
+	 * This routine is split up into two parts.  First we have
+	 * to figure out the address of the new page that we are
+	 * allocating.  Then we have to log the allocation.  Only
+	 * after the log do we get to complete allocation of the
+	 * new page.
+	 */
+	new_addr = hashp->hdr->last_freed;
+	if (new_addr != PGNO_INVALID) {
+		if ((ret = __ham_get_page(hashp->dbp, new_addr, &p)) != 0)
+			return (ret);
+		next_free = NEXT_PGNO(p);
+		lsnp = &LSN(p);
+		newalloc_flag = 0;
+	} else {
+		splitnum = hashp->hdr->ovfl_point;
+		hashp->hdr->spares[splitnum]++;
+		offset = hashp->hdr->spares[splitnum] -
+		    (splitnum ? hashp->hdr->spares[splitnum - 1] : 0);
+		new_addr = PGNO_OF(hashp, hashp->hdr->ovfl_point, offset);
+		if (new_addr > MAX_PAGES(hashp)) {
+			__db_err(hashp->dbp->dbenv, "hash: out of file pages");
+			hashp->hdr->spares[splitnum]--;
+			return (ENOMEM);
+		}
+		next_free = PGNO_INVALID;
+		p = NULL;
+		lsnp = NULL;
+		newalloc_flag = 1;
+	}
+
+	if (DB_LOGGING(hashp->dbp)) {
+		if ((ret = __ham_newpgno_log(hashp->dbp->dbenv->lg_info,
+		    (DB_TXN *)hashp->dbp->txn, &new_lsn, 0, ALLOCPGNO,
+		    hashp->dbp->log_fileid, new_addr, next_free,
+		    0, newalloc_flag, type, lsnp, &hashp->hdr->lsn)) != 0)
+			return (ret);
+
+		hashp->hdr->lsn = new_lsn;
+		if (lsnp != NULL)
+			*lsnp = new_lsn;
+	}
+
+	if (p != NULL) {
+		/* We just took something off the free list, initialize it. */
+		hashp->hdr->last_freed = next_free;
+		P_INIT(p, hashp->hdr->pagesize, PGNO(p), PGNO_INVALID,
+		    PGNO_INVALID, 0, (u_int8_t)type);
+	} else {
+		/* Get the new page. */
+		if ((ret = __ham_new_page(hashp, new_addr, type, &p)) != 0)
+			return (ret);
+	}
+	if (DB_LOGGING(hashp->dbp))
+		LSN(p) = new_lsn;
+
+	*pp = p;
 	return (0);
 }
 
-static u_int32_t
-first_free(map)
-	u_int32_t map;
-{
-	u_int32_t i, mask;
-
-	for (mask = 0x1, i = 0; i < BITS_PER_MAP; i++) {
-		if (!(mask & map))
-			return (i);
-		mask = mask << 1;
-	}
-	return (i);
-}
-
-static u_int16_t
-overflow_page(hashp)
-	HTAB *hashp;
-{
-	u_int32_t *freep;
-	int32_t bit, first_page, free_bit, free_page, i, in_use_bits, j;
-	int32_t max_free, offset, splitnum;
-	u_int16_t addr;
-#ifdef DEBUG2
-	int32_t tmp1, tmp2;
-#endif
-
-	splitnum = hashp->hdr.ovfl_point;
-	max_free = hashp->hdr.spares[splitnum];
-
-	free_page = (max_free - 1) >> (hashp->hdr.bshift + BYTE_SHIFT);
-	free_bit = (max_free - 1) & ((hashp->hdr.bsize << BYTE_SHIFT) - 1);
-
-	/*
-	 * Look through all the free maps to find the first free block.
- 	 * The compiler under -Wall will complain that freep may be used
-	 * before being set, however, this loop will ALWAYS get executed
-	 * at least once, so freep is guaranteed to be set.
-	 */
-	first_page = hashp->hdr.last_freed >> (hashp->hdr.bshift + BYTE_SHIFT);
-	for (i = first_page; i <= free_page; i++) {
-		if (!(freep = fetch_bitmap(hashp, i)))
-			return (0);
-		if (i == free_page)
-			in_use_bits = free_bit;
-		else
-			in_use_bits = (hashp->hdr.bsize << BYTE_SHIFT) - 1;
-
-		if (i == first_page) {
-			bit = hashp->hdr.last_freed &
-			    ((hashp->hdr.bsize << BYTE_SHIFT) - 1);
-			j = bit / BITS_PER_MAP;
-			bit = bit & ~(BITS_PER_MAP - 1);
-		} else {
-			bit = 0;
-			j = 0;
-		}
-		for (; bit <= in_use_bits; j++, bit += BITS_PER_MAP)
-			if (freep[j] != ALL_SET)
-				goto found;
-	}
-
-	/* No Free Page Found */
-	hashp->hdr.last_freed = hashp->hdr.spares[splitnum];
-	hashp->hdr.spares[splitnum]++;
-	offset = hashp->hdr.spares[splitnum] -
-	    (splitnum ? hashp->hdr.spares[splitnum - 1] : 0);
-
-#define	OVMSG	"HASH: Out of overflow pages.  Increase page size\n"
-
-	if (offset > SPLITMASK) {
-		if (++splitnum >= NCACHED) {
-			(void)write(STDERR_FILENO, OVMSG, sizeof(OVMSG) - 1);
-			return (0);
-		}
-		hashp->hdr.ovfl_point = splitnum;
-		hashp->hdr.spares[splitnum] = hashp->hdr.spares[splitnum - 1];
-		hashp->hdr.spares[splitnum - 1]--;
-		offset = 1;
-	}
-	/* Check if we need to allocate a new bitmap page. */
-	if (free_bit == (hashp->hdr.bsize << BYTE_SHIFT) - 1) {
-		free_page++;
-		if (free_page >= NCACHED) {
-			(void)write(STDERR_FILENO, OVMSG, sizeof(OVMSG) - 1);
-			return (0);
-		}
-		/*
-		 * This is tricky.  The 1 indicates that you want the new page
-		 * allocated with 1 clear bit.  Actually, you are going to
-		 * allocate 2 pages from this map.  The first is going to be
-		 * the map page, the second is the overflow page we were
-		 * looking for.  The __ibitmap routine automatically, sets
-		 * the first bit of itself to indicate that the bitmap itself
-		 * is in use.  We would explicitly set the second bit, but
-		 * don't have to if we tell __ibitmap not to leave it clear
-		 * in the first place.
-		 */
-		if (__ibitmap(hashp,
-		    (int32_t)OADDR_OF(splitnum, offset), 1, free_page))
-			return (0);
-		hashp->hdr.spares[splitnum]++;
-#ifdef DEBUG2
-		free_bit = 2;
-#endif
-		offset++;
-		if (offset > SPLITMASK) {
-			if (++splitnum >= NCACHED) {
-				(void)write(STDERR_FILENO,
-				    OVMSG, sizeof(OVMSG) - 1);
-				return (0);
-			}
-			hashp->hdr.ovfl_point = splitnum;
-			hashp->hdr.spares[splitnum] =
-			    hashp->hdr.spares[splitnum - 1];
-			hashp->hdr.spares[splitnum - 1]--;
-			offset = 0;
-		}
-	} else {
-		/*
-		 * Free_bit addresses the last used bit.  Bump it to address
-		 * the first available bit.
-		 */
-		free_bit++;
-		SETBIT(freep, free_bit);
-	}
-
-	/* Calculate address of the new overflow page */
-	addr = OADDR_OF(splitnum, offset);
-#ifdef DEBUG2
-	(void)fprintf(stderr, "OVERFLOW_PAGE: ADDR: %d BIT: %d PAGE %d\n",
-	    addr, free_bit, free_page);
-#endif
-
-	if (OADDR_TO_PAGE(addr) > MAX_PAGES(hashp)) {
-		(void)write(STDERR_FILENO, OVMSG, sizeof(OVMSG) - 1);
-		return (0);
-	}
-	return (addr);
-
-found:
-	bit = bit + first_free(freep[j]);
-	SETBIT(freep, bit);
-#ifdef DEBUG2
-	tmp1 = bit;
-	tmp2 = i;
-#endif
-	/*
-	 * Bits are addressed starting with 0, but overflow pages are addressed
-	 * beginning at 1. Bit is a bit address number, so we need to increment
-	 * it to convert it to a page number.
-	 */
-	bit = 1 + bit + (i * (hashp->hdr.bsize << BYTE_SHIFT));
-	if (bit >= hashp->hdr.last_freed)
-		hashp->hdr.last_freed = bit - 1;
-
-	/* Calculate the split number for this page */
-	for (i = 0; i < splitnum && (bit > hashp->hdr.spares[i]); i++);
-	offset = (i ? bit - hashp->hdr.spares[i - 1] : bit);
-	if (offset >= SPLITMASK)
-		return (0);	/* Out of overflow pages */
-	addr = OADDR_OF(i, offset);
-#ifdef DEBUG2
-	(void)fprintf(stderr, "OVERFLOW_PAGE: ADDR: %d BIT: %d PAGE %d\n",
-	    addr, tmp1, tmp2);
-#endif
-
-	if (OADDR_TO_PAGE(addr) > MAX_PAGES(hashp)) {
-		(void)write(STDERR_FILENO, OVMSG, sizeof(OVMSG) - 1);
-		return (0);
-	}
-	/* Allocate and return the overflow page */
-	return (addr);
-}
-
 #ifdef DEBUG
-int
-bucket_to_page(hashp, n)
+/*
+ * PUBLIC: #ifdef DEBUG
+ * PUBLIC: db_pgno_t __bucket_to_page __P((HTAB *, db_pgno_t));
+ * PUBLIC: #endif
+ */
+db_pgno_t
+__bucket_to_page(hashp, n)
 	HTAB *hashp;
-	int n;
+	db_pgno_t n;
 {
 	int ret_val;
 
-	ret_val = n + hashp->hdr.hdrpages;
+	ret_val = n + 1;
 	if (n != 0)
-		ret_val += hashp->hdr.spares[__log2(n + 1) - 1];
+		ret_val += hashp->hdr->spares[__db_log2(n + 1) - 1];
 	return (ret_val);
 }
-
-int32_t
-oaddr_to_page(hashp, n)
-	HTAB *hashp;
-	int n;
-{
-	int ret_val, temp;
-
-	temp = (1 << SPLITNUM(n)) - 1;
-	ret_val = bucket_to_page(hashp, temp);
-	ret_val += (n & SPLITMASK);
-
-	return (ret_val);
-}
-#endif /* DEBUG */
-
-indx_t
-page_to_oaddr(hashp, pgno)
-	HTAB *hashp;
-	pgno_t pgno;
-{
-	int32_t sp, ret_val;
-
-	/*
-	 * To convert page number to overflow address:
-	 *
-	 * 1.  Find a starting split point -- use 0 since there are only
-	 *     32 split points.
-	 * 2.  Find the split point s.t. 2^sp + hdr.spares[sp] < pgno and
-	 *     2^(sp+1) = hdr.spares[sp+1] > pgno.  The overflow address will
-	 *     be located at sp.
-	 * 3.  return...
-	 */
-	pgno -= hashp->hdr.hdrpages;
-	for (sp = 0; sp < NCACHED; sp++)
-		if (POW2(sp) + hashp->hdr.spares[sp] < pgno &&
-		    (POW2(sp + 1) + hashp->hdr.spares[sp + 1]) > pgno)
-			break;
-
-	ret_val = OADDR_OF(sp + 1,
-	    pgno - ((POW2(sp + 1) - 1) + hashp->hdr.spares[sp]));
-#ifdef DEBUG
-	assert(OADDR_TO_PAGE(ret_val) == (pgno + hashp->hdr.hdrpages));
 #endif
-	return (ret_val);
+
+/*
+ * Create a bunch of overflow pages at the current split point.
+ * PUBLIC: void __ham_init_ovflpages __P((HTAB *));
+ */
+void
+__ham_init_ovflpages(hp)
+	HTAB *hp;
+{
+	DB_LSN new_lsn;
+	PAGE *p;
+	db_pgno_t last_pgno, new_pgno;
+	u_int32_t i, curpages, numpages;
+
+	curpages = hp->hdr->spares[hp->hdr->ovfl_point] -
+	    hp->hdr->spares[hp->hdr->ovfl_point - 1];
+	numpages = hp->hdr->ovfl_point + 1 - curpages;
+
+	last_pgno = hp->hdr->last_freed;
+	new_pgno = PGNO_OF(hp, hp->hdr->ovfl_point, curpages + 1);
+	if (DB_LOGGING(hp->dbp)) {
+		(void)__ham_ovfl_log(hp->dbp->dbenv->lg_info,
+		    (DB_TXN *)hp->dbp->txn, &new_lsn, 0,
+		    hp->dbp->log_fileid, new_pgno,
+		    numpages, last_pgno, hp->hdr->ovfl_point, &hp->hdr->lsn);
+		hp->hdr->lsn = new_lsn;
+	} else
+		ZERO_LSN(new_lsn);
+
+	hp->hdr->spares[hp->hdr->ovfl_point] += numpages;
+	for (i = numpages; i > 0; i--) {
+		if (__ham_new_page(hp,
+		    PGNO_OF(hp, hp->hdr->ovfl_point, curpages + i),
+		    P_INVALID, &p) != 0)
+			break;
+		LSN(p) = new_lsn;
+		NEXT_PGNO(p) = last_pgno;
+		last_pgno = PGNO(p);
+		(void)__ham_put_page(hp->dbp, p, 1);
+	}
+	hp->hdr->last_freed = last_pgno;
 }
 
 /*
- * Mark this overflow page as free.
+ * PUBLIC: int __ham_get_cpage __P((HTAB *, HASH_CURSOR *, db_lockmode_t));
  */
-extern void
-__free_ovflpage(hashp, pagep)
+int
+__ham_get_cpage(hashp, hcp, mode)
 	HTAB *hashp;
-	PAGE16 *pagep;
+	HASH_CURSOR *hcp;
+	db_lockmode_t mode;
 {
-	u_int32_t *freep;
-	int32_t bit_address, free_page, free_bit;
-	u_int16_t addr, ndx;
+	int ret;
 
-	addr = page_to_oaddr(hashp, ADDR(pagep));
+	if (hcp->lock == 0 && F_ISSET(hashp->dbp, DB_AM_LOCKING) &&
+	    (ret = __ham_lock_bucket(hashp->dbp, hcp, mode)) != 0)
+		return (ret);
 
-#ifdef DEBUG2
-	(void)fprintf(stderr, "Freeing %d\n", addr);
-#endif
-	ndx = ((u_int16_t)addr) >> SPLITSHIFT;
-	bit_address =
-	    (ndx ? hashp->hdr.spares[ndx - 1] : 0) + (addr & SPLITMASK) - 1;
-	if (bit_address < hashp->hdr.last_freed)
-		hashp->hdr.last_freed = bit_address;
-	free_page = (bit_address >> (hashp->hdr.bshift + BYTE_SHIFT));
-	free_bit = bit_address & ((hashp->hdr.bsize << BYTE_SHIFT) - 1);
-
-	freep = fetch_bitmap(hashp, free_page);
-#ifdef DEBUG
-	/*
-	 * This had better never happen.  It means we tried to read a bitmap
-	 * that has already had overflow pages allocated off it, and we
-	 * failed to read it from the file.
-	 */
-	if (!freep)
-		assert(0);
-#endif
-	CLRBIT(freep, free_bit);
-#ifdef DEBUG2
-	(void)fprintf(stderr, "FREE_OVFLPAGE: ADDR: %d BIT: %d PAGE %d\n",
-	    obufp->addr, free_bit, free_page);
-#endif
-}
-
-static u_int32_t *
-fetch_bitmap(hashp, ndx)
-	HTAB *hashp;
-	int32_t ndx;
-{
-	if (ndx >= hashp->nmaps)
-		return (NULL);
-	if (!hashp->mapp[ndx])
-	    hashp->mapp[ndx] = (u_int32_t *)__get_page(hashp,
-	        hashp->hdr.bitmaps[ndx], A_BITMAP);
-
-	return (hashp->mapp[ndx]);
-}
-
-static void
-adjust_cursor(hashp, ndx, chg_pgno, nxt_pgno, page_deleted)
-	HTAB *hashp;
-	int32_t ndx;
-	pgno_t chg_pgno;
-	pgno_t nxt_pgno;
-	int page_deleted;
-{
-	CURSOR *cp;
-
-	for (cp = (CURSOR *)hashp->curs_queue.tqh_first;
-		cp != NULL;
-		cp = (CURSOR *)cp->queue.tqe_next) {
-		if (cp->pgno == chg_pgno && ndx < cp->pgndx) {
-			if (page_deleted) {
-				if (nxt_pgno == INVALID_PGNO) {
-					cp->bucket++;
-					cp->pgno = INVALID_PGNO;
-				} else {
-					cp->pgno = nxt_pgno;
-					cp->pgndx = 0;
-				}
-				if (cp->pagep) {
-					__put_page(hashp, cp->pagep, A_RAW, 0);
-					cp->pagep == NULL;
-				}
-			} else {
-				cp->pgndx--;
-				cp->ndx--;
-			}
+	if (hcp->pagep == NULL) {
+		if (hcp->pgno == PGNO_INVALID) {
+			hcp->pgno = BUCKET_TO_PAGE(hashp, hcp->bucket);
+			hcp->bndx = 0;
 		}
+
+		if ((ret =
+		    __ham_get_page(hashp->dbp, hcp->pgno, &hcp->pagep)) != 0)
+			return (ret);
 	}
+
+	if (hcp->dpgno != PGNO_INVALID && hcp->dpagep == NULL)
+		if ((ret =
+		    __ham_get_page(hashp->dbp, hcp->dpgno, &hcp->dpagep)) != 0)
+			return (ret);
+	return (0);
+}
+
+/*
+ * Get a new page at the cursor, putting the last page if necessary.
+ * If the flag is set to H_ISDUP, then we are talking about the
+ * duplicate page, not the main page.
+ *
+ * PUBLIC: int __ham_next_cpage
+ * PUBLIC:    __P((HTAB *, HASH_CURSOR *, db_pgno_t, int, u_int32_t));
+ */
+int
+__ham_next_cpage(hashp, hcp, pgno, dirty, flags)
+	HTAB *hashp;
+	HASH_CURSOR *hcp;
+	db_pgno_t pgno;
+	int dirty;
+	u_int32_t flags;
+{
+	PAGE *p;
+	int ret;
+
+	if (LF_ISSET(H_ISDUP) && hcp->dpagep != NULL &&
+	    (ret = __ham_put_page(hashp->dbp, hcp->dpagep, dirty)) != 0)
+		return (ret);
+	else if (!LF_ISSET(H_ISDUP) && hcp->pagep != NULL &&
+	    (ret = __ham_put_page(hashp->dbp, hcp->pagep, dirty)) != 0)
+		return (ret);
+
+	if ((ret = __ham_get_page(hashp->dbp, pgno, &p)) != 0)
+		return (ret);
+
+	if (LF_ISSET(H_ISDUP)) {
+		hcp->dpagep = p;
+		hcp->dpgno = pgno;
+		hcp->dndx = 0;
+	} else {
+		hcp->pagep = p;
+		hcp->pgno = pgno;
+		hcp->bndx = 0;
+	}
+
+	return (0);
+}
+
+/*
+ * __ham_lock_bucket --
+ *	Get the lock on a particular bucket.
+ */
+static int
+__ham_lock_bucket(dbp, hcp, mode)
+	DB *dbp;
+	HASH_CURSOR *hcp;
+	db_lockmode_t mode;
+{
+	int ret;
+
+	/*
+	 * What a way to trounce on the memory system.  It might be
+	 * worth copying the lk_info into the hashp.
+	 */
+	ret = 0;
+	dbp->lock.pgno = (db_pgno_t)(hcp->bucket);
+	ret = lock_get(dbp->dbenv->lk_info,
+	    dbp->txn == NULL ?  dbp->locker : dbp->txn->txnid, 0,
+	    &dbp->lock_dbt, mode, &hcp->lock);
+
+	return (ret < 0 ? EAGAIN : ret);
+}
+
+/*
+ * __ham_dpair --
+ *	Delete a pair on a page, paying no attention to what the pair
+ *	represents.  The caller is responsible for freeing up duplicates
+ *	or offpage entries that might be referenced by this pair.
+ *
+ * PUBLIC: void __ham_dpair __P((DB *, PAGE *, u_int32_t));
+ */
+void
+__ham_dpair(dbp, p, pndx)
+	DB *dbp;
+	PAGE *p;
+	u_int32_t pndx;
+{
+	db_indx_t delta, n;
+	u_int8_t *dest, *src;
+
+	/*
+	 * Compute "delta", the amount we have to shift all of the
+	 * offsets.  To find the delta, we just need to calculate
+	 * the size of the pair of elements we are removing.
+	 */
+	delta = H_PAIRSIZE(p, dbp->pgsize, pndx);
+
+	/*
+	 * The hard case: we want to remove something other than
+	 * the last item on the page.  We need to shift data and
+	 * offsets down.
+	 */
+	if ((db_indx_t)pndx != H_NUMPAIRS(p) - 1) {
+		/*
+		 * Move the data: src is the first occupied byte on
+		 * the page. (Length is delta.)
+		 */
+		src = (u_int8_t *)p + HOFFSET(p);
+
+		/*
+		 * Destination is delta bytes beyond src.  This might
+		 * be an overlapping copy, so we have to use memmove.
+		 */
+		dest = src + delta;
+		memmove(dest, src, p->inp[H_DATAINDEX(pndx)] - HOFFSET(p));
+	}
+
+	/* Adjust the offsets. */
+	for (n = (db_indx_t)pndx; n < (db_indx_t)(H_NUMPAIRS(p) - 1); n++) {
+		p->inp[H_KEYINDEX(n)] = p->inp[H_KEYINDEX(n+1)] + delta;
+		p->inp[H_DATAINDEX(n)] = p->inp[H_DATAINDEX(n+1)] + delta;
+	}
+
+	/* Adjust page metadata. */
+	HOFFSET(p) = HOFFSET(p) + delta;
+	NUM_ENT(p) = NUM_ENT(p) - 2;
 }
 
 #ifdef DEBUG_SLOW
 static void
-account_page(hashp, pgno, inout)
+__account_page(hashp, pgno, inout)
 	HTAB *hashp;
-	pgno_t pgno;
+	db_pgno_t pgno;
 	int inout;
 {
 	static struct {
-		pgno_t pgno;
+		db_pgno_t pgno;
 		int times;
 	} list[100];
 	static int last;
@@ -1404,9 +1861,10 @@ account_page(hashp, pgno, inout)
 		last--;
 	}
 	for (i = 0; i < last; i++, list[i].times++)
-		if (list[i].times > 20 && !is_bitmap_pgno(hashp, list[i].pgno))
+		if (list[i].times > 20 &&
+		    !__is_bitmap_pgno(hashp, list[i].pgno))
 			(void)fprintf(stderr,
-			    "Warning: pg %d has been out for %d times\n",
-			    list[i].pgno, list[i].times);
+			    "Warning: pg %lu has been out for %d times\n",
+			    (u_long)list[i].pgno, list[i].times);
 }
 #endif /* DEBUG_SLOW */
