@@ -1,4 +1,4 @@
-<!--$Id: db_create.so,v 10.18 2001/05/05 01:49:10 bostic Exp $-->
+<!--$Id: db_create.so,v 10.19 2001/07/26 22:58:15 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -25,9 +25,11 @@ int
 db_create(DB **dbp, DB_ENV *dbenv, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The db_create function creates a DB structure that is the
+<p>The db_create function creates a <a href="../api_c/db_create.html">DB</a> structure that is the
 handle for a Berkeley DB database.  A pointer to this structure is returned
-in the memory to which <b>db</b> refers.
+in the memory to which <b>db</b> refers.  Calling the
+<a href="../api_c/db_close.html">DB-&gt;close</a>, <a href="../api_c/db_remove.html">DB-&gt;remove</a> or <a href="../api_c/db_rename.html">DB-&gt;rename</a> functions will
+discard the returned handle.
 <p>If the <b>dbenv</b> argument is NULL, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
 <p>If the <b>dbenv</b> argument is not NULL, the database is created
@@ -46,7 +48,7 @@ specified by the OPENINFO parameter of the GROUPS section of the
 ubbconfig file.  See the <a href="../ref/xa/xa_intro.html">XA
 Introduction</a> section in the Berkeley DB Reference Guide for more information.
 </dl>
-<p>The DB handle contains a special field, "app_private", which
+<p>The <a href="../api_c/db_create.html">DB</a> handle contains a special field, "app_private", which
 is declared as type "void *".  This field is provided for the use of
 the application program.  It is initialized to NULL and is not further
 used by Berkeley DB in any way.

@@ -8,21 +8,45 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_errno.c,v 11.5 2001/04/05 18:58:35 bostic Exp $";
+static const char revid[] = "$Id: os_errno.c,v 11.7 2001/09/04 21:09:36 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
 
 /*
+ * __os_get_errno_ret_zero --
+ *	Return the value of errno, even if it's zero.
+ *
+ * PUBLIC: int __os_get_errno_ret_zero __P((void));
+ */
+int
+__os_get_errno_ret_zero()
+{
+	/* This routine must be able to return the same value repeatedly. */
+	return (errno);
+}
+
+/*
  * __os_get_errno --
- *	Return the value of errno.
+ *	Return the value of errno, or EAGAIN if errno is zero.
  *
  * PUBLIC: int __os_get_errno __P((void));
  */
 int
 __os_get_errno()
 {
-	/* This routine must be able to return the same value repeatedly. */
+	/*
+	 * This routine must be able to return the same value repeatedly.
+	 *
+	 * We've seen cases where system calls failed but errno was never set.
+	 * This version of __os_get_errno() sets errno to EAGAIN if it's not
+	 * already set, to work around that problem.  For obvious reasons, we
+	 * can only call this function if we know an error has occurred, that
+	 * is, we can't test errno for a non-zero value after this call.
+	 */
+	if (errno == 0)
+		__os_set_errno(EAGAIN);
+
 	return (errno);
 }
 

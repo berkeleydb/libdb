@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test072.tcl,v 11.17 2001/05/24 15:42:31 krinsky Exp $
+# $Id: test072.tcl,v 11.22 2001/08/04 14:03:51 bostic Exp $
 #
-# DB Test 72: Test of cursor stability when duplicates are moved off-page.
+# TEST	test072
+# TEST	Test of cursor stability when duplicates are moved off-page.
 proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 	source ./include.tcl
 	global alphabet
@@ -53,9 +54,10 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 
 	append args " -pagesize $pagesize "
 
-	foreach dupopt { "-dup" "-dup -dupsort" } {
-		set db [eval {berkdb_open -create -truncate -mode 0644} \
-		    $omethod $args $dupopt $testfile]
+	foreach { dupopt testid } { "-dup" 1 "-dup -dupsort" 2 } {
+		set duptestfile $testfile$testid
+		set db [eval {berkdb_open -create -mode 0644} \
+		    $omethod $args $dupopt $duptestfile]
 		error_check_good "db open" [is_valid_db $db] TRUE
 
 		puts \
@@ -83,7 +85,7 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 			# error_check_good db_sync($i) [$db sync] 0
 			# error_check_good db_dump($i) \
 			#     [catch {exec $util_path/db_dump \
-			#	-da $testfile > TESTDIR/out.$i}] 0
+			#	-da $duptestfile > $testdir/out.$i}] 0
 
 			error_check_good "db put ($i)" [$db put $key $datum] 0
 
@@ -153,7 +155,7 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 			# error_check_good db_sync($i) [$db sync] 0
 			# error_check_good db_dump($i) \
 			#     [catch {exec $util_path/db_dump \
-			# 	-da $testfile > TESTDIR/out.$i}] 0
+			# 	-da $duptestfile > $testdir/out.$i}] 0
 
 			error_check_good "db put ($i)" [$db put $key $datum] 0
 

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_recno.c,v 11.81 2001/07/02 01:05:35 bostic Exp $";
+static const char revid[] = "$Id: bt_recno.c,v 11.86 2001/10/04 18:07:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,7 +25,6 @@ static const char revid[] = "$Id: bt_recno.c,v 11.81 2001/07/02 01:05:35 bostic 
 #include "db_ext.h"
 #include "db_shash.h"
 #include "lock.h"
-#include "lock_ext.h"
 #include "qam.h"
 #include "txn.h"
 
@@ -226,9 +225,14 @@ __ram_c_del(dbc)
 		goto err;
 	}
 	stack = 1;
+
+	/* Copy the page into the cursor, discarding any currently held lock. */
 	cp->page = cp->csp->page;
 	cp->pgno = cp->csp->page->pgno;
 	cp->indx = cp->csp->indx;
+	(void)__TLPUT(dbc, cp->lock);
+	cp->lock = cp->csp->lock;
+	cp->lock_mode = cp->csp->lock_mode;
 
 	/*
 	 * If re-numbering records, the on-page deleted flag can only mean
@@ -436,6 +440,7 @@ retry:	switch (flags) {
 		goto err;
 		/* NOTREACHED */
 	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
 		/*
 		 * If we're searching a set of off-page dups, we start
 		 * a new linear search from the first record.  Otherwise,
@@ -482,8 +487,8 @@ retry:	switch (flags) {
 		}
 
 		/*
-		 * Copy the page into the cursor, discarding any lock we
-		 * are currently holding.
+		 * Copy the page into the cursor, discarding any currently
+		 * held lock.
 		 */
 		cp->page = cp->csp->page;
 		cp->pgno = cp->csp->page->pgno;
@@ -508,13 +513,13 @@ retry:	switch (flags) {
 				(void)__bam_stkrel(dbc, STK_CLRDBC);
 				goto retry;
 			case DB_GET_BOTH:
+			case DB_GET_BOTH_RANGE:
 				/*
-				 * If we're an OPD tree, we don't care
-				 * about matching a record number on a
-				 * DB_GET_BOTH--everything belongs to the
-				 * same tree.  A normal recno should give
-				 * up and return DB_NOTFOUND if the matching
-				 * recno is deleted.
+				 * If we're an OPD tree, we don't care about
+				 * matching a record number on a DB_GET_BOTH
+				 * -- everything belongs to the same tree.  A
+				 * normal recno should give up and return
+				 * DB_NOTFOUND if the matching recno is deleted.
 				 */
 				if (F_ISSET(dbc, DBC_OPD)) {
 					(void)__bam_stkrel(dbc, STK_CLRDBC);
@@ -527,7 +532,8 @@ retry:	switch (flags) {
 				goto err;
 			}
 
-		if (flags == DB_GET_BOTH || flags == DB_GET_BOTHC) {
+		if (flags == DB_GET_BOTH ||
+		    flags == DB_GET_BOTHC || flags == DB_GET_BOTH_RANGE) {
 			if ((ret = __bam_cmp(dbp, data,
 			    cp->page, cp->indx, __bam_defcmp, &cmp)) != 0)
 				return (ret);
@@ -1071,12 +1077,14 @@ __ram_writeback(dbp)
 	/*
 	 * We step through the records, writing each one out.  Use the record
 	 * number and the dbp->get() function, instead of a cursor, so we find
-	 * and write out "deleted" or non-existent records.
+	 * and write out "deleted" or non-existent records.  The DB handle may
+	 * be threaded, so allocate memory as we go.
 	 */
 	memset(&key, 0, sizeof(key));
-	memset(&data, 0, sizeof(data));
 	key.size = sizeof(db_recno_t);
 	key.data = &keyno;
+	memset(&data, 0, sizeof(data));
+	F_SET(&data, DB_DBT_MALLOC);
 
 	/*
 	 * We'll need the delimiter if we're doing variable-length records,
@@ -1092,17 +1100,21 @@ __ram_writeback(dbp)
 	for (keyno = 1;; ++keyno) {
 		switch (ret = dbp->get(dbp, NULL, &key, &data, 0)) {
 		case 0:
-			if (fwrite(data.data, 1, data.size, fp) != data.size)
+			if (data.size != 0 && (u_int32_t)fwrite(
+			    data.data, 1, data.size, fp) != data.size)
 				goto write_err;
 			break;
 		case DB_KEYEMPTY:
 			if (F_ISSET(dbp, DB_RE_FIXEDLEN) &&
-			    fwrite(pad, 1, t->re_len, fp) != t->re_len)
+			    (u_int32_t)fwrite(pad, 1, t->re_len, fp) !=
+			    t->re_len)
 				goto write_err;
 			break;
 		case DB_NOTFOUND:
 			ret = 0;
 			goto done;
+		default:
+			goto err;
 		}
 		if (!F_ISSET(dbp, DB_RE_FIXEDLEN) &&
 		    fwrite(&delim, 1, 1, fp) != 1) {
@@ -1125,6 +1137,10 @@ done:	/* Close the file descriptor. */
 	/* Discard the cursor. */
 	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
+
+	/* Discard memory allocated to hold the data items. */
+	if (data.data != NULL)
+		__os_free(dbenv, data.data, data.ulen);
 
 	if (ret == 0)
 		t->re_modified = 0;

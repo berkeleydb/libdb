@@ -4,8 +4,10 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_shash.h,v 11.8 2001/01/25 18:22:50 bostic Exp $
+ * $Id: db_shash.h,v 11.9 2001/10/04 12:48:04 bostic Exp $
  */
+#ifndef	_DB_SHASH_H_
+#define	_DB_SHASH_H_
 
 /* Hash Headers */
 typedef	SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
@@ -75,3 +77,4 @@ typedef	SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 	__bucket = &begin[ndx];						\
 	SH_TAILQ_REMOVE(__bucket, obj, field, type);			\
 }
+#endif /* !_DB_SHASH_H_ */

@@ -3,15 +3,17 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test010.tcl,v 11.15 2001/01/25 18:23:09 bostic Exp $
+# $Id: test010.tcl,v 11.17 2001/08/03 16:39:33 bostic Exp $
 #
-# DB Test 10 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; add duplicate
-# records for each.
-# After all are entered, retrieve all; verify output.
-# Close file, reopen, do retrieve and re-verify.
-# This does not work for recno
+# TEST	test010
+# TEST	Duplicate test
+# TEST		Small key/data pairs.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; add duplicate records for each.
+# TEST	After all are entered, retrieve all; verify output.
+# TEST	Close file, reopen, do retrieve and re-verify.
+# TEST	This does not work for recno
 proc test010 { method {nentries 10000} {ndups 5} {tnum 10} args } {
 	source ./include.tcl
 
@@ -47,7 +49,7 @@ proc test010 { method {nentries 10000} {ndups 5} {tnum 10} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
+	     -create -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

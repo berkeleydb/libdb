@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_put.c,v 11.59 2001/07/02 01:05:35 bostic Exp $";
+static const char revid[] = "$Id: bt_put.c,v 11.60 2001/07/24 18:30:59 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -80,6 +80,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT bk_hdr, tdbt;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_indx_t indx;
 	u_int32_t data_size, have_bytes, need_bytes, needed;
@@ -88,6 +89,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	COMPQUIET(bk, NULL);
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
 	h = cp->page;
@@ -357,7 +359,7 @@ len_err:		__db_err(dbp->dbenv,
 		if (ret != 0)
 			return (ret);
 	}
-	if ((ret = memp_fset(dbp->mpf, h, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->set(mpf, h, DB_MPOOL_DIRTY)) != 0)
 		return (ret);
 
 	/*
@@ -679,11 +681,13 @@ __bam_dup_convert(dbc, h, indx)
 	BKEYDATA *bk;
 	DB *dbp;
 	DBT hdr;
+	DB_MPOOLFILE *mpf;
 	PAGE *dp;
 	db_indx_t cnt, cpindx, dindx, first, sz;
 	int ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 
 	/*
 	 * Count the duplicate records and calculate how much room they're
@@ -796,9 +800,9 @@ __bam_dup_convert(dbc, h, indx)
 	    PGNO(h), first + P_INDX, first + P_INDX - indx)) != 0)
 		goto err;
 
-	return (memp_fput(dbp->mpf, dp, DB_MPOOL_DIRTY));
+	return (mpf->put(mpf, dp, DB_MPOOL_DIRTY));
 
-err:	(void)memp_fput(dbp->mpf, dp, 0);
+err:	(void)mpf->put(mpf, dp, 0);
 	return (ret);
 }
 

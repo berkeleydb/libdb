@@ -3,19 +3,23 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test031.tcl,v 11.18 2001/01/25 18:23:10 bostic Exp $
+# $Id: test031.tcl,v 11.20 2001/08/03 16:39:38 bostic Exp $
 #
-# DB Test 31 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and "ndups" duplicates
-# For the data field, prepend random five-char strings (see test032)
-# that we force the duplicate sorting code to do something.
-# Along the way, test that we cannot insert duplicate duplicates
-# using DB_NODUPDATA.
-# By setting ndups large, we can make this an off-page test
-# After all are entered, retrieve all; verify output.
-# Close file, reopen, do retrieve and re-verify.
-# This does not work for recno
+# TEST	test031
+# TEST	Duplicate sorting functionality
+# TEST	Make sure DB_NODUPDATA works.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and "ndups" duplicates
+# TEST	For the data field, prepend random five-char strings (see test032)
+# TEST	that we force the duplicate sorting code to do something.
+# TEST	Along the way, test that we cannot insert duplicate duplicates
+# TEST	using DB_NODUPDATA.
+# TEST
+# TEST	By setting ndups large, we can make this an off-page test
+# TEST	After all are entered, retrieve all; verify output.
+# TEST	Close file, reopen, do retrieve and re-verify.
+# TEST	This does not work for recno
 proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	global alphabet
 	global rand_init
@@ -53,13 +57,13 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb_open -create -truncate \
+	set db [eval {berkdb_open -create \
 		-mode 0644} $args {$omethod -dup -dupsort $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	set check_db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {-hash $checkdb}]
+	     -create -mode 0644} $args {-hash $checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""

@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test022.tcl,v 11.11 2001/01/25 18:23:09 bostic Exp $
+# $Id: test022.tcl,v 11.12 2001/08/03 16:39:37 bostic Exp $
 #
-# Test022: Test of DB->get_byteswapped
+# TEST	test022
+# TEST	Test of DB->getbyteswapped().
 proc test022 { method args } {
 	source ./include.tcl
 

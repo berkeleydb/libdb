@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_overflow.c,v 11.33 2001/06/14 20:56:40 krinsky Exp $";
+static const char revid[] = "$Id: db_overflow.c,v 11.36 2001/10/30 19:42:15 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -83,6 +83,7 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 	u_int32_t *bpsz;
 {
 	DB_ENV *dbenv;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_indx_t bytes;
 	u_int32_t curoff, needed, start;
@@ -90,6 +91,7 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 	int ret;
 
 	dbenv = dbp->dbenv;
+	mpf = dbp->mpf;
 
 	/*
 	 * Check if the buffer is big enough; if it is not and we are
@@ -136,10 +138,9 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 	 */
 	dbt->size = needed;
 	for (curoff = 0, p = dbt->data; pgno != PGNO_INVALID && needed > 0;) {
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0) {
-			(void)__db_pgerr(dbp, pgno);
+		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			return (ret);
-		}
+
 		/* Check if we need any bytes from this page. */
 		if (curoff + OV_LEN(h) >= start) {
 			src = (u_int8_t *)h + P_OVERHEAD;
@@ -156,7 +157,7 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 		}
 		curoff += OV_LEN(h);
 		pgno = h->next_pgno;
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 	}
 	return (0);
 }
@@ -174,9 +175,10 @@ __db_poff(dbc, dbt, pgnop)
 	db_pgno_t *pgnop;
 {
 	DB *dbp;
-	PAGE *pagep, *lastp;
-	DB_LSN new_lsn, null_lsn;
 	DBT tmp_dbt;
+	DB_LSN new_lsn, null_lsn;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep, *lastp;
 	db_indx_t pagespace;
 	u_int32_t sz;
 	u_int8_t *p;
@@ -188,6 +190,7 @@ __db_poff(dbc, dbt, pgnop)
 	 * item.
 	 */
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	pagespace = P_MAXSPACE(dbp->pgsize);
 
 	ret = 0;
@@ -219,7 +222,7 @@ __db_poff(dbc, dbt, pgnop)
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
 			    &null_lsn)) != 0) {
 				if (lastp != NULL)
-					(void)memp_fput(dbp->mpf,
+					(void)mpf->put(mpf,
 					    lastp, DB_MPOOL_DIRTY);
 				lastp = pagep;
 				break;
@@ -247,12 +250,11 @@ __db_poff(dbc, dbt, pgnop)
 		else {
 			lastp->next_pgno = PGNO(pagep);
 			pagep->prev_pgno = PGNO(lastp);
-			(void)memp_fput(dbp->mpf, lastp, DB_MPOOL_DIRTY);
+			(void)mpf->put(mpf, lastp, DB_MPOOL_DIRTY);
 		}
 		lastp = pagep;
 	}
-	if ((t_ret =
-	    memp_fput(dbp->mpf, lastp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret = mpf->put(mpf, lastp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -270,11 +272,14 @@ __db_ovref(dbc, pgno, adjust)
 	int32_t adjust;
 {
 	DB *dbp;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	int ret;
 
 	dbp = dbc->dbp;
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0) {
+	mpf = dbp->mpf;
+
+	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0) {
 		(void)__db_pgerr(dbp, pgno);
 		return (ret);
 	}
@@ -282,13 +287,15 @@ __db_ovref(dbc, pgno, adjust)
 	if (DB_LOGGING(dbc)) {
 		if ((ret = __db_ovref_log(dbp->dbenv, dbc->txn,
 		    &LSN(h), 0, dbp->log_fileid, h->pgno, adjust,
-		    &LSN(h))) != 0)
+		    &LSN(h))) != 0) {
+			(void)mpf->put(mpf, h, 0);
 			return (ret);
+		}
 	} else
 		LSN_NOT_LOGGED(LSN(h));
 	OV_REF(h) += adjust;
 
-	(void)memp_fput(dbp->mpf, h, DB_MPOOL_DIRTY);
+	(void)mpf->put(mpf, h, DB_MPOOL_DIRTY);
 	return (0);
 }
 
@@ -306,12 +313,15 @@ __db_doff(dbc, pgno)
 	DB *dbp;
 	PAGE *pagep;
 	DB_LSN null_lsn;
+	DB_MPOOLFILE *mpf;
 	DBT tmp_dbt;
 	int ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
+
 	do {
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &pagep)) != 0) {
+		if ((ret = mpf->get(mpf, &pgno, 0, &pagep)) != 0) {
 			(void)__db_pgerr(dbp, pgno);
 			return (ret);
 		}
@@ -322,7 +332,7 @@ __db_doff(dbc, pgno)
 		 * decrement the reference count and return.
 		 */
 		if (OV_REF(pagep) > 1) {
-			(void)memp_fput(dbp->mpf, pagep, 0);
+			(void)mpf->put(mpf, pagep, 0);
 			return (__db_ovref(dbc, pgno, -1));
 		}
 
@@ -335,7 +345,7 @@ __db_doff(dbc, pgno)
 			    PGNO(pagep), PREV_PGNO(pagep),
 			    NEXT_PGNO(pagep), &tmp_dbt,
 			    &LSN(pagep), &null_lsn, &null_lsn)) != 0) {
-				(void)memp_fput(dbp->mpf, pagep, 0);
+				(void)mpf->put(mpf, pagep, 0);
 				return (ret);
 			}
 		} else
@@ -369,12 +379,15 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 	u_int32_t tlen;
 	int (*cmpfunc) __P((DB *, const DBT *, const DBT *)), *cmpp;
 {
-	PAGE *pagep;
 	DBT local_dbt;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
 	void *buf;
 	u_int32_t bufsize, cmp_bytes, key_left;
 	u_int8_t *p1, *p2;
 	int ret;
+
+	mpf = dbp->mpf;
 
 	/*
 	 * If there is a user-specified comparison function, build a
@@ -397,7 +410,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 	/* While there are both keys to compare. */
 	for (*cmpp = 0, p1 = dbt->data,
 	    key_left = dbt->size; key_left > 0 && pgno != PGNO_INVALID;) {
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &pagep)) != 0)
+		if ((ret = mpf->get(mpf, &pgno, 0, &pagep)) != 0)
 			return (ret);
 
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
@@ -410,7 +423,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 				break;
 			}
 		pgno = NEXT_PGNO(pagep);
-		if ((ret = memp_fput(dbp->mpf, pagep, 0)) != 0)
+		if ((ret = mpf->put(mpf, pagep, 0)) != 0)
 			return (ret);
 		if (*cmpp != 0)
 			return (0);
@@ -640,14 +653,16 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 	void **buf;
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	int ret, t_ret;
 	u_int32_t bytesgot, bytes;
 	u_int8_t *src, *dest;
 
+	mpf = dbp->mpf;
+	h = NULL;
 	ret = t_ret = 0;
 	bytesgot = bytes = 0;
-	h = NULL;
 
 	while ((pgno != PGNO_INVALID) && (IS_VALID_PGNO(pgno))) {
 		/*
@@ -657,7 +672,7 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 		if ((ret = __db_salvage_markdone(vdp, pgno)) != 0)
 			break;
 
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			break;
 
 		/*
@@ -686,7 +701,7 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 
 		pgno = NEXT_PGNO(h);
 
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			break;
 		h = NULL;
 	}
@@ -701,7 +716,7 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 	}
 
 	/* If we broke out on error, don't leave pages pinned. */
-	if (h != NULL && (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
+	if (h != NULL && (t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);

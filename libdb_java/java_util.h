@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_util.h,v 11.29 2001/05/12 17:17:35 dda Exp $
+ * $Id: java_util.h,v 11.36 2001/10/30 02:09:33 mjc Exp $
  */
 
 #ifndef _JAVA_UTIL_H_
@@ -170,6 +170,14 @@ static const int EXCEPTION_FILE_NOT_FOUND = 0x0001;
 void report_exception(JNIEnv *jnienv, const char *text,
 		      int err, unsigned long expect_mask);
 
+/* Report an exception back to the java side, for the specific
+ * case of DB_LOCK_NOTGRANTED, as more things are added to the
+ * constructor of this type of exception.
+ */
+void report_notgranted_exception(JNIEnv *jnienv, const char *text,
+				 db_lockop_t op, db_lockmode_t mode,
+				 jobject jdbt, jobject jlock, int index);
+
 /* Create an exception object and return it.
  * The given class must have a constructor that has a
  * constructor with args (java.lang.String text, int errno);
@@ -232,6 +240,7 @@ DB_ENV_JAVAINFO *get_DB_ENV_JAVAINFO (JNIEnv *jnienv, jobject obj);
 DB_HASH_STAT   *get_DB_HASH_STAT  (JNIEnv *jnienv, jobject obj);
 DB_JAVAINFO    *get_DB_JAVAINFO   (JNIEnv *jnienv, jobject obj);
 DB_LOCK        *get_DB_LOCK       (JNIEnv *jnienv, jobject obj);
+DB_LOGC        *get_DB_LOGC       (JNIEnv *jnienv, jobject obj);
 DB_LOG_STAT    *get_DB_LOG_STAT   (JNIEnv *jnienv, jobject obj);
 DB_LSN         *get_DB_LSN        (JNIEnv *jnienv, jobject obj);
 DB_MPOOL_FSTAT *get_DB_MPOOL_FSTAT(JNIEnv *jnienv, jobject obj);
@@ -247,6 +256,7 @@ DBT_JAVAINFO   *get_DBT_JAVAINFO  (JNIEnv *jnienv, jobject obj);
 jobject get_DbBtreeStat  (JNIEnv *jnienv, DB_BTREE_STAT *dbobj);
 jobject get_Dbc          (JNIEnv *jnienv, DBC *dbobj);
 jobject get_DbHashStat   (JNIEnv *jnienv, DB_HASH_STAT *dbobj);
+jobject get_DbLogc       (JNIEnv *jnienv, DB_LOGC *dbobj);
 jobject get_DbLogStat    (JNIEnv *jnienv, DB_LOG_STAT *dbobj);
 jobject get_DbLsn        (JNIEnv *jnienv, DB_LSN dbobj);
 jobject get_DbMpoolStat  (JNIEnv *jnienv, DB_MPOOL_STAT *dbobj);
@@ -267,11 +277,13 @@ extern const char * const name_DB_EXCEPTION;
 extern const char * const name_DB_HASH_STAT;
 extern const char * const name_DB_LOCK;
 extern const char * const name_DB_LOCK_STAT;
+extern const char * const name_DB_LOGC;
 extern const char * const name_DB_LOG_STAT;
 extern const char * const name_DB_LSN;
 extern const char * const name_DB_MEMORY_EX;
 extern const char * const name_DB_MPOOL_FSTAT;
 extern const char * const name_DB_MPOOL_STAT;
+extern const char * const name_DB_LOCKNOTGRANTED_EX;
 extern const char * const name_DB_PREPLIST;
 extern const char * const name_DB_QUEUE_STAT;
 extern const char * const name_DB_RUNRECOVERY_EX;
@@ -288,8 +300,11 @@ extern const char * const name_DbErrcall;
 extern const char * const name_DbFeedback;
 extern const char * const name_DbHash;
 extern const char * const name_DbRecoveryInit;
+extern const char * const name_DbRepTransport;
 extern const char * const name_DbSecondaryKeyCreate;
 extern const char * const name_DbTxnRecover;
+extern const char * const name_RepElectResult;
+extern const char * const name_RepProcessMessage;
 
 extern const char * const string_signature;
 
@@ -301,6 +316,11 @@ extern jfieldID fid_Dbt_dlen;
 extern jfieldID fid_Dbt_doff;
 extern jfieldID fid_Dbt_flags;
 extern jfieldID fid_Dbt_must_create_data;
+extern jfieldID fid_DbLockRequest_op;
+extern jfieldID fid_DbLockRequest_mode;
+extern jfieldID fid_DbLockRequest_obj;
+extern jfieldID fid_DbLockRequest_lock;
+extern jfieldID fid_RepProcessMessage_envid;
 
 #define	JAVADB_RO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
 JNIEXPORT j_fieldtype JNICALL                                               \
@@ -328,10 +348,7 @@ JNIEXPORT void JNICALL                                                      \
 }
 
 /* This is a variant of the JAVADB_WO_ACCESS macro to define a simple set_
- * method using a C "method" call.  These should be used with set_
- * methods that cannot invoke java 'callbacks' (no set_ method currently
- * does that).  That assumption allows us to optimize (and simplify)
- * by not calling API_BEGIN/END macros.
+ * method using a C "method" call.
  */
 #define	JAVADB_WO_ACCESS_METHOD(j_class, j_fieldtype,                       \
 				j_field, c_type, c_field)		    \
@@ -362,29 +379,11 @@ JNIEXPORT void JNICALL                                                      \
 	int err;                                                            \
 									    \
 	db_this = get_##c_type(jnienv, jthis);                              \
-	if (verify_non_null(jnienv, db_this)) {                             \
+	if (verify_non_null(jnienv, db_this) && verify_non_null(jnienv, value)) { \
 		err = db_this->set_##c_field(db_this,                       \
 			  (*jnienv)->GetStringUTFChars(jnienv, value, NULL)); \
 		verify_return(jnienv, err, 0);                              \
 	}                                                                   \
 }
-
-#define	JAVADB_API_BEGIN(db, jthis) \
-	if ((db) != NULL) \
-	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref = \
-	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref = (jthis)
-
-#define	JAVADB_API_END(db) \
-	if ((db) != NULL) \
-	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref = \
-	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref = 0
-
-#define	JAVADB_ENV_API_BEGIN(dbenv, jthis) \
-	if ((dbenv) != NULL) \
-	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref = (jthis)
-
-#define	JAVADB_ENV_API_END(dbenv) \
-	if ((dbenv) != NULL) \
-	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref = 0
 
 #endif /* !_JAVA_UTIL_H_ */

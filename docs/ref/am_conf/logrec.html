@@ -1,4 +1,4 @@
-<!--$Id: logrec.so,v 10.27 2001/07/06 16:05:32 bostic Exp $-->
+<!--$Id: logrec.so,v 10.28 2001/11/06 21:04:36 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -16,20 +16,24 @@
 <p>
 <h1 align=center>Logical record numbers</h1>
 <p>The Berkeley DB Btree, Queue and Recno access methods can operate on logical
-record numbers.  Logical record numbers are 1-based, not 0-based, that
-is, the first record in the database is record number 1.  In all cases
-for the Queue and Recno access methods, and when calling the Btree
-access method using the <a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> functions with the
-<a href="../../api_c/db_get.html#DB_SET_RECNO">DB_SET_RECNO</a> flag specified, the <b>data</b> field of the key
-must be a pointer to a memory location of type <b>db_recno_t</b>, as
-typedef'd in the standard Berkeley DB include file.  This type is a 32-bit
-unsigned type, which limits the number of logical records in a Queue or
-Recno database, and the maximum logical record which may be directly
-retrieved from a Btree database, to 4,294,967,295.  The <b>size</b>
-field of the key should be the size of that type, for example, in the
-C programming language, <b>sizeof(db_recno_t)</b>.  In the case of
-Btree supporting duplicate data items, the logical record number refers
-to a key and all of its data items.
+record numbers.  Record numbers are 1-based, not 0-based, that is, the
+first record in a database is record number 1.
+<p>In all cases for the Queue and Recno access methods, and when calling
+the Btree access method using the <a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> functions
+with the <a href="../../api_c/db_get.html#DB_SET_RECNO">DB_SET_RECNO</a> flag specified, the <b>data</b> field of
+the key <a href="../../api_c/dbt.html">DBT</a> must be a pointer to a memory location of type
+<b>db_recno_t</b>, as typedef'd in the standard Berkeley DB include file.
+The <b>size</b> field of the key <a href="../../api_c/dbt.html">DBT</a> should be the size of that
+type (for example, "sizeof(db_recno_t)" in the C programming language).
+The <b>db_recno_t</b> type is a 32-bit unsigned type, which limits the
+number of logical records in a Queue or Recno database, and the maximum
+logical record which may be directly retrieved from a Btree database,
+to 4,294,967,295.
+<p>Record numbers in Queue databases wrap around.  When the tail of the
+queue reaches the maximum record number, the next record appended will
+be given record number 1.  If the head of the queue ever catches up to
+the tail of the queue, the Berkeley DB interface will return the system error
+EFBIG.
 <p>Record numbers in Recno databases can be configured to run in either
 mutable or fixed mode: mutable, where logical record numbers change as
 records are deleted or inserted, and fixed, where record numbers never
@@ -43,7 +47,10 @@ for more information.
 <p>Configuring Btree databases to support record numbers can severely limit
 the throughput of applications with multiple concurrent threads writing
 the database, because locations used to store record counts often become
-hot spots that many different threads all need to update.
+hot spots that many different threads all need to update.  In the case
+of a Btree supporting duplicate data items, the logical record number
+refers to a key and all of its data items, as duplicate data items are
+not individually numbered.
 <p>The following is an example function that reads records from standard
 input and stores them into a Recno database.  The function then uses a
 cursor to step through the database and display the stored records.

@@ -1,4 +1,4 @@
-<!--$Id: intro.so,v 1.11 2001/06/09 14:24:00 bostic Exp $-->
+<!--$Id: intro.so,v 1.12 2001/10/13 20:21:48 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -8,6 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>RPC Client/Server</dl></h3></td>
 <td align=right><a href="../../ref/txn/other.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/rpc/client.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -25,10 +26,10 @@ Specification, RFC1831, Sun Microsystems, Inc., USC-ISI</i>.
 <p>Only some of the complete Berkeley DB functionality is available when using RPC.
 The following functionality is available:
 <p><ol>
-<li>The <a href="../../api_c/env_create.html">db_env_create</a> interface and the DB_ENV handle
+<li>The <a href="../../api_c/env_create.html">db_env_create</a> interface and the <a href="../../api_c/env_create.html">DB_ENV</a> handle
 methods.
-<li>The <a href="../../api_c/db_create.html">db_create</a> interface and the DB handle methods.
-<li>The <a href="../../api_c/txn_begin.html">txn_begin</a>, <a href="../../api_c/txn_commit.html">txn_commit</a>, and <a href="../../api_c/txn_abort.html">txn_abort</a>
+<li>The <a href="../../api_c/db_create.html">db_create</a> interface and the <a href="../../api_c/db_create.html">DB</a> handle methods.
+<li>The <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>, <a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a>, and <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a>
 interfaces.
 </ol>
 <p>The RPC client/server code does not support any of the user-defined

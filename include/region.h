@@ -4,7 +4,7 @@
  * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: region.h,v 11.18 2001/05/16 17:08:54 bostic Exp $
+ * $Id: region.h,v 11.27 2001/10/04 13:52:25 bostic Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ typedef enum {
 /* Reference describing system memory version of REGENV. */
 typedef struct __db_reg_env_ref {
 	roff_t	   size;		/* Region size. */
-	long	   segid;		/* UNIX shmget(2) ID. */
+	long	   segid;		/* UNIX shmget ID, VxWorks ID. */
 } REGENV_REF;
 
 /* Per-environment region information. */
@@ -139,7 +139,7 @@ typedef struct __db_reg_env {
 	 * The mutex must be the first entry in the structure to guarantee
 	 * correct alignment.
 	 */
-	MUTEX      mutex;		/* Environment mutex. */
+	DB_MUTEX   mutex;		/* Environment mutex. */
 
 	/*
 	 * !!!
@@ -167,6 +167,8 @@ typedef struct __db_reg_env {
 
 	u_int32_t  refcnt;		/* References to the environment. */
 
+	roff_t	   rep_off;		/* Offset of the replication area. */
+
 	size_t	   pad;			/* Guarantee that following memory is
 					 * size_t aligned.  This is necessary
 					 * because we're going to store the
@@ -181,7 +183,7 @@ typedef struct __db_region {
 	 * The mutex must be the first entry in the structure to guarantee
 	 * correct alignment.
 	 */
-	MUTEX	   mutex;		/* Region mutex. */
+	DB_MUTEX   mutex;		/* Region mutex. */
 
 	/*
 	 * !!!
@@ -271,10 +273,13 @@ typedef struct __db_regmaint_t {
 
 /* PANIC_CHECK:	Check to see if the DB environment is dead. */
 #define	PANIC_CHECK(dbenv)						\
-	if (DB_GLOBAL(db_panic) &&					\
+	if (!F_ISSET((dbenv), DB_ENV_NOPANIC) &&			\
 	    (dbenv)->reginfo != NULL && ((REGENV *)			\
 	    ((REGINFO *)(dbenv)->reginfo)->primary)->envpanic != 0)	\
 		return (DB_RUNRECOVERY);
+
+#define	PANIC_SET(dbenv, onoff)						\
+	((REGENV *)((REGINFO *)(dbenv)->reginfo)->primary)->envpanic = (onoff);
 
 /*
  * All regions are created on 8K boundaries out of sheer paranoia, so we

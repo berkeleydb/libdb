@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_bh.c,v 11.42 2001/07/10 18:40:42 bostic Exp $";
+static const char revid[] = "$Id: mp_bh.c,v 11.45 2001/07/26 19:53:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -39,9 +39,12 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 	BH *bhp;
 	int open_extents, *restartp, *wrotep;
 {
+	DB_ENV *dbenv;
 	DB_MPOOLFILE *dbmfp;
 	DB_MPREG *mpreg;
 	int incremented, ret;
+
+	dbenv = dbmp->dbenv;
 
 	if (restartp != NULL)
 		*restartp = 0;
@@ -66,13 +69,13 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 	 * If we find a descriptor on the file that's not open for writing, we
 	 * try and upgrade it to make it writeable.  If that fails, we're done.
 	 */
-	MUTEX_THREAD_LOCK(dbmp->dbenv, dbmp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 	for (dbmfp = TAILQ_FIRST(&dbmp->dbmfq);
 	    dbmfp != NULL; dbmfp = TAILQ_NEXT(dbmfp, q))
 		if (dbmfp->mfp == mfp) {
 			if (F_ISSET(dbmfp, MP_READONLY) &&
 			    __memp_upgrade(dbmp, dbmfp, mfp)) {
-				MUTEX_THREAD_UNLOCK(dbmp->dbenv, dbmp->mutexp);
+				MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 				return (0);
 			}
 
@@ -84,7 +87,7 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 			incremented = 1;
 			break;
 		}
-	MUTEX_THREAD_UNLOCK(dbmp->dbenv, dbmp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 	if (dbmfp != NULL)
 		goto found;
 
@@ -94,14 +97,14 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 	 * trying to do that.  First, if we have different privileges than the
 	 * process that "owns" the temporary file, we might create the backing
 	 * disk file such that the owning process couldn't read/write its own
-	 * buffers, e.g., memp_trickle() running as root creating a file owned
+	 * buffers, e.g., memp_trickle running as root creating a file owned
 	 * as root, mode 600.  Second, if the temporary file has already been
 	 * created, we don't have any way of finding out what its real name is,
 	 * and, even if we did, it was already unlinked (so that it won't be
 	 * left if the process dies horribly).  This decision causes a problem,
 	 * however: if the temporary file consumes the entire buffer cache,
 	 * and the owner doesn't flush the buffers to disk, we could end up
-	 * with resource starvation, and the memp_trickle() thread couldn't do
+	 * with resource starvation, and the memp_trickle thread couldn't do
 	 * anything about it.  That's a pretty unlikely scenario, though.
 	 *
 	 * Note that we should never get here when the temporary file
@@ -121,12 +124,12 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 	 * nothing we can do.
 	 */
 	if (mfp->ftype != 0) {
-		MUTEX_THREAD_LOCK(dbmp->dbenv, dbmp->mutexp);
+		MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 		for (mpreg = LIST_FIRST(&dbmp->dbregq);
 		    mpreg != NULL; mpreg = LIST_NEXT(mpreg, q))
 			if (mpreg->ftype == mfp->ftype)
 				break;
-		MUTEX_THREAD_UNLOCK(dbmp->dbenv, dbmp->mutexp);
+		MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 		if (mpreg == NULL)
 			return (0);
 	}
@@ -139,9 +142,14 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 	 * There's no negative cache, so we may repeatedly try and open files
 	 * that we have previously tried (and failed) to open.
 	 */
-	if (__memp_fopen(dbmp, mfp, R_ADDR(dbmp->reginfo, mfp->path_off),
-	    0, 0, mfp->stat.st_pagesize, 0, NULL, &dbmfp) != 0)
+	if (dbenv->memp_fcreate(dbenv, &dbmfp, 0) != 0)
 		return (0);
+	if (__memp_fopen_int(dbmfp, mfp,
+	    R_ADDR(dbmp->reginfo, mfp->path_off),
+	    0, 0, mfp->stat.st_pagesize, 0) != 0) {
+		(void)dbmfp->close(dbmfp, 0);
+		return (0);
+	}
 	F_SET(dbmfp, MP_FLUSH);
 	if (F_ISSET(mfp, MP_EXTENT))
 		dbmp->extents = 1;
@@ -149,9 +157,9 @@ __memp_bhwrite(dbmp, mfp, bhp, open_extents, restartp, wrotep)
 found:	ret = __memp_pgwrite(dbmp, dbmfp, bhp, restartp, wrotep);
 
 	if (incremented) {
-		MUTEX_THREAD_LOCK(dbmp->dbenv, dbmp->mutexp);
+		MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
 		--dbmfp->ref;
-		MUTEX_THREAD_UNLOCK(dbmp->dbenv, dbmp->mutexp);
+		MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 	}
 
 	return (ret);
@@ -192,8 +200,8 @@ __memp_pgread(dbmfp, bhp, can_create)
 	 * them now, we create them when the pages have to be flushed.
 	 */
 	nr = 0;
-	if (F_ISSET(&dbmfp->fh, DB_FH_VALID)) {
-		db_io.fhp = &dbmfp->fh;
+	if (F_ISSET(dbmfp->fhp, DB_FH_VALID)) {
+		db_io.fhp = dbmfp->fhp;
 		db_io.mutexp = dbmfp->mutexp;
 		db_io.pagesize = db_io.bytes = pagesize;
 		db_io.pgno = bhp->pgno;
@@ -342,7 +350,7 @@ __memp_pgwrite(dbmp, dbmfp, bhp, restartp, wrotep)
 	if (LOGGING_ON(dbenv) && mfp->lsn_off != -1 &&
 	    (!F_ISSET(bhp, BH_SYNC) || F_ISSET(bhp, BH_SYNC_LOGFLSH))) {
 		memcpy(&lsn, bhp->buf + mfp->lsn_off, sizeof(DB_LSN));
-		if ((ret = log_flush(dbenv, &lsn)) != 0)
+		if ((ret = dbenv->log_flush(dbenv, &lsn)) != 0)
 			goto err;
 	}
 
@@ -395,13 +403,13 @@ __memp_pgwrite(dbmp, dbmfp, bhp, restartp, wrotep)
 	}
 
 	/* Temporary files may not yet have been created. */
-	if (!F_ISSET(&dbmfp->fh, DB_FH_VALID)) {
+	if (!F_ISSET(dbmfp->fhp, DB_FH_VALID)) {
 		MUTEX_THREAD_LOCK(dbenv, dbmp->mutexp);
-		if (!F_ISSET(&dbmfp->fh, DB_FH_VALID) &&
+		if (!F_ISSET(dbmfp->fhp, DB_FH_VALID) &&
 		    ((ret = __db_appname(dbenv, DB_APP_TMP, NULL, NULL,
 		    DB_OSO_CREATE | DB_OSO_EXCL | DB_OSO_TEMP,
-		    &dbmfp->fh, NULL)) != 0 ||
-		    !F_ISSET(&dbmfp->fh, DB_FH_VALID))) {
+		    dbmfp->fhp, NULL)) != 0 ||
+		    !F_ISSET(dbmfp->fhp, DB_FH_VALID))) {
 			MUTEX_THREAD_UNLOCK(dbenv, dbmp->mutexp);
 			__db_err(dbenv,
 			    "unable to create temporary backing file");
@@ -411,7 +419,7 @@ __memp_pgwrite(dbmp, dbmfp, bhp, restartp, wrotep)
 	}
 
 	/* Write the page. */
-	db_io.fhp = &dbmfp->fh;
+	db_io.fhp = dbmfp->fhp;
 	db_io.mutexp = dbmfp->mutexp;
 	db_io.pagesize = db_io.bytes = mfp->stat.st_pagesize;
 	db_io.pgno = bhp->pgno;
@@ -489,7 +497,7 @@ file_dead:
 	 */
 	if (dosync) {
 		R_UNLOCK(dbenv, dbmp->reginfo);
-		syncfail = __os_fsync(dbenv, &dbmfp->fh) != 0;
+		syncfail = __os_fsync(dbenv, dbmfp->fhp) != 0;
 		R_LOCK(dbenv, dbmp->reginfo);
 		if (syncfail)
 			F_SET(mp, MP_LSN_RETRY);
@@ -672,8 +680,8 @@ __memp_upgrade(dbmp, dbmfp, mfp)
 		ret = 1;
 	} else {
 		/* Swap the descriptors and set the upgrade flag. */
-		(void)__os_closehandle(&dbmfp->fh);
-		dbmfp->fh = fh;
+		(void)__os_closehandle(dbmfp->fhp);
+		*dbmfp->fhp = fh;
 		F_SET(dbmfp, MP_UPGRADE);
 		ret = 0;
 	}

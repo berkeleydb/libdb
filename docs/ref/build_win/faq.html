@@ -1,4 +1,4 @@
-<!--$Id: faq.so,v 10.22 2001/03/30 20:33:49 bostic Exp $-->
+<!--$Id: faq.so,v 10.24 2001/11/06 22:20:07 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -20,14 +20,14 @@
 fprintf (or some other standard C library function).</b>
 <p>You should be using the "Debug Multithreaded DLL" compiler option in
 your application when you link with the
-build_win32/Debug/libdb33d.lib library (this .lib file
-is actually a stub for libdb33d.DLL). To check this
+build_win32/Debug/libdb40d.lib library (this .lib file
+is actually a stub for libdb40d.DLL). To check this
 setting in Visual C++, choose the <i>Project/Settings</i> menu
 item and select <i>Code Generation</i> under the tab marked
 <i>C/C++</i>; and see the box marked <i>Use runtime
 library</i>.  This should be set to <i>Debug Multithreaded DLL</i>.
 If your application is linked against the static library,
-build_win32/Debug/libdb33sd.lib; then, you will want
+build_win32/Debug/libdb40sd.lib; then, you will want
 to set <i>Use runtime library</i> to <i>Debug Multithreaded</i>.
 <p>Setting this option incorrectly can cause multiple versions of the
 standard libraries to be linked into your application (one on behalf
@@ -43,6 +43,14 @@ interoperation issues, and guarantees that the right runtime libraries
 are selected.  Note that because we do not use MFC facilities, the MFC
 library DLL is not marked as a dependency for libdb.dll, but the
 appropriate Microsoft C runtime is.
+<p><li><b>The test suite hangs under Windows.</b>
+<p>There are bugs in some versions of Tcl that may cause the test suite to
+hang on Windows (specifically, we've seen hangs on Windows/NT 4.0). Tcl
+version 8.4 (currently available as an alpha release) has fixed the
+problem, or there are patches available for Tcl 8.3.2 (see bug #119188
+in the Tcl SourceForge database). Note that if you want to run the test
+suite against a Debug version of Berkeley DB, you need to build a Debug
+version of Tcl. This involves building Tcl from its source.
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/build_win/notes.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_vxworks/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

@@ -3,12 +3,16 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test004.tcl,v 11.16 2001/01/25 18:23:08 bostic Exp $
+# $Id: test004.tcl,v 11.18 2001/08/03 16:39:32 bostic Exp $
 #
-# DB Test 4 {access method}
-# Check that cursor operations work.  Create a database.
-# Read through the database sequentially using cursors and
-# delete each element.
+# TEST	test004
+# TEST	Small keys/medium data
+# TEST		Put/get per key
+# TEST		Sequential (cursor) get/delete
+# TEST
+# TEST	Check that cursor operations work.  Create a database.
+# TEST	Read through the database sequentially using cursors and
+# TEST	delete each element.
 proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	source ./include.tcl
 
@@ -44,7 +48,7 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir $env
-	set db [eval {berkdb_open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

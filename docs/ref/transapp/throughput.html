@@ -1,4 +1,4 @@
-<!--$Id: throughput.so,v 10.29 2001/06/12 14:50:25 bostic Exp $-->
+<!--$Id: throughput.so,v 10.30 2001/09/25 22:37:47 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,8 +23,9 @@ the log file.  Both are factors because they require disk I/O, which is
 slow relative to other system resources such as CPU.
 <p>In the worst-case scenario:
 <p><ul type=disc>
-<li>Database access is truly random and the database is too large to fit into
-the cache, resulting in a single I/O per requested key/data pair.
+<li>Database access is truly random and the database is too large for any
+significant percentage of it to fit into the cache, resulting in a
+single I/O per requested key/data pair.
 <li>Both the database and the log are on a single disk.
 </ul>
 <p>This means that for each transaction, Berkeley DB is potentially performing
@@ -41,7 +42,13 @@ several filesystem operations:
 </ul>
 <p>There are a number of ways to increase transactional throughput, all of
 which attempt to decrease the number of filesystem operations per
-transaction:
+transaction.  First, the Berkeley DB software includes support for
+<i>group commit</i>.  Group commit simply means that when the
+information about one transaction is flushed to disk, the information
+for any other waiting transactions will be flushed to disk at the same
+time, potentially amortizing a single log write over a large number of
+transactions.  There are additional tuning parameters which may be
+useful to application writers:
 <p><ul type=disc>
 <li>Tune the size of the database cache.  If the Berkeley DB key/data pairs used
 during the transaction are found in the database cache, the seek and read
@@ -61,7 +68,7 @@ controller and bus can have as much to do with the disk performance as
 the disk itself.  It is also important to remember that throughput is
 rarely the limiting factor, and that disk seek times are normally the true
 performance issue for Berkeley DB.
-<li>Turn on the <a href="../../api_c/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag.  This changes the Berkeley DB behavior
+<li>Turn on the <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag.  This changes the Berkeley DB behavior
 so that the log files are not flushed when transactions are committed.
 Although this change will greatly increase your transaction throughput,
 it means that transactions will exhibit the ACI (atomicity, consistency,
@@ -80,9 +87,9 @@ program should repeatedly perform the following operations:
 <li>Flush the file write to disk
 </ul>
 <p>The number of times that you can perform these three operations per
-second is a rough measure of the number of transactions per second of
-which the hardware is capable.  This test simulates the operations
-applied to the log file. (As a simplifying assumption in this
+second is a rough measure of the minimum number of transactions per
+second of which the hardware is capable.  This test simulates the
+operations applied to the log file. (As a simplifying assumption in this
 experiment, we assume that the database files are either on a separate
 disk; or that they fit, with some few exceptions, into the database
 cache.)  We do not have to directly simulate updating the log file

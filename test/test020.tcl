@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test020.tcl,v 11.13 2001/01/25 18:23:09 bostic Exp $
+# $Id: test020.tcl,v 11.15 2001/08/03 16:39:36 bostic Exp $
 #
-# DB Test 20 {access method}
-# Test in-memory databases.
+# TEST	test020
+# TEST	In-Memory database tests.
 proc test020 { method {nentries 10000} args } {
 	source ./include.tcl
 
@@ -34,7 +34,7 @@ proc test020 { method {nentries 10000} args } {
 	}
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod}]
+	     -create -mode 0644} $args {$omethod}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 

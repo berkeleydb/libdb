@@ -4,20 +4,23 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BtRecExample.cpp,v 11.16 2001/05/10 17:14:06 bostic Exp $
+ * $Id: BtRecExample.cpp,v 11.17 2001/11/10 04:59:07 mjc Exp $
  */
 
 #include <sys/types.h>
 
 #include <errno.h>
-#include <iostream.h>
+#include <iostream>
+#include <iomanip>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <iomanip.h>
 #include <db_cxx.h>
+
+using std::cout;
+using std::cerr;
 
 #define	DATABASE	"access.db"
 #define	WORDLIST	"../test/wordlist"

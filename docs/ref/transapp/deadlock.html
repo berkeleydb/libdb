@@ -55,7 +55,7 @@ then return the error <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK"
 it was making.  Berkeley DB provides a separate UNIX-style utility that can
 be used to perform this deadlock detection, named <a href="../../utility/db_deadlock.html">db_deadlock</a>.
 Alternatively, applications can create their own deadlock utility or
-thread using the underlying <a href="../../api_c/lock_detect.html">lock_detect</a> function, or specify
+thread using the underlying <a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> function, or specify
 that Berkeley DB run the deadlock detector internally whenever there is a
 conflict over a lock (see <a href="../../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a> for more
 information).  The following code fragment does the latter:

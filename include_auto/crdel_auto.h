@@ -33,14 +33,6 @@ typedef struct _crdel_metapage_args {
 	DBT	page;
 } __crdel_metapage_args;
 
-#define	DB_crdel_old_delete	144
-typedef struct _crdel_old_delete_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	DBT	name;
-} __crdel_old_delete_args;
-
 #define	DB_crdel_rename	145
 typedef struct _crdel_rename_args {
 	u_int32_t type;

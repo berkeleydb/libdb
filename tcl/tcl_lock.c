@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_lock.c,v 11.27 2001/07/03 19:04:11 krinsky Exp $";
+static const char revid[] = "$Id: tcl_lock.c,v 11.35 2001/10/11 18:32:29 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -56,6 +56,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 	DB_ENV *envp;			/* Environment pointer */
 {
 	static char *ldopts[] = {
+		"expire",
 		"default",
 		"maxlocks",
 		"minlocks",
@@ -66,6 +67,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 		 NULL
 	};
 	enum ldopts {
+		LD_EXPIRE,
 		LD_DEFAULT,
 		LD_MAXLOCKS,
 		LD_MINLOCKS,
@@ -86,6 +88,10 @@ tcl_LockDetect(interp, objc, objv, envp)
 			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum ldopts)optindex) {
+		case LD_EXPIRE:
+			FLAG_CHECK(policy);
+			policy = DB_LOCK_EXPIRE;
+			break;
 		case LD_DEFAULT:
 			FLAG_CHECK(policy);
 			policy = DB_LOCK_DEFAULT;
@@ -118,7 +124,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 	}
 
 	_debug_check();
-	ret = lock_detect(envp, flag, policy, NULL);
+	ret = envp->lock_detect(envp, flag, policy, NULL);
 	result = _ReturnSetup(interp, ret, "lock detect");
 	return (result);
 }
@@ -236,7 +242,7 @@ tcl_LockStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = lock_stat(envp, &sp);
+	ret = envp->lock_stat(envp, &sp, 0);
 	result = _ReturnSetup(interp, ret, "lock stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -249,6 +255,7 @@ tcl_LockStat(interp, objc, objv, envp)
 	 * MAKE_STAT_LIST assumes 'res' and 'error' label.
 	 */
 	MAKE_STAT_LIST("Region size", sp->st_regsize);
+	MAKE_STAT_LIST("Last allocated locker", sp->st_lastid);
 	MAKE_STAT_LIST("Max locks", sp->st_maxlocks);
 	MAKE_STAT_LIST("Max lockers", sp->st_maxlockers);
 	MAKE_STAT_LIST("Max objects", sp->st_maxobjects);
@@ -262,12 +269,47 @@ tcl_LockStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Number of conflicts", sp->st_nconflicts);
 	MAKE_STAT_LIST("Lock requests", sp->st_nrequests);
 	MAKE_STAT_LIST("Lock releases", sp->st_nreleases);
+	MAKE_STAT_LIST("Lock requests that would have waited", sp->st_nnowaits);
 	MAKE_STAT_LIST("Deadlocks detected", sp->st_ndeadlocks);
 	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_STAT_LIST("Number of lock timeouts", sp->st_nlocktimeouts);
+	MAKE_STAT_LIST("Number of txn timeouts", sp->st_ntxntimeouts);
 	Tcl_SetObjResult(interp, res);
 error:
 	__os_free(envp, sp, sizeof(*sp));
+	return (result);
+}
+
+/*
+ * tcl_LockTimeout --
+ *
+ * PUBLIC: int tcl_LockTimeout __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
+ */
+int
+tcl_LockTimeout(interp, objc, objv, envp)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *envp;			/* Environment pointer */
+{
+	long timeout;
+	int result, ret;
+
+	/*
+	 * One arg, the timeout.
+	 */
+	if (objc != 3) {
+		Tcl_WrongNumArgs(interp, 2, objv, "?timeout?");
+		return (TCL_ERROR);
+	}
+	result = Tcl_GetLongFromObj(interp, objv[2], &timeout);
+	if (result != TCL_OK)
+		return (result);
+	_debug_check();
+	ret = envp->set_timeout(envp, (u_int32_t)timeout, DB_SET_LOCK_TIMEOUT);
+	result = _ReturnSetup(interp, ret, "lock timeout");
 	return (result);
 }
 
@@ -327,7 +369,7 @@ lock_Cmd(clientData, interp, objc, objv)
 	switch ((enum lkcmds)cmdindex) {
 	case LKPUT:
 		_debug_check();
-		ret = lock_put(env, lock);
+		ret = env->lock_put(env, lock);
 		result = _ReturnSetup(interp, ret, "lock put");
 		(void)Tcl_DeleteCommand(interp, lkip->i_name);
 		_DeleteInfo(lkip);
@@ -357,11 +399,11 @@ tcl_LockVec(interp, objc, objv, envp)
 		LVNOWAIT
 	};
 	static char *lkops[] = {
-		"get",	"put",	"put_all",	"put_obj",
+		"get",	"put",	"put_all",	"put_obj", "timeout",
 		 NULL
 	};
 	enum lkops {
-		LKGET,	LKPUT,	LKPUTALL,	LKPUTOBJ
+		LKGET,	LKPUT,	LKPUTALL,	LKPUTOBJ,  LKTIMEOUT
 	};
 	DB_LOCK *lock;
 	DB_LOCKREQ list;
@@ -507,13 +549,17 @@ tcl_LockVec(interp, objc, objv, envp)
 			obj.size = itmp;
 			list.obj = &obj;
 			break;
+		case LKTIMEOUT:
+			list.op = DB_LOCK_TIMEOUT;
+			break;
+
 		}
 		/*
 		 * We get here, we have set up our request, now call
 		 * lock_vec.
 		 */
 		_debug_check();
-		ret = lock_vec(envp, lockid, flag, &list, 1, NULL);
+		ret = envp->lock_vec(envp, lockid, flag, &list, 1, NULL);
 		/*
 		 * Now deal with whether or not the operation succeeded.
 		 * Get's were done above, all these are only puts.
@@ -631,7 +677,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = lock_get(envp, lockid, flag, objp, mode, lock);
+	ret = envp->lock_get(envp, lockid, flag, objp, mode, lock);
 	result = _ReturnSetup(interp, ret, "lock get");
 	if (result == TCL_ERROR) {
 		__os_free(envp, lock, sizeof(DB_LOCK));
@@ -646,7 +692,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	if (ret != 0) {
 		Tcl_SetResult(interp, "Could not duplicate obj",
 		    TCL_STATIC);
-		(void)lock_put(envp, lock);
+		(void)envp->lock_put(envp, lock);
 		__os_free(envp, lock, sizeof(DB_LOCK));
 		_DeleteInfo(ip);
 		result = TCL_ERROR;

@@ -23,5 +23,8 @@ public class DbLogStat
     public int st_disk_file;
     public int st_disk_offset;
     public int st_regsize;
+    public int st_flushcommit;
+    public int st_maxcommitperflush;
+    public int st_mincommitperflush;
 }
 // end of DbLogStat.java

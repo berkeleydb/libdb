@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_alloc.c,v 11.14 2001/05/10 21:25:22 bostic Exp $";
+static const char revid[] = "$Id: mp_alloc.c,v 11.15 2001/07/24 18:31:28 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -35,6 +35,7 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 	void *retp;
 {
 	BH *bhp, *nbhp;
+	DB_ENV *dbenv;
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
 	int nomore, restart, ret, wrote;
@@ -42,6 +43,7 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 	size_t total;
 	void *p;
 
+	dbenv = dbmp->dbenv;
 	c_mp = memreg->primary;
 
 	failed_writes = 0;
@@ -71,15 +73,15 @@ alloc:	if ((ret = __db_shalloc(memreg->addr, len, MUTEX_ALIGN, &p)) == 0) {
 		 * space for what we want, and this is rather expensive,
 		 * we are about to fail, so, why not.
 		 */
-		R_UNLOCK(dbmp->dbenv, dbmp->reginfo);
-		ret = memp_sync(dbmp->dbenv, NULL);
-		R_LOCK(dbmp->dbenv, dbmp->reginfo);
+		R_UNLOCK(dbenv, dbmp->reginfo);
+		ret = dbenv->memp_sync(dbenv, NULL);
+		R_LOCK(dbenv, dbmp->reginfo);
 		if (ret == DB_INCOMPLETE || ret == EIO)
 			ret = 0;
 		else if (ret != 0)
 			return (ret);
 	} else if (nomore == 2) {
-		__db_err(dbmp->dbenv,
+		__db_err(dbenv,
 	    "Unable to allocate %lu bytes from mpool shared region: %s",
 		    (u_long)len, db_strerror(ret));
 		return (ret);

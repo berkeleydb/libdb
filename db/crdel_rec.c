@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: crdel_rec.c,v 11.47 2001/05/10 13:41:02 bostic Exp $";
+static const char revid[] = "$Id: crdel_rec.c,v 11.50 2001/10/10 02:57:33 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -146,15 +146,16 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	u_int8_t *file_uid, ptype;
+	u_int32_t flags;
 	int cmp_p, modified, reopen, ret;
 
 	COMPQUIET(info, NULL);
 	REC_PRINT(__crdel_metasub_print);
 	REC_INTRO(__crdel_metasub_read, 0);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0) {
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0) {
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -196,7 +197,7 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		LSN(pagep) = argp->lsn;
 		modified = 1;
 	}
-	if ((ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
+	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
 
 	/*
@@ -214,8 +215,9 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret = __os_malloc(dbenv, DB_FILE_ID_LEN, &file_uid)) != 0)
 			goto out;
 		memcpy(file_uid, &file_dbp->fileid[0], DB_FILE_ID_LEN);
+		flags = op == DB_TXN_APPLY ? DB_APPLY_LOGREG : 0;
 		ret = __log_reopen_file(dbenv,
-		     NULL, argp->fileid, file_uid, argp->pgno);
+		     NULL, argp->fileid, file_uid, argp->pgno, flags);
 		(void)__os_free(dbenv, file_uid, DB_FILE_ID_LEN);
 		if (ret != 0)
 			goto out;
@@ -247,7 +249,7 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 	DBMETA *meta, ondisk;
 	DB_FH fh;
 	size_t nr;
-	u_int32_t b, io, mb, pagesize;
+	u_int32_t b, flags, io, mb, pagesize;
 	int is_done, ret;
 	char *real_name;
 
@@ -293,7 +295,7 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 			goto out;
 		/*
 		 * If the read succeeds then the page exists, then we need
-		 * to vrify that the page has actually been written, because
+		 * to verify that the page has actually been written, because
 		 * on some systems (e.g., Windows) we preallocate pages because
 		 * files aren't allowed to have holes in them.  If the page
 		 * looks good then we're done.
@@ -327,9 +329,10 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 		 * in the in memory structures
 		 */
 
+		flags = op == DB_TXN_APPLY ? DB_APPLY_LOGREG : 0;
 		if ((ret = __log_reopen_file(dbenv,
 		     argp->name.data, argp->fileid,
-		     meta->uid, argp->pgno)) != 0)
+		     meta->uid, argp->pgno, flags)) != 0)
 			goto out;
 
 		/* Handle will be closed on exit. */
@@ -393,8 +396,8 @@ __crdel_metapage_recover(dbenv, dbtp, lsnp, op, info)
 			    (ret = __os_closehandle(dbp->saved_open_fhp)) != 0)
 				goto out;
 			if (dbp != NULL && dbp->mpf != NULL) {
-				(void)__memp_fremove(dbp->mpf);
-				if ((ret = memp_fclose(dbp->mpf)) != 0)
+				if ((ret = dbp->mpf->close(
+				    dbp->mpf, DB_MPOOL_DISCARD)) != 0)
 					goto out;
 				F_SET(dbp, DB_AM_DISCARD);
 				dbp->mpf = NULL;
@@ -468,8 +471,8 @@ __crdel_delete_recover(dbenv, dbtp, lsnp, op, info)
 				 * On Windows, the underlying file must be
 				 * closed to perform a remove.
 				 */
-				(void)__memp_fremove(dbp->mpf);
-				if ((ret = memp_fclose(dbp->mpf)) != 0)
+				if ((ret = dbp->mpf->close(
+				    dbp->mpf, DB_MPOOL_DISCARD)) != 0)
 					goto out;
 				dbp->mpf = NULL;
 				if ((ret = __os_unlink(dbenv, real_name)) != 0)
@@ -578,14 +581,13 @@ __crdel_rename_recover(dbenv, dbtp, lsnp, op, info)
 				    0, NULL, &new_name)) != 0)
 					goto out;
 				/*
-				 * On Windows, the underlying file
-				 * must be closed to perform a remove.
-				 * The db will be closed by a
-				 * log_register record.  Rename
+				 * On Windows, the underlying file must be
+				 * closed to perform a remove.  The DB will
+				 * be closed by a log_register record.  Rename
 				 * has exclusive access to the db.
 				 */
-				(void)__memp_fremove(dbp->mpf);
-				if ((ret = memp_fclose(dbp->mpf)) != 0)
+				if ((ret = dbp->mpf->close(
+				    dbp->mpf, DB_MPOOL_DISCARD)) != 0)
 					goto out;
 				dbp->mpf = NULL;
 				if ((ret = __os_rename(dbenv,
@@ -617,8 +619,8 @@ __crdel_rename_recover(dbenv, dbtp, lsnp, op, info)
 				 * if we are aborting the transaction.
 				 */
 				if (dbp->mpf != NULL) {
-					(void)__memp_fremove(dbp->mpf);
-					if ((ret = memp_fclose(dbp->mpf)) != 0)
+					if ((ret = dbp->mpf->close(
+					    dbp->mpf, DB_MPOOL_DISCARD)) != 0)
 						goto out;
 					dbp->mpf = NULL;
 				}

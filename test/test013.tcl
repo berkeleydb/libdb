@@ -3,15 +3,18 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test013.tcl,v 11.19 2001/01/25 18:23:09 bostic Exp $
+# $Id: test013.tcl,v 11.21 2001/08/03 16:39:34 bostic Exp $
 #
-# DB Test 13 {access method}
-#
-# 1. Insert 10000 keys and retrieve them (equal key/data pairs).
-# 2. Attempt to overwrite keys with NO_OVERWRITE set (expect error).
-# 3. Actually overwrite each one with its datum reversed.
-#
-# No partial testing here.
+# TEST	test013
+# TEST	Partial put test
+# TEST		Overwrite entire records using partial puts.
+# TEST		Make surethat NOOVERWRITE flag works.
+# TEST
+# TEST	1. Insert 10000 keys and retrieve them (equal key/data pairs).
+# TEST	2. Attempt to overwrite keys with NO_OVERWRITE set (expect error).
+# TEST	3. Actually overwrite each one with its datum reversed.
+# TEST
+# TEST	No partial testing here.
 proc test013 { method {nentries 10000} args } {
 	global errorCode
 	global errorInfo
@@ -44,7 +47,7 @@ proc test013 { method {nentries 10000} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

@@ -1,9 +1,9 @@
-<!--$Id: log_archive.so,v 10.32 2001/05/30 21:14:54 bostic Exp $-->
+<!--$Id: log_archive.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: log_archive</title>
+<title>Berkeley DB: DB_ENV-&gt;log_archive</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>log_archive</h1>
+<h1>DB_ENV-&gt;log_archive</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,13 +22,13 @@
 #include &lt;db.h&gt;
 <p>
 int
-log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);
+DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The log_archive function
+<p>The DB_ENV-&gt;log_archive function
 creates a NULL-terminated array of log or database filenames, and copies
 a pointer to them into the user-specified memory location <b>listp</b>.
-<p>By default, log_archive returns the names of all of the log
+<p>By default, DB_ENV-&gt;log_archive returns the names of all of the log
 files that are no longer in use (for example, that are no longer
 involved in active transactions), and that may safely be archived for
 catastrophic recovery and then removed from the system.  If there are
@@ -49,7 +49,7 @@ to the database home directory.
 <p><dt><a name="DB_ARCH_DATA">DB_ARCH_DATA</a><dd>Return the database files that need to be archived in order to recover
 the database from catastrophic failure.  If any of the database files
 have not been accessed during the lifetime of the current log files,
-log_archive will not include them in this list.  It is also
+DB_ENV-&gt;log_archive will not include them in this list.  It is also
 possible that some of the files referred to by the log have since been
 deleted from the system.
 <p><dt><a name="DB_ARCH_LOG">DB_ARCH_LOG</a><dd>Return all the log filenames, regardless of whether or not they are in
@@ -57,26 +57,41 @@ use.
 </dl>
 <p>The DB_ARCH_DATA and DB_ARCH_LOG flags are mutually
 exclusive.
+<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> function) may have open
+file descriptors for log files in the database environment.  Also, the
+Berkeley DB interfaces to the database environment logging subsystem (for
+example, <a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a> and <a href="../api_c/txn_abort.html">DB_TXN-&gt;abort</a>) may allocate log cursors
+and have open file descriptors for log files as well.  On operating
+systems where filesystem related system calls (for example, rename and
+unlink on Windows/NT) can fail if a process has an open file descriptor
+for the affected file, attempting to move or remove the log files listed
+by DB_ENV-&gt;log_archive may fail.  All Berkeley DB internal use of log cursors
+operates on active log files only and furthermore, is short-lived in
+nature.  So, an application seeing such a failure should be restructured
+to close any open log cursors it may have, and otherwise to retry the
+operation until it succeeds.  (Although the latter is not likely to be
+necessary; it is hard to imagine a reason to move or rename a log file
+in which transactions are being logged or aborted.)
 <p>See the <a href="../utility/db_archive.html">db_archive</a> manual page for more information on database
 archival procedures.
-<p>The log_archive function is the underlying function used by the <a href="../utility/db_archive.html">db_archive</a> utility.
-See the <a href="../utility/db_archive.html">db_archive</a> utility source code for an example of using log_archive
+<p>The DB_ENV-&gt;log_archive function is the underlying function used by the <a href="../utility/db_archive.html">db_archive</a> utility.
+See the <a href="../utility/db_archive.html">db_archive</a> utility source code for an example of using DB_ENV-&gt;log_archive
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
-<p>The log_archive function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;log_archive function returns a non-zero error value on failure and 0 on success.
 <h1>Bugs</h1>
 <p>In a threaded application (that is, one where the environment was created
-with the DB_THREAD flag specified), calling log_archive with the
+with the DB_THREAD flag specified), calling DB_ENV-&gt;log_archive with the
 DB_ARCH_DATA flag will fail, returning EINVAL.  To work around this
 problem, reopen the log explicitly without specifying DB_THREAD.  This
 restriction is expected to be removed in a future version of Berkeley DB.
 <h1>Errors</h1>
-<p>The log_archive function may fail and return a non-zero error for the following conditions:
+<p>The DB_ENV-&gt;log_archive function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>The log was corrupted.
 </dl>
-<p>The log_archive function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the log_archive function may fail and return
+<p>The DB_ENV-&gt;log_archive function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;log_archive function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
@@ -84,16 +99,18 @@ in the same way.
 <a href="../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a>,
 <a href="../api_c/env_set_lg_max.html">DB_ENV-&gt;set_lg_max</a>,
 <a href="../api_c/env_set_lg_regionmax.html">DB_ENV-&gt;set_lg_regionmax</a>,
-<a href="../api_c/log_archive.html">log_archive</a>,
+<a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>,
 <a href="../api_c/log_compare.html">log_compare</a>,
-<a href="../api_c/log_file.html">log_file</a>,
-<a href="../api_c/log_flush.html">log_flush</a>,
-<a href="../api_c/log_get.html">log_get</a>,
-<a href="../api_c/log_put.html">log_put</a>,
-<a href="../api_c/log_register.html">log_register</a>,
-<a href="../api_c/log_stat.html">log_stat</a>,
+<a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a>,
+<a href="../api_c/log_file.html">DB_ENV-&gt;log_file</a>,
+<a href="../api_c/log_flush.html">DB_ENV-&gt;log_flush</a>,
+<a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a>,
+<a href="../api_c/log_register.html">DB_ENV-&gt;log_register</a>,
+<a href="../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>,
+<a href="../api_c/log_unregister.html">DB_ENV-&gt;log_unregister</a>,
+<a href="../api_c/logc_close.html">DB_LOGC-&gt;close</a>
 and
-<a href="../api_c/log_unregister.html">log_unregister</a>.
+<a href="../api_c/logc_get.html">DB_LOGC-&gt;get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

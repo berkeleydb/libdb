@@ -3,17 +3,25 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd001.tcl,v 11.35 2001/07/02 01:08:46 bostic Exp $
+# $Id: recd001.tcl,v 11.36 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test 1.
-# These are the most basic recovery tests.  We do individual recovery
-# tests for each operation in the access method interface.  First we
-# create a file and capture the state of the database (i.e., we copy
-# it.  Then we run a transaction containing a single operation.  In
-# one test, we abort the transaction and compare the outcome to the
-# original copy of the file.  In the second test, we restore the
-# original copy of the database and then run recovery and compare
-# this against the actual database.
+# TEST	recd001
+# TEST	Per-operation recovery tests for non-duplicate, non-split
+# TEST	messages.  Makes sure that we exercise redo, undo, and do-nothing
+# TEST	condition.  Any test that appears with the message (change state)
+# TEST	indicates that we've already run the particular test, but we are
+# TEST	running it again so that we can change the state of the data base
+# TEST	to prepare for the next test (this applies to all other recovery
+# TEST	tests as well).
+# TEST
+# TEST	These are the most basic recovery tests.  We do individual recovery
+# TEST	tests for each operation in the access method interface.  First we
+# TEST	create a file and capture the state of the database (i.e., we copy
+# TEST	it.  Then we run a transaction containing a single operation.  In
+# TEST	one test, we abort the transaction and compare the outcome to the
+# TEST	original copy of the file.  In the second test, we restore the
+# TEST	original copy of the database and then run recovery and compare
+# TEST	this against the actual database.
 proc recd001 { method {select 0} args} {
 	global fixed_len
 	source ./include.tcl

@@ -1,4 +1,4 @@
-<!--$Id: memp_sync.so,v 10.27 2001/04/02 20:10:08 bostic Exp $-->
+<!--$Id: memp_sync.so,v 10.29 2001/10/22 15:24:37 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::memp_sync</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -26,9 +26,9 @@ DbEnv::memp_sync(DbLsn *lsn);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::memp_sync method ensures that any modified pages in the pool with
-log sequence numbers less than the <b>lsn</b> argument are written to
-disk.  If <b>lsn</b> is NULL, all modified pages in the pool are
-flushed.
+a log sequence number (<a href="../api_cxx/lsn_class.html">DbLsn</a>) less than the <b>lsn</b> argument
+are written to disk.  If <b>lsn</b> is NULL, all modified pages in
+the pool are flushed.
 <p>The primary purpose of the DbEnv::memp_sync function is to enable a
 transaction manager to ensure, as part of a checkpoint, that all pages
 modified by a certain time have been written to disk.  Pages in the pool
@@ -43,7 +43,7 @@ written.
 <p>To support the DbEnv::memp_sync functionality, it is necessary that the
 pool functions know the location of the log sequence number on the page
 for each file type.  This location should be specified when the file is
-opened using the <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a> function.  It is not required that
+opened using the <a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a> method.  It is not required that
 the log sequence number be aligned on the page in any way.
 <p>The DbEnv::memp_sync method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which need to be
@@ -69,6 +69,7 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -76,13 +77,18 @@ in the same way.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

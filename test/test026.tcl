@@ -3,12 +3,16 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test026.tcl,v 11.14 2001/01/25 18:23:09 bostic Exp $
+# $Id: test026.tcl,v 11.16 2001/08/03 16:39:37 bostic Exp $
 #
-# DB Test 26 {access method}
-# Keyed delete test through cursor.
-# If ndups is small; this will test on-page dups; if it's large, it
-# will test off-page dups.
+# TEST	test026
+# TEST	Small keys/medium data w/duplicates
+# TEST		Put/get per key.
+# TEST		Loop through keys -- delete each key
+# TEST		    ... test that cursors delete duplicates correctly
+# TEST
+# TEST	Keyed delete test through cursor.  If ndups is small; this will
+# TEST	test on-page dups; if it's large, it will test off-page dups.
 proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	source ./include.tcl
 
@@ -46,7 +50,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	# Here is the loop where we put and get each key/data pair
 
 	puts "\tTest0$tnum.a: Put loop"
-	set db [eval {berkdb_open -create -truncate \
+	set db [eval {berkdb_open -create \
 		-mode 0644} $args {$omethod -dup $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]

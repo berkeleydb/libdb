@@ -1,4 +1,4 @@
-<!--$Id: notes.so,v 10.19 2001/03/23 21:15:08 bostic Exp $-->
+<!--$Id: notes.so,v 10.22 2001/11/09 17:44:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -15,8 +15,8 @@
 </td></tr></table>
 <p>
 <h1 align=center>Windows notes</h1>
-<p><ul type=disc>
-<li>Various Berkeley DB interfaces take a <b>mode</b> argument, which is intended
+<p><ol>
+<p><li>Various Berkeley DB interfaces take a <b>mode</b> argument, which is intended
 to specify the underlying file permissions for created files.  Berkeley DB
 currently ignores this argument on Windows systems.
 <p>It would be possible to construct a set of security attributes to pass to
@@ -28,7 +28,21 @@ with an obvious race.
 <p>Practically speaking, however, these efforts would be largely meaningless
 on FAT, the most common file system, which only has a "readable" and
 "writable" flag, applying to all users.
-<li>When using the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag, Berkeley DB shared regions are
+<p><li>On Windows/9X, files opened by multiple processes do not share data
+correctly.  For this reason, the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is implied
+for any application that does not specify the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag,
+causing the system paging file to be used for sharing data.
+<p>On all Windows platforms, system paging file memory is freed on last
+close.  For this reason, multiple processes sharing a database
+environment created using the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag must arrange
+for at least one process to always have the environment open, or
+alternatively that any process joining the environment be prepared to
+re-create it.  If a shared environment is closed by all processes, a
+subsequent open without specifying the <a href="../../api_c/env_open.html#DB_CREATE">DB_CREATE</a> flag will
+return an error.  Further, if a shared environment that supports
+transactions is closed by all processes, recovery must be run by the
+next process to open the environment or data corruption may occur.
+<p>When using the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag, Berkeley DB shared regions are
 created without ACLs, which means that the regions are only accessible
 to a single user.  If wider sharing is appropriate (for example, both
 user applications and Windows/NT service applications need to access
@@ -37,18 +51,7 @@ the shared regions with the correct ACLs.  Alternatively, by not
 specifying the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag, filesystem-backed regions
 will be created instead, and the permissions on those files may be
 directly specified through the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> interface.
-<li>On Windows/9X, files opened by multiple processes do not share data
-correctly.  For this reason, the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is implied
-for any application that does not specify the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag,
-causing the system paging file to be used for sharing data.  However,
-paging file memory is freed on last close, implying that multiple
-processes sharing an environment must arrange for at least one process
-to always have the environment open, or, alternatively, that any process
-joining the environment be prepared to re-create it.  If a shared
-environment is closed by all processes, a subsequent open without
-specifying the <a href="../../api_c/env_open.html#DB_CREATE">DB_CREATE</a> flag will result in the return of a
-system EAGAIN error code.
-</ul>
+</ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/build_win/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_win/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

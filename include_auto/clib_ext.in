@@ -36,11 +36,17 @@ int snprintf __P((char *, size_t, const char *, ...));
 #define	strcasecmp strcasecmp@DB_VERSION_UNIQUE_NAME@
 int strcasecmp __P((const char *, const char *));
 #endif
+#ifndef HAVE_STRCASECMP
+#define	strncasecmp strncasecmp@DB_VERSION_UNIQUE_NAME@
+int strncasecmp __P((const char *, const char *, size_t));
+#endif
 #ifndef HAVE_STRERROR
 #define	strerror strerror@DB_VERSION_UNIQUE_NAME@
 char *strerror __P((int));
 #endif
 #ifndef HAVE_VSNPRINTF
+#define	vsnprintf vsnprintf@DB_VERSION_UNIQUE_NAME@
+int vsnprintf __P((char *, size_t, const char *, va_list));
 #endif
 #if defined(__cplusplus)
 }

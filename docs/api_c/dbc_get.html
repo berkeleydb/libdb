@@ -1,4 +1,4 @@
-<!--$Id: dbc_get.so,v 10.66 2001/07/12 21:13:02 bostic Exp $-->
+<!--$Id: dbc_get.so,v 10.68 2001/10/22 15:24:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -63,13 +63,21 @@ DB_FIRST (DB_LAST) flags will ignore any keys that exist
 but were never explicitly created by the application, or were created and
 later deleted.
 <p>If the database is empty, DBcursor-&gt;c_get will return <a href="../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a>.
-<p><dt><a name="DB_GET_BOTH">DB_GET_BOTH</a><dd>identical to the DB_SET flag, except that both the key and the data
-arguments must be matched by the key and data item in the database.
-<p>When used with the DBcursor-&gt;c_pget version of this interface on a secondary
-index handle, both the secondary and primary keys must be matched by the
-secondary and primary key item in the database.  It is an error to use the
-DB_GET_BOTH flag with the DBcursor-&gt;c_get version of this interface and
-a cursor that has been opened on a secondary index handle.
+<p><dt><a name="DB_GET_BOTH">DB_GET_BOTH</a><dd>The DB_GET_BOTH flag is identical to the DB_SET flag,
+except that both the key and the data arguments must be matched by the
+key and data item in the database.
+<p>When used with the DBcursor-&gt;c_pget version of this interface on a
+secondary index handle, both the secondary and primary keys must be
+matched by the secondary and primary key item in the database.  It is
+an error to use the DB_GET_BOTH flag with the DBcursor-&gt;c_get
+version of this interface and a cursor that has been opened on a
+secondary index handle.
+<p><dt><a name="DB_GET_BOTH_RANGE">DB_GET_BOTH_RANGE</a><dd>The DB_GET_BOTH_RANGE flag is identical to the DB_GET_BOTH
+flag, except that, in the case of any database supporting sorted
+duplicate sets, the returned key/data pair is the smallest data item
+greater than or equal to the specified data item (as determined by the
+comparison function), permitting partial matches and range searches in
+duplicate data sets.
 <p><dt><a name="DB_GET_RECNO">DB_GET_RECNO</a><dd>Return the record number associated with the cursor.  The record number
 will be returned in <b>data</b>, as described in <a href="../api_c/dbt.html">DBT</a>.  The
 <b>key</b> parameter is ignored.

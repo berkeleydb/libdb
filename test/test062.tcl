@@ -3,12 +3,13 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test062.tcl,v 11.15 2001/05/17 20:37:08 bostic Exp $
+# $Id: test062.tcl,v 11.17 2001/08/03 16:39:43 bostic Exp $
 #
-# DB Test 62:  Test of partial puts onto duplicate pages.
-#	Insert the first 200 words into the dictionary 200 times each with
-#	self as key and <random letter>:self as data.  Use partial puts to
-#	append self again to data;  verify correctness.
+# TEST	test062
+# TEST	Test of partial puts (using DB_CURRENT) onto duplicate pages.
+# TEST	Insert the first 200 words into the dictionary 200 times each with
+# TEST	self as key and <random letter>:self as data.  Use partial puts to
+# TEST	append self again to data;  verify correctness.
 proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 	global alphabet
 	global rand_init
@@ -40,7 +41,7 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb_open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -mode 0644 \
 	    $omethod -dup} $args {$testfile} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]

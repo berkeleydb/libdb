@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_perm,v 1.13 2001/05/14 19:53:01 bostic Exp $
+#	$Id: s_perm,v 1.17 2001/09/13 19:17:04 bostic Exp $
 
 echo 'Updating Berkeley DB source tree permissions...'
 
@@ -14,19 +14,28 @@ run()
 	fi
 }
 
+run build_vxworks/BerkeleyDB.wpj 0775
+run build_vxworks/BerkeleyDB.wsp 0775
+run build_vxworks/demo/DBdemo.wpj 0775
 run dist/config.guess 0555
 run dist/config.sub 0555
 run dist/configure 0555
 run dist/install-sh 0555
+run dist/s_all 0555
 run dist/s_config 0555
 run dist/s_include 0555
 run dist/s_java 0555
 run dist/s_perm 0555
 run dist/s_readme 0555
 run dist/s_recover 0555
+run dist/s_rpc 0555
 run dist/s_symlink 0555
 run dist/s_tags 0555
-run dist/s_tcl 0555
+run dist/s_test 0555
+run dist/s_vxworks 0555
 run dist/s_win32 0555
-run perl.BerkeleyDB/dbinfo 0555
-run perl.BerkeleyDB/mkpod 0555
+run dist/s_win32_dsp 0555
+run dist/vx_buildcd 0555
+run perl/BerkeleyDB/dbinfo 0555
+run perl/BerkeleyDB/mkpod 0555
+

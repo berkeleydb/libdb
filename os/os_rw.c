@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rw.c,v 11.16 2001/01/25 18:22:59 bostic Exp $";
+static const char revid[] = "$Id: os_rw.c,v 11.17 2001/09/07 18:17:50 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -98,10 +98,11 @@ __os_read(dbenv, fhp, addr, len, nrp)
 
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nr, offset += nr) {
-		if ((nr = __db_jump.j_read != NULL ?
+retry:		if ((nr = __db_jump.j_read != NULL ?
 		    __db_jump.j_read(fhp->fd, taddr, len - offset) :
 		    read(fhp->fd, taddr, len - offset)) < 0) {
-			ret = __os_get_errno();
+			if ((ret = __os_get_errno()) == EINTR)
+				goto retry;
 			__db_err(dbenv, "read: 0x%x, %lu: %s", taddr,
 			    (u_long)len-offset, strerror(ret));
 			return (ret);
@@ -134,10 +135,11 @@ __os_write(dbenv, fhp, addr, len, nwp)
 
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nw, offset += nw)
-		if ((nw = __db_jump.j_write != NULL ?
+retry:		if ((nw = __db_jump.j_write != NULL ?
 		    __db_jump.j_write(fhp->fd, taddr, len - offset) :
 		    write(fhp->fd, taddr, len - offset)) < 0) {
-			ret = __os_get_errno();
+			if ((ret = __os_get_errno()) == EINTR)
+				goto retry;
 			__db_err(dbenv, "write: 0x%x, %lu: %s", taddr,
 			    (u_long)len-offset, strerror(ret));
 			return (ret);

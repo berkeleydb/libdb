@@ -3,12 +3,13 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test064.tcl,v 11.9 2001/01/25 18:23:12 bostic Exp $
+# $Id: test064.tcl,v 11.11 2001/08/03 16:39:44 bostic Exp $
 #
-# DB Test 64: Test of DB->get_type
-#	Create a database of type specified by method.
-#	Make sure DB->get_type returns the right thing with both a
-#		normal and DB_UNKNOWN open.
+# TEST	test064
+# TEST	Test of DB->get_type
+# TEST	Create a database of type specified by method.
+# TEST	Make sure DB->get_type returns the right thing with both a normal
+# TEST	and DB_UNKNOWN open.
 proc test064 { method args } {
 	source ./include.tcl
 
@@ -34,7 +35,7 @@ proc test064 { method args } {
 
 	# Create a test database.
 	puts "\tTest0$tnum.a: Creating test database of type $method."
-	set db [eval {berkdb_open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open -create -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_create [is_valid_db $db] TRUE
 

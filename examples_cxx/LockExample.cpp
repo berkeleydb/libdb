@@ -4,17 +4,21 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 11.16 2001/05/10 17:14:07 bostic Exp $
+ * $Id: LockExample.cpp,v 11.19 2001/11/10 04:59:07 mjc Exp $
  */
 
 #include <sys/types.h>
 
 #include <errno.h>
-#include <iostream.h>
+#include <iostream>
 #include <stdlib.h>
 #include <string.h>
 
 #include <db_cxx.h>
+
+using std::cin;
+using std::cout;
+using std::cerr;
 
 char *progname = "LockExample";				// Program name.
 
@@ -25,18 +29,20 @@ class LockExample : public DbEnv
 {
 public:
 	void run();
+	int error_code() { return (ecode); }
 
 	LockExample(const char *home, u_int32_t maxlocks, int do_unlink);
 
 private:
 	static const char FileName[];
+	int ecode;
 
 	// no need for copy and assignment
 	LockExample(const LockExample &);
 	void operator = (const LockExample &);
 };
 
-static void usage();          // forward
+static int usage();          // forward
 
 int
 main(int argc, char *argv[])
@@ -52,44 +58,51 @@ main(int argc, char *argv[])
 	for (int argnum = 1; argnum < argc; ++argnum) {
 		if (strcmp(argv[argnum], "-h") == 0) {
 			if (++argnum >= argc)
-				usage();
+				return (usage());
 			home = argv[argnum];
 		}
 		else if (strcmp(argv[argnum], "-m") == 0) {
 			if (++argnum >= argc)
-				usage();
+				return (usage());
 			if ((i = atoi(argv[argnum])) <= 0)
-				usage();
+				return (usage());
 			maxlocks = (u_int32_t)i;  /* XXX: possible overflow. */
 		}
 		else if (strcmp(argv[argnum], "-u") == 0) {
 			do_unlink = 1;
 		}
 		else {
-			usage();
+			return (usage());
 		}
 	}
 
 	try {
+		int ecode;
+
 		if (do_unlink) {
 			// Create an environment that immediately
 			// removes all files.
 			LockExample tmp(home, maxlocks, do_unlink);
+			if ((ecode = tmp.error_code()) != 0)
+				return (ecode);
 		}
 
 		LockExample app(home, maxlocks, do_unlink);
+		if ((ecode = app.error_code()) != 0)
+			return (ecode);
 		app.run();
 		app.close(0);
-		return EXIT_SUCCESS;
+		return (EXIT_SUCCESS);
 	}
 	catch (DbException &dbe) {
 		cerr << "LockExample: " << dbe.what() << "\n";
-		return EXIT_FAILURE;
+		return (EXIT_FAILURE);
 	}
 }
 
 LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 :	DbEnv(0)
+,	ecode(0)
 {
 	int ret;
 
@@ -97,7 +110,7 @@ LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 		if ((ret = remove(home, DB_FORCE)) != 0) {
 			cerr << progname << ": DbEnv::remove: "
 			     << strerror(errno) << "\n";
-			exit(EXIT_FAILURE);
+			ecode = EXIT_FAILURE;
 		}
 	}
 	else {
@@ -223,9 +236,9 @@ void LockExample::run()
 		delete locks;
 }
 
-static void
+static int
 usage()
 {
 	cerr << "usage: LockExample [-u] [-h home] [-m maxlocks]\n";
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }

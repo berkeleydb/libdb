@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_rec.c,v 11.46 2001/06/15 16:38:15 bostic Exp $";
+static const char revid[] = "$Id: qam_rec.c,v 11.55 2001/10/04 21:28:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,43 +24,6 @@ static const char revid[] = "$Id: qam_rec.c,v 11.46 2001/06/15 16:38:15 bostic E
 #include "db_am.h"
 #include "qam.h"
 #include "log.h"
-
-/*
- * __qam_inc_recover --
- *	Recovery function for inc.
- *
- * This log record is no longer used, and so recovery is a no-op -- we don't
- * want to remove it entirely though, because we'd have to upgrade the log
- * version which requires application upgrades.  We should remove it when the
- * log version is next upgraded.
- *
- * PUBLIC: int __qam_inc_recover
- * PUBLIC:     __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
- */
-int
-__qam_inc_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
-	DBT *dbtp;
-	DB_LSN *lsnp;
-	db_recops op;
-	void *info;
-{
-	__qam_inc_args *argp;
-	DB *file_dbp;
-	DBC *dbc;
-	DB_MPOOLFILE *mpf;
-	int ret;
-
-	COMPQUIET(info, NULL);
-	COMPQUIET(op, 0);
-	REC_PRINT(__qam_inc_print);
-	REC_INTRO(__qam_inc_read, 1);
-
-done:	*lsnp = argp->prev_lsn;
-	ret = 0;
-
-out:	REC_CLOSE;
-}
 
 /*
  * __qam_incfirst_recover --
@@ -96,9 +59,9 @@ __qam_incfirst_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = __db_lget(dbc,
 	    LCK_ROLLBACK, metapg,  DB_LOCK_WRITE, 0, &lock)) != 0)
 		goto done;
-	if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
+	if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0) {
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &metapg, DB_MPOOL_CREATE, &meta)) != 0) {
 				(void)__LPUT(dbc, lock);
 				goto out;
@@ -140,7 +103,7 @@ __qam_incfirst_recover(dbenv, dbtp, lsnp, op, info)
 		    && !QAM_BEFORE_FIRST(meta, argp->recno + 1)) {
 			if ((ret = __qam_position(dbc,
 			    &meta->first_recno, QAM_READ, &exact)) != 0)
-				goto out;
+				goto err;
 			if (cp->page != NULL)
 				__qam_fput(file_dbp, cp->pgno, cp->page, 0);
 
@@ -150,7 +113,7 @@ __qam_incfirst_recover(dbenv, dbtp, lsnp, op, info)
 			    rec_ext != 0 && meta->first_recno % rec_ext == 0)
 				if ((ret =
 				    __qam_fremove(file_dbp, cp->pgno)) != 0)
-					goto out;
+					goto err;
 			meta->first_recno++;
 			if (meta->first_recno == RECNO_OOB)
 				meta->first_recno++;
@@ -158,13 +121,18 @@ __qam_incfirst_recover(dbenv, dbtp, lsnp, op, info)
 		}
 	}
 
-	if ((ret = memp_fput(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)))
-		goto out;
+	if ((ret = mpf->put(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
+		goto err1;
 
 	(void)__LPUT(dbc, lock);
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
+
+	if (0) {
+err:		(void)mpf->put(mpf, meta, 0);
+err1:		(void)__LPUT(dbc, lock);
+	}
 
 out:	REC_CLOSE;
 }
@@ -202,9 +170,9 @@ __qam_mvptr_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = __db_lget(dbc,
 	    LCK_ROLLBACK, metapg,  DB_LOCK_WRITE, 0, &lock)) != 0)
 		goto done;
-	if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
+	if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0) {
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &metapg, DB_MPOOL_CREATE, &meta)) != 0) {
 				(void)__LPUT(dbc, lock);
 				goto out;
@@ -248,7 +216,7 @@ __qam_mvptr_recover(dbenv, dbtp, lsnp, op, info)
 		meta->dbmeta.lsn = *lsnp;
 	}
 
-	if ((ret = memp_fput(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)))
+	if ((ret = mpf->put(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
 
 	(void)__LPUT(dbc, lock);
@@ -308,10 +276,10 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
 		if ((ret = __db_lget(dbc,
 		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
-			return (ret);
-		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
+			goto err;
+		if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0) {
 			(void)__LPUT(dbc, lock);
-			goto done;
+			goto err;
 		}
 		if (meta->first_recno == RECNO_OOB ||
 		    (QAM_BEFORE_FIRST(meta, argp->recno)
@@ -319,9 +287,9 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		    || meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
-			(void)memp_fput(mpf, meta, DB_MPOOL_DIRTY);
+			(void)mpf->put(mpf, meta, DB_MPOOL_DIRTY);
 		} else
-			(void)memp_fput(mpf, meta, 0);
+			(void)mpf->put(mpf, meta, 0);
 		(void)__LPUT(dbc, lock);
 
 		/* Need to undo delete - mark the record as present */
@@ -336,7 +304,7 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		 * is harmless in queue except when we're determining
 		 * what we need to roll forward during recovery.  [#2588]
 		 */
-		if (op == DB_TXN_BACKWARD_ROLL && cmp_n < 0)
+		if (op == DB_TXN_BACKWARD_ROLL && cmp_n <= 0)
 			LSN(pagep) = argp->lsn;
 		modified = 1;
 	} else if (cmp_n > 0 && DB_REDO(op)) {
@@ -347,12 +315,15 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 		modified = 1;
 	}
 	if ((ret = __qam_fput(file_dbp,
-	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)))
+	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
+	if (0) {
+err:		(void)__qam_fput(file_dbp, argp->pgno, pagep, 0);
+	}
 out:	REC_CLOSE;
 }
 
@@ -414,10 +385,10 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
 		if ((ret = __db_lget(dbc,
 		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
-			return (ret);
-		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0) {
+			goto err;
+		if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0) {
 			(void)__LPUT(dbc, lock);
-			goto done;
+			goto err;
 		}
 		if (meta->first_recno == RECNO_OOB ||
 		    (QAM_BEFORE_FIRST(meta, argp->recno)
@@ -425,14 +396,14 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		    || meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
-			(void)memp_fput(mpf, meta, DB_MPOOL_DIRTY);
+			(void)mpf->put(mpf, meta, DB_MPOOL_DIRTY);
 		} else
-			(void)memp_fput(mpf, meta, 0);
+			(void)mpf->put(mpf, meta, 0);
 		(void)__LPUT(dbc, lock);
 
 		if ((ret = __qam_pitem(dbc, pagep,
 		    argp->indx, argp->recno, &argp->data)) != 0)
-			goto done;
+			goto err;
 
 		/*
 		 * Move the LSN back to this point;  do not move it forward.
@@ -442,7 +413,7 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		 * is harmless in queue except when we're determining
 		 * what we need to roll forward during recovery.  [#2588]
 		 */
-		if (op == DB_TXN_BACKWARD_ROLL && cmp_n < 0)
+		if (op == DB_TXN_BACKWARD_ROLL && cmp_n <= 0)
 			LSN(pagep) = argp->lsn;
 		modified = 1;
 	} else if (cmp_n > 0 && DB_REDO(op)) {
@@ -453,12 +424,15 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 		modified = 1;
 	}
 	if ((ret = __qam_fput(file_dbp,
-	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)))
+	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
+	if (0) {
+err:		(void)__qam_fput(file_dbp, argp->pgno, pagep, 0);
+	}
 out:	REC_CLOSE;
 }
 
@@ -516,14 +490,14 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 
 	if (cmp_n > 0 && DB_REDO(op)) {
 		/* Need to redo add - put the record on page */
-		if ((ret = __qam_pitem(dbc, pagep, argp->indx, argp->recno,
-				&argp->data)) != 0)
+		if ((ret = __qam_pitem(dbc,
+		    pagep, argp->indx, argp->recno, &argp->data)) != 0)
 			goto err;
 		LSN(pagep) = *lsnp;
 		modified = 1;
 		/* Make sure pointers include this record. */
 		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
-		if ((ret = memp_fget(mpf, &metapg, 0, &meta)) != 0)
+		if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0)
 			goto err;
 		meta_dirty = 0;
 		if (QAM_BEFORE_FIRST(meta, argp->recno)) {
@@ -535,10 +509,9 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 			meta->cur_recno = argp->recno + 1;
 			meta_dirty = 1;
 		}
-		if ((ret = memp_fput(mpf,
-		    meta, meta_dirty? DB_MPOOL_DIRTY : 0)) != 0)
-				goto err;
-
+		if ((ret =
+		    mpf->put(mpf, meta, meta_dirty? DB_MPOOL_DIRTY : 0)) != 0)
+			goto err;
 	} else if (DB_UNDO(op)) {
 		/*
 		 * Need to undo add
@@ -570,16 +543,20 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 		 * is harmless in queue except when we're determining
 		 * what we need to roll forward during recovery.  [#2588]
 		 */
-		if (op == DB_TXN_BACKWARD_ROLL && cmp_n < 0)
+		if (op == DB_TXN_BACKWARD_ROLL && cmp_n <= 0)
 			LSN(pagep) = argp->lsn;
 	}
 
-err:	if ((ret = __qam_fput(file_dbp,
-	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)))
+	if ((ret = __qam_fput(file_dbp,
+	    argp->pgno, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
+
+	if (0) {
+err:		(void)__qam_fput(file_dbp, argp->pgno, pagep, 0);
+	}
 
 out:	REC_CLOSE;
 }
@@ -693,12 +670,11 @@ __qam_rename_recover(dbenv, dbtp, lsnp, op, info)
 		    NULL, argp->name.data, 0, NULL, &real_name)) != 0)
 			goto out;
 		if (__os_exists(real_name, NULL) == 0) {
-			if ((ret = __db_appname(dbenv,
-			    DB_APP_DATA, NULL, argp->newname.data,
-			    0, NULL, &new_name)) != 0)
+			if ((ret = __db_appname(dbenv, DB_APP_DATA,
+			    NULL, argp->newname.data, 0, NULL, &new_name)) != 0)
 				goto out;
-			if ((ret = __os_rename(dbenv,
-			    real_name, new_name)) != 0)
+			if ((ret =
+			    __os_rename(dbenv, real_name, new_name)) != 0)
 				goto out;
 		}
 	} else {

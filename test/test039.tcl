@@ -3,18 +3,21 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test039.tcl,v 11.12 2001/01/25 18:23:10 bostic Exp $
+# $Id: test039.tcl,v 11.16 2001/09/10 20:04:37 krinsky Exp $
 #
-# DB Test 39 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and "ndups" duplicates
-# For the data field, prepend the letters of the alphabet
-# in a random order so that we force the duplicate sorting
-# code to do something.
-# By setting ndups large, we can make this an off-page test
-# After all are entered; test the DB_GET_BOTH functionality
-# first by retrieving each dup in the file explicitly.  Then
-# remove each duplicate and try DB_GET_BOTH again.
+# TEST	test039
+# TEST	DB_GET_BOTH/DB_GET_BOTH_RANGE on deleted items without comparison
+# TEST	function.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.  Insert each with
+# TEST	self as key and "ndups" duplicates.  For the data field, prepend the
+# TEST	letters of the alphabet in a random order so we force the duplicate
+# TEST	sorting code to do something.  By setting ndups large, we can make
+# TEST	this an off-page test.
+# TEST
+# TEST	Test the DB_GET_BOTH and DB_GET_BOTH_RANGE functionality by retrieving
+# TEST	each dup in the file explicitly.  Then remove each duplicate and try
+# TEST	the retrieval again.
 proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 	global alphabet
 	global rand_init
@@ -34,11 +37,13 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 		set testfile $testdir/test0$tnum.db
 		set checkdb $testdir/checkdb.db
 		set env NULL
+		set checkdbargs ""
 	} else {
 		set testfile test0$tnum.db
 		set checkdb checkdb.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set checkdbargs " -env $env"
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
@@ -52,13 +57,13 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 		return
 	}
 
-	set db [eval {berkdb_open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -mode 0644 \
 		$omethod -dup} $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
-	set check_db \
-	    [berkdb_open -create -truncate -mode 0644 -hash $checkdb]
+	set check_db [eval \
+	    {berkdb_open -create -mode 0644 -hash} $checkdbargs {$checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -154,9 +159,13 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 			set ret [$dbc del]
 			error_check_good del $ret 0
 
-			set ret \
-			    [eval {$dbc get} $txn $gflags {-get_both $k $data}]
-			error_check_good error_case:$k [llength $ret] 0
+			set ret [eval \
+			    {$dbc get} $txn $gflags {-get_both $k $data}]
+			error_check_good get_both:$k [llength $ret] 0
+
+			set ret [eval \
+			    {$dbc get} $txn $gflags {-get_both_range $k $data}]
+			error_check_good get_both_range:$k [llength $ret] 0
 
 			if {$ndx != 0} {
 				set n [expr ($ndx - 1) * 3]

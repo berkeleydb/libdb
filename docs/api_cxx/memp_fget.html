@@ -1,4 +1,4 @@
-<!--$Id: memp_fget.so,v 10.29 2001/05/15 17:08:37 bostic Exp $-->
+<!--$Id: memp_fget.so,v 10.31 2001/10/22 15:24:35 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbMpoolFile::get</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -47,8 +47,9 @@ location to which <b>pgnoaddr</b> refers.  In this case, the
 </dl>
 <p>The DB_MPOOL_CREATE, DB_MPOOL_LAST, and
 DB_MPOOL_NEW flags are mutually exclusive.
-<p>Fully or partially created pages have all their bytes set to 0, unless
-other behavior was specified when the file was opened.
+<p>Fully or partially created pages have all their bytes set to a nul byte,
+unless the <a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a> method was called to specify other
+behavior before the file was opened.
 <p>All pages returned by DbMpoolFile::get will be retained (that is,
 <i>pinned</i>), in the pool until a subsequent call to
 <a href="../api_cxx/memp_fput.html">DbMpoolFile::put</a>.
@@ -82,6 +83,7 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -89,13 +91,18 @@ in the same way.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

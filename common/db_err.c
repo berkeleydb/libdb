@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_err.c,v 11.49 2001/06/19 19:03:19 bostic Exp $";
+static const char revid[] = "$Id: db_err.c,v 11.56 2001/11/16 16:35:26 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -23,6 +23,7 @@ static const char revid[] = "$Id: db_err.c,v 11.49 2001/06/19 19:03:19 bostic Ex
 #include "db_page.h"
 #include "clib_ext.h"
 #include "db_am.h"
+#include "clib_ext.h"
 #include "common_ext.h"
 
 static void __db_errcall __P((const DB_ENV *, int, int, const char *, va_list));
@@ -104,16 +105,15 @@ __db_pgerr(dbp, pgno)
  * __db_pgfmt --
  *	Error when a page has the wrong format.
  *
- * PUBLIC: int __db_pgfmt __P((DB *, db_pgno_t));
+ * PUBLIC: int __db_pgfmt __P((DB_ENV *, db_pgno_t));
  */
 int
-__db_pgfmt(dbp, pgno)
-	DB *dbp;
+__db_pgfmt(dbenv, pgno)
+	DB_ENV *dbenv;
 	db_pgno_t pgno;
 {
-	__db_err(dbp->dbenv,
-	    "page %lu: illegal page type or format", (u_long)pgno);
-	return (__db_panic(dbp->dbenv, EINVAL));
+	__db_err(dbenv, "page %lu: illegal page type or format", (u_long)pgno);
+	return (__db_panic(dbenv, EINVAL));
 }
 
 /*
@@ -185,9 +185,8 @@ __db_panic(dbenv, errval)
 	DB_ENV *dbenv;
 	int errval;
 {
-
 	if (dbenv != NULL) {
-		((REGENV *)((REGINFO *)dbenv->reginfo)->primary)->envpanic = 1;
+		PANIC_SET(dbenv, 1);
 
 		dbenv->panic_errval = errval;
 
@@ -196,6 +195,10 @@ __db_panic(dbenv, errval)
 		if (dbenv->db_paniccall != NULL)
 			dbenv->db_paniccall(dbenv, errval);
 	}
+
+#ifdef DIAGNOSTIC
+	abort();
+#endif
 
 	/*
 	 * Chaos reigns within.
@@ -253,6 +256,19 @@ db_strerror(error)
 		return ("DB_OLDVERSION: Database requires a version upgrade");
 	case DB_PAGE_NOTFOUND:
 		return ("DB_PAGE_NOTFOUND: Requested page not found");
+	case DB_REP_DUPMASTER:
+		return ("DB_REP_DUPMASTER: A second master site appeared");
+	case DB_REP_HOLDELECTION:
+		return ("DB_REP_HOLDELECTION: No master present");
+	case DB_REP_NEWMASTER:
+		return ("DB_REP_NEWMASTER: A new master has declared itself");
+	case DB_REP_NEWSITE:
+		return ("DB_REP_NEWSITE: A new site has entered the system");
+	case DB_REP_OUTDATED:
+		return
+		    ("DB_REP_OUTDATED: Insufficient logs on master to recover");
+	case DB_REP_UNAVAIL:
+		return ("DB_REP_UNAVAIL: Unable to elect a master");
 	case DB_RUNRECOVERY:
 		return ("DB_RUNRECOVERY: Fatal error, run database recovery");
 	case DB_SECONDARY_BAD:
@@ -511,13 +527,13 @@ __db_unknown_flag(dbenv, routine, flag)
 /*
  * __db_unknown_type -- report internal error
  *
- * PUBLIC: int __db_unknown_type __P((DB_ENV *, char *, u_int32_t));
+ * PUBLIC: int __db_unknown_type __P((DB_ENV *, char *, DBTYPE));
  */
 int
 __db_unknown_type(dbenv, routine, type)
 	DB_ENV *dbenv;
 	char *routine;
-	u_int32_t type;
+	DBTYPE type;
 {
 	__db_err(dbenv, "%s: Unknown db type: 0x%x", routine, type);
 	DB_ASSERT(0);

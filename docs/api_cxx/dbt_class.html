@@ -1,4 +1,4 @@
-<!--$Id: dbt_class.so,v 10.45 2001/06/19 14:37:20 bostic Exp $-->
+<!--$Id: dbt_class.so,v 10.47 2001/09/08 19:28:37 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Dbt</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -82,6 +82,12 @@ string of <b>size</b> bytes.  When returning a key/data item to the
 application, Berkeley DB will store into the <b>data</b> object a pointer to
 a byte string of <b>size</b> bytes, and the memory to which the pointer
 refers will be allocated and managed by Berkeley DB.
+<p>Access to Dbt objects is not re-entrant.  In particular, if
+multiple threads simultaneously access the same Dbt object using
+Db API calls, the results are undefined, and may result in a
+crash.  One easy way to avoid problems is to use Dbt objects
+that are
+constructed as stack variables.
 <p>The elements of the structure underlying the Dbt class are defined as follows:
 <p><dl compact>
 <p><dt>void *<a name="data">data</a>;<dd>A pointer to a byte string.
@@ -202,7 +208,7 @@ and C++ language software.  It should not be necessary to use these
 calls in a purely C++ application.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test019.tcl,v 11.17 2001/07/02 01:08:46 bostic Exp $
+# $Id: test019.tcl,v 11.19 2001/08/03 16:39:36 bostic Exp $
 #
-# Test019 { access_method nentries }
-# Test the partial get functionality.
+# TEST	test019
+# TEST	Partial get test.
 proc test019 { method {nentries 10000} args } {
 	global fixed_len
 	global rand_init
@@ -32,7 +32,7 @@ proc test019 { method {nentries 10000} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	berkdb srand $rand_init

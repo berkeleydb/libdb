@@ -1,4 +1,4 @@
-<!--$Id: env_set_lg_bsize.so,v 10.14 2001/05/15 14:44:09 bostic Exp $-->
+<!--$Id: env_set_lg_bsize.so,v 10.15 2001/10/22 15:24:29 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv.set_lg_bsize</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,7 +22,7 @@
 import com.sleepycat.db.*;
 <p>
 public void set_lg_bsize(int lg_bsize)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>Set the size of the in-memory log buffer, in bytes.  By default, or if
@@ -65,17 +65,19 @@ will fail in the same way.
 <a href="../api_java/env_set_lg_regionmax.html">DbEnv.set_lg_regionmax</a>,
 <a href="../api_java/log_archive.html">DbEnv.log_archive</a>,
 <a href="../api_java/log_compare.html">DbEnv.log_compare</a>,
+<a href="../api_java/log_cursor.html">DbEnv.log_cursor</a>,
 <a href="../api_java/log_file.html">DbEnv.log_file</a>,
 <a href="../api_java/log_flush.html">DbEnv.log_flush</a>,
-<a href="../api_java/log_get.html">DbEnv.log_get</a>,
 <a href="../api_java/log_put.html">DbEnv.log_put</a>,
 <a href="../api_java/log_register.html">DbEnv.log_register</a>,
 <a href="../api_java/log_stat.html">DbEnv.log_stat</a>,
+<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>,
+<a href="../api_java/logc_close.html">DbLogc.logc_close</a>
 and
-<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>.
+<a href="../api_java/logc_get.html">DbLogc.logc_get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

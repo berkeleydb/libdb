@@ -3,16 +3,27 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdbtest002.tcl,v 11.20 2001/01/25 18:23:08 bostic Exp $
+# $Id: sdbtest002.tcl,v 11.21 2001/08/03 16:39:31 bostic Exp $
 #
-# Sub DB All-Method Test 2
-# Make several subdb's of different access methods all in one DB.
-# Fork of some child procs to each manipulate one subdb and when
-# they are finished, verify the contents of the databases.
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	subdbtest002
+# TEST	Tests multiple access methods in one subdb access by multiple
+# TEST	processes.
+# TEST		Open several subdbs, each with a different access method
+# TEST		Small keys, small data
+# TEST		Put/get per key per subdb
+# TEST		Fork off several child procs to each delete selected
+# TEST		    data from their subdb and then exit
+# TEST		Dump file, verify contents of each subdb is correct
+# TEST		Close, reopen per subdb
+# TEST		Dump file, verify per subdb
+# TEST
+# TEST	Make several subdb's of different access methods all in one DB.
+# TEST	Fork of some child procs to each manipulate one subdb and when
+# TEST	they are finished, verify the contents of the databases.
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
 proc subdbtest002 { {nentries 10000} } {
 	source ./include.tcl
 

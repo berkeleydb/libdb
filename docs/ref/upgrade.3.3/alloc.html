@@ -1,4 +1,4 @@
-<!--$Id: alloc.so,v 1.5 2001/06/06 18:35:58 bostic Exp $-->
+<!--$Id: alloc.so,v 1.10 2001/09/20 17:02:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -33,27 +33,32 @@ to <a href="../../api_c/db_set_alloc.html">DB-&gt;set_alloc</a>.
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If non-NULL,
 it should be replaced with a call to <a href="../../api_c/db_set_alloc.html">DB-&gt;set_alloc</a>.
-<p><dt><a href="../../api_c/lock_stat.html">lock_stat</a><dd>The historic <b>db_malloc</b> argument to the <a href="../../api_c/lock_stat.html">lock_stat</a> function has
+<p><dt>lock_stat<dd>The historic <b>db_malloc</b> argument to the lock_stat interface has
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If
 non-NULL, it should be replaced with a call to <a href="../../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a>.
-<p><dt><a href="../../api_c/log_archive.html">log_archive</a><dd>The historic <b>db_malloc</b> argument to the <a href="../../api_c/log_archive.html">log_archive</a> function has
+<p><dt>log_archive<dd>The historic <b>db_malloc</b> argument to the log_archive interface has
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If non-NULL,
 it should be replaced with a call to <a href="../../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a>.
-<p><dt><a href="../../api_c/log_stat.html">log_stat</a><dd>The historic <b>db_malloc</b> argument to the <a href="../../api_c/log_stat.html">log_stat</a> function has
+<p><dt>log_stat<dd>The historic <b>db_malloc</b> argument to the log_stat interface has
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If non-NULL,
 it should be replaced with a call to <a href="../../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a>.
-<p><dt><a href="../../api_c/memp_stat.html">memp_stat</a><dd>The historic <b>db_malloc</b> argument to the <a href="../../api_c/memp_stat.html">memp_stat</a> function has
+<p><dt>memp_stat<dd>The historic <b>db_malloc</b> argument to the memp_stat function has
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If non-NULL,
 it should be replaced with a call to <a href="../../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a>.
-<p><dt><a href="../../api_c/txn_stat.html">txn_stat</a><dd>The historic <b>db_malloc</b> argument to the <a href="../../api_c/txn_stat.html">txn_stat</a> function has
+<p><dt>txn_stat<dd>The historic <b>db_malloc</b> argument to the txn_stat function has
 been replaced.  Applications using this interface should do as follows:
 if the argument is NULL, it should simply be removed.  If non-NULL,
 it should be replaced with a call to <a href="../../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a>.
 </dl>
+<p>One potential incompatibility for historic applications is that the
+allocation functions for a database environment must now be set before
+the environment is opened.  Historically, Berkeley DB applications could open
+the environment first, and subsequently call the DB-&gt;set_malloc
+and DB-&gt;set_realloc interfaces; that use is no longer supported.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.3/getswap.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.3/conflict.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

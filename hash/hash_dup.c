@@ -38,7 +38,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_dup.c,v 11.62 2001/07/02 01:05:38 bostic Exp $";
+static const char revid[] = "$Id: hash_dup.c,v 11.65 2001/08/13 19:11:37 bostic Exp $";
 #endif /* not lint */
 
 /*
@@ -95,13 +95,15 @@ __ham_add_dup(dbc, nval, flags, pgnop)
 	db_pgno_t *pgnop;
 {
 	DB *dbp;
-	HASH_CURSOR *hcp;
 	DBT pval, tmp_val;
+	DB_MPOOLFILE *mpf;
+	HASH_CURSOR *hcp;
 	u_int32_t add_bytes, new_size;
 	int cmp, ret;
 	u_int8_t *hk;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	DB_ASSERT(flags != DB_CURRENT);
@@ -179,7 +181,8 @@ __ham_add_dup(dbc, nval, flags, pgnop)
 		case DB_KEYLAST:
 		case DB_NODUPDATA:
 			if (dbp->dup_compare != NULL) {
-				__ham_dsearch(dbc, nval, &tmp_val.doff, &cmp);
+				__ham_dsearch(dbc,
+				    nval, &tmp_val.doff, &cmp, flags);
 
 				/* dup dups are not supported w/ sorted dups */
 				if (cmp == 0)
@@ -206,8 +209,7 @@ __ham_add_dup(dbc, nval, flags, pgnop)
 		/* Add the duplicate. */
 		ret = __ham_replpair(dbc, &tmp_val, 0);
 		if (ret == 0)
-			ret = memp_fset(dbp->mpf, hcp->page, DB_MPOOL_DIRTY);
-
+			ret = mpf->set(mpf, hcp->page, DB_MPOOL_DIRTY);
 		if (ret != 0)
 			return (ret);
 
@@ -248,19 +250,21 @@ int
 __ham_dup_convert(dbc)
 	DBC *dbc;
 {
+	BOVERFLOW bo;
 	DB *dbp;
 	DBC **hcs;
-	DB_LSN lsn;
-	PAGE *dp;
-	HASH_CURSOR *hcp;
-	BOVERFLOW bo;
 	DBT dbt;
+	DB_LSN lsn;
+	DB_MPOOLFILE *mpf;
+	HASH_CURSOR *hcp;
 	HOFFPAGE ho;
+	PAGE *dp;
 	db_indx_t i, len, off;
 	int c, ret, t_ret;
 	u_int8_t *p, *pend;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	/*
@@ -305,8 +309,7 @@ __ham_dup_convert(dbc)
 
 		ret = __db_pitem(dbc, dp, 0, dbt.size, &dbt, NULL);
 finish:		if (ret == 0) {
-			if ((ret =
-			    memp_fset(dbp->mpf, dp, DB_MPOOL_DIRTY)) != 0)
+			if ((ret = mpf->set(mpf, dp, DB_MPOOL_DIRTY)) != 0)
 				break;
 
 			/* Update any other cursors. */
@@ -364,7 +367,7 @@ finish:		if (ret == 0) {
 		}
 		break;
 	default:
-		ret = __db_pgfmt(dbp, (u_long)hcp->pgno);
+		ret = __db_pgfmt(dbp->dbenv, (u_long)hcp->pgno);
 		break;
 	}
 
@@ -377,10 +380,10 @@ finish:		if (ret == 0) {
 		    (u_int32_t)H_DATAINDEX(hcp->indx), PGNO(dp));
 
 err:	if (ret == 0)
-		ret = memp_fset(dbp->mpf, hcp->page, DB_MPOOL_DIRTY);
+		ret = mpf->set(mpf, hcp->page, DB_MPOOL_DIRTY);
 
-	if ((t_ret = memp_fput(dbp->mpf,
-	    dp, ret == 0 ? DB_MPOOL_DIRTY : 0)) != 0 && ret == 0)
+	if ((t_ret =
+	    mpf->put(mpf, dp, ret == 0 ? DB_MPOOL_DIRTY : 0)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (ret == 0)
@@ -455,9 +458,10 @@ __ham_check_move(dbc, add_len)
 	u_int32_t add_len;
 {
 	DB *dbp;
-	HASH_CURSOR *hcp;
 	DBT k, d;
 	DB_LSN new_lsn;
+	DB_MPOOLFILE *mpf;
+	HASH_CURSOR *hcp;
 	PAGE *next_pagep;
 	db_pgno_t next_pgno;
 	u_int32_t new_datalen, old_len, rectype;
@@ -465,6 +469,7 @@ __ham_check_move(dbc, add_len)
 	int ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	hk = H_PAIRDATA(hcp->page, hcp->indx);
@@ -511,10 +516,10 @@ __ham_check_move(dbc, add_len)
 	for (next_pgno = NEXT_PGNO(hcp->page); next_pgno != PGNO_INVALID;
 	    next_pgno = NEXT_PGNO(next_pagep)) {
 		if (next_pagep != NULL &&
-		    (ret = memp_fput(dbp->mpf, next_pagep, 0)) != 0)
+		    (ret = mpf->put(mpf, next_pagep, 0)) != 0)
 			return (ret);
 
-		if ((ret = memp_fget(dbp->mpf,
+		if ((ret = mpf->get(mpf,
 		    &next_pgno, DB_MPOOL_CREATE, &next_pagep)) != 0)
 			return (ret);
 
@@ -530,7 +535,7 @@ __ham_check_move(dbc, add_len)
 	/* Add new page at the end of the chain. */
 	if (P_FREESPACE(next_pagep) < new_datalen && (ret =
 	    __ham_add_ovflpage(dbc, next_pagep, 1, &next_pagep)) != 0) {
-		(void)memp_fput(dbp->mpf, next_pagep, 0);
+		(void)mpf->put(mpf, next_pagep, 0);
 		return (ret);
 	}
 
@@ -568,7 +573,7 @@ __ham_check_move(dbc, add_len)
 		    dbp->log_fileid, PGNO(next_pagep),
 		    (u_int32_t)NUM_ENT(next_pagep), &LSN(next_pagep),
 		    &k, &d)) != 0) {
-			(void)memp_fput(dbp->mpf, next_pagep, 0);
+			(void)mpf->put(mpf, next_pagep, 0);
 			return (ret);
 		}
 	} else
@@ -593,7 +598,7 @@ __ham_check_move(dbc, add_len)
 	 * Note that __ham_del_pair should dirty the page we're moving
 	 * the items from, so we need only dirty the new page ourselves.
 	 */
-	if ((ret = memp_fset(dbp->mpf, next_pagep, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->set(mpf, next_pagep, DB_MPOOL_DIRTY)) != 0)
 		goto out;
 
 	/* Update all cursors that used to point to this item. */
@@ -613,7 +618,7 @@ __ham_check_move(dbc, add_len)
 		hcp->hdr->nelem++;
 
 out:
-	(void)memp_fput(dbp->mpf, hcp->page, DB_MPOOL_DIRTY);
+	(void)mpf->put(mpf, hcp->page, DB_MPOOL_DIRTY);
 	hcp->page = next_pagep;
 	hcp->pgno = PGNO(hcp->page);
 	hcp->indx = NUM_ENT(hcp->page) - 2;
@@ -693,13 +698,14 @@ __ham_move_offpage(dbc, pagep, ndx, pgno)
  *	Locate a particular duplicate in a duplicate set.  Make sure that
  *	we exit with the cursor set appropriately.
  *
- * PUBLIC: void __ham_dsearch __P((DBC *, DBT *, u_int32_t *, int *));
+ * PUBLIC: void __ham_dsearch
+ * PUBLIC:     __P((DBC *, DBT *, u_int32_t *, int *, u_int32_t));
  */
 void
-__ham_dsearch(dbc, dbt, offp, cmpp)
+__ham_dsearch(dbc, dbt, offp, cmpp, flags)
 	DBC *dbc;
 	DBT *dbt;
-	u_int32_t *offp;
+	u_int32_t *offp, flags;
 	int *cmpp;
 {
 	DB *dbp;
@@ -711,10 +717,7 @@ __ham_dsearch(dbc, dbt, offp, cmpp)
 
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
-	if (dbp->dup_compare == NULL)
-		func = __bam_defcmp;
-	else
-		func = dbp->dup_compare;
+	func = dbp->dup_compare == NULL ? __bam_defcmp : dbp->dup_compare;
 
 	i = F_ISSET(hcp, H_CONTINUE) ? hcp->dup_off: 0;
 	data = HKEYDATA_DATA(H_PAIRDATA(hcp->page, hcp->indx)) + i;
@@ -724,12 +727,26 @@ __ham_dsearch(dbc, dbt, offp, cmpp)
 		data += sizeof(db_indx_t);
 		cur.data = data;
 		cur.size = (u_int32_t)len;
+
+		/*
+		 * If we find an exact match, we're done.  If in a sorted
+		 * duplicate set and the item is larger than our test item,
+		 * we're done.  In the latter case, if permitting partial
+		 * matches, it's not a failure.
+		 */
 		*cmpp = func(dbp, dbt, &cur);
-		if (*cmpp == 0 || (*cmpp < 0 && dbp->dup_compare != NULL))
+		if (*cmpp == 0)
 			break;
+		if (*cmpp < 0 && dbp->dup_compare != NULL) {
+			if (flags == DB_GET_BOTH_RANGE)
+				*cmpp = 0;
+			break;
+		}
+
 		i += len + 2 * sizeof(db_indx_t);
 		data += len + sizeof(db_indx_t);
 	}
+
 	*offp = i;
 	hcp->dup_off = i;
 	hcp->dup_len = len;

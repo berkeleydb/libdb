@@ -41,6 +41,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare
 
 /*
  * Class:     com_sleepycat_db_DbTxn
+ * Method:    set_timeout
+ * Signature: (JI)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_set_1timeout
+  (JNIEnv *, jobject, jlong, jint);
+
+/*
+ * Class:     com_sleepycat_db_DbTxn
  * Method:    finalize
  * Signature: ()V
  */

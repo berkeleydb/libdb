@@ -164,7 +164,7 @@ checkpoint_thread(void *arg)
 
 	/* Checkpoint once a minute. */
 	for (;; sleep(60))
-		switch (ret = txn_checkpoint(dbenv, 0, 0, 0)) {
+		switch (ret = dbenv->txn_checkpoint(dbenv, 0, 0, 0)) {
 		case 0:
 		case DB_INCOMPLETE:
 			break;
@@ -190,8 +190,9 @@ logfile_thread(void *arg)
 	/* Check once every 5 minutes. */
 	for (;; sleep(300)) {
 		/* Get the list of log files. */
-		if ((ret = log_archive(dbenv, &list, DB_ARCH_ABS)) != 0) {
-			dbenv->err(dbenv, ret, "log_archive");
+		if ((ret =
+		    dbenv->log_archive(dbenv, &list, DB_ARCH_ABS)) != 0) {
+			dbenv->err(dbenv, ret, "DB_ENV->log_archive");
 			exit (1);
 		}
 
@@ -216,9 +217,9 @@ log_archlist(DB_ENV *dbenv)
 	char **begin, **list;
 
 	/* Get the list of database files. */
-	if ((ret = log_archive(dbenv,
+	if ((ret = dbenv->log_archive(dbenv,
 	    &list, DB_ARCH_ABS | DB_ARCH_DATA)) != 0) {
-		dbenv->err(dbenv, ret, "log_archive: DB_ARCH_DATA");
+		dbenv->err(dbenv, ret, "DB_ENV->log_archive: DB_ARCH_DATA");
 		exit (1);
 	}
 	if (list != NULL) {
@@ -228,9 +229,9 @@ log_archlist(DB_ENV *dbenv)
 	}
 
 	/* Get the list of log files. */
-	if ((ret = log_archive(dbenv,
+	if ((ret = dbenv->log_archive(dbenv,
 	    &list, DB_ARCH_ABS | DB_ARCH_LOG)) != 0) {
-		dbenv->err(dbenv, ret, "log_archive: DB_ARCH_LOG");
+		dbenv->err(dbenv, ret, "DB_ENV->log_archive: DB_ARCH_LOG");
 		exit (1);
 	}
 	if (list != NULL) {
@@ -290,8 +291,8 @@ add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 
 	for (;;) {
 		/* Begin the transaction. */
-		if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-			dbenv->err(dbenv, ret, "txn_begin");
+		if ((ret = dbenv->txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+			dbenv->err(dbenv, ret, "DB_ENV->txn_begin");
 			exit (1);
 		}
 
@@ -299,15 +300,15 @@ add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 		switch (ret = db->put(db, tid, &key, &data, 0)) {
 		case 0:
 			/* Success: commit the change. */
-			if ((ret = txn_commit(tid, 0)) != 0) {
-				dbenv->err(dbenv, ret, "txn_commit");
+			if ((ret = tid->commit(tid, 0)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->commit");
 				exit (1);
 			}
 			return;
 		case DB_LOCK_DEADLOCK:
 			/* Deadlock: retry the operation. */
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv->err(dbenv, ret, "txn_abort");
+			if ((ret = tid->abort(tid)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->abort");
 				exit (1);
 			}
 			break;
@@ -336,8 +337,8 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 
 	for (;;) {
 		/* Begin the transaction. */
-		if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-			dbenv->err(dbenv, ret, "txn_begin");
+		if ((ret = dbenv->txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+			dbenv->err(dbenv, ret, "DB_ENV->txn_begin");
 			exit (1);
 		}
 
@@ -351,8 +352,8 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 			break;
 		case DB_LOCK_DEADLOCK:
 			/* Deadlock: retry the operation. */
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv->err(dbenv, ret, "txn_abort");
+			if ((ret = tid->abort(tid)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->abort");
 				exit (1);
 			}
 			continue;
@@ -377,15 +378,15 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 		switch (ret = dbp->put(dbp, tid, &key, &data, 0)) {
 		case 0:
 			/* Success: commit the change. */
-			if ((ret = txn_commit(tid, 0)) != 0) {
-				dbenv->err(dbenv, ret, "txn_commit");
+			if ((ret = tid->commit(tid, 0)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->commit");
 				exit (1);
 			}
 			return;
 		case DB_LOCK_DEADLOCK:
 			/* Deadlock: retry the operation. */
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv->err(dbenv, ret, "txn_abort");
+			if ((ret = tid->abort(tid)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->abort");
 				exit (1);
 			}
 			break;
@@ -415,8 +416,8 @@ add_cat(DB_ENV *dbenv, DB *db, char *name, ...)
 	key.size = strlen(name);
 
 retry:	/* Begin the transaction. */
-	if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-		dbenv->err(dbenv, ret, "txn_begin");
+	if ((ret = dbenv->txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DB_ENV->txn_begin");
 		exit (1);
 	}
 
@@ -427,8 +428,8 @@ retry:	/* Begin the transaction. */
 		break;
 	case DB_LOCK_DEADLOCK:
 		/* Deadlock: retry the operation. */
-		if ((ret = txn_abort(tid)) != 0) {
-			dbenv->err(dbenv, ret, "txn_abort");
+		if ((ret = tid->abort(tid)) != 0) {
+			dbenv->err(dbenv, ret, "DB_TXN->abort");
 			exit (1);
 		}
 		goto retry;
@@ -460,8 +461,8 @@ retry:	/* Begin the transaction. */
 				    dbenv, ret, "dbc->c_close");
 				exit (1);
 			}
-			if ((ret = txn_abort(tid)) != 0) {
-				dbenv->err(dbenv, ret, "txn_abort");
+			if ((ret = tid->abort(tid)) != 0) {
+				dbenv->err(dbenv, ret, "DB_TXN->abort");
 				exit (1);
 			}
 			goto retry;
@@ -478,8 +479,8 @@ retry:	/* Begin the transaction. */
 		dbenv->err(dbenv, ret, "dbc->c_close");
 		exit (1);
 	}
-	if ((ret = txn_commit(tid, 0)) != 0) {
-		dbenv->err(dbenv, ret, "txn_commit");
+	if ((ret = tid->commit(tid, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DB_TXN->commit");
 		exit (1);
 	}
 }

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_config,v 1.5 2001/05/22 01:00:30 bostic Exp $
+#	$Id: s_config,v 1.6 2001/09/09 18:28:59 bostic Exp $
 #
 # Build the autoconfiguration files.
 
@@ -23,7 +23,7 @@ echo "Building aclocal.m4"
  echo "AC_SUBST(DB_VERSION_STRING)" &&
  echo "DB_VERSION_STRING=\"\\\"$DB_VERSION_STRING\\\"\"" &&
  echo "])" &&
- cat aclocal/*.ac) > aclocal.m4
+ cat aclocal/*.ac aclocal_java/*.ac) > aclocal.m4
 
 echo "Running autoheader to build config.hin"
 rm -f config.hin

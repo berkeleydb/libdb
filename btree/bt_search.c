@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_search.c,v 11.36 2001/04/18 16:57:13 ubell Exp $";
+static const char revid[] = "$Id: bt_search.c,v 11.37 2001/07/24 18:31:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -78,6 +78,7 @@ __bam_search(dbc, root_pgno, key, flags, stop, recnop, exactp)
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_LOCK lock;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_indx_t base, i, indx, lim;
 	db_lockmode_t lock_mode;
@@ -87,6 +88,7 @@ __bam_search(dbc, root_pgno, key, flags, stop, recnop, exactp)
 	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
 	recno = 0;
@@ -115,7 +117,7 @@ try_again:
 	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
+	if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0) {
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
@@ -132,12 +134,12 @@ try_again:
 	if (!stack &&
 	    ((LF_ISSET(S_PARENT) && (u_int8_t)(stop + 1) >= h->level) ||
 	    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 		(void)__LPUT(dbc, lock);
 		lock_mode = DB_LOCK_WRITE;
 		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
+		if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0) {
 			/* Did not read it, so we can release the lock */
 			(void)__LPUT(dbc, lock);
 			return (ret);
@@ -146,7 +148,7 @@ try_again:
 		    && (u_int8_t)(stop + 1) >= h->level) ||
 		    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
 			/* Someone else split the root, start over. */
-			(void)memp_fput(dbp->mpf, h, 0);
+			(void)mpf->put(mpf, h, 0);
 			(void)__LPUT(dbc, lock);
 			goto try_again;
 		}
@@ -200,7 +202,7 @@ try_again:
 			if (LF_ISSET(S_STK_ONLY)) {
 				BT_STK_NUM(dbp->dbenv, cp, h, base, ret);
 				__LPUT(dbc, lock);
-				(void)memp_fput(dbp->mpf, h, 0);
+				(void)mpf->put(mpf, h, 0);
 				return (ret);
 			}
 
@@ -241,11 +243,11 @@ next:		if (recnop != NULL)
 			if (stop == h->level) {
 				BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
 				__LPUT(dbc, lock);
-				(void)memp_fput(dbp->mpf, h, 0);
+				(void)mpf->put(mpf, h, 0);
 				return (ret);
 			}
 			BT_STK_NUMPUSH(dbp->dbenv, cp, h, indx, ret);
-			(void)memp_fput(dbp->mpf, h, 0);
+			(void)mpf->put(mpf, h, 0);
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE, pg, lock_mode, 0, &lock)) != 0) {
 				/*
@@ -285,7 +287,7 @@ next:		if (recnop != NULL)
 			    (h->level - 1) == LEAFLEVEL)
 				stack = 1;
 
-			(void)memp_fput(dbp->mpf, h, 0);
+			(void)mpf->put(mpf, h, 0);
 
 			lock_mode = stack &&
 			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
@@ -300,7 +302,7 @@ next:		if (recnop != NULL)
 				goto err;
 			}
 		}
-		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0)
+		if ((ret = mpf->get(mpf, &pg, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
@@ -367,7 +369,7 @@ found:	*exactp = 1;
 	if (LF_ISSET(S_STK_ONLY)) {
 		BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
 		__LPUT(dbc, lock);
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 	} else {
 		BT_STK_ENTER(dbp->dbenv, cp, h, indx, lock, lock_mode, ret);
 		if (ret != 0)
@@ -377,7 +379,7 @@ found:	*exactp = 1;
 
 notfound:
 	/* Keep the page locked for serializability. */
-	(void)memp_fput(dbp->mpf, h, 0);
+	(void)mpf->put(mpf, h, 0);
 	(void)__TLPUT(dbc, lock);
 	ret = DB_NOTFOUND;
 
@@ -399,10 +401,12 @@ __bam_stkrel(dbc, flags)
 {
 	BTREE_CURSOR *cp;
 	DB *dbp;
+	DB_MPOOLFILE *mpf;
 	EPG *epg;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/*
@@ -417,8 +421,8 @@ __bam_stkrel(dbc, flags)
 				cp->page = NULL;
 				LOCK_INIT(cp->lock);
 			}
-			if ((t_ret = memp_fput(
-			    dbp->mpf, epg->page, 0)) != 0 && ret == 0)
+			if ((t_ret =
+			    mpf->put(mpf, epg->page, 0)) != 0 && ret == 0)
 				ret = t_ret;
 			/*
 			 * XXX

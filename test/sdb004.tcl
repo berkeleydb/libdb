@@ -3,13 +3,21 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb004.tcl,v 11.17 2001/05/15 05:15:59 krinsky Exp $
+# $Id: sdb004.tcl,v 11.19 2001/09/20 19:39:24 sandstro Exp $
 #
-# SubDB Test 4 {access method}
-# Create 1 db with many large subdbs.  Use the contents as subdb names.
-# Take the source files and dbtest executable and enter their names as the
-# key with their contents as data.  After all are entered, retrieve all;
-# compare output to original. Close file, reopen, do retrieve and re-verify.
+# TEST	subdb004
+# TEST	Tests large subdb names
+# TEST		subdb name = filecontents,
+# TEST		key = filename, data = filecontents
+# TEST			Put/get per key
+# TEST			Dump file
+# TEST			Dump subdbs, verify data and subdb name match
+# TEST
+# TEST	Create 1 db with many large subdbs.  Use the contents as subdb names.
+# TEST	Take the source files and dbtest executable and enter their names as
+# TEST	the key with their contents as data.  After all are entered, retrieve
+# TEST	all; compare output to original. Close file, reopen, do retrieve and
+# TEST	re-verify.
 proc subdb004 { method args} {
 	global names
 	source ./include.tcl
@@ -46,7 +54,7 @@ proc subdb004 { method args} {
 	# Here is the loop where we put and get each key/data pair
 	# Note that the subdatabase name is passed in as a char *, not
 	# in a DBT, so it may not contain nulls;  use only source files.
-	set file_list [glob ../*/*.c]
+	set file_list [glob $src_root/*/*.c]
 	set fcount [llength $file_list]
 
 	set count 0

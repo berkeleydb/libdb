@@ -1,5 +1,5 @@
 <!--$Id: db_set_cachesize.so,v 10.19 2001/04/04 19:06:26 bostic Exp $-->
-<!--$Id: env_set_cachesize.so,v 10.24 2001/05/15 14:44:08 bostic Exp $-->
+<!--$Id: env_set_cachesize.so,v 10.26 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -15,7 +15,7 @@
 <h1>Db.set_cachesize</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -23,7 +23,7 @@
 import com.sleepycat.db.*;
 <p>
 public int set_cachesize(int gbytes, int bytes, int ncache)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>Set the size of the shared memory buffer pool -- that is, the cache --
@@ -46,8 +46,8 @@ the cache will be allocated contiguously in memory.  If it is greater
 than 1, the cache will be broken up into <b>ncache</b> equally sized,
 separate pieces of memory.
 <p>Because databases opened within Berkeley DB environments use the cache
-specified to the environment, it is an error to attempt to set a
-cache in a database created within an environment.
+specified to the environment, it is an error to attempt to set a cache
+in a database created within an environment.
 <p>The Db.set_cachesize interface may be used only to configure Berkeley DB before
 the <a href="../api_java/db_open.html">Db.open</a> interface is called.
 <p>The Db.set_cachesize method throws an exception that encapsulates a non-zero error value on
@@ -63,10 +63,11 @@ before that time.
 <p>The Db.set_cachesize method may fail and throw an exception encapsulating a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>The specified cache size was impossibly small.
+<p>Called in a database environment.
 <p>Called after
 <a href="../api_java/db_open.html">Db.open</a>
 was called.
-<p>The specified cache size was impossibly small.
 </dl>
 <p>The Db.set_cachesize method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
 If a catastrophic error has occurred, the Db.set_cachesize method may fail and throw
@@ -114,7 +115,7 @@ and
 <a href="../api_java/db_verify.html">Db.verify</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

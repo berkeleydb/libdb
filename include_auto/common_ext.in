@@ -15,7 +15,7 @@ int __db_ferr __P((const DB_ENV *, const char *, int));
 #define	__db_pgerr __db_pgerr@DB_VERSION_UNIQUE_NAME@
 int __db_pgerr __P((DB *, db_pgno_t));
 #define	__db_pgfmt __db_pgfmt@DB_VERSION_UNIQUE_NAME@
-int __db_pgfmt __P((DB *, db_pgno_t));
+int __db_pgfmt __P((DB_ENV *, db_pgno_t));
 #define	__db_eopnotsup __db_eopnotsup@DB_VERSION_UNIQUE_NAME@
 int __db_eopnotsup __P((const DB_ENV *));
 #ifdef DIAGNOSTIC
@@ -35,7 +35,7 @@ void __db_logmsg __P((const DB_ENV *, DB_TXN *, const char *, u_int32_t, const c
 #define	__db_unknown_flag __db_unknown_flag@DB_VERSION_UNIQUE_NAME@
 int __db_unknown_flag __P((DB_ENV *, char *, u_int32_t));
 #define	__db_unknown_type __db_unknown_type@DB_VERSION_UNIQUE_NAME@
-int __db_unknown_type __P((DB_ENV *, char *, u_int32_t));
+int __db_unknown_type __P((DB_ENV *, char *, DBTYPE));
 #ifdef DIAGNOSTIC
 #define	__db_missing_txn_err __db_missing_txn_err@DB_VERSION_UNIQUE_NAME@
 int __db_missing_txn_err __P((DB *));
@@ -50,6 +50,8 @@ int __db_getlong __P((DB *, const char *, char *, long, long, long *));
 int __db_getulong __P((DB *, const char *, char *, u_long, u_long, u_long *));
 #define	__db_log2 __db_log2@DB_VERSION_UNIQUE_NAME@
 u_int32_t __db_log2 __P((u_int32_t));
+#define	__db_util_arg __db_util_arg@DB_VERSION_UNIQUE_NAME@
+int __db_util_arg __P((char *, char *, int *, char ***));
 #define	__db_util_logset __db_util_logset@DB_VERSION_UNIQUE_NAME@
 int __db_util_logset __P((const char *, char *));
 #define	__db_util_siginit __db_util_siginit@DB_VERSION_UNIQUE_NAME@

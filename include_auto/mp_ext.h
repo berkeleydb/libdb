@@ -10,23 +10,27 @@ int __memp_pgread __P((DB_MPOOLFILE *, BH *, int));
 int __memp_pgwrite __P((DB_MPOOL *, DB_MPOOLFILE *, BH *, int *, int *));
 int __memp_pg __P((DB_MPOOLFILE *, BH *, int));
 void __memp_bhfree __P((DB_MPOOL *, BH *, int));
-void __memp_lastpgno __P((DB_MPOOLFILE *, db_pgno_t *));
-void __memp_set_unlink __P((DB_MPOOLFILE *));
-void __memp_clear_unlink __P((DB_MPOOLFILE *));
-void __memp_refcount __P((DB_MPOOLFILE *, db_pgno_t *));
-int __memp_fopen __P((DB_MPOOL *, MPOOLFILE *, const char *, u_int32_t, int, size_t, int, DB_MPOOL_FINFO *, DB_MPOOLFILE **));
-int __memp_fclose __P((DB_MPOOLFILE *, int));
+int __memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
+int __memp_fcreate __P((DB_ENV *, DB_MPOOLFILE **, u_int32_t));
+int __memp_fopen_int __P((DB_MPOOLFILE *, MPOOLFILE *, const char *, u_int32_t, int, size_t, int));
+int __memp_fclose_int __P((DB_MPOOLFILE *, u_int32_t, int));
 void __memp_mf_discard __P((DB_MPOOL *, MPOOLFILE *));
-int __memp_fremove __P((DB_MPOOLFILE *));
 char * __memp_fn __P((DB_MPOOLFILE *));
 char * __memp_fns __P((DB_MPOOL *, MPOOLFILE *));
+int __memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
+int __memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
 void __memp_dbenv_create __P((DB_ENV *));
 int __memp_open __P((DB_ENV *));
-int __memp_close __P((DB_ENV *));
+int __memp_dbenv_refresh __P((DB_ENV *));
 void __mpool_region_destroy __P((DB_ENV *, REGINFO *));
+int __memp_register __P((DB_ENV *, int, int (*)(DB_ENV *, db_pgno_t, void *, DBT *), int (*)(DB_ENV *, db_pgno_t, void *, DBT *)));
+int __memp_stat __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
 int __memp_dump_region __P((DB_ENV *, char *, FILE *));
+int __memp_sync __P((DB_ENV *, DB_LSN *));
+int __memp_fsync __P((DB_MPOOLFILE *));
 int __mp_xxx_fh __P((DB_MPOOLFILE *, DB_FH **));
 int __memp_close_flush_files __P((DB_MPOOL *));
+int __memp_trickle __P((DB_ENV *, int, int *));
 #if defined(__cplusplus)
 }
 #endif

@@ -1,9 +1,9 @@
-<!--$Id: log_stat.so,v 10.25 2001/06/05 16:06:22 margo Exp $-->
+<!--$Id: log_stat.so,v 10.30 2001/10/22 15:24:34 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: log_stat</title>
+<title>Berkeley DB: DB_ENV-&gt;log_stat</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>log_stat</h1>
+<h1>DB_ENV-&gt;log_stat</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,12 +22,17 @@
 #include &lt;db.h&gt;
 <p>
 int
-log_stat(DB_ENV *env, DB_LOG_STAT **spp);
+DB_ENV-&gt;log_stat(DB_ENV *env, DB_LOG_STAT **spp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The log_stat function
+<p>The DB_ENV-&gt;log_stat function
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -40,7 +45,6 @@ The following DB_LOG_STAT fields will be filled in:
 <p><dl compact>
 <dt>u_int32_t st_magic;<dd>The magic number that identifies a file as a log file.
 <dt>u_int32_t st_version;<dd>The version of the log file type.
-<dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>int st_mode;<dd>The mode of any created log files.
 <dt>u_int32_t st_lg_bsize;<dd>The in-memory log record cache size.
 <dt>u_int32_t st_lg_max;<dd>The maximum size of any individual file comprising the log.
@@ -56,16 +60,22 @@ in-memory log record cache filled up.
 <dt>u_int32_t st_cur_file;<dd>The current log file number.
 <dt>u_int32_t st_cur_offset;<dd>The byte offset in the current log file.
 <dt>u_int32_t st_disk_file;<dd>The log file number of the last record known to be on disk.
+<dt>u_int32_t st_disk_offset;<dd>The byte offset of the last record known to be on disk.
 <dt>u_int32_t st_cur_offset;<dd>The byte offset of the last record known to be on disk.
+<dt>u_int32_t st_flushcommit;<dd>The number of log flushes that contained a transaction commit record.
+<dt>u_int32_t st_maxcommitperflush;<dd>The maximum number of commits contained in a single log flush.
+<dt>u_int32_t st_mincommitperflush;<dd>The minimum number of commits contained in a single log flush that
+contained a commit.]
+<dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-<p>The log_stat function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;log_stat function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The log_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the log_stat function may fail and return
+<p>The DB_ENV-&gt;log_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;log_stat function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
@@ -73,16 +83,18 @@ in the same way.
 <a href="../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a>,
 <a href="../api_c/env_set_lg_max.html">DB_ENV-&gt;set_lg_max</a>,
 <a href="../api_c/env_set_lg_regionmax.html">DB_ENV-&gt;set_lg_regionmax</a>,
-<a href="../api_c/log_archive.html">log_archive</a>,
+<a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>,
 <a href="../api_c/log_compare.html">log_compare</a>,
-<a href="../api_c/log_file.html">log_file</a>,
-<a href="../api_c/log_flush.html">log_flush</a>,
-<a href="../api_c/log_get.html">log_get</a>,
-<a href="../api_c/log_put.html">log_put</a>,
-<a href="../api_c/log_register.html">log_register</a>,
-<a href="../api_c/log_stat.html">log_stat</a>,
+<a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a>,
+<a href="../api_c/log_file.html">DB_ENV-&gt;log_file</a>,
+<a href="../api_c/log_flush.html">DB_ENV-&gt;log_flush</a>,
+<a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a>,
+<a href="../api_c/log_register.html">DB_ENV-&gt;log_register</a>,
+<a href="../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>,
+<a href="../api_c/log_unregister.html">DB_ENV-&gt;log_unregister</a>,
+<a href="../api_c/logc_close.html">DB_LOGC-&gt;close</a>
 and
-<a href="../api_c/log_unregister.html">log_unregister</a>.
+<a href="../api_c/logc_get.html">DB_LOGC-&gt;get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

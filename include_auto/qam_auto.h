@@ -2,25 +2,17 @@
 
 #ifndef	qam_AUTO_H
 #define	qam_AUTO_H
-#define	DB_qam_inc	76
-typedef struct _qam_inc_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	DB_LSN	lsn;
-} __qam_inc_args;
-
-#define	DB_qam_incfirst	77
+#define	DB_qam_incfirst	84
 typedef struct _qam_incfirst_args {
 	u_int32_t type;
 	DB_TXN *txnid;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_recno_t	recno;
+	db_pgno_t	meta_pgno;
 } __qam_incfirst_args;
 
-#define	DB_qam_mvptr	78
+#define	DB_qam_mvptr	85
 typedef struct _qam_mvptr_args {
 	u_int32_t type;
 	DB_TXN *txnid;
@@ -32,6 +24,7 @@ typedef struct _qam_mvptr_args {
 	db_recno_t	old_cur;
 	db_recno_t	new_cur;
 	DB_LSN	metalsn;
+	db_pgno_t	meta_pgno;
 } __qam_mvptr_args;
 
 #define	DB_qam_del	79

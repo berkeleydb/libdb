@@ -3,19 +3,21 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test042.tcl,v 11.25 2001/01/25 18:23:10 bostic Exp $
+# $Id: test042.tcl,v 11.27 2001/08/03 16:39:40 bostic Exp $
 #
-# DB Test 42 {access method}
-#
-# Multiprocess DB test; verify that locking is working for the concurrent
-# access method product.
-#
-# Use the first "nentries" words from the dictionary.  Insert each with self
-# as key and a fixed, medium length data string.  Then fire off multiple
-# processes that bang on the database.  Each one should try to read and write
-# random keys.  When they rewrite, they'll append their pid to the data string
-# (sometimes doing a rewrite sometimes doing a partial put).  Some will use
-# cursors to traverse through a few keys before finding one to write.
+# TEST	test042
+# TEST	Concurrent Data Store test
+# TEST
+# TEST	Multiprocess DB test; verify that locking is working for the
+# TEST	concurrent access method product.
+# TEST
+# TEST	Use the first "nentries" words from the dictionary.  Insert each with
+# TEST	self as key and a fixed, medium length data string.  Then fire off
+# TEST	multiple processes that bang on the database.  Each one should try to
+# TEST	read and write random keys.  When they rewrite, they'll append their
+# TEST	pid to the data string (sometimes doing a rewrite sometimes doing a
+# TEST	partial put).  Some will use cursors to traverse through a few keys
+# TEST	before finding one to write.
 
 set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
 
@@ -65,7 +67,7 @@ proc test042 { method {nentries 1000} args } {
 	set env [berkdb env -create -cdb -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
-	set db [eval {berkdb_open -env $env -create -truncate \
+	set db [eval {berkdb_open -env $env -create \
 	    -mode 0644 $omethod} $oargs {$testfile}]
 	error_check_good dbopen [is_valid_widget $db db] TRUE
 

@@ -1,4 +1,4 @@
-<!--$Id: conf.so,v 10.45 2001/06/27 14:13:45 bostic Exp $-->
+<!--$Id: conf.so,v 10.46 2001/07/20 18:30:24 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -29,12 +29,13 @@ This will include Berkeley DB 1.85 API compatibility code in the library.
 <a name="5"><!--meow--></a>
 <p><dt><a name="--enable-cxx">--enable-cxx</a><dd>To build the Berkeley DB C++ API, enter --enable-cxx as an argument to
 configure.
-<p><dt><a name="--enable-debug">--enable-debug</a><dd>To build Berkeley DB with <b>-g</b> as a compiler flag and with <b>DEBUG</b>
-#defined during compilation, enter --enable-debug as an argument to
-configure.  This will create a Berkeley DB library with debugging symbols, as
-well as load various routines that can be called from a debugger to
-display pages, cursor queues, and so forth.  This option should not be
-specified when configuring to build production binaries.
+<p><dt><a name="--enable-debug">--enable-debug</a><dd>To build Berkeley DB with <b>-g</b> as a compiler flag and with
+<b>DEBUG</b> #defined during compilation, enter --enable-debug as an
+argument to configure.  This will create a Berkeley DB library and utilities
+with debugging symbols, as well as load various routines that can be
+called from a debugger to display pages, cursor queues, and so forth.
+If installed, the utilities will not be stripped.  This option should
+not be specified when configuring to build production binaries.
 <p><dt><a name="--enable-debug_rop">--enable-debug_rop</a><dd>To build Berkeley DB to output log records for read operations, enter
 --enable-debug_rop as an argument to configure.  This option should not
 be specified when configuring to build production binaries.

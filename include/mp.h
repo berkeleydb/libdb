@@ -4,14 +4,14 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: mp.h,v 11.22 2001/06/04 16:10:35 bostic Exp $
+ * $Id: mp.h,v 11.27 2001/10/29 19:10:46 ubell Exp $
  */
+#ifndef	_DB_MP_H_
+#define	_DB_MP_H_
 
 struct __bh;		typedef struct __bh BH;
-struct __db_mpool;	typedef struct __db_mpool DB_MPOOL;
 struct __db_mpreg;	typedef struct __db_mpreg DB_MPREG;
 struct __mpool;		typedef struct __mpool MPOOL;
-struct __mpoolfile;	typedef struct __mpoolfile MPOOLFILE;
 
 /* We require at least 20K of cache. */
 #define	DB_CACHESIZE_MIN	(20 * 1024)
@@ -22,7 +22,7 @@ struct __mpoolfile;	typedef struct __mpoolfile MPOOLFILE;
  */
 struct __db_mpool {
 	/* These fields need to be protected for multi-threaded support. */
-	MUTEX	   *mutexp;		/* Structure thread lock. */
+	DB_MUTEX   *mutexp;		/* Structure thread lock. */
 
 					/* List of pgin/pgout routines. */
 	LIST_HEAD(__db_mpregh, __db_mpreg) dbregq;
@@ -50,52 +50,6 @@ struct __db_mpreg {
 					/* Pgin, pgout routines. */
 	int (*pgin) __P((DB_ENV *, db_pgno_t, void *, DBT *));
 	int (*pgout) __P((DB_ENV *, db_pgno_t, void *, DBT *));
-};
-
-/*
- * DB_MPOOLFILE --
- *	Per-process DB_MPOOLFILE information.
- */
-struct __db_mpoolfile {
-	/* These fields need to be protected for multi-threaded support. */
-	MUTEX	  *mutexp;		/* Structure thread lock. */
-
-	DB_FH	   fh;			/* Underlying file handle. */
-
-	u_int32_t ref;			/* Reference count. */
-
-	/*
-	 * !!!
-	 * This field is a special case -- it's protected by the region lock
-	 * NOT the thread lock.  The reason for this is that we always have
-	 * the region lock immediately before or after we modify the field,
-	 * and we don't want to use the structure lock to protect it because
-	 * then I/O (which is done with the structure lock held because of
-	 * the race between the seek and write of the file descriptor) will
-	 * block any other put/get calls using this DB_MPOOLFILE structure.
-	 */
-	u_int32_t pinref;		/* Pinned block reference count. */
-
-	/*
-	 * !!!
-	 * This field is a special case -- it's protected by the region lock
-	 * since it's manipulated only when new files are added to the list.
-	 */
-	TAILQ_ENTRY(__db_mpoolfile) q;	/* Linked list of DB_MPOOLFILE's. */
-
-	/* These fields are not thread-protected. */
-	DB_MPOOL  *dbmp;		/* Overlying DB_MPOOL. */
-	MPOOLFILE *mfp;			/* Underlying MPOOLFILE. */
-
-	void	  *addr;		/* Address of mmap'd region. */
-	size_t	   len;			/* Length of mmap'd region. */
-
-	/* These fields need to be protected for multi-threaded support. */
-#define	MP_FLUSH	0x01		/* Was opened to flush a buffer. */
-#define	MP_READONLY	0x02		/* File is readonly. */
-#define	MP_UPGRADE	0x04		/* File descriptor is readwrite. */
-#define	MP_UPGRADE_FAIL	0x08		/* Upgrade wasn't possible. */
-	u_int32_t  flags;
 };
 
 /*
@@ -136,28 +90,45 @@ struct __mpool {
 	 *
 	 * The first of these pieces/files describes the entire pool, all
 	 * subsequent ones only describe a part of the cache.
-	 *
+	 */
+
+	/*
 	 * We single-thread memp_sync and memp_fsync calls.
 	 *
 	 * This mutex is intended *only* to single-thread access to the call,
-	 * it is not used to protect the lsn and lsn_cnt fields, the region
-	 * lock is used to protect them.
 	 */
-	MUTEX	  sync_mutex;		/* Checkpoint lock. */
+	DB_MUTEX  sync_mutex;		/* Checkpoint lock. */
+
+	/*
+	 * The lsn and lsn_cnt fields, and the list of underlying MPOOLFILEs
+	 * are thread-protected, by the region lock.
+	 */
 	DB_LSN	  lsn;			/* Maximum checkpoint LSN. */
 	u_int32_t lsn_cnt;		/* Checkpoint buffers left to write. */
 
 	SH_TAILQ_HEAD(__mpfq) mpfq;	/* List of MPOOLFILEs. */
 
+	/*
+	 * The nreg, regids and maint_off fields are not thread protected,
+	 * as they are initialized during mpool creation, and not modified
+	 * again.
+	 */
 	u_int32_t nreg;			/* Number of underlying REGIONS. */
 	roff_t	  regids;		/* Array of underlying REGION Ids. */
 
+#ifdef MUTEX_SYSTEM_RESOURCES
+	roff_t	    maint_off;		/* Maintenance information offset */
+#endif
+
+	/* The flags field is thread-protected, by the region lock. */
 #define	MP_LSN_RETRY	0x01		/* Retry all BH_WRITE buffers. */
 	u_int32_t  flags;
 
 	/*
 	 * The following structure fields only describe the cache portion of
-	 * the region.
+	 * the region.  The bhq and stat files are thread-protected, by the
+	 * region lock.  The htab fields are not thread-protected, as they are
+	 * initialized during mpool creation, and not modified again.
 	 */
 	SH_TAILQ_HEAD(__bhq) bhq;	/* LRU list of buffer headers. */
 
@@ -165,9 +136,6 @@ struct __mpool {
 	roff_t	    htab;		/* Hash table offset. */
 
 	DB_MPOOL_STAT stat;		/* Per-cache mpool statistics. */
-#ifdef MUTEX_SYSTEM_RESOURCES
-	roff_t	    maint_off;		/* Maintenance information offset */
-#endif
 };
 
 /*
@@ -177,9 +145,9 @@ struct __mpool {
 struct __mpoolfile {
 	SH_TAILQ_ENTRY  q;		/* List of MPOOLFILEs */
 
-	db_pgno_t mpf_cnt;		/* Ref count: DB_MPOOLFILEs. */
-	db_pgno_t block_cnt;		/* Ref count: blocks in cache. */
-	db_pgno_t lsn_cnt;		/* Checkpoint buffers left to write. */
+	u_int32_t mpf_cnt;		/* Ref count: DB_MPOOLFILEs. */
+	u_int32_t block_cnt;		/* Ref count: blocks in cache. */
+	u_int32_t lsn_cnt;		/* Checkpoint buffers left to write. */
 
 	int	  ftype;		/* File type. */
 	int32_t	  lsn_off;		/* Page's LSN offset. */
@@ -216,7 +184,7 @@ struct __mpoolfile {
  *	Buffer header.
  */
 struct __bh {
-	MUTEX	        mutex;		/* Buffer thread/process lock. */
+	DB_MUTEX	mutex;		/* Buffer thread/process lock. */
 
 	u_int16_t	ref;		/* Reference count. */
 
@@ -247,3 +215,4 @@ struct __bh {
 };
 
 #include "mp_ext.h"
+#endif /* !_DB_MP_H_ */

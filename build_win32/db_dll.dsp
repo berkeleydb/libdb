@@ -56,7 +56,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb33.dll"
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
 
 !ELSEIF  "$(CFG)" == "db_dll - Win32 Debug"
 
@@ -83,7 +83,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb33d.dll" /fixed:no
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
 
 !ELSEIF  "$(CFG)" == "db_dll - Win32 Release Static"
 
@@ -109,8 +109,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb33.dll"
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb33.dll"
+# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
 
 !ELSEIF  "$(CFG)" == "db_dll - Win32 Debug Static"
 
@@ -138,8 +138,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb33d.dll" /fixed:no
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb33d.dll" /fixed:no
+# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
 
 !ENDIF 
 
@@ -263,7 +263,19 @@ SOURCE=..\common\util_sig.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\cxx\cxx_app.cpp
+SOURCE=..\cxx\cxx_db.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_dbc.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_dbt.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_env.cpp
 # End Source File
 # Begin Source File
 
@@ -275,15 +287,11 @@ SOURCE=..\cxx\cxx_lock.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\cxx\cxx_log.cpp
+SOURCE=..\cxx\cxx_logc.cpp
 # End Source File
 # Begin Source File
 
 SOURCE=..\cxx\cxx_mpool.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=..\cxx\cxx_table.cpp
 # End Source File
 # Begin Source File
 
@@ -635,6 +643,10 @@ SOURCE=..\os_win32\os_abs.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_clock.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os_win32\os_dir.c
 # End Source File
 # Begin Source File
@@ -719,11 +731,31 @@ SOURCE=..\qam\qam_verify.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\rep\rep_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_record.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_util.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\txn\txn.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\txn\txn_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_method.c
 # End Source File
 # Begin Source File
 

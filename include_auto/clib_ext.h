@@ -28,10 +28,14 @@ int snprintf __P((char *, size_t, const char *, ...));
 #ifndef HAVE_STRCASECMP
 int strcasecmp __P((const char *, const char *));
 #endif
+#ifndef HAVE_STRCASECMP
+int strncasecmp __P((const char *, const char *, size_t));
+#endif
 #ifndef HAVE_STRERROR
 char *strerror __P((int));
 #endif
 #ifndef HAVE_VSNPRINTF
+int vsnprintf __P((char *, size_t, const char *, va_list));
 #endif
 #if defined(__cplusplus)
 }

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_cam.c,v 11.77 2001/07/06 20:29:56 bostic Exp $";
+static const char revid[] = "$Id: db_cam.c,v 11.85 2001/10/10 02:57:34 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -44,9 +44,9 @@ static int __db_wrlock_err __P((DB_ENV *));
 			return (__db_wrlock_err(dbp->dbenv));		\
 									\
 		if (F_ISSET(dbc, DBC_WRITECURSOR) &&			\
-		    (ret = lock_get((dbp)->dbenv, (dbc)->locker,	\
-		    DB_LOCK_UPGRADE, &(dbc)->lock_dbt, DB_LOCK_WRITE,	\
-		    &(dbc)->mylock)) != 0)				\
+		    (ret = (dbp)->dbenv->lock_get((dbp)->dbenv,		\
+		    (dbc)->locker, DB_LOCK_UPGRADE, &(dbc)->lock_dbt,	\
+		    DB_LOCK_WRITE, &(dbc)->mylock)) != 0)		\
 			return (ret);					\
 	}
 #define	CDB_LOCKING_DONE(dbp, dbc)					\
@@ -82,12 +82,14 @@ __db_c_close(dbc)
 	DB *dbp;
 	DBC *opd;
 	DBC_INTERNAL *cp;
+	DB_ENV *dbenv;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 	ret = 0;
 
-	PANIC_CHECK(dbp->dbenv);
+	PANIC_CHECK(dbenv);
 
 	/*
 	 * If the cursor is already closed we have a serious problem, and we
@@ -96,7 +98,7 @@ __db_c_close(dbc)
 	 */
 	if (!F_ISSET(dbc, DBC_ACTIVE)) {
 		if (dbp != NULL)
-			__db_err(dbp->dbenv, "Closing closed cursor");
+			__db_err(dbenv, "Closing closed cursor");
 
 		DB_ASSERT(0);
 		return (EINVAL);
@@ -118,7 +120,7 @@ __db_c_close(dbc)
 	 * can fail and cause __db_c_close to return an error, or else calls
 	 * here from __db_close may loop indefinitely.
 	 */
-	MUTEX_THREAD_LOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 
 	if (opd != NULL) {
 		F_CLR(opd, DBC_ACTIVE);
@@ -127,7 +129,7 @@ __db_c_close(dbc)
 	F_CLR(dbc, DBC_ACTIVE);
 	TAILQ_REMOVE(&dbp->active_queue, dbc, links);
 
-	MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 
 	/* Call the access specific cursor close routine. */
 	if ((t_ret =
@@ -138,7 +140,7 @@ __db_c_close(dbc)
 	 * Release the lock after calling the access method specific close
 	 * routine, a Btree cursor may have had pending deletes.
 	 */
-	if (CDB_LOCKING(dbc->dbp->dbenv)) {
+	if (CDB_LOCKING(dbenv)) {
 		/*
 		 * If DBC_WRITEDUP is set, the cursor is an internally
 		 * duplicated write cursor and the lock isn't ours to put.
@@ -149,8 +151,8 @@ __db_c_close(dbc)
 		 * environment may not have a lock at all.
 		 */
 		if (!F_ISSET(dbc, DBC_WRITEDUP) && LOCK_ISSET(dbc->mylock)) {
-			if ((t_ret = lock_put(dbc->dbp->dbenv,
-			    &dbc->mylock)) != 0 && ret == 0)
+			if ((t_ret = dbenv->lock_put(
+			    dbenv, &dbc->mylock)) != 0 && ret == 0)
 				ret = t_ret;
 		}
 
@@ -163,7 +165,7 @@ __db_c_close(dbc)
 		dbc->txn->cursors--;
 
 	/* Move the cursor(s) to the free queue. */
-	MUTEX_THREAD_LOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 	if (opd != NULL) {
 		if (dbc->txn != NULL)
 			dbc->txn->cursors--;
@@ -171,7 +173,7 @@ __db_c_close(dbc)
 		opd = NULL;
 	}
 	TAILQ_INSERT_TAIL(&dbp->free_queue, dbc, links);
-	MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 
 	return (ret);
 }
@@ -187,27 +189,36 @@ __db_c_destroy(dbc)
 	DBC *dbc;
 {
 	DB *dbp;
+	DB_ENV *dbenv;
 	int ret;
 
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 
 	/* Remove the cursor from the free queue. */
-	MUTEX_THREAD_LOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 	TAILQ_REMOVE(&dbp->free_queue, dbc, links);
-	MUTEX_THREAD_UNLOCK(dbp->dbenv, dbp->mutexp);
+	MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
 
 	/* Free up allocated memory. */
 	if (dbc->my_rskey.data != NULL)
-		__os_free(dbp->dbenv, dbc->my_rskey.data, dbc->my_rskey.ulen);
+		__os_free(dbenv, dbc->my_rskey.data, dbc->my_rskey.ulen);
 	if (dbc->my_rkey.data != NULL)
-		__os_free(dbp->dbenv, dbc->my_rkey.data, dbc->my_rkey.ulen);
+		__os_free(dbenv, dbc->my_rkey.data, dbc->my_rkey.ulen);
 	if (dbc->my_rdata.data != NULL)
-		__os_free(dbp->dbenv, dbc->my_rdata.data, dbc->my_rdata.ulen);
+		__os_free(dbenv, dbc->my_rdata.data, dbc->my_rdata.ulen);
 
 	/* Call the access specific cursor destroy routine. */
 	ret = dbc->c_am_destroy == NULL ? 0 : dbc->c_am_destroy(dbc);
 
-	__os_free(dbp->dbenv, dbc, sizeof(*dbc));
+	/*
+	 * Release the lock id for this cursor.
+	 * It may be shared so ignore any errors.
+	 */
+	if (LOCKING_ON(dbenv))
+		(void)dbenv->lock_id_free(dbenv, dbc->lid);
+
+	__os_free(dbenv, dbc, sizeof(*dbc));
 
 	return (ret);
 }
@@ -293,8 +304,7 @@ __db_c_del(dbc, flags)
 	DB_CHECK_TXN(dbp, dbc->txn);
 
 	/* Check for invalid flags. */
-	if ((ret = __db_cdelchk(dbp, flags,
-	    F_ISSET(dbp, DB_AM_RDONLY), IS_INITIALIZED(dbc))) != 0)
+	if ((ret = __db_cdelchk(dbp, flags, IS_INITIALIZED(dbc))) != 0)
 		return (ret);
 
 	DEBUG_LWRITE(dbc, dbc->txn, "db_c_del", NULL, NULL, flags);
@@ -387,7 +397,7 @@ __db_c_dup(dbc_orig, dbcp, flags)
 	if (CDB_LOCKING(dbenv) && flags != DB_POSITIONI) {
 		DB_ASSERT(!F_ISSET(dbc_orig, DBC_WRITER | DBC_WRITECURSOR));
 
-		if ((ret = lock_get(dbenv, dbc_n->locker, 0,
+		if ((ret = dbenv->lock_get(dbenv, dbc_n->locker, 0,
 		    &dbc_n->lock_dbt, DB_LOCK_READ, &dbc_n->mylock)) != 0) {
 			(void)__db_c_close(dbc_n);
 			return (ret);
@@ -533,6 +543,7 @@ __db_c_get(dbc_arg, key, data, flags)
 	DB *dbp;
 	DBC *dbc, *dbc_n, *opd;
 	DBC_INTERNAL *cp, *cp_n;
+	DB_MPOOLFILE *mpf;
 	db_pgno_t pgno;
 	u_int32_t multi, tmp_dirty, tmp_flags, tmp_rmw;
 	u_int8_t type;
@@ -548,6 +559,7 @@ __db_c_get(dbc_arg, key, data, flags)
 	 * functions.
 	 */
 	dbp = dbc_arg->dbp;
+	mpf = dbp->mpf;
 	dbc_n = NULL;
 	opd = NULL;
 
@@ -723,10 +735,9 @@ __db_c_get(dbc_arg, key, data, flags)
 			tmp_flags = DB_LAST;
 			break;
 		case DB_GET_BOTH:
-			tmp_flags = DB_GET_BOTH;
-			break;
 		case DB_GET_BOTHC:
-			tmp_flags = DB_GET_BOTHC;
+		case DB_GET_BOTH_RANGE:
+			tmp_flags = flags;
 			break;
 		default:
 			ret =
@@ -755,7 +766,7 @@ done:	/*
 	cp_n = dbc_n == NULL ? dbc_arg->internal : dbc_n->internal;
 	if (!F_ISSET(key, DB_DBT_ISSET)) {
 		if (cp_n->page == NULL && (ret =
-		    memp_fget(dbp->mpf, &cp_n->pgno, 0, &cp_n->page)) != 0)
+		    mpf->get(mpf, &cp_n->pgno, 0, &cp_n->page)) != 0)
 			goto err;
 
 		if ((ret = __db_ret(dbp, cp_n->page, cp_n->indx,
@@ -870,8 +881,8 @@ __db_c_put(dbc_arg, key, data, flags)
 	DB_CHECK_TXN(dbp, dbc_arg->txn);
 
 	/* Check for invalid flags. */
-	if ((ret = __db_cputchk(dbp, key, data, flags,
-	    F_ISSET(dbp, DB_AM_RDONLY), IS_INITIALIZED(dbc_arg))) != 0)
+	if ((ret = __db_cputchk(dbp,
+	    key, data, flags, IS_INITIALIZED(dbc_arg))) != 0)
 		return (ret);
 
 	/*
@@ -1456,23 +1467,24 @@ __db_c_cleanup(dbc, dbc_n, failed)
 	DB *dbp;
 	DBC *opd;
 	DBC_INTERNAL *internal;
+	DB_MPOOLFILE *mpf;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	internal = dbc->internal;
 	ret = 0;
 
 	/* Discard any pages we're holding. */
 	if (internal->page != NULL) {
-		if ((t_ret =
-		    memp_fput(dbp->mpf, internal->page, 0)) != 0 && ret == 0)
+		if ((t_ret = mpf->put(mpf, internal->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		internal->page = NULL;
 	}
 	opd = internal->opd;
 	if (opd != NULL && opd->internal->page != NULL) {
-		if ((t_ret = memp_fput(dbp->mpf,
-		     opd->internal->page, 0)) != 0 && ret == 0)
+		if ((t_ret =
+		    mpf->put(mpf, opd->internal->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		 opd->internal->page = NULL;
 	}
@@ -1495,15 +1507,15 @@ __db_c_cleanup(dbc, dbc_n, failed)
 		return (ret);
 
 	if (dbc_n->internal->page != NULL) {
-		if ((t_ret = memp_fput(dbp->mpf,
-		    dbc_n->internal->page, 0)) != 0 && ret == 0)
+		if ((t_ret =
+		    mpf->put(mpf, dbc_n->internal->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		dbc_n->internal->page = NULL;
 	}
 	opd = dbc_n->internal->opd;
 	if (opd != NULL && opd->internal->page != NULL) {
-		if ((t_ret = memp_fput(dbp->mpf,
-		     opd->internal->page, 0)) != 0 && ret == 0)
+		if ((t_ret =
+		    mpf->put(mpf, opd->internal->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		opd->internal->page = NULL;
 	}

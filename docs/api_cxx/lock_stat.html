@@ -1,4 +1,4 @@
-<!--$Id: lock_stat.so,v 10.31 2001/04/03 16:27:55 bostic Exp $-->
+<!--$Id: lock_stat.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::lock_stat</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,12 +22,17 @@
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::lock_stat(DB_LOCK_STAT **statp);
+DbEnv::lock_stat(DB_LOCK_STAT **statp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::lock_stat method
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -55,6 +60,10 @@ DB_LOCK_STAT.  The following DB_LOCK_STAT fields will be filled in:
 <a href="../api_cxx/lock_vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a> was set.
 <dt>u_int32_t st_nconflicts;<dd>The total number of locks not immediately available due to conflicts.
 <dt>u_int32_t st_ndeadlocks;<dd>The number of deadlocks detected.
+<dt>u_int32_t st_nlocktimeouts;<dd>The number of locks that have timed out.
+<dt>u_int32_t st_ntxntimeouts;<dd>The number of transactions that have timed out.  This value is also a
+component of <b>st_ndeadlocks</b>, the total number of deadlocks
+detected.
 <dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
@@ -74,20 +83,20 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
 <a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
-<a href="../api_cxx/env_set_lk_max.html">DbEnv::set_lk_max</a>,
 <a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
 <a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
 <a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
 <a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
 <a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,
 <a href="../api_cxx/lock_id.html">DbEnv::lock_id</a>,
-<a href="../api_cxx/lock_put.html">DbLock::put</a>,
+<a href="../api_cxx/lock_id_free.html">DbEnv::lock_id_free</a>,
+<a href="../api_cxx/lock_put.html">DbEnv::lock_put</a>,
 <a href="../api_cxx/lock_stat.html">DbEnv::lock_stat</a>,
 and
 <a href="../api_cxx/lock_vec.html">DbEnv::lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

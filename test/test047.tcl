@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test047.tcl,v 11.11 2001/01/25 18:23:11 bostic Exp $
+# $Id: test047.tcl,v 11.15 2001/10/05 15:05:46 sue Exp $
 #
-# DB Test 47: test of the SET_RANGE interface to DB->c_get.
+# TEST	test047
+# TEST	DBcursor->c_get get test with SET_RANGE option.
 proc test047 { method args } {
 	source ./include.tcl
 
@@ -45,7 +46,7 @@ proc test047 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set oflags "-create -truncate -mode 0644 -dup $args $method"
+	set oflags "-create -mode 0644 -dup $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

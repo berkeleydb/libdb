@@ -33,7 +33,7 @@ maintain a reference to it.  Although this allows applications to modify
 the error message prefix at any time (without repeatedly calling the
 interfaces), it means the memory must be maintained until the handle is
 closed.
-<p>For DB handles opened inside of Berkeley DB environments, calling the
+<p>For <a href="../api_c/db_create.html">DB</a> handles opened inside of Berkeley DB environments, calling the
 DB-&gt;set_errpfx function affects the entire environment and is equivalent to calling
 the <a href="../api_c/env_set_errpfx.html">DB_ENV-&gt;set_errpfx</a> function.
 <p>The DB-&gt;set_errpfx interface may be used to configure Berkeley DB at any time

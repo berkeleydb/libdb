@@ -3,14 +3,14 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dbm.tcl,v 11.13 2001/01/25 18:23:03 bostic Exp $
+# $Id: dbm.tcl,v 11.14 2001/08/03 16:39:22 bostic Exp $
 #
-# Historic DBM interface test.
-# Use the first 1000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Then reopen the file, re-retrieve everything.
-# Finally, delete everything.
+# TEST	dbm
+# TEST	Historic DBM interface test.  Use the first 1000 entries from the
+# TEST	dictionary.  Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Then reopen the file, re-retrieve everything.  Finally, delete
+# TEST	everything.
 proc dbm { { nentries 1000 } } {
 	source ./include.tcl
 

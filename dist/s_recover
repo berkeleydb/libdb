@@ -1,16 +1,16 @@
 #!/bin/sh -
-#	$Id: s_recover,v 1.6 2001/06/15 16:38:12 bostic Exp $
+#	$Id: s_recover,v 1.7 2001/08/19 19:48:00 bostic Exp $
 #
 # Build the automatically generated logging/recovery files.
 
-tmp=/tmp/__db_a$$
-loglist=/tmp/__db_b$$
-source=/tmp/__db_c$$
-header=/tmp/__db_d$$
-template=/tmp/__db_e$$
+tmp=/tmp/__db_a
+loglist=/tmp/__db_b
+source=/tmp/__db_c
+header=/tmp/__db_d
+template=/tmp/__db_e
 
-rm -f $tmp $loglist $source $header $template
 trap 'rm -f $tmp $loglist $source $header $template; exit 1' 1 2 3 13 15
+trap 'rm -f $tmp $loglist $source $header $template; exit 0' 0
 
 DIR="db btree hash log qam txn"
 
@@ -38,7 +38,6 @@ grep -v '^PREFIX' $loglist |
 f=../test/logtrack.list
 cmp $loglist $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $loglist $f && chmod 444 $f)
-rm -f $tmp $loglist
 
 for i in db btree hash log qam txn; do
 	for f in ../$i/*.src; do
@@ -63,5 +62,3 @@ for i in db btree hash log qam txn; do
 		    rm -f $f && cp $template $f && chmod 444 $f)
 	done
 done
-
-rm -f $source $header $template

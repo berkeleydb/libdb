@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_map.c,v 11.25 2001/04/27 17:18:40 bostic Exp $";
+static const char revid[] = "$Id: os_map.c,v 11.26 2001/07/19 17:03:29 dda Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -151,8 +151,16 @@ __os_unmapfile(dbenv, addr, len)
  *		foo.bar  ==  Foo.Bar	(FAT file system)
  *		foo.bar  !=  Foo.Bar	(NTFS)
  *
- *	The best solution is to use the identifying number in the file
+ *	The best solution is to use the file index, found in the file
  *	information structure (similar to UNIX inode #).
+ *
+ *	When a file is deleted, its file index may be reused,
+ *	but if the unique name has not gone from its namespace,
+ *	we may get a conflict.  So to ensure some tie in to the
+ *	original pathname, we also use the creation time and the
+ *	file basename.  This is not a perfect system, but it
+ *	should work for all but anamolous test cases.
+ *
  */
 static int
 __os_unique_name(orig_path, fd, result_path)
@@ -160,14 +168,36 @@ __os_unique_name(orig_path, fd, result_path)
 	int fd;
 {
 	BY_HANDLE_FILE_INFORMATION fileinfo;
+	char *basename, *p;
+
+	/* In Windows, pathname components are delimited by
+	 * '/' or '\', and if neither is present, we need to
+	 * strip off leading drive letter (e.g. c:foo.txt).
+	 */
+	basename = strrchr(orig_path, '/');
+	p = strrchr(orig_path, '\\');
+	if (basename == NULL || (p != NULL && p > basename))
+		basename = p;
+	if (basename == NULL)
+		basename = strrchr(orig_path, ':');
+
+	if (basename == NULL)
+		basename = orig_path;
+	else
+		basename++;
 
 	__os_set_errno(0);
 	if (!GetFileInformationByHandle(
 	    (HANDLE)_get_osfhandle(fd), &fileinfo))
 		return (__os_win32_errno());
-	(void)sprintf(result_path, "%ld.%ld.%ld",
+	(void)sprintf(result_path, "%8.8lx.%8.8lx.%8.8lx.%8.8lx.%8.8lx.%s",
 	    fileinfo.dwVolumeSerialNumber,
-	    fileinfo.nFileIndexHigh, fileinfo.nFileIndexLow);
+	    fileinfo.nFileIndexHigh,
+	    fileinfo.nFileIndexLow,
+	    fileinfo.ftCreationTime.dwHighDateTime,
+	    fileinfo.ftCreationTime.dwHighDateTime,
+	    basename);
+
 	return (0);
 }
 

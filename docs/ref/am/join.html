@@ -56,8 +56,8 @@ primary database, returning <b>Farmer's Market</b>.
 <a href="../../api_c/db_join.html">DB-&gt;join</a> function:
 <p><ol>
 <p><li>The actual data should be stored in the database represented by the
-DB object used to invoke this function.  Generally, this
-DB object is called the <i>primary</i>.
+<a href="../../api_c/db_create.html">DB</a> object used to invoke this function.  Generally, this
+<a href="../../api_c/db_create.html">DB</a> object is called the <i>primary</i>.
 <p><li>Secondary indices should be stored in separate databases, whose keys
 are the values of the secondary indices and whose data items are the
 primary keys corresponding to the records having the designated
@@ -87,7 +87,7 @@ where inexpensive fruit could be purchased:
 <p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> function provides equality join functionality.  While not
 strictly cursor functionality, in that it is not a method off a cursor
 handle, it is more closely related to the cursor operations than to the
-standard DB operations.
+standard <a href="../../api_c/db_create.html">DB</a> operations.
 <p>It is also possible to do lookups based on multiple criteria in a single
 operation.  For example, it is possible to look up fruits that are both
 red and expensive in a single operation.  If the same fruit appeared as

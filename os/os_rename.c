@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_rename.c,v 11.7 2001/01/25 18:22:59 bostic Exp $";
+static const char revid[] = "$Id: os_rename.c,v 11.8 2001/09/07 18:17:49 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,13 +34,12 @@ __os_rename(dbenv, old, new)
 {
 	int ret;
 
-	ret = __db_jump.j_rename != NULL ?
-	    __db_jump.j_rename(old, new) : rename(old, new);
+	do {
+		ret = __db_jump.j_rename != NULL ?
+		    __db_jump.j_rename(old, new) : rename(old, new);
+	} while (ret != 0 && (ret = __os_get_errno()) == EINTR);
 
-	if (ret == -1) {
-		ret = __os_get_errno();
-		__db_err(dbenv, "Rename %s %s: %s", old, new, strerror(ret));
-	}
-
+	if (ret != 0)
+		__db_err(dbenv, "rename %s %s: %s", old, new, strerror(ret));
 	return (ret);
 }

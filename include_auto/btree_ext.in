@@ -72,10 +72,6 @@ int __bam_read_root __P((DB *, const char *, db_pgno_t, u_int32_t));
 int __bam_iitem __P((DBC *, DBT *, DBT *, u_int32_t, u_int32_t));
 #define	__bam_ritem __bam_ritem@DB_VERSION_UNIQUE_NAME@
 int __bam_ritem __P((DBC *, PAGE *, u_int32_t, DBT *));
-#define	__bam_pg_alloc_recover __bam_pg_alloc_recover@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_pg_free_recover __bam_pg_free_recover@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_split_recover __bam_split_recover@DB_VERSION_UNIQUE_NAME@
 int __bam_split_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_rsplit_recover __bam_rsplit_recover@DB_VERSION_UNIQUE_NAME@
@@ -164,90 +160,82 @@ int __bam_salvage __P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t, PAGE *, void *
 int __bam_salvage_walkdupint __P((DB *, VRFY_DBINFO *, PAGE *, DBT *, void *, int (*)(void *, const void *), u_int32_t));
 #define	__bam_meta2pgset __bam_meta2pgset@DB_VERSION_UNIQUE_NAME@
 int __bam_meta2pgset __P((DB *, VRFY_DBINFO *, BTMETA *, u_int32_t, DB *));
-#define	__bam_pg_alloc_log __bam_pg_alloc_log@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, DB_LSN *, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t));
-#define	__bam_pg_alloc_print __bam_pg_alloc_print@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_pg_alloc_read __bam_pg_alloc_read@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc_read __P((DB_ENV *, void *, __bam_pg_alloc_args **));
-#define	__bam_pg_alloc1_print __bam_pg_alloc1_print@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_pg_alloc1_read __bam_pg_alloc1_read@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_alloc1_read __P((DB_ENV *, void *, __bam_pg_alloc1_args **));
-#define	__bam_pg_free_log __bam_pg_free_log@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, const DBT *, db_pgno_t));
-#define	__bam_pg_free_print __bam_pg_free_print@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_pg_free_read __bam_pg_free_read@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free_read __P((DB_ENV *, void *, __bam_pg_free_args **));
-#define	__bam_pg_free1_print __bam_pg_free1_print@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_pg_free1_read __bam_pg_free1_read@DB_VERSION_UNIQUE_NAME@
-int __bam_pg_free1_read __P((DB_ENV *, void *, __bam_pg_free1_args **));
-#define	__bam_split1_print __bam_split1_print@DB_VERSION_UNIQUE_NAME@
-int __bam_split1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_split1_read __bam_split1_read@DB_VERSION_UNIQUE_NAME@
-int __bam_split1_read __P((DB_ENV *, void *, __bam_split1_args **));
 #define	__bam_split_log __bam_split_log@DB_VERSION_UNIQUE_NAME@
 int __bam_split_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, db_pgno_t, DB_LSN *, u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, const DBT *, u_int32_t));
+#define	__bam_split_getpgnos __bam_split_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_split_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_split_print __bam_split_print@DB_VERSION_UNIQUE_NAME@
 int __bam_split_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_split_read __bam_split_read@DB_VERSION_UNIQUE_NAME@
 int __bam_split_read __P((DB_ENV *, void *, __bam_split_args **));
-#define	__bam_rsplit1_print __bam_rsplit1_print@DB_VERSION_UNIQUE_NAME@
-int __bam_rsplit1_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-#define	__bam_rsplit1_read __bam_rsplit1_read@DB_VERSION_UNIQUE_NAME@
-int __bam_rsplit1_read __P((DB_ENV *, void *, __bam_rsplit1_args **));
 #define	__bam_rsplit_log __bam_rsplit_log@DB_VERSION_UNIQUE_NAME@
 int __bam_rsplit_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, const DBT *, db_pgno_t, db_pgno_t, const DBT *, DB_LSN *));
+#define	__bam_rsplit_getpgnos __bam_rsplit_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_rsplit_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_rsplit_print __bam_rsplit_print@DB_VERSION_UNIQUE_NAME@
 int __bam_rsplit_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_rsplit_read __bam_rsplit_read@DB_VERSION_UNIQUE_NAME@
 int __bam_rsplit_read __P((DB_ENV *, void *, __bam_rsplit_args **));
 #define	__bam_adj_log __bam_adj_log@DB_VERSION_UNIQUE_NAME@
 int __bam_adj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, u_int32_t, u_int32_t, u_int32_t));
+#define	__bam_adj_getpgnos __bam_adj_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_adj_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_adj_print __bam_adj_print@DB_VERSION_UNIQUE_NAME@
 int __bam_adj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_adj_read __bam_adj_read@DB_VERSION_UNIQUE_NAME@
 int __bam_adj_read __P((DB_ENV *, void *, __bam_adj_args **));
 #define	__bam_cadjust_log __bam_cadjust_log@DB_VERSION_UNIQUE_NAME@
 int __bam_cadjust_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, u_int32_t, int32_t, u_int32_t));
+#define	__bam_cadjust_getpgnos __bam_cadjust_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_cadjust_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_cadjust_print __bam_cadjust_print@DB_VERSION_UNIQUE_NAME@
 int __bam_cadjust_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_cadjust_read __bam_cadjust_read@DB_VERSION_UNIQUE_NAME@
 int __bam_cadjust_read __P((DB_ENV *, void *, __bam_cadjust_args **));
 #define	__bam_cdel_log __bam_cdel_log@DB_VERSION_UNIQUE_NAME@
 int __bam_cdel_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, u_int32_t));
+#define	__bam_cdel_getpgnos __bam_cdel_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_cdel_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_cdel_print __bam_cdel_print@DB_VERSION_UNIQUE_NAME@
 int __bam_cdel_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_cdel_read __bam_cdel_read@DB_VERSION_UNIQUE_NAME@
 int __bam_cdel_read __P((DB_ENV *, void *, __bam_cdel_args **));
 #define	__bam_repl_log __bam_repl_log@DB_VERSION_UNIQUE_NAME@
 int __bam_repl_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, DB_LSN *, u_int32_t, u_int32_t, const DBT *, const DBT *, u_int32_t, u_int32_t));
+#define	__bam_repl_getpgnos __bam_repl_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_repl_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_repl_print __bam_repl_print@DB_VERSION_UNIQUE_NAME@
 int __bam_repl_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_repl_read __bam_repl_read@DB_VERSION_UNIQUE_NAME@
 int __bam_repl_read __P((DB_ENV *, void *, __bam_repl_args **));
 #define	__bam_root_log __bam_root_log@DB_VERSION_UNIQUE_NAME@
 int __bam_root_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_pgno_t, db_pgno_t, DB_LSN *));
+#define	__bam_root_getpgnos __bam_root_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_root_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_root_print __bam_root_print@DB_VERSION_UNIQUE_NAME@
 int __bam_root_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_root_read __bam_root_read@DB_VERSION_UNIQUE_NAME@
 int __bam_root_read __P((DB_ENV *, void *, __bam_root_args **));
 #define	__bam_curadj_log __bam_curadj_log@DB_VERSION_UNIQUE_NAME@
 int __bam_curadj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, db_ca_mode, db_pgno_t, db_pgno_t, db_pgno_t, u_int32_t, u_int32_t, u_int32_t));
+#define	__bam_curadj_getpgnos __bam_curadj_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_curadj_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_curadj_print __bam_curadj_print@DB_VERSION_UNIQUE_NAME@
 int __bam_curadj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_curadj_read __bam_curadj_read@DB_VERSION_UNIQUE_NAME@
 int __bam_curadj_read __P((DB_ENV *, void *, __bam_curadj_args **));
 #define	__bam_rcuradj_log __bam_rcuradj_log@DB_VERSION_UNIQUE_NAME@
 int __bam_rcuradj_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, int32_t, ca_recno_arg, db_pgno_t, db_recno_t, u_int32_t));
+#define	__bam_rcuradj_getpgnos __bam_rcuradj_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_rcuradj_getpgnos __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_rcuradj_print __bam_rcuradj_print@DB_VERSION_UNIQUE_NAME@
 int __bam_rcuradj_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 #define	__bam_rcuradj_read __bam_rcuradj_read@DB_VERSION_UNIQUE_NAME@
 int __bam_rcuradj_read __P((DB_ENV *, void *, __bam_rcuradj_args **));
 #define	__bam_init_print __bam_init_print@DB_VERSION_UNIQUE_NAME@
-int __bam_init_print __P((DB_ENV *));
+int __bam_init_print __P((DB_ENV *, int (***)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *), size_t *));
+#define	__bam_init_getpgnos __bam_init_getpgnos@DB_VERSION_UNIQUE_NAME@
+int __bam_init_getpgnos __P((DB_ENV *, int (***)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *), size_t *));
 #define	__bam_init_recover __bam_init_recover@DB_VERSION_UNIQUE_NAME@
 int __bam_init_recover __P((DB_ENV *));
 #if defined(__cplusplus)

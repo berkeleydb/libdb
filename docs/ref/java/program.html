@@ -1,4 +1,4 @@
-<!--$Id: program.so,v 10.24 2001/03/13 20:39:48 bostic Exp $-->
+<!--$Id: program.so,v 10.25 2001/11/14 02:18:56 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -64,6 +64,11 @@ the strings in your array unless you intend to cut it short.
 thread as the caller to <a href="../../api_java/env_set_errcall.html">DbEnv.set_errcall</a>.  Make sure that thread
 remains running until your application exits or until <a href="../../api_java/env_close.html">DbEnv.close</a>
 is called.
+<p><li>If you are using custom class loaders in your application, make sure
+that the Berkeley DB classes are loaded by the system class loader, not a
+custom class loader. This is due to a JVM bug that can cause an access
+violation during finalization (see the bug 4238486 in Sun Microsystem's
+Java Bug Database).
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/java/compat.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/java/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

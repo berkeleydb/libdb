@@ -1,9 +1,9 @@
-<!--$Id: lock_detect.so,v 10.30 2001/05/05 01:49:14 bostic Exp $-->
+<!--$Id: lock_detect.so,v 10.35 2001/10/22 15:24:32 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: lock_detect</title>
+<title>Berkeley DB: DB_ENV-&gt;lock_detect</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>lock_detect</h1>
+<h1>DB_ENV-&gt;lock_detect</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,43 +22,58 @@
 #include &lt;db.h&gt;
 <p>
 int
-lock_detect(DB_ENV *env,
-	u_int32_t flags, u_int32_t atype, int *aborted);
+DB_ENV-&gt;lock_detect(DB_ENV *env,
+    u_int32_t flags, u_int32_t atype, int *aborted);
 </pre></h3>
 <h1>Description</h1>
-<p>The lock_detect function runs one iteration of the deadlock detector.
+<p>The DB_ENV-&gt;lock_detect function runs one iteration of the deadlock detector.
 The deadlock detector traverses the lock table and marks one of the
-participating transactions for abort in each deadlock it finds.
+participating lock requesters for rejection in each deadlock it finds.
 <p>The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>The <b>atype</b> parameter specifies which transaction to abort in the
-case of deadlock.  It must be set to one of possible arguments listed for
-the <a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a> interface.
+<p>The <b>atype</b> parameter specifies which lock request(s) to reject.
+It must be set to one following list:
+<p><dl compact>
+<p><dt><a name="DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use whatever lock policy was specified when the database environment
+was created.  If no lock policy has yet been specified, set the lock
+policy to DB_LOCK_RANDOM.
+<dt><a name="DB_LOCK_EXPIRE">DB_LOCK_EXPIRE</a><dd>Reject lock requests which have timed out.  No other deadlock detection
+is performed.
+<dt><a name="DB_LOCK_MAXLOCKS">DB_LOCK_MAXLOCKS</a><dd>Reject the lock request for the locker ID with the greatest number of
+locks.
+<dt><a name="DB_LOCK_MINLOCKS">DB_LOCK_MINLOCKS</a><dd>Reject the lock request for the locker ID with the fewest number of
+locks.
+<dt><a name="DB_LOCK_MINWRITE">DB_LOCK_MINWRITE</a><dd>Reject the lock request for the locker ID with the fewest number of
+write locks.
+<dt><a name="DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Reject the lock request for the oldest locker ID.
+<dt><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Reject the lock request for a random locker ID.
+<dt><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Reject the lock request for the youngest locker ID.
+</dl>
 <p>If the <b>aborted</b> parameter is non-NULL, the memory location to
-which it refers will be set to the number of transactions aborted by
-the lock_detect function.
-<p>The lock_detect function is the underlying function used by the <a href="../utility/db_deadlock.html">db_deadlock</a> utility.
-See the <a href="../utility/db_deadlock.html">db_deadlock</a> utility source code for an example of using lock_detect
+which it refers will be set to the number of lock requests that were
+rejected.
+<p>The DB_ENV-&gt;lock_detect function is the underlying function used by the <a href="../utility/db_deadlock.html">db_deadlock</a> utility.
+See the <a href="../utility/db_deadlock.html">db_deadlock</a> utility source code for an example of using DB_ENV-&gt;lock_detect
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
-<p>The lock_detect function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;lock_detect function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The lock_detect function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the lock_detect function may fail and return
+<p>The DB_ENV-&gt;lock_detect function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;lock_detect function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a>,
-<a href="../api_c/env_set_lk_max.html">DB_ENV-&gt;set_lk_max</a>,
 <a href="../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
 <a href="../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>,
 <a href="../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>,
-<a href="../api_c/lock_detect.html">lock_detect</a>,
-<a href="../api_c/lock_get.html">lock_get</a>,
-<a href="../api_c/lock_id.html">lock_id</a>,
-<a href="../api_c/lock_put.html">lock_put</a>,
-<a href="../api_c/lock_stat.html">lock_stat</a>,
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>,
+<a href="../api_c/lock_get.html">DB_ENV-&gt;lock_get</a>,
+<a href="../api_c/lock_id.html">DB_ENV-&gt;lock_id</a>,
+<a href="../api_c/lock_id_free.html">DB_ENV-&gt;lock_id_free</a>,
+<a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>,
+<a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>,
 and
-<a href="../api_c/lock_vec.html">lock_vec</a>.
+<a href="../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

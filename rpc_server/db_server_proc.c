@@ -9,7 +9,7 @@
 
 #ifdef HAVE_RPC
 #ifndef lint
-static const char revid[] = "$Id: db_server_proc.c,v 1.74 2001/07/03 19:09:51 sue Exp $";
+static const char revid[] = "$Id: db_server_proc.c,v 1.80 2001/10/18 17:03:09 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -64,7 +64,7 @@ __env_close_proc(dbenvcl_id, flags, replyp)
 	__env_close_reply *replyp;
 /* END __env_close_proc */
 {
-	replyp->status = __dbenv_close_int(dbenvcl_id, flags);
+	replyp->status = __dbenv_close_int(dbenvcl_id, flags, 0);
 	return;
 }
 
@@ -121,6 +121,10 @@ __env_flags_proc(dbenvcl_id, flags, onoff, replyp)
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 
 	ret = dbenv->set_flags(dbenv, flags, onoff);
+	if (onoff)
+		dbenv_ctp->ct_envdp.onflags = flags;
+	else
+		dbenv_ctp->ct_envdp.offflags = flags;
 
 	replyp->status = ret;
 	return;
@@ -141,9 +145,10 @@ __env_open_proc(dbenvcl_id, home, flags,
 /* END __env_open_proc */
 {
 	DB_ENV *dbenv;
-	ct_entry *dbenv_ctp;
-	int newflags, ret;
-	char *fullhome;
+	ct_entry *dbenv_ctp, *new_ctp;
+	u_int32_t newflags, shareflags;
+	int ret;
+	home_entry *fullhome;
 
 	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
@@ -161,11 +166,34 @@ __env_open_proc(dbenvcl_id, home, flags,
 	    (ret = dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0)
 		goto out;
 
+	if (__dbsrv_verbose) {
+		dbenv->set_errfile(dbenv, stderr);
+		dbenv->set_errpfx(dbenv, fullhome->home);
+	}
+
 	/*
 	 * Mask off flags we ignore
 	 */
 	newflags = (flags & ~DB_SERVER_FLAGMASK);
-	ret = dbenv->open(dbenv, fullhome, newflags, mode);
+	shareflags = (newflags & DB_SERVER_ENVFLAGS);
+	/*
+	 * Check now whether we can share a handle for this env.
+	 */
+	replyp->envcl_id = dbenvcl_id;
+	if ((new_ctp = __dbsrv_shareenv(dbenv_ctp, fullhome, shareflags))
+	    != NULL) {
+		/*
+		 * We can share, clean up old  ID, set new one.
+		 */
+		if (__dbsrv_verbose)
+			printf("Sharing env ID %ld\n", new_ctp->ct_id);
+		replyp->envcl_id = new_ctp->ct_id;
+		ret = __dbenv_close_int(dbenvcl_id, 0, 0);
+	} else {
+		ret = dbenv->open(dbenv, fullhome->home, newflags, mode);
+		dbenv_ctp->ct_envdp.home = fullhome;
+		dbenv_ctp->ct_envdp.envflags = shareflags;
+	}
 out:	replyp->status = ret;
 	return;
 }
@@ -186,7 +214,7 @@ __env_remove_proc(dbenvcl_id, home, flags, replyp)
 	DB_ENV *dbenv;
 	ct_entry *dbenv_ctp;
 	int ret;
-	char *fullhome;
+	home_entry *fullhome;
 
 	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
@@ -196,7 +224,7 @@ __env_remove_proc(dbenvcl_id, home, flags, replyp)
 		return;
 	}
 
-	ret = dbenv->remove(dbenv, fullhome, flags);
+	ret = dbenv->remove(dbenv, fullhome->home, flags);
 	__dbdel_ctp(dbenv_ctp);
 	replyp->status = ret;
 	return;
@@ -219,7 +247,7 @@ __txn_abort_proc(txnpcl_id, replyp)
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
-	ret = txn_abort(txnp);
+	ret = txnp->abort(txnp);
 	__dbdel_ctp(txnp_ctp);
 	replyp->status = ret;
 	return;
@@ -259,7 +287,7 @@ __txn_begin_proc(dbenvcl_id, parentcl_id,
 	} else
 		parent = NULL;
 
-	ret = txn_begin(dbenv, parent, &txnp, flags);
+	ret = dbenv->txn_begin(dbenv, parent, &txnp, flags);
 	if (ret == 0) {
 		ctp->ct_txnp = txnp;
 		ctp->ct_type = CT_TXN;
@@ -294,7 +322,7 @@ __txn_commit_proc(txnpcl_id, flags, replyp)
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
-	ret = txn_commit(txnp, flags);
+	ret = txnp->commit(txnp, flags);
 	__dbdel_ctp(txnp_ctp);
 
 	replyp->status = ret;
@@ -320,7 +348,7 @@ __txn_discard_proc(txnpcl_id, flags, replyp)
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
-	ret = txn_discard(txnp, flags);
+	ret = txnp->discard(txnp, flags);
 	__dbdel_ctp(txnp_ctp);
 
 	replyp->status = ret;
@@ -346,7 +374,7 @@ __txn_prepare_proc(txnpcl_id, gid, replyp)
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
-	ret = txn_prepare(txnp, gid);
+	ret = txnp->prepare(txnp, gid);
 	replyp->status = ret;
 	return;
 }
@@ -379,11 +407,11 @@ __txn_recover_proc(dbenvcl_id, count,
 	dbprep = NULL;
 	*freep = 0;
 
-	if ((ret = __os_malloc(dbenv, count * sizeof(DB_PREPLIST), &dbprep))
-	    != 0)
+	if ((ret =
+	    __os_malloc(dbenv, count * sizeof(DB_PREPLIST), &dbprep)) != 0)
 		goto out;
-	if ((ret = txn_recover(dbenv, dbprep, count, &retcount, flags))
-	    != 0)
+	if ((ret =
+	    dbenv->txn_recover(dbenv, dbprep, count, &retcount, flags)) != 0)
 		goto out;
 	/*
 	 * If there is nothing, success, but it's easy.
@@ -568,17 +596,7 @@ __db_close_proc(dbpcl_id, flags, replyp)
 	__db_close_reply *replyp;
 /* END __db_close_proc */
 {
-	DB *dbp;
-	ct_entry *dbp_ctp;
-	int ret;
-
-	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
-	dbp = (DB *)dbp_ctp->ct_anyp;
-
-	ret = dbp->close(dbp, flags);
-	__dbdel_ctp(dbp_ctp);
-
-	replyp-> status= ret;
+	replyp->status = __db_close_int(dbpcl_id, flags);
 	return;
 }
 
@@ -716,6 +734,7 @@ __db_flags_proc(dbpcl_id, flags, replyp)
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	ret = dbp->set_flags(dbp, flags);
+	dbp_ctp->ct_dbdp.setflags = flags;
 
 	replyp->status = ret;
 	return;
@@ -1019,12 +1038,24 @@ __db_open_proc(dbpcl_id, name, subdb,
 {
 	DB *dbp;
 	DBTYPE dbtype;
-	ct_entry *dbp_ctp;
+	ct_entry *dbp_ctp, *new_ctp;
 	int isswapped, ret;
 
 	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
 
+	replyp->dbcl_id = dbpcl_id;
+	if ((new_ctp = __dbsrv_sharedb(dbp_ctp, name, subdb, type, flags))
+	    != NULL) {
+		/*
+		 * We can share, clean up old ID, set new one.
+		 */
+		if (__dbsrv_verbose)
+			printf("Sharing db ID %ld\n", new_ctp->ct_id);
+		replyp->dbcl_id = new_ctp->ct_id;
+		ret = __db_close_int(dbpcl_id, 0);
+		goto out;
+	}
 	ret = dbp->open(dbp, name, subdb, (DBTYPE)type, flags, mode);
 	if (ret == 0) {
 		(void)dbp->get_type(dbp, &dbtype);
@@ -1052,7 +1083,20 @@ __db_open_proc(dbpcl_id, name, subdb,
 			else
 				replyp->lorder = 1234;
 		}
+		dbp_ctp->ct_dbdp.type = dbtype;
+		dbp_ctp->ct_dbdp.dbflags = LF_ISSET(DB_SERVER_DBFLAGS);
+		if (name == NULL)
+			dbp_ctp->ct_dbdp.db = NULL;
+		else if ((ret = __os_strdup(dbp->dbenv, name,
+		    &dbp_ctp->ct_dbdp.db)) != 0)
+			goto out;
+		if (subdb == NULL)
+			dbp_ctp->ct_dbdp.subdb = NULL;
+		else if ((ret = __os_strdup(dbp->dbenv, subdb,
+		    &dbp_ctp->ct_dbdp.subdb)) != 0)
+			goto out;
 	}
+out:
 	replyp->status = ret;
 	return;
 }
@@ -1631,7 +1675,6 @@ __db_truncate_proc(dbpcl_id, txnpcl_id,
 	} else
 		txnp = NULL;
 
-
 	ret = dbp->truncate(dbp, txnp, &count, flags);
 	replyp->status = ret;
 	if (ret == 0)
@@ -1977,7 +2020,6 @@ __dbc_get_proc(dbccl_id, keydlen, keydoff,
 		data.flags |= DB_DBT_MALLOC;
 	if (dataflags & DB_DBT_PARTIAL)
 		data.flags |= DB_DBT_PARTIAL;
-
 
 	/* Got all our stuff, now do the get */
 	ret = dbc->c_get(dbc, &key, &data, flags);

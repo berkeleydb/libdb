@@ -3,7 +3,7 @@
 # Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead004.tcl,v 11.2 2001/05/17 20:37:04 bostic Exp $
+#	$Id: dead004.tcl,v 11.6 2001/10/10 16:22:10 ubell Exp $
 #
 # Deadlock Test 4.
 # This test is designed to make sure that we handle youngest and oldest
@@ -22,6 +22,8 @@
 
 proc dead004 { } {
 	source ./include.tcl
+	global lock_curid
+	global lock_maxid
 
 	foreach a { o y } {
 		puts "Dead004: Deadlock detector test -a $a"
@@ -31,7 +33,6 @@ proc dead004 { } {
 		puts "\tDead004.a: creating environment"
 		set env [berkdb env -create -mode 0644 -lock -home $testdir]
 		error_check_good lock_env:open [is_valid_env $env] TRUE
-		error_check_good lock_env:close [$env close] 0
 
 		set dpid [exec $util_path/db_deadlock -v -t 5 -a $a \
 		    -h $testdir >& $testdir/dd.out &]
@@ -42,17 +43,20 @@ proc dead004 { } {
 		foreach n $procs {
 
 			sentinel_init
+			set ret [$env lock_id_set $lock_curid $lock_maxid]
+			error_check_good lock_id_set $ret 0
 
 			# Fire off the tests
 			puts "\tDead004: $n procs"
 			for { set i 0 } { $i < $n } { incr i } {
+				set locker [$env lock_id]
 				puts "$tclsh_path $test_path/wrap.tcl \
 				    $testdir/dead004.log.$i \
-				    ddoyscript.tcl $testdir $i $n $a"
+				    ddoyscript.tcl $testdir $locker $n $a $i"
 				set p [exec $tclsh_path \
 					$test_path/wrap.tcl \
 					ddoyscript.tcl $testdir/dead004.log.$i \
-					$testdir $i $n $a &]
+					$testdir $locker $n $a $i &]
 				lappend pidlist $p
 			}
 			watch_procs 5
@@ -74,7 +78,7 @@ proc dead004 { } {
 			close $did
 		}
 		puts "dead check..."
-		dead_check oldyoung $n $dead $clean $other
+		dead_check oldyoung $n 0 $dead $clean $other
 
 		# Now verify that neither the oldest nor the
 		# youngest were the deadlock.
@@ -99,5 +103,6 @@ proc dead004 { } {
 		for { set i 0 } { $i < $n } { incr i } {
 			fileremove -f $testdir/dead004.log.$i
 		}
+		error_check_good lock_env:close [$env close] 0
 	}
 }

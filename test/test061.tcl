@@ -3,15 +3,16 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test061.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
+# $Id: test061.tcl,v 11.14 2001/08/03 16:39:43 bostic Exp $
 #
-# Test061: Test of transaction abort and commit for in-memory databases.
-#	a) Put + abort: verify absence of data
-#	b) Put + commit: verify presence of data
-#	c) Overwrite + abort: verify that data is unchanged
-#	d) Overwrite + commit: verify that data has changed
-#	e) Delete + abort: verify that data is still present
-#	f) Delete + commit: verify that data has been deleted
+# TEST	test061
+# TEST	Test of txn abort and commit for in-memory databases.
+# TEST	a) Put + abort: verify absence of data
+# TEST	b) Put + commit: verify presence of data
+# TEST	c) Overwrite + abort: verify that data is unchanged
+# TEST	d) Overwrite + commit: verify that data has changed
+# TEST	e) Delete + abort: verify that data is still present
+# TEST	f) Delete + commit: verify that data has been deleted
 proc test061 { method args } {
 	global alphabet
 	global errorCode

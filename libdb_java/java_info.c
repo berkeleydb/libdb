@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_info.c,v 11.25 2001/05/12 17:17:34 dda Exp $";
+static const char revid[] = "$Id: java_info.c,v 11.31 2001/10/26 23:50:15 bostic Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -103,6 +103,17 @@ static int DbEnv_recovery_init_callback(DB_ENV *dbenv)
 	return (dbjie_call_recovery_init(dbinfo, dbenv, dbinfo->jenvref));
 }
 
+static int DbEnv_rep_transport_callback(DB_ENV *dbenv,
+					const DBT *control, const DBT *rec,
+					int envid, u_int32_t flags)
+{
+	DB_ENV_JAVAINFO *dbinfo;
+
+	dbinfo = (DB_ENV_JAVAINFO *)dbenv->cj_internal;
+	return (dbjie_call_rep_transport(dbinfo, dbenv,
+	    dbinfo->jenvref, control, rec, envid, (int)flags));
+}
+
 static int DbEnv_tx_recover_callback(DB_ENV *dbenv, DBT *dbt,
 				     DB_LSN *lsn, db_recops recops)
 {
@@ -135,6 +146,7 @@ dbjit_construct()
 
 void dbjit_destroy(DBT_JAVAINFO *dbjit)
 {
+	DB_ASSERT(!F_ISSET(dbjit, DBT_JAVAINFO_LOCKED));
 	/* Extra paranoia */
 	memset(dbjit, 0, sizeof(DBT_JAVAINFO));
 	(void)__os_free(NULL, dbjit, sizeof(DBT_JAVAINFO));
@@ -149,6 +161,7 @@ void dbjit_destroy(DBT_JAVAINFO *dbjit)
 /* create/initialize an object */
 DB_ENV_JAVAINFO *
 dbjie_construct(JNIEnv *jnienv,
+		jobject jenv,
 		jobject default_errcall,
 		int is_dbopen)
 {
@@ -178,6 +191,7 @@ dbjie_construct(JNIEnv *jnienv,
 	 */
 	dbjie->default_errcall = NEW_GLOBAL_REF(jnienv, default_errcall);
 	dbjie->errcall = NEW_GLOBAL_REF(jnienv, default_errcall);
+	dbjie->jenvref = NEW_GLOBAL_REF(jnienv, jenv);
 	return (dbjie);
 }
 
@@ -203,6 +217,10 @@ void dbjie_dealloc(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv)
 	if (dbjie->default_errcall != NULL) {
 		DELETE_GLOBAL_REF(jnienv, dbjie->default_errcall);
 		dbjie->default_errcall = NULL;
+	}
+	if (dbjie->jenvref != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbjie->jenvref);
+		dbjie->jenvref = NULL;
 	}
 
 	if (dbjie->conflict != NULL) {
@@ -394,6 +412,56 @@ int dbjie_call_recovery_init(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv,
 					id, jenv);
 }
 
+void dbjie_set_rep_transport_object(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv,
+				    DB_ENV *dbenv, int id, jobject jtransport)
+{
+	int err;
+
+	if (dbjie->rep_transport != NULL)
+		DELETE_GLOBAL_REF(jnienv, dbjie->rep_transport);
+
+	err = dbenv->set_rep_transport(dbenv, id,
+	    DbEnv_rep_transport_callback);
+	verify_return(jnienv, err, 0);
+
+	dbjie->rep_transport = NEW_GLOBAL_REF(jnienv, jtransport);
+}
+
+int dbjie_call_rep_transport(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv,
+			     jobject jenv, const DBT *control,
+			     const DBT *rec, int flags, int envid)
+{
+	JNIEnv *jnienv;
+	jclass rep_transport_class;
+	jmethodID jid;
+	jobject jcdbt, jrdbt;
+
+	COMPQUIET(dbenv, NULL);
+	jnienv = dbjie_get_jnienv(dbjie);
+	if (jnienv == NULL) {
+		fprintf(stderr, "Cannot attach to current thread!\n");
+		return (0);
+	}
+
+	rep_transport_class = get_class(jnienv, name_DbRepTransport);
+	jid = (*jnienv)->GetMethodID(jnienv, rep_transport_class,
+				     "send",
+				     "(Lcom/sleepycat/db/DbEnv;"
+				     "Lcom/sleepycat/db/Dbt;"
+				     "Lcom/sleepycat/db/Dbt;II)I");
+
+	if (!jid) {
+		fprintf(stderr, "Cannot find callback class\n");
+		return (0);
+	}
+
+	jcdbt = get_const_Dbt(jnienv, control, NULL);
+	jrdbt = get_const_Dbt(jnienv, rec, NULL);
+
+	return (*jnienv)->CallIntMethod(jnienv, dbjie->rep_transport, jid, jenv,
+					jcdbt, jrdbt, flags, envid);
+}
+
 void dbjie_set_tx_recover_object(DB_ENV_JAVAINFO *dbjie, JNIEnv *jnienv,
 				 DB_ENV *dbenv, jobject jtx_recover)
 {
@@ -445,10 +513,7 @@ int dbjie_call_tx_recover(DB_ENV_JAVAINFO *dbjie, DB_ENV *dbenv, jobject jenv,
 		return (0);
 	}
 
-	if (dbt == NULL)
-		jdbt = NULL;
-	else
-		jdbt = get_Dbt(jnienv, dbt, NULL);
+	jdbt = get_Dbt(jnienv, dbt, NULL);
 
 	if (lsn == NULL)
 		jlsn = NULL;
@@ -475,7 +540,7 @@ int dbjie_is_dbopen(DB_ENV_JAVAINFO *dbjie)
  *
  */
 
-DB_JAVAINFO *dbji_construct(JNIEnv *jnienv, jint flags)
+DB_JAVAINFO *dbji_construct(JNIEnv *jnienv, jobject jdb, jint flags)
 {
 	DB_JAVAINFO *dbji;
 	int err;
@@ -491,6 +556,7 @@ DB_JAVAINFO *dbji_construct(JNIEnv *jnienv, jint flags)
 		(void)__os_free(NULL, dbji, sizeof(DB_JAVAINFO));
 		return (NULL);
 	}
+	dbji->jdbref = NEW_GLOBAL_REF(jnienv, jdb);
 	dbji->construct_flags = flags;
 	return (dbji);
 }
@@ -525,6 +591,10 @@ dbji_dealloc(DB_JAVAINFO *dbji, JNIEnv *jnienv)
 	if (dbji->h_hash != NULL) {
 		DELETE_GLOBAL_REF(jnienv, dbji->h_hash);
 		dbji->h_hash = NULL;
+	}
+	if (dbji->jdbref != NULL) {
+		DELETE_GLOBAL_REF(jnienv, dbji->jdbref);
+		dbji->jdbref = NULL;
 	}
 }
 

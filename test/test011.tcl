@@ -3,16 +3,21 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test011.tcl,v 11.21 2001/01/25 18:23:09 bostic Exp $
+# $Id: test011.tcl,v 11.23 2001/08/03 16:39:34 bostic Exp $
 #
-# DB Test 11 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; add duplicate
-# records for each.
-# Then do some key_first/key_last add_before, add_after operations.
-# This does not work for recno
-# To test if dups work when they fall off the main page, run this with
-# a very tiny page size.
+# TEST	test011
+# TEST	Duplicate test
+# TEST		Small key/data pairs.
+# TEST		Test DB_KEYFIRST, DB_KEYLAST, DB_BEFORE and DB_AFTER.
+# TEST		To test off-page duplicates, run with small pagesize.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; add duplicate records for each.
+# TEST	Then do some key_first/key_last add_before, add_after operations.
+# TEST	This does not work for recno
+# TEST
+# TEST	To test if dups work when they fall off the main page, run this with
+# TEST	a very tiny page size.
 proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	global dlist
 	global rand_init
@@ -58,7 +63,7 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 
-	set db [eval {berkdb_open -create -truncate \
+	set db [eval {berkdb_open -create \
 	    -mode 0644} [concat $args "-dup"] {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -226,7 +231,7 @@ proc test011_recno { method {nentries 10000} {tnum 11} largs } {
 		append largs " -renumber"
 	}
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $largs {$omethod $testfile}]
+	     -create -mode 0644} $largs {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

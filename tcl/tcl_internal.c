@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_internal.c,v 11.36 2001/07/06 20:31:52 bostic Exp $";
+static const char revid[] = "$Id: tcl_internal.c,v 11.42 2001/11/16 16:19:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -46,6 +46,16 @@ static const char revid[] = "$Id: tcl_internal.c,v 11.36 2001/07/06 20:31:52 bos
 /*
  * Prototypes for procedures defined later in this file:
  */
+static void tcl_flag_callback __P((u_int32_t, const FN *, void *));
+
+/*
+ * Private structure type used to pass both an interp and an object into
+ * a callback's single void *.
+ */
+struct __tcl_callback_bundle {
+	Tcl_Interp *interp;
+	Tcl_Obj *obj;
+};
 
 #define	GLOB_CHAR(c)	((c) == '*' || (c) == '?')
 
@@ -91,6 +101,8 @@ _NewInfo(interp, anyp, name, type)
 	p->i_dupcompare = NULL;
 	p->i_hashproc = NULL;
 	p->i_second_call = NULL;
+	p->i_rep_eid = NULL;
+	p->i_rep_send = NULL;
 	for (i = 0; i < MAX_ID; i++)
 		p->i_otherid[i] = 0;
 
@@ -186,6 +198,10 @@ _DeleteInfo(p)
 		Tcl_DecrRefCount(p->i_hashproc);
 	if (p->i_second_call != NULL)
 		Tcl_DecrRefCount(p->i_second_call);
+	if (p->i_rep_eid != NULL)
+		Tcl_DecrRefCount(p->i_rep_eid);
+	if (p->i_rep_send != NULL)
+		Tcl_DecrRefCount(p->i_rep_send);
 	__os_freestr(NULL, p->i_name);
 	__os_free(NULL, p, sizeof(DBTCL_INFO));
 
@@ -254,7 +270,7 @@ _SetListRecnoElem(interp, list, elem1, elem2, e2size)
 	int myobjc;
 
 	myobjc = 2;
-	myobjv[0] = Tcl_NewIntObj(elem1);
+	myobjv[0] = Tcl_NewLongObj((long)elem1);
 	myobjv[1] = Tcl_NewByteArrayObj(elem2, e2size);
 	thislist = Tcl_NewListObj(myobjc, myobjv);
 	if (thislist == NULL)
@@ -290,13 +306,13 @@ _Set3DBTList(interp, list, elem1, is1recno, elem2, is2recno, elem3)
 	Tcl_Obj *myobjv[3], *thislist;
 
 	if (is1recno)
-		myobjv[0] = Tcl_NewIntObj(*(db_recno_t *)elem1->data);
+		myobjv[0] = Tcl_NewLongObj((long)*(db_recno_t *)elem1->data);
 	else
 		myobjv[0] =
 		    Tcl_NewByteArrayObj((u_char *)elem1->data, elem1->size);
 
 	if (is2recno)
-		myobjv[1] = Tcl_NewIntObj(*(db_recno_t *)elem2->data);
+		myobjv[1] = Tcl_NewLongObj((long)*(db_recno_t *)elem2->data);
 	else
 		myobjv[1] =
 		    Tcl_NewByteArrayObj((u_char *)elem2->data, elem2->size);
@@ -427,6 +443,7 @@ _ReturnSetup(interp, ret, errmsg)
 	case DB_NOTFOUND:
 	case DB_KEYEXIST:
 	case DB_KEYEMPTY:
+	case DB_REP_NEWMASTER:
 		return (TCL_OK);
 	default:
 		Tcl_SetErrorCode(interp, "BerkeleyDB", msg, NULL);
@@ -556,6 +573,75 @@ _GetUInt32(interp, obj, resp)
 
 	*resp = (u_int32_t)ltmp;
 	return (TCL_OK);
+}
+
+/*
+ * tcl_flag_callback --
+ *	Callback for db_pr.c functions that contain the FN struct mapping
+ * flag values to meaningful strings.  This function appends a Tcl_Obj
+ * containing each pertinent flag string to the specified Tcl list.
+ */
+static void
+tcl_flag_callback(flags, fn, vtcbp)
+	u_int32_t flags;
+	const FN *fn;
+	void *vtcbp;
+{
+	const FN *fnp;
+	Tcl_Interp *interp;
+	Tcl_Obj *newobj, *listobj;
+	int result;
+	struct __tcl_callback_bundle *tcbp;
+
+	tcbp = (struct __tcl_callback_bundle *)vtcbp;
+	interp = tcbp->interp;
+	listobj = tcbp->obj;
+
+	for (fnp = fn; fnp->mask != 0; ++fnp)
+		if (LF_ISSET(fnp->mask)) {
+			newobj = Tcl_NewStringObj(fnp->name, strlen(fnp->name));
+			result =
+			    Tcl_ListObjAppendElement(interp, listobj, newobj);
+
+			/*
+			 * Tcl_ListObjAppendElement is defined to return
+			 * TCL_OK unless listobj isn't actually a list (or
+			 * convertible into one).  If this is the case,
+			 * we screwed up badly somehow.
+			 */
+			DB_ASSERT(result == TCL_OK);
+		}
+}
+
+/*
+ * _GetFlagsList --
+ *	Get a new Tcl object, containing a list of the string values
+ * associated with a particular set of flag values, given a function
+ * that can extract the right names for the right flags.
+ *
+ * PUBLIC: Tcl_Obj *_GetFlagsList __P((Tcl_Interp *, u_int32_t,
+ * PUBLIC:     void (*)(u_int32_t, void *,
+ * PUBLIC:     void (*)(u_int32_t, const FN *, void *))));
+ */
+Tcl_Obj *
+_GetFlagsList(interp, flags, func)
+	Tcl_Interp *interp;
+	u_int32_t flags;
+	void (*func)
+	    __P((u_int32_t, void *, void (*)(u_int32_t, const FN *, void *)));
+{
+	Tcl_Obj *newlist;
+	struct __tcl_callback_bundle tcb;
+
+	newlist = Tcl_NewObj();
+
+	memset(&tcb, 0, sizeof(tcb));
+	tcb.interp = interp;
+	tcb.obj = newlist;
+
+	func(flags, &tcb, tcl_flag_callback);
+
+	return (newlist);
 }
 
 int __debug_stop, __debug_on, __debug_print, __debug_test;

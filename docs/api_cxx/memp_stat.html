@@ -1,4 +1,4 @@
-<!--$Id: memp_stat.so,v 10.32 2001/05/05 01:49:16 bostic Exp $-->
+<!--$Id: memp_stat.so,v 10.35 2001/10/22 15:24:37 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::memp_stat</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -23,13 +23,18 @@
 <p>
 int
 DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
-	DB_MPOOL_FSTAT *(*fsp)[]);
+    DB_MPOOL_FSTAT *(*fsp)[], u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::memp_stat method method creates statistical structures and copies
 pointers to them into user-specified memory locations.  The statistics
 include the number of files participating in the pool, the active pages
 in the pool, and information about how effective the cache has been.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -103,6 +108,7 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -110,13 +116,18 @@ in the same way.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

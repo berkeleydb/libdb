@@ -1,4 +1,4 @@
-<!--$Id: env_set_alloc.so,v 1.4 2001/05/15 14:34:24 bostic Exp $-->
+<!--$Id: env_set_alloc.so,v 1.7 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::set_alloc</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,24 +22,22 @@
 #include &lt;db_cxx.h&gt;
 <p>
 extern "C" {
-	typedef void *(*db_malloc_fcn_type)(void *, size_t);
-	typedef void *(*db_realloc_fcn_type)(size_t);
-	typedef void *(*db_free_fcn_type)(void *);
+    typedef void *(*db_malloc_fcn_type)(void *, size_t);
+    typedef void *(*db_realloc_fcn_type)(size_t);
+    typedef void *(*db_free_fcn_type)(void *);
 };
 <p>
 int
 DbEnv::set_alloc(db_malloc_fcn_type app_malloc,
-	db_realloc_fcn_type app_realloc,
-	db_free_fcn_type app_free);
+    db_realloc_fcn_type app_realloc,
+    db_free_fcn_type app_free);
 </pre></h3>
 <h1>Description</h1>
 <p>Set the allocation functions used by the <a href="../api_cxx/dbenv_class.html">DbEnv</a> and <a href="../api_cxx/db_class.html">Db</a>
 methods to allocate or free memory owned by the application.  The
 DbEnv::set_alloc interface sets the allocation functions for a
 database environment; the <a href="../api_cxx/db_set_alloc.html">Db::set_alloc</a> interface sets the
-allocation functions for a single database.  If both are specified,
-functions specified for a database will be used in preference to
-functions specified for environment.
+allocation functions for a single database.
 <p>There are a number of interfaces in Berkeley DB where memory is allocated by
 the library and then given to the application.  For example, the
 <a href="../api_cxx/dbt_class.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> flag, when specified in the <a href="../api_cxx/dbt_class.html">Dbt</a> object,
@@ -58,11 +56,12 @@ library allocates memory from a different heap than the application uses
 to free it.  To avoid this problem, the DbEnv::set_alloc and
 <a href="../api_cxx/db_set_alloc.html">Db::set_alloc</a> methods can be used to pass Berkeley DB references to the
 application's allocation routines.
-<p>It is not an error to not specify all three arguments to these
-interfaces; however, in that case the specified interfaces must be
-compatible with the standard library interfaces, as they will be used
-together.  The methods specified must match the calling
-conventions of the ANSI C X3.159-1989 (ANSI C) library routines of the same name.
+<p>It is not an error to specify only one or two of the possible allocation
+function arguments to these interfaces; however, in that case the
+specified interfaces must be compatible with the standard library
+interfaces, as they will be used together.  The methods specified
+must match the calling conventions of the ANSI C X3.159-1989 (ANSI C) library routines
+of the same name.
 <p>The DbEnv::set_alloc interface may be used only to configure Berkeley DB before
 the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
 <p>The DbEnv::set_alloc method either returns a non-zero error value or throws an exception that
@@ -71,6 +70,7 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <p>The DbEnv::set_alloc method may fail and throw an exception or return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>Called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called.
 </dl>
 <p>The DbEnv::set_alloc method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
 If a catastrophic error has occurred, the DbEnv::set_alloc method may fail and either
@@ -93,23 +93,20 @@ in the same way.
 <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
 <a href="../api_cxx/env_set_feedback.html">DbEnv::set_feedback</a>,
 <a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a>,
-<a href="../api_cxx/env_set_mutexlocks.html">DbEnv::set_mutexlocks</a>,
-<a href="../api_cxx/env_set_pageyield.html">DbEnv::set_pageyield</a>,
 <a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
-<a href="../api_cxx/env_set_panicstate.html">DbEnv::set_panicstate</a>,
 <a href="../api_cxx/env_set_rec_init.html">DbEnv::set_recovery_init</a>,
 <a href="../api_cxx/env_set_rpc_server.html">DbEnv::set_rpc_server</a>,
-<a href="../api_cxx/env_set_region_init.html">DbEnv::set_region_init</a>,
 <a href="../api_cxx/env_set_shm_key.html">DbEnv::set_shm_key</a>,
 <a href="../api_cxx/env_set_tas_spins.html">DbEnv::set_tas_spins</a>,
 <a href="../api_cxx/env_set_tmp_dir.html">DbEnv::set_tmp_dir</a>,
+<a href="../api_cxx/env_set_timeout.html">DbEnv::set_timeout</a>,
 <a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>,
 <a href="../api_cxx/env_strerror.html">DbEnv::strerror</a>
 and
 <a href="../api_cxx/env_version.html">DbEnv::version</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

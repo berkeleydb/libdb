@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: mpoolscript.tcl,v 11.13 2001/01/25 18:23:05 bostic Exp $
+# $Id: mpoolscript.tcl,v 11.14 2001/09/26 19:35:12 ubell Exp $
 #
 # Random multiple process mpool tester.
 # Usage: mpoolscript dir id numiters numfiles numpages sleepint
@@ -78,7 +78,8 @@ foreach psize $pgsizes {
 puts "Establishing long-term pin on file 0 page $id for process $id"
 
 # Set up the long-pin page
-set lock [$e lock_get write $id 0:$id]
+set locker [$e lock_id]
+set lock [$e lock_get write $locker 0:$id]
 error_check_good lock_get [is_valid_lock $lock $e] TRUE
 
 set mp [lindex $mpools 0]
@@ -109,7 +110,7 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 
 		set mpf [lindex $mpools $fnum]
 		for { set p 0 } { $p < $numpages } { incr p } {
-			set lock [$e lock_get write $id $fnum:$p]
+			set lock [$e lock_get write $locker $fnum:$p]
 			error_check_good lock_get:$fnum:$p \
 			    [is_valid_lock $lock $e] TRUE
 

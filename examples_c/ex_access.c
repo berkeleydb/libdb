@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_access.c,v 11.11 2001/05/10 17:14:04 bostic Exp $
+ * $Id: ex_access.c,v 11.12 2001/10/04 18:46:28 sue Exp $
  */
 
 #include <sys/types.h>
@@ -14,25 +14,16 @@
 
 #include <db.h>
 
-#ifdef HAVE_VXWORKS
-#include "stdio.h"
-#define	DATABASE	"/vxtmp/vxtmp/access.db"
-#define	ERROR_RETURN	ERROR
-#else
 #define	DATABASE	"access.db"
-#define	ERROR_RETURN	1
 int	main __P((void));
-#endif
 
 int	ex_access __P((void));
 
-#ifndef HAVE_VXWORKS
 int
 main()
 {
-	return (ex_access() == ERROR_RETURN ? EXIT_FAILURE : EXIT_SUCCESS);
+	return (ex_access() == 1 ? EXIT_FAILURE : EXIT_SUCCESS);
 }
-#endif
 
 int
 ex_access()
@@ -52,7 +43,7 @@ ex_access()
 	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_create: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	dbp->set_errfile(dbp, stderr);
 	dbp->set_errpfx(dbp, progname);
@@ -132,11 +123,11 @@ ex_access()
 	if ((ret = dbp->close(dbp, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: DB->close: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	return (0);
 
 err2:	(void)dbcp->c_close(dbcp);
 err1:	(void)dbp->close(dbp, 0);
-	return (ERROR_RETURN);
+	return (1);
 }

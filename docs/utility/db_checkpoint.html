@@ -23,7 +23,7 @@
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_checkpoint utility is a daemon process that monitors the
-database log, and periodically calls <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a> to checkpoint
+database log, and periodically calls <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> to checkpoint
 it.
 <p>The options are as follows:
 <p><dl compact>
@@ -57,6 +57,9 @@ interrupt signal (SIGINT).
 shared memory regions if they do not already exist.  The application
 that creates the region should be started first, and once the region is
 created, the db_checkpoint utility should be started.
+<p>The <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> function is the underlying function used by the db_checkpoint utility.
+See the db_checkpoint utility source code for an example of using <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a>
+in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <p>The db_checkpoint utility exits 0 on success, and &gt;0 if an error occurs.
 <h1>Environment Variables</h1>
 <p><dl compact>

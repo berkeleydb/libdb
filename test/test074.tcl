@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test074.tcl,v 11.12 2001/05/04 16:27:31 krinsky Exp $
+# $Id: test074.tcl,v 11.14 2001/08/03 16:39:45 bostic Exp $
 #
-# DB Test 74: Test of DB_NEXT_NODUP.
+# TEST	test074
+# TEST	Test of DB_NEXT_NODUP.
 proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 	source ./include.tcl
 	global alphabet
@@ -44,7 +45,7 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 		set env [lindex $args $eindex]
 	}
 	cleanup $testdir $env
-	set db [eval {berkdb_open -create -truncate -mode 0644} $omethod\
+	set db [eval {berkdb_open -create -mode 0644} $omethod\
 	    $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
 
@@ -143,7 +144,7 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 		puts "\tTest0$tnum.b: Duplicates ($opt)."
 
 		puts "\t\tTest0$tnum.b.1 ($opt): Put loop."
-		set db [eval {berkdb_open -create -truncate -mode 0644}\
+		set db [eval {berkdb_open -create -mode 0644}\
 		    $opt $omethod $args {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE
 

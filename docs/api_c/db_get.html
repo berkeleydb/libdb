@@ -1,4 +1,4 @@
-<!--$Id: db_get.so,v 10.48 2001/07/02 01:03:11 bostic Exp $-->
+<!--$Id: db_get.so,v 10.49 2001/10/22 15:24:21 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -46,7 +46,7 @@ returns the key from the primary database.  In databases that are not
 secondary indices, the DB-&gt;pget interface will always fail and
 return EINVAL.
 <p>If the operation is to be transaction-protected, the <b>txnid</b>
-parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">txn_begin</a>;
+parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>;
 otherwise, NULL.
 <p>The <b>flags</b> value must be set to 0 or
 one of the following values:
@@ -132,7 +132,7 @@ DB-&gt;get function returns <a href="../ref/program/errorret.html#DB_NOTFOUND">D
 <p>The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified to the <a href="../api_c/db_open.html">DB-&gt;open</a> function and
 none of the <a href="../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../api_c/dbt.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a> or
 <a href="../api_c/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> flags were set in the <a href="../api_c/dbt.html">DBT</a>.
-<p>The DB-&gt;pget interface was called with a DB handle that
+<p>The DB-&gt;pget interface was called with a <a href="../api_c/db_create.html">DB</a> handle that
 does not refer to a secondary index.
 </dl>
 <p>The DB-&gt;get function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.

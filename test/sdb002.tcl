@@ -3,14 +3,21 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb002.tcl,v 11.24 2001/07/02 01:08:46 bostic Exp $
+# $Id: sdb002.tcl,v 11.25 2001/08/03 16:39:29 bostic Exp $
 #
-# Sub DB Test 2 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
-# Then repeat using an environment.
+# TEST	subdb002
+# TEST	Tests basic subdb functionality
+# TEST		Small keys, small data
+# TEST		Put/get per key
+# TEST		Dump file
+# TEST		Close, reopen
+# TEST		Dump file
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
+# TEST	Then repeat using an environment.
 proc subdb002 { method {nentries 10000} args } {
 	source ./include.tcl
 

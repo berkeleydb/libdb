@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test048.tcl,v 11.12 2001/01/25 18:23:11 bostic Exp $
+# $Id: test048.tcl,v 11.14 2001/08/03 16:39:41 bostic Exp $
 #
-# Test048: Cursor stability across btree splits.
+# TEST	test048
+# TEST	Cursor stability across Btree splits.
 proc test048 { method args } {
 	global errorCode
 	source ./include.tcl
@@ -50,7 +51,7 @@ proc test048 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set oflags "-create -truncate -mode 0644 $args $method"
+	set oflags "-create -mode 0644 $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

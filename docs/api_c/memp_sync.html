@@ -1,9 +1,9 @@
-<!--$Id: memp_sync.so,v 10.27 2001/04/02 20:10:08 bostic Exp $-->
+<!--$Id: memp_sync.so,v 10.29 2001/10/22 15:24:37 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: memp_sync</title>
+<title>Berkeley DB: DB_ENV-&gt;memp_sync</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>memp_sync</h1>
+<h1>DB_ENV-&gt;memp_sync</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,60 +22,66 @@
 #include &lt;db.h&gt;
 <p>
 int
-memp_sync(DB_ENV *env, DB_LSN *lsn);
+DB_ENV-&gt;memp_sync(DB_ENV *env, DB_LSN *lsn);
 </pre></h3>
 <h1>Description</h1>
-<p>The memp_sync function ensures that any modified pages in the pool with
-log sequence numbers less than the <b>lsn</b> argument are written to
-disk.  If <b>lsn</b> is NULL, all modified pages in the pool are
-flushed.
-<p>The primary purpose of the memp_sync function is to enable a
+<p>The DB_ENV-&gt;memp_sync function ensures that any modified pages in the pool with
+a log sequence number (<a href="../api_c/db_lsn.html">DB_LSN</a>) less than the <b>lsn</b> argument
+are written to disk.  If <b>lsn</b> is NULL, all modified pages in
+the pool are flushed.
+<p>The primary purpose of the DB_ENV-&gt;memp_sync function is to enable a
 transaction manager to ensure, as part of a checkpoint, that all pages
 modified by a certain time have been written to disk.  Pages in the pool
 that cannot be written back to disk immediately (for example, pages that
 are currently pinned) are written to disk as soon as it is possible to
 do so.  The expected behavior of the Berkeley DB or other Transaction
-subsystem is to call the memp_sync function and then, if the
+subsystem is to call the DB_ENV-&gt;memp_sync function and then, if the
 return indicates that some pages could not be written immediately, to
 wait briefly and retry again with the same log sequence number until
-the memp_sync function returns that all pages have been
+the DB_ENV-&gt;memp_sync function returns that all pages have been
 written.
-<p>To support the memp_sync functionality, it is necessary that the
+<p>To support the DB_ENV-&gt;memp_sync functionality, it is necessary that the
 pool functions know the location of the log sequence number on the page
 for each file type.  This location should be specified when the file is
-opened using the <a href="../api_c/memp_fopen.html">memp_fopen</a> function.  It is not required that
+opened using the <a href="../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a> function.  It is not required that
 the log sequence number be aligned on the page in any way.
-<p>The memp_sync function returns a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which need to be
-written but that memp_sync was unable to write immediately.
-In addition, if memp_sync returns success, the value of
+<p>The DB_ENV-&gt;memp_sync function returns a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which need to be
+written but that DB_ENV-&gt;memp_sync was unable to write immediately.
+In addition, if DB_ENV-&gt;memp_sync returns success, the value of
 <b>lsn</b> will be overwritten with the largest log sequence number
-from any page that was written by memp_sync to satisfy this
+from any page that was written by DB_ENV-&gt;memp_sync to satisfy this
 request.
 <h1>Errors</h1>
-<p>The memp_sync function may fail and return a non-zero error for the following conditions:
+<p>The DB_ENV-&gt;memp_sync function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>The memp_sync function was called without logging having been
+<p>The DB_ENV-&gt;memp_sync function was called without logging having been
 initialized in the environment.
 </dl>
-<p>The memp_sync function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the memp_sync function may fail and return
+<p>The DB_ENV-&gt;memp_sync function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;memp_sync function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a>,
 <a href="../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a>,
-<a href="../api_c/memp_fclose.html">memp_fclose</a>,
-<a href="../api_c/memp_fget.html">memp_fget</a>,
-<a href="../api_c/memp_fopen.html">memp_fopen</a>,
-<a href="../api_c/memp_fput.html">memp_fput</a>,
-<a href="../api_c/memp_fset.html">memp_fset</a>,
-<a href="../api_c/memp_fsync.html">memp_fsync</a>,
-<a href="../api_c/memp_register.html">memp_register</a>,
-<a href="../api_c/memp_stat.html">memp_stat</a>,
-<a href="../api_c/memp_sync.html">memp_sync</a>,
+<a href="../api_c/memp_fcreate.html">DB_ENV-&gt;memp_fcreate</a>,
+<a href="../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a>,
+<a href="../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a>,
+<a href="../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a>,
+<a href="../api_c/memp_fput.html">DB_MPOOLFILE-&gt;put</a>,
+<a href="../api_c/memp_fset.html">DB_MPOOLFILE-&gt;set</a>,
+<a href="../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a>,
+<a href="../api_c/memp_register.html">DB_ENV-&gt;memp_register</a>,
+<a href="../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a>,
+<a href="../api_c/memp_set_fileid.html">DB_MPOOLFILE-&gt;set_fileid</a>,
+<a href="../api_c/memp_set_ftype.html">DB_MPOOLFILE-&gt;set_ftype</a>,
+<a href="../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a>,
+<a href="../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a>,
+<a href="../api_c/memp_stat.html">DB_ENV-&gt;memp_stat</a>,
+<a href="../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a>,
 and
-<a href="../api_c/memp_trickle.html">memp_trickle</a>.
+<a href="../api_c/memp_trickle.html">DB_ENV-&gt;memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

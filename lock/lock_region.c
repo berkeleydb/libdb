@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_region.c,v 11.49 2001/06/13 01:42:57 bostic Exp $";
+static const char revid[] = "$Id: lock_region.c,v 11.58 2001/11/03 18:43:47 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,17 +17,9 @@ static const char revid[] = "$Id: lock_region.c,v 11.49 2001/06/13 01:42:57 bost
 #include <string.h>
 #endif
 
-#ifdef	HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "lock.h"
-
-#ifdef	HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
 
 static int  __lock_init __P((DB_ENV *, DB_LOCKTAB *));
 static size_t
@@ -52,7 +44,7 @@ static const u_int8_t db_riw_conflicts[] = {
 /*  IR */  0,  0,  1,  0,  0,  0,  0,  0,  1,
 /* RIW */  0,  1,  1,  0,  0,  0,  0,  1,  1,
 /*  DR */  0,  0,  1,  0,  1,  0,  1,  0,  0,
-/*  WW */  0,  1,  1,  0,  1,  1,  1,  0,  1,
+/*  WW */  0,  1,  1,  0,  1,  1,  1,  0,  1
 };
 
 /*
@@ -67,62 +59,8 @@ static const u_int8_t db_cdb_conflicts[] = {
 	/*   R */	0,	0,	1,	0,	0,
 	/*   W */	0,	1,	1,	1,	1,
 	/*  WT */	0,	0,	0,	0,	0,
-	/*  IW */	0,	0,	1,	0,	1,
+	/*  IW */	0,	0,	1,	0,	1
 };
-
-/*
- * __lock_dbenv_create --
- *	Lock specific creation of the DB_ENV structure.
- *
- * PUBLIC: void __lock_dbenv_create __P((DB_ENV *));
- */
-void
-__lock_dbenv_create(dbenv)
-	DB_ENV *dbenv;
-{
-	dbenv->lk_max = DB_LOCK_DEFAULT_N;
-	dbenv->lk_max_lockers = DB_LOCK_DEFAULT_N;
-	dbenv->lk_max_objects = DB_LOCK_DEFAULT_N;
-
-	dbenv->set_lk_conflicts = __lock_set_lk_conflicts;
-	dbenv->set_lk_detect = __lock_set_lk_detect;
-	dbenv->set_lk_max = __lock_set_lk_max;
-	dbenv->set_lk_max_locks = __lock_set_lk_max_locks;
-	dbenv->set_lk_max_lockers = __lock_set_lk_max_lockers;
-	dbenv->set_lk_max_objects = __lock_set_lk_max_objects;
-
-#ifdef	HAVE_RPC
-	/*
-	 * If we have a client, overwrite what we just set up to point
-	 * to the client functions.
-	 */
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
-		dbenv->set_lk_conflicts = __dbcl_set_lk_conflict;
-		dbenv->set_lk_detect = __dbcl_set_lk_detect;
-		dbenv->set_lk_max = __dbcl_set_lk_max;
-		dbenv->set_lk_max_locks = __dbcl_set_lk_max_locks;
-		dbenv->set_lk_max_lockers = __dbcl_set_lk_max_lockers;
-		dbenv->set_lk_max_objects = __dbcl_set_lk_max_objects;
-	}
-#endif
-}
-
-/*
- * __lock_dbenv_close --
- *	Lock specific destruction of the DB_ENV structure.
- *
- * PUBLIC: void __lock_dbenv_close __P((DB_ENV *));
- */
-void
-__lock_dbenv_close(dbenv)
-	DB_ENV *dbenv;
-{
-	if (!F_ISSET(dbenv, DB_ENV_USER_ALLOC) && dbenv->lk_conflicts != NULL) {
-		__os_free(dbenv, dbenv->lk_conflicts,
-		    dbenv->lk_modes * dbenv->lk_modes);
-		dbenv->lk_conflicts = NULL;
-	}
-}
 
 /*
  * __lock_open --
@@ -247,24 +185,18 @@ __lock_init(dbenv, lt)
 	}
 
 	region->id = 0;
+	region->cur_maxid = DB_LOCK_MAXID;
 	region->need_dd = 0;
 	region->detect = DB_LOCK_NORUN;
 	region->maxlocks = dbenv->lk_max;
 	region->maxlockers = dbenv->lk_max_lockers;
 	region->maxobjects = dbenv->lk_max_objects;
+	region->lk_timeout = dbenv->lk_timeout;
+	region->tx_timeout = dbenv->tx_timeout;
 	region->locker_t_size = __db_tablesize(dbenv->lk_max_lockers);
 	region->object_t_size = __db_tablesize(dbenv->lk_max_objects);
 	region->nmodes = lk_modes;
-	region->nlocks = 0;
-	region->maxnlocks = 0;
-	region->nlockers = 0;
-	region->maxnlockers = 0;
-	region->nobjects = 0;
-	region->maxnobjects = 0;
-	region->nconflicts = 0;
-	region->nrequests = 0;
-	region->nreleases = 0;
-	region->ndeadlocks = 0;
+	memset(&region->stat, 0, sizeof(region->stat));
 
 	/* Allocate room for the conflict matrix and initialize it. */
 	if ((ret =
@@ -308,6 +240,7 @@ __lock_init(dbenv, lt)
 		    sizeof(struct __db_lock), MUTEX_ALIGN, &lp)) != 0)
 			goto mem_err;
 		lp->status = DB_LSTAT_FREE;
+		lp->gen = 0;
 		if ((ret = __db_shmutex_init(dbenv, &lp->mutex,
 		    R_OFFSET(&lt->reginfo, &lp->mutex) + DB_FCNTL_OFF_LOCK,
 		    MUTEX_SELF_BLOCK, &lt->reginfo,
@@ -346,13 +279,14 @@ mem_err:		__db_err(dbenv,
 }
 
 /*
- * __lock_close --
- *	Internal version of lock_close: only called from db_appinit.
+ * __lock_dbenv_refresh --
+ *	Clean up after the lock system on a close or failed open.  Called
+ * only from __dbenv_refresh.  (Formerly called __lock_close.)
  *
- * PUBLIC: int __lock_close __P((DB_ENV *));
+ * PUBLIC: int __lock_dbenv_refresh __P((DB_ENV *));
  */
 int
-__lock_close(dbenv)
+__lock_dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
 {
 	DB_LOCKTAB *lt;
@@ -422,7 +356,7 @@ __lock_region_maint(dbenv)
 {
 	size_t s;
 
-	s = sizeof(MUTEX *) * dbenv->lk_max;
+	s = sizeof(DB_MUTEX *) * dbenv->lk_max;
 	return (s);
 }
 #endif
@@ -444,3 +378,31 @@ __lock_region_destroy(dbenv, infop)
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
 }
+
+#ifdef CONFIG_TEST
+/*
+ * __lock_id_set --
+ *	Set the current locker ID and current maximum unused ID (for
+ *	testing purposes only).
+ *
+ * PUBLIC: int __lock_id_set __P((DB_ENV *, u_int32_t, u_int32_t));
+ */
+int
+__lock_id_set(dbenv, cur_id, max_id)
+	DB_ENV *dbenv;
+	u_int32_t cur_id, max_id;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "lock_id_set", DB_INIT_LOCK);
+
+	lt = dbenv->lk_handle;
+	region = lt->reginfo.primary;
+	region->id = cur_id;
+	region->cur_maxid = max_id;
+
+	return (0);
+}
+#endif

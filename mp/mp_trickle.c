@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_trickle.c,v 11.17 2001/04/27 15:45:13 bostic Exp $";
+static const char revid[] = "$Id: mp_trickle.c,v 11.18 2001/07/24 18:31:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,28 +16,20 @@ static const char revid[] = "$Id: mp_trickle.c,v 11.17 2001/04/27 15:45:13 bosti
 #include <stdlib.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 static int __memp_trick __P((DB_ENV *, int, int, int *));
 
 /*
- * memp_trickle --
+ * __memp_trickle --
  *	Keep a specified percentage of the buffers clean.
  *
- * EXTERN: int memp_trickle __P((DB_ENV *, int, int *));
+ * PUBLIC: int __memp_trickle __P((DB_ENV *, int, int *));
  */
 int
-memp_trickle(dbenv, pct, nwrotep)
+__memp_trickle(dbenv, pct, nwrotep)
 	DB_ENV *dbenv;
 	int pct, *nwrotep;
 {
@@ -45,11 +37,6 @@ memp_trickle(dbenv, pct, nwrotep)
 	MPOOL *mp;
 	u_int32_t i;
 	int ret;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_trickle(dbenv, pct, nwrotep));
-#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,

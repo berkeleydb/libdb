@@ -3,13 +3,19 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test001.tcl,v 11.19 2001/02/02 20:01:44 sue Exp $
+# $Id: test001.tcl,v 11.22 2001/08/03 16:39:32 bostic Exp $
 #
-# DB Test 1 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	test001
+# TEST	Small keys/data
+# TEST		Put/get per key
+# TEST		Dump file
+# TEST		Close, reopen
+# TEST		Dump file
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
 proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 	source ./include.tcl
 
@@ -42,15 +48,13 @@ proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args $omethod $testfile]
+	     -create -mode 0644} $args $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	set pflags ""
 	set gflags ""
 	set txn ""
-
-	set nentries [expr $nentries + $start]
 
 	if { [is_record_based $method] == 1 } {
 		set checkfunc test001_recno.check
@@ -60,12 +64,19 @@ proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 	}
 	puts "\tTest0$tnum.a: put/get loop"
 	# Here is the loop where we put and get each key/data pair
-	set count $start
+	set count 0
 	while { [gets $did str] != -1 && $count < $nentries } {
 		if { [is_record_based $method] == 1 } {
 			global kvals
 
-			set key [expr $count + 1]
+			set key [expr $count + 1 + $start]
+			if { 0xffffffff > 0 && $key > 0xffffffff } {
+				set key [expr $key - 0x100000000]
+			}
+			if { $key == 0 || $key - 0xffffffff == 1 } {
+				incr key
+				incr count
+			}
 			set kvals($key) [pad_data $method $str]
 		} else {
 			set key $str
@@ -89,9 +100,6 @@ proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 		error_check_good getbothBAD [llength $ret] 0
 
 		incr count
-		if { [expr $count + 1] == 0 } {
-			incr count
-		}
 	}
 	close $did
 	# Now we will get each key from the DB and compare the results
@@ -103,11 +111,16 @@ proc test001 { method {nentries 10000} {start 0} {tnum "01"} args } {
 	# Now compare the keys to see if they match the dictionary (or ints)
 	if { [is_record_based $method] == 1 } {
 		set oid [open $t2 w]
-		for {set i [expr $start + 1]} {$i <= $nentries} {set i [incr i]} {
-			if { $i == 0 } {
-				incr i
+		for {set i 1} {$i <= $nentries} {incr i} {
+			set j [expr $i + $start]
+			if { 0xffffffff > 0 && $j > 0xffffffff } {
+				set j [expr $j - 0x100000000]
 			}
-			puts $oid $i
+			if { $j == 0 } {
+				incr i
+				incr j
+			}
+			puts $oid $j
 		}
 		close $oid
 	} else {

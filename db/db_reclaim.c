@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_reclaim.c,v 11.14 2001/06/12 19:45:04 bostic Exp $";
+static const char revid[] = "$Id: db_reclaim.c,v 11.17 2001/07/26 20:22:09 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -41,17 +41,20 @@ __db_traverse_big(dbp, pgno, callback, cookie)
 	int (*callback) __P((DB *, PAGE *, void *, int *));
 	void *cookie;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *p;
 	int did_put, ret;
 
+	mpf = dbp->mpf;
+
 	do {
 		did_put = 0;
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &p)) != 0)
+		if ((ret = mpf->get(mpf, &pgno, 0, &p)) != 0)
 			return (ret);
 		pgno = NEXT_PGNO(p);
 		if ((ret = callback(dbp, p, cookie, &did_put)) == 0 &&
 		    !did_put)
-			ret = memp_fput(dbp->mpf, p, 0);
+			ret = mpf->put(mpf, p, 0);
 	} while (ret == 0 && pgno != PGNO_INVALID);
 
 	return (ret);
@@ -104,15 +107,16 @@ __db_truncate_callback(dbp, p, cookie, putp)
 	DBMETA *meta;
 	DBT ldbt;
 	DB_LOCK metalock;
+	DB_MPOOLFILE *mpf;
 	db_indx_t indx, len, off, tlen, top;
 	db_pgno_t pgno;
 	db_trunc_param *param;
 	u_int8_t *hk, type;
 	int ret;
 
-	param = cookie;
-
 	top = NUM_ENT(p);
+	mpf = dbp->mpf;
+	param = cookie;
 	*putp = 1;
 
 	switch (TYPE(p)) {
@@ -180,7 +184,7 @@ reinit:			*putp = 0;
 				if ((ret = __db_lget(param->dbc, LCK_ALWAYS,
 				     pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 					return (ret);
-				if ((ret = memp_fget(dbp->mpf,
+				if ((ret = mpf->get(mpf,
 				     &pgno, 0, (PAGE **)&meta)) != 0) {
 					goto err;
 				}
@@ -190,21 +194,21 @@ reinit:			*putp = 0;
 				if ((ret =
 				    __db_pg_free_log(dbp->dbenv, param->dbc->txn,
 				    &LSN(meta), 0, dbp->log_fileid, p->pgno,
-				    &LSN(meta), &ldbt, meta->free)) != 0)
+				    &LSN(meta), PGNO_BASE_MD,
+				    &ldbt, meta->free)) != 0)
 					goto err;
 
 				LSN(p) = LSN(meta);
 				if ((ret =
 				    __db_pg_alloc_log(dbp->dbenv,
 				    param->dbc->txn, &LSN(meta), 0,
-				    dbp->log_fileid, &LSN(meta),
+				    dbp->log_fileid, &LSN(meta), PGNO_BASE_MD,
 				    &p->lsn, p->pgno, type, meta->free)) != 0) {
-err:					(void)memp_fput(
-					     dbp->mpf, (PAGE *)meta, 0);
+err:					(void)mpf->put(mpf, (PAGE *)meta, 0);
 					(void)__TLPUT(param->dbc, metalock);
 					return (ret);
 				}
-				if ((ret = memp_fput(dbp->mpf,
+				if ((ret = mpf->put(mpf,
 				     (PAGE *)meta, DB_MPOOL_DIRTY)) != 0) {
 					(void)__TLPUT(param->dbc, metalock);
 					return (ret);
@@ -219,14 +223,14 @@ err:					(void)memp_fput(
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp, p->pgno));
+		return (__db_pgfmt(dbp->dbenv, p->pgno));
 	}
 
 	if (*putp == 1) {
 		if ((ret = __db_free(param->dbc, p)) != 0)
 			return (ret);
 	} else {
-		if ((ret = memp_fput(dbp->mpf, p, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = mpf->put(mpf, p, DB_MPOOL_DIRTY)) != 0)
 			return (ret);
 		*putp = 1;
 	}

@@ -1,4 +1,4 @@
-<!--$Id: db_class.so,v 10.28 2001/04/12 18:48:43 bostic Exp $-->
+<!--$Id: db_class.so,v 10.29 2001/07/31 17:25:41 dda Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Db</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -34,8 +34,11 @@ public:
 };
 </pre></h3>
 <h1>Description</h1>
-<p>This manual page describes the specific details of the Db class,
-which is the center of access method activity.
+<p>The constructor creates a Db object that is the
+handle for a Berkeley DB database.
+The constructor allocates memory internally; calling the
+<a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a> or <a href="../api_cxx/db_rename.html">Db::rename</a> methods will
+free that memory.
 <p>If no <b>dbenv</b> value is specified, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
 <p>If a <b>dbenv</b> value is specified, the database is created within
@@ -127,7 +130,7 @@ and
 <a href="../api_cxx/db_verify.html">Db::verify</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -4,25 +4,12 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: lock.h,v 11.27 2001/04/27 15:51:15 bostic Exp $
+ * $Id: lock.h,v 11.35 2001/10/04 21:22:49 bostic Exp $
  */
+#ifndef	_DB_LOCK_H_
+#define	_DB_LOCK_H_
 
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
-
-/*
- * Out of band value for a lock.  Locks contain an offset into a lock region,
- * so we use an invalid region offset to indicate an invalid or unset lock.
- */
-#define	LOCK_INVALID	INVALID_ROFF
-#define	LOCK_ISSET(lock) ((lock).off != LOCK_INVALID)
-#define	LOCK_INIT(lock)	((lock).off = LOCK_INVALID)
-
-/*
- * Macro to identify a write lock for the purpose of counting locks
- * for the NUMWRITES option to deadlockd detection.
- */
-#define	IS_WRITELOCK(m) \
-	((m) == DB_LOCK_WRITE || (m) == DB_LOCK_IWRITE || (m) == DB_LOCK_IWR)
 
 /*
  * The locker id space is divided between the transaction manager and the lock
@@ -33,11 +20,40 @@
 #define	DB_LOCK_MAXID		0x7fffffff
 
 /*
+ * Out of band value for a lock.  Locks contain an offset into a lock region,
+ * so we use an invalid region offset to indicate an invalid or unset lock.
+ */
+#define	LOCK_INVALID		INVALID_ROFF
+#define	LOCK_ISSET(lock)	((lock).off != LOCK_INVALID)
+#define	LOCK_INIT(lock)		((lock).off = LOCK_INVALID)
+
+/*
+ * Macro to identify a write lock for the purpose of counting locks
+ * for the NUMWRITES option to deadlock detection.
+ */
+#define	IS_WRITELOCK(m) \
+	((m) == DB_LOCK_WRITE || (m) == DB_LOCK_IWRITE || (m) == DB_LOCK_IWR)
+
+/*
+ * Lock timers.
+ */
+typedef struct {
+	u_int32_t	tv_sec;		/* Seconds. */
+	u_int32_t	tv_usec;	/* Microseconds. */
+} db_timeval_t;
+
+#define	LOCK_TIME_ISVALID(time)		((time)->tv_sec != 0)
+#define	LOCK_SET_TIME_INVALID(time)	((time)->tv_sec = 0)
+#define	LOCK_TIME_EQUAL(t1, t2)						\
+	((t1)->tv_sec == (t2)->tv_sec && (t1)->tv_usec == (t2)->tv_usec)
+
+/*
  * DB_LOCKREGION --
  *	The lock shared region.
  */
 typedef struct __db_lockregion {
 	u_int32_t	id;		/* unique id generator */
+	u_int32_t	cur_maxid;	/* current max unused id. */
 	u_int32_t	need_dd;	/* flag for deadlock detector */
 	u_int32_t	detect;		/* run dd on every conflict */
 					/* free lock header */
@@ -51,26 +67,20 @@ typedef struct __db_lockregion {
 	u_int32_t	maxlocks;	/* maximum number of locks in table */
 	u_int32_t	maxlockers;	/* maximum number of lockers in table */
 	u_int32_t	maxobjects;	/* maximum number of objects in table */
+	u_int32_t	nlocks;		/* current number of locks */
+	u_int32_t	nlockers;	/* current number of lockers */
+	u_int32_t	nobjects;	/* current number of objects */
+	db_timeout_t	lk_timeout;	/* timeout for locks. */
+	db_timeout_t	tx_timeout;	/* timeout for txns. */
 	u_int32_t	locker_t_size;	/* size of locker hash table */
 	u_int32_t	object_t_size;	/* size of object hash table */
 	u_int32_t	nmodes;		/* number of lock modes */
-	u_int32_t	nlocks;		/* current number of locks */
-	u_int32_t	maxnlocks;	/* maximum number of locks so far*/
-	u_int32_t	nlockers;	/* current number of lockers */
-	u_int32_t	maxnlockers;	/* maximum number of lockers so far */
-	u_int32_t	nobjects;	/* current number of objects */
-	u_int32_t	maxnobjects;	/* maximum number of objects so far */
 	roff_t		conf_off;	/* offset of conflicts array */
 	roff_t		obj_off;	/* offset of object hash table */
 	roff_t		osynch_off;	/* offset of the object mutex table */
 	roff_t		locker_off;	/* offset of locker hash table */
 	roff_t		lsynch_off;	/* offset of the locker mutex table */
-	u_int32_t	nconflicts;	/* number of lock conflicts */
-	u_int32_t	nrequests;	/* number of lock gets */
-	u_int32_t	nreleases;	/* number of lock puts */
-	u_int32_t	nnowaits;	/* number of lock requests that would
-					   have waited without nowait */
-	u_int32_t	ndeadlocks;	/* number of deadlocks */
+	DB_LOCK_STAT	stat;		/* stats about locking. */
 #ifdef MUTEX_SYSTEM_RESOURCES
 	roff_t		maint_off;	/* offset of region maintenance info */
 #endif
@@ -122,21 +132,16 @@ typedef struct __db_locker {
 	SH_TAILQ_ENTRY links;		/* Links for free and hash list. */
 	SH_TAILQ_ENTRY ulinks;		/* Links in-use list. */
 	SH_LIST_HEAD(_held) heldby;	/* Locks held by this locker. */
+	db_timeval_t	lk_expire;	/* When current lock expires. */
+	db_timeval_t	tx_expire;	/* When this txn expires. */
+	db_timeout_t	lk_timeout;	/* How long do we let locks live. */
 
 #define	DB_LOCKER_DELETED	0x0001
-#define	DB_LOCKER_DIRTY	0x0002
+#define	DB_LOCKER_DIRTY		0x0002
 #define	DB_LOCKER_INABORT	0x0004
+#define	DB_LOCKER_TIMEOUT	0x0008
 	u_int32_t flags;
 } DB_LOCKER;
-
-/*
- * Lockers can be freed if they are not part of a transaction family.
- * Members of a family either point at the master transaction or are
- * the master transaction and have children lockers.
- */
-#define	LOCKER_FREEABLE(lp)						\
-    ((lp)->master_locker == TXN_INVALID_ID &&				\
-    SH_LIST_FIRST(&(lp)->child_locker, __db_locker) == NULL)
 
 /*
  * DB_LOCKTAB --
@@ -162,7 +167,7 @@ struct __db_lock {
 	 * Wait on mutex to wait on lock.  You reference your own mutex with
 	 * ID 0 and others reference your mutex with ID 1.
 	 */
-	MUTEX		mutex;
+	DB_MUTEX	mutex;
 
 	u_int32_t	holder;		/* Who holds this lock. */
 	u_int32_t	gen;		/* Generation count. */
@@ -203,4 +208,6 @@ struct __db_lock {
 
 #define	LOCKREGION(dbenv, lt)  R_LOCK((dbenv), &(lt)->reginfo)
 #define	UNLOCKREGION(dbenv, lt)  R_UNLOCK((dbenv), &(lt)->reginfo)
+
 #include "lock_ext.h"
+#endif /* !_DB_LOCK_H_ */

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_region.c,v 11.50 2001/06/13 01:47:00 bostic Exp $";
+static const char revid[] = "$Id: txn_region.c,v 11.57 2001/11/16 16:28:17 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,97 +28,13 @@ static const char revid[] = "$Id: txn_region.c,v 11.50 2001/06/13 01:47:00 bosti
 #include <string.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_page.h"
 #include "log.h"
 #include "txn.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 static int __txn_init __P((DB_ENV *, DB_TXNMGR *));
 static size_t __txn_region_size __P((DB_ENV *));
-static int __txn_set_tx_max __P((DB_ENV *, u_int32_t));
-static int __txn_set_tx_recover __P((DB_ENV *,
-	       int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
-static int __txn_set_tx_timestamp __P((DB_ENV *, time_t *));
-
-/*
- * __txn_dbenv_create --
- *	Transaction specific initialization of the DB_ENV structure.
- *
- * PUBLIC: void __txn_dbenv_create __P((DB_ENV *));
- */
-void
-__txn_dbenv_create(dbenv)
-	DB_ENV *dbenv;
-{
-	dbenv->tx_max = DEF_MAX_TXNS;
-
-	dbenv->set_tx_max = __txn_set_tx_max;
-	dbenv->set_tx_recover = __txn_set_tx_recover;
-	dbenv->set_tx_timestamp = __txn_set_tx_timestamp;
-
-#ifdef HAVE_RPC
-	/*
-	 * If we have a client, overwrite what we just setup to point to
-	 * client functions.
-	 */
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
-		dbenv->set_tx_max = __dbcl_set_tx_max;
-		dbenv->set_tx_recover = __dbcl_set_tx_recover;
-		dbenv->set_tx_timestamp = __dbcl_set_tx_timestamp;
-	}
-#endif
-}
-
-/*
- * __txn_set_tx_max --
- *	Set the size of the transaction table.
- */
-static int
-__txn_set_tx_max(dbenv, tx_max)
-	DB_ENV *dbenv;
-	u_int32_t tx_max;
-{
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_tx_max");
-
-	dbenv->tx_max = tx_max;
-	return (0);
-}
-
-/*
- * __txn_set_tx_recover --
- *	Set the transaction abort recover function.
- */
-static int
-__txn_set_tx_recover(dbenv, tx_recover)
-	DB_ENV *dbenv;
-	int (*tx_recover) __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
-{
-	dbenv->tx_recover = tx_recover;
-	return (0);
-}
-
-/*
- * __txn_set_tx_timestamp --
- *	Set the transaction recovery timestamp.
- */
-static int
-__txn_set_tx_timestamp(dbenv, timestamp)
-	DB_ENV *dbenv;
-	time_t *timestamp;
-{
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_tx_timestamp");
-
-	dbenv->tx_timestamp = *timestamp;
-	return (0);
-}
 
 /*
  * __txn_open --
@@ -227,6 +143,7 @@ __txn_init(dbenv, tmgrp)
 
 	region->maxtxns = dbenv->tx_max;
 	region->last_txnid = TXN_MINIMUM;
+	region->cur_maxid = TXN_INVALID;
 	ZERO_LSN(region->pending_ckp);
 	region->last_ckp = last_ckp;
 	region->time_ckp = time(NULL);
@@ -237,12 +154,9 @@ __txn_init(dbenv, tmgrp)
 	 */
 	region->logtype = 0;
 	region->locktype = 0;
-	region->naborts = 0;
-	region->ncommits = 0;
-	region->nbegins = 0;
-	region->nactive = 0;
-	region->nrestores = 0;
-	region->maxnactive = 0;
+
+	memset(&region->stat, 0, sizeof(region->stat));
+	region->stat.st_maxtxns = region->maxtxns;
 
 	SH_TAILQ_INIT(&region->active_txn);
 #ifdef	MUTEX_SYSTEM_RESOURCES
@@ -260,13 +174,14 @@ __txn_init(dbenv, tmgrp)
 }
 
 /*
- * __txn_close --
- *	Close a transaction region.
+ * __txn_dbenv_refresh --
+ *	Clean up after the transaction system on a close or failed open.
+ * Called only from __dbenv_refresh.  (Formerly called __txn_close.)
  *
- * PUBLIC: int __txn_close __P((DB_ENV *));
+ * PUBLIC: int __txn_dbenv_refresh __P((DB_ENV *));
  */
 int
-__txn_close(dbenv)
+__txn_dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
 {
 	DB_TXN *txnp;
@@ -293,7 +208,7 @@ __txn_close(dbenv)
 		ret = EINVAL;
 		while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL) {
 			txnid = txnp->txnid;
-			if ((t_ret = txn_abort(txnp)) != 0) {
+			if ((t_ret = txnp->abort(txnp)) != 0) {
 				__db_err(dbenv,
 				    "Unable to abort transaction 0x%x: %s",
 				    txnid, db_strerror(t_ret));
@@ -304,7 +219,7 @@ __txn_close(dbenv)
 
 	/* Flush the log. */
 	if (LOGGING_ON(dbenv) &&
-	    (t_ret = log_flush(dbenv, NULL)) != 0 && ret == 0)
+	    (t_ret = dbenv->log_flush(dbenv, NULL)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the per-thread lock. */
@@ -361,3 +276,30 @@ __txn_region_destroy(dbenv, infop)
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
 }
+
+#ifdef CONFIG_TEST
+/*
+ * __txn_id_set --
+ *	Set the current transaction ID and current maximum unused ID (for
+ *	testing purposes only).
+ *
+ * PUBLIC: int __txn_id_set __P((DB_ENV *, u_int32_t, u_int32_t));
+ */
+int
+__txn_id_set(dbenv, cur_txnid, max_txnid)
+	DB_ENV *dbenv;
+	u_int32_t cur_txnid, max_txnid;
+{
+	DB_TXNMGR *mgr;
+	DB_TXNREGION *region;
+
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, "txn_id_set", DB_INIT_TXN);
+
+	mgr = dbenv->tx_handle;
+	region = mgr->reginfo.primary;
+	region->last_txnid = cur_txnid;
+	region->cur_maxid = max_txnid;
+
+	return (0);
+}
+#endif

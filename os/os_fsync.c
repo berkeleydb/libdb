@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fsync.c,v 11.10 2001/01/25 18:22:58 bostic Exp $";
+static const char revid[] = "$Id: os_fsync.c,v 11.11 2001/09/07 18:17:49 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -79,12 +79,12 @@ __os_fsync(dbenv, fhp)
 	if (F_ISSET(fhp, DB_FH_NOSYNC))
 		return (0);
 
-	ret = __db_jump.j_fsync != NULL ?
-	    __db_jump.j_fsync(fhp->fd) : fsync(fhp->fd);
+	do {
+		ret = __db_jump.j_fsync != NULL ?
+		    __db_jump.j_fsync(fhp->fd) : fsync(fhp->fd);
+	} while (ret != 0 && (ret = __os_get_errno()) == EINTR);
 
-	if (ret != 0) {
-		ret = __os_get_errno();
+	if (ret != 0)
 		__db_err(dbenv, "fsync %s", strerror(ret));
-	}
 	return (ret);
 }

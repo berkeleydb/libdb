@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_method.c,v 11.20 2001/04/24 16:27:56 bostic Exp $";
+static const char revid[] = "$Id: qam_method.c,v 11.25 2001/07/31 19:30:38 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -26,6 +26,7 @@ static const char revid[] = "$Id: qam_method.c,v 11.20 2001/04/24 16:27:56 bosti
 #include "mp.h"
 #include "lock.h"
 #include "log.h"
+#include "clib_ext.h"
 
 static int __qam_set_extentsize __P((DB *, u_int32_t));
 static int __qam_remove_callback __P((DB *, void *));
@@ -88,7 +89,7 @@ again:
 			mpf = mpfp->mpf;
 			mpfp->mpf = NULL;
 			if (mpf != NULL &&
-			    (t_ret = memp_fclose(mpf)) != 0 && ret == 0)
+			    (t_ret = mpf->close(mpf, 0)) != 0 && ret == 0)
 				ret = t_ret;
 		}
 		__os_free(dbp->dbenv, array->mpfarray, 0);
@@ -135,22 +136,27 @@ __db_prqueue(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	QMETA *meta;
 	db_pgno_t first, i, last, pg_ext, stop;
-	int ret;
+	int ret, t_ret;
+
+	mpf = dbp->mpf;
 
 	/* Find out the page number of the last page in the database. */
 	i = PGNO_BASE_MD;
-	if ((ret = memp_fget(dbp->mpf, &i, 0, &meta)) != 0)
+	if ((ret = mpf->get(mpf, &i, 0, &meta)) != 0)
 		return (ret);
 
 	first = QAM_RECNO_PAGE(dbp, meta->first_recno);
 	last = QAM_RECNO_PAGE(dbp, meta->cur_recno);
 
-	if ((ret = __db_prpage(dbp, (PAGE *)meta, flags)) != 0)
-		return (ret);
-	if ((ret = memp_fput(dbp->mpf, meta, 0)) != 0)
+	ret = __db_prpage(dbp, (PAGE *)meta, flags);
+	if ((t_ret = mpf->put(mpf, meta, 0)) != 0 && ret == 0)
+		ret = t_ret;
+
+	if (ret != 0)
 		return (ret);
 
 	i = first;
@@ -210,7 +216,7 @@ __qam_remove(dbp, name, subdb, lsnp, callbackp, cookiep)
 	MPFARRAY *ap;
 	QUEUE *qp;
 	int ret;
-	char *backup, buf[256], *real_back, *real_name;
+	char *backup, buf[MAXPATHLEN], *real_back, *real_name;
 	QUEUE_FILELIST *filelist, *fp;
 	struct __qam_cookie *qam_cookie;
 
@@ -241,8 +247,8 @@ __qam_remove(dbp, name, subdb, lsnp, callbackp, cookiep)
 		goto done;
 
 	for (fp = filelist; fp->mpf != NULL; fp++) {
-		snprintf(buf,
-		    sizeof(buf), QUEUE_EXTENT, qp->dir, qp->name, fp->id);
+		snprintf(buf, sizeof(buf),
+		    QUEUE_EXTENT, qp->dir, PATH_SEPARATOR[0], qp->name, fp->id);
 		if ((ret = __db_appname(dbenv,
 		    DB_APP_DATA, NULL, buf, 0, NULL, &real_name)) != 0)
 			goto done;
@@ -259,8 +265,7 @@ __qam_remove(dbp, name, subdb, lsnp, callbackp, cookiep)
 				goto done;
 			}
 		}
-		(void)__memp_fremove(fp->mpf);
-		if ((ret = memp_fclose(fp->mpf)) != 0)
+		if ((ret = fp->mpf->close(fp->mpf, DB_MPOOL_DISCARD)) != 0)
 			goto done;
 		if (qp->array2.n_extent == 0 || qp->array2.low_extent > fp->id)
 			ap = &qp->array1;
@@ -318,7 +323,7 @@ __qam_remove_callback(dbp, cookie)
 	DB_LSN *lsnp;
 	QUEUE *qp;
 	QUEUE_FILELIST *filelist, *fp;
-	char *backup, buf[256], *real_back;
+	char *backup, buf[MAXPATHLEN], *real_back;
 	int ret;
 
 	qp = (QUEUE *)dbp->q_internal;
@@ -329,8 +334,9 @@ __qam_remove_callback(dbp, cookie)
 	lsnp = &((struct __qam_cookie *)cookie)->lsn;
 	filelist = fp = ((struct __qam_cookie *)cookie)->filelist;
 	real_back = backup = NULL;
-	if ((ret =
-	    __db_backup_name(dbenv, qp->name, &backup, lsnp)) != 0)
+	snprintf(buf, sizeof(buf),
+	     "%s%c%s", qp->dir, PATH_SEPARATOR[0], qp->name);
+	if ((ret = __db_backup_name(dbenv, buf, &backup, lsnp)) != 0)
 		goto err;
 	if ((ret = __db_appname(dbenv,
 	    DB_APP_DATA, NULL, backup, 0, NULL, &real_back)) != 0)
@@ -345,8 +351,8 @@ __qam_remove_callback(dbp, cookie)
 		return (0);
 
 	for (; fp->mpf != NULL; fp++) {
-		snprintf(buf,
-		    sizeof(buf), QUEUE_EXTENT, qp->dir, qp->name, fp->id);
+		snprintf(buf, sizeof(buf),
+		    QUEUE_EXTENT, qp->dir, PATH_SEPARATOR[0], qp->name, fp->id);
 		real_back = backup = NULL;
 		if ((ret = __db_backup_name(dbenv, buf, &backup, lsnp)) != 0)
 			goto err;
@@ -390,7 +396,8 @@ __qam_rename(dbp, filename, subdb, newname)
 	MPFARRAY *ap;
 	QUEUE *qp;
 	QUEUE_FILELIST *fp, *filelist;
-	char buf[256], nbuf[256], *namep, *real_name, *real_newname;
+	char buf[MAXPATHLEN], nbuf[MAXPATHLEN];
+	char *namep, *real_name, *real_newname;
 	int ret;
 
 	dbenv = dbp->dbenv;
@@ -413,22 +420,20 @@ __qam_rename(dbp, filename, subdb, newname)
 		newname = namep + 1;
 
 	for (fp = filelist; fp != NULL && fp->mpf != NULL; fp++) {
-		if ((ret = __memp_fremove(fp->mpf)) != 0)
-			goto err;
-		if ((ret = memp_fclose(fp->mpf)) != 0)
+		if ((ret = fp->mpf->close(fp->mpf, DB_MPOOL_DISCARD)) != 0)
 			goto err;
 		if (qp->array2.n_extent == 0 || qp->array2.low_extent > fp->id)
 			ap = &qp->array1;
 		else
 			ap = &qp->array2;
 		ap->mpfarray[fp->id - ap->low_extent].mpf = NULL;
-		snprintf(buf,
-		    sizeof(buf), QUEUE_EXTENT, qp->dir, qp->name, fp->id);
+		snprintf(buf, sizeof(buf),
+		    QUEUE_EXTENT, qp->dir, PATH_SEPARATOR[0], qp->name, fp->id);
 		if ((ret = __db_appname(dbenv,
 		    DB_APP_DATA, NULL, buf, 0, NULL, &real_name)) != 0)
 			goto err;
-		snprintf(nbuf,
-		     sizeof(nbuf), QUEUE_EXTENT, qp->dir, newname, fp->id);
+		snprintf(nbuf, sizeof(nbuf),
+		     QUEUE_EXTENT, qp->dir, PATH_SEPARATOR[0], newname, fp->id);
 		if ((ret = __db_appname(dbenv,
 		    DB_APP_DATA, NULL, nbuf, 0, NULL, &real_newname)) != 0)
 			goto err;

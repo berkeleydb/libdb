@@ -3,11 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb011.tcl,v 11.5 2001/05/17 20:37:06 bostic Exp $
+# $Id: sdb011.tcl,v 11.6 2001/08/03 16:39:31 bostic Exp $
 #
-# SubDB Test 11 {access method}
-# Create 1 db with many large subdbs.
-# Test subdatabases with overflow pages.
+# TEST	subdb011
+# TEST	Test deleting Subdbs with overflow pages
+# TEST	Create 1 db with many large subdbs.
+# TEST	Test subdatabases with overflow pages.
 proc subdb011 { method {ndups 13} {nsubdbs 10} args} {
 	global names
 	source ./include.tcl

@@ -3,12 +3,14 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test079.tcl,v 11.6 2001/01/25 18:23:13 bostic Exp $
+# $Id: test079.tcl,v 11.7 2001/08/03 16:39:46 bostic Exp $
 #
-# DB Test 79 {access method}
-# Check that delete operations work in large btrees.  10000 entries and
-# a pagesize of 512 push this out to a four-level btree, with a small fraction
-# of the entries going on overflow pages.
+# TEST	test079
+# TEST	Test of deletes in large trees.  (test006 w/ sm. pagesize).
+# TEST
+# TEST	Check that delete operations work in large btrees.  10000 entries
+# TEST	and a pagesize of 512 push this out to a four-level btree, with a
+# TEST	small fraction of the entries going on overflow pages.
 proc test079 { method {nentries 10000} {pagesize 512} {tnum 79} args} {
 	if { [ is_queueext $method ] == 1 } {
 		set method  "queue";

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_win32_dsp,v 1.5 2001/05/27 14:03:33 bostic Exp $
+#	$Id: s_win32_dsp,v 1.7 2001/08/07 18:19:37 bostic Exp $
 #
 # Build Windows/32 .dsp files.
 
@@ -41,14 +41,17 @@ create_dsp()
         -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/g" \
         -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/g" \
       < $dsptemplate > $dspoutput.new
+
+    # Set the file mode to 644 because the VC++ IDE needs a writeable file
+    # in our development environment.
     cmp $dspoutput.new $dspoutput > /dev/null 2>&1 ||
 	(echo "Building $dspoutput" && rm -f $dspoutput &&
-	    cp $dspoutput.new $dspoutput && chmod 444 $dspoutput)
+	    cp $dspoutput.new $dspoutput && chmod 664 $dspoutput)
     rm -f $dspoutput.insert $dspoutput.new
 }
 
 TMPA=/tmp/swin32dsp$$a
-trap "rm -f $TMPA; exit 1" 1 2 3 15 
+trap "rm -f $TMPA; exit 1" 1 2 3 15
 
 # create a copy of the srcfiles with comments and 'skip' lines removed.
 # add a space at the end of each list of modules so that each module

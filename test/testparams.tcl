@@ -3,17 +3,32 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: testparams.tcl,v 11.60 2001/05/23 16:47:32 sue Exp $
+# $Id: testparams.tcl,v 11.77 2001/11/07 18:45:03 sue Exp $
 
-set deadtests	 5
-set envtests	 9
-set recdtests	15
+set deadtests	 7
+set envtests	10
+set recdtests	16
 set rpctests	 3
-set rsrctests	 3
+set rsrctests	 4
 set runtests	96
 set sindextests  5
 set subdbtests	11
 
+set parms(recd001) 0
+set parms(recd002) 0
+set parms(recd003) 0
+set parms(recd004) 0
+set parms(recd005) ""
+set parms(recd006) 0
+set parms(recd007) ""
+set parms(recd008) {4 4}
+set parms(recd009) 0
+set parms(recd010) 0
+set parms(recd011) {200 15 1}
+set parms(recd012) {0 49 25 100 5}
+set parms(recd013) 100
+set parms(recd014) ""
+set parms(recd015) ""
 set parms(subdb001) ""
 set parms(subdb002) 10000
 set parms(subdb003) 1000
@@ -120,3 +135,26 @@ set parms(test093) {10000 93}
 set parms(test094) {10000 10 94}
 set parms(test095) {1000 25 95}
 set parms(test096) {512 1000 19}
+
+# Shell script tests.  Each list entry is a {directory filename} pair,
+# invoked with "/bin/sh filename".
+set shelltest_list {
+	{ scr001	chk.code }
+	{ scr002	chk.def }
+	{ scr003	chk.define }
+	{ scr004	chk.javafiles }
+	{ scr005	chk.nl }
+	{ scr006	chk.offt }
+	{ scr007	chk.proto }
+	{ scr008	chk.pubdef }
+	{ scr009	chk.srcfiles }
+	{ scr010	chk.str }
+	{ scr011	chk.tags }
+	{ scr012	chk.vx_code }
+	{ scr013	chk.stats }
+	{ scr014	chk.err }
+	{ scr015	chk.cxxtests }
+	{ scr016	chk.javatests }
+	{ scr017	chk.db185 }
+	{ scr018	chk.comma }
+}

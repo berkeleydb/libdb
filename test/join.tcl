@@ -3,17 +3,21 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: join.tcl,v 11.18 2001/01/25 18:23:04 bostic Exp $
+# $Id: join.tcl,v 11.19 2001/08/03 16:39:25 bostic Exp $
 #
-# We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
-# everything else does as well.  We'll create test databases called
-# join1.db, join2.db, join3.db, and join4.db.  The number on the database
-# describes the duplication -- duplicates are of the form 0, N, 2N, 3N, ...
-# where N is the number of the database.  Primary.db is the primary database,
-# and null.db is the database that has no matching duplicates.
-#
-# We should test this on all btrees, all hash, and a combination thereof
-# Join test.
+# TEST	jointest
+# TEST	Test duplicate assisted joins.  Executes 1, 2, 3 and 4-way joins
+# TEST	with differing index orders and selectivity.
+# TEST
+# TEST	We'll test 2-way, 3-way, and 4-way joins and figure that if those
+# TEST	work, everything else does as well.  We'll create test databases
+# TEST	called join1.db, join2.db, join3.db, and join4.db.  The number on
+# TEST	the database describes the duplication -- duplicates are of the
+# TEST	form 0, N, 2N, 3N, ...  where N is the number of the database.
+# TEST	Primary.db is the primary database, and null.db is the database
+# TEST	that has no matching duplicates.
+# TEST
+# TEST	We should test this on all btrees, all hash, and a combination thereof
 proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 	global testdir
 	global rand_init

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_except.cpp,v 11.9 2001/04/05 16:28:45 dda Exp $";
+static const char revid[] = "$Id: cxx_except.cpp,v 11.11 2001/10/04 21:13:59 bostic Exp $";
 #endif /* not lint */
 
 #include <string.h>
@@ -26,36 +26,42 @@ public:
 		  const char *str2 = 0,
 		  const char *str3 = 0,
 		  const char *str4 = 0,
-		  const char *str5 = 0)
-	{
-		int len = strlen(str1);
-		if (str2)
-			len += strlen(str2);
-		if (str3)
-			len += strlen(str3);
-		if (str4)
-			len += strlen(str4);
-		if (str5)
-			len += strlen(str5);
-
-		s_ = new char[len+1];
-
-		strcpy(s_, str1);
-		if (str2)
-			strcat(s_, str2);
-		if (str3)
-			strcat(s_, str3);
-		if (str4)
-			strcat(s_, str4);
-		if (str5)
-			strcat(s_, str5);
-	}
+		  const char *str5 = 0);
 	~tmpString()                      { delete [] s_; }
 	operator const char *()           { return (s_); }
 
 private:
 	char *s_;
 };
+
+tmpString::tmpString(const char *str1,
+		     const char *str2,
+		     const char *str3,
+		     const char *str4,
+		     const char *str5)
+{
+	int len = strlen(str1);
+	if (str2)
+		len += strlen(str2);
+	if (str3)
+		len += strlen(str3);
+	if (str4)
+		len += strlen(str4);
+	if (str5)
+		len += strlen(str5);
+
+	s_ = new char[len+1];
+
+	strcpy(s_, str1);
+	if (str2)
+		strcat(s_, str2);
+	if (str3)
+		strcat(s_, str3);
+	if (str4)
+		strcat(s_, str4);
+	if (str5)
+		strcat(s_, str5);
+}
 
 // Note: would not be needed if we can inherit from exception
 // It does not appear to be possible to inherit from exception

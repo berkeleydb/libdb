@@ -3,11 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test063.tcl,v 11.12 2001/01/25 18:23:12 bostic Exp $
+# $Id: test063.tcl,v 11.14 2001/08/03 16:39:43 bostic Exp $
 #
-# DB Test 63:  Test that the DB_RDONLY flag is respected.
-#	Attempt to both DB->put and DBC->c_put into a database
-#	that has been opened DB_RDONLY, and check for failure.
+# TEST	test063
+# TEST	Test of the DB_RDONLY flag to DB->open
+# TEST	Attempt to both DB->put and DBC->c_put into a database
+# TEST	that has been opened DB_RDONLY, and check for failure.
 proc test063 { method args } {
 	global errorCode
 	source ./include.tcl
@@ -47,7 +48,7 @@ proc test063 { method args } {
 
 	# Create a test database.
 	puts "\tTest0$tnum.a: Creating test database."
-	set db [eval {berkdb_open_noerr -create -truncate -mode 0644} \
+	set db [eval {berkdb_open_noerr -create -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_create [is_valid_db $db] TRUE
 

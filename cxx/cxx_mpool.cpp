@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: cxx_mpool.cpp,v 11.13 2001/04/03 15:14:07 krinsky Exp $";
+static const char revid[] = "$Id: cxx_mpool.cpp,v 11.14 2001/07/24 22:37:06 dda Exp $";
 #endif /* not lint */
 
 #include <errno.h>
@@ -31,149 +31,200 @@ DbMpoolFile::~DbMpoolFile()
 {
 }
 
-int DbMpoolFile::open(DbEnv *envp, const char *file,
-		      u_int32_t flags, int mode, size_t pagesize,
-		      DB_MPOOL_FINFO *finfop, DbMpoolFile **result)
+int DbMpoolFile::close(u_int32_t flags)
 {
+	DB_MPOOLFILE *mpf;
 	int err;
 
-	DB_MPOOLFILE *mpf;
-	DB_ENV *env = unwrap(envp);
-
-	if ((err = ::memp_fopen(env, file, flags, mode, pagesize,
-				finfop, &mpf)) != 0) {
-		DB_ERROR("DbMpoolFile::open", err, envp->error_policy());
-		return (err);
-	}
-	*result = new DbMpoolFile();
-	(*result)->imp_ = wrap(mpf);
-	return (0);
-}
-
-int DbMpoolFile::close()
-{
-	DB_MPOOLFILE *mpf = unwrap(this);
-	int err = 0;
-	if (!mpf) {
+	mpf = unwrap(this);
+	if (mpf == NULL) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fclose(mpf)) != 0) {
+	else if ((err = mpf->close(mpf, flags)) != 0) {
 		DB_ERROR("DbMpoolFile::close", err, ON_ERROR_UNKNOWN);
-		return (err);
 	}
-	imp_ = 0;                   // extra safety
 
-	// This may seem weird, but is legal as long as we don't access
-	// any data before returning.
-	//
-	delete this;
-	return (0);
+	if (err == 0) {
+		imp_ = 0;                   // extra safety
+
+		// This may seem weird, but is legal as long as we don't access
+		// any data before returning.
+		//
+		delete this;
+	}
+	return (err);
 }
 
 int DbMpoolFile::get(db_pgno_t *pgnoaddr, u_int32_t flags, void *pagep)
 {
-	DB_MPOOLFILE *mpf = unwrap(this);
-	int err = 0;
-	if (!mpf) {
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fget(mpf, pgnoaddr, flags, pagep)) != 0) {
+	else if ((err = mpf->get(mpf, pgnoaddr, flags, pagep)) != 0) {
 		DB_ERROR("DbMpoolFile::get", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+void DbMpoolFile::last_pgno(db_pgno_t *pgnoaddr)
+{
+	DB_MPOOLFILE *mpf;
+
+	mpf = unwrap(this);
+	mpf->last_pgno(mpf, pgnoaddr);
+}
+
+int DbMpoolFile::open(const char *file, u_int32_t flags, int mode, size_t pagesize)
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->open(mpf, file, flags, mode, pagesize)) != 0) {
+		DB_ERROR("DbMpoolFile::open", err, ON_ERROR_UNKNOWN);
 	}
 	return (err);
 }
 
 int DbMpoolFile::put(void *pgaddr, u_int32_t flags)
 {
-	DB_MPOOLFILE *mpf = unwrap(this);
-	int err = 0;
-	if (!mpf) {
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fput(mpf, pgaddr, flags)) != 0) {
+	else if ((err = mpf->put(mpf, pgaddr, flags)) != 0) {
 		DB_ERROR("DbMpoolFile::put", err, ON_ERROR_UNKNOWN);
 	}
 	return (err);
 }
 
+void DbMpoolFile::refcnt(db_pgno_t *pgnoaddr)
+{
+	DB_MPOOLFILE *mpf;
+
+	mpf = unwrap(this);
+	mpf->refcnt(mpf, pgnoaddr);
+}
+
 int DbMpoolFile::set(void *pgaddr, u_int32_t flags)
 {
-	DB_MPOOLFILE *mpf = unwrap(this);
-	int err = 0;
-	if (!mpf) {
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fset(mpf, pgaddr, flags)) != 0) {
+	else if ((err = mpf->set(mpf, pgaddr, flags)) != 0) {
 		DB_ERROR("DbMpoolFile::set", err, ON_ERROR_UNKNOWN);
 	}
 	return (err);
 }
 
-int DbMpoolFile::sync()
+int DbMpoolFile::set_clear_len(u_int32_t len)
 {
-	DB_MPOOLFILE *mpf = unwrap(this);
-	int err = 0;
-	if (!mpf) {
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
 		err = EINVAL;
 	}
-	else if ((err = ::memp_fsync(mpf)) != 0 && err != DB_INCOMPLETE) {
+	else if ((err = mpf->set_clear_len(mpf, len)) != 0) {
+		DB_ERROR("DbMpoolFile::set_clear_len", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+int DbMpoolFile::set_fileid(u_int8_t *fileid)
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->set_fileid(mpf, fileid)) != 0) {
+		DB_ERROR("DbMpoolFile::set_fileid", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+int DbMpoolFile::set_ftype(int ftype)
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->set_ftype(mpf, ftype)) != 0) {
+		DB_ERROR("DbMpoolFile::set_ftype", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+int DbMpoolFile::set_lsn_offset(int32_t offset)
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->set_lsn_offset(mpf, offset)) != 0) {
+		DB_ERROR("DbMpoolFile::set_lsn_offset", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+int DbMpoolFile::set_pgcookie(DBT *dbt)
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->set_pgcookie(mpf, dbt)) != 0) {
+		DB_ERROR("DbMpoolFile::set_pgcookie", err, ON_ERROR_UNKNOWN);
+	}
+	return (err);
+}
+
+void DbMpoolFile::set_unlink(int ul)
+{
+	DB_MPOOLFILE *mpf;
+
+	mpf = unwrap(this);
+	mpf->set_unlink(mpf, ul);
+}
+
+int DbMpoolFile::sync()
+{
+	DB_MPOOLFILE *mpf;
+	int err;
+
+	mpf = unwrap(this);
+	if (mpf == NULL) {
+		err = EINVAL;
+	}
+	else if ((err = mpf->sync(mpf)) != 0) {
 		DB_ERROR("DbMpoolFile::sync", err, ON_ERROR_UNKNOWN);
-	}
-	return (err);
-}
-
-////////////////////////////////////////////////////////////////////////
-//                                                                    //
-//                            DbMpool                                 //
-//                                                                    //
-////////////////////////////////////////////////////////////////////////
-
-int DbEnv::memp_register(int ftype,
-			 pgin_fcn_type pgin_fcn,
-			 pgout_fcn_type pgout_fcn)
-{
-	DB_ENV *env = unwrap(this);
-	int err = 0;
-
-	if ((err = ::memp_register(env, ftype, pgin_fcn, pgout_fcn)) != 0) {
-		DB_ERROR("DbEnv::memp_register", err, error_policy());
-		return (err);
-	}
-	return (err);
-}
-
-int DbEnv::memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp)
-{
-	DB_ENV *env = unwrap(this);
-	int err = 0;
-
-	if ((err = ::memp_stat(env, gsp, fsp)) != 0) {
-		DB_ERROR("DbEnv::memp_stat", err, error_policy());
-		return (err);
-	}
-	return (err);
-}
-
-int DbEnv::memp_sync(DbLsn *sn)
-{
-	DB_ENV *env = unwrap(this);
-	int err = 0;
-
-	if ((err = ::memp_sync(env, sn)) != 0 && err != DB_INCOMPLETE) {
-		DB_ERROR("DbEnv::memp_sync", err, error_policy());
-		return (err);
-	}
-	return (err);
-}
-
-int DbEnv::memp_trickle(int pct, int *nwrotep)
-{
-	DB_ENV *env = unwrap(this);
-	int err = 0;
-
-	if ((err = ::memp_trickle(env, pct, nwrotep)) != 0) {
-		DB_ERROR("DbEnv::memp_trickle", err, error_policy());
-		return (err);
 	}
 	return (err);
 }

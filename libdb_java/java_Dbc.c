@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Dbc.c,v 11.16 2001/05/12 17:17:34 dda Exp $";
+static const char revid[] = "$Id: java_Dbc.c,v 11.17 2001/08/13 19:11:41 bostic Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -105,7 +105,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
 		 op_flags == DB_SET_RECNO) {
 		keyop = inOutOp;
 	}
-	else if (op_flags == DB_GET_BOTH) {
+	else if (op_flags == DB_GET_BOTH || op_flags == DB_GET_BOTH_RANGE) {
 		keyop = inOutOp;
 		dataop = inOutOp;
 	}
@@ -167,7 +167,7 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_pget
 		 op_flags == DB_SET_RECNO) {
 		keyop = inOutOp;
 	}
-	else if (op_flags == DB_GET_BOTH) {
+	else if (op_flags == DB_GET_BOTH || op_flags == DB_GET_BOTH_RANGE) {
 		pkeyop = inOutOp;
 		keyop = inOutOp;
 		dataop = inOutOp;

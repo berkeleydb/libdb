@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: mdbscript.tcl,v 11.24 2001/01/25 18:23:05 bostic Exp $
+# $Id: mdbscript.tcl,v 11.26 2001/10/30 21:40:37 dda Exp $
 #
 # Process script for the multi-process db tester.
 
@@ -78,11 +78,17 @@ puts "$procid process id"
 puts "$procs processes"
 
 set klock NOLOCK
+
+# Note: all I/O operations, and especially flush, are expensive
+# on Win2000 at least with Tcl version 8.3.2.  So we'll avoid
+# flushes in the main part of the loop below.
 flush stdout
 
 set dbenv [berkdb env -create -cdb -home $dir]
 #set dbenv [berkdb env -create -cdb -log -home $dir]
 error_check_good dbenv [is_valid_env $dbenv] TRUE
+
+set locker [ $dbenv lock_id ]
 
 set db [berkdb_open -env $dbenv -create -mode 0644 $omethod $file]
 error_check_good dbopen [is_valid_db $db] TRUE
@@ -96,6 +102,7 @@ tclsleep 5
 proc get_lock { k } {
 	global dbenv
 	global procid
+	global locker
 	global klock
 	global DB_LOCK_WRITE
 	global DB_LOCK_NOWAIT
@@ -103,7 +110,7 @@ proc get_lock { k } {
 	global exception_handled
 	# Make sure that the key isn't in the middle of
 	# a delete operation
-	if {[catch {$dbenv lock_get -nowait write $procid $k} klock] != 0 } {
+	if {[catch {$dbenv lock_get -nowait write $locker $k} klock] != 0 } {
 		set exception_handled 1
 
 		error_check_good \
@@ -136,7 +143,7 @@ set dlen [string length $datastr]
 for { set i 0 } { $i < $iter } { incr i } {
 	set op [berkdb random_int 0 5]
 	puts "iteration $i operation $op"
-	flush stdout
+	set close_cursor 0
 	if {[catch {
 	switch $op {
 		0 {
@@ -337,7 +344,6 @@ for { set i 0 } { $i < $iter } { incr i } {
 		set fnl [string first "\n" $errorInfo]
 		set theError [string range $errorInfo 0 [expr $fnl - 1]]
 
-		flush stdout
 		if { [string compare $klock NOLOCK] != 0 } {
 			catch {$klock put}
 		}
@@ -348,11 +354,11 @@ for { set i 0 } { $i < $iter } { incr i } {
 
 		if {[string first FAIL $theError] == 0 && \
 		    $exception_handled != 1} {
+			flush stdout
 			error "FAIL:[timestamp] test042: key $k: $theError"
 		}
 		set exception_handled 0
 	} else {
-		flush stdout
 		if { [string compare $klock NOLOCK] != 0 } {
 			error_check_good "$klock put" [$klock put] 0
 			set klock NOLOCK
@@ -368,6 +374,7 @@ if {[catch {$db close} ret] != 0 } {
 }
 $dbenv close
 
+flush stdout
 exit
 
 puts "[timestamp] [pid] Complete"

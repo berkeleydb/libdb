@@ -1,4 +1,4 @@
-<!--$Id: db_associate.so,v 10.10 2001/05/15 17:08:36 bostic Exp $-->
+<!--$Id: db_associate.so,v 10.12 2001/10/22 15:24:20 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -22,8 +22,8 @@
 #include &lt;db.h&gt;
 <p>
 DB-&gt;associate(DB *primary, DB *secondary,
-	int (*callback)(DB *, const DBT *, const DBT *, DBT *),
-	u_int32_t flags);
+    int (*callback)(DB *, const DBT *, const DBT *, DBT *),
+    u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DB-&gt;associate function is used to declare one database a
@@ -49,7 +49,7 @@ that either secondary keys must be unique or the secondary database must
 be configured with support for duplicate data items.
 <p>The <b>callback</b> argument should refer to a callback function that
 creates a secondary key from a given primary key and data pair.  When
-called, the first argument will be the secondary DB handle; the
+called, the first argument will be the secondary <a href="../api_c/db_create.html">DB</a> handle; the
 second and third arguments will be <a href="../api_c/dbt.html">DBT</a>s containing a primary
 key and datum respectively;  and the fourth argument will be a zeroed
 DBT in which the callback function should fill in <b>data</b> and

@@ -101,8 +101,8 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 <p>
 	for (fail = 0;;) {
 		/* Begin the transaction. */
-		if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-			dbenv-&gt;err(dbenv, ret, "txn_begin");
+		if ((ret = dbenv-&gt;txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+			dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;txn_begin");
 			exit (1);
 		}
 <p>
@@ -117,8 +117,8 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 		case DB_LOCK_DEADLOCK:
 		default:
 			/* Retry the operation. */
-			if ((t_ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
+			if ((t_ret = tid-&gt;abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
 			if (++fail == MAXIMUM_RETRY)
@@ -140,16 +140,16 @@ add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
 		switch (ret = dbp-&gt;put(dbp, tid, &key, &data, 0)) {
 		case 0:
 			/* Success: commit the change. */
-			if ((ret = txn_commit(tid, 0)) != 0) {
-				dbenv-&gt;err(dbenv, ret, "txn_commit");
+			if ((ret = tid-&gt;commit(tid, 0)) != 0) {
+				dbenv-&gt;err(dbenv, ret, "DB_TXN-&gt;commit");
 				exit (1);
 			}
 			return (0);
 		case DB_LOCK_DEADLOCK:
 		default:
 			/* Retry the operation. */
-			if ((t_ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
+			if ((t_ret = tid-&gt;abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
 			if (++fail == MAXIMUM_RETRY)
@@ -169,7 +169,7 @@ likely it is that a transaction will block other operations and that
 deadlock will occur.  However, each transaction commit requires a
 synchronous disk I/O, so grouping multiple operations into a transaction
 can increase overall throughput.  (There is one exception to this.  The
-<a href="../../api_c/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option causes transactions to exhibit the ACI
+<a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option causes transactions to exhibit the ACI
 (atomicity, consistency and isolation) properties, but not D
 (durability); avoiding the synchronous disk I/O on transaction commit
 and greatly increasing transaction throughput for some applications.)

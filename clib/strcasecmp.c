@@ -34,7 +34,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: strcasecmp.c,v 1.5 2001/04/10 20:43:50 bostic Exp $";
+static const char revid[] = "$Id: strcasecmp.c,v 1.7 2001/11/15 17:51:38 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -78,7 +78,7 @@ static const unsigned char charmap[] = {
 	'\340', '\341', '\342', '\343', '\344', '\345', '\346', '\347',
 	'\350', '\351', '\352', '\353', '\354', '\355', '\356', '\357',
 	'\360', '\361', '\362', '\363', '\364', '\365', '\366', '\367',
-	'\370', '\371', '\372', '\373', '\374', '\375', '\376', '\377',
+	'\370', '\371', '\372', '\373', '\374', '\375', '\376', '\377'
 };
 
 /*
@@ -101,4 +101,32 @@ strcasecmp(s1, s2)
 		if (*us1++ == '\0')
 			return (0);
 	return (cm[*us1] - cm[*--us2]);
+}
+
+/*
+ * strncasecmp --
+ *	Do strncmp(3) in a case-insensitive manner.
+ *
+ * PUBLIC: #ifndef HAVE_STRCASECMP
+ * PUBLIC: int strncasecmp __P((const char *, const char *, size_t));
+ * PUBLIC: #endif
+ */
+int
+strncasecmp(s1, s2, n)
+	const char *s1, *s2;
+	register size_t n;
+{
+	if (n != 0) {
+		register const unsigned char *cm = charmap,
+				*us1 = (const unsigned char *)s1,
+				*us2 = (const unsigned char *)s2;
+
+		do {
+			if (cm[*us1] != cm[*us2++])
+				return (cm[*us1] - cm[*--us2]);
+			if (*us1++ == '\0')
+				break;
+		} while (--n != 0);
+	}
+	return (0);
 }

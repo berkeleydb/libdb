@@ -1,4 +1,4 @@
-<!--$Id: db_put.so,v 10.37 2001/04/02 00:36:35 bostic Exp $-->
+<!--$Id: db_put.so,v 10.38 2001/10/22 15:24:21 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -34,7 +34,7 @@ supports duplicates, the DB-&gt;put function adds the new data value at the
 end of the duplicate set.  If the database supports sorted duplicates,
 the new data value is inserted at the correct sorted location.
 <p>If the operation is to be transaction-protected, the <b>txnid</b>
-parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">txn_begin</a>;
+parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>;
 otherwise, NULL.
 <p>The <b>flags</b> value must be set to 0 or
 one of the following values:

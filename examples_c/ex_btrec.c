@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_btrec.c,v 11.13 2001/05/10 17:14:04 bostic Exp $
+ * $Id: ex_btrec.c,v 11.14 2001/10/04 18:46:28 sue Exp $
  */
 
 #include <sys/types.h>
@@ -15,27 +15,18 @@
 
 #include <db.h>
 
-#ifdef HAVE_VXWORKS
-#define	DATABASE	"/vxtmp/vxtmp/access.db"
-#define	WORDLIST	"/vxtmp/vxtmp/wordlist"
-#define	ERROR_RETURN	ERROR
-#else
 #define	DATABASE	"access.db"
 #define	WORDLIST	"../test/wordlist"
-#define	ERROR_RETURN	1
 int	main __P((void));
-#endif
 
 int	ex_btrec __P((void));
 void	show __P((char *, DBT *, DBT *));
 
-#ifndef HAVE_VXWORKS
 int
 main()
 {
-	return (ex_btrec() == ERROR_RETURN ? EXIT_FAILURE : EXIT_SUCCESS);
+	return (ex_btrec() == 1 ? EXIT_FAILURE : EXIT_SUCCESS);
 }
-#endif
 
 int
 ex_btrec()
@@ -55,7 +46,7 @@ ex_btrec()
 	if ((fp = fopen(WORDLIST, "r")) == NULL) {
 		fprintf(stderr, "%s: open %s: %s\n",
 		    progname, WORDLIST, db_strerror(errno));
-		return (ERROR_RETURN);
+		return (1);
 	}
 
 	/* Remove the previous database. */
@@ -65,22 +56,22 @@ ex_btrec()
 	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_create: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	dbp->set_errfile(dbp, stderr);
 	dbp->set_errpfx(dbp, progname);			/* 1K page sizes. */
 	if ((ret = dbp->set_pagesize(dbp, 1024)) != 0) {
 		dbp->err(dbp, ret, "set_pagesize");
-		return (ERROR_RETURN);
+		return (1);
 	}						/* Record numbers. */
 	if ((ret = dbp->set_flags(dbp, DB_RECNUM)) != 0) {
 		dbp->err(dbp, ret, "set_flags: DB_RECNUM");
-		return (ERROR_RETURN);
+		return (1);
 	}
 	if ((ret =
 	    dbp->open(dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp->err(dbp, ret, "open: %s", DATABASE);
-		return (ERROR_RETURN);
+		return (1);
 	}
 
 	/*
@@ -186,7 +177,7 @@ get_err:		dbp->err(dbp, ret, "DBcursor->get");
 	if ((ret = dbp->close(dbp, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: DB->close: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 
 	return (0);

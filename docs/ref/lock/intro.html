@@ -1,4 +1,4 @@
-<!--$Id: intro.so,v 10.21 2001/05/22 19:39:30 bostic Exp $-->
+<!--$Id: intro.so,v 10.22 2001/10/13 20:21:45 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,21 +23,21 @@ designated resources.
 <p>The Lock subsystem is created, initialized, and opened by calls to
 <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> with the <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> or <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a>
 flags specified.
-<p>The <a href="../../api_c/lock_vec.html">lock_vec</a> interface is used to acquire and release locks.
-The <a href="../../api_c/lock_vec.html">lock_vec</a> function performs any number of lock operations
+<p>The <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> interface is used to acquire and release locks.
+The <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> function performs any number of lock operations
 atomically.  It also provides the capability to release all locks held
 by a particular locker and release all the locks on a particular object.
 (Performing multiple lock operations atomically is useful in performing
 Btree traversals -- you want to acquire a lock on a child page and once
 acquired, immediately release the lock on its parent.  This is
 traditionally referred to as <i>lock-coupling</i>).  Two additional
-interfaces, <a href="../../api_c/lock_get.html">lock_get</a> and <a href="../../api_c/lock_put.html">lock_put</a>, are provided.  These
-interfaces are simpler front-ends to the <a href="../../api_c/lock_vec.html">lock_vec</a> functionality,
-where <a href="../../api_c/lock_get.html">lock_get</a> acquires a lock, and <a href="../../api_c/lock_put.html">lock_put</a> releases
-a lock that was acquired using <a href="../../api_c/lock_get.html">lock_get</a> or <a href="../../api_c/lock_vec.html">lock_vec</a>.
+interfaces, <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> and <a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>, are provided.  These
+interfaces are simpler front-ends to the <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> functionality,
+where <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> acquires a lock, and <a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> releases
+a lock that was acquired using <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> or <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
 All locks explicitly requested by an application should be released via
-calls to <a href="../../api_c/lock_put.html">lock_put</a> or <a href="../../api_c/lock_vec.html">lock_vec</a>.  Using <a href="../../api_c/lock_vec.html">lock_vec</a>
-instead of separate calls to <a href="../../api_c/lock_put.html">lock_put</a> and <a href="../../api_c/lock_get.html">lock_get</a> also
+calls to <a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> or <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.  Using <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>
+instead of separate calls to <a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> and <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> also
 reduces the synchronization overhead between multiple threads or
 processes.  The three interfaces are fully compatible, and may be used
 interchangeably.
@@ -51,11 +51,11 @@ calling the lock manager directly, the application must follow a
 convention that is compatible with the access methods' use of the
 locking subsystem.  See <a href="../../ref/lock/am_conv.html">Access
 method locking conventions</a> for more information.
-<p>The <a href="../../api_c/lock_id.html">lock_id</a> function returns a unique ID that may safely be used
-as the locker parameter to the <a href="../../api_c/lock_vec.html">lock_vec</a> interface.  The access
-methods use <a href="../../api_c/lock_id.html">lock_id</a> to generate unique lockers for the cursors
+<p>The <a href="../../api_c/lock_id.html">DB_ENV-&gt;lock_id</a> function returns a unique ID that may safely be used
+as the locker parameter to the <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> interface.  The access
+methods use <a href="../../api_c/lock_id.html">DB_ENV-&gt;lock_id</a> to generate unique lockers for the cursors
 associated with a database.
-<p>The <a href="../../api_c/lock_detect.html">lock_detect</a> function provides the programmatic interface to
+<p>The <a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> function provides the programmatic interface to
 the Berkeley DB deadlock detector.  Whenever two threads of control issue lock
 requests concurrently, the possibility for deadlock arises.  A deadlock
 occurs when two or more threads of control are blocked, waiting for
@@ -76,7 +76,7 @@ locked resource.  Locks are typically released, and modifications
 undone, by closing any cursors involved in the operation and aborting
 any transaction enclosing the operation.  The operation may optionally
 be retried.
-<p>The <a href="../../api_c/lock_stat.html">lock_stat</a> function returns information about the status of
+<p>The <a href="../../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a> function returns information about the status of
 the lock subsystem.  It is the programmatic interface used by the
 <a href="../../utility/db_stat.html">db_stat</a> utility.
 <p>The locking subsystem is closed by the call to <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a>.

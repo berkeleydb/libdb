@@ -3,12 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd014.tcl,v 1.13 2001/05/17 20:37:05 bostic Exp $
+# $Id: recd014.tcl,v 1.14 2001/08/03 16:39:28 bostic Exp $
 #
-# Recovery Test 14.
-# This is a recovery test for create/delete of queue extents.  We
-# then need to recover and make sure the file is correctly existing
-# or not, as the case may be.
+# TEST	recd014
+# TEST	This is a recovery test for create/delete of queue extents.  We
+# TEST	then need to recover and make sure the file is correctly existing
+# TEST	or not, as the case may be.
 proc recd014 { method args} {
 	global fixed_len
 	source ./include.tcl

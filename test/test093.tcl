@@ -3,14 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test093.tcl,v 11.11 2001/07/12 16:31:47 sue Exp $
+# $Id: test093.tcl,v 11.14 2001/10/15 15:34:24 bostic Exp $
 #
-# DB Test 93 {access method}
-# Test bt comparison proc.
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	test093
+# TEST	Test using set_bt_compare.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
 proc test093 { method {nentries 10000} {tnum "93"} args} {
 	source ./include.tcl
 	global btvals
@@ -23,10 +24,10 @@ proc test093 { method {nentries 10000} {tnum "93"} args} {
 	puts "Test0$tnum: $method ($args) $nentries using btcompare"
 
 	if { [is_btree $method] != 1 } {
-		puts "Skipping for method $method."
+		puts "Test0$tnum: skipping for method $method."
 		return
 	}
-	# 
+	#
 	# We need to determine if we are using RPC and skip correctly.
 	# The only way to tell that though, is by attempting to open
 	# the db with bt_compare and checking the error.
@@ -38,7 +39,7 @@ proc test093 { method {nentries 10000} {tnum "93"} args} {
 		set env [lindex $dbargs $eindex]
 		cleanup $testdir $env
 	        set stat [catch {eval {berkdb_open_noerr -btcompare \
-		    test093_sort1 -create -truncate -mode 0644} \
+		    test093_sort1 -create -mode 0644} \
 		    $omethod $dbargs $testfile} db]
 		if { $stat == 1 } {
 			#
@@ -48,7 +49,7 @@ proc test093 { method {nentries 10000} {tnum "93"} args} {
 			#
 			error_check_good dbopen \
 			    [is_substr $errorInfo "meaningless in RPC env"] 1
-			puts "Skipping for RPC"
+			puts "Test0$tnum: skipping for RPC"
 			return
 		} else {
 			error_check_good dbclose:rpc [$db close] 0
@@ -98,7 +99,7 @@ proc test093_run { method dbargs nentries tnum cmpfunc sortfunc } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open -btcompare $cmpfunc \
-	     -create -truncate -mode 0644} $method $dbargs $testfile]
+	     -create -mode 0644} $method $dbargs $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -193,7 +194,7 @@ proc test093_runbig { method dbargs nentries tnum cmpfunc sortfunc } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open -btcompare $cmpfunc \
-	     -create -truncate -mode 0644} $method $dbargs $testfile]
+	     -create -mode 0644} $method $dbargs $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set t1 $testdir/t1

@@ -3,14 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test028.tcl,v 11.13 2001/01/25 18:23:10 bostic Exp $
+# $Id: test028.tcl,v 11.16 2001/10/22 15:13:05 sandstro Exp $
 #
-# Put after cursor delete test.
+# TEST	test028
+# TEST	Cursor delete test
+# TEST	Test put operations after deleting through a cursor.
 proc test028 { method args } {
 	global dupnum
 	global dupstr
 	global alphabet
-	global errorInfo
 	source ./include.tcl
 
 	set args [convert_args $method $args]
@@ -45,7 +46,7 @@ proc test028 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set ndups 20
@@ -161,7 +162,6 @@ proc test028 { method args } {
 				if { $count == [expr $ndups - 1] } {
 					puts "\tTest028.k:\
 						Duplicate No_Overwrite test"
-					set $errorInfo ""
 					set ret [eval {$db put} $txn \
 					    {-nooverwrite $key $dupstr}]
 					error_check_good db_put [is_substr \

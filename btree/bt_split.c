@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_split.c,v 11.41 2001/06/12 19:42:38 bostic Exp $";
+static const char revid[] = "$Id: bt_split.c,v 11.46 2001/11/16 19:31:26 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -179,12 +179,14 @@ __bam_root(dbc, cp)
 	DB *dbp;
 	DBT log_dbt;
 	DB_LSN log_lsn;
+	DB_MPOOLFILE *mpf;
 	PAGE *lp, *rp;
 	db_indx_t split;
 	u_int32_t opflags;
 	int ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 
 	/* Yeah, right. */
 	if (cp->page->level >= MAXBTREELEVEL) {
@@ -240,18 +242,18 @@ __bam_root(dbc, cp)
 		goto err;
 
 	/* Success -- write the real pages back to the store. */
-	(void)memp_fput(dbp->mpf, cp->page, DB_MPOOL_DIRTY);
+	(void)mpf->put(mpf, cp->page, DB_MPOOL_DIRTY);
 	(void)__TLPUT(dbc, cp->lock);
-	(void)memp_fput(dbp->mpf, lp, DB_MPOOL_DIRTY);
-	(void)memp_fput(dbp->mpf, rp, DB_MPOOL_DIRTY);
+	(void)mpf->put(mpf, lp, DB_MPOOL_DIRTY);
+	(void)mpf->put(mpf, rp, DB_MPOOL_DIRTY);
 
 	return (0);
 
 err:	if (lp != NULL)
-		(void)memp_fput(dbp->mpf, lp, 0);
+		(void)mpf->put(mpf, lp, 0);
 	if (rp != NULL)
-		(void)memp_fput(dbp->mpf, rp, 0);
-	(void)memp_fput(dbp->mpf, cp->page, 0);
+		(void)mpf->put(mpf, rp, 0);
+	(void)mpf->put(mpf, cp->page, 0);
 	(void)__TLPUT(dbc, cp->lock);
 	return (ret);
 }
@@ -270,6 +272,7 @@ __bam_page(dbc, pp, cp)
 	DB_LSN log_lsn;
 	DB *dbp;
 	DB_LOCK tplock;
+	DB_MPOOLFILE *mpf;
 	DB_LSN save_lsn;
 	PAGE *lp, *rp, *alloc_rp, *tp;
 	db_indx_t split;
@@ -277,6 +280,7 @@ __bam_page(dbc, pp, cp)
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	alloc_rp = lp = rp = tp = NULL;
 	LOCK_INIT(tplock);
 	ret = -1;
@@ -353,8 +357,7 @@ __bam_page(dbc, pp, cp)
 		if ((ret = __db_lget(dbc,
 		    0, NEXT_PGNO(cp->page), DB_LOCK_WRITE, 0, &tplock)) != 0)
 			goto err;
-		if ((ret =
-		    memp_fget(dbp->mpf, &NEXT_PGNO(cp->page), 0, &tp)) != 0)
+		if ((ret = mpf->get(mpf, &NEXT_PGNO(cp->page), 0, &tp)) != 0)
 			goto err;
 	}
 
@@ -391,7 +394,7 @@ __bam_page(dbc, pp, cp)
 		    (u_int32_t)NUM_ENT(lp),
 		    tp == NULL ? 0 : PGNO(tp),
 		    tp == NULL ? &log_lsn : &LSN(tp),
-		    bc->root, &log_dbt, opflags)) != 0)
+		    PGNO_INVALID, &log_dbt, opflags)) != 0)
 			goto err;
 
 	} else
@@ -444,20 +447,17 @@ __bam_page(dbc, pp, cp)
 	 * releasing locks on the pages that reference it.  We're finished
 	 * modifying the page so it's not really necessary, but it's neater.
 	 */
-	if ((t_ret =
-	    memp_fput(dbp->mpf, alloc_rp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret = mpf->put(mpf, alloc_rp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret =
-	    memp_fput(dbp->mpf, pp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret = mpf->put(mpf, pp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	(void)__TLPUT(dbc, pp->lock);
-	if ((t_ret =
-	    memp_fput(dbp->mpf, cp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if ((t_ret = mpf->put(mpf, cp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	(void)__TLPUT(dbc, cp->lock);
 	if (tp != NULL) {
 		if ((t_ret =
-		    memp_fput(dbp->mpf, tp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		    mpf->put(mpf, tp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 			ret = t_ret;
 		(void)__TLPUT(dbc, tplock);
 	}
@@ -468,20 +468,20 @@ err:	if (lp != NULL)
 	if (rp != NULL)
 		__os_free(dbp->dbenv, rp, dbp->pgsize);
 	if (alloc_rp != NULL)
-		(void)memp_fput(dbp->mpf, alloc_rp, 0);
+		(void)mpf->put(mpf, alloc_rp, 0);
 	if (tp != NULL)
-		(void)memp_fput(dbp->mpf, tp, 0);
+		(void)mpf->put(mpf, tp, 0);
 
 	/* We never updated the next page, we can release it. */
 	(void)__LPUT(dbc, tplock);
 
-	(void)memp_fput(dbp->mpf, pp->page, 0);
+	(void)mpf->put(mpf, pp->page, 0);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, pp->lock);
 	else
 		(void)__TLPUT(dbc, pp->lock);
 
-	(void)memp_fput(dbp->mpf, cp->page, 0);
+	(void)mpf->put(mpf, cp->page, 0);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, cp->lock);
 	else
@@ -612,11 +612,11 @@ __bam_broot(dbc, rootp, lp, rp)
 					return (ret);
 			break;
 		default:
-			return (__db_pgfmt(dbp, rp->pgno));
+			return (__db_pgfmt(dbp->dbenv, rp->pgno));
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp, rp->pgno));
+		return (__db_pgfmt(dbp->dbenv, rp->pgno));
 	}
 	return (0);
 }
@@ -853,7 +853,7 @@ noprefix:			nksize = child_bk->len;
 					return (ret);
 			break;
 		default:
-			return (__db_pgfmt(dbp, rchild->pgno));
+			return (__db_pgfmt(dbp->dbenv, rchild->pgno));
 		}
 		break;
 	case P_IRECNO:
@@ -876,7 +876,7 @@ noprefix:			nksize = child_bk->len;
 			return (ret);
 		break;
 	default:
-		return (__db_pgfmt(dbp, rchild->pgno));
+		return (__db_pgfmt(dbp->dbenv, rchild->pgno));
 	}
 
 	/*
@@ -994,7 +994,7 @@ __bam_psplit(dbc, cp, lp, rp, splitret)
 			nbytes += RINTERNAL_SIZE;
 			break;
 		default:
-			return (__db_pgfmt(dbp, pp->pgno));
+			return (__db_pgfmt(dbp->dbenv, pp->pgno));
 		}
 sort:	splitp = off;
 
@@ -1087,8 +1087,7 @@ __bam_copy(dbp, pp, cp, nxt, stop)
 	db_indx_t nbytes, off;
 
 	/*
-	 * Copy the rest of the data to the right page.  Nxt is the next
-	 * offset placed on the target page.
+	 * Nxt is the offset of the next record to be placed on the target page.
 	 */
 	for (off = 0; nxt < stop; ++nxt, ++NUM_ENT(cp), ++off) {
 		switch (TYPE(pp)) {
@@ -1122,7 +1121,7 @@ __bam_copy(dbp, pp, cp, nxt, stop)
 			nbytes = RINTERNAL_SIZE;
 			break;
 		default:
-			return (__db_pgfmt(dbp, pp->pgno));
+			return (__db_pgfmt(dbp->dbenv, pp->pgno));
 		}
 		cp->inp[off] = HOFFSET(cp) -= nbytes;
 		memcpy(P_ENTRY(cp, off), P_ENTRY(pp, nxt), nbytes);

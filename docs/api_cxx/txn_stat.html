@@ -1,4 +1,4 @@
-<!--$Id: txn_stat.so,v 10.29 2001/04/03 16:27:56 bostic Exp $-->
+<!--$Id: txn_stat.so,v 10.34 2001/10/22 15:24:39 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::txn_stat</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,12 +22,17 @@
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::txn_stat(DB_TXN_STAT **statp);
+DbEnv::txn_stat(DB_TXN_STAT **statp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::txn_stat method
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -51,6 +56,7 @@ since the Epoch, returned by the IEEE/ANSI Std 1003.1 (POSIX) <b>time</b> interf
 <dt>u_int32_t st_nbegins;<dd>The number of transactions that have begun.
 <dt>u_int32_t st_naborts;<dd>The number of transactions that have aborted.
 <dt>u_int32_t st_ncommits;<dd>The number of transactions that have committed.
+<dt>u_int32_t st_nrestores;<dd>The number of transactions that have been restored.
 <dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
@@ -87,11 +93,12 @@ in the same way.
 <a href="../api_cxx/txn_id.html">DbTxn::id</a>,
 <a href="../api_cxx/txn_prepare.html">DbTxn::prepare</a>,
 <a href="../api_cxx/txn_recover.html">DbEnv::txn_recover</a>,
+<a href="../api_cxx/txn_set_timeout.html">DbTxn::set_timeout</a>
 and
 <a href="../api_cxx/txn_stat.html">DbEnv::txn_stat</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_region.c,v 11.36 2001/05/01 01:21:14 bostic Exp $";
+static const char revid[] = "$Id: env_region.c,v 11.45 2001/11/03 18:43:47 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,18 +22,16 @@ static const char revid[] = "$Id: env_region.c,v 11.36 2001/05/01 01:21:14 bosti
 #include "db_int.h"
 #include "db_shash.h"
 #include "lock.h"
-#include "lock_ext.h"
 #include "log.h"
-#include "log_ext.h"
 #include "mp.h"
-#include "mp_ext.h"
+#include "rep.h"
 #include "txn.h"
-#include "txn_ext.h"
+#include "clib_ext.h"
 
 static int  __db_des_destroy __P((DB_ENV *, REGION *));
 static int  __db_des_get __P((DB_ENV *, REGINFO *, REGINFO *, REGION **));
 static int  __db_e_remfile __P((DB_ENV *));
-static int  __db_faultmem __P((void *, size_t, int));
+static int  __db_faultmem __P((DB_ENV *, void *, size_t, int));
 static void __db_region_destroy __P((DB_ENV *, REGINFO *));
 
 /*
@@ -269,7 +267,7 @@ loop:	renv = NULL;
 	 * can't because Windows/NT filesystems won't open files mode 0.
 	 */
 	renv = infop->primary;
-	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_PANIC_OK)) {
+	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_NOPANIC)) {
 		ret = __db_panic_msg(dbenv);
 		goto err;
 	}
@@ -297,7 +295,7 @@ loop:	renv = NULL;
 	 * Finally!  We own the environment now.  Repeat the panic check, it's
 	 * possible that it was set while we waited for the lock.
 	 */
-	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_PANIC_OK)) {
+	if (renv->envpanic && !F_ISSET(dbenv, DB_ENV_NOPANIC)) {
 		ret = __db_panic_msg(dbenv);
 		goto err_unlock;
 	}
@@ -342,7 +340,7 @@ err_unlock:	MUTEX_UNLOCK(dbenv, &renv->mutex);
 	 * Fault the pages into memory.  Note, do this AFTER releasing the
 	 * lock, because we're only reading the pages, not writing them.
 	 */
-	(void)__db_faultmem(infop->primary, rp->size, 0);
+	(void)__db_faultmem(dbenv, infop->primary, rp->size, 0);
 
 	/* Everything looks good, we're done. */
 	dbenv->reginfo = infop;
@@ -367,7 +365,7 @@ creation:
 	 * Fault the pages into memory.  Note, do this BEFORE we initialize
 	 * anything, because we're writing the pages, not just reading them.
 	 */
-	(void)__db_faultmem(infop->addr, tregion.size, 1);
+	(void)__db_faultmem(dbenv, infop->addr, tregion.size, 1);
 
 	/*
 	 * The first object in the region is the REGENV structure.  This is
@@ -400,6 +398,7 @@ creation:
 	db_version(&renv->majver, &renv->minver, &renv->patch);
 	SH_LIST_INIT(&renv->regionq);
 	renv->refcnt = 1;
+	renv->rep_off = INVALID_ROFF;
 
 	/*
 	 * Initialize init_flags to store the flags that any other environment
@@ -574,20 +573,25 @@ __db_e_detach(dbenv, destroy)
 
 	/*
 	 * If we are destroying the environment, we need to
-	 * destroy any system resources backing the mutex.
-	 * Do that now before we free the memory in __os_r_detach.
+	 * destroy any system resources backing the mutex, as well
+	 * as any system resources that the replication system may have
+	 * acquired and put in the main region.
+	 *
+	 * Do these now before we free the memory in __os_r_detach.
 	 */
-	if (destroy)
+	if (destroy) {
+		__rep_region_destroy(dbenv);
 		__db_mutex_destroy(&renv->mutex);
+	}
 
 	/*
 	 * Release the region, and kill our reference.
 	 *
-	 * We set the DBENV->reginfo field to NULL here and discard its memory.
-	 * DBENV->remove calls __dbenv_remove to do the region remove, and
+	 * We set the DB_ENV->reginfo field to NULL here and discard its memory.
+	 * DB_ENV->remove calls __dbenv_remove to do the region remove, and
 	 * __dbenv_remove attached and then detaches from the region.  We don't
-	 * want to return to DBENV->remove with a non-NULL DBENV->reginfo field
-	 * because it will attempt to detach again as part of its cleanup.
+	 * want to return to DB_ENV->remove with a non-NULL DB_ENV->reginfo
+	 * field because it will attempt to detach again as part of its cleanup.
 	 */
 	(void)__os_r_detach(dbenv, infop, destroy);
 
@@ -613,6 +617,7 @@ __db_e_remove(dbenv, force)
 	REGENV *renv;
 	REGINFO *infop, reginfo;
 	REGION *rp;
+	u_int32_t db_env_reset;
 	int ret;
 
 	/*
@@ -636,9 +641,10 @@ __db_e_remove(dbenv, force)
 	 * If the force flag is set, we do not acquire any locks during this
 	 * process.
 	 */
-	F_SET(dbenv, DB_ENV_PANIC_OK);
+	db_env_reset = F_ISSET(dbenv, DB_ENV_NOLOCKING | DB_ENV_NOPANIC);
 	if (force)
-		dbenv->db_mutexlocks = 0;
+		F_SET(dbenv, DB_ENV_NOLOCKING);
+	F_SET(dbenv, DB_ENV_NOPANIC);
 
 	/* Join the environment. */
 	if ((ret = __db_e_attach(dbenv, NULL)) != 0) {
@@ -650,7 +656,7 @@ __db_e_remove(dbenv, force)
 		ret = 0;
 		if (force)
 			goto remfiles;
-		goto err;
+		goto done;
 	}
 
 	infop = dbenv->reginfo;
@@ -734,8 +740,9 @@ remfiles:	(void)__db_e_remfile(dbenv);
 		ret = EBUSY;
 	}
 
-err:
-	F_CLR(dbenv, DB_ENV_PANIC_OK);
+done:	F_CLR(dbenv, DB_ENV_NOLOCKING | DB_ENV_NOPANIC);
+	F_SET(dbenv, db_env_reset);
+
 	return (ret);
 }
 
@@ -752,7 +759,7 @@ __db_e_remfile(dbenv)
 		"__db_log.share",
 		"__db_mpool.share",
 		"__db_txn.share",
-		NULL,
+		NULL
 	};
 	int cnt, fcnt, lastrm, ret;
 	u_int8_t saved_byte;
@@ -842,33 +849,47 @@ __db_e_remfile(dbenv)
  * __db_e_stat
  *	Statistics for the environment.
  *
- * PUBLIC: int __db_e_stat __P((DB_ENV *, REGENV *, REGION *, int *));
+ * PUBLIC: int __db_e_stat __P((DB_ENV *,
+ * PUBLIC:       REGENV *, REGION *, int *, u_int32_t));
  */
 int
-__db_e_stat(dbenv, arg_renv, arg_regions, arg_regions_cnt)
+__db_e_stat(dbenv, arg_renv, arg_regions, arg_regions_cnt, flags)
 	DB_ENV *dbenv;
 	REGENV *arg_renv;
 	REGION *arg_regions;
 	int *arg_regions_cnt;
+	u_int32_t flags;
 {
 	REGENV *renv;
 	REGINFO *infop;
 	REGION *rp;
-	int n;
+	int n, ret;
 
 	infop = dbenv->reginfo;
 	renv = infop->primary;
 	rp = infop->rp;
+	if ((ret = __db_fchk(dbenv,
+	    "DB_ENV->stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
 
 	/* Lock the environment. */
 	MUTEX_LOCK(dbenv, &rp->mutex, dbenv->lockfhp);
 
 	*arg_renv = *renv;
+	if (LF_ISSET(DB_STAT_CLEAR)) {
+		renv->mutex.mutex_set_nowait = 0;
+		renv->mutex.mutex_set_wait = 0;
+	}
 
 	for (n = 0, rp = SH_LIST_FIRST(&renv->regionq, __db_region);
 	    n < *arg_regions_cnt && rp != NULL;
-	    ++n, rp = SH_LIST_NEXT(rp, q, __db_region))
+	    ++n, rp = SH_LIST_NEXT(rp, q, __db_region)) {
 		arg_regions[n] = *rp;
+		if (LF_ISSET(DB_STAT_CLEAR)) {
+			rp->mutex.mutex_set_nowait = 0;
+			rp->mutex.mutex_set_wait = 0;
+		}
+	}
 
 	/* Release the lock. */
 	rp = infop->rp;
@@ -928,8 +949,8 @@ __db_r_attach(dbenv, infop, size)
 	 * anything because we're writing pages in created regions, not just
 	 * reading them.
 	 */
-	(void)__db_faultmem(infop->addr,
-	    rp->size, F_ISSET(infop, REGION_CREATE));
+	(void)__db_faultmem(dbenv,
+	    infop->addr, rp->size, F_ISSET(infop, REGION_CREATE));
 
 	/*
 	 * !!!
@@ -1151,7 +1172,8 @@ __db_des_destroy(dbenv, rp)
  *	Fault the region into memory.
  */
 static int
-__db_faultmem(addr, size, created)
+__db_faultmem(dbenv, addr, size, created)
+	DB_ENV *dbenv;
 	void *addr;
 	size_t size;
 	int created;
@@ -1172,7 +1194,7 @@ __db_faultmem(addr, size, created)
 	 * that it doesn't figure out that we're never really using it.
 	 */
 	ret = 0;
-	if (DB_GLOBAL(db_region_init)) {
+	if (F_ISSET(dbenv, DB_ENV_REGION_INIT)) {
 		if (created)
 			for (p = addr, t = (u_int8_t *)addr + size;
 			    p < t; p += OS_VMPAGESIZE)

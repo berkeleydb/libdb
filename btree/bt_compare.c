@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_compare.c,v 11.13 2001/01/25 18:22:32 bostic Exp $";
+static const char revid[] = "$Id: bt_compare.c,v 11.14 2001/07/18 16:51:49 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -136,7 +136,7 @@ __bam_cmp(dbp, dbt, h, indx, func, cmpp)
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp, PGNO(h)));
+		return (__db_pgfmt(dbp->dbenv, PGNO(h)));
 	}
 
 	/*

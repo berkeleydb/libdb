@@ -1,14 +1,14 @@
-<!--$Id: reftoc.html,v 10.196 2001/06/25 13:29:40 bostic Exp $-->
+<!--$Id: reftoc.html,v 10.211 2001/11/18 15:17:21 bostic Exp $-->
 <html>
 <head>
-<title>Berkeley DB Tutorial and Reference Guide (Version: 3.3.11)</title>
+<title>Berkeley DB Tutorial and Reference Guide (Version: 4.0.14)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 
 <center>
-<h1><b>Berkeley DB Tutorial and Reference Guide, Version 3.3.11</b></h1>
+<h1><b>Berkeley DB Tutorial and Reference Guide, Version 4.0.14</b></h1>
 </center>
 
 <ol>
@@ -17,7 +17,7 @@
     <li><a href="ref/intro/data.html">An introduction to data management</a>
     <li><a href="ref/intro/terrain.html">Mapping the terrain: theory and practice</a>
     <li><a href="ref/intro/dbis.html">What is Berkeley DB?</a>
-    <li><a href="ref/intro/dbisnot.html">What is Berkeley DB not?</a>
+    <li><a href="ref/intro/dbisnot.html">What Berkeley DB is not</a>
     <li><a href="ref/intro/need.html">Do you need Berkeley DB?</a>
     <li><a href="ref/intro/what.html">What other services does Berkeley DB provide?</a>
     <li><a href="ref/intro/distrib.html">What does the Berkeley DB distribution include?</a>
@@ -153,11 +153,30 @@
     <li><a href="ref/transapp/archival.html">Database and log file archival</a>
     <li><a href="ref/transapp/logfile.html">Log file removal</a>
     <li><a href="ref/transapp/recovery.html">Recovery procedures</a>
+    <li><a href="ref/transapp/hotfail.html">Hot failover</a>
     <li><a href="ref/transapp/filesys.html">Recovery and filesystem operations</a>
     <li><a href="ref/transapp/reclimit.html">Berkeley DB recoverability</a>
     <li><a href="ref/transapp/tune.html">Transaction tuning</a>
     <li><a href="ref/transapp/throughput.html">Transaction throughput</a>
     <li><a href="ref/transapp/faq.html">Transaction FAQ</a>
+    </ol>
+<font size="+1"><li><a name="transapp">Berkeley DB Replication</a></font>
+    <ol>
+    <li><a href="ref/rep/intro.html">Introduction</a>
+    <li><a href="ref/rep/id.html">Replication environment IDs</a>
+    <li><a href="ref/rep/pri.html">Replication environment priorities</a>
+    <li><a href="ref/rep/app.html">Building replicated applications</a>
+    <li><a href="ref/rep/comm.html">Building the communications infrastructure</a>
+    <li><a href="ref/rep/newsite.html">Connecting to a new site</a>
+    <li><a href="ref/rep/init.html">Initializing a new site</a>
+    <li><a href="ref/rep/elect.html">Elections</a>
+    <li><a href="ref/rep/logonly.html">Log file only clients</a>
+    <li><a href="ref/rep/trans.html">Transactional guarantees</a>
+    <li><a href="ref/rep/partition.html">Network partitions</a>
+    <li><a href="ref/rep/faq.html">Replication FAQ</a>
+    <li><a href="ref/rep/ex.html">Ex_repquote: a replication example</a>
+    <li><a href="ref/rep/ex_comm.html">Ex_repquote: a TCP/IP based communication infrastructure</a>
+    <li><a href="ref/rep/ex_rq.html">Ex_repquote: putting it all together</a>
     </ol>
 <font size="+1"><li><a name="xa">Distributed Transactions</a></font>
     <ol>
@@ -169,7 +188,7 @@
     </ol>
 <font size="+1"><li><a name="program">Programmer Notes</a></font>
     <ol>
-    <li><a href="ref/program/appsignals.html">Application signal handling</a>
+    <li><a href="ref/program/appsignals.html">Signal handling</a>
     <li><a href="ref/program/errorret.html">Error returns to applications</a>
     <li><a href="ref/program/environ.html">Environmental variables</a>
     <li><a href="ref/program/mt.html">Multithreaded applications</a>
@@ -177,7 +196,6 @@
     <li><a href="ref/program/namespace.html">Name spaces</a>
     <li><a href="ref/program/copy.html">Copying databases</a>
     <li><a href="ref/program/compatible.html">Compatibility with historic UNIX interfaces</a>
-    <li><a href="ref/program/recimp.html">Recovery implementation</a>
     <li><a href="ref/program/extending.html">Application-specific logging and recovery</a>
     <li><a href="ref/program/runtime.html">Run-time configuration</a>
     </ol>
@@ -188,6 +206,7 @@
     <li><a href="ref/lock/max.html">Configuring locking: sizing the system</a>
     <li><a href="ref/lock/stdmode.html">Standard lock modes</a>
     <li><a href="ref/lock/dead.html">Deadlock detection</a>
+    <li><a href="ref/lock/timeout.html">Deadlock detection using timers</a>
     <li><a href="ref/lock/page.html">Locking granularity</a>
     <li><a href="ref/lock/notxn.html">Locking without transactions</a>
     <li><a href="ref/lock/twopl.html">Locking with transactions: two-phase locking</a>
@@ -221,7 +240,7 @@
     </ol>
 <font size="+1"><li><a name="java">Java API</a></font>
     <ol>
-    <li><a href="ref/java/conf.html">Configuration</a>
+    <li><a href="ref/java/conf.html">Java configuration</a>
     <li><a href="ref/java/compat.html">Compatibility</a>
     <li><a href="ref/java/program.html">Java programming notes</a>
     <li><a href="ref/java/faq.html">Java FAQ</a>
@@ -278,6 +297,7 @@
 	<a href="ref/build_unix/hpux.html">HP-UX</a>,
 	<a href="ref/build_unix/irix.html">IRIX</a>,
 	<a href="ref/build_unix/linux.html">Linux</a>,
+	<a href="ref/build_unix/macosx.html">Mac OS X</a>,
 	<a href="ref/build_unix/osf1.html">OSF/1</a>,
 	<a href="ref/build_unix/qnx.html">QNX</a>,
 	<a href="ref/build_unix/sco.html">SCO</a>,
@@ -294,7 +314,8 @@
     </ol>
 <font size="+1"><li><a name="build_vxworks">Berkeley DB for VxWorks systems</a></font>
     <ol>
-    <li><a href="ref/build_vxworks/intro.html">Building for VxWorks</a>
+    <li><a href="ref/build_vxworks/intro.html">Building for VxWorks 5.4</a>
+    <li><a href="ref/build_vxworks/introae.html">Building for VxWorks AE</a>
     <li><a href="ref/build_vxworks/notes.html">VxWorks notes</a>
     <li><a href="ref/build_vxworks/faq.html">VxWorks FAQ</a>
     </ol>
@@ -313,6 +334,8 @@
 	    Upgrading Berkeley DB 3.1.X applications to Berkeley DB 3.2</a>
     <li><a href="ref/upgrade.3.3/toc.html">
 	    Upgrading Berkeley DB 3.2.X applications to Berkeley DB 3.3</a>
+    <li><a href="ref/upgrade.4.0/toc.html">
+	    Upgrading Berkeley DB 3.3.X applications to Berkeley DB 4.0</a>
     </ol>
 <font size="+1"><li><a name="test">Test Suite</a></font>
     <ol>
@@ -329,5 +352,5 @@
     </ol>
 </ol>
 
-</body> 
-</html> 
+</body>
+</html>

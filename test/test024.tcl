@@ -3,10 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test024.tcl,v 11.15 2001/01/25 18:23:09 bostic Exp $
+# $Id: test024.tcl,v 11.17 2001/08/03 16:39:37 bostic Exp $
 #
-# DB Test 24 {method nentries}
-# Test the Btree and Record number get-by-number functionality.
+# TEST	test024
+# TEST	Record number retrieval test.
+# TEST	Test the Btree and Record number get-by-number functionality.
 proc test024 { method {nentries 10000} args} {
 	source ./include.tcl
 	global rand_init
@@ -59,11 +60,11 @@ proc test024 { method {nentries 10000} args} {
 	set sorted_keys [lsort $keys]
 	# Create the database
 	if { [string compare $omethod "-btree"] == 0 } {
-		set db [eval {berkdb_open -create -truncate \
+		set db [eval {berkdb_open -create \
 			-mode 0644 -recnum} $args {$omethod $testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	} else  {
-		set db [eval {berkdb_open -create -truncate \
+		set db [eval {berkdb_open -create \
 			-mode 0644} $args {$omethod $testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	}

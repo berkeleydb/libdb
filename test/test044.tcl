@@ -3,21 +3,26 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test044.tcl,v 11.27 2001/01/25 18:23:10 bostic Exp $
+# $Id: test044.tcl,v 11.28 2001/08/03 16:39:40 bostic Exp $
 #
-# DB Test 44 {access method}
-# System integration DB test: verify that locking, recovery, checkpoint,
-# and all the other utilities basically work.
+# TEST	test044
+# TEST	Small system integration tests
+# TEST		Test proper functioning of the checkpoint daemon,
+# TEST		recovery, transactions, etc.
+# TEST
+# TEST	System integration DB test: verify that locking, recovery, checkpoint,
+# TEST	and all the other utilities basically work.
+# TEST
+# TEST	The test consists of $nprocs processes operating on $nfiles files.  A
+# TEST	transaction consists of adding the same key/data pair to some random
+# TEST	number of these files.  We generate a bimodal distribution in key size
+# TEST	with 70% of the keys being small (1-10 characters) and the remaining
+# TEST	30% of the keys being large (uniform distribution about mean $key_avg).
+# TEST	If we generate a key, we first check to make sure that the key is not
+# TEST	already in the dataset.  If it is, we do a lookup.
 #
-# The test consists of $nprocs processes operating on $nfiles files.  A
-# transaction consists of adding the same key/data pair to some random
-# number of these files.  We generate a bimodal distribution in key
-# size with 70% of the keys being small (1-10 characters) and the
-# remaining 30% of the keys being large (uniform distribution about
-# mean $key_avg).  If we generate a key, we first check to make sure
-# that the key is not already in the dataset.  If it is, we do a lookup.
-#
-# XXX This test uses grow-only files currently!
+# XXX
+# This test uses grow-only files currently!
 proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 	source ./include.tcl
 	global rand_init

@@ -3,10 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test052.tcl,v 11.11 2001/01/25 18:23:12 bostic Exp $
+# $Id: test052.tcl,v 11.13 2001/08/03 16:39:42 bostic Exp $
 #
-# Test52
-# Renumbering recno test.
+# TEST	test052
+# TEST	Renumbering record Recno test.
 proc test052 { method args } {
 	global alphabet
 	global errorInfo
@@ -42,7 +42,7 @@ proc test052 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set oflags "-create -truncate -mode 0644 $args $omethod"
+	set oflags "-create -mode 0644 $args $omethod"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -4,13 +4,13 @@
  * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_db.h,v 11.16 2001/04/27 15:51:15 bostic Exp $
+ * $Id: tcl_db.h,v 11.23 2001/10/09 14:45:44 margo Exp $
  */
 
 #define	MSG_SIZE 100		/* Message size */
 
 enum INFOTYPE {
-    I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_NDBM, I_MUTEX };
+    I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_LOGC, I_NDBM, I_MUTEX };
 
 #define	MAX_ID		8	/* Maximum number of sub-id's we need */
 #define	DBTCL_PREP	64	/* Size of txn_recover preplist */
@@ -21,7 +21,7 @@ enum INFOTYPE {
 typedef struct _mutex_entry {
 	union {
 		struct {
-			MUTEX		real_m;
+			DB_MUTEX	real_m;
 			u_int32_t	real_val;
 		} r;
 		/*
@@ -88,9 +88,7 @@ typedef struct dbtcl_info {
 		DB_MPOOLFILE *mp;
 		DB_LOCK *lock;
 		_MUTEX_DATA *mutex;
-#if 0
-		DBM *ndbmp;	/* Compatibility */
-#endif
+		DB_LOGC *logc;
 	} un;
 	union data {
 		int anydata;
@@ -109,14 +107,15 @@ typedef struct dbtcl_info {
 	Tcl_Obj *i_btcompare;
 	Tcl_Obj *i_dupcompare;
 	Tcl_Obj *i_hashproc;
+	Tcl_Obj *i_rep_send;
 	Tcl_Obj *i_second_call;
+
+	/* Environment ID for the i_rep_send callback. */
+	Tcl_Obj *i_rep_eid;
 
 	struct dbtcl_info *i_parent;
 	int	i_otherid[MAX_ID];
 } DBTCL_INFO;
-
-extern int __debug_on, __debug_print, __debug_stop, __debug_test;
-LIST_HEAD(infohead, dbtcl_info) __db_infohead;
 
 #define	i_anyp un.anyp
 #define	i_pagep un.anyp
@@ -127,9 +126,7 @@ LIST_HEAD(infohead, dbtcl_info) __db_infohead;
 #define	i_mp un.mp
 #define	i_lock un.lock
 #define	i_mutex un.mutex
-#if 0
-#define	i_ndbm un.ndbmp
-#endif
+#define	i_logc un.logc
 
 #define	i_data und.anydata
 #define	i_pgno und.pgno
@@ -141,10 +138,20 @@ LIST_HEAD(infohead, dbtcl_info) __db_infohead;
 #define	i_envmpid i_otherid[1]
 #define	i_envlockid i_otherid[2]
 #define	i_envmutexid i_otherid[3]
+#define	i_envlogcid i_otherid[4]
 
 #define	i_mppgid  i_otherid[0]
 
 #define	i_dbdbcid i_otherid[0]
+
+extern int __debug_on, __debug_print, __debug_stop, __debug_test;
+
+typedef struct dbtcl_global {
+	LIST_HEAD(infohead, dbtcl_info) g_infohead;
+} DBTCL_GLOBAL;
+#define	__db_infohead __dbtcl_global.g_infohead
+
+extern DBTCL_GLOBAL __dbtcl_global;
 
 #define	NAME_TO_ENV(name) (DB_ENV *)_NameToPtr((name))
 #define	NAME_TO_DB(name) (DB *)_NameToPtr((name))

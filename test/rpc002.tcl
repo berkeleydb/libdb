@@ -3,10 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rpc002.tcl,v 1.8 2001/01/25 18:23:06 bostic Exp $
+# $Id: rpc002.tcl,v 1.10 2001/09/29 05:26:00 krinsky Exp $
 #
-# RPC Test 2
-# Test invalid RPC functions and make sure we error them correctly
+# TEST	rpc002
+# TEST	Test invalid RPC functions and make sure we error them correctly
 proc rpc002 { } {
 	global __debug_on
 	global __debug_print
@@ -89,7 +89,7 @@ proc rpc002 { } {
 	{ " log_archive"		"Rpc002.c5"}
 	{ " log_file {0 0}"		"Rpc002.c6"}
 	{ " log_flush"			"Rpc002.c7"}
-	{ " log_get -current"		"Rpc002.c8"}
+	{ " log_cursor"			"Rpc002.c8"}
 	{ " log_register $db $testfile"	"Rpc002.c9"}
 	{ " log_stat"			"Rpc002.c10"}
 	{ " log_unregister $db"		"Rpc002.c11"}

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_pr.c,v 11.57 2001/06/13 14:12:43 bostic Exp $";
+static const char revid[] = "$Id: db_pr.c,v 11.61 2001/11/16 16:32:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,6 +28,7 @@ static const char revid[] = "$Id: db_pr.c,v 11.57 2001/06/13 14:12:43 bostic Exp
 #include "db_am.h"
 #include "db_verify.h"
 #include "mp.h"
+#include "clib_ext.h"
 
 static int	 __db_bmeta __P((DB *, FILE *, BTMETA *, u_int32_t));
 static int	 __db_hmeta __P((DB *, FILE *, HMETA *, u_int32_t));
@@ -119,13 +120,18 @@ __db_dump(dbp, op, name)
 }
 
 /*
- * __db_prdb --
- *	Print out the DB structure information.
+ * __db_inmemdbflags --
+ *	Call a callback for printing or other handling of strings associated
+ * with whatever in-memory DB structure flags are set.
+ *
+ * PUBLIC: void __db_inmemdbflags __P((u_int32_t, void *,
+ * PUBLIC:     void (*)(u_int32_t, const FN *, void *)));
  */
-static void
-__db_prdb(dbp, fp)
-	DB *dbp;
-	FILE *fp;
+void
+__db_inmemdbflags(flags, cookie, callback)
+	u_int32_t flags;
+	void *cookie;
+	void (*callback) __P((u_int32_t, const FN *, void *));
 {
 	static const FN fn[] = {
 		{ DB_AM_DISCARD,	"discard cached pages" },
@@ -146,6 +152,19 @@ __db_prdb(dbp, fp)
 		{ DB_RE_SNAPSHOT,	"recno:snapshot" },
 		{ 0,			NULL }
 	};
+
+	callback(flags, fn, cookie);
+}
+
+/*
+ * __db_prdb --
+ *	Print out the DB structure information.
+ */
+static void
+__db_prdb(dbp, fp)
+	DB *dbp;
+	FILE *fp;
+{
 	BTREE *bt;
 	HASH *h;
 	QUEUE *q;
@@ -153,7 +172,7 @@ __db_prdb(dbp, fp)
 	fprintf(fp,
 	    "In-memory DB structure:\n%s: %#lx",
 	    __db_dbtype_to_string(dbp), (u_long)dbp->flags);
-	__db_prflags(dbp->flags, fn, fp);
+	__db_inmemdbflags(dbp->flags, fp, __db_prflags);
 	fprintf(fp, "\n");
 
 	switch (dbp->type) {
@@ -207,9 +226,12 @@ __db_prtree(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t i, last;
 	int ret;
+
+	mpf = dbp->mpf;
 
 	if (set_psize == PSIZE_BOUNDARY)
 		__db_psize(dbp);
@@ -223,17 +245,16 @@ __db_prtree(dbp, flags)
 	 * Find out the page number of the last page in the database, then
 	 * dump each page.
 	 */
-	__memp_lastpgno(dbp->mpf, &last);
+	mpf->last_pgno(mpf, &last);
 	for (i = 0; i <= last; ++i) {
-		if ((ret = memp_fget(dbp->mpf, &i, 0, &h)) != 0)
+		if ((ret = mpf->get(mpf, &i, 0, &h)) != 0)
 			return (ret);
 		(void)__db_prpage(dbp, h, flags);
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			return (ret);
 	}
 
-done:
-	(void)fflush(__db_prinit(NULL));
+done:	(void)fflush(__db_prinit(NULL));
 	return (0);
 }
 
@@ -249,12 +270,14 @@ __db_meta(dbp, dbmeta, fp, fn, flags)
 	FN const *fn;
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	int cnt;
 	db_pgno_t pgno;
 	u_int8_t *p;
-	int ret;
+	int cnt, ret;
 	const char *sep;
+
+	mpf = dbp->mpf;
 
 	fprintf(fp, "\tmagic: %#lx\n", (u_long)dbmeta->magic);
 	fprintf(fp, "\tversion: %lu\n", (u_long)dbmeta->version);
@@ -272,14 +295,14 @@ __db_meta(dbp, dbmeta, fp, fn, flags)
 		fprintf(fp, "\tfree list: %lu", (u_long)dbmeta->free);
 		for (pgno = dbmeta->free,
 		    cnt = 0, sep = ", "; pgno != PGNO_INVALID;) {
-			if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0) {
+			if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0) {
 				fprintf(fp,
 			    "Unable to retrieve free-list page: %lu: %s\n",
 				    (u_long)pgno, db_strerror(ret));
 				break;
 			}
 			pgno = h->next_pgno;
-			(void)memp_fput(dbp->mpf, h, 0);
+			(void)mpf->put(mpf, h, 0);
 			fprintf(fp, "%s%lu", sep, (u_long)pgno);
 			if (++cnt % 10 == 0) {
 				fprintf(fp, "\n");
@@ -409,19 +432,22 @@ __db_prnpage(dbp, pgno)
 	DB *dbp;
 	db_pgno_t pgno;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	int ret;
+
+	mpf = dbp->mpf;
 
 	if (set_psize == PSIZE_BOUNDARY)
 		__db_psize(dbp);
 
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		return (ret);
 
 	ret = __db_prpage(dbp, h, DB_PR_PAGE);
 	(void)fflush(__db_prinit(NULL));
 
-	(void)memp_fput(dbp->mpf, h, 0);
+	(void)mpf->put(mpf, h, 0);
 	return (ret);
 }
 
@@ -829,17 +855,24 @@ __db_proff(vp)
  * __db_prflags --
  *	Print out flags values.
  *
- * PUBLIC: void __db_prflags __P((u_int32_t, const FN *, FILE *));
+ * PUBLIC: void __db_prflags __P((u_int32_t, const FN *, void *));
  */
 void
-__db_prflags(flags, fn, fp)
+__db_prflags(flags, fn, vfp)
 	u_int32_t flags;
 	FN const *fn;
-	FILE *fp;
+	void *vfp;
 {
+	FILE *fp;
 	const FN *fnp;
 	int found;
 	const char *sep;
+
+	/*
+	 * We pass the FILE * through a void * so that we can use
+	 * this function as as a callback.
+	 */
+	fp = (FILE *)vfp;
 
 	sep = " (";
 	for (found = 0, fnp = fn; fnp->mask != 0; ++fnp)
@@ -874,12 +907,14 @@ __db_psize(dbp)
 	DB *dbp;
 {
 	DBMETA *mp;
+	DB_MPOOLFILE *mpf;
 	db_pgno_t pgno;
 
+	mpf = dbp->mpf;
 	set_psize = PSIZE_BOUNDARY - 1;
 
 	pgno = PGNO_BASE_MD;
-	if (memp_fget(dbp->mpf, &pgno, 0, &mp) != 0)
+	if (mpf->get(mpf, &pgno, 0, &mp) != 0)
 		return;
 
 	switch (mp->magic) {
@@ -889,7 +924,7 @@ __db_psize(dbp)
 		set_psize = mp->pagesize;
 		break;
 	}
-	(void)memp_fput(dbp->mpf, mp, 0);
+	(void)mpf->put(mpf, mp, 0);
 }
 
 /*
@@ -991,6 +1026,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	DB_ENV *dbenv;
 	DB_HASH_STAT *hsp;
 	DB_QUEUE_STAT *qsp;
+	DBT dbt;
 	VRFY_PAGEINFO *pip;
 	char *buf;
 	int buflen, ret, t_ret;
@@ -1062,15 +1098,21 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 
 	/*
 	 * 64 bytes is long enough, as a minimum bound, for any of the
-	 * fields besides subname.  Subname can be anything, and so
-	 * 64 + subname is big enough for all the things we need to print here.
+	 * fields besides subname.  Subname uses __db_prdbt and therefore
+	 * does not need buffer space here.
 	 */
-	buflen = 64 + ((subname != NULL) ? strlen(subname) : 0);
+	buflen = 64;
 	if ((ret = __os_malloc(dbenv, buflen, &buf)) != 0)
 		goto err;
 	if (subname != NULL) {
-		snprintf(buf, buflen, "database=%s\n", subname);
+		snprintf(buf, buflen, "database=");
 		if ((ret = callback(handle, buf)) != 0)
+			goto err;
+		memset(&dbt, 0, sizeof(dbt));
+		dbt.data = subname;
+		dbt.size = strlen(subname);
+		if ((ret = __db_prdbt(&dbt,
+		    1, NULL, handle, callback, 0, NULL)) != 0)
 			goto err;
 	}
 	switch (dbtype) {

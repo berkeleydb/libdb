@@ -24,7 +24,7 @@ should be specified.
 databases within the environment.  Once the databases are opened, the
 application makes changes to the databases inside of transactions.  Each
 set of changes that entails a unit of work should be surrounded by the
-appropriate <a href="../../api_c/txn_begin.html">txn_begin</a>, <a href="../../api_c/txn_commit.html">txn_commit</a>, and <a href="../../api_c/txn_abort.html">txn_abort</a>
+appropriate <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>, <a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a>, and <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a>
 calls.  The Berkeley DB access methods will make the appropriate calls into
 the Lock, Log and Memory Pool subsystems in order to guarantee
 transaction semantics.  When the application is ready to exit, all
@@ -35,7 +35,7 @@ Berkeley DB files should be closed.  When the Berkeley DB database files have be
 closed, the environment should be closed by calling
 <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a>.
 <p>The following code fragment creates the database environment directory
-then opens the environment, running recovery.  Our DB_ENV
+then opens the environment, running recovery.  Our <a href="../../api_c/env_create.html">DB_ENV</a>
 database environment handle is declared to be free-threaded using the
 <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag, and so may be used by any number of threads that
 we may subsequently create.

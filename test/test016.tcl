@@ -3,15 +3,18 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test016.tcl,v 11.18 2001/01/25 18:23:09 bostic Exp $
+# $Id: test016.tcl,v 11.20 2001/08/03 16:39:36 bostic Exp $
 #
-# DB Test 16 {access method}
-# Partial put test where partial puts make the record smaller.
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and a fixed, medium length data string;
-# retrieve each. After all are entered, go back and do partial puts,
-# replacing a random-length string with the key value.
-# Then verify.
+# TEST	test016
+# TEST	Partial put test
+# TEST	Partial put where the datum gets shorter as a result of the put.
+# TEST
+# TEST	Partial put test where partial puts make the record smaller.
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and a fixed, medium length data string;
+# TEST	retrieve each. After all are entered, go back and do partial puts,
+# TEST	replacing a random-length string with the key value.
+# TEST	Then verify.
 
 set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
 
@@ -51,7 +54,7 @@ proc test016 { method {nentries 10000} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""

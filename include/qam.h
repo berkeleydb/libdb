@@ -4,8 +4,10 @@
  * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: qam.h,v 11.28 2001/05/15 15:11:48 krinsky Exp $
+ * $Id: qam.h,v 11.31 2001/10/04 12:48:05 bostic Exp $
  */
+#ifndef	_DB_QAM_H_
+#define	_DB_QAM_H_
 
 /*
  * QAM data elements: a status field and the data.
@@ -32,10 +34,6 @@ struct __qcursor {
 	u_int32_t	 flags;
 };
 
-/*
- * The in-memory, per-tree queue data structure.
- */
-
 typedef struct __mpfarray {
 	u_int32_t n_extent;		/* Number of extents in table. */
 	u_int32_t low_extent;		/* First extent open. */
@@ -46,6 +44,9 @@ typedef struct __mpfarray {
 	} *mpfarray;			 /* Array of open extents. */
 } MPFARRAY;
 
+/*
+ * The in-memory, per-tree queue data structure.
+ */
 struct __queue {
 	db_pgno_t q_meta;		/* Database meta-data page. */
 	db_pgno_t q_root;		/* Database root page. */
@@ -55,9 +56,11 @@ struct __queue {
 	u_int32_t rec_page;		/* records per page */
 	u_int32_t page_ext;		/* Pages per extent */
 	MPFARRAY array1, array2;	/* File arrays. */
-	DB_MPOOL_FINFO finfo;		/* Initialized info struct. */
-	DB_PGINFO pginfo;		/* Initialized pginfo struct. */
+
+					/* Extent file configuration: */
 	DBT pgcookie;			/* Initialized pgcookie. */
+	DB_PGINFO pginfo;		/* Initialized pginfo struct. */
+
 	char *path;			/* Space allocated to file pathname. */
 	char *name;			/* The name of the file. */
 	char *dir;			/* The dir of the file. */
@@ -65,7 +68,7 @@ struct __queue {
 };
 
 /* Format for queue extent names. */
-#define	QUEUE_EXTENT "%s/__dbq.%s.%d"
+#define	QUEUE_EXTENT "%s%c__dbq.%s.%d"
 
 typedef struct __qam_filelist {
 	DB_MPOOLFILE *mpf;
@@ -149,3 +152,4 @@ typedef enum {
 
 #include "qam_auto.h"
 #include "qam_ext.h"
+#endif /* !_DB_QAM_H_ */

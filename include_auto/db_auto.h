@@ -11,23 +11,11 @@ typedef struct _db_addrem_args {
 	int32_t	fileid;
 	db_pgno_t	pgno;
 	u_int32_t	indx;
-	size_t	nbytes;
+	u_int32_t	nbytes;
 	DBT	hdr;
 	DBT	dbt;
 	DB_LSN	pagelsn;
 } __db_addrem_args;
-
-#define	DB_db_split	42
-typedef struct _db_split_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	u_int32_t	opcode;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DBT	pageimage;
-	DB_LSN	pagelsn;
-} __db_split_args;
 
 #define	DB_db_big	43
 typedef struct _db_big_args {
@@ -71,18 +59,6 @@ typedef struct _db_relink_args {
 	DB_LSN	lsn_next;
 } __db_relink_args;
 
-#define	DB_db_addpage	46
-typedef struct _db_addpage_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DB_LSN	lsn;
-	db_pgno_t	nextpgno;
-	DB_LSN	nextlsn;
-} __db_addpage_args;
-
 #define	DB_db_debug	47
 typedef struct _db_debug_args {
 	u_int32_t type;
@@ -104,5 +80,32 @@ typedef struct _db_noop_args {
 	db_pgno_t	pgno;
 	DB_LSN	prevlsn;
 } __db_noop_args;
+
+#define	DB_db_pg_alloc	49
+typedef struct _db_pg_alloc_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	DB_LSN	meta_lsn;
+	db_pgno_t	meta_pgno;
+	DB_LSN	page_lsn;
+	db_pgno_t	pgno;
+	u_int32_t	ptype;
+	db_pgno_t	next;
+} __db_pg_alloc_args;
+
+#define	DB_db_pg_free	50
+typedef struct _db_pg_free_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	DB_LSN	meta_lsn;
+	db_pgno_t	meta_pgno;
+	DBT	header;
+	db_pgno_t	next;
+} __db_pg_free_args;
 
 #endif

@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 11.22 2001/05/10 17:14:07 bostic Exp $
+ * $Id: TpcbExample.cpp,v 11.25 2001/11/10 04:59:08 mjc Exp $
  */
 
 #include <sys/types.h>
@@ -14,18 +14,19 @@
 #include <string.h>
 #include <time.h>
 
-#include <iostream.h>
-#include <iomanip.h>
+#include <iostream>
+#include <iomanip>
 #include <db_cxx.h>
+
+using std::cout;
+using std::cerr;
 
 typedef enum { ACCOUNT, BRANCH, TELLER } FTYPE;
 
-void errExit(int err, const char *);  // show err as errno and exit
-
-void	  invarg(int, char *);
+static int	  invarg(int, char *);
 u_int32_t random_id(FTYPE, u_int32_t, u_int32_t, u_int32_t);
 u_int32_t random_int(u_int32_t, u_int32_t);
-static void	  usage(void);
+static int	  usage(void);
 
 int verbose;
 char *progname = "TpcbExample";                            // Program name.
@@ -134,17 +135,17 @@ main(int argc, char *argv[])
 		if (strcmp(argv[i], "-a") == 0) {
 			// Number of account records
 			if ((accounts = atoi(argv[++i])) <= 0)
-				invarg('a', argv[i]);
+				return (invarg('a', argv[i]));
 		}
 		else if (strcmp(argv[i], "-b") == 0) {
 			// Number of branch records
 			if ((branches = atoi(argv[++i])) <= 0)
-				invarg('b', argv[i]);
+				return (invarg('b', argv[i]));
 		}
 		else if (strcmp(argv[i], "-c") == 0) {
 			// Cachesize in bytes
 			if ((mpool = atoi(argv[++i])) <= 0)
-				invarg('c', argv[i]);
+				return (invarg('c', argv[i]));
 		}
 		else if (strcmp(argv[i], "-f") == 0) {
 			// Fast mode: no txn sync.
@@ -161,30 +162,30 @@ main(int argc, char *argv[])
 		else if (strcmp(argv[i], "-n") == 0) {
 			// Number of transactions
 			if ((ntxns = atoi(argv[++i])) <= 0)
-				invarg('n', argv[i]);
+				return (invarg('n', argv[i]));
 		}
 		else if (strcmp(argv[i], "-S") == 0) {
 			// Random number seed.
 			seed = strtoul(argv[++i], &endarg, 0);
 			if (*endarg != '\0')
-				invarg('S', argv[i]);
+				return (invarg('S', argv[i]));
 		}
 		else if (strcmp(argv[i], "-s") == 0) {
 			// Number of history records
 			if ((history = atoi(argv[++i])) <= 0)
-				invarg('s', argv[i]);
+				return (invarg('s', argv[i]));
 		}
 		else if (strcmp(argv[i], "-t") == 0) {
 			// Number of teller records
 			if ((tellers = atoi(argv[++i])) <= 0)
-				invarg('t', argv[i]);
+				return (invarg('t', argv[i]));
 		}
 		else if (strcmp(argv[i], "-v") == 0) {
 			// Verbose option.
 			verbose = 1;
 		}
 		else {
-			usage();
+			return (usage());
 		}
 	}
 
@@ -210,39 +211,39 @@ main(int argc, char *argv[])
 
 		if (iflag) {
 			if (ntxns != 0)
-				usage();
+				return (usage());
 			app.populate(accounts, branches, history, tellers);
 		}
 		else {
 			if (ntxns == 0)
-				usage();
+				return (usage());
 			app.run(ntxns, accounts, branches, tellers);
 		}
 
 		app.close(0);
-		return EXIT_SUCCESS;
+		return (EXIT_SUCCESS);
 	}
 	catch (DbException &dbe) {
 		cerr << "TpcbExample: " << dbe.what() << "\n";
-		return EXIT_FAILURE;
+		return (EXIT_FAILURE);
 	}
 }
 
-void
+static int
 invarg(int arg, char *str)
 {
 	cerr << "TpcbExample: invalid argument for -"
 	     << (char)arg << ": " << str << "\n";
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
 
-static void
+static int
 usage()
 {
 	cerr << "usage: TpcbExample [-fiv] [-a accounts] [-b branches]\n"
 	     << "                   [-c cachesize] [-h home] [-n transactions ]\n"
 	     << "                   [-S seed] [-s history] [-t tellers]\n";
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
 
 TpcbExample::TpcbExample(const char *home, int cachesize,
@@ -288,7 +289,8 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 
 	if ((err = dbp->open("account", NULL, DB_HASH,
 			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
-		errExit(err, "Open of account file failed");
+		DbException except("Account file create failed", err);
+		throw except;
 	}
 
 	start_anum = idnum;
@@ -296,7 +298,8 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	idnum += accounts;
 	end_anum = idnum - 1;
 	if ((err = dbp->close(0)) != 0) {
-		errExit(err, "Account file close failed");
+		DbException except("Account file close failed", err);
+		throw except;
 	}
 	delete dbp;
 	if (verbose)
@@ -315,14 +318,16 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 
 	if ((err = dbp->open("branch", NULL, DB_HASH,
 			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
-		errExit(err, "Branch file create failed");
+		DbException except("Branch file create failed", err);
+		throw except;
 	}
 	start_bnum = idnum;
 	populateTable(dbp, idnum, balance, branches, "branch");
 	idnum += branches;
 	end_bnum = idnum - 1;
 	if ((err = dbp->close(0)) != 0) {
-		errExit(err, "Close of branch file failed");
+		DbException except("Close of branch file failed", err);
+		throw except;
 	}
 	delete dbp;
 
@@ -341,7 +346,8 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 
 	if ((err = dbp->open("teller", NULL, DB_HASH,
 			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
-		errExit(err, "Teller file create failed");
+		DbException except("Teller file create failed", err);
+		throw except;
 	}
 
 	start_tnum = idnum;
@@ -349,7 +355,8 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	idnum += tellers;
 	end_tnum = idnum - 1;
 	if ((err = dbp->close(0)) != 0) {
-		errExit(err, "Close of teller file failed");
+		DbException except("Close of teller file failed", err);
+		throw except;
 	}
 	delete dbp;
 	if (verbose)
@@ -360,12 +367,14 @@ TpcbExample::populate(int accounts, int branches, int history, int tellers)
 	dbp->set_re_len(HISTORY_LEN);
 	if ((err = dbp->open("history", NULL, DB_RECNO,
 			     DB_CREATE | DB_TRUNCATE, 0644)) != 0) {
-		errExit(err, "Create of history file failed");
+		DbException except("Create of history file failed", err);
+		throw except;
 	}
 
 	populateHistory(dbp, history, accounts, branches, tellers);
 	if ((err = dbp->close(0)) != 0) {
-		errExit(err, "Close of history file failed");
+		DbException except("Close of history file failed", err);
+		throw except;
 	}
 	delete dbp;
 }
@@ -389,7 +398,8 @@ TpcbExample::populateTable(Db *dbp,
 		     dbp->put(NULL, &kdbt, &ddbt, DB_NOOVERWRITE)) != 0) {
 			cerr << "Failure initializing " << msg << " file: "
 			     << strerror(err) << "\n";
-			exit(EXIT_FAILURE);
+			DbException except("failure initializing file", err);
+			throw except;
 		}
 	}
 }
@@ -414,7 +424,8 @@ TpcbExample::populateHistory(Db *dbp, int nrecs,
 		int err;
 		key = (db_recno_t)i;
 		if ((err = dbp->put(NULL, &kdbt, &ddbt, DB_APPEND)) != 0) {
-			errExit(err, "Failure initializing history file");
+			DbException except("failure initializing history file", err);
+			throw except;
 		}
 	}
 }
@@ -469,20 +480,28 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 
 	int err;
 	adb = new Db(this, 0);
-	if ((err = adb->open("account", NULL, DB_UNKNOWN, 0, 0)) != 0)
-		errExit(err, "Open of account file failed");
+	if ((err = adb->open("account", NULL, DB_UNKNOWN, 0, 0)) != 0) {
+		DbException except("Open of account file failed", err);
+		throw except;
+	}
 
 	bdb = new Db(this, 0);
-	if ((err = bdb->open("branch", NULL, DB_UNKNOWN, 0, 0)) != 0)
-		errExit(err, "Open of branch file failed");
+	if ((err = bdb->open("branch", NULL, DB_UNKNOWN, 0, 0)) != 0) {
+		DbException except("Open of branch file failed", err);
+		throw except;
+	}
 
 	tdb = new Db(this, 0);
-	if ((err = tdb->open("teller", NULL, DB_UNKNOWN, 0, 0)) != 0)
-		errExit(err, "Open of teller file failed");
+	if ((err = tdb->open("teller", NULL, DB_UNKNOWN, 0, 0)) != 0) {
+		DbException except("Open of teller file failed", err);
+		throw except;
+	}
 
 	hdb = new Db(this, 0);
-	if ((err = hdb->open("history", NULL, DB_UNKNOWN, 0, 0)) != 0)
-		errExit(err, "Open of history file failed");
+	if ((err = hdb->open("history", NULL, DB_UNKNOWN, 0, 0)) != 0) {
+		DbException except("Open of history file failed", err);
+		throw except;
+	}
 
 	txns = failed = ifailed = 0;
 	starttime = time(NULL);
@@ -629,14 +648,4 @@ err:
 		     << " B=" << (long)branch
 		     << " T=" << (long)teller << " failed\n";
 	return (-1);
-}
-
-void errExit(int err, const char *s)
-{
-	cerr << progname << ": ";
-	if (s != NULL) {
-		cerr << s << ": ";
-	}
-	cerr << strerror(err) << "\n";
-	exit(EXIT_FAILURE);
 }

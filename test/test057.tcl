@@ -3,14 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test057.tcl,v 11.18 2001/01/25 18:23:12 bostic Exp $
+# $Id: test057.tcl,v 11.20 2001/08/03 16:39:42 bostic Exp $
 #
-# Test057:
-# Check if we handle the case where we delete a key with the cursor on it
-# and then add the same key.  The cursor should not get the new item
-# returned, but the item shouldn't disappear.
-# Run test tests, one where the overwriting put is done with a put and
-# one where it's done with a cursor put.
+# TEST	test057
+# TEST	Cursor maintenance during key deletes.
+# TEST	Check if we handle the case where we delete a key with the cursor on
+# TEST	it and then add the same key.  The cursor should not get the new item
+# TEST	returned, but the item shouldn't disappear.
+# TEST	Run test tests, one where the overwriting put is done with a put and
+# TEST	one where it's done with a cursor put.
 proc test057 { method args } {
 	global errorInfo
 	source ./include.tcl
@@ -18,7 +19,7 @@ proc test057 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args " -create -truncate -mode 0644 -dup "
+	append args " -create -mode 0644 -dup "
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Test057: skipping for method $method"
 		return

@@ -1,4 +1,4 @@
-<!--$Id: log_put.so,v 10.22 2001/04/02 20:10:06 bostic Exp $-->
+<!--$Id: log_put.so,v 10.26 2001/11/06 22:20:05 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::log_put</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -35,9 +35,8 @@ necessary to make the log structures recoverable after a crash.
 <b>lsn</b> argument.
 <p><dt><a name="DB_FLUSH">DB_FLUSH</a><dd>The log is forced to disk after this record is written, guaranteeing
 that all records with <a href="../api_cxx/lsn_class.html">DbLsn</a> values less than or equal to the
-one being put are on disk before this function returns (this function
-is most often used for a transaction commit; see <a href="../api_cxx/txn_commit.html">DbTxn::commit</a> for
-more information).
+one being "put" are on disk before DbEnv::log_put returns.
+</dl>
 <p>The caller is responsible for providing any necessary structure to
 <b>data</b>.  (For example, in a write-ahead logging protocol, the
 application must understand what part of <b>data</b> is an operation
@@ -46,7 +45,6 @@ In addition, most transaction managers will store in <b>data</b> the
 <a href="../api_cxx/lsn_class.html">DbLsn</a> of the previous log record for the same transaction, to
 support chaining back through the transaction's log records during
 undo.)
-</dl>
 <p>The DbEnv::log_put method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
@@ -69,17 +67,19 @@ in the same way.
 <a href="../api_cxx/env_set_lg_regionmax.html">DbEnv::set_lg_regionmax</a>,
 <a href="../api_cxx/log_archive.html">DbEnv::log_archive</a>,
 <a href="../api_cxx/log_compare.html">DbEnv::log_compare</a>,
+<a href="../api_cxx/log_cursor.html">DbEnv::log_cursor</a>,
 <a href="../api_cxx/log_file.html">DbEnv::log_file</a>,
 <a href="../api_cxx/log_flush.html">DbEnv::log_flush</a>,
-<a href="../api_cxx/log_get.html">DbEnv::log_get</a>,
 <a href="../api_cxx/log_put.html">DbEnv::log_put</a>,
 <a href="../api_cxx/log_register.html">DbEnv::log_register</a>,
 <a href="../api_cxx/log_stat.html">DbEnv::log_stat</a>,
+<a href="../api_cxx/log_unregister.html">DbEnv::log_unregister</a>,
+<a href="../api_cxx/logc_close.html">DbLogc::logc_close</a>
 and
-<a href="../api_cxx/log_unregister.html">DbEnv::log_unregister</a>.
+<a href="../api_cxx/logc_get.html">DbLogc::logc_get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_stat.c,v 11.33 2001/07/02 01:05:39 bostic Exp $";
+static const char revid[] = "$Id: hash_stat.c,v 11.39 2001/10/04 21:21:10 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,10 +38,11 @@ __ham_stat(dbp, spp, flags)
 	void *spp;
 	u_int32_t flags;
 {
+	DBC *dbc;
 	DB_ENV *dbenv;
 	DB_HASH_STAT *sp;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
-	DBC *dbc;
 	PAGE *h;
 	db_pgno_t pgno;
 	int ret;
@@ -51,6 +52,7 @@ __ham_stat(dbp, spp, flags)
 	PANIC_CHECK(dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
 
+	mpf = dbp->mpf;
 	sp = NULL;
 
 	/* Check for invalid flags. */
@@ -87,11 +89,11 @@ __ham_stat(dbp, spp, flags)
 	    pgno != PGNO_INVALID;) {
 		++sp->hash_free;
 
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 
 		pgno = h->next_pgno;
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 	}
 
 	/* Now traverse the rest of the table. */
@@ -144,6 +146,7 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 {
 	DB *dbp;
 	DBC *opd;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	HKEYDATA *hk;
 	db_pgno_t pgno, opgno;
@@ -151,8 +154,9 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 	u_int32_t bucket, spares_entry;
 
 	dbp = dbc->dbp;
-	hcp = (HASH_CURSOR *)dbc->internal;
 	opd = NULL;
+	mpf = dbp->mpf;
+	hcp = (HASH_CURSOR *)dbc->internal;
 	ret = 0;
 
 	/*
@@ -163,16 +167,32 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 	 * duplicate, overflow and big pages from the bucket so that we
 	 * don't access anything that isn't properly locked.
 	 *
-	 * If look_past_max is not set, we can stop at max_bucket;  if it
-	 * is set, we need to include pages that are part of the current
-	 * doubling but beyond the highest bucket we've split into, as well
-	 * as pages from a "future" doubling that may have been created
-	 * within an aborted transaction.  To do this, increment bucket
-	 * until the corresponding spares array entries cease to be defined.
 	 */
-	for (bucket = 0; look_past_max ? (spares_entry = __db_log2(bucket + 1),
-	    spares_entry < NCACHED && hcp->hdr->spares[spares_entry] != 0) :
-	    bucket <= hcp->hdr->max_bucket; bucket++) {
+	for (bucket = 0;; bucket++) {
+		/*
+		 * We put the loop exit condition check here, because
+		 * it made for a really vile extended ?: that made SCO's
+		 * compiler drop core.
+		 *
+		 * If look_past_max is not set, we can stop at max_bucket;
+		 * if it is set, we need to include pages that are part of
+		 * the current doubling but beyond the highest bucket we've
+		 * split into, as well as pages from a "future" doubling
+		 * that may have been created within an aborted
+		 * transaction.  To do this, keep looping (and incrementing
+		 * bucket) until the corresponding spares array entries
+		 * cease to be defined.
+		 */
+		if (look_past_max) {
+			spares_entry = __db_log2(bucket + 1);
+			if (spares_entry >= NCACHED ||
+			    hcp->hdr->spares[spares_entry] == 0)
+				break;
+		} else {
+			if (bucket > hcp->hdr->max_bucket)
+				break;
+		}
+
 		hcp->bucket = bucket;
 		hcp->pgno = pgno = BUCKET_TO_PAGE(hcp, bucket);
 		for (ret = __ham_get_cpage(dbc, mode); ret == 0;
@@ -236,10 +256,10 @@ __ham_traverse(dbc, mode, callback, cookie, look_past_max)
 			goto err;
 
 		if (STD_LOCKING(dbc))
-			(void)lock_put(dbp->dbenv, &hcp->lock);
+			(void)dbp->dbenv->lock_put(dbp->dbenv, &hcp->lock);
 
 		if (hcp->page != NULL) {
-			if ((ret = memp_fput(dbc->dbp->mpf, hcp->page, 0)) != 0)
+			if ((ret = mpf->put(mpf, hcp->page, 0)) != 0)
 				return (ret);
 			hcp->page = NULL;
 		}
@@ -338,8 +358,7 @@ __ham_stat_callback(dbp, pagep, cookie, putp)
 		sp->hash_big_bfree += P_OVFLSPACE(dbp->pgsize, pagep);
 		break;
 	default:
-		return (__db_unknown_type(dbp->dbenv,
-		     "__ham_stat_callback", pagep->type));
+		return (__db_pgfmt(dbp->dbenv, pagep->pgno));
 	}
 
 	return (0);

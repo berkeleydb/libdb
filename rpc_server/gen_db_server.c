@@ -16,11 +16,11 @@
 #include "rpc_server_ext.h"
 
 /*
- * PUBLIC: __env_cachesize_reply *__db_env_cachesize_3003 
+ * PUBLIC: __env_cachesize_reply *__db_env_cachesize_4000 
  * PUBLIC:     __P((__env_cachesize_msg *));
  */
 __env_cachesize_reply *
-__db_env_cachesize_3003(req)
+__db_env_cachesize_4000(req)
 	__env_cachesize_msg *req;
 {
 	static __env_cachesize_reply reply; /* must be static */
@@ -35,10 +35,10 @@ __db_env_cachesize_3003(req)
 }
 
 /*
- * PUBLIC: __env_close_reply *__db_env_close_3003 __P((__env_close_msg *));
+ * PUBLIC: __env_close_reply *__db_env_close_4000 __P((__env_close_msg *));
  */
 __env_close_reply *
-__db_env_close_3003(req)
+__db_env_close_4000(req)
 	__env_close_msg *req;
 {
 	static __env_close_reply reply; /* must be static */
@@ -51,10 +51,10 @@ __db_env_close_3003(req)
 }
 
 /*
- * PUBLIC: __env_create_reply *__db_env_create_3003 __P((__env_create_msg *));
+ * PUBLIC: __env_create_reply *__db_env_create_4000 __P((__env_create_msg *));
  */
 __env_create_reply *
-__db_env_create_3003(req)
+__db_env_create_4000(req)
 	__env_create_msg *req;
 {
 	static __env_create_reply reply; /* must be static */
@@ -66,10 +66,10 @@ __db_env_create_3003(req)
 }
 
 /*
- * PUBLIC: __env_flags_reply *__db_env_flags_3003 __P((__env_flags_msg *));
+ * PUBLIC: __env_flags_reply *__db_env_flags_4000 __P((__env_flags_msg *));
  */
 __env_flags_reply *
-__db_env_flags_3003(req)
+__db_env_flags_4000(req)
 	__env_flags_msg *req;
 {
 	static __env_flags_reply reply; /* must be static */
@@ -83,10 +83,10 @@ __db_env_flags_3003(req)
 }
 
 /*
- * PUBLIC: __env_open_reply *__db_env_open_3003 __P((__env_open_msg *));
+ * PUBLIC: __env_open_reply *__db_env_open_4000 __P((__env_open_msg *));
  */
 __env_open_reply *
-__db_env_open_3003(req)
+__db_env_open_4000(req)
 	__env_open_msg *req;
 {
 	static __env_open_reply reply; /* must be static */
@@ -101,10 +101,10 @@ __db_env_open_3003(req)
 }
 
 /*
- * PUBLIC: __env_remove_reply *__db_env_remove_3003 __P((__env_remove_msg *));
+ * PUBLIC: __env_remove_reply *__db_env_remove_4000 __P((__env_remove_msg *));
  */
 __env_remove_reply *
-__db_env_remove_3003(req)
+__db_env_remove_4000(req)
 	__env_remove_msg *req;
 {
 	static __env_remove_reply reply; /* must be static */
@@ -118,10 +118,10 @@ __db_env_remove_3003(req)
 }
 
 /*
- * PUBLIC: __txn_abort_reply *__db_txn_abort_3003 __P((__txn_abort_msg *));
+ * PUBLIC: __txn_abort_reply *__db_txn_abort_4000 __P((__txn_abort_msg *));
  */
 __txn_abort_reply *
-__db_txn_abort_3003(req)
+__db_txn_abort_4000(req)
 	__txn_abort_msg *req;
 {
 	static __txn_abort_reply reply; /* must be static */
@@ -133,10 +133,10 @@ __db_txn_abort_3003(req)
 }
 
 /*
- * PUBLIC: __txn_begin_reply *__db_txn_begin_3003 __P((__txn_begin_msg *));
+ * PUBLIC: __txn_begin_reply *__db_txn_begin_4000 __P((__txn_begin_msg *));
  */
 __txn_begin_reply *
-__db_txn_begin_3003(req)
+__db_txn_begin_4000(req)
 	__txn_begin_msg *req;
 {
 	static __txn_begin_reply reply; /* must be static */
@@ -150,10 +150,10 @@ __db_txn_begin_3003(req)
 }
 
 /*
- * PUBLIC: __txn_commit_reply *__db_txn_commit_3003 __P((__txn_commit_msg *));
+ * PUBLIC: __txn_commit_reply *__db_txn_commit_4000 __P((__txn_commit_msg *));
  */
 __txn_commit_reply *
-__db_txn_commit_3003(req)
+__db_txn_commit_4000(req)
 	__txn_commit_msg *req;
 {
 	static __txn_commit_reply reply; /* must be static */
@@ -166,11 +166,11 @@ __db_txn_commit_3003(req)
 }
 
 /*
- * PUBLIC: __txn_discard_reply *__db_txn_discard_3003 
+ * PUBLIC: __txn_discard_reply *__db_txn_discard_4000 
  * PUBLIC:     __P((__txn_discard_msg *));
  */
 __txn_discard_reply *
-__db_txn_discard_3003(req)
+__db_txn_discard_4000(req)
 	__txn_discard_msg *req;
 {
 	static __txn_discard_reply reply; /* must be static */
@@ -183,11 +183,11 @@ __db_txn_discard_3003(req)
 }
 
 /*
- * PUBLIC: __txn_prepare_reply *__db_txn_prepare_3003 
+ * PUBLIC: __txn_prepare_reply *__db_txn_prepare_4000 
  * PUBLIC:     __P((__txn_prepare_msg *));
  */
 __txn_prepare_reply *
-__db_txn_prepare_3003(req)
+__db_txn_prepare_4000(req)
 	__txn_prepare_msg *req;
 {
 	static __txn_prepare_reply reply; /* must be static */
@@ -200,11 +200,11 @@ __db_txn_prepare_3003(req)
 }
 
 /*
- * PUBLIC: __txn_recover_reply *__db_txn_recover_3003 
+ * PUBLIC: __txn_recover_reply *__db_txn_recover_4000 
  * PUBLIC:     __P((__txn_recover_msg *));
  */
 __txn_recover_reply *
-__db_txn_recover_3003(req)
+__db_txn_recover_4000(req)
 	__txn_recover_msg *req;
 {
 	static __txn_recover_reply reply; /* must be static */
@@ -227,11 +227,11 @@ __db_txn_recover_3003(req)
 }
 
 /*
- * PUBLIC: __db_associate_reply *__db_db_associate_3003 
+ * PUBLIC: __db_associate_reply *__db_db_associate_4000 
  * PUBLIC:     __P((__db_associate_msg *));
  */
 __db_associate_reply *
-__db_db_associate_3003(req)
+__db_db_associate_4000(req)
 	__db_associate_msg *req;
 {
 	static __db_associate_reply reply; /* must be static */
@@ -245,11 +245,11 @@ __db_db_associate_3003(req)
 }
 
 /*
- * PUBLIC: __db_bt_maxkey_reply *__db_db_bt_maxkey_3003 
+ * PUBLIC: __db_bt_maxkey_reply *__db_db_bt_maxkey_4000 
  * PUBLIC:     __P((__db_bt_maxkey_msg *));
  */
 __db_bt_maxkey_reply *
-__db_db_bt_maxkey_3003(req)
+__db_db_bt_maxkey_4000(req)
 	__db_bt_maxkey_msg *req;
 {
 	static __db_bt_maxkey_reply reply; /* must be static */
@@ -262,11 +262,11 @@ __db_db_bt_maxkey_3003(req)
 }
 
 /*
- * PUBLIC: __db_bt_minkey_reply *__db_db_bt_minkey_3003 
+ * PUBLIC: __db_bt_minkey_reply *__db_db_bt_minkey_4000 
  * PUBLIC:     __P((__db_bt_minkey_msg *));
  */
 __db_bt_minkey_reply *
-__db_db_bt_minkey_3003(req)
+__db_db_bt_minkey_4000(req)
 	__db_bt_minkey_msg *req;
 {
 	static __db_bt_minkey_reply reply; /* must be static */
@@ -279,10 +279,10 @@ __db_db_bt_minkey_3003(req)
 }
 
 /*
- * PUBLIC: __db_close_reply *__db_db_close_3003 __P((__db_close_msg *));
+ * PUBLIC: __db_close_reply *__db_db_close_4000 __P((__db_close_msg *));
  */
 __db_close_reply *
-__db_db_close_3003(req)
+__db_db_close_4000(req)
 	__db_close_msg *req;
 {
 	static __db_close_reply reply; /* must be static */
@@ -295,10 +295,10 @@ __db_db_close_3003(req)
 }
 
 /*
- * PUBLIC: __db_create_reply *__db_db_create_3003 __P((__db_create_msg *));
+ * PUBLIC: __db_create_reply *__db_db_create_4000 __P((__db_create_msg *));
  */
 __db_create_reply *
-__db_db_create_3003(req)
+__db_db_create_4000(req)
 	__db_create_msg *req;
 {
 	static __db_create_reply reply; /* must be static */
@@ -311,10 +311,10 @@ __db_db_create_3003(req)
 }
 
 /*
- * PUBLIC: __db_del_reply *__db_db_del_3003 __P((__db_del_msg *));
+ * PUBLIC: __db_del_reply *__db_db_del_4000 __P((__db_del_msg *));
  */
 __db_del_reply *
-__db_db_del_3003(req)
+__db_db_del_4000(req)
 	__db_del_msg *req;
 {
 	static __db_del_reply reply; /* must be static */
@@ -334,11 +334,11 @@ __db_db_del_3003(req)
 }
 
 /*
- * PUBLIC: __db_extentsize_reply *__db_db_extentsize_3003 
+ * PUBLIC: __db_extentsize_reply *__db_db_extentsize_4000 
  * PUBLIC:     __P((__db_extentsize_msg *));
  */
 __db_extentsize_reply *
-__db_db_extentsize_3003(req)
+__db_db_extentsize_4000(req)
 	__db_extentsize_msg *req;
 {
 	static __db_extentsize_reply reply; /* must be static */
@@ -351,10 +351,10 @@ __db_db_extentsize_3003(req)
 }
 
 /*
- * PUBLIC: __db_flags_reply *__db_db_flags_3003 __P((__db_flags_msg *));
+ * PUBLIC: __db_flags_reply *__db_db_flags_4000 __P((__db_flags_msg *));
  */
 __db_flags_reply *
-__db_db_flags_3003(req)
+__db_db_flags_4000(req)
 	__db_flags_msg *req;
 {
 	static __db_flags_reply reply; /* must be static */
@@ -367,10 +367,10 @@ __db_db_flags_3003(req)
 }
 
 /*
- * PUBLIC: __db_get_reply *__db_db_get_3003 __P((__db_get_msg *));
+ * PUBLIC: __db_get_reply *__db_db_get_4000 __P((__db_get_msg *));
  */
 __db_get_reply *
-__db_db_get_3003(req)
+__db_db_get_4000(req)
 	__db_get_msg *req;
 {
 	static __db_get_reply reply; /* must be static */
@@ -405,11 +405,11 @@ __db_db_get_3003(req)
 }
 
 /*
- * PUBLIC: __db_h_ffactor_reply *__db_db_h_ffactor_3003 
+ * PUBLIC: __db_h_ffactor_reply *__db_db_h_ffactor_4000 
  * PUBLIC:     __P((__db_h_ffactor_msg *));
  */
 __db_h_ffactor_reply *
-__db_db_h_ffactor_3003(req)
+__db_db_h_ffactor_4000(req)
 	__db_h_ffactor_msg *req;
 {
 	static __db_h_ffactor_reply reply; /* must be static */
@@ -422,10 +422,10 @@ __db_db_h_ffactor_3003(req)
 }
 
 /*
- * PUBLIC: __db_h_nelem_reply *__db_db_h_nelem_3003 __P((__db_h_nelem_msg *));
+ * PUBLIC: __db_h_nelem_reply *__db_db_h_nelem_4000 __P((__db_h_nelem_msg *));
  */
 __db_h_nelem_reply *
-__db_db_h_nelem_3003(req)
+__db_db_h_nelem_4000(req)
 	__db_h_nelem_msg *req;
 {
 	static __db_h_nelem_reply reply; /* must be static */
@@ -438,11 +438,11 @@ __db_db_h_nelem_3003(req)
 }
 
 /*
- * PUBLIC: __db_key_range_reply *__db_db_key_range_3003 
+ * PUBLIC: __db_key_range_reply *__db_db_key_range_4000 
  * PUBLIC:     __P((__db_key_range_msg *));
  */
 __db_key_range_reply *
-__db_db_key_range_3003(req)
+__db_db_key_range_4000(req)
 	__db_key_range_msg *req;
 {
 	static __db_key_range_reply reply; /* must be static */
@@ -462,10 +462,10 @@ __db_db_key_range_3003(req)
 }
 
 /*
- * PUBLIC: __db_lorder_reply *__db_db_lorder_3003 __P((__db_lorder_msg *));
+ * PUBLIC: __db_lorder_reply *__db_db_lorder_4000 __P((__db_lorder_msg *));
  */
 __db_lorder_reply *
-__db_db_lorder_3003(req)
+__db_db_lorder_4000(req)
 	__db_lorder_msg *req;
 {
 	static __db_lorder_reply reply; /* must be static */
@@ -478,10 +478,10 @@ __db_db_lorder_3003(req)
 }
 
 /*
- * PUBLIC: __db_open_reply *__db_db_open_3003 __P((__db_open_msg *));
+ * PUBLIC: __db_open_reply *__db_db_open_4000 __P((__db_open_msg *));
  */
 __db_open_reply *
-__db_db_open_3003(req)
+__db_db_open_4000(req)
 	__db_open_msg *req;
 {
 	static __db_open_reply reply; /* must be static */
@@ -498,11 +498,11 @@ __db_db_open_3003(req)
 }
 
 /*
- * PUBLIC: __db_pagesize_reply *__db_db_pagesize_3003 
+ * PUBLIC: __db_pagesize_reply *__db_db_pagesize_4000 
  * PUBLIC:     __P((__db_pagesize_msg *));
  */
 __db_pagesize_reply *
-__db_db_pagesize_3003(req)
+__db_db_pagesize_4000(req)
 	__db_pagesize_msg *req;
 {
 	static __db_pagesize_reply reply; /* must be static */
@@ -515,10 +515,10 @@ __db_db_pagesize_3003(req)
 }
 
 /*
- * PUBLIC: __db_pget_reply *__db_db_pget_3003 __P((__db_pget_msg *));
+ * PUBLIC: __db_pget_reply *__db_db_pget_4000 __P((__db_pget_msg *));
  */
 __db_pget_reply *
-__db_db_pget_3003(req)
+__db_db_pget_4000(req)
 	__db_pget_msg *req;
 {
 	static __db_pget_reply reply; /* must be static */
@@ -560,10 +560,10 @@ __db_db_pget_3003(req)
 }
 
 /*
- * PUBLIC: __db_put_reply *__db_db_put_3003 __P((__db_put_msg *));
+ * PUBLIC: __db_put_reply *__db_db_put_4000 __P((__db_put_msg *));
  */
 __db_put_reply *
-__db_db_put_3003(req)
+__db_db_put_4000(req)
 	__db_put_msg *req;
 {
 	static __db_put_reply reply; /* must be static */
@@ -597,11 +597,11 @@ __db_db_put_3003(req)
 }
 
 /*
- * PUBLIC: __db_re_delim_reply *__db_db_re_delim_3003 
+ * PUBLIC: __db_re_delim_reply *__db_db_re_delim_4000 
  * PUBLIC:     __P((__db_re_delim_msg *));
  */
 __db_re_delim_reply *
-__db_db_re_delim_3003(req)
+__db_db_re_delim_4000(req)
 	__db_re_delim_msg *req;
 {
 	static __db_re_delim_reply reply; /* must be static */
@@ -614,10 +614,10 @@ __db_db_re_delim_3003(req)
 }
 
 /*
- * PUBLIC: __db_re_len_reply *__db_db_re_len_3003 __P((__db_re_len_msg *));
+ * PUBLIC: __db_re_len_reply *__db_db_re_len_4000 __P((__db_re_len_msg *));
  */
 __db_re_len_reply *
-__db_db_re_len_3003(req)
+__db_db_re_len_4000(req)
 	__db_re_len_msg *req;
 {
 	static __db_re_len_reply reply; /* must be static */
@@ -630,10 +630,10 @@ __db_db_re_len_3003(req)
 }
 
 /*
- * PUBLIC: __db_re_pad_reply *__db_db_re_pad_3003 __P((__db_re_pad_msg *));
+ * PUBLIC: __db_re_pad_reply *__db_db_re_pad_4000 __P((__db_re_pad_msg *));
  */
 __db_re_pad_reply *
-__db_db_re_pad_3003(req)
+__db_db_re_pad_4000(req)
 	__db_re_pad_msg *req;
 {
 	static __db_re_pad_reply reply; /* must be static */
@@ -646,10 +646,10 @@ __db_db_re_pad_3003(req)
 }
 
 /*
- * PUBLIC: __db_remove_reply *__db_db_remove_3003 __P((__db_remove_msg *));
+ * PUBLIC: __db_remove_reply *__db_db_remove_4000 __P((__db_remove_msg *));
  */
 __db_remove_reply *
-__db_db_remove_3003(req)
+__db_db_remove_4000(req)
 	__db_remove_msg *req;
 {
 	static __db_remove_reply reply; /* must be static */
@@ -664,10 +664,10 @@ __db_db_remove_3003(req)
 }
 
 /*
- * PUBLIC: __db_rename_reply *__db_db_rename_3003 __P((__db_rename_msg *));
+ * PUBLIC: __db_rename_reply *__db_db_rename_4000 __P((__db_rename_msg *));
  */
 __db_rename_reply *
-__db_db_rename_3003(req)
+__db_db_rename_4000(req)
 	__db_rename_msg *req;
 {
 	static __db_rename_reply reply; /* must be static */
@@ -683,10 +683,10 @@ __db_db_rename_3003(req)
 }
 
 /*
- * PUBLIC: __db_stat_reply *__db_db_stat_3003 __P((__db_stat_msg *));
+ * PUBLIC: __db_stat_reply *__db_db_stat_4000 __P((__db_stat_msg *));
  */
 __db_stat_reply *
-__db_db_stat_3003(req)
+__db_db_stat_4000(req)
 	__db_stat_msg *req;
 {
 	static __db_stat_reply reply; /* must be static */
@@ -707,10 +707,10 @@ __db_db_stat_3003(req)
 }
 
 /*
- * PUBLIC: __db_sync_reply *__db_db_sync_3003 __P((__db_sync_msg *));
+ * PUBLIC: __db_sync_reply *__db_db_sync_4000 __P((__db_sync_msg *));
  */
 __db_sync_reply *
-__db_db_sync_3003(req)
+__db_db_sync_4000(req)
 	__db_sync_msg *req;
 {
 	static __db_sync_reply reply; /* must be static */
@@ -723,11 +723,11 @@ __db_db_sync_3003(req)
 }
 
 /*
- * PUBLIC: __db_truncate_reply *__db_db_truncate_3003 
+ * PUBLIC: __db_truncate_reply *__db_db_truncate_4000 
  * PUBLIC:     __P((__db_truncate_msg *));
  */
 __db_truncate_reply *
-__db_db_truncate_3003(req)
+__db_db_truncate_4000(req)
 	__db_truncate_msg *req;
 {
 	static __db_truncate_reply reply; /* must be static */
@@ -741,10 +741,10 @@ __db_db_truncate_3003(req)
 }
 
 /*
- * PUBLIC: __db_cursor_reply *__db_db_cursor_3003 __P((__db_cursor_msg *));
+ * PUBLIC: __db_cursor_reply *__db_db_cursor_4000 __P((__db_cursor_msg *));
  */
 __db_cursor_reply *
-__db_db_cursor_3003(req)
+__db_db_cursor_4000(req)
 	__db_cursor_msg *req;
 {
 	static __db_cursor_reply reply; /* must be static */
@@ -758,10 +758,10 @@ __db_db_cursor_3003(req)
 }
 
 /*
- * PUBLIC: __db_join_reply *__db_db_join_3003 __P((__db_join_msg *));
+ * PUBLIC: __db_join_reply *__db_db_join_4000 __P((__db_join_msg *));
  */
 __db_join_reply *
-__db_db_join_3003(req)
+__db_db_join_4000(req)
 	__db_join_msg *req;
 {
 	static __db_join_reply reply; /* must be static */
@@ -776,10 +776,10 @@ __db_db_join_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_close_reply *__db_dbc_close_3003 __P((__dbc_close_msg *));
+ * PUBLIC: __dbc_close_reply *__db_dbc_close_4000 __P((__dbc_close_msg *));
  */
 __dbc_close_reply *
-__db_dbc_close_3003(req)
+__db_dbc_close_4000(req)
 	__dbc_close_msg *req;
 {
 	static __dbc_close_reply reply; /* must be static */
@@ -791,10 +791,10 @@ __db_dbc_close_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_count_reply *__db_dbc_count_3003 __P((__dbc_count_msg *));
+ * PUBLIC: __dbc_count_reply *__db_dbc_count_4000 __P((__dbc_count_msg *));
  */
 __dbc_count_reply *
-__db_dbc_count_3003(req)
+__db_dbc_count_4000(req)
 	__dbc_count_msg *req;
 {
 	static __dbc_count_reply reply; /* must be static */
@@ -807,10 +807,10 @@ __db_dbc_count_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_del_reply *__db_dbc_del_3003 __P((__dbc_del_msg *));
+ * PUBLIC: __dbc_del_reply *__db_dbc_del_4000 __P((__dbc_del_msg *));
  */
 __dbc_del_reply *
-__db_dbc_del_3003(req)
+__db_dbc_del_4000(req)
 	__dbc_del_msg *req;
 {
 	static __dbc_del_reply reply; /* must be static */
@@ -823,10 +823,10 @@ __db_dbc_del_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_dup_reply *__db_dbc_dup_3003 __P((__dbc_dup_msg *));
+ * PUBLIC: __dbc_dup_reply *__db_dbc_dup_4000 __P((__dbc_dup_msg *));
  */
 __dbc_dup_reply *
-__db_dbc_dup_3003(req)
+__db_dbc_dup_4000(req)
 	__dbc_dup_msg *req;
 {
 	static __dbc_dup_reply reply; /* must be static */
@@ -839,10 +839,10 @@ __db_dbc_dup_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_get_reply *__db_dbc_get_3003 __P((__dbc_get_msg *));
+ * PUBLIC: __dbc_get_reply *__db_dbc_get_4000 __P((__dbc_get_msg *));
  */
 __dbc_get_reply *
-__db_dbc_get_3003(req)
+__db_dbc_get_4000(req)
 	__dbc_get_msg *req;
 {
 	static __dbc_get_reply reply; /* must be static */
@@ -876,10 +876,10 @@ __db_dbc_get_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_pget_reply *__db_dbc_pget_3003 __P((__dbc_pget_msg *));
+ * PUBLIC: __dbc_pget_reply *__db_dbc_pget_4000 __P((__dbc_pget_msg *));
  */
 __dbc_pget_reply *
-__db_dbc_pget_3003(req)
+__db_dbc_pget_4000(req)
 	__dbc_pget_msg *req;
 {
 	static __dbc_pget_reply reply; /* must be static */
@@ -920,10 +920,10 @@ __db_dbc_pget_3003(req)
 }
 
 /*
- * PUBLIC: __dbc_put_reply *__db_dbc_put_3003 __P((__dbc_put_msg *));
+ * PUBLIC: __dbc_put_reply *__db_dbc_put_4000 __P((__dbc_put_msg *));
  */
 __dbc_put_reply *
-__db_dbc_put_3003(req)
+__db_dbc_put_4000(req)
 	__dbc_put_msg *req;
 {
 	static __dbc_put_reply reply; /* must be static */

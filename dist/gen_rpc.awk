@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 11.39 2001/07/03 19:09:48 sue Exp $
+# $Id: gen_rpc.awk,v 11.40 2001/10/05 02:27:33 bostic Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -615,7 +615,7 @@ END {
 		if (argcount == 0) {
 			sep = "";
 		}
-		if (rpc_type[i] == "IGNORE") 
+		if (rpc_type[i] == "IGNORE")
 			continue;
 		if (rpc_type[i] == "ID") {
 			printf("%s%scl_id", sep, args[i]) >> PFILE

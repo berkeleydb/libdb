@@ -72,9 +72,11 @@ __dbcl_env_open_ret(dbenv, home, flags, mode, replyp)
 	__env_open_reply *replyp;
 {
 	int ret;
+	long env;
 
 	if (replyp->status != 0)
 		return (replyp->status);
+	env = replyp->envcl_id;
 
 	/*
 	 * XXX Code goes here
@@ -356,12 +358,14 @@ __dbcl_db_open_ret(dbp, name, subdb, type, flags, mode, replyp)
 	__db_open_reply *replyp;
 {
 	int ret;
+	long db;
 	DBTYPE type;
 	u_int32_t dbflags;
 	int lorder;
 
 	if (replyp->status != 0)
 		return (replyp->status);
+	db = replyp->dbcl_id;
 	type = replyp->type;
 	dbflags = replyp->dbflags;
 	lorder = replyp->lorder;

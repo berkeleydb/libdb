@@ -4,15 +4,14 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: os.h,v 11.6 2001/01/25 18:22:51 bostic Exp $
+ * $Id: os.h,v 11.9 2001/07/25 14:25:40 bostic Exp $
  */
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-/*
- * Filehandle.
- */
+
+/* DB filehandle. */
 struct __fh_t {
 #if defined(DB_WIN32)
 	HANDLE	  handle;		/* Windows/32 file handle. */
@@ -34,7 +33,7 @@ struct __fh_t {
 #define	DB_IO_WRITE	2
 typedef struct __io_t {
 	DB_FH	  *fhp;			/* I/O file handle. */
-	MUTEX	  *mutexp;		/* Mutex to lock. */
+	DB_MUTEX  *mutexp;		/* Mutex to lock. */
 	size_t	   pagesize;		/* Page size. */
 	db_pgno_t  pgno;		/* Page number. */
 	u_int8_t  *buf;			/* Buffer. */

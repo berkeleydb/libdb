@@ -4,13 +4,13 @@
  * Copyright (c) 2000-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfy.c,v 1.67 2001/07/11 21:12:17 krinsky Exp $
+ * $Id: db_vrfy.c,v 1.75 2001/11/16 16:32:35 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfy.c,v 1.67 2001/07/11 21:12:17 krinsky Exp $";
+static const char revid[] = "$Id: db_vrfy.c,v 1.75 2001/11/16 16:32:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -283,7 +283,7 @@ __db_verify_internal(dbp_orig, name, subdb, handle, callback, flags)
 	F_SET(dbp, DB_OPEN_CALLED);
 
 	/* Find out the page number of the last page in the database. */
-	__memp_lastpgno(dbp->mpf, &vdp->last_pgno);
+	dbp->mpf->last_pgno(dbp->mpf, &vdp->last_pgno);
 
 	/*
 	 * DB_ORDERCHKONLY is a special case;  our file consists of
@@ -429,8 +429,8 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	 */
 	if ((ret = __os_seek(dbenv, fhp, 0, 0, 0, 0, DB_OS_SEEK_SET)) != 0 ||
 	    (ret = __os_read(dbenv, fhp, mbuf, DBMETASIZE, &nr)) != 0) {
-		__db_err(dbenv, 
-		    "Metadata page %lu cannot be read: %s", 
+		__db_err(dbenv,
+		    "Metadata page %lu cannot be read: %s",
 		    (u_long)PGNO_BASE_MD, db_strerror(ret));
 		return (ret);
 	}
@@ -569,12 +569,14 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t i;
 	int ret, t_ret, isbad;
 
-	ret = isbad = t_ret = 0;
 	dbenv = dbp->dbenv;
+	mpf = dbp->mpf;
+	ret = isbad = t_ret = 0;
 
 	if ((ret = __db_fchk(dbenv,
 	    "__db_vrfy_walkpages", flags, OKFLAGS)) != 0)
@@ -590,7 +592,7 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 			continue;
 
 		/* If an individual page get fails, keep going. */
-		if ((t_ret = memp_fget(dbp->mpf, &i, 0, &h)) != 0) {
+		if ((t_ret = mpf->get(mpf, &i, 0, &h)) != 0) {
 			if (ret == 0)
 				ret = t_ret;
 			continue;
@@ -692,12 +694,12 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 				    (i + 1) * 50 / (vdp->last_pgno + 1));
 		}
 
-		if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
+		if ((t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 
 	if (0) {
-err:		if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0)
+err:		if ((t_ret = mpf->put(mpf, h, 0)) != 0)
 			return (ret == 0 ? t_ret : ret);
 		return (DB_VERIFY_BAD);
 	}
@@ -1446,6 +1448,7 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 	DB *mdbp, *pgset;
 	DBC *pgsc;
 	DBT key, data;
+	DB_MPOOLFILE *mpf;
 	HASH *h_internal;
 	HMETA *hmeta;
 	PAGE *h, *currpg;
@@ -1453,9 +1456,10 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 	u_int32_t bucket;
 	int t_ret, ret;
 
-	currpg = h = NULL;
-	pgsc = NULL;
 	pgset = NULL;
+	pgsc = NULL;
+	mpf = dbp->mpf;
+	currpg = h = NULL;
 
 	LF_CLR(DB_NOORDERCHK);
 
@@ -1467,8 +1471,9 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 
 	memset(&key, 0, sizeof(key));
 	key.data = (void *)subdb;
+	key.size = strlen(subdb);
 	memset(&data, 0, sizeof(data));
-	if ((ret = dbp->get(dbp, NULL, &key, &data, 0)) != 0)
+	if ((ret = mdbp->get(mdbp, NULL, &key, &data, 0)) != 0)
 		goto err;
 
 	if (data.size != sizeof(db_pgno_t)) {
@@ -1479,7 +1484,7 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 
 	memcpy(&meta_pgno, data.data, data.size);
 
-	if ((ret = memp_fget(dbp->mpf, &meta_pgno, 0, &h)) != 0)
+	if ((ret = mpf->get(mpf, &meta_pgno, 0, &h)) != 0)
 		goto err;
 
 	if ((ret = __db_vrfy_pgset(dbp->dbenv, dbp->pgsize, &pgset)) != 0)
@@ -1499,18 +1504,16 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		if ((ret = pgset->cursor(pgset, NULL, &pgsc, 0)) != 0)
 			goto err;
 		while ((ret = __db_vrfy_pgset_next(pgsc, &p)) == 0) {
-			if ((ret = memp_fget(dbp->mpf, &p, 0, &currpg)) != 0)
+			if ((ret = mpf->get(mpf, &p, 0, &currpg)) != 0)
 				goto err;
 			if ((ret = __bam_vrfy_itemorder(dbp,
 			    NULL, currpg, p, NUM_ENT(currpg), 1,
 			    F_ISSET(&btmeta->dbmeta, BTM_DUP), flags)) != 0)
 				goto err;
-			if ((ret = memp_fput(dbp->mpf, currpg, 0)) != 0)
+			if ((ret = mpf->put(mpf, currpg, 0)) != 0)
 				goto err;
 			currpg = NULL;
 		}
-		if ((ret = pgsc->c_close(pgsc)) != 0)
-			goto err;
 		break;
 	case P_HASHMETA:
 		hmeta = (HMETA *)h;
@@ -1518,12 +1521,14 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		/*
 		 * Make sure h_charkey is right.
 		 */
-		if (h_internal == NULL || h_internal->h_hash == NULL) {
-			EPRINT((dbp->dbenv,
-		    "DB_ORDERCHKONLY requires that a hash function be set"));
+		if (h_internal == NULL) {
+			EPRINT((dbp->dbenv, "DB->h_internal field is NULL"));
 			ret = DB_VERIFY_BAD;
 			goto err;
 		}
+		if (h_internal->h_hash == NULL)
+			h_internal->h_hash = hmeta->dbmeta.version < 5
+			? __ham_func4 : __ham_func5;
 		if (hmeta->h_charkey !=
 		    h_internal->h_hash(dbp, CHARKEY, sizeof(CHARKEY))) {
 			EPRINT((dbp->dbenv,
@@ -1539,15 +1544,15 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		for (bucket = 0; bucket <= hmeta->max_bucket; bucket++) {
 			pgno = BS_TO_PAGE(bucket, hmeta->spares);
 			while (pgno != PGNO_INVALID) {
-				if ((ret = memp_fget(dbp->mpf,
+				if ((ret = mpf->get(mpf,
 				    &pgno, 0, &currpg)) != 0)
 					goto err;
 				if ((ret = __ham_vrfy_hashing(dbp,
-				    NUM_ENT(currpg),hmeta, bucket, pgno,
+				    NUM_ENT(currpg), hmeta, bucket, pgno,
 				    flags, h_internal->h_hash)) != 0)
 					goto err;
 				pgno = NEXT_PGNO(currpg);
-				if ((ret = memp_fput(dbp->mpf, currpg, 0)) != 0)
+				if ((ret = mpf->put(mpf, currpg, 0)) != 0)
 					goto err;
 				currpg = NULL;
 			}
@@ -1560,13 +1565,13 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		break;
 	}
 
-err:	if (pgsc != NULL)
-		(void)pgsc->c_close(pgsc);
-	if (pgset != NULL)
-		(void)pgset->close(pgset, 0);
-	if (h != NULL && (t_ret = memp_fput(dbp->mpf, h, 0)) != 0)
+err:	if (pgsc != NULL && (t_ret = pgsc->c_close(pgsc)) != 0 && ret == 0)
 		ret = t_ret;
-	if (currpg != NULL && (t_ret = memp_fput(dbp->mpf, currpg, 0)) != 0)
+	if (pgset != NULL && (t_ret = pgset->close(pgset, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	if (h != NULL && (t_ret = mpf->put(mpf, h, 0)) != 0)
+		ret = t_ret;
+	if (currpg != NULL && (t_ret = mpf->put(mpf, currpg, 0)) != 0)
 		ret = t_ret;
 	if ((t_ret = mdbp->close(mdbp, 0)) != 0)
 		ret = t_ret;
@@ -1649,11 +1654,14 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 	u_int32_t flags;
 {
 	DBT unkdbt, key, *dbt;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t pgno;
 	u_int32_t pgtype;
 	int ret, err_ret;
 	void *ovflbuf;
+
+	mpf = dbp->mpf;
 
 	memset(&unkdbt, 0, sizeof(DBT));
 	unkdbt.size = strlen("UNKNOWN") + 1;
@@ -1666,7 +1674,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 	while ((ret = __db_salvage_getnext(vdp, &pgno, &pgtype)) == 0) {
 		dbt = NULL;
 
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0) {
+		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0) {
 			err_ret = ret;
 			continue;
 		}
@@ -1694,12 +1702,12 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 				continue;
 			}
 			if ((ret = __db_prdbt(&key,
-			    0, " ", handle, callback, 0, NULL)) != 0) {
+			    0, " ", handle, callback, 0, vdp)) != 0) {
 				err_ret = ret;
 				continue;
 			}
 			if ((ret = __db_prdbt(&unkdbt,
-				0, " ", handle, callback, 0, NULL)) != 0)
+				0, " ", handle, callback, 0, vdp)) != 0)
 				err_ret = ret;
 			break;
 		case SALVAGE_HASH:
@@ -1717,7 +1725,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 			DB_ASSERT(0);
 			break;
 		}
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			err_ret = ret;
 	}
 
@@ -1924,14 +1932,17 @@ __db_salvage_duptree(dbp, vdp, pgno, key, handle, callback, flags)
 	int (*callback) __P((void *, const void *));
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	int ret, t_ret;
+
+	mpf = dbp->mpf;
 
 	if (pgno == PGNO_INVALID || !IS_VALID_PGNO(pgno))
 		return (DB_VERIFY_BAD);
 
 	/* We have a plausible page.  Try it. */
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		return (ret);
 
 	switch (TYPE(h)) {
@@ -1962,7 +1973,7 @@ __db_salvage_duptree(dbp, vdp, pgno, key, handle, callback, flags)
 		/* NOTREACHED */
 	}
 
-err:	if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
+err:	if ((t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -1984,16 +1995,18 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 	BTMETA *btmeta;
 	DB *pgset;
 	DBC *pgsc;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t p, meta_pgno;
 	int ret, err_ret;
 
-	err_ret = 0;
-	pgsc = NULL;
 	pgset = NULL;
+	pgsc = NULL;
+	mpf = dbp->mpf;
+	err_ret = 0;
 
 	meta_pgno = PGNO_BASE_MD;
-	if ((ret = memp_fget(dbp->mpf, &meta_pgno, 0, &h)) != 0)
+	if ((ret = mpf->get(mpf, &meta_pgno, 0, &h)) != 0)
 		return (ret);
 
 	if (TYPE(h) == P_BTREEMETA)
@@ -2018,7 +2031,7 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 	/* We think we've got subdbs.  Mark it so. */
 	*hassubsp = 1;
 
-	if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+	if ((ret = mpf->put(mpf, h, 0)) != 0)
 		return (ret);
 
 	/*
@@ -2038,7 +2051,7 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 	if ((ret = pgset->cursor(pgset, NULL, &pgsc, 0)) != 0)
 		goto err;
 	while ((ret = __db_vrfy_pgset_next(pgsc, &p)) == 0) {
-		if ((ret = memp_fget(dbp->mpf, &p, 0, &h)) != 0) {
+		if ((ret = mpf->get(mpf, &p, 0, &h)) != 0) {
 			err_ret = ret;
 			continue;
 		}
@@ -2051,7 +2064,7 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 		else if ((ret = __db_salvage_subdbpg(
 		    dbp, vdp, h, handle, callback, flags)) != 0)
 			err_ret = ret;
-nextpg:		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+nextpg:		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			err_ret = ret;
 	}
 
@@ -2069,7 +2082,7 @@ err:	if (pgsc != NULL)
 		(void)pgsc->c_close(pgsc);
 	if (pgset != NULL)
 		(void)pgset->close(pgset, 0);
-	(void)memp_fput(dbp->mpf, h, 0);
+	(void)mpf->put(mpf, h, 0);
 	return (ret);
 }
 
@@ -2092,12 +2105,14 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 	DB *pgset;
 	DBC *pgsc;
 	DBT key;
+	DB_MPOOLFILE *mpf;
 	PAGE *subpg;
 	db_indx_t i;
 	db_pgno_t meta_pgno, p;
 	int ret, err_ret, t_ret;
 	char *subdbname;
 
+	mpf = dbp->mpf;
 	ret = err_ret = 0;
 	subdbname = NULL;
 
@@ -2145,9 +2160,15 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 		}
 		memcpy(&meta_pgno, bkdata->data, sizeof(db_pgno_t));
 
+		/*
+		 * Subdatabase meta pgnos are stored in network byte
+		 * order for cross-endian compatibility.  Swap if appropriate.
+		 */
+		DB_NTOHL(&meta_pgno);
+
 		/* If we can't get the subdb meta page, just skip the subdb. */
 		if (!IS_VALID_PGNO(meta_pgno) ||
-		    (ret = memp_fget(dbp->mpf, &meta_pgno, 0, &subpg)) != 0) {
+		    (ret = mpf->get(mpf, &meta_pgno, 0, &subpg)) != 0) {
 			err_ret = ret;
 			continue;
 		}
@@ -2163,7 +2184,7 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 		if ((ret =
 		    __db_vrfy_common(dbp, vdp, subpg, meta_pgno, flags)) != 0) {
 			err_ret = ret;
-			(void)memp_fput(dbp->mpf, subpg, 0);
+			(void)mpf->put(mpf, subpg, 0);
 			continue;
 		}
 		switch (TYPE(subpg)) {
@@ -2171,7 +2192,7 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			if ((ret = __bam_vrfy_meta(dbp,
 			    vdp, (BTMETA *)subpg, meta_pgno, flags)) != 0) {
 				err_ret = ret;
-				(void)memp_fput(dbp->mpf, subpg, 0);
+				(void)mpf->put(mpf, subpg, 0);
 				continue;
 			}
 			break;
@@ -2179,7 +2200,7 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			if ((ret = __ham_vrfy_meta(dbp,
 			    vdp, (HMETA *)subpg, meta_pgno, flags)) != 0) {
 				err_ret = ret;
-				(void)memp_fput(dbp->mpf, subpg, 0);
+				(void)mpf->put(mpf, subpg, 0);
 				continue;
 			}
 			break;
@@ -2190,7 +2211,7 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			/* NOTREACHED */
 		}
 
-		if ((ret = memp_fput(dbp->mpf, subpg, 0)) != 0) {
+		if ((ret = mpf->put(mpf, subpg, 0)) != 0) {
 			err_ret = ret;
 			continue;
 		}
@@ -2209,14 +2230,14 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 		if ((ret = pgset->cursor(pgset, NULL, &pgsc, 0)) != 0)
 			goto err;
 		while ((ret = __db_vrfy_pgset_next(pgsc, &p)) == 0) {
-			if ((ret = memp_fget(dbp->mpf, &p, 0, &subpg)) != 0) {
+			if ((ret = mpf->get(mpf, &p, 0, &subpg)) != 0) {
 				err_ret = ret;
 				continue;
 			}
 			if ((ret = __db_salvage(dbp, vdp, p, subpg,
 			    handle, callback, flags)) != 0)
 				err_ret = ret;
-			if ((ret = memp_fput(dbp->mpf, subpg, 0)) != 0)
+			if ((ret = mpf->put(mpf, subpg, 0)) != 0)
 				err_ret = ret;
 		}
 
@@ -2254,10 +2275,13 @@ __db_meta2pgset(dbp, vdp, pgno, flags, pgset)
 	u_int32_t flags;
 	DB *pgset;
 {
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	int ret, t_ret;
 
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+	mpf = dbp->mpf;
+
+	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		return (ret);
 
 	switch (TYPE(h)) {
@@ -2272,7 +2296,7 @@ __db_meta2pgset(dbp, vdp, pgno, flags, pgset)
 		break;
 	}
 
-	if ((t_ret = memp_fput(dbp->mpf, h, 0)) != 0)
+	if ((t_ret = mpf->put(mpf, h, 0)) != 0)
 		return (t_ret);
 	return (ret);
 }

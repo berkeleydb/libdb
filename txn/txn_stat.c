@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_stat.c,v 11.7 2001/04/20 17:35:52 bostic Exp $";
+static const char revid[] = "$Id: txn_stat.c,v 11.10 2001/09/27 22:50:13 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,26 +17,19 @@ static const char revid[] = "$Id: txn_stat.c,v 11.7 2001/04/20 17:35:52 bostic E
 #include <string.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "txn.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 /*
- * txn_stat --
+ * __txn_stat --
  *
- * EXTERN: int txn_stat __P((DB_ENV *, DB_TXN_STAT **));
+ * PUBLIC: int __txn_stat __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
  */
 int
-txn_stat(dbenv, statp)
+__txn_stat(dbenv, statp, flags)
 	DB_ENV *dbenv;
 	DB_TXN_STAT **statp;
+	u_int32_t flags;
 {
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
@@ -46,15 +39,13 @@ txn_stat(dbenv, statp)
 	u_int32_t ndx;
 	int ret;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_txn_stat(dbenv, statp));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, "txn_stat", DB_INIT_TXN);
 
 	*statp = NULL;
+	if ((ret = __db_fchk(dbenv,
+	    "DB_ENV->txn_stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
 
 	mgr = dbenv->tx_handle;
 	region = mgr->reginfo.primary;
@@ -71,17 +62,11 @@ txn_stat(dbenv, statp)
 		return (ret);
 
 	R_LOCK(dbenv, &mgr->reginfo);
+	memcpy(stats, &region->stat, sizeof(*stats));
 	stats->st_last_txnid = region->last_txnid;
 	stats->st_last_ckp = region->last_ckp;
-	stats->st_maxtxns = region->maxtxns;
-	stats->st_naborts = region->naborts;
-	stats->st_nbegins = region->nbegins;
-	stats->st_ncommits = region->ncommits;
-	stats->st_nrestores = region->nrestores;
 	stats->st_pending_ckp = region->pending_ckp;
 	stats->st_time_ckp = region->time_ckp;
-	stats->st_nactive = region->nactive;
-	stats->st_maxnactive = region->maxnactive;
 	stats->st_txnarray = (DB_TXN_ACTIVE *)&stats[1];
 
 	ndx = 0;
@@ -102,6 +87,12 @@ txn_stat(dbenv, statp)
 	stats->st_region_wait = mgr->reginfo.rp->mutex.mutex_set_wait;
 	stats->st_region_nowait = mgr->reginfo.rp->mutex.mutex_set_nowait;
 	stats->st_regsize = mgr->reginfo.rp->size;
+	if (LF_ISSET(DB_STAT_CLEAR)) {
+		mgr->reginfo.rp->mutex.mutex_set_wait = 0;
+		mgr->reginfo.rp->mutex.mutex_set_nowait = 0;
+		memset(&region->stat, 0, sizeof(region->stat));
+		region->stat.st_maxtxns = region->maxtxns;
+	}
 
 	R_UNLOCK(dbenv, &mgr->reginfo);
 

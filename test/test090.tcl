@@ -3,12 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test090.tcl,v 11.5 2001/01/25 18:23:13 bostic Exp $
+# $Id: test090.tcl,v 11.6 2001/08/03 16:39:48 bostic Exp $
 #
-# DB Test 90 {access method}
-# Check for functionality near the end of the queue.
-#
-#
+# TEST	test090
+# TEST	Test for functionality near the end of the queue.
 proc test090 { method {nentries 1000} {txn -txn} {tnum "90"} args} {
 	if { [is_queueext $method ] == 0 } {
 		puts "Skipping test0$tnum for $method."

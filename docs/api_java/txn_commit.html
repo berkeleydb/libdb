@@ -1,4 +1,4 @@
-<!--$Id: txn_commit.so,v 10.34 2001/04/18 13:44:48 bostic Exp $-->
+<!--$Id: txn_commit.so,v 10.36 2001/10/22 15:24:38 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbTxn.commit</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,7 +22,7 @@
 import com.sleepycat.db.*;
 <p>
 public void commit(u_int32_t flags)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The DbTxn.commit method ends the transaction.
@@ -50,7 +50,7 @@ overrides both of those settings.
 all of the ACID (atomicity, consistency, isolation, and durability)
 properties.
 <p>This behavior is the default for Berkeley DB environments unless the
-<a href="../api_java/env_open.html#DB_TXN_NOSYNC">Db.DB_TXN_NOSYNC</a> flag was specified to the <a href="../api_java/env_set_flags.html">DbEnv.set_flags</a>
+<a href="../api_java/env_set_flags.html#DB_TXN_NOSYNC">Db.DB_TXN_NOSYNC</a> flag was specified to the <a href="../api_java/env_set_flags.html">DbEnv.set_flags</a>
 interface.  This behavior may also be set for a single transaction using
 the <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a> interface.  Any value specified in this interface
 overrides both of those settings.
@@ -81,11 +81,12 @@ will fail in the same way.
 <a href="../api_java/txn_id.html">DbTxn.id</a>,
 <a href="../api_java/txn_prepare.html">DbTxn.prepare</a>,
 <a href="../api_java/txn_recover.html">DbEnv.txn_recover</a>,
+<a href="../api_java/txn_set_timeout.html">DbTxn.set_timeout</a>
 and
 <a href="../api_java/txn_stat.html">DbEnv.txn_stat</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_spin.c,v 11.7 2001/01/25 18:23:00 bostic Exp $";
+static const char revid[] = "$Id: os_spin.c,v 11.8 2001/08/07 01:42:44 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -19,7 +19,8 @@ static const char revid[] = "$Id: os_spin.c,v 11.7 2001/01/25 18:23:00 bostic Ex
  *	Return the number of default spins before blocking.
  */
 int
-__os_spin()
+__os_spin(dbenv)
+	DB_ENV *dbenv;
 {
 	SYSTEM_INFO SystemInfo;
 
@@ -27,8 +28,8 @@ __os_spin()
 	 * If the application specified a value or we've already figured it
 	 * out, return it.
 	 */
-	if (DB_GLOBAL(db_tas_spins) != 0)
-		return (DB_GLOBAL(db_tas_spins));
+	if (dbenv->tas_spins != 0)
+		return (dbenv->tas_spins);
 
 	/* Get the number of processors */
 	GetSystemInfo(&SystemInfo);
@@ -38,10 +39,10 @@ __os_spin()
 	 * is a reasonable value.
 	 */
 	if (SystemInfo.dwNumberOfProcessors > 1)
-		 DB_GLOBAL(db_tas_spins) = 50 * SystemInfo.dwNumberOfProcessors;
+		 dbenv->tas_spins = 50 * SystemInfo.dwNumberOfProcessors;
 	else
-		 DB_GLOBAL(db_tas_spins) = 1;
-	return (DB_GLOBAL(db_tas_spins));
+		 dbenv->tas_spins = 1;
+	return (dbenv->tas_spins);
 }
 
 /*

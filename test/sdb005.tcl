@@ -3,9 +3,14 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb005.tcl,v 11.13 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb005.tcl,v 11.14 2001/08/03 16:39:30 bostic Exp $
 #
-# Test cursor operations between subdbs.
+# TEST	subdb005
+# TEST	Tests cursor operations in subdbs
+# TEST		Put/get per key
+# TEST		Verify cursor operations work within subdb
+# TEST		Verify cursor operations do not work across subdbs
+# TEST
 #
 # We should test this on all btrees, all hash, and a combination thereof
 proc subdb005 {method {nentries 100} args } {

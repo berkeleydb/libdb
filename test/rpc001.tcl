@@ -3,11 +3,12 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rpc001.tcl,v 11.25 2001/05/17 20:37:06 bostic Exp $
+# $Id: rpc001.tcl,v 11.26 2001/08/03 16:39:28 bostic Exp $
 #
-# Test RPC specifics, primarily that unsupported functions return
-# errors and such.
-#
+# TEST	rpc001
+# TEST	Test RPC server timeouts for cursor, txn and env handles.
+# TEST	Test RPC specifics, primarily that unsupported functions return
+# TEST	errors and such.
 proc rpc001 { } {
 	global __debug_on
 	global __debug_print

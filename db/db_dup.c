@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_dup.c,v 11.22 2001/04/02 17:08:13 ubell Exp $";
+static const char revid[] = "$Id: db_dup.c,v 11.24 2001/07/24 18:31:06 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -69,7 +69,7 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	 * memmove(3), the regions may overlap.
 	 */
 	from = (u_int8_t *)pagep + HOFFSET(pagep);
-DB_ASSERT((int)pagep->inp[indx] - HOFFSET(pagep) >= 0);
+	DB_ASSERT((int)pagep->inp[indx] - HOFFSET(pagep) >= 0);
 	memmove(from + nbytes, from, pagep->inp[indx] - HOFFSET(pagep));
 	HOFFSET(pagep) += nbytes;
 
@@ -181,14 +181,16 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 	PAGE *np, *pp;
 	DB_LOCK npl, ppl;
 	DB_LSN *nlsnp, *plsnp, ret_lsn;
+	DB_MPOOLFILE *mpf;
 	int ret;
 
-	ret = 0;
+	dbp = dbc->dbp;
 	np = pp = NULL;
 	LOCK_INIT(npl);
 	LOCK_INIT(ppl);
 	nlsnp = plsnp = NULL;
-	dbp = dbc->dbp;
+	mpf = dbp->mpf;
+	ret = 0;
 
 	/*
 	 * Retrieve and lock the one/two pages.  For a remove, we may need
@@ -199,8 +201,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if (needlock && (ret = __db_lget(dbc,
 		    0, pagep->next_pgno, DB_LOCK_WRITE, 0, &npl)) != 0)
 			goto err;
-		if ((ret = memp_fget(dbp->mpf,
-		    &pagep->next_pgno, 0, &np)) != 0) {
+		if ((ret = mpf->get(mpf, &pagep->next_pgno, 0, &np)) != 0) {
 			(void)__db_pgerr(dbp, pagep->next_pgno);
 			goto err;
 		}
@@ -210,8 +211,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if (needlock && (ret = __db_lget(dbc,
 		    0, pagep->prev_pgno, DB_LOCK_WRITE, 0, &ppl)) != 0)
 			goto err;
-		if ((ret = memp_fget(dbp->mpf,
-		    &pagep->prev_pgno, 0, &pp)) != 0) {
+		if ((ret = mpf->get(mpf, &pagep->prev_pgno, 0, &pp)) != 0) {
 			(void)__db_pgerr(dbp, pagep->next_pgno);
 			goto err;
 		}
@@ -248,10 +248,10 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		else
 			np->prev_pgno = pagep->prev_pgno;
 		if (new_next == NULL)
-			ret = memp_fput(dbp->mpf, np, DB_MPOOL_DIRTY);
+			ret = mpf->put(mpf, np, DB_MPOOL_DIRTY);
 		else {
 			*new_next = np;
-			ret = memp_fset(dbp->mpf, np, DB_MPOOL_DIRTY);
+			ret = mpf->set(mpf, np, DB_MPOOL_DIRTY);
 		}
 		if (ret != 0)
 			goto err;
@@ -262,7 +262,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 	if (pp != NULL) {
 		pp->next_pgno = pagep->next_pgno;
-		if ((ret = memp_fput(dbp->mpf, pp, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = mpf->put(mpf, pp, DB_MPOOL_DIRTY)) != 0)
 			goto err;
 		if (needlock)
 			(void)__TLPUT(dbc, ppl);
@@ -270,11 +270,11 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 	return (0);
 
 err:	if (np != NULL)
-		(void)memp_fput(dbp->mpf, np, 0);
+		(void)mpf->put(mpf, np, 0);
 	if (needlock)
 		(void)__TLPUT(dbc, npl);
 	if (pp != NULL)
-		(void)memp_fput(dbp->mpf, pp, 0);
+		(void)mpf->put(mpf, pp, 0);
 	if (needlock)
 		(void)__TLPUT(dbc, ppl);
 	return (ret);

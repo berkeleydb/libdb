@@ -3,10 +3,13 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test066.tcl,v 11.8 2001/01/25 18:23:12 bostic Exp $
+# $Id: test066.tcl,v 11.9 2001/08/03 16:39:44 bostic Exp $
 #
-# DB Test 66: Make sure a cursor put to DB_CURRENT acts as an overwrite in
-# a database with duplicates
+# TEST	test066
+# TEST	Test of cursor overwrites of DB_CURRENT w/ duplicates.
+# TEST
+# TEST	Make sure a cursor put to DB_CURRENT acts as an overwrite in a
+# TEST	database with duplicates.
 proc test066 { method args } {
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]

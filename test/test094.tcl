@@ -3,14 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test094.tcl,v 11.5 2001/07/12 16:31:48 sue Exp $
+# $Id: test094.tcl,v 11.10 2001/10/15 15:34:56 bostic Exp $
 #
-# DB Test 94 {access method}
-# Test bt comparison proc.
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	test094
+# TEST	Test using set_dup_compare.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
 proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	source ./include.tcl
 	global errorInfo
@@ -21,28 +22,31 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	puts "Test0$tnum: $method ($args) $ndups dups using dupcompare"
 
 	if { [is_btree $method] != 1 && [is_hash $method] != 1 } {
-		puts "Skipping for method $method."
+		puts "Test0$tnum: skipping for method $method."
 		return
 	}
 
-	# Create the database and open the dictionary
 	set eindex [lsearch -exact $dbargs "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+	}
+
+	# Create the database and open the dictionary
 	#
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
-		set testfile $testdir/test0$tnum.db
+		set testfile $testdir/test0$tnum-a.db
 		set env NULL
 	} else {
-		set testfile test0$tnum.db
-		incr eindex
+		set testfile test0$tnum-a.db
 		set env [lindex $dbargs $eindex]
 	}
 	cleanup $testdir $env
 
 	set stat [catch {eval {berkdb_open_noerr -dupcompare test094_cmp \
 	    -dup -dupsort \
-	    -create -truncate -mode 0644} $omethod $dbargs $testfile} db]
+	    -create -mode 0644} $omethod $dbargs $testfile} db]
 	if { $stat == 1 } {
 		#
 		# Only failure we expect is for RPC.   We want to skip
@@ -51,7 +55,7 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 		#
 		error_check_good dbopen \
 		    [is_substr $errorInfo "meaningless in RPC env"] 1
-		puts "Skipping for RPC"
+		puts "Test0$tnum: skipping for RPC"
 		return
 	}
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -88,12 +92,24 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	dup_check $db $txn $t1 $dlist
 	error_check_good db_close [$db close] 0
 
+	# Set up second testfile so truncate flag is not needed.
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum-b.db
+		set env NULL
+	} else {
+		set testfile test0$tnum-b.db
+		set env [lindex $dbargs $eindex]
+	}
+	cleanup $testdir $env
+
 	#
 	# Test dupcompare with data items big enough to force offpage dups.
 	#
 	puts "\tTest0$tnum.c: big key put/get dup loop key=filename data=filecontents"
 	set db [eval {berkdb_open -dupcompare test094_cmp -dup -dupsort \
-	     -create -truncate -mode 0644} $omethod $dbargs $testfile]
+	     -create -mode 0644} $omethod $dbargs $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Here is the loop where we put and get each key/data pair

@@ -26,10 +26,14 @@ void __os_free __P((DB_ENV *, void *, size_t));
 void __os_freestr __P((DB_ENV *, void *));
 #define	__ua_memcpy __ua_memcpy@DB_VERSION_UNIQUE_NAME@
 void *__ua_memcpy __P((void *, const void *, size_t));
+#define	__os_clock __os_clock@DB_VERSION_UNIQUE_NAME@
+int __os_clock __P((DB_ENV *, u_int32_t *, u_int32_t *));
 #define	__os_dirlist __os_dirlist@DB_VERSION_UNIQUE_NAME@
 int __os_dirlist __P((DB_ENV *, const char *, char ***, int *));
 #define	__os_dirfree __os_dirfree@DB_VERSION_UNIQUE_NAME@
 void __os_dirfree __P((DB_ENV *, char **, int));
+#define	__os_get_errno_ret_zero __os_get_errno_ret_zero@DB_VERSION_UNIQUE_NAME@
+int __os_get_errno_ret_zero __P((void));
 #define	__os_get_errno __os_get_errno@DB_VERSION_UNIQUE_NAME@
 int __os_get_errno __P((void));
 #define	__os_set_errno __os_set_errno@DB_VERSION_UNIQUE_NAME@
@@ -85,7 +89,7 @@ int __os_seek __P((DB_ENV *, DB_FH *, size_t, db_pgno_t, u_int32_t, int, DB_OS_S
 #define	__os_sleep __os_sleep@DB_VERSION_UNIQUE_NAME@
 int __os_sleep __P((DB_ENV *, u_long, u_long));
 #define	__os_spin __os_spin@DB_VERSION_UNIQUE_NAME@
-int __os_spin __P((void));
+int __os_spin __P((DB_ENV *));
 #define	__os_yield __os_yield@DB_VERSION_UNIQUE_NAME@
 void __os_yield __P((DB_ENV*, u_long));
 #define	__os_exists __os_exists@DB_VERSION_UNIQUE_NAME@
@@ -98,6 +102,8 @@ int __os_tmpdir __P((DB_ENV *, u_int32_t));
 int __os_unlink __P((DB_ENV *, const char *));
 #define	__os_region_unlink __os_region_unlink@DB_VERSION_UNIQUE_NAME@
 int __os_region_unlink __P((DB_ENV *, const char *));
+#define	__os_clock __os_clock@DB_VERSION_UNIQUE_NAME@
+int __os_clock __P((DB_ENV *, u_int32_t *, u_int32_t *));
 #if defined(DB_WIN32)
 #define	__os_win32_errno __os_win32_errno@DB_VERSION_UNIQUE_NAME@
 int __os_win32_errno __P((void));

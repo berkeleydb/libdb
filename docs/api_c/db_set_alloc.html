@@ -1,5 +1,5 @@
 <!--$Id: db_set_alloc.so,v 10.1 2001/04/04 19:06:25 bostic Exp $-->
-<!--$Id: env_set_alloc.so,v 1.4 2001/05/15 14:34:24 bostic Exp $-->
+<!--$Id: env_set_alloc.so,v 1.7 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -24,27 +24,25 @@
 <p>
 int
 DB-&gt;set_alloc(DB *db,
-	void *(*app_malloc)(size_t size),
-	void *(*app_realloc)(void *, size_t),
-	void (*app_free)(void *));
+    void *(*app_malloc)(size_t size),
+    void *(*app_realloc)(void *, size_t),
+    void (*app_free)(void *));
 </pre></h3>
 <h1>Description</h1>
-<p>Set the allocation functions used by the DB_ENV and DB
+<p>Set the allocation functions used by the <a href="../api_c/env_create.html">DB_ENV</a> and <a href="../api_c/db_create.html">DB</a>
 methods to allocate or free memory owned by the application.  The
 <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> interface sets the allocation functions for a
 database environment; the DB-&gt;set_alloc interface sets the
-allocation functions for a single database.  If both are specified,
-functions specified for a database will be used in preference to
-functions specified for environment.
+allocation functions for a single database.
 <p>There are a number of interfaces in Berkeley DB where memory is allocated by
 the library and then given to the application.  For example, the
 <a href="../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> flag, when specified in the <a href="../api_c/dbt.html">DBT</a> object,
-will cause the DB methods to allocate and reallocate memory
+will cause the <a href="../api_c/db_create.html">DB</a> methods to allocate and reallocate memory
 which then becomes the responsibility of the calling application.  (See
 <a href="../api_c/dbt.html">DBT</a> for more information.)  Other examples are the Berkeley DB
 interfaces which return statistical information to the application:
-<a href="../api_c/db_stat.html">DB-&gt;stat</a>, <a href="../api_c/lock_stat.html">lock_stat</a>, <a href="../api_c/log_archive.html">log_archive</a>,
-<a href="../api_c/log_stat.html">log_stat</a>, <a href="../api_c/memp_stat.html">memp_stat</a>, and <a href="../api_c/txn_stat.html">txn_stat</a>.  There is
+<a href="../api_c/db_stat.html">DB-&gt;stat</a>, <a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>, <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>,
+<a href="../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>, <a href="../api_c/memp_stat.html">DB_ENV-&gt;memp_stat</a>, and <a href="../api_c/txn_stat.html">DB_ENV-&gt;txn_stat</a>.  There is
 one interface in the Berkeley DB where memory is allocated by the application
 and then given to the library: <a href="../api_c/db_associate.html">DB-&gt;associate</a>.
 <p>On systems in which there may be multiple library versions of the
@@ -54,14 +52,15 @@ library allocates memory from a different heap than the application uses
 to free it.  To avoid this problem, the <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> and
 DB-&gt;set_alloc functions can be used to pass Berkeley DB references to the
 application's allocation routines.
-<p>It is not an error to not specify all three arguments to these
-interfaces; however, in that case the specified interfaces must be
-compatible with the standard library interfaces, as they will be used
-together.  The functions specified must match the calling
-conventions of the ANSI C X3.159-1989 (ANSI C) library routines of the same name.
-<p>For DB handles opened inside of Berkeley DB environments, calling the
-DB-&gt;set_alloc function affects the entire environment and is equivalent to calling
-the <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> function.
+<p>It is not an error to specify only one or two of the possible allocation
+function arguments to these interfaces; however, in that case the
+specified interfaces must be compatible with the standard library
+interfaces, as they will be used together.  The functions specified
+must match the calling conventions of the ANSI C X3.159-1989 (ANSI C) library routines
+of the same name.
+<p>Because databases opened within Berkeley DB environments use the allocation
+interfaces specified to the environment, it is an error to attempt to
+set those interfaces in a database created within an environment.
 <p>The DB-&gt;set_alloc interface may be used only to configure Berkeley DB before
 the <a href="../api_c/db_open.html">DB-&gt;open</a> interface is called.
 <p>The DB-&gt;set_alloc function returns a non-zero error value on failure and 0 on success.
@@ -69,6 +68,8 @@ the <a href="../api_c/db_open.html">DB-&gt;open</a> interface is called.
 <p>The DB-&gt;set_alloc function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>Called in a database environment.
+<p>Called after <a href="../api_c/db_open.html">DB-&gt;open</a> was called.
 </dl>
 <p>The DB-&gt;set_alloc function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
 If a catastrophic error has occurred, the DB-&gt;set_alloc function may fail and return

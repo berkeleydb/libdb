@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_fid.c,v 11.9 2001/05/01 23:49:22 bostic Exp $";
+static const char revid[] = "$Id: os_fid.c,v 11.10 2001/09/07 18:17:49 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,12 +58,14 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	memset(fidp, 0, DB_FILE_ID_LEN);
 
 	/* On POSIX/UNIX, use a dev/inode pair. */
+retry:
 #ifdef HAVE_VXWORKS
 	if (stat((char *)fname, &sb) != 0) {
 #else
 	if (stat(fname, &sb) != 0) {
 #endif
-		ret = __os_get_errno();
+		if ((ret = __os_get_errno()) == EINTR)
+			goto retry;
 		__db_err(dbenv, "%s: %s", fname, strerror(ret));
 		return (ret);
 	}

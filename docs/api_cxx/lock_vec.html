@@ -1,4 +1,4 @@
-<!--$Id: lock_vec.so,v 10.40 2001/05/15 16:03:11 bostic Exp $-->
+<!--$Id: lock_vec.so,v 10.44 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::lock_vec</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -52,12 +52,15 @@ this by declaring the structure external or static, or by calling
 <p><dt>lockop_t <a name="op">op</a>;<dd>The operation to be performed, which must be set to one of the
 following values:
 <p><dl compact>
-<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get the lock defined by the values of the <b>lock</b>, <b>mode</b>,
-and <b>obj</b> structure fields, for the specified <b>locker</b>.
-Upon return from DbEnv::lock_vec, if the <b>lock</b> field is
-non-NULL, a reference to the acquired lock is stored there.  (This
-reference is invalidated by any call to DbEnv::lock_vec or
-<a href="../api_cxx/lock_put.html">DbLock::put</a> that releases the lock.)
+<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get the lock defined by the values of the <b>mode</b> and <b>obj</b>
+structure fields, for the specified <b>locker</b>.  Upon return from
+DbEnv::lock_vec, if the <b>lock</b> field is non-NULL, a reference
+to the acquired lock is stored there.  (This reference is invalidated
+by any call to DbEnv::lock_vec or <a href="../api_cxx/lock_put.html">DbEnv::lock_put</a> that releases the
+lock.)
+<p><dt><a name="DB_LOCK_GET_TIMEOUT">DB_LOCK_GET_TIMEOUT</a><dd>Identical to DB_LOCK_GET except that the value in the <b>timeout</b>
+structure field overrides any previously specified timeout value for
+this lock.  A value of 0 turns off any previously specified timeout.
 <p><dt><a name="DB_LOCK_PUT">DB_LOCK_PUT</a><dd>The lock to which the <b>lock</b> structure field refers is released.
 The <b>locker</b> argument, and <b>mode</b> and <b>obj</b> fields
 are ignored.
@@ -74,6 +77,12 @@ current call to DbEnv::lock_vec that appear before the
 DB_LOCK_PUT_OBJ operation are released; those acquired in
 operations appearing after the DB_LOCK_PUT_OBJ operation are
 not released.
+<p><dt><a name="DB_LOCK_TIMEOUT">DB_LOCK_TIMEOUT</a><dd>Cause the specified <b>locker</b> to timeout immediately.  If the
+database environment has not configured automatic deadlock detection,
+the transaction will timeout the next time deadlock detection is
+performed.  As transactions acquire locks on behalf of a single locker
+ID, timing out the locker ID associated with a transaction will time
+out the transaction itself.
 </dl>
 <p><dt>DB_LOCK <a name="lock">lock</a>;<dd>A lock reference.
 <p><dt>const lockmode_t <a name="mode">mode</a>;<dd>The lock mode, used as an index into the environment's lock conflict matrix.
@@ -93,6 +102,7 @@ doing locking via the Berkeley DB access methods must take care not to
 inadvertently lock objects that happen to be equal to the unique file
 IDs used to lock files.  See <a href="../ref/lock/am_conv.html">Access
 method locking conventions</a> for more information.
+<p><dt>u_int32_t timeout;<dd>The lock timeout value.
 </dl>
 <p>The <b>nlist</b> argument specifies the number of elements in the
 <b>list</b> array.
@@ -131,20 +141,20 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
 <a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
-<a href="../api_cxx/env_set_lk_max.html">DbEnv::set_lk_max</a>,
 <a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
 <a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
 <a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
 <a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
 <a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,
 <a href="../api_cxx/lock_id.html">DbEnv::lock_id</a>,
-<a href="../api_cxx/lock_put.html">DbLock::put</a>,
+<a href="../api_cxx/lock_id_free.html">DbEnv::lock_id_free</a>,
+<a href="../api_cxx/lock_put.html">DbEnv::lock_put</a>,
 <a href="../api_cxx/lock_stat.html">DbEnv::lock_stat</a>,
 and
 <a href="../api_cxx/lock_vec.html">DbEnv::lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

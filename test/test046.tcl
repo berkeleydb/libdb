@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test046.tcl,v 11.27 2001/01/25 18:23:11 bostic Exp $
+# $Id: test046.tcl,v 11.30 2001/10/16 18:50:19 sandstro Exp $
 #
-# DB Test 46: Overwrite test of small/big key/data with cursor checks.
+# TEST	test046
+# TEST	Overwrite test of small/big key/data with cursor checks.
 proc test046 { method args } {
 	global alphabet
 	global errorInfo
@@ -561,8 +562,8 @@ proc test046 { method args } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
 
-	set db [berkdb_open \
-	    -create -dup $omethod -mode 0644 -truncate $testfile.h]
+	set db [eval {berkdb_open} \
+	    $oflags -dup $testfile.h]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set dbc [$db cursor]
 	error_check_good db_cursor [is_substr $dbc $db] 1

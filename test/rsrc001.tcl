@@ -3,11 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rsrc001.tcl,v 11.21 2001/06/05 13:48:22 sue Exp $
+# $Id: rsrc001.tcl,v 11.22 2001/08/03 16:39:28 bostic Exp $
 #
-# Recno backing file test.
-# Try different patterns of adding records and making sure that the
-# corresponding file matches
+# TEST	rsrc001
+# TEST	Recno backing file test.  Try different patterns of adding
+# TEST	records and making sure that the corresponding file matches.
 proc rsrc001 { } {
 	source ./include.tcl
 

@@ -19,8 +19,8 @@
 allow an application to decompose a large or long-running transaction
 into smaller units that may be independently aborted.
 <p>Normally, when beginning a transaction, the application will pass a NULL
-value for the parent argument to <a href="../../api_c/txn_begin.html">txn_begin</a>.  If, however, the
-parent argument is a DB_TXN handle, the newly created transaction
+value for the parent argument to <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>.  If, however, the
+parent argument is a <a href="../../api_c/txn_begin.html">DB_TXN</a> handle, the newly created transaction
 will be treated as a nested transaction within the parent.  Transactions
 may nest arbitrarily deeply.  For the purposes of this discussion,
 transactions created with a parent identifier will be called

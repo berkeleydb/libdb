@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_server_util.c,v 1.42 2001/06/13 01:49:48 bostic Exp $";
+static const char revid[] = "$Id: db_server_util.c,v 1.50 2001/10/05 01:48:07 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -100,19 +100,22 @@ main(argc, argv)
 			(void)add_home(optarg);
 			break;
 		case 'I':
-			(void)__db_getlong(NULL, prog, optarg, 1,
-			    LONG_MAX, &__dbsrv_idleto);
+			if (__db_getlong(NULL, prog,
+			    optarg, 1, LONG_MAX, &__dbsrv_idleto))
+				return (EXIT_FAILURE);
 			break;
 		case 'L':
 			logfile = optarg;
 			break;
 		case 't':
-			(void)__db_getlong(NULL, prog, optarg, 1,
-			    LONG_MAX, &__dbsrv_defto);
+			if (__db_getlong(NULL, prog,
+			    optarg, 1, LONG_MAX, &__dbsrv_defto))
+				return (EXIT_FAILURE);
 			break;
 		case 'T':
-			(void)__db_getlong(NULL, prog, optarg, 1,
-			    LONG_MAX, &__dbsrv_maxto);
+			if (__db_getlong(NULL, prog,
+			    optarg, 1, LONG_MAX, &__dbsrv_maxto))
+				return (EXIT_FAILURE);
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
@@ -257,7 +260,8 @@ __dbsrv_timeout(force)
 				if (__dbsrv_verbose)
 					printf("Timing out txn id %ld\n",
 					    ctp->ct_id);
-				(void)txn_abort((DB_TXN *)ctp->ct_anyp);
+				(void)((DB_TXN *)ctp->ct_anyp)->
+				    abort((DB_TXN *)ctp->ct_anyp);
 				__dbdel_ctp(ctp);
 				/*
 				 * If we timed out an txn, we may have closed
@@ -303,7 +307,7 @@ __dbsrv_timeout(force)
 		if (to < t || force) {
 			if (__dbsrv_verbose)
 				printf("Timing out env id %ld\n", ctp->ct_id);
-			(void)__dbenv_close_int(ctp->ct_id, 0);
+			(void)__dbenv_close_int(ctp->ct_id, 0, 1);
 			/*
 			 * If we timed out an env, we may have closed
 			 * all sorts of ctp's (maybe even all of them.
@@ -379,6 +383,7 @@ new_ct_ent(errp)
 		*errp = ret;
 		return (NULL);
 	}
+	memset(ctp, 0, sizeof(ct_entry));
 	/*
 	 * Get the time as ID.  We may service more than one request per
 	 * second however.  If we are, then increment id value until we
@@ -398,6 +403,7 @@ new_ct_ent(errp)
 	ctp->ct_idle = __dbsrv_idleto;
 	ctp->ct_activep = &ctp->ct_active;
 	ctp->ct_origp = NULL;
+	ctp->ct_refcount = 1;
 
 	LIST_INSERT_HEAD(&__dbsrv_head, ctp, entries);
 	return (ctp);
@@ -420,6 +426,115 @@ get_tableent(id)
 }
 
 /*
+ * PUBLIC: ct_entry *__dbsrv_sharedb __P((ct_entry *, const char *,
+ * PUBLIC:    const char *, DBTYPE, u_int32_t));
+ */
+ct_entry *
+__dbsrv_sharedb(db_ctp, name, subdb, type, flags)
+	ct_entry *db_ctp;
+	const char *name, *subdb;
+	DBTYPE type;
+	u_int32_t flags;
+{
+	ct_entry *ctp;
+
+	/*
+	 * Check if we can share a db handle.  Criteria for sharing are:
+	 * If any of the non-sharable flags are set, we cannot share.
+	 * Must be a db ctp, obviously.
+	 * Must share the same env parent.
+	 * Must be the same type, or current one DB_UNKNOWN.
+	 * Must be same byteorder, or current one must not care.
+	 * All flags must match.
+	 * Must be same name, but don't share in-memory databases.
+	 * Must be same subdb name.
+	 */
+	if (flags & DB_SERVER_DBNOSHARE)
+		return (NULL);
+	for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL;
+	    ctp = LIST_NEXT(ctp, entries)) {
+		/*
+		 * Skip ourselves.
+		 */
+		if (ctp == db_ctp)
+			continue;
+		if (ctp->ct_type != CT_DB)
+			continue;
+		if (ctp->ct_envparent != db_ctp->ct_envparent)
+			continue;
+		if (type != DB_UNKNOWN && ctp->ct_dbdp.type != type)
+			continue;
+		if (ctp->ct_dbdp.dbflags != LF_ISSET(DB_SERVER_DBFLAGS))
+			continue;
+		if (db_ctp->ct_dbdp.setflags != 0 &&
+		    ctp->ct_dbdp.setflags != db_ctp->ct_dbdp.setflags)
+			continue;
+		if (name == NULL || ctp->ct_dbdp.db == NULL ||
+		    strcmp(name, ctp->ct_dbdp.db) != 0)
+			continue;
+		if (subdb != ctp->ct_dbdp.subdb &&
+		    strcmp(subdb, ctp->ct_dbdp.subdb) != 0)
+			continue;
+		/*
+		 * If we get here, then we match.
+		 */
+		ctp->ct_refcount++;
+		return (ctp);
+	}
+
+	return (NULL);
+}
+
+/*
+ * PUBLIC: ct_entry *__dbsrv_shareenv __P((ct_entry *, home_entry *, u_int32_t));
+ */
+ct_entry *
+__dbsrv_shareenv(env_ctp, home, flags)
+	ct_entry *env_ctp;
+	home_entry *home;
+	u_int32_t flags;
+{
+	ct_entry *ctp;
+
+	/*
+	 * Check if we can share an env.  Criteria for sharing are:
+	 * Must be an env ctp, obviously.
+	 * Must share the same home env.
+	 * All flags must match.
+	 */
+	for (ctp = LIST_FIRST(&__dbsrv_head); ctp != NULL;
+	    ctp = LIST_NEXT(ctp, entries)) {
+		/*
+		 * Skip ourselves.
+		 */
+		if (ctp == env_ctp)
+			continue;
+		if (ctp->ct_type != CT_ENV)
+			continue;
+		if (ctp->ct_envdp.home != home)
+			continue;
+		if (ctp->ct_envdp.envflags != flags)
+			continue;
+		if (ctp->ct_envdp.onflags != env_ctp->ct_envdp.onflags)
+			continue;
+		if (ctp->ct_envdp.offflags != env_ctp->ct_envdp.offflags)
+			continue;
+		/*
+		 * If we get here, then we match.  The only thing left to
+		 * check is the timeout.  Since the server timeout set by
+		 * the client is a hint, for sharing we'll give them the
+		 * benefit of the doubt and grant them the longer timeout.
+		 */
+		if (ctp->ct_timeout < env_ctp->ct_timeout)
+			ctp->ct_timeout = env_ctp->ct_timeout;
+		ctp->ct_refcount++;
+		return (ctp);
+	}
+
+	return (NULL);
+}
+
+/*
  * PUBLIC: void __dbsrv_active __P((ct_entry *));
  */
 void
@@ -438,6 +553,37 @@ __dbsrv_active(ctp)
 		return;
 	*(envctp->ct_activep) = t;
 	return;
+}
+
+/*
+ * PUBLIC: int __db_close_int __P((long, u_int32_t));
+ */
+int
+__db_close_int(id, flags)
+	long id;
+	u_int32_t flags;
+{
+	DB *dbp;
+	int ret;
+	ct_entry *ctp;
+
+	ret = 0;
+	ctp = get_tableent(id);
+	if (ctp == NULL)
+		return (DB_NOSERVER_ID);
+	DB_ASSERT(ctp->ct_type == CT_DB);
+	if (__dbsrv_verbose && ctp->ct_refcount != 1)
+		printf("Deref'ing dbp id %ld, refcount %d\n",
+		    id, ctp->ct_refcount);
+	if (--ctp->ct_refcount != 0)
+		return (ret);
+	dbp = ctp->ct_dbp;
+	if (__dbsrv_verbose)
+		printf("Closing dbp id %ld\n", id);
+
+	ret = dbp->close(dbp, flags);
+	__dbdel_ctp(ctp);
+	return (ret);
 }
 
 /*
@@ -478,22 +624,35 @@ __dbc_close_int(dbc_ctp)
 }
 
 /*
- * PUBLIC: int __dbenv_close_int __P((long, int));
+ * PUBLIC: int __dbenv_close_int __P((long, u_int32_t, int));
  */
 int
-__dbenv_close_int(id, flags)
+__dbenv_close_int(id, flags, force)
 	long id;
-	int flags;
+	u_int32_t flags;
+	int force;
 {
 	DB_ENV *dbenv;
 	int ret;
 	ct_entry *ctp;
 
+	ret = 0;
 	ctp = get_tableent(id);
 	if (ctp == NULL)
 		return (DB_NOSERVER_ID);
 	DB_ASSERT(ctp->ct_type == CT_ENV);
+	if (__dbsrv_verbose && ctp->ct_refcount != 1)
+		printf("Deref'ing env id %ld, refcount %d\n",
+		    id, ctp->ct_refcount);
+	/*
+	 * If we are timing out, we need to force the close, no matter
+	 * what the refcount.
+	 */
+	if (--ctp->ct_refcount != 0 && !force)
+		return (ret);
 	dbenv = ctp->ct_envp;
+	if (__dbsrv_verbose)
+		printf("Closing env id %ld\n", id);
 
 	ret = dbenv->close(dbenv, flags);
 	__dbdel_ctp(ctp);
@@ -543,9 +702,9 @@ add_home(home)
 }
 
 /*
- * PUBLIC: char *get_home __P((char *));
+ * PUBLIC: home_entry *get_home __P((char *));
  */
-char *
+home_entry *
 get_home(name)
 	char *name;
 {
@@ -554,7 +713,7 @@ get_home(name)
 	for (hp = LIST_FIRST(&__dbsrv_home); hp != NULL;
 	    hp = LIST_NEXT(hp, entries))
 		if (strcmp(name, hp->name) == 0)
-			return (hp->home);
+			return (hp);
 	return (NULL);
 }
 
@@ -591,7 +750,7 @@ env_recover(progname)
 		flags = DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 		    DB_INIT_TXN | DB_USE_ENVIRON | DB_RECOVER;
 		if ((ret = dbenv->open(dbenv, hp->home, flags, 0)) != 0) {
-			dbenv->err(dbenv, ret, "DBENV->open");
+			dbenv->err(dbenv, ret, "DB_ENV->open");
 			goto error;
 		}
 

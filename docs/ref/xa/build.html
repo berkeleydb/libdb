@@ -61,23 +61,23 @@ must reside on stable storage or not depends on the exact configuration
 of the system).  As new environments participate, the GTM must keep this
 information up to date.
 <p>When the GTM is ready to begin commit processing, it should issue
-<a href="../../api_c/txn_prepare.html">txn_prepare</a> calls to each participating environment, indicating
+<a href="../../api_c/txn_prepare.html">DB_TXN-&gt;prepare</a> calls to each participating environment, indicating
 the GID of the global transaction.  Once all the participants have
 successfully prepared, then the GTM must record that the global
 transaction will be committed.   This record should go to stable
 storage.  Once written to stable storage, the GTM can send
-<a href="../../api_c/txn_commit.html">txn_commit</a> requests to each participating environment.  Once
+<a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a> requests to each participating environment.  Once
 all environments have successfully completed the commit, the GTM can
 either record the successful commit or can somehow "forget" the global
 transaction.
 <p>If nested transactions are used (that is, the <b>parent</b> parameter
-is specified to <a href="../../api_c/txn_begin.html">txn_begin</a>), no <a href="../../api_c/txn_prepare.html">txn_prepare</a> call should
+is specified to <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>), no <a href="../../api_c/txn_prepare.html">DB_TXN-&gt;prepare</a> call should
 be made on behalf of any child transaction.  Only the ultimate parent
-should even issue a <a href="../../api_c/txn_prepare.html">txn_prepare</a>.
+should even issue a <a href="../../api_c/txn_prepare.html">DB_TXN-&gt;prepare</a>.
 <p>Should any participant fail to prepare, then the GTM must abort the
 global transaction.  The fact that the transaction is going to be
 aborted should be written to stable storage.  Once written, the GTM can
-then issue <a href="../../api_c/txn_abort.html">txn_abort</a> requests to each environment.  When all
+then issue <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> requests to each environment.  When all
 aborts have returned successfully, the GTM can either record the
 successful abort or "forget" the global transaction.
 <p>In summary, for each transaction, the GTM must maintain the following:
@@ -102,28 +102,28 @@ environment's home directory, so that <a href="../../utility/db_recover.html">db
 an appropriately configured environment.
 If the <a href="../../utility/db_recover.html">db_recover</a> utility is not used, then <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a>
 should not be specified, unless all processing including recovery, calls
-to <a href="../../api_c/txn_recover.html">txn_recover</a>, and calls to finish prepared, but not yet
+to <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a>, and calls to finish prepared, but not yet
 complete transactions take place using the same database environment
 handle.
-The GTM should then issue a <a href="../../api_c/txn_recover.html">txn_recover</a> call to the environment.
+The GTM should then issue a <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a> call to the environment.
 This call will return a list of prepared, but not yet committed or
 aborted transactions.  For each transaction, the GTM should look up the
 GID in its local store to determine if the transaction should commit or
 abort.
 If the GTM is running in a system with multiple GTMs, it is possible that
-some of the transactions returned via <a href="../../api_c/txn_recover.html">txn_recover</a> do not belong
+some of the transactions returned via <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a> do not belong
 to the current environment.  The GTM should detect this and call
-<a href="../../api_c/txn_discard.html">txn_discard</a> on each such transaction handle.
+<a href="../../api_c/txn_discard.html">DB_TXN-&gt;discard</a> on each such transaction handle.
 Furthermore, it is important to note that the environment does not
-retain information about which GTM has issued <a href="../../api_c/txn_recover.html">txn_recover</a>
-operations.  Therefore, each GTM should issue all its <a href="../../api_c/txn_recover.html">txn_recover</a>
+retain information about which GTM has issued <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a>
+operations.  Therefore, each GTM should issue all its <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a>
 calls, before another GTM issues its calls.  If the calls are interleaved,
 each GTM may not get a complete and consistent set of transactions.
 The simplest way to enforce this is for each GTM to make sure it can
-receive all its outstanding transactions in a single <a href="../../api_c/txn_recover.html">txn_recover</a>
+receive all its outstanding transactions in a single <a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a>
 call.  The maximum number of possible outstanding transactions is bounded
 by the maximum number of active transactions in the environment.  This
-number can be obtained by using the <a href="../../api_c/txn_stat.html">txn_stat</a> interface or the
+number can be obtained by using the <a href="../../api_c/txn_stat.html">DB_ENV-&gt;txn_stat</a> interface or the
 <a href="../../utility/db_stat.html">db_stat</a> utility.
 <p>The newly recovered environment will forbid any new transactions from
 being started until the prepared but not yet committed/aborted
@@ -132,7 +132,7 @@ that all GTMs must recover before any GTM can begin issuing new transactions.
 <p>Because Berkeley DB flushed both commit and abort records to disk for
 two-phase transaction, once the global transaction has either committed
 or aborted, no action will be necessary in any environment.  If local
-environments are running with the <a href="../../api_c/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option (that
+environments are running with the <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option (that
 is, is not writing the log synchronously at commit time), then it is
 possible that a commit or abort operation may not have been written in
 the environment.  In this case, the GTM must always have a record of
@@ -151,10 +151,10 @@ remote systems should eventually time them out and abort them.  If these
 transactions are on the local system, we assume they crashed and were
 aborted as part of GTM startup.
 <p>The GTM must then identify all environments which need to have their
-<a href="../../api_c/txn_recover.html">txn_recover</a> interface called.  This includes all environments
+<a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a> interface called.  This includes all environments
 that participate in any transaction that is in the preparing, aborting,
 or committing state.  For each environment, the GTM should issue a
-<a href="../../api_c/txn_recover.html">txn_recover</a> call.  Once each environment has responded, the GTM
+<a href="../../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a> call.  Once each environment has responded, the GTM
 can determine the fate of each transaction.  The correct behavior is
 defined depending on the state of the global transaction according to
 the table below.

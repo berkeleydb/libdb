@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fset.c,v 11.18 2001/07/05 13:23:07 bostic Exp $";
+static const char revid[] = "$Id: mp_fset.c,v 11.19 2001/07/24 18:31:30 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -15,26 +15,18 @@ static const char revid[] = "$Id: mp_fset.c,v 11.18 2001/07/05 13:23:07 bostic E
 
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 /*
- * memp_fset --
+ * __memp_fset --
  *	Mpool page set-flag routine.
  *
- * EXTERN: int memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
+ * PUBLIC: int __memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
  */
 int
-memp_fset(dbmfp, pgaddr, flags)
+__memp_fset(dbmfp, pgaddr, flags)
 	DB_MPOOLFILE *dbmfp;
 	void *pgaddr;
 	u_int32_t flags;
@@ -47,11 +39,6 @@ memp_fset(dbmfp, pgaddr, flags)
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_fset(dbmfp, pgaddr, flags));
-#endif
 
 	PANIC_CHECK(dbenv);
 

@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_method.c,v 11.20 2001/04/30 16:36:22 bostic Exp $";
+static const char revid[] = "$Id: log_method.c,v 11.25 2001/09/28 15:09:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -44,16 +44,17 @@ void
 __log_dbenv_create(dbenv)
 	DB_ENV *dbenv;
 {
+	/*
+	 * !!!
+	 * Our caller has not yet had the opportunity to reset the panic
+	 * state or turn off mutex locking, and so we can neither check
+	 * the panic state or acquire a mutex in the DB_ENV create path.
+	 */
+
 	dbenv->lg_bsize = LG_BSIZE_DEFAULT;
-	dbenv->set_lg_bsize = __log_set_lg_bsize;
-
 	dbenv->lg_max = LG_MAX_DEFAULT;
-	dbenv->set_lg_max = __log_set_lg_max;
-
 	dbenv->lg_regionmax = LG_BASE_REGION_SIZE;
-	dbenv->set_lg_regionmax = __log_set_lg_regionmax;
 
-	dbenv->set_lg_dir = __log_set_lg_dir;
 #ifdef	HAVE_RPC
 	/*
 	 * If we have a client, overwrite what we just setup to
@@ -61,11 +62,33 @@ __log_dbenv_create(dbenv)
 	 */
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
 		dbenv->set_lg_bsize = __dbcl_set_lg_bsize;
+		dbenv->set_lg_dir = __dbcl_set_lg_dir;
 		dbenv->set_lg_max = __dbcl_set_lg_max;
 		dbenv->set_lg_regionmax = __dbcl_set_lg_regionmax;
-		dbenv->set_lg_dir = __dbcl_set_lg_dir;
-	}
+		dbenv->log_archive = __dbcl_log_archive;
+		dbenv->log_cursor = __dbcl_log_cursor;
+		dbenv->log_file = __dbcl_log_file;
+		dbenv->log_flush = __dbcl_log_flush;
+		dbenv->log_put = __dbcl_log_put;
+		dbenv->log_register = __dbcl_log_register;
+		dbenv->log_stat = __dbcl_log_stat;
+		dbenv->log_unregister = __dbcl_log_unregister;
+	} else
 #endif
+	{
+		dbenv->set_lg_bsize = __log_set_lg_bsize;
+		dbenv->set_lg_dir = __log_set_lg_dir;
+		dbenv->set_lg_max = __log_set_lg_max;
+		dbenv->set_lg_regionmax = __log_set_lg_regionmax;
+		dbenv->log_archive = __log_archive;
+		dbenv->log_cursor = __log_cursor;
+		dbenv->log_file = __log_file;
+		dbenv->log_flush = __log_flush;
+		dbenv->log_put = __log_put;
+		dbenv->log_register = __log_register;
+		dbenv->log_stat = __log_stat;
+		dbenv->log_unregister = __log_unregister;
+	}
 }
 
 /*
@@ -102,6 +125,9 @@ __log_set_lg_max(dbenv, lg_max)
 	u_int32_t lg_max;
 {
 	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lg_max");
+
+	if (lg_max == 0)
+		dbenv->lg_max = LG_MAX_DEFAULT;
 
 					/* Let's not be silly. */
 	if (lg_max < dbenv->lg_bsize * 4) {

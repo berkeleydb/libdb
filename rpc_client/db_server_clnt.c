@@ -11,7 +11,7 @@
 static struct timeval TIMEOUT = { 25, 0 };
 
 __env_cachesize_reply *
-__db_env_cachesize_3003(argp, clnt)
+__db_env_cachesize_4000(argp, clnt)
 	__env_cachesize_msg *argp;
 	CLIENT *clnt;
 {
@@ -28,7 +28,7 @@ __db_env_cachesize_3003(argp, clnt)
 }
 
 __env_close_reply *
-__db_env_close_3003(argp, clnt)
+__db_env_close_4000(argp, clnt)
 	__env_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -45,7 +45,7 @@ __db_env_close_3003(argp, clnt)
 }
 
 __env_create_reply *
-__db_env_create_3003(argp, clnt)
+__db_env_create_4000(argp, clnt)
 	__env_create_msg *argp;
 	CLIENT *clnt;
 {
@@ -62,7 +62,7 @@ __db_env_create_3003(argp, clnt)
 }
 
 __env_flags_reply *
-__db_env_flags_3003(argp, clnt)
+__db_env_flags_4000(argp, clnt)
 	__env_flags_msg *argp;
 	CLIENT *clnt;
 {
@@ -79,7 +79,7 @@ __db_env_flags_3003(argp, clnt)
 }
 
 __env_open_reply *
-__db_env_open_3003(argp, clnt)
+__db_env_open_4000(argp, clnt)
 	__env_open_msg *argp;
 	CLIENT *clnt;
 {
@@ -96,7 +96,7 @@ __db_env_open_3003(argp, clnt)
 }
 
 __env_remove_reply *
-__db_env_remove_3003(argp, clnt)
+__db_env_remove_4000(argp, clnt)
 	__env_remove_msg *argp;
 	CLIENT *clnt;
 {
@@ -113,7 +113,7 @@ __db_env_remove_3003(argp, clnt)
 }
 
 __txn_abort_reply *
-__db_txn_abort_3003(argp, clnt)
+__db_txn_abort_4000(argp, clnt)
 	__txn_abort_msg *argp;
 	CLIENT *clnt;
 {
@@ -130,7 +130,7 @@ __db_txn_abort_3003(argp, clnt)
 }
 
 __txn_begin_reply *
-__db_txn_begin_3003(argp, clnt)
+__db_txn_begin_4000(argp, clnt)
 	__txn_begin_msg *argp;
 	CLIENT *clnt;
 {
@@ -147,7 +147,7 @@ __db_txn_begin_3003(argp, clnt)
 }
 
 __txn_commit_reply *
-__db_txn_commit_3003(argp, clnt)
+__db_txn_commit_4000(argp, clnt)
 	__txn_commit_msg *argp;
 	CLIENT *clnt;
 {
@@ -164,7 +164,7 @@ __db_txn_commit_3003(argp, clnt)
 }
 
 __txn_discard_reply *
-__db_txn_discard_3003(argp, clnt)
+__db_txn_discard_4000(argp, clnt)
 	__txn_discard_msg *argp;
 	CLIENT *clnt;
 {
@@ -181,7 +181,7 @@ __db_txn_discard_3003(argp, clnt)
 }
 
 __txn_prepare_reply *
-__db_txn_prepare_3003(argp, clnt)
+__db_txn_prepare_4000(argp, clnt)
 	__txn_prepare_msg *argp;
 	CLIENT *clnt;
 {
@@ -198,7 +198,7 @@ __db_txn_prepare_3003(argp, clnt)
 }
 
 __txn_recover_reply *
-__db_txn_recover_3003(argp, clnt)
+__db_txn_recover_4000(argp, clnt)
 	__txn_recover_msg *argp;
 	CLIENT *clnt;
 {
@@ -215,7 +215,7 @@ __db_txn_recover_3003(argp, clnt)
 }
 
 __db_associate_reply *
-__db_db_associate_3003(argp, clnt)
+__db_db_associate_4000(argp, clnt)
 	__db_associate_msg *argp;
 	CLIENT *clnt;
 {
@@ -232,7 +232,7 @@ __db_db_associate_3003(argp, clnt)
 }
 
 __db_bt_maxkey_reply *
-__db_db_bt_maxkey_3003(argp, clnt)
+__db_db_bt_maxkey_4000(argp, clnt)
 	__db_bt_maxkey_msg *argp;
 	CLIENT *clnt;
 {
@@ -249,7 +249,7 @@ __db_db_bt_maxkey_3003(argp, clnt)
 }
 
 __db_bt_minkey_reply *
-__db_db_bt_minkey_3003(argp, clnt)
+__db_db_bt_minkey_4000(argp, clnt)
 	__db_bt_minkey_msg *argp;
 	CLIENT *clnt;
 {
@@ -266,7 +266,7 @@ __db_db_bt_minkey_3003(argp, clnt)
 }
 
 __db_close_reply *
-__db_db_close_3003(argp, clnt)
+__db_db_close_4000(argp, clnt)
 	__db_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -283,7 +283,7 @@ __db_db_close_3003(argp, clnt)
 }
 
 __db_create_reply *
-__db_db_create_3003(argp, clnt)
+__db_db_create_4000(argp, clnt)
 	__db_create_msg *argp;
 	CLIENT *clnt;
 {
@@ -300,7 +300,7 @@ __db_db_create_3003(argp, clnt)
 }
 
 __db_del_reply *
-__db_db_del_3003(argp, clnt)
+__db_db_del_4000(argp, clnt)
 	__db_del_msg *argp;
 	CLIENT *clnt;
 {
@@ -317,7 +317,7 @@ __db_db_del_3003(argp, clnt)
 }
 
 __db_extentsize_reply *
-__db_db_extentsize_3003(argp, clnt)
+__db_db_extentsize_4000(argp, clnt)
 	__db_extentsize_msg *argp;
 	CLIENT *clnt;
 {
@@ -334,7 +334,7 @@ __db_db_extentsize_3003(argp, clnt)
 }
 
 __db_flags_reply *
-__db_db_flags_3003(argp, clnt)
+__db_db_flags_4000(argp, clnt)
 	__db_flags_msg *argp;
 	CLIENT *clnt;
 {
@@ -351,7 +351,7 @@ __db_db_flags_3003(argp, clnt)
 }
 
 __db_get_reply *
-__db_db_get_3003(argp, clnt)
+__db_db_get_4000(argp, clnt)
 	__db_get_msg *argp;
 	CLIENT *clnt;
 {
@@ -368,7 +368,7 @@ __db_db_get_3003(argp, clnt)
 }
 
 __db_h_ffactor_reply *
-__db_db_h_ffactor_3003(argp, clnt)
+__db_db_h_ffactor_4000(argp, clnt)
 	__db_h_ffactor_msg *argp;
 	CLIENT *clnt;
 {
@@ -385,7 +385,7 @@ __db_db_h_ffactor_3003(argp, clnt)
 }
 
 __db_h_nelem_reply *
-__db_db_h_nelem_3003(argp, clnt)
+__db_db_h_nelem_4000(argp, clnt)
 	__db_h_nelem_msg *argp;
 	CLIENT *clnt;
 {
@@ -402,7 +402,7 @@ __db_db_h_nelem_3003(argp, clnt)
 }
 
 __db_key_range_reply *
-__db_db_key_range_3003(argp, clnt)
+__db_db_key_range_4000(argp, clnt)
 	__db_key_range_msg *argp;
 	CLIENT *clnt;
 {
@@ -419,7 +419,7 @@ __db_db_key_range_3003(argp, clnt)
 }
 
 __db_lorder_reply *
-__db_db_lorder_3003(argp, clnt)
+__db_db_lorder_4000(argp, clnt)
 	__db_lorder_msg *argp;
 	CLIENT *clnt;
 {
@@ -436,7 +436,7 @@ __db_db_lorder_3003(argp, clnt)
 }
 
 __db_open_reply *
-__db_db_open_3003(argp, clnt)
+__db_db_open_4000(argp, clnt)
 	__db_open_msg *argp;
 	CLIENT *clnt;
 {
@@ -453,7 +453,7 @@ __db_db_open_3003(argp, clnt)
 }
 
 __db_pagesize_reply *
-__db_db_pagesize_3003(argp, clnt)
+__db_db_pagesize_4000(argp, clnt)
 	__db_pagesize_msg *argp;
 	CLIENT *clnt;
 {
@@ -470,7 +470,7 @@ __db_db_pagesize_3003(argp, clnt)
 }
 
 __db_pget_reply *
-__db_db_pget_3003(argp, clnt)
+__db_db_pget_4000(argp, clnt)
 	__db_pget_msg *argp;
 	CLIENT *clnt;
 {
@@ -487,7 +487,7 @@ __db_db_pget_3003(argp, clnt)
 }
 
 __db_put_reply *
-__db_db_put_3003(argp, clnt)
+__db_db_put_4000(argp, clnt)
 	__db_put_msg *argp;
 	CLIENT *clnt;
 {
@@ -504,7 +504,7 @@ __db_db_put_3003(argp, clnt)
 }
 
 __db_re_delim_reply *
-__db_db_re_delim_3003(argp, clnt)
+__db_db_re_delim_4000(argp, clnt)
 	__db_re_delim_msg *argp;
 	CLIENT *clnt;
 {
@@ -521,7 +521,7 @@ __db_db_re_delim_3003(argp, clnt)
 }
 
 __db_re_len_reply *
-__db_db_re_len_3003(argp, clnt)
+__db_db_re_len_4000(argp, clnt)
 	__db_re_len_msg *argp;
 	CLIENT *clnt;
 {
@@ -538,7 +538,7 @@ __db_db_re_len_3003(argp, clnt)
 }
 
 __db_re_pad_reply *
-__db_db_re_pad_3003(argp, clnt)
+__db_db_re_pad_4000(argp, clnt)
 	__db_re_pad_msg *argp;
 	CLIENT *clnt;
 {
@@ -555,7 +555,7 @@ __db_db_re_pad_3003(argp, clnt)
 }
 
 __db_remove_reply *
-__db_db_remove_3003(argp, clnt)
+__db_db_remove_4000(argp, clnt)
 	__db_remove_msg *argp;
 	CLIENT *clnt;
 {
@@ -572,7 +572,7 @@ __db_db_remove_3003(argp, clnt)
 }
 
 __db_rename_reply *
-__db_db_rename_3003(argp, clnt)
+__db_db_rename_4000(argp, clnt)
 	__db_rename_msg *argp;
 	CLIENT *clnt;
 {
@@ -589,7 +589,7 @@ __db_db_rename_3003(argp, clnt)
 }
 
 __db_stat_reply *
-__db_db_stat_3003(argp, clnt)
+__db_db_stat_4000(argp, clnt)
 	__db_stat_msg *argp;
 	CLIENT *clnt;
 {
@@ -606,7 +606,7 @@ __db_db_stat_3003(argp, clnt)
 }
 
 __db_sync_reply *
-__db_db_sync_3003(argp, clnt)
+__db_db_sync_4000(argp, clnt)
 	__db_sync_msg *argp;
 	CLIENT *clnt;
 {
@@ -623,7 +623,7 @@ __db_db_sync_3003(argp, clnt)
 }
 
 __db_truncate_reply *
-__db_db_truncate_3003(argp, clnt)
+__db_db_truncate_4000(argp, clnt)
 	__db_truncate_msg *argp;
 	CLIENT *clnt;
 {
@@ -640,7 +640,7 @@ __db_db_truncate_3003(argp, clnt)
 }
 
 __db_cursor_reply *
-__db_db_cursor_3003(argp, clnt)
+__db_db_cursor_4000(argp, clnt)
 	__db_cursor_msg *argp;
 	CLIENT *clnt;
 {
@@ -657,7 +657,7 @@ __db_db_cursor_3003(argp, clnt)
 }
 
 __db_join_reply *
-__db_db_join_3003(argp, clnt)
+__db_db_join_4000(argp, clnt)
 	__db_join_msg *argp;
 	CLIENT *clnt;
 {
@@ -674,7 +674,7 @@ __db_db_join_3003(argp, clnt)
 }
 
 __dbc_close_reply *
-__db_dbc_close_3003(argp, clnt)
+__db_dbc_close_4000(argp, clnt)
 	__dbc_close_msg *argp;
 	CLIENT *clnt;
 {
@@ -691,7 +691,7 @@ __db_dbc_close_3003(argp, clnt)
 }
 
 __dbc_count_reply *
-__db_dbc_count_3003(argp, clnt)
+__db_dbc_count_4000(argp, clnt)
 	__dbc_count_msg *argp;
 	CLIENT *clnt;
 {
@@ -708,7 +708,7 @@ __db_dbc_count_3003(argp, clnt)
 }
 
 __dbc_del_reply *
-__db_dbc_del_3003(argp, clnt)
+__db_dbc_del_4000(argp, clnt)
 	__dbc_del_msg *argp;
 	CLIENT *clnt;
 {
@@ -725,7 +725,7 @@ __db_dbc_del_3003(argp, clnt)
 }
 
 __dbc_dup_reply *
-__db_dbc_dup_3003(argp, clnt)
+__db_dbc_dup_4000(argp, clnt)
 	__dbc_dup_msg *argp;
 	CLIENT *clnt;
 {
@@ -742,7 +742,7 @@ __db_dbc_dup_3003(argp, clnt)
 }
 
 __dbc_get_reply *
-__db_dbc_get_3003(argp, clnt)
+__db_dbc_get_4000(argp, clnt)
 	__dbc_get_msg *argp;
 	CLIENT *clnt;
 {
@@ -759,7 +759,7 @@ __db_dbc_get_3003(argp, clnt)
 }
 
 __dbc_pget_reply *
-__db_dbc_pget_3003(argp, clnt)
+__db_dbc_pget_4000(argp, clnt)
 	__dbc_pget_msg *argp;
 	CLIENT *clnt;
 {
@@ -776,7 +776,7 @@ __db_dbc_pget_3003(argp, clnt)
 }
 
 __dbc_put_reply *
-__db_dbc_put_3003(argp, clnt)
+__db_dbc_put_4000(argp, clnt)
 	__dbc_put_msg *argp;
 	CLIENT *clnt;
 {

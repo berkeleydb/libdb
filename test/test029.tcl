@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test029.tcl,v 11.14 2001/01/25 18:23:10 bostic Exp $
+# $Id: test029.tcl,v 11.16 2001/08/03 16:39:38 bostic Exp $
 #
-# DB Test 29 {method nentries}
-# Test the Btree and Record number renumbering.
+# TEST	test029
+# TEST	Test the Btree and Record number renumbering.
 proc test029 { method {nentries 10000} args} {
 	source ./include.tcl
 
@@ -64,11 +64,11 @@ proc test029 { method {nentries 10000} args} {
 
 	# Create the database
 	if { [string compare $omethod "-btree"] == 0 } {
-		set db [eval {berkdb_open -create -truncate \
+		set db [eval {berkdb_open -create \
 			-mode 0644 -recnum} $args {$omethod $testfile}]
 	   error_check_good dbopen [is_valid_db $db] TRUE
 	} else {
-		set db [eval {berkdb_open -create -truncate \
+		set db [eval {berkdb_open -create \
 			-mode 0644} $args {$omethod $testfile}]
 	   error_check_good dbopen [is_valid_db $db] TRUE
 	}

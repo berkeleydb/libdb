@@ -5,7 +5,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: gen_rec.awk,v 11.36 2001/06/15 16:38:12 bostic Exp $
+# $Id: gen_rec.awk,v 11.45 2001/10/05 02:27:33 bostic Exp $
 #
 
 # This awk script generates all the log, print, and read routines for the DB
@@ -78,15 +78,19 @@ BEGIN {
 	else
 		printf("%s %s\n", $2, $3) >> CFILE
 }
-/^[ 	]*(BEGIN|IGNORED|DEPRECATED)/ {
+/^[ 	]*(BEGIN|IGNORED)/ {
 	if (in_begin) {
 		print "Invalid format: missing END statement"
 		exit
 	}
 	in_begin = 1;
 	is_dbt = 0;
+	is_uint = 0;
 	need_log_function = ($1 == "BEGIN");
 	nvars = 0;
+
+	# number of locks that the getpgnos functions will return
+	nlocks = 0;
 
 	thisfunc = $2;
 	funcname = sprintf("%s_%s", prefix, $2);
@@ -94,13 +98,10 @@ BEGIN {
 	rectype = $3;
 
 	funcs[num_funcs] = funcname;
-	if ($1 == "DEPRECATED")
-		funcs_recname[num_funcs] = "__deprecated_recover";
-	else
-		funcs_recname[num_funcs] = sprintf("__%s_recover", funcname);
+	funcs_recname[num_funcs] = sprintf("__%s_recover", funcname);
 	++num_funcs;
 }
-/^[ 	]*(ARG|DBT|POINTER)/ {
+/^[ 	]*(ARG|DBT|PGDBT|POINTER|WRLOCK|WRLOCKNZ)/ {
 	vars[nvars] = $2;
 	types[nvars] = $3;
 	atypes[nvars] = $1;
@@ -109,17 +110,29 @@ BEGIN {
 	for (i = 4; i < NF; i++)
 		types[nvars] = sprintf("%s %s", types[nvars], $i);
 
-	if ($1 == "ARG")
-		sizes[nvars] = sprintf("sizeof(%s)", $2);
-	else if ($1 == "POINTER")
+	if ($1 == "ARG" || $1 == "WRLOCK" || $1 == "WRLOCKNZ") {
+		sizes[nvars] = sprintf("sizeof(u_int32_t)");
+		is_uint = 1;
+	} else if ($1 == "POINTER")
 		sizes[nvars] = sprintf("sizeof(*%s)", $2);
-	else { # DBT
+	else { # DBT, PGDBT
 		sizes[nvars] = \
 		    sprintf("sizeof(u_int32_t) + (%s == NULL ? 0 : %s->size)", \
 		    $2, $2);
 		is_dbt = 1;
 	}
 	nvars++;
+}
+/^[	]*(WRLOCK|WRLOCKNZ)/ {
+	nlocks++;
+
+	if ($1 == "WRLOCK") {
+		lock_if_zero[nlocks] = 1;
+	} else {
+		lock_if_zero[nlocks] = 0;
+	}
+
+	lock_pgnos[nlocks] = $2;
 }
 /^[ 	]*END/ {
 	if (!in_begin) {
@@ -148,9 +161,11 @@ BEGIN {
 	}
 	printf("} __%s_args;\n\n", funcname) >> HFILE
 
-	# Output the log, print and read functions.
-	if (need_log_function)
+	# Output the log, print, read, and getpgnos functions.
+	if (need_log_function) {
 		log_function();
+		getpgnos_function();
+	}
 	print_function();
 	read_function();
 
@@ -166,16 +181,43 @@ BEGIN {
 
 END {
 	# Print initialization routine; function prototype
-	p[1] = sprintf("int __%s_init_print __P((DB_ENV *));", prefix);
+	p[1] = sprintf("int __%s_init_print __P((DB_ENV *, int (***)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *), size_t *));", prefix);
 	p[2] = "";
 	proto_format(p);
 
 	# Create the routine to call db_add_recovery(print_fn, id)
-	printf("int\n__%s_init_print(dbenv)\n", prefix) >> CFILE;
-	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
+	printf("int\n__%s_init_print(dbenv, dtabp, dtabsizep)\n", prefix) \
+	    >> CFILE;
+	printf("\tDB_ENV *dbenv;\n") >> CFILE;;
+	printf("\tint (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *,") >> CFILE;
+	printf(" db_recops, void *));\n") >> CFILE;
+	printf("\tsize_t *dtabsizep;\n{\n\tint ret;\n\n") >> CFILE;
 	for (i = 0; i < num_funcs; i++) {
-		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
+		printf("\tif ((ret = __db_add_recovery(dbenv, ") >> CFILE;
+		printf("dtabp, dtabsizep,\n") >> CFILE;
 		printf("\t    __%s_print, DB_%s)) != 0)\n", \
+		    funcs[i], funcs[i]) >> CFILE;
+		printf("\t\treturn (ret);\n") >> CFILE;
+	}
+	printf("\treturn (0);\n}\n\n") >> CFILE;
+
+	# Page number initialization routine; function prototype
+	# XXX Commented out for now
+	p[1] = sprintf("int __%s_init_getpgnos __P((DB_ENV *, int (***)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *), size_t *));", prefix);
+	p[2] = "";
+	proto_format(p);
+
+	# Create the routine to call db_add_recovery(pgno_fn, id)
+	printf("int\n__%s_init_getpgnos(dbenv, dtabp, dtabsizep)\n", prefix) \
+	    >> CFILE;
+	printf("\tDB_ENV *dbenv;\n") >> CFILE;
+	printf("\tint (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *,") >> CFILE;
+	printf(" db_recops, void *));\n") >> CFILE;
+	printf("\tsize_t *dtabsizep;\n{\n\tint ret;\n\n") >> CFILE;
+	for (i = 0; i < num_funcs; i++) {
+		printf("\tif ((ret = __db_add_recovery(dbenv, ") >> CFILE;
+		printf("dtabp, dtabsizep,\n") >> CFILE;
+		printf("\t    __%s_getpgnos, DB_%s)) != 0)\n", \
 		    funcs[i], funcs[i]) >> CFILE;
 		printf("\t\treturn (ret);\n") >> CFILE;
 	}
@@ -190,7 +232,8 @@ END {
 	printf("int\n__%s_init_recover(dbenv)\n", prefix) >> CFILE;
 	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
 	for (i = 0; i < num_funcs; i++) {
-		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
+		printf("\tif ((ret = __db_add_recovery(dbenv, ") >> CFILE;
+		printf("&dbenv->dtab, &dbenv->dtab_size,\n") >> CFILE;
 		printf("\t    %s, DB_%s)) != 0)\n", \
 		    funcs_recname[i], funcs[i]) >> CFILE;
 		printf("\t\treturn (ret);\n") >> CFILE;
@@ -210,9 +253,9 @@ function log_function() {
 	for (i = 0; i < nvars; i++) {
 		p[pi++] = ", ";
 		p[pi++] = sprintf("%s%s%s",
-		    modes[i] == "DBT" ? "const " : "",
+		    (modes[i] == "DBT" || modes[i] == "PGDBT") ? "const " : "",
 		    types[i],
-		    modes[i] == "DBT" ? " *" : "");
+		    (modes[i] == "DBT" || modes[i] == "PGDBT") ? " *" : "");
 	}
 	p[pi++] = "";
 	p[pi++] = "));";
@@ -237,7 +280,7 @@ function log_function() {
 	printf("\tDB_TXN *txnid;\n\tDB_LSN *ret_lsnp;\n") >> CFILE;
 	printf("\tu_int32_t flags;\n") >> CFILE;
 	for (i = 0; i < nvars; i++) {
-		if (modes[i] == "DBT")
+		if (modes[i] == "DBT" || modes[i] == "PGDBT")
 			printf("\tconst %s *%s;\n", types[i], vars[i]) >> CFILE;
 		else
 			printf("\t%s %s;\n", types[i], vars[i]) >> CFILE;
@@ -249,6 +292,8 @@ function log_function() {
 	printf("\tDB_LSN *lsnp, null_lsn;\n") >> CFILE;
 	if (is_dbt == 1)
 		printf("\tu_int32_t zero;\n") >> CFILE;
+	if (is_uint == 1)
+		printf("\tu_int32_t uinttmp;\n") >> CFILE;
 	printf("\tu_int32_t rectype, txn_num;\n") >> CFILE;
 	printf("\tint ret;\n") >> CFILE;
 	printf("\tu_int8_t *bp;\n\n") >> CFILE;
@@ -278,20 +323,23 @@ function log_function() {
 	printf("\t\treturn (ret);\n\n") >> CFILE;
 
 	# Copy args into buffer
-	printf("\tbp = logrec.data;\n") >> CFILE;
+	printf("\tbp = logrec.data;\n\n") >> CFILE;
 	printf("\tmemcpy(bp, &rectype, sizeof(rectype));\n") >> CFILE;
-	printf("\tbp += sizeof(rectype);\n") >> CFILE;
+	printf("\tbp += sizeof(rectype);\n\n") >> CFILE;
 	printf("\tmemcpy(bp, &txn_num, sizeof(txn_num));\n") >> CFILE;
-	printf("\tbp += sizeof(txn_num);\n") >> CFILE;
+	printf("\tbp += sizeof(txn_num);\n\n") >> CFILE;
 	printf("\tmemcpy(bp, lsnp, sizeof(DB_LSN));\n") >> CFILE;
-	printf("\tbp += sizeof(DB_LSN);\n") >> CFILE;
+	printf("\tbp += sizeof(DB_LSN);\n\n") >> CFILE;
 
 	for (i = 0; i < nvars; i ++) {
-		if (modes[i] == "ARG") {
-			printf("\tmemcpy(bp, &%s, %s);\n", \
-			    vars[i], sizes[i]) >> CFILE;
-			printf("\tbp += %s;\n", sizes[i]) >> CFILE;
-		} else if (modes[i] == "DBT") {
+		if (modes[i] == "ARG" || modes[i] == "WRLOCK" || \
+		    modes[i] == "WRLOCKNZ") {
+			printf("\tuinttmp = (u_int32_t)%s;\n", \
+			    vars[i]) >> CFILE;
+			printf("\tmemcpy(bp, &uinttmp, sizeof(uinttmp));\n") \
+			    >> CFILE;
+			printf("\tbp += sizeof(uinttmp);\n\n") >> CFILE;
+		} else if (modes[i] == "DBT" || modes[i] == "PGDBT") {
 			printf("\tif (%s == NULL) {\n", vars[i]) >> CFILE;
 			printf("\t\tzero = 0;\n") >> CFILE;
 			printf("\t\tmemcpy(bp, &zero, sizeof(u_int32_t));\n") \
@@ -304,14 +352,15 @@ function log_function() {
 			    >> CFILE;
 			printf("\t\tmemcpy(bp, %s->data, %s->size);\n", \
 			    vars[i], vars[i]) >> CFILE;
-			printf("\t\tbp += %s->size;\n\t}\n", vars[i]) >> CFILE;
+			printf("\t\tbp += %s->size;\n\t}\n\n", \
+			    vars[i]) >> CFILE;
 		} else { # POINTER
 			printf("\tif (%s != NULL)\n", vars[i]) >> CFILE;
 			printf("\t\tmemcpy(bp, %s, %s);\n", vars[i], \
 			    sizes[i]) >> CFILE;
 			printf("\telse\n") >> CFILE;
 			printf("\t\tmemset(bp, 0, %s);\n", sizes[i]) >> CFILE;
-			printf("\tbp += %s;\n", sizes[i]) >> CFILE;
+			printf("\tbp += %s;\n\n", sizes[i]) >> CFILE;
 		}
 	}
 
@@ -323,11 +372,11 @@ function log_function() {
 	# The logging system cannot call the public log_put routine
 	# due to mutual exclusion constraints.  So, if we are
 	# generating code for the log subsystem, use the internal
-	# __log_put.
+	# __log_put_int.
 	if (prefix == "log")
-		printf("\tret = __log_put\(dbenv, ret_lsnp, ") >> CFILE;
+		printf("\tret = __log_put_int\(dbenv, ret_lsnp, ") >> CFILE;
 	else
-		printf("\tret = log_put(dbenv, ret_lsnp, ") >> CFILE;
+		printf("\tret = dbenv->log_put(dbenv, ret_lsnp, ") >> CFILE;
 	printf("(DBT *)&logrec, flags);\n") >> CFILE;
 
 	# Update the transactions last_lsn
@@ -365,10 +414,16 @@ function print_function() {
 
 	# Locals
 	printf("\t__%s_args *argp;\n", funcname) >> CFILE;
-	printf("\tu_int32_t i;\n\tu_int ch;\n\tint ret;\n\n") >> CFILE;
+	for (i = 0; i < nvars; i ++)
+		if (modes[i] == "DBT" || modes[i] == "PGDBT") {
+			printf("\tu_int32_t i;\n") >> CFILE
+			printf("\tu_int ch;\n") >> CFILE
+			break;
+		}
+
+	printf("\tint ret;\n\n") >> CFILE;
 
 	# Get rid of complaints about unused parameters.
-	printf("\ti = 0;\n\tch = 0;\n") >> CFILE;
 	printf("\tnotused2 = DB_TXN_ABORT;\n\tnotused3 = NULL;\n\n") >> CFILE;
 
 	# Call read routine to initialize structure
@@ -391,7 +446,7 @@ function print_function() {
 	for (i = 0; i < nvars; i ++) {
 		printf("\t(void)printf(\"\\t%s: ", vars[i]) >> CFILE;
 
-		if (modes[i] == "DBT") {
+		if (modes[i] == "DBT" || modes[i] == "PGDBT") {
 			printf("\");\n") >> CFILE;
 			printf("\tfor (i = 0; i < ") >> CFILE;
 			printf("argp->%s.size; i++) {\n", vars[i]) >> CFILE;
@@ -444,31 +499,33 @@ function read_function() {
 
 	# Function body and local decls
 	printf("{\n\t__%s_args *argp;\n", funcname) >> CFILE;
-	printf("\tu_int8_t *bp;\n") >> CFILE;
 	printf("\tint ret;\n") >> CFILE;
+	if (is_uint == 1)
+		printf("\tu_int32_t uinttmp;\n") >> CFILE;
+	printf("\tu_int8_t *bp;\n") >> CFILE;
 
 	printf("\n\tret = __os_malloc(dbenv, sizeof(") >> CFILE;
 	printf("__%s_args) +\n\t    sizeof(DB_TXN), &argp);\n", \
 	    funcname) >> CFILE;
 	printf("\tif (ret != 0)\n\t\treturn (ret);\n") >> CFILE;
 
-	# Set up the pointers to the txnid and the prev lsn
-	printf("\targp->txnid = (DB_TXN *)&argp[1];\n") >> CFILE;
+	# Set up the pointers to the txnid.
+	printf("\targp->txnid = (DB_TXN *)&argp[1];\n\n") >> CFILE;
 
 	# First get the record type, prev_lsn, and txnid fields.
 
 	printf("\tbp = recbuf;\n") >> CFILE;
 	printf("\tmemcpy(&argp->type, bp, sizeof(argp->type));\n") >> CFILE;
-	printf("\tbp += sizeof(argp->type);\n") >> CFILE;
+	printf("\tbp += sizeof(argp->type);\n\n") >> CFILE;
 	printf("\tmemcpy(&argp->txnid->txnid,  bp, ") >> CFILE;
 	printf("sizeof(argp->txnid->txnid));\n") >> CFILE;
-	printf("\tbp += sizeof(argp->txnid->txnid);\n") >> CFILE;
+	printf("\tbp += sizeof(argp->txnid->txnid);\n\n") >> CFILE;
 	printf("\tmemcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));\n") >> CFILE;
-	printf("\tbp += sizeof(DB_LSN);\n") >> CFILE;
+	printf("\tbp += sizeof(DB_LSN);\n\n") >> CFILE;
 
 	# Now get rest of data.
 	for (i = 0; i < nvars; i ++) {
-		if (modes[i] == "DBT") {
+		if (modes[i] == "DBT" || modes[i] == "PGDBT") {
 			printf("\tmemset(&argp->%s, 0, sizeof(argp->%s));\n", \
 			    vars[i], vars[i]) >> CFILE;
 			printf("\tmemcpy(&argp->%s.size, ", vars[i]) >> CFILE;
@@ -476,20 +533,128 @@ function read_function() {
 			printf("\tbp += sizeof(u_int32_t);\n") >> CFILE;
 			printf("\targp->%s.data = bp;\n", vars[i]) >> CFILE;
 			printf("\tbp += argp->%s.size;\n", vars[i]) >> CFILE;
-		} else if (modes[i] == "ARG") {
-			printf("\tmemcpy(&argp->%s, bp, %s%s));\n", \
-			    vars[i], "sizeof(argp->", vars[i]) >> CFILE;
-			printf("\tbp += sizeof(argp->%s);\n", vars[i]) >> CFILE;
+		} else if (modes[i] == "ARG" || modes[i] == "WRLOCK" || \
+		    modes[i] == "WRLOCKNZ") {
+			printf("\tmemcpy(&uinttmp, bp, sizeof(uinttmp));\n") \
+			    >> CFILE;
+			printf("\targp->%s = (%s)uinttmp;\n", vars[i], \
+			    types[i]) >> CFILE;
+			printf("\tbp += sizeof(uinttmp);\n") >> CFILE;
 		} else { # POINTER
 			printf("\tmemcpy(&argp->%s, bp, ", vars[i]) >> CFILE;
 			printf(" sizeof(argp->%s));\n", vars[i]) >> CFILE;
 			printf("\tbp += sizeof(argp->%s);\n", vars[i]) >> CFILE;
 		}
+		printf("\n") >> CFILE;
 	}
 
 	# Free and return
 	printf("\t*argpp = argp;\n") >> CFILE;
 	printf("\treturn (0);\n}\n\n") >> CFILE;
+}
+
+function getpgnos_function() {
+	# Write the getpgnos function;  function prototype
+	p[1] = sprintf("int __%s_getpgnos", funcname);
+	p[2] = " ";
+	p[3] = "__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));";
+	p[4] = "";
+	proto_format(p);
+
+	# Function declaration
+	printf("int\n__%s_getpgnos(dbenv, ", funcname) >> CFILE;
+	printf("rec, lsnp, notused1, summary)\n") >> CFILE;
+	printf("\tDB_ENV *dbenv;\n") >> CFILE;
+	printf("\tDBT *rec;\n") >> CFILE;
+	printf("\tDB_LSN *lsnp;\n") >> CFILE;
+	printf("\tdb_recops notused1;\n") >> CFILE;
+	printf("\tvoid *summary;\n{\n") >> CFILE;
+
+	# If there are no locks, return this fact.
+	if (nlocks == 0) {
+		printf("\tTXN_RECS *t;\n") >> CFILE;
+		printf("\tint ret;\n") >> CFILE;
+		printf("\tCOMPQUIET(rec, NULL);\n") >> CFILE;
+		printf("\tCOMPQUIET(notused1, DB_TXN_ABORT);\n") >> CFILE;
+
+		printf("\n\tt = (TXN_RECS *)summary;\n") >> CFILE;
+		printf("\n\tif ((ret = __rep_check_alloc(dbenv, ") >> CFILE;
+		printf("t, 1)) != 0)\n") >> CFILE;
+		printf("\t\treturn (ret);\n") >> CFILE;
+
+		printf("\n\tt->array[t->npages].flags = LSN_PAGE_NOLOCK;\n") \
+			>> CFILE;
+		printf("\tt->array[t->npages].lsn = *lsnp;\n") >> CFILE;
+		printf("\tt->array[t->npages].fid = DB_LOGFILEID_INVALID;\n") \
+			>> CFILE;
+		printf("\tmemset(&t->array[t->npages].pgdesc, 0,\n") >> CFILE;
+		printf("\t    sizeof(t->array[t->npages].pgdesc));\n") >> CFILE;
+		printf("\n\tt->npages++;\n") >> CFILE;
+
+		printf("\n") >> CFILE;
+		printf("\treturn (0);\n") >> CFILE;
+		printf("}\n\n") >> CFILE;
+		return;
+	}
+
+	# Locals
+	printf("\tDB *dbp;\n") >> CFILE;
+	printf("\tTXN_RECS *t;\n") >> CFILE;
+	printf("\t__%s_args *argp;\n", funcname) >> CFILE;
+	printf("\tu_int32_t ret;\n\n") >> CFILE;
+
+	# Shut up compiler.
+	printf("\tCOMPQUIET(notused1, DB_TXN_ABORT);\n\n") >> CFILE;
+
+	printf("\targp = NULL;\n") >> CFILE;
+	printf("\tt = (TXN_RECS *)summary;\n\n") >> CFILE;
+
+	printf("\tif ((ret = __%s_read(dbenv, rec->data, &argp)) != 0)\n", \
+		funcname) >> CFILE;
+	printf("\t\treturn (ret);\n") >> CFILE;
+
+	# Get file ID.
+	printf("\n\tif ((ret = __db_fileid_to_db(dbenv, ") >> CFILE;
+	printf("&dbp, argp->fileid, 0)) != 0)\n") >> CFILE;
+	printf("\t\tgoto err;\n") >> CFILE;
+
+	printf("\n\tif ((ret = __rep_check_alloc(dbenv, t, %d)) != 0)\n", \
+		nlocks) >> CFILE;
+	printf("\t\tgoto err;\n\n") >> CFILE;
+
+	for (i = 1; i <= nlocks; i++) {
+		if (lock_if_zero[i]) {
+			indent = "\t";
+		} else {
+			indent = "\t\t";
+			printf("\tif (argp->%s != PGNO_INVALID) {\n", \
+				lock_pgnos[i]) >> CFILE;
+		}
+		printf("%st->array[t->npages].flags = 0;\n", indent) >> CFILE;
+		printf("%st->array[t->npages].fid = argp->fileid;\n", indent) \
+		    >> CFILE;
+		printf("%st->array[t->npages].lsn = *lsnp;\n", indent) >> CFILE;
+		printf("%st->array[t->npages].pgdesc.pgno = argp->%s;\n", \
+			indent, lock_pgnos[i]) >> CFILE;
+		printf("%st->array[t->npages].pgdesc.type = DB_PAGE_LOCK;\n", \
+			indent) >> CFILE;
+		printf("%smemcpy(t->array[t->npages].pgdesc.fileid, ", indent) \
+			>> CFILE;
+		printf("dbp->fileid,\n%s    DB_FILE_ID_LEN);\n", \
+			indent, indent) >> CFILE;
+		printf("%st->npages++;\n", indent) >> CFILE;
+		if (!lock_if_zero[i]) {
+			printf("\t}\n") >> CFILE;
+		}
+	}
+
+	printf("\nerr:\tif (argp != NULL)\n") >> CFILE;
+	printf("\t\t__os_free(dbenv, ") >> CFILE;
+	printf("argp, sizeof(__%s_args));\n", funcname) >> CFILE;
+
+	printf("\treturn (ret);\n") >> CFILE;
+
+	printf("}\n\n") >> CFILE;
 }
 
 # proto_format --

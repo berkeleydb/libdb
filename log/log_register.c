@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_register.c,v 11.40 2001/07/02 01:05:42 bostic Exp $";
+static const char revid[] = "$Id: log_register.c,v 11.45 2001/10/04 21:26:29 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,58 +16,66 @@ static const char revid[] = "$Id: log_register.c,v 11.40 2001/07/02 01:05:42 bos
 #include <string.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "log.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
+#define	LOGREG_RECOVER(dblp)				\
+    (F_ISSET((dblp), DBLOG_RECOVER) || LF_ISSET(DB_APPLY_LOGREG))
 
 /*
- * log_register --
+ * __log_register --
  *	Register a file name.
  *
- * EXTERN: int log_register __P((DB_ENV *, DB *, const char *));
+ * PUBLIC: int __log_register __P((DB_ENV *, DB *, const char *));
  */
 int
-log_register(dbenv, dbp, name)
+__log_register(dbenv, dbp, name)
 	DB_ENV *dbenv;
 	DB *dbp;
 	const char *name;
 {
+
+	return (__log_register_int(dbenv, dbp, name, 0));
+}
+
+/*
+ * __log_register_int --
+ *	Internal log_register function.
+ *
+ * PUBLIC: int __log_register_int __P((DB_ENV *,
+ * PUBLIC:     DB *, const char *, u_int32_t));
+ */
+int
+__log_register_int(dbenv, dbp, name, flags)
+	DB_ENV *dbenv;
+	DB *dbp;
+	const char *name;
+	u_int32_t flags;
+{
 	DBT fid_dbt, r_name;
 	DB_LOG *dblp;
 	DB_LSN r_unused;
-	FNAME *found_fnp, *fnp, *recover_fnp, *reuse_fnp;
+	FNAME *alloc_fnp, *found_fnp, *fnp, *recover_fnp, *reuse_fnp;
 	LOG *lp;
 	size_t len;
 	int32_t maxid;
 	int inserted, ok, ret;
 	void *namep;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_log_register(dbenv, dbp, name));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lg_handle, "log_register", DB_INIT_LOG);
+	    dbenv->lg_handle, "DB_ENV->log_register", DB_INIT_LOG);
 
 	dblp = dbenv->lg_handle;
 	lp = dblp->reginfo.primary;
-	fnp = reuse_fnp = NULL;
+	alloc_fnp = fnp = reuse_fnp = NULL;
 	inserted = ret = 0;
 	namep = NULL;
 
 	/* Check the arguments. */
 	if (dbp->type != DB_BTREE && dbp->type != DB_QUEUE &&
 	    dbp->type != DB_HASH && dbp->type != DB_RECNO) {
-		__db_err(dbenv, "log_register: unknown DB file type");
+		__db_err(dbenv, "DB_ENV->log_register: unknown DB file type");
 		return (EINVAL);
 	}
 
@@ -83,7 +91,7 @@ log_register(dbenv, dbp, name)
 	found_fnp = recover_fnp = NULL;
 	for (maxid = 0, fnp = SH_TAILQ_FIRST(&lp->fq, __fname);
 	    fnp != NULL; fnp = SH_TAILQ_NEXT(fnp, q, __fname)) {
-		if (F_ISSET(dblp, DBLOG_RECOVER) && fnp->id == dbp->log_fileid)
+		if (LOGREG_RECOVER(dblp) && fnp->id == dbp->log_fileid)
 			recover_fnp = fnp;
 		if (fnp->ref == 0) {		/* Entry is not in use. */
 			if (reuse_fnp == NULL)
@@ -94,7 +102,8 @@ log_register(dbenv, dbp, name)
 			if (fnp->meta_pgno == 0) {
 				if (fnp->locked == 1) {
 					__db_err(dbenv, "File is locked");
-					return (EINVAL);
+					ret = EINVAL;
+					goto err;
 				}
 				if (found_fnp != NULL) {
 					fnp = found_fnp;
@@ -103,7 +112,7 @@ log_register(dbenv, dbp, name)
 				ok = 1;
 			}
 			if (dbp->meta_pgno == fnp->meta_pgno) {
-				if (F_ISSET(dblp, DBLOG_RECOVER)) {
+				if (LOGREG_RECOVER(dblp)) {
 					if (fnp->id != dbp->log_fileid) {
 						/*
 						 * If we are in recovery, there
@@ -143,12 +152,13 @@ log_register(dbenv, dbp, name)
 		fnp = reuse_fnp;
 	else {				/* Allocate a new one. */
 		if ((ret = __db_shalloc(dblp->reginfo.addr,
-		    sizeof(FNAME), 0, &fnp)) != 0)
+		    sizeof(FNAME), 0, &alloc_fnp)) != 0)
 			goto mem_err;
+		fnp = alloc_fnp;
 		fnp->id = maxid;
 	}
 
-	if (F_ISSET(dblp, DBLOG_RECOVER))
+	if (LOGREG_RECOVER(dblp))
 		fnp->id = dbp->log_fileid;
 
 	fnp->ref = 1;
@@ -164,7 +174,7 @@ log_register(dbenv, dbp, name)
 mem_err:		__db_err(dbenv,
 			    "Unable to allocate memory to register %s", name);
 			goto err;
-	}
+		}
 		fnp->name_off = R_OFFSET(&dblp->reginfo, namep);
 		memcpy(namep, name, len);
 	} else
@@ -176,7 +186,7 @@ mem_err:		__db_err(dbenv,
 	inserted = 1;
 
 	/* Log the registry. */
-	if (!F_ISSET(dblp, DBLOG_RECOVER)) {
+	if (!LOGREG_RECOVER(dblp) && !F_ISSET(dbenv, DB_ENV_REP_CLIENT)) {
 		/*
 		 * We allow logging on in-memory databases, so the name here
 		 * could be NULL.
@@ -199,11 +209,11 @@ found:	/*
 	 * already open, so there is no need to log the open.  We only
 	 * log the open and closes on the first open and last close.
 	 */
-	if (!F_ISSET(dblp, DBLOG_RECOVER) &&
+	if (!LOGREG_RECOVER(dblp) &&
 	    (ret = __log_add_logid(dbenv, dblp, dbp, fnp->id)) != 0)
 			goto err;
 
-	if (!F_ISSET(dblp, DBLOG_RECOVER))
+	if (!LOGREG_RECOVER(dblp))
 		dbp->log_fileid = fnp->id;
 
 	if (0) {
@@ -211,8 +221,8 @@ err:		if (inserted)
 			SH_TAILQ_REMOVE(&lp->fq, fnp, q, __fname);
 		if (namep != NULL)
 			__db_shalloc_free(dblp->reginfo.addr, namep);
-		if (fnp != NULL)
-			__db_shalloc_free(dblp->reginfo.addr, fnp);
+		if (alloc_fnp != NULL)
+			__db_shalloc_free(dblp->reginfo.addr, alloc_fnp);
 	}
 
 	R_UNLOCK(dbenv, &dblp->reginfo);
@@ -221,26 +231,21 @@ err:		if (inserted)
 }
 
 /*
- * log_unregister --
+ * __log_unregister --
  *	Discard a registered file name.
  *
- * EXTERN: int log_unregister __P((DB_ENV *, DB *));
+ * PUBLIC: int __log_unregister __P((DB_ENV *, DB *));
  */
 int
-log_unregister(dbenv, dbp)
+__log_unregister(dbenv, dbp)
 	DB_ENV *dbenv;
 	DB *dbp;
 {
 	int ret;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_log_unregister(dbenv, dbp));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lg_handle, "log_unregister", DB_INIT_LOG);
+	    dbenv->lg_handle, "DB_ENV->log_unregister", DB_INIT_LOG);
 
 	ret = __log_filelist_update(dbenv, dbp, dbp->log_fileid, NULL, NULL);
 	dbp->log_fileid = DB_LOGFILEID_INVALID;
@@ -286,7 +291,7 @@ __log_filelist_update(dbenv, dbp, fid, newname, set)
 		if (fid == fnp->id)
 			break;
 	if (fnp == NULL) {
-		__db_err(dbenv, "log_unregister: non-existent file id");
+		__db_err(dbenv, "DB_ENV->log_unregister: non-existent file id");
 		ret = EINVAL;
 		goto ret1;
 	}
@@ -302,7 +307,8 @@ __log_filelist_update(dbenv, dbp, fid, newname, set)
 		namep = R_ADDR(&dblp->reginfo, fnp->name_off);
 		len = strlen(namep) + 1;
 	}
-	if (!F_ISSET(dblp, DBLOG_RECOVER) && fnp->ref == 1) {
+	if (!F_ISSET(dbenv, DB_ENV_REP_CLIENT) &&
+	    !F_ISSET(dblp, DBLOG_RECOVER) && fnp->ref == 1) {
 		if (namep != NULL) {
 			memset(&r_name, 0, sizeof(r_name));
 			r_name.data = namep;
@@ -322,7 +328,7 @@ __log_filelist_update(dbenv, dbp, fid, newname, set)
 	/*
 	 * If we are changing the name we must log this fact.
 	 */
-	if (newname != NULL) {
+	if (newname != NULL && !F_ISSET(dbenv, DB_ENV_REP_CLIENT)) {
 		DB_ASSERT(fnp->ref == 1);
 		newlen = strlen(newname) + 1;
 		if (!F_ISSET(dblp, DBLOG_RECOVER)) {

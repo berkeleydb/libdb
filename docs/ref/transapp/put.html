@@ -96,8 +96,8 @@ add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 <p>
 	for (fail = 0;;) {
 		/* Begin the transaction. */
-		if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-			dbenv-&gt;err(dbenv, ret, "txn_begin");
+		if ((ret = dbenv-&gt;txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+			dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;txn_begin");
 			exit (1);
 		}
 <p>
@@ -105,16 +105,16 @@ add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 		switch (ret = db-&gt;put(db, tid, &key, &data, 0)) {
 		case 0:
 			/* Success: commit the change. */
-			if ((ret = txn_commit(tid, 0)) != 0) {
-				dbenv-&gt;err(dbenv, ret, "txn_commit");
+			if ((ret = tid-&gt;commit(tid, 0)) != 0) {
+				dbenv-&gt;err(dbenv, ret, "DB_TXN-&gt;commit");
 				exit (1);
 			}
 			return (0);
 		case DB_LOCK_DEADLOCK:
 		default:
 			/* Retry the operation. */
-			if ((t_ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
+			if ((t_ret = tid-&gt;abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
 			if (++fail == MAXIMUM_RETRY)
@@ -145,7 +145,7 @@ problem.  When an application receives a <a href="../../ref/program/errorret.htm
 return, the correct action is to close any cursors involved in the
 operation and abort any enclosing transaction.  In the sample code, any
 time the <a href="../../api_c/db_put.html">DB-&gt;put</a> function returns <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>,
-<a href="../../api_c/txn_abort.html">txn_abort</a> is called (which releases the transaction's Berkeley DB
+<a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> is called (which releases the transaction's Berkeley DB
 resources and undoes any partial changes to the databases), and then
 the transaction is retried from the beginning.
 <p>There is no requirement that the transaction be attempted again, but
@@ -155,7 +155,7 @@ retried because some operations on some data sets may simply be unable
 to succeed.  For example, updating all of the pages on a large Web site
 during prime business hours may simply be impossible because of the high
 access rate to the database.
-<p>The <a href="../../api_c/txn_abort.html">txn_abort</a> function is called in error cases other than deadlock.
+<p>The <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> function is called in error cases other than deadlock.
 Any time an error occurs, such that a transactionally protected set of
 operations cannot complete successfully, the transaction must be
 aborted.  While deadlock is by far the most common of these errors,
@@ -167,11 +167,11 @@ errors are errors like <a href="../../ref/program/errorret.html#DB_NOTFOUND">DB_
 searched-for key item is not present in the database.  Applications may
 want to explicitly test for and handle this error, or, in the case where
 the absence of a key implies the enclosing transaction should fail,
-simply call <a href="../../api_c/txn_abort.html">txn_abort</a>.  Unexpected but recoverable errors are
+simply call <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a>.  Unexpected but recoverable errors are
 errors like <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>, which indicates that an operation
 has been selected to resolve a deadlock, or a system error such as EIO,
 which likely indicates that the filesystem has no available disk space.
-Applications must immediately call <a href="../../api_c/txn_abort.html">txn_abort</a> when these returns
+Applications must immediately call <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> when these returns
 occur, as it is not possible to proceed otherwise.  The only
 unrecoverable error is <a href="../../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, which indicates that the
 system must stop and recovery must be run.

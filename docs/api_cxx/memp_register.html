@@ -1,4 +1,4 @@
-<!--$Id: memp_register.so,v 10.24 2001/04/02 20:10:07 bostic Exp $-->
+<!--$Id: memp_register.so,v 10.26 2001/10/22 15:24:36 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::memp_register</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,14 +22,14 @@
 #include &lt;db_cxx.h&gt;
 <p>
 extern "C" {
-	typedef int (*pgin_fcn_type)(DB_ENV *dbenv,
-		db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
-	typedef int (*pgout_fcn_type)(DB_ENV *dbenv,
-		db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
+    typedef int (*pgin_fcn_type)(DB_ENV *dbenv,
+	db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
+    typedef int (*pgout_fcn_type)(DB_ENV *dbenv,
+	db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
 };
 int
 DbEnv::memp_register(int ftype,
-	pgin_fcn_type pgin_fcn, pgout_fcn_type pgout_fcn);
+    pgin_fcn_type pgin_fcn, pgout_fcn_type pgout_fcn);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::memp_register method registers page-in and page-out
@@ -40,11 +40,11 @@ a page is created for a file of type <b>ftype</b> (see the
 DB_MPOOL_CREATE flag for the <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a> method).
 <p>If the <b>pgout_fcn</b> function is non-NULL, it is called each time
 a page is written to a file of type <b>ftype</b>.
-<p>Both the <b>pgin_fcn</b> and <b>pgout_fcn</b> functions are called with
-a reference to the current environment, the page number, a pointer to the
-page being read or written, and any argument <b>pgcookie</b> that was
-specified to the <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a> function when the file was opened.
-The <b>pgin_fcn</b> and <b>pgout_fcn</b> functions should return 0 on
+<p>Both the <b>pgin_fcn</b> and <b>pgout_fcn</b> functions are called
+with a reference to the current environment, the page number, a pointer
+to the page being read or written, and any argument <b>pgcookie</b>
+that was specified to the <a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a> method.  The
+<b>pgin_fcn</b> and <b>pgout_fcn</b> functions should return 0 on
 success, and an applicable non-zero <b>errno</b> value on failure, in
 which case the shared memory pool interface routine (and, by extension,
 any Berkeley DB library function) calling it will also fail, returning that
@@ -82,6 +82,7 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -89,13 +90,18 @@ in the same way.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

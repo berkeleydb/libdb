@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_iface.c,v 11.53 2001/07/02 01:05:37 bostic Exp $";
+static const char revid[] = "$Id: db_iface.c,v 11.58 2001/11/16 16:32:34 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,29 +25,37 @@ static int __db_rdonly __P((const DB_ENV *, const char *));
 static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
 
 /*
+ * A database should be required to be readonly if it's been explicitly
+ * specified as such or if we're a client in a replicated environment and
+ * we don't have the special "client-writer" designation.
+ */
+#define	IS_READONLY(D)						\
+    F_ISSET((D), DB_AM_RDONLY) ||				\
+    (F_ISSET((D)->dbenv, DB_ENV_REP_CLIENT) && !F_ISSET((D), DB_CL_WRITER))
+
+/*
  * __db_cursorchk --
  *	Common cursor argument checking routine.
  *
- * PUBLIC: int __db_cursorchk __P((const DB *, u_int32_t, int));
+ * PUBLIC: int __db_cursorchk __P((const DB *, u_int32_t));
  */
 int
-__db_cursorchk(dbp, flags, isrdonly)
+__db_cursorchk(dbp, flags)
 	const DB *dbp;
 	u_int32_t flags;
-	int isrdonly;
 {
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case 0:
 		break;
 	case DB_WRITECURSOR:
-		if (isrdonly)
+		if (IS_READONLY(dbp))
 			return (__db_rdonly(dbp->dbenv, "DB->cursor"));
 		if (!CDB_LOCKING(dbp->dbenv))
 			return (__db_ferr(dbp->dbenv, "DB->cursor", 0));
 		break;
 	case DB_WRITELOCK:
-		if (isrdonly)
+		if (IS_READONLY(dbp))
 			return (__db_rdonly(dbp->dbenv, "DB->cursor"));
 		break;
 	default:
@@ -88,16 +96,16 @@ __db_ccountchk(dbp, flags, isvalid)
  * __db_cdelchk --
  *	Common cursor delete argument checking routine.
  *
- * PUBLIC: int __db_cdelchk __P((const DB *, u_int32_t, int, int));
+ * PUBLIC: int __db_cdelchk __P((const DB *, u_int32_t, int));
  */
 int
-__db_cdelchk(dbp, flags, isrdonly, isvalid)
+__db_cdelchk(dbp, flags, isvalid)
 	const DB *dbp;
 	u_int32_t flags;
-	int isrdonly, isvalid;
+	int isvalid;
 {
 	/* Check for changes to a read-only tree. */
-	if (isrdonly)
+	if (IS_READONLY(dbp))
 		return (__db_rdonly(dbp->dbenv, "c_del"));
 
 	/* Check for invalid function flags. */
@@ -176,6 +184,7 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	case DB_CURRENT:
 	case DB_FIRST:
 	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
 	case DB_NEXT:
 	case DB_NEXT_DUP:
 	case DB_NEXT_NODUP:
@@ -237,22 +246,22 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
  *	Common cursor put argument checking routine.
  *
  * PUBLIC: int __db_cputchk __P((const DB *,
- * PUBLIC:    const DBT *, DBT *, u_int32_t, int, int));
+ * PUBLIC:    const DBT *, DBT *, u_int32_t, int));
  */
 int
-__db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
+__db_cputchk(dbp, key, data, flags, isvalid)
 	const DB *dbp;
 	const DBT *key;
 	DBT *data;
 	u_int32_t flags;
-	int isrdonly, isvalid;
+	int isvalid;
 {
 	int key_flags, ret;
 
 	key_flags = 0;
 
 	/* Check for changes to a read-only tree. */
-	if (isrdonly)
+	if (IS_READONLY(dbp))
 		return (__db_rdonly(dbp->dbenv, "c_put"));
 
 	/* Check for puts on a secondary. */
@@ -378,7 +387,8 @@ __db_pgetchk(dbp, skey, pkey, data, flags)
 	/* But the pkey field can't be NULL if we're doing a DB_GET_BOTH. */
 	if (pkey == NULL && flags == DB_GET_BOTH) {
 		__db_err(dbp->dbenv,
-    "A primary key must be specified to use DB_GET_BOTH on a secondary index");
+		    "DB_GET_BOTH on a secondary index requires a primary key");
+		return (EINVAL);
 	}
 
 	return (__db_getchk(dbp, skey, data, save_flags));
@@ -405,7 +415,7 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 
 	if (!F_ISSET(dbp, DB_AM_SECONDARY)) {
 		__db_err(dbp->dbenv,
-		    "DBC->c_pget() may only be used on secondary indices");
+		    "DBcursor->c_pget() may only be used on secondary indices");
 		return (EINVAL);
 	}
 
@@ -420,7 +430,7 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 	case DB_CONSUME:
 	case DB_CONSUME_WAIT:
 		/* DB_CONSUME makes no sense on a secondary index. */
-		return (__db_ferr(dbp->dbenv, "DBC->c_pget", 0));
+		return (__db_ferr(dbp->dbenv, "DBcursor->c_pget", 0));
 	case DB_GET_BOTH:
 		/* DB_GET_BOTH is "get both the primary and the secondary". */
 		if (pkey == NULL) {
@@ -428,7 +438,7 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 		    "DB_GET_BOTH requires both a secondary and a primary key");
 			return (EINVAL);
 		}
-		/* FALLTHROUGH */
+		break;
 	default:
 		/* __db_cgetchk will catch the rest. */
 		break;
@@ -445,7 +455,8 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 	/* But the pkey field can't be NULL if we're doing a DB_GET_BOTH. */
 	if (pkey == NULL && flags == DB_GET_BOTH) {
 		__db_err(dbp->dbenv,
-    "A primary key must be specified to use DB_GET_BOTH on a secondary index");
+		    "DB_GET_BOTH on a secondary index requires a primary key");
+		return (EINVAL);
 	}
 
 	return (__db_cgetchk(dbp, skey, data, save_flags, isvalid));
@@ -478,19 +489,18 @@ __db_closechk(dbp, flags)
  * __db_delchk --
  *	Common delete argument checking routine.
  *
- * PUBLIC: int __db_delchk __P((const DB *, DBT *, u_int32_t, int));
+ * PUBLIC: int __db_delchk __P((const DB *, DBT *, u_int32_t));
  */
 int
-__db_delchk(dbp, key, flags, isrdonly)
+__db_delchk(dbp, key, flags)
 	const DB *dbp;
 	DBT *key;
 	u_int32_t flags;
-	int isrdonly;
 {
 	COMPQUIET(key, NULL);
 
 	/* Check for changes to a read-only tree. */
-	if (isrdonly)
+	if (IS_READONLY(dbp))
 		return (__db_rdonly(dbp->dbenv, "delete"));
 
 	/* Check for invalid function flags. */
@@ -701,20 +711,20 @@ __db_joingetchk(dbp, key, flags)
  *	Common put argument checking routine.
  *
  * PUBLIC: int __db_putchk
- * PUBLIC:    __P((const DB *, DBT *, const DBT *, u_int32_t, int, int));
+ * PUBLIC:    __P((const DB *, DBT *, const DBT *, u_int32_t, int));
  */
 int
-__db_putchk(dbp, key, data, flags, isrdonly, isdup)
+__db_putchk(dbp, key, data, flags, isdup)
 	const DB *dbp;
 	DBT *key;
 	const DBT *data;
 	u_int32_t flags;
-	int isrdonly, isdup;
+	int isdup;
 {
 	int ret;
 
 	/* Check for changes to a read-only tree. */
-	if (isrdonly)
+	if (IS_READONLY(dbp))
 		return (__db_rdonly(dbp->dbenv, "put"));
 
 	/* Check for invalid function flags. */
@@ -924,7 +934,7 @@ __db_secondary_corrupt(dbp)
 int
 __db_associatechk(dbp, sdbp, callback, flags)
 	DB *dbp, *sdbp;
-	int (*callback)(DB *, const DBT *, const DBT *, DBT *);
+	int (*callback) __P((DB *, const DBT *, const DBT *, DBT *));
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;

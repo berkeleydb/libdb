@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_errno.c,v 11.6 2001/01/25 18:23:00 bostic Exp $";
+static const char revid[] = "$Id: os_errno.c,v 11.7 2001/08/09 19:14:25 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -63,8 +63,8 @@ __os_win32_errno(void)
 	 * The caller must take care to set it to 0 before
 	 * any system operation.
 	 */
-	if (__os_get_errno() != 0)
-		return (__os_get_errno());
+	if ((ret = __os_get_errno()) != 0)
+		return (ret);
 
 	last_error = GetLastError();
 

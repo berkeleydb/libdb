@@ -1,4 +1,4 @@
-<!--$Id: intro.so,v 10.19 2001/05/04 20:12:40 bostic Exp $-->
+<!--$Id: intro.so,v 10.21 2001/10/13 20:21:46 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -8,6 +8,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a><a name="4"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Memory Pool Subsystem</dl></h3></td>
 <td align=right><a href="../../ref/log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
@@ -16,44 +17,55 @@
 <h1 align=center>Berkeley DB and the memory pool</h1>
 <p>The Memory Pool subsystem is the general-purpose shared memory buffer
 pool used by Berkeley DB.  This module is useful outside of the Berkeley DB package
-for processes that require page-oriented, cached, shared file access.
+for processes that require page-oriented, shared and cached file access.
 <p>A <i>memory pool</i> is a memory cache shared among any number of
 threads of control.  The <a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> flag to the
-<a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> interface opens, optionally creating a memory pool.
-When that pool is no longer in use, it should be closed using the
-<a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> interface.
-<p>The <a href="../../api_c/memp_fopen.html">memp_fopen</a> interface returns a DB_MPOOLFILE handle
-on an underlying file within the memory pool.  When that handle is no
-longer in use, it should be closed using the <a href="../../api_c/memp_fclose.html">memp_fclose</a>
-interface.  The <a href="../../api_c/memp_fget.html">memp_fget</a> interface is used to retrieve pages
-from files in the pool.  All retrieved pages must be subsequently
-returned using the <a href="../../api_c/memp_fput.html">memp_fput</a> interface.  At the time pages
-are returned, they may be marked <b>dirty</b>, which causes them to
-be written to the underlying file before being discarded from the pool.
-If there is insufficient room to bring a new page in the pool, a page
-is selected to be discarded from the pool using a least-recently-used
-algorithm.  Pages in files may also be explicitly marked clean or dirty
-using the <a href="../../api_c/memp_fset.html">memp_fset</a> interface.  All dirty pages in the pool may
-be flushed using the <a href="../../api_c/memp_sync.html">memp_sync</a> interface.  All dirty pages in
-the pool from a single underlying file may be flushed using the
-<a href="../../api_c/memp_fsync.html">memp_fsync</a> interface.
-<p>There are additional interfaces related to the memory pool:
+<a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function opens and optionally creates a memory pool.  When
+that pool is no longer in use, it should be closed using the
+<a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> function.
+<p>The <a href="../../api_c/memp_fcreate.html">DB_ENV-&gt;memp_fcreate</a> function returns a <a href="../../api_c/memp_fcreate.html">DB_MPOOLFILE</a> handle on an
+underlying file within the memory pool.  The file may be opened using
+the <a href="../../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a> function.  The <a href="../../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a> function is used to retrieve
+pages from files in the pool.  All retrieved pages must be subsequently
+returned using the <a href="../../api_c/memp_fput.html">DB_MPOOLFILE-&gt;put</a> function.  At the time pages are returned,
+they may be marked <b>dirty</b>, which causes them to be written to
+the underlying file before being discarded from the pool.  If there is
+insufficient room to bring a new page in the pool, a page is selected
+to be discarded from the pool using a least-recently-used algorithm.
+Pages in files may also be explicitly marked clean or dirty using the
+<a href="../../api_c/memp_fset.html">DB_MPOOLFILE-&gt;set</a> function.  All dirty pages in the pool from the file may be
+flushed using the <a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> function.  When the file handle is no
+longer in use, it should be closed using the <a href="../../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a> function.
+<p>There are additional configuration interfaces that apply when opening
+a new file in the memory pool:
+<p><ul type=disc>
+<li>The <a href="../../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a> function specifies the number of bytes to clear
+when creating a new page in the memory pool.
+<li>The <a href="../../api_c/memp_set_fileid.html">DB_MPOOLFILE-&gt;set_fileid</a> function specifies a unique ID associated with the file.
+<li>The <a href="../../api_c/memp_set_ftype.html">DB_MPOOLFILE-&gt;set_ftype</a> function specifies the type of file for the purposes of
+page input and output processing.
+<li>The <a href="../../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a> function specifies the byte offset of each page's
+log sequence number (<a href="../../api_c/db_lsn.html">DB_LSN</a>) for the purposes of transaction
+checkpoints.
+<li>The <a href="../../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a> function specifies an application provided argument
+for the purposes of page input and output processing.
+</ul>
+<p>There are additional interfaces for the memory pool as a whole:
 <p><ul type=disc>
 <li>It is possible to gradually flush buffers from the pool in order to
-maintain a consistent percentage of clean buffers in the pool using the
-<a href="../../api_c/memp_trickle.html">memp_trickle</a> interface.
-<li>The <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/memp_stat.html">memp_stat</a> interface to
-display statistics about the efficiency of the pool.
-<li>Because some processing may be necessary when pages are read or written
-(for example, endian conversion), the <a href="../../api_c/memp_register.html">memp_register</a> function
-allows applications to specify automatic input and output processing in
-these cases.
-<li>Although the <a href="../../api_c/memp_sync.html">memp_sync</a> interface can be used to simply flush
-the entire pool, it also takes an argument that is specific to database
-systems.  This argument allows the pool to be flushed up to a specified
-log sequence number.
-<li>Finally, the entire pool may be discarded using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a>
-interface.
+maintain a consistent percentage of clean buffers in the pool using
+the <a href="../../api_c/memp_trickle.html">DB_ENV-&gt;memp_trickle</a> function.
+<li>Because special-purpose processing may be necessary when pages are read
+or written (for example, compression or endian conversion), the
+<a href="../../api_c/memp_register.html">DB_ENV-&gt;memp_register</a> function allows applications to specify automatic
+input and output processing in these cases.
+<li>The <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/memp_stat.html">DB_ENV-&gt;memp_stat</a> function to display
+statistics about the efficiency of the pool.
+<li>All dirty pages in the pool may be flushed using the <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a> function.
+In addition, <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a> takes an argument that is specific to
+database systems, and which allows the memory pool to be flushed up to
+a specified log sequence number (<a href="../../api_c/db_lsn.html">DB_LSN</a>).
+<li>The entire pool may be discarded using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> function.
 </ul>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/log/limits.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/mp/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_open.c,v 11.35 2001/05/02 16:01:00 bostic Exp $";
+static const char revid[] = "$Id: qam_open.c,v 11.38 2001/07/26 18:36:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -38,23 +38,25 @@ __qam_open(dbp, name, base_pgno, mode, flags)
 	int mode;
 	u_int32_t flags;
 {
-	QUEUE *t;
 	DBC *dbc;
 	DB_LOCK metalock;
 	DB_LSN orig_lsn;
+	DB_MPOOLFILE *mpf;
 	QMETA *qmeta;
-	int locked;
-	int ret, t_ret;
+	QUEUE *t;
+	int locked, ret, t_ret;
 
+	mpf = dbp->mpf;
+	t = dbp->q_internal;
 	ret = 0;
 	locked = 0;
-	t = dbp->q_internal;
 
 	if (name == NULL && t->page_ext != 0) {
 		__db_err(dbp->dbenv,
 	"Extent size may not be specified for in-memory queue database.");
 		return (EINVAL);
 	}
+
 	/* Initialize the remaining fields/methods of the DB. */
 	dbp->stat = __qam_stat;
 	dbp->sync = __qam_sync;
@@ -76,8 +78,8 @@ __qam_open(dbp, name, base_pgno, mode, flags)
 	if ((ret =
 	    __db_lget(dbc, 0, base_pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = memp_fget(
-	    dbp->mpf, &base_pgno, DB_MPOOL_CREATE, (PAGE **)&qmeta)) != 0)
+	if ((ret =
+	    mpf->get(mpf, &base_pgno, DB_MPOOL_CREATE, (PAGE **)&qmeta)) != 0)
 		goto err;
 
 	/*
@@ -91,16 +93,17 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 		t->rec_page = qmeta->rec_page;
 		t->page_ext = qmeta->page_ext;
 
-		(void)memp_fput(dbp->mpf, (PAGE *)qmeta, 0);
+		(void)mpf->put(mpf, (PAGE *)qmeta, 0);
 		goto done;
 	}
 
 	/* If we're doing CDB; we now have to get the write lock. */
 	if (CDB_LOCKING(dbp->dbenv)) {
 		DB_ASSERT(LF_ISSET(DB_CREATE));
-		if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
+		if ((ret = dbp->dbenv->lock_get(
+		    dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
 		    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
-			goto err;
+			goto err1;
 	}
 
 	/*
@@ -109,10 +112,10 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 	 */
 	if (locked == 0 && STD_LOCKING(dbc)) {
 		if ((ret = __LPUT(dbc, metalock)) != 0)
-			goto err;
+			goto err1;
 		if ((ret = __db_lget(dbc,
 		     0, base_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
-			goto err;
+			goto err1;
 		locked = 1;
 		goto again;
 	}
@@ -139,17 +142,16 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 		__db_err(dbp->dbenv,
 		    "Record size of %lu too large for page size of %lu",
 		    (u_long)t->re_len, (u_long)dbp->pgsize);
-		(void)memp_fput(dbp->mpf, (PAGE *)qmeta, 0);
 		ret = EINVAL;
-		goto err;
+		goto err1;
 	}
 
 	if ((ret = __db_log_page(dbp,
 	    name, &orig_lsn, base_pgno, (PAGE *)qmeta)) != 0)
-		goto err;
+		goto err1;
 
 	/* Release the metadata page. */
-	if ((ret = memp_fput(dbp->mpf, (PAGE *)qmeta, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->put(mpf, (PAGE *)qmeta, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTLOG, ret, name);
 
@@ -160,7 +162,7 @@ again:	if (qmeta->dbmeta.magic == DB_QAMMAGIC) {
 	 * It's not useful to return not-yet-flushed here -- convert it to
 	 * an error.
 	 */
-	if ((ret = memp_fsync(dbp->mpf)) == DB_INCOMPLETE) {
+	if ((ret = mpf->sync(mpf)) == DB_INCOMPLETE) {
 		__db_err(dbp->dbenv, "Flush of metapage failed");
 		ret = EINVAL;
 	}
@@ -171,10 +173,6 @@ done:	t->q_meta = base_pgno;
 
 	/* Setup information needed to open extents. */
 	if (t->page_ext != 0) {
-		t->finfo.pgcookie = &t->pgcookie;
-		t->finfo.fileid = NULL;
-		t->finfo.lsn_offset = 0;
-
 		t->pginfo.db_pagesize = dbp->pgsize;
 		t->pginfo.needswap = F_ISSET(dbp, DB_AM_SWAP) ? 1 : 0;
 		t->pgcookie.data = &t->pginfo;
@@ -194,6 +192,10 @@ done:	t->q_meta = base_pgno;
 		t->mode = mode;
 	}
 
+	if (0) {
+err1:
+		(void)mpf->put(mpf, (PAGE *)qmeta, 0);
+	}
 err:
 DB_TEST_RECOVERY_LABEL
 	/* Don't hold the meta page long term. */

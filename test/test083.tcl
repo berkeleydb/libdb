@@ -3,10 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test083.tcl,v 11.7 2001/01/25 18:23:13 bostic Exp $
+# $Id: test083.tcl,v 11.9 2001/08/03 16:39:47 bostic Exp $
 #
-# Test 83.
-# Test of DB->key_range
+# TEST	test083
+# TEST	Test of DB->key_range.
 proc test083 { method {pgsz 512} {maxitems 5000} {step 2} args} {
 	source ./include.tcl
 	set omethod [convert_method $method]
@@ -46,7 +46,7 @@ proc test083 { method {pgsz 512} {maxitems 5000} {step 2} args} {
 
 		puts "\tTest083.a: Opening new database"
 		cleanup $testdir $env
-		set db [eval {berkdb_open -create -truncate -mode 0644} \
+		set db [eval {berkdb_open -create -mode 0644} \
 		    -pagesize $pgsz $omethod $args $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_stat.c,v 11.62 2001/06/05 16:06:22 margo Exp $";
+    "$Id: db_stat.c,v 11.84 2001/11/03 18:43:46 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -49,28 +49,21 @@ typedef enum { T_NOTSET, T_DB, T_ENV, T_LOCK, T_LOG, T_MPOOL, T_TXN } test_t;
 
 int	 argcheck __P((char *, const char *));
 int	 btree_stats __P((DB_ENV *, DB *, DB_BTREE_STAT *, int));
-int	 db_init __P((char *, test_t));
+int	 db_init __P((DB_ENV *, char *, test_t));
 void	 dl __P((const char *, u_long));
 void	 dl_bytes __P((const char *, u_long, u_long, u_long));
-int	 env_stats __P((DB_ENV *));
+int	 env_stats __P((DB_ENV *, u_int32_t));
 int	 hash_stats __P((DB_ENV *, DB *, int));
-int	 lock_ok __P((char *));
-int	 lock_stats __P((DB_ENV *));
-int	 log_stats __P((DB_ENV *));
+int	 lock_stats __P((DB_ENV *, char *, u_int32_t));
+int	 log_stats __P((DB_ENV *, u_int32_t));
 int	 main __P((int, char *[]));
-int	 mpool_ok __P((char *));
-int	 mpool_stats __P((DB_ENV *));
+int	 mpool_stats __P((DB_ENV *, char *, u_int32_t));
 void	 prflags __P((u_int32_t, const FN *));
 int	 queue_stats __P((DB_ENV *, DB *, int));
 int	 txn_compare __P((const void *, const void *));
-int	 txn_stats __P((DB_ENV *));
-void	 usage __P((void));
-void	 version_check __P((void));
-
-DB_ENV	*dbenv;
-char	*internal;
-const char
-	*progname = "db_stat";				/* Program name. */
+int	 txn_stats __P((DB_ENV *, u_int32_t));
+int	 usage __P((void));
+int	 version_check __P((const char *));
 
 int
 main(argc, argv)
@@ -79,28 +72,32 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
+	const char *progname = "db_stat";
+	DB_ENV	*dbenv;
 	DB_BTREE_STAT *sp;
 	DB *alt_dbp, *dbp;
 	test_t ttype;
-	int ch, checked, d_close, e_close, exitval, fast, nflag, ret;
-	char *db, *home, *subdb;
+	int ch, checked, d_close, e_close, exitval, fast, flags, nflag, ret;
+	char *db, *home, *internal, *subdb;
 
-	version_check();
+	if ((ret = version_check(progname)) != 0)
+		return (ret);
 
 	dbp = NULL;
 	ttype = T_NOTSET;
 	nflag = 0;
 	fast = 0;
 	d_close = e_close = exitval = 0;
-	db = home = subdb = NULL;
-	while ((ch = getopt(argc, argv, "C:cd:efh:lM:mNs:tV")) != EOF)
+	db = home = internal = subdb = NULL;
+	flags = 0;
+	while ((ch = getopt(argc, argv, "C:cd:efh:lM:mNs:tVZ")) != EOF)
 		switch (ch) {
 		case 'C':
 			if (ttype != T_NOTSET)
 				goto argcombo;
 			ttype = T_LOCK;
 			if (!argcheck(internal = optarg, "Acflmo"))
-				usage();
+				return (usage());
 			break;
 		case 'c':
 			if (ttype != T_NOTSET)
@@ -134,7 +131,7 @@ main(argc, argv)
 				goto argcombo;
 			ttype = T_MPOOL;
 			if (!argcheck(internal = optarg, "Ahlm"))
-				usage();
+				return (usage());
 			break;
 		case 'm':
 			if (ttype != T_NOTSET)
@@ -143,12 +140,6 @@ main(argc, argv)
 			break;
 		case 'N':
 			nflag = 1;
-			if ((ret = db_env_set_panicstate(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_panicstate: %s\n",
-				    progname, db_strerror(ret));
-				return (EXIT_FAILURE);
-			}
 			break;
 		case 's':
 			if (ttype != T_DB && ttype != T_NOTSET)
@@ -168,9 +159,12 @@ argcombo:			fprintf(stderr,
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
+		case 'Z':
+			flags |= DB_STAT_CLEAR;
+			break;
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
@@ -178,14 +172,14 @@ argcombo:			fprintf(stderr,
 	switch (ttype) {
 	case T_DB:
 		if (db == NULL)
-			usage();
+			return (usage());
 		break;
 	case T_NOTSET:
-		usage();
+		return (usage());
 		/* NOTREACHED */
 	default:
 		if (fast != 0)
-			usage();
+			return (usage());
 		break;
 	}
 
@@ -206,18 +200,26 @@ argcombo:			fprintf(stderr,
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
-	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
-		dbenv->err(dbenv, ret, "set_mutexlocks");
-		goto shutdown;
+	if (nflag) {
+		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
+			goto shutdown;
+		}
+		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
+			goto shutdown;
+		}
 	}
 
 	/* Initialize the environment. */
-	if (db_init(home, ttype) != 0)
+	if (db_init(dbenv, home, ttype) != 0)
 		goto shutdown;
 
 	switch (ttype) {
 	case T_DB:
 		/* Create the DB object and open the file. */
+		if (flags != 0)
+			return (usage());
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			dbenv->err(dbenv, ret, "db_create");
 			goto shutdown;
@@ -282,23 +284,23 @@ argcombo:			fprintf(stderr,
 		}
 		break;
 	case T_ENV:
-		if (env_stats(dbenv))
+		if (env_stats(dbenv, flags))
 			exitval = 1;
 		break;
 	case T_LOCK:
-		if (lock_stats(dbenv))
+		if (lock_stats(dbenv, internal, flags))
 			exitval = 1;
 		break;
 	case T_LOG:
-		if (log_stats(dbenv))
+		if (log_stats(dbenv, flags))
 			exitval = 1;
 		break;
 	case T_MPOOL:
-		if (mpool_stats(dbenv))
+		if (mpool_stats(dbenv, internal, flags))
 			exitval = 1;
 		break;
 	case T_TXN:
-		if (txn_stats(dbenv))
+		if (txn_stats(dbenv, flags))
 			exitval = 1;
 		break;
 	case T_NOTSET:
@@ -330,8 +332,9 @@ shutdown:	exitval = 1;
  *	Display environment statistics.
  */
 int
-env_stats(dbenvp)
-	DB_ENV *dbenvp;
+env_stats(dbenv, flags)
+	DB_ENV *dbenv;
+	u_int32_t flags;
 {
 	REGENV renv;
 	REGION *rp, regs[1024];
@@ -339,8 +342,8 @@ env_stats(dbenvp)
 	const char *lable;
 
 	n = sizeof(regs) / sizeof(regs[0]);
-	if ((ret = __db_e_stat(dbenvp, &renv, regs, &n)) != 0)  {
-		dbenvp->err(dbenvp, ret, "__db_e_stat");
+	if ((ret = __db_e_stat(dbenv, &renv, regs, &n, flags)) != 0)  {
+		dbenv->err(dbenv, ret, "__db_e_stat");
 		return (1);
 	}
 
@@ -401,8 +404,8 @@ env_stats(dbenvp)
  *	Display btree/recno statistics.
  */
 int
-btree_stats(dbenvp, dbp, msp, fast)
-	DB_ENV *dbenvp;
+btree_stats(dbenv, dbp, msp, fast)
+	DB_ENV *dbenv;
 	DB *dbp;
 	DB_BTREE_STAT *msp;
 	int fast;
@@ -419,7 +422,7 @@ btree_stats(dbenvp, dbp, msp, fast)
 	DB_BTREE_STAT *sp;
 	int ret;
 
-	COMPQUIET(dbenvp, NULL);
+	COMPQUIET(dbenv, NULL);
 
 	if (msp != NULL)
 		sp = msp;
@@ -487,8 +490,8 @@ btree_stats(dbenvp, dbp, msp, fast)
  *	Display hash statistics.
  */
 int
-hash_stats(dbenvp, dbp, fast)
-	DB_ENV *dbenvp;
+hash_stats(dbenv, dbp, fast)
+	DB_ENV *dbenv;
 	DB *dbp;
 	int fast;
 {
@@ -500,7 +503,7 @@ hash_stats(dbenvp, dbp, fast)
 	DB_HASH_STAT *sp;
 	int ret;
 
-	COMPQUIET(dbenvp, NULL);
+	COMPQUIET(dbenv, NULL);
 
 	if ((ret = dbp->stat(dbp, &sp, fast)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
@@ -511,6 +514,8 @@ hash_stats(dbenvp, dbp, fast)
 	printf("%lu\tHash version number.\n", (u_long)sp->hash_version);
 	prflags(sp->hash_metaflags, fn);
 	dl("Underlying database page size.\n", (u_long)sp->hash_pagesize);
+	dl("Specified number of elements.\n", (u_long)sp->hash_nelem);
+	dl("Specified fill factor.\n", (u_long)sp->hash_ffactor);
 	dl("Number of keys in the database.\n", (u_long)sp->hash_nkeys);
 	dl("Number of data items in the database.\n", (u_long)sp->hash_ndata);
 
@@ -547,15 +552,15 @@ hash_stats(dbenvp, dbp, fast)
  *	Display queue statistics.
  */
 int
-queue_stats(dbenvp, dbp, fast)
-	DB_ENV *dbenvp;
+queue_stats(dbenv, dbp, fast)
+	DB_ENV *dbenv;
 	DB *dbp;
 	int fast;
 {
 	DB_QUEUE_STAT *sp;
 	int ret;
 
-	COMPQUIET(dbenvp, NULL);
+	COMPQUIET(dbenv, NULL);
 
 	if ((ret = dbp->stat(dbp, &sp, fast)) != 0) {
 		dbp->err(dbp, ret, "dbp->stat");
@@ -590,26 +595,29 @@ queue_stats(dbenvp, dbp, fast)
  *	Display lock statistics.
  */
 int
-lock_stats(dbenvp)
-	DB_ENV *dbenvp;
+lock_stats(dbenv, internal, flags)
+	DB_ENV *dbenv;
+	char *internal;
+	u_int32_t flags;
 {
 	DB_LOCK_STAT *sp;
 	int ret;
 
 	if (internal != NULL) {
-		if ((ret = __lock_dump_region(dbenvp, internal, stdout)) != 0) {
-			dbenvp->err(dbenvp, ret, NULL);
+		if ((ret =
+		    dbenv->lock_dump_region(dbenv, internal, stdout)) != 0) {
+			dbenv->err(dbenv, ret, NULL);
 			return (1);
 		}
 		return (0);
 	}
 
-	if ((ret = lock_stat(dbenvp, &sp)) != 0) {
-		dbenvp->err(dbenvp, ret, NULL);
+	if ((ret = dbenv->lock_stat(dbenv, &sp, flags)) != 0) {
+		dbenv->err(dbenv, ret, NULL);
 		return (1);
 	}
 
-	dl("Last allocated locker ID.\n", (u_long)sp->st_lastid);
+	printf("%lu Last allocated locker ID.\n", (u_long)sp->st_lastid);
 	dl("Number of lock modes.\n", (u_long)sp->st_nmodes);
 	dl("Maximum number of locks possible.\n", (u_long)sp->st_maxlocks);
 	dl("Maximum number of lockers possible.\n", (u_long)sp->st_maxlockers);
@@ -627,12 +635,15 @@ lock_stats(dbenvp)
 	    (u_long)sp->st_nnowaits);
 	dl("Number of lock conflicts.\n", (u_long)sp->st_nconflicts);
 	dl("Number of deadlocks.\n", (u_long)sp->st_ndeadlocks);
+	dl("Number of transaction timeouts.\n", (u_long)sp->st_ntxntimeouts);
+	dl("Number of lock timeouts.\n", (u_long)sp->st_nlocktimeouts);
+
 	dl_bytes("Lock region size",
 	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
-	dl("The number of region locks granted without waiting.\n",
-	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
+	dl("The number of region locks granted without waiting.\n",
+	    (u_long)sp->st_region_nowait);
 
 	return (0);
 }
@@ -642,21 +653,20 @@ lock_stats(dbenvp)
  *	Display log statistics.
  */
 int
-log_stats(dbenvp)
-	DB_ENV *dbenvp;
+log_stats(dbenv, flags)
+	DB_ENV *dbenv;
+	u_int32_t flags;
 {
 	DB_LOG_STAT *sp;
 	int ret;
 
-	if ((ret = log_stat(dbenvp, &sp)) != 0) {
-		dbenvp->err(dbenvp, ret, NULL);
+	if ((ret = dbenv->log_stat(dbenv, &sp, flags)) != 0) {
+		dbenv->err(dbenv, ret, NULL);
 		return (1);
 	}
 
 	printf("%lx\tLog magic number.\n", (u_long)sp->st_magic);
 	printf("%lu\tLog version number.\n", (u_long)sp->st_version);
-	dl_bytes("Log region size",
-	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
 	dl_bytes("Log record cache size",
 	    (u_long)0, (u_long)0, (u_long)sp->st_lg_bsize);
 	printf("%#o\tLog file mode.\n", sp->st_mode);
@@ -679,10 +689,18 @@ log_stats(dbenvp)
 	printf("%lu\tCurrent log file offset.\n", (u_long)sp->st_cur_offset);
 	printf("%lu\tOn-disk log file number.\n", (u_long)sp->st_disk_file);
 	printf("%lu\tOn-disk log file offset.\n", (u_long)sp->st_disk_offset);
-	dl("The number of region locks granted without waiting.\n",
-	    (u_long)sp->st_region_nowait);
+
+	dl("Max commits in a log flush.\n", (u_long)sp->st_maxcommitperflush);
+	dl("Min commits in a log flush.\n", (u_long)sp->st_mincommitperflush);
+	dl("Number of log flushes containing a transaction commit.\n",
+	    (u_long)sp->st_flushcommit);
+
+	dl_bytes("Log region size",
+	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
+	dl("The number of region locks granted without waiting.\n",
+	    (u_long)sp->st_region_nowait);
 
 	return (0);
 }
@@ -692,23 +710,26 @@ log_stats(dbenvp)
  *	Display mpool statistics.
  */
 int
-mpool_stats(dbenvp)
-	DB_ENV *dbenvp;
+mpool_stats(dbenv, internal, flags)
+	DB_ENV *dbenv;
+	char *internal;
+	u_int32_t flags;
 {
 	DB_MPOOL_FSTAT **fsp;
 	DB_MPOOL_STAT *gsp;
 	int ret;
 
 	if (internal != NULL) {
-		if ((ret = __memp_dump_region(dbenvp, internal, stdout)) != 0) {
-			dbenvp->err(dbenvp, ret, NULL);
+		if ((ret =
+		    dbenv->memp_dump_region(dbenv, internal, stdout)) != 0) {
+			dbenv->err(dbenv, ret, NULL);
 			return (1);
 		}
 		return (0);
 	}
 
-	if ((ret = memp_stat(dbenvp, &gsp, &fsp)) != 0) {
-		dbenvp->err(dbenvp, ret, NULL);
+	if ((ret = dbenv->memp_stat(dbenv, &gsp, &fsp, flags)) != 0) {
+		dbenv->err(dbenv, ret, NULL);
 		return (1);
 	}
 
@@ -783,16 +804,17 @@ mpool_stats(dbenvp)
  *	Display transaction statistics.
  */
 int
-txn_stats(dbenvp)
-	DB_ENV *dbenvp;
+txn_stats(dbenv, flags)
+	DB_ENV *dbenv;
+	u_int32_t flags;
 {
 	DB_TXN_STAT *sp;
 	u_int32_t i;
 	int ret;
 	const char *p;
 
-	if ((ret = txn_stat(dbenvp, &sp)) != 0) {
-		dbenvp->err(dbenvp, ret, NULL);
+	if ((ret = dbenv->txn_stat(dbenv, &sp, flags)) != 0) {
+		dbenv->err(dbenv, ret, NULL);
 		return (1);
 	}
 
@@ -821,12 +843,14 @@ txn_stats(dbenvp)
 	dl("Number of transactions aborted.\n", (u_long)sp->st_naborts);
 	dl("Number of transactions committed.\n", (u_long)sp->st_ncommits);
 	dl("Number of transactions restored.\n", (u_long)sp->st_nrestores);
+
 	dl_bytes("Transaction region size",
 	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
-	dl("The number of region locks granted without waiting.\n",
-	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
+	dl("The number of region locks granted without waiting.\n",
+	    (u_long)sp->st_region_nowait);
+
 	qsort(sp->st_txnarray,
 	    sp->st_nactive, sizeof(sp->st_txnarray[0]), txn_compare);
 	for (i = 0; i < sp->st_nactive; ++i) {
@@ -893,13 +917,13 @@ dl_bytes(msg, gbytes, mbytes, bytes)
 	int showbytes;
 
 	sbytes = bytes;
-	while (bytes > MEGABYTE) {
+	while (bytes >= MEGABYTE) {
 		++mbytes;
 		bytes -= MEGABYTE;
 	}
-	while (mbytes > GIGABYTE / MEGABYTE) {
+	while (mbytes >= GIGABYTE / MEGABYTE) {
 		++gbytes;
-		--mbytes;
+		mbytes -= GIGABYTE / MEGABYTE;
 	}
 
 	sep = "";
@@ -914,7 +938,7 @@ dl_bytes(msg, gbytes, mbytes, bytes)
 		sep = " ";
 		showbytes = 1;
 	}
-	if (bytes > 1024) {
+	if (bytes >= 1024) {
 		printf("%s%luKB", sep, bytes / 1024);
 		bytes %= 1024;
 		sep = " ";
@@ -922,6 +946,10 @@ dl_bytes(msg, gbytes, mbytes, bytes)
 	}
 	if (bytes > 0)
 		printf("%s%luB", sep, bytes);
+	else
+		if (!showbytes)
+			printf("%s%lu", sep, bytes);
+
 	printf("\t%s", msg);
 	if (showbytes)
 		printf(" (%lu bytes)", sbytes);
@@ -954,7 +982,8 @@ prflags(flags, fnp)
  *	Initialize the environment.
  */
 int
-db_init(home, ttype)
+db_init(dbenv, home, ttype)
+	DB_ENV *dbenv;
 	char *home;
 	test_t ttype;
 {
@@ -963,36 +992,39 @@ db_init(home, ttype)
 	/*
 	 * If our environment open fails, and we're trying to look at a
 	 * shared region, it's a hard failure.
+	 *
+	 * We will probably just drop core if the environment we join does
+	 * not include a memory pool.  This is probably acceptable; trying
+	 * to use an existing environment that does not contain a memory
+	 * pool to look at a database can be safely construed as operator
+	 * error, I think.
 	 */
-	if ((ret = dbenv->open(dbenv,
-	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) == 0)
+	if ((ret =
+	    dbenv->open(dbenv, home, DB_JOINENV | DB_USE_ENVIRON, 0)) == 0)
 		return (0);
-	if (ttype != T_DB) {
-		dbenv->err(dbenv, ret, "DBENV->open%s%s",
+	if (ttype != T_DB && ttype != T_LOG) {
+		dbenv->err(dbenv, ret, "DB_ENV->open%s%s",
 		    home == NULL ? "" : ": ", home == NULL ? "" : home);
 		return (1);
 	}
 
 	/*
-	 * We're trying to look at a database.
+	 * We're looking at a database or set of log files and no environment
+	 * exists.  Create one, but make it private so no files are actually
+	 * created.  Declare a reasonably large cache so that we don't fail
+	 * when reporting statistics on large databases.
 	 *
-	 * An environment is required because we may be trying to look at
-	 * databases in directories other than the current one.  We could
-	 * avoid using an environment iff the -h option wasn't specified,
-	 * but that seems like more work than it's worth.
-	 *
-	 *
-	 * No environment exists.  Create one, but make it private so that
-	 * no files are actually created.
-	 *
-	 * Note that we will probably just drop core if the environment
-	 * we joined above does not include a memory pool.  This is probably
-	 * acceptable;  trying to use an existing shared environment that
-	 * does not contain a memory pool to look at a database can
-	 * be safely construed as operator error, I think.
+	 * An environment is required to look at databases because we may be
+	 * trying to look at databases in directories other than the current
+	 * one.
 	 */
+	if ((ret = dbenv->set_cachesize(dbenv, 0, MEGABYTE, 1)) != 0) {
+		dbenv->err(dbenv, ret, "set_cachesize");
+		return (1);
+	}
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) == 0)
+    DB_CREATE | DB_INIT_LOG | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON,
+	    0)) == 0)
 		return (0);
 
 	/* An environment is required. */
@@ -1015,16 +1047,17 @@ argcheck(arg, ok_args)
 	return (1);
 }
 
-void
+int
 usage()
 {
 	fprintf(stderr, "usage: db_stat %s\n",
-"[-celmNtV] [-C Acflmo]\n\t[-d file [-f] [-s database]] [-h home] [-M Ahlm]");
-	exit(EXIT_FAILURE);
+"[-celmNtVZ] [-C Acflmo]\n\t[-d file [-f] [-s database]] [-h home] [-M Ahlm]");
+	return (EXIT_FAILURE);
 }
 
-void
-version_check()
+int
+version_check(progname)
+	const char *progname;
 {
 	int v_major, v_minor, v_patch;
 
@@ -1036,6 +1069,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }

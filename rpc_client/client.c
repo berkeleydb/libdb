@@ -8,13 +8,16 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: client.c,v 1.35 2001/06/13 14:40:14 bostic Exp $";
+static const char revid[] = "$Id: client.c,v 1.41 2001/09/07 13:31:22 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#ifdef HAVE_VXWORKS
+#include <rpcLib.h>
+#endif
 #include <rpc/rpc.h>
 
 #include <ctype.h>
@@ -82,26 +85,8 @@ __dbcl_envrpcserver(dbenv, clnt, host, tsec, ssec, flags)
 }
 
 /*
- * __dbclenv_server --
- *	Initialize an environment's server.
- *
- * PUBLIC: int __dbcl_envserver
- * PUBLIC:     __P((DB_ENV *, const char *, long, long, u_int32_t));
- */
-int
-__dbcl_envserver(dbenv, host, tsec, ssec, flags)
-	DB_ENV *dbenv;
-	const char *host;
-	long tsec, ssec;
-	u_int32_t flags;
-{
-	COMPQUIET(flags, 0);
-	return (__dbcl_envrpcserver(dbenv, NULL, host, tsec, ssec, flags));
-}
-
-/*
  * __dbcl_env_open_wrap --
- *	Wrapper function for DBENV->open function for clients.
+ *	Wrapper function for DB_ENV->open function for clients.
  *	We need a wrapper function to deal with DB_USE_ENVIRON* flags
  *	and we don't want to complicate the generated code for env_open.
  *
@@ -219,8 +204,6 @@ __dbcl_txn_end(txnp)
 		TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
 	TAILQ_REMOVE(&mgr->txn_chain, txnp, links);
 	__os_free(dbenv, txnp, sizeof(*txnp));
-
-	return;
 }
 
 /*
@@ -236,13 +219,9 @@ __dbcl_txn_setup(dbenv, txn, parent, id)
 	DB_TXN *parent;
 	u_int32_t id;
 {
-	txn->txnid = id;
 	txn->mgrp = dbenv->tx_handle;
 	txn->parent = parent;
-	TAILQ_INIT(&txn->kids);
-	txn->flags = TXN_MALLOC;
-	if (parent != NULL)
-		TAILQ_INSERT_HEAD(&parent->kids, txn, klinks);
+	txn->txnid = id;
 
 	/*
 	 * XXX
@@ -255,7 +234,19 @@ __dbcl_txn_setup(dbenv, txn, parent, id)
 	 */
 	TAILQ_INSERT_TAIL(&txn->mgrp->txn_chain, txn, links);
 
-	return;
+	TAILQ_INIT(&txn->kids);
+
+	if (parent != NULL)
+		TAILQ_INSERT_HEAD(&parent->kids, txn, klinks);
+
+	txn->abort = __dbcl_txn_abort;
+	txn->commit = __dbcl_txn_commit;
+	txn->discard = __dbcl_txn_discard;
+	txn->id = __txn_id;
+	txn->prepare = __dbcl_txn_prepare;
+	txn->set_timeout = __dbcl_txn_timeout;
+
+	txn->flags = TXN_MALLOC;
 }
 
 /*
@@ -300,7 +291,6 @@ __dbcl_c_refresh(dbcp)
 		TAILQ_REMOVE(&dbp->active_queue, dbcp, links);
 		TAILQ_INSERT_TAIL(&dbp->free_queue, dbcp, links);
 	}
-	return;
 }
 
 /*

@@ -3,30 +3,30 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test054.tcl,v 11.16 2001/01/25 18:23:12 bostic Exp $
+# $Id: test054.tcl,v 11.20 2001/10/10 04:25:10 krinsky Exp $
 #
-# Test054:
-#
-# This test checks for cursor maintenance in the presence of deletes.
-# There are N different scenarios to tests:
-# 1. No duplicates.  Cursor A deletes a key, do a  GET for the key.
-# 2. No duplicates.  Cursor is positioned right before key K, Delete K,
-#    do a next on the cursor.
-# 3. No duplicates.  Cursor is positioned on key K, do a regular delete of K.
-#    do a current get on K.
-# 4. Repeat 3 but do a next instead of current.
-#
-# 5. Duplicates. Cursor A is on the first item of a duplicate set, A
-#    does a delete.  Then we do a non-cursor get.
-# 6. Duplicates.  Cursor A is in a duplicate set and deletes the item.
-#    do a delete of the entire Key. Test cursor current.
-# 7. Continue last test and try cursor next.
-# 8. Duplicates.  Cursor A is in a duplicate set and deletes the item.
-#    Cursor B is in the same duplicate set and deletes a different item.
-#    Verify that the cursor is in the right place.
-# 9. Cursors A and B are in the place in the same duplicate set.  A deletes
-#    its item.  Do current on B.
-# 10. Continue 8 and do a next on B.
+# TEST	test054
+# TEST	Cursor maintenance during key/data deletion.
+# TEST
+# TEST	This test checks for cursor maintenance in the presence of deletes.
+# TEST	There are N different scenarios to tests:
+# TEST	 1. No duplicates.  Cursor A deletes a key, do a  GET for the key.
+# TEST	 2. No duplicates.  Cursor is positioned right before key K, Delete K,
+# TEST	    do a next on the cursor.
+# TEST	 3. No duplicates.  Cursor is positioned on key K, do a regular delete
+# TEST	    of K, do a current get on K.
+# TEST	 4. Repeat 3 but do a next instead of current.
+# TEST	 5. Duplicates. Cursor A is on the first item of a duplicate set, A
+# TEST	    does a delete.  Then we do a non-cursor get.
+# TEST	 6. Duplicates.  Cursor A is in a duplicate set and deletes the item.
+# TEST	    do a delete of the entire Key. Test cursor current.
+# TEST	 7. Continue last test and try cursor next.
+# TEST	 8. Duplicates.  Cursor A is in a duplicate set and deletes the item.
+# TEST	    Cursor B is in the same duplicate set and deletes a different item.
+# TEST	    Verify that the cursor is in the right place.
+# TEST	 9. Cursors A and B are in the place in the same duplicate set.  A
+# TEST	    deletes its item.  Do current on B.
+# TEST	10. Continue 8 and do a next on B.
 proc test054 { method args } {
 	global errorInfo
 	source ./include.tcl
@@ -34,7 +34,7 @@ proc test054 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args " -create -truncate -mode 0644"
+	append args " -create -mode 0644"
 	puts "Test054 ($method $args):\
 	    interspersed cursor and normal operations"
 	if { [is_record_based $method] == 1 } {
@@ -42,17 +42,22 @@ proc test054 { method args } {
 		return
 	}
 
-	# Create the database and open the dictionary
+	# Find the environment in the argument list, we'll need it
+	# later.
 	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+	}
+
+	# Create the database and open the dictionary
 	#
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
-		set testfile $testdir/test054.db
+		set testfile $testdir/test054-nodup.db
 		set env NULL
 	} else {
-		set testfile test054.db
-		incr eindex
+		set testfile test054-nodup.db
 		set env [lindex $args $eindex]
 	}
 	cleanup $testdir $env
@@ -82,7 +87,7 @@ proc test054 { method args } {
 		incr i
 	}
 
-	# TEST CASE 1
+	# Test case #1.
 	puts "\tTest054.a1: Delete w/cursor, regular get"
 
 	# Now set the cursor on the middle on.
@@ -104,7 +109,7 @@ proc test054 { method args } {
 	# Free up the cursor.
 	error_check_good cursor_close [eval {$curs close}] 0
 
-	# TEST CASE 2
+	# Test case #2.
 	puts "\tTest054.a2: Cursor before K, delete K, cursor next"
 
 	# Replace key 2
@@ -143,7 +148,7 @@ proc test054 { method args } {
 	error_check_good curs_get:DB_NEXT:key $k $key_set(3)
 	error_check_good curs_get:DB_NEXT:data $d datum$key_set(3)
 
-	# TEST CASE 3
+	# Test case #3.
 	puts "\tTest054.a3: Cursor on K, delete K, cursor current"
 
 	# delete item 3
@@ -197,6 +202,22 @@ proc test054 { method args } {
 
 	puts "\tTest054.b: Duplicate Tests"
 	append args " -dup"
+
+	# Open a new database for the dup tests so -truncate is not needed.
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test054-dup.db
+		set env NULL
+	} else {
+		set testfile test054-dup.db
+		set env [lindex $args $eindex]
+	}
+	cleanup $testdir $env
+
+	set flags ""
+	set txn ""
+
 	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:dup [is_valid_db $db] TRUE
 
@@ -224,7 +245,7 @@ proc test054 { method args } {
 		error_check_good dup:put $r 0
 	}
 
-	# TEST CASE 5
+	# Test case #5.
 	puts "\tTest054.b1: Delete dup w/cursor on first item.  Get on key."
 
 	# Now set the cursor on the first of the duplicate set.
@@ -243,7 +264,7 @@ proc test054 { method args } {
 	set r [eval {$db get} $txn {$key_set(2)}]
 	error_check_good get_after_del [lindex [lindex $r 0] 1] dup_1
 
-	# TEST CASE 6
+	# Test case #6.
 	puts "\tTest054.b2: Now get the next duplicate from the cursor."
 
 	# Now do next on cursor
@@ -254,7 +275,7 @@ proc test054 { method args } {
 	error_check_good curs_get:DB_NEXT:key $k $key_set(2)
 	error_check_good curs_get:DB_NEXT:data $d dup_1
 
-	# TEST CASE 3
+	# Test case #3.
 	puts "\tTest054.b3: Two cursors in set; each delete different items"
 
 	# Open a new cursor.

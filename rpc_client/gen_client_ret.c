@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: gen_client_ret.c,v 1.45 2001/06/19 17:34:17 sue Exp $";
+static const char revid[] = "$Id: gen_client_ret.c,v 1.47 2001/10/20 20:17:16 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -92,6 +92,7 @@ __dbcl_env_open_ret(dbenv, home, flags, mode, replyp)
 	if (replyp->status != 0)
 		return (replyp->status);
 
+	dbenv->cl_id = replyp->envcl_id;
 	/*
 	 * If the user requested transactions, then we have some
 	 * local client-side setup to do also.
@@ -388,6 +389,7 @@ __dbcl_db_open_ret(dbp, name, subdb, type, flags, mode, replyp)
 	COMPQUIET(mode, 0);
 
 	if (replyp->status == 0) {
+		dbp->cl_id = replyp->dbcl_id;
 		dbp->type = replyp->type;
 		/*
 		 * We get back the database's byteorder on the server.
@@ -649,9 +651,6 @@ __dbcl_dbc_close_ret(dbcp, replyp)
 	DBC *dbcp;
 	__dbc_close_reply *replyp;
 {
-	DB *dbp;
-
-	dbp = dbcp->dbp;
 	__dbcl_c_refresh(dbcp);
 	return (replyp->status);
 }

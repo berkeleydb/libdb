@@ -45,12 +45,12 @@ on the type of environment created.  If the environment is public and
 persistent (that is, the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was not specified to
 the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function), recovery must be performed if any transaction
 was not committed or aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> function was not called
-for any open DB_ENV handle.
+for any open <a href="../../api_c/env_create.html">DB_ENV</a> handle.
 <p>If the environment is private and temporary (that is, the
 <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function),
 recovery must be performed if any transaction was not committed or
 aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> function was not called for any open
-DB_ENV handle.  In addition, at least one transaction checkpoint
+<a href="../../api_c/env_create.html">DB_ENV</a> handle.  In addition, at least one transaction checkpoint
 must be performed after all existing transactions have been committed
 or aborted.
 <p><dt>The easy way:<dd>It greatly simplifies matters that recovery may be performed regardless
@@ -70,7 +70,7 @@ application starts, it opens and potentially creates the environment,
 runs recovery (whether it was needed or not), and then opens its
 databases.  From then on, the application can create new threads of
 control as it chooses.  All threads of control share the open Berkeley DB
-DB_ENV and DB handles.  In this model, databases are
+<a href="../../api_c/env_create.html">DB_ENV</a> and <a href="../../api_c/db_create.html">DB</a> handles.  In this model, databases are
 rarely opened or closed when more than a single thread of control is
 running; that is, they are opened when only a single thread is running,
 and closed after all threads but one have exited.  The last thread of

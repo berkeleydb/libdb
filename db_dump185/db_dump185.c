@@ -9,7 +9,7 @@
 static char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static char revid[] =
-    "$Id: db_dump185.c,v 11.11 2001/05/10 17:13:57 bostic Exp $";
+    "$Id: db_dump185.c,v 11.15 2001/08/17 13:38:10 bostic Exp $";
 #endif
 
 #include <sys/types.h>
@@ -68,6 +68,7 @@ typedef struct hashhdr186 {	/* Disk resident portion */
 	u_int16_t	bitmaps[NCACHED];	/* address of overflow page bitmaps */
 } HASHHDR186;
 typedef struct htab186	 {		/* Memory resident data structure */
+	void *unused[2];
 	HASHHDR186	hdr;		/* Header */
 } HTAB186;
 
@@ -171,7 +172,7 @@ void	db_hash __P((DB *, int));
 void	dbt_dump __P((DBT *));
 void	dbt_print __P((DBT *));
 int	main __P((int, char *[]));
-void	usage __P((void));
+int	usage __P((void));
 
 int
 main(argc, argv)
@@ -199,13 +200,13 @@ main(argc, argv)
 			break;
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 1)
-		usage();
+		return (usage());
 
 	if ((dbp = dbopen(argv[0], O_RDONLY, 0, DB_BTREE, NULL)) == NULL) {
 		if ((dbp =
@@ -345,9 +346,9 @@ dbt_print(dbtp)
  * usage --
  *	Display the usage message.
  */
-void
+int
 usage()
 {
 	(void)fprintf(stderr, "usage: db_dump185 [-p] [-f file] db_file\n");
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }

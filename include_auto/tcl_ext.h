@@ -37,10 +37,12 @@ int _ErrorSetup __P((Tcl_Interp *, int, char *));
 void _ErrorFunc __P((CONST char *, char *));
 int _GetLsn __P((Tcl_Interp *, Tcl_Obj *, DB_LSN *));
 int _GetUInt32 __P((Tcl_Interp *, Tcl_Obj *, u_int32_t *));
+Tcl_Obj *_GetFlagsList __P((Tcl_Interp *, u_int32_t, void (*)(u_int32_t, void *, void (*)(u_int32_t, const FN *, void *))));
 void _debug_check  __P((void));
 int tcl_LockDetect __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LockGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LockStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+int tcl_LockTimeout __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LockVec __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogArchive __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogCompare __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
@@ -51,6 +53,7 @@ int tcl_LogPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogRegister __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogUnregister __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+int logc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 void _MpInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 int tcl_MpSync __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_MpTrickle __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
@@ -60,6 +63,7 @@ void _TxnInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 int tcl_TxnCheckpoint __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_Txn __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 int tcl_TxnStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+int tcl_TxnTimeout __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_TxnRecover __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 #if defined(__cplusplus)
 }

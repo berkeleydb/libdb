@@ -1,4 +1,4 @@
-<!--$Id: region.so,v 10.25 2001/03/01 15:58:04 bostic Exp $-->
+<!--$Id: region.so,v 10.26 2001/11/09 15:33:45 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -42,6 +42,11 @@ In these cases, an initial segment ID must be specified by the
 application to ensure that applications do not overwrite each other's
 database environments, so that the number of segments created does not
 grow without bounds.  See the <a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a> function for more
+information.
+<p>On Windows platforms, the use of the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is
+problematic because the operating system uses reference counting to
+clean up shared objects in the paging file automatically.  See
+<a href="../../ref/build_win/notes.html">Windows Notes</a> for more
 information.
 <p><li>If no memory-related flags are specified to <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a>, memory
 backed by the filesystem is used to store the regions.  On UNIX systems,

@@ -1,4 +1,4 @@
-<!--$Id: db_open.so,v 10.67 2001/06/19 19:49:24 bostic Exp $-->
+<!--$Id: db_open.so,v 10.68 2001/10/22 15:24:21 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -78,7 +78,7 @@ DB_CREATE flag.
 <p><dt><a name="DB_RDONLY">DB_RDONLY</a><dd>Open the database for reading only.  Any attempt to modify items in the
 database will fail, regardless of the actual permissions of any underlying
 files.
-<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the DB handle returned by DB-&gt;open to be
+<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_c/db_create.html">DB</a> handle returned by DB-&gt;open to be
 <i>free-threaded</i>; that is, usable by multiple threads within a
 single address space.
 <p><dt><a name="DB_TRUNCATE">DB_TRUNCATE</a><dd>Physically truncate the underlying file, discarding all previous
@@ -124,7 +124,7 @@ The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified 
 available for this architecture.
 <p>The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified to DB-&gt;open, but was not
 specified to the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> call for the environment in which the
-DB handle was created.
+<a href="../api_c/db_create.html">DB</a> handle was created.
 <p>A backing flat text file was specified with either the <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a>
 flag or the provided database environment supports transaction
 processing.

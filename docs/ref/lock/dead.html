@@ -1,4 +1,4 @@
-<!--$Id: dead.so,v 10.16 2001/05/22 19:39:30 bostic Exp $-->
+<!--$Id: dead.so,v 10.17 2001/08/18 16:53:31 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
-<td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/page.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Deadlock detection</h1>
@@ -21,14 +21,14 @@ database are read-only or when the Berkeley DB Concurrent Data Store product is 
 product guarantees deadlock-free operation at the expense of reduced
 concurrency.
 <p>The <a href="../../utility/db_deadlock.html">db_deadlock</a> utility performs deadlock detection by calling
-<a href="../../api_c/lock_detect.html">lock_detect</a> at regular intervals; the <a href="../../api_c/lock_detect.html">lock_detect</a> function runs
+<a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> at regular intervals; the <a href="../../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> function runs
 the Berkeley DB deadlock detector.  When a deadlock exists in the system, all
 the threads of control involved in the deadlock are, by definition,
 waiting on a lock.  The deadlock detector examines the state of the lock
-manager and identifies a deadlock, and selects one of the participants
-to abort.  (See <a href="../../ref/lock/config.html">Configuring locking</a>
+manager and identifies a deadlock, and selects one of the lock requests
+to reject.  (See <a href="../../ref/lock/config.html">Configuring locking</a>
 for a discussion of how a participant is selected).  The
-<a href="../../api_c/lock_get.html">lock_get</a> or <a href="../../api_c/lock_vec.html">lock_vec</a> call for which the selected
+<a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> or <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> call for which the selected
 participant is waiting then returns a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> error.
 When using the Berkeley DB access methods, this error return is propagated
 back through the Berkeley DB interface to the calling application.
@@ -44,22 +44,23 @@ release its lock before the waiting locker can make forward progress.
 Conceptually, after each object has been examined, the partial orderings
 are topologically sorted.  If this topological sort reveals any cycles,
 the lockers forming the cycle are involved in a deadlock.  One of the
-lockers is selected for abortion.
-<p>It is possible that aborting a single transaction involved in a deadlock
-is not enough to allow other transactions to make forward progress.
-Unfortunately, at the time a transaction is selected for abortion, there
-is not enough information available to determine whether aborting that
-single transaction will allow forward progress or not.  Because most
-applications have few deadlocks, Berkeley DB takes the conservative approach,
-aborting as few transactions as may be necessary to resolve the existing
-deadlocks.  In particular, for each unique cycle found in the waits-for
-graph described in the previous paragraph, only one transaction is
-selected for abortion.  However, if there are multiple cycles, one
-transaction from each cycle is selected for abortion.  Only after the
-aborting transactions have received the deadlock return and aborted
-their transactions can it be determined whether it is necessary to abort
-additional transactions in order to allow forward progress.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/page.html"><img src="../../images/next.gif" alt="Next"></a>
+lockers is selected for rejection.
+<p>It is possible that rejecting a single lock request involved in a
+deadlock is not enough to allow other lockers to make forward progress.
+Unfortunately, at the time a lock request is selected for rejection,
+there is not enough information available to determine whether rejecting
+that single lock request will allow forward progress or not.  Because
+most applications have few deadlocks, Berkeley DB takes the conservative
+approach, rejecting as few requests as may be necessary to resolve the
+existing deadlocks.  In particular, for each unique cycle found in the
+waits-for graph described in the previous paragraph, only one lock
+request is selected for rejection.  However, if there are multiple
+cycles, one lock request from each cycle is selected for rejection.
+Only after the enclosing transactions have received the lock request
+rejection return and aborted their transactions can it be determined
+whether it is necessary to reject additional lock requests in order to
+allow forward progress.
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/timeout.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

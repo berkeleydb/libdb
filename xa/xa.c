@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa.c,v 11.13 2001/04/03 15:14:31 krinsky Exp $";
+static const char revid[] = "$Id: xa.c,v 11.14 2001/07/26 15:52:14 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -328,7 +328,7 @@ __db_xa_prepare(xid, rmid, flags)
 	/* Now, fill in the global transaction structure. */
 	__txn_continue(env, env->xa_txn, td, off);
 
-	if (txn_prepare(env->xa_txn, (u_int8_t *)xid->data) != 0)
+	if (env->xa_txn->prepare(env->xa_txn, (u_int8_t *)xid->data) != 0)
 		return (XAER_RMERR);
 
 	td->xa_status = TXN_XA_PREPARED;
@@ -386,7 +386,7 @@ __db_xa_commit(xid, rmid, flags)
 	/* Now, fill in the global transaction structure. */
 	__txn_continue(env, env->xa_txn, td, off);
 
-	if (txn_commit(env->xa_txn, 0) != 0)
+	if (env->xa_txn->commit(env->xa_txn, 0) != 0)
 		return (XAER_RMERR);
 
 	/* No fatal value that would require an XAER_RMFAIL. */
@@ -468,7 +468,7 @@ __db_xa_rollback(xid, rmid, flags)
 
 	/* Now, fill in the global transaction structure. */
 	__txn_continue(env, env->xa_txn, td, off);
-	if (txn_abort(env->xa_txn) != 0)
+	if (env->xa_txn->abort(env->xa_txn) != 0)
 		return (XAER_RMERR);
 
 	/* No fatal value that would require an XAER_RMFAIL. */

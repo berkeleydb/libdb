@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.h,v 11.19 2001/05/03 18:58:48 ubell Exp $
+ * $Id: db_dispatch.h,v 11.22 2001/10/04 21:22:48 bostic Exp $
  */
 
 #ifndef _DB_DISPATCH_H_
@@ -43,10 +43,14 @@
  * recovery.  This is a generic list used to pass along whatever information
  * we need during recovery.
  */
+#define	DB_TXNLIST_MASK(hp, n)  (n % hp->nslots)
 struct __db_txnhead {
-	LIST_HEAD(__db_headlink, __db_txnlist) head;
-	u_int32_t maxid;
-	int32_t generation;
+	u_int32_t maxid;	/* Maximum transaction id. */
+	DB_LSN maxlsn;		/* Maximum commit lsn. */
+	DB_LSN ckplsn;		/* LSN of last retained checkpoint. */
+	int32_t generation;	/* Current generation number. */
+	int nslots;
+	LIST_HEAD(__db_headlink, __db_txnlist) head[1];
 };
 
 #define	TXNLIST_INVALID_ID	0xffffffff

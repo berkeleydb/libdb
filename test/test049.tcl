@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test049.tcl,v 11.17 2001/05/17 20:55:08 bostic Exp $
+# $Id: test049.tcl,v 11.19 2001/08/03 16:39:41 bostic Exp $
 #
-# Test 049: Test of each cursor routine with uninitialized cursors
+# TEST	test049
+# TEST	Cursor operations on uninitialized cursors.
 proc test049 { method args } {
 	global errorInfo
 	global errorCode
@@ -45,7 +46,7 @@ proc test049 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set oflags "-create -truncate -mode 0644 $rflags $omethod $args"
+	set oflags "-create -mode 0644 $rflags $omethod $args"
 	if { [is_record_based $method] == 0 && [is_rbtree $method] != 1 } {
 		append oflags " -dup"
 	}

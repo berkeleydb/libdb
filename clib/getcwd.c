@@ -36,7 +36,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: getcwd.c,v 11.9 2001/04/03 18:26:32 bostic Exp $";
+static const char revid[] = "$Id: getcwd.c,v 11.11 2001/09/04 21:09:35 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -261,7 +261,7 @@ notfound:
 	 * didn't find the current directory in its parent directory, set
 	 * errno to ENOENT.
 	 */
-	if (__os_get_errno() == 0)
+	if (__os_get_errno_ret_zero() == 0)
 		__os_set_errno(save_errno == 0 ? ENOENT : save_errno);
 	/* FALLTHROUGH */
 err:

@@ -60,18 +60,19 @@ InputPath=.\Release\libdb_java@DB_VERSION_MAJOR@@DB_VERSION_MINOR@.dll
 SOURCE=$(InputPath)
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	cd $(ProjDir)\..\java\src\com\sleepycat\db 
-	mkdir ..\..\..\..\classes 
+	mkdir $(ProjDir)\Release\classes 
 	echo compiling Berkeley DB classes 
-	javac -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
-   *.java 
+	javac -g -d $(ProjDir)/Release/classes -classpath\
+   "$(CLASSPATH);$(ProjDir)/Release/classes"\
+   ..\java\src\com\sleepycat\db\*.java 
 	echo compiling examples 
-	cd ..\examples 
-	javac -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
-    *.java 
-	echo creating jar file 
-	cd ..\..\..\..\classes
-	jar cf db.jar com\sleepycat\db\*.class 
+	javac -g -d $(ProjDir)/Release/classes -classpath\
+   "$(CLASSPATH);$(ProjDir)/Release/classes"\
+   ..\java\src\com\sleepycat\examples\*.java 
+	echo creating jar files 
+	cd $(ProjDir)\Release\classes 
+	jar cf ../db.jar com\sleepycat\db\*.class 
+	jar cf ../dbexamples.jar com\sleepycat\examples\*.class 
 	echo Java build finished 
 	
 # End Custom Build
@@ -108,18 +109,19 @@ InputPath=.\Debug\libdb_java@DB_VERSION_MAJOR@@DB_VERSION_MINOR@d.dll
 SOURCE=$(InputPath)
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	cd $(ProjDir)\..\java\src\com\sleepycat\db 
-	mkdir ..\..\..\..\classes 
+	mkdir $(ProjDir)\Debug\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
-   *.java 
+	javac -g -d $(ProjDir)/Debug/classes -classpath\
+   "$(CLASSPATH);$(ProjDir)/Debug/classes"\
+   ..\java\src\com\sleepycat\db\*.java 
 	echo compiling examples 
-	javac -g -d ../../../../classes -classpath "$(CLASSPATH);../../../../classes"\
-    *.java 
-	cd ..\examples 
-	echo creating jar file 
-	cd ..\..\..\..\classes
-	jar cf db.jar com\sleepycat\db\*.class 
+	javac -g -d $(ProjDir)/Debug/classes -classpath\
+   "$(CLASSPATH);$(ProjDir)/Debug/classes"\
+   ..\java\src\com\sleepycat\examples\*.java 
+	echo creating jar files 
+	cd $(ProjDir)\Debug\classes 
+	jar cf ../db.jar com\sleepycat\db\*.class 
+	jar cf ../dbexamples.jar com\sleepycat\examples\*.class 
 	echo Java build finished 
 	
 # End Custom Build

@@ -1,4 +1,4 @@
-<!--$Id: dbt.so,v 10.45 2001/06/19 14:37:20 bostic Exp $-->
+<!--$Id: dbt.so,v 10.46 2001/10/09 18:23:55 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -84,8 +84,8 @@ whether memory was allocated using the returned value of the
 is that the latter will call <b>realloc</b>(3) instead of
 <b>malloc</b>(3), so the allocated memory will be grown as necessary
 instead of the application doing repeated free/malloc calls.
-<p>DB_DBT_MALLOC, DB_DBT_REALLOC, and
-DB_DBT_USERMEM.
+<p>It is an error to specify more than one of DB_DBT_MALLOC,
+DB_DBT_REALLOC, and DB_DBT_USERMEM.
 <p><dt><a name="DB_DBT_USERMEM">DB_DBT_USERMEM</a><dd>The <b>data</b> field of the key or data structure must refer to
 memory that is at least <b>ulen</b> bytes in length.  If the length of
 the requested item is less than or equal to that number of bytes, the

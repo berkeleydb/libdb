@@ -3,9 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd002.tcl,v 11.27 2001/05/16 19:01:15 sue Exp $
+# $Id: recd002.tcl,v 11.28 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test #2.  Verify that splits can be recovered.
+# TEST	recd002
+# TEST	Split recovery tests.  For every known split log message, makes sure
+# TEST	that we exercise redo, undo, and do-nothing condition.
 proc recd002 { method {select 0} args} {
 	source ./include.tcl
 	global rand_init

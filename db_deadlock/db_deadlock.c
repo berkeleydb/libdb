@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_deadlock.c,v 11.25 2001/05/10 17:13:56 bostic Exp $";
+    "$Id: db_deadlock.c,v 11.34 2001/10/22 18:35:20 sue Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,19 +31,16 @@ static const char revid[] =
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
 #include "clib_ext.h"
 
-int	 main __P((int, char *[]));
-void	 usage __P((void));
-void	 version_check __P((void));
-
-DB_ENV  *dbenv;
-const char
-	*progname = "db_deadlock";			/* Program name. */
+int main __P((int, char *[]));
+int usage __P((void));
+int version_check __P((const char *));
 
 int
 main(argc, argv)
@@ -52,23 +49,28 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
+	const char *progname = "db_deadlock";
+	DB_ENV  *dbenv;
 	u_int32_t atype;
 	time_t now;
-	long usecs;
-	int ch, e_close, exitval, poll, ret, verbose;
-	char *home, *logfile;
+	long secs, usecs;
+	int ch, e_close, exitval, ret, verbose;
+	char *home, *logfile, *str;
 
-	version_check();
+	if ((ret = version_check(progname)) != 0)
+		return (ret);
 
 	atype = DB_LOCK_DEFAULT;
 	home = logfile = NULL;
-	usecs = 0;
-	poll = 0;
+	secs = usecs = 0;
 	e_close = exitval = verbose = 0;
 	while ((ch = getopt(argc, argv, "a:h:L:t:Vvw")) != EOF)
 		switch (ch) {
 		case 'a':
 			switch (optarg[0]) {
+			case 'e':
+				atype = DB_LOCK_EXPIRE;
+				break;
 			case 'm':
 				atype = DB_LOCK_MAXLOCKS;
 				break;
@@ -85,11 +87,11 @@ main(argc, argv)
 				atype = DB_LOCK_YOUNGEST;
 				break;
 			default:
-				usage();
+				return (usage());
 				/* NOTREACHED */
 			}
 			if (optarg[1] != '\0')
-				usage();
+				return (usage());
 			break;
 		case 'h':
 			home = optarg;
@@ -98,39 +100,40 @@ main(argc, argv)
 			logfile = optarg;
 			break;
 		case 't':
-			(void)__db_getlong(NULL,
-			    progname, optarg, 1, LONG_MAX, &usecs);
-			usecs *= 1000000;
+			if ((str = strchr(optarg, '.')) != NULL) {
+				*str++ = '\0';
+				if (*str != '\0' && __db_getlong(
+				    NULL, progname, str, 0, LONG_MAX, &usecs))
+					return (EXIT_FAILURE);
+			}
+			if (*optarg != '\0' && __db_getlong(
+			    NULL, progname, optarg, 0, LONG_MAX, &secs))
+				return (EXIT_FAILURE);
+			if (secs == 0 && usecs == 0)
+				return (usage());
+
 			break;
+
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
 		case 'v':
 			verbose = 1;
 			break;
-		case 'w':
-			poll = 1;
+		case 'w':			/* Undocumented. */
+			/* Detect every 100ms (100000 us) when polling. */
+			secs = 0;
+			usecs = 100000;
 			break;
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 0)
-		usage();
-
-	if (usecs == 0 && !poll) {
-		fprintf(stderr,
-		    "%s: at least one of -t and -w must be specified\n",
-		    progname);
-		return (EXIT_FAILURE);
-	}
-
-	/* We detect every 100ms (100000 us) when we're polling.  */
-	if (usecs == 0)
-		usecs = 100000;
+		return (usage());
 
 	/* Handle possible interruptions. */
 	__db_util_siginit();
@@ -171,13 +174,15 @@ main(argc, argv)
 			dbenv->errx(dbenv, "running at %.24s", ctime(&now));
 		}
 
-		if ((ret = lock_detect(dbenv, 0, atype, NULL)) != 0) {
-			dbenv->err(dbenv, ret, "lock_detect");
+		if ((ret = dbenv->lock_detect(dbenv, 0, atype, NULL)) != 0) {
+			dbenv->err(dbenv, ret, "DB_ENV->lock_detect");
 			goto shutdown;
 		}
 
-		/* Make a pass every "usecs" usecs. */
-		(void)__os_sleep(dbenv, 0, usecs);
+		/* Make a pass every "secs" secs and "usecs" usecs. */
+		if (secs == 0 && usecs == 0)
+			break;
+		(void)__os_sleep(dbenv, secs, usecs);
 	}
 
 	if (0) {
@@ -201,16 +206,17 @@ shutdown:	exitval = 1;
 	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void
+int
 usage()
 {
 	(void)fprintf(stderr,
-"usage: db_deadlock [-Vvw] [-a m | n | o | w | y] [-h home] [-L file] [-t sec]\n");
-	exit(EXIT_FAILURE);
+"usage: db_deadlock [-Vv]\n\t[-a e | m | n | o | w | y] [-h home] [-L file] [-t sec.usec]\n");
+	return (EXIT_FAILURE);
 }
 
-void
-version_check()
+int
+version_check(progname)
+	const char *progname;
 {
 	int v_major, v_minor, v_patch;
 
@@ -222,6 +228,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }

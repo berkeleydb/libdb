@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: mpool.tcl,v 11.36 2001/02/02 20:02:38 sue Exp $
+# $Id: mpool.tcl,v 11.37 2001/08/03 16:39:25 bostic Exp $
 #
 # Options are:
 # -cachesize {gbytes bytes ncache}
@@ -152,6 +152,8 @@ proc mpool { args } {
 	env_cleanup $testdir
 }
 
+# TEST	memp001
+# TEST	Randomly updates pages.
 proc memp001 {env dir n iter psize dostat flags} {
 	source ./include.tcl
 	global rand_init
@@ -257,6 +259,8 @@ proc replace { mpool p } {
 	return $p2
 }
 
+# TEST	memp002
+# TEST	Tests multiple processes accessing and modifying the same files.
 proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 	source ./include.tcl
 

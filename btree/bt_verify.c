@@ -4,13 +4,13 @@
  * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: bt_verify.c,v 1.53 2001/06/12 19:46:36 krinsky Exp $
+ * $Id: bt_verify.c,v 1.61 2001/11/16 16:35:42 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_verify.c,v 1.53 2001/06/12 19:46:36 krinsky Exp $";
+static const char revid[] = "$Id: bt_verify.c,v 1.61 2001/11/16 16:35:42 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -566,17 +566,20 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		goto err;
 	memset(pagelayout, 0, dbp->pgsize);
 	for (i = 0; i < NUM_ENT(h); i++) {
-
-		ret = __db_vrfy_inpitem(dbp,
-		    h, pgno, i, 1, flags, &himark, &offset);
-		if (ret == DB_VERIFY_BAD) {
+		switch (ret = __db_vrfy_inpitem(dbp,
+		    h, pgno, i, 1, flags, &himark, &offset)) {
+		case 0:
+			break;
+		case DB_VERIFY_BAD:
 			isbad = 1;
 			continue;
-		} else if (ret == DB_VERIFY_FATAL) {
+		case DB_VERIFY_FATAL:
 			isbad = 1;
 			goto err;
-		} else if (ret != 0)
-			DB_ASSERT(0);
+		default:
+			DB_ASSERT(ret != 0);
+			break;
+		}
 
 		/*
 		 * We now have a plausible beginning for the item, and we know
@@ -869,14 +872,14 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 	int ovflok, hasdups;
 	u_int32_t flags;
 {
-	DBT dbta, dbtb, dup1, dup2, *p1, *p2, *tmp;
+	DBT dbta, dbtb, dup_1, dup_2, *p1, *p2, *tmp;
 	BTREE *bt;
 	BINTERNAL *bi;
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
 	VRFY_PAGEINFO *pip;
 	db_indx_t i;
-	int cmp, freedup1, freedup2, isbad, ret, t_ret;
+	int cmp, freedup_1, freedup_2, isbad, ret, t_ret;
 	int (*dupfunc) __P((DB *, const DBT *, const DBT *));
 	int (*func) __P((DB *, const DBT *, const DBT *));
 	void *buf1, *buf2, *tmpbuf;
@@ -1096,11 +1099,11 @@ overflow:		if (!ovflok) {
 					 * dups are probably (?) rare.
 					 */
 					if (((ret = __bam_safe_getdata(dbp,
-					    h, i - 1, ovflok, &dup1,
-					    &freedup1)) != 0) ||
+					    h, i - 1, ovflok, &dup_1,
+					    &freedup_1)) != 0) ||
 					    ((ret = __bam_safe_getdata(dbp,
-					    h, i + 1, ovflok, &dup2,
-					    &freedup2)) != 0))
+					    h, i + 1, ovflok, &dup_2,
+					    &freedup_2)) != 0))
 						goto err;
 
 					/*
@@ -1109,8 +1112,8 @@ overflow:		if (!ovflok) {
 					 * it's not safe to chase them now.
 					 * Mark an incomplete and return.
 					 */
-					if (dup1.data == NULL ||
-					    dup2.data == NULL) {
+					if (dup_1.data == NULL ||
+					    dup_2.data == NULL) {
 						DB_ASSERT(!ovflok);
 						F_SET(pip, VRFY_INCOMPLETE);
 						goto err;
@@ -1122,15 +1125,15 @@ overflow:		if (!ovflok) {
 					 * until we do the structure check
 					 * and see whether DUPSORT is set.
 					 */
-					if (dupfunc(dbp, &dup1, &dup2) > 0)
+					if (dupfunc(dbp, &dup_1, &dup_2) > 0)
 						F_SET(pip, VRFY_DUPS_UNSORTED);
 
-					if (freedup1)
+					if (freedup_1)
 						__os_free(dbp->dbenv,
-						    dup1.data, 0);
-					if (freedup2)
+						    dup_1.data, 0);
+					if (freedup_2)
 						__os_free(dbp->dbenv,
-						    dup2.data, 0);
+						    dup_2.data, 0);
 				}
 			}
 		}
@@ -1280,6 +1283,7 @@ __bam_vrfy_subtree(dbp,
 	BINTERNAL *li, *ri, *lp, *rp;
 	DB *pgset;
 	DBC *cc;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	VRFY_CHILDINFO *child;
 	VRFY_PAGEINFO *pip;
@@ -1289,6 +1293,7 @@ __bam_vrfy_subtree(dbp,
 	int (*func) __P((DB *, const DBT *, const DBT *));
 	u_int32_t level, child_level, stflags, child_relen, relen;
 
+	mpf = dbp->mpf;
 	ret = isbad = 0;
 	nrecs = 0;
 	h = NULL;
@@ -1548,7 +1553,7 @@ __bam_vrfy_subtree(dbp,
 	 * itself, which must sort lower than all entries on its child;
 	 * ri will be the key to its right, which must sort greater.
 	 */
-	if (h == NULL && (ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+	if (h == NULL && (ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		goto err;
 	for (i = 0; i < pip->entries; i += O_INDX) {
 		li = GET_BINTERNAL(h, i);
@@ -1621,7 +1626,7 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 		 * isbad == 0, though, it's now safe to do so, as we've
 		 * traversed any child overflow pages.  Do it.
 		 */
-		if (h == NULL && (ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		if (h == NULL && (ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 		if ((ret = __bam_vrfy_itemorder(dbp,
 		    vdp, h, pgno, 0, 1, 0, flags)) != 0)
@@ -1630,12 +1635,35 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	}
 
 	/*
+	 * It's possible to get to this point with a page that has no
+	 * items, but without having detected any sort of failure yet.
+	 * Having zero items is legal if it's a leaf--it may be the
+	 * root page in an empty tree, or the tree may have been
+	 * modified with the DB_REVSPLITOFF flag set (there's no way
+	 * to tell from what's on disk).  For an internal page,
+	 * though, having no items is a problem (all internal pages
+	 * must have children).
+	 */
+	if (isbad == 0 && ret == 0) {
+		if (h == NULL && (ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
+			goto err;
+
+		if (NUM_ENT(h) == 0 && ISINTERNAL(h)) {
+			EPRINT((dbp->dbenv,
+			    "Internal page %lu is empty and should not be",
+			    (u_long)pgno));
+			isbad = 1;
+			goto err;
+		}
+	}
+
+	/*
 	 * Our parent has sent us BINTERNAL pointers to parent records
 	 * so that we can verify our place with respect to them.  If it's
 	 * appropriate--we have a default sort function--verify this.
 	 */
 	if (isbad == 0 && ret == 0 && !LF_ISSET(DB_NOORDERCHK) && lp != NULL) {
-		if (h == NULL && (ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		if (h == NULL && (ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 
 		/*
@@ -1685,7 +1713,7 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	} else if ((ret = __db_vrfy_pgset_inc(pgset, pgno)) != 0)
 		goto err;
 
-err:	if (h != NULL && (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
+err:	if (h != NULL && (t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret =
 	    __db_vrfy_putpageinfo(dbp->dbenv, vdp, pip)) != 0 && ret == 0)
@@ -1725,6 +1753,14 @@ __bam_vrfy_treeorder(dbp, pgno, h, lp, rp, func, flags)
 	memset(&dbt, 0, sizeof(DBT));
 	F_SET(&dbt, DB_DBT_MALLOC);
 	ret = 0;
+
+	/*
+	 * Empty pages are sorted correctly by definition.  We check
+	 * to see whether they ought to be empty elsewhere;  leaf
+	 * pages legally may be.
+	 */
+	if (NUM_ENT(h) == 0)
+		return (0);
 
 	switch (TYPE(h)) {
 	case P_IBTREE:
@@ -1933,7 +1969,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			if (key != NULL &&
 			    (i != 0 || !LF_ISSET(SA_SKIPFIRSTKEY)))
 				if ((ret = __db_prdbt(key,
-				    0, " ", handle, callback, 0, NULL)) != 0)
+				    0, " ", handle, callback, 0, vdp)) != 0)
 					err_ret = ret;
 
 			beg = h->inp[i];
@@ -1964,7 +2000,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 				    (i % P_INDX == 0)) {
 					/* Not much to do on failure. */
 					if ((ret = __db_prdbt(&unkdbt, 0, " ",
-					    handle, callback, 0, NULL)) != 0)
+					    handle, callback, 0, vdp)) != 0)
 						err_ret = ret;
 					break;
 				}
@@ -1976,11 +2012,12 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 
 				break;
 			case B_KEYDATA:
-				end = ALIGN(beg + bk->len, sizeof(u_int32_t)) - 1;
+				end =
+				    ALIGN(beg + bk->len, sizeof(u_int32_t)) - 1;
 				dbt.data = bk->data;
 				dbt.size = bk->len;
 				if ((ret = __db_prdbt(&dbt,
-				    0, " ", handle, callback, 0, NULL)) != 0)
+				    0, " ", handle, callback, 0, vdp)) != 0)
 					err_ret = ret;
 				break;
 			case B_OVERFLOW:
@@ -1991,11 +2028,11 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 					err_ret = ret;
 					/* We care about err_ret more. */
 					(void)__db_prdbt(&unkdbt, 0, " ",
-					    handle, callback, 0, NULL);
+					    handle, callback, 0, vdp);
 					break;
 				}
 				if ((ret = __db_prdbt(&dbt,
-				    0, " ", handle, callback, 0, NULL)) != 0)
+				    0, " ", handle, callback, 0, vdp)) != 0)
 					err_ret = ret;
 				break;
 			default:
@@ -2026,7 +2063,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	 * a datum; fix this imbalance by printing an "UNKNOWN".
 	 */
 	if (pgtype == P_LBTREE && (i % P_INDX == 1) && ((ret =
-	    __db_prdbt(&unkdbt, 0, " ", handle, callback, 0, NULL)) != 0))
+	    __db_prdbt(&unkdbt, 0, " ", handle, callback, 0, vdp)) != 0))
 		err_ret = ret;
 
 err:	if (pgmap != NULL)
@@ -2117,11 +2154,13 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 	DB *pgset;
 {
 	BINTERNAL *bi;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	RINTERNAL *ri;
 	db_pgno_t current, p;
 	int err_ret, ret;
 
+	mpf = dbp->mpf;
 	h = NULL;
 	ret = err_ret = 0;
 	DB_ASSERT(pgset != NULL);
@@ -2130,7 +2169,7 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 			err_ret = DB_VERIFY_BAD;
 			goto err;
 		}
-		if ((ret = memp_fget(dbp->mpf, &current, 0, &h)) != 0) {
+		if ((ret = mpf->get(mpf, &current, 0, &h)) != 0) {
 			err_ret = ret;
 			goto err;
 		}
@@ -2159,7 +2198,7 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 			goto err;
 		}
 
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			err_ret = ret;
 		h = NULL;
 	}
@@ -2170,8 +2209,7 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 	 */
 traverse:
 	while (IS_VALID_PGNO(current) && current != PGNO_INVALID) {
-		if (h == NULL &&
-		    (ret = memp_fget(dbp->mpf, &current, 0, &h) != 0)) {
+		if (h == NULL && (ret = mpf->get(mpf, &current, 0, &h)) != 0) {
 			err_ret = ret;
 			break;
 		}
@@ -2191,13 +2229,13 @@ traverse:
 			goto err;
 
 		current = NEXT_PGNO(h);
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			err_ret = ret;
 		h = NULL;
 	}
 
 err:	if (h != NULL)
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 
 	return (ret == 0 ? err_ret : ret);
 }

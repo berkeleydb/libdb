@@ -3,12 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd003.tcl,v 11.27 2001/05/16 19:01:15 sue Exp $
+# $Id: recd003.tcl,v 11.28 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test 3.
-# Test all the duplicate log messages and recovery operations.  We make
-# sure that we exercise all possible recovery actions: redo, undo, undo
-# but no fix necessary and redo but no fix necessary.
+# TEST	recd003
+# TEST	Duplicate recovery tests.  For every known duplicate log message,
+# TEST	makes sure that we exercise redo, undo, and do-nothing condition.
+# TEST
+# TEST	Test all the duplicate log messages and recovery operations.  We make
+# TEST	sure that we exercise all possible recovery actions: redo, undo, undo
+# TEST	but no fix necessary and redo but no fix necessary.
 proc recd003 { method {select 0} args } {
 	source ./include.tcl
 	global rand_init

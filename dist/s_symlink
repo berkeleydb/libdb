@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_symlink,v 1.14 2001/04/26 21:31:36 bostic Exp $
+#	$Id: s_symlink,v 1.19 2001/10/03 01:34:07 bostic Exp $
 
 echo 'Creating Berkeley DB source tree symbolic links...'
 
@@ -32,7 +32,6 @@ build docs_src/api_cxx/Makefile ../api_c/Makefile
 build docs_src/api_cxx/m4.seealso ../api_c/m4.seealso
 build docs_src/api_cxx/spell.ok ../api_c/spell.ok
 build docs_src/api_java/Makefile ../api_c/Makefile
-build docs_src/api_java/java_index.so ../api_cxx/cxx_index.so
 build docs_src/api_java/m4.seealso ../api_c/m4.seealso
 build docs_src/api_java/spell.ok ../api_c/spell.ok
 build docs_src/api_tcl/spell.ok ../api_c/spell.ok
@@ -57,6 +56,7 @@ build docs_src/ref/mp/spell.ok ../spell.ok
 build docs_src/ref/perl/spell.ok ../spell.ok
 build docs_src/ref/program/spell.ok ../spell.ok
 build docs_src/ref/refs/spell.ok ../spell.ok
+build docs_src/ref/rep/spell.ok ../spell.ok
 build docs_src/ref/rpc/spell.ok ../spell.ok
 build docs_src/ref/sendmail/spell.ok ../spell.ok
 build docs_src/ref/simple_tut/spell.ok ../spell.ok
@@ -69,6 +69,7 @@ build docs_src/ref/upgrade.3.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.1/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.2/spell.ok ../spell.ok
 build docs_src/ref/upgrade.3.3/spell.ok ../spell.ok
+build docs_src/ref/upgrade.4.0/spell.ok ../spell.ok
 build docs_src/ref/upgrade/spell.ok ../spell.ok
 build docs_src/ref/xa/spell.ok ../spell.ok
 build env/tags ../dist/tags
@@ -88,8 +89,10 @@ build os/tags ../dist/tags
 build os_vxworks/tags ../dist/tags
 build os_win32/tags ../dist/tags
 build qam/tags ../dist/tags
+build rep/tags ../dist/tags
 build rpc_client/tags ../dist/tags
 build rpc_server/tags ../dist/tags
 build tcl/tags ../dist/tags
+build test_server/tags ../dist/tags
 build txn/tags ../dist/tags
 build xa/tags ../dist/tags

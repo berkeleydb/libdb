@@ -43,15 +43,15 @@ positioned between the new record numbers 1 and 2, and an insertion
 using that cursor will appear between those records.   In this manner
 records can be added and deleted to a database without disrupting the
 sequential traversal of the database by a cursor.
-<p>Only cursors created using a single DB handle can adjust each
-other's position in this way, however.  If multiple DB handles
+<p>Only cursors created using a single <a href="../../api_c/db_create.html">DB</a> handle can adjust each
+other's position in this way, however.  If multiple <a href="../../api_c/db_create.html">DB</a> handles
 have a renumbering Recno database open simultaneously (as when multiple
 processes share a single database environment), a record referred to by
 one cursor could change underfoot if a cursor created using another
-DB handle inserts or deletes records into the database.  For
+<a href="../../api_c/db_create.html">DB</a> handle inserts or deletes records into the database.  For
 this reason, applications using Recno databases with mutable record
 numbers will usually make all accesses to the database using a single
-DB handle and cursors created from that handle, or will
+<a href="../../api_c/db_create.html">DB</a> handle and cursors created from that handle, or will
 otherwise single-thread access to the database, for example, by using
 the Berkeley DB Concurrent Data Store product.
 <p>In any Queue or Recno databases, creating new records will cause the

@@ -3,11 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test068.tcl,v 11.12 2001/01/25 18:23:12 bostic Exp $
+# $Id: test068.tcl,v 11.14 2001/08/03 16:39:44 bostic Exp $
 #
-# DB Test 68: Test of DB_BEFORE and DB_AFTER and partial puts.
-# Make sure DB_BEFORE and DB_AFTER work properly with partial puts,
-# and check that they return EINVAL if DB_DUPSORT is set or if DB_DUP is not.
+# TEST	test068
+# TEST	Test of DB_BEFORE and DB_AFTER with partial puts.
+# TEST	Make sure DB_BEFORE and DB_AFTER work properly with partial puts, and
+# TEST	check that they return EINVAL if DB_DUPSORT is set or if DB_DUP is not.
 proc test068 { method args } {
 	source ./include.tcl
 	global alphabet
@@ -63,7 +64,7 @@ proc test068 { method args } {
 
 	foreach dupopt $dupoptlist {
 		cleanup $testdir $env
-		set db [eval {berkdb_open_noerr -create -truncate -mode 0644 \
+		set db [eval {berkdb_open_noerr -create -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE
 

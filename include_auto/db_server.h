@@ -65,6 +65,7 @@ typedef struct __env_open_msg __env_open_msg;
 
 struct __env_open_reply {
 	int status;
+	u_int envcl_id;
 };
 typedef struct __env_open_reply __env_open_reply;
 
@@ -360,6 +361,7 @@ typedef struct __db_open_msg __db_open_msg;
 
 struct __db_open_reply {
 	int status;
+	u_int dbcl_id;
 	u_int type;
 	u_int dbflags;
 	u_int lorder;
@@ -744,98 +746,98 @@ struct __dbc_put_reply {
 typedef struct __dbc_put_reply __dbc_put_reply;
 
 #define	__DB_env_cachesize ((unsigned long)(1))
-extern  __env_cachesize_reply * __db_env_cachesize_3003();
+extern  __env_cachesize_reply * __db_env_cachesize_4000();
 #define	__DB_env_close ((unsigned long)(2))
-extern  __env_close_reply * __db_env_close_3003();
+extern  __env_close_reply * __db_env_close_4000();
 #define	__DB_env_create ((unsigned long)(3))
-extern  __env_create_reply * __db_env_create_3003();
+extern  __env_create_reply * __db_env_create_4000();
 #define	__DB_env_flags ((unsigned long)(4))
-extern  __env_flags_reply * __db_env_flags_3003();
+extern  __env_flags_reply * __db_env_flags_4000();
 #define	__DB_env_open ((unsigned long)(5))
-extern  __env_open_reply * __db_env_open_3003();
+extern  __env_open_reply * __db_env_open_4000();
 #define	__DB_env_remove ((unsigned long)(6))
-extern  __env_remove_reply * __db_env_remove_3003();
+extern  __env_remove_reply * __db_env_remove_4000();
 #define	__DB_txn_abort ((unsigned long)(7))
-extern  __txn_abort_reply * __db_txn_abort_3003();
+extern  __txn_abort_reply * __db_txn_abort_4000();
 #define	__DB_txn_begin ((unsigned long)(8))
-extern  __txn_begin_reply * __db_txn_begin_3003();
+extern  __txn_begin_reply * __db_txn_begin_4000();
 #define	__DB_txn_commit ((unsigned long)(9))
-extern  __txn_commit_reply * __db_txn_commit_3003();
+extern  __txn_commit_reply * __db_txn_commit_4000();
 #define	__DB_txn_discard ((unsigned long)(10))
-extern  __txn_discard_reply * __db_txn_discard_3003();
+extern  __txn_discard_reply * __db_txn_discard_4000();
 #define	__DB_txn_prepare ((unsigned long)(11))
-extern  __txn_prepare_reply * __db_txn_prepare_3003();
+extern  __txn_prepare_reply * __db_txn_prepare_4000();
 #define	__DB_txn_recover ((unsigned long)(12))
-extern  __txn_recover_reply * __db_txn_recover_3003();
+extern  __txn_recover_reply * __db_txn_recover_4000();
 #define	__DB_db_associate ((unsigned long)(13))
-extern  __db_associate_reply * __db_db_associate_3003();
+extern  __db_associate_reply * __db_db_associate_4000();
 #define	__DB_db_bt_maxkey ((unsigned long)(14))
-extern  __db_bt_maxkey_reply * __db_db_bt_maxkey_3003();
+extern  __db_bt_maxkey_reply * __db_db_bt_maxkey_4000();
 #define	__DB_db_bt_minkey ((unsigned long)(15))
-extern  __db_bt_minkey_reply * __db_db_bt_minkey_3003();
+extern  __db_bt_minkey_reply * __db_db_bt_minkey_4000();
 #define	__DB_db_close ((unsigned long)(16))
-extern  __db_close_reply * __db_db_close_3003();
+extern  __db_close_reply * __db_db_close_4000();
 #define	__DB_db_create ((unsigned long)(17))
-extern  __db_create_reply * __db_db_create_3003();
+extern  __db_create_reply * __db_db_create_4000();
 #define	__DB_db_del ((unsigned long)(18))
-extern  __db_del_reply * __db_db_del_3003();
+extern  __db_del_reply * __db_db_del_4000();
 #define	__DB_db_extentsize ((unsigned long)(19))
-extern  __db_extentsize_reply * __db_db_extentsize_3003();
+extern  __db_extentsize_reply * __db_db_extentsize_4000();
 #define	__DB_db_flags ((unsigned long)(20))
-extern  __db_flags_reply * __db_db_flags_3003();
+extern  __db_flags_reply * __db_db_flags_4000();
 #define	__DB_db_get ((unsigned long)(21))
-extern  __db_get_reply * __db_db_get_3003();
+extern  __db_get_reply * __db_db_get_4000();
 #define	__DB_db_h_ffactor ((unsigned long)(22))
-extern  __db_h_ffactor_reply * __db_db_h_ffactor_3003();
+extern  __db_h_ffactor_reply * __db_db_h_ffactor_4000();
 #define	__DB_db_h_nelem ((unsigned long)(23))
-extern  __db_h_nelem_reply * __db_db_h_nelem_3003();
+extern  __db_h_nelem_reply * __db_db_h_nelem_4000();
 #define	__DB_db_key_range ((unsigned long)(24))
-extern  __db_key_range_reply * __db_db_key_range_3003();
+extern  __db_key_range_reply * __db_db_key_range_4000();
 #define	__DB_db_lorder ((unsigned long)(25))
-extern  __db_lorder_reply * __db_db_lorder_3003();
+extern  __db_lorder_reply * __db_db_lorder_4000();
 #define	__DB_db_open ((unsigned long)(26))
-extern  __db_open_reply * __db_db_open_3003();
+extern  __db_open_reply * __db_db_open_4000();
 #define	__DB_db_pagesize ((unsigned long)(27))
-extern  __db_pagesize_reply * __db_db_pagesize_3003();
+extern  __db_pagesize_reply * __db_db_pagesize_4000();
 #define	__DB_db_pget ((unsigned long)(28))
-extern  __db_pget_reply * __db_db_pget_3003();
+extern  __db_pget_reply * __db_db_pget_4000();
 #define	__DB_db_put ((unsigned long)(29))
-extern  __db_put_reply * __db_db_put_3003();
+extern  __db_put_reply * __db_db_put_4000();
 #define	__DB_db_re_delim ((unsigned long)(30))
-extern  __db_re_delim_reply * __db_db_re_delim_3003();
+extern  __db_re_delim_reply * __db_db_re_delim_4000();
 #define	__DB_db_re_len ((unsigned long)(31))
-extern  __db_re_len_reply * __db_db_re_len_3003();
+extern  __db_re_len_reply * __db_db_re_len_4000();
 #define	__DB_db_re_pad ((unsigned long)(32))
-extern  __db_re_pad_reply * __db_db_re_pad_3003();
+extern  __db_re_pad_reply * __db_db_re_pad_4000();
 #define	__DB_db_remove ((unsigned long)(33))
-extern  __db_remove_reply * __db_db_remove_3003();
+extern  __db_remove_reply * __db_db_remove_4000();
 #define	__DB_db_rename ((unsigned long)(34))
-extern  __db_rename_reply * __db_db_rename_3003();
+extern  __db_rename_reply * __db_db_rename_4000();
 #define	__DB_db_stat ((unsigned long)(35))
-extern  __db_stat_reply * __db_db_stat_3003();
+extern  __db_stat_reply * __db_db_stat_4000();
 #define	__DB_db_sync ((unsigned long)(36))
-extern  __db_sync_reply * __db_db_sync_3003();
+extern  __db_sync_reply * __db_db_sync_4000();
 #define	__DB_db_truncate ((unsigned long)(37))
-extern  __db_truncate_reply * __db_db_truncate_3003();
+extern  __db_truncate_reply * __db_db_truncate_4000();
 #define	__DB_db_cursor ((unsigned long)(38))
-extern  __db_cursor_reply * __db_db_cursor_3003();
+extern  __db_cursor_reply * __db_db_cursor_4000();
 #define	__DB_db_join ((unsigned long)(39))
-extern  __db_join_reply * __db_db_join_3003();
+extern  __db_join_reply * __db_db_join_4000();
 #define	__DB_dbc_close ((unsigned long)(40))
-extern  __dbc_close_reply * __db_dbc_close_3003();
+extern  __dbc_close_reply * __db_dbc_close_4000();
 #define	__DB_dbc_count ((unsigned long)(41))
-extern  __dbc_count_reply * __db_dbc_count_3003();
+extern  __dbc_count_reply * __db_dbc_count_4000();
 #define	__DB_dbc_del ((unsigned long)(42))
-extern  __dbc_del_reply * __db_dbc_del_3003();
+extern  __dbc_del_reply * __db_dbc_del_4000();
 #define	__DB_dbc_dup ((unsigned long)(43))
-extern  __dbc_dup_reply * __db_dbc_dup_3003();
+extern  __dbc_dup_reply * __db_dbc_dup_4000();
 #define	__DB_dbc_get ((unsigned long)(44))
-extern  __dbc_get_reply * __db_dbc_get_3003();
+extern  __dbc_get_reply * __db_dbc_get_4000();
 #define	__DB_dbc_pget ((unsigned long)(45))
-extern  __dbc_pget_reply * __db_dbc_pget_3003();
+extern  __dbc_pget_reply * __db_dbc_pget_4000();
 #define	__DB_dbc_put ((unsigned long)(46))
-extern  __dbc_put_reply * __db_dbc_put_3003();
-extern int db_rpc_serverprog_3003_freeresult();
+extern  __dbc_put_reply * __db_dbc_put_4000();
+extern int db_rpc_serverprog_4000_freeresult();
 
 /* the xdr functions */
 extern bool_t xdr___env_cachesize_msg();

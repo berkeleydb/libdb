@@ -1,9 +1,9 @@
-<!--$Id: lock_stat.so,v 10.31 2001/04/03 16:27:55 bostic Exp $-->
+<!--$Id: lock_stat.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: lock_stat</title>
+<title>Berkeley DB: DB_ENV-&gt;lock_stat</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>lock_stat</h1>
+<h1>DB_ENV-&gt;lock_stat</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,12 +22,17 @@
 #include &lt;db.h&gt;
 <p>
 int
-lock_stat(DB_ENV *env, DB_LOCK_STAT **statp);
+DB_ENV-&gt;lock_stat(DB_ENV *env, DB_LOCK_STAT **statp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The lock_stat function
+<p>The DB_ENV-&gt;lock_stat function
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -55,32 +60,36 @@ DB_LOCK_STAT.  The following DB_LOCK_STAT fields will be filled in:
 <a href="../api_c/lock_vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a> was set.
 <dt>u_int32_t st_nconflicts;<dd>The total number of locks not immediately available due to conflicts.
 <dt>u_int32_t st_ndeadlocks;<dd>The number of deadlocks detected.
+<dt>u_int32_t st_nlocktimeouts;<dd>The number of locks that have timed out.
+<dt>u_int32_t st_ntxntimeouts;<dd>The number of transactions that have timed out.  This value is also a
+component of <b>st_ndeadlocks</b>, the total number of deadlocks
+detected.
 <dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-<p>The lock_stat function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;lock_stat function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The lock_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the lock_stat function may fail and return
+<p>The DB_ENV-&gt;lock_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;lock_stat function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a>,
-<a href="../api_c/env_set_lk_max.html">DB_ENV-&gt;set_lk_max</a>,
 <a href="../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
 <a href="../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>,
 <a href="../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>,
-<a href="../api_c/lock_detect.html">lock_detect</a>,
-<a href="../api_c/lock_get.html">lock_get</a>,
-<a href="../api_c/lock_id.html">lock_id</a>,
-<a href="../api_c/lock_put.html">lock_put</a>,
-<a href="../api_c/lock_stat.html">lock_stat</a>,
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>,
+<a href="../api_c/lock_get.html">DB_ENV-&gt;lock_get</a>,
+<a href="../api_c/lock_id.html">DB_ENV-&gt;lock_id</a>,
+<a href="../api_c/lock_id_free.html">DB_ENV-&gt;lock_id_free</a>,
+<a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>,
+<a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>,
 and
-<a href="../api_c/lock_vec.html">lock_vec</a>.
+<a href="../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

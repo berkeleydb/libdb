@@ -1,4 +1,4 @@
-<!--$Id: db_verify.so,v 10.9 2001/07/02 01:03:11 bostic Exp $-->
+<!--$Id: db_verify.so,v 10.11 2001/10/22 15:24:26 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Db::verify</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -27,8 +27,9 @@ Db::verify(const char *file,
 </pre></h3>
 <h1>Description</h1>
 <p>The Db::verify method verifies the integrity of all databases in the
-file specified by the file argument, and optionally outputs the databases'
-key/data pairs to a file stream.
+file specified by the <b>file</b> argument, and optionally outputs the
+databases' key/data pairs to the file stream specified by the
+<b>outfile</b> argument.
 <p>The <b>flags</b> value must be set to 0 or
 the following value:
 <p><dl compact>
@@ -153,7 +154,7 @@ and
 <a href="../api_cxx/db_verify.html">Db::verify</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_pthread.c,v 11.36 2001/04/16 14:48:49 ubell Exp $";
+static const char revid[] = "$Id: mut_pthread.c,v 11.39 2001/08/07 01:42:42 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -53,14 +53,14 @@ static const char revid[] = "$Id: mut_pthread.c,v 11.36 2001/04/16 14:48:49 ubel
 
 /*
  * __db_pthread_mutex_init --
- *	Initialize a MUTEX.
+ *	Initialize a DB_MUTEX.
  *
- * PUBLIC: int __db_pthread_mutex_init __P((DB_ENV *, MUTEX *, u_int32_t));
+ * PUBLIC: int __db_pthread_mutex_init __P((DB_ENV *, DB_MUTEX *, u_int32_t));
  */
 int
 __db_pthread_mutex_init(dbenv, mutexp, flags)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	u_int32_t flags;
 {
 	int ret;
@@ -166,7 +166,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	}}
 #endif
 
-	mutexp->spins = __os_spin();
+	mutexp->spins = __os_spin(dbenv);
 #ifdef MUTEX_SYSTEM_RESOURCES
 	mutexp->reg_off = INVALID_ROFF;
 #endif
@@ -180,17 +180,17 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
  * __db_pthread_mutex_lock
  *	Lock on a mutex, logically blocking if necessary.
  *
- * PUBLIC: int __db_pthread_mutex_lock __P((DB_ENV *, MUTEX *));
+ * PUBLIC: int __db_pthread_mutex_lock __P((DB_ENV *, DB_MUTEX *));
  */
 int
 __db_pthread_mutex_lock(dbenv, mutexp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
 	u_int32_t nspins;
 	int i, ret, waited;
 
-	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (F_ISSET(dbenv, DB_ENV_NOLOCKING) || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 	/* Attempt to acquire the resource for N spins. */
@@ -267,16 +267,16 @@ __db_pthread_mutex_lock(dbenv, mutexp)
  * __db_pthread_mutex_unlock --
  *	Release a lock.
  *
- * PUBLIC: int __db_pthread_mutex_unlock __P((DB_ENV *, MUTEX *));
+ * PUBLIC: int __db_pthread_mutex_unlock __P((DB_ENV *, DB_MUTEX *));
  */
 int
 __db_pthread_mutex_unlock(dbenv, mutexp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
 	int i, ret;
 
-	if (!dbenv->db_mutexlocks || F_ISSET(mutexp, MUTEX_IGNORE))
+	if (F_ISSET(dbenv, DB_ENV_NOLOCKING) || F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
 #ifdef DIAGNOSTIC
@@ -317,13 +317,13 @@ __db_pthread_mutex_unlock(dbenv, mutexp)
 
 /*
  * __db_pthread_mutex_destroy --
- *	Destroy a MUTEX.
+ *	Destroy a DB_MUTEX.
  *
- * PUBLIC: int __db_pthread_mutex_destroy __P((MUTEX *));
+ * PUBLIC: int __db_pthread_mutex_destroy __P((DB_MUTEX *));
  */
 int
 __db_pthread_mutex_destroy(mutexp)
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
 	if (F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);

@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env001.tcl,v 11.22 2001/01/25 18:23:04 bostic Exp $
+# $Id: env001.tcl,v 11.23 2001/08/03 16:39:23 bostic Exp $
 #
-# Test of env remove interface.
+# TEST	env001
+# TEST	Test of env remove interface (formerly env_remove).
 proc env001 { } {
 	global errorInfo
 	global errorCode

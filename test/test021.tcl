@@ -3,14 +3,16 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test021.tcl,v 11.11 2001/01/25 18:23:09 bostic Exp $
+# $Id: test021.tcl,v 11.13 2001/08/03 16:39:37 bostic Exp $
 #
-# DB Test 21 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self, reversed as key and self as data.
-# After all are entered, retrieve each using a cursor SET_RANGE, and getting
-# about 20 keys sequentially after it (in some cases we'll run out towards
-# the end of the file).
+# TEST	test021
+# TEST	Btree range tests.
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self, reversed as key and self as data.
+# TEST	After all are entered, retrieve each using a cursor SET_RANGE, and
+# TEST	getting about 20 keys sequentially after it (in some cases we'll
+# TEST	run out towards the end of the file).
 proc test021 { method {nentries 10000} args } {
 	source ./include.tcl
 
@@ -37,7 +39,7 @@ proc test021 { method {nentries 10000} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

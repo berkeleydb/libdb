@@ -1,9 +1,9 @@
-<!--$Id: appsignals.so,v 10.26 2001/03/05 19:15:08 bostic Exp $-->
+<!--$Id: appsignals.so,v 10.27 2001/09/07 14:52:01 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide: Application signal handling</title>
+<title>Berkeley DB Reference Guide: Signal handling</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -14,7 +14,7 @@
 <td align=right><a href="../../ref/xa/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/errorret.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
-<h1 align=center>Application signal handling</h1>
+<h1 align=center>Signal handling</h1>
 <p>When applications using Berkeley DB receive signals, it is important that they
 exit gracefully, discarding any Berkeley DB locks that they may hold.  This is
 normally done by setting a flag when a signal arrives and then checking
@@ -28,6 +28,9 @@ the database environment must be shut down, and then recovery must be
 performed.  If this is not done,  databases may be left in an
 inconsistent state, or locks the application held may cause unresolvable
 deadlocks inside the environment, causing applications to hang.
+<p>Berkeley DB restarts all system calls interrupted by signals, that is, any
+underlying system calls that return failure with errno set to EINTR will
+be restarted rather than failing.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/xa/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/errorret.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

@@ -1,4 +1,4 @@
-<!--$Id: db_set_dup_compare.so,v 10.25 2001/05/05 01:49:11 bostic Exp $-->
+<!--$Id: db_set_dup_compare.so,v 10.26 2001/10/22 15:24:23 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Db.set_dup_compare</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -23,13 +23,13 @@ import com.sleepycat.db.*;
 <p>
 public interface DbDupCompare
 {
-	public abstract int dup_compare(Db db, Dbt dbt1, Dbt dbt2);
+    public abstract int dup_compare(Db db, Dbt dbt1, Dbt dbt2);
 }
 public class Db
 {
-	public void set_dup_compare(DbDupCompare dup_compare)
-		throws DbException;
-	...
+    public void set_dup_compare(DbDupCompare dup_compare)
+	throws DbException;
+    ...
 }
 </pre></h3>
 <h1>Description</h1>
@@ -107,7 +107,7 @@ and
 <a href="../api_java/db_verify.html">Db.verify</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

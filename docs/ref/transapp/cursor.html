@@ -15,7 +15,7 @@
 <p>
 <h1 align=center>Transactional cursors</h1>
 <p>Berkeley DB cursors may be used inside a transaction, exactly as any other
-DB method.  The enclosing transaction ID must be specified when
+<a href="../../api_c/db_create.html">DB</a> method.  The enclosing transaction ID must be specified when
 the cursor is created, but it does not then need to be further specified
 on operations performed using the cursor.  One important point to
 remember is that a cursor <b>must be closed</b> before the enclosing
@@ -95,8 +95,8 @@ add_cat(DB_ENV *dbenv, DB *db, char *name, ...)
 	key.size = strlen(name);
 <p>
 retry:	/* Begin the transaction. */
-	if ((ret = txn_begin(dbenv, NULL, &tid, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "txn_begin");
+	if ((ret = dbenv-&gt;txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;txn_begin");
 		exit (1);
 	}
 <p>
@@ -108,8 +108,8 @@ retry:	/* Begin the transaction. */
 	case DB_LOCK_DEADLOCK:
 	default:
 		/* Retry the operation. */
-		if ((t_ret = txn_abort(tid)) != 0) {
-			dbenv-&gt;err(dbenv, t_ret, "txn_abort");
+		if ((t_ret = tid-&gt;abort(tid)) != 0) {
+			dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 			exit (1);
 		}
 		if (++fail == MAXIMUM_RETRY)
@@ -141,8 +141,8 @@ retry:	/* Begin the transaction. */
 				    dbenv, t_ret, "dbc-&gt;c_close");
 				exit (1);
 			}
-			if ((t_ret = txn_abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, t_ret, "txn_abort");
+			if ((t_ret = tid-&gt;abort(tid)) != 0) {
+				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
 				exit (1);
 			}
 			if (++fail == MAXIMUM_RETRY)
@@ -157,8 +157,8 @@ retry:	/* Begin the transaction. */
 		dbenv-&gt;err(dbenv, ret, "dbc-&gt;c_close");
 		exit (1);
 	}
-	if ((ret = txn_commit(tid, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "txn_commit");
+	if ((ret = tid-&gt;commit(tid, 0)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "DB_TXN-&gt;commit");
 		exit (1);
 	}
 	return (0);

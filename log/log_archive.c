@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_archive.c,v 11.22 2001/07/02 01:05:41 bostic Exp $";
+static const char revid[] = "$Id: log_archive.c,v 11.27 2001/10/04 16:10:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,19 +19,11 @@ static const char revid[] = "$Id: log_archive.c,v 11.22 2001/07/02 01:05:41 bost
 #include <unistd.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_page.h"
 #include "log.h"
 #include "qam.h"
 #include "clib_ext.h"			/* XXX: needed for getcwd. */
-
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
 
 static int __absname __P((DB_ENV *, char *, char *, char **));
 static int __build_data __P((DB_ENV *, char *, char ***));
@@ -39,32 +31,28 @@ static int __cmpfunc __P((const void *, const void *));
 static int __usermem __P((DB_ENV *, char ***));
 
 /*
- * log_archive --
+ * __log_archive --
  *	Supporting function for db_archive(1).
  *
- * EXTERN: int log_archive __P((DB_ENV *, char **[], u_int32_t));
+ * PUBLIC: int __log_archive __P((DB_ENV *, char **[], u_int32_t));
  */
 int
-log_archive(dbenv, listp, flags)
+__log_archive(dbenv, listp, flags)
 	DB_ENV *dbenv;
 	char ***listp;
 	u_int32_t flags;
 {
 	DBT rec;
 	DB_LOG *dblp;
+	DB_LOGC *logc;
 	DB_LSN stable_lsn;
 	u_int32_t fnum;
 	int array_size, db_arch_abs, n, ret;
 	char **array, **arrayp, *name, *p, *pref, buf[MAXPATHLEN];
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_log_archive(dbenv, listp, flags));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lg_handle, "log_archive", DB_INIT_LOG);
+	    dbenv->lg_handle, "DB_ENV->log_archive", DB_INIT_LOG);
 
 	name = NULL;
 	dblp = dbenv->lg_handle;
@@ -72,12 +60,11 @@ log_archive(dbenv, listp, flags)
 
 #define	OKFLAGS	(DB_ARCH_ABS | DB_ARCH_DATA | DB_ARCH_LOG)
 	if (flags != 0) {
-		if ((ret =
-		    __db_fchk(dbenv, "log_archive", flags, OKFLAGS)) != 0)
+		if ((ret = __db_fchk(
+		    dbenv, "DB_ENV->log_archive", flags, OKFLAGS)) != 0)
 			return (ret);
-		if ((ret =
-		    __db_fcchk(dbenv,
-			"log_archive", flags, DB_ARCH_DATA, DB_ARCH_LOG)) != 0)
+		if ((ret = __db_fcchk(dbenv, "DB_ENV->log_archive",
+		    flags, DB_ARCH_DATA, DB_ARCH_LOG)) != 0)
 			return (ret);
 	}
 
@@ -89,7 +76,7 @@ log_archive(dbenv, listp, flags)
 
 	if (flags == 0 || flags == DB_ARCH_DATA)
 		ENV_REQUIRES_CONFIG(dbenv,
-		    dbenv->tx_handle, "log_archive", DB_INIT_TXN);
+		    dbenv->tx_handle, "DB_ENV->log_archive", DB_INIT_TXN);
 
 	/*
 	 * Get the absolute pathname of the current directory.  It would
@@ -115,12 +102,12 @@ log_archive(dbenv, listp, flags)
 		return (__build_data(dbenv, pref, listp));
 	case DB_ARCH_LOG:
 		memset(&rec, 0, sizeof(rec));
-		if (F_ISSET(dbenv, DB_ENV_THREAD))
-			F_SET(&rec, DB_DBT_MALLOC);
-		if ((ret = log_get(dbenv, &stable_lsn, &rec, DB_LAST)) != 0)
+		if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0)
 			return (ret);
-		if (F_ISSET(dbenv, DB_ENV_THREAD))
-			__os_free(dbenv, rec.data, rec.size);
+		ret = logc->get(logc, &stable_lsn, &rec, DB_LAST);
+		(void)logc->close(logc, 0);
+		if (ret != 0)
+			return (ret);
 		fnum = stable_lsn.file;
 		break;
 	case 0:
@@ -142,7 +129,7 @@ log_archive(dbenv, listp, flags)
 
 #define	LIST_INCREMENT	64
 	/* Get some initial space. */
-	array_size = 10;
+	array_size = 64;
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(char *) * array_size, &array)) != 0)
 		return (ret);
@@ -160,7 +147,7 @@ log_archive(dbenv, listp, flags)
 			break;
 		}
 
-		if (n >= array_size - 1) {
+		if (n >= array_size - 2) {
 			array_size += LIST_INCREMENT;
 			if ((ret = __os_realloc(dbenv,
 			    sizeof(char *) * array_size, &array)) != 0)
@@ -220,28 +207,28 @@ __build_data(dbenv, pref, listp)
 	char *pref, ***listp;
 {
 	DBT rec;
+	DB_LOGC *logc;
 	DB_LSN lsn;
 	__log_register_args *argp;
 	u_int32_t rectype;
-	int array_size, last, n, nxt, ret;
+	int array_size, last, n, nxt, ret, t_ret;
 	char **array, **arrayp, **list, **lp, *p, *real_name;
 
 	/* Get some initial space. */
-	array_size = 10;
+	array_size = 64;
 	if ((ret = __os_malloc(dbenv,
 	    sizeof(char *) * array_size, &array)) != 0)
 		return (ret);
 	array[0] = NULL;
 
 	memset(&rec, 0, sizeof(rec));
-	if (F_ISSET(dbenv, DB_ENV_THREAD))
-		F_SET(&rec, DB_DBT_MALLOC);
-	for (n = 0, ret = log_get(dbenv, &lsn, &rec, DB_LAST);
-	    ret == 0; ret = log_get(dbenv, &lsn, &rec, DB_PREV)) {
+	if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0)
+		return (ret);
+	for (n = 0; (ret = logc->get(logc, &lsn, &rec, DB_PREV)) == 0;) {
 		if (rec.size < sizeof(rectype)) {
 			ret = EINVAL;
-			__db_err(dbenv, "log_archive: bad log record");
-			goto lg_free;
+			__db_err(dbenv, "DB_ENV->log_archive: bad log record");
+			goto free_continue;
 		}
 
 		memcpy(&rectype, rec.data, sizeof(rectype));
@@ -255,20 +242,21 @@ __build_data(dbenv, pref, listp)
 		if ((ret = __log_register_read(dbenv, rec.data, &argp)) != 0) {
 			ret = EINVAL;
 			__db_err(dbenv,
-			    "log_archive: unable to read log record");
-			goto lg_free;
+			    "DB_ENV->log_archive: unable to read log record");
+			goto free_continue;
 		}
 
-		if (n >= array_size - 1) {
+		if (n >= array_size - 2) {
 			array_size += LIST_INCREMENT;
 			if ((ret = __os_realloc(dbenv,
 			    sizeof(char *) * array_size, &array)) != 0)
-				goto lg_free;
+				goto free_continue;
 		}
 
 		if ((ret = __os_strdup(dbenv,
 		    argp->name.data, &array[n++])) != 0)
-			goto lg_free;
+			goto free_continue;
+		array[n] = NULL;
 
 		if (argp->ftype == DB_QUEUE) {
 			if ((ret = __qam_extent_names(dbenv,
@@ -276,7 +264,7 @@ __build_data(dbenv, pref, listp)
 				goto q_err;
 			for (lp = list;
 			    lp != NULL && *lp != NULL; lp++) {
-				if (n >= array_size - 1) {
+				if (n >= array_size - 2) {
 					array_size += LIST_INCREMENT;
 					if ((ret = __os_realloc(dbenv,
 					    sizeof(char *) *
@@ -286,22 +274,21 @@ __build_data(dbenv, pref, listp)
 				if ((ret =
 				    __os_strdup(dbenv, *lp, &array[n++])) != 0)
 					goto q_err;
+				array[n] = NULL;
 			}
-
-q_err:
-			if (list != NULL)
+q_err:			if (list != NULL)
 				__os_free(dbenv, list, 0);
 		}
-
-lg_free:
-		__os_free(dbenv, argp, 0);
-		if (F_ISSET(dbenv, DB_ENV_THREAD && rec.data != NULL)) {
-			__os_free(dbenv, rec.data, rec.size);
-			rec.data = NULL;
-		}
+free_continue:	__os_free(dbenv, argp, 0);
 		if (ret != 0)
-			goto err1;
+			break;
 	}
+	if (ret == DB_NOTFOUND)
+		ret = 0;
+	if ((t_ret = logc->close(logc, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	if (ret != 0)
+		goto err1;
 
 	/* If there's nothing to return, we're done. */
 	if (n == 0) {
@@ -309,8 +296,6 @@ lg_free:
 		*listp = NULL;
 		goto err1;
 	}
-
-	array[n] = NULL;
 
 	/* Sort the list. */
 	qsort(array, (size_t)n, sizeof(char *), __cmpfunc);

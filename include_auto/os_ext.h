@@ -15,8 +15,10 @@ int __os_realloc __P((DB_ENV *, size_t, void *));
 void __os_free __P((DB_ENV *, void *, size_t));
 void __os_freestr __P((DB_ENV *, void *));
 void *__ua_memcpy __P((void *, const void *, size_t));
+int __os_clock __P((DB_ENV *, u_int32_t *, u_int32_t *));
 int __os_dirlist __P((DB_ENV *, const char *, char ***, int *));
 void __os_dirfree __P((DB_ENV *, char **, int));
+int __os_get_errno_ret_zero __P((void));
 int __os_get_errno __P((void));
 void __os_set_errno __P((int));
 int __os_fileid __P((DB_ENV *, const char *, int, u_int8_t *));
@@ -45,13 +47,14 @@ int __os_read __P((DB_ENV *, DB_FH *, void *, size_t, size_t *));
 int __os_write __P((DB_ENV *, DB_FH *, void *, size_t, size_t *));
 int __os_seek __P((DB_ENV *, DB_FH *, size_t, db_pgno_t, u_int32_t, int, DB_OS_SEEK));
 int __os_sleep __P((DB_ENV *, u_long, u_long));
-int __os_spin __P((void));
+int __os_spin __P((DB_ENV *));
 void __os_yield __P((DB_ENV*, u_long));
 int __os_exists __P((const char *, int *));
 int __os_ioinfo __P((DB_ENV *, const char *, DB_FH *, u_int32_t *, u_int32_t *, u_int32_t *));
 int __os_tmpdir __P((DB_ENV *, u_int32_t));
 int __os_unlink __P((DB_ENV *, const char *));
 int __os_region_unlink __P((DB_ENV *, const char *));
+int __os_clock __P((DB_ENV *, u_int32_t *, u_int32_t *));
 #if defined(DB_WIN32)
 int __os_win32_errno __P((void));
 #endif

@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lock001.tcl,v 11.12 2001/01/25 18:23:05 bostic Exp $
+# $Id: lock001.tcl,v 11.16 2001/10/10 16:22:10 ubell Exp $
 #
 # Test driver for lock tests.
 #						General	Multi	Random
@@ -29,7 +29,11 @@ proc lock_usage {} {
 
 proc locktest { args } {
 	source ./include.tcl
+	global lock_curid
+	global lock_maxid
 
+	set save_curid $lock_curid
+	set save_maxid $lock_maxid
 	# Set defaults
 	# Adjusted to make exact match of isqrt
 	#set conflicts { 3 0 0 0 0 0 1 0 1 1}
@@ -55,6 +59,8 @@ proc locktest { args } {
 			-r.* { incr i; set reads [lindex $args $i] }
 			-s.* { incr i; set seeds [lindex $args $i] }
 			-w.* { incr i; set wait [lindex $args $i] }
+			-S.* { incr i; set lock_curid [lindex $args $i];
+			       incr i; set lock_maxid [lindex $args $i] }
 			default {
 				puts -nonewline "FAIL:[timestamp] Usage: "
 				lock_usage
@@ -71,6 +77,9 @@ proc locktest { args } {
 	set eflags "-create -lock -home $testdir -mode 0644 \
 	    -lock_max $maxlocks -lock_conflict {$nmodes {$conflicts}}"
 	set env [eval {berkdb env} $eflags]
+	error_check_good env [is_valid_env $env] TRUE
+	error_check_good lock_id_set \
+	     [$env lock_id_set $lock_curid $lock_maxid] 0
 	lock001 $env $iterations $nmodes
 	reset_env $env
 	env_cleanup $testdir
@@ -79,15 +88,18 @@ proc locktest { args } {
 
 	lock003 $testdir $iterations \
 	    $maxlocks $procs $ldegree $objs $reads $wait $conflicts $seeds
+	set lock_curid $save_curid
+	set lock_maxid $save_maxid
 }
 
-# Make sure that the basic lock tests work.  Do some simple gets and puts for
-# a single locker.
+# TEST	lock001
+# TEST	Make sure that the basic lock tests work.  Do some simple gets
+# TEST	and puts for a single locker.
 proc lock001 {env iter nmodes} {
 	source ./include.tcl
 
 	puts "Lock001: test basic lock operations"
-	set locker 999
+	set locker [$env lock_id]
 	# Get and release each type of lock
 	puts "Lock001.a: get and release each type of lock"
 	foreach m {ng write read} {
@@ -131,7 +143,7 @@ proc lock001 {env iter nmodes} {
 	}
 
 	# Change the locker
-	set locker [incr locker]
+	set locker [$env lock_id]
 	set blocklist {}
 	# Skip NO_LOCK lock.
 	puts "Lock001.e: Change the locker, acquire read and write."
@@ -156,6 +168,7 @@ proc lock001 {env iter nmodes} {
 
 	# Now release new locks
 	release_list $locklist
+	error_check_good free_id [ $env lock_id_free $locker] 0
 
 	puts "Lock001 Complete."
 }

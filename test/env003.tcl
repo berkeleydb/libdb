@@ -3,19 +3,19 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env003.tcl,v 11.14 2001/05/11 17:26:19 krinsky Exp $
+# $Id: env003.tcl,v 11.15 2001/08/03 16:39:23 bostic Exp $
 #
-# Env Test 003
-# Test DB_TMP_DIR and env name resolution
-# With an environment path specified using -home, and then again
-# with it specified by the environment variable DB_HOME:
-#	1) Make sure that the DB_TMP_DIR config file option is respected
-#		a) as a relative pathname.
-#		b) as an absolute pathname.
-#	2) Make sure that the DB_TMP_DIR db_config argument is respected,
-#		again as relative and absolute pathnames.
-#	3) Make sure that if -both- db_config and a file are present,
-#		only the file is respected (see doc/env/naming.html).
+# TEST	env003
+# TEST	Test DB_TMP_DIR and env name resolution
+# TEST	With an environment path specified using -home, and then again
+# TEST	with it specified by the environment variable DB_HOME:
+# TEST	1) Make sure that the DB_TMP_DIR config file option is respected
+# TEST		a) as a relative pathname.
+# TEST		b) as an absolute pathname.
+# TEST	2) Make sure that the DB_TMP_DIR db_config argument is respected,
+# TEST		again as relative and absolute pathnames.
+# TEST	3) Make sure that if -both- db_config and a file are present,
+# TEST		only the file is respected (see doc/env/naming.html).
 proc env003 { } {
 	#   env003 is essentially just a small driver that runs
 	# env003_body twice.  First, it supplies a "home" argument

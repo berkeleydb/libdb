@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test065.tcl,v 11.10 2001/02/07 18:27:22 sue Exp $
+# $Id: test065.tcl,v 11.12 2001/08/03 16:39:44 bostic Exp $
 #
-# DB Test 65: Test of DB->stat(DB_RECORDCOUNT)
+# TEST	test065
+# TEST	Test of DB->stat(DB_FASTSTAT)
 proc test065 { method args } {
 	source ./include.tcl
 	global errorCode
@@ -33,7 +34,7 @@ proc test065 { method args } {
 
 	puts "\tTest0$tnum.a: Create database and check it while empty."
 
-	set db [eval {berkdb_open_noerr -create -truncate -mode 0644} \
+	set db [eval {berkdb_open_noerr -create -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 

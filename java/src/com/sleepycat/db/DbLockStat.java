@@ -20,6 +20,8 @@ public class DbLockStat
     public int st_nreleases;
     public int st_nnowaits;
     public int st_ndeadlocks;
+    public int st_nlocktimeouts;
+    public int st_ntxntimeouts;
     public int st_region_wait;
     public int st_region_nowait;
     public int st_regsize;

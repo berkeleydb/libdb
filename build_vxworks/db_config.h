@@ -1,5 +1,5 @@
 /*
- * $Id: db_config.h,v 1.12 2001/07/06 20:40:46 bostic Exp $
+ * $Id: db_config.h,v 1.18 2001/11/08 22:02:46 bostic Exp $
  */
 
 /* !!!
@@ -40,6 +40,9 @@
 /* Define if you want a version with run-time diagnostic checking. */
 /* #undef DIAGNOSTIC */
 
+/* Define if you have the `clock_gettime' function. */
+#define HAVE_CLOCK_GETTIME 1
+
 /* Define if you have the <dirent.h> header file, and it defines `DIR'. */
 #define HAVE_DIRENT_H 1
 
@@ -60,6 +63,9 @@
 
 /* Define if you have the `getopt' function. */
 /* #undef HAVE_GETOPT */
+
+/* Define if you have the `gettimeofday' function. */
+/* #undef HAVE_GETTIMEOFDAY */
 
 /* Define if you have the `getuid' function. */
 /* #undef HAVE_GETUID */
@@ -184,10 +190,6 @@
 /* Define if you have the `raise' function. */
 #define HAVE_RAISE 1
 
-/* !!!
- * The HAVE_RPC option may be added using the Tornado project build.
- * DO NOT modify it here.
- */
 /* Define if building RPC client/server. */
 /* #undef HAVE_RPC */
 
@@ -202,6 +204,9 @@
 
 /* Define if you have the `snprintf' function. */
 /* #undef HAVE_SNPRINTF */
+
+/* Define if you have the <stdint.h> header file. */
+/* #undef HAVE_STDINT_H */
 
 /* Define if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
@@ -236,8 +241,14 @@
 /* Define if you have the <sys/select.h> header file. */
 /* #undef HAVE_SYS_SELECT_H */
 
+/* Define if you have the <sys/stat.h> header file. */
+/* #undef HAVE_SYS_STAT_H */
+
 /* Define if you have the <sys/time.h> header file. */
 /* #undef HAVE_SYS_TIME_H */
+
+/* Define if you have the <sys/types.h> header file. */
+/* #undef HAVE_SYS_TYPES_H */
 
 /* Define if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
@@ -305,6 +316,13 @@
  */
 #ifndef	HAVE_GETCWD
 #define	getcwd		__db_Cgetcwd
+#endif
+#ifndef	HAVE_GETOPT
+#define	getopt		__db_Cgetopt
+#define	optarg		__db_Coptarg
+#define	opterr		__db_Copterr
+#define	optind		__db_Coptind
+#define	optopt		__db_Coptopt
 #endif
 #ifndef	HAVE_MEMCMP
 #define	memcmp		__db_Cmemcmp

@@ -1,4 +1,4 @@
-<!--$Id: mempfile_class.so,v 10.11 2001/04/12 18:48:45 bostic Exp $-->
+<!--$Id: mempfile_class.so,v 10.12 2001/07/31 17:25:41 dda Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbMpoolFile</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -25,7 +25,8 @@ class DbMpoolFile { ... };
 </pre></h3>
 <h1>Description</h1>
 <p>This manual page describes the specific details of the DbMpoolFile
-class.
+class.  DbMpoolFile objects are created
+using the <a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a> method.
 <p>The <a href="../api_cxx/dbenv_class.html">DbEnv</a> memory pool methods and the DbMpoolFile class
 are the library interface that provide general-purpose, page-oriented
 buffer management of one or more files.  Although designed to work with
@@ -44,6 +45,7 @@ method.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -51,13 +53,18 @@ method.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -4,7 +4,7 @@
  * Copyright (c) 1998-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: debug.h,v 11.18 2001/01/25 18:22:51 bostic Exp $
+ * $Id: debug.h,v 11.19 2001/07/18 16:08:49 bostic Exp $
  */
 
 #if defined(__cplusplus)
@@ -24,7 +24,7 @@ extern "C" {
 #if defined(DIAGNOSTIC) && defined(__STDC__)
 #define	DB_ASSERT(e)	((e) ? (void)0 : __db_assert(#e, __FILE__, __LINE__))
 #else
-#define	DB_ASSERT(e)	((void)0)
+#define	DB_ASSERT(e)
 #endif
 
 /*

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_stat.c,v 11.37 2001/04/18 16:57:14 ubell Exp $";
+static const char revid[] = "$Id: bt_stat.c,v 11.40 2001/09/04 16:00:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -41,6 +41,7 @@ __bam_stat(dbp, spp, flags)
 	DBC *dbc;
 	DB_BTREE_STAT *sp;
 	DB_LOCK lock, metalock;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t pgno;
 	int ret, t_ret, write_meta;
@@ -53,6 +54,7 @@ __bam_stat(dbp, spp, flags)
 	sp = NULL;
 	LOCK_INIT(metalock);
 	LOCK_INIT(lock);
+	mpf = dbp->mpf;
 	h = NULL;
 	ret = 0;
 	write_meta = 0;
@@ -77,7 +79,7 @@ __bam_stat(dbp, spp, flags)
 	pgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, (PAGE **)&meta)) != 0)
+	if ((ret = mpf->get(mpf, &pgno, 0, (PAGE **)&meta)) != 0)
 		goto err;
 
 	if (flags == DB_RECORDCOUNT || flags == DB_CACHED_COUNTS)
@@ -89,11 +91,11 @@ __bam_stat(dbp, spp, flags)
 	for (sp->bt_free = 0, pgno = meta->dbmeta.free; pgno != PGNO_INVALID;) {
 		++sp->bt_free;
 
-		if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+		if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 			goto err;
 
 		pgno = h->next_pgno;
-		if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			goto err;
 		h = NULL;
 	}
@@ -102,14 +104,14 @@ __bam_stat(dbp, spp, flags)
 	pgno = cp->root;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		goto err;
-	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
+	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		goto err;
 
 	/* Get the levels from the root page. */
 	sp->bt_levels = h->level;
 
 	/* Discard the root page. */
-	if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
+	if ((ret = mpf->put(mpf, h, 0)) != 0)
 		goto err;
 	h = NULL;
 	__LPUT(dbc, lock);
@@ -126,7 +128,7 @@ __bam_stat(dbp, spp, flags)
 	write_meta = !F_ISSET(dbp, DB_AM_RDONLY);
 meta_only:
 	if (t->bt_meta != PGNO_BASE_MD || write_meta != 0) {
-		if ((ret = memp_fput(dbp->mpf, meta, 0)) != 0)
+		if ((ret = mpf->put(mpf, meta, 0)) != 0)
 			goto err;
 		meta = NULL;
 		__LPUT(dbc, metalock);
@@ -135,8 +137,7 @@ meta_only:
 		    0, t->bt_meta, write_meta == 0 ?
 		    DB_LOCK_READ : DB_LOCK_WRITE, 0, &metalock)) != 0)
 			goto err;
-		if ((ret =
-		    memp_fget(dbp->mpf, &t->bt_meta, 0, (PAGE **)&meta)) != 0)
+		if ((ret = mpf->get(mpf, &t->bt_meta, 0, (PAGE **)&meta)) != 0)
 			goto err;
 	}
 	if (flags == DB_FAST_STAT) {
@@ -145,8 +146,8 @@ meta_only:
 			if ((ret = __db_lget(dbc, 0,
 			    cp->root, DB_LOCK_READ, 0, &lock)) != 0)
 				goto err;
-			if ((ret = memp_fget(dbp->mpf,
-			    &cp->root, 0, (PAGE **)&h)) != 0)
+			if ((ret =
+			    mpf->get(mpf, &cp->root, 0, (PAGE **)&h)) != 0)
 				goto err;
 
 			sp->bt_nkeys = RE_NREC(h);
@@ -170,32 +171,26 @@ meta_only:
 		meta->dbmeta.record_count = sp->bt_ndata;
 	}
 
-	/* Discard the metadata page. */
-	if ((ret = memp_fput(dbp->mpf,
-	    meta, write_meta == 0 ? 0 : DB_MPOOL_DIRTY)) != 0)
-		goto err;
-	meta = NULL;
-	__LPUT(dbc, metalock);
-
 	*(DB_BTREE_STAT **)spp = sp;
 
-	if (0) {
-err:		if (sp != NULL)
-			__os_free(dbp->dbenv, sp, sizeof(*sp));
-	}
-
-	if (h != NULL &&
-	    (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret == 0)
-		ret = t_ret;
-
-	if (meta != NULL &&
-	    (t_ret = memp_fput(dbp->mpf, meta, 0)) != 0 && ret == 0)
-		ret = t_ret;
-
+err:	/* Discard the second page. */
 	__LPUT(dbc, lock);
+	if (h != NULL && (t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
+		ret = t_ret;
+
+	/* Discard the metadata page. */
+	__LPUT(dbc, metalock);
+	if (meta != NULL && (t_ret = mpf->put(
+	    mpf, meta, write_meta == 0 ? 0 : DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
 
 	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
+
+	if (ret != 0 && sp != NULL) {
+		__os_free(dbp->dbenv, sp, sizeof(*sp));
+		*(DB_BTREE_STAT **)spp = NULL;
+	}
 
 	return (ret);
 }
@@ -219,17 +214,19 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 	BKEYDATA *bk;
 	DB *dbp;
 	DB_LOCK lock;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	RINTERNAL *ri;
 	db_indx_t indx;
 	int already_put, ret, t_ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	already_put = 0;
 
 	if ((ret = __db_lget(dbc, 0, root_pgno, mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = memp_fget(dbp->mpf, &root_pgno, 0, &h)) != 0) {
+	if ((ret = mpf->get(mpf, &root_pgno, 0, &h)) != 0) {
 		__LPUT(dbc, lock);
 		return (ret);
 	}
@@ -292,8 +289,7 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 
 	ret = callback(dbp, h, cookie, &already_put);
 
-err:	if (!already_put &&
-	    (t_ret = memp_fput(dbp->mpf, h, 0)) != 0 && ret != 0)
+err:	if (!already_put && (t_ret = mpf->put(mpf, h, 0)) != 0 && ret != 0)
 		ret = t_ret;
 	__LPUT(dbc, lock);
 
@@ -386,7 +382,7 @@ __bam_stat_callback(dbp, h, cookie, putp)
 		sp->bt_over_pgfree += P_OVFLSPACE(dbp->pgsize, h);
 		break;
 	default:
-		return (__db_pgfmt(dbp, h->pgno));
+		return (__db_pgfmt(dbp->dbenv, h->pgno));
 	}
 	return (0);
 }

@@ -3,11 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd009.tcl,v 1.14 2001/01/25 18:23:06 bostic Exp $
+# $Id: recd009.tcl,v 1.15 2001/08/03 16:39:27 bostic Exp $
 #
-# Recovery Test 9.
-# Test stability of record numbers across splits
-# and reverse splits and across recovery.
+# TEST	recd009
+# TEST	Verify record numbering across split/reverse splits and recovery.
 proc recd009 { method {select 0} args} {
 	global fixed_len
 	source ./include.tcl

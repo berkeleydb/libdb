@@ -66,6 +66,8 @@ void _ErrorFunc __P((CONST char *, char *));
 int _GetLsn __P((Tcl_Interp *, Tcl_Obj *, DB_LSN *));
 #define	_GetUInt32 _GetUInt32@DB_VERSION_UNIQUE_NAME@
 int _GetUInt32 __P((Tcl_Interp *, Tcl_Obj *, u_int32_t *));
+#define	_GetFlagsList _GetFlagsList@DB_VERSION_UNIQUE_NAME@
+Tcl_Obj *_GetFlagsList __P((Tcl_Interp *, u_int32_t, void (*)(u_int32_t, void *, void (*)(u_int32_t, const FN *, void *))));
 #define	_debug_check _debug_check@DB_VERSION_UNIQUE_NAME@
 void _debug_check  __P((void));
 #define	tcl_LockDetect tcl_LockDetect@DB_VERSION_UNIQUE_NAME@
@@ -74,6 +76,8 @@ int tcl_LockDetect __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LockGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 #define	tcl_LockStat tcl_LockStat@DB_VERSION_UNIQUE_NAME@
 int tcl_LockStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+#define	tcl_LockTimeout tcl_LockTimeout@DB_VERSION_UNIQUE_NAME@
+int tcl_LockTimeout __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 #define	tcl_LockVec tcl_LockVec@DB_VERSION_UNIQUE_NAME@
 int tcl_LockVec __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 #define	tcl_LogArchive tcl_LogArchive@DB_VERSION_UNIQUE_NAME@
@@ -94,6 +98,8 @@ int tcl_LogRegister __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 #define	tcl_LogUnregister tcl_LogUnregister@DB_VERSION_UNIQUE_NAME@
 int tcl_LogUnregister __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+#define	logc_Cmd logc_Cmd@DB_VERSION_UNIQUE_NAME@
+int logc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 #define	_MpInfoDelete _MpInfoDelete@DB_VERSION_UNIQUE_NAME@
 void _MpInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 #define	tcl_MpSync tcl_MpSync@DB_VERSION_UNIQUE_NAME@
@@ -112,6 +118,8 @@ int tcl_TxnCheckpoint __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_Txn __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 #define	tcl_TxnStat tcl_TxnStat@DB_VERSION_UNIQUE_NAME@
 int tcl_TxnStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
+#define	tcl_TxnTimeout tcl_TxnTimeout@DB_VERSION_UNIQUE_NAME@
+int tcl_TxnTimeout __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 #define	tcl_TxnRecover tcl_TxnRecover@DB_VERSION_UNIQUE_NAME@
 int tcl_TxnRecover __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 #if defined(__cplusplus)

@@ -39,10 +39,10 @@ result in immense process sizes.  In addition, because of the
 requirements of the Berkeley DB transactional implementation, only read-only
 files can be mapped into process memory.
 <p>To specify that no files are to be mapped into the process address space,
-specify the <a href="../../api_c/env_open.html#DB_NOMMAP">DB_NOMMAP</a> flag to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> interface.
+specify the <a href="../../api_c/env_set_flags.html#DB_NOMMAP">DB_NOMMAP</a> flag to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> interface.
 To specify that any individual file should not be mapped into the process
-address space, specify the <a href="../../api_c/env_open.html#DB_NOMMAP">DB_NOMMAP</a> flag to the
-<a href="../../api_c/memp_fopen.html">memp_fopen</a> interface.  To limit the size of files mapped into the
+address space, specify the <a href="../../api_c/env_set_flags.html#DB_NOMMAP">DB_NOMMAP</a> flag to the
+<a href="../../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a> interface.  To limit the size of files mapped into the
 process address space, use the <a href="../../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a> function.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/mp/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/txn/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

@@ -1,5 +1,5 @@
 /*
- * $Id: db_config.h,v 11.33 2001/07/06 20:40:47 bostic Exp $
+ * $Id: db_config.h,v 11.39 2001/11/10 04:59:05 mjc Exp $
  */
 
 /* Define if you are building a version for running the test suite. */
@@ -22,6 +22,9 @@
 /* Define if you want a version with run-time diagnostic checking. */
 /* #undef DIAGNOSTIC */
 
+/* Define if you have the `clock_gettime' function. */
+/* #undef HAVE_CLOCK_GETTIME */
+
 /* Define if you have the <dirent.h> header file, and it defines `DIR'. */
 /* #undef HAVE_DIRENT_H */
 
@@ -42,6 +45,9 @@
 
 /* Define if you have the `getopt' function. */
 /* #undef HAVE_GETOPT */
+
+/* Define if you have the `gettimeofday' function. */
+/* #undef HAVE_GETTIMEOFDAY */
 
 /* Define if you have the `getuid' function. */
 /* #undef HAVE_GETUID */
@@ -181,6 +187,9 @@
 /* Define if you have the `snprintf' function. */
 #define HAVE_SNPRINTF 1
 
+/* Define if you have the <stdint.h> header file. */
+/* #undef HAVE_STDINT_H */
+
 /* Define if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
 
@@ -214,8 +223,14 @@
 /* Define if you have the <sys/select.h> header file. */
 /* #undef HAVE_SYS_SELECT_H */
 
+/* Define if you have the <sys/stat.h> header file. */
+#define HAVE_SYS_STAT_H 1
+
 /* Define if you have the <sys/time.h> header file. */
 /* #undef HAVE_SYS_TIME_H */
+
+/* Define if you have the <sys/types.h> header file. */
+#define HAVE_SYS_TYPES_H 1
 
 /* Define if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
@@ -332,10 +347,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <errno.h>
-
-#if defined(__cplusplus)
-#include <iostream.h>
-#endif
 
 /*
  * To build Tcl interface libraries, the include path must be configured to

@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: testutils.tcl,v 11.116 2001/07/12 17:39:37 sue Exp $
+# $Id: testutils.tcl,v 11.130 2001/11/07 18:45:03 sue Exp $
 #
 # Test system utilities
 #
@@ -314,7 +314,7 @@ proc release_list { l } {
 
 	# Now release all the locks
 	foreach el $l {
-		set ret [$el put]
+		catch { $el put } ret
 		error_check_good lock_put $ret 0
 	}
 }
@@ -1099,11 +1099,14 @@ proc cleanup { dir env { quiet 0 } } {
 			# We:
 			# - Ignore any env-related files, which are
 			# those that have __db.* or log.* if we are
-			# running in an env.
+			# running in an env.  Also ignore files whose
+			# names start with REPDIR_;  these are replication
+			# subdirectories.
 			# - Call 'dbremove' on any databases.
 			# Remove any remaining temp files.
 			#
 			switch -glob -- $file {
+			*/DIR_* -
 			*/__db.* -
 			*/log.*	{
 				if { $env != "NULL" } {
@@ -1284,7 +1287,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 		set p [exec $tclsh_path $test_path/wrap.tcl recdscript.tcl \
 		    $testdir/recdout $op $dir $env_cmd $dbfile $gidf $cmd &]
 		lappend proclist $p
-		watch_procs 1 120 1
+		watch_procs 5
 		set f1 [open $testdir/recdout r]
 		set r [read $f1]
 		puts -nonewline $r
@@ -1482,7 +1485,7 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	}
 
 	berkdb debug_check
-	puts -nonewline "\t\tOp_recover_rec: Running recovery ... "
+	puts -nonewline "\t\top_recover_rec: Running recovery ... "
 	flush stdout
 
 	set stat [catch {exec $util_path/db_recover -h $dir -e -c} result]
@@ -1676,11 +1679,11 @@ proc minwrites { myenv locker_id obj_id num } {
 
 proc countlocks { myenv locker_id obj_id num } {
 	set locklist ""
-	for { set i 0} {$i < [expr $locker_id * 4]} { incr i } {
+	for { set i 0} {$i < [expr $obj_id * 4]} { incr i } {
 		set r [catch {$myenv lock_get read $locker_id \
-		    [expr $locker_id * 1000 + $i]} l ]
+		    [expr $obj_id * 1000 + $i]} l ]
 		if { $r != 0 } {
-			puts $errorInfo
+			puts $l
 			return ERROR
 		} else {
 			error_check_good lockget:$obj_id [is_substr $l $myenv] 1
@@ -1689,11 +1692,11 @@ proc countlocks { myenv locker_id obj_id num } {
 	}
 
 	# Now acquire a write lock
-	if { $locker_id != 1 } {
+	if { $obj_id != 1 } {
 		set r [catch {$myenv lock_get write $locker_id \
-		    [expr $locker_id * 1000 + 10]} l ]
+		    [expr $obj_id * 1000 + 10]} l ]
 		if { $r != 0 } {
-			puts $errorInfo
+			puts $l
 			return ERROR
 		} else {
 			error_check_good lockget:$obj_id [is_substr $l $myenv] 1
@@ -1721,7 +1724,7 @@ proc ring { myenv locker_id obj_id num } {
 	source ./include.tcl
 
 	if {[catch {$myenv lock_get write $locker_id $obj_id} lock1] != 0} {
-		puts $errorInfo
+		puts $lock1
 		return ERROR
 	} else {
 		error_check_good lockget:$obj_id [is_substr $lock1 $myenv] 1
@@ -1734,6 +1737,7 @@ proc ring { myenv locker_id obj_id num } {
 		if {[string match "*DEADLOCK*" $lock2] == 1} {
 			set ret DEADLOCK
 		} else {
+			puts $lock2
 			set ret ERROR
 		}
 	} else {
@@ -1763,7 +1767,7 @@ proc clump { myenv locker_id obj_id num } {
 
 	set obj_id 10
 	if {[catch {$myenv lock_get read $locker_id $obj_id} lock1] != 0} {
-		puts $errorInfo
+		puts $lock1
 		return ERROR
 	} else {
 		error_check_good lockget:$obj_id \
@@ -1794,10 +1798,15 @@ proc clump { myenv locker_id obj_id num } {
 	return $ret
  }
 
-proc dead_check { t procs dead clean other } {
+proc dead_check { t procs timeout dead clean other } {
 	error_check_good $t:$procs:other $other 0
 	switch $t {
 		ring {
+			# with timeouts the number of deadlocks is unpredictable
+			if { $timeout != 0 && $dead > 1 } {
+				set clean [ expr $clean + $dead - 1]
+				set dead 1
+			}
 			error_check_good $t:$procs:deadlocks $dead 1
 			error_check_good $t:$procs:success $clean \
 			    [expr $procs - 1]
@@ -1912,6 +1921,10 @@ proc is_valid_lock { lock env } {
 	return [is_valid_widget $lock $env.lock]
 }
 
+proc is_valid_logc { logc env } {
+	return [is_valid_widget $logc $env.logc]
+}
+
 proc is_valid_mpool { mpool env } {
 	return [is_valid_widget $mpool $env.mp]
 }
@@ -1926,6 +1939,14 @@ proc is_valid_txn { txn env } {
 
 proc is_valid_mutex { m env } {
 	return [is_valid_widget $m $env.mutex]
+}
+
+proc is_valid_lock {l env} {
+	return [is_valid_widget $l $env.lock]
+}
+
+proc is_valid_locker {l } {
+	return [is_valid_widget $l ""]
 }
 
 proc send_cmd { fd cmd {sleep 2}} {
@@ -2437,8 +2458,35 @@ proc filecmp { file_a file_b } {
 	return 0
 }
 
+# Give two SORTED files, one of which is a complete superset of the other,
+# extract out the unique portions of the superset and put them in
+# the given outfile.
+proc fileextract { superset subset outfile } {
+	set sup [open $superset r]
+	set sub [open $subset r]
+	set outf [open $outfile w]
+
+	# The gets can't be in the while condition because we'll
+	# get short-circuit evaluated.
+	set nrp [gets $sup pline]
+	set nrb [gets $sub bline]
+	while { $nrp >= 0 } {
+		if { $nrp != $nrb || [string compare $pline $bline] != 0} {
+			puts $outf $pline
+		} else {
+			set nrb [gets $sub bline]
+		}
+		set nrp [gets $sup pline]
+	}
+
+	close $sup
+	close $sub
+	close $outf
+	return 0
+}
+
 # Verify all .db files in the specified directory.
-proc verify_dir { {directory "./TESTDIR"} \
+proc verify_dir { {directory $testdir} \
     { pref "" } { noredo 0 } { quiet 0 } { nodump 0 } { cachesize 0 } } {
 	# If we're doing database verification between tests, we don't
 	# want to do verification twice without an intervening cleanup--some
@@ -2469,14 +2517,15 @@ proc verify_dir { {directory "./TESTDIR"} \
 	set errarg $errfilearg$errpfxarg
 	set ret 0
 
-	# If we're using a non-default cachesize, open an env.
-	if { $cachesize != 0 } {
-		set env [berkdb env -create \
-		    -private -cachesize [list 0 $cachesize 0]]
-		set earg " -env $env $errarg "
-	} else {
-		set earg $errarg
+	# Open an env, so that we have a large enough cache.  Pick
+	# a fairly generous default if we haven't specified something else.
+
+	if { $cachesize == 0 } {
+		set cachesize [expr 1024 * 1024]
 	}
+
+	set env [berkdb env -create -private -cachesize [list 0 $cachesize 0]]
+	set earg " -env $env $errarg "
 
 	foreach db $dbs {
 		if { [catch {eval {berkdb dbverify} $earg $db} res] != 0 } {
@@ -2491,8 +2540,7 @@ proc verify_dir { {directory "./TESTDIR"} \
 			}
 		}
 
-		# Skip the dump if it's dangerous to do it (e.g. subdbs).
-		# XXX we should make dumploadtest work for subdbs instead.
+		# Skip the dump if it's dangerous to do it.
 		if { $nodump == 0 } {
 			if { [catch {eval dumploadtest $db} res] != 0 } {
 				puts $res
@@ -2509,27 +2557,66 @@ proc verify_dir { {directory "./TESTDIR"} \
 		}
 	}
 
-	if { $cachesize != 0 } {
-		error_check_good vrfyenv_close [$env close] 0
-	}
+	error_check_good vrfyenv_close [$env close] 0
 
 	return $ret
 }
 
-proc dumploadtest { db } {
+# Is the database handle in $db a master database containing subdbs?
+proc check_for_subdbs { db } {
+	set stat [$db stat]
+	for { set i 0 } { [string length [lindex $stat $i]] > 0 } { incr i } {
+		set elem [lindex $stat $i]
+		if { [string compare [lindex $elem 0] Flags] == 0 } {
+			# This is the list of flags;  look for
+			# "multiple-databases".
+			if { [is_substr [lindex $elem 1] multiple-databases] } {
+				return 1
+			}
+		}
+	}
+	return 0
+}
+
+proc dumploadtest { db {subdb ""} } {
 	global util_path
 
 	set newdbname $db-dumpload.db
 
-	# Do a db_dump test.  Dump/load each file.
-	set rval [catch {exec $util_path/db_dump -k $db | \
-	    $util_path/db_load $newdbname} res]
-	error_check_good db_dump($db) $rval 0
-
-	# Now open original and dump/loaded databases.
-	set olddb [eval {berkdb_open -rdonly $db}]
-	set newdb [eval {berkdb_open -rdonly $newdbname}]
+	# Open original database, or subdb if we have one.
+	set olddb [eval {berkdb_open -rdonly $db} $subdb]
 	error_check_good olddb($db) [is_valid_db $olddb] TRUE
+
+	if { [string length $subdb] == 0 } {
+		if { [check_for_subdbs $olddb] } {
+			# If $db has subdatabases, dumploadtest each one
+			# separately.
+			set oc [$olddb cursor]
+			error_check_good orig_cursor($db) \
+	    		    [is_valid_cursor $oc $olddb] TRUE
+
+			for { set dbt [$oc get -first] } \
+			    { [llength $dbt] > 0 } \
+			    { set dbt [$oc get -next] } {
+				set subdb [lindex [lindex $dbt 0] 0]
+				dumploadtest $db $subdb
+			}
+
+			return 0
+		}
+		# No subdatabase
+		set subdbdumpflag ""
+	} else {
+		set subdbdumpflag "-s $subdb"
+	}
+
+	# Do a db_dump test.  Dump/load each file.
+	set rval [catch {eval exec $util_path/db_dump -k $subdbdumpflag $db | \
+	    $util_path/db_load $newdbname} res]
+	error_check_good db_dump($db:$subdb:$res) $rval 0
+
+	# Now open new database.
+	set newdb [eval {berkdb_open -rdonly $newdbname}]
 	error_check_good newdb($db) [is_valid_db $newdb] TRUE
 
 	# Walk through olddb and newdb and make sure their contents
@@ -2672,14 +2759,14 @@ proc extractflags { args } {
 # Wrapper for berkdb open, used throughout the test suite so that we can
 # set an errfile/errpfx as appropriate.
 proc berkdb_open { args } {
-	global is_envmethod1
+	global is_envmethod
 
-	if { [info exists is_envmethod1] == 0 } {
-		set is_envmethod1 0
+	if { [info exists is_envmethod] == 0 } {
+		set is_envmethod 0
 	}
 
 	set errargs {}
-	if { $is_envmethod1 == 0 && [file exists /dev/stderr] == 1 } {
+	if { $is_envmethod == 0 && [file exists /dev/stderr] == 1 } {
 		append errargs " -errfile /dev/stderr "
 		append errargs " -errpfx \\F\\A\\I\\L "
 	}
@@ -2785,17 +2872,19 @@ proc get_pagesize { stat } {
 proc get_file_list { {small 0} } {
 	global is_windows_test
 	global is_qnx_test
+	global src_root
 
 	if { $is_qnx_test } {
 		set small 1
 	}
 	if { $small && $is_windows_test } {
-		return [glob ../*/*.c */env*.obj]
+		return [glob $src_root/*/*.c */env*.obj]
 	} elseif { $small } {
-		return [glob ../*/*.c ./env*.o]
+		return [glob $src_root/*/*.c ./env*.o]
 	} elseif { $is_windows_test } {
-		return [glob ../*/*.c */*.obj */libdb??.dll */libdb??d.dll]
+		return \
+		    [glob $src_root/*/*.c */*.obj */libdb??.dll */libdb??d.dll]
 	} else {
-		return [glob ../*/*.c ./*.o ./.libs/libdb-?.?.s?]
+		return [glob $src_root/*/*.c ./*.o ./.libs/libdb-?.?.s?]
 	}
 }

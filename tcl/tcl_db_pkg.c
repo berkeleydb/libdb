@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_db_pkg.c,v 11.92 2001/07/06 20:31:52 bostic Exp $";
+static const char revid[] = "$Id: tcl_db_pkg.c,v 11.106 2001/11/16 16:19:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -25,6 +25,9 @@ static const char revid[] = "$Id: tcl_db_pkg.c,v 11.92 2001/07/06 20:31:52 bosti
 #include "db_page.h"
 #include "hash.h"
 #include "tcl_db.h"
+
+/* XXX we must declare global data in just one place */
+DBTCL_GLOBAL __dbtcl_global;
 
 /*
  * Prototypes for procedures defined later in this file:
@@ -47,6 +50,8 @@ static int	tcl_compare_callback __P((DB *, const DBT *, const DBT *,
     Tcl_Obj *, char *));
 static int	tcl_dup_compare __P((DB *, const DBT *, const DBT *));
 static u_int32_t tcl_h_hash __P((DB *, const void *, u_int32_t));
+static int	tcl_rep_send __P((DB_ENV *,
+    const DBT *, const DBT *, int, u_int32_t));
 
 /*
  * Db_tcl_Init --
@@ -304,7 +309,7 @@ berkdb_Cmd(notused, interp, objc, objv)
  *	1.  Call db_env_create to create the env handle.
  *	2.  Parse args tracking options.
  *	3.  Make any pre-open setup calls necessary.
- *	4.  Call DBENV->open to open the env.
+ *	4.  Call DB_ENV->open to open the env.
  *	5.  Return env widget handle to user.
  */
 static int
@@ -332,6 +337,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-lock_max_locks",
 		"-lock_max_lockers",
 		"-lock_max_objects",
+		"-lock_timeout",
 		"-log",
 		"-log_buffer",
 		"-log_dir",
@@ -344,6 +350,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-recover",
 		"-recover_fatal",
 		"-region_init",
+		"-rep_client",
+		"-rep_master",
+		"-rep_transport",
 		"-server",
 		"-server_timeout",
 		"-shm_key",
@@ -351,6 +360,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-tmp_dir",
 		"-txn",
 		"-txn_max",
+		"-txn_timeout",
 		"-txn_timestamp",
 		"-use_environ",
 		"-use_environ_root",
@@ -379,6 +389,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_LOCK_MAX_LOCKS,
 		ENV_LOCK_MAX_LOCKERS,
 		ENV_LOCK_MAX_OBJECTS,
+		ENV_LOCK_TIMEOUT,
 		ENV_LOG,
 		ENV_LOG_BUFFER,
 		ENV_LOG_DIR,
@@ -391,6 +402,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_RECOVER,
 		ENV_RECOVER_FATAL,
 		ENV_REGION_INIT,
+		ENV_REP_CLIENT,
+		ENV_REP_MASTER,
+		ENV_REP_TRANSPORT,
 		ENV_SERVER,
 		ENV_SERVER_TO,
 		ENV_SHM_KEY,
@@ -398,6 +412,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_TMP_DIR,
 		ENV_TXN,
 		ENV_TXN_MAX,
+		ENV_TXN_TIMEOUT,
 		ENV_TXN_TIME,
 		ENV_USE_ENVIRON,
 		ENV_USE_ENVIRON_ROOT,
@@ -409,22 +424,29 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	u_int32_t open_flags, set_flag, size, uintarg;
 	u_int8_t *conflicts;
 	int i, intarg, j;
-	int mode, myobjc, nmodes, optindex, result, ret, temp;
+	int mode, myobjc, nmodes, optindex, rep_client, rep_eid, rep_master;
+	int result, ret, temp;
 	long client_to, server_to, shm;
 	char *arg, *home, *server;
 
 	result = TCL_OK;
+	rep_client = rep_eid = rep_master = 0;
 	mode = 0;
 	set_flag = 0;
 	home = NULL;
+
 	/*
 	 * XXX
 	 * If/when our Tcl interface becomes thread-safe, we should enable
-	 * DB_THREAD here.  Note that DB_THREAD currently does not work
-	 * with log_get -next, -prev;  if we wish to enable DB_THREAD,
-	 * those must either be made thread-safe first or we must come up with
-	 * a workaround.  (We used to specify DB_THREAD if and only if
-	 * logging was not configured.)
+	 * DB_THREAD here.
+	 *
+	 * Historically, a key stumbling block was the log_get interface,
+	 * which could only do relative operations in a non-threaded
+	 * environment.  This is no longer an issue, thanks to log cursors,
+	 * but we need to look at making sure DBTCL_INFO structs
+	 * are safe to share across threads (they're not mutex-protected)
+	 * before we declare the Tcl interface thread-safe.  Meanwhile,
+	 * there's no strong reason to enable DB_THREAD.
 	 */
 	open_flags = DB_JOINENV;
 	logmaxset = logbufset = 0;
@@ -502,6 +524,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		(*env)->set_errpfx((*env), ip->i_name);
 		(*env)->set_errcall((*env), _ErrorFunc);
 	}
+
+	/* Hang our info pointer on the env handle, so we can do callbacks. */
+	(*env)->app_private = ip;
 
 	/*
 	 * Get the command name index from the object based on the bdbcmds
@@ -594,6 +619,61 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		case ENV_RECOVER_FATAL:
 			FLD_SET(open_flags, DB_RECOVER_FATAL);
 			break;
+		case ENV_REP_CLIENT:
+			rep_client = 1;
+			break;
+		case ENV_REP_MASTER:
+			rep_master = 1;
+			break;
+		case ENV_REP_TRANSPORT:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-rep_transport {envid sendproc}");
+				result = TCL_ERROR;
+				break;
+			}
+
+			/*
+			 * Store the objects containing the machine ID
+			 * and the procedure name.  We don't need to crack
+			 * the send procedure out now, but we do convert the
+			 * machine ID to an int, since set_rep_transport needs
+			 * it.  Even so, it'll be easier later to deal with
+			 * the Tcl_Obj *, so we save that, not the int.
+			 *
+			 * Note that we Tcl_IncrRefCount both objects
+			 * independently;  Tcl is free to discard the list
+			 * that they're bundled into.
+			 */
+			result = Tcl_ListObjGetElements(interp, objv[i++],
+			    &myobjc, &myobjv);
+			if (myobjc != 2) {
+				Tcl_SetResult(interp,
+				    "List must be {envid sendproc}",
+				    TCL_STATIC);
+				result = TCL_ERROR;
+				break;
+			}
+
+			/*
+			 * Check that the machine ID is an int.  Note that
+			 * we do want to use GetIntFromObj;  the machine
+			 * ID is explicitly an int, not a u_int32_t.
+			 */
+			ip->i_rep_eid = myobjv[0];
+			Tcl_IncrRefCount(ip->i_rep_eid);
+			result = Tcl_GetIntFromObj(interp,
+			    ip->i_rep_eid, &intarg);
+			if (result != TCL_OK)
+				break;
+
+			ip->i_rep_send = myobjv[1];
+			Tcl_IncrRefCount(ip->i_rep_send);
+			_debug_check();
+			ret = (*env)->set_rep_transport(*env,
+			    intarg, tcl_rep_send);
+			result = _ReturnSetup(interp, ret, "set_rep_transport");
+			break;
 		case ENV_SYSTEM_MEM:
 			FLD_SET(open_flags, DB_SYSTEM_MEM);
 			break;
@@ -621,7 +701,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			break;
 		case ENV_REGION_INIT:
 			_debug_check();
-			ret = db_env_set_region_init(1);
+			ret = (*env)->set_flags(*env, DB_REGION_INIT, 1);
 			result = _ReturnSetup(interp, ret, "region_init");
 			break;
 		case ENV_CACHESIZE:
@@ -797,6 +877,8 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			arg = Tcl_GetStringFromObj(objv[i++], NULL);
 			if (strcmp(arg, "default") == 0)
 				detect = DB_LOCK_DEFAULT;
+			else if (strcmp(arg, "expire") == 0)
+				detect = DB_LOCK_EXPIRE;
 			else if (strcmp(arg, "maxlocks") == 0)
 				detect = DB_LOCK_MAXLOCKS;
 			else if (strcmp(arg, "minlocks") == 0)
@@ -870,6 +952,8 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			}
 			break;
 		case ENV_TXN_TIME:
+		case ENV_TXN_TIMEOUT:
+		case ENV_LOCK_TIMEOUT:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
 				    "?-txn_timestamp time?");
@@ -880,7 +964,15 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			    (long *)&time);
 			if (result == TCL_OK) {
 				_debug_check();
-				ret = (*env)->set_tx_timestamp(*env, &time);
+				if (optindex == ENV_TXN_TIME)
+					ret = (*env)->
+					    set_tx_timestamp(*env, &time);
+				else
+					ret = (*env)->set_timeout(*env,
+					    (db_timeout_t) time,
+					    optindex == ENV_TXN_TIMEOUT ?
+					    DB_SET_TXN_TIMEOUT :
+					    DB_SET_LOCK_TIMEOUT);
 				result = _ReturnSetup(interp, ret,
 				    "txn_timestamp");
 			}
@@ -973,6 +1065,15 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			goto error;
 	}
 
+	/* We can't be both a replication client and a master. */
+	if (rep_client && rep_master) {
+		Tcl_SetResult(interp,
+		    "Cannot be both a replication client and a master.\n",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+		goto error;
+	}
+
 	/*
 	 * We have to check this here.  We want to set the log buffer
 	 * size first, if it is specified.  So if the user did so,
@@ -1011,6 +1112,16 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	_debug_check();
 	ret = (*env)->open(*env, home, open_flags, mode);
 	result = _ReturnSetup(interp, ret, "env open");
+
+	/*
+	 * We already checked above that rep_master and rep_client aren't
+	 * both specified.
+	 */
+	if (result == TCL_OK && (rep_master || rep_client)) {
+		ret = (*env)->rep_start(*env, NULL,
+		    rep_master ? DB_REP_MASTER : DB_REP_CLIENT);
+		result = _ReturnSetup(interp, ret, "rep_start");
+	}
 
 error:
 	if (result == TCL_ERROR) {
@@ -1998,7 +2109,8 @@ bdb_DbVerify(interp, objc, objv)
 	DB_ENV *envp;
 	DB *dbp;
 	FILE *errf;
-	int endarg, i, optindex, result, ret, flags;
+	u_int32_t flags;
+	int endarg, i, optindex, result, ret;
 	char *arg, *db, *errpfx;
 
 	envp = NULL;
@@ -2251,7 +2363,8 @@ bdb_DbUpgrade(interp, objc, objv)
 	};
 	DB_ENV *envp;
 	DB *dbp;
-	int endarg, i, optindex, result, ret, flags;
+	u_int32_t flags;
+	int endarg, i, optindex, result, ret;
 	char *arg, *db;
 
 	envp = NULL;
@@ -2342,7 +2455,6 @@ tcl_bt_compare(dbp, dbta, dbtb)
 	DB *dbp;
 	const DBT *dbta, *dbtb;
 {
-
 	return (tcl_compare_callback(dbp, dbta, dbtb,
 	    ((DBTCL_INFO *)dbp->cj_internal)->i_btcompare, "bt_compare"));
 }
@@ -2352,7 +2464,6 @@ tcl_dup_compare(dbp, dbta, dbtb)
 	DB *dbp;
 	const DBT *dbta, *dbtb;
 {
-
 	return (tcl_compare_callback(dbp, dbta, dbtb,
 	    ((DBTCL_INFO *)dbp->cj_internal)->i_dupcompare, "dup_compare"));
 }
@@ -2469,4 +2580,65 @@ panic:		__db_err(dbp->dbenv, "Tcl h_hash callback failed");
 
 	Tcl_DecrRefCount(objv[1]);
 	return (hval);
+}
+
+/*
+ * tcl_rep_send --
+ *	Replication send callback.
+ */
+static int
+tcl_rep_send(dbenv, rec, control, eid, flags)
+	DB_ENV *dbenv;
+	const DBT *rec, *control;
+	int eid;
+	u_int32_t flags;
+{
+	DBTCL_INFO *ip;
+	Tcl_Interp *interp;
+	Tcl_Obj *eid_o, *rec_o, *control_o, *resobj, *objv[5];
+	int result, ret;
+
+	COMPQUIET(flags, 0);
+
+	ip = (DBTCL_INFO *)dbenv->app_private;
+	interp = ip->i_interp;
+	objv[0] = ip->i_rep_send;
+
+	rec_o = Tcl_NewByteArrayObj(rec->data, rec->size);
+	Tcl_IncrRefCount(rec_o);
+
+	control_o = Tcl_NewByteArrayObj(control->data, control->size);
+	Tcl_IncrRefCount(control_o);
+
+	eid_o = Tcl_NewIntObj(eid);
+	Tcl_IncrRefCount(eid_o);
+
+	/* XXX ordering */
+	objv[2] = rec_o;
+	objv[1] = control_o;
+	objv[3] = ip->i_rep_eid;	/* From ID */
+	objv[4] = eid_o;		/* To ID */
+
+	result = Tcl_EvalObjv(interp, 5, objv, 0);
+	if (result != TCL_OK) {
+		/*
+		 * XXX
+		 * This probably isn't the right error behavior, but
+		 * this error should only happen if the Tcl callback is
+		 * somehow invalid, which is a fatal scripting bug.
+		 */
+err:		__db_err(dbenv, "Tcl rep_send failure");
+		return (EINVAL);
+	}
+
+	resobj = Tcl_GetObjResult(interp);
+	result = Tcl_GetIntFromObj(interp, resobj, &ret);
+	if (result != TCL_OK)
+		goto err;
+
+	Tcl_DecrRefCount(rec_o);
+	Tcl_DecrRefCount(control_o);
+	Tcl_DecrRefCount(eid_o);
+
+	return (ret);
 }

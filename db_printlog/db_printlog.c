@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_printlog.c,v 11.27 2001/05/10 17:13:58 bostic Exp $";
+    "$Id: db_printlog.c,v 11.36 2001/10/11 22:46:27 ubell Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -33,13 +33,9 @@ static const char revid[] =
 #include "txn.h"
 #include "clib_ext.h"
 
-int	main __P((int, char *[]));
-void	usage __P((void));
-void	version_check __P((void));
-
-DB_ENV	*dbenv;
-const char
-	*progname = "db_printlog";			/* Program name. */
+int main __P((int, char *[]));
+int usage __P((void));
+int version_check __P((const char *));
 
 int
 main(argc, argv)
@@ -48,42 +44,47 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
+	const char *progname = "db_printlog";
+	DB_ENV	*dbenv;
+	DB_LOGC *logc;
+	int (**dtab) __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+	size_t dtabsize;
 	DBT data;
 	DB_LSN key;
-	int ch, e_close, exitval, nflag, ret;
+	int ch, e_close, exitval, nflag, rflag, ret;
 	char *home;
 
-	version_check();
+	if ((ret = version_check(progname)) != 0)
+		return (ret);
 
-	e_close = exitval = 0;
-	nflag = 0;
+	logc = NULL;
+	e_close = exitval = nflag = rflag = 0;
 	home = NULL;
-	while ((ch = getopt(argc, argv, "h:NV")) != EOF)
+	dtabsize = 0;
+	dtab = NULL;
+	while ((ch = getopt(argc, argv, "h:NrV")) != EOF)
 		switch (ch) {
 		case 'h':
 			home = optarg;
 			break;
 		case 'N':
 			nflag = 1;
-			if ((ret = db_env_set_panicstate(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_panicstate: %s\n",
-				    progname, db_strerror(ret));
-				return (EXIT_FAILURE);
-			}
+			break;
+		case 'r':
+			rflag = 1;
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc > 0)
-		usage();
+		return (usage());
 
 	/* Handle possible interruptions. */
 	__db_util_siginit();
@@ -102,9 +103,15 @@ main(argc, argv)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
-	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
-		dbenv->err(dbenv, ret, "set_mutexlocks");
-		goto shutdown;
+	if (nflag) {
+		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
+			goto shutdown;
+		}
+		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
+			goto shutdown;
+		}
 	}
 
 	/*
@@ -121,23 +128,30 @@ main(argc, argv)
 	}
 
 	/* Initialize print callbacks. */
-	if ((ret = __bam_init_print(dbenv)) != 0 ||
-	    (ret = __crdel_init_print(dbenv)) != 0 ||
-	    (ret = __db_init_print(dbenv)) != 0 ||
-	    (ret = __qam_init_print(dbenv)) != 0 ||
-	    (ret = __ham_init_print(dbenv)) != 0 ||
-	    (ret = __log_init_print(dbenv)) != 0 ||
-	    (ret = __txn_init_print(dbenv)) != 0) {
+	if ((ret = __bam_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __crdel_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __db_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __qam_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __ham_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __log_init_print(dbenv, &dtab, &dtabsize)) != 0 ||
+	    (ret = __txn_init_print(dbenv, &dtab, &dtabsize)) != 0) {
 		dbenv->err(dbenv, ret, "callback: initialization");
+		goto shutdown;
+	}
+
+	/* Allocate a log cursor. */
+	if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DB_ENV->log_cursor");
 		goto shutdown;
 	}
 
 	memset(&data, 0, sizeof(data));
 	while (!__db_util_interrupted()) {
-		if ((ret = log_get(dbenv, &key, &data, DB_NEXT)) != 0) {
+		if ((ret = logc->get(
+		    logc, &key, &data, rflag ? DB_PREV : DB_NEXT)) != 0) {
 			if (ret == DB_NOTFOUND)
 				break;
-			dbenv->err(dbenv, ret, "log_get");
+			dbenv->err(dbenv, ret, "DB_LOGC->get");
 			goto shutdown;
 		}
 
@@ -147,7 +161,8 @@ main(argc, argv)
 		 * that calls the underlying recovery function without any
 		 * consideration as to the contents of the transaction list.
 		 */
-		ret = __db_dispatch(dbenv, &data, &key, DB_TXN_ABORT, NULL);
+		ret =
+		    __db_dispatch(dbenv, dtab, &data, &key, DB_TXN_ABORT, NULL);
 
 		/*
 		 * XXX
@@ -164,6 +179,11 @@ main(argc, argv)
 	if (0) {
 shutdown:	exitval = 1;
 	}
+	if (logc != NULL && (ret = logc->close(logc, 0)) != 0)
+		exitval = 1;
+
+	if (dtab != NULL)
+		__os_free(dbenv, dtab, 0);
 	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
 		fprintf(stderr,
@@ -176,15 +196,16 @@ shutdown:	exitval = 1;
 	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void
+int
 usage()
 {
-	fprintf(stderr, "usage: db_printlog [-NV] [-h home]\n");
-	exit(EXIT_FAILURE);
+	fprintf(stderr, "usage: db_printlog [-NrV] [-h home]\n");
+	return (EXIT_FAILURE);
 }
 
-void
-version_check()
+int
+version_check(progname)
+	const char *progname;
 {
 	int v_major, v_minor, v_patch;
 
@@ -196,6 +217,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }

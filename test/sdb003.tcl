@@ -3,13 +3,17 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb003.tcl,v 11.18 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb003.tcl,v 11.19 2001/08/03 16:39:29 bostic Exp $
 #
-# Sub DB Test 3 {access method}
-# Use the first 10,000 entries from the dictionary as subdbnames.
-# Insert each with entry as name of subdatabase and a partial list as key/data.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	subdb003
+# TEST	Tests many subdbs
+# TEST		Creates many subdbs and puts a small amount of
+# TEST		data in each (many defaults to 2000)
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary as subdbnames.
+# TEST	Insert each with entry as name of subdatabase and a partial list
+# TEST	as key/data.  After all are entered, retrieve all; compare output
+# TEST	to original.  Close file, reopen, do retrieve and re-verify.
 proc subdb003 { method {nentries 1000} args } {
 	source ./include.tcl
 

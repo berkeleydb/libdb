@@ -1,4 +1,4 @@
-<!--$Id: db_cursor.so,v 10.30 2001/05/05 01:49:10 bostic Exp $-->
+<!--$Id: db_cursor.so,v 10.31 2001/10/22 15:24:20 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -30,7 +30,7 @@ DB-&gt;cursor(DB *db,
 creates a cursor and copies a pointer to it into the memory to which
 <b>cursorp</b> refers.
 <p>If the operation is to be transaction-protected, the <b>txnid</b>
-parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">txn_begin</a>;
+parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>;
 otherwise, NULL.
 <p>To transaction-protect cursor operations, cursors must be opened and
 closed within the context of a transaction, and the <b>txnid</b>

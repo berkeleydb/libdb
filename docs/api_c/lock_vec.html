@@ -1,9 +1,9 @@
-<!--$Id: lock_vec.so,v 10.40 2001/05/15 16:03:11 bostic Exp $-->
+<!--$Id: lock_vec.so,v 10.44 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: lock_vec</title>
+<title>Berkeley DB: DB_ENV-&gt;lock_vec</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>lock_vec</h1>
+<h1>DB_ENV-&gt;lock_vec</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,16 +22,16 @@
 #include &lt;db.h&gt;
 <p>
 int
-lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
+DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
     DB_LOCKREQ list[], int nlist, DB_LOCKREQ **elistp);
 </pre></h3>
 <h1>Description</h1>
-<p>The lock_vec function atomically obtains and releases one or more locks
-from the lock table.  The lock_vec function is intended to support
+<p>The DB_ENV-&gt;lock_vec function atomically obtains and releases one or more locks
+from the lock table.  The DB_ENV-&gt;lock_vec function is intended to support
 acquisition or trading of multiple locks under one lock table semaphore,
 as is needed for lock coupling or in multigranularity locking for lock
 escalation.
-<p>The <b>locker</b> argument specified to lock_vec is an unsigned
+<p>The <b>locker</b> argument specified to DB_ENV-&gt;lock_vec is an unsigned
 32-bit integer quantity.  It represents the entity requesting or releasing
 the locks.
 <p>The <b>flags</b> value must be set to 0 or
@@ -41,7 +41,7 @@ the following value:
 conflicts with an existing lock, return instead of waiting for the lock
 to become available.
 </dl>
-<p>The <b>list</b> array provided to lock_vec is typedef'd as
+<p>The <b>list</b> array provided to DB_ENV-&gt;lock_vec is typedef'd as
 DB_LOCKREQ.  A DB_LOCKREQ structure has at least the following fields.
 In order to ensure compatibility with future releases of Berkeley DB, all
 fields of the DB_LOCKREQ structure that are not explicitly set should
@@ -52,28 +52,37 @@ this by declaring the structure external or static, or by calling
 <p><dt>lockop_t <a name="op">op</a>;<dd>The operation to be performed, which must be set to one of the
 following values:
 <p><dl compact>
-<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get the lock defined by the values of the <b>lock</b>, <b>mode</b>,
-and <b>obj</b> structure fields, for the specified <b>locker</b>.
-Upon return from lock_vec, if the <b>lock</b> field is
-non-NULL, a reference to the acquired lock is stored there.  (This
-reference is invalidated by any call to lock_vec or
-<a href="../api_c/lock_put.html">lock_put</a> that releases the lock.)
+<p><dt><a name="DB_LOCK_GET">DB_LOCK_GET</a><dd>Get the lock defined by the values of the <b>mode</b> and <b>obj</b>
+structure fields, for the specified <b>locker</b>.  Upon return from
+DB_ENV-&gt;lock_vec, if the <b>lock</b> field is non-NULL, a reference
+to the acquired lock is stored there.  (This reference is invalidated
+by any call to DB_ENV-&gt;lock_vec or <a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> that releases the
+lock.)
+<p><dt><a name="DB_LOCK_GET_TIMEOUT">DB_LOCK_GET_TIMEOUT</a><dd>Identical to DB_LOCK_GET except that the value in the <b>timeout</b>
+structure field overrides any previously specified timeout value for
+this lock.  A value of 0 turns off any previously specified timeout.
 <p><dt><a name="DB_LOCK_PUT">DB_LOCK_PUT</a><dd>The lock to which the <b>lock</b> structure field refers is released.
 The <b>locker</b> argument, and <b>mode</b> and <b>obj</b> fields
 are ignored.
 <p><dt><a name="DB_LOCK_PUT_ALL">DB_LOCK_PUT_ALL</a><dd>All locks held by the specified <b>locker</b> are released.  The
 <b>lock</b>, <b>mode</b>, and <b>obj</b> structure fields are
 ignored.  Locks acquired in operations performed by the current call to
-lock_vec which appear before the DB_LOCK_PUT_ALL
+DB_ENV-&gt;lock_vec which appear before the DB_LOCK_PUT_ALL
 operation are released; those acquired in operations appearing after
 the DB_LOCK_PUT_ALL operation are not released.
 <p><dt><a name="DB_LOCK_PUT_OBJ">DB_LOCK_PUT_OBJ</a><dd>All locks held on the object <b>obj</b> are released.  The
 <b>locker</b> argument and the <b>lock</b> and <b>mode</b> structure
 fields are ignored.  Locks acquired in operations performed by the
-current call to lock_vec that appear before the
+current call to DB_ENV-&gt;lock_vec that appear before the
 DB_LOCK_PUT_OBJ operation are released; those acquired in
 operations appearing after the DB_LOCK_PUT_OBJ operation are
 not released.
+<p><dt><a name="DB_LOCK_TIMEOUT">DB_LOCK_TIMEOUT</a><dd>Cause the specified <b>locker</b> to timeout immediately.  If the
+database environment has not configured automatic deadlock detection,
+the transaction will timeout the next time deadlock detection is
+performed.  As transactions acquire locks on behalf of a single locker
+ID, timing out the locker ID associated with a transaction will time
+out the transaction itself.
 </dl>
 <p><dt>DB_LOCK <a name="lock">lock</a>;<dd>A lock reference.
 <p><dt>const lockmode_t <a name="mode">mode</a>;<dd>The lock mode, used as an index into the environment's lock conflict matrix.
@@ -93,24 +102,25 @@ doing locking via the Berkeley DB access methods must take care not to
 inadvertently lock objects that happen to be equal to the unique file
 IDs used to lock files.  See <a href="../ref/lock/am_conv.html">Access
 method locking conventions</a> for more information.
+<p><dt>u_int32_t timeout;<dd>The lock timeout value.
 </dl>
 <p>The <b>nlist</b> argument specifies the number of elements in the
 <b>list</b> array.
 <p>If any of the requested locks cannot be acquired, or any of the locks to
 be released cannot be released, the operations before the failing
 operation are guaranteed to have completed successfully, and
-lock_vec returns a non-zero value.  In addition, if <b>elistp</b>
+DB_ENV-&gt;lock_vec returns a non-zero value.  In addition, if <b>elistp</b>
 is not NULL, it is set to point to the DB_LOCKREQ entry that was being
 processed when the error occurred.
 <p>If a lock is requested that cannot be immediately granted, and the
 <b>flags</b> parameter was set to <a href="../api_c/lock_vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a>, the
-lock_vec function may
+DB_ENV-&gt;lock_vec function may
 return
 <a name="DB_LOCK_NOTGRANTED">DB_LOCK_NOTGRANTED</a>.  In this case, if non-NULL,
 <b>elistp</b> identifies the request that was not granted.
-<p>Otherwise, the lock_vec function returns a non-zero error value on failure and 0 on success.
+<p>Otherwise, the DB_ENV-&gt;lock_vec function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The lock_vec function may fail and return a non-zero error for the following conditions:
+<p>The DB_ENV-&gt;lock_vec function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>DB_LOCK_DEADLOCK<dd>The operation was selected to resolve a deadlock.
 </dl>
@@ -120,24 +130,24 @@ return
 <p><dl compact>
 <p><dt>ENOMEM<dd>The maximum number of locks has been reached.
 </dl>
-<p>The lock_vec function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the lock_vec function may fail and return
+<p>The DB_ENV-&gt;lock_vec function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;lock_vec function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a>,
-<a href="../api_c/env_set_lk_max.html">DB_ENV-&gt;set_lk_max</a>,
 <a href="../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
 <a href="../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>,
 <a href="../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>,
-<a href="../api_c/lock_detect.html">lock_detect</a>,
-<a href="../api_c/lock_get.html">lock_get</a>,
-<a href="../api_c/lock_id.html">lock_id</a>,
-<a href="../api_c/lock_put.html">lock_put</a>,
-<a href="../api_c/lock_stat.html">lock_stat</a>,
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>,
+<a href="../api_c/lock_get.html">DB_ENV-&gt;lock_get</a>,
+<a href="../api_c/lock_id.html">DB_ENV-&gt;lock_id</a>,
+<a href="../api_c/lock_id_free.html">DB_ENV-&gt;lock_id_free</a>,
+<a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>,
+<a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>,
 and
-<a href="../api_c/lock_vec.html">lock_vec</a>.
+<a href="../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

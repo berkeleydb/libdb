@@ -1,4 +1,4 @@
-<!--$Id: faq.so,v 1.21 2001/06/25 13:40:42 bostic Exp $-->
+<!--$Id: faq.so,v 1.24 2001/10/18 18:18:34 sue Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -17,13 +17,19 @@
 <h1 align=center>VxWorks FAQ</h1>
 <p><ol>
 <p><li><b>I get the error "Workspace open failed: This project workspace is an
-older format.", when trying to open the supplied workspace on Tornado
+older format.", when trying to open the supplied workspace on Tornado 2.0
 under Windows.</b>
 <p>This error will occur if the files were extracted in a manner that adds
 a CR/LF to lines in the file.  Make sure that you download the Berkeley DB
 ".zip" version of the Berkeley DB distribution, and, when extracting the Berkeley DB
 sources, that you use an unzipper program that will not do any
 conversion.
+<p><li><b>I sometimes see spurious output errors about temporary directories.</b>
+<p>These messages are coming from the <b>stat</b>(2) function call
+in VxWorks.  Unlike other systems, there may not be a well known
+temporary directory on the target.  Therefore, we highly recommend that
+all applications use <a href="../../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a> to
+specify a temporary directory for the application.
 <p><li><b>How can I build Berkeley DB without using Tornado?</b>
 <p>The simplest way to build Berkeley DB without using Tornado is to configure
 Berkeley DB on a UNIX system, and then use the Makefile and include files
@@ -89,21 +95,12 @@ a more detailed description of this problem.
 code.  Looking at a stack trace via CrossWind, you will see two or more of
 your application's tasks waiting in semaphore code within dosFs.  The patch
 for this problem is under <b>SPR 33221</b> at Wind River Systems.
+There are several SPR numbers at Wind River Systems that refer to this
+particular problem.
 <p><li><b>Are there any filesystems I cannot use?</b>
 <p>The Target Server File System (TSFS) uses the netDrv driver.  This driver
 does not support any ioctl that allows flushing to the disk, and therefore
 cannot be used with Berkeley DB.
-<p><li><b>Why aren't the utility programs part of the project?</b>
-<p>The utility programs, in their UNIX-style form, are not ported to VxWorks.
-The reasoning is the utility programs are essentially wrappers for the
-specific Berkeley DB interface they call.  Their interface and generic model
-are not the appropriate paradigm for VxWorks.  It is most likely that
-specific applications will want to spawn tasks that call the appropriate
-Berkeley DB function to perform the actions of some utility programs, using
-VxWorks native functions.  For example, an application that spawns several
-tasks that all may operate on the same database would also want to spawn
-a task that calls <a href="../../api_c/lock_detect.html">lock_detect</a> for deadlock detection, but specific
-to the environment used for that application.
 <p><li><b>What VxWorks primitives are used for mutual exclusion in Berkeley DB?</b>
 <p>Mutexes inside of Berkeley DB use the basic binary semaphores in VxWorks.  The
 mutexes are created using the FIFO queue type.

@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: log.src,v 10.14 2001/04/05 18:58:34 bostic Exp $
+ * $Id: log.src,v 10.16 2001/07/27 19:07:17 krinsky Exp $
  */
 
 PREFIX	log
@@ -23,18 +23,11 @@ INCLUDE #include "db_page.h"
 INCLUDE #include "db_dispatch.h"
 INCLUDE #include "db_am.h"
 INCLUDE #include "log.h"
+INCLUDE #include "rep.h"
 INCLUDE #include "txn.h"
 INCLUDE
 
 /* Used for registering name/id translations at open or close. */
-DEPRECATED register1	1
-ARG	opcode		u_int32_t	lu
-DBT	name		DBT		s
-DBT	uid		DBT		s
-ARG	fileid		int32_t		ld
-ARG	ftype		DBTYPE		lx
-END
-
 BEGIN register		2
 ARG	opcode		u_int32_t	lu
 DBT	name		DBT		s

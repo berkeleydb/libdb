@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_seek.c,v 11.13 2001/01/25 18:22:59 bostic Exp $";
+static const char revid[] = "$Id: os_seek.c,v 11.15 2001/10/04 21:27:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -63,8 +63,10 @@ __os_seek(dbenv, fhp, pgsize, pageno, relative, isrewind, db_whence)
 		offset = (off_t)pgsize * pageno + relative;
 		if (isrewind)
 			offset = -offset;
-		ret =
-		    lseek(fhp->fd, offset, whence) == -1 ? __os_get_errno() : 0;
+		do {
+			ret = lseek(fhp->fd, offset, whence) == -1 ?
+			    __os_get_errno() : 0;
+		} while (ret == EINTR);
 	}
 
 	if (ret != 0)

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_unlink.c,v 11.15 2001/05/01 19:49:58 sue Exp $";
+static const char revid[] = "$Id: os_unlink.c,v 11.16 2001/09/07 18:17:50 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,7 +34,7 @@ __os_unlink(dbenv, path)
 {
 	int ret;
 
-	ret = __db_jump.j_unlink != NULL ?
+retry:	ret = __db_jump.j_unlink != NULL ?
 	    __db_jump.j_unlink(path) :
 #ifdef HAVE_VXWORKS
 	    unlink((char *)path);
@@ -42,7 +42,8 @@ __os_unlink(dbenv, path)
 	    unlink(path);
 #endif
 	if (ret == -1) {
-		ret = __os_get_errno();
+		if ((ret = __os_get_errno()) == EINTR)
+			goto retry;
 		/*
 		 * XXX
 		 * We really shouldn't be looking at this value ourselves,

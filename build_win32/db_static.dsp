@@ -49,7 +49,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Release_static/libdb33s.lib"
+# ADD LIB32 /nologo /out:"Release_static/libdb40s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug"
 
@@ -70,7 +70,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Debug_static/libdb33sd.lib"
+# ADD LIB32 /nologo /out:"Debug_static/libdb40sd.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Release Static"
 
@@ -90,8 +90,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release/libdb33s.lib"
-# ADD LIB32 /nologo /out:"Release_static/libdb33s.lib"
+# ADD BASE LIB32 /nologo /out:"Release/libdb40s.lib"
+# ADD LIB32 /nologo /out:"Release_static/libdb40s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug Static"
 
@@ -111,8 +111,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug/libdb33sd.lib"
-# ADD LIB32 /nologo /out:"Debug_static/libdb33sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug/libdb40sd.lib"
+# ADD LIB32 /nologo /out:"Debug_static/libdb40sd.lib"
 
 !ENDIF 
 
@@ -224,7 +224,19 @@ SOURCE=..\common\util_sig.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\cxx\cxx_app.cpp
+SOURCE=..\cxx\cxx_db.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_dbc.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_dbt.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\cxx\cxx_env.cpp
 # End Source File
 # Begin Source File
 
@@ -236,15 +248,11 @@ SOURCE=..\cxx\cxx_lock.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\cxx\cxx_log.cpp
+SOURCE=..\cxx\cxx_logc.cpp
 # End Source File
 # Begin Source File
 
 SOURCE=..\cxx\cxx_mpool.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=..\cxx\cxx_table.cpp
 # End Source File
 # Begin Source File
 
@@ -596,6 +604,10 @@ SOURCE=..\os_win32\os_abs.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_clock.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os_win32\os_dir.c
 # End Source File
 # Begin Source File
@@ -680,11 +692,31 @@ SOURCE=..\qam\qam_verify.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\rep\rep_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_record.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_util.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\txn\txn.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\txn\txn_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_method.c
 # End Source File
 # Begin Source File
 

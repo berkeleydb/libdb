@@ -1,15 +1,16 @@
 set tclsh_path SET_YOUR_TCLSH_PATH
 set test_path ../test
-set tcllib ./Debug/libdb_tcl33d.dll
+set src_root ..
+global testdir
+set testdir ./TESTDIR
+set tcllib ./Debug/libdb_tcl40d.dll
 
 set KILL ./dbkill.exe
 
-# DO NOT EDIT BELOW THIS LINE: automatically built by dist/s_tcl.
+# DO NOT EDIT BELOW THIS LINE: automatically built by dist/s_test.
 
 global dict
-global testdir
 global util_path
-set testdir ./TESTDIR
 
 global is_hp_test
 global is_qnx_test

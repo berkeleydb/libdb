@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fput.c,v 11.25 2001/07/10 19:33:26 bostic Exp $";
+static const char revid[] = "$Id: mp_fput.c,v 11.26 2001/07/24 18:31:30 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -15,26 +15,18 @@ static const char revid[] = "$Id: mp_fput.c,v 11.25 2001/07/10 19:33:26 bostic E
 
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 /*
- * memp_fput --
+ * __memp_fput --
  *	Mpool file put function.
  *
- * EXTERN: int memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
+ * PUBLIC: int __memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
  */
 int
-memp_fput(dbmfp, pgaddr, flags)
+__memp_fput(dbmfp, pgaddr, flags)
 	DB_MPOOLFILE *dbmfp;
 	void *pgaddr;
 	u_int32_t flags;
@@ -48,11 +40,6 @@ memp_fput(dbmfp, pgaddr, flags)
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
 	mp = dbmp->reginfo[0].primary;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_fput(dbmfp, pgaddr, flags));
-#endif
 
 	PANIC_CHECK(dbenv);
 

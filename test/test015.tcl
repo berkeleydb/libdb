@@ -3,10 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test015.tcl,v 11.22 2001/04/20 22:36:50 krinsky Exp $
+# $Id: test015.tcl,v 11.24 2001/08/03 16:39:36 bostic Exp $
 #
-# DB Test 15 {access method}
-# Partial put test when item does not exist.
+# TEST	test015
+# TEST	Partial put test
+# TEST		Partial put test where the key does not initially exist.
 proc test015 { method {nentries 7500} { start 0 } args } {
 	global fixed_len testdir
 
@@ -91,7 +92,7 @@ proc test015_body { method off_low off_hi rcount {nentries 10000} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""

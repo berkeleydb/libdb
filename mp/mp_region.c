@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_region.c,v 11.33 2001/06/13 01:42:58 bostic Exp $";
+static const char revid[] = "$Id: mp_region.c,v 11.37 2001/10/25 22:47:49 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -119,6 +119,8 @@ __memp_open(dbenv)
 
 			regids[i] = dbmp->reginfo[i].id;
 		}
+
+		R_UNLOCK(dbenv, dbmp->reginfo);
 	} else {
 		/*
 		 * Determine how many regions there are going to be, allocate
@@ -134,6 +136,19 @@ __memp_open(dbenv)
 		for (i = 0; i < dbmp->nreg; ++i)
 			dbmp->reginfo[i].id = INVALID_REGION_ID;
 		dbmp->reginfo[0] = reginfo;
+
+		/*
+		 * We have to unlock the primary mpool region before we attempt
+		 * to join the additional mpool regions.  If we don't, we can
+		 * deadlock.  The scenario is that we hold the primary mpool
+		 * region lock.  We then try to attach to an additional mpool
+		 * region, which requires the acquisition/release of the main
+		 * region lock (to search the list of regions).  If another
+		 * thread of control already holds the main region lock and is
+		 * waiting on our primary mpool region lock, we'll deadlock.
+		 * See [#4696] for more information.
+		 */
+		R_UNLOCK(dbenv, dbmp->reginfo);
 
 		/* Join remaining regions. */
 		regids = R_ADDR(dbmp->reginfo, mp->regids);
@@ -165,8 +180,6 @@ __memp_open(dbenv)
 		    (REGMAINT *)R_ADDR(dbmp->reginfo, mp->maint_off))) != 0)
 			goto err;
 	}
-
-	R_UNLOCK(dbenv, dbmp->reginfo);
 
 	dbenv->mp_handle = dbmp;
 	return (0);
@@ -257,6 +270,7 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	__db_hashinit(htab, htab_buckets);
 	mp->htab = R_OFFSET(reginfo, htab);
 	mp->htab_buckets = htab_buckets;
+	mp->stat.st_hash_buckets = htab_buckets;
 
 	/*
 	 * Only the environment creator knows the total cache size, fill in
@@ -274,13 +288,14 @@ err:	if (reginfo->primary != NULL)
 }
 
 /*
- * __memp_close --
- *	Internal version of memp_close: only called from DB_ENV->close.
+ * __memp_dbenv_refresh --
+ *	Clean up after the mpool system on a close or failed open.  Called
+ * only from __dbenv_refresh.  (Formerly called __memp_close.)
  *
- * PUBLIC: int __memp_close __P((DB_ENV *));
+ * PUBLIC: int __memp_dbenv_refresh __P((DB_ENV *));
  */
 int
-__memp_close(dbenv)
+__memp_dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
 {
 	DB_MPOOL *dbmp;
@@ -300,7 +315,7 @@ __memp_close(dbenv)
 
 	/* Discard DB_MPOOLFILEs. */
 	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
-		if ((t_ret = __memp_fclose(dbmfp, 1)) != 0 && ret == 0)
+		if ((t_ret = __memp_fclose_int(dbmfp, 0, 1)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* Discard the thread mutex. */

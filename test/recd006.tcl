@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd006.tcl,v 11.22 2001/01/25 18:23:06 bostic Exp $
+# $Id: recd006.tcl,v 11.23 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test 6.
-# Test nested transactions.
+# TEST	recd006
+# TEST	Nested transactions.
 proc recd006 { method {select 0} args} {
 	global kvals
 	source ./include.tcl

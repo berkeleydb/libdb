@@ -3,11 +3,12 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test060.tcl,v 11.7 2001/01/25 18:23:12 bostic Exp $
+# $Id: test060.tcl,v 11.8 2001/08/03 16:39:43 bostic Exp $
 #
-# Test060: Test of the DB_EXCL flag to DB->open.
-#     1) Attempt to open and create a nonexistent database; verify success.
-#     2) Attempt to reopen it;  verify failure.
+# TEST	test060
+# TEST	Test of the DB_EXCL flag to DB->open().
+# TEST	1) Attempt to open and create a nonexistent database; verify success.
+# TEST	2) Attempt to reopen it;  verify failure.
 proc test060 { method args } {
 	global errorCode
 	source ./include.tcl

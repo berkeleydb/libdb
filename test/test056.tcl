@@ -3,10 +3,12 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test056.tcl,v 11.14 2001/01/25 18:23:12 bostic Exp $
+# $Id: test056.tcl,v 11.16 2001/08/03 16:39:42 bostic Exp $
 #
-# Test056
-# Check if deleting a key when a cursor is on a duplicate of that key works.
+# TEST	test056
+# TEST	Cursor maintenance during deletes.
+# TEST	Check if deleting a key when a cursor is on a duplicate of that
+# TEST	key works.
 proc test056 { method args } {
 	global errorInfo
 	source ./include.tcl
@@ -14,7 +16,7 @@ proc test056 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args " -create -truncate -mode 0644 -dup "
+	append args " -create -mode 0644 -dup "
 	if { [is_record_based $method] == 1 || [is_rbtree $method] } {
 		puts "Test056: skipping for method $method"
 		return

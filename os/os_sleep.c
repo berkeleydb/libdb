@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_sleep.c,v 11.9 2001/01/31 14:16:19 bostic Exp $";
+static const char revid[] = "$Id: os_sleep.c,v 11.12 2001/10/04 21:27:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -21,6 +21,7 @@ static const char revid[] = "$Id: os_sleep.c,v 11.9 2001/01/31 14:16:19 bostic E
 #ifdef HAVE_VXWORKS
 #include <sys/times.h>
 #include <time.h>
+#include <selectLib.h>
 #else
 #if TIME_WITH_SYS_TIME
 #include <sys/time.h>
@@ -68,7 +69,10 @@ __os_sleep(dbenv, secs, usecs)
 	 */
 	t.tv_sec = secs;
 	t.tv_usec = usecs;
-	ret = select(0, NULL, NULL, NULL, &t) == -1 ? __os_get_errno() : 0;
+	do {
+		ret = select(0, NULL, NULL, NULL, &t) == -1 ?
+		    __os_get_errno() : 0;
+	} while (ret == EINTR);
 
 	if (ret != 0)
 		__db_err(dbenv, "select: %s", strerror(ret));

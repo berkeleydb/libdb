@@ -42,7 +42,7 @@ a trailing &lt;newline&gt; character.
 <p>This error logging enhancement does not slow performance or significantly
 increase application size, and may be run during normal operation as well
 as during application debugging.
-<p>For DB handles opened inside of Berkeley DB environments, calling the
+<p>For <a href="../api_c/db_create.html">DB</a> handles opened inside of Berkeley DB environments, calling the
 DB-&gt;set_errfile function affects the entire environment and is equivalent to calling
 the <a href="../api_c/env_set_errfile.html">DB_ENV-&gt;set_errfile</a> function.
 <p>The DB-&gt;set_errfile interface may be used to configure Berkeley DB at any time

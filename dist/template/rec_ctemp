@@ -21,7 +21,7 @@ __PREF_FUNC_recover(dbenv, dbtp, lsnp, op, info)
 	int cmp_n, cmp_p, modified, ret;
 
 	REC_PRINT(__PREF_FUNC_print);
-	REC_INTRO(__PREF_FUNC_read);
+	REC_INTRO(__PREF_FUNC_read, 1);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {

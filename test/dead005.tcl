@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead005.tcl,v 11.2 2001/05/17 20:37:04 bostic Exp $
+# $Id: dead005.tcl,v 11.5 2001/10/02 22:12:00 ubell Exp $
 #
 # Deadlock Test 5.
 # Test out the minlocks, maxlocks, and minwrites options
@@ -19,9 +19,6 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 		# Create the environment.
 		set env [berkdb env -create -mode 0644 -lock -home $testdir]
 		error_check_good lock_env:open [is_valid_env $env] TRUE
-
-		error_check_good lock_env:close [$env close] 0
-
 		case $t {
 			minlocks { set to n }
 			maxlocks { set to m }
@@ -38,13 +35,14 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 			# Fire off the tests
 			puts "\tDead005: $t test with $n procs"
 			for { set i 0 } { $i < $n } { incr i } {
+				set locker [$env lock_id]
 				puts "$tclsh_path $test_path/wrap.tcl \
 				    $testdir/dead005.log.$i \
-				    ddscript.tcl $testdir $t $i $i $n"
+				    ddscript.tcl $testdir $t $locker $i $n"
 				set p [exec $tclsh_path \
 					$test_path/wrap.tcl \
 					ddscript.tcl $testdir/dead005.log.$i \
-					$testdir $t $i $i $n &]
+					$testdir $t $locker $i $n &]
 				lappend pidlist $p
 			}
 			watch_procs 5
@@ -65,7 +63,7 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 				close $did
 			}
 			puts "dead check..."
-			dead_check $t $n $dead $clean $other
+			dead_check $t $n 0 $dead $clean $other
 			# Now verify that the correct participant
 			# got deadlocked.
 			switch $t {
@@ -79,6 +77,7 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 			close $did
 		}
 		exec $KILL $dpid
+		error_check_good lock_env:close [$env close] 0
 		# Windows needs files closed before deleting them, so pause
 		tclsleep 2
 		fileremove -f $testdir/dd.out
@@ -87,5 +86,4 @@ proc dead005 { { procs "4 6 10" } {tests "maxlocks minwrites minlocks" } } {
 			fileremove -f $testdir/dead001.log.$i
 		}
 	}
-
 }

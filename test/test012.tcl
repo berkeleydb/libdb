@@ -3,12 +3,17 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test012.tcl,v 11.16 2001/05/14 21:55:55 krinsky Exp $
+# $Id: test012.tcl,v 11.18 2001/08/03 16:39:34 bostic Exp $
 #
-# DB Test 12 {access method}
-# Take the source files and dbtest executable and enter their contents as
-# the key with their names as data.  After all are entered, retrieve all;
-# compare output to original. Close file, reopen, do retrieve and re-verify.
+# TEST	test012
+# TEST	Large keys/small data
+# TEST		Same as test003 except use big keys (source files and
+# TEST		executables) and small data (the file/executable names).
+# TEST
+# TEST	Take the source files and dbtest executable and enter their contents
+# TEST	as the key with their names as data.  After all are entered, retrieve
+# TEST	all; compare output to original. Close file, reopen, do retrieve and
+# TEST	re-verify.
 proc test012 { method args} {
 	global names
 	source ./include.tcl
@@ -44,7 +49,7 @@ proc test012 { method args} {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""

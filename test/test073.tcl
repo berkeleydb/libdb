@@ -3,23 +3,25 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test073.tcl,v 11.19 2001/05/17 20:37:08 bostic Exp $
+# $Id: test073.tcl,v 11.21 2001/08/03 16:39:45 bostic Exp $
 #
-# DB Test 73: Test of cursor stability on duplicate pages.
-# Does the following:
-#    a. Initialize things by DB->putting ndups dups and
-#       setting a reference cursor to point to each.
-#    b. c_put ndups dups (and correspondingly expanding
-#       the set of reference cursors) after the last one, making sure
-#       after each step that all the reference cursors still point to
-#       the right item.
-#    c. Ditto, but before the first one.
-#    d. Ditto, but after each one in sequence first to last.
-#    e. Ditto, but after each one in sequence from last to first.
-#       occur relative to the new datum)
-#    f. Ditto for the two sequence tests, only doing a
-#       DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
-#       new one.
+# TEST	test073
+# TEST	Test of cursor stability on duplicate pages.
+# TEST
+# TEST	Does the following:
+# TEST	a. Initialize things by DB->putting ndups dups and
+# TEST	   setting a reference cursor to point to each.
+# TEST	b. c_put ndups dups (and correspondingly expanding
+# TEST	   the set of reference cursors) after the last one, making sure
+# TEST	   after each step that all the reference cursors still point to
+# TEST	   the right item.
+# TEST	c. Ditto, but before the first one.
+# TEST	d. Ditto, but after each one in sequence first to last.
+# TEST	e. Ditto, but after each one in sequence from last to first.
+# TEST	   occur relative to the new datum)
+# TEST	f. Ditto for the two sequence tests, only doing a
+# TEST	   DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
+# TEST	   new one.
 proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	source ./include.tcl
 	global alphabet
@@ -59,7 +61,7 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	append args " -pagesize $pagesize -dup"
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $omethod $args $testfile]
+	     -create -mode 0644} $omethod $args $testfile]
 	error_check_good "db open" [is_valid_db $db] TRUE
 
 	# Number of outstanding keys.

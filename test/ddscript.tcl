@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: ddscript.tcl,v 11.9 2001/03/30 21:39:04 margo Exp $
+# $Id: ddscript.tcl,v 11.10 2001/10/01 21:50:56 ubell Exp $
 #
 # Deadlock detector script tester.
 # Usage: ddscript dir test lockerid objid numprocs
@@ -38,6 +38,7 @@ error_check_good lock_open [is_substr $myenv "env"] 1
 
 puts [eval $tnum $myenv $lockerid $objid $numprocs]
 
+error_check_good lock_id_free [$myenv lock_id_free $lockerid] 0
 error_check_good envclose [$myenv close] 0
 
 exit

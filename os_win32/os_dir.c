@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_dir.c,v 11.6 2001/04/08 16:14:18 dda Exp $";
+static const char revid[] = "$Id: os_dir.c,v 11.7 2001/07/19 15:32:58 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -48,7 +48,7 @@ __os_dirlist(dbenv, dir, namesp, cntp)
 		}
 		if ((ret = __os_strdup(dbenv, fdata.name, &names[cnt])) != 0)
 			goto nomem;
-		if (_findnext(dirhandle,&fdata) != 0)
+		if (_findnext(dirhandle, &fdata) != 0)
 			finished = 1;
 	}
 	_findclose(dirhandle);

@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: txn.h,v 11.25 2001/07/10 20:06:53 sue Exp $
+ * $Id: txn.h,v 11.29 2001/09/27 22:50:06 ubell Exp $
  */
 
 #ifndef	_TXN_H_
@@ -12,7 +12,6 @@
 
 #include "xa.h"
 
-struct __db_txnmgr;	typedef struct __db_txnmgr DB_TXNMGR;
 struct __db_txnregion;	typedef struct __db_txnregion DB_TXNREGION;
 
 /*
@@ -25,32 +24,9 @@ struct __db_txnregion;	typedef struct __db_txnregion DB_TXNREGION;
 
 #define	DEF_MAX_TXNS	20		/* Default max transactions. */
 
-/* The structure allocated for every transaction. */
-struct __db_txn {
-	DB_TXNMGR	*mgrp;		/* Pointer to transaction manager. */
-	DB_TXN		*parent;	/* Pointer to transaction's parent. */
-	DB_LSN		last_lsn;	/* Lsn of last log write. */
-	u_int32_t	txnid;		/* Unique transaction id. */
-	roff_t		off;		/* Detail structure within region. */
-	TAILQ_ENTRY(__db_txn) links;	/* Links transactions off manager. */
-	TAILQ_HEAD(__kids, __db_txn) kids; /* Child transactions. */
-	TAILQ_ENTRY(__db_txn) klinks;	/* Links child transactions. */
-	u_int32_t	cursors;	/* Number of cursors open for txn */
-
-#define	TXN_CHILDCOMMIT	0x01		/* Transaction that has committed. */
-#define	TXN_COMPENSATE	0x02		/* Compensating transaction. */
-#define	TXN_DIRTY_READ	0x04		/* Transaction does dirty reads. */
-#define	TXN_MALLOC	0x08		/* Structure allocated by TXN system. */
-#define	TXN_NOSYNC	0x10		/* Do not sync on prepare and commit. */
-#define	TXN_NOWAIT	0x20		/* Do not wait on locks. */
-#define	TXN_SYNC	0x40		/* Sync on prepare and commit. */
-	u_int32_t	flags;
-};
-
 /*
  * Internal data maintained in shared memory for each transaction.
  */
-
 typedef struct __txn_detail {
 	u_int32_t txnid;		/* current transaction id
 					   used to link free list also */
@@ -100,7 +76,7 @@ struct __db_txnmgr {
  * to be stored elsewhere on architectures unable to support mutexes in heap
  * memory, e.g., HP/UX 9.
  */
-	MUTEX		*mutexp;	/* Lock list of active transactions
+	DB_MUTEX	*mutexp;	/* Lock list of active transactions
 					 * (including the content of each
 					 * TXN_DETAIL structure on the list).
 					 */
@@ -120,19 +96,16 @@ struct __db_txnmgr {
 struct __db_txnregion {
 	u_int32_t	maxtxns;	/* maximum number of active TXNs */
 	u_int32_t	last_txnid;	/* last transaction id given out */
+	u_int32_t	cur_maxid;	/* current max unused id. */
 	DB_LSN		pending_ckp;	/* last checkpoint did not finish */
 	DB_LSN		last_ckp;	/* lsn of the last checkpoint */
 	time_t		time_ckp;	/* time of last checkpoint */
 	u_int32_t	logtype;	/* type of logging */
 	u_int32_t	locktype;	/* lock type */
+	DB_TXN_STAT	stat;		/* Statistics for txns. */
+
 #define	TXN_IN_RECOVERY	 0x01		/* environment is being recovered */
 	u_int32_t	flags;
-	u_int32_t	naborts;	/* number of aborted TXNs */
-	u_int32_t	ncommits;	/* number of committed TXNs */
-	u_int32_t	nbegins;	/* number of begun TXNs */
-	u_int32_t	nactive;	/* number of active TXNs */
-	u_int32_t	nrestores;	/* number of restored TXNs */
-	u_int32_t	maxnactive;	/* maximum number of active TXNs */
 					/* active TXN list */
 	SH_TAILQ_HEAD(__active) active_txn;
 #ifdef MUTEX_SYSTEM_RESOURCES

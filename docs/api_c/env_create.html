@@ -1,4 +1,4 @@
-<!--$Id: env_create.so,v 10.17 2001/05/05 01:49:13 bostic Exp $-->
+<!--$Id: env_create.so,v 10.18 2001/07/26 22:58:15 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -25,9 +25,11 @@ int
 db_env_create(DB_ENV **dbenvp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The db_env_create function creates a DB_ENV structure that is the
+<p>The db_env_create function creates a <a href="../api_c/env_create.html">DB_ENV</a> structure that is the
 handle for a Berkeley DB environment.  A pointer to this structure is returned
-in the memory to which <b>dbenvp</b> refers.
+in the memory to which <b>dbenvp</b> refers.  Calling the
+<a href="../api_c/env_close.html">DB_ENV-&gt;close</a> or <a href="../api_c/env_remove.html">DB_ENV-&gt;remove</a> functions will discard the returned
+handle.
 <p>The <b>flags</b> value must be set to 0 or
 the following value:
 <p><dl compact>
@@ -39,7 +41,7 @@ Prior to making any environment or database method calls, the application
 must call the <a href="../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a> function to establish the
 connection to the server.
 </dl>
-<p>The DB_ENV handle contains a special field, "app_private", which
+<p>The <a href="../api_c/env_create.html">DB_ENV</a> handle contains a special field, "app_private", which
 is declared as type "void *".  This field is provided for the use of
 the application program.  It is initialized to NULL and is not further
 used by Berkeley DB in any way.
@@ -63,16 +65,13 @@ in the same way.
 <a href="../api_c/env_set_errpfx.html">DB_ENV-&gt;set_errpfx</a>,
 <a href="../api_c/env_set_feedback.html">DB_ENV-&gt;set_feedback</a>,
 <a href="../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a>,
-<a href="../api_c/env_set_mutexlocks.html">DB_ENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">db_env_set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_panicstate.html">db_env_set_panicstate</a>,
 <a href="../api_c/env_set_rec_init.html">DB_ENV-&gt;set_recovery_init</a>,
 <a href="../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a>,
-<a href="../api_c/env_set_region_init.html">db_env_set_region_init</a>,
 <a href="../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a>,
-<a href="../api_c/env_set_tas_spins.html">db_env_set_tas_spins</a>,
+<a href="../api_c/env_set_tas_spins.html">DB_ENV-&gt;set_tas_spins</a>,
 <a href="../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a>,
+<a href="../api_c/env_set_timeout.html">DB_ENV-&gt;set_timeout</a>,
 <a href="../api_c/env_set_verbose.html">DB_ENV-&gt;set_verbose</a>,
 <a href="../api_c/env_strerror.html">db_strerror</a>
 and

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_dbcursor.c,v 11.38 2001/07/03 19:04:10 krinsky Exp $";
+static const char revid[] = "$Id: tcl_dbcursor.c,v 11.40 2001/08/13 19:11:42 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -321,7 +321,7 @@ tcl_DbcPut(interp, objc, objv, dbc)
 	result = _ReturnSetup(interp, ret, "dbc put");
 	if (ret == 0 && (flag == DB_AFTER || flag == DB_BEFORE)
 	    && type == DB_RECNO) {
-		res = Tcl_NewIntObj(*(db_recno_t *)key.data);
+		res = Tcl_NewLongObj((long)*(db_recno_t *)key.data);
 		Tcl_SetObjResult(interp, res);
 	}
 out:
@@ -344,6 +344,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		"-dirty",
 		"-first",
 		"-get_both",
+		"-get_both_range",
 		"-get_recno",
 		"-join_item",
 		"-last",
@@ -366,6 +367,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		DBCGET_DIRTY,
 		DBCGET_FIRST,
 		DBCGET_BOTH,
+		DBCGET_BOTH_RANGE,
 		DBCGET_RECNO,
 		DBCGET_JOIN,
 		DBCGET_LAST,
@@ -388,7 +390,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	DBTYPE ptype, type;
 	Tcl_Obj **elemv, *myobj, *retlist;
 	db_recno_t precno, recno;
-	u_int32_t flag;
+	u_int32_t flag, op;
 	int bufsize, elemc, i, itmp, optindex, result, ret;
 
 	result = TCL_OK;
@@ -487,6 +489,11 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_GET_BOTH;
 			break;
+		case DBCGET_BOTH_RANGE:
+			FLAG_CHECK2(flag,
+			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			flag |= DB_GET_BOTH_RANGE;
+			break;
 		case DBCGET_RECNO:
 			FLAG_CHECK2(flag,
 			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
@@ -577,11 +584,14 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	}
 	/*
 	 * When we get here, we better have:
-	 * 2 args, key and data if GET_BOTH was specified.
+	 * 2 args, key and data if GET_BOTH/GET_BOTH_RANGE was specified.
 	 * 1 arg if -set, -set_range or -set_recno
 	 * 0 in all other cases.
 	 */
-	if ((flag & DB_OPFLAGS_MASK) == DB_GET_BOTH) {
+	op = flag & DB_OPFLAGS_MASK;
+	switch (op) {
+	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
 		if (i != (objc - 2)) {
 			Tcl_WrongNumArgs(interp, 2, objv,
 			    "?-args? -get_both key data");
@@ -615,9 +625,10 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				data.size = itmp;
 			}
 		}
-	} else if ((flag & DB_OPFLAGS_MASK) == DB_SET ||
-		   (flag & DB_OPFLAGS_MASK) == DB_SET_RANGE ||
-		   (flag & DB_OPFLAGS_MASK) == DB_SET_RECNO) {
+		break;
+	case DB_SET:
+	case DB_SET_RANGE:
+	case DB_SET_RECNO:
 		if (i != (objc - 1)) {
 			Tcl_WrongNumArgs(interp, 2, objv, "?-args? key");
 			result = TCL_ERROR;
@@ -629,7 +640,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			data.flags |= DB_DBT_USERMEM;
 		} else
 			data.flags |= DB_DBT_MALLOC;
-		if ((flag & DB_OPFLAGS_MASK) == DB_SET_RECNO ||
+		if (op == DB_SET_RECNO ||
 		    type == DB_RECNO || type == DB_QUEUE) {
 			result = _GetUInt32(interp, objv[objc - 1], &recno);
 			key.data = &recno;
@@ -639,7 +650,8 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			    Tcl_GetByteArrayFromObj(objv[objc - 1], &itmp);
 			key.size = itmp;
 		}
-	} else {
+		break;
+	default:
 		if (i != objc) {
 			Tcl_WrongNumArgs(interp, 2, objv, "?-args?");
 			result = TCL_ERROR;
@@ -668,9 +680,9 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	retlist = Tcl_NewListObj(0, NULL);
 	if (ret == DB_NOTFOUND)
 		goto out1;
-	if ((flag & DB_OPFLAGS_MASK) == DB_GET_RECNO) {
+	if (op == DB_GET_RECNO) {
 		recno = *((db_recno_t *)data.data);
-		myobj = Tcl_NewIntObj((int)recno);
+		myobj = Tcl_NewLongObj((long)recno);
 		result = Tcl_ListObjAppendElement(interp, retlist, myobj);
 	} else {
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY))

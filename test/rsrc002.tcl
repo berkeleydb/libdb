@@ -3,11 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rsrc002.tcl,v 11.12 2001/01/25 18:23:06 bostic Exp $
+# $Id: rsrc002.tcl,v 11.13 2001/08/03 16:39:29 bostic Exp $
 #
-# Recno backing file test #2: test of set_re_delim.
-#	Specify a backing file with colon-delimited records,
-#	and make sure they are correctly interpreted.
+# TEST	rsrc002
+# TEST	Recno backing file test #2: test of set_re_delim.  Specify a backing
+# TEST	file with colon-delimited records, and make sure they are correctly
+# TEST	interpreted.
 proc rsrc002 { } {
 	source ./include.tcl
 

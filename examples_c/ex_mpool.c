@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_mpool.c,v 11.19 2001/05/10 17:14:05 bostic Exp $
+ * $Id: ex_mpool.c,v 11.22 2001/10/04 18:46:29 sue Exp $
  */
 
 #include <sys/types.h>
@@ -28,19 +28,10 @@ extern int getopt(int, char * const *, const char *);
 int	init __P((char *, int, int, char *));
 int	run __P((int, int, int, int, char *));
 int	run_mpool __P((int, int, int, int, char *));
-#ifdef HAVE_VXWORKS
-int	ex_mpool __P((void));
-#define	MPOOL	"/vxtmp/vxtmp/mpool"			/* File. */
-#define	ERROR_RETURN	ERROR
-#define	VXSHM_KEY	12
-#else
 int	main __P((int, char *[]));
-void	usage __P((char *));
+int	usage __P((char *));
 #define	MPOOL	"mpool"					/* File. */
-#define	ERROR_RETURN	1
-#endif
 
-#ifndef HAVE_VXWORKS
 int
 main(argc, argv)
 	int argc;
@@ -60,23 +51,23 @@ main(argc, argv)
 		switch (ch) {
 		case 'c':
 			if ((cachesize = atoi(optarg)) < 20 * 1024)
-				usage(progname);
+				return (usage(progname));
 			break;
 		case 'h':
 			if ((hits = atoi(optarg)) <= 0)
-				usage(progname);
+				return (usage(progname));
 			break;
 		case 'n':
 			if ((npages = atoi(optarg)) <= 0)
-				usage(progname);
+				return (usage(progname));
 			break;
 		case 'p':
 			if ((pagesize = atoi(optarg)) <= 0)
-				usage(progname);
+				return (usage(progname));
 			break;
 		case '?':
 		default:
-			usage(progname);
+			return (usage(progname));
 		}
 	argc -= optind;
 	argv += optind;
@@ -85,31 +76,15 @@ main(argc, argv)
 	    hits, npages, progname) == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void
+int
 usage(progname)
 	char *progname;
 {
 	(void)fprintf(stderr,
 	    "usage: %s [-c cachesize] [-h hits] [-n npages] [-p pagesize]\n",
 	    progname);
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
-#else
-int
-ex_mpool()
-{
-	char *progname = "ex_mpool";			/* Program name. */
-	int cachesize, ch, hits, npages, pagesize;
-
-	cachesize = 20 * 1024;
-	hits = 1000;
-	npages = 50;
-	pagesize = 1024;
-
-	return (run_mpool(pagesize, cachesize,
-	    hits, npages, progname) == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
-}
-#endif
 
 int
 run_mpool(pagesize, cachesize, hits, npages, progname)
@@ -153,11 +128,11 @@ init(file, pagesize, npages, progname)
 	if ((fp = fopen(file, "wb")) == NULL) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, file, strerror(errno));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	if ((p = (char *)malloc(pagesize)) == NULL) {
 		fprintf(stderr, "%s: %s\n", progname, strerror(ENOMEM));
-		return (ERROR_RETURN);
+		return (1);
 	}
 
 	/* The pages are numbered from 0. */
@@ -166,7 +141,7 @@ init(file, pagesize, npages, progname)
 		if (fwrite(p, pagesize, 1, fp) != 1) {
 			fprintf(stderr,
 			    "%s: %s: %s\n", progname, file, strerror(errno));
-			return (ERROR_RETURN);
+			return (1);
 		}
 	}
 
@@ -185,10 +160,13 @@ run(hits, cachesize, pagesize, npages, progname)
 	char *progname;
 {
 	DB_ENV *dbenv;
-	DB_MPOOLFILE *dbmfp;
+	DB_MPOOLFILE *mfp;
 	db_pgno_t pageno;
 	int cnt, ret;
 	void *p;
+
+	dbenv = NULL;
+	mfp = NULL;
 
 	printf("%s: cachesize: %d; pagesize: %d; N pages: %d\n",
 	    progname, cachesize, pagesize, npages);
@@ -200,35 +178,38 @@ run(hits, cachesize, pagesize, npages, progname)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 #ifdef HAVE_VXWORKS
 	if ((ret = dbenv->set_shm_key(dbenv, VXSHM_KEY)) != 0) {
 		dbenv->err(dbenv, ret, "set_shm_key");
-		return (ERROR_RETURN);
+		return (1);
 	}
 #endif
 
 	/* Set the cachesize. */
 	if ((ret = dbenv->set_cachesize(dbenv, 0, cachesize, 0)) != 0) {
 		dbenv->err(dbenv, ret, "set_cachesize");
-		goto err1;
+		goto err;
 	}
 
 	/* Open the environment. */
 	if ((ret = dbenv->open(
 	    dbenv, NULL, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
-		dbenv->err(dbenv, ret, "open");
-		goto err1;
+		dbenv->err(dbenv, ret, "DB_ENV->open");
+		goto err;
 	}
 
 	/* Open the file in the environment. */
-	if ((ret =
-	    memp_fopen(dbenv, MPOOL, 0, 0, pagesize, NULL, &dbmfp)) != 0) {
-		dbenv->err(dbenv, ret, "memp_fopen: %s", MPOOL);
-		goto err1;
+	if ((ret = dbenv->memp_fcreate(dbenv, &mfp, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DB_ENV->memp_fcreate: %s", MPOOL);
+		goto err;
+	}
+	if ((ret = mfp->open(mfp, MPOOL, 0, 0, pagesize)) != 0) {
+		dbenv->err(dbenv, ret, "DB_MPOOLFILE->open: %s", MPOOL);
+		goto err;
 	}
 
 	printf("retrieve %d random pages... ", hits);
@@ -236,41 +217,43 @@ run(hits, cachesize, pagesize, npages, progname)
 	srand((u_int)time(NULL));
 	for (cnt = 0; cnt < hits; ++cnt) {
 		pageno = (rand() % npages) + 1;
-		if ((ret = memp_fget(dbmfp, &pageno, 0, &p)) != 0) {
+		if ((ret = mfp->get(mfp, &pageno, 0, &p)) != 0) {
 			dbenv->err(dbenv, ret,
 			    "unable to retrieve page %lu", (u_long)pageno);
-			goto err2;
+			goto err;
 		}
 		if (*(db_pgno_t *)p != pageno) {
 			dbenv->errx(dbenv,
 			    "wrong page retrieved (%lu != %d)",
 			    (u_long)pageno, *(int *)p);
-			goto err2;
+			goto err;
 		}
-		if ((ret = memp_fput(dbmfp, p, 0)) != 0) {
+		if ((ret = mfp->put(mfp, p, 0)) != 0) {
 			dbenv->err(dbenv, ret,
 			    "unable to return page %lu", (u_long)pageno);
-			goto err2;
+			goto err;
 		}
 	}
 
 	printf("successful.\n");
 
 	/* Close the file. */
-	if ((ret = memp_fclose(dbmfp)) != 0) {
-		dbenv->err(dbenv, ret, "memp_fclose");
-		goto err1;
+	if ((ret = mfp->close(mfp, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DB_MPOOLFILE->close");
+		goto err;
 	}
 
 	/* Close the pool. */
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		return (ERROR_RETURN);
+		return (1);
 	}
 	return (0);
 
-err2:	(void)memp_fclose(dbmfp);
-err1:	(void)dbenv->close(dbenv, 0);
-	return (ERROR_RETURN);
+err:	if (mfp != NULL)
+		(void)mfp->close(mfp, 0);
+	if (dbenv != NULL)
+		(void)dbenv->close(dbenv, 0);
+	return (1);
 }

@@ -3,10 +3,11 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test053.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
+# $Id: test053.tcl,v 11.15 2001/08/03 16:39:42 bostic Exp $
 #
-# Test53: test of the DB_REVSPLITOFF flag in the btree and
-# Btree-w-recnum methods
+# TEST	test053
+# TEST	Test of the DB_REVSPLITOFF flag in the Btree and Btree-w-recnum
+# TEST	methods.
 proc test053 { method args } {
 	global alphabet
 	global errorCode
@@ -47,7 +48,7 @@ proc test053 { method args } {
 	cleanup $testdir $env
 
 	set oflags \
-	    "-create -truncate -revsplitoff -pagesize 1024 $args $omethod"
+	    "-create -revsplitoff -pagesize 1024 $args $omethod"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_alloc.c,v 11.23 2001/05/04 14:11:40 bostic Exp $";
+static const char revid[] = "$Id: os_alloc.c,v 11.24 2001/08/09 19:05:39 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -193,18 +193,20 @@ __os_malloc(dbenv, size, storep)
 	else
 		++size;				/* Add room for a guard byte. */
 #endif
-
-	/* Some C libraries don't correctly set errno when malloc(3) fails. */
-	__os_set_errno(0);
 	if (__db_jump.j_malloc != NULL)
 		p = __db_jump.j_malloc(size);
 	else
 		p = malloc(size);
 	if (p == NULL) {
-		ret = __os_get_errno();
-		if (ret == 0) {
-			__os_set_errno(ENOMEM);
+		/*
+		 * Some C libraries don't correctly set errno when malloc(3)
+		 * fails.  We'd like to 0 out errno before calling malloc,
+		 * but it turns out that setting errno is quite expensive on
+		 * Windows/NT in an MT environment.
+		 */
+		if ((ret = __os_get_errno()) == 0) {
 			ret = ENOMEM;
+			__os_set_errno(ENOMEM);
 		}
 		__db_err(dbenv,
 		    "malloc: %s: %lu", strerror(ret), (u_long)size);
@@ -260,17 +262,20 @@ __os_realloc(dbenv, size, storep)
 #endif
 
 	/*
-	 * Some C libraries don't correctly set errno when realloc(3) fails.
-	 *
 	 * Don't overwrite the original pointer, there are places in DB we
 	 * try to continue after realloc fails.
 	 */
-	__os_set_errno(0);
 	if (__db_jump.j_realloc != NULL)
 		p = __db_jump.j_realloc(ptr, size);
 	else
 		p = realloc(ptr, size);
 	if (p == NULL) {
+		/*
+		 * Some C libraries don't correctly set errno when malloc(3)
+		 * fails.  We'd like to 0 out errno before calling malloc,
+		 * but it turns out that setting errno is quite expensive on
+		 * Windows/NT in an MT environment.
+		 */
 		if ((ret = __os_get_errno()) == 0) {
 			ret = ENOMEM;
 			__os_set_errno(ENOMEM);

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_fcntl.c,v 11.12 2001/01/25 18:22:57 bostic Exp $";
+static const char revid[] = "$Id: mut_fcntl.c,v 11.14 2001/07/27 18:25:13 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -26,12 +26,12 @@ static const char revid[] = "$Id: mut_fcntl.c,v 11.12 2001/01/25 18:22:57 bostic
  * __db_fcntl_mutex_init --
  *	Initialize a DB mutex structure.
  *
- * PUBLIC: int __db_fcntl_mutex_init __P((DB_ENV *, MUTEX *, u_int32_t));
+ * PUBLIC: int __db_fcntl_mutex_init __P((DB_ENV *, DB_MUTEX *, u_int32_t));
  */
 int
 __db_fcntl_mutex_init(dbenv, mutexp, offset)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	u_int32_t offset;
 {
 	memset(mutexp, 0, sizeof(*mutexp));
@@ -58,18 +58,18 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
  * __db_fcntl_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, MUTEX *, DB_FH *));
+ * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, DB_MUTEX *, DB_FH *));
  */
 int
 __db_fcntl_mutex_lock(dbenv, mutexp, fhp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	DB_FH *fhp;
 {
 	struct flock k_lock;
 	int locked, ms, waited;
 
-	if (!dbenv->db_mutexlocks)
+	if (F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
 	/* Initialize the lock. */
@@ -129,14 +129,14 @@ __db_fcntl_mutex_lock(dbenv, mutexp, fhp)
  * __db_fcntl_mutex_unlock --
  *	Release a lock.
  *
- * PUBLIC: int __db_fcntl_mutex_unlock __P((DB_ENV *, MUTEX *));
+ * PUBLIC: int __db_fcntl_mutex_unlock __P((DB_ENV *, DB_MUTEX *));
  */
 int
 __db_fcntl_mutex_unlock(dbenv, mutexp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
-	if (!dbenv->db_mutexlocks)
+	if (F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
 #ifdef DIAGNOSTIC
@@ -160,13 +160,13 @@ __db_fcntl_mutex_unlock(dbenv, mutexp)
 
 /*
  * __db_fcntl_mutex_destroy --
- *	Destroy a MUTEX.
+ *	Destroy a DB_MUTEX.
  *
- * PUBLIC: int __db_fcntl_mutex_destroy __P((MUTEX *));
+ * PUBLIC: int __db_fcntl_mutex_destroy __P((DB_MUTEX *));
  */
 int
 __db_fcntl_mutex_destroy(mutexp)
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
 	COMPQUIET(mutexp, NULL);
 

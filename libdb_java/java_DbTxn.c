@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbTxn.c,v 11.7 2001/04/17 17:55:08 bostic Exp $";
+static const char revid[] = "$Id: java_DbTxn.c,v 11.11 2001/09/13 16:11:08 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -27,7 +27,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_abort
 	if (!verify_non_null(jnienv, dbtxn))
 		return;
 
-	err = txn_abort(dbtxn);
+	err = dbtxn->abort(dbtxn);
 	verify_return(jnienv, err, 0);
 }
 
@@ -39,7 +39,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_commit
 	if (!verify_non_null(jnienv, dbtxn))
 		return;
 
-	err = txn_commit(dbtxn, flags);
+	err = dbtxn->commit(dbtxn, flags);
 	verify_return(jnienv, err, 0);
 }
 
@@ -51,8 +51,8 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbTxn_id
 	if (!verify_non_null(jnienv, dbtxn))
 		return (-1);
 
-	/* No error to check for from txn_id */
-	retval = txn_id(dbtxn);
+	/* No error to check for from DB_TXN->id */
+	retval = dbtxn->id(dbtxn);
 	return (retval);
 }
 
@@ -74,8 +74,22 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare
 		return;
 	}
 	c_array = (*jnienv)->GetByteArrayElements(jnienv, gid, NULL);
-	err = txn_prepare(dbtxn, c_array);
+	err = dbtxn->prepare(dbtxn, (u_int8_t *)c_array);
 	(*jnienv)->ReleaseByteArrayElements(jnienv, gid, c_array, 0);
+	verify_return(jnienv, err, 0);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_set_1timeout
+  (JNIEnv *jnienv, jobject jthis, jlong timeout, jint flags)
+{
+	int err;
+	DB_TXN *dbtxn;
+
+	dbtxn = get_DB_TXN(jnienv, jthis);
+	if (!verify_non_null(jnienv, dbtxn))
+		return;
+
+	err = dbtxn->set_timeout(dbtxn, (u_int32_t)timeout, flags);
 	verify_return(jnienv, err, 0);
 }
 

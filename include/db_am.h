@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_am.h,v 11.30 2001/06/12 01:22:03 bostic Exp $
+ * $Id: db_am.h,v 11.35 2001/11/16 15:46:42 ubell Exp $
  */
 #ifndef _DB_AM_H_
 #define	_DB_AM_H_
@@ -20,18 +20,6 @@
 #define	DB_UNUSED_2	0x60
 #define	DB_ADD_PAGE	0x70
 #define	DB_REM_PAGE	0x80
-
-/*
- * This is a grotesque naming hack.  We have modified the btree page
- * allocation and freeing functions to be generic and have therefore
- * moved them into the access-method independent portion of the code.
- * However, since we didn't want to create new log records and routines
- * for them, we left their logging and recovery functions over in btree.
- * To make the code look prettier, we macro them, but this is sure to
- * confuse the heck out of everyone.
- */
-#define	__db_pg_alloc_log	__bam_pg_alloc_log
-#define	__db_pg_free_log	__bam_pg_free_log
 
 /*
  * Standard initialization and shutdown macros for all recovery functions.
@@ -96,11 +84,13 @@
 #endif
 
 /*
- * Flags to __db_lget
+ * Actions to __db_lget
  */
-#define	LCK_COUPLE	0x01	/* Lock Couple */
-#define	LCK_ALWAYS	0x02	/* Lock even for off page dup cursors */
-#define	LCK_ROLLBACK	0x04	/* Lock even if in rollback */
+#define	LCK_ALWAYS		1	/* Lock even for off page dup cursors */
+#define	LCK_COUPLE		2	/* Lock Couple */
+#define	LCK_COUPLE_ALWAYS	3	/* Lock Couple even in txn. */
+#define	LCK_DOWNGRADE		4	/* Downgrade the lock. (internal) */
+#define	LCK_ROLLBACK		5	/* Lock even if in rollback */
 
 /*
  * If doing transactions we have to hold the locks associated with a data item
@@ -109,7 +99,8 @@
  * we don't tie up the internal pages of the tree longer than necessary.
  */
 #define	__LPUT(dbc, lock)						\
-	(LOCK_ISSET(lock)? lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
+	(LOCK_ISSET(lock) ?						\
+	(dbc)->dbp->dbenv->lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
 
 /*
  * __TLPUT -- transactional lock put
@@ -122,18 +113,7 @@
  *	Else do nothing.
  */
 #define	__TLPUT(dbc, lock)						\
-	(LOCK_ISSET(lock) ?						\
-	    ((dbc)->txn == NULL ?					\
-		lock_put((dbc)->dbp->dbenv, &(lock)) :			\
-		((F_ISSET(dbc, DBC_DIRTY_READ) &&			\
-		     (lock).mode == DB_LOCK_DIRTY) ?			\
-			lock_put((dbc)->dbp->dbenv, &(lock)) :		\
-			((F_ISSET((dbc)->dbp, DB_AM_DIRTY) &&		\
-			     (lock).mode == DB_LOCK_WRITE) ?		\
-				__lock_downgrade((dbc)->dbp->dbenv,	\
-				     &(lock), DB_LOCK_WWRITE, 0) :	\
-				0)))					\
-	    : 0)
+	(LOCK_ISSET(lock) ?  __db_lput(dbc, &(lock)) : 0)
 
 typedef struct {
 	DBC *dbc;

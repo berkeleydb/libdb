@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_verify.c,v 1.21 2001/06/12 19:51:45 bostic Exp $";
+    "$Id: db_verify.c,v 1.25 2001/10/09 18:20:32 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -26,12 +26,9 @@ static const char revid[] =
 #include "db_int.h"
 #include "clib_ext.h"
 
-int	main __P((int, char *[]));
-void	usage __P((void));
-void	version_check __P((void));
-
-const char
-	*progname = "db_verify";			/* Program name. */
+int main __P((int, char *[]));
+int usage __P((void));
+int version_check __P((const char *));
 
 int
 main(argc, argv)
@@ -42,10 +39,12 @@ main(argc, argv)
 	extern int optind;
 	DB *dbp;
 	DB_ENV *dbenv;
+	const char *progname = "db_verify";
 	int ch, e_close, exitval, nflag, quiet, ret, t_ret;
 	char *home;
 
-	version_check();
+	if ((ret = version_check(progname)) != 0)
+		return (ret);
 
 	dbenv = NULL;
 	e_close = exitval = nflag = quiet = 0;
@@ -57,12 +56,6 @@ main(argc, argv)
 			break;
 		case 'N':
 			nflag = 1;
-			if ((ret = db_env_set_panicstate(0)) != 0) {
-				fprintf(stderr,
-				    "%s: db_env_set_panicstate: %s\n",
-				    progname, db_strerror(ret));
-				return (EXIT_FAILURE);
-			}
 			break;
 		case 'q':
 			quiet = 1;
@@ -72,13 +65,13 @@ main(argc, argv)
 			return (EXIT_SUCCESS);
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc <= 0)
-		usage();
+		return (usage());
 
 	/* Handle possible interruptions. */
 	__db_util_siginit();
@@ -105,21 +98,33 @@ main(argc, argv)
 		dbenv->set_errpfx(dbenv, progname);
 	}
 
-	if (nflag && (ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
-		dbenv->err(dbenv, ret, "set_mutexlocks");
-		goto shutdown;
+	if (nflag) {
+		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
+			goto shutdown;
+		}
+		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
+			goto shutdown;
+		}
 	}
 
 	/*
-	 * Attach to an mpool if it exists, but if that fails, attach
-	 * to a private region.
+	 * Attach to an mpool if it exists, but if that fails, attach to a
+	 * private region.  In the latter case, declare a reasonably large
+	 * cache so that we don't fail when verifying large databases.
 	 */
-	if ((ret = dbenv->open(dbenv,
-	    home, DB_INIT_MPOOL | DB_USE_ENVIRON, 0)) != 0 &&
-	    (ret = dbenv->open(dbenv, home,
+	if ((ret =
+	    dbenv->open(dbenv, home, DB_INIT_MPOOL | DB_USE_ENVIRON, 0)) != 0) {
+		if ((ret = dbenv->set_cachesize(dbenv, 0, MEGABYTE, 1)) != 0) {
+			dbenv->err(dbenv, ret, "set_cachesize");
+			goto shutdown;
+		}
+		if ((ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
-		dbenv->err(dbenv, ret, "open");
-		goto shutdown;
+			dbenv->err(dbenv, ret, "open");
+			goto shutdown;
+		}
 	}
 
 	for (; !__db_util_interrupted() && argv[0] != NULL; ++argv) {
@@ -157,15 +162,16 @@ shutdown:	exitval = 1;
 	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void
+int
 usage()
 {
 	fprintf(stderr, "usage: db_verify [-NqV] [-h home] db_file ...\n");
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
 
-void
-version_check()
+int
+version_check(progname)
+	const char *progname;
 {
 	int v_major, v_minor, v_patch;
 
@@ -177,6 +183,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }

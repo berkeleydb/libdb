@@ -3,11 +3,12 @@
 # Copyright (c) 2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: si003.tcl,v 1.2 2001/05/17 20:37:07 bostic Exp $
+# $Id: si003.tcl,v 1.4 2001/08/03 16:39:31 bostic Exp $
 #
-# Sindex003: Basic secondary index put/delete test with secondaries
-#	created mid-test.
-
+# TEST	sindex003
+# TEST	sindex001 with secondaries created and closed mid-test
+# TEST	Basic secondary index put/delete test with secondaries
+# TEST	created mid-test.
 proc sindex003 { methods {nentries 200} {tnum 3} args } {
 	source ./include.tcl
 	global dict nsecondaries
@@ -96,7 +97,7 @@ proc sindex003 { methods {nentries 200} {tnum 3} args } {
 	}
 
 	# Delete the second half of the entries through the primary.
-	# We do the second half so we can just pass keys(0..n/2)
+	# We do the second half so we can just pass keys(0 ... n/2)
 	# to check_secondaries.
 	set half [expr $nentries / 2]
 	puts -nonewline \

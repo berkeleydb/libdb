@@ -3,9 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test037.tcl,v 11.12 2001/01/25 18:23:10 bostic Exp $
+# $Id: test037.tcl,v 11.13 2001/08/03 16:39:39 bostic Exp $
 #
-# Test037: RMW functionality.
+# TEST	test037
+# TEST	Test DB_RMW
 proc test037 { method {nentries 100} args } {
 	source ./include.tcl
 	set eindex [lsearch -exact $args "-env"]

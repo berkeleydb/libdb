@@ -1,4 +1,4 @@
-<!--$Id: env_set_lk_detect.so,v 10.25 2001/05/15 14:44:10 bostic Exp $-->
+<!--$Id: env_set_lk_detect.so,v 10.27 2001/10/22 15:24:30 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -25,20 +25,27 @@ int
 DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);
 </pre></h3>
 <h1>Description</h1>
-<p>Set if the deadlock detector is to be run whenever a lock conflict occurs,
-and specify which transaction should be aborted in the case of a deadlock.
-The specified value must be one of the following list:
+<p>Set if the deadlock detector is to be run whenever a lock conflict
+occurs, and specify what lock request(s) should be rejected.  As
+transactions acquire locks on behalf of a single locker ID, rejecting
+a lock request associated with a transaction normally requires the
+transaction be aborted.  The specified value must be one of the
+following list:
 <p><dl compact>
-<p><dt><a name="DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use the default policy as specified by <a href="../utility/db_deadlock.html">db_deadlock</a>.
-<dt><a name="DB_LOCK_MAXLOCKS">DB_LOCK_MAXLOCKS</a><dd>Abort the transaction with the
-greatest number of locks.
-<dt><a name="DB_LOCK_MINLOCKS">DB_LOCK_MINLOCKS</a><dd>Abort the transaction with the
-fewest locks.
-<dt><a name="DB_LOCK_MINWRITE">DB_LOCK_MINWRITE</a><dd>Abort the transaction with the
-fewest write locks.
-<dt><a name="DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Abort the oldest transaction.
-<dt><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Abort a random transaction involved in the deadlock.
-<dt><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Abort the youngest transaction.
+<p><dt><a name="DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use whatever lock policy was specified when the database environment
+was created.  If no lock policy has yet been specified, set the lock
+policy to DB_LOCK_RANDOM.
+<dt><a name="DB_LOCK_EXPIRE">DB_LOCK_EXPIRE</a><dd>Reject lock requests which have timed out.  No other deadlock detection
+is performed.
+<dt><a name="DB_LOCK_MAXLOCKS">DB_LOCK_MAXLOCKS</a><dd>Reject the lock request for the locker ID with the greatest number of
+locks.
+<dt><a name="DB_LOCK_MINLOCKS">DB_LOCK_MINLOCKS</a><dd>Reject the lock request for the locker ID with the fewest number of
+locks.
+<dt><a name="DB_LOCK_MINWRITE">DB_LOCK_MINWRITE</a><dd>Reject the lock request for the locker ID with the fewest number of
+write locks.
+<dt><a name="DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Reject the lock request for the oldest locker ID.
+<dt><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Reject the lock request for a random locker ID.
+<dt><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Reject the lock request for the youngest locker ID.
 </dl>
 <p>The DB_ENV-&gt;set_lk_detect interface may be used only to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> interface is called.
@@ -63,17 +70,17 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a>,
-<a href="../api_c/env_set_lk_max.html">DB_ENV-&gt;set_lk_max</a>,
 <a href="../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
 <a href="../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>,
 <a href="../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>,
-<a href="../api_c/lock_detect.html">lock_detect</a>,
-<a href="../api_c/lock_get.html">lock_get</a>,
-<a href="../api_c/lock_id.html">lock_id</a>,
-<a href="../api_c/lock_put.html">lock_put</a>,
-<a href="../api_c/lock_stat.html">lock_stat</a>,
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>,
+<a href="../api_c/lock_get.html">DB_ENV-&gt;lock_get</a>,
+<a href="../api_c/lock_id.html">DB_ENV-&gt;lock_id</a>,
+<a href="../api_c/lock_id_free.html">DB_ENV-&gt;lock_id_free</a>,
+<a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>,
+<a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>,
 and
-<a href="../api_c/lock_vec.html">lock_vec</a>.
+<a href="../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

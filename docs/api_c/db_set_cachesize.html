@@ -1,5 +1,5 @@
 <!--$Id: db_set_cachesize.so,v 10.19 2001/04/04 19:06:26 bostic Exp $-->
-<!--$Id: env_set_cachesize.so,v 10.24 2001/05/15 14:44:08 bostic Exp $-->
+<!--$Id: env_set_cachesize.so,v 10.26 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -47,8 +47,8 @@ the cache will be allocated contiguously in memory.  If it is greater
 than 1, the cache will be broken up into <b>ncache</b> equally sized,
 separate pieces of memory.
 <p>Because databases opened within Berkeley DB environments use the cache
-specified to the environment, it is an error to attempt to set a
-cache in a database created within an environment.
+specified to the environment, it is an error to attempt to set a cache
+in a database created within an environment.
 <p>The DB-&gt;set_cachesize interface may be used only to configure Berkeley DB before
 the <a href="../api_c/db_open.html">DB-&gt;open</a> interface is called.
 <p>The DB-&gt;set_cachesize function returns a non-zero error value on failure and 0 on success.
@@ -63,10 +63,11 @@ before that time.
 <p>The DB-&gt;set_cachesize function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>The specified cache size was impossibly small.
+<p>Called in a database environment.
 <p>Called after
 <a href="../api_c/db_open.html">DB-&gt;open</a>
 was called.
-<p>The specified cache size was impossibly small.
 </dl>
 <p>The DB-&gt;set_cachesize function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
 If a catastrophic error has occurred, the DB-&gt;set_cachesize function may fail and return

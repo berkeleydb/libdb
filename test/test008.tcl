@@ -3,12 +3,20 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test008.tcl,v 11.19 2001/05/14 21:55:55 krinsky Exp $
+# $Id: test008.tcl,v 11.21 2001/08/03 16:39:33 bostic Exp $
 #
-# DB Test 8 {access method}
-# Take the source files and dbtest executable and enter their names as the
-# key with their contents as data.  After all are entered, begin looping
-# through the entries; deleting some pairs and then readding them.
+# TEST	test008
+# TEST	Small keys/large data
+# TEST		Put/get per key
+# TEST		Loop through keys by steps (which change)
+# TEST		    ... delete each key at step
+# TEST		    ... add each key back
+# TEST		    ... change step
+# TEST		Confirm that overflow pages are getting reused
+# TEST
+# TEST	Take the source files and dbtest executable and enter their names as
+# TEST	the key with their contents as data.  After all are entered, begin
+# TEST	looping through the entries; deleting some pairs and then readding them.
 proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 	source ./include.tcl
 
@@ -48,7 +56,7 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 
 	cleanup $testdir $env
 
-	set db [eval {berkdb_open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open -create -mode 0644} \
 	    $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

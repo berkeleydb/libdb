@@ -3,25 +3,28 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test087.tcl,v 11.9 2001/07/02 01:08:46 bostic Exp $
+# $Id: test087.tcl,v 11.10 2001/08/03 16:39:47 bostic Exp $
 #
-# DB Test 87: Test of cursor stability on duplicate pages w/aborts.
-# Does the following:
-#    a. Initialize things by DB->putting ndups dups and
-#       setting a reference cursor to point to each.  Do each put twice,
-#	first aborting, then committing, so we're sure to abort the move
-#	to off-page dups at some point.
-#    b. c_put ndups dups (and correspondingly expanding
-#       the set of reference cursors) after the last one, making sure
-#       after each step that all the reference cursors still point to
-#       the right item.
-#    c. Ditto, but before the first one.
-#    d. Ditto, but after each one in sequence first to last.
-#    e. Ditto, but after each one in sequence from last to first.
-#       occur relative to the new datum)
-#    f. Ditto for the two sequence tests, only doing a
-#       DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
-#       new one.
+# TEST	test087
+# TEST	Test of cursor stability when converting to and modifying
+# TEST	off-page duplicate pages with subtransaction aborts. [#2373]
+# TEST
+# TEST	Does the following:
+# TEST	a. Initialize things by DB->putting ndups dups and
+# TEST	   setting a reference cursor to point to each.  Do each put twice,
+# TEST	   first aborting, then committing, so we're sure to abort the move
+# TEST	   to off-page dups at some point.
+# TEST	b. c_put ndups dups (and correspondingly expanding
+# TEST	   the set of reference cursors) after the last one, making sure
+# TEST	   after each step that all the reference cursors still point to
+# TEST	   the right item.
+# TEST	c. Ditto, but before the first one.
+# TEST	d. Ditto, but after each one in sequence first to last.
+# TEST	e. Ditto, but after each one in sequence from last to first.
+# TEST	   occur relative to the new datum)
+# TEST	f. Ditto for the two sequence tests, only doing a
+# TEST	   DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
+# TEST	   new one.
 proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 	source ./include.tcl
 	global alphabet

@@ -3,11 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test084.tcl,v 11.7 2001/01/25 18:23:13 bostic Exp $
+# $Id: test084.tcl,v 11.8 2001/08/03 16:39:47 bostic Exp $
 #
-# Test 84.
-# Basic sanity test (test001) with large (64K) pages.
-#
+# TEST	test084
+# TEST	Basic sanity test (test001) with large (64K) pages.
 proc test084 { method {nentries 10000} {tnum 84} {pagesize 65536} args} {
 	source ./include.tcl
 

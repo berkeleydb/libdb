@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_join.c,v 11.45 2001/07/02 01:05:37 bostic Exp $";
+static const char revid[] = "$Id: db_join.c,v 11.46 2001/08/15 13:30:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -541,36 +541,28 @@ samekey:	/*
 	/*
 	 * ret == 0;  we have a key to return.
 	 *
-	 * If DB_DBT_USERMEM or DB_DBT_MALLOC is set, we need to
-	 * copy it back into the dbt we were given for the key;
-	 * call __db_retcopy.
-	 *
-	 * Otherwise, assert that we do not in fact need to copy anything
-	 * and simply proceed.
+	 * If DB_DBT_USERMEM or DB_DBT_MALLOC is set, we need to copy the key
+	 * back into the dbt we were given for the key; call __db_retcopy.
+	 * Otherwise, assert that we do not need to copy anything and proceed.
 	 */
-	if (F_ISSET(key_arg, DB_DBT_USERMEM) ||
-	    F_ISSET(key_arg, DB_DBT_MALLOC)) {
+	DB_ASSERT(F_ISSET(
+	    key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) || key_n == key_arg);
+
+	if (F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) &&
+	    (ret = __db_retcopy(
+	    dbp, key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
 		/*
-		 * We need to copy the key back into our original
-		 * datum.  Do so.
+		 * The retcopy failed, most commonly because we have a user
+		 * buffer for the key which is too small. Set things up to
+		 * retry next time, and return.
 		 */
-		if ((ret = __db_retcopy(dbp,
-		    key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
-			/*
-			 * The retcopy failed, most commonly because we
-			 * have a user buffer for the key which is too small.
-			 * Set things up to retry next time, and return.
-			 */
-			F_SET(jc, JOIN_RETRY);
-			return (ret);
-		}
-	} else
-		DB_ASSERT(key_n == key_arg);
+		F_SET(jc, JOIN_RETRY);
+		return (ret);
+	}
 
 	/*
-	 * If DB_JOIN_ITEM is
-	 * set, we return it;  otherwise we do the lookup in the
-	 * primary and then return.
+	 * If DB_JOIN_ITEM is set, we return it; otherwise we do the lookup
+	 * in the primary and then return.
 	 *
 	 * Note that we use key_arg here;  it is safe (and appropriate)
 	 * to do so.

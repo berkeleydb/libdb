@@ -3,17 +3,12 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: log.tcl,v 11.18 2001/01/25 18:23:05 bostic Exp $
+# $Id: log.tcl,v 11.23 2001/10/05 02:38:08 bostic Exp $
 #
 # Options are:
-# -dir <directory in which to store memp>
-# -maxfilesize <maxsize of log file>
+# -dir <directory in which to store log files>
 # -iterations <iterations>
-# -stat
-proc log_usage {} {
-	puts "log -dir <directory> -iterations <number of ops> \
-	    -maxfilesize <max size of log files> -stat"
-}
+# -maxfilesize <maxsize of log file>
 proc logtest { args } {
 	source ./include.tcl
 	global rand_init
@@ -21,21 +16,19 @@ proc logtest { args } {
 	# Set defaults
 	set iterations 1000
 	set maxfile [expr 1024 * 128]
-	set dostat 0
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
 			-d.* { incr i; set testdir [lindex $args $i] }
 			-i.* { incr i; set iterations [lindex $args $i] }
 			-m.* { incr i; set maxfile [lindex $args $i] }
-			-s.* { set dostat 1 }
 			default {
-				puts -nonewline "FAIL:[timestamp] Usage: "
-				log_usage
+				puts "FAIL:[timestamp] log usage"
+	puts "usage: log -dir <directory>\
+	    -iterations <number of ops> -maxfilesize <max log file size>"
 				return
 			}
 		}
 	}
-	set multi_log [expr 3 * $iterations]
 
 	# Clean out old log if it existed
 	puts "Unlinking log: error message OK"
@@ -44,29 +37,35 @@ proc logtest { args } {
 	# Now run the various functionality tests
 	berkdb srand $rand_init
 
-	log001 $testdir $maxfile $iterations
-	log001 $testdir $maxfile $multi_log
+	log001 $testdir $maxfile $iterations 1
+	log001 $testdir $maxfile $iterations 0
+	log001 $testdir $maxfile [expr 15 * $iterations] 1
+	log001 $testdir $maxfile [expr 15 * $iterations] 0
 	log002 $testdir $maxfile
 	log003 $testdir $maxfile
 	log004 $testdir
 }
 
-proc log001 { dir max nrecs } {
+# TEST	log001
+# TEST	Read/write log records.
+proc log001 { dir max nrecs fixedlength } {
 	source ./include.tcl
 
-	puts "Log001: Basic put/get test"
+	if { $fixedlength == 1 } {
+		puts "Log001: Basic put/get test (fixed-length log records)"
+	} else {
+		puts "Log001: Basic put/get test (variable-length log records)"
+	}
 
 	env_cleanup $dir
 
-	set env [berkdb env -log -create -home $dir \
-			-mode 0644 -log_max $max]
+	set env [berkdb env -log -create -home $dir -mode 0644 -log_max $max]
 	error_check_bad log_env:$dir $env NULL
 	error_check_good log:$dir [is_substr $env "env"] 1
 
 	# We will write records to the log and make sure we can
 	# read them back correctly.  We'll use a standard pattern
 	# repeated some number of times for each record.
-
 	set lsn_list {}
 	set rec_list {}
 	puts "Log001.a: Writing $nrecs log records"
@@ -75,15 +74,27 @@ proc log001 { dir max nrecs } {
 		for { set j 0 } { $j < [expr $i % 10 + 1] } {incr j} {
 			set rec $rec$i:logrec:$i
 		}
-		set lsn [$env log_put $rec]
+		if { $fixedlength != 1 } {
+			set rec $rec:[random_data 237 0 0]
+		}
+		if { $i == 0 } {
+			set lsn [$env log_put -checkpoint $rec]
+		} else {
+			set lsn [$env log_put $rec]
+		}
 		error_check_bad log_put [is_substr $lsn log_cmd] 1
 		lappend lsn_list $lsn
 		lappend rec_list $rec
 	}
+
+	# Open a log cursor.
+	set logc [$env log_cursor]
+	error_check_good logc [is_valid_logc $logc $env] TRUE
+
 	puts "Log001.b: Retrieving log records sequentially (forward)"
 	set i 0
-	for { set grec [$env log_get -first] } { [llength $grec] != 0 } {
-		set grec [$env log_get -next]} {
+	for { set grec [$logc get -first] } { [llength $grec] != 0 } {
+		set grec [$logc get -next]} {
 		error_check_good log_get:seq [lindex $grec 1] \
 						 [lindex $rec_list $i]
 		incr i
@@ -91,8 +102,8 @@ proc log001 { dir max nrecs } {
 
 	puts "Log001.c: Retrieving log records sequentially (backward)"
 	set i [llength $rec_list]
-	for { set grec [$env log_get -last] } { [llength $grec] != 0 } {
-	    set grec [$env log_get -prev] } {
+	for { set grec [$logc get -last] } { [llength $grec] != 0 } {
+	    set grec [$logc get -prev] } {
 		incr i -1
 		error_check_good \
 		    log_get:seq [lindex $grec 1] [lindex $rec_list $i]
@@ -101,7 +112,7 @@ proc log001 { dir max nrecs } {
 	puts "Log001.d: Retrieving log records sequentially by LSN"
 	set i 0
 	foreach lsn $lsn_list {
-		set grec [$env log_get -set $lsn]
+		set grec [$logc get -set $lsn]
 		error_check_good \
 		    log_get:seq [lindex $grec 1] [lindex $rec_list $i]
 		incr i
@@ -112,18 +123,56 @@ proc log001 { dir max nrecs } {
 	for { set i 0 } { $i < $nrecs } { incr i } {
 		set recno [berkdb random_int 0 $m ]
 		set lsn [lindex $lsn_list $recno]
-		set grec [$env log_get -set $lsn]
+		set grec [$logc get -set $lsn]
 		error_check_good \
 		    log_get:seq [lindex $grec 1] [lindex $rec_list $recno]
 	}
 
+	puts "Log001.f: Retrieving first/current, last/current log record"
+	set grec [$logc get -first]
+	error_check_good log_get:seq [lindex $grec 1] [lindex $rec_list 0]
+	set grec [$logc get -current]
+	error_check_good log_get:seq [lindex $grec 1] [lindex $rec_list 0]
+	set i [expr [llength $rec_list] - 1]
+	set grec [$logc get -last]
+	error_check_good log_get:seq [lindex $grec 1] [lindex $rec_list $i]
+	set grec [$logc get -current]
+	error_check_good log_get:seq [lindex $grec 1] [lindex $rec_list $i]
+
+	# Retrieve checkpoint records as the first record, middle record
+	# and last record in the log.
+	puts "Log001.g: Retrieving checkpoint records."
+	set grec [$logc get -checkpoint]
+	error_check_good \
+	    log_get:checkpoint [lindex $grec 1] [lindex $rec_list 0]
+	set lsn [$env log_put -checkpoint $rec]
+	error_check_bad log_put [is_substr $lsn log_cmd] 1
+	for { set i 0 } { $i < 50 } { incr i } {
+		if { $fixedlength != 1 } {
+			set rec $rec:[random_data 237 0 0]
+		}
+		set tlsn [$env log_put $rec]
+		error_check_bad log_put [is_substr $tlsn log_cmd] 1
+	}
+	set grec [$logc get -checkpoint]
+	error_check_good log_get:checkpoint [lindex $grec 0] $lsn
+	set lsn [$env log_put -checkpoint $rec]
+	error_check_bad log_put [is_substr $lsn log_cmd] 1
+	set grec [$logc get -checkpoint]
+	error_check_good log_get:checkpoint [lindex $grec 0] $lsn
+
 	# Close and unlink the file
+	error_check_good log_cursor:close:$logc [$logc close] 0
 	error_check_good env:close:$env [$env close] 0
 	error_check_good envremove:$dir [berkdb envremove -home $dir] 0
 
 	puts "Log001 Complete"
 }
 
+# TEST	log002
+# TEST	Tests multiple logs
+# TEST		Log truncation
+# TEST		LSN comparison and file functionality.
 proc log002 { dir {max 32768} } {
 	source ./include.tcl
 
@@ -138,9 +187,8 @@ proc log002 { dir {max 32768} } {
 	# We'll record every hundred'th record for later use
 	set info_list {}
 
-	set i 0
 	puts "Log002.a: Writing log records"
-
+	set i 0
 	for {set s 0} { $s <  [expr 3 * $max] } { incr s $len } {
 		set rec [random_data 120 0 0]
 		set len [string length $rec]
@@ -182,19 +230,26 @@ proc log002 { dir {max 32768} } {
 	}
 
 	puts "Log002.d: Verifying records"
+
+	set logc [$env log_cursor]
+	error_check_good log_cursor [is_valid_logc $logc $env] TRUE
+
 	for {set i [expr [llength $info_list] - 1] } { $i >= 0 } { incr i -1} {
 		set p [lindex $info_list $i]
-		set grec [$env log_get -set [lindex $p 0]]
+		set grec [$logc get -set [lindex $p 0]]
 		error_check_good log_get:$env [lindex $grec 1] [lindex $p 1]
 	}
 
 	# Close and unlink the file
+	error_check_good log_cursor:close:$logc [$logc close] 0
 	error_check_good env:close:$env [$env close] 0
 	error_check_good envremove:$dir [berkdb envremove -home $dir] 0
 
 	puts "Log002 Complete"
 }
 
+# TEST	log003
+# TEST	Verify that log_flush is flushing records correctly.
 proc log003 { dir {max 32768} } {
 	source ./include.tcl
 
@@ -234,10 +289,14 @@ proc log003 { dir {max 32768} } {
 		error_check_bad log_env:$dir $env NULL
 		error_check_good log:$dir [is_substr $env "env"] 1
 
-		set gotrec [$env log_get -first]
+		set logc [$env log_cursor]
+		error_check_good log_cursor [is_valid_logc $logc $env] TRUE
+
+		set gotrec [$logc get -first]
 		error_check_good lp_get [lindex $gotrec 1] $rec
 
 		# Close and unlink the file
+		error_check_good log_cursor:close:$logc [$logc close] 0
 		error_check_good env:close:$env [$env close] 0
 		error_check_good envremove:$dir [berkdb envremove -home $dir] 0
 		log_cleanup $dir
@@ -289,10 +348,14 @@ proc log003 { dir {max 32768} } {
 		error_check_bad log_env:$dir $env NULL
 		error_check_good log:$dir [is_substr $env "env"] 1
 
-		set gotrec [$env log_get -set $save_lsn]
+		set logc [$env log_cursor]
+		error_check_good log_cursor [is_valid_logc $logc $env] TRUE
+
+		set gotrec [$logc get -set $save_lsn]
 		error_check_good lp_get [lindex $gotrec 1] $rec
 
 		# Close and unlink the file
+		error_check_good log_cursor:close:$logc [$logc close] 0
 		error_check_good env:close:$env [$env close] 0
 		error_check_good envremove:$dir [berkdb envremove -home $dir] 0
 		log_cleanup $dir
@@ -301,8 +364,9 @@ proc log003 { dir {max 32768} } {
 	puts "Log003 Complete"
 }
 
-# Make sure that if we do PREVs on a log, but the beginning of the
-# log has been truncated, we do the right thing.
+# TEST	log004
+# TEST	Make sure that if we do PREVs on a log, but the beginning of the
+# TEST	log has been truncated, we do the right thing.
 proc log004 { dir } {
 	source ./include.tcl
 
@@ -324,14 +388,18 @@ proc log004 { dir } {
 	set myenv [berkdb env -create -log -home $dir]
 	error_check_good log_open [is_substr $myenv "env"] 1
 
-	set ret [$myenv log_get -first]
+	set mylogc [$myenv log_cursor]
+	error_check_good log_cursor [is_valid_logc $mylogc $myenv] TRUE
+
+	set ret [$mylogc get -first]
 	error_check_bad log_get [llength $ret] 0
 
 	# This should give DB_NOTFOUND which is a ret of length 0
-	catch {$myenv log_get -prev} ret
+	catch {$mylogc get -prev} ret
 	error_check_good log_get_prev [string length $ret] 0
 
 	puts "Log004.d: Close log and environment."
+	error_check_good log_cursor_close [$mylogc close] 0
 	error_check_good log_close [$myenv close] 0
 	puts "Log004 complete."
 }

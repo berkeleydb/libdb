@@ -3,14 +3,22 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb008.tcl,v 11.15 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb008.tcl,v 11.16 2001/08/03 16:39:30 bostic Exp $
 #
-# Sub DB Test 8 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Use a different or random lorder for each subdb.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	subdb008
+# TEST	Tests lorder differences between subdbs
+# TEST		Open several subdbs, each with a different/random lorder
+# TEST		Small keys, small data
+# TEST		Put/get per key per subdb
+# TEST		Dump file, verify per subdb
+# TEST		Close, reopen per subdb
+# TEST		Dump file, verify per subdb
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Use a different or random lorder for each subdb.
+# TEST	Insert each with self as key and data; retrieve each.
+# TEST	After all are entered, retrieve all; compare output to original.
+# TEST	Close file, reopen, do retrieve and re-verify.
 proc subdb008 { method {nentries 10000} args } {
 	source ./include.tcl
 	global rand_init

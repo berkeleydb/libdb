@@ -3,8 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test058.tcl,v 11.15 2001/01/25 18:23:12 bostic Exp $
+# $Id: test058.tcl,v 11.16 2001/08/03 16:39:43 bostic Exp $
 #
+# TEST	test058
+# TEST	Verify that deleting and reading duplicates results in correct ordering.
 proc test058 { method args } {
 	source ./include.tcl
 

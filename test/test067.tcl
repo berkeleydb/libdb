@@ -3,24 +3,30 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test067.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
+# $Id: test067.tcl,v 11.15 2001/08/03 16:39:44 bostic Exp $
 #
-# DB Test 67: Test of DB_CURRENT partial puts on almost-empty duplicate pages.
-# This test was written to address the following issue, #2 in the list of
-# issues relating to bug #0820:
-#   2. DBcursor->put, DB_CURRENT flag, off-page duplicates, hash and btree:
-#	In Btree, the DB_CURRENT overwrite of off-page duplicate records
-#	first deletes the record and then puts the new one -- this could
-#	be a problem if the removal of the record causes a reverse split.
-#	Suggested solution is to acquire a cursor to lock down the current
-#	record, put a new record after that record, and then delete using
-#	the held cursor.
-# It also tests the following, #5 in the same list of issues:
-#  5. DBcursor->put, DB_AFTER/DB_BEFORE/DB_CURRENT flags, DB_DBT_PARTIAL set,
-#     duplicate comparison routine specified.
-#	The partial change does not change how data items sort, but the
-#	record to be put isn't built yet, and that record supplied is the
-#	one that's checked for ordering compatibility.
+# TEST	test067
+# TEST	Test of DB_CURRENT partial puts onto almost empty duplicate
+# TEST	pages, with and without DB_DUP_SORT.
+# TEST
+# TEST	Test of DB_CURRENT partial puts on almost-empty duplicate pages.
+# TEST	This test was written to address the following issue, #2 in the
+# TEST	list of issues relating to bug #0820:
+# TEST
+# TEST	2. DBcursor->put, DB_CURRENT flag, off-page duplicates, hash and btree:
+# TEST	In Btree, the DB_CURRENT overwrite of off-page duplicate records
+# TEST	first deletes the record and then puts the new one -- this could
+# TEST	be a problem if the removal of the record causes a reverse split.
+# TEST	Suggested solution is to acquire a cursor to lock down the current
+# TEST	record, put a new record after that record, and then delete using
+# TEST	the held cursor.
+# TEST
+# TEST	It also tests the following, #5 in the same list of issues:
+# TEST	5. DBcursor->put, DB_AFTER/DB_BEFORE/DB_CURRENT flags, DB_DBT_PARTIAL
+# TEST	set, duplicate comparison routine specified.
+# TEST	The partial change does not change how data items sort, but the
+# TEST	record to be put isn't built yet, and that record supplied is the
+# TEST	one that's checked for ordering compatibility.
 proc test067 { method {ndups 1000} {tnum 67} args } {
 	source ./include.tcl
 	global alphabet
@@ -51,7 +57,7 @@ proc test067 { method {ndups 1000} {tnum 67} args } {
 
 	foreach dupopt { "-dup" "-dup -dupsort" } {
 		cleanup $testdir $env
-		set db [eval {berkdb_open -create -truncate -mode 0644 \
+		set db [eval {berkdb_open -create -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE
 

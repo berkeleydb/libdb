@@ -3,9 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test030.tcl,v 11.14 2001/01/25 18:23:10 bostic Exp $
+# $Id: test030.tcl,v 11.16 2001/08/03 16:39:38 bostic Exp $
 #
-# DB Test 30: Test DB_NEXT_DUP Functionality.
+# TEST	test030
+# TEST	Test DB_NEXT_DUP Functionality.
 proc test030 { method {nentries 10000} args } {
 	global rand_init
 	source ./include.tcl
@@ -42,14 +43,14 @@ proc test030 { method {nentries 10000} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 
-	set db [eval {berkdb_open -create -truncate \
+	set db [eval {berkdb_open -create \
 		-mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Use a second DB to keep track of how many duplicates
 	# we enter per key
 
-	set cntdb [eval {berkdb_open -create -truncate \
+	set cntdb [eval {berkdb_open -create \
 		-mode 0644} $args {-btree $cntfile}]
 	error_check_good dbopen:cntfile [is_valid_db $db] TRUE
 

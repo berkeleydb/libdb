@@ -4,19 +4,23 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.cpp,v 11.19 2001/05/10 17:14:06 bostic Exp $
+ * $Id: EnvExample.cpp,v 11.22 2001/11/10 04:59:07 mjc Exp $
  */
 
 #include <sys/types.h>
 
 #include <errno.h>
-#include <iostream.h>
+#include <iostream>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <db_cxx.h>
+
+using std::ostream;
+using std::cout;
+using std::cerr;
 
 #ifdef macintosh
 #define	DATABASE_HOME	":database"
@@ -63,11 +67,11 @@ main(int, char **)
 
 		cout << "Teardown env\n";
 		db_teardown(home, data_dir, cerr);
-		return EXIT_SUCCESS;
+		return (EXIT_SUCCESS);
 	}
 	catch (DbException &dbe) {
-		cerr << "AccessExample: " << dbe.what() << "\n";
-		return EXIT_FAILURE;
+		cerr << "EnvExample: " << dbe.what() << "\n";
+		return (EXIT_FAILURE);
 	}
 }
 

@@ -1,4 +1,4 @@
-<!--$Id: memp_fopen.so,v 10.34 2001/05/08 15:36:08 bostic Exp $-->
+<!--$Id: memp_fopen.so,v 10.36 2001/10/22 15:24:35 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbMpoolFile::open</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,14 +22,11 @@
 #include &lt;db_cxx.h&gt;
 <p>
 static int
-DbMpoolFile::open(DbEnv *env, const char *file, u_int32_t flags, int mode,
-    size_t pagesize, DB_MPOOL_FINFO *finfop, DbMpoolFile **mpf);
+DbMpoolFile::open(const char *file, u_int32_t flags, int mode, size_t pagesize);
 </pre></h3>
 <h1>Description</h1>
-<p>The DbMpoolFile::open method opens a file in the pool specified by the
-<a href="../api_cxx/dbenv_class.html">DbEnv</a> <b>env</b>, copying the <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> pointer
-representing it into the memory location to which <b>mpf</b> refers.
-<p>The <b>file</b> argument is the name of the file to be opened.  If
+<p>The DbMpoolFile::open method opens a file in the shared memory buffer pool.
+The <b>file</b> argument is the name of the file to be opened.  If
 <b>file</b> is NULL, a private temporary file is created that
 cannot be shared with any other process (although it may be shared with
 other threads).
@@ -43,6 +40,10 @@ exist and the DB_CREATE flag is not specified, the call will fail.
 <p><dt><a name="DB_NOMMAP">DB_NOMMAP</a><dd>Always copy this file into the local cache instead of potentially mapping
 it into process memory (see the description of the
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a> method for further information).
+<p><dt><a name="DB_ODDFILESIZE">DB_ODDFILESIZE</a><dd>Attempts to open files which are not a multiple of the page size in
+length will fail, by default.  If the DB_ODDFILESIZE flag is
+set, any partial page at the end of the file will be ignored and the
+open will proceed.
 <p><dt><a name="DB_RDONLY">DB_RDONLY</a><dd>Open any underlying files for reading only.  Any attempt to write the file
 using the pool functions will fail, regardless of the actual permissions
 of the file.
@@ -57,65 +58,6 @@ specified by Berkeley DB.
 <p>The <b>pagesize</b> argument is the size, in bytes, of the unit of transfer
 between the application and the pool, although it is not necessarily the
 unit of transfer between the pool and the source file.
-<p>Files opened in the pool may be further configured based on the
-<b>finfop</b> argument to DbMpoolFile::open (which is a pointer to a
-structure of type DB_MPOOL_FINFO).  No references to the <b>finfop</b>
-structure are maintained by Berkeley DB, so it may be discarded when the
-DbMpoolFile::open function returns.  In order to ensure compatibility
-with future releases of Berkeley DB, all fields of the DB_MPOOL_FINFO structure
-that are not explicitly set should be initialized to 0 before the first
-time the structure is used.  Do this by declaring the structure external
-or static, or by calling <b>memset</b>(3).
-<p>The fields of the DB_MPOOL_FINFO structure used by DbMpoolFile::open are
-described as follows.  If <b>finfop</b> is NULL or any of its fields are
-set to their default value, defaults appropriate for the system are used.
-<p><dl compact>
-<p><dt>int <a name="ftype">ftype</a>;<dd>The <b>ftype</b> field should be the same as a <b>ftype</b> argument
-previously specified to the <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a> function, unless no
-input or output processing of the file's pages are necessary, in which
-case it should be 0.  (See the description of the <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>
-function for more information.)
-<p><dt>DBT *<a name="pgcookie">pgcookie</a>;<dd>The <b>pgcookie</b> field contains the byte string that is passed to the
-<b>pgin</b> and <b>pgout</b> functions for this file, if any.  If no
-<b>pgin</b> or <b>pgout</b> functions are specified, the
-<b>pgcookie</b> field should be NULL.  (See the description of the
-<a href="../api_cxx/memp_register.html">DbEnv::memp_register</a> function for more information.)
-<p><dt>u_int8_t *<a name="fileid">fileid</a>;<dd>The <b>fileid</b> field is a unique identifier for the file.  If the
-<b>fileid</b> field is non-NULL, it must refer to a DB_FILE_ID_LEN
-length array of bytes that will be used to uniquely identify the file.
-<p>The mpool functions must be able to uniquely identify files in order that
-multiple processes wanting to share a file will correctly identify it in
-the pool.
-<p>On most UNIX/POSIX systems, the <b>fileid</b> field will not need to be
-set, and the mpool functions will simply use the file's device and inode
-numbers for this purpose.  On Windows systems, the mpool functions use
-the values returned by GetFileInformationByHandle() by default -- these
-values are known to be constant between processes and over reboot in the
-case of NTFS (in which they are the NTFS MFT indices).
-<p>On other filesystems (for example, FAT or NFS), these default values
-are not necessarily unique between processes or across system reboots.
-<b>Applications wanting to maintain a shared memory buffer pool
-between processes or across system reboots, in which the pool contains
-pages from files stored on such filesystems, must specify a unique file
-identifier to the DbMpoolFile::open call, and each process opening or
-registering the file must provide the same unique identifier.</b>
-<p>This should not be necessary for most applications.  Specifically, it
-is not necessary if the memory pool is not shared between processes and
-is reinstantiated after each system reboot, if the application is using
-the Berkeley DB access methods instead of calling the pool functions
-explicitly, or if the files in the memory pool are stored on filesystems
-in which the default values as described previously are invariant between
-process and across system reboots.
-<p><dt>int32_t <a name="lsn_offset">lsn_offset</a>;<dd>The <b>lsn_offset</b> field is the zero-based byte offset in the page of
-the page's log sequence number (LSN), or -1 if no LSN offset is specified.
-(See the description of the <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a> function for more
-information.)
-<p><dt>u_int32_t <a name="clear_len">clear_len</a>;<dd>The <b>clear_len</b> field is the number of initial bytes in a page
-that should be set to zero when the page is created as a result of the
-DB_MPOOL_CREATE or DB_MPOOL_NEW flags being specified to <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>.
-If <b>finfop</b> is NULL or <b>clear_len</b> is 0, the entire page is
-cleared.
-</dl>
 <p>The DbMpoolFile::open method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
@@ -140,6 +82,7 @@ in the same way.
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
 <a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
+<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
 <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
 <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
@@ -147,13 +90,18 @@ in the same way.
 <a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
 <a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
+<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
+<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
+<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
+<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
 <a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
 <a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
 and
 <a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

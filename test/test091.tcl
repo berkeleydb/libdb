@@ -3,11 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test091.tcl,v 11.5 2001/01/25 18:23:13 bostic Exp $
+# $Id: test091.tcl,v 11.6 2001/08/03 16:39:48 bostic Exp $
 #
-# DB Test 91 {access method}
-# Check for CONSUME_WAIT functionality
-#
+# TEST	test091
+# TEST	Test of DB_CONSUME_WAIT.
 proc test091 { method {nconsumers 4} \
     {nproducers 2} {nitems 1000} {start 0 } {tnum "91"} args} {
 	if { [is_queue $method ] == 0 } {

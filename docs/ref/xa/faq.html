@@ -23,8 +23,8 @@ calls are unchanged, with two exceptions:
 <p><ul type=disc>
 <li>The application must specify the <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a> flag to
 the <a href="../../api_c/db_create.html">db_create</a> interface.
-<li>The application should never explicitly call <a href="../../api_c/txn_commit.html">txn_commit</a>,
-<a href="../../api_c/txn_abort.html">txn_abort</a> or <a href="../../api_c/txn_begin.html">txn_begin</a>, as those calls are replaced by
+<li>The application should never explicitly call <a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a>,
+<a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> or <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>, as those calls are replaced by
 calls into the Tuxedo transaction manager.  For the same reason, the
 application will always specify a transaction argument of NULL to the
 Berkeley DB functions that take transaction arguments (for example,

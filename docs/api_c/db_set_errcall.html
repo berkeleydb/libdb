@@ -1,5 +1,5 @@
 <!--$Id: db_set_errcall.so,v 10.8 2001/04/04 19:06:26 bostic Exp $-->
-<!--$Id: env_set_errcall.so,v 10.21 2001/05/15 14:44:08 bostic Exp $-->
+<!--$Id: env_set_errcall.so,v 10.22 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -46,7 +46,7 @@ a C library FILE *.
 <p>This error-logging enhancement does not slow performance or significantly
 increase application size, and may be run during normal operation as well
 as during application debugging.
-<p>For DB handles opened inside of Berkeley DB environments, calling the
+<p>For <a href="../api_c/db_create.html">DB</a> handles opened inside of Berkeley DB environments, calling the
 DB-&gt;set_errcall function affects the entire environment and is equivalent to calling
 the <a href="../api_c/env_set_errcall.html">DB_ENV-&gt;set_errcall</a> function.
 <p>The DB-&gt;set_errcall interface may be used to configure Berkeley DB at any time

@@ -4,7 +4,7 @@
  * Copyright (c) 1999-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: qam.src,v 11.20 2001/06/15 16:38:14 bostic Exp $
+ * $Id: qam.src,v 11.22 2001/07/27 19:07:18 krinsky Exp $
  */
 
 PREFIX	qam
@@ -22,35 +22,27 @@ INCLUDE #include "db_int.h"
 INCLUDE #include "db_page.h"
 INCLUDE #include "db_dispatch.h"
 INCLUDE #include "db_am.h"
+INCLUDE #include "log.h"
 INCLUDE #include "qam.h"
+INCLUDE #include "rep.h"
 INCLUDE #include "txn.h"
 INCLUDE
-
-/*
- * inc
- * Used when we increment a record number.  These do not actually
- * tell you what record number you got, just that you incremented
- * the record number.  These operations are never undone.
- */
-IGNORED inc		76
-ARG	fileid		int32_t		ld
-POINTER	lsn		DB_LSN *	lu
-END
 
 /*
  * incfirst
  * Used when we increment first_recno.
  */
-BEGIN incfirst		77
+BEGIN incfirst		84
 ARG	fileid		int32_t		ld
 ARG	recno		db_recno_t	lu
+WRLOCK	meta_pgno	db_pgno_t	lu
 END
 
 /*
  * mvptr
  * Used when we change one or both of cur_recno and first_recno.
  */
-BEGIN mvptr		78
+BEGIN mvptr		85
 ARG	opcode		u_int32_t	lu
 ARG	fileid		int32_t		ld
 ARG	old_first	db_recno_t	lu
@@ -58,7 +50,9 @@ ARG	new_first	db_recno_t	lu
 ARG	old_cur		db_recno_t	lu
 ARG	new_cur		db_recno_t	lu
 POINTER	metalsn		DB_LSN *	lu
+WRLOCK	meta_pgno	db_pgno_t	lu
 END
+
 
 /*
  * del
@@ -68,7 +62,7 @@ END
 BEGIN del		79
 ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
-ARG	pgno		db_pgno_t	lu
+WRLOCK	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
 ARG	recno		db_recno_t	lu
 END
@@ -82,7 +76,7 @@ END
 BEGIN add		80
 ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
-ARG	pgno		db_pgno_t	lu
+WRLOCK	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
 ARG	recno		db_recno_t	lu
 DBT	data		DBT		s

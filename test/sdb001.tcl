@@ -3,12 +3,17 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb001.tcl,v 11.13 2001/01/25 18:23:06 bostic Exp $
+# $Id: sdb001.tcl,v 11.14 2001/08/03 16:39:29 bostic Exp $
 #
-# Sub DB Test 1 {access method}
-# Test non-subdb and subdb operations
-# Test naming (filenames begin with -)
-# Test existence (cannot create subdb of same name with -excl)
+# TEST	subdb001	Tests mixing db and subdb operations
+# TEST	Tests mixing db and subdb operations
+# TEST	Create a db, add data, try to create a subdb.
+# TEST	Test naming db and subdb with a leading - for correct parsing
+# TEST	Existence check -- test use of -excl with subdbs
+# TEST
+# TEST	Test non-subdb and subdb operations
+# TEST	Test naming (filenames begin with -)
+# TEST	Test existence (cannot create subdb of same name with -excl)
 proc subdb001 { method args } {
 	source ./include.tcl
 

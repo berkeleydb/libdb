@@ -1,4 +1,4 @@
-<!--$Id: env_set_cachesize.so,v 10.24 2001/05/15 14:44:08 bostic Exp $-->
+<!--$Id: env_set_cachesize.so,v 10.26 2001/10/22 15:24:28 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -45,9 +45,6 @@ be allocated contiguously by a process.  If <b>ncache</b> is 0 or 1,
 the cache will be allocated contiguously in memory.  If it is greater
 than 1, the cache will be broken up into <b>ncache</b> equally sized,
 separate pieces of memory.
-<p>Because databases opened within Berkeley DB environments use the cache
-specified to the environment, it is an error to attempt to set a
-cache in a database created within an environment.
 <p>The DB_ENV-&gt;set_cachesize interface may be used only to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> interface is called.
 <p>The DB_ENV-&gt;set_cachesize function returns a non-zero error value on failure and 0 on success.
@@ -62,10 +59,10 @@ before that time.
 <p>The DB_ENV-&gt;set_cachesize function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>The specified cache size was impossibly small.
 <p>Called after
 <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>
 was called.
-<p>The specified cache size was impossibly small.
 </dl>
 <p>The DB_ENV-&gt;set_cachesize function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
 If a catastrophic error has occurred, the DB_ENV-&gt;set_cachesize function may fail and return
@@ -85,16 +82,13 @@ in the same way.
 <a href="../api_c/env_set_errpfx.html">DB_ENV-&gt;set_errpfx</a>,
 <a href="../api_c/env_set_feedback.html">DB_ENV-&gt;set_feedback</a>,
 <a href="../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a>,
-<a href="../api_c/env_set_mutexlocks.html">DB_ENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">db_env_set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_panicstate.html">db_env_set_panicstate</a>,
 <a href="../api_c/env_set_rec_init.html">DB_ENV-&gt;set_recovery_init</a>,
 <a href="../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a>,
-<a href="../api_c/env_set_region_init.html">db_env_set_region_init</a>,
 <a href="../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a>,
-<a href="../api_c/env_set_tas_spins.html">db_env_set_tas_spins</a>,
+<a href="../api_c/env_set_tas_spins.html">DB_ENV-&gt;set_tas_spins</a>,
 <a href="../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a>,
+<a href="../api_c/env_set_timeout.html">DB_ENV-&gt;set_timeout</a>,
 <a href="../api_c/env_set_verbose.html">DB_ENV-&gt;set_verbose</a>,
 <a href="../api_c/env_strerror.html">db_strerror</a>
 and

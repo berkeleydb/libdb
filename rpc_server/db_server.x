@@ -48,6 +48,7 @@ struct __env_open_msg {
 
 struct __env_open_reply {
 	int status;
+	unsigned int envcl_id;
 };
 
 struct __env_remove_msg {
@@ -277,6 +278,7 @@ struct __db_open_msg {
 
 struct __db_open_reply {
 	int status;
+	unsigned int dbcl_id;
 	unsigned int type;
 	unsigned int dbflags;
 	unsigned int lorder;
@@ -594,5 +596,5 @@ program DB_RPC_SERVERPROG {
 		__dbc_get_reply __DB_dbc_get(__dbc_get_msg) = 44;
 		__dbc_pget_reply __DB_dbc_pget(__dbc_pget_msg) = 45;
 		__dbc_put_reply __DB_dbc_put(__dbc_put_msg) = 46;
-	} = 3003;
+	} = 4000;
 } = 351457;

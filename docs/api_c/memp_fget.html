@@ -1,9 +1,9 @@
-<!--$Id: memp_fget.so,v 10.29 2001/05/15 17:08:37 bostic Exp $-->
+<!--$Id: memp_fget.so,v 10.31 2001/10/22 15:24:35 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: memp_fget</title>
+<title>Berkeley DB: DB_MPOOLFILE-&gt;get</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td>
-<h1>memp_fget</h1>
+<h1>DB_MPOOLFILE-&gt;get</h1>
 </td>
 <td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -22,14 +22,14 @@
 #include &lt;db.h&gt;
 <p>
 int
-memp_fget(DB_MPOOLFILE *mpf,
+DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
     db_pgno_t *pgnoaddr, u_int32_t flags, void **pagep);
 </pre></h3>
 <h1>Description</h1>
-<p>The memp_fget function copies a pointer to the page with the page number
-specified by <b>pgnoaddr</b>, from the source file in the DB_MPOOLFILE,
+<p>The DB_MPOOLFILE-&gt;get function copies a pointer to the page with the page number
+specified by <b>pgnoaddr</b>, from the source file in the <a href="../api_c/memp_fcreate.html">DB_MPOOLFILE</a>,
 into the memory location to which <b>pagep</b> refers.  If the page
-does not exist or cannot be retrieved, memp_fget will fail.
+does not exist or cannot be retrieved, DB_MPOOLFILE-&gt;get will fail.
 <p><b>Page numbers begin at 0; that is, the first page in the file is page
 number 0, not page number 1.</b>
 <p>The returned page is <b>size_t</b> type aligned.
@@ -48,16 +48,17 @@ location to which <b>pgnoaddr</b> refers.  In this case, the
 </dl>
 <p>The DB_MPOOL_CREATE, DB_MPOOL_LAST, and
 DB_MPOOL_NEW flags are mutually exclusive.
-<p>Fully or partially created pages have all their bytes set to 0, unless
-other behavior was specified when the file was opened.
-<p>All pages returned by memp_fget will be retained (that is,
+<p>Fully or partially created pages have all their bytes set to a nul byte,
+unless the <a href="../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a> function was called to specify other
+behavior before the file was opened.
+<p>All pages returned by DB_MPOOLFILE-&gt;get will be retained (that is,
 <i>pinned</i>), in the pool until a subsequent call to
-<a href="../api_c/memp_fput.html">memp_fput</a>.
+<a href="../api_c/memp_fput.html">DB_MPOOLFILE-&gt;put</a>.
 <a name="3"><!--meow--></a>
-<p>The memp_fget function returns a non-zero error value on failure, 0 on success, and returns DB_PAGE_NOTFOUND if the requested page does not
+<p>The DB_MPOOLFILE-&gt;get function returns a non-zero error value on failure, 0 on success, and returns DB_PAGE_NOTFOUND if the requested page does not
 exist and DB_MPOOL_CREATE was not set.
 <h1>Errors</h1>
-<p>The memp_fget function may fail and return a non-zero error for the following conditions:
+<p>The DB_MPOOLFILE-&gt;get function may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EAGAIN<dd>The page reference count has overflowed.  (This should never happen unless
 there's a bug in the application.)
@@ -72,24 +73,30 @@ DB_MPOOL_NEW was set.
 <p><dl compact>
 <p><dt>ENOMEM<dd>The cache is full, and no more pages will fit in the pool.
 </dl>
-<p>The memp_fget function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the memp_fget function may fail and return
+<p>The DB_MPOOLFILE-&gt;get function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_MPOOLFILE-&gt;get function may fail and return
 <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
 in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a>,
 <a href="../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a>,
-<a href="../api_c/memp_fclose.html">memp_fclose</a>,
-<a href="../api_c/memp_fget.html">memp_fget</a>,
-<a href="../api_c/memp_fopen.html">memp_fopen</a>,
-<a href="../api_c/memp_fput.html">memp_fput</a>,
-<a href="../api_c/memp_fset.html">memp_fset</a>,
-<a href="../api_c/memp_fsync.html">memp_fsync</a>,
-<a href="../api_c/memp_register.html">memp_register</a>,
-<a href="../api_c/memp_stat.html">memp_stat</a>,
-<a href="../api_c/memp_sync.html">memp_sync</a>,
+<a href="../api_c/memp_fcreate.html">DB_ENV-&gt;memp_fcreate</a>,
+<a href="../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a>,
+<a href="../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a>,
+<a href="../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a>,
+<a href="../api_c/memp_fput.html">DB_MPOOLFILE-&gt;put</a>,
+<a href="../api_c/memp_fset.html">DB_MPOOLFILE-&gt;set</a>,
+<a href="../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a>,
+<a href="../api_c/memp_register.html">DB_ENV-&gt;memp_register</a>,
+<a href="../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a>,
+<a href="../api_c/memp_set_fileid.html">DB_MPOOLFILE-&gt;set_fileid</a>,
+<a href="../api_c/memp_set_ftype.html">DB_MPOOLFILE-&gt;set_ftype</a>,
+<a href="../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a>,
+<a href="../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a>,
+<a href="../api_c/memp_stat.html">DB_ENV-&gt;memp_stat</a>,
+<a href="../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a>,
 and
-<a href="../api_c/memp_trickle.html">memp_trickle</a>.
+<a href="../api_c/memp_trickle.html">DB_ENV-&gt;memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,4 +1,4 @@
-<!--$Id: memp_register.so,v 1.3 2000/07/25 16:59:37 bostic Exp $-->
+<!--$Id: memp_register.so,v 1.4 2001/07/24 18:31:19 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -15,9 +15,9 @@
 <p>
 <h1 align=center>Release 3.1: memp_register</h1>
 <p>An additional argument has been added to the <b>pgin</b> and
-<b>pgout</b> functions provided to the <a href="../../api_c/memp_register.html">memp_register</a> interface.
+<b>pgout</b> functions provided to the memp_register interface.
 The application should be searched for any occurrences of
-<a href="../../api_c/memp_register.html">memp_register</a>.  For each one, if <b>pgin</b> or <b>pgout</b>
+memp_register.  For each one, if <b>pgin</b> or <b>pgout</b>
 functions are specified, the <b>pgin</b> and <b>pgout</b> functions
 should be modified to take an initial argument of a <b>DB_ENV *</b>.
 This argument is intended to support better error reporting for

@@ -3,10 +3,11 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd012.tcl,v 11.17 2001/05/17 20:37:05 bostic Exp $
+# $Id: recd012.tcl,v 11.21 2001/10/05 02:38:09 bostic Exp $
 #
-# Recovery Test 12.
-# Test recovery handling of file opens and closes.
+# TEST	recd012
+# TEST	Test of log file ID management. [#2288]
+# TEST	Test recovery handling of file opens and closes.
 proc recd012 { method {start 0} \
     {niter 49} {noutiter 25} {niniter 100} {ndbs 5} args } {
 	source ./include.tcl
@@ -80,7 +81,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 
 	# Create ndbs databases to work in, and a file listing db names to
 	# pick from.
-	set f [open TESTDIR/dblist w]
+	set f [open $testdir/dblist w]
 	set oflags \
 	    "-env $dbenv -create -mode 0644 -pagesize $psz $largs $omethod"
 	for { set i 0 } { $i < $ndbs } { incr i } {
@@ -125,8 +126,8 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		# just what we'll need.
 		puts $child "load $tcllib"
 		puts $child "set fixed_len $fixed_len"
-		puts $child "source ../test/testutils.tcl"
-		puts $child "source ../test/recd0$tnum.tcl"
+		puts $child "source $src_root/test/testutils.tcl"
+		puts $child "source $src_root/test/recd0$tnum.tcl"
 
 		set rnd [expr $iter * 10000 + $i * 100 + $rand_init]
 
@@ -168,7 +169,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	puts "\t\tRecd0$tnum.c: Checking data integrity."
 	set dbenv [berkdb env -create -private -home $testdir]
 	error_check_good env_open_integrity [is_valid_env $dbenv] TRUE
-	set f [open TESTDIR/dblist r]
+	set f [open $testdir/dblist r]
 	set i 0
 	while { [gets $f dbinfo] > 0 } {
 		set db [eval berkdb_open -env $dbenv $dbinfo]
@@ -196,6 +197,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
     ofname args } {
 	global recd012_ofkey
+	source ./include.tcl
 	if { [is_record_based $method] } {
 		set keybase ""
 	} else {
@@ -221,7 +223,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 	error_check_good of_commit [$oftxn commit] 0
 
 	# Read our dbnames
-	set f [open TESTDIR/dblist r]
+	set f [open $testdir/dblist r]
 	set i 0
 	while { [gets $f dbname($i)] > 0 } {
 		incr i

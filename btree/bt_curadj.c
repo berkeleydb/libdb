@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_curadj.c,v 11.22 2001/05/31 21:23:08 krinsky Exp $";
+static const char revid[] = "$Id: bt_curadj.c,v 11.23 2001/07/19 19:54:59 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -321,7 +321,7 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 				return (ret);
 			if (my_txn != NULL && dbc->txn != my_txn)
 				found = 1;
-			/* We released the MUTEX to get a cursor, start over. */
+			/* We released the mutex to get a cursor, start over. */
 			goto loop;
 		}
 		MUTEX_THREAD_UNLOCK(dbenv, dbp->mutexp);
@@ -391,7 +391,7 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 			orig_cp->opd = NULL;
 			orig_cp->indx = fi;
 			/*
-			 * We released the MUTEX to free a cursor,
+			 * We released the mutex to free a cursor,
 			 * start over.
 			 */
 			goto loop;

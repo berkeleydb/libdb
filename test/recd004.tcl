@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd004.tcl,v 11.26 2001/05/16 19:01:16 sue Exp $
+# $Id: recd004.tcl,v 11.27 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test #4.
-# Verify that we work correctly when big keys get elevated.
+# TEST	recd004
+# TEST	Big key test where big key gets elevated to internal page.
 proc recd004 { method {select 0} args} {
 	source ./include.tcl
 	global rand_init

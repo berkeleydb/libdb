@@ -4,7 +4,7 @@
  * Copyright (c) 2000-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_server_int.h,v 1.16 2001/04/27 15:51:14 bostic Exp $
+ * $Id: db_server_int.h,v 1.19 2001/10/04 21:22:48 bostic Exp $
  */
 
 #ifndef _DB_SERVER_INT_H_
@@ -46,6 +46,38 @@ struct home_entry {
 };
 
 /*
+ * Data needed for sharing handles.
+ * To share an env handle, on the open call, they must have matching
+ * env flags, and matching set_flags.
+ *
+ * To share a db handle on the open call, the db, subdb and flags must
+ * all be the same.
+ */
+#define	DB_SERVER_ENVFLAGS	 (					\
+DB_INIT_CDB | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |		\
+DB_INIT_TXN | DB_JOINENV)
+
+#define	DB_SERVER_DBFLAGS	 (DB_DIRTY_READ | DB_NOMMAP | DB_RDONLY)
+#define	DB_SERVER_DBNOSHARE	 (DB_EXCL | DB_TRUNCATE)
+
+typedef struct ct_envdata ct_envdata;
+typedef struct ct_dbdata ct_dbdata;
+struct ct_envdata {
+	u_int32_t	envflags;
+	u_int32_t	onflags;
+	u_int32_t	offflags;
+	home_entry	*home;
+};
+
+struct ct_dbdata {
+	u_int32_t	dbflags;
+	u_int32_t	setflags;
+	char		*db;
+	char		*subdb;
+	DBTYPE		type;
+};
+
+/*
  * We maintain an activity timestamp for each handle.  However, we
  * set it to point, possibly to the ct_active field of its own handle
  * or it may point to the ct_active field of a parent.  In the case
@@ -63,12 +95,17 @@ struct ct_entry {
 		DBC *dbc;			/* H_CURSOR */
 		void *anyp;
 	} handle_u;
+	union {					/* Private data per type */
+		ct_envdata	envdp;		/* Env info */
+		ct_dbdata	dbdp;		/* Db info */
+	} private_u;
 	long ct_id;				/* Client ID */
 	long *ct_activep;			/* Activity timestamp pointer*/
 	long *ct_origp;				/* Original timestamp pointer*/
 	long ct_active;				/* Activity timestamp */
 	long ct_timeout;			/* Resource timeout */
 	long ct_idle;				/* Idle timeout */
+	u_int32_t ct_refcount;			/* Ref count for sharing */
 	u_int32_t ct_type;			/* This entry's type */
 	struct ct_entry *ct_parent;		/* Its parent */
 	struct ct_entry *ct_envparent;		/* Its environment */
@@ -79,6 +116,9 @@ struct ct_entry {
 #define	ct_dbp handle_u.dbp
 #define	ct_dbc handle_u.dbc
 #define	ct_anyp handle_u.anyp
+
+#define	ct_envdp private_u.envdp
+#define	ct_dbdp private_u.dbdp
 
 extern int __dbsrv_verbose;
 

@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: DbMpoolStat.java,v 11.5 2001/05/16 13:09:29 bostic Exp $
+ * $Id: DbMpoolStat.java,v 11.6 2001/09/28 04:24:09 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -15,10 +15,6 @@ package com.sleepycat.db;
  */
 public class DbMpoolStat
 {
-    /**
-     * @deprecated As of Berkeley DB 2.8.2, cachesize for mpool unavailable.
-     */
-    public int st_cachesize;            // Cache size.
     public int st_cache_hit;            // Pages found in the cache.
     public int st_cache_miss;           // Pages not found in the cache.
     public int st_map;                  // Pages from mapped files.

@@ -3,16 +3,16 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test092.tcl,v 11.7 2001/05/17 20:37:10 bostic Exp $
+# $Id: test092.tcl,v 11.8 2001/08/03 16:39:48 bostic Exp $
 #
-# DB Test 92 {access method}
-#
-# Test DB_DIRTY_READ
-# We set up a database with nentries in it.  We then open the database
-# read-only twice.  One with dirty read and one without.  We open the
-# database for writing and update some entries in it.  Then read those
-# new entries via db->get (clean and dirty), and via cursors (clean and
-# dirty).
+# TEST	test092
+# TEST	Test of DB_DIRTY_READ [#3395]
+# TEST
+# TEST	We set up a database with nentries in it.  We then open the
+# TEST	database read-only twice.  One with dirty read and one without.
+# TEST	We open the database for writing and update some entries in it.
+# TEST	Then read those new entries via db->get (clean and dirty), and
+# TEST	via cursors (clean and dirty).
 proc test092 { method {nentries 1000} args } {
 	source ./include.tcl
 	#

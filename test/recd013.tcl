@@ -3,10 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd013.tcl,v 11.14 2001/07/02 16:52:10 krinsky Exp $
+# $Id: recd013.tcl,v 11.15 2001/08/03 16:39:28 bostic Exp $
 #
-# Recovery Test 13.
-# Smoke test of aborted cursor adjustments.
+# TEST	recd013
+# TEST	Test of cursor adjustment on child transaction aborts. [#2373]
 #
 # XXX
 # Other tests that cover more specific variants of the same issue

@@ -3,14 +3,22 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb007.tcl,v 11.14 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb007.tcl,v 11.15 2001/08/03 16:39:30 bostic Exp $
 #
-# Sub DB Test 7 {access method}
-# Use the first 10,000 entries from the dictionary spread across each subdb.
-# Use a different page size for every subdb.
-# Insert each with self as key and data; retrieve each.
-# After all are entered, retrieve all; compare output to original.
-# Close file, reopen, do retrieve and re-verify.
+# TEST	subdb007
+# TEST	Tests page size differences between subdbs
+# TEST		Open several subdbs, each with a different pagesize
+# TEST		Small keys, small data
+# TEST		Put/get per key per subdb
+# TEST		Dump file, verify per subdb
+# TEST		Close, reopen per subdb
+# TEST		Dump file, verify per subdb
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary spread across each
+# TEST	subdb.  Use a different page size for every subdb.  Insert each with
+# TEST	self as key and data; retrieve each.  After all are entered, retrieve
+# TEST	all; compare output to original.  Close file, reopen, do retrieve and
+# TEST	re-verify.
 proc subdb007 { method {nentries 10000} args } {
 	source ./include.tcl
 

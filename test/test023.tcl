@@ -3,12 +3,14 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test023.tcl,v 11.14 2001/01/25 18:23:09 bostic Exp $
+# $Id: test023.tcl,v 11.16 2001/08/03 16:39:37 bostic Exp $
 #
-# Duplicate delete test.
-# Add a key with duplicates (first time on-page, second time off-page)
-# Number the dups.
-# Delete dups and make sure that CURRENT/NEXT/PREV work correctly.
+# TEST	test023
+# TEST	Duplicate test
+# TEST	Exercise deletes and cursor operations within a duplicate set.
+# TEST	Add a key with duplicates (first time on-page, second time off-page)
+# TEST	Number the dups.
+# TEST	Delete dups and make sure that CURRENT/NEXT/PREV work correctly.
 proc test023 { method args } {
 	global alphabet
 	global dupnum
@@ -41,7 +43,7 @@ proc test023 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	    -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
+	    -create -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""

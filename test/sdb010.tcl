@@ -3,10 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb010.tcl,v 11.9 2001/06/25 00:44:13 sue Exp $
+# $Id: sdb010.tcl,v 11.10 2001/08/03 16:39:31 bostic Exp $
 #
-# Subdatabase Test 10 {access method}
-# Test of dbremove
+# TEST	subdb010
+# TEST	Test DB->remove() method and DB->truncate() for subdbs
 proc subdb010 { method args } {
 	global errorCode
 	source ./include.tcl

@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_int.in,v 11.58 2001/07/06 20:35:14 bostic Exp $
+ * $Id: db_int.in,v 11.72 2001/10/26 13:04:23 bostic Exp $
  */
 
 #ifndef _DB_INTERNAL_H_
@@ -154,7 +154,7 @@ typedef struct __fn {
 #define	MAXPATHLEN	1024
 
 #define	PATH_DOT	"."	/* Current working directory. */
-#define	PATH_SEPARATOR	"/"	/* Path separator character. */
+#define	PATH_SEPARATOR	"/"	/* Path separator character(s). */
 
 /*
  * Flags understood by __os_open.
@@ -197,7 +197,8 @@ typedef enum {
  */
 #define	CDB_LOCKING(dbenv)	F_ISSET(dbenv, DB_ENV_CDB)
 #define	LOCKING_ON(dbenv)	((dbenv)->lk_handle != NULL)
-#define	LOGGING_ON(dbenv)	((dbenv)->lg_handle != NULL)
+#define	LOGGING_ON(dbenv)	((dbenv)->lg_handle != NULL &&		\
+				    !F_ISSET((dbenv), DB_ENV_REP_CLIENT))
 #define	MPOOL_ON(dbenv)		((dbenv)->mp_handle != NULL)
 #define	TXN_ON(dbenv)		((dbenv)->tx_handle != NULL)
 
@@ -211,16 +212,19 @@ typedef enum {
 	    !CDB_LOCKING((dbc)->dbp->dbenv) && LOCKING_ON((dbc)->dbp->dbenv))
 
 /*
- * IS_RECOVERING The system is running recovery.
+ * IS_RECOVERING: The system is running recovery.
  */
 #define	IS_RECOVERING(dbenv)						\
 	(LOGGING_ON(dbenv) &&						\
 	    F_ISSET((DB_LOG *)(dbenv)->lg_handle, DBLOG_RECOVER))
 
-/* Most initialization methods cannot be called after open is called. */
+/* Initialization methods are often illegal before/after open is called. */
 #define	ENV_ILLEGAL_AFTER_OPEN(dbenv, name)				\
 	if (F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
 		return (__db_mi_open(dbenv, name, 1));
+#define	ENV_ILLEGAL_BEFORE_OPEN(dbenv, name)				\
+	if (!F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
+		return (__db_mi_open(dbenv, name, 0));
 
 /* We're not actually user hostile, honest. */
 #define	ENV_REQUIRES_CONFIG(dbenv, handle, i, flags)			\
@@ -338,6 +342,12 @@ typedef struct __dbpginfo {
 } while (0)
 #define	IS_ZERO_LSN(LSN)	((LSN).file == 0)
 
+#define	IS_INIT_LSN(LSN)	((LSN).file == 1 && (LSN).offset == 0)
+#define	INIT_LSN(LSN)		do {					\
+	(LSN).file = 1;							\
+	(LSN).offset = 0;						\
+} while (0)
+
 #define	MAX_LSN(LSN) do {						\
 	(LSN).file = UINT32_T_MAX;					\
 	(LSN).offset = UINT32_T_MAX;					\
@@ -376,10 +386,6 @@ typedef struct __dbpginfo {
  * pollution.
  */
 typedef struct __db_globals {
-	u_int32_t db_pageyield;		/* db_set_pageyield */
-	u_int32_t db_panic;		/* db_set_panic */
-	u_int32_t db_region_init;	/* db_set_region_init */
-	u_int32_t db_tas_spins;		/* db_set_tas_spins */
 	u_int32_t no_write_errors;	/* write error testing disallowed */
 #ifdef HAVE_VXWORKS
 	u_int32_t db_global_init;	/* VxWorks: inited */
@@ -391,10 +397,6 @@ typedef struct __db_globals {
 
 #ifdef DB_INITIALIZE_DB_GLOBALS
 DB_GLOBALS __db_global_values = {
-	0,				/* db_set_pageyield */
-	1,				/* db_set_panic */
-	0,				/* db_set_region_init */
-	0,				/* db_set_tas_spins */
 	0,				/* write error testing disallowed */
 #ifdef HAVE_VXWORKS
 	0,				/* VxWorks: inited */
@@ -410,7 +412,6 @@ extern	DB_GLOBALS	__db_global_values;
 
 /* Forward structure declarations. */
 struct __db_reginfo_t;	typedef struct __db_reginfo_t REGINFO;
-struct __mutex_t;	typedef struct __mutex_t MUTEX;
 struct __vrfy_childinfo; typedef struct __vrfy_childinfo VRFY_CHILDINFO;
 struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
 struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
@@ -422,14 +423,6 @@ typedef enum {
 	TXNLIST_TXNID,
 	TXNLIST_PGNO
 } db_txnlist_type;
-
-/*
- * Currently, region offsets are limited to 32-bits.  I expect that's going
- * to have to be fixed in the not-too-distant future, since we won't want to
- * split 100Gb memory pools into that many different regions.  It's typedef'd
- * so it won't be too painful to upgrade.
- */
-typedef u_int32_t roff_t;
 
 #if defined(__cplusplus)
 }

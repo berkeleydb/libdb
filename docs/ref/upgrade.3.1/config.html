@@ -16,12 +16,12 @@
 <h1 align=center>Release 3.1: DB_ENV-&gt;open, DB_ENV-&gt;remove</h1>
 <p>In the Berkeley DB 3.1 release, the <b>config</b> argument to the
 <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a>, <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> methods has been removed,
-replaced by additional methods on the DB_ENV handle.  If your
+replaced by additional methods on the <a href="../../api_c/env_create.html">DB_ENV</a> handle.  If your
 application calls <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> or <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> with a NULL
 <b>config</b> argument, find those functions and remove the config
 argument from the call.  If your application has non-NULL <b>config</b>
 argument, the strings values in that argument are replaced with calls to
-DB_ENV methods as follows:
+<a href="../../api_c/env_create.html">DB_ENV</a> methods as follows:
 <p><table border=1 align=center>
 <tr><th>Previous config string</th><th>Berkeley DB 3.1 version method</th></tr>
 <tr><td>DB_DATA_DIR</td><td><a href="../../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a></td></tr>

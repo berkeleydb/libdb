@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BulkAccessExample.java,v 1.2 2001/05/12 21:43:27 dda Exp $
+ * $Id: BulkAccessExample.java,v 1.3 2001/10/05 02:36:07 bostic Exp $
  */
 
 package com.sleepycat.examples;
@@ -118,7 +118,7 @@ class BulkAccessExample
             try
             {
                 int err;
-                if ((err = table.put(null, 
+                if ((err = table.put(null,
 		    key, data, Db.DB_NOOVERWRITE)) == Db.DB_KEYEXIST) {
                         System.out.println("Key " + line + " already exists.");
                 }
@@ -138,18 +138,18 @@ class BulkAccessExample
         Dbt bulk_data = new Dbt();
 
 	// Set Db.DB_DBT_USERMEM on the data Dbt;  Db.DB_MULTIPLE_KEY requires
-	// it.  Then allocate a byte array of a reasonable size;  we'll 
+	// it.  Then allocate a byte array of a reasonable size;  we'll
 	// go through the database in chunks this big.
 	bulk_data.set_flags(Db.DB_DBT_USERMEM);
 	bulk_data.set_data(new byte[1000000]);
 	bulk_data.set_ulen(1000000);
 
-	
+
         // Walk through the table, printing the key/data pairs.
         //
         while (dbc.get(foo, bulk_data, Db.DB_NEXT | Db.DB_MULTIPLE_KEY) == 0)
         {
-        
+
 	    DbMultipleKeyDataIterator iterator;
             iterator = new DbMultipleKeyDataIterator(bulk_data);
 

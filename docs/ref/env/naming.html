@@ -48,7 +48,7 @@ example::
 <p>Application writers are encouraged to support the <b>-h</b> option
 found in the supporting Berkeley DB utilities to let users specify a database
 home.
-<p><dt>DB_ENV methods<dd>There are three DB_ENV methods that affect file naming.  The
+<p><dt><a href="../../api_c/env_create.html">DB_ENV</a> methods<dd>There are three <a href="../../api_c/env_create.html">DB_ENV</a> methods that affect file naming.  The
 <a href="../../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a> function specifies a directory to search for database
 files.  The <a href="../../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a> function specifies a directory in which to
 create logging files.  The <a href="../../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a> function specifies a
@@ -58,7 +58,7 @@ database.  For example, an application writer can place data files and
 log files in different directories or instantiate a new log directory
 each time the application runs.
 <a name="3"><!--meow--></a>
-<p><dt><a name="DB_CONFIG">DB_CONFIG</a><dd>The same information specified to the DB_ENV methods may also be
+<p><dt><a name="DB_CONFIG">DB_CONFIG</a><dd>The same information specified to the <a href="../../api_c/env_create.html">DB_ENV</a> methods may also be
 specified using a configuration file.  If an environment home directory
 has been specified (either by the application specifying a non-NULL
 <b>db_home</b> argument to <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a>, or by the application
@@ -93,8 +93,8 @@ begins with a leading slash (<b>/</b>).
 a leading slash or leading backslash (<b>\</b>); or any
 pathname beginning with a single alphabetic character, a colon and a
 leading slash or backslash (for example, <b>C:/tmp</b>).
-<p><dt>DB_ENV methods, DB_CONFIG<dd>If a relevant configuration string (for example, set_data_dir), is
-specified either by calling a DB_ENV method or as a line in the
+<p><dt><a href="../../api_c/env_create.html">DB_ENV</a> methods, DB_CONFIG<dd>If a relevant configuration string (for example, set_data_dir), is
+specified either by calling a <a href="../../api_c/env_create.html">DB_ENV</a> method or as a line in the
 DB_CONFIG configuration file, the VALUE from the <b>NAME VALUE</b>
 pair is prepended to the filename.  If the resulting filename is an
 absolute pathname, the filename is used without further modification by

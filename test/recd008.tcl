@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd008.tcl,v 1.23 2001/01/25 18:23:06 bostic Exp $
+# $Id: recd008.tcl,v 1.24 2001/08/03 16:39:27 bostic Exp $
 #
-# Recovery Test 8.
-# Test deeply nested transactions and many-child transactions.
+# TEST	recd008
+# TEST	Test deeply nested transactions and many-child transactions.
 proc recd008 { method {breadth 4} {depth 4} args} {
 	global kvals
 	source ./include.tcl

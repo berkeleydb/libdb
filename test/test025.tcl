@@ -3,10 +3,10 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test025.tcl,v 11.13 2001/05/17 20:37:08 bostic Exp $
+# $Id: test025.tcl,v 11.16 2001/08/03 16:39:37 bostic Exp $
 #
-# DB Test 25 {method nentries}
-# Test the DB_APPEND flag.
+# TEST	test025
+# TEST	DB_APPEND flag test.
 proc test025 { method {nentries 10000} {start 0 } {tnum "25" } args} {
 	global kvals
 	source ./include.tcl
@@ -41,7 +41,7 @@ proc test025 { method {nentries 10000} {start 0 } {tnum "25" } args} {
 
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -72,8 +72,12 @@ proc test025 { method {nentries 10000} {start 0 } {tnum "25" } args} {
 		set ret [eval {$db get} $txn $gflags {$k}]
 		error_check_good \
 		    get $ret [list [list $k [pad_data $method $str]]]
-		incr count
-		if { [expr $count + 1] == 0 } {
+
+		# The recno key will be count + 1, so when we hit
+		# UINT32_MAX - 1, reset to 0.
+		if { $count == [expr 0xfffffffe] } {
+			set count 0
+		} else {
 			incr count
 		}
 	}

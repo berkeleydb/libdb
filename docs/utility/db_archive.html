@@ -1,4 +1,4 @@
-<!--$Id: db_archive.so,v 10.22 2001/05/05 01:49:36 bostic Exp $-->
+<!--$Id: db_archive.so,v 10.23 2001/09/28 16:06:05 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -50,6 +50,21 @@ deleted and will not be recovered.
 <p><dt><b>-v</b><dd>Run in verbose mode, listing the checkpoints in the log files as they
 are reviewed.
 </dl>
+<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> function) may have open
+file descriptors for log files in the database environment.  Also, the
+Berkeley DB interfaces to the database environment logging subsystem (for
+example, <a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a> and <a href="../api_c/txn_abort.html">DB_TXN-&gt;abort</a>) may allocate log cursors
+and have open file descriptors for log files as well.  On operating
+systems where filesystem related system calls (for example, rename and
+unlink on Windows/NT) can fail if a process has an open file descriptor
+for the affected file, attempting to move or remove the log files listed
+by db_archive may fail.  All Berkeley DB internal use of log cursors
+operates on active log files only and furthermore, is short-lived in
+nature.  So, an application seeing such a failure should be restructured
+to close any open log cursors it may have, and otherwise to retry the
+operation until it succeeds.  (Although the latter is not likely to be
+necessary; it is hard to imagine a reason to move or rename a log file
+in which transactions are being logged or aborted.)
 <p>The db_archive utility uses a Berkeley DB environment (as described for the
 <b>-h</b> option, the environment variable <b>DB_HOME</b>, or
 because the utility was run in a directory containing a Berkeley DB
@@ -58,6 +73,9 @@ Berkeley DB environment, db_archive should always be given the chance to
 detach from the environment and exit gracefully.  To cause db_archive
 to release all environment resources and exit cleanly, send it an
 interrupt signal (SIGINT).
+<p>The <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a> function is the underlying function used by the db_archive utility.
+See the db_archive utility source code for an example of using <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>
+in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <p>The db_archive utility exits 0 on success, and &gt;0 if an error occurs.
 <h1>Environment Variables</h1>
 <p><dl compact>

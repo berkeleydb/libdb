@@ -1,5 +1,5 @@
 #
-# $Id: rpc.src,v 1.44 2001/07/12 16:31:47 sue Exp $
+# $Id: rpc.src,v 1.59 2001/10/28 15:45:41 bostic Exp $
 # Syntax:
 # BEGIN	function_name  {CODE | RETCODE | NOFUNC}
 #	CODE:	generate XDR and client code, return status
@@ -129,15 +129,12 @@ BEGIN	set_mp_mmapsize	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	size_t		mmapsize
 END
-BEGIN	set_mutex_locks	NOFUNC
-ARG	ID	DB_ENV *	dbenv
-ARG	INT	int		do_lock
-END
 BEGIN	env_open	RETCODE
 ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	home
 ARG	INT	u_int32_t	flags
 ARG	INT	int		mode
+RET	ID	long		env
 END
 BEGIN	env_paniccall	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -157,6 +154,15 @@ END
 BEGIN	set_shm_key	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	long		shm_key
+END
+BEGIN	set_tas_spins	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	tas_spins
+END
+BEGIN	set_timeout	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	timeout
+ARG	INT	u_int32_t	flags
 END
 BEGIN	set_tmp_dir	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -197,6 +203,7 @@ BEGIN	txn_checkpoint	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	kbyte
 ARG	INT	u_int32_t	min
+ARG	INT	u_int32_t	flags
 END
 BEGIN	txn_commit	RETCODE
 ARG	ID	DB_TXN *	txnp
@@ -223,6 +230,39 @@ END
 BEGIN	txn_stat	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_TXN_STAT **	statp
+ARG	INT	u_int32_t	flags
+END
+BEGIN	txn_timeout	NOFUNC
+ARG	ID	DB_TXN *	txnp
+ARG	INT	u_int32_t	timeout
+ARG	INT	u_int32_t	flags
+END
+#
+# Replication functions
+#
+BEGIN	rep_elect	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	int		nsites
+ARG	INT	int		pri
+ARG	INT	u_int32_t	timeout
+ARG	IGNORE	int *		idp
+END
+BEGIN	rep_process_message	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	DBT	DBT *		rec
+ARG	DBT	DBT *		control
+ARG	IGNORE	int *		idp
+END
+BEGIN	rep_set_rep_transport	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	int		id
+FUNCPROT	int (*)(DB_ENV *, const DBT *, const DBT *, int, u_int32_t)
+FUNCARG	int (*func0) __P((DB_ENV *, const DBT *, const DBT *, int, u_int32_t))
+END
+BEGIN	rep_start	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	DBT	DBT *		cdata
+ARG	INT	u_int32_t	flags
 END
 
 #
@@ -360,6 +400,7 @@ ARG	STRING	const char *	subdb
 ARG	INT	DBTYPE		type
 ARG	INT	u_int32_t	flags
 ARG	INT	int		mode
+RET	ID	long		db
 RET	INT	DBTYPE		type
 RET	INT	u_int32_t	dbflags
 RET	INT	int		lorder
@@ -536,6 +577,10 @@ BEGIN	lock_id		NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t *	idp
 END
+BEGIN	lock_id_free		NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	id
+END
 BEGIN	lock_put	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	ID	DB_LOCK *	lock
@@ -543,6 +588,7 @@ END
 BEGIN	lock_stat	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_LOCK_STAT **	statp
+ARG	INT	u_int32_t	flags
 END
 BEGIN	lock_vec	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -560,6 +606,11 @@ ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	char ***	listp
 ARG	INT	u_int32_t	flags
 END
+BEGIN	log_cursor		NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	IGNORE	DB_LOGC **	logcp
+ARG	INT	u_int32_t	flags
+END
 #
 # Don't do log_compare.  It doesn't have an env we can get at,
 # and it doesn't manipulate DB internal information.
@@ -573,12 +624,6 @@ END
 BEGIN	log_flush	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	CONST	const DB_LSN *	lsn
-END
-BEGIN	log_get		NOFUNC
-ARG	ID	DB_ENV *	dbenv
-ARG	IGNORE	DB_LSN *	lsn
-ARG	DBT	DBT *		data
-ARG	INT	u_int32_t	flags
 END
 BEGIN	log_put		NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -594,6 +639,7 @@ END
 BEGIN	log_stat	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_LOG_STAT **	statp
+ARG	INT	u_int32_t	flags
 END
 BEGIN	log_unregister	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -602,36 +648,10 @@ END
 #
 # Mpool Subsystem
 #
-BEGIN	memp_fclose	NOFUNC
-ARG	ID	DB_MPOOLFILE *	mpf
-END
-BEGIN	memp_fget	NOFUNC
-ARG	ID	DB_MPOOLFILE *	mpf
-ARG	IGNORE	db_pgno_t *	pgno
-ARG	INT	u_int32_t	flags
-ARG	IGNORE	void **		pagep
-END
-BEGIN	memp_fopen	NOFUNC
+BEGIN	memp_fcreate	NOFUNC
 ARG	ID	DB_ENV *	dbenv
-ARG	CONST	const char *	file
-ARG	INT	u_int32_t	flags
-ARG	INT	int		mode
-ARG	INT	size_t		pagesize
-ARG	IGNORE	DB_MPOOL_FINFO *	finfop
 ARG	IGNORE	DB_MPOOLFILE **	mpf
-END
-BEGIN	memp_fput	NOFUNC
-ARG	ID	DB_MPOOLFILE *	mpf
-ARG	IGNORE	void *		pgaddr
-ARG	INT	u_int32_t	flags
-END
-BEGIN	memp_fset	NOFUNC
-ARG	ID	DB_MPOOLFILE *	mpf
-ARG	IGNORE	void *		pgaddr
-ARG	INT	u_int32_t	flags
-END
-BEGIN	memp_fsync	NOFUNC
-ARG	ID	DB_MPOOLFILE *	mpf
+ARG	IGNORE	u_int32_t	flags
 END
 BEGIN	memp_register	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -645,6 +665,7 @@ BEGIN	memp_stat	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_MPOOL_STAT **	gstatp
 ARG	IGNORE	DB_MPOOL_FSTAT ***	fstatp
+ARG	INT	u_int32_t	flags
 END
 BEGIN	memp_sync	NOFUNC
 ARG	ID	DB_ENV *	dbenv

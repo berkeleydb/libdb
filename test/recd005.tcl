@@ -3,11 +3,13 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd005.tcl,v 11.29 2001/05/17 20:55:08 bostic Exp $
+# $Id: recd005.tcl,v 11.30 2001/08/03 16:39:26 bostic Exp $
 #
-# Recovery Test 5.
-# Make sure that we can do catastrophic recovery even if we open
-# files using the same log file id.
+# TEST	recd005
+# TEST	Verify reuse of file ids works on catastrophic recovery.
+# TEST
+# TEST	Make sure that we can do catastrophic recovery even if we open
+# TEST	files using the same log file id.
 proc recd005 { method args} {
 	source ./include.tcl
 	global rand_init

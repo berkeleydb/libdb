@@ -3,12 +3,16 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test006.tcl,v 11.14 2001/01/25 18:23:08 bostic Exp $
+# $Id: test006.tcl,v 11.16 2001/08/03 16:39:33 bostic Exp $
 #
-# DB Test 6 {access method}
-# Keyed delete test.
-# Create database.
-# Go through database, deleting all entries by key.
+# TEST	test006
+# TEST	Small keys/medium data
+# TEST		Put/get per key
+# TEST		Keyed delete and verify
+# TEST
+# TEST	Keyed delete test.
+# TEST	Create database.
+# TEST	Go through database, deleting all entries by key.
 proc test006 { method {nentries 10000} {reopen 0} {tnum 6} args} {
 	source ./include.tcl
 
@@ -57,7 +61,7 @@ proc test006 { method {nentries 10000} {reopen 0} {tnum 6} args} {
 
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_mp.c,v 11.27 2001/04/05 18:17:34 ubell Exp $";
+static const char revid[] = "$Id: tcl_mp.c,v 11.30 2001/09/27 22:50:10 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -93,7 +93,7 @@ tcl_MpSync(interp, objc, objv, envp)
 		return (result);
 
 	_debug_check();
-	ret = memp_sync(envp, &lsn);
+	ret = envp->memp_sync(envp, &lsn);
 	result = _ReturnSetup(interp, ret, "memp sync");
 	return (result);
 }
@@ -132,7 +132,7 @@ tcl_MpTrickle(interp, objc, objv, envp)
 		return (result);
 
 	_debug_check();
-	ret = memp_trickle(envp, percent, &pages);
+	ret = envp->memp_trickle(envp, percent, &pages);
 	result = _ReturnSetup(interp, ret, "memp trickle");
 	if (result == TCL_ERROR)
 		return (result);
@@ -264,29 +264,39 @@ tcl_Mp(interp, objc, objv, envp, envip)
 		    TCL_STATIC);
 		return (TCL_ERROR);
 	}
-	/*
-	 * XXX finfop is NULL here.  Interface currently doesn't
-	 * have all the stuff.  Should expand interface.
-	 */
+
 	_debug_check();
-	ret = memp_fopen(envp, file, flag, mode, (size_t)pgsize, NULL, &mpf);
-	if (ret != 0) {
+	if ((ret = envp->memp_fcreate(envp, &mpf, 0)) != 0) {
 		result = _ReturnSetup(interp, ret, "mpool");
 		_DeleteInfo(ip);
-	} else {
-		/*
-		 * Success.  Set up return.  Set up new info
-		 * and command widget for this mpool.
-		 */
-		envip->i_envmpid++;
-		ip->i_parent = envip;
-		ip->i_pgsz = pgsize;
-		_SetInfoData(ip, mpf);
-		Tcl_CreateObjCommand(interp, newname,
-		    (Tcl_ObjCmdProc *)mp_Cmd, (ClientData)mpf, NULL);
-		res = Tcl_NewStringObj(newname, strlen(newname));
-		Tcl_SetObjResult(interp, res);
+		goto error;
 	}
+
+	/*
+	 * XXX
+	 * Interface doesn't currently support DB_MPOOLFILE configuration.
+	 */
+	if ((ret = mpf->open(mpf, file, flag, mode, (size_t)pgsize)) != 0) {
+		result = _ReturnSetup(interp, ret, "mpool");
+		_DeleteInfo(ip);
+
+		(void)mpf->close(mpf, 0);
+		goto error;
+	}
+
+	/*
+	 * Success.  Set up return.  Set up new info and command widget for
+	 * this mpool.
+	 */
+	envip->i_envmpid++;
+	ip->i_parent = envip;
+	ip->i_pgsz = pgsize;
+	_SetInfoData(ip, mpf);
+	Tcl_CreateObjCommand(interp, newname,
+	    (Tcl_ObjCmdProc *)mp_Cmd, (ClientData)mpf, NULL);
+	res = Tcl_NewStringObj(newname, strlen(newname));
+	Tcl_SetObjResult(interp, res);
+
 error:
 	return (result);
 }
@@ -320,7 +330,7 @@ tcl_MpStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = memp_stat(envp, &sp, &fsp);
+	ret = envp->memp_stat(envp, &sp, &fsp, 0);
 	result = _ReturnSetup(interp, ret, "memp stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -447,7 +457,7 @@ mp_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = memp_fclose(mp);
+		ret = mp->close(mp, 0);
 		result = _ReturnSetup(interp, ret, "mp close");
 		_MpInfoDelete(interp, mpip);
 		(void)Tcl_DeleteCommand(interp, mpip->i_name);
@@ -459,7 +469,7 @@ mp_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = memp_fsync(mp);
+		ret = mp->sync(mp);
 		res = Tcl_NewIntObj(ret);
 		break;
 	case MPGET:
@@ -559,7 +569,7 @@ tcl_MpGet(interp, objc, objv, mp, mpip)
 	}
 	_debug_check();
 	pgno = ipgno;
-	ret = memp_fget(mp, &pgno, flag, &page);
+	ret = mp->get(mp, &pgno, flag, &page);
 	result = _ReturnSetup(interp, ret, "mpool get");
 	if (result == TCL_ERROR)
 		_DeleteInfo(ip);
@@ -648,7 +658,7 @@ pg_Cmd(clientData, interp, objc, objv)
 	res = NULL;
 	switch ((enum pgcmds)cmdindex) {
 	case PGNUM:
-		res = Tcl_NewIntObj(pgip->i_pgno);
+		res = Tcl_NewLongObj((long)pgip->i_pgno);
 		break;
 	case PGSIZE:
 		res = Tcl_NewLongObj(pgip->i_pgsz);
@@ -717,9 +727,9 @@ tcl_Pg(interp, objc, objv, page, mp, pgip, putop)
 
 	_debug_check();
 	if (putop)
-		ret = memp_fput(mp, page, flag);
+		ret = mp->put(mp, page, flag);
 	else
-		ret = memp_fset(mp, page, flag);
+		ret = mp->set(mp, page, flag);
 
 	result = _ReturnSetup(interp, ret, "page");
 

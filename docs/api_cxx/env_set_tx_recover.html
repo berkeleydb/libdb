@@ -1,4 +1,4 @@
-<!--$Id: env_set_tx_recover.so,v 10.30 2001/05/15 14:44:12 bostic Exp $-->
+<!--$Id: env_set_tx_recover.so,v 10.33 2001/11/09 22:08:01 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::set_tx_recover</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -43,8 +43,17 @@ described by the log record.
 record.
 <p><dt><a name="DB_TXN_ABORT">DB_TXN_ABORT</a><dd>The log is being read backward during a transaction abort; undo the
 operation described by the log record.
+<p><dt><a name="DB_TXN_APPLY">DB_TXN_APPLY</a><dd>The log is being applied on a replica site; redo the operation
+described by the log record.
 </dl>
 </dl>
+<p>The DB_TXN_FORWARD_ROLL and DB_TXN_APPLY operations
+frequently imply the same actions, redoing changes that appear in the
+log record.  The macro DB_REDO(op) checks that the operation is one of
+DB_TXN_FORWARD_ROLL or DB_TXN_APPLY, and should be used
+in the recovery code to refer to the conditions under which operations
+should be redone.  Similarly, the macro DB_UNDO(op) checks if the
+operation is one of DB_TXN_BACKWARD_ROLL or DB_TXN_ABORT.
 <p>The DbEnv::set_tx_recover interface may be used only to configure Berkeley DB before
 the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
 <p>The DbEnv::set_tx_recover method either returns a non-zero error value or throws an exception that
@@ -74,11 +83,12 @@ in the same way.
 <a href="../api_cxx/txn_id.html">DbTxn::id</a>,
 <a href="../api_cxx/txn_prepare.html">DbTxn::prepare</a>,
 <a href="../api_cxx/txn_recover.html">DbEnv::txn_recover</a>,
+<a href="../api_cxx/txn_set_timeout.html">DbTxn::set_timeout</a>
 and
 <a href="../api_cxx/txn_stat.html">DbEnv::txn_stat</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

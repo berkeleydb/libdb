@@ -1,4 +1,4 @@
-<!--$Id: db_printlog.so,v 10.10 2000/04/03 20:10:39 bostic Exp $-->
+<!--$Id: db_printlog.so,v 10.11 2001/09/28 15:09:44 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -18,7 +18,7 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_printlog [<b>-NV</b>] [<b>-h home</b>]</pre></h3>
+<h3><pre>db_printlog [<b>-NrV</b>] [<b>-h home</b>]</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_printlog utility is a debugging utility that dumps Berkeley DB
@@ -31,6 +31,7 @@ default, the current working directory is used.
 as potentially fatal errors in Berkeley DB, will be ignored as well.  This
 option is intended only for debugging errors, and should not be used
 under any other circumstances.
+<p><dt><b>-r</b><dd>Read the log files in reverse order.
 <p><dt><b>-V</b><dd>Write the library version number to the standard output, and exit.
 </dl>
 <p>For more information on the db_printlog output and using it to

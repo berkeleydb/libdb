@@ -1,4 +1,4 @@
-<!--$Id: txn_stat.so,v 10.29 2001/04/03 16:27:56 bostic Exp $-->
+<!--$Id: txn_stat.so,v 10.34 2001/10/22 15:24:39 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,21 +14,26 @@
 <h1>DbEnv.txn_stat</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
 <h3><pre>
 import com.sleepycat.db.*;
 <p>
-public DbTxnStat txn_stat()
-	throws DbException;
+public DbTxnStat txn_stat(int flags)
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv.txn_stat method
 creates a DbTxnStat object encapsulating a statistical structure.
 The transaction region statistics are stored in a DbTxnStat object.
 The following data fields are available from the DbTxnStat object:
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="Db.DB_STAT_CLEAR">Db.DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>The transaction region statistics are stored in a structure of type
 DB_TXN_STAT.  The following DB_TXN_STAT fields will be filled in:
 <p><dl compact>
@@ -45,6 +50,7 @@ since the Epoch, returned by the IEEE/ANSI Std 1003.1 (POSIX) <b>time</b> interf
 <dt>public int st_nbegins;<dd>The number of transactions that have begun.
 <dt>public int st_naborts;<dd>The number of transactions that have aborted.
 <dt>public int st_ncommits;<dd>The number of transactions that have committed.
+<dt>public int st_nrestores;<dd>The number of transactions that have been restored.
 <dt>public int st_regsize;<dd>The size of the region.
 <dt>public int st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
@@ -78,11 +84,12 @@ will fail in the same way.
 <a href="../api_java/txn_id.html">DbTxn.id</a>,
 <a href="../api_java/txn_prepare.html">DbTxn.prepare</a>,
 <a href="../api_java/txn_recover.html">DbEnv.txn_recover</a>,
+<a href="../api_java/txn_set_timeout.html">DbTxn.set_timeout</a>
 and
 <a href="../api_java/txn_stat.html">DbEnv.txn_stat</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_conv.c,v 11.12 2001/01/25 18:22:39 bostic Exp $";
+static const char revid[] = "$Id: db_conv.c,v 11.13 2001/07/18 16:51:52 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -93,7 +93,7 @@ __db_pgin(dbenv, pg, pp, cookie)
 	default:
 		break;
 	}
-	return (__db_unknown_type(dbenv, "__db_pgin", ((PAGE *)pp)->type));
+	return (__db_pgfmt(dbenv, pg));
 }
 
 /*
@@ -132,7 +132,7 @@ __db_pgout(dbenv, pg, pp, cookie)
 	default:
 		break;
 	}
-	return (__db_unknown_type(dbenv, "__db_pgout", ((PAGE *)pp)->type));
+	return (__db_pgfmt(dbenv, pg));
 }
 
 /*
@@ -331,7 +331,7 @@ __db_byteswap(dbenv, pg, h, pagesize, pgin)
 		/* Nothing to do. */
 		break;
 	default:
-		return (__db_unknown_type(dbenv, "__db_byteswap", h->type));
+		return (__db_pgfmt(dbenv, pg));
 	}
 
 	if (!pgin) {

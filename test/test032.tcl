@@ -3,18 +3,20 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test032.tcl,v 11.16 2001/01/25 18:23:10 bostic Exp $
+# $Id: test032.tcl,v 11.19 2001/08/13 19:11:43 bostic Exp $
 #
-# DB Test 32 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and "ndups" duplicates
-# For the data field, prepend the letters of the alphabet
-# in a random order so that we force the duplicate sorting
-# code to do something.
-# By setting ndups large, we can make this an off-page test
-# After all are entered; test the DB_GET_BOTH functionality
-# first by retrieving each dup in the file explicitly.  Then
-# test the failure case.
+# TEST	test032
+# TEST	DB_GET_BOTH, DB_GET_BOTH_RANGE
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.  Insert each with
+# TEST	self as key and "ndups" duplicates.   For the data field, prepend the
+# TEST	letters of the alphabet in a random order so we force the duplicate
+# TEST  sorting code to do something.  By setting ndups large, we can make
+# TEST	this an off-page test.
+# TEST
+# TEST	Test the DB_GET_BOTH functionality by retrieving each dup in the file
+# TEST	explicitly.  Test the DB_GET_BOTH_RANGE functionality by retrieving
+# TEST	the unique key prefix (cursor only).  Finally test the failure case.
 proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	global alphabet rand_init
 	source ./include.tcl
@@ -51,13 +53,13 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb_open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -mode 0644 \
 	    $omethod -dup -dupsort} $args {$testfile} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	set check_db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {-hash $checkdb}]
+	     -create -mode 0644} $args {-hash $checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -101,8 +103,8 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 				break
 			}
 			if {[string compare $lastdup $datastr] > 0} {
-				error_check_good sorted_dups($lastdup,$datastr)\
-				    0 1
+				error_check_good \
+				    sorted_dups($lastdup,$datastr) 0 1
 			}
 			incr x
 			set lastdup $datastr
@@ -138,6 +140,7 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	}
 
 	$db sync
+
 	# Now repeat the above test using cursor ops
 	puts "\tTest0$tnum.c: Checking file for correct duplicates (cursor)"
 	set dbc [eval {$db cursor} $txn]
@@ -155,7 +158,11 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 			set data $pref:$k
 			set ret [eval {$dbc get} {-get_both $k $data}]
 			error_check_good \
-			    get_both_key:$k $ret [list [list $k $data]]
+			    curs_get_both_data:$k $ret [list [list $k $data]]
+
+			set ret [eval {$dbc get} {-get_both_range $k $pref}]
+			error_check_good \
+			    curs_get_both_range:$k $ret [list [list $k $data]]
 		}
 	}
 

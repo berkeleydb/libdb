@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_open.c,v 11.49 2001/06/01 18:06:54 bostic Exp $";
+static const char revid[] = "$Id: bt_open.c,v 11.52 2001/10/10 02:57:32 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -281,14 +281,15 @@ __bam_read_root(dbp, name, base_pgno, flags)
 	DBC *dbc;
 	DB_LSN orig_lsn;
 	DB_LOCK metalock;
+	DB_MPOOLFILE *mpf;
 	PAGE *root;
 	int locked, ret, t_ret;
 
-	ret = 0;
-	t = dbp->bt_internal;
 	meta = NULL;
+	t = dbp->bt_internal;
+	mpf = dbp->mpf;
 	root = NULL;
-	locked = 0;
+	locked = ret = 0;
 
 	/*
 	 * Get a cursor.  If DB_CREATE is specified, we may be creating
@@ -305,8 +306,8 @@ __bam_read_root(dbp, name, base_pgno, flags)
 	if ((ret =
 	    __db_lget(dbc, 0, base_pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = memp_fget(
-	    dbp->mpf, &base_pgno, DB_MPOOL_CREATE, (PAGE **)&meta)) != 0)
+	if ((ret =
+	    mpf->get(mpf, &base_pgno, DB_MPOOL_CREATE, (PAGE **)&meta)) != 0)
 		goto err;
 
 	/*
@@ -325,10 +326,10 @@ again:	if (meta->dbmeta.magic != 0) {
 
 		/* We must initialize last_pgno, it could be stale. */
 		if (!LF_ISSET(DB_RDONLY) && dbp->meta_pgno == PGNO_BASE_MD) {
-			__memp_lastpgno(dbp->mpf, &meta->dbmeta.last_pgno);
-			(void)memp_fput(dbp->mpf, meta, DB_MPOOL_DIRTY);
+			mpf->last_pgno(mpf, &meta->dbmeta.last_pgno);
+			(void)mpf->put(mpf, meta, DB_MPOOL_DIRTY);
 		} else
-			(void)memp_fput(dbp->mpf, meta, 0);
+			(void)mpf->put(mpf, meta, 0);
 		meta = NULL;
 		goto done;
 	}
@@ -344,7 +345,8 @@ again:	if (meta->dbmeta.magic != 0) {
 		 * the create.
 		 */
 		DB_ASSERT(LF_ISSET(DB_CREATE));
-		if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
+		if ((ret = dbp->dbenv->lock_get(
+		    dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
 		    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
 			goto err;
 	}
@@ -406,7 +408,7 @@ again:	if (meta->dbmeta.magic != 0) {
 		goto err;
 	root->level = LEAFLEVEL;
 
-	if (dbp->open_txn != NULL && (ret = __bam_root_log(dbp->dbenv,
+	if (LOGGING_ON(dbp->dbenv) && (ret = __bam_root_log(dbp->dbenv,
 	    dbp->open_txn, &meta->dbmeta.lsn, 0, dbp->log_fileid,
 	    meta->dbmeta.pgno, root->pgno, &meta->dbmeta.lsn)) != 0)
 		goto err;
@@ -423,10 +425,10 @@ again:	if (meta->dbmeta.magic != 0) {
 	t->bt_root = root->pgno;
 
 	/* Release the metadata and root pages. */
-	if ((ret = memp_fput(dbp->mpf, meta, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->put(mpf, meta, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	meta = NULL;
-	if ((ret = memp_fput(dbp->mpf, root, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->put(mpf, root, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	root = NULL;
 
@@ -437,7 +439,7 @@ again:	if (meta->dbmeta.magic != 0) {
 	 * It's not useful to return not-yet-flushed here -- convert it to
 	 * an error.
 	 */
-	if ((ret = memp_fsync(dbp->mpf)) == DB_INCOMPLETE) {
+	if ((ret = mpf->sync(mpf)) == DB_INCOMPLETE) {
 		__db_err(dbp->dbenv, "Metapage flush failed");
 		ret = EINVAL;
 	}
@@ -455,12 +457,10 @@ err:
 DB_TEST_RECOVERY_LABEL
 	/* Put any remaining pages back. */
 	if (meta != NULL)
-		if ((t_ret = memp_fput(dbp->mpf, meta, 0)) != 0 &&
-		    ret == 0)
+		if ((t_ret = mpf->put(mpf, meta, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	if (root != NULL)
-		if ((t_ret = memp_fput(dbp->mpf, root, 0)) != 0 &&
-		    ret == 0)
+		if ((t_ret = mpf->put(mpf, root, 0)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* We can release the metapage lock when we are done. */

@@ -1,4 +1,4 @@
-<!--$Id: solaris.so,v 11.18 2001/03/23 21:15:07 bostic Exp $-->
+<!--$Id: solaris.so,v 11.19 2001/08/13 20:53:10 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -46,12 +46,12 @@ system compiler and reconfigure; for example:
 a C++ compiler, for example the following:
 <p><blockquote><pre>env CC=gcc CCC=g++ ../dist/configure</pre></blockquote>
 <hr size=1 noshade>
-<p><li><b>I get the error
+<p><li><b>I see the error
 "libc internal error: _rmutex_unlock: rmutex not held", followed by a core
 dump when running threaded or JAVA programs.</b>
 <p>This is a known bug in Solaris 2.5 and it is fixed by Sun patch 103187-25.
 <hr size=1 noshade>
-<p><li><b>I get error reports of nonexistent files, corrupted metadata
+<p><li><b>I see error reports of nonexistent files, corrupted metadata
 pages and core dumps.</b>
 <p>Solaris 7 contains a bug in the threading libraries (-lpthread,
 -lthread), which causes the wrong version of the pwrite routine to be
@@ -72,6 +72,13 @@ When libthread is linked after libc, there is a table of functions in
 libthread that gets "wired into" libc via _libc_threads_interface().
 The table in libthread is wrong in both Solaris 7 and on28_35 for the
 TI_PWRITE64 row (see near the end).</pre></blockquote>
+<hr size=1 noshade>
+<p><li><b>I see corrupted databases when doing hot backups or creating
+a hot failover archive.</b>
+<p>The Solaris cp utility is implemented using the mmap system call, and
+so writes are not blocked when it reads database pages.  See
+<a href="../../ref/transapp/reclimit.html">Berkeley DB recoverability</a> for more
+information.
 <hr size=1 noshade>
 <p><li><b>During configuration, I see a message that large file support
 has been turned off.</b>

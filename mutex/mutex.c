@@ -8,12 +8,13 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mutex.c,v 11.19 2001/04/27 15:59:15 bostic Exp $";
+static const char revid[] = "$Id: mutex.c,v 11.23 2001/09/04 02:22:16 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#include <string.h>
 #endif
 
 #include "db_int.h"
@@ -22,14 +23,14 @@ static const char revid[] = "$Id: mutex.c,v 11.19 2001/04/27 15:59:15 bostic Exp
  * __db_mutex_alloc --
  *	Allocate and initialize a mutex.
  *
- * PUBLIC: int __db_mutex_alloc __P((DB_ENV *, REGINFO *, int, MUTEX **));
+ * PUBLIC: int __db_mutex_alloc __P((DB_ENV *, REGINFO *, int, DB_MUTEX **));
  */
 int
 __db_mutex_alloc(dbenv, infop, is_locked, storep)
 	DB_ENV *dbenv;
 	REGINFO *infop;
 	int is_locked;
-	MUTEX **storep;
+	DB_MUTEX **storep;
 {
 	int ret;
 
@@ -49,14 +50,14 @@ __db_mutex_alloc(dbenv, infop, is_locked, storep)
 #if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
 	if (is_locked == 0)
 		R_LOCK(dbenv, infop);
-	ret = __db_shalloc(infop->addr, sizeof(MUTEX), MUTEX_ALIGN, storep);
+	ret = __db_shalloc(infop->addr, sizeof(DB_MUTEX), MUTEX_ALIGN, storep);
 	if (is_locked == 0)
 		R_UNLOCK(dbenv, infop);
 #else
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
 	COMPQUIET(is_locked, 0);
-	ret = __os_calloc(dbenv, 1, sizeof(MUTEX), storep);
+	ret = __os_calloc(dbenv, 1, sizeof(DB_MUTEX), storep);
 #endif
 	if (ret != 0)
 		__db_err(dbenv, "Unable to allocate memory for mutex");
@@ -67,16 +68,18 @@ __db_mutex_alloc(dbenv, infop, is_locked, storep)
  * __db_mutex_free --
  *	Free a mutex.
  *
- * PUBLIC: void __db_mutex_free __P((DB_ENV *, REGINFO *, MUTEX *));
+ * PUBLIC: void __db_mutex_free __P((DB_ENV *, REGINFO *, DB_MUTEX *));
  */
 void
 __db_mutex_free(dbenv, infop, mutexp)
 	DB_ENV *dbenv;
 	REGINFO *infop;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 {
+#if	defined(MUTEX_SYSTEM_RESOURCES)
 	if (F_ISSET(mutexp, MUTEX_INITED))
-		__db_mutex_destroy(mutexp);
+		__db_shlocks_clear(mutexp, infop, NULL);
+#endif
 
 #if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
 	R_LOCK(dbenv, infop);
@@ -98,7 +101,7 @@ __db_mutex_free(dbenv, infop, mutexp)
 static int
 __db_shreg_locks_record(dbenv, mutexp, infop, rp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	REGINFO *infop;
 	REGMAINT *rp;
 {
@@ -143,11 +146,11 @@ __db_shreg_locks_record(dbenv, mutexp, infop, rp)
  *	Erase an entry in the shared locks area.
  *	Region lock must be held in caller.
  *
- * PUBLIC: void __db_shreg_locks_clear __P((MUTEX *, REGINFO *, REGMAINT *));
+ * PUBLIC: void __db_shreg_locks_clear __P((DB_MUTEX *, REGINFO *, REGMAINT *));
  */
 void
 __db_shreg_locks_clear(mutexp, infop, rp)
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	REGINFO *infop;
 	REGMAINT *rp;
 {
@@ -162,8 +165,10 @@ __db_shreg_locks_clear(mutexp, infop, rp)
 	DB_ASSERT(*(roff_t *)R_ADDR(infop, mutexp->reg_off) == \
 	    R_OFFSET(infop, mutexp));
 	*(roff_t *)R_ADDR(infop, mutexp->reg_off) = 0;
-	rp->regmutex_hint = mutexp->reg_off;
-	rp->stat.st_clears++;
+	if (rp != NULL) {
+		rp->regmutex_hint = mutexp->reg_off;
+		rp->stat.st_clears++;
+	}
 	mutexp->reg_off = INVALID_ROFF;
 	__db_mutex_destroy(mutexp);
 }
@@ -187,7 +192,7 @@ __db_shreg_locks_destroy(infop, rp)
 	for (i = 0; i < rp->reglocks; i++)
 		if (rp->regmutexes[i] != 0) {
 			rp->stat.st_destroys++;
-			__db_mutex_destroy((MUTEX *)R_ADDR(infop,
+			__db_mutex_destroy((DB_MUTEX *)R_ADDR(infop,
 			    rp->regmutexes[i]));
 		}
 }
@@ -196,13 +201,13 @@ __db_shreg_locks_destroy(infop, rp)
  * __db_shreg_mutex_init --
  *	Initialize a shared memory mutex.
  *
- * PUBLIC: int __db_shreg_mutex_init __P((DB_ENV *, MUTEX *, u_int32_t,
+ * PUBLIC: int __db_shreg_mutex_init __P((DB_ENV *, DB_MUTEX *, u_int32_t,
  * PUBLIC:    u_int32_t, REGINFO *, REGMAINT *));
  */
 int
 __db_shreg_mutex_init(dbenv, mutexp, offset, flags, infop, rp)
 	DB_ENV *dbenv;
-	MUTEX *mutexp;
+	DB_MUTEX *mutexp;
 	u_int32_t offset;
 	u_int32_t flags;
 	REGINFO *infop;

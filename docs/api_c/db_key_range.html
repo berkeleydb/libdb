@@ -1,4 +1,4 @@
-<!--$Id: db_key_range.so,v 10.7 2001/04/02 00:36:34 bostic Exp $-->
+<!--$Id: db_key_range.so,v 10.8 2001/10/22 15:24:21 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,7 +23,7 @@
 <p>
 int
 DB-&gt;key_range(DB *db, DB_TXN *txnid,
-	DBT *key, DB_KEY_RANGE *key_range, u_int32_t flags);
+    DBT *key, DB_KEY_RANGE *key_range, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DB-&gt;key_range function returns an estimate of the proportion of keys
@@ -36,7 +36,7 @@ if the field <b>less</b> is 0.05, 5% of the keys in the database are
 less than the key argument.  The value for <b>equal</b> will be zero
 if there is no matching key, and will be non-zero otherwise.
 <p>If the operation is to be transaction-protected, the <b>txnid</b>
-parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">txn_begin</a>;
+parameter is a transaction handle returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>;
 otherwise, NULL.
 The DB-&gt;key_range function does not retain the locks it acquires for the
 life of the transaction, so estimates may not be repeatable.

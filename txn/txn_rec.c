@@ -36,7 +36,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_rec.c,v 11.24 2001/07/09 16:33:23 ubell Exp $";
+static const char revid[] = "$Id: txn_rec.c,v 11.28 2001/10/05 01:51:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -94,23 +94,24 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 		 * are never called during ABORT or OPENFILES.
 		 */
 		ret = __db_txnlist_update(dbenv,
-		    info, argp->txnid->txnid, argp->opcode);
-		
+		    info, argp->txnid->txnid, argp->opcode, lsnp);
+
 		if (ret == TXN_NOTFOUND)
 			ret = __db_txnlist_add(dbenv,
 			    info, argp->txnid->txnid,
-			    argp->opcode == TXN_ABORT ? TXN_IGNORE : argp->opcode);
+			    argp->opcode == TXN_ABORT ?
+			    TXN_IGNORE : argp->opcode, lsnp);
 	} else {
 		/*
 		 * We failed the timestamp check, so we treat this as an abort
 		 * even if it was a commit record.
 		 */
 		ret = __db_txnlist_update(dbenv,
-		    info, argp->txnid->txnid, TXN_ABORT);
-		    
+		    info, argp->txnid->txnid, TXN_ABORT, NULL);
+
 		if (ret == TXN_NOTFOUND)
 			ret = __db_txnlist_add(dbenv,
-			    info, argp->txnid->txnid, TXN_IGNORE);
+			    info, argp->txnid->txnid, TXN_IGNORE, NULL);
 	}
 
 	if (ret == 0)
@@ -184,7 +185,7 @@ txn_err:		__db_err(dbenv,
 			    "Transaction not in list %x", argp->txnid->txnid);
 			ret = DB_NOTFOUND;
 		} else if ((ret = __db_txnlist_add(dbenv,
-		   info, argp->txnid->txnid, TXN_COMMIT)) == 0)
+		   info, argp->txnid->txnid, TXN_COMMIT, lsnp)) == 0)
 			ret = __txn_restore_txn(dbenv, lsnp, argp);
 	} else
 		ret = 0;
@@ -229,6 +230,9 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	if (argp->ckp_lsn.file == lsnp->file &&
 	    argp->ckp_lsn.offset == lsnp->offset)
 		__db_txnlist_gen(info, DB_UNDO(op) ? -1 : 1);
+
+	if (op == DB_TXN_BACKWARD_ROLL)
+		__db_txnlist_ckp(dbenv, info, lsnp);
 
 	*lsnp = argp->last_ckp;
 	__os_free(dbenv, argp, 0);
@@ -276,10 +280,10 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
 		if (__db_txnlist_find(dbenv,
 		    info, argp->txnid->txnid) == TXN_COMMIT)
 			ret = __db_txnlist_add(dbenv,
-			    info, argp->child, TXN_COMMIT);
+			    info, argp->child, TXN_COMMIT, NULL);
 		else
 			ret = __db_txnlist_add(dbenv,
-			     info, argp->child, TXN_ABORT);
+			     info, argp->child, TXN_ABORT, NULL);
 	} else {
 		if ((ret =
 		    __db_txnlist_remove(dbenv, info, argp->child)) != TXN_OK) {
@@ -301,8 +305,8 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
  * __txn_restore_txn --
  *	Using only during XA recovery.  If we find any transactions that are
  * prepared, but not yet committed, then we need to restore the transaction's
- * state into the shared region, because the TM is going to issue a txn_abort
- * or txn_commit and we need to respond correctly.
+ * state into the shared region, because the TM is going to issue an abort
+ * or commit and we need to respond correctly.
  *
  * lsnp is the LSN of the returned LSN
  * argp is the perpare record (in an appropriate structure)
@@ -348,10 +352,10 @@ __txn_restore_txn(dbenv, lsnp, argp)
 	td->flags = 0;
 	F_SET(td, TXN_RESTORED);
 
-	region->nrestores++;
-	region->nactive++;
-	if (region->nactive > region->maxnactive)
-		region->maxnactive = region->nactive;
+	region->stat.st_nrestores++;
+	region->stat.st_nactive++;
+	if (region->stat.st_nactive > region->stat.st_maxnactive)
+		region->stat.st_maxnactive = region->stat.st_nactive;
 	R_UNLOCK(dbenv, &mgr->reginfo);
 	return (0);
 }

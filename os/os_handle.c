@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_handle.c,v 11.21 2001/01/25 18:22:58 bostic Exp $";
+static const char revid[] = "$Id: os_handle.c,v 11.23 2001/10/04 21:27:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -120,6 +120,15 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
 				(void)__os_sleep(dbenv, nrepeat * 2, 0);
 				continue;
 			}
+
+			/*
+			 * If it was an EINTR it's reasonable to retry
+			 * immediately, and arbitrarily often.
+			 */
+			if (ret == EINTR) {
+				--nrepeat;
+				continue;
+			}
 		} else {
 #if defined(HAVE_FCNTL_F_SETFD)
 			/* Deny file descriptor access to any child process. */
@@ -153,8 +162,10 @@ __os_closehandle(fhp)
 	/* Don't close file descriptors that were never opened. */
 	DB_ASSERT(F_ISSET(fhp, DB_FH_VALID) && fhp->fd != -1);
 
-	ret = __db_jump.j_close != NULL ?
-	    __db_jump.j_close(fhp->fd) : close(fhp->fd);
+	do {
+		ret = __db_jump.j_close != NULL ?
+		    __db_jump.j_close(fhp->fd) : close(fhp->fd);
+	} while (ret != 0 && __os_get_errno() == EINTR);
 
 	/*
 	 * Smash the POSIX file descriptor -- it's never tested, but we want

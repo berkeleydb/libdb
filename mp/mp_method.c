@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_method.c,v 11.13 2001/05/10 02:04:03 bostic Exp $";
+static const char revid[] = "$Id: mp_method.c,v 11.20 2001/10/04 21:26:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -40,6 +40,11 @@ __memp_dbenv_create(dbenv)
 	DB_ENV *dbenv;
 {
 	/*
+	 * !!!
+	 * Our caller has not yet had the opportunity to reset the panic
+	 * state or turn off mutex locking, and so we can neither check
+	 * the panic state or acquire a mutex in the DB_ENV create path.
+	 *
 	 * We default to 32 8K pages.  We don't default to a flat 256K, because
 	 * some systems require significantly more memory to hold 32 pages than
 	 * others.  For example, HP-UX with POSIX pthreads needs 88 bytes for
@@ -49,20 +54,28 @@ __memp_dbenv_create(dbenv)
 	dbenv->mp_bytes = 32 * ((8 * 1024) + sizeof(BH));
 	dbenv->mp_ncache = 1;
 
-	dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
-	dbenv->set_cachesize = __memp_set_cachesize;
-
-#ifdef	HAVE_RPC
-	/*
-	 * If we have a client, overwrite what we just setup to
-	 * point to client functions.
-	 */
+#ifdef HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
 		dbenv->set_cachesize = __dbcl_env_cachesize;
 		dbenv->set_mp_mmapsize = __dbcl_set_mp_mmapsize;
-	}
+		dbenv->memp_dump_region = NULL;
+		dbenv->memp_fcreate = __dbcl_memp_fcreate;
+		dbenv->memp_register = __dbcl_memp_register;
+		dbenv->memp_stat = __dbcl_memp_stat;
+		dbenv->memp_sync = __dbcl_memp_sync;
+		dbenv->memp_trickle = __dbcl_memp_trickle;
+	} else
 #endif
-
+	{
+		dbenv->set_cachesize = __memp_set_cachesize;
+		dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
+		dbenv->memp_dump_region = __memp_dump_region;
+		dbenv->memp_fcreate = __memp_fcreate;
+		dbenv->memp_register = __memp_register;
+		dbenv->memp_stat = __memp_stat;
+		dbenv->memp_sync = __memp_sync;
+		dbenv->memp_trickle = __memp_trickle;
+	}
 }
 
 /*

@@ -3,7 +3,7 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lockscript.tcl,v 11.13 2001/01/28 19:25:57 krinsky Exp $
+# $Id: lockscript.tcl,v 11.15 2001/10/05 02:38:09 bostic Exp $
 #
 # Random lock tester.
 # Usage: lockscript dir numiters numobjs sleepint degree readratio
@@ -32,18 +32,20 @@ set numobjs [ lindex $argv 2 ]
 set sleepint [ lindex $argv 3 ]
 set degree [ lindex $argv 4 ]
 set readratio [ lindex $argv 5 ]
-set locker [pid]
 
 # Initialize random number generator
 global rand_init
 berkdb srand $rand_init
 
+
+catch { berkdb env -create -lock -home $dir } e
+error_check_good env_open [is_substr $e env] 1
+catch { $e lock_id } locker
+error_check_good locker [is_valid_locker $locker] TRUE
+
 puts -nonewline "Beginning execution for $locker: $numiters $numobjs "
 puts "$sleepint $degree $readratio"
 flush stdout
-
-set e [berkdb env -create -lock -home $dir]
-error_check_good env_open [is_substr $e env] 1
 
 for { set iter 0 } { $iter < $numiters } { incr iter } {
 	set nlocks [berkdb random_int 1 $degree]
@@ -65,7 +67,8 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 		puts "[timestamp -c] $locker $lnum: $rw $obj"
 
 		# Do get; add to list
-		set lockp [$e lock_get $rw $locker $obj]
+		catch {$e lock_get $rw $locker $obj} lockp
+		error_check_good lock_get [is_valid_lock $lockp $e] TRUE
 
 		# Create a file to flag that we've a lock of the given
 		# type, after making sure only other read locks exist

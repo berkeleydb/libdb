@@ -3,13 +3,15 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test070.tcl,v 11.20 2001/03/27 19:30:45 ubell Exp $
+# $Id: test070.tcl,v 11.22 2001/08/03 16:39:45 bostic Exp $
 #
-# DB Test 70: Test of DB_CONSUME.
-# Fork off six processes, four consumers and two producers.
-# The producers will each put 20000 records into a queue;
-# the consumers will each get 10000.
-# Then, verify that no record was lost or retrieved twice.
+# TEST	test070
+# TEST	Test of DB_CONSUME (Four consumers, 1000 items.)
+# TEST
+# TEST	Fork off six processes, four consumers and two producers.
+# TEST	The producers will each put 20000 records into a queue;
+# TEST	the consumers will each get 10000.
+# TEST	Then, verify that no record was lost or retrieved twice.
 proc test070 { method {nconsumers 4} {nproducers 2} \
     {nitems 1000} {mode CONSUME } {start 0} {txn -txn} {tnum 70} args } {
 	source ./include.tcl
@@ -96,6 +98,12 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 		set input $consumerlog$ndx
 		set iid [open $input r]
 		while { [gets $iid str] != -1 } {
+			# Convert high ints to negative ints, to
+			# simulate Tcl's behavior on a 32-bit machine
+			# even if we're on a 64-bit one.
+			if { $str > 0x7fffffff } {
+				set str [expr $str - 1 - 0xffffffff]
+			}
 			lappend reclist $str
 		}
 		close $iid
@@ -104,13 +112,21 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 
 	set nitems [expr $start + $nitems]
 	for { set ndx $start } { $ndx < $nitems } { incr ndx } {
+		# Convert high ints to negative ints, to simulate
+		# 32-bit behavior on 64-bit platforms.
+		if { $ndx > 0x7fffffff } {
+			set cmp [expr $ndx - 1 - 0xffffffff]
+		} else {
+			set cmp [expr $ndx + 0]
+		}
 		# Skip 0 if we are wrapping around
-		if { $ndx == 0 } {
+		if { $cmp == 0 } {
 			incr ndx
 			incr nitems
+			incr cmp
 		}
 		# Be sure to convert ndx to a number before comparing.
-		error_check_good pop_num [lindex $sortreclist 0] [expr $ndx + 0]
+		error_check_good pop_num [lindex $sortreclist 0] $cmp
 		set sortreclist [lreplace $sortreclist 0 0]
 	}
 	error_check_good list_ends_empty $sortreclist {}

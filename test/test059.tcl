@@ -3,14 +3,14 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test059.tcl,v 11.13 2001/01/25 18:23:12 bostic Exp $
+# $Id: test059.tcl,v 11.15 2001/08/03 16:39:43 bostic Exp $
 #
-# Test059:
-# Make sure that we handle retrieves of zero-length data items correctly.
-# The following ops, should allow a partial data retrieve of 0-length.
-#	db_get
-#	db_cget FIRST, NEXT, LAST, PREV, CURRENT, SET, SET_RANGE
-#
+# TEST	test059
+# TEST	Cursor ops work with a partial length of 0.
+# TEST	Make sure that we handle retrieves of zero-length data items correctly.
+# TEST	The following ops, should allow a partial data retrieve of 0-length.
+# TEST	db_get
+# TEST	db_cget FIRST, NEXT, LAST, PREV, CURRENT, SET, SET_RANGE
 proc test059 { method args } {
 	source ./include.tcl
 
@@ -44,7 +44,7 @@ proc test059 { method args } {
 	}
 
 	puts "\tTest059.a: Populate a database"
-	set oflags "-create -truncate -mode 0644 $omethod $args $testfile"
+	set oflags "-create -mode 0644 $omethod $args $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_create [is_substr $db db] 1
 

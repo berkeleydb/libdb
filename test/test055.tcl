@@ -3,14 +3,15 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test055.tcl,v 11.12 2001/01/25 18:23:12 bostic Exp $
+# $Id: test055.tcl,v 11.14 2001/08/03 16:39:42 bostic Exp $
 #
-# Test055:
-# This test checks basic cursor operations.
-# There are N different scenarios to tests:
-# 1. (no dups) Set cursor, retrieve current.
-# 2. (no dups) Set cursor, retrieve next.
-# 3. (no dups) Set cursor, retrieve prev.
+# TEST	test055
+# TEST	Basic cursor operations.
+# TEST	This test checks basic cursor operations.
+# TEST	There are N different scenarios to tests:
+# TEST	1. (no dups) Set cursor, retrieve current.
+# TEST	2. (no dups) Set cursor, retrieve next.
+# TEST	3. (no dups) Set cursor, retrieve prev.
 proc test055 { method args } {
 	global errorInfo
 	source ./include.tcl
@@ -39,7 +40,7 @@ proc test055 { method args } {
 	set txn ""
 
 	puts "\tTest055.a: No duplicates"
-	set db [eval {berkdb_open -create -truncate -mode 0644 $omethod } \
+	set db [eval {berkdb_open -create -mode 0644 $omethod } \
 	    $args {$testfile}]
 	error_check_good db_open:nodup [is_valid_db $db] TRUE
 
@@ -60,7 +61,7 @@ proc test055 { method args } {
 		incr i
 	}
 
-	# TEST CASE 1
+	# Test case #1.
 	puts "\tTest055.a1: Set cursor, retrieve current"
 
 	# Now set the cursor on the middle on.
@@ -81,7 +82,7 @@ proc test055 { method args } {
 	error_check_good \
 	    curs_get:DB_CURRENT:data $d [pad_data $method datum$key_set(2)]
 
-	# TEST CASE 2
+	# Test case #2.
 	puts "\tTest055.a2: Set cursor, retrieve previous"
 	set r [$curs get -prev]
 	error_check_bad cursor_get:DB_PREV [llength $r] 0
@@ -91,7 +92,7 @@ proc test055 { method args } {
 	error_check_good \
 	    curs_get:DB_PREV:data $d [pad_data $method datum$key_set(1)]
 
-	#TEST CASE 3
+	# Test case #3.
 	puts "\tTest055.a2: Set cursor, retrieve next"
 
 	# Now set the cursor on the middle on.

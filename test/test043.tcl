@@ -3,10 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test043.tcl,v 11.13 2001/01/25 18:23:10 bostic Exp $
+# $Id: test043.tcl,v 11.15 2001/08/03 16:39:40 bostic Exp $
 #
-# DB Test 43 {method nentries}
-# Test the Record number implicit creation and renumbering options.
+# TEST	test043
+# TEST	Recno renumbering and implicit creation test
+# TEST	Test the Record number implicit creation and renumbering options.
 proc test043 { method {nentries 10000} args} {
 	source ./include.tcl
 
@@ -37,7 +38,7 @@ proc test043 { method {nentries 10000} args} {
 	cleanup $testdir $env
 
 	# Create the database
-	set db [eval {berkdb_open -create -truncate -mode 0644} $args \
+	set db [eval {berkdb_open -create -mode 0644} $args \
 		{$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -3,15 +3,14 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test051.tcl,v 11.16 2001/05/17 20:37:08 bostic Exp $
+# $Id: test051.tcl,v 11.18 2001/08/03 16:39:42 bostic Exp $
 #
-# Test51:
-#	Test of the fixed recno method.
-#		0. Test various flags (legal and illegal) to open
-#		1. Test partial puts where dlen != size (should fail)
-#		2. Partial puts for existent record -- replaces at beg, mid, and
-#			end of record, as well as full replace
-#
+# TEST	test051
+# TEST	Fixed-length record Recno test.
+# TEST		0. Test various flags (legal and illegal) to open
+# TEST		1. Test partial puts where dlen != size (should fail)
+# TEST		2. Partial puts for existent record -- replaces at beg, mid, and
+# TEST			end of record, as well as full replace
 proc test051 { method { args "" } } {
 	global fixed_len
 	global errorInfo
@@ -43,7 +42,7 @@ proc test051 { method { args "" } } {
 		set env [lindex $args $eindex]
 	}
 	cleanup $testdir $env
-	set oflags "-create -truncate -mode 0644 $args"
+	set oflags "-create -mode 0644 $args"
 
 	# Test various flags (legal and illegal) to open
 	puts "\tTest051.a: Test correct flag behavior on open."

@@ -153,18 +153,18 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_put
 
 /*
  * Class:     com_sleepycat_db_Db
- * Method:    rename
+ * Method:    _rename
  * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_rename
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1rename
   (JNIEnv *, jobject, jstring, jstring, jstring, jint);
 
 /*
  * Class:     com_sleepycat_db_Db
- * Method:    remove
+ * Method:    _remove
  * Signature: (Ljava/lang/String;Ljava/lang/String;I)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_remove
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1remove
   (JNIEnv *, jobject, jstring, jstring, jint);
 
 /*

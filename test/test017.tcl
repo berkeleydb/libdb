@@ -3,12 +3,13 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test017.tcl,v 11.18 2001/05/21 14:48:14 krinsky Exp $
+# $Id: test017.tcl,v 11.20 2001/08/03 16:39:36 bostic Exp $
 #
-# DB Test 17 {access method}
-# Run duplicates with small page size so that we test off page duplicates.
-# Then after we have an off-page database, test with overflow pages too.
-#
+# TEST	test017
+# TEST	Basic offpage duplicate test.
+# TEST
+# TEST	Run duplicates with small page size so that we test off page duplicates.
+# TEST	Then after we have an off-page database, test with overflow pages too.
 proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	source ./include.tcl
 
@@ -51,7 +52,7 @@ proc test017 { method {contents 0} {ndups 19} {tnum 17} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
+	     -create -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""

@@ -6,8 +6,6 @@ extern "C" {
 #endif
 #define	__dbcl_envrpcserver __dbcl_envrpcserver@DB_VERSION_UNIQUE_NAME@
 int __dbcl_envrpcserver __P((DB_ENV *, void *, const char *, long, long, u_int32_t));
-#define	__dbcl_envserver __dbcl_envserver@DB_VERSION_UNIQUE_NAME@
-int __dbcl_envserver __P((DB_ENV *, const char *, long, long, u_int32_t));
 #define	__dbcl_env_open_wrap __dbcl_env_open_wrap@DB_VERSION_UNIQUE_NAME@
 int __dbcl_env_open_wrap __P((DB_ENV *, const char *, u_int32_t, int));
 #define	__dbcl_refresh __dbcl_refresh@DB_VERSION_UNIQUE_NAME@
@@ -60,8 +58,6 @@ int __dbcl_set_lk_max_lockers __P((DB_ENV *, u_int32_t));
 int __dbcl_set_lk_max_objects __P((DB_ENV *, u_int32_t));
 #define	__dbcl_set_mp_mmapsize __dbcl_set_mp_mmapsize@DB_VERSION_UNIQUE_NAME@
 int __dbcl_set_mp_mmapsize __P((DB_ENV *, size_t));
-#define	__dbcl_set_mutex_locks __dbcl_set_mutex_locks@DB_VERSION_UNIQUE_NAME@
-int __dbcl_set_mutex_locks __P((DB_ENV *, int));
 #define	__dbcl_env_open __dbcl_env_open@DB_VERSION_UNIQUE_NAME@
 int __dbcl_env_open __P((DB_ENV *, const char *, u_int32_t, int));
 #define	__dbcl_env_paniccall __dbcl_env_paniccall@DB_VERSION_UNIQUE_NAME@
@@ -72,6 +68,10 @@ int __dbcl_set_recovery_init __P((DB_ENV *, int (*)(DB_ENV *)));
 int __dbcl_env_remove __P((DB_ENV *, const char *, u_int32_t));
 #define	__dbcl_set_shm_key __dbcl_set_shm_key@DB_VERSION_UNIQUE_NAME@
 int __dbcl_set_shm_key __P((DB_ENV *, long));
+#define	__dbcl_set_tas_spins __dbcl_set_tas_spins@DB_VERSION_UNIQUE_NAME@
+int __dbcl_set_tas_spins __P((DB_ENV *, u_int32_t));
+#define	__dbcl_set_timeout __dbcl_set_timeout@DB_VERSION_UNIQUE_NAME@
+int __dbcl_set_timeout __P((DB_ENV *, u_int32_t, u_int32_t));
 #define	__dbcl_set_tmp_dir __dbcl_set_tmp_dir@DB_VERSION_UNIQUE_NAME@
 int __dbcl_set_tmp_dir __P((DB_ENV *, const char *));
 #define	__dbcl_set_tx_recover __dbcl_set_tx_recover@DB_VERSION_UNIQUE_NAME@
@@ -87,7 +87,7 @@ int __dbcl_txn_abort __P((DB_TXN *));
 #define	__dbcl_txn_begin __dbcl_txn_begin@DB_VERSION_UNIQUE_NAME@
 int __dbcl_txn_begin __P((DB_ENV *, DB_TXN *, DB_TXN **, u_int32_t));
 #define	__dbcl_txn_checkpoint __dbcl_txn_checkpoint@DB_VERSION_UNIQUE_NAME@
-int __dbcl_txn_checkpoint __P((DB_ENV *, u_int32_t, u_int32_t));
+int __dbcl_txn_checkpoint __P((DB_ENV *, u_int32_t, u_int32_t, u_int32_t));
 #define	__dbcl_txn_commit __dbcl_txn_commit@DB_VERSION_UNIQUE_NAME@
 int __dbcl_txn_commit __P((DB_TXN *, u_int32_t));
 #define	__dbcl_txn_discard __dbcl_txn_discard@DB_VERSION_UNIQUE_NAME@
@@ -97,7 +97,17 @@ int __dbcl_txn_prepare __P((DB_TXN *, u_int8_t *));
 #define	__dbcl_txn_recover __dbcl_txn_recover@DB_VERSION_UNIQUE_NAME@
 int __dbcl_txn_recover __P((DB_ENV *, DB_PREPLIST *, long, long *, u_int32_t));
 #define	__dbcl_txn_stat __dbcl_txn_stat@DB_VERSION_UNIQUE_NAME@
-int __dbcl_txn_stat __P((DB_ENV *, DB_TXN_STAT **));
+int __dbcl_txn_stat __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
+#define	__dbcl_txn_timeout __dbcl_txn_timeout@DB_VERSION_UNIQUE_NAME@
+int __dbcl_txn_timeout __P((DB_TXN *, u_int32_t, u_int32_t));
+#define	__dbcl_rep_elect __dbcl_rep_elect@DB_VERSION_UNIQUE_NAME@
+int __dbcl_rep_elect __P((DB_ENV *, int, int, u_int32_t, int *));
+#define	__dbcl_rep_process_message __dbcl_rep_process_message@DB_VERSION_UNIQUE_NAME@
+int __dbcl_rep_process_message __P((DB_ENV *, DBT *, DBT *, int *));
+#define	__dbcl_rep_set_rep_transport __dbcl_rep_set_rep_transport@DB_VERSION_UNIQUE_NAME@
+int __dbcl_rep_set_rep_transport __P((DB_ENV *, int, int (*)(DB_ENV *, const DBT *, const DBT *, int, u_int32_t)));
+#define	__dbcl_rep_start __dbcl_rep_start@DB_VERSION_UNIQUE_NAME@
+int __dbcl_rep_start __P((DB_ENV *, DBT *, u_int32_t));
 #define	__dbcl_db_alloc __dbcl_db_alloc@DB_VERSION_UNIQUE_NAME@
 int __dbcl_db_alloc __P((DB *, void *(*)(size_t), void *(*)(void *, size_t), void (*)(void *)));
 #define	__dbcl_db_associate __dbcl_db_associate@DB_VERSION_UNIQUE_NAME@
@@ -198,44 +208,36 @@ int __dbcl_lock_detect __P((DB_ENV *, u_int32_t, u_int32_t, int *));
 int __dbcl_lock_get __P((DB_ENV *, u_int32_t, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
 #define	__dbcl_lock_id __dbcl_lock_id@DB_VERSION_UNIQUE_NAME@
 int __dbcl_lock_id __P((DB_ENV *, u_int32_t *));
+#define	__dbcl_lock_id_free __dbcl_lock_id_free@DB_VERSION_UNIQUE_NAME@
+int __dbcl_lock_id_free __P((DB_ENV *, u_int32_t));
 #define	__dbcl_lock_put __dbcl_lock_put@DB_VERSION_UNIQUE_NAME@
 int __dbcl_lock_put __P((DB_ENV *, DB_LOCK *));
 #define	__dbcl_lock_stat __dbcl_lock_stat@DB_VERSION_UNIQUE_NAME@
-int __dbcl_lock_stat __P((DB_ENV *, DB_LOCK_STAT **));
+int __dbcl_lock_stat __P((DB_ENV *, DB_LOCK_STAT **, u_int32_t));
 #define	__dbcl_lock_vec __dbcl_lock_vec@DB_VERSION_UNIQUE_NAME@
 int __dbcl_lock_vec __P((DB_ENV *, u_int32_t, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
 #define	__dbcl_log_archive __dbcl_log_archive@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_archive __P((DB_ENV *, char ***, u_int32_t));
+#define	__dbcl_log_cursor __dbcl_log_cursor@DB_VERSION_UNIQUE_NAME@
+int __dbcl_log_cursor __P((DB_ENV *, DB_LOGC **, u_int32_t));
 #define	__dbcl_log_file __dbcl_log_file@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_file __P((DB_ENV *, const DB_LSN *, char *, size_t));
 #define	__dbcl_log_flush __dbcl_log_flush@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_flush __P((DB_ENV *, const DB_LSN *));
-#define	__dbcl_log_get __dbcl_log_get@DB_VERSION_UNIQUE_NAME@
-int __dbcl_log_get __P((DB_ENV *, DB_LSN *, DBT *, u_int32_t));
 #define	__dbcl_log_put __dbcl_log_put@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_put __P((DB_ENV *, DB_LSN *, const DBT *, u_int32_t));
 #define	__dbcl_log_register __dbcl_log_register@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_register __P((DB_ENV *, DB *, const char *));
 #define	__dbcl_log_stat __dbcl_log_stat@DB_VERSION_UNIQUE_NAME@
-int __dbcl_log_stat __P((DB_ENV *, DB_LOG_STAT **));
+int __dbcl_log_stat __P((DB_ENV *, DB_LOG_STAT **, u_int32_t));
 #define	__dbcl_log_unregister __dbcl_log_unregister@DB_VERSION_UNIQUE_NAME@
 int __dbcl_log_unregister __P((DB_ENV *, DB *));
-#define	__dbcl_memp_fclose __dbcl_memp_fclose@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fclose __P((DB_MPOOLFILE *));
-#define	__dbcl_memp_fget __dbcl_memp_fget@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void **));
-#define	__dbcl_memp_fopen __dbcl_memp_fopen@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fopen __P((DB_ENV *, const char *, u_int32_t, int, size_t, DB_MPOOL_FINFO *, DB_MPOOLFILE **));
-#define	__dbcl_memp_fput __dbcl_memp_fput@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
-#define	__dbcl_memp_fset __dbcl_memp_fset@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
-#define	__dbcl_memp_fsync __dbcl_memp_fsync@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_fsync __P((DB_MPOOLFILE *));
+#define	__dbcl_memp_fcreate __dbcl_memp_fcreate@DB_VERSION_UNIQUE_NAME@
+int __dbcl_memp_fcreate __P((DB_ENV *, DB_MPOOLFILE **, u_int32_t));
 #define	__dbcl_memp_register __dbcl_memp_register@DB_VERSION_UNIQUE_NAME@
 int __dbcl_memp_register __P((DB_ENV *, int, int (*)(DB_ENV *, db_pgno_t, void *, DBT *), int (*)(DB_ENV *, db_pgno_t, void *, DBT *)));
 #define	__dbcl_memp_stat __dbcl_memp_stat@DB_VERSION_UNIQUE_NAME@
-int __dbcl_memp_stat __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***));
+int __dbcl_memp_stat __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
 #define	__dbcl_memp_sync __dbcl_memp_sync@DB_VERSION_UNIQUE_NAME@
 int __dbcl_memp_sync __P((DB_ENV *, DB_LSN *));
 #define	__dbcl_memp_trickle __dbcl_memp_trickle@DB_VERSION_UNIQUE_NAME@

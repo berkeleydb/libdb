@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: txn.src,v 11.12 2001/04/05 18:58:39 bostic Exp $
+ * $Id: txn.src,v 11.14 2001/07/27 19:07:18 krinsky Exp $
  */
 
 PREFIX	txn
@@ -22,15 +22,10 @@ INCLUDE #include "db_int.h"
 INCLUDE #include "db_page.h"
 INCLUDE #include "db_dispatch.h"
 INCLUDE #include "db_am.h"
+INCLUDE #include "log.h"
+INCLUDE #include "rep.h"
 INCLUDE #include "txn.h"
 INCLUDE
-
-/*
- * DEPRECATED in 3.1 to add timestamps.
- */
-DEPRECATED old_regop		6
-ARG	opcode		u_int32_t	lu
-END
 
 /*
  * This is the standard log operation for commit.
@@ -41,11 +36,6 @@ END
 BEGIN regop		10
 ARG	opcode		u_int32_t	lu
 ARG	timestamp	int32_t		ld
-END
-
-DEPRECATED old_ckp		7
-POINTER	ckp_lsn		DB_LSN *	lu
-POINTER	last_ckp	DB_LSN *	lu
 END
 
 /*
@@ -69,20 +59,7 @@ ARG	timestamp	int32_t		ld
 END
 
 /*
- * This is the standard log operation for prepare (since right now
- * we only use prepare in an XA environment).
- */
-DEPRECATED xa_regop_old		8
-ARG	opcode		u_int32_t	lu
-DBT	xid		DBT		s
-ARG	formatID	int32_t		ld
-ARG	gtrid		u_int32_t	u
-ARG	bqual		u_int32_t	u
-END
-
-/*
- * This is the standard log operation for prepare (since right now
- * we only use prepare in an XA environment).
+ * This is the standard log operation for prepare.
  */
 BEGIN xa_regop		13
 ARG	opcode		u_int32_t	lu
@@ -91,14 +68,6 @@ ARG	formatID	int32_t		ld
 ARG	gtrid		u_int32_t	u
 ARG	bqual		u_int32_t	u
 POINTER	begin_lsn	DB_LSN *	lu
-END
-
-/*
- * This is the log operation for a child commit.
- */
-DEPRECATED child_old		9
-ARG	opcode		u_int32_t	lu
-ARG	parent		u_int32_t	lx
 END
 
 /*

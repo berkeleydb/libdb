@@ -3,36 +3,36 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: txn.tcl,v 11.20 2001/06/13 18:04:16 sue Exp $
+# $Id: txn.tcl,v 11.27 2001/10/20 14:22:42 bostic Exp $
 #
 # Options are:
 # -dir <directory in which to store memp>
-# -max <max number of concurrent transactions>
+# -flags <flags>
 # -iterations <iterations>
-# -stat
-proc txn_usage {} {
-	puts "txn -dir <directory> -iterations <number of ops> \
-	    -max <max number of transactions> -stat"
-}
-
+# -max <max number of concurrent transactions>
 proc txntest { args } {
 	source ./include.tcl
+	global txn_curid
+	global txn_maxid
 
 	# Set defaults
 	set iterations 50
 	set max 1024
-	set dostat 0
 	set flags ""
+	set save_curid $txn_curid
+	set save_maxid $txn_maxid
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
 			-d.* { incr i; set testdir [lindex $args $i] }
 			-f.* { incr i; set flags [lindex $args $i] }
 			-i.* { incr i; set iterations [lindex $args $i] }
 			-m.* { incr i; set max [lindex $args $i] }
-			-s.* { set dostat 1 }
+			-S.* { incr i; set txn_curid [lindex $args $i];
+			       incr i; set txn_maxid [lindex $args $i] }
 			default {
-				puts -nonewline "FAIL:[timestamp] Usage: "
-				txn_usage
+				puts "FAIL:[timestamp] txn usage: "
+	puts "usage: txn -dir <directory> -flags <flags>\
+	    -iterations <number of ops> -max <max number of transactions>"
 				return
 			}
 		}
@@ -45,10 +45,17 @@ proc txntest { args } {
 	txn001 $testdir $max $iterations $flags
 	txn002 $testdir $max $iterations
 	txn003 $testdir
+	set txn_curid $save_curid
+	set txn_maxid $save_maxid
+	return
 }
 
+# TEST	txn001
+# TEST	Begin, commit, abort testing.
 proc txn001 { dir max ntxns flags} {
 	source ./include.tcl
+	global txn_curid
+	global txn_maxid
 
 	puts "Txn001: Basic begin, commit, abort"
 
@@ -58,6 +65,8 @@ proc txn001 { dir max ntxns flags} {
 	set env [eval {berkdb \
 	    env -create -mode 0644 -txn -txn_max $max -home $dir} $flags]
 	error_check_good evn_open [is_valid_env $env] TRUE
+	error_check_good txn_id_set \
+	    [ $env txn_id_set $txn_curid $txn_maxid ] 0
 	txn001_suba $ntxns $env
 	txn001_subb $ntxns $env
 	txn001_subc $ntxns $env
@@ -143,9 +152,12 @@ proc txn001_subc { ntxns env } {
 
 }
 
-# Verify that read-only transactions do not create any log records
+# TEST	txn002
+# TEST	Verify that  read-only transactions do not write log records.
 proc txn002 { dir max ntxns } {
 	source ./include.tcl
+	global txn_curid
+	global txn_maxid
 
 	puts "Txn002: Read-only transaction test"
 
@@ -153,6 +165,8 @@ proc txn002 { dir max ntxns } {
 	set env [berkdb \
 	    env -create -mode 0644 -txn -txn_max $max -home $dir]
 	error_check_good dbenv [is_valid_env $env] TRUE
+	error_check_good txn_id_set \
+	    [$env txn_id_set $txn_curid $txn_maxid ] 0
 
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
@@ -176,15 +190,20 @@ proc txn002 { dir max ntxns } {
 	}
 
 	# Now verify that there aren't any log records.
-	set r [$env log_get -first]
+	set logc [$env log_cursor]
+	error_check_good log_cursor [is_valid_logc $logc $env] TRUE
+	set r [$logc get -first]
 	error_check_good log_get:$r [llength $r] 0
 
+	error_check_good logc_close:$r [$logc close] 0
 	error_check_good env_close:$r [$env close] 0
 }
 
 # Test abort/commit/prepare of txns with outstanding child txns.
 proc txn003 { dir } {
 	source ./include.tcl
+	global txn_curid
+	global txn_maxid
 
 	puts "Txn003: Outstanding child transaction test"
 
@@ -194,6 +213,8 @@ proc txn003 { dir } {
 	set env_cmd "berkdb env -create -txn -home $dir"
 	set env [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $env] TRUE
+	error_check_good txn_id_set \
+	     [$env txn_id_set $txn_curid $txn_maxid] 0
 
 	set oflags {-create -btree -mode 0644 -env $env $testfile}
 	set db [eval {berkdb open} $oflags]
@@ -386,4 +407,45 @@ proc txn003_check { db key msg gooddata } {
 	set kd [$db get $key]
 	set data [lindex [lindex $kd 0] 1]
 	error_check_good $msg $data $gooddata
+}
+
+proc txn004 { } {
+	source ./include.tcl
+	global txn_curid
+	global txn_maxid
+
+	puts "Txn004.a -- test wraparound txnids"
+	txntest -S [expr $txn_maxid - 2] $txn_maxid
+	txntest -S [expr $txn_maxid - 3] [expr $txn_maxid - 2]
+
+	puts "Txn004.b -- test of out of txnids"
+	env_cleanup $testdir
+
+	# Open/create the txn region
+	set e [berkdb env -create -txn -home $testdir]
+	error_check_good env_open [is_substr $e env] 1
+
+	catch { $e txn } txn1
+	error_check_good txn1 [is_valid_txn $txn1 $e] TRUE
+	error_check_good txn_id_set \
+	    [$e txn_id_set [expr $txn_maxid - 1] $txn_maxid] 0
+
+	catch { $e txn } txn2
+	error_check_good txn2 [is_valid_txn $txn2 $e] TRUE
+	catch { $e txn } txn3
+	error_check_bad txn3 [is_valid_txn $txn3 $e] TRUE
+	error_check_good txn3 [string match "*wrapped*" $txn3] 1
+
+	catch { $txn1 commit } ret
+	error_check_good free $ret 0
+	catch { $e txn } txn4
+	error_check_good txn4 [is_valid_txn $txn4 $e] TRUE
+
+	catch { $txn2 commit } ret
+	error_check_good free $ret 0
+	catch { $txn4 commit } ret
+	error_check_good free $ret 0
+
+	catch {$e close} ret
+	error_check_good close $ret 0
 }

@@ -1,4 +1,4 @@
-<!--$Id: db_join.so,v 10.39 2001/06/19 19:49:24 bostic Exp $-->
+<!--$Id: db_join.so,v 10.40 2001/10/22 15:24:21 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,14 +23,14 @@
 <p>
 int
 DB-&gt;join(DB *primary,
-	DBC **curslist, DBC **dbcp, u_int32_t flags);
+    DBC **curslist, DBC **dbcp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DB-&gt;join function creates a specialized cursor for use in performing
 equality or natural joins on secondary indices.  For information on how
 to organize your data to use this functionality, see
 <a href="../ref/am/join.html">Equality join</a>.
-<p>The <b>primary</b> argument contains the DB handle of the primary
+<p>The <b>primary</b> argument contains the <a href="../api_c/db_create.html">DB</a> handle of the primary
 database, which is keyed by the data values found in entries in the
 <b>curslist</b>.
 <p>The <b>curslist</b> argument contains a NULL terminated array of cursors.

@@ -1,4 +1,4 @@
-<!--$Id: reclimit.so,v 11.22 2001/03/02 21:01:22 bostic Exp $-->
+<!--$Id: reclimit.so,v 11.24 2001/08/13 20:55:05 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -63,7 +63,29 @@ corrupted and this corruption will not be detected during recovery.
 For this reason, it may be important to select database page sizes that
 will be written as single block transfers by the underlying operating
 system.
-<p>Second, it is necessary to consider the behavior of the system's
+<p>Second, if you are copying database files (either as part of doing a
+hot backup or creation of a hot failover area), there is an additional
+question related to the page size of the Berkeley DB databases.  You must copy
+databases atomically, in units of the database page size.  In other
+words, the reads made by the copy program must not be interleaved with
+writes by other threads of control, and the copy program must read the
+databases in chunks which are a multiple of the underlying database page
+size.  Generally, this is not a problem, as operating systems already
+make this guarantee and system utilities normally read in power-of-2
+sized chunks which are larger than the largest possible Berkeley DB database
+page size.
+<p>However, we have seen one problem in this area because some releases of
+Solaris implemented the cp utility using the mmap system call rather
+than the read system call.  Because the Solaris' mmap system call did
+not make the same guarantee of read atomicity as the read system call,
+using the cp utility could create corrupted copies of the databases.
+Using the dd utility instead of the cp utility (and specifying an
+appropriate block size), fixed the problem.  If you plan to use a system
+utility to copy database files, you may want to use a system call trace
+utility (for example, ktrace or truss) to check for an I/O size smaller
+or not a multiple of the database page size, and system calls other than
+read.
+<p>Third, it is necessary to consider the behavior of the system's
 underlying stable storage hardware.  For example, consider a SCSI
 controller that has been configured to cache data and return to the
 operating system that the data has been written to stable storage, when,

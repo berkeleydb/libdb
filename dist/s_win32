@@ -1,9 +1,10 @@
 #!/bin/sh -
-#	$Id: s_win32,v 1.14 2001/05/27 14:08:20 bostic Exp $
+#	$Id: s_win32,v 1.18 2001/11/09 21:31:34 bostic Exp $
 #
 # Build Windows/32 include files.
 
 msgc="/* DO NOT EDIT: automatically built by dist/s_win32. */"
+msgw="; DO NOT EDIT: automatically built by dist/s_win32."
 
 . RELEASE
 
@@ -47,10 +48,18 @@ s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
 ENDOFSEDTEXT
 (echo "$msgc" &&
-    sed -f $s ../include/db.in && 
+    sed -f $s ../include/db.in &&
     cat ../include_auto/rpc_defs.in &&
     cat ../include_auto/global_ext.in) > $t
-cmp $t $f > /dev/null 2>&1 || 
+cmp $t $f > /dev/null 2>&1 ||
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+
+f=../build_win32/db_cxx.h
+cat <<ENDOFSEDTEXT > $s
+s/@cxx_have_stdheaders@/#define	HAVE_CXX_STDHEADERS 1/
+ENDOFSEDTEXT
+(echo "$msgc" && sed -f $s ../include/db_cxx.in) > $t
+cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 f=../build_win32/db_int.h
@@ -60,7 +69,7 @@ s/@db_align_t_decl@/typedef unsigned long db_align_t;/
 s/@db_alignp_t_decl@/typedef unsigned long db_alignp_t;/
 ENDOFSEDTEXT
 (echo "$msgc" && sed -f $s ../include/db_int.in) > $t
-cmp $t $f > /dev/null 2>&1 || 
+cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 f=../build_win32/libdb.rc
@@ -70,7 +79,22 @@ s/%MINOR%/$DB_VERSION_MINOR/
 s/%PATCH%/$DB_VERSION_PATCH/
 ENDOFSEDTEXT
 sed -f $s ../build_win32/libdbrc.src > $t
-cmp $t $f > /dev/null 2>&1 || 
+cmp $t $f > /dev/null 2>&1 ||
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+
+f=../build_win32/libdb.def
+(echo $msgw &&
+ echo &&
+ echo \
+ "DESCRIPTION	'Berkeley DB $DB_VERSION_MAJOR.$DB_VERSION_MINOR Library'" &&
+ echo &&
+ echo EXPORTS;
+a=1
+for i in `sed -e '/^$/d' -e '/^#/d' win_exports.in`; do
+	echo "	$i	@$a"
+	a=`expr $a + 1`
+done) > $t
+cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 
 rm -f $s $t

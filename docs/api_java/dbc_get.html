@@ -1,4 +1,4 @@
-<!--$Id: dbc_get.so,v 10.66 2001/07/12 21:13:02 bostic Exp $-->
+<!--$Id: dbc_get.so,v 10.68 2001/10/22 15:24:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Dbc.get</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,9 +22,9 @@
 import com.sleepycat.db.*;
 <p>
 public int get(Dbt key, Dbt data, int flags)
-	throws DbException;
+    throws DbException;
 public int pget(Dbt key, Dbt pkey, Dbt data, int flags)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The Dbc.get method retrieves key/data pairs from the database.  The
@@ -61,13 +61,21 @@ Db.DB_FIRST (Db.DB_LAST) flags will ignore any keys that exist
 but were never explicitly created by the application, or were created and
 later deleted.
 <p>If the database is empty, Dbc.get will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
-<p><dt><a name="Db.DB_GET_BOTH">Db.DB_GET_BOTH</a><dd>identical to the Db.DB_SET flag, except that both the key and the data
-arguments must be matched by the key and data item in the database.
-<p>When used with the Dbc.pget version of this interface on a secondary
-index handle, both the secondary and primary keys must be matched by the
-secondary and primary key item in the database.  It is an error to use the
-Db.DB_GET_BOTH flag with the Dbc.get version of this interface and
-a cursor that has been opened on a secondary index handle.
+<p><dt><a name="Db.DB_GET_BOTH">Db.DB_GET_BOTH</a><dd>The Db.DB_GET_BOTH flag is identical to the Db.DB_SET flag,
+except that both the key and the data arguments must be matched by the
+key and data item in the database.
+<p>When used with the Dbc.pget version of this interface on a
+secondary index handle, both the secondary and primary keys must be
+matched by the secondary and primary key item in the database.  It is
+an error to use the Db.DB_GET_BOTH flag with the Dbc.get
+version of this interface and a cursor that has been opened on a
+secondary index handle.
+<p><dt><a name="Db.DB_GET_BOTH_RANGE">Db.DB_GET_BOTH_RANGE</a><dd>The Db.DB_GET_BOTH_RANGE flag is identical to the Db.DB_GET_BOTH
+flag, except that, in the case of any database supporting sorted
+duplicate sets, the returned key/data pair is the smallest data item
+greater than or equal to the specified data item (as determined by the
+comparison function), permitting partial matches and range searches in
+duplicate data sets.
 <p><dt><a name="Db.DB_GET_RECNO">Db.DB_GET_RECNO</a><dd>Return the record number associated with the cursor.  The record number
 will be returned in <b>data</b>, as described in <a href="../api_java/dbt_class.html">Dbt</a>.  The
 <b>key</b> parameter is ignored.
@@ -218,7 +226,7 @@ and
 <a href="../api_java/dbc_put.html">Dbc.put</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

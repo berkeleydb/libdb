@@ -3,11 +3,11 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd010.tcl,v 1.15 2001/01/25 18:23:06 bostic Exp $
+# $Id: recd010.tcl,v 1.16 2001/08/03 16:39:27 bostic Exp $
 #
-# Recovery Test 10.
-# Test stability of btree duplicates across btree off-page dup splits
-# and reverse splits and across recovery.
+# TEST	recd010
+# TEST	Test stability of btree duplicates across btree off-page dup splits
+# TEST	and reverse splits and across recovery.
 proc recd010 { method {select 0} args} {
 	global fixed_len
 	global kvals

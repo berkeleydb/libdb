@@ -1,4 +1,4 @@
-<!--$Id: db_close.so,v 10.34 2001/04/18 13:44:45 bostic Exp $-->
+<!--$Id: db_close.so,v 10.35 2001/10/22 15:24:20 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -52,7 +52,7 @@ updated copy.
 <p>When multiple threads are using the Berkeley DB handle concurrently, only a single
 thread may call the DB-&gt;close function.
 <p>After DB-&gt;close has been called, regardless of its return, the
-DB handle may not be accessed again.
+<a href="../api_c/db_create.html">DB</a> handle may not be accessed again.
 <a name="3"><!--meow--></a>
 <p>The DB-&gt;close function returns a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if the underlying database still has
 dirty pages in the cache.  (The only reason to return

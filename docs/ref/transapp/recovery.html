@@ -1,4 +1,4 @@
-<!--$Id: recovery.so,v 10.28 2001/05/05 01:49:30 bostic Exp $-->
+<!--$Id: recovery.so,v 10.30 2001/11/05 17:24:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -11,7 +11,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
-<td align=right><a href="../../ref/transapp/logfile.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/filesys.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/transapp/logfile.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/hotfail.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Recovery procedures</h1>
@@ -37,30 +37,40 @@ must not be restarted until recovery completes.  After recovery
 finishes, the environment is properly initialized so that applications
 may be restarted.
 </ol>
-<p>If you intend to do recovery, there are two possible types of recovery
-processing:
-<p><ol>
-<p><li><i>catastrophic recovery</i>.  A failure that requires catastrophic
-recovery is a failure where either the database or log files are
-destroyed or corrupted.  For example, catastrophic failure includes the
-case where the disk drive on which either the database or logs are
-stored has been physically destroyed, or when the system's normal
-filesystem recovery on startup cannot bring the database and log files
-to a consistent state.  This is often difficult to detect, and is
-perhaps the most common sign of the need for catastrophic recovery is
-when the normal recovery procedures fail.
-<p>To restore your database environment after catastrophic failure, take
-the following steps:
+<p>If performing recovery, there are two types of recovery processing:
+<i>normal</i> and <i>catastrophic</i>.  Which you choose depends
+on the source for the database and log files you are using to recover.
+<p>If up-to-the-minute database and log files are accessible on a stable
+filesystem, normal recovery is sufficient.  Run the <a href="../../utility/db_recover.html">db_recover</a>
+utility or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function specifying the
+<a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> flag.  Note this case never includes recovery using
+archival snapshots of the database environment.  For example, you cannot
+archive databases and log files, restore the backup and then run normal
+recovery -- you must always run catastrophic recovery when using
+archived files.
+<p>If the database or log files have been destroyed or corrupted, or normal
+recovery fails, catastrophic recovery is required.  For example,
+catastrophic failure includes the case where the disk drive where the
+database or log files are stored has been physically destroyed, or when
+the underlying filesystem is corrupted and the operating system's normal
+filesystem checking procedures cannot bring that filesystem to a
+consistent state.  This is often difficult to detect, and a common sign
+of the need for catastrophic recovery is when normal Berkeley DB recovery
+procedures fail.  When catastrophic recovery is necessary, take the
+following steps:
 <p><ol>
 <p><li>Restore the most recent snapshots of the database and log files from
-the backup media into the system directory where recovery will be
-performed.
+the backup media into the directory where recovery will be performed.
 <p><li>If any log files were archived since the last snapshot was made, they
-should be restored into the Berkeley DB environment directory where recovery
-will be performed.  Make sure that you restore them in the order in
-which they were written.  The order is important because it's possible
-that the same log file appears on multiple backups, and you want to run
-recovery using the most recent version of each log file.
+should be restored into the directory where recovery will be performed.
+<p>If any log files are available from the database environment that failed
+(for example, the disk holding the database files crashed, but the disk
+holding the log files is fine), those log files should be copied into
+the directory where recovery will be performed.
+<p>Be sure to restore all log files in the order they were written.  The
+order is important because it's possible the same log file appears on
+multiple backups, and you want to run recovery using the most recent
+version of each log file.
 <p><li>Run the <a href="../../utility/db_recover.html">db_recover</a> utility, specifying its <b>-c</b> option;
 or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function, specifying the <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
 flag.  The catastrophic recovery process will review the logs and
@@ -76,16 +86,7 @@ relative to the database home directory or the pathname(s) specified in
 calls to <a href="../../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a>, instead of using full
 pathnames.
 </ol>
-<p><li><i>non-catastrophic</i> or <i>normal recovery</i>.  If the
-failure is non-catastrophic and the database files and log are both
-accessible on a stable filesystem, run the <a href="../../utility/db_recover.html">db_recover</a> utility
-without the <b>-c</b> option or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function
-specifying the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> flag.  The normal recovery process
-will review the logs and database files to ensure that all changes
-associated with committed transactions appear in the databases, and that
-all uncommitted transactions do not appear.
-</ol>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/logfile.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/filesys.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/logfile.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/hotfail.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,0 +1,63 @@
+<!--$Id: faq.so,v 1.5 2001/11/17 16:59:33 bostic Exp $-->
+<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Replication FAQ</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td align=right><a href="../../ref/rep/partition.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/rep/ex.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Replication FAQ</h1>
+<p><ol>
+<p><li><b>Does Berkeley DB provide support for forwarding write queries from
+clients to masters?</b>
+<p>No, it does not.  The Berkeley DB RPC server code could be modified to support
+this functionality, but in general this protocol is left entirely to
+the application.  Note, there is no reason not to use the communications
+channels the application establishes for replication support to forward
+database update messages to the master, Berkeley DB does not require that
+those channels be used exclusively for replication messages.
+<p><li><b>Can I use replication to partition my environment across
+multiple sites?</b>
+<p>No, this is not possible.  All replicated databases must be equally
+shared by all environments in the replication group.
+<p><li><b>How can I distinguish Berkeley DB messages from application messages?</b>
+<p>There is no way to distinguish Berkeley DB messages from application-specific
+messages, nor does Berkeley DB offer any way to wrap application messages
+inside of Berkeley DB messages.  Distributed applications exchanging their
+own messages should either enclose Berkeley DB messages in their own wrappers,
+or use separate network connections to send and receive Berkeley DB messages.
+The one exception to this rule is connection information for new sites;
+Berkeley DB offers a simple method for sites joining replication groups to
+send connection information to the other database environments in the
+group (see <a href="../../ref/rep/newsite.html">Connecting to a new site</a>
+for more information).
+<p><li><b>How should I build my <b>send</b> function?</b>
+<p>This depends on the specifics of the application.  One common way is to
+write the <b>rec</b> and <b>control</b> arguments' sizes and data to
+a socket connected to each remote site.  On a fast, local area net, the
+simplest method is likely to be construct broadcast messages.  Each
+Berkeley DB message would be encapsulated inside an application specific
+message, with header information specifying the intended recipient(s)
+for the message.  This will likely require a global numbering scheme,
+however, as the Berkeley DB library has to be able to send specific log
+records to clients apart from the general broadcast of new log records
+intended for all members of a replication group.
+<p><li><b>Can I use replication to replicate just the database
+environment's log files?</b>
+<p>Yes.  If the <a href="../../api_c/rep_start.html#DB_REP_LOGSONLY">DB_REP_LOGSONLY</a> flag is specified to
+<a href="../../api_c/rep_start.html">DB_ENV-&gt;rep_start</a>, the client site acts as a repository for logfiles
+(see <a href="../../ref/rep/logonly.html">Log file only clients</a> for more
+information).
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/rep/partition.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/rep/ex.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -66,7 +66,7 @@ in the database.
 <h3><a name="DB_INCOMPLETE">DB_INCOMPLETE</a></h3>
 <p>When a database cannot be flushed to disk by <a href="../../api_c/db_close.html">DB-&gt;close</a> or
 <a href="../../api_c/db_sync.html">DB-&gt;sync</a>, or by the underlying Memory Pool subsystem methods,
-<a href="../../api_c/memp_fsync.html">memp_fsync</a> and <a href="../../api_c/memp_sync.html">memp_sync</a>, DB_INCOMPLETE may be
+<a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> and <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a>, DB_INCOMPLETE may be
 returned to the application.
 <p>In the case of <a href="../../api_c/db_close.html">DB-&gt;close</a> and <a href="../../api_c/db_sync.html">DB-&gt;sync</a>, the only reason
 for a return of DB_INCOMPLETE is if another thread of control
@@ -76,8 +76,8 @@ reason, a return of DB_INCOMPLETE can normally be ignored; or,
 in cases where it is a possible return value, <a href="../../api_c/db_sync.html">DB-&gt;sync</a> should
 probably never have been called, or the <a href="../../api_c/db_close.html#DB_NOSYNC">DB_NOSYNC</a> option should
 have been specified to <a href="../../api_c/db_close.html">DB-&gt;close</a>.
-<p>In the case of <a href="../../api_c/memp_fsync.html">memp_fsync</a> or <a href="../../api_c/memp_sync.html">memp_sync</a> (or other Berkeley DB
-interfaces that call those functions, <a href="../../api_c/txn_checkpoint.html">txn_checkpoint</a> for
+<p>In the case of <a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> or <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a> (or other Berkeley DB
+interfaces that call those functions, <a href="../../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> for
 example), a return of DB_INCOMPLETE indicates that the database
 environment is under heavy load and the checkpoint was unable to
 complete because there were pages that could not be written at this
@@ -118,7 +118,7 @@ interface, it will be returned from all subsequent Berkeley DB calls made by
 any threads of control participating in the environment.
 <p>Optionally, applications may also specify a fatal-error callback function
 using the <a href="../../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a> function.  This callback function will be
-called with two arguments: a reference to the DB_ENV structure
+called with two arguments: a reference to the <a href="../../api_c/env_create.html">DB_ENV</a> structure
 associated with the environment and the <b>errno</b> value
 associated with the underlying error that caused the problem.
 <p>Applications can handle such fatal errors in one of two ways: by checking

@@ -3,15 +3,18 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb006.tcl,v 11.13 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb006.tcl,v 11.14 2001/08/03 16:39:30 bostic Exp $
 #
-# We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
-# everything else does as well.  We'll create test databases called
-# sub1.db, sub2.db, sub3.db, and sub4.db.  The number on the database
-# describes the duplication -- duplicates are of the form 0, N, 2N, 3N, ...
-# where N is the number of the database.  Primary.db is the primary database,
-# and sub0.db is the database that has no matching duplicates.  All of
-# these are within a single database.
+# TEST	subdb006
+# TEST	Tests intra-subdb join
+# TEST
+# TEST	We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
+# TEST	everything else does as well.  We'll create test databases called
+# TEST	sub1.db, sub2.db, sub3.db, and sub4.db.  The number on the database
+# TEST	describes the duplication -- duplicates are of the form 0, N, 2N, 3N,
+# TEST	...  where N is the number of the database.  Primary.db is the primary
+# TEST	database, and sub0.db is the database that has no matching duplicates.
+# TEST	All of these are within a single database.
 #
 # We should test this on all btrees, all hash, and a combination thereof
 proc subdb006 {method {nentries 100} args } {

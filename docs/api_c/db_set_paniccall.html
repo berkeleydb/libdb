@@ -1,5 +1,5 @@
 <!--$Id: db_set_paniccall.so,v 10.12 2001/04/04 19:06:26 bostic Exp $-->
-<!--$Id: env_set_paniccall.so,v 10.18 2001/05/15 14:44:11 bostic Exp $-->
+<!--$Id: env_set_paniccall.so,v 10.19 2001/10/22 15:24:30 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -39,7 +39,7 @@ are used to specify functions to be called when
 When called, the <b>dbenv</b> argument will be a reference to the
 current environment, and the <b>errval</b> argument is the error value
 that would have been returned to the calling function.
-<p>For DB handles opened inside of Berkeley DB environments, calling the
+<p>For <a href="../api_c/db_create.html">DB</a> handles opened inside of Berkeley DB environments, calling the
 DB-&gt;set_paniccall function affects the entire environment and is equivalent to calling
 the <a href="../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a> function.
 <p>The DB-&gt;set_paniccall interface may be used to configure Berkeley DB at any time

@@ -25,8 +25,8 @@ More formally, once a transaction releases a lock, it may not acquire
 any additional locks.  Practically, this translates into a system in
 which locks are acquired as they are needed throughout a transaction
 and retained until the transaction ends, either by committing or
-aborting.  In Berkeley DB, locks are released during <a href="../../api_c/txn_abort.html">txn_abort</a> or
-<a href="../../api_c/txn_commit.html">txn_commit</a>.  The only exception to this protocol occurs when we
+aborting.  In Berkeley DB, locks are released during <a href="../../api_c/txn_abort.html">DB_TXN-&gt;abort</a> or
+<a href="../../api_c/txn_commit.html">DB_TXN-&gt;commit</a>.  The only exception to this protocol occurs when we
 use lock-coupling to traverse a data structure.  If the locks are held
 only for traversal purposes, it is safe to release locks before
 transactions commit or abort.

@@ -1,4 +1,4 @@
-<!--$Id: memp_stat.so,v 10.32 2001/05/05 01:49:16 bostic Exp $-->
+<!--$Id: memp_stat.so,v 10.35 2001/10/22 15:24:37 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv.memp_stat</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,10 +22,10 @@
 import com.sleepycat.db.*;
 <p>
 public DbMpoolStat memp_stat()
-	throws DbException;
+    throws DbException;
 <p>
-public DbMpoolFStat[] memp_fstat()
-	throws DbException;
+public DbMpoolFStat[] memp_fstat(int flags)
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv.memp_stat and <a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a> method create statistical
@@ -95,7 +95,7 @@ and
 <a href="../api_java/memp_trickle.html">DbEnv.memp_trickle</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

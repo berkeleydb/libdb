@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_util.c,v 11.29 2001/05/12 17:17:35 dda Exp $";
+static const char revid[] = "$Id: java_util.c,v 11.36 2001/10/28 04:45:52 krinsky Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -32,6 +32,8 @@ const char * const name_DB_EXCEPTION       = "DbException";
 const char * const name_DB_HASH_STAT       = "DbHashStat";
 const char * const name_DB_LOCK            = "DbLock";
 const char * const name_DB_LOCK_STAT       = "DbLockStat";
+const char * const name_DB_LOCKNOTGRANTED_EX = "DbLockNotGrantedException";
+const char * const name_DB_LOGC            = "DbLogc";
 const char * const name_DB_LOG_STAT        = "DbLogStat";
 const char * const name_DB_LSN             = "DbLsn";
 const char * const name_DB_MEMORY_EX       = "DbMemoryException";
@@ -51,10 +53,14 @@ const char * const name_DbDupCompare       = "DbDupCompare";
 const char * const name_DbEnvFeedback      = "DbEnvFeedback";
 const char * const name_DbErrcall          = "DbErrcall";
 const char * const name_DbHash             = "DbHash";
+const char * const name_DbLockRequest      = "DbLockRequest";
 const char * const name_DbFeedback         = "DbFeedback";
 const char * const name_DbRecoveryInit     = "DbRecoveryInit";
+const char * const name_DbRepTransport	   = "DbRepTransport";
 const char * const name_DbSecondaryKeyCreate = "DbSecondaryKeyCreate";
 const char * const name_DbTxnRecover       = "DbTxnRecover";
+const char * const name_RepElectResult = "DbEnv$RepElectResult";
+const char * const name_RepProcessMessage = "DbEnv$RepProcessMessage";
 
 const char * const string_signature    = "Ljava/lang/String;";
 
@@ -66,6 +72,11 @@ jfieldID fid_Dbt_dlen;
 jfieldID fid_Dbt_doff;
 jfieldID fid_Dbt_flags;
 jfieldID fid_Dbt_must_create_data;
+jfieldID fid_DbLockRequest_op;
+jfieldID fid_DbLockRequest_mode;
+jfieldID fid_DbLockRequest_obj;
+jfieldID fid_DbLockRequest_lock;
+jfieldID fid_RepProcessMessage_envid;
 
 /****************************************************************
  *
@@ -90,6 +101,18 @@ void one_time_init(JNIEnv *jnienv)
     fid_Dbt_flags = (*jnienv)->GetFieldID(jnienv, cl, "flags", "I");
     fid_Dbt_must_create_data = (*jnienv)->GetFieldID(jnienv, cl,
 						     "must_create_data", "Z");
+
+    cl = get_class(jnienv, name_DbLockRequest);
+    fid_DbLockRequest_op = (*jnienv)->GetFieldID(jnienv, cl, "op", "I");
+    fid_DbLockRequest_mode = (*jnienv)->GetFieldID(jnienv, cl, "mode", "I");
+    fid_DbLockRequest_obj = (*jnienv)->GetFieldID(jnienv, cl, "obj",
+						  "Lcom/sleepycat/db/Dbt;");
+    fid_DbLockRequest_lock = (*jnienv)->GetFieldID(jnienv, cl, "lock",
+						   "Lcom/sleepycat/db/DbLock;");
+
+    cl = get_class(jnienv, name_RepProcessMessage);
+    fid_RepProcessMessage_envid =
+	(*jnienv)->GetFieldID(jnienv, cl, "envid", "I");
 }
 
 /* Get the private data from a Db* object that points back to a C DB_* object.
@@ -307,6 +330,32 @@ void report_exception(JNIEnv *jnienv, const char *text,
 	}
 }
 
+/* Report an exception back to the java side, for the specific
+ * case of DB_LOCK_NOTGRANTED, as more things are added to the
+ * constructor of this type of exception.
+ */
+void report_notgranted_exception(JNIEnv *jnienv, const char *text,
+				 db_lockop_t op, db_lockmode_t mode,
+				 jobject jdbt, jobject jlock, int index)
+{
+	jstring textString;
+	jclass dbexcept;
+	jthrowable obj;
+	jmethodID mid;
+
+	dbexcept = get_class(jnienv, name_DB_LOCKNOTGRANTED_EX);
+	textString = get_java_string(jnienv, text);
+
+	mid = (*jnienv)->GetMethodID(jnienv, dbexcept, "<init>",
+				     "(Ljava/lang/String;II"
+				     "Lcom/sleepycat/db/Dbt;"
+				     "Lcom/sleepycat/db/DbLock;I)V");
+	obj = (jthrowable)(*jnienv)->NewObject(jnienv, dbexcept, mid,
+					       textString, op, mode,
+					       jdbt, jlock, index);
+	(*jnienv)->Throw(jnienv, obj);
+}
+
 /* Create an exception object and return it.
  * The given class must have a constructor that has a
  * constructor with args (java.lang.String text, int errno);
@@ -461,11 +510,11 @@ jstring get_java_string(JNIEnv *jnienv, const char* string)
  */
 char *get_c_string(JNIEnv *jnienv, jstring jstr)
 {
-	const jbyte *utf;
+	const char *utf;
 	char *retval;
 
 	utf = (*jnienv)->GetStringUTFChars(jnienv, jstr, NULL);
-	retval = dup_string((const char *)utf);
+	retval = dup_string(utf);
 	(*jnienv)->ReleaseStringUTFChars(jnienv, jstr, utf);
 	return retval;
 }
@@ -510,6 +559,11 @@ DB_JAVAINFO *get_DB_JAVAINFO(JNIEnv *jnienv, jobject obj)
 DB_LOCK *get_DB_LOCK(JNIEnv *jnienv, jobject obj)
 {
 	return ((DB_LOCK *)get_private_dbobj(jnienv, name_DB_LOCK, obj));
+}
+
+DB_LOGC *get_DB_LOGC(JNIEnv *jnienv, jobject obj)
+{
+	return ((DB_LOGC *)get_private_dbobj(jnienv, name_DB_LOGC, obj));
 }
 
 DB_LOG_STAT *get_DB_LOG_STAT(JNIEnv *jnienv, jobject obj)
@@ -613,6 +667,11 @@ jobject get_DbHashStat(JNIEnv *jnienv, DB_HASH_STAT *dbobj)
 	return (convert_object(jnienv, name_DB_HASH_STAT, dbobj));
 }
 
+jobject get_DbLogc(JNIEnv *jnienv, DB_LOGC *dbobj)
+{
+	return (convert_object(jnienv, name_DB_LOGC, dbobj));
+}
+
 jobject get_DbLogStat(JNIEnv *jnienv, DB_LOG_STAT *dbobj)
 {
 	return (convert_object(jnienv, name_DB_LOG_STAT, dbobj));
@@ -659,6 +718,10 @@ static jobject get_Dbt_shared(JNIEnv *jnienv, const DBT *dbt, int readonly,
 	DBT_JAVAINFO *dbtji;
 
 	COMPQUIET(readonly, 0);
+
+	/* A NULL DBT should become a null Dbt. */
+	if (dbt == NULL)
+		return (NULL);
 
 	/* Note that a side effect of creating a Dbt object
 	 * is the creation of the attached DBT_JAVAINFO object

@@ -1,4 +1,4 @@
-<!--$Id: notes.so,v 10.48 2001/06/10 19:24:14 bostic Exp $-->
+<!--$Id: notes.so,v 10.49 2001/11/05 20:08:42 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -20,10 +20,13 @@
 the following:
 <p><blockquote><pre>symbol __muldi3: referenced symbol not found
 symbol __cmpdi2: referenced symbol not found</pre></blockquote></b>
-<p>On systems where they're available (HP-UX, Solaris), Berkeley DB uses 64-bit
-integral types.  As far as we can tell, some versions of gcc don't
-support these types.  The simplest workaround is to reconfigure Berkeley DB
-using the --disable-largefile configuration option and then rebuild.
+<p>Berkeley DB often uses 64-bit integral types on systems supporting large
+files, and gcc performs operations on those types by calling library
+functions.  These unreferenced symbol errors are usually caused by
+linking an application by calling "ld" rather than by calling "gcc":
+gcc will link in libgcc.a and will resolve the symbols.  If that does
+not help, another possible workaround is to reconfigure Berkeley DB using the
+<a href="../../ref/build_unix/conf.html#--disable-largefile">--disable-largefile</a> configuration option and then rebuild.
 <hr size=1 noshade>
 <p><li><b>My C++ program traps during a failure in a DB call on my
 gcc-based system.</b>

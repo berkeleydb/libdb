@@ -3,9 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test077.tcl,v 1.5 2001/01/25 18:23:13 bostic Exp $
+# $Id: test077.tcl,v 1.7 2001/08/03 16:39:46 bostic Exp $
 #
-# DB Test 77: Test of DB_GET_RECNO [#1206].
+# TEST	test077
+# TEST	Test of DB_GET_RECNO [#1206].
 proc test077 { method { nkeys 1000 } { pagesize 512 } { tnum 77 } args } {
 	source ./include.tcl
 	global alphabet
@@ -33,7 +34,7 @@ proc test077 { method { nkeys 1000 } { pagesize 512 } { tnum 77 } args } {
 	}
 	cleanup $testdir $env
 
-	set db [eval {berkdb_open -create -truncate -mode 0644\
+	set db [eval {berkdb_open -create -mode 0644\
 	    -pagesize $pagesize} $omethod $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
 

@@ -1,4 +1,4 @@
-<!--$Id: env_open.so,v 10.69 2001/05/15 14:44:07 bostic Exp $-->
+<!--$Id: env_open.so,v 10.70 2001/10/22 15:24:27 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -53,7 +53,7 @@ Berkeley DB database, so that they do not interfere with each other.  If all
 threads are accessing the database(s) read-only, locking is unnecessary.
 When the DB_INIT_LOCK flag is specified, it is usually necessary
 to run a deadlock detector, as well.  See <a href="../utility/db_deadlock.html">db_deadlock</a> and
-<a href="../api_c/lock_detect.html">lock_detect</a> for more information.
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> for more information.
 <p><dt><a name="DB_INIT_LOG">DB_INIT_LOG</a><dd>Initialize the logging subsystem.  This subsystem should be used when
 recovery from application or system failure is necessary.  If the log
 region is being created and log files are already present, the log files
@@ -135,7 +135,7 @@ specified.
 <p><dt><a name="DB_SYSTEM_MEM">DB_SYSTEM_MEM</a><dd>Allocate memory from system shared memory instead of from memory backed
 by the filesystem.  See <a href="../ref/env/region.html">Shared Memory
 Regions</a> for more information.
-<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the DB_ENV handle returned by DB_ENV-&gt;open to be
+<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_c/env_create.html">DB_ENV</a> handle returned by DB_ENV-&gt;open to be
 <i>free-threaded</i>; that is, usable by multiple threads within a
 single address space.
 </dl>
@@ -188,16 +188,13 @@ in the same way.
 <a href="../api_c/env_set_errpfx.html">DB_ENV-&gt;set_errpfx</a>,
 <a href="../api_c/env_set_feedback.html">DB_ENV-&gt;set_feedback</a>,
 <a href="../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a>,
-<a href="../api_c/env_set_mutexlocks.html">DB_ENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">db_env_set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_panicstate.html">db_env_set_panicstate</a>,
 <a href="../api_c/env_set_rec_init.html">DB_ENV-&gt;set_recovery_init</a>,
 <a href="../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a>,
-<a href="../api_c/env_set_region_init.html">db_env_set_region_init</a>,
 <a href="../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a>,
-<a href="../api_c/env_set_tas_spins.html">db_env_set_tas_spins</a>,
+<a href="../api_c/env_set_tas_spins.html">DB_ENV-&gt;set_tas_spins</a>,
 <a href="../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a>,
+<a href="../api_c/env_set_timeout.html">DB_ENV-&gt;set_timeout</a>,
 <a href="../api_c/env_set_verbose.html">DB_ENV-&gt;set_verbose</a>,
 <a href="../api_c/env_strerror.html">db_strerror</a>
 and

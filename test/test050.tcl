@@ -3,9 +3,10 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test050.tcl,v 11.16 2001/01/25 18:23:11 bostic Exp $
+# $Id: test050.tcl,v 11.18 2001/08/03 16:39:41 bostic Exp $
 #
-# Test050: Overwrite test of small/big key/data with cursor checks for RECNO
+# TEST	test050
+# TEST	Overwrite test of small/big key/data with cursor checks for Recno.
 proc test050 { method args } {
 	global alphabet
 	global errorInfo
@@ -45,7 +46,7 @@ proc test050 { method args } {
 	set t1 $testdir/t1
 	cleanup $testdir $env
 
-	set oflags "-create -truncate -mode 0644 $args $omethod"
+	set oflags "-create -mode 0644 $args $omethod"
 	set db [eval {berkdb_open_noerr} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

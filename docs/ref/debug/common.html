@@ -78,12 +78,12 @@ database, turning off Btree splits may help (see <a href="../../api_c/db_set_fla
 for more information.)
 <p><dt><b>Symptom:</b><dd>I run recovery and it exits cleanly, but my database changes are missing.
 <p><dt>Possible Cause:<dd>Failure to enable logging and transactions in the database environment;
-failure to specify DB_ENV handle when creating DB handle;
+failure to specify <a href="../../api_c/env_create.html">DB_ENV</a> handle when creating <a href="../../api_c/db_create.html">DB</a> handle;
 transaction handle not passed to Berkeley DB interface; failure to commit the
 transaction.
 <p><dt>Fix:<dd>Make sure that the environment and database handles are properly
 created, that the application passes the transaction handle returned by
-<a href="../../api_c/txn_begin.html">txn_begin</a> to the appropriate Berkeley DB interfaces, and that each
+<a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a> to the appropriate Berkeley DB interfaces, and that each
 transaction is eventually committed.
 <p><dt><b>Symptom:</b><dd>Recovery fails.
 <p><dt>Possible Cause:<dd>A database was updated in a transactional environment, both with and

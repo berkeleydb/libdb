@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_locked.c,v 11.22 2001/07/06 20:30:46 bostic Exp $";
+static const char revid[] = "$Id: java_locked.c,v 11.23 2001/07/31 14:29:22 dda Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -38,6 +38,12 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 		(DBT_JAVAINFO *)get_private_dbobj(jnienv, name_DBT, jdbt);
 
 	if (!verify_non_null(jnienv, ldbt->javainfo)) {
+		report_exception(jnienv, "Dbt is gc'ed?", 0, 0);
+		F_SET(ldbt, LOCKED_ERROR);
+		return (EINVAL);
+	}
+	if (F_ISSET(ldbt->javainfo, DBT_JAVAINFO_LOCKED)) {
+		report_exception(jnienv, "Dbt is already in use", 0, 0);
 		F_SET(ldbt, LOCKED_ERROR);
 		return (EINVAL);
 	}
@@ -149,6 +155,7 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 	if (dbt->data == NULL)
 		dbt->size = dbt->ulen = 0;
 
+	F_SET(ldbt->javainfo, DBT_JAVAINFO_LOCKED);
 	return (0);
 }
 
@@ -236,6 +243,7 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 	 */
 	(*jnienv)->SetIntField(jnienv, ldbt->jdbt, fid_Dbt_size, dbt->size);
 	ldbt->javainfo->array = NULL;
+	F_CLR(ldbt->javainfo, DBT_JAVAINFO_LOCKED);
 }
 
 /* Realloc the java array to receive data if the DBT used

@@ -1,4 +1,4 @@
-<!--$Id: test.so,v 10.32 2001/04/29 17:26:07 bostic Exp $-->
+<!--$Id: test.so,v 10.33 2001/10/31 21:40:23 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -17,15 +17,8 @@
 <h1 align=center>Running the test suite under Windows</h1>
 <p>To build the test suite on Win32 platforms, you will need to configure
 Tcl support.  You will also need sufficient main memory (at least 64MB),
-and disk (around 100MB of disk will be sufficient).
+and disk (around 250MB of disk will be sufficient).
 <h3>Building the software needed by the tests</h3>
-<p>There are bugs in some versions of Tcl that may cause the test suite
-to hang on Windows/NT 4.0.  Tcl version 8.4 (currently available as an
-alpha release) has fixed the problem, or there are patches available
-for Tcl 8.3.2 (see bug #119188 in the Tcl SourceForge database).  Note
-that if you want to run the test suite against a Debug version of Berkeley DB,
-you need to build a Debug version of Tcl.  This involves building Tcl
-from its source.
 <p>To build, perform the following steps.  Note that steps #1, #4, and #5
 are part of the normal build process for building Berkeley DB; #2, #3 are part
 of including the Tcl API.
@@ -52,6 +45,9 @@ even though dbkill is just one of the things that is built.
 This step builds the base Berkeley DB .dll, tcl support,
 and various tools that are needed by the test suite.
 </ol>
+<p>Note that if you want to run the test suite against a Debug version of
+Berkeley DB, you need to build a Debug version of Tcl.  This involves building
+Tcl from its source.
 <h3>Running the test suite under Windows</h3>
 <p>Before running the tests for the first time, you must edit the file
 <b>include.tcl</b> in your build directory and change the line

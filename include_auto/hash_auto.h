@@ -31,18 +31,6 @@ typedef struct _ham_newpage_args {
 	DB_LSN	nextlsn;
 } __ham_newpage_args;
 
-#define	DB_ham_splitmeta	23
-typedef struct _ham_splitmeta_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	u_int32_t	bucket;
-	u_int32_t	ovflpoint;
-	u_int32_t	spares;
-	DB_LSN	metalsn;
-} __ham_splitmeta_args;
-
 #define	DB_ham_splitdata	24
 typedef struct _ham_splitdata_args {
 	u_int32_t type;
@@ -70,35 +58,6 @@ typedef struct _ham_replace_args {
 	u_int32_t	makedup;
 } __ham_replace_args;
 
-#define	DB_ham_newpgno	26
-typedef struct _ham_newpgno_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	u_int32_t	opcode;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	db_pgno_t	free_pgno;
-	u_int32_t	old_type;
-	db_pgno_t	old_pgno;
-	u_int32_t	new_type;
-	DB_LSN	pagelsn;
-	DB_LSN	metalsn;
-} __ham_newpgno_args;
-
-#define	DB_ham_ovfl	27
-typedef struct _ham_ovfl_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	start_pgno;
-	u_int32_t	npages;
-	db_pgno_t	free_pgno;
-	u_int32_t	ovflpoint;
-	DB_LSN	metalsn;
-} __ham_ovfl_args;
-
 #define	DB_ham_copypage	28
 typedef struct _ham_copypage_args {
 	u_int32_t type;
@@ -121,36 +80,14 @@ typedef struct _ham_metagroup_args {
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	u_int32_t	bucket;
-	db_pgno_t	pgno;
-	DB_LSN	metalsn;
-	DB_LSN	pagelsn;
-} __ham_metagroup_args;
-
-#define	DB_ham_groupalloc1	30
-typedef struct _ham_groupalloc1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DB_LSN	metalsn;
+	db_pgno_t	mmpgno;
 	DB_LSN	mmetalsn;
-	db_pgno_t	start_pgno;
-	u_int32_t	num;
-} __ham_groupalloc1_args;
-
-#define	DB_ham_groupalloc2	31
-typedef struct _ham_groupalloc2_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	DB_LSN	meta_lsn;
-	DB_LSN	alloc_lsn;
-	db_pgno_t	start_pgno;
-	u_int32_t	num;
-	db_pgno_t	free;
-} __ham_groupalloc2_args;
+	db_pgno_t	mpgno;
+	DB_LSN	metalsn;
+	db_pgno_t	pgno;
+	DB_LSN	pagelsn;
+	u_int32_t	newalloc;
+} __ham_metagroup_args;
 
 #define	DB_ham_groupalloc	32
 typedef struct _ham_groupalloc_args {

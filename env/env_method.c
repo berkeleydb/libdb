@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_method.c,v 11.44 2001/05/05 14:30:23 bostic Exp $";
+static const char revid[] = "$Id: env_method.c,v 11.58 2001/10/30 21:39:50 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -35,6 +35,7 @@ static const char revid[] = "$Id: env_method.c,v 11.44 2001/05/05 14:30:23 bosti
 #include "lock.h"
 #include "log.h"
 #include "mp.h"
+#include "rep.h"
 #include "txn.h"
 
 #ifdef HAVE_RPC
@@ -52,14 +53,12 @@ static void __dbenv_set_errfile __P((DB_ENV *, FILE *));
 static void __dbenv_set_errpfx __P((DB_ENV *, const char *));
 static int  __dbenv_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
 static int  __dbenv_set_flags __P((DB_ENV *, u_int32_t, int));
-static int  __dbenv_set_mutexlocks __P((DB_ENV *, int));
 static int  __dbenv_set_paniccall __P((DB_ENV *, void (*)(DB_ENV *, int)));
 static int  __dbenv_set_recovery_init __P((DB_ENV *, int (*)(DB_ENV *)));
 static int  __dbenv_set_rpc_server_noclnt
     __P((DB_ENV *, void *, const char *, long, long, u_int32_t));
-static int  __dbenv_set_server_noclnt
-    __P((DB_ENV *, const char *, long, long, u_int32_t));
 static int  __dbenv_set_shm_key __P((DB_ENV *, long));
+static int  __dbenv_set_tas_spins __P((DB_ENV *, u_int32_t));
 static int  __dbenv_set_tmp_dir __P((DB_ENV *, const char *));
 static int  __dbenv_set_verbose __P((DB_ENV *, u_int32_t, int));
 
@@ -78,6 +77,11 @@ db_env_create(dbenvpp, flags)
 	int ret;
 
 	/*
+	 * !!!
+	 * Our caller has not yet had the opportunity to reset the panic
+	 * state or turn off mutex locking, and so we can neither check
+	 * the panic state or acquire a mutex in the DB_ENV create path.
+	 *
 	 * !!!
 	 * We can't call the flags-checking routines, we don't have an
 	 * environment yet.
@@ -112,6 +116,11 @@ __dbenv_init(dbenv)
 	DB_ENV *dbenv;
 {
 	/*
+	 * !!!
+	 * Our caller has not yet had the opportunity to reset the panic
+	 * state or turn off mutex locking, and so we can neither check
+	 * the panic state or acquire a mutex in the DB_ENV create path.
+	 *
 	 * Set up methods that are the same in both normal and RPC
 	 */
 	dbenv->err = __dbenv_err;
@@ -129,12 +138,12 @@ __dbenv_init(dbenv)
 		dbenv->set_data_dir = __dbcl_set_data_dir;
 		dbenv->set_feedback = __dbcl_env_set_feedback;
 		dbenv->set_flags = __dbcl_env_flags;
-		dbenv->set_mutexlocks = __dbcl_set_mutex_locks;
 		dbenv->set_paniccall = __dbcl_env_paniccall;
 		dbenv->set_recovery_init = __dbcl_set_recovery_init;
 		dbenv->set_rpc_server = __dbcl_envrpcserver;
-		dbenv->set_server = __dbcl_envserver;
 		dbenv->set_shm_key = __dbcl_set_shm_key;
+		dbenv->set_tas_spins = __dbcl_set_tas_spins;
+		dbenv->set_timeout = __dbcl_set_timeout;
 		dbenv->set_tmp_dir = __dbcl_set_tmp_dir;
 		dbenv->set_verbose = __dbcl_set_verbose;
 	} else {
@@ -146,24 +155,23 @@ __dbenv_init(dbenv)
 		dbenv->set_data_dir = __dbenv_set_data_dir;
 		dbenv->set_feedback = __dbenv_set_feedback;
 		dbenv->set_flags = __dbenv_set_flags;
-		dbenv->set_mutexlocks = __dbenv_set_mutexlocks;
 		dbenv->set_paniccall = __dbenv_set_paniccall;
 		dbenv->set_recovery_init = __dbenv_set_recovery_init;
 		dbenv->set_rpc_server = __dbenv_set_rpc_server_noclnt;
-		dbenv->set_server = __dbenv_set_server_noclnt;
 		dbenv->set_shm_key = __dbenv_set_shm_key;
+		dbenv->set_tas_spins = __dbenv_set_tas_spins;
 		dbenv->set_tmp_dir = __dbenv_set_tmp_dir;
 		dbenv->set_verbose = __dbenv_set_verbose;
 #ifdef	HAVE_RPC
 	}
 #endif
 	dbenv->shm_key = INVALID_REGION_SEGID;
-	dbenv->db_mutexlocks = 1;
 	dbenv->db_ref = 0;
 
 	__log_dbenv_create(dbenv);		/* Subsystem specific. */
 	__lock_dbenv_create(dbenv);
 	__memp_dbenv_create(dbenv);
+	__rep_dbenv_create(dbenv);
 	__txn_dbenv_create(dbenv);
 
 	return (0);
@@ -243,10 +251,12 @@ __dbenv_set_flags(dbenv, flags, onoff)
 	u_int32_t flags;
 	int onoff;
 {
-#define	OK_FLAGS	(DB_CDB_ALLDB | DB_NOMMAP | DB_TXN_NOSYNC)
+#define	OK_FLAGS							\
+	(DB_CDB_ALLDB | DB_NOLOCKING | DB_NOMMAP | DB_NOPANIC |		\
+	 DB_PANIC_ENVIRONMENT | DB_REGION_INIT | DB_TXN_NOSYNC | DB_YIELDCPU)
 
 	if (LF_ISSET(~OK_FLAGS))
-		return (__db_ferr(dbenv, "DBENV->set_flags", 0));
+		return (__db_ferr(dbenv, "DB_ENV->set_flags", 0));
 
 	if (LF_ISSET(DB_CDB_ALLDB)) {
 		ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_flags: DB_CDB_ALLDB");
@@ -255,17 +265,47 @@ __dbenv_set_flags(dbenv, flags, onoff)
 		else
 			F_CLR(dbenv, DB_ENV_CDB_ALLDB);
 	}
+	if (LF_ISSET(DB_NOLOCKING)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_NOLOCKING);
+		else
+			F_CLR(dbenv, DB_ENV_NOLOCKING);
+	}
 	if (LF_ISSET(DB_NOMMAP)) {
 		if (onoff)
 			F_SET(dbenv, DB_ENV_NOMMAP);
 		else
 			F_CLR(dbenv, DB_ENV_NOMMAP);
 	}
+	if (LF_ISSET(DB_NOPANIC)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_NOPANIC);
+		else
+			F_CLR(dbenv, DB_ENV_NOPANIC);
+	}
+	if (LF_ISSET(DB_PANIC_ENVIRONMENT)) {
+		ENV_ILLEGAL_BEFORE_OPEN(dbenv,
+		    "set_flags: DB_PANIC_ENVIRONMENT");
+		PANIC_SET(dbenv, onoff);
+	}
+	if (LF_ISSET(DB_REGION_INIT)) {
+		ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_flags: DB_REGION_INIT");
+		if (onoff)
+			F_SET(dbenv, DB_ENV_REGION_INIT);
+		else
+			F_CLR(dbenv, DB_ENV_REGION_INIT);
+	}
 	if (LF_ISSET(DB_TXN_NOSYNC)) {
 		if (onoff)
 			F_SET(dbenv, DB_ENV_TXN_NOSYNC);
 		else
 			F_CLR(dbenv, DB_ENV_TXN_NOSYNC);
+	}
+	if (LF_ISSET(DB_YIELDCPU)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_YIELDCPU);
+		else
+			F_CLR(dbenv, DB_ENV_YIELDCPU);
 	}
 	return (0);
 }
@@ -328,15 +368,6 @@ __dbenv_set_feedback(dbenv, feedback)
 }
 
 static int
-__dbenv_set_mutexlocks(dbenv, onoff)
-	DB_ENV *dbenv;
-	int onoff;
-{
-	dbenv->db_mutexlocks = onoff;
-	return (0);
-}
-
-static int
 __dbenv_set_paniccall(dbenv, paniccall)
 	DB_ENV *dbenv;
 	void (*paniccall) __P((DB_ENV *, int));
@@ -369,6 +400,15 @@ __dbenv_set_shm_key(dbenv, shm_key)
 }
 
 static int
+__dbenv_set_tas_spins(dbenv, tas_spins)
+	DB_ENV *dbenv;
+	u_int32_t tas_spins;
+{
+	dbenv->tas_spins = tas_spins;
+	return (0);
+}
+
+static int
 __dbenv_set_tmp_dir(dbenv, dir)
 	DB_ENV *dbenv;
 	const char *dir;
@@ -388,6 +428,7 @@ __dbenv_set_verbose(dbenv, which, onoff)
 	case DB_VERB_CHKPOINT:
 	case DB_VERB_DEADLOCK:
 	case DB_VERB_RECOVERY:
+	case DB_VERB_REPLICATION:
 	case DB_VERB_WAITSFOR:
 		if (onoff)
 			FLD_SET(dbenv->verbose, which);
@@ -485,21 +526,5 @@ __dbenv_set_rpc_server_noclnt(dbenv, cl, host, tsec, ssec, flags)
 
 	__db_err(dbenv,
 	    "set_rpc_server method meaningless in non-RPC environment");
-	return (__db_eopnotsup(dbenv));
-}
-
-static int
-__dbenv_set_server_noclnt(dbenv, host, tsec, ssec, flags)
-	DB_ENV *dbenv;
-	const char *host;
-	long tsec, ssec;
-	u_int32_t flags;
-{
-	COMPQUIET(host, NULL);
-	COMPQUIET(tsec, 0);
-	COMPQUIET(ssec, 0);
-	COMPQUIET(flags, 0);
-
-	__db_err(dbenv, "set_server method meaningless in non-RPC environment");
 	return (__db_eopnotsup(dbenv));
 }

@@ -3,9 +3,11 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test086.tcl,v 11.4 2001/05/17 20:37:09 bostic Exp $
-
-# Test086: Cursor stability across btree splits w/ subtransaction abort [#2373].
+# $Id: test086.tcl,v 11.5 2001/08/03 16:39:47 bostic Exp $
+#
+# TEST	test086
+# TEST	Test of cursor stability across btree splits/rsplits with
+# TEST	subtransaction aborts (a variant of test048).  [#2373]
 proc test086 { method args } {
 	global errorCode
 	source ./include.tcl

@@ -3,12 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd015.tcl,v 1.8 2001/05/17 20:37:06 bostic Exp $
+# $Id: recd015.tcl,v 1.10 2001/08/03 16:39:28 bostic Exp $
 #
-# Recovery Test 15.
-# This is a recovery test for testing lots of prepared txns.
-# This test is to force the use of txn_recover to call with the
-# DB_FIRST flag and then DB_NEXT.
+# TEST	recd015
+# TEST	This is a recovery test for testing lots of prepared txns.
+# TEST	This test is to force the use of txn_recover to call with the
+# TEST	DB_FIRST flag and then DB_NEXT.
 proc recd015 { method args } {
 	source ./include.tcl
 
@@ -71,7 +71,7 @@ proc recd015_body { env_cmd testfile numtxns msg op } {
 	set proclist {}
 	puts "$msg.0: Executing child script to prepare txns"
 	berkdb debug_check
-	set p [exec $tclsh_path $test_path/wrap.tcl recd15script.tcl \
+	set p [exec $tclsh_path $test_path/wrap.tcl recd15scr.tcl \
 	    $testdir/recdout $env_cmd $testfile $gidf $numtxns &]
 
 	lappend proclist $p

@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: Db.java,v 11.60 2001/07/02 01:03:21 bostic Exp $
+ * $Id: Db.java,v 11.79 2001/11/17 17:04:59 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -36,13 +36,19 @@ public class Db
     public static final int DB_PAGE_NOTFOUND = -30988;
     public static final int DB_QUEUE = 4;
     public static final int DB_RECNO = 3;
-    public static final int DB_RUNRECOVERY = -30987;
-    public static final int DB_SECONDARY_BAD = -30986;
+    public static final int DB_REP_DUPMASTER = -30987;
+    public static final int DB_REP_HOLDELECTION = -30986;
+    public static final int DB_REP_NEWMASTER = -30985;
+    public static final int DB_REP_NEWSITE = -30984;
+    public static final int DB_REP_OUTDATED = -30983;
+    public static final int DB_RUNRECOVERY = -30981;
+    public static final int DB_SECONDARY_BAD = -30980;
     public static final int DB_TXN_ABORT = 0;
-    public static final int DB_TXN_BACKWARD_ROLL = 1;
-    public static final int DB_TXN_FORWARD_ROLL = 2;
+    public static final int DB_TXN_APPLY = 1;
+    public static final int DB_TXN_BACKWARD_ROLL = 2;
+    public static final int DB_TXN_FORWARD_ROLL = 3;
     public static final int DB_UNKNOWN = 5;
-    public static final int DB_VERIFY_BAD = -30985;
+    public static final int DB_VERIFY_BAD = -30979;
     public static final int DB_AFTER;
     public static final int DB_AGGRESSIVE;
     public static final int DB_APPEND;
@@ -67,12 +73,15 @@ public class Db
     public static final int DB_DIRTY_READ;
     public static final int DB_DUP;
     public static final int DB_DUPSORT;
+    public static final int DB_EID_BROADCAST;
+    public static final int DB_EID_INVALID;
     public static final int DB_EXCL;
     public static final int DB_FAST_STAT;
     public static final int DB_FIRST;
     public static final int DB_FLUSH;
     public static final int DB_FORCE;
     public static final int DB_GET_BOTH;
+    public static final int DB_GET_BOTH_RANGE;
     public static final int DB_GET_RECNO;
     public static final int DB_INIT_CDB;
     public static final int DB_INIT_LOCK;
@@ -87,7 +96,9 @@ public class Db
     public static final int DB_LAST;
     public static final int DB_LOCKDOWN;
     public static final int DB_LOCK_DEFAULT;
+    public static final int DB_LOCK_EXPIRE;
     public static final int DB_LOCK_GET;
+    public static final int DB_LOCK_GET_TIMEOUT;
     public static final int DB_LOCK_IREAD;
     public static final int DB_LOCK_IWR;
     public static final int DB_LOCK_IWRITE;
@@ -101,6 +112,7 @@ public class Db
     public static final int DB_LOCK_PUT_OBJ;
     public static final int DB_LOCK_RANDOM;
     public static final int DB_LOCK_READ;
+    public static final int DB_LOCK_TIMEOUT;
     public static final int DB_LOCK_WRITE;
     public static final int DB_LOCK_YOUNGEST;
     public static final int DB_MULTIPLE;
@@ -109,11 +121,15 @@ public class Db
     public static final int DB_NEXT_DUP;
     public static final int DB_NEXT_NODUP;
     public static final int DB_NODUPDATA;
+    public static final int DB_NOLOCKING;
     public static final int DB_NOMMAP;
     public static final int DB_NOORDERCHK;
     public static final int DB_NOOVERWRITE;
+    public static final int DB_NOPANIC;
     public static final int DB_NOSYNC;
+    public static final int DB_ODDFILESIZE;
     public static final int DB_ORDERCHKONLY;
+    public static final int DB_PANIC_ENVIRONMENT;
     public static final int DB_POSITION;
     public static final int DB_PREV;
     public static final int DB_PREV_NODUP;
@@ -123,14 +139,23 @@ public class Db
     public static final int DB_RECORDCOUNT;
     public static final int DB_RECOVER;
     public static final int DB_RECOVER_FATAL;
+    public static final int DB_REGION_INIT;
     public static final int DB_RENUMBER;
+    public static final int DB_REP_CLIENT;
+    public static final int DB_REP_LOGSONLY;
+    public static final int DB_REP_MASTER;
+    public static final int DB_REP_PERMANENT;
+    public static final int DB_REP_UNAVAIL;
     public static final int DB_REVSPLITOFF;
     public static final int DB_RMW;
     public static final int DB_SALVAGE;
     public static final int DB_SET;
+    public static final int DB_SET_LOCK_TIMEOUT;
     public static final int DB_SET_RANGE;
     public static final int DB_SET_RECNO;
+    public static final int DB_SET_TXN_TIMEOUT;
     public static final int DB_SNAPSHOT;
+    public static final int DB_STAT_CLEAR;
     public static final int DB_SYSTEM_MEM;
     public static final int DB_THREAD;
     public static final int DB_TRUNCATE;
@@ -143,6 +168,7 @@ public class Db
     public static final int DB_VERB_CHKPOINT;
     public static final int DB_VERB_DEADLOCK;
     public static final int DB_VERB_RECOVERY;
+    public static final int DB_VERB_REPLICATION;
     public static final int DB_VERB_WAITSFOR;
     public static final int DB_VERIFY;
     public static final int DB_VERSION_MAJOR;
@@ -151,6 +177,7 @@ public class Db
     public static final int DB_WRITECURSOR;
     public static final int DB_XA_CREATE;
     public static final int DB_XIDDATASIZE;
+    public static final int DB_YIELDCPU;
     // END-JAVA-SPECIAL-CONSTANTS
 
     // Note: the env can be null
@@ -202,14 +229,16 @@ public class Db
     public synchronized int close(int flags)
         throws DbException
     {
-        int err;
-
-        dbenv_._remove_db(this);
-        err = _close(flags);
-        if (constructor_env_ == null) {
-            dbenv_._notify_db_close();
+        try {
+            dbenv_._remove_db(this);
+            return _close(flags);
         }
-        return err;
+        finally {
+            if (constructor_env_ == null) {
+                dbenv_._notify_db_close();
+            }
+            dbenv_ = null;
+        }
     }
 
     public native int _close(int flags)
@@ -276,13 +305,44 @@ public class Db
     public native int put(DbTxn txnid, Dbt key, Dbt data, int flags)
          throws DbException;
 
-    public synchronized native void rename(String file, String database,
-                                           String newname, int flags)
-         throws DbException, FileNotFoundException;
+    public synchronized void rename(String file, String database,
+                                    String newname, int flags)
+        throws DbException, FileNotFoundException
+    {
+        try {
+            _rename(file, database, newname, flags);
+        }
+        finally {
+            if (constructor_env_ == null) {
+                dbenv_._notify_db_close();
+            }
+            dbenv_ = null;
+        }
+    }
 
-    public synchronized native void remove(String file, String database,
+    public native void _rename(String file, String database,
+                               String newname, int flags)
+        throws DbException, FileNotFoundException;
+
+
+    public synchronized void remove(String file, String database,
                                            int flags)
-         throws DbException, FileNotFoundException;
+        throws DbException, FileNotFoundException
+    {
+        try {
+            _remove(file, database, flags);
+        }
+        finally {
+            if (constructor_env_ == null) {
+                dbenv_._notify_db_close();
+            }
+            dbenv_ = null;
+        }
+    }
+
+    public native void _remove(String file, String database,
+                               int flags)
+        throws DbException, FileNotFoundException;
 
     // Comparison function.
     public void set_append_recno(DbAppendRecno append_recno)
@@ -533,12 +593,15 @@ public class Db
         DB_DIRTY_READ = DbConstants.DB_DIRTY_READ;
         DB_DUP = DbConstants.DB_DUP;
         DB_DUPSORT = DbConstants.DB_DUPSORT;
+        DB_EID_BROADCAST = DbConstants.DB_EID_BROADCAST;
+        DB_EID_INVALID = DbConstants.DB_EID_INVALID;
         DB_EXCL = DbConstants.DB_EXCL;
         DB_FAST_STAT = DbConstants.DB_FAST_STAT;
         DB_FIRST = DbConstants.DB_FIRST;
         DB_FLUSH = DbConstants.DB_FLUSH;
         DB_FORCE = DbConstants.DB_FORCE;
         DB_GET_BOTH = DbConstants.DB_GET_BOTH;
+        DB_GET_BOTH_RANGE = DbConstants.DB_GET_BOTH_RANGE;
         DB_GET_RECNO = DbConstants.DB_GET_RECNO;
         DB_INIT_CDB = DbConstants.DB_INIT_CDB;
         DB_INIT_LOCK = DbConstants.DB_INIT_LOCK;
@@ -553,7 +616,9 @@ public class Db
         DB_LAST = DbConstants.DB_LAST;
         DB_LOCKDOWN = DbConstants.DB_LOCKDOWN;
         DB_LOCK_DEFAULT = DbConstants.DB_LOCK_DEFAULT;
+        DB_LOCK_EXPIRE = DbConstants.DB_LOCK_EXPIRE;
         DB_LOCK_GET = DbConstants.DB_LOCK_GET;
+        DB_LOCK_GET_TIMEOUT = DbConstants.DB_LOCK_GET_TIMEOUT;
         DB_LOCK_IREAD = DbConstants.DB_LOCK_IREAD;
         DB_LOCK_IWR = DbConstants.DB_LOCK_IWR;
         DB_LOCK_IWRITE = DbConstants.DB_LOCK_IWRITE;
@@ -567,6 +632,7 @@ public class Db
         DB_LOCK_PUT_OBJ = DbConstants.DB_LOCK_PUT_OBJ;
         DB_LOCK_RANDOM = DbConstants.DB_LOCK_RANDOM;
         DB_LOCK_READ = DbConstants.DB_LOCK_READ;
+        DB_LOCK_TIMEOUT = DbConstants.DB_LOCK_TIMEOUT;
         DB_LOCK_WRITE = DbConstants.DB_LOCK_WRITE;
         DB_LOCK_YOUNGEST = DbConstants.DB_LOCK_YOUNGEST;
         DB_MULTIPLE = DbConstants.DB_MULTIPLE;
@@ -575,11 +641,15 @@ public class Db
         DB_NEXT_DUP = DbConstants.DB_NEXT_DUP;
         DB_NEXT_NODUP = DbConstants.DB_NEXT_NODUP;
         DB_NODUPDATA = DbConstants.DB_NODUPDATA;
+        DB_NOLOCKING = DbConstants.DB_NOLOCKING;
         DB_NOMMAP = DbConstants.DB_NOMMAP;
         DB_NOORDERCHK = DbConstants.DB_NOORDERCHK;
         DB_NOOVERWRITE = DbConstants.DB_NOOVERWRITE;
+        DB_NOPANIC = DbConstants.DB_NOPANIC;
         DB_NOSYNC = DbConstants.DB_NOSYNC;
+        DB_ODDFILESIZE = DbConstants.DB_ODDFILESIZE;
         DB_ORDERCHKONLY = DbConstants.DB_ORDERCHKONLY;
+        DB_PANIC_ENVIRONMENT = DbConstants.DB_PANIC_ENVIRONMENT;
         DB_POSITION = DbConstants.DB_POSITION;
         DB_PREV = DbConstants.DB_PREV;
         DB_PREV_NODUP = DbConstants.DB_PREV_NODUP;
@@ -589,14 +659,23 @@ public class Db
         DB_RECORDCOUNT = DbConstants.DB_RECORDCOUNT;
         DB_RECOVER = DbConstants.DB_RECOVER;
         DB_RECOVER_FATAL = DbConstants.DB_RECOVER_FATAL;
+        DB_REGION_INIT = DbConstants.DB_REGION_INIT;
         DB_RENUMBER = DbConstants.DB_RENUMBER;
+        DB_REP_CLIENT = DbConstants.DB_REP_CLIENT;
+        DB_REP_LOGSONLY = DbConstants.DB_REP_LOGSONLY;
+        DB_REP_MASTER = DbConstants.DB_REP_MASTER;
+        DB_REP_PERMANENT = DbConstants.DB_REP_PERMANENT;
+        DB_REP_UNAVAIL = DbConstants.DB_REP_UNAVAIL;
         DB_REVSPLITOFF = DbConstants.DB_REVSPLITOFF;
         DB_RMW = DbConstants.DB_RMW;
         DB_SALVAGE = DbConstants.DB_SALVAGE;
         DB_SET = DbConstants.DB_SET;
+        DB_SET_LOCK_TIMEOUT = DbConstants.DB_SET_LOCK_TIMEOUT;
         DB_SET_RANGE = DbConstants.DB_SET_RANGE;
         DB_SET_RECNO = DbConstants.DB_SET_RECNO;
+        DB_SET_TXN_TIMEOUT = DbConstants.DB_SET_TXN_TIMEOUT;
         DB_SNAPSHOT = DbConstants.DB_SNAPSHOT;
+        DB_STAT_CLEAR = DbConstants.DB_STAT_CLEAR;
         DB_SYSTEM_MEM = DbConstants.DB_SYSTEM_MEM;
         DB_THREAD = DbConstants.DB_THREAD;
         DB_TRUNCATE = DbConstants.DB_TRUNCATE;
@@ -609,6 +688,7 @@ public class Db
         DB_VERB_CHKPOINT = DbConstants.DB_VERB_CHKPOINT;
         DB_VERB_DEADLOCK = DbConstants.DB_VERB_DEADLOCK;
         DB_VERB_RECOVERY = DbConstants.DB_VERB_RECOVERY;
+        DB_VERB_REPLICATION = DbConstants.DB_VERB_REPLICATION;
         DB_VERB_WAITSFOR = DbConstants.DB_VERB_WAITSFOR;
         DB_VERIFY = DbConstants.DB_VERIFY;
         DB_VERSION_MAJOR = DbConstants.DB_VERSION_MAJOR;
@@ -617,6 +697,7 @@ public class Db
         DB_WRITECURSOR = DbConstants.DB_WRITECURSOR;
         DB_XA_CREATE = DbConstants.DB_XA_CREATE;
         DB_XIDDATASIZE = DbConstants.DB_XIDDATASIZE;
+        DB_YIELDCPU = DbConstants.DB_YIELDCPU;
         // END-JAVA-CONSTANT-INITIALIZATION
 
         one_time_init();

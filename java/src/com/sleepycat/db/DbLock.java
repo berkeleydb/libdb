@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: DbLock.java,v 11.6 2001/05/16 13:09:28 bostic Exp $
+ * $Id: DbLock.java,v 11.7 2001/07/26 23:22:34 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -17,11 +17,6 @@ public class DbLock
 {
     protected native void finalize()
          throws Throwable;
-
-    // methods
-    //
-    public native void put(DbEnv env)
-         throws DbException;
 
     // get/set methods
     //

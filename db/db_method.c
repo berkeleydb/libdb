@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_method.c,v 11.54 2001/07/12 16:31:46 sue Exp $";
+static const char revid[] = "$Id: db_method.c,v 11.55 2001/09/20 17:02:25 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -484,6 +484,7 @@ __db_set_alloc(dbp, mal_func, real_func, free_func)
 	void *(*real_func) __P((void *, size_t));
 	void (*free_func) __P((void *));
 {
+	DB_ILLEGAL_IN_ENV(dbp, "set_alloc");
 	DB_ILLEGAL_AFTER_OPEN(dbp, "set_alloc");
 
 	return (dbp->dbenv->set_alloc(dbp->dbenv,

@@ -15,14 +15,6 @@ extern "C" {
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_finalize
   (JNIEnv *, jobject);
 
-/*
- * Class:     com_sleepycat_db_DbLock
- * Method:    put
- * Signature: (Lcom/sleepycat/db/DbEnv;)V
- */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_put
-  (JNIEnv *, jobject, jobject);
-
 #ifdef __cplusplus
 }
 #endif

@@ -1,4 +1,4 @@
-<!--$Id: faq.so,v 1.4 2001/05/22 01:00:36 bostic Exp $-->
+<!--$Id: faq.so,v 1.5 2001/10/29 08:44:06 mjc Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,6 +23,14 @@ message.</b>
 of the JDK.  Please upgrade to the latest release of the JDK, and, if
 that does not solve the problem, disable big file support using the
 --disable-largefile configuration option.
+<p><li><b>How can I use native methods from a debug build of the
+Java library?</b>
+<p>The Berkeley DB Java code checks a system property for the library name
+before defaulting to the released library. On Windows, run as
+follows (note the 'd' at the end):
+<p><blockquote><pre>% java -Dsleepycat.db.libname=libdb_java-VERSIONd</pre></blockquote>
+<p>On UNIX, try:
+<p><blockquote><pre>% java -Dsleepycat.db.libname=db_java_g-VERSION</pre></blockquote>
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/java/program.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/perl/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

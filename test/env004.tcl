@@ -3,11 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env004.tcl,v 11.15 2001/01/25 18:23:04 bostic Exp $
+# $Id: env004.tcl,v 11.16 2001/08/03 16:39:24 bostic Exp $
 #
-# Env Test 4
-# Test multiple data directories.  Do a bunch of different opens
-# to make sure that the files are detected in different directories.
+# TEST	env004
+# TEST	Test multiple data directories.  Do a bunch of different opens
+# TEST	to make sure that the files are detected in different directories.
 proc env004 { } {
 	source ./include.tcl
 

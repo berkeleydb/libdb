@@ -3,15 +3,18 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test014.tcl,v 11.20 2001/01/25 18:23:09 bostic Exp $
+# $Id: test014.tcl,v 11.22 2001/08/03 16:39:34 bostic Exp $
 #
-# DB Test 14 {access method}
-#
-# Partial put test, small data, replacing with same size.  The data set
-# consists of the first nentries of the dictionary.  We will insert them
-# (and retrieve them) as we do in test 1 (equal key/data pairs).  Then
-# we'll try to perform partial puts of some characters at the beginning,
-# some at the end, and some at the middle.
+# TEST	test014
+# TEST	Exercise partial puts on short data
+# TEST		Run 5 combinations of numbers of characters to replace,
+# TEST		and number of times to increase the size by.
+# TEST
+# TEST	Partial put test, small data, replacing with same size.  The data set
+# TEST	consists of the first nentries of the dictionary.  We will insert them
+# TEST	(and retrieve them) as we do in test 1 (equal key/data pairs).  Then
+# TEST	we'll try to perform partial puts of some characters at the beginning,
+# TEST	some at the end, and some at the middle.
 proc test014 { method {nentries 10000} args } {
 	set fixed 0
 	set args [convert_args $method $args]
@@ -89,7 +92,7 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set gflags ""

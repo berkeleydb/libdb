@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_env.c,v 11.39 2001/06/08 13:47:09 sue Exp $";
+static const char revid[] = "$Id: tcl_env.c,v 11.56 2001/11/16 16:19:54 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,6 +27,12 @@ static const char revid[] = "$Id: tcl_env.c,v 11.39 2001/06/08 13:47:09 sue Exp 
  */
 static void	_EnvInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 
+/* XXX These should really go in a new tcl_rep.c. */
+static int	tcl_RepElect __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
+		    DB_ENV *));
+static int	tcl_RepProcessMessage __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
+		    DB_ENV *));
+
 /*
  * PUBLIC: int env_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  *
@@ -44,11 +50,17 @@ env_Cmd(clientData, interp, objc, objv)
 		"close",
 		"lock_detect",
 		"lock_id",
+		"lock_id_free",
+#if	CONFIG_TEST
+		"lock_id_set",
+#endif
 		"lock_get",
 		"lock_stat",
+		"lock_timeout",
 		"lock_vec",
 		"log_archive",
 		"log_compare",
+		"log_cursor",
 		"log_file",
 		"log_flush",
 		"log_get",
@@ -61,13 +73,19 @@ env_Cmd(clientData, interp, objc, objv)
 		"mpool_sync",
 		"mpool_trickle",
 		"mutex",
+		"rep_elect",
+		"rep_process_message",
 #if	CONFIG_TEST
 		"test",
 #endif
 		"txn",
 		"txn_checkpoint",
+#if	CONFIG_TEST
+		"txn_id_set",
+#endif
 		"txn_recover",
 		"txn_stat",
+		"txn_timeout",
 		"verbose",
 		NULL
 	};
@@ -75,11 +93,17 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVCLOSE,
 		ENVLKDETECT,
 		ENVLKID,
+		ENVLKFREEID,
+#if	CONFIG_TEST
+		ENVLKSETID,
+#endif
 		ENVLKGET,
 		ENVLKSTAT,
+		ENVLKTIMEOUT,
 		ENVLKVEC,
 		ENVLOGARCH,
 		ENVLOGCMP,
+		ENVLOGCURSOR,
 		ENVLOGFILE,
 		ENVLOGFLUSH,
 		ENVLOGGET,
@@ -92,25 +116,37 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVMPSYNC,
 		ENVTRICKLE,
 		ENVMUTEX,
+		ENVREPELECT,
+		ENVREPPROCMESS,
 #if	CONFIG_TEST
 		ENVTEST,
 #endif
 		ENVTXN,
 		ENVTXNCKP,
+#if	CONFIG_TEST
+		ENVTXNSETID,
+#endif
 		ENVTXNRECOVER,
 		ENVTXNSTAT,
+		ENVTXNTIMEOUT,
 		ENVVERB
 	};
-	DBTCL_INFO *envip;
+	DBTCL_INFO *envip, *logcip;
 	DB_ENV *envp;
+	DB_LOGC *logc;
 	Tcl_Obj *res;
-	u_int32_t newval;
+	char newname[MSG_SIZE];
 	int cmdindex, result, ret;
+	u_int32_t newval;
+#if CONFIG_TEST
+	u_int32_t otherval;
+#endif
 
 	Tcl_ResetResult(interp);
 	envp = (DB_ENV *)clientData;
 	envip = _PtrToInfo((void *)envp);
 	result = TCL_OK;
+	memset(newname, 0, MSG_SIZE);
 
 	if (objc <= 1) {
 		Tcl_WrongNumArgs(interp, 1, objv, "command cmdargs");
@@ -162,6 +198,9 @@ env_Cmd(clientData, interp, objc, objv)
 	case ENVLKSTAT:
 		result = tcl_LockStat(interp, objc, objv, envp);
 		break;
+	case ENVLKTIMEOUT:
+		result = tcl_LockTimeout(interp, objc, objv, envp);
+		break;
 	case ENVLKID:
 		/*
 		 * No args for this.  Error if there are some.
@@ -171,11 +210,38 @@ env_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = lock_id(envp, &newval);
+		ret = envp->lock_id(envp, &newval);
 		result = _ReturnSetup(interp, ret, "lock_id");
 		if (result == TCL_OK)
-			res = Tcl_NewIntObj((int)newval);
+			res = Tcl_NewLongObj((long)newval);
 		break;
+	case ENVLKFREEID:
+		if (objc != 3) {
+			Tcl_WrongNumArgs(interp, 3, objv, NULL);
+			return (TCL_ERROR);
+		}
+		result = Tcl_GetLongFromObj(interp, objv[2], (long *)&newval);
+		if (result != TCL_OK)
+			return (result);
+		ret = envp->lock_id_free(envp, newval);
+		result = _ReturnSetup(interp, ret, "lock id_free");
+		break;
+#if CONFIG_TEST
+	case ENVLKSETID:
+		if (objc != 4) {
+			Tcl_WrongNumArgs(interp, 4, objv, "current max");
+			return (TCL_ERROR);
+		}
+		result = Tcl_GetLongFromObj(interp, objv[2], (long *)&newval);
+		if (result != TCL_OK)
+			return (result);
+		result = Tcl_GetLongFromObj(interp, objv[3], (long *)&otherval);
+		if (result != TCL_OK)
+			return (result);
+		ret = envp->lock_id_set(envp, newval, otherval);
+		result = _ReturnSetup(interp, ret, "lock id_free");
+		break;
+#endif
 	case ENVLKGET:
 		result = tcl_LockGet(interp, objc, objv, envp);
 		break;
@@ -187,6 +253,37 @@ env_Cmd(clientData, interp, objc, objv)
 		break;
 	case ENVLOGCMP:
 		result = tcl_LogCompare(interp, objc, objv);
+		break;
+	case ENVLOGCURSOR:
+		snprintf(newname, sizeof(newname),
+		    "%s.logc%d", envip->i_name, envip->i_envlogcid);
+		logcip = _NewInfo(interp, NULL, newname, I_LOGC);
+		if (logcip != NULL) {
+			ret = envp->log_cursor(envp, &logc, 0);
+			if (ret == 0) {
+				result = TCL_OK;
+				envip->i_envlogcid++;
+				/*
+				 * We do NOT want to set i_parent to
+				 * envip here because log cursors are
+				 * not "tied" to the env.  That is, they
+				 * are NOT closed if the env is closed.
+				 */
+				Tcl_CreateObjCommand(interp, newname,
+				    (Tcl_ObjCmdProc *)logc_Cmd,
+				    (ClientData)logc, NULL);
+				res =
+				    Tcl_NewStringObj(newname, strlen(newname));
+				_SetInfoData(logcip, logc);
+			} else {
+				_DeleteInfo(logcip);
+				result = _ErrorSetup(interp, ret, "log cursor");
+			}
+		} else {
+			Tcl_SetResult(interp,
+			    "Could not set up info", TCL_STATIC);
+			result = TCL_ERROR;
+		}
 		break;
 	case ENVLOGFILE:
 		result = tcl_LogFile(interp, objc, objv, envp);
@@ -221,14 +318,39 @@ env_Cmd(clientData, interp, objc, objv)
 	case ENVMP:
 		result = tcl_Mp(interp, objc, objv, envp, envip);
 		break;
+	case ENVREPELECT:
+		result = tcl_RepElect(interp, objc, objv, envp);
+		break;
+	case ENVREPPROCMESS:
+		result = tcl_RepProcessMessage(interp, objc, objv, envp);
+		break;
 	case ENVTXNCKP:
 		result = tcl_TxnCheckpoint(interp, objc, objv, envp);
 		break;
+#if CONFIG_TEST
+	case ENVTXNSETID:
+		if (objc != 4) {
+			Tcl_WrongNumArgs(interp, 4, objv, "current max");
+			return (TCL_ERROR);
+		}
+		result = Tcl_GetLongFromObj(interp, objv[2], (long *)&newval);
+		if (result != TCL_OK)
+			return (result);
+		result = Tcl_GetLongFromObj(interp, objv[3], (long *)&otherval);
+		if (result != TCL_OK)
+			return (result);
+		ret = envp->txn_id_set(envp, newval, otherval);
+		result = _ReturnSetup(interp, ret, "lock id_free");
+		break;
+#endif
 	case ENVTXNRECOVER:
 		result = tcl_TxnRecover(interp, objc, objv, envp, envip);
 		break;
 	case ENVTXNSTAT:
 		result = tcl_TxnStat(interp, objc, objv, envp);
+		break;
+	case ENVTXNTIMEOUT:
+		result = tcl_TxnTimeout(interp, objc, objv, envp);
 		break;
 	case ENVTXN:
 		result = tcl_Txn(interp, objc, objv, envp, envip);
@@ -458,7 +580,7 @@ _EnvInfoDelete(interp, envip)
 	 * any open subsystems in this env.  We will:
 	 * 1.  Abort any transactions (which aborts any nested txns).
 	 * 2.  Close any mpools (which will put any pages itself).
-	 * 3.  Put any locks.
+	 * 3.  Put any locks and close log cursors.
 	 * 4.  Close the error file.
 	 */
 	for (p = LIST_FIRST(&__db_infohead); p != NULL; p = nextp) {
@@ -467,6 +589,11 @@ _EnvInfoDelete(interp, envip)
 		 * env.  If so, remove its commands and info structure.
 		 * We do not close/abort/whatever here, because we
 		 * don't want to replicate DB behavior.
+		 *
+		 * NOTE:  Only those types that can nest need to be
+		 * itemized in the switch below.  That is txns and mps.
+		 * Other types like log cursors and locks will just
+		 * get cleaned up here.
 		 */
 		 if (p->i_parent == envip) {
 			switch (p->i_type) {
@@ -682,3 +809,90 @@ tcl_EnvTest(interp, objc, objv, envp)
 	return (result);
 }
 #endif
+
+/*
+ * tcl_RepElect --
+ *	Call DB_ENV->rep_elect().
+ */
+int
+tcl_RepElect(interp, objc, objv, envp)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *envp;			/* Environment pointer */
+{
+	int eid, nsites, pri, result, ret;
+	u_int32_t timeout;
+
+	if (objc != 5) {
+		Tcl_WrongNumArgs(interp, 5, objv, "nsites pri timeout");
+		return (TCL_ERROR);
+	}
+
+	if ((result = Tcl_GetIntFromObj(interp, objv[2], &nsites)) != TCL_OK)
+		return (result);
+	if ((result = Tcl_GetIntFromObj(interp, objv[3], &pri)) != TCL_OK)
+		return (result);
+	if ((result = _GetUInt32(interp, objv[4], &timeout)) != TCL_OK)
+		return (result);
+
+	if ((ret =
+	    envp->rep_elect(envp, nsites, pri, timeout, &eid)) != 0)
+		return (_ReturnSetup(interp, ret, "env rep_elect"));
+
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(eid));
+
+	return (TCL_OK);
+}
+
+/*
+ * tcl_RepProcessMessage --
+ *	Call DB_ENV->rep_process_message().
+ */
+int
+tcl_RepProcessMessage(interp, objc, objv, envp)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *envp;			/* Environment pointer */
+{
+	DBT rec, control;
+	Tcl_Obj *res;
+	int eid;
+	int itmp, result, ret;
+
+	if (objc != 5) {
+		Tcl_WrongNumArgs(interp, 5, objv, "id rec control");
+		return (TCL_ERROR);
+	}
+
+	memset(&rec, 0, sizeof(rec));
+	memset(&control, 0, sizeof(control));
+
+	if ((result = Tcl_GetIntFromObj(interp, objv[2], &eid)) != TCL_OK)
+		return (result);
+
+	control.data = Tcl_GetByteArrayFromObj(objv[3], &itmp);
+	control.size = itmp;
+
+	rec.data = Tcl_GetByteArrayFromObj(objv[4], &itmp);
+	rec.size = itmp;
+
+	ret = envp->rep_process_message(envp, &rec, &control, &eid);
+	result = _ReturnSetup(interp, ret, "env rep_process_message");
+
+	/*
+	 * If we have a new master, return its environment ID.
+	 *
+	 * XXX
+	 * We should do something prettier to differentiate success
+	 * from an env ID, and figure out how to represent HOLDELECTION.
+	 */
+	if (result == TCL_OK && ret == DB_REP_NEWMASTER) {
+		res = Tcl_NewIntObj(eid);
+		Tcl_SetObjResult(interp, res);
+	}
+
+	return (result);
+}
+

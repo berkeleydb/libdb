@@ -3,14 +3,16 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd007.tcl,v 11.45 2001/06/19 18:30:47 sue Exp $
+# $Id: recd007.tcl,v 11.47 2001/08/03 16:39:27 bostic Exp $
 #
-# Recovery Test 7.
-# This is a recovery test for create/delete of databases.  We have
-# hooks in the database so that we can abort the process at various
-# points and make sure that the transaction doesn't commit.  We
-# then need to recover and make sure the file is correctly existing
-# or not, as the case may be.
+# TEST	recd007
+# TEST	File create/delete tests.
+# TEST
+# TEST	This is a recovery test for create/delete of databases.  We have
+# TEST	hooks in the database so that we can abort the process at various
+# TEST	points and make sure that the transaction doesn't commit.  We
+# TEST	then need to recover and make sure the file is correctly existing
+# TEST	or not, as the case may be.
 proc recd007 { method args} {
 	global fixed_len
 	source ./include.tcl
@@ -584,6 +586,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	# Now move the .afterop file to $dbfile.  Run recovery again.
 	#
 	set filecopy [glob $dir/*.afterop]
+	set filecopy [lsort -decreasing $filecopy]
 	set afterop [lindex $filecopy 0]
 #	set afterop [string range $afterop \
 #	    [expr [string last "/" $afterop] + 1]  \

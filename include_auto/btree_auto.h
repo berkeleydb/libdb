@@ -2,74 +2,6 @@
 
 #ifndef	bam_AUTO_H
 #define	bam_AUTO_H
-#define	DB_bam_pg_alloc	51
-typedef struct _bam_pg_alloc_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	DB_LSN	meta_lsn;
-	DB_LSN	page_lsn;
-	db_pgno_t	pgno;
-	u_int32_t	ptype;
-	db_pgno_t	next;
-} __bam_pg_alloc_args;
-
-#define	DB_bam_pg_alloc1	60
-typedef struct _bam_pg_alloc1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	DB_LSN	meta_lsn;
-	DB_LSN	alloc_lsn;
-	DB_LSN	page_lsn;
-	db_pgno_t	pgno;
-	u_int32_t	ptype;
-	db_pgno_t	next;
-} __bam_pg_alloc1_args;
-
-#define	DB_bam_pg_free	52
-typedef struct _bam_pg_free_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DB_LSN	meta_lsn;
-	DBT	header;
-	db_pgno_t	next;
-} __bam_pg_free_args;
-
-#define	DB_bam_pg_free1	61
-typedef struct _bam_pg_free1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DB_LSN	meta_lsn;
-	DB_LSN	alloc_lsn;
-	DBT	header;
-	db_pgno_t	next;
-} __bam_pg_free1_args;
-
-#define	DB_bam_split1	53
-typedef struct _bam_split1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	left;
-	DB_LSN	llsn;
-	db_pgno_t	right;
-	DB_LSN	rlsn;
-	u_int32_t	indx;
-	db_pgno_t	npgno;
-	DB_LSN	nlsn;
-	DBT	pg;
-} __bam_split1_args;
-
 #define	DB_bam_split	62
 typedef struct _bam_split_args {
 	u_int32_t type;
@@ -87,19 +19,6 @@ typedef struct _bam_split_args {
 	DBT	pg;
 	u_int32_t	opflags;
 } __bam_split_args;
-
-#define	DB_bam_rsplit1	54
-typedef struct _bam_rsplit1_args {
-	u_int32_t type;
-	DB_TXN *txnid;
-	DB_LSN prev_lsn;
-	int32_t	fileid;
-	db_pgno_t	pgno;
-	DBT	pgdbt;
-	db_pgno_t	nrec;
-	DBT	rootent;
-	DB_LSN	rootlsn;
-} __bam_rsplit1_args;
 
 #define	DB_bam_rsplit	63
 typedef struct _bam_rsplit_args {

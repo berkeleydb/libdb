@@ -1,4 +1,4 @@
-<!--$Id: opensub.so,v 10.8 2001/03/10 19:05:21 bostic Exp $-->
+<!--$Id: opensub.so,v 10.9 2001/07/18 20:10:40 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -52,11 +52,11 @@ environment in which to open the databases.  Because multiple databases
 in a file exist in a single physical file, opening two databases in the
 same file requires that locking be enabled, unless access to the
 databases is known to be single-threaded, that is, only one of the
-databases is ever accessed at a time.  (As the locks for the two
-databases can only conflict during page allocation, this additional
-locking is unlikely to effect performance.)  Further, the databases must
-share an underlying memory pool so that per-physical-file information
-is updated correctly.
+databases is ever open at a time.  (As the locks for the two databases
+can only conflict during page allocation, this additional locking is
+unlikely to effect performance.)  Further, the databases must share an
+underlying memory pool so that per-physical-file information is updated
+correctly.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/get.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

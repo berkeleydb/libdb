@@ -3,9 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test076.tcl,v 1.10 2001/07/11 21:13:00 krinsky Exp $
+# $Id: test076.tcl,v 1.12 2001/08/03 16:39:46 bostic Exp $
 #
-# DB Test 76: Test creation of many small databases in an env
+# TEST	test076
+# TEST	Test creation of many small databases in a single environment. [#1528].
 proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 	source ./include.tcl
 
@@ -41,7 +42,7 @@ proc test076 { method { ndbs 1000  } { tnum 76 } args } {
 	for { set i 1 } { $i <= $ndbs } { incr i } {
 		set testfile test0$tnum.$i.db
 
-		set db [eval {berkdb_open -create -truncate -mode 0644}\
+		set db [eval {berkdb_open -create -mode 0644}\
 		    $args $omethod $testfile]
 		error_check_good db_open($i) [is_valid_db $db] TRUE
 

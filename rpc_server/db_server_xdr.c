@@ -134,6 +134,8 @@ xdr___env_open_reply(xdrs, objp)
 
 	if (!xdr_int(xdrs, &objp->status))
 		return (FALSE);
+	if (!xdr_u_int(xdrs, &objp->envcl_id))
+		return (FALSE);
 	return (TRUE);
 }
 
@@ -718,6 +720,8 @@ xdr___db_open_reply(xdrs, objp)
 {
 
 	if (!xdr_int(xdrs, &objp->status))
+		return (FALSE);
+	if (!xdr_u_int(xdrs, &objp->dbcl_id))
 		return (FALSE);
 	if (!xdr_u_int(xdrs, &objp->type))
 		return (FALSE);

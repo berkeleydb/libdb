@@ -4,7 +4,7 @@
  * Copyright (c) 1996-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: mutex.h,v 11.45 2001/04/27 01:45:27 bostic Exp $
+ * $Id: mutex.h,v 11.48 2001/07/31 19:30:30 sue Exp $
  */
 
 /*
@@ -242,12 +242,13 @@ typedef unsigned char tsl_t;
 #define	MUTEX_SYSTEM_RESOURCES
 
 #include "semLib.h"
+#include "taskLib.h"
 typedef SEM_ID tsl_t;
 #define	MUTEX_ALIGN		sizeof(unsigned int)
 
 #ifdef LOAD_ACTUAL_MUTEX_CODE
 #define	MUTEX_SET(tsl)		(semTake((*tsl), WAIT_FOREVER) == OK)
-#define	MUTEX_UNSET(tsl)	(semGive((*tsl)) == OK)
+#define	MUTEX_UNSET(tsl)	(semGive((*tsl)))
 #define	MUTEX_INIT(tsl)							\
 	((*(tsl) = semBCreate(SEM_Q_FIFO, SEM_FULL)) == NULL)
 #define	MUTEX_DESTROY(tsl)	semDelete(*tsl)
@@ -710,17 +711,17 @@ struct __mutex_t {
 	 * we get a mutex to ensure contention.
 	 */
 #define	MUTEX_LOCK(dbenv, mp, fh)					\
-	if (!F_ISSET((MUTEX *)(mp), MUTEX_IGNORE))			\
+	if (!F_ISSET((mp), MUTEX_IGNORE))				\
 		(void)__db_mutex_lock(dbenv, mp, fh);			\
-	if (DB_GLOBAL(db_pageyield))					\
+	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))				\
 		__os_yield(NULL, 1);
 #else
 #define	MUTEX_LOCK(dbenv, mp, fh)					\
-	if (!F_ISSET((MUTEX *)(mp), MUTEX_IGNORE))			\
+	if (!F_ISSET((mp), MUTEX_IGNORE))				\
 		(void)__db_mutex_lock(dbenv, mp, fh);
 #endif
 #define	MUTEX_UNLOCK(dbenv, mp)						\
-	if (!F_ISSET((MUTEX *)(mp), MUTEX_IGNORE))			\
+	if (!F_ISSET((mp), MUTEX_IGNORE))				\
 		(void)__db_mutex_unlock(dbenv, mp);
 #define	MUTEX_THREAD_LOCK(dbenv, mp)					\
 	if (mp != NULL)							\

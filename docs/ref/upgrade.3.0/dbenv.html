@@ -1,4 +1,4 @@
-<!--$Id: dbenv.so,v 11.10 2001/03/05 19:15:09 bostic Exp $-->
+<!--$Id: dbenv.so,v 11.11 2001/08/07 01:42:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: the DB_ENV structure</h1>
-<p>The DB_ENV structure is now opaque for applications in the Berkeley DB
+<p>The <a href="../../api_c/env_create.html">DB_ENV</a> structure is now opaque for applications in the Berkeley DB
 3.0 release.  Accesses to any fields within that structure by the
 application should be replaced with method calls.  The following example
 illustrates this using the historic errpfx structure field.  In the Berkeley DB
@@ -28,14 +28,14 @@ following:
 <p><blockquote><pre>DB_ENV *dbenv;
 <p>
 	dbenv-&gt;set_errpfx(dbenv, "my prefix");</pre></blockquote>
-<p>The following table lists the DB_ENV fields previously used by
+<p>The following table lists the <a href="../../api_c/env_create.html">DB_ENV</a> fields previously used by
 applications and the methods that should now be used to set them.
 <p><table border=1 align=center>
-<tr><th>DB_ENV field</th><th>Berkeley DB 3.X method</th></tr>
+<tr><th><a href="../../api_c/env_create.html">DB_ENV</a> field</th><th>Berkeley DB 3.X method</th></tr>
 <tr><td>db_errcall</td><td><a href="../../api_c/env_set_errcall.html">DB_ENV-&gt;set_errcall</a></td></tr>
 <tr><td>db_errfile</td><td><a href="../../api_c/env_set_errfile.html">DB_ENV-&gt;set_errfile</a></td></tr>
 <tr><td>db_errpfx</td><td><a href="../../api_c/env_set_errpfx.html">DB_ENV-&gt;set_errpfx</a></td></tr>
-<tr><td>db_lorder</td><td>This field was removed from the DB_ENV structure in the Berkeley DB
+<tr><td>db_lorder</td><td>This field was removed from the <a href="../../api_c/env_create.html">DB_ENV</a> structure in the Berkeley DB
 3.0 release as no application should have ever used it.  Any code using
 it should be evaluated for potential bugs.</td></tr>
 <tr><td>db_paniccall</td><td><a href="../../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a></td></tr>
@@ -46,7 +46,7 @@ which verbose messages are desired.</td></tr>
 <tr><td>lg_max</td><td><a href="../../api_c/env_set_lg_max.html">DB_ENV-&gt;set_lg_max</a></td></tr>
 <tr><td>lk_conflicts</td><td><a href="../../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a></td></tr>
 <tr><td>lk_detect</td><td><a href="../../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a></td></tr>
-<tr><td>lk_max</td><td><a href="../../api_c/env_set_lk_max.html">DB_ENV-&gt;set_lk_max</a></td></tr>
+<tr><td>lk_max</td><td>dbenv-&gt;set_lk_max</td></tr>
 <tr><td>lk_modes</td><td><a href="../../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a></td></tr>
 <tr><td>mp_mmapsize</td><td><a href="../../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a></td></tr>
 <tr><td>mp_size</td><td><a href="../../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a>
@@ -56,7 +56,7 @@ last argument (the number of memory pools to create) to 0 will result in
 behavior that is backward-compatible with previous Berkeley DB releases.</td></tr>
 <tr><td>tx_info</td><td>This field was used by applications as an argument to the transaction
 subsystem functions.  As those functions take references to a
-DB_ENV structure as arguments in the Berkeley DB 3.0 release, it should
+<a href="../../api_c/env_create.html">DB_ENV</a> structure as arguments in the Berkeley DB 3.0 release, it should
 no longer be used by any application.</td></tr>
 <tr><td>tx_max</td><td><a href="../../api_c/env_set_tx_max.html">DB_ENV-&gt;set_tx_max</a></td></tr>
 <tr><td>tx_recover</td><td><a href="../../api_c/env_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a></td></tr>

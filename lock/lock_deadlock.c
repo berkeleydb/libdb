@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_deadlock.c,v 11.38 2001/06/18 18:58:12 bostic Exp $";
+static const char revid[] = "$Id: lock_deadlock.c,v 11.46 2001/10/04 21:26:00 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,18 +17,11 @@ static const char revid[] = "$Id: lock_deadlock.c,v 11.38 2001/06/18 18:58:12 bo
 #include <string.h>
 #endif
 
-#ifdef	HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "lock.h"
 #include "txn.h"
-
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
+#include "rep.h"
 
 #define	ISSET_MAP(M, N)	((M)[(N) / 32] & (1 << (N) % 32))
 
@@ -74,10 +67,10 @@ static void __dd_debug
 /*
  * lock_detect --
  *
- * EXTERN: int lock_detect __P((DB_ENV *, u_int32_t, u_int32_t, int *));
+ * PUBLIC: int __lock_detect __P((DB_ENV *, u_int32_t, u_int32_t, int *));
  */
 int
-lock_detect(dbenv, flags, atype, abortp)
+__lock_detect(dbenv, flags, atype, abortp)
 	DB_ENV *dbenv;
 	u_int32_t flags, atype;
 	int *abortp;
@@ -89,24 +82,41 @@ lock_detect(dbenv, flags, atype, abortp)
 	u_int32_t i, keeper, killid, limit, nalloc, nlockers;
 	int ret;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_lock_detect(dbenv, flags, atype, abortp));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lk_handle, "lock_detect", DB_INIT_LOCK);
+	    dbenv->lk_handle, "DB_ENV->lock_detect", DB_INIT_LOCK);
+
+	/* Validate arguments. */
+	if ((ret = __db_fchk(dbenv, "DB_ENV->lock_detect", flags, 0)) != 0)
+		return (ret);
+	switch (atype) {
+	case DB_LOCK_DEFAULT:
+	case DB_LOCK_EXPIRE:
+	case DB_LOCK_MAXLOCKS:
+	case DB_LOCK_MINLOCKS:
+	case DB_LOCK_MINWRITE:
+	case DB_LOCK_OLDEST:
+	case DB_LOCK_RANDOM:
+	case DB_LOCK_YOUNGEST:
+		break;
+	default:
+		__db_err(dbenv,
+	    "DB_ENV->lock_detect: unknown deadlock detection mode specified");
+		return (EINVAL);
+	}
+
+	/*
+	 * If this environment is a replication client, then we must use the
+	 * MINWRITE detection discipline.
+	 */
+	if (__rep_is_client(dbenv))
+		atype = DB_LOCK_MINWRITE;
 
 	free_me = NULL;
 
 	lt = dbenv->lk_handle;
 	if (abortp != NULL)
 		*abortp = 0;
-
-	/* Validate arguments. */
-	if ((ret = __db_fchk(dbenv, "lock_detect", flags, 0)) != 0)
-		return (ret);
 
 	/* Check if a detector run is necessary. */
 	LOCKREGION(dbenv, lt);
@@ -125,7 +135,7 @@ lock_detect(dbenv, flags, atype, abortp)
 	/* Build the waits-for bitmap. */
 	ret = __dd_build(dbenv, atype, &bitmap, &nlockers, &nalloc, &idmap);
 	UNLOCKREGION(dbenv, lt);
-	if (ret != 0)
+	if (ret != 0 || atype == DB_LOCK_EXPIRE)
 		return (ret);
 
 	if (nlockers == 0)
@@ -292,12 +302,30 @@ __dd_build(dbenv, atype, bmp, nlockers, allocp, idmap)
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
 	locker_info *id_array;
+	db_timeval_t now;
 	u_int32_t *bitmap, count, dd, *entryp, id, ndx, nentries, *tmpmap;
 	u_int8_t *pptr;
-	int is_first, ret;
+	int expire_only, is_first, need_timeout, ret;
 
 	lt = dbenv->lk_handle;
 	region = lt->reginfo.primary;
+	LOCK_SET_TIME_INVALID(&now);
+	need_timeout = 0;
+	expire_only = atype == DB_LOCK_EXPIRE;
+
+	/*
+	 * While we always check for expired timeouts, if we are called
+	 * with DB_LOCK_EXPIRE, then we are only checking for timeouts
+	 * (i.e., not doing deadlock detection at all).  If we aren't
+	 * doing real deadlock detection, then we can skip a significant,
+	 * amount of the processing.  In particular we do not build
+	 * the conflict array and our caller needs to expect this.
+	 */
+	if (expire_only) {
+		count = 0;
+		nentries = 0;
+		goto obj_loop;
+	}
 
 	/*
 	 * We'll check how many lockers there are, add a few more in for
@@ -306,7 +334,6 @@ __dd_build(dbenv, atype, bmp, nlockers, allocp, idmap)
 	 * mutex the second time.
 	 */
 retry:	count = region->nlockers;
-	region->need_dd = 0;
 
 	if (count == 0) {
 		*nlockers = 0;
@@ -381,8 +408,11 @@ retry:	count = region->nlockers;
 	 * list and add an entry in the waitsfor matrix for each waiter/holder
 	 * combination.
 	 */
+obj_loop:
 	for (op = SH_TAILQ_FIRST(&region->dd_objs, __db_lockobj);
 	    op != NULL; op = SH_TAILQ_NEXT(op, dd_links, __db_lockobj)) {
+		if (expire_only)
+			goto look_waiters;
 		CLEAR_MAP(tmpmap, nentries);
 
 		/*
@@ -426,6 +456,7 @@ retry:	count = region->nlockers;
 		 * Next, for each waiter, we set its row in the matrix
 		 * equal to the map of holders we set up above.
 		 */
+look_waiters:
 		for (is_first = 1,
 		    lp = SH_TAILQ_FIRST(&op->waiters, __db_lock);
 		    lp != NULL;
@@ -435,6 +466,16 @@ retry:	count = region->nlockers;
 			if ((ret = __lock_getlocker(lt,
 			    lp->holder, ndx, 0, &lockerp)) != 0)
 				continue;
+			if (__lock_expired(dbenv, &now, &lockerp->lk_expire)) {
+				lp->status = DB_LSTAT_EXPIRED;
+				MUTEX_UNLOCK(dbenv, &lp->mutex);
+				continue;
+			}
+			need_timeout = LOCK_TIME_ISVALID(&lockerp->lk_expire);
+
+			if (expire_only)
+				continue;
+
 			if (lockerp->dd_id == DD_INVALID_ID) {
 				dd = ((DB_LOCKER *)
 				     R_ADDR(&lt->reginfo,
@@ -471,6 +512,11 @@ retry:	count = region->nlockers;
 				CLR_MAP(entryp, dd);
 			}
 		}
+	}
+
+	if (expire_only) {
+		region->need_dd = need_timeout;
+		return (0);
 	}
 
 	/* Now for each locker; record its last lock. */
@@ -517,8 +563,11 @@ retry:	count = region->nlockers;
 		}
 	}
 
-	/* Pass complete, reset the deadlock detector bit. */
-	region->need_dd = 0;
+	/*
+	 * Pass complete, reset the deadlock detector bit,
+	 * unless we have pending timeouts.
+	 */
+	region->need_dd = need_timeout;
 
 	/*
 	 * Now we can release everything except the bitmap matrix that we
@@ -625,13 +674,8 @@ __dd_abort(dbenv, info)
 		goto out;
 	}
 
-	/*
-	 * It's possible that this locker was already aborted.  If that's
-	 * the case, make sure that we remove its locker from the hash table.
-	 */
+	/* It's possible that this locker was already aborted. */
 	if ((lockp = SH_LIST_FIRST(&lockerp->heldby, __db_lock)) == NULL) {
-		if (LOCKER_FREEABLE(lockerp))
-			__lock_freelocker(lt, region, lockerp, ndx);
 		ret = DB_ALREADY_ABORTED;
 		goto out;
 	}
@@ -661,7 +705,7 @@ __dd_abort(dbenv, info)
 		ret = __lock_promote(lt, sh_obj, 0);
 	MUTEX_UNLOCK(dbenv, &lockp->mutex);
 
-	region->ndeadlocks++;
+	region->stat.st_ndeadlocks++;
 	UNLOCKREGION(dbenv, lt);
 
 	return (0);

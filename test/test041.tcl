@@ -3,10 +3,11 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test041.tcl,v 11.4 2001/01/25 18:23:10 bostic Exp $
+# $Id: test041.tcl,v 11.5 2001/08/03 16:39:40 bostic Exp $
 #
-# DB Test 41 {access method}
-# DB_GET_BOTH functionality with off-page duplicates.
+# TEST	test041
+# TEST	Test039 with off-page duplicates
+# TEST	DB_GET_BOTH functionality with off-page duplicates.
 proc test041 { method {nentries 10000} args} {
 	# Test with off-page duplicates
 	eval {test039 $method $nentries 20 41 -pagesize 512} $args

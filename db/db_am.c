@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_am.c,v 11.62 2001/07/02 16:45:54 krinsky Exp $";
+static const char revid[] = "$Id: db_am.c,v 11.69 2001/10/10 02:57:34 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -61,7 +61,7 @@ __db_cursor(dbp, txn, dbcp, flags)
 	dirty = LF_ISSET(DB_DIRTY_READ) ? 1 : 0;
 	LF_CLR(DB_DIRTY_READ);
 
-	if ((ret = __db_cursorchk(dbp, flags, F_ISSET(dbp, DB_AM_RDONLY))) != 0)
+	if ((ret = __db_cursorchk(dbp, flags)) != 0)
 		return (ret);
 
 	if ((ret = __db_icursor(dbp,
@@ -77,7 +77,7 @@ __db_cursor(dbp, txn, dbcp, flags)
 		op = LF_ISSET(DB_OPFLAGS_MASK);
 		mode = (op == DB_WRITELOCK) ? DB_LOCK_WRITE :
 		    ((op == DB_WRITECURSOR) ? DB_LOCK_IWRITE : DB_LOCK_READ);
-		if ((ret = lock_get(dbenv, dbc->locker, 0,
+		if ((ret = dbenv->lock_get(dbenv, dbc->locker, 0,
 		    &dbc->lock_dbt, mode, &dbc->mylock)) != 0) {
 			(void)__db_c_close(dbc);
 			return (ret);
@@ -155,7 +155,8 @@ __db_icursor(dbp, txn, dbtype, root, is_opd, lockerid, dbcp)
 			    (adbc = TAILQ_FIRST(&dbp->active_queue)) != NULL)
 				dbc->lid = adbc->lid;
 			else
-				if ((ret = lock_id(dbenv, &dbc->lid)) != 0)
+				if ((ret =
+				    dbenv->lock_id(dbenv, &dbc->lid)) != 0)
 					goto err;
 
 			/*
@@ -506,8 +507,7 @@ __db_put(dbp, txn, key, data, flags)
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->put");
 
 	if ((ret = __db_putchk(dbp, key, data,
-	    flags, F_ISSET(dbp, DB_AM_RDONLY),
-	    F_ISSET(dbp, DB_AM_DUP) || F_ISSET(key, DB_DBT_DUPOK))) != 0)
+	    flags, F_ISSET(dbp, DB_AM_DUP) || F_ISSET(key, DB_DBT_DUPOK))) != 0)
 		return (ret);
 
 	DB_CHECK_TXN(dbp, txn);
@@ -639,8 +639,7 @@ __db_delete(dbp, txn, key, flags)
 	DB_CHECK_TXN(dbp, txn);
 
 	/* Check for invalid flags. */
-	if ((ret =
-	    __db_delchk(dbp, key, flags, F_ISSET(dbp, DB_AM_RDONLY))) != 0)
+	if ((ret = __db_delchk(dbp, key, flags)) != 0)
 		return (ret);
 
 	/* Allocate a cursor. */
@@ -755,7 +754,7 @@ __db_sync(dbp, flags)
 		return (0);
 
 	/* Flush any dirty pages from the cache to the backing file. */
-	if ((t_ret = memp_fsync(dbp->mpf)) != 0 && ret == 0)
+	if ((t_ret = dbp->mpf->sync(dbp->mpf)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -770,7 +769,7 @@ __db_sync(dbp, flags)
 int
 __db_associate(dbp, sdbp, callback, flags)
 	DB *dbp, *sdbp;
-	int (*callback)(DB *, const DBT *, const DBT *, DBT *);
+	int (*callback) __P((DB *, const DBT *, const DBT *, DBT *));
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
@@ -889,18 +888,18 @@ retry:		while ((ret = pdbc->c_get(pdbc, &key, &data, DB_NEXT)) == 0) {
 					goto err;
 			}
 retry2:			if (TXN_ON(dbenv) &&
-			    (ret = txn_begin(dbenv, NULL, &txn, 0)) != 0)
+			    (ret = dbenv->txn_begin(dbenv, NULL, &txn, 0)) != 0)
 				goto err;
 			if ((ret = sdbp->cursor(sdbp, txn, &sdbc, 0)) != 0) {
 				FREE_IF_NEEDED(sdbp, &skey);
 				if (TXN_ON(dbenv))
-					(void)txn_abort(txn);
+					(void)txn->abort(txn);
 				goto err;
 			}
 			if ((ret = sdbc->c_put(sdbc,
 			    &skey, &key, DB_UPDATE_SECONDARY)) != 0) {
 				if (TXN_ON(dbenv))
-					(void)txn_abort(txn);
+					(void)txn->abort(txn);
 				if (ret == DB_LOCK_DEADLOCK)
 					goto retry2;
 				FREE_IF_NEEDED(sdbp, &skey);
@@ -910,12 +909,12 @@ retry2:			if (TXN_ON(dbenv) &&
 
 			if ((ret = sdbc->c_close(sdbc)) != 0) {
 				if (TXN_ON(dbenv))
-					(void)txn_abort(txn);
+					(void)txn->abort(txn);
 				goto err;
 			}
 
 			if (TXN_ON(dbenv) &&
-			    (ret = txn_commit(txn, DB_TXN_NOSYNC)) != 0)
+			    (ret = txn->commit(txn, DB_TXN_NOSYNC)) != 0)
 				goto err;
 		}
 		if (ret == DB_NOTFOUND) {
@@ -925,10 +924,10 @@ retry2:			if (TXN_ON(dbenv) &&
 			goto retry;
 
 		/*
-		 * We've done all our txn_commits with NOSYNC, for performance.
+		 * We've done all our commits with NOSYNC, for performance.
 		 * Now flush them.
 		 */
-		ret = log_flush(dbenv, NULL);
+		ret = dbenv->log_flush(dbenv, NULL);
 
 err:		if ((t_ret = pdbc->c_close(pdbc)) != 0 && ret == 0)
 			ret = t_ret;
@@ -971,8 +970,7 @@ __db_pget(dbp, txn, skey, pkey, data, flags)
 	 */
 	if (flags == 0 || flags == DB_RMW)
 		flags |= DB_SET;
-	if ((ret = dbc->c_pget(dbc, skey, pkey, data, flags)) != 0)
-		return (ret);
+	ret = dbc->c_pget(dbc, skey, pkey, data, flags);
 
 	if ((t_ret = __db_c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -1139,9 +1137,9 @@ __db_append_primary(dbc, key, data)
 				__os_free(sdbp->dbenv,
 				    oldpkey.data, oldpkey.size);
 				if (cmp != 0) {
-					__db_err(sdbp->dbenv, "%s%s"
-			    "Append results in a non-unique secondary key in "
-			    "an index not configured to support duplicates");
+					__db_err(sdbp->dbenv, "%s%s",
+			    "Append results in a non-unique secondary key in",
+			    " an index not configured to support duplicates");
 					ret = EINVAL;
 					goto err1;
 				}

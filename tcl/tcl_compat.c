@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_compat.c,v 11.24 2001/04/03 15:14:28 krinsky Exp $";
+static const char revid[] = "$Id: tcl_compat.c,v 11.25 2001/07/31 04:48:55 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -1025,7 +1025,7 @@ mutex_Cmd(clientData, interp, objc, objv)
 		result = Tcl_GetIntFromObj(interp, objv[2], &id);
 		if (result != TCL_OK)
 			break;
-		res = Tcl_NewIntObj(mp->marray[id].val);
+		res = Tcl_NewLongObj((long)mp->marray[id].val);
 		break;
 	case MXSETVAL:
 		/*

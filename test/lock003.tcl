@@ -3,23 +3,30 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lock003.tcl,v 11.19 2001/05/17 20:37:05 bostic Exp $
+# $Id: lock003.tcl,v 11.21 2001/10/10 16:22:10 ubell Exp $
 #
-# Exercise multi-process aspects of lock.  Generate a bunch of parallel
-# testers that try to randomly obtain locks;  make sure that the locks
-# correctly protect corresponding objects.
-proc lock003 { dir {iter 500} {max 1000} {procs 5} {ldegree 5} {objs 75} \
+# TEST	lock003
+# TEST	Exercise multi-process aspects of lock.  Generate a bunch of parallel
+# TEST	testers that try to randomly obtain locks;  make sure that the locks
+# TEST	correctly protect corresponding objects.
+proc lock003 { {dir ""} {iter 500} {max 1000} {procs 5} {ldegree 5} {objs 75} \
 	{reads 65} {wait 1} {conflicts { 3 0 0 0 0 0 1 0 1 1}} {seeds {}} } {
 	source ./include.tcl
+	global lock_curid
+	global lock_maxid
 
 	puts "Lock003: Multi-process random lock test"
 
+	if { [string length $dir] == 0 } {
+		set dir $testdir
+	}
 	# Clean up after previous runs
 	env_cleanup $dir
 
 	# Open/create the lock region
 	set e [berkdb env -create -lock -home $dir]
 	error_check_good env_open [is_substr $e env] 1
+	$e lock_id_set $lock_curid $lock_maxid
 
 	set ret [$e close]
 	error_check_good env_close $ret 0

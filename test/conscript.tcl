@@ -3,7 +3,7 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: conscript.tcl,v 11.13 2001/01/25 18:23:03 bostic Exp $
+# $Id: conscript.tcl,v 11.14 2001/07/31 16:15:08 krinsky Exp $
 #
 # Script for DB_CONSUME test (test070.tcl).
 # Usage: conscript dir file runtype nitems outputfile tnum args
@@ -28,6 +28,9 @@ proc consumescript_produce { db_cmd nitems tnum args } {
 	set ret 0
 	for { set ndx 0 } { $ndx < $nitems } { incr ndx } {
 		set oret $ret
+		if { 0xffffffff > 0 && $oret > 0x7fffffff } {
+			incr oret [expr 0 - 0x100000000]
+		}
 		set ret [$db put -append [chop_data q $mydata]]
 		error_check_good db_put \
 		    [expr $ret > 0 ? $oret < $ret : \

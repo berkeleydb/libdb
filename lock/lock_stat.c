@@ -8,26 +8,29 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_stat.c,v 11.12 2001/06/09 19:44:00 bostic Exp $";
+static const char revid[] = "$Id: lock_stat.c,v 11.19 2001/10/18 20:13:55 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#include <ctype.h>
+#include <string.h>
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
 #endif
 
-#ifdef	HAVE_RPC
-#include "db_server.h"
+#include <ctype.h>
 #endif
 
 #include "db_int.h"
 #include "db_shash.h"
 #include "lock.h"
-
-#ifdef	HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
 
 static void __lock_dump_locker __P((DB_LOCKTAB *, DB_LOCKER *, FILE *));
 static void __lock_dump_object __P((DB_LOCKTAB *, DB_LOCKOBJ *, FILE *));
@@ -35,30 +38,30 @@ static const char *
 	    __lock_dump_status __P((db_status_t));
 
 /*
- * lock_stat --
+ * __lock_stat --
  *	Return LOCK statistics.
  *
- * EXTERN: int lock_stat __P((DB_ENV *, DB_LOCK_STAT **));
+ * PUBLIC: int __lock_stat __P((DB_ENV *, DB_LOCK_STAT **, u_int32_t));
  */
 int
-lock_stat(dbenv, statp)
+__lock_stat(dbenv, statp, flags)
 	DB_ENV *dbenv;
 	DB_LOCK_STAT **statp;
+	u_int32_t flags;
 {
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
 	DB_LOCK_STAT *stats;
 	int ret;
 
-#ifdef	HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_lock_stat(dbenv, statp));
-#endif
-
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->lk_handle, "lock_stat", DB_INIT_LOCK);
+	ENV_REQUIRES_CONFIG(dbenv,
+	    dbenv->lk_handle, "DB_ENV->lock_stat", DB_INIT_LOCK);
 
 	*statp = NULL;
+	if ((ret = __db_fchk(dbenv,
+	     "DB_ENV->lock_stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
 
 	lt = dbenv->lk_handle;
 
@@ -69,26 +72,24 @@ lock_stat(dbenv, statp)
 	R_LOCK(dbenv, &lt->reginfo);
 
 	region = lt->reginfo.primary;
+	memcpy(stats, &region->stat, sizeof(*stats));
 	stats->st_lastid = region->id;
 	stats->st_maxlocks = region->maxlocks;
 	stats->st_maxlockers = region->maxlockers;
 	stats->st_maxobjects = region->maxobjects;
 	stats->st_nmodes = region->nmodes;
-	stats->st_nlockers = region->nlockers;
-	stats->st_maxnlockers = region->maxnlockers;
-	stats->st_nobjects = region->nobjects;
-	stats->st_maxnobjects = region->maxnobjects;
 	stats->st_nlocks = region->nlocks;
-	stats->st_maxnlocks = region->maxnlocks;
-	stats->st_nconflicts = region->nconflicts;
-	stats->st_nrequests = region->nrequests;
-	stats->st_nreleases = region->nreleases;
-	stats->st_nnowaits = region->nnowaits;
-	stats->st_ndeadlocks = region->ndeadlocks;
+	stats->st_nlockers = region->nlockers;
+	stats->st_nobjects = region->nobjects;
 
 	stats->st_region_wait = lt->reginfo.rp->mutex.mutex_set_wait;
 	stats->st_region_nowait = lt->reginfo.rp->mutex.mutex_set_nowait;
 	stats->st_regsize = lt->reginfo.rp->size;
+	if (LF_ISSET(DB_STAT_CLEAR)) {
+		memset(&region->stat, 0, sizeof(region->stat));
+		lt->reginfo.rp->mutex.mutex_set_wait = 0;
+		lt->reginfo.rp->mutex.mutex_set_nowait = 0;
+	}
 
 	R_UNLOCK(dbenv, &lt->reginfo);
 
@@ -247,16 +248,31 @@ __lock_dump_locker(lt, lip, fp)
 	FILE *fp;
 {
 	struct __db_lock *lp;
+	time_t s;
+	char buf[64];
 
-	fprintf(fp, "L %lx [%ld]", (u_long)lip->id, (long)lip->dd_id);
+	fprintf(fp, "L %lx [%ld] l %d w %d",
+	    (u_long)lip->id, (long)lip->dd_id, lip->nlocks, lip->nwrites);
 	fprintf(fp, " %s ", F_ISSET(lip, DB_LOCKER_DELETED) ? "(D)" : "   ");
+	if (LOCK_TIME_ISVALID(&lip->tx_expire)) {
+		s = lip->tx_expire.tv_sec;
+		strftime(buf, sizeof(buf), "%m-%d-%H:%M:%S", localtime(&s));
+		fprintf(fp,
+		    " expires %s.%lu", buf, (u_long)lip->tx_expire.tv_usec);
+	}
+	if (F_ISSET(lip, DB_LOCKER_TIMEOUT))
+		fprintf(fp, " lk timeout %u", lip->lk_timeout);
+	if (LOCK_TIME_ISVALID(&lip->lk_expire)) {
+		s = lip->lk_expire.tv_sec;
+		strftime(buf, sizeof(buf), "%m-%d-%H:%M:%S", localtime(&s));
+		fprintf(fp,
+		    " lk expires %s.%lu", buf, (u_long)lip->lk_expire.tv_usec);
+	}
+	fprintf(fp, "\n");
 
-	if ((lp = SH_LIST_FIRST(&lip->heldby, __db_lock)) == NULL)
-		fprintf(fp, "\n");
-	else
-		for (; lp != NULL;
-		    lp = SH_LIST_NEXT(lp, locker_links, __db_lock))
-			__lock_printlock(lt, lp, 1);
+	for (lp = SH_LIST_FIRST(&lip->heldby, __db_lock);
+	     lp != NULL; lp = SH_LIST_NEXT(lp, locker_links, __db_lock))
+		__lock_printlock(lt, lp, 1);
 }
 
 static void
@@ -300,12 +316,12 @@ __lock_dump_status(status)
 		return ("aborted");
 	case DB_LSTAT_ERR:
 		return ("err");
+	case DB_LSTAT_EXPIRED:
+		return ("expired");
 	case DB_LSTAT_FREE:
 		return ("free");
 	case DB_LSTAT_HELD:
 		return ("held");
-	case DB_LSTAT_NOGRANT:
-		return ("nogrant");
 	case DB_LSTAT_PENDING:
 		return ("pending");
 	case DB_LSTAT_WAITING:

@@ -11,7 +11,7 @@
 static const char copyright[] =
     "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_checkpoint.c,v 11.28 2001/05/10 17:13:56 bostic Exp $";
+    "$Id: db_checkpoint.c,v 11.34 2001/10/04 12:44:24 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -42,14 +42,9 @@ static const char revid[] =
 #include "common_ext.h"
 #include "clib_ext.h"
 
-char	*check __P((DB_ENV *, long, long));
 int	 main __P((int, char *[]));
-void	 usage __P((void));
-void	 version_check __P((void));
-
-DB_ENV	*dbenv;
-const char
-	*progname = "db_checkpoint";		/* Program name. */
+int	 usage __P((void));
+int	 version_check __P((const char *));
 
 int
 main(argc, argv)
@@ -58,13 +53,16 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
+	DB_ENV	*dbenv;
+	const char *progname = "db_checkpoint";
 	time_t now;
 	long argval;
 	u_int32_t flags, kbytes, minutes, seconds;
 	int ch, e_close, exitval, once, ret, verbose;
 	char *home, *logfile;
 
-	version_check();
+	if ((ret = version_check(progname)) != 0)
+		return (ret);
 
 	/*
 	 * !!!
@@ -87,16 +85,18 @@ main(argc, argv)
 			home = optarg;
 			break;
 		case 'k':
-			(void)__db_getlong(NULL, progname,
-			    optarg, 1, (long)MAX_UINT32_T, &argval);
+			if (__db_getlong(NULL, progname,
+			    optarg, 1, (long)MAX_UINT32_T, &argval))
+				return (EXIT_FAILURE);
 			kbytes = argval;
 			break;
 		case 'L':
 			logfile = optarg;
 			break;
 		case 'p':
-			(void)__db_getlong(NULL, progname,
-			    optarg, 1, (long)MAX_UINT32_T, &argval);
+			if (__db_getlong(NULL, progname,
+			    optarg, 1, (long)MAX_UINT32_T, &argval))
+				return (EXIT_FAILURE);
 			minutes = argval;
 			break;
 		case 'V':
@@ -107,14 +107,13 @@ main(argc, argv)
 			break;
 		case '?':
 		default:
-			usage();
-			goto shutdown;
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 0)
-		usage();
+		return (usage());
 
 	if (once == 0 && kbytes == 0 && minutes == 0) {
 		(void)fprintf(stderr,
@@ -152,10 +151,10 @@ main(argc, argv)
 	}
 
 	/* Register the standard pgin/pgout functions, in case we do I/O. */
-	if ((ret =
-	    memp_register(dbenv, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0) {
+	if ((ret = dbenv->memp_register(
+	    dbenv, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0) {
 		dbenv->err(dbenv, ret,
-		    "failed to register access method functions");
+    "DB_ENV->memp_register: failed to register access method functions");
 		goto shutdown;
 	}
 
@@ -171,13 +170,13 @@ main(argc, argv)
 			dbenv->errx(dbenv, "checkpoint: %s", ctime(&now));
 		}
 
-		ret = txn_checkpoint(dbenv, kbytes, minutes, flags);
+		ret = dbenv->txn_checkpoint(dbenv, kbytes, minutes, flags);
 		while (ret == DB_INCOMPLETE) {
 			if (verbose)
 				dbenv->errx(dbenv,
 				    "checkpoint did not finish, retrying\n");
 			(void)__os_sleep(dbenv, 2, 0);
-			ret = txn_checkpoint(dbenv, 0, 0, flags);
+			ret = dbenv->txn_checkpoint(dbenv, 0, 0, flags);
 		}
 		if (ret != 0) {
 			dbenv->err(dbenv, ret, "txn_checkpoint");
@@ -211,16 +210,17 @@ shutdown:	exitval = 1;
 	return (exitval == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void
+int
 usage()
 {
 	(void)fprintf(stderr,
     "usage: db_checkpoint [-1Vv] [-h home] [-k kbytes] [-L file] [-p min]\n");
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
 
-void
-version_check()
+int
+version_check(progname)
+	const char *progname;
 {
 	int v_major, v_minor, v_patch;
 
@@ -232,6 +232,7 @@ version_check()
 	"%s: version %d.%d.%d doesn't match library version %d.%d.%d\n",
 		    progname, DB_VERSION_MAJOR, DB_VERSION_MINOR,
 		    DB_VERSION_PATCH, v_major, v_minor, v_patch);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }

@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_sync.c,v 11.43 2001/07/10 18:40:43 bostic Exp $";
+static const char revid[] = "$Id: mp_sync.c,v 11.46 2001/07/26 19:53:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,30 +16,22 @@ static const char revid[] = "$Id: mp_sync.c,v 11.43 2001/07/10 18:40:43 bostic E
 #include <stdlib.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 static int __bhcmp __P((const void *, const void *));
-static int __memp_fsync __P((DB_MPOOLFILE *));
+static int __memp_fsync_int __P((DB_MPOOLFILE *));
 static int __memp_sballoc __P((DB_ENV *, BH ***, u_int32_t *));
 
 /*
- * memp_sync --
+ * __memp_sync --
  *	Mpool sync function.
  *
- * EXTERN: int memp_sync __P((DB_ENV *, DB_LSN *));
+ * PUBLIC: int __memp_sync __P((DB_ENV *, DB_LSN *));
  */
 int
-memp_sync(dbenv, lsnp)
+__memp_sync(dbenv, lsnp)
 	DB_ENV *dbenv;
 	DB_LSN *lsnp;
 {
@@ -50,11 +42,6 @@ memp_sync(dbenv, lsnp)
 	MPOOLFILE *mfp;
 	u_int32_t ar_cnt, ar_max, ccnt, i;
 	int ret, retry_done, retry_need, t_ret, wrote;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_sync(dbenv, lsnp));
-#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
@@ -264,7 +251,7 @@ retry:	retry_need = 0;
 	 * the log region lock is going to be expensive.  Flush the entire
 	 * log now, so that sync doesn't require any more log flushes.
 	 */
-	if (LOGGING_ON(dbenv) && (ret = log_flush(dbenv, NULL)) != 0) {
+	if (LOGGING_ON(dbenv) && (ret = dbenv->log_flush(dbenv, NULL)) != 0) {
 		i = 0;
 		R_LOCK(dbenv, dbmp->reginfo);
 		goto err;
@@ -377,13 +364,13 @@ done:	if (dbmp->extents != 0 &&
 }
 
 /*
- * memp_fsync --
+ * __memp_fsync --
  *	Mpool file sync function.
  *
- * EXTERN: int memp_fsync __P((DB_MPOOLFILE *));
+ * PUBLIC: int __memp_fsync __P((DB_MPOOLFILE *));
  */
 int
-memp_fsync(dbmfp)
+__memp_fsync(dbmfp)
 	DB_MPOOLFILE *dbmfp;
 {
 	DB_ENV *dbenv;
@@ -392,11 +379,6 @@ memp_fsync(dbmfp)
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_fsync(dbmfp));
-#endif
 
 	PANIC_CHECK(dbenv);
 
@@ -414,7 +396,7 @@ memp_fsync(dbmfp)
 	if (is_tmp)
 		return (0);
 
-	return (__memp_fsync(dbmfp));
+	return (__memp_fsync_int(dbmfp));
 }
 
 /*
@@ -442,16 +424,16 @@ __mp_xxx_fh(dbmfp, fhp)
 	 * because we want to write to the backing file regardless so that
 	 * we get a file descriptor to return.
 	 */
-	*fhp = &dbmfp->fh;
-	return (F_ISSET(&dbmfp->fh, DB_FH_VALID) ? 0 : __memp_fsync(dbmfp));
+	*fhp = dbmfp->fhp;
+	return (F_ISSET(dbmfp->fhp, DB_FH_VALID) ? 0 : __memp_fsync_int(dbmfp));
 }
 
 /*
- * __memp_fsync --
+ * __memp_fsync_int --
  *	Mpool file internal sync function.
  */
 static int
-__memp_fsync(dbmfp)
+__memp_fsync_int(dbmfp)
 	DB_MPOOLFILE *dbmfp;
 {
 	BH *bhp, **bharray;
@@ -628,7 +610,7 @@ done:	R_UNLOCK(dbenv, dbmp->reginfo);
 	 */
 	if (ret == 0)
 		ret = incomplete ?
-		    DB_INCOMPLETE : __os_fsync(dbenv, &dbmfp->fh);
+		    DB_INCOMPLETE : __os_fsync(dbenv, dbmfp->fhp);
 
 	return (ret);
 }
@@ -709,7 +691,7 @@ __memp_close_flush_files(dbmp)
 	for (dbmfp = TAILQ_FIRST(&dbmp->dbmfq); dbmfp != NULL; dbmfp = next) {
 		next = TAILQ_NEXT(dbmfp, q);
 		if (F_ISSET(dbmfp, MP_FLUSH) && F_ISSET(dbmfp->mfp, MP_EXTENT))
-			if ((ret = __memp_fclose(dbmfp, 0)) != 0)
+			if ((ret = __memp_fclose_int(dbmfp, 0, 0)) != 0)
 				return (ret);
 	}
 	return (0);

@@ -39,8 +39,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: btree.h,v 11.39 2001/03/15 00:18:43 ubell Exp $
+ * $Id: btree.h,v 11.40 2001/10/04 12:48:04 bostic Exp $
  */
+#ifndef	_DB_BTREE_H_
+#define	_DB_BTREE_H_
 
 /* Forward structure declarations. */
 struct __btree;		typedef struct __btree BTREE;
@@ -315,3 +317,4 @@ typedef enum {
 #include "btree_auto.h"
 #include "btree_ext.h"
 #include "db_am.h"
+#endif /* !_DB_BTREE_H_ */

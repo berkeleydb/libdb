@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_ret.c,v 11.15 2001/04/17 19:44:44 krinsky Exp $";
+static const char revid[] = "$Id: db_ret.c,v 11.16 2001/07/18 16:51:52 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -69,7 +69,7 @@ __db_ret(dbp, h, indx, dbt, memp, memsize)
 		data = bk->data;
 		break;
 	default:
-		return (__db_pgfmt(dbp, h->pgno));
+		return (__db_pgfmt(dbp->dbenv, h->pgno));
 	}
 
 	return (__db_retcopy(dbp, dbt, data, len, memp, memsize));

@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_stat.c,v 11.34 2001/07/02 18:39:15 bostic Exp $";
+static const char revid[] = "$Id: mp_stat.c,v 11.39 2001/10/25 22:47:49 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,35 +18,29 @@ static const char revid[] = "$Id: mp_stat.c,v 11.34 2001/07/02 18:39:15 bostic E
 #include <unistd.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_page.h"
 #include "db_shash.h"
 #include "db_am.h"
 #include "mp.h"
 
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
-
 static void __memp_dumpcache
 		__P((DB_MPOOL *, REGINFO *, size_t *, FILE *, u_int32_t));
 static void __memp_pbh __P((DB_MPOOL *, BH *, size_t *, FILE *));
 
 /*
- * memp_stat --
+ * __memp_stat --
  *	Display MPOOL statistics.
  *
- * EXTERN: int memp_stat __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***));
+ * PUBLIC: int __memp_stat
+ * PUBLIC:     __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
  */
 int
-memp_stat(dbenv, gspp, fspp)
+__memp_stat(dbenv, gspp, fspp, flags)
 	DB_ENV *dbenv;
 	DB_MPOOL_STAT **gspp;
 	DB_MPOOL_FSTAT ***fspp;
+	u_int32_t flags;
 {
 	DB_MPOOL *dbmp;
 	DB_MPOOL_FSTAT **tfsp, *tstruct;
@@ -54,15 +48,10 @@ memp_stat(dbenv, gspp, fspp)
 	MPOOL *c_mp, *mp;
 	MPOOLFILE *mfp;
 	char *tname;
-	size_t len, nlen;
+	size_t len, nlen, pagesize;
 	u_int32_t i;
 	int ret;
 	char *name;
-
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_stat(dbenv, gspp, fspp));
-#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
@@ -70,6 +59,9 @@ memp_stat(dbenv, gspp, fspp)
 
 	dbmp = dbenv->mp_handle;
 	sp = NULL;
+	if ((ret = __db_fchk(dbenv,
+	     "DB_ENV->memp_stat", flags, DB_STAT_CLEAR)) != 0)
+		return (ret);
 
 	/* Global statistics. */
 	mp = dbmp->reginfo[0].primary;
@@ -88,6 +80,10 @@ memp_stat(dbenv, gspp, fspp)
 		sp->st_region_wait = dbmp->reginfo[0].rp->mutex.mutex_set_wait;
 		sp->st_region_nowait =
 		    dbmp->reginfo[0].rp->mutex.mutex_set_nowait;
+		if (LF_ISSET(DB_STAT_CLEAR)) {
+			dbmp->reginfo[0].rp->mutex.mutex_set_wait = 0;
+			dbmp->reginfo[0].rp->mutex.mutex_set_nowait = 0;
+		}
 
 		c_mp = dbmp->reginfo[0].primary;
 		sp->st_gbytes = c_mp->stat.st_gbytes;
@@ -120,6 +116,10 @@ memp_stat(dbenv, gspp, fspp)
 			sp->st_page_trickle += c_mp->stat.st_page_trickle;
 			sp->st_region_wait += c_mp->stat.st_region_wait;
 			sp->st_region_nowait += c_mp->stat.st_region_nowait;
+			if (LF_ISSET(DB_STAT_CLEAR)) {
+				memset(&c_mp->stat, 0, sizeof(c_mp->stat));
+				c_mp->stat.st_hash_buckets = c_mp->htab_buckets;
+			}
 		}
 
 		/*
@@ -137,6 +137,11 @@ memp_stat(dbenv, gspp, fspp)
 			sp->st_page_create += mfp->stat.st_page_create;
 			sp->st_page_in += mfp->stat.st_page_in;
 			sp->st_page_out += mfp->stat.st_page_out;
+			if (fspp == NULL && LF_ISSET(DB_STAT_CLEAR)) {
+				pagesize = mfp->stat.st_pagesize;
+				memset(&mfp->stat, 0, sizeof(mfp->stat));
+				mfp->stat.st_pagesize = pagesize;
+			}
 		}
 
 		R_UNLOCK(dbenv, dbmp->reginfo);
@@ -160,7 +165,7 @@ memp_stat(dbenv, gspp, fspp)
 
 		R_UNLOCK(dbenv, dbmp->reginfo);
 
-		if (len == 0)
+		if (i == 0)
 			return (0);
 
 		/* Allocate space */
@@ -183,14 +188,23 @@ memp_stat(dbenv, gspp, fspp)
 		tstruct = (DB_MPOOL_FSTAT *)(tfsp + i + 1);
 		tname = (char *)(tstruct + i);
 
+		/*
+		 * Files may have been opened since we counted, don't walk
+		 * off the end of the allocated space.
+		 */
 		for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
-		    mfp != NULL;
+		    mfp != NULL && i-- > 0;
 		    ++tfsp, ++tstruct, tname += nlen,
 		    mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
 			name = __memp_fns(dbmp, mfp);
 			nlen = strlen(name) + 1;
 			*tfsp = tstruct;
 			*tstruct = mfp->stat;
+			if (LF_ISSET(DB_STAT_CLEAR)) {
+				pagesize = mfp->stat.st_pagesize;
+				memset(&mfp->stat, 0, sizeof(mfp->stat));
+				mfp->stat.st_pagesize = pagesize;
+			}
 			tstruct->file_name = tname;
 			memcpy(tname, name, nlen);
 		}

@@ -4,7 +4,7 @@
  * Copyright (c) 1997-2001
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_lock.c,v 11.12 2001/05/10 17:14:04 bostic Exp $
+ * $Id: ex_lock.c,v 11.15 2001/08/06 13:51:27 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -22,9 +22,9 @@ extern int getopt(int, char * const *, const char *);
 
 #include <db.h>
 
-void	db_init __P((char *, u_int32_t, int));
-int	main __P((int, char *[]));
-void	usage __P((void));
+int db_init __P((char *, u_int32_t, int));
+int main __P((int, char *[]));
+int usage __P((void));
 
 DB_ENV	 *dbenv;
 const char
@@ -56,7 +56,7 @@ main(argc, argv)
 			break;
 		case 'm':
 			if ((i = atoi(optarg)) <= 0)
-				usage();
+				return (usage());
 			maxlocks = (u_int32_t)i;  /* XXX: possible overflow. */
 			break;
 		case 'u':
@@ -64,16 +64,17 @@ main(argc, argv)
 			break;
 		case '?':
 		default:
-			usage();
+			return (usage());
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 0)
-		usage();
+		return (usage());
 
 	/* Initialize the database environment. */
-	db_init(home, maxlocks, do_unlink);
+	if ((ret = db_init(home, maxlocks, do_unlink)) != 0)
+		return (ret);
 
 	locks = 0;
 	lockcount = 0;
@@ -81,7 +82,7 @@ main(argc, argv)
 	/*
 	 * Accept lock requests.
 	 */
-	if ((ret = lock_id(dbenv, &locker)) != 0) {
+	if ((ret = dbenv->lock_id(dbenv, &locker)) != 0) {
 		dbenv->err(dbenv, ret, "unable to get locker id");
 		(void)dbenv->close(dbenv, 0);
 		return (EXIT_FAILURE);
@@ -120,7 +121,7 @@ main(argc, argv)
 
 			lock_dbt.data = objbuf;
 			lock_dbt.size = strlen(objbuf);
-			ret = lock_get(dbenv, locker,
+			ret = dbenv->lock_get(dbenv, locker,
 			    DB_LOCK_NOWAIT, &lock_dbt, lock_type, &lock);
 			if (ret == 0) {
 				did_get = 1;
@@ -148,7 +149,7 @@ main(argc, argv)
 				continue;
 			}
 			lock = locks[lockid];
-			ret = lock_put(dbenv, &lock);
+			ret = dbenv->lock_put(dbenv, &lock);
 			did_get = 0;
 		}
 		switch (ret) {
@@ -189,7 +190,7 @@ main(argc, argv)
  * db_init --
  *	Initialize the environment.
  */
-void
+int
 db_init(home, maxlocks, do_unlink)
 	char *home;
 	u_int32_t maxlocks;
@@ -200,19 +201,19 @@ db_init(home, maxlocks, do_unlink)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: db_env_create: %s\n",
 		    progname, db_strerror(ret));
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
 
 	if (do_unlink) {
 		if ((ret = dbenv->remove(dbenv, home, DB_FORCE)) != 0) {
 			fprintf(stderr, "%s: dbenv->remove: %s\n",
 			    progname, db_strerror(ret));
-			exit(EXIT_FAILURE);
+			return (EXIT_FAILURE);
 		}
 		if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			fprintf(stderr, "%s: db_env_create: %s\n",
 			    progname, db_strerror(ret));
-			exit(EXIT_FAILURE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -225,14 +226,15 @@ db_init(home, maxlocks, do_unlink)
 	    dbenv->open(dbenv, home, DB_CREATE | DB_INIT_LOCK, 0)) != 0) {
 		dbenv->err(dbenv, ret, NULL);
 		(void)dbenv->close(dbenv, 0);
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
+	return (0);
 }
 
-void
+int
 usage()
 {
 	(void)fprintf(stderr,
 	    "usage: %s [-u] [-h home] [-m maxlocks]\n", progname);
-	exit(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }

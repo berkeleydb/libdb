@@ -7,7 +7,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fget.c,v 11.43 2001/07/05 13:23:06 bostic Exp $";
+static const char revid[] = "$Id: mp_fget.c,v 11.49 2001/10/04 17:14:36 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,17 +16,9 @@ static const char revid[] = "$Id: mp_fget.c,v 11.43 2001/07/05 13:23:06 bostic E
 #include <string.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
-
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
 
 #ifdef HAVE_FILESYSTEM_NOTZERO
 static int __memp_fs_notzero
@@ -34,13 +26,14 @@ static int __memp_fs_notzero
 #endif
 
 /*
- * memp_fget --
+ * __memp_fget --
  *	Get a page from the file.
  *
- * EXTERN: int memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
+ * PUBLIC: int __memp_fget
+ * PUBLIC:     __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
  */
 int
-memp_fget(dbmfp, pgnoaddr, flags, addrp)
+__memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	DB_MPOOLFILE *dbmfp;
 	db_pgno_t *pgnoaddr;
 	u_int32_t flags;
@@ -60,10 +53,6 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	dbenv = dbmp->dbenv;
 	mp = dbmp->reginfo[0].primary;
 	mfp = dbmfp->mfp;
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_fget(dbmfp, pgnoaddr, flags, addrp));
-#endif
 
 	PANIC_CHECK(dbenv);
 
@@ -81,7 +70,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * any attempt to actually write the file in memp_fput().
 	 */
 #define	OKFLAGS	\
-    (DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)
+    (DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW)
 	if (flags != 0) {
 		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
 			return (ret);
@@ -90,23 +79,12 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		case DB_MPOOL_CREATE:
 		case DB_MPOOL_LAST:
 		case DB_MPOOL_NEW:
-		case DB_MPOOL_NEW_GROUP:
 		case 0:
 			break;
 		default:
 			return (__db_ferr(dbenv, "memp_fget", 1));
 		}
 	}
-
-#ifdef DIAGNOSTIC
-	/*
-	 * XXX
-	 * We want to switch threads as often as possible.  Yield every time
-	 * we get a new page to ensure contention.
-	 */
-	if (DB_GLOBAL(db_pageyield))
-		__os_yield(dbenv, 1);
-#endif
 
 	/* Initialize remaining local variables. */
 	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
@@ -118,13 +96,6 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 
 	/*
 	 * Check for the last, last + 1 or new group page requests.
-	 *
-	 * !!!
-	 * DB_MPOOL_NEW_GROUP is undocumented -- the hash access method needs
-	 * to allocate contiguous groups of pages in order to do subdatabases.
-	 * We return the first page in the group, but the caller must put an
-	 * LSN on the *last* page and write it, otherwise after a crash we may
-	 * not create all of the pages we need to create.
 	 */
 	switch(flags) {
 	case DB_MPOOL_LAST:
@@ -132,9 +103,6 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		break;
 	case DB_MPOOL_NEW:
 		*pgnoaddr = mfp->last_pgno + 1;
-		break;
-	case DB_MPOOL_NEW_GROUP:
-		*pgnoaddr = mfp->last_pgno + *pgnoaddr;
 		break;
 	default:
 		break;
@@ -147,14 +115,13 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * to us dirty or not.
 	 */
 	if (*pgnoaddr > mfp->last_pgno) {
-		if (!LF_ISSET(
-		    DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP | DB_MPOOL_CREATE)) {
+		if (!LF_ISSET( DB_MPOOL_NEW | DB_MPOOL_CREATE)) {
 			ret = DB_PAGE_NOTFOUND;
 			goto err;
 		}
 #ifdef HAVE_FILESYSTEM_NOTZERO
 		if (__os_fs_notzero() &&
-		    F_ISSET(&dbmfp->fh, DB_FH_VALID) && (ret =
+		    F_ISSET(dbmfp->fhp, DB_FH_VALID) && (ret =
 		    __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)) != 0)
 			goto err;
 #endif
@@ -173,7 +140,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	n_bucket = NBUCKET(c_mp, mf_offset, *pgnoaddr);
 	dbht = R_ADDR(&dbmp->reginfo[n_cache], c_mp->htab);
 
-	if (LF_ISSET(DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP))
+	if (LF_ISSET(DB_MPOOL_NEW))
 		goto alloc;
 
 	/*
@@ -259,9 +226,8 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		 * the region lock, wait for the I/O to complete, and reacquire
 		 * the region.
 		 */
-		for (first = 1;
-		    F_ISSET(bhp, BH_LOCKED) && dbenv->db_mutexlocks;
-		    first = 0) {
+		for (first = 1; F_ISSET(bhp, BH_LOCKED) &&
+		    !F_ISSET(dbenv, DB_ENV_NOLOCKING); first = 0) {
 			R_UNLOCK(dbenv, dbmp->reginfo);
 
 			/*
@@ -368,7 +334,7 @@ alloc:	/* Allocate new buffer header and data space. */
 	 * Otherwise, read the page into memory, optionally creating it if
 	 * DB_MPOOL_CREATE is set.
 	 */
-	if (LF_ISSET(DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)) {
+	if (LF_ISSET(DB_MPOOL_NEW)) {
 		if (mfp->clear_len == 0)
 			memset(bhp->buf, 0, mfp->stat.st_pagesize);
 		else {
@@ -422,6 +388,15 @@ done:	/* Update the chain search statistics. */
 
 	R_UNLOCK(dbenv, dbmp->reginfo);
 
+#ifdef DIAGNOSTIC
+	/*
+	 * We want to switch threads as often as possible, and at awkward
+	 * times.  Yield every time we get a new page to ensure contention.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
+		__os_yield(dbenv, 1);
+#endif
+
 	return (0);
 
 err:	/* Discard our reference. */
@@ -431,28 +406,6 @@ err:	/* Discard our reference. */
 
 	*(void **)addrp = NULL;
 	return (ret);
-}
-
-/*
- * __memp_lastpgno --
- *	Return the last page in the file.
- *
- * PUBLIC: void __memp_lastpgno __P((DB_MPOOLFILE *, db_pgno_t *));
- */
-void
-__memp_lastpgno(dbmfp, pgnoaddr)
-	DB_MPOOLFILE *dbmfp;
-	db_pgno_t *pgnoaddr;
-{
-	DB_ENV *dbenv;
-	DB_MPOOL *dbmp;
-
-	dbmp = dbmfp->dbmp;
-	dbenv = dbmp->dbenv;
-
-	R_LOCK(dbenv, dbmp->reginfo);
-	*pgnoaddr = dbmfp->mfp->last_pgno;
-	R_UNLOCK(dbenv, dbmp->reginfo);
 }
 
 #ifdef HAVE_FILESYSTEM_NOTZERO
@@ -471,7 +424,8 @@ __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
 	u_int32_t i, npages;
 	size_t nw;
 	int ret;
-	char *fail, *page;
+	u_int8_t *page;
+	char *fail;
 
 	/*
 	 * Pages allocated by writing pages past end-of-file are not zeroed,
@@ -492,7 +446,7 @@ __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
 	if ((ret = __os_calloc(dbenv, 1, mfp->stat.st_pagesize, &page)) != 0)
 		return (ret);
 
-	db_io.fhp = &dbmfp->fh;
+	db_io.fhp = dbmfp->fhp;
 	db_io.mutexp = dbmfp->mutexp;
 	db_io.pagesize = db_io.bytes = mfp->stat.st_pagesize;
 	db_io.buf = page;
@@ -505,7 +459,7 @@ __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
 			goto err;
 		}
 	}
-	if (i != 1 && (ret = __os_fsync(dbenv, &dbmfp->fh)) != 0) {
+	if (i != 1 && (ret = __os_fsync(dbenv, dbmfp->fhp)) != 0) {
 		fail = "sync";
 		goto err;
 	}
@@ -515,7 +469,7 @@ __memp_fs_notzero(dbenv, dbmfp, mfp, pgnoaddr)
 		fail = "write";
 		goto err;
 	}
-	if ((ret = __os_fsync(dbenv, &dbmfp->fh)) != 0) {
+	if ((ret = __os_fsync(dbenv, dbmfp->fhp)) != 0) {
 		fail = "sync";
 err:		__db_err(dbenv, "%s: %s failed for page %lu",
 		    __memp_fn(dbmfp), fail, (u_long)db_io.pgno);

@@ -1,4 +1,4 @@
-<!--$Id: faq.so,v 10.8 2001/06/19 18:15:33 bostic Exp $-->
+<!--$Id: faq.so,v 10.14 2001/11/06 22:20:06 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -16,9 +16,13 @@
 <p>
 <h1 align=center>Access method FAQ</h1>
 <p><ol>
+<p><li><b>Is a Berkeley DB database the same as a "table"?</b>
+<p>Yes; "tables" are databases, "rows" are key/data pairs, and "columns"
+are application-encapsulated fields within a data item (to which Berkeley DB
+does not directly provide access).
 <p><li><b>I'm seeing database corruption when creating multiple databases
 in a single physical file.</b>
-<p>This problem is usually the result of DB handles not sharing an
+<p>This problem is usually the result of <a href="../../api_c/db_create.html">DB</a> handles not sharing an
 underlying database environment.  See <a href="../../ref/am/opensub.html">Opening multiple databases in a single file</a> for more information.
 <a name="3"><!--meow--></a><a name="4"><!--meow--></a>
 <p><li><b>Is there any way to compact databases, or return unused
@@ -29,8 +33,8 @@ filesystem as long as there are unused pages available.  However, the
 pages cannot be returned to the filesystem without dumping the database,
 removing the physical file, and reloading the database.  The one
 exception to this rule is Queue access method extent files.  Queue
-extent files removed when they are emptied, and their pages returned to
-the underlying filesystem.
+extent files are removed when they are emptied, and their pages returned
+to the underlying filesystem.
 <p><li><b>I'm using integers as keys for a Btree database, and even
 though the key/data pairs are entered in sorted order, the page-fill
 factor is low.</b>
@@ -62,6 +66,30 @@ database environment regions from filesystem backed memory into system
 memory (or heap memory), can often make additional system memory
 available for the file buffer cache, especially on systems without a
 unified buffer cache and VM system.
+<p><li><b>I'm seeing database corruption when I run out of disk space.</b>
+<p>Berkeley DB can continue to run when when out-of-disk-space errors occur, but
+it requires the application to be transaction protected.  Applications
+which do not enclose update operations in transactions cannot recover
+from out-of-disk-space errors, and the result of running out of disk
+space may be database corruption.
+<p><li><b>How can I associate application information with a <a href="../../api_c/db_create.html">DB</a>
+or <a href="../../api_c/env_create.html">DB_ENV</a> handle?</b>
+<p>In the C API, the <a href="../../api_c/db_create.html">DB</a> and <a href="../../api_c/env_create.html">DB_ENV</a> structures each contain
+an "app_private" field intended to be used to reference
+application-specific information.  See the <a href="../../api_c/db_create.html">db_create</a> and
+<a href="../../api_c/env_create.html">db_env_create</a> documentation for more information.
+<p>In the C++ or Java APIs, the easiest way to associate
+application-specific data with a handle is to subclass the <a href="../../api_cxx/db_class.html">Db</a>
+or <a href="../../api_cxx/dbenv_class.html">DbEnv</a>, for example subclassing <a href="../../api_cxx/db_class.html">Db</a> to get MyDb.
+Objects of type MyDb will still have the Berkeley DB API methods available on
+them, and you can put any extra data or methods you want into the MyDb
+class.  If you are using "callback" APIs that take <a href="../../api_cxx/db_class.html">Db</a> or
+<a href="../../api_cxx/dbenv_class.html">DbEnv</a> arguments (for example, <a href="../../api_cxx/db_set_bt_compare.html">Db::set_bt_compare</a>)
+these will always be called with the <a href="../../api_cxx/db_class.html">Db</a> or <a href="../../api_cxx/dbenv_class.html">DbEnv</a>
+objects you create.  So if you always use MyDb objects, you will be able
+to take the first argument to the callback function and cast it to a
+MyDb (in C++, cast it to (MyDb*)).  That will allow you to access your
+data members or methods.
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_misc/tune.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/bigpic.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

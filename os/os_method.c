@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_method.c,v 11.8 2001/04/10 20:44:35 bostic Exp $";
+static const char revid[] = "$Id: os_method.c,v 11.12 2001/08/07 01:42:43 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -233,49 +233,5 @@ db_env_set_func_yield(func_yield)
 	int (*func_yield) __P((void));
 {
 	__db_jump.j_yield = func_yield;
-	return (0);
-}
-
-/*
- * EXTERN: int db_env_set_pageyield __P((int));
- */
-int
-db_env_set_pageyield(onoff)
-	int onoff;
-{
-	DB_GLOBAL(db_pageyield) = onoff;
-	return (0);
-}
-
-/*
- * EXTERN: int db_env_set_panicstate __P((int));
- */
-int
-db_env_set_panicstate(onoff)
-	int onoff;
-{
-	DB_GLOBAL(db_panic) = onoff;
-	return (0);
-}
-
-/*
- * EXTERN: int db_env_set_region_init __P((int));
- */
-int
-db_env_set_region_init(onoff)
-	int onoff;
-{
-	DB_GLOBAL(db_region_init) = onoff;
-	return (0);
-}
-
-/*
- * EXTERN: int db_env_set_tas_spins __P((u_int32_t));
- */
-int
-db_env_set_tas_spins(tas_spins)
-	u_int32_t tas_spins;
-{
-	DB_GLOBAL(db_tas_spins) = tas_spins;
 	return (0);
 }

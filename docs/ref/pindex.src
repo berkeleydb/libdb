@@ -38,7 +38,7 @@ __APIREL__/ref/am_conf/extentsize.html#2 selecting a Queue @extent size
 __APIREL__/ref/am_conf/h_ffactor.html#2 page @fill factor
 __APIREL__/ref/am_conf/h_hash.html#2 specifying a database @hash
 __APIREL__/ref/am_conf/h_nelem.html#2 @hash table size
-__APIREL__/ref/am_conf/intro.html#2 available @access methods
+__APIREL__/ref/am_conf/intro.html#2 introduction to the @access methods
 __APIREL__/ref/am_conf/logrec.html#2 logical @record numbers
 __APIREL__/ref/am_conf/pagesize.html#2 selecting a @page size
 __APIREL__/ref/am_conf/re_source.html#2 @text backing files
@@ -111,6 +111,7 @@ __APIREL__/ref/build_unix/intro.html#4 building for @UNIX
 __APIREL__/ref/build_unix/intro.html#5 building for @QNX
 __APIREL__/ref/build_unix/irix.html#2 @IRIX
 __APIREL__/ref/build_unix/linux.html#2 @Linux
+__APIREL__/ref/build_unix/macosx.html#2 @Mac OS X
 __APIREL__/ref/build_unix/notes.html#2 @building for UNIX FAQ
 __APIREL__/ref/build_unix/notes.html#3 building for @UNIX FAQ
 __APIREL__/ref/build_unix/osf1.html#2 @OSF/1
@@ -124,6 +125,7 @@ __APIREL__/ref/build_unix/ultrix.html#2 @Ultrix
 __APIREL__/ref/build_vxworks/faq.html#2 @building for VxWorks FAQ
 __APIREL__/ref/build_vxworks/faq.html#3 building for @VxWorks FAQ
 __APIREL__/ref/build_vxworks/intro.html#2 @building for VxWorks
+__APIREL__/ref/build_vxworks/introae.html#2 @building for VxWorks AE
 __APIREL__/ref/build_vxworks/notes.html#2 @VxWorks notes
 __APIREL__/ref/build_win/faq.html#2 @building for Windows FAQ
 __APIREL__/ref/build_win/faq.html#3 building for @Windows FAQ
@@ -132,12 +134,14 @@ __APIREL__/ref/build_win/notes.html#2 @Windows notes
 __APIREL__/ref/build_win/test.html#2 running the @test suite under Windows
 __APIREL__/ref/build_win/test.html#3 running the test suite under @Windows
 __APIREL__/ref/cam/intro.html#2 @Concurrent Data Store
+__APIREL__/ref/debug/intro.html#2 introduction to @debugging
 __APIREL__/ref/debug/common.html#2 @debugging applications
 __APIREL__/ref/distrib/layout.html#2 @source code layout
 __APIREL__/ref/dumpload/text.html#2 loading @text into databases
 __APIREL__/ref/dumpload/utility.html#2 dumping/loading @text to/from databases
 __APIREL__/ref/env/create.html#2 database @environment
 __APIREL__/ref/env/faq.html#2 database @environment FAQ
+__APIREL__/ref/env/intro.html#2 introduction to database @environments
 __APIREL__/ref/env/naming.html#2 file @naming
 __APIREL__/ref/env/naming.html#db_home File naming@db_home
 __APIREL__/ref/env/naming.html#DB_HOME File naming@DB_HOME
@@ -157,20 +161,25 @@ __APIREL__/ref/lock/am_conv.html#2 Berkeley DB Transactional Data Store @locking
 __APIREL__/ref/lock/cam_conv.html#2 Berkeley DB Concurrent Data Store @locking conventions
 __APIREL__/ref/lock/config.html#2 @locking configuration
 __APIREL__/ref/lock/dead.html#2 @deadlocks
-__APIREL__/ref/lock/intro.html#2 @locking introduction
+__APIREL__/ref/lock/intro.html#2 introduction to the @locking subsystem
 __APIREL__/ref/lock/max.html#2 sizing the @locking subsystem
 __APIREL__/ref/lock/nondb.html#2 @locking and non-Berkeley DB applications
 __APIREL__/ref/lock/notxn.html#2 @locking without transactions
 __APIREL__/ref/lock/page.html#2 page-level @locking
 __APIREL__/ref/lock/page.html#3 @locking granularity
 __APIREL__/ref/lock/stdmode.html#2 standard @lock modes
+__APIREL__/ref/lock/timeout.html#2 lock @timeouts
+__APIREL__/ref/lock/timeout.html#3 transaction @timeouts
 __APIREL__/ref/lock/twopl.html#2 two-phase @locking
 __APIREL__/ref/log/config.html#2 @logging configuration
-__APIREL__/ref/log/intro.html#2 @logging introduction
+__APIREL__/ref/log/intro.html#2 introduction to the @logging subsystem
 __APIREL__/ref/log/limits.html#2 @log file limits
+__APIREL__/ref/mp/intro.html#2 introduction to the @memory pool subsystem
+__APIREL__/ref/mp/intro.html#3 introduction to the memory @cache subsystem
+__APIREL__/ref/mp/intro.html#4 introduction to the @buffer pool subsystem
 __APIREL__/ref/mp/config.html#2 @memory pool configuration
 __APIREL__/ref/perl/intro.html#2 @Perl
-__APIREL__/ref/program/appsignals.html#2 application @signal handling
+__APIREL__/ref/program/appsignals.html#2 @signal handling
 __APIREL__/ref/program/compatible.html#2 @interface compatibility
 __APIREL__/ref/program/environ.html#2 @environment variables
 __APIREL__/ref/program/errorret.html#2 @error returns
@@ -187,9 +196,12 @@ __APIREL__/ref/program/mt.html#2 building @threaded applications
 __APIREL__/ref/program/namespace.html#2 Berkeley DB library @name spaces
 __APIREL__/ref/program/scope.html#2 Berkeley DB handle @scope
 __APIREL__/ref/program/scope.html#3 Berkeley DB @free-threaded handles
+__APIREL__/ref/rep/intro.html#2 introduction to @replication
 __APIREL__/ref/rpc/client.html#2 @RPC client
+__APIREL__/ref/rpc/intro.html#2 introduction to @rpc client/server
 __APIREL__/ref/rpc/server.html#2 @RPC server
 __APIREL__/ref/sendmail/intro.html#2 @Sendmail
+__APIREL__/ref/simple_tut/intro.html#2 simple @tutorial
 __APIREL__/ref/tcl/intro.html#2 loading Berkeley DB with @Tcl
 __APIREL__/ref/tcl/faq.html#2 Tcl @FAQ
 __APIREL__/ref/tcl/faq.html#3 @Tcl FAQ
@@ -203,6 +215,7 @@ __APIREL__/ref/transapp/checkpoint.html#2 checkpoints in @transaction protected 
 __APIREL__/ref/transapp/deadlock.html#2 deadlock detection in @transaction protected applications
 __APIREL__/ref/transapp/faq.html#2 @transaction FAQ
 __APIREL__/ref/transapp/filesys.html#2 recovery and @filesystem operations
+__APIREL__/ref/transapp/hotfail.html#2 hot @failover
 __APIREL__/ref/transapp/intro.html#2 @Transactional Data Store
 __APIREL__/ref/transapp/logfile.html#2 @log file removal
 __APIREL__/ref/transapp/nested.html#2 nested @transactions
@@ -212,13 +225,14 @@ __APIREL__/ref/transapp/throughput.html#2 @transaction throughput
 __APIREL__/ref/transapp/tune.html#2 @transaction tuning
 __APIREL__/ref/transapp/tune.html#3 transaction @tuning
 __APIREL__/ref/txn/config.html#2 @transaction configuration
-__APIREL__/ref/txn/intro.html#2 Berkeley DB and @transactions
+__APIREL__/ref/txn/intro.html#2 introduction to the @transaction subsystem
 __APIREL__/ref/txn/limits.html#2 @transaction limits
 __APIREL__/ref/upgrade.2.0/intro.html#2 Upgrading to release @2.0
 __APIREL__/ref/upgrade.3.0/intro.html#2 Upgrading to release @3.0
 __APIREL__/ref/upgrade.3.1/intro.html#2 Upgrading to release @3.1
 __APIREL__/ref/upgrade.3.2/intro.html#2 Upgrading to release @3.2
 __APIREL__/ref/upgrade.3.3/intro.html#2 Upgrading to release @3.3
+__APIREL__/ref/upgrade.4.0/intro.html#2 Upgrading to release @4.0
 __APIREL__/ref/xa/build.html#2 @Transaction Manager
 __APIREL__/ref/xa/intro.html#2 @Distributed Transactions
 __APIREL__/ref/xa/intro.html#3 @Resource Manager

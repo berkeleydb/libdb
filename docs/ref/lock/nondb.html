@@ -31,16 +31,16 @@ room name, the date when it is needed, and the beginning of the
 appropriate half-hour slot.
 <p>Lockers are 32-bit numbers, so we might choose to use the User ID of
 the individual running the scheduling program.  To schedule half-hour
-slots, all the application needs to do is issue a <a href="../../api_c/lock_get.html">lock_get</a> call
+slots, all the application needs to do is issue a <a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> call
 for the appropriate locker/object pair.  To schedule a longer slot, the
-application needs to issue a <a href="../../api_c/lock_vec.html">lock_vec</a> call, with one
-<a href="../../api_c/lock_get.html">lock_get</a> operation per half-hour -- up to the total length.  If
-the <a href="../../api_c/lock_vec.html">lock_vec</a> call fails, the application would have to release
+application needs to issue a <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> call, with one
+<a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> operation per half-hour -- up to the total length.  If
+the <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> call fails, the application would have to release
 the parts of the time slot that were obtained.
 <p>To cancel a reservation, the application would make the appropriate
-<a href="../../api_c/lock_put.html">lock_put</a> calls.  To reschedule a reservation, the
-<a href="../../api_c/lock_get.html">lock_get</a> and <a href="../../api_c/lock_put.html">lock_put</a> calls could all be made inside of
-a single <a href="../../api_c/lock_vec.html">lock_vec</a> call.  The output of <a href="../../api_c/lock_stat.html">lock_stat</a> could
+<a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> calls.  To reschedule a reservation, the
+<a href="../../api_c/lock_get.html">DB_ENV-&gt;lock_get</a> and <a href="../../api_c/lock_put.html">DB_ENV-&gt;lock_put</a> calls could all be made inside of
+a single <a href="../../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a> call.  The output of <a href="../../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a> could
 be post-processed into a human-readable schedule of conference room
 use.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/am_conv.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/log/intro.html"><img src="../../images/next.gif" alt="Next"></a>

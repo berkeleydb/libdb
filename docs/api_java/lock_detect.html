@@ -1,4 +1,4 @@
-<!--$Id: lock_detect.so,v 10.30 2001/05/05 01:49:14 bostic Exp $-->
+<!--$Id: lock_detect.so,v 10.35 2001/10/22 15:24:32 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv.lock_detect</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,17 +22,33 @@
 import com.sleepycat.db.*;
 <p>
 public int lock_detect(int flags, int atype)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv.lock_detect method runs one iteration of the deadlock detector.
 The deadlock detector traverses the lock table and marks one of the
-participating transactions for abort in each deadlock it finds.
+participating lock requesters for rejection in each deadlock it finds.
 <p>The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>The <b>atype</b> parameter specifies which transaction to abort in the
-case of deadlock.  It must be set to one of possible arguments listed for
-the <a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a> interface.
-<p>The DbEnv.lock_detect method returns the number of transactions aborted.
+<p>The <b>atype</b> parameter specifies which lock request(s) to reject.
+It must be set to one following list:
+<p><dl compact>
+<p><dt><a name="Db.DB_LOCK_DEFAULT">Db.DB_LOCK_DEFAULT</a><dd>Use whatever lock policy was specified when the database environment
+was created.  If no lock policy has yet been specified, set the lock
+policy to Db.DB_LOCK_RANDOM.
+<dt><a name="Db.DB_LOCK_EXPIRE">Db.DB_LOCK_EXPIRE</a><dd>Reject lock requests which have timed out.  No other deadlock detection
+is performed.
+<dt><a name="Db.DB_LOCK_MAXLOCKS">Db.DB_LOCK_MAXLOCKS</a><dd>Reject the lock request for the locker ID with the greatest number of
+locks.
+<dt><a name="Db.DB_LOCK_MINLOCKS">Db.DB_LOCK_MINLOCKS</a><dd>Reject the lock request for the locker ID with the fewest number of
+locks.
+<dt><a name="Db.DB_LOCK_MINWRITE">Db.DB_LOCK_MINWRITE</a><dd>Reject the lock request for the locker ID with the fewest number of
+write locks.
+<dt><a name="Db.DB_LOCK_OLDEST">Db.DB_LOCK_OLDEST</a><dd>Reject the lock request for the oldest locker ID.
+<dt><a name="Db.DB_LOCK_RANDOM">Db.DB_LOCK_RANDOM</a><dd>Reject the lock request for a random locker ID.
+<dt><a name="Db.DB_LOCK_YOUNGEST">Db.DB_LOCK_YOUNGEST</a><dd>Reject the lock request for the youngest locker ID.
+</dl>
+<p>The DbEnv.lock_detect method returns the number of lock requests that were
+rejected.
 <p>The DbEnv.lock_detect method throws an exception that encapsulates a non-zero error value on
 failure.
 <h1>Errors</h1>
@@ -45,19 +61,19 @@ will fail in the same way.
 <h1>See Also</h1>
 <a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a>,
 <a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a>,
-<a href="../api_java/env_set_lk_max.html">DbEnv.set_lk_max</a>,
 <a href="../api_java/env_set_lk_max_lockers.html">DbEnv.set_lk_max_lockers</a>,
 <a href="../api_java/env_set_lk_max_locks.html">DbEnv.set_lk_max_locks</a>,
 <a href="../api_java/env_set_lk_max_objects.html">DbEnv.set_lk_max_objects</a>,
 <a href="../api_java/lock_detect.html">DbEnv.lock_detect</a>,
 <a href="../api_java/lock_get.html">DbEnv.lock_get</a>,
 <a href="../api_java/lock_id.html">DbEnv.lock_id</a>,
-<a href="../api_java/lock_put.html">DbLock.put</a>,
+<a href="../api_java/lock_id_free.html">DbEnv.lock_id_free</a>,
+<a href="../api_java/lock_put.html">DbEnv.lock_put</a>,
 and
 <a href="../api_java/lock_stat.html">DbEnv.lock_stat</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

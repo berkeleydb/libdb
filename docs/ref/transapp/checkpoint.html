@@ -33,7 +33,7 @@ failure has to redo or undo changes only since the last checkpoint since
 changes before the checkpoint have all been flushed to the filesystem.
 <p>Berkeley DB provides a separate utility, <a href="../../utility/db_checkpoint.html">db_checkpoint</a>, which can be
 used to perform checkpoints.  Alternatively, applications can write
-their own checkpoint utility using the underlying <a href="../../api_c/txn_checkpoint.html">txn_checkpoint</a>
+their own checkpoint utility using the underlying <a href="../../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a>
 function.  The following code fragment checkpoints the database
 environment every 60 seconds:
 <p><blockquote><pre>int
@@ -106,7 +106,7 @@ checkpoint_thread(void *arg)
 <p>
 	/* Checkpoint once a minute. */
 	for (;; sleep(60))
-		switch (ret = txn_checkpoint(dbenv, 0, 0, 0)) {
+		switch (ret = dbenv-&gt;txn_checkpoint(dbenv, 0, 0, 0)) {
 		case 0:
 		case DB_INCOMPLETE:
 			break;

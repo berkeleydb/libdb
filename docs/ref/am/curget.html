@@ -1,4 +1,4 @@
-<!--$Id: curget.so,v 10.17 2001/05/19 14:51:30 bostic Exp $-->
+<!--$Id: curget.so,v 10.18 2001/08/13 19:11:36 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -46,6 +46,8 @@ and data items.  This is particularly useful when there are large
 numbers of duplicate records for a key, as it allows the cursor to
 easily be positioned at the correct place for traversal of some part of
 a large set of duplicate records.
+<p><dt><a href="../../api_c/db_get.html#DB_GET_BOTH_RANGE">DB_GET_BOTH_RANGE</a><dd>Return the smallest record in the database greater than or equal to the
+supplied key and data items.
 </dl>
 <h3>Retrieving based on record numbers</h3>
 <p><dl compact>

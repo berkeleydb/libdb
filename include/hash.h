@@ -39,8 +39,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash.h,v 11.22 2001/07/02 01:05:40 bostic Exp $
+ * $Id: hash.h,v 11.23 2001/10/04 12:48:05 bostic Exp $
  */
+#ifndef	_DB_HASH_H_
+#define	_DB_HASH_H_
 
 /* Hash internal structure. */
 typedef struct hash_t {
@@ -141,3 +143,4 @@ typedef enum {
 #include "hash_auto.h"
 #include "hash_ext.h"
 #include "db_am.h"
+#endif /* !_DB_HASH_H_ */

@@ -1,4 +1,4 @@
-<!--$Id: db_set_h_hash.so,v 10.20 2001/05/01 14:23:05 bostic Exp $-->
+<!--$Id: db_set_h_hash.so,v 10.21 2001/10/22 15:24:23 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>Db::set_h_hash</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,8 +22,8 @@
 #include &lt;db_cxx.h&gt;
 <p>
 extern "C" {
-	typedef u_int32_t (*h_hash_fcn_type)
-		(DB *, const void *bytes, u_int32_t length);
+    typedef u_int32_t (*h_hash_fcn_type)
+	(DB *, const void *bytes, u_int32_t length);
 };
 int
 Db::set_h_hash(h_hash_fcn_type h_hash_fcn);
@@ -106,7 +106,7 @@ and
 <a href="../api_cxx/db_verify.html">Db::verify</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

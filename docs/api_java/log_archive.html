@@ -1,4 +1,4 @@
-<!--$Id: log_archive.so,v 10.32 2001/05/30 21:14:54 bostic Exp $-->
+<!--$Id: log_archive.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv.log_archive</h1>
 </td>
 <td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,7 +22,7 @@
 import com.sleepycat.db.*;
 <p>
 public String[] log_archive(int flags)
-	throws DbException;
+    throws DbException;
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv.log_archive method
@@ -49,6 +49,21 @@ use.
 </dl>
 <p>The Db.DB_ARCH_DATA and Db.DB_ARCH_LOG flags are mutually
 exclusive.
+<p>Log cursor handles (returned by the <a href="../api_java/log_cursor.html">DbEnv.log_cursor</a> method) may have open
+file descriptors for log files in the database environment.  Also, the
+Berkeley DB interfaces to the database environment logging subsystem (for
+example, <a href="../api_java/log_put.html">DbEnv.log_put</a> and <a href="../api_java/txn_abort.html">DbTxn.abort</a>) may allocate log cursors
+and have open file descriptors for log files as well.  On operating
+systems where filesystem related system calls (for example, rename and
+unlink on Windows/NT) can fail if a process has an open file descriptor
+for the affected file, attempting to move or remove the log files listed
+by DbEnv.log_archive may fail.  All Berkeley DB internal use of log cursors
+operates on active log files only and furthermore, is short-lived in
+nature.  So, an application seeing such a failure should be restructured
+to close any open log cursors it may have, and otherwise to retry the
+operation until it succeeds.  (Although the latter is not likely to be
+necessary; it is hard to imagine a reason to move or rename a log file
+in which transactions are being logged or aborted.)
 <p>See the <a href="../utility/db_archive.html">db_archive</a> manual page for more information on database
 archival procedures.
 <p>The DbEnv.log_archive method throws an exception that encapsulates a non-zero error value on
@@ -78,17 +93,19 @@ will fail in the same way.
 <a href="../api_java/env_set_lg_regionmax.html">DbEnv.set_lg_regionmax</a>,
 <a href="../api_java/log_archive.html">DbEnv.log_archive</a>,
 <a href="../api_java/log_compare.html">DbEnv.log_compare</a>,
+<a href="../api_java/log_cursor.html">DbEnv.log_cursor</a>,
 <a href="../api_java/log_file.html">DbEnv.log_file</a>,
 <a href="../api_java/log_flush.html">DbEnv.log_flush</a>,
-<a href="../api_java/log_get.html">DbEnv.log_get</a>,
 <a href="../api_java/log_put.html">DbEnv.log_put</a>,
 <a href="../api_java/log_register.html">DbEnv.log_register</a>,
 <a href="../api_java/log_stat.html">DbEnv.log_stat</a>,
+<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>,
+<a href="../api_java/logc_close.html">DbLogc.logc_close</a>
 and
-<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>.
+<a href="../api_java/logc_get.html">DbLogc.logc_get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

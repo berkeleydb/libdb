@@ -42,7 +42,7 @@ if ((ret = dbp-&gt;open(dbp,
 }</pre></blockquote>
 <p>As you can see, the arguments to db_open and to <a href="../../api_c/db_open.html">DB-&gt;open</a> are
 largely the same.  There is some re-organization, and note that the
-enclosing DB_ENV structure is specified when the DB object
+enclosing <a href="../../api_c/env_create.html">DB_ENV</a> structure is specified when the <a href="../../api_c/db_create.html">DB</a> object
 is created using the <a href="../../api_c/db_create.html">db_create</a> interface.  There is one
 additional argument to <a href="../../api_c/db_open.html">DB-&gt;open</a>, argument #3.  For backward
 compatibility with the 2.X Berkeley DB releases, simply set that argument to
@@ -56,7 +56,7 @@ This functionality is no longer available, applications must specify the
 environment.
 <p>The final issue with upgrading the db_open call is that the DB_INFO
 structure is no longer used, having been replaced by individual methods
-on the DB handle.  That change is discussed in detail later in
+on the <a href="../../api_c/db_create.html">DB</a> handle.  That change is discussed in detail later in
 this chapter.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.0/dbenv.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/xa.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

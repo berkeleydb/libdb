@@ -4,6 +4,7 @@
 # random process that's not DB's and is not exiting.
 
 source ./include.tcl
+source $test_path/testutils.tcl
 
 # Arguments:
 #
@@ -33,13 +34,17 @@ set childsentinel $testdir/begin.$childpid
 set f [open $childsentinel w]
 close $f
 
+puts $t "source $test_path/test.tcl"
+puts $t "set script $script"
+
 # Set up argv for the subprocess, since the args aren't passed in as true
 # arguments thanks to the pipe structure.
 puts $t "set argc [llength $args]"
 puts $t "set argv [list $args]"
 
-# Command the test to run.
-puts $t "source $test_path/$script"
+puts $t {set ret [catch { source $test_path/$script } result]}
+puts $t {if { [string length $result] > 0 } { puts $result }}
+puts $t {error_check_good "$test_path/$script run: pid [pid]" $ret 0}
 
 # Close the pipe.  This will flush the above commands and actually run the
 # test, and will also return an error a la exec if anything bad happens
@@ -55,4 +60,6 @@ close $f
 set f [open $testdir/end.$parentpid w]
 close $f
 
+error_check_good "Pipe close ($childpid: $script $argv: logfile $logfile)"\
+    $ret 0
 exit $ret

@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_meta.c,v 11.12 2001/03/15 00:18:42 ubell Exp $";
+static const char revid[] = "$Id: hash_meta.c,v 11.15 2001/07/26 20:52:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,29 +31,32 @@ int
 __ham_get_meta(dbc)
 	DBC *dbc;
 {
-	HASH_CURSOR *hcp;
-	HASH *hashp;
 	DB *dbp;
+	DB_ENV *dbenv;
+	DB_MPOOLFILE *mpf;
+	HASH *hashp;
+	HASH_CURSOR *hcp;
 	int ret;
 
-	hcp = (HASH_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
+	mpf = dbp->mpf;
 	hashp = dbp->h_internal;
+	hcp = (HASH_CURSOR *)dbc->internal;
 
-	if (dbp->dbenv != NULL &&
+	if (dbenv != NULL &&
 	    STD_LOCKING(dbc) && !F_ISSET(dbc, DBC_RECOVER)) {
 		dbc->lock.pgno = hashp->meta_pgno;
-		if ((ret = lock_get(dbp->dbenv, dbc->locker,
+		if ((ret = dbenv->lock_get(dbenv, dbc->locker,
 		    DB_NONBLOCK(dbc) ? DB_LOCK_NOWAIT : 0,
 		    &dbc->lock_dbt, DB_LOCK_READ, &hcp->hlock)) != 0)
 			return (ret);
 	}
 
-	if ((ret = memp_fget(dbc->dbp->mpf,
+	if ((ret = mpf->get(mpf,
 	    &hashp->meta_pgno, DB_MPOOL_CREATE, &(hcp->hdr))) != 0 &&
-	    LOCK_ISSET(hcp->hlock)) {
-		(void)lock_put(dbc->dbp->dbenv, &hcp->hlock);
-	}
+	    LOCK_ISSET(hcp->hlock))
+		(void)dbenv->lock_put(dbenv, &hcp->hlock);
 
 	return (ret);
 }
@@ -67,17 +70,19 @@ int
 __ham_release_meta(dbc)
 	DBC *dbc;
 {
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 
+	mpf = dbc->dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if (hcp->hdr)
-		(void)memp_fput(dbc->dbp->mpf, hcp->hdr,
+		(void)mpf->put(mpf, hcp->hdr,
 		    F_ISSET(hcp, H_DIRTY) ? DB_MPOOL_DIRTY : 0);
 	hcp->hdr = NULL;
 	if (!F_ISSET(dbc, DBC_RECOVER) &&
 	    dbc->txn == NULL && LOCK_ISSET(hcp->hlock))
-		(void)lock_put(dbc->dbp->dbenv, &hcp->hlock);
+		(void)dbc->dbp->dbenv->lock_put(dbc->dbp->dbenv, &hcp->hlock);
 	F_CLR(hcp, H_DIRTY);
 
 	return (0);
@@ -93,6 +98,7 @@ __ham_dirty_meta(dbc)
 	DBC *dbc;
 {
 	DB *dbp;
+	DB_ENV *dbenv;
 	DB_LOCK _tmp;
 	HASH *hashp;
 	HASH_CURSOR *hcp;
@@ -104,11 +110,12 @@ __ham_dirty_meta(dbc)
 
 	ret = 0;
 	if (STD_LOCKING(dbc) && !F_ISSET(dbc, DBC_RECOVER)) {
+		dbenv = dbp->dbenv;
 		dbc->lock.pgno = hashp->meta_pgno;
-		if ((ret = lock_get(dbp->dbenv, dbc->locker,
+		if ((ret = dbenv->lock_get(dbenv, dbc->locker,
 		    DB_NONBLOCK(dbc) ? DB_LOCK_NOWAIT : 0,
 		    &dbc->lock_dbt, DB_LOCK_WRITE, &_tmp)) == 0) {
-			ret = lock_put(dbp->dbenv, &hcp->hlock);
+			ret = dbenv->lock_put(dbenv, &hcp->hlock);
 			hcp->hlock = _tmp;
 		}
 	}

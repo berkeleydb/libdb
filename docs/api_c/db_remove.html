@@ -1,4 +1,4 @@
-<!--$Id: db_remove.so,v 10.22 2001/04/18 13:44:46 bostic Exp $-->
+<!--$Id: db_remove.so,v 10.23 2001/10/22 15:24:22 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -23,7 +23,7 @@
 <p>
 int
 DB-&gt;remove(DB *db,
-	const char *file, const char *database, u_int32_t flags);
+    const char *file, const char *database, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DB-&gt;remove interface removes the database specified by the
@@ -39,7 +39,7 @@ architectures, attempts to remove databases that are currently in use
 by any thread of control in the system will fail.
 <p>The <b>flags</b> parameter is currently unused, and must be set to 0.
 <p>After DB-&gt;remove has been called, regardless of its return, the
-DB handle may not be accessed again.
+<a href="../api_c/db_create.html">DB</a> handle may not be accessed again.
 <p>The DB-&gt;remove function returns a non-zero error value on failure and 0 on success.
 <h1>Environment Variables</h1>
 <p><dl compact>

@@ -3,10 +3,11 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test085.tcl,v 1.6 2001/05/17 20:37:09 bostic Exp $
+# $Id: test085.tcl,v 1.9 2001/08/03 16:39:47 bostic Exp $
 #
-# DB Test 85: Test of cursor behavior when a cursor is pointing to a deleted
-# btree key which then has duplicates added.
+# TEST	test085
+# TEST	Test of cursor behavior when a cursor is pointing to a deleted
+# TEST	btree key which then has duplicates added. [#2473]
 proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 	source ./include.tcl
 	global alphabet
@@ -104,7 +105,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 			puts "\tTest0$tnum: Get ($op) with $ndups duplicates,\
 			    cursor at the [lindex $pair 4]."
 			set db [eval {berkdb_open -create \
-			    -truncate -mode 0644} $omethod $args $testfile]
+			    -mode 0644} $omethod $args $testfile]
 			error_check_good "db open" [is_valid_db $db] TRUE
 
 			set dbc [test085_setup $db]
@@ -145,6 +146,16 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 			error_check_good "dbc close" [$dbc close] 0
 			error_check_good "db close" [$db close] 0
 			verify_dir $testdir "\t\t"
+
+			# Remove testfile so we can do without truncate flag
+			# This is okay because we've already done verify & dump/load
+			if { $env == "NULL" } {
+				set ret [berkdb dbremove $testfile]
+			} else {
+				set ret [berkdb dbremove -env $env $testfile]
+			}
+			error_check_good dbremove $ret 0
+
 		}
 
 		foreach pair $putops {
@@ -153,7 +164,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 			puts "\tTest0$tnum: Put ($op) with $ndups duplicates,\
 			    cursor at the [lindex $pair 4]."
 			set db [eval {berkdb_open -create \
-			    -truncate -mode 0644} $omethod $args $testfile]
+			    -mode 0644} $omethod $args $testfile]
 			error_check_good "db open" [is_valid_db $db] TRUE
 
 			set beginning [expr [string compare \
@@ -233,6 +244,15 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum 85} args } {
 			error_check_good "dbc close" [$dbc close] 0
 			error_check_good "db close" [$db close] 0
 			verify_dir $testdir "\t\t"
+
+			# Remove testfile so we can do without truncate flag
+			# This is okay because we've already done verify & dump/load
+			if { $env == "NULL" } {
+				set ret [berkdb dbremove $testfile]
+			} else {
+				set ret [berkdb dbremove -env $env $testfile]
+			}
+			error_check_good dbremove $ret 0
 		}
 	}
 }

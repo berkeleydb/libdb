@@ -20,12 +20,12 @@ int __dbenv_remove __P((DB_ENV *, const char *, u_int32_t));
 int __dbenv_close __P((DB_ENV *, u_int32_t));
 int __db_appname __P((DB_ENV *, APPNAME, const char *, const char *, u_int32_t, DB_FH *, char **));
 int __db_home __P((DB_ENV *, const char *, u_int32_t));
-int __db_apprec __P((DB_ENV *, u_int32_t));
+int __db_apprec __P((DB_ENV *, DB_LSN *, u_int32_t));
 int __env_openfiles __P((DB_ENV *, void *, DBT *, DB_LSN *, DB_LSN *, double, int));
 int __db_e_attach __P((DB_ENV *, u_int32_t *));
 int __db_e_detach __P((DB_ENV *, int));
 int __db_e_remove __P((DB_ENV *, int));
-int __db_e_stat __P((DB_ENV *, REGENV *, REGION *, int *));
+int __db_e_stat __P((DB_ENV *, REGENV *, REGION *, int *, u_int32_t));
 int __db_r_attach __P((DB_ENV *, REGINFO *, size_t));
 int __db_r_detach __P((DB_ENV *, REGINFO *, int));
 #if defined(__cplusplus)

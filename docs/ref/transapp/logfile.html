@@ -74,8 +74,8 @@ logfile_thread(void *arg)
 	/* Check once every 5 minutes. */
 	for (;; sleep(300)) {
 		/* Get the list of log files. */
-		if ((ret = log_archive(dbenv, &list, DB_ARCH_ABS)) != 0) {
-			dbenv-&gt;err(dbenv, ret, "log_archive");
+		if ((ret = dbenv-&gt;log_archive(dbenv, &list, DB_ARCH_ABS)) != 0) {
+			dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive");
 			exit (1);
 		}
 <p>

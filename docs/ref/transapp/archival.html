@@ -61,7 +61,7 @@ or tape.
 Berkeley DB files, it may be simpler to archive the directory itself instead
 of the individual files (see <a href="../../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a> for additional
 information).  <b>Note: if any of the database files did not have
-an open DB handle during the lifetime of the current log files,
+an open <a href="../../api_c/db_create.html">DB</a> handle during the lifetime of the current log files,
 <a href="../../utility/db_archive.html">db_archive</a> will not list them in its output!</b>  This is another
 reason it may be simpler to use a separate database file directory and
 archive the entire directory instead of archiving only the files listed
@@ -122,9 +122,9 @@ log_archlist(DB_ENV *dbenv)
 	char **begin, **list;
 <p>
 	/* Get the list of database files. */
-	if ((ret = log_archive(dbenv,
+	if ((ret = dbenv-&gt;log_archive(dbenv,
 	    &list, DB_ARCH_ABS | DB_ARCH_DATA)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "log_archive: DB_ARCH_DATA");
+		dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_DATA");
 		exit (1);
 	}
 	if (list != NULL) {
@@ -134,9 +134,9 @@ log_archlist(DB_ENV *dbenv)
 	}
 <p>
 	/* Get the list of log files. */
-	if ((ret = log_archive(dbenv,
+	if ((ret = dbenv-&gt;log_archive(dbenv,
 	    &list, DB_ARCH_ABS | DB_ARCH_LOG)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "log_archive: DB_ARCH_LOG");
+		dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_LOG");
 		exit (1);
 	}
 	if (list != NULL) {

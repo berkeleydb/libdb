@@ -3,10 +3,10 @@
 # Copyright (c) 2000-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb009.tcl,v 11.5 2001/01/25 18:23:07 bostic Exp $
+# $Id: sdb009.tcl,v 11.6 2001/08/03 16:39:30 bostic Exp $
 #
-# Subdatabase Test 9 (replacement)
-# Test the DB->rename method.
+# TEST	subdb009
+# TEST	Test DB->rename() method for subdbs
 proc subdb009 { method args } {
 	global errorCode
 	source ./include.tcl

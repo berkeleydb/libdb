@@ -1,4 +1,4 @@
-<!--$Id: log_stat.so,v 10.25 2001/06/05 16:06:22 margo Exp $-->
+<!--$Id: log_stat.so,v 10.30 2001/10/22 15:24:34 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -14,7 +14,7 @@
 <h1>DbEnv::log_stat</h1>
 </td>
 <td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
@@ -22,12 +22,17 @@
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::log_stat(DB_LOG_STAT **spp);
+DbEnv::log_stat(DB_LOG_STAT **spp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
 <p>The DbEnv::log_stat method
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
 <p>Statistical structures are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
@@ -40,7 +45,6 @@ The following DB_LOG_STAT fields will be filled in:
 <p><dl compact>
 <dt>u_int32_t st_magic;<dd>The magic number that identifies a file as a log file.
 <dt>u_int32_t st_version;<dd>The version of the log file type.
-<dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>int st_mode;<dd>The mode of any created log files.
 <dt>u_int32_t st_lg_bsize;<dd>The in-memory log record cache size.
 <dt>u_int32_t st_lg_max;<dd>The maximum size of any individual file comprising the log.
@@ -56,7 +60,13 @@ in-memory log record cache filled up.
 <dt>u_int32_t st_cur_file;<dd>The current log file number.
 <dt>u_int32_t st_cur_offset;<dd>The byte offset in the current log file.
 <dt>u_int32_t st_disk_file;<dd>The log file number of the last record known to be on disk.
+<dt>u_int32_t st_disk_offset;<dd>The byte offset of the last record known to be on disk.
 <dt>u_int32_t st_cur_offset;<dd>The byte offset of the last record known to be on disk.
+<dt>u_int32_t st_flushcommit;<dd>The number of log flushes that contained a transaction commit record.
+<dt>u_int32_t st_maxcommitperflush;<dd>The maximum number of commits contained in a single log flush.
+<dt>u_int32_t st_mincommitperflush;<dd>The minimum number of commits contained in a single log flush that
+contained a commit.]
+<dt>u_int32_t st_regsize;<dd>The size of the region.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
 obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
@@ -79,17 +89,19 @@ in the same way.
 <a href="../api_cxx/env_set_lg_regionmax.html">DbEnv::set_lg_regionmax</a>,
 <a href="../api_cxx/log_archive.html">DbEnv::log_archive</a>,
 <a href="../api_cxx/log_compare.html">DbEnv::log_compare</a>,
+<a href="../api_cxx/log_cursor.html">DbEnv::log_cursor</a>,
 <a href="../api_cxx/log_file.html">DbEnv::log_file</a>,
 <a href="../api_cxx/log_flush.html">DbEnv::log_flush</a>,
-<a href="../api_cxx/log_get.html">DbEnv::log_get</a>,
 <a href="../api_cxx/log_put.html">DbEnv::log_put</a>,
 <a href="../api_cxx/log_register.html">DbEnv::log_register</a>,
 <a href="../api_cxx/log_stat.html">DbEnv::log_stat</a>,
+<a href="../api_cxx/log_unregister.html">DbEnv::log_unregister</a>,
+<a href="../api_cxx/logc_close.html">DbLogc::logc_close</a>
 and
-<a href="../api_cxx/log_unregister.html">DbEnv::log_unregister</a>.
+<a href="../api_cxx/logc_get.html">DbLogc::logc_get</a>.
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
-<a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+<a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

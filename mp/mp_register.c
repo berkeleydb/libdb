@@ -7,35 +7,27 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_register.c,v 11.16 2001/04/20 17:35:49 bostic Exp $";
+static const char revid[] = "$Id: mp_register.c,v 11.17 2001/07/24 18:31:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 #endif
 
-#ifdef  HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
-
-#ifdef HAVE_RPC
-#include "rpc_client_ext.h"
-#endif
 
 /*
  * memp_register --
  *	Register a file type's pgin, pgout routines.
  *
- * EXTERN: int memp_register __P((DB_ENV *, int,
- * EXTERN:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *),
- * EXTERN:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *)));
+ * PUBLIC: int __memp_register __P((DB_ENV *, int,
+ * PUBLIC:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *),
+ * PUBLIC:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *)));
  */
 int
-memp_register(dbenv, ftype, pgin, pgout)
+__memp_register(dbenv, ftype, pgin, pgout)
 	DB_ENV *dbenv;
 	int ftype;
 	int (*pgin) __P((DB_ENV *, db_pgno_t, void *, DBT *));
@@ -45,14 +37,9 @@ memp_register(dbenv, ftype, pgin, pgout)
 	DB_MPREG *mpreg;
 	int ret;
 
-#ifdef HAVE_RPC
-	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
-		return (__dbcl_memp_register(dbenv, ftype, pgin, pgout));
-#endif
-
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "memp_register", DB_INIT_MPOOL);
+	    dbenv->mp_handle, "DB_ENV->memp_register", DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
 

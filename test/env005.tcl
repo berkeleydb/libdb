@@ -3,12 +3,12 @@
 # Copyright (c) 1999-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env005.tcl,v 11.9 2001/01/25 18:23:04 bostic Exp $
+# $Id: env005.tcl,v 11.12 2001/09/29 05:26:00 krinsky Exp $
 #
-# Env Test 5
-# Test that using subsystems without initializing them correctly
-# returns an error.  Cannot test mpool, because it is assumed
-# in the Tcl code.
+# TEST	env005
+# TEST	Test that using subsystems without initializing them correctly
+# TEST	returns an error.  Cannot test mpool, because it is assumed in
+# TEST	the Tcl code.
 proc env005 { } {
 	source ./include.tcl
 
@@ -27,10 +27,11 @@ proc env005 { } {
 	{ "lock_get read 1 1"		"Env005.b1"}
 	{ "lock_id"			"Env005.b2"}
 	{ "lock_stat"			"Env005.b3"}
+	{ "lock_timeout 100"		"Env005.b4"}
 	{ "log_archive"			"Env005.c0"}
-	{ "log_file {1 1}"		"Env005.c1"}
-	{ "log_flush"			"Env005.c2"}
-	{ "log_get -first"		"Env005.c3"}
+	{ "log_cursor"			"Env005.c1"}
+	{ "log_file {1 1}"		"Env005.c2"}
+	{ "log_flush"			"Env005.c3"}
 	{ "log_put record"		"Env005.c4"}
 	{ "log_register $db xxx"	"Env005.c5"}
 	{ "log_stat"			"Env005.c6"}
@@ -38,6 +39,7 @@ proc env005 { } {
 	{ "txn"				"Env005.d0"}
 	{ "txn_checkpoint"		"Env005.d1"}
 	{ "txn_stat"			"Env005.d2"}
+	{ "txn_timeout 100"		"Env005.d3"}
 	}
 
 	foreach pair $rlist {

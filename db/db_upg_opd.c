@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_upg_opd.c,v 11.11 2001/04/03 15:14:11 krinsky Exp $";
+static const char revid[] = "$Id: db_upg_opd.c,v 11.12 2001/07/18 16:51:52 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -285,11 +285,11 @@ __db_build_bi(dbp, fhp, ipage, page, indx, nomemp)
 				return (ret);
 			break;
 		default:
-			return (__db_pgfmt(dbp, PGNO(page)));
+			return (__db_pgfmt(dbp->dbenv, PGNO(page)));
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp, PGNO(page)));
+		return (__db_pgfmt(dbp->dbenv, PGNO(page)));
 	}
 
 	return (0);

@@ -3,13 +3,19 @@
 # Copyright (c) 1996-2001
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test002.tcl,v 11.14 2001/01/25 18:23:08 bostic Exp $
+# $Id: test002.tcl,v 11.16 2001/08/03 16:39:32 bostic Exp $
 #
-# DB Test 2 {access method}
-# Use the first 10,000 entries from the dictionary.
-# Insert each with self as key and a fixed, medium length data string;
-# retrieve each. After all are entered, retrieve all; compare output
-# to original. Close file, reopen, do retrieve and re-verify.
+# TEST	test002
+# TEST	Small keys/medium data
+# TEST		Put/get per key
+# TEST		Dump file
+# TEST		Close, reopen
+# TEST		Dump file
+# TEST
+# TEST	Use the first 10,000 entries from the dictionary.
+# TEST	Insert each with self as key and a fixed, medium length data string;
+# TEST	retrieve each. After all are entered, retrieve all; compare output
+# TEST	to original. Close file, reopen, do retrieve and re-verify.
 
 set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
 
@@ -41,7 +47,7 @@ proc test002 { method {nentries 10000} args } {
 	set t3 $testdir/t3
 	cleanup $testdir $env
 	set db [eval {berkdb_open \
-	     -create -truncate -mode 0644} $args {$omethod $testfile}]
+	     -create -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 

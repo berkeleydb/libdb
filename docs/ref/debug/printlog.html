@@ -1,4 +1,4 @@
-<!--$Id: printlog.so,v 10.28 2001/05/26 16:28:37 bostic Exp $-->
+<!--$Id: printlog.so,v 10.29 2001/07/26 20:44:16 bostic Exp $-->
 <!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
@@ -53,8 +53,6 @@ a brief description of the operation it describes.
 <tr><td>bam_cadjust</td><td>Keeps track of record counts in a Btree or Recno database.</td></tr>
 <tr><td>bam_cdel</td><td>Used to mark a record on a page as deleted.</td></tr>
 <tr><td>bam_curadj</td><td>Used to adjust a cursor location when a nearby record changes in a Btree database.</td></tr>
-<tr><td>bam_pg_alloc</td><td>Indicates that we allocated a page to a Btree.</td></tr>
-<tr><td>bam_pg_free</td><td>Indicates that we freed a page in the Btree (freed pages are added to a freelist and reused).</td></tr>
 <tr><td>bam_rcuradj</td><td>Used to adjust a cursor location when a nearby record changes in a Recno database.</td></tr>
 <tr><td>bam_repl</td><td>Describes a replace operation on a record.</td></tr>
 <tr><td>bam_root</td><td>Describes an assignment of a root page.</td></tr>
@@ -70,6 +68,8 @@ a brief description of the operation it describes.
 <tr><td>db_debug</td><td>Log debugging message.</td></tr>
 <tr><td>db_noop</td><td>This marks an operation that did nothing but update the LSN on a page.</td></tr>
 <tr><td>db_ovref</td><td>Increment or decrement the reference count for a big item.</td></tr>
+<tr><td>db_pg_alloc</td><td>Indicates that we allocated a page to a Btree.</td></tr>
+<tr><td>db_pg_free</td><td>Indicates that we freed a page in the Btree (freed pages are added to a freelist and reused).</td></tr>
 <tr><td>db_relink</td><td>Fix prev/next chains on duplicate pages because a page was added or removed.</td></tr>
 <tr><td>ham_chgpg</td><td>Used to adjust a cursor location when a Hash page is removed, and its elements are moved to a different Hash page.</td></tr>
 <tr><td>ham_copypage</td><td>Used when we empty a bucket page, but there are overflow pages for the bucket; one needs to be copied back into the actual bucket.</td></tr>
@@ -83,8 +83,8 @@ a brief description of the operation it describes.
 <tr><td>log_register</td><td>Records an open of a file (mapping the filename to a log-id that is used in subsequent log operations).</td></tr>
 <tr><td>qam_add</td><td>Describes the actual addition of a new record to a Queue.</td></tr>
 <tr><td>qam_del</td><td>Delete a record in a Queue.</td></tr>
-<tr><td>qam_delext</td><td>Delete a record in a Queue with extents.</td></tr>
 <tr><td>qam_delete</td><td>Remove a Queue extent file.</td></tr>
+<tr><td>qam_delext</td><td>Delete a record in a Queue with extents.</td></tr>
 <tr><td>qam_incfirst</td><td>Increments the record number that refers to the first record in the database.</td></tr>
 <tr><td>qam_mvptr</td><td>Indicates that we changed the reference to either or both of the first and current records in the file.</td></tr>
 <tr><td>qam_rename</td><td>Rename a Queue extent file.</td></tr>

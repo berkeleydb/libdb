@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash.c,v 11.130 2001/07/02 01:05:38 bostic Exp $";
+static const char revid[] = "$Id: hash.c,v 11.152 2001/10/26 15:53:47 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -194,12 +194,14 @@ __ham_open(dbp, name, base_pgno, flags)
 {
 	DB_ENV *dbenv;
 	DBC *dbc;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	HASH *hashp;
 	int need_sync, ret, t_ret;
 
 	dbc = NULL;
 	dbenv = dbp->dbenv;
+	mpf = dbp->mpf;
 	need_sync = 0;
 
 	/* Initialize the remaining fields/methods of the DB. */
@@ -232,7 +234,7 @@ __ham_open(dbp, name, base_pgno, flags)
 		if (hashp->h_hash == NULL)
 			hashp->h_hash = hcp->hdr->dbmeta.version < 5
 			? __ham_func4 : __ham_func5;
-		if (!F_ISSET(dbp, DB_RDONLY) &&
+		if (!F_ISSET(dbp, DB_RDONLY) && !IS_RECOVERING(dbenv) &&
 		    hashp->h_hash(dbp,
 		    CHARKEY, sizeof(CHARKEY)) != hcp->hdr->h_charkey) {
 			__db_err(dbp->dbenv,
@@ -252,7 +254,7 @@ __ham_open(dbp, name, base_pgno, flags)
 		    dbp->meta_pgno == PGNO_BASE_MD) {
 			if ((ret = __ham_dirty_meta(dbc)) != 0)
 				goto err2;
-			__memp_lastpgno(dbp->mpf, &hcp->hdr->dbmeta.last_pgno);
+			mpf->last_pgno(mpf, &hcp->hdr->dbmeta.last_pgno);
 		}
 	} else if (!IS_RECOVERING(dbenv)) {
 		/*
@@ -263,14 +265,14 @@ __ham_open(dbp, name, base_pgno, flags)
 		dbc->lock.pgno = base_pgno;
 
 		if (STD_LOCKING(dbc) &&
-		    ((ret = lock_put(dbenv, &hcp->hlock)) != 0 ||
-		    (ret = lock_get(dbenv, dbc->locker,
+		    ((ret = dbenv->lock_put(dbenv, &hcp->hlock)) != 0 ||
+		    (ret = dbenv->lock_get(dbenv, dbc->locker,
 		    DB_NONBLOCK(dbc) ? DB_LOCK_NOWAIT : 0,
 		    &dbc->lock_dbt, DB_LOCK_WRITE, &hcp->hlock)) != 0))
 			goto err2;
 		else if (CDB_LOCKING(dbp->dbenv)) {
 			DB_ASSERT(LF_ISSET(DB_CREATE));
-			if ((ret = lock_get(dbenv, dbc->locker,
+			if ((ret = dbenv->lock_get(dbenv, dbc->locker,
 			    DB_LOCK_UPGRADE, &dbc->lock_dbt, DB_LOCK_WRITE,
 			    &dbc->mylock)) != 0)
 				goto err2;
@@ -318,18 +320,21 @@ __ham_init_htab(dbc, name, pgno, nelem, ffactor)
 	DBMETA *mmeta;
 	HASH_CURSOR *hcp;
 	HASH *hashp;
+	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_pgno_t mpgno;
 	int32_t l2, nbuckets;
-	int dirty_mmeta, i, ret, t_ret;
+	int dirty_meta, got_meta, i, ret, t_ret;
 
 	hcp = (HASH_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hashp = dbp->h_internal;
 	mmeta = NULL;
 	h = NULL;
 	ret = 0;
-	dirty_mmeta = 0;
+	dirty_meta = 0;
+	got_meta = 0;
 	LOCK_INIT(metalock);
 
 	if (hashp->h_hash == NULL)
@@ -365,7 +370,7 @@ __ham_init_htab(dbc, name, pgno, nelem, ffactor)
 	if (dbp->dup_compare != NULL)
 		F_SET(&hcp->hdr->dbmeta, DB_HASH_DUPSORT);
 
-	if ((ret = memp_fset(dbp->mpf, hcp->hdr, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->set(mpf, hcp->hdr, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 
 	mmeta = (DBMETA *) hcp->hdr;
@@ -380,9 +385,9 @@ __ham_init_htab(dbc, name, pgno, nelem, ffactor)
 		if ((ret = __db_lget(dbc,
 		   0, mpgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 			goto err;
-		if ((ret = memp_fget(dbp->mpf,
-		    &mpgno, 0, (PAGE **)&mmeta)) != 0)
+		if ((ret = mpf->get(mpf, &mpgno, 0, (PAGE **)&mmeta)) != 0)
 			goto err;
+		got_meta = 1;
 	}
 
 	/*
@@ -404,41 +409,39 @@ __ham_init_htab(dbc, name, pgno, nelem, ffactor)
 	 */
 	ret = __db_log_page(dbp, name, &orig_lsn, pgno, (PAGE *)hcp->hdr);
 
-	if (dbp->open_txn != NULL) {
+	if (LOGGING_ON(dbp->dbenv)) {
 		if ((t_ret = __ham_groupalloc_log(dbp->dbenv,
 		    dbp->open_txn, &LSN(mmeta), 0, dbp->log_fileid,
 		    &LSN(mmeta), hcp->hdr->spares[0],
 		    hcp->hdr->max_bucket + 1, mmeta->free)) != 0 && ret == 0)
 			ret = t_ret;
-		if (ret == 0) {
-			/* need to update real LSN for buffer manager */
-			dirty_mmeta = 1;
-		}
+		if (ret != 0)
+			goto err;
 	}
+	pgno = mmeta->last_pgno + nbuckets;
+	mmeta->last_pgno = pgno;
+	dirty_meta = DB_MPOOL_DIRTY;
 
-	pgno = nbuckets;
-	if ((t_ret = memp_fget(dbp->mpf, &pgno, DB_MPOOL_NEW_GROUP, &h)) != 0) {
+	/* Get the last page that we just created. */
+	if ((t_ret = mpf->get(mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0) {
 		if (ret == 0)
 			ret = t_ret;
 		goto err;
 	}
-
-	DB_ASSERT(pgno == hcp->hdr->spares[0] + (nbuckets - 1));
-	mmeta->last_pgno = pgno;
 
 	P_INIT(h, dbp->pgsize, pgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
 
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTLOG, ret, name);
 
 DB_TEST_RECOVERY_LABEL
-err:	if (h != NULL &&
-	    (t_ret = memp_fput(dbp->mpf, h, DB_MPOOL_DIRTY)) != 0 && ret == 0)
-		ret = t_ret;
-
-	if (F_ISSET(dbp, DB_AM_SUBDB) && mmeta != NULL)
-		if ((t_ret = memp_fput(dbp->mpf, mmeta,
-		    dirty_mmeta ? DB_MPOOL_DIRTY : 0)) != 0 && ret == 0)
+err:	if (h != NULL) {
+		if ((t_ret = mpf->put(mpf, h, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 			ret = t_ret;
+	}
+
+	if (got_meta &&
+	    (t_ret = mpf->put(mpf, mmeta, dirty_meta)) != 0 && ret == 0)
+		ret = t_ret;
 	(void)__TLPUT(dbc, metalock);
 
 	return (ret);
@@ -468,10 +471,8 @@ int
 __ham_quick_delete(dbc)
 	DBC *dbc;
 {
-	HASH_CURSOR *hcp;
 	int ret, t_ret;
 
-	hcp = (HASH_CURSOR *)dbc->internal;
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
 
@@ -484,7 +485,7 @@ __ham_quick_delete(dbc)
 
 	/* Assert that we're set, but not to an off-page duplicate. */
 	DB_ASSERT(IS_INITIALIZED(dbc));
-	DB_ASSERT(hcp->opd == NULL);
+	DB_ASSERT(((HASH_CURSOR *)dbc->internal)->opd == NULL);
 
 	ret = __ham_del_pair(dbc, 1);
 
@@ -550,12 +551,14 @@ __ham_c_close(dbc, root_pgno, rmroot)
 	db_pgno_t root_pgno;
 	int *rmroot;
 {
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	HKEYDATA *dp;
 	int doroot, gotmeta, ret, t_ret;
 	u_int32_t dirty;
 
 	COMPQUIET(rmroot, 0);
+	mpf = dbc->dbp->mpf;
 	dirty = 0;
 	doroot = gotmeta = ret = 0;
 	hcp = (HASH_CURSOR *) dbc->internal;
@@ -587,7 +590,7 @@ __ham_c_close(dbc, root_pgno, rmroot)
 	}
 
 out:	if (hcp->page != NULL && (t_ret =
-	    memp_fput(dbc->dbp->mpf, hcp->page, dirty)) != 0 && ret == 0)
+	    mpf->put(mpf, hcp->page, dirty)) != 0 && ret == 0)
 		ret = t_ret;
 	if (gotmeta != 0 && (t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -627,6 +630,7 @@ __ham_c_count(dbc, recnop)
 	db_recno_t *recnop;
 {
 	DB *dbp;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	db_indx_t len;
 	db_recno_t recno;
@@ -634,7 +638,8 @@ __ham_c_count(dbc, recnop)
 	u_int8_t *p, *pend;
 
 	dbp = dbc->dbp;
-	hcp = (HASH_CURSOR *) dbc->internal;
+	mpf = dbp->mpf;
+	hcp = (HASH_CURSOR *)dbc->internal;
 
 	recno = 0;
 
@@ -658,14 +663,13 @@ __ham_c_count(dbc, recnop)
 
 		break;
 	default:
-		ret = __db_unknown_type(dbp->dbenv, "__ham_c_count",
-		    HPAGE_PTYPE(H_PAIRDATA(hcp->page, hcp->indx)));
+		ret = __db_pgfmt(dbp->dbenv, hcp->pgno);
 		goto err;
 	}
 
 	*recnop = recno;
 
-err:	if ((t_ret = memp_fput(dbc->dbp->mpf, hcp->page, 0)) != 0 && ret == 0)
+err:	if ((t_ret = mpf->put(mpf, hcp->page, 0)) != 0 && ret == 0)
 		ret = t_ret;
 	hcp->page = NULL;
 	return (ret);
@@ -677,10 +681,12 @@ __ham_c_del(dbc)
 {
 	DB *dbp;
 	DBT repldbt;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if (F_ISSET(hcp, H_DELETED))
@@ -720,8 +726,10 @@ __ham_c_del(dbc)
 	} else /* Not a duplicate */
 		ret = __ham_del_pair(dbc, 1);
 
-out:	if (ret == 0 && hcp->page != NULL) {
-		ret = memp_fput(dbp->mpf, hcp->page, DB_MPOOL_DIRTY);
+out:	if (hcp->page != NULL) {
+		if ((t_ret = mpf->put(mpf,
+		    hcp->page, ret == 0 ? DB_MPOOL_DIRTY : 0)) && ret == 0)
+			ret = t_ret;
 		hcp->page = NULL;
 	}
 	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
@@ -781,12 +789,14 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 	db_pgno_t *pgnop;
 {
 	DB *dbp;
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	db_lockmode_t lock_type;
 	int get_key, ret, t_ret;
 
 	hcp = (HASH_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 
 	/* Clear OR'd in additional bits so we can check for flag equality. */
 	if (F_ISSET(dbc, DBC_RMW))
@@ -833,6 +843,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 	case DB_SET:
 	case DB_SET_RANGE:
 	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
 		ret = __ham_lookup(dbc, key, 0, lock_type, pgnop);
 		get_key = 0;
 		break;
@@ -862,7 +873,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 			goto err;
 		else if (F_ISSET(hcp, H_OK)) {
 			if (*pgnop == PGNO_INVALID)
-				ret = __ham_dup_return (dbc, data, flags);
+				ret = __ham_dup_return(dbc, data, flags);
 			break;
 		} else if (!F_ISSET(hcp, H_NOMORE)) {
 			__db_err(dbp->dbenv,
@@ -878,7 +889,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 			case DB_LAST:
 			case DB_PREV:
 			case DB_PREV_NODUP:
-				ret = memp_fput(dbp->mpf, hcp->page, 0);
+				ret = mpf->put(mpf, hcp->page, 0);
 				hcp->page = NULL;
 				if (hcp->bucket == 0) {
 					ret = DB_NOTFOUND;
@@ -896,7 +907,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 			case DB_FIRST:
 			case DB_NEXT:
 			case DB_NEXT_NODUP:
-				ret = memp_fput(dbp->mpf, hcp->page, 0);
+				ret = mpf->put(mpf, hcp->page, 0);
 				hcp->page = NULL;
 				hcp->indx = NDX_INVALID;
 				hcp->bucket++;
@@ -913,6 +924,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 				break;
 			case DB_GET_BOTH:
 			case DB_GET_BOTHC:
+			case DB_GET_BOTH_RANGE:
 			case DB_NEXT_DUP:
 			case DB_SET:
 			case DB_SET_RANGE:
@@ -947,7 +959,7 @@ err:	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
 }
 
 /*
- * __ham_bulk -- Return bulk data from a btree.
+ * __ham_bulk -- Return bulk data from a hash table.
  */
 static int
 __ham_bulk(dbc, data, flags)
@@ -955,21 +967,23 @@ __ham_bulk(dbc, data, flags)
 	DBT *data;
 	u_int32_t flags;
 {
+	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *cp;
 	PAGE *pg;
 	db_indx_t dup_len, dup_off, dup_tlen, indx;
 	db_pgno_t pgno;
 	int32_t  *endp, key_off, *offp, *saveoff;
 	u_int32_t key_size, size, space;
-	u_int8_t *dbuf, *dp, *hk, *np;
+	u_int8_t *dbuf, *dp, *hk, *np, *tmp;
 	int is_dup, is_key, lock_mode;
-	int need_pg, next_key, no_dup, pagesize, ret;
+	int need_pg, next_key, no_dup, pagesize, ret, t_ret;
 
 	ret = 0;
 	key_off = 0;
 	dup_len = dup_off = dup_tlen = 0;
 	size = 0;
 	pagesize = dbc->dbp->pgsize;
+	mpf = dbc->dbp->mpf;
 	cp = (HASH_CURSOR *)dbc->internal;
 	is_key = LF_ISSET(DB_MULTIPLE_KEY) ? 1 : 0;
 	next_key = is_key && LF_ISSET(DB_OPFLAGS_MASK) != DB_NEXT_DUP;
@@ -981,7 +995,7 @@ __ham_bulk(dbc, data, flags)
 	space = data->ulen;
 	space -= sizeof(*offp);
 
-	/* Build the offset/size table form the end up. */
+	/* Build the offset/size table from the end up. */
 	endp = (int32_t *) ((u_int8_t *)dbuf + data->ulen);
 	endp--;
 	offp = endp;
@@ -1047,13 +1061,64 @@ get_key_space:
 				size = pagesize - HOFFSET(pg);
 				if (space < size) {
 back_up:
-					if (indx == 0) {
+					if (indx != 0) {
+						indx -= 2;
+						/* XXX
+						 * It's not clear that this is
+						 * the right way to fix this,
+						 * but here goes.
+						 * If we are backing up onto a
+						 * duplicate, then we need to
+						 * position ourselves at the
+						 * end of the duplicate set.
+						 * We probably need to make
+						 * this work for H_OFFDUP too.
+						 * It might be worth making a
+						 * dummy cursor and calling
+						 * __ham_item_prev.
+						 */
+						tmp = H_PAIRDATA(pg, indx);
+						if (HPAGE_PTYPE(tmp) ==
+						    H_DUPLICATE) {
+							dup_off = dup_tlen =
+							    LEN_HDATA(pg,
+							    pagesize, indx + 1);
+							memcpy(&dup_len,
+							    HKEYDATA_DATA(tmp),
+							    sizeof(db_indx_t));
+						}
+						goto get_space;
+					}
+					/* indx == 0 */
+					if ((ret = __ham_item_prev(dbc,
+					    lock_mode, &pgno)) != 0) {
+						if (ret != DB_NOTFOUND)
+							return (ret);
+						if ((ret = mpf->put(mpf,
+						    cp->page, 0)) != 0)
+							return (ret);
+						cp->page = NULL;
+						if (cp->bucket == 0) {
+							cp->indx = indx =
+							    NDX_INVALID;
+							goto get_space;
+						}
+						if ((ret =
+						    __ham_get_meta(dbc)) != 0)
+							return (ret);
+
+						cp->bucket--;
+						cp->pgno = BUCKET_TO_PAGE(cp,
+						    cp->bucket);
+						cp->indx = NDX_INVALID;
+						if ((ret = __ham_release_meta(
+						    dbc)) != 0)
+							return (ret);
 						if ((ret = __ham_item_prev(dbc,
 						    lock_mode, &pgno)) != 0)
 							return (ret);
-						indx = cp->indx;
-					} else
-						indx -= 2;
+					}
+					indx = cp->indx;
 get_space:
 					/*
 					 * See if we put any data in the buffer.
@@ -1108,7 +1173,8 @@ get_space:
 				 */
 				F_SET(cp, H_ISDUP);
 				dup_off = 0;
-				dup_len = cp->dup_len;
+				memcpy(&dup_len,
+				    HKEYDATA_DATA(hk), sizeof(db_indx_t));
 				dup_tlen = LEN_HDATA(pg, pagesize, indx);
 			} else
 				/* Case 3 */
@@ -1117,6 +1183,13 @@ get_space:
 			do {
 				space -= (is_key ? 4 : 2) * sizeof(*offp);
 				size += (is_key ? 4 : 2) * sizeof(*offp);
+				/*
+				 * Since space is an unsigned, if we happen
+				 * to wrap, then this comparison will turn out
+				 * to be true.  XXX Wouldn't it be better to
+				 * simply check above that space is greater than
+				 * the value we're about to subtract???
+				 */
 				if (space > data->ulen) {
 					if (!is_dup || dup_off == 0)
 						goto back_up;
@@ -1209,7 +1282,44 @@ get_space:
 
 	/* If we are off the page then try to the next page. */
 	if (ret == 0 && next_key && indx >= NUM_ENT(pg)) {
-		ret = __ham_item_next(dbc, lock_mode, &pgno);
+		if ((ret = __ham_item_next(dbc, lock_mode, &pgno)) == 0)
+			goto next_pg;
+		if (ret != DB_NOTFOUND)
+			return (ret);
+		if ((ret = mpf->put(dbc->dbp->mpf, cp->page, 0)) != 0)
+			return (ret);
+		cp->page = NULL;
+		if ((ret = __ham_get_meta(dbc)) != 0)
+			return (ret);
+
+		cp->bucket++;
+		if (cp->bucket > cp->hdr->max_bucket) {
+			/*
+			 * Restore cursor to its previous state.  We're past
+			 * the last item in the last bucket, so the next
+			 * DBC->c_get(DB_NEXT) will return DB_NOTFOUND.
+			 */
+			cp->bucket--;
+			ret = DB_NOTFOUND;
+		} else {
+			/*
+			 * Start on the next bucket.
+			 *
+			 * Note that if this new bucket happens to be empty,
+			 * but there's another non-empty bucket after it,
+			 * we'll return early.  This is a rare case, and we
+			 * don't guarantee any particular number of keys
+			 * returned on each call, so just let the next call
+			 * to bulk get move forward by yet another bucket.
+			 */
+			cp->pgno = BUCKET_TO_PAGE(cp, cp->bucket);
+			cp->indx = NDX_INVALID;
+			F_CLR(cp, H_ISDUP);
+			ret = __ham_item_next(dbc, lock_mode, &pgno);
+		}
+
+		if ((t_ret = __ham_release_meta(dbc)) != 0)
+			return (t_ret);
 		if (ret == 0)
 			goto next_pg;
 		if (ret != DB_NOTFOUND)
@@ -1228,6 +1338,7 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 	db_pgno_t *pgnop;
 {
 	DB *dbp;
+	DB_MPOOLFILE *mpf;
 	DBT tmp_val, *myval;
 	HASH_CURSOR *hcp;
 	u_int32_t nbytes;
@@ -1241,6 +1352,7 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 	COMPQUIET(myval, NULL);
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if (F_ISSET(hcp, H_DELETED) &&
@@ -1263,8 +1375,7 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 			ret = 0;
 			if (hcp->seek_found_page != PGNO_INVALID &&
 			    hcp->seek_found_page != hcp->pgno) {
-				if ((ret = memp_fput(dbp->mpf, hcp->page, 0))
-				    != 0)
+				if ((ret = mpf->put(mpf, hcp->page, 0)) != 0)
 					goto err2;
 				hcp->page = NULL;
 				hcp->pgno = hcp->seek_found_page;
@@ -1318,8 +1429,8 @@ done:	if (ret == 0 && F_ISSET(hcp, H_EXPAND)) {
 		F_CLR(hcp, H_EXPAND);
 	}
 
-	if (ret == 0 &&
-	    (t_ret = memp_fset(dbp->mpf, hcp->page, DB_MPOOL_DIRTY)) != 0)
+	if (hcp->page != NULL &&
+	    (t_ret = mpf->set(mpf, hcp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 
 err2:	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
@@ -1340,22 +1451,27 @@ __ham_expand_table(dbc)
 	DB *dbp;
 	DB_LOCK metalock;
 	DB_LSN lsn;
+	DB_MPOOLFILE *mpf;
 	DBMETA *mmeta;
-	PAGE *h;
 	HASH_CURSOR *hcp;
-	db_pgno_t mpgno, pgno;
-	u_int32_t old_bucket, new_bucket;
-	int create_group, ret;
+	PAGE *h;
+	db_pgno_t pgno, mpgno;
+	u_int32_t newalloc, new_bucket, old_bucket;
+	int dirty_meta, got_meta, logn, new_double, ret;
 
 	dbp = dbc->dbp;
+	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 	if ((ret = __ham_dirty_meta(dbc)) != 0)
 		return (ret);
 
-	create_group = 0;
 	LOCK_INIT(metalock);
-	mmeta = NULL;
+	mmeta = (DBMETA *) hcp->hdr;
+	mpgno = mmeta->pgno;
 	h = NULL;
+	dirty_meta = 0;
+	got_meta = 0;
+	newalloc = 0;
 
 	/*
 	 * If the split point is about to increase, make sure that we
@@ -1366,128 +1482,116 @@ __ham_expand_table(dbc)
 	 * see what the log of one greater than that is; here we have to
 	 * look at the log of max + 2.  VERY NASTY STUFF.
 	 *
-	 * It just got even nastier.  With subdatabases, we have to request
-	 * a chunk of contiguous pages, so we do that here using an
-	 * undocumented feature of mpool (the MPOOL_NEW_GROUP flag) to
-	 * give us a number of contiguous pages.  Ouch.
-	 *
 	 * We figure out what we need to do, then we log it, then request
 	 * the pages from mpool.  We don't want to fail after extending
 	 * the file.
+	 *
+	 * If the page we are about to split into has already been allocated,
+	 * then we simply need to get it to get its LSN.  If it hasn't yet
+	 * been allocated, then we know it's LSN (0,0).
 	 */
-	if (hcp->hdr->max_bucket == hcp->hdr->high_mask) {
-		/*
-		 * We need to begin a new doubling.  Figure out how many pages
-		 * we need.  If we've already allocated this doubling, then
-		 * grab the page number; if we haven't, then get the last
-		 * allocation page number off the master meta-data page and
-		 * allocate a contiguous chunk of pages for the doubling.
-		 * Initialize and write out the last page of the doubling to
-		 * do the file extend.
-		 */
-		pgno = hcp->hdr->max_bucket + 1;
-		if (hcp->hdr->spares[__db_log2(pgno) + 1] == PGNO_INVALID) {
-			/* Allocate a group of pages. */
-			mmeta = (DBMETA *) hcp->hdr;
-			if (F_ISSET(dbp, DB_AM_SUBDB)) {
-				mpgno = PGNO_BASE_MD;
-				if ((ret = __db_lget(dbc,
-				   0, mpgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
-					return (ret);
-				if ((ret = memp_fget(dbp->mpf,
-				    &mpgno, 0, (PAGE **)&mmeta)) != 0)
-					goto err;
-			}
-			pgno = mmeta->last_pgno + 1;
-			ZERO_LSN(lsn);
-			create_group = 1;
-		} else {
-			/* Just read in the last page of the batch */
-			pgno = hcp->hdr->spares[__db_log2(pgno) + 1] +
-			    hcp->hdr->max_bucket + 1;
-			/* Move to the last page of the group. */
-			pgno += hcp->hdr->max_bucket;
-			if ((ret = memp_fget(dbp->mpf,
-			     &pgno, DB_MPOOL_CREATE, &h)) != 0)
-				return (ret);
-			pgno -= hcp->hdr->max_bucket;
-			lsn = h->lsn;
-		}
-	} else {
-		pgno = BUCKET_TO_PAGE(hcp, hcp->hdr->max_bucket + 1);
+
+	new_bucket = hcp->hdr->max_bucket + 1;
+	old_bucket = new_bucket & hcp->hdr->low_mask;
+
+	new_double = hcp->hdr->max_bucket == hcp->hdr->high_mask;
+	logn = __db_log2(new_bucket);
+
+	if (!new_double || hcp->hdr->spares[logn + 1] != PGNO_INVALID) {
+		/* Page exists; get it so we can get its LSN */
+		pgno = BUCKET_TO_PAGE(hcp, new_bucket);
 		if ((ret =
-		    memp_fget(dbp->mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0)
-			return (ret);
+		    mpf->get(mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0)
+			goto err;
 		lsn = h->lsn;
+	} else {
+		/* Get the master meta-data page to do allocation. */
+		if (F_ISSET(dbp, DB_AM_SUBDB)) {
+			mpgno = PGNO_BASE_MD;
+			if ((ret = __db_lget(dbc,
+			   0, mpgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+				goto err;
+			if ((ret =
+			    mpf->get(mpf, &mpgno, 0, (PAGE **)&mmeta)) != 0)
+				goto err;
+			got_meta = 1;
+		}
+		pgno = mmeta->last_pgno + 1;
+		ZERO_LSN(lsn);
+		newalloc = 1;
 	}
-	/* Now we can log the meta-data split. */
+
+	/* Log the meta-data split first. */
 	if (DB_LOGGING(dbc)) {
+		/*
+		 * We always log the page number of the first page of
+		 * the allocation group.  However, the LSN that we log
+		 * is either the LSN on the first page (if we did not
+		 * do the actual allocation here) or the LSN on the last
+		 * page of the unit (if we did do the allocation here).
+		 */
 		if ((ret = __ham_metagroup_log(dbp->dbenv,
 		    dbc->txn, &lsn, 0, dbp->log_fileid,
-		    hcp->hdr->max_bucket, pgno, &hcp->hdr->dbmeta.lsn,
-		    &lsn)) != 0)
-			return (ret);
+		    hcp->hdr->max_bucket,
+		    mpgno, &mmeta->lsn,
+		    hcp->hdr->dbmeta.pgno, &hcp->hdr->dbmeta.lsn,
+		    pgno, &lsn, newalloc)) != 0)
+			goto err;
 	} else
 		LSN_NOT_LOGGED(lsn);
 
 	hcp->hdr->dbmeta.lsn = lsn;
 
-	if (create_group) {
-		pgno = hcp->hdr->max_bucket + 1;
-		if ((ret = memp_fget(dbp->mpf,
-		     &pgno, DB_MPOOL_NEW_GROUP, &h)) != 0)
+	if (new_double && hcp->hdr->spares[logn + 1] == PGNO_INVALID) {
+		/*
+		 * We need to begin a new doubling and we have not allocated
+		 * any pages yet.  Read the last page in and initialize it to
+		 * make the allocation contiguous.  The pgno we calculated
+		 * above is the first page allocated. The entry in spares is
+		 * that page number minus any buckets already allocated (it
+		 * simplifies bucket to page transaction).  After we've set
+		 * that, we calculate the last pgno.
+		 */
+
+		hcp->hdr->spares[logn + 1] = pgno - new_bucket;
+		pgno += hcp->hdr->max_bucket;
+		mmeta->last_pgno = pgno;
+		mmeta->lsn = lsn;
+		dirty_meta = DB_MPOOL_DIRTY;
+
+		if ((ret = mpf->get(mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0)
 			goto err;
 
-		mmeta->last_pgno = pgno;
 		P_INIT(h, dbp->pgsize,
 		     pgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
-		pgno -= hcp->hdr->max_bucket;
-
-		if (F_ISSET(dbp, DB_AM_SUBDB)) {
-			if ((ret = memp_fput(dbp->mpf,
-			    mmeta, DB_MPOOL_DIRTY)) != 0)
-				goto err;
-			mmeta = NULL;
-			if ((ret = __LPUT(dbc, metalock)) != 0)
-				goto err;
-			LOCK_INIT(metalock);
-		}
 	}
 
+	/* Write out whatever page we ended up modifying. */
 	h->lsn = lsn;
-
-	/* If we allocated some new pages, write out the last page. */
-	if ((ret = memp_fput(dbp->mpf, h, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = mpf->put(mpf, h, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	h = NULL;
 
-	new_bucket = ++hcp->hdr->max_bucket;
-	old_bucket = (hcp->hdr->max_bucket & hcp->hdr->low_mask);
-
 	/*
-	 * If we started a new doubling, fill in the spares array with
-	 * the starting page number negatively offset by the bucket number.
+	 * Update the meta-data page of this hash database.
 	 */
-	if (new_bucket > hcp->hdr->high_mask) {
-		/* Starting a new doubling */
+	hcp->hdr->max_bucket = new_bucket;
+	if (new_double) {
 		hcp->hdr->low_mask = hcp->hdr->high_mask;
 		hcp->hdr->high_mask = new_bucket | hcp->hdr->low_mask;
-		if (hcp->hdr->spares[__db_log2(new_bucket) + 1] == PGNO_INVALID)
-			hcp->hdr->spares[__db_log2(new_bucket) + 1] =
-			    pgno - new_bucket;
 	}
 
 	/* Relocate records to the new bucket */
-	return (__ham_split_page(dbc, old_bucket, new_bucket));
+	ret = __ham_split_page(dbc, old_bucket, new_bucket);
 
-err:	if (mmeta != NULL)
-		(void)memp_fput(dbp->mpf, mmeta, 0);
+err:	if (got_meta)
+		(void)mpf->put(mpf, mmeta, dirty_meta);
 
-	if (LOCK_ISSET(metalock) && F_ISSET(dbp, DB_AM_SUBDB))
-		(void)__LPUT(dbc, metalock);
+	if (LOCK_ISSET(metalock))
+		(void)__TLPUT(dbc, metalock);
 
 	if (h != NULL)
-		(void)memp_fput(dbp->mpf, h, 0);
+		(void)mpf->put(mpf, h, 0);
 
 	return (ret);
 }
@@ -1523,7 +1627,7 @@ __ham_call_hash(dbc, k, len)
  * everything held by the cursor.
  */
 static int
-__ham_dup_return (dbc, val, flags)
+__ham_dup_return(dbc, val, flags)
 	DBC *dbc;
 	DBT *val;
 	u_int32_t flags;
@@ -1560,8 +1664,8 @@ __ham_dup_return (dbc, val, flags)
 	DB_ASSERT(type != H_OFFDUP);
 
 	/* Case 1 */
-	if (type != H_DUPLICATE &&
-	    flags != DB_GET_BOTH && flags != DB_GET_BOTHC)
+	if (type != H_DUPLICATE && flags != DB_GET_BOTH &&
+	    flags != DB_GET_BOTHC && flags != DB_GET_BOTH_RANGE)
 		return (0);
 
 	/*
@@ -1597,7 +1701,8 @@ __ham_dup_return (dbc, val, flags)
 	 * may need to adjust the cursor before returning data.
 	 * Case 4
 	 */
-	if (flags == DB_GET_BOTH || flags == DB_GET_BOTHC) {
+	if (flags == DB_GET_BOTH ||
+	    flags == DB_GET_BOTHC || flags == DB_GET_BOTH_RANGE) {
 		if (F_ISSET(hcp, H_ISDUP)) {
 			/*
 			 * If we're doing a join, search forward from the
@@ -1606,7 +1711,7 @@ __ham_dup_return (dbc, val, flags)
 			if (flags == DB_GET_BOTHC)
 				F_SET(hcp, H_CONTINUE);
 
-			__ham_dsearch(dbc, val, &off, &cmp);
+			__ham_dsearch(dbc, val, &off, &cmp, flags);
 
 			/*
 			 * This flag is set nowhere else and is safe to
@@ -1745,7 +1850,7 @@ __ham_overwrite(dbc, nval, flags)
 			 */
 			memset(&tmp_val, 0, sizeof(tmp_val));
 			if ((ret =
-			    __ham_dup_return (dbc, &tmp_val, DB_CURRENT)) != 0)
+			    __ham_dup_return(dbc, &tmp_val, DB_CURRENT)) != 0)
 				return (ret);
 
 			/* Figure out new size. */
@@ -1947,7 +2052,7 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 	hcp->bucket = __ham_call_hash(dbc, (u_int8_t *)key->data, key->size);
 	hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
 
-	while (1) {
+	for (;;) {
 		*pgnop = PGNO_INVALID;
 		if ((ret = __ham_item_next(dbc, mode, pgnop)) != 0)
 			return (ret);
@@ -1989,7 +2094,7 @@ found_key:			F_SET(hcp, H_OK);
 			 * These are errors because keys are never
 			 * duplicated, only data items are.
 			 */
-			return (__db_pgfmt(dbp, PGNO(hcp->page)));
+			return (__db_pgfmt(dbp->dbenv, PGNO(hcp->page)));
 		}
 	}
 
@@ -2300,8 +2405,9 @@ static int
 __ham_c_writelock(dbc)
 	DBC *dbc;
 {
-	HASH_CURSOR *hcp;
+	DB_ENV *dbenv;
 	DB_LOCK tmp_lock;
+	HASH_CURSOR *hcp;
 	int ret;
 
 	/*
@@ -2316,8 +2422,9 @@ __ham_c_writelock(dbc)
 		tmp_lock = hcp->lock;
 		if ((ret = __ham_lock_bucket(dbc, DB_LOCK_WRITE)) != 0)
 			return (ret);
+		dbenv = dbc->dbp->dbenv;
 		if (LOCK_ISSET(tmp_lock) &&
-		    (ret = lock_put(dbc->dbp->dbenv, &tmp_lock)) != 0)
+		    (ret = dbenv->lock_put(dbenv, &tmp_lock)) != 0)
 			return (ret);
 	}
 	return (0);
