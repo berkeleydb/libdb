@@ -1,0 +1,60 @@
+<!--"@(#)hpux.so	11.4 (Sleepycat) 11/11/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Building Berkeley DB for UNIX systems</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
+<td width="1%"><a href="../../ref/build_unix/freebsd.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/irix.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>HP-UX</h1>
+<ol>
+<p><li><b>I can't specify the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>.</b>
+<p>
+The <b>shmget</b>(2) interfaces are not always used on HP-UX, even
+though they exist, as anonymous memory allocated using <b>shmget</b>(2) cannot be used to store the standard HP-UX msemaphore semaphores.  For
+this reason, it may not be possible to specify the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a>
+flag on some versions of HP-UX.
+<p>
+In addition, it is not possible to store the standard HP-UX msemaphore
+semaphores in memory returned by <b>malloc</b>(3).  For this reason,
+it may not be possible to specify both the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> and
+<a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flags on some versions of HP-UX.
+<hr size=1 noshade>
+<p><li><b>I can't compile and run multi-threaded applications.</b>
+<p>
+Special compile-time flags are required when compiling threaded
+applications on HP-UX.  If you are compiling a threaded application, you
+must compile with the _REENTRANT flag:
+<p>
+<blockquote><pre>cc -D_REENTRANT ...</pre></blockquote>
+<p>
+The Berkeley DB library will automatically build with the correct options.
+<hr size=1 noshade>
+<p><li><b>An ENOMEM error is returned from <a href="../../api_c/env_open.html">DBENV-&gt;open</a> or
+<a href="../../api_c/env_remove.html">DBENV-&gt;remove</a>.</b>
+<p>
+Due to the constraints of the PA-RISC memory architecture, HP-UX does not
+allow a process to map a file into its address space multiple times.
+For this reason, each Berkeley DB environment may be opened only once by a
+process on HP-UX, i.e., calls to <a href="../../api_c/env_open.html">DBENV-&gt;open</a> will fail if the
+specified Berkeley DB environment has been opened and not subsequently closed.
+<hr size=1 noshade>
+<p><li><b>When compiling with gcc, I see the following error:
+<blockquote><pre>#error "Large Files (ILP32) not supported in strict ANSI mode."</pre></blockquote></b>
+<p>
+We believe this is an error in the HP-UX include files, but we don't
+really understand it.  The only workaround we have found is to add
+-D__STDC_EXT__ to the C preprocessor defines as part of compilation.
+</ol>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/build_unix/freebsd.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/irix.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)db_dispatch.h	10.4 (Sleepycat) 5/3/98
+ *	@(#)db_dispatch.h	11.5 (Sleepycat) 9/9/99
  */
 
 #ifndef _DB_DISPATCH_H
@@ -47,7 +43,8 @@ struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
 
 /*
  * Declarations and typedefs for the list of transaction IDs used during
- * recovery.
+ * recovery.  This is a generic list used to pass along whatever information
+ * we need during recovery.
  */
 struct __db_txnhead {
 	LIST_HEAD(__db_headlink, __db_txnlist) head;
@@ -55,10 +52,24 @@ struct __db_txnhead {
 	int32_t generation;
 };
 
+#define TXNLIST_INVALID_ID	0xffffffff
 struct __db_txnlist {
+	enum { TXNLIST_DELETE, TXNLIST_TXNID } type;
 	LIST_ENTRY(__db_txnlist) links;
-	u_int32_t txnid;
-	int32_t	generation;
+	union {
+		struct {
+			u_int32_t txnid;
+			int32_t	generation;
+		} t;
+		struct {
+#define TXNLIST_FLAG_DELETED	0x1
+#define	TXNLIST_FLAG_CLOSED	0x2
+			u_int32_t flags;
+			u_int32_t fileid;
+			u_int32_t count;
+			char *fname;
+		} d;
+	} u;
 };
 
 #define	DB_log_BEGIN		  0
@@ -66,7 +77,9 @@ struct __db_txnlist {
 #define	DB_ham_BEGIN		 20
 #define	DB_db_BEGIN		 40
 #define	DB_bam_BEGIN		 50
+#define	DB_qam_BEGIN		 75
 #define	DB_ram_BEGIN		100
+#define	DB_crdel_BEGIN		140
 #define	DB_user_BEGIN		150
 
 #define	TXN_UNDO		 0

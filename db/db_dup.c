@@ -1,47 +1,45 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_dup.c	10.35 (Sleepycat) 12/2/98";
+static const char sccsid[] = "@(#)db_dup.c	11.11 (Sleepycat) 11/3/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
 #include "btree.h"
+#include "hash.h"
+#include "lock.h"
 #include "db_am.h"
 
-static int __db_addpage __P((DBC *,
-    PAGE **, db_indx_t *, int (*)(DBC *, u_int32_t, PAGE **)));
-static int __db_dsplit __P((DBC *,
-    PAGE **, db_indx_t *, u_int32_t, int (*)(DBC *, u_int32_t, PAGE **)));
+static int __db_addpage __P((DBC *, PAGE **, db_indx_t *));
+static int __db_dsplit __P((DBC *, PAGE **, db_indx_t *, u_int32_t));
 
 /*
  * __db_dput --
  *	Put a duplicate item onto a duplicate page at the given index.
  *
- * PUBLIC: int __db_dput __P((DBC *, DBT *,
- * PUBLIC:    PAGE **, db_indx_t *, int (*)(DBC *, u_int32_t, PAGE **)));
+ * PUBLIC: int __db_dput __P((DBC *, DBT *, PAGE **, db_indx_t *));
  */
 int
-__db_dput(dbc, dbt, pp, indxp, newfunc)
+__db_dput(dbc, dbt, pp, indxp)
 	DBC *dbc;
 	DBT *dbt;
 	PAGE **pp;
 	db_indx_t *indxp;
-	int (*newfunc) __P((DBC *, u_int32_t, PAGE **));
 {
 	BOVERFLOW bo;
 	DBT *data_dbtp, hdr_dbt, *hdr_dbtp;
@@ -55,7 +53,7 @@ __db_dput(dbc, dbt, pp, indxp, newfunc)
 	 * a duplicate item onto an overflow page.
 	 */
 	if (dbt->size > 0.25 * dbc->dbp->pgsize) {
-		if ((ret = __db_poff(dbc, dbt, &pgno, newfunc)) != 0)
+		if ((ret = __db_poff(dbc, dbt, &pgno)) != 0)
 			return (ret);
 		UMRW(bo.unused1);
 		B_TSET(bo.type, B_OVERFLOW, 0);
@@ -77,9 +75,9 @@ __db_dput(dbc, dbt, pp, indxp, newfunc)
 	pagep = *pp;
 	if (size > P_FREESPACE(pagep)) {
 		if (*indxp == NUM_ENT(*pp) && NEXT_PGNO(*pp) == PGNO_INVALID)
-			ret = __db_addpage(dbc, pp, indxp, newfunc);
+			ret = __db_addpage(dbc, pp, indxp);
 		else
-			ret = __db_dsplit(dbc, pp, indxp, isize, newfunc);
+			ret = __db_dsplit(dbc, pp, indxp, isize);
 		if (ret != 0)
 			/*
 			 * XXX
@@ -105,15 +103,13 @@ __db_dput(dbc, dbt, pp, indxp, newfunc)
  * __db_drem --
  *	Remove a duplicate at the given index on the given page.
  *
- * PUBLIC: int __db_drem __P((DBC *,
- * PUBLIC:    PAGE **, u_int32_t, int (*)(DBC *, PAGE *)));
+ * PUBLIC: int __db_drem __P((DBC *, PAGE **, u_int32_t));
  */
 int
-__db_drem(dbc, pp, indx, freefunc)
+__db_drem(dbc, pp, indx)
 	DBC *dbc;
 	PAGE **pp;
 	u_int32_t indx;
-	int (*freefunc) __P((DBC *, PAGE *));
 {
 	PAGE *pagep;
 	int ret;
@@ -123,7 +119,7 @@ __db_drem(dbc, pp, indx, freefunc)
 	/* Check if we are freeing a big item. */
 	if (B_TYPE(GET_BKEYDATA(pagep, indx)->type) == B_OVERFLOW) {
 		if ((ret = __db_doff(dbc,
-		    GET_BOVERFLOW(pagep, indx)->pgno, freefunc)) != 0)
+		    GET_BOVERFLOW(pagep, indx)->pgno)) != 0)
 			return (ret);
 		ret = __db_ditem(dbc, pagep, indx, BOVERFLOW_SIZE);
 	} else
@@ -144,7 +140,7 @@ __db_drem(dbc, pp, indx, freefunc)
 		 */
 		if ((ret = __db_relink(dbc, DB_REM_PAGE, pagep, pp, 0)) != 0)
 			return (ret);
-		if ((ret = freefunc(dbc, pagep)) != 0)
+		if ((ret = __db_free(dbc, pagep)) != 0)
 			return (ret);
 	} else
 		(void)memp_fset(dbc->dbp->mpf, pagep, DB_MPOOL_DIRTY);
@@ -205,12 +201,11 @@ started:	h = *pp;
  *	the page on which the insert should happen, not yet put.
  */
 static int
-__db_dsplit(dbc, hp, indxp, size, newfunc)
+__db_dsplit(dbc, hp, indxp, size)
 	DBC *dbc;
 	PAGE **hp;
 	db_indx_t *indxp;
 	u_int32_t size;
-	int (*newfunc) __P((DBC *, u_int32_t, PAGE **));
 {
 	PAGE *h, *np, *tp;
 	BKEYDATA *bk;
@@ -231,15 +226,13 @@ __db_dsplit(dbc, hp, indxp, size, newfunc)
 		return (ret);
 
 	/* Create new page for the split. */
-	if ((ret = newfunc(dbc, P_DUPLICATE, &np)) != 0) {
+	if ((ret = __db_new(dbc, P_DUPLICATE, &np)) != 0) {
 		__os_free(tp, pgsize);
 		return (ret);
 	}
 
-	P_INIT(np, pgsize, PGNO(np), PGNO(h), NEXT_PGNO(h), 0,
-	    P_DUPLICATE);
-	P_INIT(tp, pgsize, PGNO(h), PREV_PGNO(h), PGNO(np), 0,
-	    P_DUPLICATE);
+	P_INIT(np, pgsize, PGNO(np), PGNO(h), NEXT_PGNO(h), 0, P_DUPLICATE);
+	P_INIT(tp, pgsize, PGNO(h), PREV_PGNO(h), PGNO(np), 0, P_DUPLICATE);
 
 	/* Figure out the split point */
 	halfbytes = (pgsize - HOFFSET(h)) / 2;
@@ -286,7 +279,7 @@ __db_dsplit(dbc, hp, indxp, size, newfunc)
 	if (DB_LOGGING(dbc)) {
 		page_dbt.size = dbp->pgsize;
 		page_dbt.data = h;
-		if ((ret = __db_split_log(dbp->dbenv->lg_info,
+		if ((ret = __db_split_log(dbp->dbenv,
 		    dbc->txn, &LSN(h), 0, DB_SPLITOLD, dbp->log_fileid,
 		    PGNO(h), &page_dbt, &LSN(h))) != 0) {
 			__os_free(tp, pgsize);
@@ -302,6 +295,8 @@ __db_dsplit(dbc, hp, indxp, size, newfunc)
 	 */
 	if (dbp->type == DB_BTREE)
 		__bam_ca_split(dbp, PGNO(h), PGNO(h), PGNO(np), i, 0);
+	if (dbp->type == DB_HASH)
+		__ham_ca_split(dbp, PGNO(h), PGNO(h), PGNO(np), i, 0);
 
 	for (nindex = 0, oindex = i; oindex < NUM_ENT(h); oindex++) {
 		bk = GET_BKEYDATA(h, oindex);
@@ -350,14 +345,14 @@ __db_dsplit(dbc, hp, indxp, size, newfunc)
 		 */
 		page_dbt.size = pgsize;
 		page_dbt.data = h;
-		if ((ret = __db_split_log(dbp->dbenv->lg_info,
+		if ((ret = __db_split_log(dbp->dbenv,
 		    dbc->txn, &LSN(h), 0, DB_SPLITNEW, dbp->log_fileid,
 		    PGNO(h), &page_dbt, &LSN(h))) != 0)
 			return (ret);
 
 		page_dbt.size = pgsize;
 		page_dbt.data = np;
-		if ((ret = __db_split_log(dbp->dbenv->lg_info,
+		if ((ret = __db_split_log(dbp->dbenv,
 		    dbc->txn, &LSN(np), 0, DB_SPLITNEW, dbp->log_fileid,
 		    PGNO(np),  &page_dbt, &LSN(np))) != 0)
 			return (ret);
@@ -405,7 +400,7 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	if (DB_LOGGING(dbc)) {
 		ldbt.data = P_ENTRY(pagep, indx);
 		ldbt.size = nbytes;
-		if ((ret = __db_addrem_log(dbp->dbenv->lg_info, dbc->txn,
+		if ((ret = __db_addrem_log(dbp->dbenv, dbc->txn,
 		    &LSN(pagep), 0, DB_REM_DUP, dbp->log_fileid, PGNO(pagep),
 		    (u_int32_t)indx, nbytes, &ldbt, NULL, &LSN(pagep))) != 0)
 			return (ret);
@@ -440,10 +435,6 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	if (indx != NUM_ENT(pagep))
 		memmove(&pagep->inp[indx], &pagep->inp[indx + 1],
 		    sizeof(db_indx_t) * (NUM_ENT(pagep) - indx));
-
-	/* If it's a btree, adjust the cursors. */
-	if (dbp->type == DB_BTREE)
-		__bam_ca_di(dbp, PGNO(pagep), indx, -1);
 
 	return (0);
 }
@@ -488,7 +479,7 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	 */
 	dbp = dbc->dbp;
 	if (DB_LOGGING(dbc))
-		if ((ret = __db_addrem_log(dbp->dbenv->lg_info, dbc->txn,
+		if ((ret = __db_addrem_log(dbp->dbenv, dbc->txn,
 		    &LSN(pagep), 0, DB_ADD_DUP, dbp->log_fileid, PGNO(pagep),
 		    (u_int32_t)indx, nbytes, hdr, data, &LSN(pagep))) != 0)
 			return (ret);
@@ -515,10 +506,6 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	if (data != NULL)
 		memcpy(p + hdr->size, data->data, data->size);
 
-	/* If it's a btree, adjust the cursors. */
-	if (dbp->type == DB_BTREE)
-		__bam_ca_di(dbp, PGNO(pagep), indx, 1);
-
 	return (0);
 }
 
@@ -543,7 +530,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 	ret = 0;
 	np = pp = NULL;
-	npl = ppl = LOCK_INVALID;
+	npl.off = ppl.off = LOCK_INVALID;
 	nlsnp = plsnp = NULL;
 	dbp = dbc->dbp;
 
@@ -553,8 +540,8 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 	 * because, the split took care of the prev.
 	 */
 	if (pagep->next_pgno != PGNO_INVALID) {
-		if (needlock && (ret = __bam_lget(dbc,
-		    0, pagep->next_pgno, DB_LOCK_WRITE, &npl)) != 0)
+		if (needlock && (ret = __db_lget(dbc,
+		    0, pagep->next_pgno, DB_LOCK_WRITE, 0, &npl)) != 0)
 			goto err;
 		if ((ret = memp_fget(dbp->mpf,
 		    &pagep->next_pgno, 0, &np)) != 0) {
@@ -564,8 +551,8 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		nlsnp = &np->lsn;
 	}
 	if (add_rem == DB_REM_PAGE && pagep->prev_pgno != PGNO_INVALID) {
-		if (needlock && (ret = __bam_lget(dbc,
-		    0, pagep->prev_pgno, DB_LOCK_WRITE, &ppl)) != 0)
+		if (needlock && (ret = __db_lget(dbc,
+		    0, pagep->prev_pgno, DB_LOCK_WRITE, 0, &ppl)) != 0)
 			goto err;
 		if ((ret = memp_fget(dbp->mpf,
 		    &pagep->prev_pgno, 0, &pp)) != 0) {
@@ -577,7 +564,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 
 	/* Log the change. */
 	if (DB_LOGGING(dbc)) {
-		if ((ret = __db_relink_log(dbp->dbenv->lg_info, dbc->txn,
+		if ((ret = __db_relink_log(dbp->dbenv, dbc->txn,
 		    &pagep->lsn, 0, add_rem, dbp->log_fileid,
 		    pagep->pgno, &pagep->lsn,
 		    pagep->prev_pgno, plsnp, pagep->next_pgno, nlsnp)) != 0)
@@ -610,7 +597,7 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if (ret != 0)
 			goto err;
 		if (needlock)
-			(void)__bam_lput(dbc, npl);
+			(void)__TLPUT(dbc, npl);
 	} else if (new_next != NULL)
 		*new_next = NULL;
 
@@ -619,18 +606,18 @@ __db_relink(dbc, add_rem, pagep, new_next, needlock)
 		if ((ret = memp_fput(dbp->mpf, pp, DB_MPOOL_DIRTY)) != 0)
 			goto err;
 		if (needlock)
-			(void)__bam_lput(dbc, ppl);
+			(void)__TLPUT(dbc, ppl);
 	}
 	return (0);
 
 err:	if (np != NULL)
 		(void)memp_fput(dbp->mpf, np, 0);
-	if (needlock && npl != LOCK_INVALID)
-		(void)__bam_lput(dbc, npl);
+	if (needlock && npl.off != LOCK_INVALID)
+		(void)__TLPUT(dbc, npl);
 	if (pp != NULL)
 		(void)memp_fput(dbp->mpf, pp, 0);
-	if (needlock && ppl != LOCK_INVALID)
-		(void)__bam_lput(dbc, ppl);
+	if (needlock && ppl.off != LOCK_INVALID)
+		(void)__TLPUT(dbc, ppl);
 	return (ret);
 }
 
@@ -638,13 +625,12 @@ err:	if (np != NULL)
  * __db_ddup --
  *	Delete an offpage chain of duplicates.
  *
- * PUBLIC: int __db_ddup __P((DBC *, db_pgno_t, int (*)(DBC *, PAGE *)));
+ * PUBLIC: int __db_ddup __P((DBC *, db_pgno_t));
  */
 int
-__db_ddup(dbc, pgno, freefunc)
+__db_ddup(dbc, pgno)
 	DBC *dbc;
 	db_pgno_t pgno;
-	int (*freefunc) __P((DBC *, PAGE *));
 {
 	DB *dbp;
 	PAGE *pagep;
@@ -661,14 +647,14 @@ __db_ddup(dbc, pgno, freefunc)
 		if (DB_LOGGING(dbc)) {
 			tmp_dbt.data = pagep;
 			tmp_dbt.size = dbp->pgsize;
-			if ((ret = __db_split_log(dbp->dbenv->lg_info,
+			if ((ret = __db_split_log(dbp->dbenv,
 			    dbc->txn, &LSN(pagep), 0, DB_SPLITOLD,
 			    dbp->log_fileid, PGNO(pagep), &tmp_dbt,
 			    &LSN(pagep))) != 0)
 				return (ret);
 		}
 		pgno = pagep->next_pgno;
-		if ((ret = freefunc(dbc, pagep)) != 0)
+		if ((ret = __db_free(dbc, pagep)) != 0)
 			return (ret);
 	} while (pgno != PGNO_INVALID);
 
@@ -681,22 +667,21 @@ __db_ddup(dbc, pgno, freefunc)
  *	current page.
  */
 static int
-__db_addpage(dbc, hp, indxp, newfunc)
+__db_addpage(dbc, hp, indxp)
 	DBC *dbc;
 	PAGE **hp;
 	db_indx_t *indxp;
-	int (*newfunc) __P((DBC *, u_int32_t, PAGE **));
 {
 	DB *dbp;
 	PAGE *newpage;
 	int ret;
 
 	dbp = dbc->dbp;
-	if ((ret = newfunc(dbc, P_DUPLICATE, &newpage)) != 0)
+	if ((ret = __db_new(dbc, P_DUPLICATE, &newpage)) != 0)
 		return (ret);
 
 	if (DB_LOGGING(dbc)) {
-		if ((ret = __db_addpage_log(dbp->dbenv->lg_info,
+		if ((ret = __db_addpage_log(dbp->dbenv,
 		    dbc->txn, &LSN(*hp), 0, dbp->log_fileid,
 		    PGNO(*hp), &LSN(*hp), PGNO(newpage), &LSN(newpage))) != 0) {
 			return (ret);
@@ -752,9 +737,9 @@ __db_dsearch(dbc, is_insert, dbt, pgno, indxp, pp, cmpp)
 {
 	DB *dbp;
 	PAGE *h;
-	db_indx_t base, indx, lim, save_indx;
+	db_indx_t base, indx, lim;
 	db_pgno_t save_pgno;
-	int ret;
+	int ret, firstpg;
 
 	dbp = dbc->dbp;
 
@@ -788,14 +773,16 @@ __db_dsearch(dbc, is_insert, dbt, pgno, indxp, pp, cmpp)
 		 * We are looking for a specific duplicate, so do a linear
 		 * search.
 		 */
+		firstpg = 1; 	/* Is this the first page we're searching? */
 		if (*pp != NULL)
 			goto nocmp_started;
 		for (;;) {
 			if ((ret = memp_fget(dbp->mpf, &pgno, 0, pp)) != 0)
 				goto pg_err;
 nocmp_started:		h = *pp;
-
-			for (*indxp = 0; *indxp < NUM_ENT(h); ++*indxp) {
+			base = (F_ISSET(dbc, DBC_CONTINUE) && (firstpg == 1)) ?
+			    *indxp : 0;
+			for (*indxp = base; *indxp < NUM_ENT(h); ++*indxp) {
 				if ((*cmpp = __bam_cmp(dbp,
 				    dbt, h, *indxp, __bam_defcmp)) != 0)
 					continue;
@@ -813,6 +800,12 @@ nocmp_started:		h = *pp;
 
 			if ((pgno = h->next_pgno) == PGNO_INVALID)
 				break;
+
+			/*
+			 * Moving on to another page;  make sure we
+			 * search from the beginning rather than *indxp.
+			 */
+			firstpg = 0;
 
 			if ((ret = memp_fput(dbp->mpf, h, 0)) != 0)
 				return (ret);
@@ -855,8 +848,46 @@ cmp_started:	h = *pp;
 		indx = base + (lim >> 1);
 		if ((*cmpp = __bam_cmp(dbp,
 		    dbt, h, indx, dbp->dup_compare)) == 0) {
+			/*
+			 * If DBC_CONTINUE is set, we want to make sure
+			 * we return the first duplicate duplicate
+			 * with index larger than *indxp.  Search
+			 * backwards until we're sure we have such.
+			 *
+			 * XXX: For the various uses of __db_dsearch
+			 * outside of joins, what's the correct behavior
+			 * in the presence of duplicate duplicates?  Someone
+			 * should ponder this, and perhaps remove the
+			 * following check and/or add different ones.
+			 */
+			if (F_ISSET(dbc, DBC_CONTINUE)) {
+				if (indx != 0) {
+					for (indx--; indx >= *indxp; indx--) {
+						if (__bam_cmp(dbp, dbt, h, indx,
+						    dbp->dup_compare) != 0)
+							break;
+						/*
+						 * Check for exit; if indx
+						 * == 0 here, we know we
+						 * want to return 0 without
+						 * decrementing into an
+						 * overflow condition (indx
+						 * is unsigned), so jump out.
+						 */
+						if (indx == 0)
+							goto postinc;
+					}
+					/*
+					 * We've decremented one too far;
+					 * either indx is now less than
+					 * *indxp, or it's pointing at a dup
+					 * that doesn't match.
+					 */
+					indx++;
+				}
+			}
+postinc:
 			*indxp = indx;
-
 			if (dbp->type != DB_BTREE ||
 			    !B_DISSET(GET_BKEYDATA(h, *indxp)->type))
 				return (0);
@@ -882,7 +913,6 @@ check_delete:
 	 * been deleted.  First, wander in a forwardly direction.
 	 */
 	save_pgno = (*pp)->pgno;
-	save_indx = *indxp;
 	for (++*indxp;;) {
 		for (; *indxp < NUM_ENT(h); ++*indxp) {
 			if ((*cmpp = __bam_cmp(dbp,

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -23,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -44,10 +40,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)hash_page.c	10.55 (Sleepycat) 1/3/99";
+static const char sccsid[] = "@(#)hash_page.c	11.10 (Sleepycat) 10/29/99";
 #endif /* not lint */
 
 /*
@@ -75,13 +71,11 @@ static const char sccsid[] = "@(#)hash_page.c	10.55 (Sleepycat) 1/3/99";
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
 #include "hash.h"
+#include "lock.h"
+#include "txn.h"
 
-static int __ham_lock_bucket __P((DBC *, db_lockmode_t));
-
-#ifdef DEBUG_SLOW
-static void  __account_page(DB *, db_pgno_t, int);
-#endif
 
 /*
  * PUBLIC: int __ham_item __P((DBC *, db_lockmode_t));
@@ -203,8 +197,8 @@ __ham_item_init(hcp)
 	 * If this cursor still holds any locks, we must
 	 * release them if we are not running with transactions.
 	 */
-	if (hcp->lock && hcp->dbc->txn == NULL)
-	    (void)lock_put(hcp->dbc->dbp->dbenv->lk_info, hcp->lock);
+	if (hcp->lock.off != LOCK_INVALID && hcp->dbc->txn == NULL)
+	    (void)lock_put(hcp->dbc->dbp->dbenv, &hcp->lock);
 
 	/*
 	 * The following fields must *not* be initialized here
@@ -213,7 +207,8 @@ __ham_item_init(hcp)
 	 */
 	hcp->bucket = BUCKET_INVALID;
 	hcp->lbucket = BUCKET_INVALID;
-	hcp->lock = 0;
+	hcp->lock.off = LOCK_INVALID;
+	hcp->mode = DB_LOCK_NG;
 	hcp->pagep = NULL;
 	hcp->pgno = PGNO_INVALID;
 	hcp->bndx = NDX_INVALID;
@@ -343,7 +338,7 @@ __ham_item_prev(dbc, mode)
 	if (F_ISSET(hcp, H_ISDUP)) {
 		if (hcp->dpgno == PGNO_INVALID) {
 			/* Duplicates are on-page. */
-			if (hcp->dup_off != 0)
+			if (hcp->dup_off != 0) {
 				if ((ret = __ham_get_cpage(dbc, mode)) != 0)
 					return (ret);
 				else {
@@ -358,6 +353,7 @@ __ham_item_prev(dbc, mode)
 					hcp->dndx--;
 					return (__ham_item(dbc, mode));
 				}
+			}
 		} else if (hcp->dndx > 0) {	/* Duplicates are off-page. */
 			hcp->dndx--;
 			return (__ham_item(dbc, mode));
@@ -633,7 +629,7 @@ __ham_del_pair(dbc, reclaim_page)
 	if (HPAGE_PTYPE(H_PAIRKEY(p, ndx)) == H_OFFPAGE) {
 		memcpy(&pgno, HOFFPAGE_PGNO(P_ENTRY(p, H_KEYINDEX(ndx))),
 		    sizeof(db_pgno_t));
-		ret = __db_doff(dbc, pgno, __ham_del_page);
+		ret = __db_doff(dbc, pgno);
 	}
 
 	if (ret == 0)
@@ -642,13 +638,13 @@ __ham_del_pair(dbc, reclaim_page)
 			memcpy(&pgno,
 			    HOFFPAGE_PGNO(P_ENTRY(p, H_DATAINDEX(ndx))),
 			    sizeof(db_pgno_t));
-			ret = __db_doff(dbc, pgno, __ham_del_page);
+			ret = __db_doff(dbc, pgno);
 			break;
 		case H_OFFDUP:
 			memcpy(&pgno,
 			    HOFFDUP_PGNO(P_ENTRY(p, H_DATAINDEX(ndx))),
 			    sizeof(db_pgno_t));
-			ret = __db_ddup(dbc, pgno, __ham_del_page);
+			ret = __db_ddup(dbc, pgno);
 			F_CLR(hcp, H_ISDUP);
 			break;
 		case H_DUPLICATE:
@@ -667,13 +663,11 @@ __ham_del_pair(dbc, reclaim_page)
 	/* Now log the delete off this page. */
 	if (DB_LOGGING(dbc)) {
 		key_dbt.data = P_ENTRY(p, H_KEYINDEX(ndx));
-		key_dbt.size =
-		    LEN_HITEM(p, hcp->hdr->pagesize, H_KEYINDEX(ndx));
+		key_dbt.size = LEN_HITEM(p, dbp->pgsize, H_KEYINDEX(ndx));
 		data_dbt.data = P_ENTRY(p, H_DATAINDEX(ndx));
-		data_dbt.size =
-		    LEN_HITEM(p, hcp->hdr->pagesize, H_DATAINDEX(ndx));
+		data_dbt.size = LEN_HITEM(p, dbp->pgsize, H_DATAINDEX(ndx));
 
-		if ((ret = __ham_insdel_log(dbenv->lg_info,
+		if ((ret = __ham_insdel_log(dbenv,
 		    dbc->txn, &new_lsn, 0, DELPAIR,
 		    dbp->log_fileid, PGNO(p), (u_int32_t)ndx,
 		    &LSN(p), &key_dbt, &data_dbt)) != 0)
@@ -691,7 +685,7 @@ __ham_del_pair(dbc, reclaim_page)
 	 * XXX perhaps we can retain incremental numbers and apply them
 	 * later.
 	 */
-	if (!F_ISSET(dbp, DB_AM_LOCKING))
+	if (!F_ISSET(dbenv, DB_ENV_LOCKING))
 		--hcp->hdr->nelem;
 
 	/*
@@ -725,8 +719,8 @@ __ham_del_pair(dbc, reclaim_page)
 
 		if (DB_LOGGING(dbc)) {
 			key_dbt.data = n_pagep;
-			key_dbt.size = hcp->hdr->pagesize;
-			if ((ret = __ham_copypage_log(dbenv->lg_info,
+			key_dbt.size = dbp->pgsize;
+			if ((ret = __ham_copypage_log(dbenv,
 			    dbc->txn, &new_lsn, 0, dbp->log_fileid, PGNO(p),
 			    &LSN(p), PGNO(n_pagep), &LSN(n_pagep),
 			    NEXT_PGNO(n_pagep),
@@ -747,7 +741,7 @@ __ham_del_pair(dbc, reclaim_page)
 
 		tmp_pgno = PGNO(p);
 		tmp_lsn = LSN(p);
-		memcpy(p, n_pagep, hcp->hdr->pagesize);
+		memcpy(p, n_pagep, dbp->pgsize);
 		PGNO(p) = tmp_pgno;
 		LSN(p) = tmp_lsn;
 		PREV_PGNO(p) = PGNO_INVALID;
@@ -760,7 +754,7 @@ __ham_del_pair(dbc, reclaim_page)
 		F_SET(hcp, H_DELETED);
 		chg_pgno = PGNO(p);
 		if ((ret = __ham_dirty_page(dbp, p)) != 0 ||
-		    (ret = __ham_del_page(dbc, n_pagep)) != 0)
+		    (ret = __db_free(dbc, n_pagep)) != 0)
 			return (ret);
 	} else if (reclaim_page &&
 	    NUM_ENT(p) == 0 && PREV_PGNO(p) != PGNO_INVALID) {
@@ -787,7 +781,7 @@ __ham_del_pair(dbc, reclaim_page)
 			PREV_PGNO(n_pagep) = PGNO(p_pagep);
 
 		if (DB_LOGGING(dbc)) {
-			if ((ret = __ham_newpage_log(dbenv->lg_info,
+			if ((ret = __ham_newpage_log(dbenv,
 			    dbc->txn, &new_lsn, 0, DELOVFL,
 			    dbp->log_fileid, PREV_PGNO(p), &LSN(p_pagep),
 			    PGNO(p), &LSN(p), NEXT_PGNO(p), n_lsn)) != 0)
@@ -808,7 +802,7 @@ __ham_del_pair(dbc, reclaim_page)
 		 */
 		hcp->pagep = NULL;
 		chg_pgno = PGNO(p);
-		ret = __ham_del_page(dbc, p);
+		ret = __db_free(dbc, p);
 		if ((tret = __ham_put_page(dbp, p_pagep, 1)) != 0 &&
 		    ret == 0)
 			ret = tret;
@@ -858,7 +852,7 @@ __ham_replpair(dbc, dbt, make_dup)
 	DBT old_dbt, tdata, tmp;
 	DB_LSN	new_lsn;
 	int32_t change;			/* XXX: Possible overflow. */
-	u_int32_t len;
+	u_int32_t dup, len;
 	int is_big, ret, type;
 	u_int8_t *beg, *dest, *end, *hk, *src;
 
@@ -919,6 +913,8 @@ __ham_replpair(dbc, dbt, make_dup)
 		    &tmp, &dbc->rkey.data, &dbc->rkey.size)) != 0)
 			return (ret);
 
+		/* Preserve duplicate info. */
+		dup = F_ISSET(hcp, H_ISDUP);
 		if (dbt->doff == 0 && dbt->dlen == len) {
 			ret = __ham_del_pair(dbc, 0);
 			if (ret == 0)
@@ -942,8 +938,8 @@ __ham_replpair(dbc, dbt, make_dup)
 
 			/* Now shift old data around to make room for new. */
 			if (change > 0) {
-				 if ((ret = __os_realloc(&tdata.data,
-				     tdata.size + change)) != 0)
+				 if ((ret = __os_realloc(tdata.size + change,
+				     NULL, &tdata.data)) != 0)
 					return (ret);
 				memset((u_int8_t *)tdata.data + tdata.size,
 				    0, change);
@@ -964,6 +960,7 @@ __ham_replpair(dbc, dbt, make_dup)
 			ret = __ham_add_el(dbc, &tmp, &tdata, type);
 			__os_free(tdata.data, tdata.size);
 		}
+		F_SET(hcp, dup);
 err:		__os_free(tmp.data, tmp.size);
 		return (ret);
 	}
@@ -983,7 +980,7 @@ err:		__os_free(tmp.data, tmp.size);
 	if (DB_LOGGING(dbc)) {
 		old_dbt.data = beg;
 		old_dbt.size = dbt->dlen;
-		if ((ret = __ham_replace_log(dbp->dbenv->lg_info,
+		if ((ret = __ham_replace_log(dbp->dbenv,
 		    dbc->txn, &new_lsn, 0, dbp->log_fileid, PGNO(hcp->pagep),
 		    (u_int32_t)H_DATAINDEX(hcp->bndx), &LSN(hcp->pagep),
 		    (u_int32_t)dbt->doff, &old_dbt, dbt, make_dup)) != 0)
@@ -1063,15 +1060,15 @@ __ham_split_page(dbc, obucket, nbucket)
 	u_int32_t obucket, nbucket;
 {
 	DB *dbp;
-	HASH_CURSOR *hcp;
+	HASH_CURSOR *hcp, **harray;
 	DBT key, page_dbt;
 	DB_ENV *dbenv;
 	DB_LSN new_lsn;
 	PAGE **pp, *old_pagep, *temp_pagep, *new_pagep;
 	db_indx_t n;
-	db_pgno_t bucket_pgno, next_pgno;
+	db_pgno_t bucket_pgno, npgno, next_pgno;
 	u_int32_t big_len, len;
-	int ret, tret;
+	int i, ret, tret;
 	void *big_buf;
 
 	dbp = dbc->dbp;
@@ -1079,26 +1076,33 @@ __ham_split_page(dbc, obucket, nbucket)
 	dbenv = dbp->dbenv;
 	temp_pagep = old_pagep = new_pagep = NULL;
 
+	if ((ret = __ham_get_clist(dbp, obucket, NDX_INVALID, &harray)) != 0)
+		return (ret);
+
 	bucket_pgno = BUCKET_TO_PAGE(hcp, obucket);
 	if ((ret = __ham_get_page(dbp, bucket_pgno, &old_pagep)) != 0)
-		return (ret);
-	if ((ret = __ham_new_page(dbp, BUCKET_TO_PAGE(hcp, nbucket), P_HASH,
-	    &new_pagep)) != 0)
 		goto err;
 
+	/* Properly initialize the new bucket page. */
+	npgno = BUCKET_TO_PAGE(hcp, nbucket);
+	if ((ret = __ham_get_page(dbp, npgno, &new_pagep)) != 0)
+		goto err;
+	P_INIT(new_pagep,
+	    dbp->pgsize, npgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
+
 	temp_pagep = hcp->split_buf;
-	memcpy(temp_pagep, old_pagep, hcp->hdr->pagesize);
+	memcpy(temp_pagep, old_pagep, dbp->pgsize);
 
 	if (DB_LOGGING(dbc)) {
-		page_dbt.size = hcp->hdr->pagesize;
+		page_dbt.size = dbp->pgsize;
 		page_dbt.data = old_pagep;
-		if ((ret = __ham_splitdata_log(dbenv->lg_info,
+		if ((ret = __ham_splitdata_log(dbenv,
 		    dbc->txn, &new_lsn, 0, dbp->log_fileid, SPLITOLD,
 		    PGNO(old_pagep), &page_dbt, &LSN(old_pagep))) != 0)
 			goto err;
 	}
 
-	P_INIT(old_pagep, hcp->hdr->pagesize, PGNO(old_pagep), PGNO_INVALID,
+	P_INIT(old_pagep, dbp->pgsize, PGNO(old_pagep), PGNO_INVALID,
 	    PGNO_INVALID, 0, P_HASH);
 
 	if (DB_LOGGING(dbc))
@@ -1125,18 +1129,18 @@ __ham_split_page(dbc, obucket, nbucket)
 			 * page to store the key/data pair.
 			 */
 
-			len = LEN_HITEM(temp_pagep, hcp->hdr->pagesize,
+			len = LEN_HITEM(temp_pagep, dbp->pgsize,
 			    H_DATAINDEX(n)) +
-			    LEN_HITEM(temp_pagep, hcp->hdr->pagesize,
+			    LEN_HITEM(temp_pagep, dbp->pgsize,
 			    H_KEYINDEX(n)) +
 			    2 * sizeof(db_indx_t);
 
 			if (P_FREESPACE(*pp) < len) {
 				if (DB_LOGGING(dbc)) {
-					page_dbt.size = hcp->hdr->pagesize;
+					page_dbt.size = dbp->pgsize;
 					page_dbt.data = *pp;
 					if ((ret = __ham_splitdata_log(
-					    dbenv->lg_info, dbc->txn,
+					    dbenv, dbc->txn,
 					    &new_lsn, 0, dbp->log_fileid,
 					    SPLITNEW, PGNO(*pp), &page_dbt,
 					    &LSN(*pp))) != 0)
@@ -1147,6 +1151,18 @@ __ham_split_page(dbc, obucket, nbucket)
 				    __ham_add_ovflpage(dbc, *pp, 1, pp)) != 0)
 					goto err;
 			}
+
+			/* Check if we need to update a cursor. */
+			if (harray != NULL) {
+				for (i = 0; harray[i] != NULL; i++) {
+					if (harray[i]->pgno == PGNO(temp_pagep)
+					    && harray[i]->bndx == n) {
+						harray[i]->pgno = PGNO(*pp);
+						harray[i]->bndx =
+						    H_NUMPAIRS(*pp);
+					}
+				}
+			}
 			__ham_copy_item(dbp->pgsize,
 			    temp_pagep, H_KEYINDEX(n), *pp);
 			__ham_copy_item(dbp->pgsize,
@@ -1156,7 +1172,7 @@ __ham_split_page(dbc, obucket, nbucket)
 
 		/* Clear temp_page; if it's a link overflow page, free it. */
 		if (PGNO(temp_pagep) != bucket_pgno && (ret =
-		    __ham_del_page(dbc, temp_pagep)) != 0)
+		    __db_free(dbc, temp_pagep)) != 0)
 			goto err;
 
 		if (next_pgno == PGNO_INVALID)
@@ -1166,9 +1182,9 @@ __ham_split_page(dbc, obucket, nbucket)
 			goto err;
 
 		if (temp_pagep != NULL && DB_LOGGING(dbc)) {
-			page_dbt.size = hcp->hdr->pagesize;
+			page_dbt.size = dbp->pgsize;
 			page_dbt.data = temp_pagep;
-			if ((ret = __ham_splitdata_log(dbenv->lg_info,
+			if ((ret = __ham_splitdata_log(dbenv,
 			    dbc->txn, &new_lsn, 0, dbp->log_fileid,
 			    SPLITOLD, PGNO(temp_pagep),
 			    &page_dbt, &LSN(temp_pagep))) != 0)
@@ -1185,26 +1201,25 @@ __ham_split_page(dbc, obucket, nbucket)
 	 * should be deleted.
 	 */
 	if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno &&
-	    (ret = __ham_del_page(dbc, temp_pagep)) != 0)
+	    (ret = __db_free(dbc, temp_pagep)) != 0)
 		goto err;
 
 	/*
 	 * Write new buckets out.
 	 */
 	if (DB_LOGGING(dbc)) {
-		page_dbt.size = hcp->hdr->pagesize;
+		page_dbt.size = dbp->pgsize;
 		page_dbt.data = old_pagep;
-		if ((ret = __ham_splitdata_log(dbenv->lg_info,
-		   dbc->txn, &new_lsn, 0, dbp->log_fileid,
-		   SPLITNEW, PGNO(old_pagep),
-		    &page_dbt, &LSN(old_pagep))) != 0)
+		if ((ret = __ham_splitdata_log(dbenv, dbc->txn, &new_lsn, 0,
+		    dbp->log_fileid, SPLITNEW, PGNO(old_pagep), &page_dbt,
+		    &LSN(old_pagep))) != 0)
 			goto err;
 		LSN(old_pagep) = new_lsn;
 
 		page_dbt.data = new_pagep;
-		if ((ret = __ham_splitdata_log(dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, dbp->log_fileid,
-		    SPLITNEW, PGNO(new_pagep), &page_dbt, &LSN(new_pagep))) != 0)
+		if ((ret = __ham_splitdata_log(dbenv, dbc->txn, &new_lsn, 0,
+		    dbp->log_fileid, SPLITNEW, PGNO(new_pagep), &page_dbt,
+		    &LSN(new_pagep))) != 0)
 			goto err;
 		LSN(new_pagep) = new_lsn;
 	}
@@ -1220,6 +1235,8 @@ err:		if (old_pagep != NULL)
 			(void)__ham_put_page(dbp, new_pagep, 1);
 		if (temp_pagep != NULL && PGNO(temp_pagep) != bucket_pgno)
 			(void)__ham_put_page(dbp, temp_pagep, 1);
+		if (harray != NULL)	/* We never knew its size. */
+			__os_free(harray, 0);
 	}
 	return (ret);
 }
@@ -1307,8 +1324,7 @@ __ham_add_el(dbc, key, val, type)
 		UMRW(koff.unused[0]);
 		UMRW(koff.unused[1]);
 		UMRW(koff.unused[2]);
-		if ((ret = __db_poff(dbc,
-		    key, &koff.pgno, __ham_overflow_page)) != 0)
+		if ((ret = __db_poff(dbc, key, &koff.pgno)) != 0)
 			return (ret);
 		koff.tlen = key->size;
 		key_dbt.data = &koff;
@@ -1325,8 +1341,7 @@ __ham_add_el(dbc, key, val, type)
 		UMRW(doff.unused[0]);
 		UMRW(doff.unused[1]);
 		UMRW(doff.unused[2]);
-		if ((ret = __db_poff(dbc,
-		    val, &doff.pgno, __ham_overflow_page)) != 0)
+		if ((ret = __db_poff(dbc, val, &doff.pgno)) != 0)
 			return (ret);
 		doff.tlen = val->size;
 		data_dbt.data = &doff;
@@ -1345,11 +1360,10 @@ __ham_add_el(dbc, key, val, type)
 		if (is_keybig)
 			rectype |= PAIR_KEYMASK;
 
-		if ((ret = __ham_insdel_log(dbp->dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, rectype,
-		    dbp->log_fileid, PGNO(hcp->pagep),
-		    (u_int32_t)H_NUMPAIRS(hcp->pagep),
-		    &LSN(hcp->pagep), pkey, pdata)) != 0)
+		if ((ret = __ham_insdel_log(dbp->dbenv, dbc->txn, &new_lsn, 0,
+		    rectype, dbp->log_fileid, PGNO(hcp->pagep),
+		    (u_int32_t)H_NUMPAIRS(hcp->pagep), &LSN(hcp->pagep), pkey,
+		    pdata)) != 0)
 			return (ret);
 
 		/* Move lsn onto page. */
@@ -1371,7 +1385,7 @@ __ham_add_el(dbc, key, val, type)
 	/*
 	 * XXX Maybe keep incremental numbers here
 	 */
-	if (!F_ISSET(dbp, DB_AM_LOCKING))
+	if (!F_ISSET(dbp->dbenv, DB_ENV_LOCKING))
 		hcp->hdr->nelem++;
 
 	if (do_expand || (hcp->hdr->ffactor != 0 &&
@@ -1438,13 +1452,12 @@ __ham_add_ovflpage(dbc, pagep, release, pp)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
-	if ((ret = __ham_overflow_page(dbc, P_HASH, &new_pagep)) != 0)
+	if ((ret = __db_new(dbc, P_HASH, &new_pagep)) != 0)
 		return (ret);
 
 	if (DB_LOGGING(dbc)) {
-		if ((ret = __ham_newpage_log(dbp->dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, PUTOVFL,
-		    dbp->log_fileid, PGNO(pagep), &LSN(pagep),
+		if ((ret = __ham_newpage_log(dbp->dbenv, dbc->txn, &new_lsn, 0,
+		    PUTOVFL, dbp->log_fileid, PGNO(pagep), &LSN(pagep),
 		    PGNO(new_pagep), &LSN(new_pagep), PGNO_INVALID, NULL)) != 0)
 			return (ret);
 
@@ -1457,94 +1470,10 @@ __ham_add_ovflpage(dbc, pagep, release, pp)
 	if (release)
 		ret = __ham_put_page(dbp, pagep, 1);
 
-	hcp->stats.hash_overflows++;
 	*pp = new_pagep;
 	return (ret);
 }
 
-
-/*
- * PUBLIC: int __ham_new_page __P((DB *, u_int32_t, u_int32_t, PAGE **));
- */
-int
-__ham_new_page(dbp, addr, type, pp)
-	DB *dbp;
-	u_int32_t addr, type;
-	PAGE **pp;
-{
-	PAGE *pagep;
-	int ret;
-
-	if ((ret = memp_fget(dbp->mpf,
-	    &addr, DB_MPOOL_CREATE, &pagep)) != 0)
-		return (ret);
-
-	/* This should not be necessary because page-in should do it. */
-	P_INIT(pagep, dbp->pgsize, addr, PGNO_INVALID, PGNO_INVALID, 0, type);
-
-	*pp = pagep;
-	return (0);
-}
-
-/*
- * PUBLIC: int __ham_del_page __P((DBC *, PAGE *));
- */
-int
-__ham_del_page(dbc, pagep)
-	DBC *dbc;
-	PAGE *pagep;
-{
-	DB *dbp;
-	HASH_CURSOR *hcp;
-	DB_LSN new_lsn;
-	int ret;
-
-	dbp = dbc->dbp;
-	hcp = (HASH_CURSOR *)dbc->internal;
-	ret = 0;
-	DIRTY_META(dbp, hcp, ret);
-	if (ret != 0) {
-		if (ret != EAGAIN)
-			__db_err(dbp->dbenv,
-			    "free_ovflpage: unable to lock meta data page %s\n",
-			    strerror(ret));
-		/*
-		 * If we are going to return an error, then we should free
-		 * the page, so it doesn't stay pinned forever.
-		 */
-		(void)__ham_put_page(dbp, pagep, 0);
-		return (ret);
-	}
-
-	if (DB_LOGGING(dbc)) {
-		if ((ret = __ham_newpgno_log(dbp->dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, DELPGNO,
-		    dbp->log_fileid, PGNO(pagep), hcp->hdr->last_freed,
-		    (u_int32_t)TYPE(pagep), NEXT_PGNO(pagep), P_INVALID,
-		    &LSN(pagep), &hcp->hdr->lsn)) != 0)
-			return (ret);
-
-		hcp->hdr->lsn = new_lsn;
-		LSN(pagep) = new_lsn;
-	}
-
-#ifdef DIAGNOSTIC
-	{
-		db_pgno_t __pgno;
-		DB_LSN __lsn;
-		__pgno = pagep->pgno;
-		__lsn = pagep->lsn;
-		memset(pagep, 0xdb, dbp->pgsize);
-		pagep->pgno = __pgno;
-		pagep->lsn = __lsn;
-	}
-#endif
-	TYPE(pagep) = P_INVALID;
-	NEXT_PGNO(pagep) = hcp->hdr->last_freed;
-	hcp->hdr->last_freed = PGNO(pagep);
-
-	return (__ham_put_page(dbp, pagep, 1));
-}
 
 
 /*
@@ -1556,9 +1485,6 @@ __ham_put_page(dbp, pagep, is_dirty)
 	PAGE *pagep;
 	int32_t is_dirty;
 {
-#ifdef DEBUG_SLOW
-	__account_page(dbp, ((BKT *)((char *)pagep - sizeof(BKT)))->pgno, -1);
-#endif
 	return (memp_fput(dbp->mpf, pagep, (is_dirty ? DB_MPOOL_DIRTY : 0)));
 }
 
@@ -1585,106 +1511,11 @@ __ham_get_page(dbp, addr, pagep)
 	db_pgno_t addr;
 	PAGE **pagep;
 {
-	int ret;
-
-	ret = memp_fget(dbp->mpf, &addr, DB_MPOOL_CREATE, pagep);
-#ifdef DEBUG_SLOW
-	if (*pagep != NULL)
-		__account_page(dbp, addr, 1);
-#endif
-	return (ret);
+	return (memp_fget(dbp->mpf, &addr, DB_MPOOL_CREATE, pagep));
 }
 
 /*
- * PUBLIC: int __ham_overflow_page
- * PUBLIC:     __P((DBC *, u_int32_t, PAGE **));
- */
-int
-__ham_overflow_page(dbc, type, pp)
-	DBC *dbc;
-	u_int32_t type;
-	PAGE **pp;
-{
-	DB *dbp;
-	HASH_CURSOR *hcp;
-	DB_LSN *lsnp, new_lsn;
-	PAGE *p;
-	db_pgno_t new_addr, next_free, newalloc_flag;
-	u_int32_t offset, splitnum;
-	int ret;
-
-	ret = 0;
-	dbp = dbc->dbp;
-	hcp = (HASH_CURSOR *)dbc->internal;
-	DIRTY_META(dbp, hcp, ret);
-	if (ret != 0)
-		return (ret);
-
-	/*
-	 * This routine is split up into two parts.  First we have
-	 * to figure out the address of the new page that we are
-	 * allocating.  Then we have to log the allocation.  Only
-	 * after the log do we get to complete allocation of the
-	 * new page.
-	 */
-	new_addr = hcp->hdr->last_freed;
-	if (new_addr != PGNO_INVALID) {
-		if ((ret = __ham_get_page(dbp, new_addr, &p)) != 0)
-			return (ret);
-		next_free = NEXT_PGNO(p);
-		lsnp = &LSN(p);
-		newalloc_flag = 0;
-	} else {
-		splitnum = hcp->hdr->ovfl_point;
-		hcp->hdr->spares[splitnum]++;
-		offset = hcp->hdr->spares[splitnum] -
-		    (splitnum ? hcp->hdr->spares[splitnum - 1] : 0);
-		new_addr = PGNO_OF(hcp, hcp->hdr->ovfl_point, offset);
-		if (new_addr > MAX_PAGES(hcp)) {
-			__db_err(dbp->dbenv, "hash: out of file pages");
-			hcp->hdr->spares[splitnum]--;
-			return (ENOMEM);
-		}
-		next_free = PGNO_INVALID;
-		p = NULL;
-		lsnp = NULL;
-		newalloc_flag = 1;
-	}
-
-	if (DB_LOGGING(dbc)) {
-		if ((ret = __ham_newpgno_log(dbp->dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, ALLOCPGNO,
-		    dbp->log_fileid, new_addr, next_free,
-		    0, newalloc_flag, type, lsnp, &hcp->hdr->lsn)) != 0)
-			return (ret);
-
-		hcp->hdr->lsn = new_lsn;
-		if (lsnp != NULL)
-			*lsnp = new_lsn;
-	}
-
-	if (p != NULL) {
-		/* We just took something off the free list, initialize it. */
-		hcp->hdr->last_freed = next_free;
-		P_INIT(p, hcp->hdr->pagesize, PGNO(p), PGNO_INVALID,
-		    PGNO_INVALID, 0, (u_int8_t)type);
-	} else {
-		/* Get the new page. */
-		if ((ret = __ham_new_page(dbp, new_addr, type, &p)) != 0)
-			return (ret);
-	}
-	if (DB_LOGGING(dbc))
-		LSN(p) = new_lsn;
-
-	*pp = p;
-	return (0);
-}
-
-#ifdef DEBUG
-/*
- * PUBLIC: #ifdef DEBUG
  * PUBLIC: db_pgno_t __bucket_to_page __P((HASH_CURSOR *, db_pgno_t));
- * PUBLIC: #endif
  */
 db_pgno_t
 __bucket_to_page(hcp, n)
@@ -1697,53 +1528,6 @@ __bucket_to_page(hcp, n)
 	if (n != 0)
 		ret_val += hcp->hdr->spares[__db_log2(n + 1) - 1];
 	return (ret_val);
-}
-#endif
-
-/*
- * Create a bunch of overflow pages at the current split point.
- * PUBLIC: void __ham_init_ovflpages __P((DBC *));
- */
-void
-__ham_init_ovflpages(dbc)
-	DBC *dbc;
-{
-	DB *dbp;
-	HASH_CURSOR *hcp;
-	DB_LSN new_lsn;
-	PAGE *p;
-	db_pgno_t last_pgno, new_pgno;
-	u_int32_t i, curpages, numpages;
-
-	dbp = dbc->dbp;
-	hcp = (HASH_CURSOR *)dbc->internal;
-
-	curpages = hcp->hdr->spares[hcp->hdr->ovfl_point] -
-	    hcp->hdr->spares[hcp->hdr->ovfl_point - 1];
-	numpages = hcp->hdr->ovfl_point + 1 - curpages;
-
-	last_pgno = hcp->hdr->last_freed;
-	new_pgno = PGNO_OF(hcp, hcp->hdr->ovfl_point, curpages + 1);
-	if (DB_LOGGING(dbc)) {
-		(void)__ham_ovfl_log(dbp->dbenv->lg_info,
-		    dbc->txn, &new_lsn, 0, dbp->log_fileid, new_pgno,
-		    numpages, last_pgno, hcp->hdr->ovfl_point, &hcp->hdr->lsn);
-		hcp->hdr->lsn = new_lsn;
-	} else
-		ZERO_LSN(new_lsn);
-
-	hcp->hdr->spares[hcp->hdr->ovfl_point] += numpages;
-	for (i = numpages; i > 0; i--) {
-		if (__ham_new_page(dbp,
-		    PGNO_OF(hcp, hcp->hdr->ovfl_point, curpages + i),
-		    P_INVALID, &p) != 0)
-			break;
-		LSN(p) = new_lsn;
-		NEXT_PGNO(p) = last_pgno;
-		last_pgno = PGNO(p);
-		(void)__ham_put_page(dbp, p, 1);
-	}
-	hcp->hdr->last_freed = last_pgno;
 }
 
 /*
@@ -1760,6 +1544,7 @@ __ham_get_cpage(dbc, mode)
 
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
+	ret = 0;
 
 	/*
 	 * There are three cases with respect to buckets and locks.  If there
@@ -1768,21 +1553,26 @@ __ham_get_cpage(dbc, mode)
 	 * need to do anything.  If there is a lock, but it's for a different
 	 * bucket, then we need to release and get.
 	 */
-	if (F_ISSET(dbp, DB_AM_LOCKING)) {
-		if (hcp->lock != 0 && hcp->lbucket != hcp->bucket) {
+	if (F_ISSET(dbp->dbenv, DB_ENV_LOCKING)) {
+		if (hcp->lock.off != LOCK_INVALID &&
+		    hcp->lbucket != hcp->bucket) {
 			/*
 			 * If this is the original lock, don't release it,
 			 * because we may need to restore it upon exit.
 			 */
-			if (dbc->txn == NULL &&
-			    !F_ISSET(hcp, H_ORIGINAL) && (ret =
-			    lock_put(dbp->dbenv->lk_info, hcp->lock)) != 0)
+			if (dbc->txn == NULL && !F_ISSET(hcp, H_ORIGINAL) &&
+			    (ret = lock_put(dbp->dbenv, &hcp->lock)) != 0)
 				return (ret);
 			F_CLR(hcp, H_ORIGINAL);
-			hcp->lock = 0;
+			hcp->lock.off = LOCK_INVALID;
 		}
-		if (hcp->lock == 0 && (ret = __ham_lock_bucket(dbc, mode)) != 0)
-			return (ret);
+		if ((hcp->lock.off == LOCK_INVALID ||
+		    (hcp->mode == DB_LOCK_READ && mode == DB_LOCK_WRITE))) {
+			if ((ret = __ham_lock_bucket(dbc, mode)) != 0)
+				return (ret);
+			F_CLR(hcp, H_ORIGINAL);
+		}
+		hcp->mode = mode;
 		hcp->lbucket = hcp->bucket;
 	}
 
@@ -1851,25 +1641,30 @@ __ham_next_cpage(dbc, pgno, dirty, flags)
 /*
  * __ham_lock_bucket --
  *	Get the lock on a particular bucket.
+ *
+ * PUBLIC: int __ham_lock_bucket __P((DBC *, db_lockmode_t));
  */
-static int
+int
 __ham_lock_bucket(dbc, mode)
 	DBC *dbc;
 	db_lockmode_t mode;
 {
 	HASH_CURSOR *hcp;
+	u_int32_t flags;
 	int ret;
 
 	hcp = (HASH_CURSOR *)dbc->internal;
-	dbc->lock.pgno = (db_pgno_t)(hcp->bucket);
-	if (dbc->txn == NULL)
-		ret = lock_get(dbc->dbp->dbenv->lk_info, dbc->locker, 0,
-		    &dbc->lock_dbt, mode, &hcp->lock);
-	else
-		ret = lock_tget(dbc->dbp->dbenv->lk_info, dbc->txn, 0,
-		    &dbc->lock_dbt, mode, &hcp->lock);
+	dbc->lock.pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
 
-	return (ret < 0 ? EAGAIN : ret);
+	flags = 0;
+	if (DB_NONBLOCK(dbc))
+		LF_SET(DB_LOCK_NOWAIT);
+
+	ret = lock_get(dbc->dbp->dbenv,
+		    dbc->locker, flags, &dbc->lock_dbt, mode, &hcp->lock);
+
+	hcp->mode = mode;
+	return (ret);
 }
 
 /*

@@ -1,27 +1,30 @@
-<! "@(#)db_checkpoint.so	10.11 (Sleepycat) 12/11/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--"@(#)db_checkpoint.so	10.14 (Sleepycat) 11/7/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB: db_checkpoint</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
 <h1>db_checkpoint</h1>
+</td>
+<td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3>
-<pre>
+<h3><pre>
 db_checkpoint [<b>-1v</b>]
     [<b>-h home</b>] [<b>-k kbytes</b>] [<b>-L file</b>] [<b>-p min</b>]
-</pre>
-</h3>
+</pre></h3>
 <h1>Description</h1>
 <p>
-The db_checkpoint utility is a daemon process that monitors the
-database log and periodically calls <a href="../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a> to checkpoint it.
+The <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility is a daemon process that monitors the
+database log and periodically calls <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a> to checkpoint it.
 <p>
 The options are as follows:
 <dl compact>
@@ -29,12 +32,11 @@ The options are as follows:
 <p><dt><b>-h</b><dd>Specify a home directory for the database.
 <p><dt><b>-k</b><dd>Checkpoint the database at least as often as every <b>kbytes</b> of log
 file are written.
-<p><dt><b>-L</b><dd>
-Log the execution of the db_checkpoint utility to the specified file in the
+<p><dt><b>-L</b><dd>Log the execution of the <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
 is the time the utility starting running.
-<p><ul><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></ul><p>
-This file will be removed if the db_checkpoint utility exits gracefully.
+<blockquote><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
+This file will be removed if the <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility exits gracefully.
 <p><dt><b>-p</b><dd>Checkpoint the database at least every <b>min</b> minutes.
 <p><dt><b>-v</b><dd>Write the time of each checkpoint to the standard output.
 </dl>
@@ -42,34 +44,33 @@ This file will be removed if the db_checkpoint utility exits gracefully.
 At least one of the <b>-1</b>, <b>-k</b> and <b>-p</b> options must
 be specified.
 <p>
-The db_checkpoint utility attaches to one or more of the Berkeley DB shared memory
+The <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility attaches to one or more of the Berkeley DB shared memory
 regions.  In order to avoid region corruption, it should always be given
-the chance to detach and exit gracefully.  To cause db_checkpoint to clean up
+the chance to detach and exit gracefully.  To cause <a href="../utility/db_checkpoint.html">db_checkpoint</a> to clean up
 after itself and exit, send it an interrupt signal (SIGINT).
 <p>
-The db_checkpoint utility does not attempt to create the Berkeley DB
+The <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility does not attempt to create the Berkeley DB
 shared memory regions if they do not already exist.  The application
 which creates the region should be started first, and then, once the
-region is created, the db_checkpoint utility should be started.
+region is created, the <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility should be started.
 <p>
-The <a href="../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a> function is the underlying function used by the db_checkpoint utility.
-See the db_checkpoint utility source code for an example of using <a href="../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a>
+The <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a> function is the underlying function used by the <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility.
+See the <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility source code for an example of using <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a>
 in a POSIX 1003.1 environment.
 <p>
-The db_checkpoint utility exits 0 on success, and >0 if an error occurs.
+The <a href="../utility/db_checkpoint.html">db_checkpoint</a> utility exits 0 on success, and &gt;0 if an error occurs.
 <p>
 <h1>Environment Variables</h1>
 <p>
 <dl compact>
-<p><dt>DB_HOME<dd>
-If the <b>-h</b> option is not specified and the environment variable
+<p><dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
-in <a href="../api_c/DbEnv/appinit.html">db_appinit</a>.
+in <a href="../api_c/env_open.html">DBENV-&gt;open</a>.
 </dl>
 <p>
 <h1>See Also</h1>
 <a href="../utility/db_archive.html">db_archive</a>,
-db_checkpoint,
+<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
 <a href="../utility/db_deadlock.html">db_deadlock</a>,
 <a href="../utility/db_dump.html">db_dump</a>,
 <a href="../utility/db_load.html">db_load</a>,
@@ -77,5 +78,6 @@ db_checkpoint,
 and
 <a href="../utility/db_stat.html">db_stat</a>.
 </tt>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

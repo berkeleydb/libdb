@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dbscript.tcl	8.12 (Sleepycat) 4/10/98
+#	@(#)dbscript.tcl	11.5 (Sleepycat) 10/25/99
 #
 # Random db tester.
 # Usage: dbscript file numops min_del max_add key_avg data_avgdups
@@ -17,14 +17,17 @@
 # dups: 1 indicates dups allowed, 0 indicates no dups
 # errpct: What percent of operations should generate errors
 # seed: Random number generator seed (-1 means use pid)
+
 source ./include.tcl
-source ../test/testutils.tcl
+source $test_path/test.tcl
+source $test_path/testutils.tcl
+
 set alphabet "abcdefghijklmnopqrstuvwxyz"
 
-set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errpcnt seed"
+set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errpcnt"
 
 # Verify usage
-if { $argc != 10 } {
+if { $argc != 9 } {
 	puts stderr $usage
 	exit
 }
@@ -39,13 +42,8 @@ set key_avg [ lindex $argv 5 ]
 set data_avg [ lindex $argv 6 ]
 set dups [ lindex $argv 7 ]
 set errpct [ lindex $argv 8 ]
-set seed [ lindex $argv 9 ]
 
-# Initialize seed
-if { $seed == -1 } {
-	set seed [pid]
-}
-srand $seed
+berkdb srand $rand_init
 
 puts "Beginning execution for [pid]"
 puts "$file database"
@@ -61,24 +59,29 @@ if { $dups != 1 } {
 	puts "Dups allowed"
 }
 puts "$errpct % Errors"
-puts "$seed seed"
 
 flush stdout
 
-set db [record dbopen $file 0 0 DB_UNKNOWN]
-error_check_bad dbopen $db NULL
+set db [berkdb open $file]
 error_check_good dbopen [is_substr $db db] 1
 
 # Initialize globals including data
+global nkeys
+global l_keys
+global a_keys
+
 set nkeys [db_init $db 1]
 puts "Initial number of keys: $nkeys"
 
-set txn 0
+set pflags ""
+set gflags ""
+set txn ""
 
 # Open the cursors
 set curslist {}
 for { set i 0 } { $i < $ncurs } { incr i } {
-	set dbc [record $db cursor]
+	set dbc [$db cursor]
+	error_check_good dbopen [is_substr $dbc $db.c] 1
 	error_check_bad cursor_create $dbc NULL
 	lappend curslist $dbc
 
@@ -99,6 +102,7 @@ set bad_adds 0
 set bad_puts 0
 set bad_gets 0
 set bad_dels 0
+
 for { set iter 0 } { $iter < $numops } { incr iter } {
 	set op [pick_op $min_del $max_add $nkeys]
 	set err [is_err $errpct]
@@ -109,28 +113,30 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 	switch $op$dups$err {
 		add00 {
 			incr adds
+
 			set k [random_data $key_avg 1 a_keys ]
 			set data [random_data $data_avg 0 0]
-			set ret [record $db put $txn $k $data $DB_NOOVERWRITE ]
+			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
+			error_check_good put $ret 0
 			newpair $k $data
 		}
 		add01 {
 			incr bad_adds
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set ret [record $db put $txn $k $data $DB_NOOVERWRITE ]
+			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
+			error_check_good put $ret 0
 			# Error case so no change to data state
 		}
 		add10 {
 			incr adds
 			set dbcinfo [random_cursor $curslist]
 			set dbc [lindex $dbcinfo 0]
-			if { [random_int 1 2] == 1 } {
+			if { [berkdb random_int 1 2] == 1 } {
 				# Add a new key
 				set k [random_data $key_avg 1 a_keys ]
 				set data [random_data $data_avg 0 0]
-				set ret [record $dbc put $txn $k $data \
-				    $DB_KEYFIRST ]
+				set ret [eval {$dbc put} $txn {-keyfirst $k $data}]
 				newpair $k $data
 			} else {
 				# Add a new duplicate
@@ -139,7 +145,7 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 				set data [random_data $data_avg 0 0]
 
 				set op [pick_cursput]
-				set ret [record $dbc put $txn $k $data $op]
+				set ret [eval {$dbc put} $txn {$op $k $data}]
 				adddup $k [lindex $dbcinfo 2] $data
 			}
 		}
@@ -152,14 +158,15 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			incr puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set ret [record $db put $txn $k $data 0]
+			set ret [eval {$db put} $txn {$k $data}]
 			changepair $k $data
 		}
 		put01 {
 			incr bad_puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set ret [record $db put $txn $k $data $DB_NOOVERWRITE]
+			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
+			error_check_good put $ret 0
 			# Error case so no change to data state
 		}
 		put10 {
@@ -169,23 +176,23 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			set k [lindex $dbcinfo 1]
 			set data [random_data $data_avg 0 0]
 
-			set ret [record $dbc put $txn $k $data $DB_CURRENT]
+			set ret [eval {$dbc put} $txn {-current $data}]
 			changedup $k [lindex $dbcinfo 2] $data
 		}
 		put11 {
 			incr bad_puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set dbc [record $db cursor]
-			set ret [record $dbc put $txn $k $data $DB_CURRENT]
-			error_check_good curs_close [record $dbc close] 0
+			set dbc [$db cursor]
+			set ret [eval {$dbc put} $txn {-current $data}]
+			error_check_good curs_close [$dbc close] 0
 			# Error case so no change to data state
 		}
 		get00 {
 			incr gets
 			set k [random_key]
-			set val [record $db get $txn $k 0]
-			if { $val == $a_keys($k) } {
+			set val [eval {$db get} $txn {$k}]
+			if { [lindex [lindex $val 0] 1] == $a_keys($k) } {
 				set ret 0
 			} else {
 				set ret "Error got |$val| expected |$a_keys($k)|"
@@ -195,7 +202,7 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 		get01 {
 			incr bad_gets
 			set k [random_data $key_avg 1 a_keys ]
-			set ret [record $db get $txn $k 0]
+			set ret [eval {$db get} $txn {$k}]
 			# Error case so no change to data state
 		}
 		get10 {
@@ -211,40 +218,40 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 		get11 {
 			incr bad_gets
 			set k [random_key]
-			set dbc [record $db cursor]
-			if { [random_int 1 2] == 1 } {
-				set dir $DB_NEXT
+			set dbc [$db cursor]
+			if { [berkdb random_int 1 2] == 1 } {
+				set dir -next
 			} else {
-				set dir $DB_PREV
+				set dir -prev
 			}
-			set ret [record $dbc get $txn $k $DB_NEXT]
-			error_check_good curs_close [record $dbc close] 0
+			set ret [eval {$dbc get} $txn {-next $k}]
+			error_check_good curs_close [$dbc close] 0
 			# Error and get case so no change to data state
 		}
 		del00 {
 			incr dels
 			set k [random_key]
-			set ret [record $db del $txn $k 0]
+			set ret [eval {$db del} $txn {$k}]
 			rempair $k
 		}
 		del01 {
 			incr bad_dels
 			set k [random_data $key_avg 1 a_keys ]
-			set ret [record $db del $txn $k 0]
+			set ret [eval {$db del} $txn {$k}]
 			# Error case so no change to data state
 		}
 		del10 {
 			incr dels
 			set dbcinfo [random_cursor $curslist]
 			set dbc [lindex $dbcinfo 0]
-			set ret [record $dbc del $txn 0]
+			set ret [eval {$dbc del} $txn]
 			remdup [lindex dbcinfo 1] [lindex dbcinfo 2]
 		}
 		del11 {
 			incr bad_dels
-			set c [record $db cursor]
-			set ret [record $c del $txn 0]
-			error_check_good curs_close [record $c close] 0
+			set c [$db cursor]
+			set ret [eval {$c del} $txn]
+			error_check_good curs_close [$c close] 0
 			# Error case so no change to data state
 		}
 	}
@@ -261,10 +268,11 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 
 # Close cursors and file
 foreach i $curslist {
-	set r [record $i close]
+	set r [$i close]
 	error_check_good cursor_close:$i $r 0
 }
-set r [record $db close]
+
+set r [$db close]
 error_check_good db_close:$db $r 0
 
 puts "[timestamp] [pid] Complete"
@@ -273,3 +281,5 @@ puts "Error ops: $bad_adds adds $bad_gets gets $bad_puts puts $bad_dels dels"
 flush stdout
 
 filecheck $file $txn
+
+exit

@@ -1,16 +1,16 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test041.tcl	10.1 (Sleepycat) 10/3/98
+#	@(#)test041.tcl	11.1 (Sleepycat) 7/25/99
 #
 # DB Test 41 {access method}
 # DB_GET_BOTH functionality with off-page duplicates.
 proc test041 { method {nentries 10000} args} {
 	# Test with off-page duplicates
-	test039 $method $nentries 20 41 -psize 512 $args
+	eval {test039 $method $nentries 20 41 -pagesize 512} $args
 
 	# Test with multiple pages of off-page duplicates
-	test039 $method [expr $nentries / 10] 100 41 -psize 512 $args
+	eval {test039 $method [expr $nentries / 10] 100 41 -pagesize 512} $args
 }

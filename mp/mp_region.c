@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_region.c	10.35 (Sleepycat) 12/11/98";
+static const char sccsid[] = "@(#)mp_region.c	11.4 (Sleepycat) 10/19/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,314 +18,308 @@ static const char sccsid[] = "@(#)mp_region.c	10.35 (Sleepycat) 12/11/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_shash.h"
 #include "mp.h"
-#include "common_ext.h"
+
+static int __mcache_init __P((DB_ENV *, DB_MPOOL *, int, int));
+static int __mpool_init __P((DB_ENV *, DB_MPOOL *, int));
 
 /*
- * __memp_reg_alloc --
- *	Allocate some space in the mpool region, with locking.
+ * __memp_open --
+ *	Internal version of memp_open: only called from DB_ENV->open.
  *
- * PUBLIC: int __memp_reg_alloc __P((DB_MPOOL *, size_t, size_t *, void *));
+ * PUBLIC: int __memp_open __P((DB_ENV *));
  */
 int
-__memp_reg_alloc(dbmp, len, offsetp, retp)
-	DB_MPOOL *dbmp;
-	size_t len, *offsetp;
-	void *retp;
+__memp_open(dbenv)
+	DB_ENV *dbenv;
 {
-	int ret;
+	DB_MPOOL *dbmp;
+	MPOOL *mp;
+	roff_t mpr_size, reg_size, *regids;
+	int i, htab_buckets, ret;
 
-	LOCKREGION(dbmp);
-	ret = __memp_alloc(dbmp, len, offsetp, retp);
-	UNLOCKREGION(dbmp);
+	/* Figure out how big each cache region is. */
+	reg_size = dbenv->mp_gbytes / dbenv->mp_ncache;
+	reg_size += (dbenv->mp_gbytes % dbenv->mp_ncache) / dbenv->mp_ncache;
+	reg_size += dbenv->mp_bytes / dbenv->mp_ncache;
+
+	/*
+	 * Figure out how many hash buckets each region will have.  Assume we
+	 * want to keep the hash chains with under 10 pages on each chain.  We
+	 * don't know the pagesize in advance, and it may differ for different
+	 * files.  Use a pagesize of 1K for the calculation -- we walk these
+	 * chains a lot, they must be kept short.
+	 */
+	htab_buckets = __db_tablesize((reg_size / (1 * 1024)) / 10);
+
+	/* Create and initialize the DB_MPOOL structure. */
+	if ((ret = __os_calloc(1, sizeof(*dbmp), &dbmp)) != 0)
+		return (ret);
+	LIST_INIT(&dbmp->dbregq);
+	TAILQ_INIT(&dbmp->dbmfq);
+	dbmp->dbenv = dbenv;
+
+	/*
+	 * Join/create the mpool region.  If this is a local region we don't
+	 * need much space because the most we'll store there is the pair of
+	 * MPOOL and MPOOLFILE structures.  If we're creating a full-blown
+	 * database environment, be generous -- I'd rather not fail because
+	 * we ran out of space.
+	 */
+	dbmp->reginfo.id = REG_ID_MPOOL;
+	dbmp->reginfo.mode = dbenv->db_mode;
+	if (F_ISSET(dbenv, DB_ENV_DBLOCAL))
+		mpr_size = sizeof(MPOOL) + sizeof(MPOOLFILE) + 5 * 1024;
+	else
+		mpr_size = sizeof(MPOOL) +
+		    DB_MPOOLFILE_DEF * sizeof(MPOOLFILE) + 10 * 1024;
+	if (F_ISSET(dbenv, DB_ENV_CREATE))
+		F_SET(&dbmp->reginfo, REGION_CREATE_OK);
+	if ((ret = __db_r_attach(dbenv, &dbmp->reginfo, mpr_size)) != 0)
+		goto err;
+
+	/*
+	 * If we created the region, initialize it and any additional regions,
+	 * otherwise join any additional regions.
+	 */
+	if (F_ISSET(&dbmp->reginfo, REGION_CREATE)) {
+		/* Initialize the primary region. */
+		if ((ret = __mpool_init(dbenv, dbmp, dbenv->mp_ncache)) != 0)
+			goto err;
+
+		/*
+		 * We know how many regions there are going to be, allocate
+		 * the REGINFO structures and fill in local copies of that
+		 * information.
+		 */
+		if ((ret = __os_calloc(
+		    dbenv->mp_ncache, sizeof(REGINFO), &dbmp->c_reginfo)) != 0)
+			goto err;
+		dbmp->nc_reg = dbenv->mp_ncache;
+
+		/* Make sure we don't clear the wrong entries on error. */
+		for (i = 0; i < dbmp->nc_reg; ++i)
+			dbmp->c_reginfo[i].id = REG_ID_INVALID;
+
+		/*
+		 * Create/initialize the cache regions and copy their IDs
+		 * into the primary region.
+		 */
+		mp = R_ADDR(&dbmp->reginfo, dbmp->reginfo.rp->primary);
+		regids = R_ADDR(&dbmp->reginfo, mp->c_regids);
+		for (i = 0; i < dbmp->nc_reg; ++i) {
+			dbmp->c_reginfo[i].id = REG_ID_INVALID;
+			dbmp->c_reginfo[i].mode = dbenv->db_mode;
+			F_SET(&dbmp->c_reginfo[i], REGION_CREATE_OK);
+			if ((ret = __db_r_attach(
+			    dbenv, &dbmp->c_reginfo[i], reg_size)) != 0)
+				goto err;
+			if ((ret =
+			    __mcache_init(dbenv, dbmp, htab_buckets, i)) != 0)
+				goto err;
+			R_UNLOCK(dbenv, &dbmp->c_reginfo[i]);
+
+			regids[i] = dbmp->c_reginfo[i].id;
+		}
+	} else {
+		/*
+		 * We know how many regions there are going to be, allocate
+		 * the REGINFO structures and fill in local copies of that
+		 * information.
+		 */
+		mp = R_ADDR(&dbmp->reginfo, dbmp->reginfo.rp->primary);
+		if ((ret = __os_calloc(
+		    mp->nc_reg, sizeof(REGINFO), &dbmp->c_reginfo)) != 0)
+			goto err;
+		dbmp->nc_reg = mp->nc_reg;
+
+		/* Make sure we don't clear the wrong entries on error. */
+		for (i = 0; i < dbmp->nc_reg; ++i)
+			dbmp->c_reginfo[i].id = REG_ID_INVALID;
+
+		/* Join additional regions. */
+		regids = R_ADDR(&dbmp->reginfo, mp->c_regids);
+		for (i = 0; i < dbmp->nc_reg; ++i) {
+			dbmp->c_reginfo[i].id = regids[i];
+			dbmp->c_reginfo[i].mode = 0;
+			if ((ret =
+			    __db_r_attach(dbenv, &dbmp->c_reginfo[i], 0)) != 0)
+				goto err;
+			R_UNLOCK(dbenv, &dbmp->c_reginfo[i]);
+		}
+	}
+
+	/* Set the local addresses for the primary and cache regions. */
+	dbmp->reginfo.primary = mp =
+	    R_ADDR(&dbmp->reginfo, dbmp->reginfo.rp->primary);
+	for (i = 0; i < dbmp->nc_reg; ++i)
+		dbmp->c_reginfo[i].primary =
+		    R_ADDR(&dbmp->c_reginfo[i], dbmp->c_reginfo[i].rp->primary);
+
+	R_UNLOCK(dbenv, &dbmp->reginfo);
+
+	/* If the region is threaded, allocate a mutex to lock the handles. */
+	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
+		if ((ret = __db_mutex_alloc(
+		    dbenv, &dbmp->reginfo, &dbmp->mutexp)) != 0) {
+			goto err;
+		}
+		if ((ret =
+		    __db_mutex_init(dbenv, dbmp->mutexp, 0, MUTEX_THREAD)) != 0)
+			goto err;
+	}
+
+	dbenv->mp_handle = dbmp;
+	return (0);
+
+err:	if (dbmp->reginfo.addr != NULL) {
+		if (F_ISSET(&dbmp->reginfo, REGION_CREATE))
+			for (i = 0; i < dbmp->nc_reg; ++i)
+				if (dbmp->c_reginfo[i].id != REG_ID_INVALID)
+					F_SET(dbmp->c_reginfo[i].rp, REG_DEAD);
+
+		R_UNLOCK(dbenv, &dbmp->reginfo);
+
+		for (i = 0; i < dbmp->nc_reg; ++i)
+			if (dbmp->c_reginfo[i].id != REG_ID_INVALID)
+				(void)__db_r_detach(
+				    dbenv, &dbmp->c_reginfo[i], 0);
+		__os_free(dbmp->c_reginfo,
+		    dbmp->nc_reg * sizeof(*dbmp->c_reginfo));
+	}
+	__os_free(dbmp, sizeof(*dbmp));
 	return (ret);
 }
 
 /*
- * __memp_alloc --
- *	Allocate some space in the mpool region.
- *
- * PUBLIC: int __memp_alloc __P((DB_MPOOL *, size_t, size_t *, void *));
+ * __mpool_init --
+ *	Initialize a MPOOL structure in shared memory.
  */
-int
-__memp_alloc(dbmp, len, offsetp, retp)
+static int
+__mpool_init(dbenv, dbmp, nc_reg)
+	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	size_t len, *offsetp;
-	void *retp;
+	int nc_reg;
 {
-	BH *bhp, *nbhp;
 	MPOOL *mp;
-	MPOOLFILE *mfp;
-	size_t fsize, total;
-	int nomore, restart, ret, wrote;
+	int ret;
 	void *p;
 
-	mp = dbmp->mp;
+	if ((ret = __db_shalloc(dbmp->reginfo.addr,
+	    sizeof(*mp), 0, &dbmp->reginfo.primary)) != 0)
+		return (ret);
+	dbmp->reginfo.rp->primary =
+	    R_OFFSET(&dbmp->reginfo, dbmp->reginfo.primary);
+	mp = dbmp->reginfo.primary;
+	memset(mp, 0, sizeof(*mp));
 
-	nomore = 0;
-alloc:	if ((ret = __db_shalloc(dbmp->addr, len, MUTEX_ALIGNMENT, &p)) == 0) {
-		if (offsetp != NULL)
-			*offsetp = R_OFFSET(dbmp, p);
-		*(void **)retp = p;
-		return (0);
-	}
-	if (nomore) {
-		__db_err(dbmp->dbenv,
-	    "Unable to allocate %lu bytes from mpool shared region: %s\n",
-		    (u_long)len, strerror(ret));
+	SH_TAILQ_INIT(&mp->mpfq);
+	if ((ret = __db_mutex_init(dbenv, &mp->sync_mutex,
+	    R_OFFSET(&dbmp->reginfo, &mp->sync_mutex) + DB_FCNTL_OFF_MPOOL,
+	    0)) != 0)
+		return (ret);
+
+	ZERO_LSN(mp->lsn);
+	mp->lsn_cnt = 0;
+
+	mp->nc_reg = nc_reg;
+	if ((ret = __db_shalloc(
+	    dbmp->reginfo.addr, nc_reg * sizeof(int), 0, &p)) != 0) {
+		__db_shalloc_free(dbmp->reginfo.addr, dbmp->reginfo.primary);
 		return (ret);
 	}
+	mp->c_regids = R_OFFSET(&dbmp->reginfo, p);
 
-	/* Look for a buffer on the free list that's the right size. */
-	for (bhp =
-	    SH_TAILQ_FIRST(&mp->bhfq, __bh); bhp != NULL; bhp = nbhp) {
-		nbhp = SH_TAILQ_NEXT(bhp, q, __bh);
-
-		if (__db_shsizeof(bhp) == len) {
-			SH_TAILQ_REMOVE(&mp->bhfq, bhp, q, __bh);
-			if (offsetp != NULL)
-				*offsetp = R_OFFSET(dbmp, bhp);
-			*(void **)retp = bhp;
-			return (0);
-		}
-	}
-
-	/* Discard from the free list until we've freed enough memory. */
-	total = 0;
-	for (bhp =
-	    SH_TAILQ_FIRST(&mp->bhfq, __bh); bhp != NULL; bhp = nbhp) {
-		nbhp = SH_TAILQ_NEXT(bhp, q, __bh);
-
-		SH_TAILQ_REMOVE(&mp->bhfq, bhp, q, __bh);
-		__db_shalloc_free(dbmp->addr, bhp);
-		--mp->stat.st_page_clean;
-
-		/*
-		 * Retry as soon as we've freed up sufficient space.  If we
-		 * will have to coalesce memory to satisfy the request, don't
-		 * try until it's likely (possible?) that we'll succeed.
-		 */
-		total += fsize = __db_shsizeof(bhp);
-		if (fsize >= len || total >= 3 * len)
-			goto alloc;
-	}
-
-retry:	/* Find a buffer we can flush; pure LRU. */
-	restart = total = 0;
-	for (bhp =
-	    SH_TAILQ_FIRST(&mp->bhq, __bh); bhp != NULL; bhp = nbhp) {
-		nbhp = SH_TAILQ_NEXT(bhp, q, __bh);
-
-		/* Ignore pinned or locked (I/O in progress) buffers. */
-		if (bhp->ref != 0 || F_ISSET(bhp, BH_LOCKED))
-			continue;
-
-		/* Find the associated MPOOLFILE. */
-		mfp = R_ADDR(dbmp, bhp->mf_offset);
-
-		/*
-		 * Write the page if it's dirty.
-		 *
-		 * If we wrote the page, fall through and free the buffer.  We
-		 * don't have to rewalk the list to acquire the buffer because
-		 * it was never available for any other process to modify it.
-		 * If we didn't write the page, but we discarded and reacquired
-		 * the region lock, restart the buffer list walk.  If we neither
-		 * wrote the buffer nor discarded the region lock, continue down
-		 * the buffer list.
-		 */
-		if (F_ISSET(bhp, BH_DIRTY)) {
-			++bhp->ref;
-			if ((ret = __memp_bhwrite(dbmp,
-			    mfp, bhp, &restart, &wrote)) != 0)
-				return (ret);
-			--bhp->ref;
-
-			/*
-			 * It's possible that another process wants this buffer
-			 * and incremented the ref count while we were writing
-			 * it.
-			 */
-			if (bhp->ref != 0)
-				goto retry;
-
-			if (wrote)
-				++mp->stat.st_rw_evict;
-			else {
-				if (restart)
-					goto retry;
-				continue;
-			}
-		} else
-			++mp->stat.st_ro_evict;
-
-		/*
-		 * Check to see if the buffer is the size we're looking for.
-		 * If it is, simply reuse it.
-		 */
-		total += fsize = __db_shsizeof(bhp);
-		if (fsize == len) {
-			__memp_bhfree(dbmp, mfp, bhp, 0);
-
-			if (offsetp != NULL)
-				*offsetp = R_OFFSET(dbmp, bhp);
-			*(void **)retp = bhp;
-			return (0);
-		}
-
-		/* Free the buffer. */
-		__memp_bhfree(dbmp, mfp, bhp, 1);
-
-		/*
-		 * Retry as soon as we've freed up sufficient space.  If we
-		 * have to coalesce of memory to satisfy the request, don't
-		 * try until it's likely (possible?) that we'll succeed.
-		 */
-		if (fsize >= len || total >= 3 * len)
-			goto alloc;
-
-		/* Restart the walk if we discarded the region lock. */
-		if (restart)
-			goto retry;
-	}
-	nomore = 1;
-	goto alloc;
+	return (0);
 }
 
 /*
- * __memp_ropen --
- *	Attach to, and optionally create, the mpool region.
- *
- * PUBLIC: int __memp_ropen
- * PUBLIC:    __P((DB_MPOOL *, const char *, size_t, int, int, u_int32_t));
+ * __mcache_init --
+ *	Initialize a MCACHE structure in shared memory.
  */
-int
-__memp_ropen(dbmp, path, cachesize, mode, is_private, flags)
+static int
+__mcache_init(dbenv, dbmp, htab_buckets, reginfo_off)
+	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	const char *path;
-	size_t cachesize;
-	int mode, is_private;
-	u_int32_t flags;
+	int htab_buckets, reginfo_off;
 {
+	DB_HASHTAB *htab;
+	MCACHE *mc;
 	MPOOL *mp;
-	size_t rlen;
-	int defcache, ret;
+	REGINFO *reginfo;
+	int ret;
 
-	/*
-	 * Unlike other DB subsystems, mpool can't simply grow the region
-	 * because it returns pointers into the region to its clients.  To
-	 * "grow" the region, we'd have to allocate a new region and then
-	 * store a region number in the structures that reference regional
-	 * objects.  It's reasonable that we fail regardless, as clients
-	 * shouldn't have every page in the region pinned, so the only
-	 * "failure" mode should be a performance penalty because we don't
-	 * find a page in the cache that we'd like to have found.
-	 *
-	 * Up the user's cachesize by 25% to account for our overhead.
-	 */
-	defcache = 0;
-	if (cachesize < DB_CACHESIZE_MIN)
-		if (cachesize == 0) {
-			defcache = 1;
-			cachesize = DB_CACHESIZE_DEF;
-		} else
-			cachesize = DB_CACHESIZE_MIN;
-	rlen = cachesize + cachesize / 4;
+	COMPQUIET(dbenv, NULL);
 
-	/*
-	 * Map in the region.
-	 *
-	 * If it's a private mpool, use malloc, it's a lot faster than
-	 * instantiating a region.
-	 */
-	dbmp->reginfo.dbenv = dbmp->dbenv;
-	dbmp->reginfo.appname = DB_APP_NONE;
-	if (path == NULL)
-		dbmp->reginfo.path = NULL;
-	else
-		if ((ret = __os_strdup(path, &dbmp->reginfo.path)) != 0)
-			return (ret);
-	dbmp->reginfo.file = DB_DEFAULT_MPOOL_FILE;
-	dbmp->reginfo.mode = mode;
-	dbmp->reginfo.size = rlen;
-	dbmp->reginfo.dbflags = flags;
-	dbmp->reginfo.flags = 0;
-	if (defcache)
-		F_SET(&dbmp->reginfo, REGION_SIZEDEF);
+	mp = dbmp->reginfo.primary;
 
-	/*
-	 * If we're creating a temporary region, don't use any standard
-	 * naming.
-	 */
-	if (is_private) {
-		dbmp->reginfo.appname = DB_APP_TMP;
-		dbmp->reginfo.file = NULL;
-		F_SET(&dbmp->reginfo, REGION_PRIVATE);
-	}
+	reginfo = &dbmp->c_reginfo[reginfo_off];
+	if ((ret = __db_shalloc(reginfo->addr,
+	    sizeof(*mc), 0, &reginfo->primary)) != 0)
+		return (ret);
+	reginfo->rp->primary = R_OFFSET(reginfo, reginfo->primary);
+	mc = reginfo->primary;
+	memset(mc, 0, sizeof(*mc));
 
-	if ((ret = __db_rattach(&dbmp->reginfo)) != 0) {
-		if (dbmp->reginfo.path != NULL)
-			__os_freestr(dbmp->reginfo.path);
+	SH_TAILQ_INIT(&mc->bhq);
+
+	/* Allocate hash table space and initialize it. */
+	if ((ret = __db_shalloc(reginfo->addr,
+	    htab_buckets * sizeof(DB_HASHTAB), 0, &htab)) != 0) {
+		__db_shalloc_free(reginfo->addr, reginfo->primary);
 		return (ret);
 	}
+	__db_hashinit(htab, htab_buckets);
+	mc->htab = R_OFFSET(reginfo, htab);
+	mc->htab_buckets = htab_buckets;
 
-	/*
-	 * The MPOOL structure is first in the region, the rest of the region
-	 * is free space.
-	 */
-	dbmp->mp = dbmp->reginfo.addr;
-	dbmp->addr = (u_int8_t *)dbmp->mp + sizeof(MPOOL);
+	return (0);
+}
 
-	/* Initialize a created region. */
-	if (F_ISSET(&dbmp->reginfo, REGION_CREATED)) {
-		mp = dbmp->mp;
-		SH_TAILQ_INIT(&mp->bhq);
-		SH_TAILQ_INIT(&mp->bhfq);
-		SH_TAILQ_INIT(&mp->mpfq);
+/*
+ * __memp_close --
+ *	Internal version of memp_close: only called from DB_ENV->close.
+ *
+ * PUBLIC: int __memp_close __P((DB_ENV *));
+ */
+int
+__memp_close(dbenv)
+	DB_ENV *dbenv;
+{
+	DB_MPOOL *dbmp;
+	DB_MPOOLFILE *dbmfp;
+	DB_MPREG *mpreg;
+	int i, ret, t_ret;
 
-		__db_shalloc_init(dbmp->addr, rlen - sizeof(MPOOL));
+	ret = 0;
+	dbmp = dbenv->mp_handle;
 
-		/*
-		 * Assume we want to keep the hash chains with under 10 pages
-		 * on each chain.  We don't know the pagesize in advance, and
-		 * it may differ for different files.  Use a pagesize of 1K for
-		 * the calculation -- we walk these chains a lot, they should
-		 * be short.
-		 */
-		mp->htab_buckets =
-		    __db_tablesize((cachesize / (1 * 1024)) / 10);
-
-		/* Allocate hash table space and initialize it. */
-		if ((ret = __db_shalloc(dbmp->addr,
-		    mp->htab_buckets * sizeof(DB_HASHTAB),
-		    0, &dbmp->htab)) != 0)
-			goto err;
-		__db_hashinit(dbmp->htab, mp->htab_buckets);
-		mp->htab = R_OFFSET(dbmp, dbmp->htab);
-
-		ZERO_LSN(mp->lsn);
-		mp->lsn_cnt = 0;
-
-		memset(&mp->stat, 0, sizeof(mp->stat));
-		mp->stat.st_cachesize = cachesize;
-
-		mp->flags = 0;
+	/* Discard DB_MPREGs. */
+	while ((mpreg = LIST_FIRST(&dbmp->dbregq)) != NULL) {
+		LIST_REMOVE(mpreg, q);
+		__os_free(mpreg, sizeof(DB_MPREG));
 	}
 
-	/* Get the local hash table address. */
-	dbmp->htab = R_ADDR(dbmp, dbmp->mp->htab);
+	/* Discard DB_MPOOLFILEs. */
+	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
+		if ((t_ret = memp_fclose(dbmfp)) != 0 && ret == 0)
+			ret = t_ret;
 
-	UNLOCKREGION(dbmp);
-	return (0);
+	/* Discard the thread mutex. */
+	if (dbmp->mutexp != NULL)
+		__db_mutex_free(dbenv, &dbmp->reginfo, dbmp->mutexp);
 
-err:	UNLOCKREGION(dbmp);
-	(void)__db_rdetach(&dbmp->reginfo);
-	if (F_ISSET(&dbmp->reginfo, REGION_CREATED))
-		(void)memp_unlink(path, 1, dbmp->dbenv);
+	/* Detach from the region(s). */
+	for (i = 0; i < dbmp->nc_reg; ++i)
+		if ((t_ret = __db_r_detach(
+		    dbenv, &dbmp->c_reginfo[i], 0)) != 0 && ret == 0)
+			ret = t_ret;
+	if ((t_ret = __db_r_detach(dbenv, &dbmp->reginfo, 0)) != 0 && ret == 0)
+		ret = t_ret;
 
-	if (dbmp->reginfo.path != NULL)
-		__os_freestr(dbmp->reginfo.path);
+	__os_free(dbmp->c_reginfo, dbmp->nc_reg * sizeof(*dbmp->c_reginfo));
+	__os_free(dbmp, sizeof(*dbmp));
+
 	return (ret);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)db_page.h	10.18 (Sleepycat) 12/2/98
+ *	@(#)db_page.h	11.2 (Sleepycat) 8/19/99
  */
 
 #ifndef _DB_PAGE_H_
@@ -13,6 +13,7 @@
 /*
  * DB page formats.
  *
+ * !!!
  * This implementation requires that values within the following structures
  * NOT be padded -- note, ANSI C permits random padding within structures.
  * If your compiler pads randomly you can just forget ever making DB run on
@@ -25,86 +26,126 @@
  * db_indx_t, and storing it in one saves space.
  */
 
-#define	PGNO_METADATA	0	/* Metadata page number. */
-#define	PGNO_INVALID	0	/* Metadata page number, therefore illegal. */
-#define	PGNO_ROOT	1	/* Root is page #1. */
+#define	PGNO_INVALID	0	/* Invalid page number in any database. */
+#define	PGNO_BASE_MD	0	/* Base database: metadata page number. */
+
+/* Page types. */
+#define	P_INVALID	0	/* Invalid page type. */
+#define	P_DUPLICATE	1	/* Duplicate. */
+#define	P_HASH		2	/* Hash. */
+#define	P_IBTREE	3	/* Btree internal. */
+#define	P_IRECNO	4	/* Recno internal. */
+#define	P_LBTREE	5	/* Btree leaf. */
+#define	P_LRECNO	6	/* Recno leaf. */
+#define	P_OVERFLOW	7	/* Overflow. */
+#define	P_HASHMETA	8	/* Hash metadata page. */
+#define	P_BTREEMETA	9	/* Btree metadata page. */
+#define	P_QAMMETA	10	/* Queue metadata page. */
+#define	P_QAMDATA	11	/* Queue data page. */
 
 /*
  * When we create pages in mpool, we ask mpool to clear some number of bytes
  * in the header.  This number must be at least as big as the regular page
  * headers and cover enough of the btree and hash meta-data pages to obliterate
- * the magic and version numbers.
+ * the page type.
  */
-#define	DB_PAGE_CLEAR_LEN	32
+#define	DB_PAGE_DB_LEN		32
+#define	DB_PAGE_QUEUE_LEN	0
 
 /************************************************************************
- BTREE METADATA PAGE LAYOUT
+ GENERIC METADATA PAGE HEADER
+ *
+ * !!!
+ * The magic and version numbers have to be in the same place in all versions
+ * of the metadata page as the application may not have upgraded the database.
  ************************************************************************/
-
-/*
- * Btree metadata page layout:
- */
-typedef struct _btmeta {
+typedef struct _dbmeta {
 	DB_LSN	  lsn;		/* 00-07: LSN. */
 	db_pgno_t pgno;		/* 08-11: Current page number. */
 	u_int32_t magic;	/* 12-15: Magic number. */
 	u_int32_t version;	/* 16-19: Version. */
 	u_int32_t pagesize;	/* 20-23: Pagesize. */
-	u_int32_t maxkey;	/* 24-27: Btree: Maxkey. */
-	u_int32_t minkey;	/* 28-31: Btree: Minkey. */
-	u_int32_t free;		/* 32-35: Free list page number. */
+	u_int8_t  unused1[1];	/*    24: Unused. */
+	u_int8_t  type;		/*    25: Page type. */
+	u_int8_t  unused2[2];	/* 26-27: Unused. */
+	u_int32_t free;		/* 28-31: Free list page number. */
+	u_int32_t flags;	/* 32-35: Flags: unique to each AM. */
+				/* 36-55: Unique file ID. */
+	u_int8_t  uid[DB_FILE_ID_LEN];
+} DBMETA;
+
+/************************************************************************
+ BTREE METADATA PAGE LAYOUT
+ ************************************************************************/
+typedef struct _btmeta {
 #define	BTM_DUP		0x001	/* 	  Duplicates. */
 #define	BTM_RECNO	0x002	/*	  Recno tree. */
 #define	BTM_RECNUM	0x004	/*	  Btree: maintain record count. */
 #define	BTM_FIXEDLEN	0x008	/*	  Recno: fixed length records. */
 #define	BTM_RENUMBER	0x010	/*	  Recno: renumber on insert/delete. */
-#define	BTM_MASK	0x01f
-	u_int32_t flags;	/* 36-39: Flags. */
-	u_int32_t re_len;	/* 40-43: Recno: fixed-length record length. */
-	u_int32_t re_pad;	/* 44-47: Recno: fixed-length record pad. */
-				/* 48-67: Unique file ID. */
-	u_int8_t  uid[DB_FILE_ID_LEN];
+#define	BTM_SUBDB	0x020	/*	  Subdatabases. */
+#define	BTM_MASK	0x03f
+	DBMETA	dbmeta;		/* 00-55: Generic meta-data header. */
+
+	u_int32_t maxkey;	/* 56-59: Btree: Maxkey. */
+	u_int32_t minkey;	/* 60-63: Btree: Minkey. */
+	u_int32_t re_len;	/* 64-67: Recno: fixed-length record length. */
+	u_int32_t re_pad;	/* 68-71: Recno: fixed-length record pad. */
+	u_int32_t root;		/* 72-75: Root page. */
+
+	/*
+	 * Minimum page size is 128.
+	 */
 } BTMETA;
 
 /************************************************************************
  HASH METADATA PAGE LAYOUT
  ************************************************************************/
+typedef struct _hashmeta {
+#define	DB_HASH_DUP	0x01	/*	  Duplicates. */
+#define	DB_HASH_SUBDB	0x02	/*	  Subdatabases. */
+	DBMETA dbmeta;		/* 00-55: Generic meta-data page header. */
 
-/*
- * Hash metadata page layout:
- */
-/* Hash Table Information */
-typedef struct hashhdr {	/* Disk resident portion */
-	DB_LSN	lsn;		/* 00-07: LSN of the header page */
-	db_pgno_t pgno;		/* 08-11: Page number (btree compatibility). */
-	u_int32_t magic;	/* 12-15: Magic NO for hash tables */
-	u_int32_t version;	/* 16-19: Version ID */
-	u_int32_t pagesize;	/* 20-23: Bucket/Page Size */
-	u_int32_t ovfl_point;	/* 24-27: Overflow page allocation location */
-	u_int32_t last_freed;	/* 28-31: Last freed overflow page pgno */
-	u_int32_t max_bucket;	/* 32-35: ID of Maximum bucket in use */
-	u_int32_t high_mask;	/* 36-39: Modulo mask into table */
-	u_int32_t low_mask;	/* 40-43: Modulo mask into table lower half */
-	u_int32_t ffactor;	/* 44-47: Fill factor */
-	u_int32_t nelem;	/* 48-51: Number of keys in hash table */
-	u_int32_t h_charkey;	/* 52-55: Value of hash(CHARKEY) */
-#define	DB_HASH_DUP	0x01
-	u_int32_t flags;	/* 56-59: Allow duplicates. */
+	u_int32_t max_bucket;	/* 56-59: ID of Maximum bucket in use */
+	u_int32_t high_mask;	/* 60-63: Modulo mask into table */
+	u_int32_t low_mask;	/* 64-67: Modulo mask into table lower half */
+	u_int32_t ffactor;	/* 68-71: Fill factor */
+	u_int32_t nelem;	/* 72-75: Number of keys in hash table */
+	u_int32_t h_charkey;	/* 76-79: Value of hash(CHARKEY) */
 #define NCACHED	32		/* number of spare points */
-				/* 60-187: Spare pages for overflow */
+				/* 80-207: Spare pages for overflow */
 	u_int32_t spares[NCACHED];
-				/* 188-207: Unique file ID. */
-	u_int8_t  uid[DB_FILE_ID_LEN];
 
 	/*
 	 * Minimum page size is 256.
 	 */
-} HASHHDR;
+} HMETA;
 
 /************************************************************************
- MAIN PAGE LAYOUT
+ QUEUE METADATA PAGE LAYOUT
  ************************************************************************/
+/*
+ * QAM Meta data page structure
+ *
+ */
+typedef struct _qmeta {
+	DBMETA    dbmeta;	/* 00-55: Generic meta-data header. */
 
+	u_int32_t start;	/* 56-59: Start offset. */
+	u_int32_t first_recno;	/* 60-63: First not deleted record. */
+	u_int32_t cur_recno;	/* 64-67: Last recno allocated. */
+	u_int32_t re_len;	/* 68-71: Fixed-length record length. */
+	u_int32_t re_pad;	/* 72-75: Fixed-length record pad. */
+	u_int32_t rec_page;	/* 76-79: Records Per Page. */
+
+	/*
+	 * Minimum page size is 128.
+	 */
+} QMETA;
+
+/************************************************************************
+ BTREE/HASH MAIN PAGE LAYOUT
+ ************************************************************************/
 /*
  *	+-----------------------------------+
  *	|    lsn    |   pgno    | prev pgno |
@@ -133,7 +174,7 @@ typedef struct _db_page {
 	db_pgno_t pgno;		/* 08-11: Current page number. */
 	db_pgno_t prev_pgno;	/* 12-15: Previous page number. */
 	db_pgno_t next_pgno;	/* 16-19: Next page number. */
-	db_indx_t entries;	/* 20-21: Number of item pairs on the page. */
+	db_indx_t entries;	/* 20-21: Number of items on the page. */
 	db_indx_t hf_offset;	/* 22-23: High free byte page offset. */
 
 	/*
@@ -147,20 +188,23 @@ typedef struct _db_page {
 #define	LEAFLEVEL	  1
 #define	MAXBTREELEVEL	255
 	u_int8_t  level;	/*    24: Btree tree level. */
-
-#define	P_INVALID	0	/*	  Invalid page type. */
-#define	P_DUPLICATE	1	/*        Duplicate. */
-#define	P_HASH		2	/*        Hash. */
-#define	P_IBTREE	3	/*        Btree internal. */
-#define	P_IRECNO	4	/*        Recno internal. */
-#define	P_LBTREE	5	/*        Btree leaf. */
-#define	P_LRECNO	6	/*        Recno leaf. */
-#define	P_OVERFLOW	7	/*        Overflow. */
 	u_int8_t  type;		/*    25: Page type. */
 	db_indx_t inp[1];	/* Variable length index of items. */
 } PAGE;
 
-/* Element macros. */
+/************************************************************************
+ QUEUE MAIN PAGE LAYOUT
+ ************************************************************************/
+typedef struct _qpage {
+	DB_LSN	  lsn;		/* 00-07: Log sequence number. */
+	db_pgno_t pgno;		/* 08-11: Current page number. */
+	u_int32_t unused0[3];	/* 12-23: Unused. */
+	u_int8_t  unused1[1];	/*    24: Unused. */
+	u_int8_t  type;		/*    25: Page type. */
+	u_int8_t  unused2[2];	/* 26-27: Unused. */
+} QPAGE;
+
+/* Main page element macros. */
 #define	LSN(p)		(((PAGE *)p)->lsn)
 #define	PGNO(p)		(((PAGE *)p)->pgno)
 #define	PREV_PGNO(p)	(((PAGE *)p)->prev_pgno)
@@ -215,7 +259,7 @@ typedef struct _db_page {
 /* First free byte. */
 #define	LOFFSET(pg)		(P_OVERHEAD + NUM_ENT(pg) * sizeof(db_indx_t))
 
-/* Free space on the page. */
+/* Free space on a regular page. */
 #define	P_FREESPACE(pg)		(HOFFSET(pg) - LOFFSET(pg))
 
 /* Get a pointer to the bytes at a specific index. */
@@ -245,6 +289,9 @@ typedef struct _db_page {
 
 /* Maximum number of bytes that you can put on an overflow page. */
 #define	P_MAXSPACE(psize)	((psize) - P_OVERHEAD)
+
+/* Free space on an overflow page. */
+#define	P_OVFLSPACE(psize, pg)		(P_MAXSPACE(psize) - HOFFSET(pg))
 
 /************************************************************************
  HASH PAGE LAYOUT

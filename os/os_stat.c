@@ -1,21 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_stat.c	10.18 (Sleepycat) 10/12/98";
+static const char sccsid[] = "@(#)os_stat.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -38,7 +36,7 @@ __os_exists(path, isdirp)
 		return (__db_jump.j_exists(path, isdirp));
 
 	if (stat(path, &sb) != 0)
-		return (errno);
+		return (__os_get_errno());
 
 #if !defined(S_ISDIR) || defined(STAT_MACROS_BROKEN)
 #if defined(_WIN32) || defined(WIN16)
@@ -58,22 +56,23 @@ __os_exists(path, isdirp)
  *	Return file size and I/O size; abstracted to make it easier
  *	to replace.
  *
- * PUBLIC: int __os_ioinfo
- * PUBLIC:    __P((const char *, int, u_int32_t *, u_int32_t *, u_int32_t *));
+ * PUBLIC: int __os_ioinfo __P((const char *,
+ * PUBLIC:    DB_FH *, u_int32_t *, u_int32_t *, u_int32_t *));
  */
 int
-__os_ioinfo(path, fd, mbytesp, bytesp, iosizep)
+__os_ioinfo(path, fhp, mbytesp, bytesp, iosizep)
 	const char *path;
-	int fd;
+	DB_FH *fhp;
 	u_int32_t *mbytesp, *bytesp, *iosizep;
 {
 	struct stat sb;
 
 	if (__db_jump.j_ioinfo != NULL)
-		return (__db_jump.j_ioinfo(path, fd, mbytesp, bytesp, iosizep));
+		return (__db_jump.j_ioinfo(path,
+		    fhp->fd, mbytesp, bytesp, iosizep));
 
-	if (fstat(fd, &sb) == -1)
-		return (errno);
+	if (fstat(fhp->fd, &sb) == -1)
+		return (__os_get_errno());
 
 	/* Return the size of the file. */
 	if (mbytesp != NULL)

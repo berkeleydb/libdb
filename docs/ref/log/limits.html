@@ -1,47 +1,51 @@
-<! "@(#)limits.so	10.12 (Sleepycat) 12/18/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)limits.so	10.19 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Logging Subsystem</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Logging Subsystem</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></h3></td>
+<td width="1%"><a href="../../ref/log/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/log/config.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Log file limits</h1>
 <p>
-Log file sizes impose a time limit on the length of time a database
-may be accessed under transaction protection, before it needs to be
-dumped and reloaded (see <a href="../../utility/db_dump.html">db_dump</a> and <a href="../../utility/db_load.html">db_load</a>).
-Unfortunately, the limits are potentially difficult to calculate.
+Log file sizes impose a time limit on the length of time a database may
+be accessed under transaction protection.  After that limit is reached,
+the database needs to be dumped and reloaded (see <a href="../../utility/db_dump.html">db_dump</a> and
+<a href="../../utility/db_load.html">db_load</a>).  Unfortunately, the limits may be potentially difficult
+to calculate.
 <p>
-The log file name consists of <b>log.</b> followed by 10 digits,
-with a maximum of 2,000,000,000 log files.
-Consider an application performing 3000 transactions per second, for
-24 hours a day, logged into 10Mb log files, where each transaction
-is logging approximately 500 bytes of data.  The calculation:
-<p><ul><pre>(10 * 2^20 * 2000000000) / (3000 * 500 * 365 * 60 * 60 * 24) = ~443</pre></ul><p>
-indicates that the system will run out of log file names in
-roughly 443 years.
+The log file name consists of <b>log.</b> followed by 10 digits, with
+a maximum of 2,000,000,000 log files.  Consider an application performing
+3000 transactions per second, for 24 hours a day, logged into 10MB log
+files, where each transaction is logging approximately 500 bytes of data.
+The calculation:
 <p>
-There is no way to reset the log file name space in Berkeley DB.
-If your application is reaching the end of its log file name space,
-you should:
+<blockquote><pre>(10 * 2^20 * 2000000000) / (6000 * 500 * 365 * 60 * 60 * 24) = ~221</pre></blockquote>
+<p>
+indicates that the system will run out of log file names in roughly 221
+years.
+<p>
+There is no way to reset the log file name space in Berkeley DB.  If your
+application is reaching the end of its log file name space, you must:
+<p>
 <ol>
 <p><li>Archive your databases as if to prepare for catastrophic failure (see
 <a href="../../utility/db_archive.html">db_archive</a> for more information).
-<p><li>Dump and re-load <b>all</b> your databases (see
+<p><li>Dump and re-load all your databases (see
 <a href="../../utility/db_dump.html">db_dump</a> and <a href="../../utility/db_load.html">db_load</a> for more information).
 <p><li>Remove all of the log files from the database environment (see
 <a href="../../utility/db_archive.html">db_archive</a> for more information).
 <p><li>Restart your applications.
 </ol>
-<a href="../../ref/log/intro.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/log/config.html"><img src="../../images/next.gif"></a>
-</tt>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/log/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/log/config.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)join.tcl	8.8 (Sleepycat) 10/27/98
+#	@(#)join.tcl	11.8 (Sleepycat) 10/19/99
 #
 # We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 # everything else does as well.  We'll create test databases called
@@ -14,131 +14,255 @@
 #
 # We should test this on all btrees, all hash, and a combination thereof
 # Join test.
-proc jointest { {psize 8192} {flags 0} } {
-source ./include.tcl
+proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
+	global testdir
+	source ./include.tcl
+
+	cleanup $testdir
+
+	# Use one environment for all database opens so we don't
+	# need oodles of regions.
+	set env [berkdb env -create -home $testdir -mpool]
+	error_check_good env_open [is_valid_env $env] TRUE
+
+	# NB: these flags are internal only, ok
 	foreach m "DB_HASH DB_BTREE DB_BOTH" {
-		cleanup $testdir
-		build_all $m $psize
+		foreach dopt {" -dup -dupsort" " -dup"} {
+			set opt [concat "-env" $env $dopt]
 
-		# Build the primary
-		puts "Jointest: Building the primary database $m"
-		set db [dbopen primary.db [expr $DB_CREATE | $DB_TRUNCATE] \
-		    0644 [conv $m [random_int 1 2]]]
-		error_check_good dbopen [is_valid_db $db] TRUE
-		for { set i 0 } { $i < 1000 } { incr i } {
-			set key [format "%04d" $i]
-			set ret [$db put 0 $key stub 0]
-			error_check_good "primary put" $ret 0
+			puts "Join test: ($m$dopt) psize $psize,\
+			    $with_dup_dups dup\
+			    dups, flags $flags."
+			build_all $m $psize $opt $with_dup_dups
+
+			# Build the primary
+			puts "\tBuilding the primary database $m"
+			set oflags "-create -truncate -mode 0644 -env $env\
+		  	    [conv $m [berkdb random_int 1 2]]"
+			set db [eval {berkdb open} $oflags primary.db]
+			error_check_good dbopen [is_valid_db $db] TRUE
+			for { set i 0 } { $i < 1000 } { incr i } {
+				set key [format "%04d" $i]
+				set ret [$db put $key stub]
+				error_check_good "primary put" $ret 0
+			}
+			error_check_good "primary close" [$db close] 0
+			set did [open $dict]
+			gets $did str
+			do_join primary.db "1 0" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "2 0" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "3 0" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "4 0" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "1" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "2" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "3" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "4" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "1 2" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "1 2 3" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "1 2 3 4" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "3 2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "4 3 2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "1 3" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "3 1" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "1 4" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "4 1" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "2 3" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "3 2" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "2 4" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "4 2" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "3 4" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "4 3" $str $opt $flags $with_dup_dups
+			gets $did str
+			do_join primary.db "2 3 4" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "3 4 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "4 2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "0 2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "3 2 0" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "4 3 2 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "4 3 0 1" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "3 3 3" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str
+			do_join primary.db "2 2 3 3" $str $opt $flags\
+			    $with_dup_dups
+			gets $did str2
+			gets $did str
+			do_join primary.db "1 2" $str $opt $flags\
+			    $with_dup_dups "3" $str2
+
+			# You really don't want to run this section
+			# with $with_dup_dups > 2.
+			if { $with_dup_dups <= 2 } {
+				gets $did str2
+				gets $did str
+				do_join primary.db "1 2 3" $str\
+				    $opt $flags $with_dup_dups "3 3 1" $str2
+				gets $did str2
+				gets $did str
+				do_join primary.db "4 0 2" $str\
+				    $opt $flags $with_dup_dups "4 3 3" $str2
+				gets $did str2
+				gets $did str
+				do_join primary.db "3 2 1" $str\
+				    $opt $flags $with_dup_dups "0 2" $str2
+				gets $did str2
+				gets $did str
+				do_join primary.db "2 2 3 3" $str\
+				    $opt $flags $with_dup_dups "1 4 4" $str2
+				gets $did str2
+				gets $did str
+				do_join primary.db "2 2 3 3" $str\
+				    $opt $flags $with_dup_dups "0 0 4 4" $str2
+				gets $did str2
+				gets $did str
+				do_join primary.db "2 2 3 3" $str2\
+				    $opt $flags $with_dup_dups "2 4 4" $str
+				gets $did str2
+				gets $did str
+				do_join primary.db "2 2 3 3" $str2\
+				    $opt $flags $with_dup_dups "0 0 4 4" $str
+			}
+			close $did
 		}
-		error_check_good "primary close" [$db close] 0
-		set did [open $dict]
-		gets $did str
-		do_join primary.db "1 0" $str $flags
-		gets $did str
-		do_join primary.db "2 0" $str $flags
-		gets $did str
-		do_join primary.db "3 0" $str $flags
-		gets $did str
-		do_join primary.db "4 0" $str $flags
-		gets $did str
-		do_join primary.db "1" $str $flags
-		gets $did str
-		do_join primary.db "2" $str $flags
-		gets $did str
-		do_join primary.db "3" $str $flags
-		gets $did str
-		do_join primary.db "4" $str $flags
-		gets $did str
-		do_join primary.db "1 2" $str $flags
-		gets $did str
-		do_join primary.db "1 2 3" $str $flags
-		gets $did str
-		do_join primary.db "1 2 3 4" $str $flags
-		gets $did str
-		do_join primary.db "2 1" $str $flags
-		gets $did str
-		do_join primary.db "3 2 1" $str $flags
-		gets $did str
-		do_join primary.db "4 3 2 1" $str $flags
-		gets $did str
-		do_join primary.db "1 3" $str $flags
-		gets $did str
-		do_join primary.db "3 1" $str $flags
-		gets $did str
-		do_join primary.db "1 4" $str $flags
-		gets $did str
-		do_join primary.db "4 1" $str $flags
-		gets $did str
-		do_join primary.db "2 3" $str $flags
-		gets $did str
-		do_join primary.db "3 2" $str $flags
-		gets $did str
-		do_join primary.db "2 4" $str $flags
-		gets $did str
-		do_join primary.db "4 2" $str $flags
-		gets $did str
-		do_join primary.db "3 4" $str $flags
-		gets $did str
-		do_join primary.db "4 3" $str $flags
-		gets $did str
-		do_join primary.db "2 3 4" $str $flags
-		gets $did str
-		do_join primary.db "3 4 1" $str $flags
-		gets $did str
-		do_join primary.db "4 2 1" $str $flags
-		gets $did str
-		do_join primary.db "0 2 1" $str $flags
-		gets $did str
-		do_join primary.db "3 2 0" $str $flags
-		gets $did str
-		do_join primary.db "4 3 2 1" $str $flags
-		gets $did str
-		do_join primary.db "4 3 0 1" $str $flags
-
-		close $did
 	}
+
+	error_check_good env_close [$env close] 0
 }
 
-proc build_all { method psize {nentries 100}} {
-	db_build join1.db $nentries 50 1 [conv $method 1] $psize
-	db_build join2.db $nentries 25 2 [conv $method 2] $psize
-	db_build join3.db $nentries 16 3 [conv $method 3] $psize
-	db_build join4.db $nentries 12 4 [conv $method 4] $psize
-	db_build null.db $nentries 0 5 [conv $method 5] $psize
+proc build_all { method psize opt with_dup_dups {nentries 100} } {
+	global testdir
+	db_build join1.db $nentries 50 1 [conv $method 1]\
+	    $psize $opt $with_dup_dups
+	db_build join2.db $nentries 25 2 [conv $method 2]\
+	    $psize $opt $with_dup_dups
+	db_build join3.db $nentries 16 3 [conv $method 3]\
+	    $psize $opt $with_dup_dups
+	db_build join4.db $nentries 12 4 [conv $method 4]\
+	    $psize $opt $with_dup_dups
+	db_build null.db $nentries 0 5 [conv $method 5]\
+	    $psize $opt $with_dup_dups
 }
 
 proc conv { m i } {
-	switch $m {
-		DB_HASH { return DB_HASH }
-		DB_BTREE { return DB_BTREE }
+	switch -- $m {
+		DB_HASH { return "-hash"}
+		"-hash" { return "-hash"}
+		DB_BTREE { return "-btree"}
+		"-btree" { return "-btree"}
 		DB_BOTH {
 			if { [expr $i % 2] == 0 } {
-				return DB_HASH;
+				return "-hash";
 			} else {
-				return DB_BTREE;
+				return "-btree";
 			}
 		}
 	}
 }
 
-proc db_build { name nkeys ndups dup_interval method psize} {
-source ./include.tcl
+proc db_build { name nkeys ndups dup_interval method psize opt with_dup_dups } {
+	source ./include.tcl
+
 	# Create the database and open the dictionary
-	set db [dbopen $name [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method \		    -flags [expr $DB_DUP | $DB_DUPSORT] -psize $psize]
+	set oflags "-create -truncate -mode 0644 $method\
+	    $opt -pagesize $psize $name"
+	set db [eval {berkdb open} $oflags]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	set count 0
-	puts "\tBuilding $name.  $nkeys keys with $ndups duplicates at interval of $dup_interval"
+	puts -nonewline "\tBuilding $name: $nkeys keys "
+	puts -nonewline "with $ndups duplicates at interval of $dup_interval"
+	if { $with_dup_dups > 0 } {
+		puts ""
+		puts "\t\tand $with_dup_dups duplicate duplicates."
+	} else {
+		puts "."
+	}
 	for { set count 0 } { [gets $did str] != -1 && $count < $nkeys } {
 	    incr count} {
+		set str $str$name
+		# We need to make sure that the dups are inserted in a
+		# random, or near random, order.  Do this by generating
+		# them and putting each in a list, then sorting the list
+		# at random.
+		set duplist {}
 		for { set i 0 } { $i < $ndups } { incr i } {
 			set data [format "%04d" [expr $i * $dup_interval]]
-			set ret [$db put 0 $str $data 0]
-			error_check_good put $ret 0
+			lappend duplist $data
+		}
+		# randomize the list
+		for { set i 0 } { $i < $ndups } {incr i } {
+		#	set j [berkdb random_int $i [expr $ndups - 1]]
+			set j [expr ($i % 2) + $i]
+			if { $j >= $ndups } { set j $i }
+			set dupi [lindex $duplist $i]
+			set dupj [lindex $duplist $j]
+			set duplist [lreplace $duplist $i $i $dupj]
+			set duplist [lreplace $duplist $j $j $dupi]
+		}
+		foreach data $duplist {
+			if { $with_dup_dups != 0 } {
+				for { set j 0 }\
+				    { $j < $with_dup_dups }\
+				    {incr j} {
+					set ret [$db put $str $data]
+					error_check_good put$j $ret 0
+				}
+			} else {
+				set ret [$db put $str $data]
+				error_check_good put $ret 0
+			}
 		}
 
 		if { $ndups == 0 } {
-			set ret [$db put 0 $str NODUP 0]
+			set ret [$db put $str NODUP]
 			error_check_good put $ret 0
 		}
 	}
@@ -146,33 +270,51 @@ source ./include.tcl
 	error_check_good close:$name [$db close] 0
 }
 
-proc do_join { primary dbs key flags } {
-source include.tcl
-	puts "\tJoining: $dbs on $key"
+proc do_join { primary dbs key opt flags with_dup_dups {dbs2 ""} {key2 ""} } {
+	global testdir
+	source ./include.tcl
+
+	puts -nonewline "\tJoining: $dbs on $key"
+	if { $dbs2 == "" } {
+	    puts ""
+	} else {
+	    puts " with $dbs2 on $key2"
+	}
 
 	# Open all the databases
-	set p [dbopen $primary 0 0 DB_UNKNOWN]
+	set p [berkdb open -unknown $testdir/$primary]
 	error_check_good "primary open" [is_valid_db $p] TRUE
 
 	set dblist ""
 	set curslist ""
 
-	foreach i $dbs {
-		set db [dbopen [n_to_name $i] 0 0 DB_UNKNOWN]
+	set ndx [llength $dbs]
+
+	foreach i [concat $dbs $dbs2] {
+		set db [eval {berkdb open -unknown} $opt [n_to_name $i]]
 		error_check_good "[n_to_name $i] open" [is_valid_db $db] TRUE
-		set curs [$db cursor 0]
+		set curs [$db cursor]
 		error_check_good "$db cursor" \
-		    [is_valid_widget $curs $db.cursor] TRUE
+		    [is_substr $curs "$db.c"] 1
 		lappend dblist $db
 		lappend curslist $curs
 
-		set pair [$curs get $key $DB_SET]
-		error_check_good cursor_set:$key:$pair [llength $pair] 2
+		if { $ndx > 0 } {
+		    set realkey [concat $key[n_to_name $i]]
+		} else {
+		    set realkey [concat $key2[n_to_name $i]]
+		}
+
+		set pair [$curs get -set $realkey]
+		error_check_good cursor_set:$realkey:$pair \
+			[llength [lindex $pair 0]] 2
+
+		incr ndx -1
 	}
 
-	set join_curs [$p join $curslist 0]
+	set join_curs [eval {$p join} $curslist]
 	error_check_good join_cursor \
-	    [is_valid_widget $join_curs join.cursor] TRUE
+	    [is_substr $join_curs "$p.c"] 1
 
 	# Calculate how many dups we expect.
 	# We go through the list of indices.  If we find a 0, then we
@@ -182,7 +324,7 @@ source include.tcl
 	# take the number of times the larger goes into 50.
 	set expected 50
 	set last 1
-	foreach n $dbs {
+	foreach n [concat $dbs $dbs2] {
 		if { $n == 0 } {
 			set expected 0
 			break
@@ -202,15 +344,27 @@ source include.tcl
 		}
 	}
 
+	# If $with_dup_dups is greater than zero, each datum has
+	# been inserted $with_dup_dups times.  So we expect the number
+	# of dups to go up by a factor of ($with_dup_dups)^(number of databases)
+
+	if { $with_dup_dups > 0 } {
+		foreach n [concat $dbs $dbs2] {
+			set expected [expr $expected * $with_dup_dups]
+		}
+	}
+
 	set ndups 0
-	if { $flags == $DB_JOIN_ITEM } {
+	if { $flags == "-join_item"} {
 		set l 1
 	} else {
+		set flags ""
 		set l 2
 	}
-	for { set pair [$join_curs get 0 $flags] } { [llength $pair] == $l } {
-	    set pair [$join_curs get 0 $flags] } {
-		set k [lindex $pair 0]
+	for { set pair [eval {$join_curs get} $flags] } { \
+		[llength [lindex $pair 0]] == $l } {
+	    set pair [eval {$join_curs get} $flags] } {
+		set k [lindex [lindex $pair 0] 0]
 		foreach i $dbs {
 			error_check_bad valid_dup:$i:$dbs $i 0
 			set kval [string trimleft $k 0]
@@ -233,6 +387,7 @@ source include.tcl
 }
 
 proc n_to_name { n } {
+global testdir
 	if { $n == 0 } {
 		return null.db;
 	} else {

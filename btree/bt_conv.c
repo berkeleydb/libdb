@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_conv.c	10.7 (Sleepycat) 9/20/98";
+static const char sccsid[] = "@(#)bt_conv.c	11.2 (Sleepycat) 11/8/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,12 +34,15 @@ __bam_pgin(pg, pp, cookie)
 	DBT *cookie;
 {
 	DB_PGINFO *pginfo;
+	PAGE *h;
 
 	pginfo = (DB_PGINFO *)cookie->data;
 	if (!pginfo->needswap)
 		return (0);
-	return (pg == PGNO_METADATA ?
-	    __bam_mswap(pp) : __db_pgin(pg, pginfo->db_pagesize, pp));
+
+	h = pp;
+	return (h->type == P_BTREEMETA ?
+	    __bam_mswap(pp) : __db_byteswap(pg, pp, pginfo->db_pagesize, 1));
 }
 
 /*
@@ -56,12 +59,15 @@ __bam_pgout(pg, pp, cookie)
 	DBT *cookie;
 {
 	DB_PGINFO *pginfo;
+	PAGE *h;
 
 	pginfo = (DB_PGINFO *)cookie->data;
 	if (!pginfo->needswap)
 		return (0);
-	return (pg == PGNO_METADATA ?
-	    __bam_mswap(pp) : __db_pgout(pg, pginfo->db_pagesize, pp));
+
+	h = pp;
+	return (h->type == P_BTREEMETA ?
+	    __bam_mswap(pp) : __db_byteswap(pg, pp, pginfo->db_pagesize, 0));
 }
 
 /*
@@ -76,19 +82,15 @@ __bam_mswap(pg)
 {
 	u_int8_t *p;
 
-	p = (u_int8_t *)pg;
+	__db_metaswap(pg);
 
-	/* Swap the meta-data information. */
-	SWAP32(p);		/* lsn.file */
-	SWAP32(p);		/* lsn.offset */
-	SWAP32(p);		/* pgno */
-	SWAP32(p);		/* magic */
-	SWAP32(p);		/* version */
-	SWAP32(p);		/* pagesize */
+	p = (u_int8_t *)pg + sizeof(DBMETA);
+
 	SWAP32(p);		/* maxkey */
 	SWAP32(p);		/* minkey */
-	SWAP32(p);		/* free */
-	SWAP32(p);		/* flags */
+	SWAP32(p);		/* re_len */
+	SWAP32(p);		/* re_pad */
+	SWAP32(p);		/* root */
 
 	return (0);
 }

@@ -1,31 +1,28 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test024.tcl	8.6 (Sleepycat) 4/26/98
+#	@(#)test024.tcl	11.5 (Sleepycat) 9/15/99
 #
 # DB Test 24 {method nentries}
 # Test the Btree and Record number get-by-number functionality.
-
 proc test024 { method {nentries 10000} args} {
+	source ./include.tcl
+
 	set do_renumber [is_rrecno $method]
 	set args [convert_args $method $args]
-	set method [convert_method $method]
-	set args [number_btree $method $args]
+	set omethod [convert_method $method]
+
 	puts "Test024: $method ($args)"
 
-	if { [string compare $method DB_HASH] == 0 } {
+   	if { [string compare $omethod "-hash"] == 0 } {
 		puts "Test024 skipping for method HASH"
 		return
 	}
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
-
 	# Create the database and open the dictionary
-	set testfile test024.db
+	set testfile $testdir/test024.db
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -47,24 +44,38 @@ proc test024 { method {nentries 10000} args} {
 	# Generate sorted order for the keys
 	set sorted_keys [lsort $keys]
 	# Create the database
-	set db [eval [concat dbopen \
-	    $testfile [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
-	error_check_good dbopen [is_valid_db $db] TRUE
+	if { [string compare $omethod "-btree"] == 0 } {
+		set db [eval {berkdb open -create -truncate \
+			-mode 0644 -recnum} $args {$omethod $testfile}]
+		error_check_good dbopen [is_valid_db $db] TRUE
+	} else  {
+		set db [eval {berkdb open -create -truncate \
+			-mode 0644} $args {$omethod $testfile}]
+		error_check_good dbopen [is_valid_db $db] TRUE
+	}
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags ""
+	set txn ""
+
+	if { [is_record_based $method] == 1 } {
+		set gflags " -recno"
+	}
+
 	puts "\tTest024.b: put/get loop"
 	foreach k $keys {
-		if { [string compare $method DB_RECNO] == 0 } {
+		if { [is_record_based $method] == 1 } {
 			set key [lsearch $sorted_keys $k]
 			incr key
 		} else {
 			set key $k
 		}
-		set ret [$db put $txn $key $k $flags]
+		set ret [eval {$db put} \
+		    $txn $pflags {$key [chop_data $method $k]}]
 		error_check_good put $ret 0
-		set ret [$db get $txn $key $flags]
-		error_check_good get $ret $k
+		set ret [eval {$db get} $txn $gflags {$key}]
+		error_check_good \
+		    get $ret [list [list $key [pad_data $method $k]]]
 	}
 
 	# Now we will get each key from the DB and compare the results
@@ -74,48 +85,49 @@ proc test024 { method {nentries 10000} args} {
 	# Put sorted keys in file
 	set oid [open $t1 w]
 	foreach k $sorted_keys {
-		puts $oid $k
+		puts $oid [pad_data $method $k]
 	}
 	close $oid
 
 	# Instead of using dump_file; get all the keys by keynum
 	set oid [open $t2 w]
-	if { [string compare $method "DB_BTREE"] == 0 } {
-		set flags $DB_SET_RECNO
+	if { [string compare $omethod "-btree"] == 0 } {
 		set do_renumber 1
 	}
 
+	set gflags " -recno"
+
 	for { set k 1 } { $k <= $count } { incr k } {
-		set ret [$db getn $txn $k $flags]
-		puts $oid $ret
-		error_check_good recnum_get $ret \
-		    [lindex $sorted_keys [expr $k - 1]]
+	set ret [eval {$db get} $txn $gflags {$k}]
+		puts $oid [lindex [lindex $ret 0] 1]
+		error_check_good recnum_get [lindex [lindex $ret 0] 1] \
+		    [pad_data $method [lindex $sorted_keys [expr $k - 1]]]
 	}
 	close $oid
 	error_check_good db_close [$db close] 0
 
 	error_check_good Test024.c:diff($t1,$t2) \
-	    [catch { exec $DIFF $t1 $t2 } res] 0
+	    [catch { exec $CMP $t1 $t2 } res] 0
 
 	# Now, reopen the file and run the last test again.
 	puts "\tTest024.d: close, open, and dump file"
-	set db [ dbopen $testfile $DB_RDONLY 0 DB_UNKNOWN ]
+	set db [berkdb open -rdonly $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set oid [open $t2 w]
 	for { set k 1 } { $k <= $count } { incr k } {
-		set ret [$db getn $txn $k $flags]
-		puts $oid $ret
-		error_check_good recnum_get $ret \
-		    [lindex $sorted_keys [expr $k - 1]]
+	set ret [eval {$db get} $txn $gflags {$k}]
+		puts $oid [lindex [lindex $ret 0] 1]
+		error_check_good recnum_get [lindex [lindex $ret 0] 1] \
+		    [pad_data $method [lindex $sorted_keys [expr $k - 1]]]
 	}
 	close $oid
 	error_check_good db_close [$db close] 0
 	error_check_good Test024.d:diff($t1,$t2) \
-	    [catch { exec $DIFF $t1 $t2 } res] 0
+	    [catch { exec $CMP $t1 $t2 } res] 0
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest024.e: close, open, and dump file in reverse direction"
-	set db [ dbopen $testfile $DB_RDONLY 0 DB_UNKNOWN ]
+	set db [berkdb open -rdonly $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	# Put sorted keys in file
 	set rsorted ""
@@ -124,35 +136,35 @@ proc test024 { method {nentries 10000} args} {
 	}
 	set oid [open $t1 w]
 	foreach k $rsorted {
-		puts $oid $k
+		puts $oid [pad_data $method $k]
 	}
 	close $oid
 
 	set oid [open $t2 w]
 	for { set k $count } { $k > 0 } { incr k -1 } {
-		set ret [$db getn $txn $k $flags]
-		puts $oid $ret
-		error_check_good recnum_get $ret \
-		    [lindex $sorted_keys [expr $k - 1]]
+	set ret [eval {$db get} $txn $gflags {$k}]
+		puts $oid [lindex [lindex $ret 0] 1]
+		error_check_good recnum_get [lindex [lindex $ret 0] 1] \
+		    [pad_data $method [lindex $sorted_keys [expr $k - 1]]]
 	}
 	close $oid
 	error_check_good db_close [$db close] 0
 	error_check_good Test024.e:diff($t1,$t2) \
-	    [catch { exec $DIFF $t1 $t2 } res] 0
+   	    [catch { exec $CMP $t1 $t2 } res] 0
 
 	# Now try deleting elements and making sure they work
 	puts "\tTest024.f: delete test"
-	set db [ dbopen $testfile 0 0 DB_UNKNOWN ]
+	set db [berkdb open $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	while { $count > 0 } {
-		set kndx [random_int 1 $count]
+		set kndx [berkdb random_int 1 $count]
 		set kval [lindex $keys [expr $kndx - 1]]
 		set recno [expr [lsearch $sorted_keys $kval] + 1]
 
-		if { [string compare $method "DB_RECNO"] == 0 } {
-			set ret [$db del $txn $recno 0]
+		if { [is_record_based $method] == 1 } {
+			set ret [eval {$db del} $txn {$recno}]
 		} else {
-			set ret [$db del $txn $kval 0]
+			set ret [eval {$db del} $txn {$kval}]
 		}
 		error_check_good delete $ret 0
 
@@ -168,9 +180,9 @@ proc test024 { method {nentries 10000} args} {
 		# Check that the keys after it have been renumbered
 		if { $do_renumber == 1 && $recno != $count } {
 			set r [expr $recno - 1]
-			set ret [$db getn $txn $recno $flags]
-			error_check_good get_after_del $ret \
-				[lindex $sorted_keys $r]
+			set ret [eval {$db get} $txn $gflags {$recno}]
+			error_check_good get_after_del \
+			    [lindex [lindex $ret 0] 1] [lindex $sorted_keys $r]
 		}
 
 		# Decrement count
@@ -178,4 +190,3 @@ proc test024 { method {nentries 10000} args} {
 	}
 	error_check_good db_close [$db close] 0
 }
-

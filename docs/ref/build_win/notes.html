@@ -1,0 +1,48 @@
+<!--@(#)notes.so	10.7 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Building Berkeley DB for Windows systems</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows systems</dl></h3></td>
+<td width="1%"><a href="../../ref/build_win/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_win/faq.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Windows Notes</h1>
+<p>
+Various Berkeley DB interfaces take a <b>mode</b> argument, intended to specify
+the underlying file permissions for created files.  Berkeley DB currently ignores
+this argument on Windows systems.
+<p>
+It would be possible to construct a set of security attributes to pass to
+<b>CreateFile</b> that accurately represents the mode.  In the worst
+case, this would involve looking up user and all group names and creating
+an entry for each.  Alternatively, we could call the <b>_chmod</b>
+(partial emulation) function after file creation, although this leaves us
+with an obvious race.
+<p>
+Practically speaking, however, these efforts would be largely meaningless
+on FAT, the most common file system, which only has a "readable" and
+"writeable" flag, applying to all users.
+<dl compact>
+<p><dt>Windows/95 note:<dd>On Windows/95, files that are opened by multiple processes do not share
+data correctly.  For this reason, the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is implied
+for any application that does not specify the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag.
+<p><dt>Windows/NT note:<dd>On Windows/NT, each process has its own namespace within the system paging
+file, and so processes cannot use it to share information.  (We are aware
+that this is not as specified in the Windows/NT documentation.  However,
+we have not been able to get multiple processes to share information in
+the system paging file.  If you know how to do so, please let us know!)
+For this reason, the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is ignored for Windows/NT
+applications.
+</dl>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/build_win/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_win/faq.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

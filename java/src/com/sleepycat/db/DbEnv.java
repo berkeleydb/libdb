@@ -1,15 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbEnv.java	10.6 (Sleepycat) 10/27/98
+ *	@(#)DbEnv.java	11.5 (Sleepycat) 9/30/99
  */
 
 package com.sleepycat.db;
 
 import java.io.OutputStream;
+import java.io.FileNotFoundException;
 
 /**
  *
@@ -20,132 +21,136 @@ public class DbEnv
     // methods
     //
 
-    // This constructor can be used to immediately initialize the
-    // application with these arguments.  Do not use it if you
-    // need to set other parameters via the access methods.
     //
-    public DbEnv(String homeDir, String[] db_config, int flags)
-         throws DbException
+    // After using this constructor, set any parameters via
+    // the set_* access methods below, and finally open
+    // the environment by calling open().
+    //
+    public DbEnv(int flags)
     {
-        init();
-        appinit(homeDir, db_config, flags);
+        _init(new DbOutputStreamErrcall(System.err), flags);
     }
 
-    // Use this constructor if you wish to *delay* the initialization
-    // of the db library.  This is useful if you need to set
-    // any particular parameters via the access methods below.
-    // Then call appinit() to complete the initialization.
     //
-    public DbEnv()
+    // This constructor is purposely not public.
+    // It is used internally to create a DbEnv wrapper
+    // when an underlying environment already exists.
+    //
+    /*package*/ DbEnv(Db db)
     {
-        init();
+        _init_using_db(new DbOutputStreamErrcall(System.err), db);
     }
-
-    // Used in conjunction with the default constructor to
-    // complete the initialization of the db library.
-    //
-    public native void appinit(String homeDir, String[] db_config, int flags)
-         throws DbException;
-
-    // Can be called at any time to shut down Db.
-    // Called automatically when DbEnv is GC-ed,
-    // but don't rely on GC unless you turn on
-    // System.runFinalizersOnExit()!
-    //
-    public native void appexit()
-         throws DbException;
 
     protected native void finalize()
          throws Throwable;
+
+    // close discards any internal memory.
+    // After using close, the DbEnv can no longer be used;
+    // create another one if needed.
+    //
+    public native void close(int flags)
+         throws DbException;
+
+    public native void err(int errcode, String message);
+
+    public native void errx(String message);
+
+    public native void open(String db_home, String[] db_config,
+                            int flags, int mode)
+         throws DbException, FileNotFoundException;
+
+    // remove removes any files and discards any internal memory.
+    // (i.e. implicitly it does a close, if the environment is open).
+    // After using close, the DbEnv can no longer be used;
+    // create another one if needed.
+    //
+    public native void remove(String db_home, String[] db_config, int flags)
+         throws DbException;
 
     ////////////////////////////////////////////////////////////////
     // simple get/set access methods
     //
     // If you are calling set_ methods, you need to
-    // use the default constructor along with appinit().
+    // use the constructor with one argument along with open().
 
-    // Byte order.
-    public native void set_lorder(int lorder);
+    public native void set_cachesize(int gbytes, int bytes, int ncaches)
+         throws DbException;
 
     // Error message callback.
     public native void set_errcall(DbErrcall errcall);
 
-    // Error message file stream.
-    // Note: there is no access to the underlying "errfile" field, since
-    // it is a C FILE* that makes little sense in the Java world.
-    // Consider using set_errcall() instead.
+    // Error stream.
+    public void set_error_stream(OutputStream s)
+    {
+        DbOutputStreamErrcall errcall = new DbOutputStreamErrcall(s);
+        set_errcall(errcall);
+    }
 
     // Error message prefix.
     public native void set_errpfx(String errpfx);
 
-    // Generate debugging messages.
-    public native void set_verbose(int verbose);
-
-
-    ////////////////////////////////////////////////////////////////
-    // Locking.
-
-    // Return from lock_open().
-    public DbLockTab get_lk_info()
+    // Feedback
+    public void set_feedback(DbFeedback feedback)
     {
-        return lk_info_;
+        feedback_ = feedback;
+        feedback_changed(feedback);
     }
 
-    // Two dimensional conflict matrix.
-    // Note: set_lk_conflicts() sets the underlying array to a copy.
-    // You should call set_lk_modes() when calling set_lk_conflicts().
-    //
-    public native void set_lk_conflicts(byte[][] lk_conflicts);
+    // (Internal)
+    private native void feedback_changed(DbFeedback feedback);
 
-    // Number of lock modes in table.
-    public native void set_lk_modes(int lk_modes);
+    // Generate debugging messages.
+    public native void set_verbose(int which, int onoff)
+         throws DbException;
+
+    // Log buffer size.
+    public native void set_lg_bsize(/*u_int32_t*/ int lg_max)
+         throws DbException;
+
+    // Maximum log file size.
+    public native void set_lg_max(/*u_int32_t*/ int lg_max)
+         throws DbException;
 
     // Maximum number of locks.
-    public native void set_lk_max(/*unsigned*/ int lk_max);
+    public native void set_lk_conflicts(byte[][] lk_conflicts)
+         throws DbException;
 
     // Deadlock detect on every conflict.
-    public native void set_lk_detect(/*u_int32_t*/ int lk_detect);
+    public native void set_lk_detect(/*u_int32_t*/ int lk_detect)
+         throws DbException;
 
-    ////////////////////////////////////////////////////////////////
-    // Logging.
-
-    // Return from log_open().
-    public DbLog get_lg_info()
-    {
-        return lg_info_;
-    }
-
-    // Maximum file size.
-    public native void set_lg_max(/*u_int32_t*/ int lg_max);
-
-
-    ////////////////////////////////////////////////////////////////
-    // Memory pool.
-
-    // Return from memp_open().
-    public DbMpool get_mp_info()
-    {
-        return mp_info_;
-    }
+    // Maximum number of locks.
+    public native void set_lk_max(/*unsigned*/ int lk_max)
+         throws DbException;
 
     // Maximum file size for mmap.
-    public native void set_mp_mmapsize(/*size_t*/ long mmapsize);
+    public native void set_mp_mmapsize(/*size_t*/ long mmapsize)
+         throws DbException;
 
-    // Bytes in the mpool cache.
-    public native void set_mp_size(/*size_t*/ long mp_size);
+    public native void set_mutexlocks(int mutexlocks)
+         throws DbException;
 
+    public native void set_pageyield(int pageyield)
+         throws DbException;
 
-    ////////////////////////////////////////////////////////////////
-    // Transactions.
-
-    // Return from txn_open().
-    public DbTxnMgr get_tx_info()
+    public void set_recovery_init(DbRecoveryInit recovery_init)
     {
-        return tx_info_;
+        recovery_init_ = recovery_init;
+        recovery_init_changed(recovery_init);
     }
 
+    // (Internal)
+    private native void recovery_init_changed(DbRecoveryInit recovery_init);
+
+    public native void set_region_init(int region_init)
+         throws DbException;
+
+    public native void set_tas_spins(int tas_spins)
+         throws DbException;
+
     // Maximum number of transactions.
-    public native void set_tx_max(/*unsigned*/ int tx_max);
+    public native void set_tx_max(/*unsigned*/ int tx_max)
+         throws DbException;
 
     // Versioning information
     public native static int get_version_major();
@@ -153,25 +158,83 @@ public class DbEnv
     public native static int get_version_patch();
     public native static String get_version_string();
 
-    public void set_error_stream(OutputStream s)
-    {
-        DbOutputStreamErrcall errcall = new DbOutputStreamErrcall(s);
-        set_errcall(errcall);
-    }
+    // Convert DB error codes to strings
+    public native static String strerror(int errcode);
 
+    public native int lock_detect(int flags, int atype)
+         throws DbException;
+
+    public native DbLock lock_get(/*u_int32_t*/ int locker,
+                                  int flags,
+                                  Dbt obj,
+                                  /*db_lockmode_t*/ int lock_mode)
+         throws DbException;
+
+    public native /*u_int32_t*/ int lock_id()
+         throws DbException;
+
+    public native DbLockStat lock_stat()
+         throws DbException;
+
+    public native String[] log_archive(int flags)
+         throws DbException;
+
+    public native static int log_compare(DbLsn lsn0, DbLsn lsn1);
+
+    public native String log_file(DbLsn lsn)
+         throws DbException;
+
+    public native void log_flush(DbLsn lsn)
+         throws DbException;
+
+    public native void log_get(DbLsn lsn, Dbt data, int flags)
+         throws DbException;
+
+    public native void log_put(DbLsn lsn, Dbt data, int flags)
+         throws DbException;
+
+    public native DbLogStat log_stat()
+         throws DbException;
+
+    public native /*u_int32_t fidp*/ int log_register(Db dbp, String name)
+         throws DbException;
+
+    public native DbMpoolStat memp_stat()
+         throws DbException;
+
+    public native DbMpoolFStat[] memp_fstat()
+         throws DbException;
+
+    public native int memp_trickle(int pct)
+         throws DbException;
+
+    public native void log_unregister(/*u_int32_t*/ int fid)
+         throws DbException;
+
+    public native DbTxn txn_begin(DbTxn pid, int flags)
+         throws DbException;
+
+    public native void txn_checkpoint(int kbyte, int min)
+         throws DbException;
+
+    public native DbTxnStat txn_stat()
+         throws DbException;
+
+    ////////////////////////////////////////////////////////////////
+    //
     // private data
     //
     private long private_info_ = 0;
-    private DbLockTab lk_info_ = null;
-    private DbLog lg_info_ = null;
-    private DbMpool mp_info_ = null;
-    private DbTxnMgr tx_info_ = null;
+    private DbFeedback feedback_ = null;
+    private DbRecoveryInit recovery_init_ = null;
 
-    private native void init();
+    private native void _init(DbErrcall errcall, int flags);
+    private native void _init_using_db(DbErrcall errcall, Db db);
 
     static {
         Db.load_db();
     }
+
 }
 
 // end of DbEnv.java

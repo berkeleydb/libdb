@@ -1,27 +1,35 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_fid.c	10.12 (Sleepycat) 7/21/98";
+static const char sccsid[] = "@(#)os_fid.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <errno.h>
-#include <string.h>
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
 #include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+
+#include <string.h>
 #endif
 
 #include "db_int.h"
-#include "common_ext.h"
 
 /*
  * __os_fileid --
@@ -38,39 +46,59 @@ __os_fileid(dbenv, fname, timestamp, fidp)
 {
 	struct stat sb;
 	size_t i;
-	time_t now;
+	u_int32_t tmp;
 	u_int8_t *p;
 
 	/* Clear the buffer. */
 	memset(fidp, 0, DB_FILE_ID_LEN);
 
-	/* Check for the unthinkable. */
-	if (sizeof(sb.st_ino) +
-	    sizeof(sb.st_dev) + sizeof(time_t) > DB_FILE_ID_LEN)
-		return (EINVAL);
-
-	/* On UNIX, use a dev/inode pair. */
+	/* On POSIX/UNIX, use a dev/inode pair. */
 	if (stat(fname, &sb)) {
-		__db_err(dbenv, "%s: %s", fname, strerror(errno));
-		return (errno);
+		__db_err(dbenv, "%s: %s", fname, strerror(__os_get_errno()));
+		return (__os_get_errno());
 	}
 
 	/*
-	 * Use the inode first and in reverse order, hopefully putting the
-	 * distinguishing information early in the string.
+	 * !!!
+	 * Nothing is ever big enough -- on Sparc V9, st_ino, st_dev and the
+	 * time_t types are all 8 bytes.  As DB_FILE_ID_LEN is only 20 bytes,
+	 * we convert to a (potentially) smaller fixed-size type and use it.
+	 *
+	 * We don't worry about byte sexing or the actual variable sizes.
+	 *
+	 * When this routine is called from the DB access methods, it's only
+	 * called once -- whatever ID is generated when a database is created
+	 * is stored in the database file's metadata, and that is what is
+	 * saved in the mpool region's information to uniquely identify the
+	 * file.
+	 *
+	 * When called from the mpool layer this routine will be called each
+	 * time a new thread of control wants to share the file, which makes
+	 * things tougher.  As far as byte sexing goes, since the mpool region
+	 * lives on a single host, there's no issue of that -- the entire
+	 * region is byte sex dependent.  As far as variable sizes go, we make
+	 * the simplifying assumption that 32-bit and 64-bit processes will
+	 * get the same 32-bit values if we truncate any returned 64-bit value
+	 * to a 32-bit value.
 	 */
-	for (p = (u_int8_t *)&sb.st_ino +
-	    sizeof(sb.st_ino), i = 0; i < sizeof(sb.st_ino); ++i)
-		*fidp++ = *--p;
-	for (p = (u_int8_t *)&sb.st_dev +
-	    sizeof(sb.st_dev), i = 0; i < sizeof(sb.st_dev); ++i)
-		*fidp++ = *--p;
+	tmp = (u_int32_t)sb.st_ino;
+	for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+		*fidp++ = *p++;
+
+	tmp = (u_int32_t)sb.st_dev;
+	for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+		*fidp++ = *p++;
 
 	if (timestamp) {
-		(void)time(&now);
-		for (p = (u_int8_t *)&now +
-		    sizeof(now), i = 0; i < sizeof(now); ++i)
-			*fidp++ = *--p;
+		/*
+		 * We want the number of seconds, not the high-order 0 bits,
+		 * so convert the returned time_t to a (potentially) smaller
+		 * fixed-size type.
+		 */
+		tmp = (u_int32_t)time(NULL);
+		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+			*fidp++ = *p++;
 	}
+
 	return (0);
 }

@@ -1,40 +1,49 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_recover.c	10.23 (Sleepycat) 10/5/98";
+static const char sccsid[] = "@(#)db_recover.c	11.1 (Sleepycat) 7/24/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+
 #include <signal.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "txn.h"
-#include "common_ext.h"
-#include "clib_ext.h"
 
-DB_ENV	*db_init __P((char *, u_int32_t, int));
+void	 db_init __P((char *, int));
 int	 main __P((int, char *[]));
-void	 nosig __P((void));
+void	 onint __P((int));
+void	 siginit __P((void));
 void	 usage __P((void));
 
+DB_ENV	*dbenv;
+int	 interrupted;
 const char
 	*progname = "db_recover";			/* Program name. */
 
@@ -45,18 +54,18 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB_ENV *dbenv;
+	DB_TXNREGION *region;
 	time_t now;
 	u_int32_t flags;
-	int ch, verbose;
+	int ch, exitval, fatal_recover, ret, verbose;
 	char *home;
 
 	home = NULL;
-	flags = verbose = 0;
+	exitval = fatal_recover = verbose = 0;
 	while ((ch = getopt(argc, argv, "ch:v")) != EOF)
 		switch (ch) {
 		case 'c':
-			LF_SET(DB_RECOVER_FATAL);
+			fatal_recover = 1;
 			break;
 		case 'h':
 			home = optarg;
@@ -74,69 +83,113 @@ main(argc, argv)
 	if (argc != 0)
 		usage();
 
+	/* Handle possible interruptions. */
+	siginit();
+
 	/*
-	 * Ignore signals -- we don't want to be interrupted because we're
-	 * spending all of our time in the DB library.
+	 * Create an environment object and initialize it for error
+	 * reporting.
 	 */
-	nosig();
-	dbenv = db_init(home, flags, verbose);
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		fprintf(stderr,
+		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
+		exit (1);
+	}
+	dbenv->set_errfile(dbenv, stderr);
+	dbenv->set_errpfx(dbenv, progname);
 	if (verbose) {
-		__db_err(dbenv, "Recovery complete at %.24s", ctime(&now));
-		__db_err(dbenv, "%s %lx %s [%lu][%lu]",
-		    "Maximum transaction id",
-		    (u_long)dbenv->tx_info->region->last_txnid,
-		    "Recovery checkpoint",
-		    (u_long)dbenv->tx_info->region->last_ckp.file,
-		    (u_long)dbenv->tx_info->region->last_ckp.offset);
+		(void)dbenv->set_verbose(dbenv, DB_VERB_RECOVERY, 1);
+		(void)dbenv->set_verbose(dbenv, DB_VERB_CHKPOINT, 1);
 	}
 
-	return (db_appexit(dbenv));
-}
-
-DB_ENV *
-db_init(home, flags, verbose)
-	char *home;
-	u_int32_t flags;
-	int verbose;
-{
-	DB_ENV *dbenv;
-	u_int32_t local_flags;
-
-	if ((dbenv = (DB_ENV *)calloc(sizeof(DB_ENV), 1)) == NULL) {
-		errno = ENOMEM;
-		err(1, NULL);
+	/*
+	 * Initialize the environment -- we don't actually do anything
+	 * else, that all that's needed to run recovery.
+	 *
+	 * Note that we specify a private environment, as we're about to
+	 * create a region, and we don't want to to leave it around.  If
+	 * we leave the region around, the application that should create
+	 * it will simply join it instead, and will then be running with
+	 * incorrectly sized (and probably terribly small) caches.
+	 */
+	flags = 0;
+	LF_SET(DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+	    DB_INIT_MPOOL | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON);
+	LF_SET(fatal_recover ?  DB_RECOVER_FATAL : DB_RECOVER);
+	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) != 0) {
+		dbenv->err(dbenv, ret, "open");
+		goto shutdown;
 	}
-	dbenv->db_errfile = stderr;
-	dbenv->db_errpfx = "db_recover";
-	dbenv->db_verbose = verbose;
 
-	/* Initialize environment for pathnames only. */
-	local_flags = DB_CREATE | DB_INIT_LOG |
-	    DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_TXN | DB_USE_ENVIRON;
+	if (verbose) {
+		(void)time(&now);
+		region = ((DB_TXNMGR *)dbenv->tx_handle)->reginfo.primary;
+		dbenv->errx(dbenv, "Recovery complete at %.24s", ctime(&now));
+		dbenv->errx(dbenv, "%s %lx %s [%lu][%lu]",
+		    "Maximum transaction id", (u_long)region->last_txnid,
+		    "Recovery checkpoint", (u_long)region->last_ckp.file,
+		    (u_long)region->last_ckp.offset);
+	}
 
-	if (LF_ISSET(DB_RECOVER_FATAL))
-		local_flags |= DB_RECOVER_FATAL;
-	else
-		local_flags |= DB_RECOVER;
+	/*
+	 * We need to ensure that log records written on behalf of the
+	 * recovery are flushed (the log region will disappear as soon
+	 * as we close, because we opened it DB_PRIVATE.
+	 */
+	if ((ret = log_flush(dbenv, NULL)) != 0) {
+		dbenv->err(dbenv, ret, "log_flush");
+		goto shutdown;
+	}
 
-	if ((errno = db_appinit(home, NULL, dbenv, local_flags)) != 0)
-		err(1, "appinit failed");
+	if (0) {
+shutdown:	exitval = 1;
+	}
 
-	return (dbenv);
+	/* Clean up the environment. */
+	if ((ret = dbenv->close(dbenv, 0)) != 0) {
+		exitval = 1;
+		fprintf(stderr,
+		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
+	}
+
+	if (interrupted) {
+		(void)signal(interrupted, SIG_DFL);
+		(void)raise(interrupted);
+		/* NOTREACHED */
+	}
+
+	return (exitval);
 }
 
 /*
- * nosig --
- *	We don't want to be interrupted.
+ * siginit --
+ *	Initialize the set of signals for which we want to clean up.
+ *	Generally, we try not to leave the shared regions locked if
+ *	we can.
  */
 void
-nosig()
+siginit()
 {
 #ifdef SIGHUP
-	(void)signal(SIGHUP, SIG_IGN);
+	(void)signal(SIGHUP, onint);
 #endif
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGTERM, SIG_IGN);
+	(void)signal(SIGINT, onint);
+#ifdef SIGPIPE
+	(void)signal(SIGPIPE, onint);
+#endif
+	(void)signal(SIGTERM, onint);
+}
+
+/*
+ * onint --
+ *	Interrupt signal handler.
+ */
+void
+onint(signo)
+	int signo;
+{
+	if ((interrupted = signo) == 0)
+		interrupted = SIGINT;
 }
 
 void

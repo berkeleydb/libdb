@@ -1,42 +1,37 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_archive.c	10.20 (Sleepycat) 10/3/98";
+static const char sccsid[] = "@(#)db_archive.c	11.2 (Sleepycat) 10/29/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <signal.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
-#include "log.h"
-#include "db_dispatch.h"
-#include "clib_ext.h"
-#include "common_ext.h"
 
-DB_ENV	*db_init __P((char *, int));
 int	 main __P((int, char *[]));
-void	 nosig __P((void));
+void	 onint __P((int));
+void	 siginit __P((void));
 void	 usage __P((void));
 
+DB_ENV	*dbenv;
+int	 interrupted;
 const char
 	*progname = "db_archive";			/* Program name. */
 
@@ -47,26 +42,26 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB_ENV *dbenv;
 	u_int32_t flags;
-	int ch, verbose;
+	int ch, e_close, exitval, ret, verbose;
 	char *home, **list;
 
-	flags = verbose = 0;
+	flags = 0;
+	e_close = exitval = verbose = 0;
 	home = NULL;
 	while ((ch = getopt(argc, argv, "ah:lsv")) != EOF)
 		switch (ch) {
 		case 'a':
-			flags |= DB_ARCH_ABS;
+			LF_SET(DB_ARCH_ABS);
 			break;
 		case 'h':
 			home = optarg;
 			break;
 		case 'l':
-			flags |= DB_ARCH_LOG;
+			LF_SET(DB_ARCH_LOG);
 			break;
 		case 's':
-			flags |= DB_ARCH_DATA;
+			LF_SET(DB_ARCH_DATA);
 			break;
 		case 'v':
 			verbose = 1;
@@ -81,76 +76,101 @@ main(argc, argv)
 	if (argc != 0)
 		usage();
 
+	/* Handle possible interruptions. */
+	siginit();
+
 	/*
-	 * Ignore signals -- we don't want to be interrupted because we're
-	 * spending all of our time in the DB library.
+	 * Create an environment object and initialize it for error
+	 * reporting.
 	 */
-	nosig();
-	dbenv = db_init(home, verbose);
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		fprintf(stderr,
+		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
+		exit (1);
+	}
+	dbenv->set_errfile(dbenv, stderr);
+	dbenv->set_errpfx(dbenv, progname);
+	if (verbose)
+		(void)dbenv->set_verbose(dbenv, DB_VERB_CHKPOINT, 1);
+
+	/*
+	 * An environment is required.
+	 *
+	 * XXX
+	 * It just *might* be reasonable for a region to be corrupted, and
+	 * we're getting called to decide what log files to keep.  I don't
+	 * think so, but I'm not positive.
+	 */
+	if ((ret = dbenv->open(dbenv, home, NULL,
+	    DB_CREATE | DB_INIT_LOG | DB_INIT_TXN | DB_USE_ENVIRON, 0)) != 0) {
+		dbenv->err(dbenv, ret, "open");
+		goto shutdown;
+	}
+	e_close = 1;
 
 	/* Get the list of names. */
-	if ((errno = log_archive(dbenv->lg_info, &list, flags, NULL)) != 0) {
-		warn(NULL);
-		(void)db_appexit(dbenv);
-		return (1);
+	if ((ret = log_archive(dbenv, &list, flags, NULL)) != 0) {
+		dbenv->err(dbenv, ret, "log_archive");
+		goto shutdown;
 	}
 
-	/* Print the names. */
+	/* Print the list of names. */
 	if (list != NULL)
 		for (; *list != NULL; ++list)
 			printf("%s\n", *list);
 
-	if ((errno = db_appexit(dbenv)) != 0) {
-		warn(NULL);
-		return (1);
+	if (0) {
+shutdown:	exitval = 1;
+	}
+	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
+		exitval = 1;
+		fprintf(stderr,
+		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
-	return (0);
+	if (interrupted) {
+		(void)signal(interrupted, SIG_DFL);
+		(void)raise(interrupted);
+		/* NOTREACHED */
+	}
+
+	return (exitval);
 }
 
 /*
- * db_init --
- *	Initialize the environment.
- */
-DB_ENV *
-db_init(home, verbose)
-	char *home;
-	int verbose;
-{
-	DB_ENV *dbenv;
-
-	if ((dbenv = (DB_ENV *)calloc(sizeof(DB_ENV), 1)) == NULL) {
-		errno = ENOMEM;
-		err(1, NULL);
-	}
-	dbenv->db_errfile = stderr;
-	dbenv->db_errpfx = progname;
-	dbenv->db_verbose = verbose;
-
-	if ((errno = db_appinit(home, NULL, dbenv,
-	    DB_CREATE | DB_INIT_LOG | DB_INIT_TXN | DB_USE_ENVIRON)) != 0)
-		err(1, "db_appinit");
-
-	return (dbenv);
-}
-
-/*
- * nosig --
- *	We don't want to be interrupted.
+ * siginit --
+ *	Initialize the set of signals for which we want to clean up.
+ *	Generally, we try not to leave the shared regions locked if
+ *	we can.
  */
 void
-nosig()
+siginit()
 {
 #ifdef SIGHUP
-	(void)signal(SIGHUP, SIG_IGN);
+	(void)signal(SIGHUP, onint);
 #endif
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGTERM, SIG_IGN);
+	(void)signal(SIGINT, onint);
+#ifdef SIGPIPE
+	(void)signal(SIGPIPE, onint);
+#endif
+	(void)signal(SIGTERM, onint);
+}
+
+/*
+ * onint --
+ *	Interrupt signal handler.
+ */
+void
+onint(signo)
+	int signo;
+{
+	if ((interrupted = signo) == 0)
+		interrupted = SIGINT;
 }
 
 void
 usage()
 {
 	(void)fprintf(stderr, "usage: db_archive [-alsv] [-h home]\n");
-	exit(1);
+	exit (1);
 }

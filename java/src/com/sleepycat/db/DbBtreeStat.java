@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbBtreeStat.java	10.6 (Sleepycat) 11/2/98
+ *	@(#)DbBtreeStat.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;
@@ -15,7 +15,7 @@ package com.sleepycat.db;
  */
 public class DbBtreeStat
 {
-    public int bt_flags;                // Open flags.
+    public int bt_metaflags;            // Meta-data flags.
     public int bt_maxkey;               // Maxkey value.
     public int bt_minkey;               // Minkey value.
     public int bt_re_len;               // Fixed-length record length.

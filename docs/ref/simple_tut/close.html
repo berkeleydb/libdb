@@ -1,56 +1,60 @@
-<! "@(#)close.so	10.4 (Sleepycat) 10/20/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)close.so	10.17 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Simple Tutorial</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Simple Tutorial</dl></h3></td>
+<td width="1%"><a href="../../ref/simple_tut/del.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Closing a database</h1>
 <p>
 The only other operation that we need for our simple example is closing
-the database.  Again, this interface is accessed through a function
-pointer that is an element of the database handle returned by
-<a href="../../api_c/Db/open.html">db_open</a>.
+the database, and cleaning up the DB handle.
 <p>
-It is necessary that the database be closed. The most important reason
-for this is that Berkeley DB runs on top of an underlying buffer cache.  If
-the the database is never closed, changes that you have made to the
-database may never make it out to disk, because they are still in the
-cache.  As the close function, by default, flushes the cache, closing
-the database will update the on-disk information.
+It is necessary that the database be closed. The most important
+reason for this is that Berkeley DB runs on top of an underlying
+buffer cache.  If the the database is never closed, changes that
+you have made to the database may never make it out to disk,
+because they are held in the Berkeley DB cache.  As the default
+behavior of the close function is to flush the Berkeley DB cache,
+closing the database will update the on-disk information.
 <p>
-The <a href="../../api_c/Db/close.html">DB->close</a> interface takes two arguments:
+The <a href="../../api_c/db_close.html">DB-&gt;close</a> interface takes two arguments:
 <dl compact>
-<p><dt>db<dd>The database handle returned by <a href="../../api_c/Db/open.html">db_open</a>.
-<p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/Db/close.html">DB->close</a>
+<p><dt>db<dd>The database handle returned by <a href="../../api_c/db_create.html">db_create</a>.
+<p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/db_close.html">DB-&gt;close</a>
 interface.
 </dl>
 <p>
-Here's what the code to call <a href="../../api_c/Db/close.html">DB->close</a> looks like:
-<p><ul><pre>
-#include &lt;sys/types.h&gt;
+Here's what the code to call <a href="../../api_c/db_close.html">DB-&gt;close</a> looks like:
+<blockquote><pre>#include &lt;sys/types.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;db.h&gt;
 <p>
-#define	DATABASE	"access.db"
+#define	DATABASE "access.db"
 <p>
 int
 main()
 {
-	extern int errno;
 	DB *dbp;
 	DBT key, data;
+	<b>int ret, t_ret;</b>
 <p>
-	if ((errno = db_open(DATABASE,
-	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
-		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
+	}
+	if ((ret = dbp-&gt;open(
+	    dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+		dbp-&gt;err(dbp, ret, "%s", DATABASE);
+		goto err;
 	}
 <p>
 	memset(&key, 0, sizeof(key));
@@ -60,54 +64,45 @@ main()
 	data.data = "apple";
 	data.size = sizeof("apple");
 <p>
-	switch (errno = dbp->put(dbp, NULL, &key, &data, 0)) {
-	case 0:
+	if ((ret = dbp-&gt;put(dbp, NULL, &key, &data, 0)) == 0)
 		printf("db: %s: key stored.\n", (char *)key.data);
-		break;
-	default:
-		fprintf(stderr, "db: put: %s\n", strerror(errno));
-		exit (1);
+	else {
+		dbp-&gt;err(dbp, ret, "DB-&gt;put");
+		goto err;
 	}
 <p>
-	switch (errno = dbp->get(dbp, NULL, &key, &data, 0)) {
-	case 0:
+	if ((ret = dbp-&gt;get(dbp, NULL, &key, &data, 0)) == 0)
 		printf("db: %s: key retrieved: data was %s.\n",
 		    (char *)key.data, (char *)data.data);
-		break;
-	case DB_NOTFOUND:
-		printf("db: %s: key not found.\n", (char *)key.data);
-		break;
-	default:
-		fprintf(stderr, "db: get: %s\n", strerror(errno));
-		exit (1);
+	else {
+		dbp-&gt;err(dbp, ret, "DB-&gt;get");
+		goto err;
 	}
 <p>
-	switch (errno = dbp->del(dbp, NULL, &key, 0)) {
-	case 0:
+	if ((ret = dbp-&gt;del(dbp, NULL, &key, 0)) == 0)
 		printf("db: %s: key was deleted.\n", (char *)key.data);
-		break;
-	default:
-		fprintf(stderr, "db: del: %s\n", strerror(errno));
-		exit (1);
-	}
-<p><a name="startcode"><b>
-	switch (errno = dbp->close(dbp, 0)) {
-	case 0:
-		printf("db: database closed.\n");
-		break;
-	default:
-		fprintf(stderr, "db: get: %s\n", strerror(errno));
-		exit (1);
+	else {
+		dbp-&gt;err(dbp, ret, "DB-&gt;del");
+		goto err;
 	}
 <p>
-	exit(0);
+	if ((ret = dbp-&gt;get(dbp, NULL, &key, &data, 0)) == 0)
+		printf("db: %s: key retrieved: data was %s.\n",
+		    (char *)key.data, (char *)data.data);
+	else
+		dbp-&gt;err(dbp, ret, "DB-&gt;get");
+<p><b>
+err:	if ((t_ret = dbp-&gt;close(dbp, 0)) != 0 && ret == 0)
+		ret = t_ret; </b>
+<p>
+	exit(ret);
 }
-</b>
-</pre></ul><p>
+</pre></blockquote>
 <p>
-<a href="../../ref/simple_tut/del.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/am/ops.html"><img src="../../images/next.gif"></a>
-</tt>
+Note that we do not necessarily overwrite the <b>ret</b> variable, as it
+may contain error return information from a previous Berkeley DB call.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/del.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/ops.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

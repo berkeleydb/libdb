@@ -1,0 +1,86 @@
+<!--"@(#)db_get.so	11.8 (Sleepycat) 11/11/99"-->
+<!--"@(#)m4.tcl	11.12 (Sleepycat) 11/11/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: db get</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1><i>db</i> <b>get</b></h1>
+</td>
+<td width="1%">
+<a href="../api_tcl/tcl_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>db get
+	[-glob]
+	[-partial {doff dlen}]
+	[-recno]
+	[-rmw]
+	[-txn txnid]
+	key
+db get
+	-get_both
+	[-partial {doff dlen}]
+	[-rmw]
+	[-txn txnid]
+	key data
+</pre></h3>
+<h1>Description</h1>
+<p>
+The <i>db</i> <b>get</b> command returns key/data pairs from the database.
+<p>
+In the presence of duplicate key values, <i>db</i> <b>get</b> will return all
+duplicate items.  Duplicates are sorted by insert order except where this
+order has been overridden by cursor operations.
+<p>
+The options are as follows:
+<dl compact>
+<p><dt>-get_both key data<dd>Retrieve the key/data pair only if both the key and data match the
+arguments.
+<p><dt>-glob<dd>Return all keys matching the given key, where the key is a wildcard
+pattern.  Where it is used, it replaces the use of the key with the given
+pattern of a set of keys.  For example, in a database of last names, the
+command "db0 get Jones" will return all of the "Jones" in the database,
+and the command "db0 get -glob Jo*" will return both "Jones" and "Johnson"
+from the database.  The command "db0 get -glob *" will return all of the
+key/data pairs in the database.
+<p><dt>-partial {doff dlen}<dd>The <b>dlen</b> bytes starting <b>doff</b> bytes from the beginning of
+the retrieved data record are returned as if they comprised the entire
+record. If any or all of the specified bytes do not exist in the record,
+the command is successful and the existing bytes or 0 bytes are
+returned.
+<p><dt>-recno<dd>Retrieve the specified numbered key/data pair from a database.  For
+<b>-recno</b> to be specified, the specified key must be a record number
+and the underlying database must be of type Recno or Queue, or of type
+Btree that was created with the <b>-recnum</b> option.
+<p><dt>-rmw<dd>Acquire write locks instead of read locks when doing the retrieval.
+Setting this flag may decrease the likelihood of deadlock during a
+read-modify-write cycle by immediately acquiring the write lock during
+the read part of the cycle so that another thread of control acquiring a
+read lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+<p>
+As the <i>db</i> <b>get</b> command will not hold locks across Berkeley DB interface
+calls in non-transactional environments, the <b>-rmw</b> argument to the
+<i>db</i> <b>get</b> call is only meaningful in the presence of transactions.
+<p><dt>-txn txnid<dd>If the file is being accessed under transaction protection, the
+<b>txnid</b> parameter is a transaction handle returned from <i>env</i> <b>txn</b>.
+</dl>
+<p>
+A list of key/data pairs is returned.  In the error case that no matching
+key exists, an empty list is returned.  In all other cases, a Tcl error
+is thrown.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_tcl/tcl_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_spin.c	10.10 (Sleepycat) 10/12/98";
+static const char sccsid[] = "@(#)os_spin.c	11.2 (Sleepycat) 11/3/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -71,24 +71,25 @@ __os_spin()
 	 * it can be expensive (e.g., requiring multiple filesystem accesses
 	 * under Debian Linux).
 	 */
-	if (DB_GLOBAL(db_tsl_spins) != 0)
-		return (DB_GLOBAL(db_tsl_spins));
+	if (DB_GLOBAL(db_tas_spins) != 0)
+		return (DB_GLOBAL(db_tas_spins));
 
-	DB_GLOBAL(db_tsl_spins) = 1;
+	DB_GLOBAL(db_tas_spins) = 1;
 #if defined(HAVE_PSTAT_GETDYNAMIC)
-	DB_GLOBAL(db_tsl_spins) = __os_pstat_getdynamic();
+	DB_GLOBAL(db_tas_spins) = __os_pstat_getdynamic();
 #endif
 #if defined(HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-	DB_GLOBAL(db_tsl_spins) = __os_sysconf();
+	DB_GLOBAL(db_tas_spins) = __os_sysconf();
 #endif
 
 	/*
 	 * Spin 50 times per processor, we have anecdotal evidence that this
 	 * is a reasonable value.
 	 */
-	DB_GLOBAL(db_tsl_spins) *= 50;
+	if (DB_GLOBAL(db_tas_spins) != 1)
+		DB_GLOBAL(db_tas_spins) *= 50;
 
-	return (DB_GLOBAL(db_tsl_spins));
+	return (DB_GLOBAL(db_tas_spins));
 }
 
 /*

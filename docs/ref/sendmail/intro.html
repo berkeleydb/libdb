@@ -1,15 +1,17 @@
-<! "@(#)intro.so	10.2 (Sleepycat) 12/1/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)intro.so	10.12 (Sleepycat) 10/1/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Sendmail</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Sendmail</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Sendmail</dl></h3></td>
+<td width="1%"><a href="../../ref/tcl/error.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/dumpload/utility.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Using Berkeley DB with Sendmail</h1>
 <p>
@@ -19,18 +21,33 @@ versions 8.9.X and later.
 <p>
 We strongly recommend that you not use Berkeley DB version 1.85, as it is no
 longer maintained or supported and has known bugs that can cause Sendmail
-to fail. Instead, please upgrade to Sendmail version 8.9.X or later and
-then use Berkeley DB version 2. For more information on using Berkeley DB with
+to fail. Instead, you should upgrade to Sendmail version 8.9.X or later
+and then use Berkeley DB version 2. For more information on using Berkeley DB with
 Sendmail, please review the README and src/README files in the Sendmail
 distribution.
+<p>
+To load sendmail against Berkeley DB, add the following lines to
+BuildTools/Site/site.config.m4:
+<blockquote><pre>
+APPENDDEF(`confINCDIRS', `-I/usr/local/BerkeleyDB/include')
+APPENDDEF(`confLIBDIRS', `-L/usr/local/BerkeleyDB/lib')
+</pre></blockquote>
+<p>
+where those are the paths to #include &lt;db.h&gt; and libdb.a respectively.
+Then, run "Build -c" from the src directory.
+<p>
+Note that this Build script will use -DNEWDB on the compiles
+and -L/path/to/libdb/directory -ldb on the link if it can find libdb.a;
+the search path is $LIBDIRS:/lib:/usr/lib:/usr/shlib.  $LIBDIRS is
+NULL by default for most systems, but some set it in BuildTools/OS/foo.
+Anyone can append to it as above (confLIBDIRS is the m4 variable name;
+LIBDIRS is the shell-script variable name).
 <p>
 To download Sendmail, or to obtain more information on Sendmail, see the
 <a href="http://www.sendmail.org">Sendmail home page</a>, which includes
 FAQ pages and problem addresses.
-<p>
-<a href="../../ref/perl/intro.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/install/file.html"><img src="../../images/next.gif"></a>
-</tt>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/tcl/error.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/dumpload/utility.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

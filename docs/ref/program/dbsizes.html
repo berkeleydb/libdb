@@ -1,15 +1,17 @@
-<! "@(#)dbsizes.so	10.12 (Sleepycat) 12/1/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)dbsizes.so	10.18 (Sleepycat) 10/1/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Programmer Notes</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
+<td width="1%"><a href="../../ref/program/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/byteorder.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Database limits</h1>
 <p>
@@ -26,7 +28,7 @@ if the host system does not have filesystem support for files larger than
 2<sup>32</sup>, including the ability to seek to absolute offsets within
 those files.
 <p>
-The largest key or data items that Berkeley DB can support is largely limited
+The largest key or data item that Berkeley DB can support is largely limited
 by available memory.  Specifically, while key and data byte strings may
 be of essentially unlimited length, any one of them must fit into
 available memory so that it can be returned to the application.  As some
@@ -38,11 +40,9 @@ any two key or two data items fit into available memory.  Finally, when
 writing applications supporting transactions, it may be necessary to have
 an additional copy of any data item in memory for logging purposes.
 <p>
-The maximum btree depth is 255.
-<p>
-<a href="../../ref/program/version.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/program/byteorder.html"><img src="../../images/next.gif"></a>
-</tt>
+The maximum B+tree depth is 255.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/program/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/byteorder.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

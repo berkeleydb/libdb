@@ -8,12 +8,12 @@ CFG=DB_Static - Win32 Debug
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
 !MESSAGE use the Export Makefile command and run
 !MESSAGE 
-!MESSAGE NMAKE /f "DB_Static.mak".
+!MESSAGE NMAKE /f "db_static.mak".
 !MESSAGE 
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE /f "DB_Static.mak" CFG="DB_Static - Win32 Debug"
+!MESSAGE NMAKE /f "db_static.mak" CFG="DB_Static - Win32 Debug"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
@@ -45,7 +45,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"release\libdbs.lib"
+# ADD LIB32 /nologo /out:"Release/libdb30s.lib"
 
 !ELSEIF  "$(CFG)" == "DB_Static - Win32 Debug"
 
@@ -60,13 +60,13 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debug_libdbs"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /Z7 /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MTd /W3 /GX /Z7 /Od /I "." /I "../include" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX"config.h" /FD /c
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"debug\libdbs.lib"
+# ADD LIB32 /nologo /out:"Debug/libdb30sd.lib"
 
 !ENDIF 
 
@@ -96,11 +96,11 @@ SOURCE=..\btree\bt_delete.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\btree\bt_open.c
+SOURCE=..\btree\bt_method.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\btree\bt_page.c
+SOURCE=..\btree\bt_open.c
 # End Source File
 # Begin Source File
 
@@ -109,6 +109,10 @@ SOURCE=..\btree\bt_put.c
 # Begin Source File
 
 SOURCE=..\btree\bt_rec.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\btree\bt_reclaim.c
 # End Source File
 # Begin Source File
 
@@ -132,7 +136,19 @@ SOURCE=..\btree\bt_stat.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\btree\bt_upgrade.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\btree\btree_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\crdel_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\crdel_rec.c
 # End Source File
 # Begin Source File
 
@@ -176,14 +192,6 @@ SOURCE=..\db\db_am.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\common\db_appinit.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\common\db_apprec.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\db\db_auto.c
 # End Source File
 # Begin Source File
@@ -208,6 +216,10 @@ SOURCE=..\common\db_err.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\common\db_getlong.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_iface.c
 # End Source File
 # Begin Source File
@@ -228,6 +240,14 @@ SOURCE=..\common\db_log2.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\db\db_meta.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_method.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_overflow.c
 # End Source File
 # Begin Source File
@@ -240,7 +260,7 @@ SOURCE=..\db\db_rec.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\common\db_region.c
+SOURCE=..\db\db_reclaim.c
 # End Source File
 # Begin Source File
 
@@ -248,15 +268,35 @@ SOURCE=..\db\db_ret.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\common\db_salloc.c
+SOURCE=..\env\db_salloc.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\common\db_shash.c
+SOURCE=..\env\db_shash.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_upgrade.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\dbm\dbm.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_open.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_recover.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_region.c
 # End Source File
 # Begin Source File
 
@@ -280,6 +320,14 @@ SOURCE=..\hash\hash_func.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\hash\hash_meta.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hash\hash_method.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\hash\hash_page.c
 # End Source File
 # Begin Source File
@@ -288,7 +336,15 @@ SOURCE=..\hash\hash_rec.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\hash\hash_reclaim.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\hash\hash_stat.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hash\hash_upgrade.c
 # End Source File
 # Begin Source File
 
@@ -340,6 +396,10 @@ SOURCE=..\log\log_get.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\log\log_method.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\log\log_put.c
 # End Source File
 # Begin Source File
@@ -349,6 +409,10 @@ SOURCE=..\log\log_rec.c
 # Begin Source File
 
 SOURCE=..\log\log_register.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mp\mp_alloc.c
 # End Source File
 # Begin Source File
 
@@ -372,11 +436,7 @@ SOURCE=..\mp\mp_fset.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\mp\mp_open.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\mp\mp_pr.c
+SOURCE=..\mp\mp_method.c
 # End Source File
 # Begin Source File
 
@@ -384,7 +444,23 @@ SOURCE=..\mp\mp_region.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\mp\mp_register.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mp\mp_stat.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\mp\mp_sync.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mp\mp_trickle.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mutex\mut_tas.c
 # End Source File
 # Begin Source File
 
@@ -400,11 +476,11 @@ SOURCE=..\os\os_alloc.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_config.c
+SOURCE=..\os_win32\os_dir.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os_win32\os_dir.c
+SOURCE=..\os_win32\os_errno.c
 # End Source File
 # Begin Source File
 
@@ -412,7 +488,15 @@ SOURCE=..\os_win32\os_fid.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_finit.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os\os_fsync.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_handle.c
 # End Source File
 # Begin Source File
 
@@ -420,11 +504,27 @@ SOURCE=..\os_win32\os_map.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os\os_method.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os\os_oflags.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_open.c
+SOURCE=..\os_win32\os_open.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_rename.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_root.c
 # End Source File
 # Begin Source File
 
@@ -456,7 +556,39 @@ SOURCE=..\os\os_tmpdir.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_type.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os\os_unlink.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_conv.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_open.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_rec.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_stat.c
 # End Source File
 # Begin Source File
 
@@ -469,6 +601,10 @@ SOURCE=..\txn\txn_auto.c
 # Begin Source File
 
 SOURCE=..\txn\txn_rec.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_region.c
 # End Source File
 # Begin Source File
 

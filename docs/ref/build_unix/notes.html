@@ -1,0 +1,167 @@
+<!--"@(#)notes.so	10.22 (Sleepycat) 11/12/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Building Berkeley DB for UNIX systems</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
+<td width="1%"><a href="../../ref/build_unix/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/aix.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Architecture independent notes</h1>
+<ol>
+<p><li><b>Berkeley DB was configured using --enable-tcl and fails to build.</b>
+<p>
+The Berkeley DB Tcl interface requires Tcl 8.1 or greater.
+<p>
+Unfortunately, there is no single location in which to find the Tcl
+include file (&lt;tcl.h&gt;) or the Tcl library (libtcl.a) on
+different platforms.  Berkeley DB configuration does not do anything special to
+locate the Tcl include file, although it does try a few different library
+combinations in an attempt to figure out how to load the Tcl library.
+<p>
+If your Tcl include file is not in one of the standard places checked by
+your compiler, then you will have to add CPPFLAGS and/or LIBS and LDFLAGS
+to your environment and reconfigure.  For example:
+<p>
+<blockquote><pre>prompt: env CPPFLAGS="-I/usr/local/lib" ../dist/configure ...</pre></blockquote>
+<p>
+See <a href="../../ref/build_unix/flags.html">Changing compile or load options</a>
+for more information.
+<p>
+You may also need to add additional libraries in order to get the Tcl test
+suite to load.  Linux systems often require linking "libtcl.a" to
+"libtcl#.#.a" or adding "-ldl" to the load line.  Solaris systems often
+require adding "-lsocket" and sometimes "-lnsl -ldl" to the load line.
+These changes are most simply done by editing the Makefile in your build
+directory explicitly.
+<p>
+Alternatively, you can download Tcl from the
+<a href="http://www.scriptics.com">Scriptics Corporation</a> web site
+and build your own copy locally.
+<hr size=1 noshade>
+<p><li><b>I have several versions of Tcl installed. How do I configure
+Berkeley DB to use a particular version?</b>
+<p>
+To compile the Tcl interface with a particular version of Tcl, you may
+need to set the environment variables CPPFLAGS, LDFLAGS and LIBS
+appropriately for your system before configuring Berkeley DB.  For example:
+<p>
+<blockquote><pre>prompt: CPPFLAGS="-I/usr/local/include" \
+LDFLAGS="-L/usr/local/lib" LIBS="-lm -ltcl81 -ldl" \
+../dist/configure --enable-dynamic --enable-debug \
+--enable-diagnostic --enable-tcl --enable-test</pre></blockquote>
+<p>
+See <a href="../../ref/build_unix/flags.html">Changing compile or load options</a>
+for more information.
+<hr size=1 noshade>
+<p><li><b>When compiling with gcc, I get unreferenced symbols, e.g.,:
+<blockquote><pre>
+symbol __muldi3: referenced symbol not found
+symbol __cmpdi2: referenced symbol not found</pre></blockquote></b>
+<p>
+On systems where they're available (e.g., HP-UX, Solaris), Berkeley DB uses
+64-bit integral types.  As far as we can tell, some versions of gcc
+don't support these types.  The simplest workaround is to reconfigure
+Berkeley DB using the --disable-bigfile configuration option, and then rebuild.
+<hr size=1 noshade>
+<p><li><b>I get unexpected results and database corruption when running
+threaded programs.</b>
+<p>
+<b>I get error messages that mutex (e.g., pthread_mutex_XXX or
+mutex_XXX) functions are undefined when linking applications with Berkeley DB.</b>
+<p>
+On some architectures, the Berkeley DB library uses the POSIX pthreads and UI
+threads interfaces for underlying mutex support, e.g., Solaris and HP-UX.
+You can specify compilers, compiler flags or link with the appropriate
+thread library when loading your application, to resolve the undefined
+references:
+<p>
+<blockquote><pre>cc ... -lpthread ...
+cc ... -lthread ...
+xlc_r ...
+cc ... -mt ...</pre></blockquote>
+<p>
+See the appropriate architecture-specific Reference Guide pages for more
+information.
+<p>
+On systems where more than one type of mutex is available, it may be
+necessary for applications to use the same threads package from which
+Berkeley DB draws its mutexes, e.g., if Berkeley DB was built to use the POSIX
+pthreads mutex calls for mutex support, the application may need to be
+written to use the POSIX pthreads interfaces for its threading model.
+While this is only conjecture at this time and we know of no systems that
+actually have this requirement, it's not unlikely that some exist.
+<p>
+Also, Berkeley DB can be configured to use specific underlying interfaces in
+some cases, you can use the <a href="../../ref/build_unix/conf.html#--enable-posixmutexes">--enable-posixmutexes</a> and
+<a href="../../ref/build_unix/conf.html#--enable-uimutexes">--enable-uimutexes</a> configuration options to specify the POSIX and Unix
+International (UI) threads packages.
+<p>
+Finally, in some cases, it is vitally important to make sure that you load
+the correct library.  For example, on Solaris systems, there are POSIX
+pthread interfaces in the C library, and so applications can link Berkeley DB
+using only C library and not see any undefined symbols.  However, the C
+library POSIX pthread mutex support is insufficient for Berkeley DB and Berkeley DB
+cannot detect that fact.  Similar errors can arise when applications
+(e.g., tclsh) use dlopen to dynamically load Berkeley DB as a library.
+<p>
+If you are seeing problems in this area after you've confirmed that you're
+linking with the correct libraries, there are two other things you can
+try.  First, if your platform supports inter-library dependencies, we
+recommend that you change the Berkeley DB Makefile to specify the appropriate
+threads library when creating the Berkeley DB dynamic library, as an
+inter-library dependency.  Second, if your application is using dlopen to
+dynamically load Berkeley DB, specify the appropriate thread library on the link
+line when you load the application itself.
+<hr size=1 noshade>
+<p><li><b>Berkeley DB programs or the test suite fail unexpectedly.</b>
+<p>
+The Berkeley DB architecture does not support placing the shared memory regions
+on remote filesystems, e.g., the Network File System (NFS) or the Andrew
+File System (AFS).  For this reason, the shared memory regions (normally
+located in the database home directory) must reside on a local filesystem.
+See <a href="../../ref/env/region.html">Shared Memory Regions</a> for more
+information.
+<p>
+With respect to running the test suite, always check to make sure that
+TESTDIR is not on a remote mounted filesystem.
+<hr size=1 noshade>
+<p><li><b>The <a href="../../utility/db_dump.html">db_dump185</a> utility fails to build.</b>
+<p>
+If the errors look something like:
+<p>
+<blockquote><pre>cc -o db_dump185 db_dump185.o
+ld:
+Unresolved:
+dbopen</pre></blockquote>
+<p>
+it means that the Berkeley DB 1.85 code was not found in the standard libraries.
+To build <a href="../../utility/db_dump.html">db_dump185</a> (the utility that converts Berkeley DB 1.85 and
+earlier databases to Berkeley DB version 2.X), you must have already built and
+installed the Berkeley DB version 1.85 code on the system.  If the Berkeley DB 1.85
+code is not part of the standard libraries used for loading, you will need
+to edit your Makefile, and change the lines:
+<p>
+<blockquote><pre>DBE=	db_dump185.o $(CLOBJS)
+db_dump185: $(DBE)
+	$(CC) -o $@ $(DBE)
+</pre></blockquote>
+<p>
+So that the library where the Berkeley DB 1.85 code is found is loaded, e.g.,
+<p>
+<blockquote><pre>DBE=	db_dump185.o $(CLOBJS)
+db_dump185: $(DBE)
+	$(CC) -o $@ $(DBE) -ldb185
+</pre></blockquote>
+</ol>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/build_unix/test.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/aix.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

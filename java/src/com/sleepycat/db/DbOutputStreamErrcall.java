@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbOutputStreamErrcall.java	10.2 (Sleepycat) 4/10/98
+ *	@(#)DbOutputStreamErrcall.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;
@@ -14,26 +14,39 @@ import java.io.IOException;
 /**
  *
  * @author Donald D. Anderson
+ *
+ * This class is not public, as it is only used internally
+ * by Db to implement a default error handler.
  */
-public class DbOutputStreamErrcall implements DbErrcall
+
+/*package*/ class DbOutputStreamErrcall implements DbErrcall
 {
     DbOutputStreamErrcall(OutputStream stream)
     {
         this.stream_ = stream;
     }
 
-    // methods
+    // errcall implements DbErrcall
     //
     public void errcall(String prefix, String buffer)
     {
         try {
-            stream_.write(prefix.getBytes());
-            stream_.write((new String(": ")).getBytes());
+            if (prefix != null) {
+                stream_.write(prefix.getBytes());
+                stream_.write((new String(": ")).getBytes());
+            }
             stream_.write(buffer.getBytes());
             stream_.write((new String("\n")).getBytes());
         }
         catch (IOException e) {
-            // nothing much we can do.
+
+            // well, we tried.
+            // Do our best to report the problem by other means.
+            //
+            System.err.println("DbOutputStreamErrcall Exception: " + e);
+            if (prefix != null)
+                System.err.print(prefix + ": ");
+            System.err.println(buffer + "\n");
         }
     }
 

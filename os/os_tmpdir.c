@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998
+ * Copyright (c) 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_tmpdir.c	10.3 (Sleepycat) 10/13/98";
+static const char sccsid[] = "@(#)os_tmpdir.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,7 +19,6 @@ static const char sccsid[] = "@(#)os_tmpdir.c	10.3 (Sleepycat) 10/13/98";
 #endif
 
 #include "db_int.h"
-#include "common_ext.h"
 
 #ifdef macintosh
 #include <TFileSpec.h>
@@ -60,13 +59,8 @@ __os_tmpdir(dbenv, flags)
 
 	/* Use the environment if it's permitted and initialized. */
 	p = NULL;
-#ifdef HAVE_GETEUID
 	if (LF_ISSET(DB_USE_ENVIRON) ||
-	    (LF_ISSET(DB_USE_ENVIRON_ROOT) && getuid() == 0))
-#else
-	if (LF_ISSET(DB_USE_ENVIRON))
-#endif
-	{
+	    (LF_ISSET(DB_USE_ENVIRON_ROOT) && __os_isroot() == 0)) {
 		if ((p = getenv("TMPDIR")) != NULL && p[0] == '\0') {
 			__db_err(dbenv, "illegal TMPDIR environment variable");
 			return (EINVAL);

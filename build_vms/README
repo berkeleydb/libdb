@@ -1,6 +1,6 @@
-# @(#)README	10.1 (Sleepycat) 11/3/98
+# @(#)README	11.1 (Sleepycat) 7/24/99
 
-Readme for Berkeley DB on OpenVMS 3-Nov-1998
+README for Berkeley DB on OpenVMS 3-Nov-1998
 
 The DB libraries and utilities have been built and casually tested on
 OpenVMS 7.1 with the DECC compiler.  The DB testing suite has not been

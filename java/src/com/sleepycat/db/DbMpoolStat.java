@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbMpoolStat.java	10.5 (Sleepycat) 11/2/98
+ *	@(#)DbMpoolStat.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;
@@ -15,6 +15,9 @@ package com.sleepycat.db;
  */
 public class DbMpoolStat
 {
+    /**
+     * @deprecated As of Berkeley DB 2.8.2, cachesize for mpool unavailable.
+     */
     public int st_cachesize;            // Cache size.
     public int st_cache_hit;            // Pages found in the cache.
     public int st_cache_miss;           // Pages not found in the cache.
@@ -33,7 +36,6 @@ public class DbMpoolStat
     public int st_page_trickle;         // Pages written by memp_trickle.
     public int st_region_wait;          // Region lock granted after wait.
     public int st_region_nowait;        // Region lock granted without wait.
-    public int st_refcnt;               // Region reference count.
     public int st_regsize;              // Region size.
 }
 

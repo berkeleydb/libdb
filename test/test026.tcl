@@ -1,49 +1,49 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test026.tcl	8.5 (Sleepycat) 4/25/98
+#	@(#)test026.tcl	11.6 (Sleepycat) 11/8/99
 #
 # DB Test 26 {access method}
 # Keyed delete test through cursor.
 # If ndups is small; this will test on-page dups; if it's large, it
 # will test off-page dups.
 proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
-	set omethod $method
-	set method [convert_method $method]
-	set args [convert_args $method $args]
-	if { [string compare $method DB_RECNO] == 0 || \
-	    [is_rbtree $omethod] == 1 } {
-		puts "Test0$tnum skipping for method $omethod"
-		return
-	}
-	puts "Test0$tnum: $method ($args) $nentries keys with $ndups dups; cursor delete test"
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
 	source ./include.tcl
 
-	# Create the database and open the dictionary
-	set testfile test0$tnum.db
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
 
-	set flags 0
-	set txn 0
+	if { [is_record_based $method] == 1 || \
+	    [is_rbtree $method] == 1 } {
+		puts "Test0$tnum skipping for method $method"
+		return
+	}
+	puts "Test0$tnum: $method ($args) $nentries keys\
+		with $ndups dups; cursor delete test"
+
+	# Create the database and open the dictionary
+	set testfile $testdir/test0$tnum.db
+
+	set pflags ""
+	set gflags ""
+	set txn ""
 	set count 0
 
 	# Here is the loop where we put and get each key/data pair
 
 	puts "Test0$tnum.a: Put loop"
 	cleanup $testdir
-	set args [add_to_args $DB_DUP $args]
-	set db [eval [concat dbopen $testfile \
-	    [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+	set db [eval {berkdb open -create -truncate \
+		-mode 0644} $args {$omethod -dup $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	while { [gets $did str] != -1 && $count < [expr $nentries * $ndups] } {
 		set datastr [ make_data_str $str ]
 		for { set j 1 } { $j <= $ndups} {incr j} {
-			set ret [$db put $txn $str $j$datastr $flags]
+         set ret [eval {$db put} \
+	     $txn $pflags {$str [chop_data $method $j$datastr]}]
 			error_check_good db_put $ret 0
 			incr count
 		}
@@ -51,28 +51,29 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	close $did
 
 	error_check_good db_close [$db close] 0
-	set db [ dbopen $testfile 0 0 DB_UNKNOWN ]
+	set db [berkdb open $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Now we will sequentially traverse the database getting each
 	# item and deleting it.
 	set count 0
-	set dbc [$db cursor $txn]
+	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1
 
 	puts "Test0$tnum.b: Get/delete loop"
 	set i 1
-	for { set ret [$dbc get 0 $DB_FIRST] } {
+	for { set ret [$dbc get -first] } {
 	    [string length $ret] != 0 } {
-	    set ret [$dbc get 0 $DB_NEXT] } {
+	    set ret [$dbc get -next] } {
 
-		set key [lindex $ret 0]
-		set data [lindex $ret 1]
+		set key [lindex [lindex $ret 0] 0]
+		set data [lindex [lindex $ret 0] 1]
 		if { $i == 1 } {
 			set curkey $key
 		}
 		error_check_good seq_get:key $key $curkey
-		error_check_good seq_get:data $data $i[make_data_str $key]
+		error_check_good \
+		    seq_get:data $data [pad_data $method $i[make_data_str $key]]
 
 		if { $i == $ndups } {
 			set i 1
@@ -81,7 +82,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 		}
 
 		# Now delete the key
-		set ret [ $dbc del $flags ]
+		set ret [$dbc del]
 		error_check_good db_del:$key $ret 0
 	}
 	error_check_good dbc_close [$dbc close] 0
@@ -89,11 +90,11 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 
 	puts "Test0$tnum.c: Verify empty file"
 	# Double check that file is now empty
-	set db [ dbopen $testfile 0 0 DB_UNKNOWN ]
+	set db [berkdb open $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
-	set dbc [$db cursor $txn]
+	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1
-	set ret [$dbc get 0 $DB_FIRST]
+	set ret [$dbc get -first]
 	error_check_good get_on_empty [string length $ret] 0
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0

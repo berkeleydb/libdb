@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998
+ * Copyright (c) 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)xa.h	10.1 (Sleepycat) 6/22/98
+ *	@(#)xa.h	11.1 (Sleepycat) 7/25/99
  */
 /*
  * Start of xa.h header

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mdbscript.tcl	10.5 (Sleepycat) 12/2/98
+#	@(#)mdbscript.tcl	11.16 (Sleepycat) 10/25/99
 #
 # Process script for the multi-process db tester.
 # Usage: mdbscript dir file nentries iter procid procs seed
@@ -13,14 +13,28 @@
 # iter: number of operations to run
 # procid: this processes' id number
 # procs: total number of processes running
-# seed: Random number generator seed (-1 means use pid)
+
 source ./include.tcl
-source ../test/testutils.tcl
+source $test_path/test.tcl
+source $test_path/testutils.tcl
+
+global dbenv
+global klock
+global l_keys
+global procid
+
+# In Tcl, when there are multiple catch handlers, *all* handlers
+# are called, so we have to resort to this hack.
+#
+global exception_handled
+
+set exception_handled 0
+
 set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
-set usage "mdbscript method dir file nentries iter procid procs seed"
+set usage "mdbscript method dir file nentries iter procid procs"
 
 # Verify usage
-if { $argc != 8 } {
+if { $argc != 7 } {
 	puts stderr $usage
 	exit
 }
@@ -33,19 +47,21 @@ set nentries [ lindex $argv 3 ]
 set iter [ lindex $argv 4 ]
 set procid [ lindex $argv 5 ]
 set procs [ lindex $argv 6 ]
-set seed [ lindex $argv 7 ]
 
-if { [string compare $method DB_RECNO] == 0 } {
-	set put putn
-} else {
-	set put put
+set pflags ""
+set gflags ""
+set txn ""
+
+set renum [is_rrecno $method]
+set omethod [convert_method $method]
+
+if { [is_record_based $method] == 1 } {
+   append gflags " -recno"
 }
 
 # Initialize seed
-if { $seed == -1 } {
-	set seed [pid]
-}
-srand $seed
+global rand_init
+berkdb srand $rand_init
 
 puts "Beginning execution for [pid] $method"
 puts "$dir db_home"
@@ -59,16 +75,12 @@ puts "$seed seed"
 set klock NOLOCK
 flush stdout
 
-set dbenv [dbenv -dbhome $dir -dbflags [expr $DB_INIT_CDB | $DB_INIT_MPOOL]]
-error_check_good dbenv [is_valid_widget $dbenv env] TRUE
+set dbenv [berkdb env -create -cdb -mpool -home $dir]
+#set dbenv [berkdb env -create -cdb -mpool -log -home $dir]
+error_check_good dbenv [is_valid_env $dbenv] TRUE
 
-set db [record dbopen $file 0 0 DB_UNKNOWN -dbenv $dbenv]
-error_check_bad dbopen $db NULL
-error_check_good dbopen [is_valid_widget $db db] TRUE
-
-# Get lock manager so we can lock keys
-set lmgr [lock_open "" 0 0 -dbenv $dbenv]
-error_check_good "lock_open -dbenv $dbenv" [is_valid_widget $lmgr lockmgr] TRUE
+set db [berkdb open -env $dbenv -create -mode 0644 $omethod $file]
+error_check_good dbopen [is_valid_db $db] TRUE
 
 # Init globals (no data)
 set nkeys [db_init $db 0]
@@ -77,22 +89,28 @@ error_check_good db_init $nkeys $nentries
 exec $SLEEP 5
 
 proc get_lock { k } {
-global lmgr
-global procid
-global klock
-global DB_LOCK_WRITE
-global DB_LOCK_NOWAIT
+	global dbenv
+	global procid
+	global klock
+	global DB_LOCK_WRITE
+	global DB_LOCK_NOWAIT
+	global errorInfo
+	global exception_handled
 	# Make sure that the key isn't in the middle of
 	# a delete operation
-	set klock [$lmgr get $procid $k $DB_LOCK_WRITE $DB_LOCK_NOWAIT]
-	if { [string compare $klock BLOCKED] == 0 } {
+	if {[catch {$dbenv lock_get -nowait write $procid $k} klock] != 0 } {
+		set exception_handled 1
+
+		error_check_good \
+		    get_lock [is_substr $errorInfo "DB_LOCK_NOTGRANTED"] 1
 		puts "Warning: key $k locked"
 		set klock NOLOCK
 		return 1
+	} else  {
+		error_check_good get_lock [is_valid_lock $klock $dbenv] TRUE
 	}
 	return 0
 }
-set txn 0
 
 # On each iteration we're going to randomly pick a key.
 # 1. We'll either get it (verifying that its contents are reasonable).
@@ -109,86 +127,127 @@ set seqread 0
 set seqput 0
 set seqdel 0
 set dlen [string length $datastr]
+
 for { set i 0 } { $i < $iter } { incr i } {
-	set op [random_int 0 5]
+	set op [berkdb random_int 0 5]
 	puts "iteration $i operation $op"
 	flush stdout
+	if {[catch {
 	switch $op {
 		0 {
 			incr gets
-			set k [random_int 0 [expr $nkeys - 1]]
-			set key [lindex $l_keys $k]
-			if { [get_lock  $key] == 1 } {
+			set k [rand_key $method $nkeys $renum $procs]
+			if {[is_record_based $method] == 1} {
+				set key $k
+			} else  {
+				set key [lindex $l_keys $k]
+			}
+
+			if { [get_lock $key] == 1 } {
 				incr i -1
 				continue;
 			}
-			set rec [record $db get $txn $key 0 ]
-			error_check_bad "$db get $key" [string length $rec] 0
-			set partial [string range $rec 0 [expr $dlen - 1]]
-			error_check_good "$db get $key" $partial $datastr
+
+			set rec [eval {$db get} $txn $gflags {$key}]
+			error_check_bad "$db get $key" [llength $rec] 0
+			set partial [string range \
+			    [lindex [lindex $rec 0] 1] 0 [expr $dlen - 1]]
+			error_check_good \
+			    "$db get $key" $partial [pad_data $method $datastr]
 		}
 		1 {
 			incr overwrite
-			set k [random_int 0 [expr $nkeys - 1]]
-			set key [lindex $l_keys $k]
+			set k [rand_key $method $nkeys $renum $procs]
+			if {[is_record_based $method] == 1} {
+				set key $k
+			} else  {
+				set key [lindex $l_keys $k]
+			}
+
+
 			set data $datastr:$procid
-			set ret [record $db $put $txn $key $data 0]
-			error_check_good "$db $put $key" $ret 0
+			set ret [eval {$db put} \
+			    $txn $pflags {$key [chop_data $method $data]}]
+			error_check_good "$db put $key" $ret 0
 		}
 		2 {
 			incr getput
-			set dbc [record $db cursor 0 $DB_RMW]
-			set k [random_int 0 [expr $nkeys - 1]]
-			set key [lindex $l_keys $k]
+			set dbc [$db cursor -update]
+			error_check_good "$db cursor" \
+			    [is_valid_cursor $dbc $db] TRUE
+			set close_cursor 1
+			set k [rand_key $method $nkeys $renum $procs]
+			if {[is_record_based $method] == 1} {
+				set key $k
+			} else  {
+				set key [lindex $l_keys $k]
+			}
+
 			if { [get_lock  $key] == 1 } {
 				incr i -1
 				error_check_good "$dbc close" \
-				    [record $dbc close] 0
+				    [$dbc close] 0
+				set close_cursor 0
 				continue;
 			}
-			set ret [record $dbc get $key $DB_SET]
-			error_check_good "$dbc get $key" [llength $ret] 2
-			set rec [lindex $ret 1]
+
+			set ret [$dbc get -set $key]
+			error_check_good \
+			    "$dbc get $key" [llength [lindex $ret 0]] 2
+			set rec [lindex [lindex $ret 0] 1]
 			set partial [string range $rec 0 [expr $dlen - 1]]
-			error_check_good "$dbc get $key" $partial $datastr
+			error_check_good \
+			    "$dbc get $key" $partial [pad_data $method $datastr]
 			append rec ":$procid"
-			set ret [record $dbc $put $key $rec $DB_CURRENT]
-			error_check_good "$dbc $put $key" $ret 0
-			error_check_good "$dbc close" [record $dbc close] 0
+			set ret [$dbc put \
+			    -current [chop_data $method $rec]]
+			error_check_good "$dbc put $key" $ret 0
+			error_check_good "$dbc close" [$dbc close] 0
+			set close_cursor 0
 		}
 		3 -
 		4 -
 		5 {
 			if { $op == 3 } {
-				set flags 0
+				set flags ""
 			} else {
-				set flags $DB_RMW
+				set flags -update
 			}
-			set dbc [record $db cursor 0 $flags]
+			set dbc [eval {$db cursor} $flags]
+			error_check_good "$db cursor" \
+			    [is_valid_cursor $dbc $db] TRUE
 			set close_cursor 1
-			set k [random_int 0 [expr $nkeys - 1]]
-			set key [lindex $l_keys $k]
-			if { [get_lock  $key] == 1 } {
+			set k [rand_key $method $nkeys $renum $procs]
+			if {[is_record_based $method] == 1} {
+				set key $k
+			} else  {
+				set key [lindex $l_keys $k]
+			}
+
+			if { [get_lock $key] == 1 } {
 				incr i -1
 				error_check_good "$dbc close" \
-				    [record $dbc close] 0
+				    [$dbc close] 0
+				set close_cursor 0
 				continue;
 			}
-			set ret [record $dbc get $key $DB_SET]
-			error_check_good "$dbc get $key" [llength $ret] 2
+
+			set ret [$dbc get -set $key]
+			error_check_good \
+			    "$dbc get $key" [llength [lindex $ret 0]] 2
 
 			# Now read a few keys sequentially
-			set nloop [random_int 0 10]
-			if { [random_int 0 1] == 0 } {
-				set flags $DB_NEXT
+			set nloop [berkdb random_int 0 10]
+			if { [berkdb random_int 0 1] == 0 } {
+				set flags -next
 			} else {
-				set flags $DB_PREV
+				set flags -prev
 			}
 			while { $nloop > 0 } {
 				set lastret $ret
-				set ret [record $dbc get 0 $flags]
+				set ret [eval {$dbc get} $flags]
 				# Might read beginning/end of file
-				if { [string length $ret] == 0} {
+				if { [llength $ret] == 0} {
 					set ret $lastret
 					break
 				}
@@ -200,69 +259,118 @@ for { set i 0 } { $i < $iter } { incr i } {
 				}
 				4 {
 					incr seqput
-					set rec [lindex $ret 1]
+					set rec [lindex [lindex $ret 0] 1]
 					set partial [string range $rec 0 \
 					    [expr $dlen - 1]]
 					error_check_good "$dbc get $key" \
-					    $partial $datastr
+					    $partial [pad_data $method $datastr]
 					append rec ":$procid"
-					set ret [record $dbc \
-					    put $key $rec $DB_CURRENT]
-					error_check_good "$dbc put $key" $ret 0
+					set ret [$dbc put -current \
+					    [chop_data $method $rec]]
+					error_check_good \
+					    "$dbc put $key" $ret 0
 				}
 				5 {
 					incr seqdel
-					set k [lindex $ret 0]
+					set k [lindex [lindex $ret 0] 0]
 					# We need to lock the item we're
 					# deleting so that someone else can't
 					# try to do a get while we're
 					# deleting
 					error_check_good "$klock put" \
 					    [$klock put] 0
-					set cur [$dbc get 0 $DB_CURRENT]
-					if { [get_lock [lindex $cur 0]] == 1 } {
+					set klock NOLOCK
+					set cur [$dbc get -current]
+					error_check_bad get_current \
+					    [llength $cur] 0
+					set key [lindex [lindex $cur 0] 0]
+					if { [get_lock $key] == 1 } {
 						incr i -1
 						error_check_good "$dbc close" \
-						    [record $dbc close] 0
+						     [$dbc close] 0
+						set close_cursor 0
 						continue
 					}
-					set ret [record $dbc del 0]
-					error_check_good "$dbc del 0" $ret 0
+					set ret [$dbc del]
+					error_check_good "$dbc del" $ret 0
 					set rec $datastr
 					append rec ":$procid"
-					if { [string compare $method DB_RECNO]
-					    == 0 } {
+					if { $renum == 1 } {
+						set ret [$dbc put -before \
+						    [chop_data $method $rec]]
+						if { $k == $nkeys } {
+							set rkey \
+							    [expr $nkeys - 1]
+						} else {
+							set rkey $k
+						}
+						error_check_good \
+						    "$dbc put $k" $ret $rkey
+					} elseif { \
+					    [is_record_based $method] == 1 } {
 						error_check_good "$dbc close" \
-						    [record $dbc close] 0
+						    [$dbc close] 0
 						set close_cursor 0
-						set ret [record $db $put 0 \
-						    $k $rec 0]
-						error_check_good "$db $put $k" \
-						    $ret 0
+						set ret [$db put $k \
+						    [chop_data $method $rec]]
+						error_check_good \
+						    "$db put $k" $ret 0
 					} else {
-						set ret [record $dbc \
-						    $put $k $rec $DB_KEYLAST]
-						error_check_good "$dbc $put $k"\
-						    $ret 0
+						set ret [$dbc put -keylast $k \
+						    [chop_data $method $rec]]
+						error_check_good \
+						    "$dbc put $k" $ret 0
 					}
 				}
 			}
 			if { $close_cursor == 1 } {
-				error_check_good "$dbc close" \
-				    [record $dbc close] 0
+				error_check_good \
+				    "$dbc close" [$dbc close] 0
+				set close_cursor 0
 			}
 		}
 	}
-	flush stdout
-	if { [string compare $klock NOLOCK] != 0 } {
-		error_check_good "$klock put" [$klock put] 0
-		set klock NOLOCK
+	} res] != 0} {
+		global errorInfo;
+		global exception_handled;
+
+		puts $errorInfo
+
+		set fnl [string first "\n" $errorInfo]
+		set theError [string range $errorInfo 0 [expr $fnl - 1]]
+
+		flush stdout
+		if { [string compare $klock NOLOCK] != 0 } {
+			catch {$klock put}
+		}
+		if {$close_cursor == 1} {
+			catch {$dbc close}
+			set close_cursor 0
+		}
+
+		if {[string first FAIL $theError] == 0 && \
+		    $exception_handled != 1} {
+			error "FAIL:[timestamp] test042: key $k: $theError"
+		}
+		set exception_handled 0
+	} else {
+		flush stdout
+		if { [string compare $klock NOLOCK] != 0 } {
+			error_check_good "$klock put" [$klock put] 0
+			set klock NOLOCK
+		}
 	}
 }
 
-error_check_good db_close:$db [record $db close] 0
-error_check_good "$lmgr close" [$lmgr close] 0
-reset_env $dbenv
+if {[catch {$db close} ret] != 0 } {
+	error_check_good close [is_substr $errorInfo "DB_INCOMPLETE"] 1
+	puts "Warning: sync incomplete on close ([pid])"
+} else  {
+	error_check_good close $ret 0
+}
+$dbenv close
+
+exit
 
 puts "[timestamp] [pid] Complete"
 puts "Successful ops: "

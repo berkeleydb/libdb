@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)MpoolExample.cpp	10.7 (Sleepycat) 5/2/98
+ *	@(#)MpoolExample.cpp	11.3 (Sleepycat) 9/10/99
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
@@ -35,68 +35,67 @@ char *progname = "MpoolExample";			// Program name.
 class MpoolExample : public DbEnv
 {
 public:
-    MpoolExample();
-    void initdb(const char *home, int cachesize);
-    void run(int hits, int pagesize, int npages);
+	MpoolExample();
+	void initdb(const char *home, int cachesize);
+	void run(int hits, int pagesize, int npages);
 
 private:
-    static const char FileName[];
+	static const char FileName[];
 
-    // no need for copy and assignment
-    MpoolExample(const MpoolExample &);
-    operator = (const MpoolExample &);
+	// no need for copy and assignment
+	MpoolExample(const MpoolExample &);
+	operator = (const MpoolExample &);
 };
 
 int main(int argc, char *argv[])
 {
-    int cachesize = 20 * 1024;
-    int hits = 1000;
-    int npages = 50;
-    int pagesize = 1024;
+	int cachesize = 20 * 1024;
+	int hits = 1000;
+	int npages = 50;
+	int pagesize = 1024;
 
-    for (int i = 1; i < argc; ++i)
-    {
-        if (strcmp(argv[i], "-c") == 0)
-        {
-            if ((cachesize = atoi(argv[++i])) < 20 * 1024)
-                usage();
-        }
-        else if (strcmp(argv[i], "-h") == 0)
-        {
-            if ((hits = atoi(argv[++i])) <= 0)
-                usage();
-        }
-        else if (strcmp(argv[i], "-n") == 0)
-        {
-            if ((npages = atoi(argv[++i])) <= 0)
-                usage();
-        }
-        else if (strcmp(argv[i], "-p") == 0)
-        {
-            if ((pagesize = atoi(argv[++i])) <= 0)
-                usage();
-        }
-        else
-        {
-            usage();
-        }
-    }
+	for (int i = 1; i < argc; ++i) {
+		if (strcmp(argv[i], "-c") == 0) {
+			if ((cachesize = atoi(argv[++i])) < 20 * 1024)
+				usage();
+		}
+		else if (strcmp(argv[i], "-h") == 0) {
+			if ((hits = atoi(argv[++i])) <= 0)
+				usage();
+		}
+		else if (strcmp(argv[i], "-n") == 0) {
+			if ((npages = atoi(argv[++i])) <= 0)
+				usage();
+		}
+		else if (strcmp(argv[i], "-p") == 0) {
+			if ((pagesize = atoi(argv[++i])) <= 0)
+				usage();
+		}
+		else {
+			usage();
+		}
+	}
 
-    // Initialize the file.
-    init(MPOOL, pagesize, npages);
+	// Initialize the file.
+	init(MPOOL, pagesize, npages);
 
-    try {
-        MpoolExample app;
-        app.initdb(NULL, cachesize);
-        app.run(hits, pagesize, npages);
-        cout << "MpoolExample: completed\n";
-        return 0;
-    }
-    catch (DbException &dbe)
-    {
-        cerr << "MpoolExample: " << dbe.what() << "\n";
-        return 1;
-    }
+	try {
+		MpoolExample app;
+
+		cout << progname
+		     << ": cachesize: " << cachesize
+		     << "; pagesize: " << pagesize
+		     << "; N pages: " << npages << "\n";
+
+		app.initdb(NULL, cachesize);
+		app.run(hits, pagesize, npages);
+		cout << "MpoolExample: completed\n";
+		return 0;
+	}
+	catch (DbException &dbe) {
+		cerr << "MpoolExample: " << dbe.what() << "\n";
+		return 1;
+	}
 }
 
 //
@@ -106,53 +105,58 @@ int main(int argc, char *argv[])
 void
 init(char *file, int pagesize, int npages)
 {
-    //
-    // Create a file with the right number of pages, and store a page
-    // number on each page.
-    //
-    int fd;
-    int flags = O_CREAT | O_RDWR | O_TRUNC;
+	//
+	// Create a file with the right number of pages, and store a page
+	// number on each page.
+	//
+	int fd;
+	int flags = O_CREAT | O_RDWR | O_TRUNC;
 #ifdef WIN32
-    flags |= O_BINARY;
+	flags |= O_BINARY;
 #endif
-    if ((fd = open(file, flags, 0666)) < 0) {
-        cerr << "MpoolExample: " << file << ": " << strerror(errno) << "\n";
-        exit(1);
-    }
-    char *p = new char[pagesize];
-    memset(p, 0, pagesize);
+	if ((fd = open(file, flags, 0666)) < 0) {
+		cerr << "MpoolExample: " << file << ": " << strerror(errno) << "\n";
+		exit(1);
+	}
+	char *p = new char[pagesize];
+	memset(p, 0, pagesize);
 
-    // The pages are numbered from 0.
-    for (int cnt = 0; cnt <= npages; ++cnt) {
-        *(db_pgno_t *)p = cnt;
-        if (write(fd, p, pagesize) != pagesize) {
-            cerr << "MpoolExample: " << file << ": " << strerror(errno) << "\n";
-            exit(1);
-        }
-    }
-    delete [] p;
+	// The pages are numbered from 0.
+	for (int cnt = 0; cnt <= npages; ++cnt) {
+		*(db_pgno_t *)p = cnt;
+		if (write(fd, p, pagesize) != pagesize) {
+			cerr << "MpoolExample: " << file
+			     << ": " << strerror(errno) << "\n";
+			exit(1);
+		}
+	}
+	delete [] p;
 }
 
 static void
 usage()
 {
-    cerr << "usage: MpoolExample [-c cachesize] "
-         << "[-h hits] [-n npages] [-p pagesize]\n";
-    exit(1);
+	cerr << "usage: MpoolExample [-c cachesize] "
+	     << "[-h hits] [-n npages] [-p pagesize]\n";
+	exit(1);
 }
 
+// Note: by using DB_CXX_NO_EXCEPTIONS, we get explicit error returns
+// from various methods rather than exceptions so we can report more
+// information with each error.
+//
 MpoolExample::MpoolExample()
-:   DbEnv()         // using default constructor means we must call appinit()
+:	DbEnv(DB_CXX_NO_EXCEPTIONS)
 {
 }
 
 void MpoolExample::initdb(const char *home, int cachesize)
 {
-    set_error_stream(&cerr);
-    set_errpfx("MpoolExample");
-    set_mp_size(cachesize);
+	set_error_stream(&cerr);
+	set_errpfx("MpoolExample");
+	set_cachesize(0, cachesize, 0);
 
-    appinit(home, NULL, DB_MPOOL_PRIVATE);
+	open(home, NULL, DB_CREATE | DB_INIT_MPOOL, 0);
 }
 
 
@@ -163,47 +167,45 @@ void MpoolExample::initdb(const char *home, int cachesize)
 void
 MpoolExample::run(int hits, int pagesize, int npages)
 {
-    db_pgno_t pageno;
-    int cnt;
-    void *p;
+	db_pgno_t pageno;
+	int cnt;
+	void *p;
 
-    // Open a memory pool.
-    DbMpool *dbmp;
-    DbMpool::open(NULL, DB_CREATE, 0666, this, &dbmp);
+	// Open the file in the pool.
+	DbMpoolFile *dbmfp;
 
-    // Open the file in the pool.
-    DbMpoolFile *dbmfp;
+	DbMpoolFile::open(this, MPOOL, 0, 0, pagesize, NULL, &dbmfp);
 
-    DbMpoolFile::open(dbmp, MPOOL, 0, 0, pagesize, NULL, &dbmfp);
+	cout << "retrieve " << hits << " random pages... ";
 
-    // get explicit error returns rather than exceptions so
-    // we can report more information with each error.
-    //
-    set_error_model(DbEnv::ErrorReturn);
+	srand((unsigned int)time(NULL));
+	for (cnt = 0; cnt < hits; ++cnt) {
+		pageno = (rand() % npages) + 1;
+		if ((errno = dbmfp->get(&pageno, 0, &p)) != 0) {
+			cerr << "MpoolExample: unable to retrieve page "
+			     << (unsigned long)pageno << ": "
+			     << strerror(errno) << "\n";
+			exit(1);
+		}
+		if (*(db_pgno_t *)p != pageno) {
+			cerr << "MpoolExample: wrong page retrieved ("
+			     << (unsigned long)pageno << " != "
+			     << *(int *)p << ")\n";
+			exit(1);
+		}
+		if ((errno = dbmfp->put(p, 0)) != 0) {
+			cerr << "MpoolExample: unable to return page "
+			     << (unsigned long)pageno << ": "
+			     << strerror(errno) << "\n";
+			exit(1);
+		}
+	}
 
-    srand((unsigned int)time(NULL));
-    for (cnt = 0; cnt < hits; ++cnt) {
-        pageno = (rand() % npages) + 1;
-        if ((errno = dbmfp->get(&pageno, 0, &p)) != 0) {
-            cerr << "MpoolExample: unable to retrieve page "
-                 << (unsigned long)pageno << ": " << strerror(errno) << "\n";
-            exit(1);
-        }
-        if (*(db_pgno_t *)p != pageno) {
-            cerr << "MpoolExample: wrong page retrieved ("
-                 << (unsigned long)pageno << " != " << *(int *)p << ")\n";
-            exit(1);
-        }
-        if ((errno = dbmfp->put(p, 0)) != 0) {
-            cerr << "MpoolExample: unable to return page "
-                 << (unsigned long)pageno << ": " << strerror(errno) << "\n";
-            exit(1);
-        }
-    }
+	cout << "successful.\n";
 
-    // Close the pool.
-    if ((errno = dbmp->close()) != 0) {
-        cerr << "MpoolExample: " << strerror(errno) << "\n";
-        exit(1);
-    }
+	// Close the pool.
+	if ((errno = close(0)) != 0) {
+		cerr << "MpoolExample: " << strerror(errno) << "\n";
+		exit(1);
+	}
 }

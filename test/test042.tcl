@@ -1,54 +1,50 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test042.tcl	10.13 (Sleepycat) 11/25/98
+#	@(#)test042.tcl	11.14 (Sleepycat) 9/20/99
 #
 # DB Test 42 {access method}
-# Multiprocess DB test; verify that locking is basically working
-# for the concurrent access method product.
 #
-# Use the first "nentries" words from the dictionary.
-# Insert each with self as key and a fixed, medium length data string.
-# Then fire off multiple processes that bang on the database.  Each
-# one should try to read and write random keys.  When they rewrite,
-# they'll append their pid to the data string (sometimes doing a rewrite
-# sometimes doing a partial put).  Some will use cursors to traverse
-# through a few keys before finding one to write.
+# Multiprocess DB test; verify that locking is working for the concurrent
+# access method product.
+#
+# Use the first "nentries" words from the dictionary.  Insert each with self
+# as key and a fixed, medium length data string.  Then fire off multiple
+# processes that bang on the database.  Each one should try to read and write
+# random keys.  When they rewrite, they'll append their pid to the data string
+# (sometimes doing a rewrite sometimes doing a partial put).  Some will use
+# cursors to traverse through a few keys before finding one to write.
 
 set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
 
 proc test042 { method {nentries 1000} args } {
-global datastr
-source ./include.tcl
+	global datastr
+	source ./include.tcl
 
-	set method [convert_method $method]
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
+
 	puts "Test042: CDB Test $method $nentries"
 
-	# Parse options
+	# Set initial parameters
+	set do_exit 0
 	set iter 10000
 	set procs 5
 	set seeds {}
-	set do_exit 0
+
+	# Process arguments
+	set oargs ""
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
-			-d.* { incr i; set testdir [lindex $args $i] }
-			-i.* { incr i; set iter [lindex $args $i] }
-			-p.* { incr i; set procs [lindex $args $i] }
-			-s.* { incr i; set seeds [lindex $args $i] }
-			-x.* { set do_exit 1 }
-			default {
-				test042_usage
-				return
-			}
+			-dir	{ incr i; set testdir [lindex $args $i] }
+			-iter	{ incr i; set iter [lindex $args $i] }
+			-procs	{ incr i; set procs [lindex $args $i] }
+			-seeds	{ incr i; set seeds [lindex $args $i] }
+			-exit	{ set do_exit 1 }
+			default { append oargs " " [lindex $args $i] }
 		}
-	}
-
-	if { [file exists $testdir] != 1 } {
-		exec $MKDIR $testdir
-	} elseif { [file isdirectory $testdir ] != 1 } {
-		error "FAIL: $testdir is not a directory"
 	}
 
 	# Create the database and open the dictionary
@@ -56,27 +52,33 @@ source ./include.tcl
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
+
 	cleanup $testdir
-	set db [eval [concat dbopen \
-	    $testfile [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
-	error_check_good dbopen [is_valid_db $db] TRUE
+
+	set env [berkdb env -create -cdb -mpool -home $testdir]
+	error_check_good dbenv [is_valid_widget $env env] TRUE
+
+	set db [eval {berkdb open -env $env -create -truncate \
+	    -mode 0644 $omethod} $oargs {$testfile}]
+	error_check_good dbopen [is_valid_widget $db db] TRUE
+
 	set did [open $dict]
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags ""
+	set txn ""
 	set count 0
 
 	# Here is the loop where we put each key/data pair
 	puts "\tTest042.a: put/get loop"
 	while { [gets $did str] != -1 && $count < $nentries } {
-		if { [string compare $method DB_RECNO] == 0 } {
+		if { [is_record_based $method] == 1 } {
 			set key [expr $count + 1]
-			set put putn
 		} else {
 			set key $str
-			set put put
 		}
-		set ret [$db $put $txn $key $datastr $flags]
+		set ret [eval {$db put} \
+		    $txn $pflags {$key [chop_data $method $datastr]}]
 		error_check_good put:$db $ret 0
 		incr count
 	}
@@ -86,13 +88,11 @@ source ./include.tcl
 	# Database is created, now set up environment
 
 	# Remove old mpools and Open/create the lock and mpool regions
-	set ret [ lock_unlink $testdir 1 ]
-#	error_check_good lock_unlink $ret 0
-	set ret [ memp_unlink $testdir 1 ]
-#	error_check_good memp_unlink $ret 0
+	error_check_good env:close:$env [$env close] 0
+	set ret [berkdb envremove -home $testdir]
+	error_check_good env_remove $ret 0
 
-	set env \
-	    [dbenv -dbflags [expr $DB_CREATE | $DB_INIT_CDB | $DB_INIT_MPOOL]]
+	set env [berkdb env -create -mpool -cdb -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
 	if { $do_exit == 1 } {
@@ -100,33 +100,51 @@ source ./include.tcl
 	}
 
 	# Now spawn off processes
+	berkdb debug_check
 	puts "\tTest042.b: forking off $procs children"
 	set pidlist {}
+
 	for { set i 0 } {$i < $procs} {incr i} {
 		set s -1
 		if { [llength $seeds] == $procs } {
 			set s [lindex $seeds $i]
 		}
-		puts "exec ./dbtest ../test/mdbscript.tcl $method $testdir \
+		puts "exec $tclsh_path $test_path/mdbscript.tcl \
+		    $method $testdir \
 		    $testfile $nentries $iter $i $procs $s > \
 		    $testdir/test042.$i.log &"
-		set p [exec ./dbtest ../test/mdbscript.tcl $method $testdir \
-		    $testfile $nentries $iter $i $procs $s > \
-		    $testdir/test042.$i.log & ]
+		set p [exec $tclsh_path $test_path/mdbscript.tcl $method \
+		    $testdir $testfile $nentries $iter $i $procs $s \
+		    >& $testdir/test042.$i.log &]
 		lappend pidlist $p
 	}
 	puts "Test042: $procs independent processes now running"
 	watch_procs $pidlist
 
+	# Check for test failure
+	set e [catch {eval \
+	    exec [concat $GREP FAIL [glob $testdir/test042.*.log]]} res]
+	error_check_bad "FAIL: error message(s) in log files" $e 0
+
 	# Test is done, blow away lock and mpool region
 	reset_env $env
-	set ret [ lock_unlink $testdir 0 ]
-#	error_check_good lock_unlink $ret 0
-	set ret [ memp_unlink $testdir 0 ]
-#	error_check_good memp_unlink $ret 0
+
+	cleanup $testdir
 }
 
-proc test042_usage { } {
-	puts -nonewline "test042 method nentries [-d directory] [-i iterations]"
-	puts " [-p procs] [-s {seeds} ] -x"
+# If we are renumbering, then each time we delete an item, the number of
+# items in the file is temporarily decreased, so the highest record numbers
+# do not exist.  To make sure this doesn't happen, we never generate the
+# highest few record numbers as keys.
+#
+# For record-based methods, record numbers begin at 1, while for other keys,
+# we begin at 0 to index into an array.
+proc rand_key { method nkeys renum procs} {
+	if { $renum == 1 } {
+		return [berkdb random_int 1 [expr $nkeys - $procs]]
+	} elseif { [is_record_based $method] == 1 } {
+		return [berkdb random_int 1 $nkeys]
+	} else {
+		return [berkdb random_int 0 [expr $nkeys - 1]]
+	}
 }

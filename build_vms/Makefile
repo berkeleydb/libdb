@@ -1,4 +1,4 @@
-# @(#)Makefile	10.2 (Sleepycat) 11/2/98
+# @(#)Makefile	11.1 (Sleepycat) 7/24/99
 #
 
 srcdir=	../dist/..

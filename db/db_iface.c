@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_iface.c	10.40 (Sleepycat) 12/19/98";
+static const char sccsid[] = "@(#)db_iface.c	11.2 (Sleepycat) 8/14/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,13 +19,46 @@ static const char sccsid[] = "@(#)db_iface.c	10.40 (Sleepycat) 12/19/98";
 
 #include "db_int.h"
 #include "db_page.h"
-#include "db_auto.h"
-#include "db_ext.h"
-#include "common_ext.h"
+#include "db_am.h"
+#include "btree.h"
 
 static int __db_keyempty __P((const DB_ENV *));
 static int __db_rdonly __P((const DB_ENV *, const char *));
 static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
+
+/*
+ * __db_cursorchk --
+ *	Common cursor argument checking routine.
+ *
+ * PUBLIC: int __db_cursorchk __P((const DB *, u_int32_t, int));
+ */
+int
+__db_cursorchk(dbp, flags, isrdonly)
+	const DB *dbp;
+	u_int32_t flags;
+	int isrdonly;
+{
+	/* Check for invalid function flags. */
+	switch (flags) {
+	case 0:
+	case DB_DUPCURSOR:
+		break;
+	case DB_WRITECURSOR:
+		if (isrdonly)
+			return (__db_rdonly(dbp->dbenv, "DB->cursor"));
+		if (!F_ISSET(dbp->dbenv, DB_ENV_CDB))
+			return (__db_ferr(dbp->dbenv, "DB->cursor", 0));
+		break;
+	case DB_WRITELOCK:
+		if (isrdonly)
+			return (__db_rdonly(dbp->dbenv, "DB->cursor"));
+		break;
+	default:
+		return (__db_ferr(dbp->dbenv, "DB->cursor", 0));
+	}
+
+	return (0);
+}
 
 /*
  * __db_cdelchk --
@@ -75,11 +108,20 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 
 	key_einval = key_flags = 0;
 
+	/* Check for read-modify-write validity. */
+	if (LF_ISSET(DB_RMW)) {
+		if (!F_ISSET(dbp->dbenv, DB_ENV_LOCKING)) {
+			__db_err(dbp->dbenv,
+			    "the DB_RMW flag requires locking");
+			return (EINVAL);
+		}
+		LF_CLR(DB_RMW);
+	}
+
 	/* Check for invalid function flags. */
-	LF_CLR(DB_RMW);
 	switch (flags) {
 	case DB_NEXT_DUP:
-		if (dbp->type == DB_RECNO)
+		if (dbp->type == DB_RECNO || dbp->type == DB_QUEUE)
 			goto err;
 		/* FALLTHROUGH */
 	case DB_CURRENT:
@@ -90,6 +132,9 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 		key_flags = 1;
 		break;
 	case DB_GET_BOTH:
+		if (dbp->type == DB_RECNO || dbp->type == DB_QUEUE)
+			goto err;
+		/* FALLTHROUGH */
 	case DB_SET_RANGE:
 		key_einval = key_flags = 1;
 		break;
@@ -105,6 +150,10 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 			goto err;
 		key_einval = key_flags = 1;
 		break;
+	case DB_CONSUME:
+		if (dbp->type == DB_QUEUE)
+			break;
+		/* FALL THROUGH */
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 	}
@@ -120,10 +169,11 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 		return (__db_keyempty(dbp->dbenv));
 
 	/*
-	 * The cursor must be initialized for DB_CURRENT, return -1 for an
-	 * invalid cursor, otherwise 0.
+	 * The cursor must be initialized for DB_CURRENT or DB_NEXT_DUP,
+	 * return -1 for an invalid cursor, otherwise 0.
 	 */
-	return (isvalid || flags != DB_CURRENT ? 0 : EINVAL);
+	return (isvalid ||
+	    (flags != DB_CURRENT && flags != DB_NEXT_DUP) ? 0 : EINVAL);
 }
 
 /*
@@ -153,6 +203,8 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 	switch (flags) {
 	case DB_AFTER:
 	case DB_BEFORE:
+		if (dbp->type == DB_QUEUE)
+			goto err;
 		if (dbp->dup_compare != NULL)
 			goto err;
 		if (dbp->type == DB_RECNO && !F_ISSET(dbp, DB_RE_RENUMBER))
@@ -169,6 +221,8 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 		break;
 	case DB_KEYFIRST:
 	case DB_KEYLAST:
+		if (dbp->type == DB_QUEUE)
+			goto err;
 		if (dbp->type == DB_RECNO)
 			goto err;
 		key_einval = key_flags = 1;
@@ -207,8 +261,13 @@ __db_closechk(dbp, flags)
 	u_int32_t flags;
 {
 	/* Check for invalid function flags. */
-	if (flags != 0 && flags != DB_NOSYNC)
+	switch (flags) {
+	case 0:
+	case DB_NOSYNC:
+		break;
+	default:
 		return (__db_ferr(dbp->dbenv, "DB->close", 0));
+	}
 
 	return (0);
 }
@@ -260,8 +319,17 @@ __db_getchk(dbp, key, data, flags)
 {
 	int ret;
 
+	/* Check for read-modify-write validity. */
+	if (LF_ISSET(DB_RMW)) {
+		if (!F_ISSET(dbp->dbenv, DB_ENV_LOCKING)) {
+			__db_err(dbp->dbenv,
+			    "the DB_RMW flag requires locking");
+			return (EINVAL);
+		}
+		LF_CLR(DB_RMW);
+	}
+
 	/* Check for invalid function flags. */
-	LF_CLR(DB_RMW);
 	switch (flags) {
 	case 0:
 	case DB_GET_BOTH:
@@ -331,7 +399,7 @@ __db_putchk(dbp, key, data, flags, isrdonly, isdup)
 	case DB_NOOVERWRITE:
 		break;
 	case DB_APPEND:
-		if (dbp->type != DB_RECNO)
+		if (dbp->type != DB_RECNO && dbp->type != DB_QUEUE)
 			goto err;
 		break;
 	default:
@@ -419,7 +487,10 @@ __dbt_ferr(dbp, name, dbt, check_thread)
 	const DBT *dbt;
 	int check_thread;
 {
+	DB_ENV *dbenv;
 	int ret;
+
+	dbenv = dbp->dbenv;
 
 	/*
 	 * Check for invalid DBT flags.  We allow any of the flags to be
@@ -428,17 +499,23 @@ __dbt_ferr(dbp, name, dbt, check_thread)
 	 * database and then specify that same DBT as a key to a primary
 	 * database, without having to clear flags.
 	 */
-	if ((ret = __db_fchk(dbp->dbenv, name, dbt->flags,
-	    DB_DBT_MALLOC | DB_DBT_USERMEM | DB_DBT_PARTIAL)) != 0)
+	if ((ret = __db_fchk(dbenv, name, dbt->flags,
+	    DB_DBT_MALLOC |
+	    DB_DBT_REALLOC | DB_DBT_USERMEM | DB_DBT_PARTIAL)) != 0)
 		return (ret);
-	if ((ret = __db_fcchk(dbp->dbenv, name,
-	    dbt->flags, DB_DBT_MALLOC, DB_DBT_USERMEM)) != 0)
-		return (ret);
+	switch (F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM)) {
+	case 0:
+	case DB_DBT_MALLOC:
+	case DB_DBT_REALLOC:
+	case DB_DBT_USERMEM:
+		break;
+	default:
+		return (__db_ferr(dbenv, name, 1));
+	}
 
-	if (check_thread && F_ISSET(dbp, DB_AM_THREAD) &&
-	    !F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_USERMEM)) {
-		__db_err(dbp->dbenv,
-		    "missing flag thread flag for %s DBT", name);
+	if (check_thread && F_ISSET(dbenv, DB_ENV_THREAD) &&
+	    !F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM)) {
+		__db_err(dbenv, "missing flag thread flag for %s DBT", name);
 		return (EINVAL);
 	}
 	return (0);
@@ -485,4 +562,26 @@ __db_rdonly(dbenv, name)
 {
 	__db_err(dbenv, "%s: attempt to modify a read-only tree", name);
 	return (EACCES);
+}
+
+/*
+ * __db_removechk --
+ *	DB->remove flag check.
+ *
+ * PUBLIC: int __db_removechk __P((const DB *, u_int32_t));
+ */
+int
+__db_removechk(dbp, flags)
+	const DB *dbp;
+	u_int32_t flags;
+{
+	/* Check for invalid function flags. */
+	switch (flags) {
+	case 0:
+		break;
+	default:
+		return (__db_ferr(dbp->dbenv, "DB->remove", 0));
+	}
+
+	return (0);
 }

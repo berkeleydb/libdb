@@ -1,9 +1,9 @@
 /*
- * @(#)x86.gcc	10.3 (Sleepycat) 8/27/97
+ * @(#)x86.gcc	11.1 (Sleepycat) 7/25/99
  *
  * For gcc/x86, 0 is clear, 1 is set.
  */
-#define	TSL_SET(tsl) ({							\
+#define	MUTEX_SET(tsl) ({						\
 	register tsl_t *__l = (tsl);					\
 	int __r;							\
 	asm volatile("movl $1,%%eax; lock; xchgb %1,%%al; xorl $1,%%eax"\
@@ -13,5 +13,5 @@
 	__r & 1;							\
 })
 
-#define	TSL_UNSET(tsl)	(*(tsl) = 0)
-#define	TSL_INIT(tsl)	TSL_UNSET(tsl)
+#define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
+#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_dir.c	10.19 (Sleepycat) 10/12/98";
+static const char sccsid[] = "@(#)os_dir.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,7 +31,6 @@ static const char sccsid[] = "@(#)os_dir.c	10.19 (Sleepycat) 10/12/98";
 # endif
 #endif
 
-#include <errno.h>
 #endif
 
 #include "db_int.h"
@@ -58,13 +57,13 @@ __os_dirlist(dir, namesp, cntp)
 		return (__db_jump.j_dirlist(dir, namesp, cntp));
 
 	if ((dirp = opendir(dir)) == NULL)
-		return (errno);
+		return (__os_get_errno());
 	names = NULL;
 	for (arraysz = cnt = 0; (dp = readdir(dirp)) != NULL; ++cnt) {
 		if (cnt >= arraysz) {
 			arraysz += 100;
-			if ((ret = __os_realloc(&names,
-			    arraysz * sizeof(names[0]))) != 0)
+			if ((ret = __os_realloc(
+			    arraysz * sizeof(names[0]), NULL, &names)) != 0)
 				goto nomem;
 		}
 		if ((ret = __os_strdup(dp->d_name, &names[cnt])) != 0)

@@ -1,18 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)cxx_int.h	10.5 (Sleepycat) 4/10/98
+ *	@(#)cxx_int.h	11.3 (Sleepycat) 8/17/99
  */
 
 #ifndef _CXX_INT_H_
 #define _CXX_INT_H_
 
 // private data structures known to the implementation only
-
-#include <assert.h>             // used by defines below
 
 //
 // Using FooImp classes will allow the implementation to change in the
@@ -30,32 +28,29 @@
 //
 #define WRAPPED_CLASS(_WRAPPER_CLASS, _IMP_CLASS, _WRAPPED_TYPE)           \
                                                                            \
-        class _IMP_CLASS {};                                               \
+	class _IMP_CLASS {};                                               \
                                                                            \
-        inline _WRAPPED_TYPE unwrap(_WRAPPER_CLASS *val)                   \
-        {                                                                  \
-            if (!val) return 0;                                            \
-            return (_WRAPPED_TYPE)(val->imp());                            \
-        }                                                                  \
+	inline _WRAPPED_TYPE unwrap(_WRAPPER_CLASS *val)                   \
+	{                                                                  \
+		if (!val) return 0;                                        \
+		return (_WRAPPED_TYPE)(val->imp());                        \
+	}                                                                  \
                                                                            \
-        inline const _WRAPPED_TYPE unwrapConst(const _WRAPPER_CLASS *val)  \
-        {                                                                  \
-            if (!val) return 0;                                            \
-            return (const _WRAPPED_TYPE)(val->imp());                      \
-        }                                                                  \
+	inline const _WRAPPED_TYPE unwrapConst(const _WRAPPER_CLASS *val)  \
+	{                                                                  \
+		if (!val) return 0;                                        \
+		return (const _WRAPPED_TYPE)(val->constimp());             \
+	}                                                                  \
                                                                            \
-        inline _IMP_CLASS *wrap(_WRAPPED_TYPE val)                         \
-        {                                                                  \
-            return (_IMP_CLASS*)val;                                       \
-        }
+	inline _IMP_CLASS *wrap(_WRAPPED_TYPE val)                         \
+	{                                                                  \
+		return (_IMP_CLASS*)val;                                   \
+	}
 
-WRAPPED_CLASS(DbLockTab, DbLockTabImp, DB_LOCKTAB*)
-WRAPPED_CLASS(DbLog, DbLogImp, DB_LOG*)
-WRAPPED_CLASS(DbMpool, DbMpoolImp, DB_MPOOL*)
 WRAPPED_CLASS(DbMpoolFile, DbMpoolFileImp, DB_MPOOLFILE*)
 WRAPPED_CLASS(Db, DbImp, DB*)
+WRAPPED_CLASS(DbEnv, DbEnvImp, DB_ENV*)
 WRAPPED_CLASS(DbTxn, DbTxnImp, DB_TXN*)
-WRAPPED_CLASS(DbTxnMgr, DbTxnMgrImp, DB_TXNMGR*)
 
 // Macros that handle detected errors, in case we want to
 // change the default behavior.  runtime_error() throws an
@@ -65,11 +60,11 @@ WRAPPED_CLASS(DbTxnMgr, DbTxnMgrImp, DB_TXNMGR*)
 // we have a separate macro.  For now, we silently ignore such
 // detected errors.
 //
-#define DB_ERROR(caller, ecode) \
-    DbEnv::runtime_error(caller, ecode)
+#define DB_ERROR(caller, ecode, env) \
+    DbEnv::runtime_error(caller, ecode, env)
 
-#define DB_DESTRUCTOR_ERROR(caller, ecode) \
-    DbEnv::runtime_error(caller, ecode, 1)
+#define DB_DESTRUCTOR_ERROR(caller, ecode, env) \
+    DbEnv::runtime_error(caller, ecode, env, 1)
 
 
 ////////////////////////////////////////////////////////////////
@@ -85,15 +80,15 @@ WRAPPED_CLASS(DbTxnMgr, DbTxnMgrImp, DB_TXNMGR*)
                                                                \
 void _class::set##_cxx_name(int onOrOff)                       \
 {                                                              \
-    if (onOrOff)                                               \
-        _flags |= _flag_name;                                  \
-    else                                                       \
-        _flags &= ~(_flag_name);                               \
+	if (onOrOff)                                           \
+		_flags |= _flag_name;                          \
+	else                                                   \
+		_flags &= ~(_flag_name);                       \
 }                                                              \
                                                                \
 int _class::get##_cxx_name() const                             \
 {                                                              \
-    return (_flags & _flag_name) ? 1 : 0;                      \
+	return (_flags & _flag_name) ? 1 : 0;                  \
 }
 
 
@@ -101,14 +96,14 @@ int _class::get##_cxx_name() const                             \
                                                                \
 _type _class::get_##_cxx_name() const                          \
 {                                                              \
-    return _field;                                             \
+	return _field;                                         \
 }
 
 #define DB_WO_ACCESS(_class, _type, _cxx_name, _field)         \
                                                                \
 void _class::set_##_cxx_name(_type value)                      \
 {                                                              \
-    _field = value;                                            \
+	_field = value;                                        \
 }                                                              \
 
 #define DB_RW_ACCESS(_class, _type, _cxx_name, _field)         \

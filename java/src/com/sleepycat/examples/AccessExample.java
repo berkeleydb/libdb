@@ -1,36 +1,27 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)AccessExample.java	10.6 (Sleepycat) 12/7/98
+ *	@(#)AccessExample.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.examples;
 
 import com.sleepycat.db.*;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.io.IOException;
+import java.io.PrintStream;
 
-class AccessExample extends DbEnv
+class AccessExample
 {
     private static final String FileName = "access.db";
 
-    public AccessExample(String home)
-         throws DbException
+    public AccessExample()
     {
-        super(home, null, 0);
-
-        try {
-            set_error_stream(System.err);
-            set_errpfx("AccessExample");
-        }
-        catch (Exception e) {
-            System.err.println(e.toString());
-            System.exit(1);
-        }
     }
 
     private static void usage()
@@ -41,27 +32,19 @@ class AccessExample extends DbEnv
 
     public static void main(String argv[])
     {
-        String home = null;
-        for (int i = 0; i < argv.length; ++i)
-        {
-            if (argv[i].equals("-h"))
-            {
-                home = argv[++i];
-            }
-            else
-            {
-                usage();
-            }
-        }
-
         try
         {
-            AccessExample app = new AccessExample(home);
+            AccessExample app = new AccessExample();
             app.run();
         }
         catch (DbException dbe)
         {
             System.err.println("AccessExample: " + dbe.toString());
+            System.exit(1);
+        }
+        catch (FileNotFoundException fnfe)
+        {
+            System.err.println("AccessExample: " + fnfe.toString());
             System.exit(1);
         }
         System.exit(0);
@@ -108,9 +91,17 @@ class AccessExample extends DbEnv
     }
 
     public void run()
-         throws DbException
+         throws DbException, FileNotFoundException
     {
-        Db table = Db.open(FileName, Db.DB_BTREE, Db.DB_CREATE, 0644, this, null);
+        // Remove the previous database.
+        new File(FileName).delete();
+
+        // Create the database object.
+        // There is no environment for this simple example.
+        Db table = new Db(null, 0);
+        table.set_error_stream(System.err);
+        table.set_errpfx("AccessExample");
+        table.open(FileName, null, Db.DB_BTREE, Db.DB_CREATE, 0644);
 
         //
         // Insert records into the database, where the key is the user
@@ -123,20 +114,18 @@ class AccessExample extends DbEnv
             if (line == null)
                 break;
 
-            byte buf[] = line.getBytes();
-            byte rbuf[] = (new StringBuffer(line)).reverse().
-                                toString().getBytes();
+            String reversed = (new StringBuffer(line)).reverse().toString();
 
-            Dbt key = new Dbt(buf);
-            key.set_size(buf.length);
-            Dbt data = new Dbt(rbuf);
-            data.set_size(rbuf.length);
+            // See definition of StringDbt below
+            //
+            StringDbt key = new StringDbt(line);
+            StringDbt data = new StringDbt(reversed);
 
             try
             {
                 int err;
                 if ((err = table.put(null, key, data, 0)) == Db.DB_KEYEXIST) {
-                    System.out.println("Key " + buf + " already exists.");
+                    System.out.println("Key " + line + " already exists.");
                 }
             }
             catch (DbException dbe)
@@ -151,20 +140,46 @@ class AccessExample extends DbEnv
         iterator = table.cursor(null, 0);
 
         // Walk through the table, printing the key/data pairs.
-        // We use the DB_DBT_MALLOC flag to ask DB to allocate
-        // byte arrays for the results.
-        Dbt key = new Dbt();
-        key.set_flags(Db.DB_DBT_MALLOC);
-        Dbt data = new Dbt();
-        data.set_flags(Db.DB_DBT_MALLOC);
+        // See class StringDbt defined below.
+        //
+        StringDbt key = new StringDbt();
+        StringDbt data = new StringDbt();
         while (iterator.get(key, data, Db.DB_NEXT) == 0)
         {
-            String key_string = new String(key.get_data(), 0, key.get_size());
-            String data_string =
-                new String(data.get_data(), 0, data.get_size());
-            System.out.println(key_string + " : " + data_string);
+            System.out.println(key.getString() + " : " + data.getString());
         }
         iterator.close();
         table.close(0);
+    }
+
+    // Here's an example of how you can extend a Dbt in a straightforward
+    // way to allow easy storage/retrieval of strings, or whatever
+    // kind of data you wish.  We've declared it as a static inner
+    // class, but it need not be.
+    //
+    static /*inner*/
+    class StringDbt extends Dbt
+    {
+        StringDbt()
+        {
+            set_flags(Db.DB_DBT_MALLOC); // tell Db to allocate on retrieval
+        }
+
+        StringDbt(String value)
+        {
+            setString(value);
+            set_flags(Db.DB_DBT_MALLOC); // tell Db to allocate on retrieval
+        }
+
+        void setString(String value)
+        {
+            set_data(value.getBytes());
+            set_size(value.length());
+        }
+
+        String getString()
+        {
+            return new String(get_data(), 0, get_size());
+        }
     }
 }

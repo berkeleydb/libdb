@@ -1,0 +1,66 @@
+<!--"@(#)lock_put.so	10.18 (Sleepycat) 9/6/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: lock_put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1>lock_put</h1>
+</td>
+<td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>
+#include &lt;db.h&gt;
+<p>
+int
+lock_put(DB_ENV *env, DB_LOCK *lock);
+</pre></h3>
+<h1>Description</h1>
+<p>
+The lock_put function releases <b>lock</b> from the lock table.
+<p>
+The lock_put
+function returns a non-zero error value on failure and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the lock_put function will fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
+fail in the same way.
+<p>
+In addition, the lock_put
+function may fail and return a non-zero error
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+</dl>
+<p>
+In addition, the lock_put function may fail and
+return a non-zero error
+for errors specified for other Berkeley DB and C library or system functions.
+<p>
+<h1>See Also</h1>
+<a href="../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a>,
+<a href="../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a>,
+<a href="../api_c/env_set_lk_max.html">DBENV-&gt;set_lk_max</a>,
+<a href="../api_c/lock_detect.html">lock_detect</a>,
+<a href="../api_c/lock_get.html">lock_get</a>,
+<a href="../api_c/lock_id.html">lock_id</a>,
+<a href="../api_c/lock_put.html">lock_put</a>,
+<a href="../api_c/lock_stat.html">lock_stat</a>
+and
+<a href="../api_c/lock_vec.html">lock_vec</a>.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

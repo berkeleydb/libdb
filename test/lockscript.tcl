@@ -1,26 +1,26 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)lockscript.tcl	10.2 (Sleepycat) 4/10/98
+#	@(#)lockscript.tcl	11.5 (Sleepycat) 10/28/99
 #
 # Random lock tester.
-# Usage: lockscript dir numiters numobjs sleepint degree readratio seed
+# Usage: lockscript dir numiters numobjs sleepint degree readratio
 # dir: lock directory.
 # numiters: Total number of iterations.
 # numobjs: Number of objects on which to lock.
 # sleepint: Maximum sleep interval.
 # degree: Maximum number of locks to acquire at once
 # readratio: Percent of locks that should be reads.
-# seed: Seed for random number generator.  If -1, use pid.
-source ../test/testutils.tcl
-source ./include.tcl
 
-set usage "lockscript dir numiters numobjs sleepint degree readratio seed"
+source ./include.tcl
+source $test_path/test.tcl
+
+set usage "lockscript dir numiters numobjs sleepint degree readratio"
 
 # Verify usage
-if { $argc != 7 } {
+if { $argc != 6 } {
 	puts stderr $usage
 	exit
 }
@@ -32,52 +32,47 @@ set numobjs [ lindex $argv 2 ]
 set sleepint [ lindex $argv 3 ]
 set degree [ lindex $argv 4 ]
 set readratio [ lindex $argv 5 ]
-set seed [ lindex $argv 6 ]
 set locker [pid]
 
-# Initialize seed
-if { $seed == -1 } {
-	srand $locker
-} else {
-	srand $seed
-}
+# Initialize random number generator
+global rand_init
+berkdb srand $rand_init
+
 
 puts -nonewline "Beginning execution for $locker: $numiters $numobjs "
-puts "$sleepint $degree $readratio $seed"
+puts "$sleepint $degree $readratio"
 flush stdout
 
-set lp [lock_open "" 0 0 -dbhome $dir]
-error_check_bad lock_open $lp NULL
-error_check_good lock_open [is_substr $lp lockmgr] 1
+set e [berkdb env -create -lock -mpool -home $dir]
+error_check_good env_open [is_substr $e env] 1
 
 for { set iter 0 } { $iter < $numiters } { incr iter } {
-	set nlocks [random_int 1 $degree]
+	set nlocks [berkdb random_int 1 $degree]
 	# We will always lock objects in ascending order to avoid
 	# deadlocks.
 	set lastobj 1
 	set locklist {}
 	for { set lnum 0 } { $lnum < $nlocks } { incr lnum } {
 		# Pick lock parameters
-		set obj [random_int $lastobj $numobjs]
+		set obj [berkdb random_int $lastobj $numobjs]
 		set lastobj [expr $obj + 1]
-		set x [random_int 1 100 ]
+		set x [berkdb random_int 1 100 ]
 		if { $x <= $readratio } {
-			set rw $DB_LOCK_READ
+			set rw read
 		} else {
-			set rw $DB_LOCK_WRITE
+			set rw write
 		}
 		puts "[timestamp] $locker $lnum: $rw $obj"
 
 		# Do get; add to list
-		set lockp [$lp get $locker $obj $rw 0]
+		set lockp [$e lock_get $rw $locker $obj]
 		lappend locklist $lockp
 		if {$lastobj > $numobjs} {
 			break
 		}
 	}
-
 	# Pick sleep interval
-	exec $SLEEP [ random_int 1 $sleepint ]
+	exec $SLEEP [berkdb random_int 1 $sleepint]
 
 	# Now release locks
 	puts "[timestamp] $locker released locks"
@@ -85,5 +80,10 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 	flush stdout
 }
 
+set ret [$e close]
+error_check_good env_close $ret 0
+
 puts "[timestamp] $locker Complete"
 flush stdout
+
+exit

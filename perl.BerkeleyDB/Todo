@@ -1,0 +1,67 @@
+
+  * add the examples from the pod into the test harness.
+
+  * add support for the join functionality.
+
+  * use '~' magic to store the inner data.
+
+  * Proper documentation.
+
+  * address or document the "close all cursors if you encounter an error"
+
+  * Change the $BerkeleyDB::Error to store the info in the db object,
+    if possible.
+
+  * do we need a close method? Is one needed for env, db, cursor etc?
+    Interaction with untie?
+
+    Should the close methods fail if there are still any children open,
+    e.g. if a database has one or more cursors open should the database
+    close fail?
+
+    Alternatively should the clode method arrange it so that all
+    children get closed?
+
+    If not document the fact that the destruction of the database
+    object will close the database.
+
+  * $BerkeleyDB::db_version is documented. &db_version isn't.
+
+  * migrate perl code into the .xs file where necessary
+
+  * convert as many of the DB examples files to BerkeleyDB format.
+
+
+Possibles
+
+  * for the get stuff zap the value to undef if it doesn't find the
+    key. This may be more intuitive for those folks who are used with
+    the $hash{key} interface.
+
+  * Text interface? This can be done as via Recno
+
+  * allow recno to allow base offset for arrays to be either 0 or 1.
+
+  * when duplicate keys are enabled, allow db_put($key, [$val1, $val2,...]) 
+
+
+2.x -> 3.x Upgrade
+==================
+
+Environment Verbose
+Env->open mode
+DB cache size extra parameter
+DB->open subdatabases
+An empty environment causes DB->open to fail
+where is __db.001 coming from?
+Change db_strerror for 0 to ""?
+Queue
+db_stat for Hash & Queue
+No TxnMgr
+
+    $env = BerkeleyDB::Env::Create
+    $env = create BerkeleyDB::Env
+    $status = $env->open()
+
+    $db = BerkeleyDB::Hash::Create
+    $status = $db->open()

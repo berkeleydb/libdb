@@ -1,10 +1,5 @@
-# @(#)README	10.72 (Sleepycat) 1/3/99
+Sleepycat Software: Berkeley DB 3.0.55: (November 15, 1999)
 
-This is version 2.7.7 (08/20/99) of Sleepycat Software's Berkeley DB
-product.  To view the documentation for this release, point your web
-browser at the distribution file db-2.7.7/docs/index.html.
-
-Sleepycat Software	db@sleepycat.com
-394 E. Riding Dr.	+1-510-526-3972
-Carlisle, MA 01741	+1-877-SLEEPYCAT (+1-877-753-3792, toll-free, USA only)
-USA
+This is version 3.0.55 of Berkeley DB from Sleepycat Software.
+To view the release documentation, load the distribution file
+docs/index.html into your web browser.

@@ -1,39 +1,44 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd004.tcl	8.2 (Sleepycat) 4/10/98
+#	@(#)recd004.tcl	11.8 (Sleepycat) 11/10/99
 #
-# Recovery Test #2.  Verify that we work correctly when big keys
-# get elevated.
+# Recovery Test #4.
+# Verify that we work correctly when big keys get elevated.
 proc recd004 { method {select 0} } {
+	source ./include.tcl
+
 	set opts [convert_args $method ""]
-	set method [convert_method $method]
-	if { $method == "DB_RECNO" } {
-		puts "Recd003 skipping for method $method"
+	set omethod [convert_method $method]
+
+	if { [is_record_based $method] == 1 } {
+		puts "Recd004 skipping for method $method"
 		return
 	}
 	puts "Recd004: $method big-key on internal page recovery tests"
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
-
 	cleanup $testdir
 	set testfile recd004.db
-	set flags [expr $DB_CREATE | $DB_THREAD | \
-	    $DB_INIT_LOG | $DB_INIT_LOCK | $DB_INIT_MPOOL | $DB_INIT_TXN]
-
+	set testfile2 recd004-2.db
+	set eflags "-create -log -lock -mpool -txn -home $testdir"
 	puts "\tRecd004.a: creating environment"
-	set env_cmd "dbenv -dbhome $testdir -dbflags $flags"
+	set env_cmd "berkdb env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_bad dbenv $dbenv NULL
 
-	# Create the database. We will use a small page size so that we
+	# Create the databases. We will use a small page size so that we
 	# elevate quickly
-	set db [dbopen $testfile [expr $DB_CREATE | $DB_TRUNCATE | $DB_THREAD] \
-	    0644 $method -psize 512 -dbenv $dbenv $opts]
+	set oflags "-create -mode 0644 \
+	    $omethod -env $dbenv $opts -pagesize 512 $testfile"
+	set db [eval {berkdb open} $oflags]
+	error_check_bad db_open $db NULL
+	error_check_good db_open [is_substr $db db] 1
+	error_check_good db_close [$db close] 0
+	set oflags "-create -mode 0644 \
+	    $omethod -env $dbenv $opts -pagesize 512 $testfile2"
+	set db [eval {berkdb open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
@@ -49,7 +54,7 @@ proc recd004 { method {select 0} } {
 	# should be more than sufficient.
 	set n 512
 	foreach pair $slist {
-		set cmd [my_subst [lindex $pair 0]]
+		set cmd [subst [lindex $pair 0]]
 		set msg [lindex $pair 1]
 		if { $select != 0 } {
 			set tag [lindex $msg 0]
@@ -61,5 +66,16 @@ proc recd004 { method {select 0} } {
 		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
+		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
+		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+			$cmd $msg
+		op_recover prepare-commit $testdir $env_cmd $testfile2 \
+			$cmd $msg
 	}
+
+	puts "\tRecd004.d: Verify db_printlog can read logfile"
+	set tmpfile $testdir/printlog.out
+	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	error_check_good db_printlog $stat 0
+	exec $RM $tmpfile
 }

@@ -1,58 +1,61 @@
-<! "@(#)get.so	10.4 (Sleepycat) 10/20/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)get.so	10.19 (Sleepycat) 11/10/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Simple Tutorial</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Simple Tutorial</dl></h3></td>
+<td width="1%"><a href="../../ref/simple_tut/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/del.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Retrieving elements from a database</h1>
 <p>
 The simplest way to retrieve elements from a database is the
-<a href="../../api_c/Db/get.html">DB->get</a> interface.  This interface is accessed through
-a function pointer that is an element of the database handle
-returned by <a href="../../api_c/Db/open.html">db_open</a>.
+<a href="../../api_c/db_get.html">DB-&gt;get</a> interface.
 <p>
-The <a href="../../api_c/Db/get.html">DB->get</a> interface takes the same five arguments that the
-<a href="../../api_c/Db/put.html">DB->put</a> interface takes:
+The <a href="../../api_c/db_get.html">DB-&gt;get</a> interface takes the same five arguments that the
+<a href="../../api_c/db_put.html">DB-&gt;put</a> interface takes:
+<p>
 <dl compact>
-<p><dt>db<dd>The database handle returned by <a href="../../api_c/Db/open.html">db_open</a>.
-<p><dt>txnid<dd>A transaction ID.
-In our simple case, we aren't expecting to recover the database after
-application or system crash, so we aren't using transactions, and will
-leave this argument unspecified.
+<p><dt>db<dd>The database handle returned by <a href="../../api_c/db_create.html">db_create</a>.
+<p><dt>txnid<dd>A transaction ID.  In our simple case, we aren't expecting to recover
+the database after application or system crash, so we aren't using
+transactions, and will leave this argument NULL.
 <p><dt>key<dd>The key item for the key/data pair that we want to retrieve from the
 database.
 <p><dt>data<dd>The data item for the key/data pair that we want to retrieve from the
 database.
-<p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/Db/get.html">DB->get</a>
+<p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/db_get.html">DB-&gt;get</a>
 interface.
 </dl>
 <p>
-Here's what the code to call <a href="../../api_c/Db/get.html">DB->get</a> looks like:
-<p><ul><pre>
-#include &lt;sys/types.h&gt;
+Here's what the code to call <a href="../../api_c/db_get.html">DB-&gt;get</a> looks like:
+<blockquote><pre>#include &lt;sys/types.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;db.h&gt;
 <p>
-#define	DATABASE	"access.db"
+#define	DATABASE "access.db"
 <p>
 int
 main()
 {
-	extern int errno;
 	DB *dbp;
 	DBT key, data;
+	int ret;
 <p>
-	if ((errno = db_open(DATABASE,
-	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
-		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
+	}
+	if ((ret = dbp-&gt;open(
+	    dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+		dbp-&gt;err(dbp, ret, "%s", DATABASE);
+		goto err;
 	}
 <p>
 	memset(&key, 0, sizeof(key));
@@ -62,48 +65,41 @@ main()
 	data.data = "apple";
 	data.size = sizeof("apple");
 <p>
-	switch (errno = dbp->put(dbp, NULL, &key, &data, 0)) {
-	case 0:
+	if ((ret = dbp-&gt;put(dbp, NULL, &key, &data, 0)) == 0)
 		printf("db: %s: key stored.\n", (char *)key.data);
-		break;
-	default:
-		fprintf(stderr, "db: put: %s\n", strerror(errno));
-		exit (1);
+	else {
+		dbp-&gt;err(dbp, ret, "DB-&gt;put");
+		goto err;
 	}
-<p><a name="startcode"><b>
-	switch (errno = dbp->get(dbp, NULL, &key, &data, 0)) {
-	case 0:
+<p><b>
+	if ((ret = dbp-&gt;get(dbp, NULL, &key, &data, 0)) == 0)
 		printf("db: %s: key retrieved: data was %s.\n",
 		    (char *)key.data, (char *)data.data);
-		break;
-	case DB_NOTFOUND:
-		printf("db: %s: key not found.\n", (char *)key.data);
-		break;
-	default:
-		fprintf(stderr, "db: get: %s\n", strerror(errno));
-		exit (1);
+	else {
+		dbp-&gt;err(dbp, ret, "DB-&gt;get");
+		goto err;
 	}
-</b>
-</pre></ul><p>
+</b></pre></blockquote>
 <p>
-Note that we do not have to clear the structures that we're passing to
-<a href="../../api_c/Db/get.html">DB->get</a> again, we can simply use the ones that were passed to
-the <a href="../../api_c/Db/put.html">DB->put</a> function.
+Normally, it is not necessary to clear the <a href="../../api_c/dbt.html">DBT</a> structures passed
+to the Berkeley DB functions between calls.  This is not necessarily true, when
+some of the less commonly used flags for those structures are specified,
+and the <a href="../../api_c/dbt.html">DBT</a> manual page should be consulted for details in those
+cases.
 <p>
-We also have to add a new possible error condition, DB_NOTFOUND.
-This is because there are three possible returns from <a href="../../api_c/Db/get.html">DB->get</a>:
+It is possible, of course, to distinguish between system errors and the
+key/data pair simply not existing in the database.  There are three
+possible returns from <a href="../../api_c/db_get.html">DB-&gt;get</a>:
 <ol>
-<li>The call might be successful and the key found, in which case the
-error return will be 0.
-<li>The call might be successful, but the key <b>not</b> found, in
-which case the error return will be DB_NOTFOUND.
-<li>Or, the call might not be successful, in which case a system error
-will be returned.
+<p><li>The call might be successful and the key found, in which case the return
+value will be 0.
+<li>The call might be successful, but the key not found, in which
+case the return value will be <a href="../../ref/program/errorret.html#DB_NOTFOUND">DB_NOTFOUND</a>.
+<li>The call might not be successful, in which case the return value
+with be a system error.
 </ol>
-<p>
-<a href="../../ref/simple_tut/put.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/simple_tut/del.html"><img src="../../images/next.gif"></a>
-</tt>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/del.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

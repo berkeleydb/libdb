@@ -1,40 +1,33 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test045.tcl	10.10 (Sleepycat) 10/3/98
+#	@(#)test045.tcl	11.7 (Sleepycat) 10/25/99
 #
 # DB Test 45 Run the random db tester on the specified access method.
 # Options are:
-# -adds <maximum number of keys before you disable adds>
-# -cursors <number of cursors>
-# -dataavg <average data size>
-# -dups <allow duplicates in file>
-# -delete <minimum number of keys before you disable deletes>
-# -errpct <Induce errors errpct of the time>
-# -init <initial number of entries in database>
-# -keyavg <average key size>
-# -seed <Use the specified seed>
-
+#	-adds <maximum number of keys before you disable adds>
+#	-cursors <number of cursors>
+#	-dataavg <average data size>
+#	-delete <minimum number of keys before you disable deletes>
+#	-dups <allow duplicates in file>
+#	-errpct <Induce errors errpct of the time>
+#	-init <initial number of entries in database>
+#	-keyavg <average key size>
 proc test045 { method {nops 10000} args } {
-source ./include.tcl
-set usage "\t-adds <maximum number of keys before you disable adds>\
-\t-cursors <number of cursors>\
-\t-dataavg <average data size>\
-\t-dups <allow duplicates in file>\
-\t-delete <minimum number of keys before you disable deletes>\
-\t-errpct <Induce errors errpct of the time>\
-\t-init <initial number of entries in database>\
-\t-keyavg <average key size>\
-\t-seed <Use the specified seed>"
+	source ./include.tcl
 
-	set method [convert_method $method]
-	if { [string compare $method DB_RECNO] == 0 } {
-		puts "Test$reopen skipping for method RECNO"
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
+
+	if { [is_record_based $method] == 1 } {
+		puts "Test045: skipping for method $method"
 		return
 	}
+
 	puts "Test045: Random tester on $method for $nops operations"
+
 	# Set initial parameters
 	set adds 100000
 	set cursors 5
@@ -44,24 +37,20 @@ set usage "\t-adds <maximum number of keys before you disable adds>\
 	set errpct 0
 	set init 0
 	set keyavg 25
-	set seed -1
 
-	# Process parameters
+	# Process arguments
+	set oargs ""
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
-			-a.*  { incr i; set adds [lindex $args $i] }
-			-c.*  { incr i; set cursors [lindex $args $i] }
-			-da.* { incr i; set dataavg [lindex $args $i] }
-			-de.* { incr i; set delete [lindex $args $i] }
-			-du.* { incr i; set dups [lindex $args $i] }
-			-e.*  { incr i; set errpct [lindex $args $i] }
-			-i.*  { incr i; set init [lindex $args $i] }
-			-k.*  { incr i; set keyavg [lindex $args $i] }
-			-s.*  { incr i; set seed [lindex $args $i] }
-			default {
-				puts $usage
-				return
-			}
+			-adds	 { incr i; set adds [lindex $args $i] }
+			-cursors { incr i; set cursors [lindex $args $i] }
+			-dataavg { incr i; set dataavg [lindex $args $i] }
+			-delete	 { incr i; set delete [lindex $args $i] }
+			-dups	 { incr i; set dups [lindex $args $i] }
+			-errpct	 { incr i; set errpct [lindex $args $i] }
+			-init	 { incr i; set init [lindex $args $i] }
+			-keyavg	 { incr i; set keyavg [lindex $args $i] }
+			default	 { append oargs [lindex $args $i] }
 		}
 	}
 
@@ -72,7 +61,8 @@ set usage "\t-adds <maximum number of keys before you disable adds>\
 
 	# Run the script with 3 times the number of initial elements to
 	# set it up.
-	set db [dbopen $f [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method]
+	set db [eval {berkdb \
+	    open -create -truncate -mode 0644 $omethod} $oargs {$f}]
 	error_check_good dbopen:$f [is_valid_db $db] TRUE
 
 	set r [$db close]
@@ -84,14 +74,21 @@ set usage "\t-adds <maximum number of keys before you disable adds>\
 	puts "\tTest045.a: Initializing database"
 	if { $init != 0 } {
 		set n [expr 3 * $init]
-		exec ./dbtest ../test/dbscript.tcl $f $n 1 $init $n $keyavg \
-		    $dataavg $dups 0 -1 > $testdir/test045.init
+		exec $tclsh_path \
+		    $test_path/dbscript.tcl $f $n \
+		    1 $init $n $keyavg $dataavg $dups 0 -1 \
+		    > $testdir/test045.init
 	}
 
-	puts "\tTest045.b: Now firing off random dbscript, running: "
+	puts "\tTest045.b: Now firing off berkdb rand dbscript, running: "
 	# Now the database is initialized, run a test
-	puts "./dbtest ../test/dbscript.tcl $f $nops $cursors $delete $adds \
-	    $keyavg $dataavg $dups $errpct $seed > $testdir/test045.log"
-	exec ./dbtest ../test/dbscript.tcl $f $nops $cursors $delete $adds \
-	    $keyavg $dataavg $dups $errpct $seed > $testdir/test04045og
+	puts "$tclsh_path\
+	    $test_path/dbscript.tcl $f $nops $cursors $delete $adds \
+	    $keyavg $dataavg $dups $errpct > $testdir/test045.log"
+
+	exec $tclsh_path \
+	    $test_path/dbscript.tcl $f \
+	    $nops $cursors $delete $adds $keyavg \
+	    $dataavg $dups $errpct \
+	    > $testdir/test045.log
 }

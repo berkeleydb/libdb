@@ -1,27 +1,27 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dead002.tcl	8.3 (Sleepycat) 4/10/98
+#	@(#)dead002.tcl	11.5 (Sleepycat) 9/21/99
 #
 # Deadlock Test 2.
 # Identical to Test 1 except that instead of running a standalone deadlock
 # detector, we create the region with "detect on every wait"
 proc dead002 { { procs "2 4 10" } {tests "ring clump" } } {
+	source ./include.tcl
+
 	puts "Dead002: Deadlock detector tests"
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
 	cleanup $testdir
 
 	# Create the environment.
 	puts "\tDead002.a: creating environment"
-	set lm [lock_open "" $DB_CREATE 0644 -detect 1]
-	error_check_bad lock_open $lm NULL
-	error_check_good lock_open [is_substr $lm lockmgr] 1
-	error_check_good lock_close [$lm close] 0
+	set env [berkdb env \
+	    -create -mode 0644 -home $testdir -mpool -lock -lock_detect default]
+	#	set lm [lock_open "" $DB_CREATE 0644 -detect 1]
+	error_check_good lock_env:open [is_valid_env $env] TRUE
+	error_check_good lock_env:close [$env close] 0
 
 	foreach t $tests {
 		set pidlist ""
@@ -29,11 +29,12 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } } {
 			# Fire off the tests
 			puts "\tDead002: $n procs of test $t"
 			for { set i 0 } { $i < $n } { incr i } {
-#				puts "./dbtest ../test/ddscript.tcl $testdir \
-#				    $t $i $i $n >& $testdir/dead002.log.$i"
-				set p [ exec ./dbtest ../test/ddscript.tcl \
-				    $testdir $t $i $i $n >& \
-				    $testdir/dead002.log.$i &]
+				puts "$tclsh_path\
+				    $test_path/ddscript.tcl $testdir \
+				    $t $i $i $n >& $testdir/dead002.log.$i"
+				set p [exec $tclsh_path \
+				    $test_path/ddscript.tcl $testdir $t $i \
+				    $i $n >& $testdir/dead002.log.$i &]
 				lappend pidlist $p
 			}
 			watch_procs $pidlist 5
@@ -63,4 +64,3 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } } {
 		exec $RM -f $testdir/dead002.log.$i
 	}
 }
-

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -23,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -44,22 +40,23 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_search.c	10.25 (Sleepycat) 12/16/98";
+static const char sccsid[] = "@(#)bt_search.c	11.8 (Sleepycat) 10/21/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <string.h>
 #endif
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
 #include "btree.h"
+#include "lock.h"
 
 /*
  * __bam_search --
@@ -77,18 +74,19 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 	db_recno_t *recnop;
 {
 	BTREE *t;
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_LOCK lock;
 	PAGE *h;
 	db_indx_t base, i, indx, lim;
+	db_lockmode_t lock_mode;
 	db_pgno_t pg;
 	db_recno_t recno;
 	int cmp, jump, ret, stack;
 
 	dbp = dbc->dbp;
 	cp = dbc->internal;
-	t = dbp->internal;
+	t = dbp->bt_internal;
 	recno = 0;
 
 	BT_STK_CLR(cp);
@@ -109,13 +107,14 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 	 *
 	 * Retrieve the root page.
 	 */
-	pg = PGNO_ROOT;
+	pg = ((BTREE *)dbp->bt_internal)->bt_root;
 	stack = F_ISSET(dbp, DB_BT_RECNUM) && LF_ISSET(S_STACK);
-	if ((ret = __bam_lget(dbc,
-	    0, pg, stack ? DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
+	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
 	if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
-		(void)__BT_LPUT(dbc, lock);
+		/* Did not read it, so we can release the lock */
+		(void)__LPUT(dbc, lock);
 		return (ret);
 	}
 
@@ -131,11 +130,13 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 	    ((LF_ISSET(S_PARENT) && (u_int8_t)(stop + 1) >= h->level) ||
 	    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
 		(void)memp_fput(dbp->mpf, h, 0);
-		(void)__BT_LPUT(dbc, lock);
-		if ((ret = __bam_lget(dbc, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+		(void)__LPUT(dbc, lock);
+		lock_mode = DB_LOCK_WRITE;
+		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
 		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
-			(void)__BT_LPUT(dbc, lock);
+			/* Did not read it, so we can release the lock */
+			(void)__LPUT(dbc, lock);
 			return (ret);
 		}
 		stack = 1;
@@ -153,8 +154,8 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 		for (base = 0,
 		    lim = NUM_ENT(h) / (db_indx_t)jump; lim != 0; lim >>= 1) {
 			indx = base + ((lim >> 1) * jump);
-			if ((cmp =
-			    __bam_cmp(dbp, key, h, indx, t->bt_compare)) == 0) {
+			if ((cmp = __bam_cmp(dbp,
+			    key, h, indx, t->bt_compare)) == 0) {
 				if (TYPE(h) == P_LBTREE)
 					goto match;
 				goto next;
@@ -183,10 +184,10 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 			 * Possibly returning a deleted record -- DB_SET_RANGE,
 			 * DB_KEYFIRST and DB_KEYLAST don't require an exact
 			 * match, and we don't want to walk multiple pages here
-			 * to find an undeleted record.  This is handled in the
-			 * __bam_c_search() routine.
+			 * to find an undeleted record.  This is handled by the
+			 * calling routine.
 			 */
-			BT_STK_ENTER(cp, h, base, lock, ret);
+			BT_STK_ENTER(cp, h, base, lock, lock_mode, ret);
 			return (ret);
 		}
 
@@ -202,23 +203,24 @@ __bam_search(dbc, key, flags, stop, recnop, exactp)
 		 * If we're trying to calculate the record number, sum up
 		 * all the record numbers on this page up to the indx point.
 		 */
-		if (recnop != NULL)
+next:		if (recnop != NULL)
 			for (i = 0; i < indx; ++i)
 				recno += GET_BINTERNAL(h, i)->nrecs;
 
-next:		pg = GET_BINTERNAL(h, indx)->pgno;
+		pg = GET_BINTERNAL(h, indx)->pgno;
 		if (stack) {
 			/* Return if this is the lowest page wanted. */
 			if (LF_ISSET(S_PARENT) && stop == h->level) {
-				BT_STK_ENTER(cp, h, indx, lock, ret);
+				BT_STK_ENTER(cp, h, indx, lock, lock_mode, ret);
 				return (ret);
 			}
-			BT_STK_PUSH(cp, h, indx, lock, ret);
+			BT_STK_PUSH(cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 
+			lock_mode = DB_LOCK_WRITE;
 			if ((ret =
-			    __bam_lget(dbc, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+			    __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 				goto err;
 		} else {
 			/*
@@ -233,10 +235,18 @@ next:		pg = GET_BINTERNAL(h, indx)->pgno;
 
 			(void)memp_fput(dbp->mpf, h, 0);
 
+			lock_mode = stack &&
+			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
 			if ((ret =
-			    __bam_lget(dbc, 1, pg, stack && LF_ISSET(S_WRITE) ?
-			    DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+			    __db_lget(dbc, 1, pg, lock_mode, 0, &lock)) != 0) {
+				/*
+				 * If we fail, discard the lock we held.  This
+				 * is OK because this only happens when we are
+				 * descending the tree holding read-locks.
+				 */
+				__LPUT(dbc, lock);
 				goto err;
+			}
 		}
 		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0)
 			goto err;
@@ -271,8 +281,10 @@ match:	*exactp = 1;
 			indx -= P_INDX;
 
 	/*
-	 * Now check if we are allowed to return deleted items; if not
-	 * find the next (or previous) non-deleted item.
+	 * Now check if we are allowed to return deleted items; if not, then
+	 * find the next (or previous) non-deleted duplicate entry.  (We do
+	 * not move from the original found key on the basis of the S_DELNO
+	 * flag.)
 	 */
 	if (LF_ISSET(S_DELNO)) {
 		if (LF_ISSET(S_DUPLAST))
@@ -286,16 +298,21 @@ match:	*exactp = 1;
 			    h->inp[indx] == h->inp[indx + P_INDX])
 				indx += P_INDX;
 
+		/*
+		 * If we weren't able to find a non-deleted duplicate, return
+		 * DB_NOTFOUND.
+		 */
 		if (B_DISSET(GET_BKEYDATA(h, indx + O_INDX)->type))
 			goto notfound;
 	}
 
-	BT_STK_ENTER(cp, h, indx, lock, ret);
+	BT_STK_ENTER(cp, h, indx, lock, lock_mode, ret);
 	return (ret);
 
 notfound:
+	/* Keep the page locked for serializability. */
 	(void)memp_fput(dbp->mpf, h, 0);
-	(void)__BT_LPUT(dbc, lock);
+	(void)__TLPUT(dbc, lock);
 	ret = DB_NOTFOUND;
 
 err:	if (cp->csp > cp->sp) {
@@ -309,6 +326,9 @@ err:	if (cp->csp > cp->sp) {
  * __bam_stkrel --
  *	Release all pages currently held in the stack.
  *
+ * The caller must be sure that setting nolocks will not effect either
+ * serializability or recoverability.
+ *
  * PUBLIC: int __bam_stkrel __P((DBC *, int));
  */
 int
@@ -316,7 +336,7 @@ __bam_stkrel(dbc, nolocks)
 	DBC *dbc;
 	int nolocks;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	EPG *epg;
 
@@ -327,11 +347,12 @@ __bam_stkrel(dbc, nolocks)
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
 		if (epg->page != NULL)
 			(void)memp_fput(dbp->mpf, epg->page, 0);
-		if (epg->lock != LOCK_INVALID)
+		if (epg->lock.off != LOCK_INVALID) {
 			if (nolocks)
-				(void)__BT_LPUT(dbc, epg->lock);
+				(void)__LPUT(dbc, epg->lock);
 			else
-				(void)__BT_TLPUT(dbc, epg->lock);
+				(void)__TLPUT(dbc, epg->lock);
+		}
 	}
 
 	/* Clear the stack, all pages have been released. */
@@ -344,11 +365,11 @@ __bam_stkrel(dbc, nolocks)
  * __bam_stkgrow --
  *	Grow the stack.
  *
- * PUBLIC: int __bam_stkgrow __P((CURSOR *));
+ * PUBLIC: int __bam_stkgrow __P((BTREE_CURSOR *));
  */
 int
 __bam_stkgrow(cp)
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 {
 	EPG *p;
 	size_t entries;

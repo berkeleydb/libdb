@@ -1,0 +1,121 @@
+<!--"@(#)db_close.so	10.19 (Sleepycat) 10/20/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: Db.close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1>Db.close</h1>
+</td>
+<td width="1%">
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>
+import com.sleepycat.db.*;
+<p>
+public void close(int flags)
+	throws DbException;
+</pre></h3>
+<h1>Description</h1>
+<p>
+The Db.close method flushes any cached database information to disk,
+closes any open cursors, frees any allocated resources, and closes any
+underlying files.  Since key/data pairs are cached in memory, failing to
+sync the file with the Db.close or <a href="../api_java/db_sync.html">Db.sync</a> method may result
+in inconsistent or lost information.
+<p>
+The <b>flags</b> parameter must be set to 0 or the following value:
+<dl compact>
+<p><dt>Db.<a name="DB_NOSYNC">DB_NOSYNC</a><dd>Do not flush cached information to disk.
+<p>
+The DB_NOSYNC flag is a dangerous option.  It should only be set if the
+application is doing logging (with transactions) so that the database is
+recoverable after a system or application crash, or if the database is
+always generated from scratch after any system or application crash.
+<p>
+<b>It is important to understand that flushing cached information to disk
+only minimizes the window of opportunity for corrupted data.</b>
+While unlikely, it is possible for database corruption to happen if a
+system or application crash occurs while writing data to the database.
+To ensure that database corruption never occurs, applications must either:
+use transactions and logging with automatic recovery, use logging and
+application-specific recovery, or edit a copy of the database,
+and, once all applications using the database have successfully called
+Db.close, atomically replace the original database with the
+updated copy.
+</dl>
+<p>
+When multiple threads are using the Berkeley DB handle concurrently, only a single
+thread may call the Db.close method.
+<p>
+Once Db.close has been called, regardless of its return, the
+<a href="../api_java/db_class.html">Db</a> handle may not be accessed again.
+<p>
+The Db.close
+method throws an exception that encapsulates a non-zero error value on
+failure, and <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">Db.DB_INCOMPLETE</a> if the underlying
+database still has dirty pages in the cache.  (The only reason for a
+return of <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">Db.DB_INCOMPLETE</a> is if another thread of control was
+writing pages in the underlying database file at the same time as the
+Db.close method was being called, therefore this return can normally
+be ignored.)
+<p>
+The Db.close
+method throws an exception that encapsulates a non-zero error value on
+failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Db.close method will fail and throw a
+<a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will fail in the same way.
+<p>
+In addition, the Db.close method may fail and
+throw an exception
+for errors specified for other Berkeley DB and C library or system methods.
+<p>
+<h3>Class</h3>
+<a href="../api_java/db_class.html">Db</a>
+<p>
+<h1>See Also</h1>
+<a href="../api_java/db_close.html">Db.close</a>,
+<a href="../api_java/db_cursor.html">Db.cursor</a>,
+<a href="../api_java/db_del.html">Db.del</a>,
+<a href="../api_java/db_fd.html">Db.fd</a>,
+<a href="../api_java/db_get.html">Db.get</a>,
+<a href="../api_java/db_get_byteswapped.html">Db.get_byteswapped</a>,
+<a href="../api_java/db_get_type.html">Db.get_type</a>,
+<a href="../api_java/db_join.html">Db.join</a>,
+<a href="../api_java/db_open.html">Db.open</a>,
+<a href="../api_java/db_put.html">Db.put</a>,
+<a href="../api_java/db_remove.html">Db.remove</a>,
+<a href="../api_java/db_set_bt_minkey.html">Db.set_bt_minkey</a>,
+<a href="../api_java/db_set_cachesize.html">Db.set_cachesize</a>,
+<a href="../api_java/db_set_errcall.html">Db.set_errcall</a>,
+<a href="../api_java/db_set_errpfx.html">Db.set_errpfx</a>,
+<a href="../api_java/db_set_flags.html">Db.set_flags</a>,
+<a href="../api_java/db_set_h_ffactor.html">Db.set_h_ffactor</a>,
+<a href="../api_java/db_set_h_nelem.html">Db.set_h_nelem</a>,
+<a href="../api_java/db_set_lorder.html">Db.set_lorder</a>,
+<a href="../api_java/db_set_pagesize.html">Db.set_pagesize</a>,
+<a href="../api_java/db_set_re_delim.html">Db.set_re_delim</a>,
+<a href="../api_java/db_set_re_len.html">Db.set_re_len</a>,
+<a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,
+<a href="../api_java/db_set_re_source.html">Db.set_re_source</a>,
+<a href="../api_java/db_stat.html">Db.stat</a>,
+<a href="../api_java/db_sync.html">Db.sync</a>
+and
+<a href="../api_java/db_upgrade.html">Db.upgrade</a>.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,19 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_dir.c	10.20 (Sleepycat) 10/28/98";
+static const char sccsid[] = "@(#)os_dir.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #include "db_int.h"
 #include "os_jump.h"
-#include "common_ext.h"
 
 /*
  * __os_dirlist --
@@ -35,15 +34,15 @@ __os_dirlist(dir, namesp, cntp)
 
 	(void)snprintf(filespec, sizeof(filespec), "%s/*", dir);
 	if ((dirhandle = _findfirst(filespec, &fdata)) == -1)
-		return (errno);
+		return (__os_get_errno());
 
 	names = NULL;
 	finished = 0;
 	for (arraysz = cnt = 0; finished != 1; ++cnt) {
 		if (cnt >= arraysz) {
 			arraysz += 100;
-			if ((ret = __os_realloc(&names,
-			    arraysz * sizeof(names[0]))) != 0)
+			if ((ret = __os_realloc(arraysz * sizeof(names[0]),
+			    NULL, &names)) != 0)
 				goto nomem;
 		}
 		if ((ret = __os_strdup(fdata.name, &names[cnt])) != 0)
@@ -65,8 +64,6 @@ nomem:	if (names != NULL)
 /*
  * __os_dirfree --
  *	Free the list of files.
- *
- * PUBLIC: void __os_dirfree __P((char **, int));
  */
 void
 __os_dirfree(names, cnt)

@@ -25,6 +25,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_del
 
 /*
  * Class:     com_sleepycat_db_Dbc
+ * Method:    dup
+ * Signature: (I)Lcom/sleepycat/db/Dbc;
+ */
+JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Dbc_dup
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Dbc
  * Method:    finalize
  * Signature: ()V
  */

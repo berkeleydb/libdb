@@ -1,20 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_rw.c	10.11 (Sleepycat) 10/12/98";
+static const char sccsid[] = "@(#)os_rw.c	11.2 (Sleepycat) 9/20/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <unistd.h>
 #endif
 
@@ -40,39 +39,37 @@ __os_io(db_iop, op, niop)
 	case DB_IO_READ:
 		if (__db_jump.j_read != NULL)
 			goto slow;
-		*niop = pread(db_iop->fd_io, db_iop->buf,
+		*niop = pread(db_iop->fhp->fd, db_iop->buf,
 		    db_iop->bytes, (off_t)db_iop->pgno * db_iop->pagesize);
 		break;
 	case DB_IO_WRITE:
 		if (__db_jump.j_write != NULL)
 			goto slow;
-		*niop = pwrite(db_iop->fd_io, db_iop->buf,
+		*niop = pwrite(db_iop->fhp->fd, db_iop->buf,
 		    db_iop->bytes, (off_t)db_iop->pgno * db_iop->pagesize);
 		break;
 	}
-	if (*niop == db_iop->bytes)
+	if (*niop == (ssize_t)db_iop->bytes)
 		return (0);
 slow:
 #endif
-	if (db_iop->mutexp != NULL)
-		(void)__db_mutex_lock(db_iop->mutexp, db_iop->fd_lock);
+	MUTEX_THREAD_LOCK(db_iop->mutexp);
 
-	if ((ret = __os_seek(db_iop->fd_io,
-	    db_iop->pagesize, db_iop->pgno, 0, 0, SEEK_SET)) != 0)
+	if ((ret = __os_seek(db_iop->fhp,
+	    db_iop->pagesize, db_iop->pgno, 0, 0, DB_OS_SEEK_SET)) != 0)
 		goto err;
 	switch (op) {
 	case DB_IO_READ:
 		ret =
-		    __os_read(db_iop->fd_io, db_iop->buf, db_iop->bytes, niop);
+		    __os_read(db_iop->fhp, db_iop->buf, db_iop->bytes, niop);
 		break;
 	case DB_IO_WRITE:
 		ret =
-		    __os_write(db_iop->fd_io, db_iop->buf, db_iop->bytes, niop);
+		    __os_write(db_iop->fhp, db_iop->buf, db_iop->bytes, niop);
 		break;
 	}
 
-err:	if (db_iop->mutexp != NULL)
-		(void)__db_mutex_unlock(db_iop->mutexp, db_iop->fd_lock);
+err:	MUTEX_THREAD_UNLOCK(db_iop->mutexp);
 
 	return (ret);
 
@@ -82,11 +79,11 @@ err:	if (db_iop->mutexp != NULL)
  * __os_read --
  *	Read from a file handle.
  *
- * PUBLIC: int __os_read __P((int, void *, size_t, ssize_t *));
+ * PUBLIC: int __os_read __P((DB_FH *, void *, size_t, ssize_t *));
  */
 int
-__os_read(fd, addr, len, nrp)
-	int fd;
+__os_read(fhp, addr, len, nrp)
+	DB_FH *fhp;
 	void *addr;
 	size_t len;
 	ssize_t *nrp;
@@ -98,9 +95,9 @@ __os_read(fd, addr, len, nrp)
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nr, offset += nr) {
 		if ((nr = __db_jump.j_read != NULL ?
-		    __db_jump.j_read(fd, taddr, len - offset) :
-		    read(fd, taddr, len - offset)) < 0)
-			return (errno);
+		    __db_jump.j_read(fhp->fd, taddr, len - offset) :
+		    read(fhp->fd, taddr, len - offset)) < 0)
+			return (__os_get_errno());
 		if (nr == 0)
 			break;
 	}
@@ -112,11 +109,11 @@ __os_read(fd, addr, len, nrp)
  * __os_write --
  *	Write to a file handle.
  *
- * PUBLIC: int __os_write __P((int, void *, size_t, ssize_t *));
+ * PUBLIC: int __os_write __P((DB_FH *, void *, size_t, ssize_t *));
  */
 int
-__os_write(fd, addr, len, nwp)
-	int fd;
+__os_write(fhp, addr, len, nwp)
+	DB_FH *fhp;
 	void *addr;
 	size_t len;
 	ssize_t *nwp;
@@ -128,9 +125,9 @@ __os_write(fd, addr, len, nwp)
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nw, offset += nw)
 		if ((nw = __db_jump.j_write != NULL ?
-		    __db_jump.j_write(fd, taddr, len - offset) :
-		    write(fd, taddr, len - offset)) < 0)
-			return (errno);
+		    __db_jump.j_write(fhp->fd, taddr, len - offset) :
+		    write(fhp->fd, taddr, len - offset)) < 0)
+			return (__os_get_errno());
 	*nwp = len;
 	return (0);
 }

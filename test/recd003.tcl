@@ -1,72 +1,83 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd003.tcl	10.6 (Sleepycat) 4/10/98
+#	@(#)recd003.tcl	11.8 (Sleepycat) 11/10/99
 #
 # Recovery Test 3.
 # Test all the duplicate log messages and recovery operations.  We make
 # sure that we exercise all possible recovery actions: redo, undo, undo
 # but no fix necessary and redo but no fix necessary.
 proc recd003 { method {select 0} } {
-	set method [convert_method $method]
-	if { $method == "DB_RECNO" } {
-		puts "Recd003 skipping for method RECNO"
+	source ./include.tcl
+
+	set omethod [convert_method $method]
+
+	if { [is_record_based $method] == 1 } {
+		puts "Recd003 skipping for method $method"
 		return
 	}
 	puts "Recd003: $method duplicate recovery tests"
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
-
 	cleanup $testdir
+	# See comment in recd001.tcl for why there are two database files...
 	set testfile recd003.db
-	set flags [expr $DB_CREATE | $DB_THREAD | \
-	    $DB_INIT_LOG | $DB_INIT_LOCK | $DB_INIT_MPOOL | $DB_INIT_TXN]
+	set testfile2 recd003-2.db
+	set eflags "-create -log -lock -mpool -txn -home $testdir"
 
 	puts "\tRecd003.a: creating environment"
-	set env_cmd "dbenv -dbhome $testdir -dbflags $flags"
+	set env_cmd "berkdb env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_bad dbenv $dbenv NULL
 
-	# Create the database.
-	set db [dbopen $testfile [expr $DB_CREATE | $DB_TRUNCATE | $DB_THREAD] \
-	    0644 $method -flags $DB_DUP -dbenv $dbenv]
+	# Create the databases.
+	set oflags "-create -mode 0644 $omethod -dup -env $dbenv $testfile"
+	set db [eval {berkdb open} $oflags]
+	error_check_bad db_open $db NULL
+	error_check_good db_open [is_substr $db db] 1
+	error_check_good db_close [$db close] 0
+	set oflags "-create -mode 0644 $omethod -dup -env $dbenv $testfile2"
+	set db [eval {berkdb open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	reset_env $dbenv
 
-
-	# List of recovery tests: {CMD MSG} pairs
-	set dlist {
-	{ {populate DB $m TXNID $n 1 0}	 "Recd003.b: add dups"}
-	{ {DB del TXNID duplicate_key 0} "Recd003.c: remove dups all at once"}
-	{ {populate DB $m TXNID $n 1 0}	 "Recd003.d: add dups (change state)"}
-	{ {unpopulate DB TXNID 0}	 "Recd003.e: remove dups 1 at a time"}
-	{ {populate DB $m TXNID $dupn 1 0} "Recd003.f: dup split"}
-	{ {DB del TXNID duplicate_key 0}
-	  "Recd003.g: remove dups (change state)"}
-	{ {populate DB $m TXNID $n 1 1}	 "Recd003.h: add big dup"}
-	{ {DB del TXNID duplicate_key 0}
-	  "Recd003.i: remove big dup all at once"}
-	{ {populate DB $m TXNID $n 1 1}
-	  "Recd003.j: add big dup (change state)"}
-	{ {unpopulate DB TXNID 0}       "Recd003.k: remove big dup 1 at a time"}
-	{ {populate DB $m TXNID $bign 1 1} "Recd003.l: split big dup"}
-	}
-
 	# These are all the data values that we're going to need to read
 	# through the operation table and run the recovery tests.
-	set m $method
 	set n 10
 	set dupn 2000
 	set bign 500
 
+	# List of recovery tests: {CMD MSG} pairs
+	set dlist {
+	{ {populate DB $omethod TXNID $n 1 0}
+	    "Recd003.b: add dups"}
+	{ {DB del -txn TXNID duplicate_key}
+	    "Recd003.c: remove dups all at once"}
+	{ {populate DB $omethod TXNID $n 1 0}
+	    "Recd003.d: add dups (change state)"}
+	{ {unpopulate DB TXNID 0}
+	    "Recd003.e: remove dups 1 at a time"}
+	{ {populate DB $omethod TXNID $dupn 1 0}
+	    "Recd003.f: dup split"}
+	{ {DB del -txn TXNID duplicate_key}
+	    "Recd003.g: remove dups (change state)"}
+	{ {populate DB $omethod TXNID $n 1 1}
+	    "Recd003.h: add big dup"}
+	{ {DB del -txn TXNID duplicate_key}
+	    "Recd003.i: remove big dup all at once"}
+	{ {populate DB $omethod TXNID $n 1 1}
+	    "Recd003.j: add big dup (change state)"}
+	{ {unpopulate DB TXNID 0}
+	    "Recd003.k: remove big dup 1 at a time"}
+	{ {populate DB $omethod TXNID $bign 1 1}
+	    "Recd003.l: split big dup"}
+	}
+
 	foreach pair $dlist {
-		set cmd [my_subst [lindex $pair 0]]
+		set cmd [subst [lindex $pair 0]]
 		set msg [lindex $pair 1]
 		if { $select != 0 } {
 			set tag [lindex $msg 0]
@@ -78,5 +89,16 @@ proc recd003 { method {select 0} } {
 		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
+		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
+		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+			$cmd $msg
+		op_recover prepare-commit $testdir $env_cmd $testfile2 \
+			$cmd $msg
 	}
+
+	puts "\tRecd003.m: Verify db_printlog can read logfile"
+	set tmpfile $testdir/printlog.out
+	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	error_check_good db_printlog $stat 0
+	exec $RM $tmpfile
 }

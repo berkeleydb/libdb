@@ -1,49 +1,56 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_checkpoint.c	10.21 (Sleepycat) 10/4/98";
+static const char sccsid[] = "@(#)db_checkpoint.c	11.4 (Sleepycat) 10/20/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
+
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
 
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_page.h"
-#include "log.h"
 #include "btree.h"
 #include "hash.h"
+#include "qam.h"
 #include "clib_ext.h"
-#include "common_ext.h"
 
 char	*check __P((DB_ENV *, long, long));
-DB_ENV	*db_init __P((char *));
 int	 logpid __P((char *, int));
 int	 main __P((int, char *[]));
 void	 onint __P((int));
 void	 siginit __P((void));
 void	 usage __P((void));
 
+DB_ENV	*dbenv;
 int	 interrupted;
 const char
 	*progname = "db_checkpoint";		/* Program name. */
@@ -55,11 +62,10 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB_ENV *dbenv;
 	time_t now;
 	long argval;
 	u_int32_t kbytes, minutes, seconds;
-	int ch, once, ret, verbose;
+	int ch, e_close, exitval, once, ret, verbose;
 	char *home, *logfile;
 
 	/*
@@ -70,7 +76,7 @@ main(argc, argv)
 #define	MAX_UINT32_T	2147483647
 
 	kbytes = minutes = 0;
-	once = ret = verbose = 0;
+	e_close = exitval = once = verbose = 0;
 	home = logfile = NULL;
 	while ((ch = getopt(argc, argv, "1h:k:L:p:v")) != EOF)
 		switch (ch) {
@@ -81,14 +87,16 @@ main(argc, argv)
 			home = optarg;
 			break;
 		case 'k':
-			get_long(optarg, 1, (long)MAX_UINT32_T, &argval);
+			(void)__db_getlong(NULL, progname,
+			    optarg, 1, (long)MAX_UINT32_T, &argval);
 			kbytes = argval;
 			break;
 		case 'L':
 			logfile = optarg;
 			break;
 		case 'p':
-			get_long(optarg, 1, (long)MAX_UINT32_T, &argval);
+			(void)__db_getlong(NULL, progname,
+			    optarg, 1, (long)MAX_UINT32_T, &argval);
 			minutes = argval;
 			break;
 		case 'v':
@@ -97,25 +105,59 @@ main(argc, argv)
 		case '?':
 		default:
 			usage();
+			goto shutdown;
 		}
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 0)
+	if (argc != 0) {
 		usage();
-
-	if (once == 0 && kbytes == 0 && minutes == 0) {
-		warnx("at least one of -1, -k and -p must be specified");
-		usage();
+		goto shutdown;
 	}
 
-	/* Initialize the environment. */
-	siginit();
-	dbenv = db_init(home);
+	if (once == 0 && kbytes == 0 && minutes == 0) {
+		(void)fprintf(stderr,
+		    "%s: at least one of -1, -k and -p must be specified\n",
+		    progname);
+		exit (1);
+	}
 
+	/* Handle possible interruptions. */
+	siginit();
+
+	/*
+	 * Create an environment object and initialize it for error
+	 * reporting.
+	 */
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		fprintf(stderr,
+		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
+		exit (1);
+	}
+	dbenv->set_errfile(dbenv, stderr);
+	dbenv->set_errpfx(dbenv, progname);
+
+	/* Initialize the environment. */
+	if ((ret = dbenv->open(dbenv, home, NULL,
+	   DB_INIT_LOG | DB_INIT_TXN | DB_INIT_MPOOL | DB_USE_ENVIRON,
+	   0)) != 0) {
+		dbenv->err(dbenv, ret, "open");
+		goto shutdown;
+	}
+	e_close = 1;
+
+	/* Register the standard pgin/pgout functions, in case we do I/O. */
+	if ((ret =
+	    memp_register(dbenv, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0) {
+		dbenv->err(dbenv, ret,
+		    "failed to register access method functions");
+		goto shutdown;
+	}
+
+	/* Log our process ID. */
 	if (logfile != NULL && logpid(logfile, 1)) {
-		(void)db_appexit(dbenv);
-		return (1);
+		exitval = 1;
+		goto shutdown;
 	}
 
 	/*
@@ -127,21 +169,20 @@ main(argc, argv)
 	while (!interrupted) {
 		if (verbose) {
 			(void)time(&now);
-			warnx("checkpoint: %s", ctime(&now));
+			dbenv->errx(dbenv, "checkpoint: %s", ctime(&now));
 		}
 
-		errno = txn_checkpoint(dbenv->tx_info, kbytes, minutes);
-		while (errno == DB_INCOMPLETE) {
+		ret = txn_checkpoint(dbenv, kbytes, minutes);
+		while (ret == DB_INCOMPLETE) {
 			if (verbose)
-				warnx("checkpoint did not finish, retrying\n");
+				dbenv->errx(dbenv,
+				    "checkpoint did not finish, retrying\n");
 			(void)__os_sleep(2, 0);
-			errno = txn_checkpoint(dbenv->tx_info, 0, 0);
+			ret = txn_checkpoint(dbenv, 0, 0);
 		}
-
-		if (errno != 0) {
-			ret = 1;
-			warn(NULL);
-			break;
+		if (ret != 0) {
+			dbenv->err(dbenv, ret, "txn_checkpoint");
+			goto shutdown;
 		}
 
 		if (once)
@@ -150,12 +191,20 @@ main(argc, argv)
 		(void)__os_sleep(seconds, 0);
 	}
 
-	if (logfile != NULL && logpid(logfile, 0))
-		ret = 1;
 
-	if ((errno = db_appexit(dbenv)) != 0) {
-		ret = 1;
-		warn(NULL);
+	if (0) {
+shutdown:	exitval = 1;
+	}
+
+	/* Clean up the logfile. */
+	if (logfile != NULL && logpid(logfile, 0))
+		exitval = 1;
+
+	/* Clean up the environment. */
+	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
+		exitval = 1;
+		fprintf(stderr,
+		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
 	if (interrupted) {
@@ -164,40 +213,7 @@ main(argc, argv)
 		/* NOTREACHED */
 	}
 
-	return (ret);
-}
-
-/*
- * db_init --
- *	Initialize the environment.
- */
-DB_ENV *
-db_init(home)
-	char *home;
-{
-	DB_ENV *dbenv;
-
-	if ((dbenv = (DB_ENV *)calloc(sizeof(DB_ENV), 1)) == NULL) {
-		errno = ENOMEM;
-		err(1, NULL);
-	}
-	dbenv->db_errfile = stderr;
-	dbenv->db_errpfx = progname;
-
-	if ((errno = db_appinit(home, NULL, dbenv,
-	   DB_INIT_LOG | DB_INIT_TXN | DB_INIT_MPOOL | DB_USE_ENVIRON)) != 0)
-		err(1, "db_appinit");
-
-	if (memp_register(dbenv->mp_info,
-	    DB_FTYPE_BTREE, __bam_pgin, __bam_pgout) ||
-	    memp_register(dbenv->mp_info,
-	    DB_FTYPE_HASH, __ham_pgin, __ham_pgout)) {
-		(void)db_appexit(dbenv);
-		errx(1,
-		    "db_appinit: failed to register access method functions");
-	}
-
-	return (dbenv);
+	return (exitval);
 }
 
 /*
@@ -214,12 +230,12 @@ logpid(fname, is_open)
 
 	if (is_open) {
 		if ((fp = fopen(fname, "w")) == NULL) {
-			warn("%s", fname);
+			dbenv->err(dbenv, errno, "%s", fname);
 			return (1);
 		}
 		(void)time(&now);
 		fprintf(fp,
-		    "%.24s: %lu %s", progname, (u_long)getpid(), ctime(&now));
+		    "%s: %lu %.24s", progname, (u_long)getpid(), ctime(&now));
 		fclose(fp);
 	} else
 		(void)remove(fname);
@@ -239,6 +255,9 @@ siginit()
 	(void)signal(SIGHUP, onint);
 #endif
 	(void)signal(SIGINT, onint);
+#ifdef SIGPIPE
+	(void)signal(SIGPIPE, onint);
+#endif
 	(void)signal(SIGTERM, onint);
 }
 

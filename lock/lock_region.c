@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)lock_region.c	10.21 (Sleepycat) 10/19/98";
+static const char sccsid[] = "@(#)lock_region.c	11.9 (Sleepycat) 11/10/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,452 +20,387 @@ static const char sccsid[] = "@(#)lock_region.c	10.21 (Sleepycat) 10/19/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_shash.h"
 #include "lock.h"
-#include "common_ext.h"
 
-static u_int32_t __lock_count_locks __P((DB_LOCKREGION *));
-static u_int32_t __lock_count_objs __P((DB_LOCKREGION *));
-static void	 __lock_dump_locker __P((DB_LOCKTAB *, DB_LOCKOBJ *, FILE *));
-static void	 __lock_dump_object __P((DB_LOCKTAB *, DB_LOCKOBJ *, FILE *));
+static void __lock_dump_locker __P((DB_LOCKTAB *, DB_LOCKER *, FILE *));
+static void __lock_dump_object __P((DB_LOCKTAB *, DB_LOCKOBJ *, FILE *));
 static const char *
-		 __lock_dump_status __P((db_status_t));
-static void	 __lock_reset_region __P((DB_LOCKTAB *));
-static int	 __lock_tabinit __P((DB_ENV *, DB_LOCKREGION *));
+	    __lock_dump_status __P((db_status_t));
+static int  __lock_init __P((DB_ENV *, DB_LOCKTAB *));
+static size_t
+	    __lock_region_size __P((DB_ENV *));
+static int  __lock_set_lk_conflicts __P((DB_ENV *, u_int8_t *, int));
+static int  __lock_set_lk_detect __P((DB_ENV *, u_int32_t));
+static int  __lock_set_lk_max __P((DB_ENV *, u_int32_t));
 
-int
-lock_open(path, flags, mode, dbenv, ltp)
-	const char *path;
-	u_int32_t flags;
-	int mode;
+/*
+ * This conflict array is used for concurrent db access (CDB).  It
+ * uses the same locks as the db_rw_conflict array, but adds an IW
+ * mode to be used for write cursors.
+ */
+static u_int8_t const db_cdb_conflicts[] = {
+	/*		N   R   W  IW */
+	/*    N */	0,  0,  0,  0,
+	/*    R */	0,  0,  1,  0,
+	/*    W */	0,  1,  1,  1,
+	/*   IW */	0,  0,  1,  1
+};
+
+/*
+ * __lock_dbenv_create --
+ *	Lock specific creation of the DB_ENV structure.
+ *
+ * PUBLIC: void __lock_dbenv_create __P((DB_ENV *));
+ */
+void
+__lock_dbenv_create(dbenv)
 	DB_ENV *dbenv;
-	DB_LOCKTAB **ltp;
 {
-	DB_LOCKTAB *lt;
-	u_int32_t lock_modes, maxlocks, regflags;
+	dbenv->lk_max = DB_LOCK_DEFAULT_N;
+
+	dbenv->set_lk_conflicts = __lock_set_lk_conflicts;
+	dbenv->set_lk_detect = __lock_set_lk_detect;
+	dbenv->set_lk_max = __lock_set_lk_max;
+}
+
+/*
+ * __lock_dbenv_close --
+ *	Lock specific destruction of the DB_ENV structure.
+ *
+ * PUBLIC: void __lock_dbenv_close __P((DB_ENV *));
+ */
+void
+__lock_dbenv_close(dbenv)
+	DB_ENV *dbenv;
+{
+	if (!F_ISSET(dbenv, DB_ENV_USER_ALLOC) && dbenv->lk_conflicts != NULL) {
+		__os_free(dbenv->lk_conflicts,
+		    dbenv->lk_modes * dbenv->lk_modes);
+		dbenv->lk_conflicts = NULL;
+	}
+}
+
+/*
+ * __lock_set_lk_conflicts
+ *	Set the conflicts matrix.
+ */
+static int
+__lock_set_lk_conflicts(dbenv, lk_conflicts, lk_modes)
+	DB_ENV *dbenv;
+	u_int8_t *lk_conflicts;
+	int lk_modes;
+{
 	int ret;
 
-	/* Validate arguments. */
-#ifdef HAVE_SPINLOCKS
-#define	OKFLAGS	(DB_CREATE | DB_THREAD)
-#else
-#define	OKFLAGS	(DB_CREATE)
-#endif
-	if ((ret = __db_fchk(dbenv, "lock_open", flags, OKFLAGS)) != 0)
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lk_conflicts");
+
+	if (dbenv->lk_conflicts != NULL) {
+		__os_free(dbenv->lk_conflicts,
+		    dbenv->lk_modes * dbenv->lk_modes);
+		dbenv->lk_conflicts = NULL;
+	}
+	if ((ret =
+	    __os_malloc(lk_modes * lk_modes, NULL, &dbenv->lk_conflicts)) != 0)
 		return (ret);
+	memcpy(dbenv->lk_conflicts, lk_conflicts, lk_modes * lk_modes);
+	dbenv->lk_modes = lk_modes;
+
+	return (0);
+}
+
+/*
+ * __lock_set_lk_detect
+ *	Set the automatic deadlock detection.
+ */
+static int
+__lock_set_lk_detect(dbenv, lk_detect)
+	DB_ENV *dbenv;
+	u_int32_t lk_detect;
+{
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lk_detect");
+
+	switch (lk_detect) {
+	case DB_LOCK_DEFAULT:
+	case DB_LOCK_OLDEST:
+	case DB_LOCK_RANDOM:
+	case DB_LOCK_YOUNGEST:
+		break;
+	default:
+		return (EINVAL);
+	}
+	dbenv->lk_detect = lk_detect;
+	return (0);
+}
+
+/*
+ * __lock_set_lk_max
+ *	Set the lock table size.
+ */
+static int
+__lock_set_lk_max(dbenv, lk_max)
+	DB_ENV *dbenv;
+	u_int32_t lk_max;
+{
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lk_max");
+
+	dbenv->lk_max = lk_max;
+	return (0);
+}
+
+/*
+ * __lock_open --
+ *	Internal version of lock_open: only called from DB_ENV->open.
+ *
+ * PUBLIC: int __lock_open __P((DB_ENV *));
+ */
+int
+__lock_open(dbenv)
+	DB_ENV *dbenv;
+{
+	DB_LOCKREGION *region;
+	DB_LOCKTAB *lt;
+	size_t size;
+	int ret;
 
 	/* Create the lock table structure. */
 	if ((ret = __os_calloc(1, sizeof(DB_LOCKTAB), &lt)) != 0)
 		return (ret);
 	lt->dbenv = dbenv;
 
-	/* Grab the values that we need to compute the region size. */
-	lock_modes = DB_LOCK_RW_N;
-	maxlocks = DB_LOCK_DEFAULT_N;
-	regflags = REGION_SIZEDEF;
-	if (dbenv != NULL) {
-		if (dbenv->lk_modes != 0) {
-			lock_modes = dbenv->lk_modes;
-			regflags = 0;
-		}
-		if (dbenv->lk_max != 0) {
-			maxlocks = dbenv->lk_max;
-			regflags = 0;
-		}
-	}
-
 	/* Join/create the lock region. */
-	lt->reginfo.dbenv = dbenv;
-	lt->reginfo.appname = DB_APP_NONE;
-	if (path == NULL)
-		lt->reginfo.path = NULL;
-	else
-		if ((ret = __os_strdup(path, &lt->reginfo.path)) != 0)
-			goto err;
-	lt->reginfo.file = DB_DEFAULT_LOCK_FILE;
-	lt->reginfo.mode = mode;
-	lt->reginfo.size =
-	    LOCK_REGION_SIZE(lock_modes, maxlocks, __db_tablesize(maxlocks));
-	lt->reginfo.dbflags = flags;
-	lt->reginfo.addr = NULL;
-	lt->reginfo.fd = -1;
-	lt->reginfo.flags = regflags;
-
-	if ((ret = __db_rattach(&lt->reginfo)) != 0)
+	lt->reginfo.id = REG_ID_LOCK;
+	lt->reginfo.mode = dbenv->db_mode;
+	if (F_ISSET(dbenv, DB_ENV_CREATE))
+		F_SET(&lt->reginfo, REGION_CREATE_OK);
+	size = __lock_region_size(dbenv);
+	if ((ret = __db_r_attach(dbenv, &lt->reginfo, size)) != 0)
 		goto err;
 
-	/* Now set up the pointer to the region. */
-	lt->region = lt->reginfo.addr;
-
-	/* Initialize the region if we created it. */
-	if (F_ISSET(&lt->reginfo, REGION_CREATED)) {
-		lt->region->maxlocks = maxlocks;
-		lt->region->nmodes = lock_modes;
-		if ((ret = __lock_tabinit(dbenv, lt->region)) != 0)
+	/* If we created the region, initialize it. */
+	if (F_ISSET(&lt->reginfo, REGION_CREATE))
+		if ((ret = __lock_init(dbenv, lt)) != 0)
 			goto err;
-	} else {
-		/* Check for an unexpected region. */
-		if (lt->region->magic != DB_LOCKMAGIC) {
-			__db_err(dbenv,
-			    "lock_open: %s: bad magic number", path);
-			ret = EINVAL;
-			goto err;
-		}
-	}
 
-	/* Check for automatic deadlock detection. */
-	if (dbenv != NULL && dbenv->lk_detect != DB_LOCK_NORUN) {
-		if (lt->region->detect != DB_LOCK_NORUN &&
+	/* Set the local addresses. */
+	region = lt->reginfo.primary =
+	    R_ADDR(&lt->reginfo, lt->reginfo.rp->primary);
+
+	/* Check for incompatible automatic deadlock detection requests. */
+	if (dbenv->lk_detect != DB_LOCK_NORUN) {
+		if (region->detect != DB_LOCK_NORUN &&
 		    dbenv->lk_detect != DB_LOCK_DEFAULT &&
-		    lt->region->detect != dbenv->lk_detect) {
+		    region->detect != dbenv->lk_detect) {
 			__db_err(dbenv,
 		    "lock_open: incompatible deadlock detector mode");
 			ret = EINVAL;
 			goto err;
 		}
-		if (lt->region->detect == DB_LOCK_NORUN)
-			lt->region->detect = dbenv->lk_detect;
+
+		/*
+		 * Upgrade if our caller wants automatic detection, and it
+		 * was not currently being done, whether or not we created
+		 * the region.
+		 */
+		if (region->detect == DB_LOCK_NORUN)
+			region->detect = dbenv->lk_detect;
 	}
 
-	/* Set up remaining pointers into region. */
-	lt->conflicts = (u_int8_t *)lt->region + sizeof(DB_LOCKREGION);
-	lt->hashtab =
-	    (DB_HASHTAB *)((u_int8_t *)lt->region + lt->region->hash_off);
-	lt->mem = (void *)((u_int8_t *)lt->region + lt->region->mem_off);
+	/* Set remaining pointers into region. */
+	lt->memlock = (MUTEX *)R_ADDR(&lt->reginfo, region->memlock_off);
+	lt->conflicts = (u_int8_t *)R_ADDR(&lt->reginfo, region->conf_off);
+	lt->obj_tab = (DB_HASHTAB *)R_ADDR(&lt->reginfo, region->obj_off);
+	lt->osynch_tab = (MUTEX *)R_ADDR(&lt->reginfo, region->osynch_off);
+	lt->locker_tab = (DB_HASHTAB *)R_ADDR(&lt->reginfo, region->locker_off);
+	lt->lsynch_tab = (MUTEX *)R_ADDR(&lt->reginfo, region->lsynch_off);
 
-	UNLOCK_LOCKREGION(lt);
-	*ltp = lt;
+	R_UNLOCK(dbenv, &lt->reginfo);
+
+	dbenv->lk_handle = lt;
 	return (0);
 
 err:	if (lt->reginfo.addr != NULL) {
-		UNLOCK_LOCKREGION(lt);
-		(void)__db_rdetach(&lt->reginfo);
-		if (F_ISSET(&lt->reginfo, REGION_CREATED))
-			(void)lock_unlink(path, 1, dbenv);
+		if (F_ISSET(&lt->reginfo, REGION_CREATE))
+			F_SET(lt->reginfo.rp, REG_DEAD);
+		R_UNLOCK(dbenv, &lt->reginfo);
+		(void)__db_r_detach(dbenv, &lt->reginfo, 0);
 	}
-
-	if (lt->reginfo.path != NULL)
-		__os_freestr(lt->reginfo.path);
 	__os_free(lt, sizeof(*lt));
 	return (ret);
 }
 
 /*
- * __lock_panic --
- *	Panic a lock region.
- *
- * PUBLIC: void __lock_panic __P((DB_ENV *));
- */
-void
-__lock_panic(dbenv)
-	DB_ENV *dbenv;
-{
-	if (dbenv->lk_info != NULL)
-		dbenv->lk_info->region->hdr.panic = 1;
-}
-
-
-/*
- * __lock_tabinit --
+ * __lock_init --
  *	Initialize the lock region.
  */
 static int
-__lock_tabinit(dbenv, lrp)
+__lock_init(dbenv, lt)
 	DB_ENV *dbenv;
-	DB_LOCKREGION *lrp;
+	DB_LOCKTAB *lt;
 {
+	const u_int8_t *lk_conflicts;
 	struct __db_lock *lp;
-	struct lock_header *tq_head;
-	struct obj_header *obj_head;
+	DB_LOCKER *lidp;
 	DB_LOCKOBJ *op;
-	u_int32_t i, nelements;
-	const u_int8_t *conflicts;
-	u_int8_t *curaddr;
+	DB_LOCKREGION *region;
+#ifdef FINE_GRAIN
+	MUTEX *m;
+#endif
+	u_int32_t i, lk_modes, nelements;
+	u_int8_t *addr;
+	int ret;
 
-	conflicts = dbenv == NULL || dbenv->lk_conflicts == NULL ?
-	    db_rw_conflicts : dbenv->lk_conflicts;
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    sizeof(DB_LOCKREGION), 0, &lt->reginfo.primary)) != 0)
+		return (ret);
+	lt->reginfo.rp->primary = R_OFFSET(&lt->reginfo, lt->reginfo.primary);
+	region = lt->reginfo.primary;
+	memset(region, 0, sizeof(*region));
 
-	lrp->table_size = __db_tablesize(lrp->maxlocks);
-	lrp->magic = DB_LOCKMAGIC;
-	lrp->version = DB_LOCKVERSION;
-	lrp->id = 0;
+	/* Select a conflict matrix if none specified. */
+	if (dbenv->lk_modes == 0)
+		if (F_ISSET(dbenv, DB_ENV_CDB)) {
+			lk_modes = DB_LOCK_RW_N + 1;
+			lk_conflicts = db_cdb_conflicts;
+		} else {
+			lk_modes = DB_LOCK_RW_N;
+			lk_conflicts = db_rw_conflicts;
+		}
+	else {
+		lk_modes = dbenv->lk_modes;
+		lk_conflicts = dbenv->lk_conflicts;
+	}
+
+	region->id = 0;
+	region->need_dd = 0;
+	region->detect = DB_LOCK_NORUN;
+	region->maxlocks = dbenv->lk_max;
+	region->table_size = __db_tablesize(dbenv->lk_max);
+	region->nmodes = lk_modes;
+	region->nlockers = 0;
+	region->maxnlockers = 0;
+	region->nconflicts = 0;
+	region->nrequests = 0;
+	region->nreleases = 0;
+	region->ndeadlocks = 0;
+
+	nelements = region->table_size;
+
+	/* Allocate room for the conflict matrix and initialize it. */
+	if ((ret =
+	    __db_shalloc(lt->reginfo.addr, lk_modes * lk_modes, 0, &addr)) != 0)
+		return (ret);
+	memcpy(addr, lk_conflicts, lk_modes * lk_modes);
+	region->conf_off = R_OFFSET(&lt->reginfo, addr);
+
+	/* Allocate room for the memory mutex and initialize it. */
+#ifdef FINE_GRAIN
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    sizeof(MUTEX), MUTEX_ALIGN, &addr)) != 0)
+		return (ret);
+	region->memlock_off = R_OFFSET(&lt->reginfo, addr);
+	if ((ret = __db_mutex_init(dbenv, (MUTEX *)addr,
+	    R_OFFSET(&lt->reginfo, addr) + DB_FCNTL_OFF_LOCK, 0)) != 0)
+		return (ret);
+
+	/* Allocate room for the mutex tables and initialize them. */
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    nelements * sizeof(MUTEX), MUTEX_ALIGN, &addr)) != 0)
+		return (ret);
+	region->osynch_off = R_OFFSET(&lt->reginfo, addr);
+	for (i = 0; i < nelements; i++) {
+		m = (MUTEX *)addr + i;
+		if ((ret = __db_mutex_init(dbenv, m,
+		    R_OFFSET(&lt->reginfo, m) + DB_FCNTL_OFF_LOCK, 0)) != 0)
+			return (ret);
+	}
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    nelements * sizeof(MUTEX), MUTEX_ALIGN, &addr)) != 0)
+		return (ret);
+	region->lsynch_off = R_OFFSET(&lt->reginfo, addr);
+	for (i = 0; i < nelements; i++) {
+		m = (MUTEX *)addr + i;
+		if ((ret = __db_mutex_init(dbenv, m,
+		    R_OFFSET(&lt->reginfo, m) + DB_FCNTL_OFF_LOCK, 0)) != 0)
+			return (ret);
+	}
+#endif
+	/* Allocate room for the object hash table and initialize it. */
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    nelements * sizeof(DB_HASHTAB), 0, &addr)) != 0)
+		return (ret);
+	__db_hashinit(addr, nelements);
+	region->obj_off = R_OFFSET(&lt->reginfo, addr);
+
+	/* Allocate room for the locker hash table and initialize it. */
+	if ((ret = __db_shalloc(lt->reginfo.addr,
+	    nelements * sizeof(DB_HASHTAB), 0, &addr)) != 0)
+		return (ret);
+	__db_hashinit(addr, nelements);
+	region->locker_off = R_OFFSET(&lt->reginfo, addr);
+
 	/*
-	 * These fields (lrp->maxlocks, lrp->nmodes) are initialized
-	 * in the caller, since we had to grab those values to size
-	 * the region.
+	 * Initialize locks onto a free list. Initialize and lock the mutex
+	 * so that when we need to block, all we need do is try to acquire
+	 * the mutex.
 	 */
-	lrp->need_dd = 0;
-	lrp->detect = DB_LOCK_NORUN;
-	lrp->numobjs = lrp->maxlocks;
-	lrp->nlockers = 0;
-	lrp->mem_bytes = ALIGN(STRING_SIZE(lrp->maxlocks), sizeof(size_t));
-	lrp->increment = lrp->hdr.size / 2;
-	lrp->nconflicts = 0;
-	lrp->nrequests = 0;
-	lrp->nreleases = 0;
-	lrp->ndeadlocks = 0;
-
-	/*
-	 * As we write the region, we've got to maintain the alignment
-	 * for the structures that follow each chunk.  This information
-	 * ends up being encapsulated both in here as well as in the
-	 * lock.h file for the XXX_SIZE macros.
-	 */
-	/* Initialize conflict matrix. */
-	curaddr = (u_int8_t *)lrp + sizeof(DB_LOCKREGION);
-	memcpy(curaddr, conflicts, lrp->nmodes * lrp->nmodes);
-	curaddr += lrp->nmodes * lrp->nmodes;
-
-	/*
-	 * Initialize hash table.
-	 */
-	curaddr = (u_int8_t *)ALIGNP(curaddr, LOCK_HASH_ALIGN);
-	lrp->hash_off = curaddr - (u_int8_t *)lrp;
-	nelements = lrp->table_size;
-	__db_hashinit(curaddr, nelements);
-	curaddr += nelements * sizeof(DB_HASHTAB);
-
-	/*
-	 * Initialize locks onto a free list. Since locks contains mutexes,
-	 * we need to make sure that each lock is aligned on a MUTEX_ALIGNMENT
-	 * boundary.
-	 */
-	curaddr = (u_int8_t *)ALIGNP(curaddr, MUTEX_ALIGNMENT);
-	tq_head = &lrp->free_locks;
-	SH_TAILQ_INIT(tq_head);
-
-	for (i = 0; i++ < lrp->maxlocks;
-	    curaddr += ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT)) {
-		lp = (struct __db_lock *)curaddr;
+	SH_TAILQ_INIT(&region->free_locks);
+	for (i = 0; i < region->maxlocks; ++i) {
+		if ((ret = __db_shalloc(lt->reginfo.addr,
+		    sizeof(struct __db_lock), MUTEX_ALIGN, &lp)) != 0)
+			return (ret);
 		lp->status = DB_LSTAT_FREE;
-		SH_TAILQ_INSERT_HEAD(tq_head, lp, links, __db_lock);
+		if ((ret = __db_mutex_init(dbenv, &lp->mutex,
+		    R_OFFSET(&lt->reginfo, &lp->mutex) + DB_FCNTL_OFF_LOCK,
+		    MUTEX_SELF_BLOCK)) != 0)
+			return (ret);
+		MUTEX_LOCK(&lp->mutex, lt->dbenv->lockfhp);
+		SH_TAILQ_INSERT_HEAD(&region->free_locks, lp, links, __db_lock);
 	}
 
 	/* Initialize objects onto a free list.  */
-	obj_head = &lrp->free_objs;
-	SH_TAILQ_INIT(obj_head);
-
-	for (i = 0; i++ < lrp->maxlocks; curaddr += sizeof(DB_LOCKOBJ)) {
-		op = (DB_LOCKOBJ *)curaddr;
-		SH_TAILQ_INSERT_HEAD(obj_head, op, links, __db_lockobj);
+	SH_TAILQ_INIT(&region->free_objs);
+	for (i = 0; i < region->maxlocks; ++i) {
+		if ((ret = __db_shalloc(lt->reginfo.addr,
+		    sizeof(DB_LOCKOBJ), 0, &op)) != 0)
+			return (ret);
+		SH_TAILQ_INSERT_HEAD(
+		    &region->free_objs, op, links, __db_lockobj);
 	}
 
-	/*
-	 * Initialize the string space; as for all shared memory allocation
-	 * regions, this requires size_t alignment, since we store the
-	 * lengths of malloc'd areas in the area.
-	 */
-	curaddr = (u_int8_t *)ALIGNP(curaddr, sizeof(size_t));
-	lrp->mem_off = curaddr - (u_int8_t *)lrp;
-	__db_shalloc_init(curaddr, lrp->mem_bytes);
-	return (0);
-}
-
-int
-lock_close(lt)
-	DB_LOCKTAB *lt;
-{
-	int ret;
-
-	LOCK_PANIC_CHECK(lt);
-
-	if ((ret = __db_rdetach(&lt->reginfo)) != 0)
-		return (ret);
-
-	if (lt->reginfo.path != NULL)
-		__os_freestr(lt->reginfo.path);
-	__os_free(lt, sizeof(*lt));
+	/* Initialize lockers onto a free list.  */
+	SH_TAILQ_INIT(&region->free_lockers);
+	for (i = 0; i < region->maxlocks; ++i) {
+		if ((ret = __db_shalloc(lt->reginfo.addr,
+		    sizeof(DB_LOCKER), 0, &lidp)) != 0)
+			return (ret);
+		SH_TAILQ_INSERT_HEAD(
+		    &region->free_lockers, lidp, links, __db_locker);
+	}
 
 	return (0);
 }
 
+/*
+ * __lock_close --
+ *	Internal version of lock_close: only called from db_appinit.
+ *
+ * PUBLIC: int __lock_close __P((DB_ENV *));
+ */
 int
-lock_unlink(path, force, dbenv)
-	const char *path;
-	int force;
+__lock_close(dbenv)
 	DB_ENV *dbenv;
 {
-	REGINFO reginfo;
+	DB_LOCKTAB *lt;
 	int ret;
 
-	memset(&reginfo, 0, sizeof(reginfo));
-	reginfo.dbenv = dbenv;
-	reginfo.appname = DB_APP_NONE;
-	if (path != NULL && (ret = __os_strdup(path, &reginfo.path)) != 0)
-		return (ret);
-	reginfo.file = DB_DEFAULT_LOCK_FILE;
-	ret = __db_runlink(&reginfo, force);
-	if (reginfo.path != NULL)
-		__os_freestr(reginfo.path);
+	lt = dbenv->lk_handle;
+
+	/* Detach from the region. */
+	ret = __db_r_detach(dbenv, &lt->reginfo, 0);
+
+	__os_free(lt, sizeof(*lt));
 	return (ret);
-}
-
-/*
- * __lock_validate_region --
- *	Called at every interface to verify if the region has changed size,
- *	and if so, to remap the region in and reset the process' pointers.
- *
- * PUBLIC: int __lock_validate_region __P((DB_LOCKTAB *));
- */
-int
-__lock_validate_region(lt)
-	DB_LOCKTAB *lt;
-{
-	int ret;
-
-	if (lt->reginfo.size == lt->region->hdr.size)
-		return (0);
-
-	/* Detach/reattach the region. */
-	if ((ret = __db_rreattach(&lt->reginfo, lt->region->hdr.size)) != 0)
-		return (ret);
-
-	/* Reset region information. */
-	lt->region = lt->reginfo.addr;
-	__lock_reset_region(lt);
-
-	return (0);
-}
-
-/*
- * __lock_grow_region --
- *	We have run out of space; time to grow the region.
- *
- * PUBLIC: int __lock_grow_region __P((DB_LOCKTAB *, int, size_t));
- */
-int
-__lock_grow_region(lt, which, howmuch)
-	DB_LOCKTAB *lt;
-	int which;
-	size_t howmuch;
-{
-	struct __db_lock *newl;
-	struct lock_header *lock_head;
-	struct obj_header *obj_head;
-	DB_LOCKOBJ *op;
-	DB_LOCKREGION *lrp;
-	float lock_ratio, obj_ratio;
-	size_t incr, oldsize, used, usedmem;
-	u_int32_t i, newlocks, newmem, newobjs, usedlocks, usedobjs;
-	u_int8_t *curaddr;
-	int ret;
-
-	lrp = lt->region;
-	oldsize = lrp->hdr.size;
-	incr = lrp->increment;
-
-	/* Figure out how much of each sort of space we have. */
-	usedmem = lrp->mem_bytes - __db_shalloc_count(lt->mem);
-	usedobjs = lrp->numobjs - __lock_count_objs(lrp);
-	usedlocks = lrp->maxlocks - __lock_count_locks(lrp);
-
-	/*
-	 * Figure out what fraction of the used space belongs to each
-	 * different type of "thing" in the region.  Then partition the
-	 * new space up according to this ratio.
-	 */
-	used = usedmem +
-	    usedlocks * ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT) +
-	    usedobjs * sizeof(DB_LOCKOBJ);
-
-	lock_ratio = usedlocks *
-	    ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT) / (float)used;
-	obj_ratio = usedobjs * sizeof(DB_LOCKOBJ) / (float)used;
-
-	newlocks = (u_int32_t)(lock_ratio *
-	    incr / ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT));
-	newobjs = (u_int32_t)(obj_ratio * incr / sizeof(DB_LOCKOBJ));
-	newmem = incr -
-	    (newobjs * sizeof(DB_LOCKOBJ) +
-	    newlocks * ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT));
-
-	/*
-	 * Make sure we allocate enough memory for the object being
-	 * requested.
-	 */
-	switch (which) {
-	case DB_LOCK_LOCK:
-		if (newlocks == 0) {
-			newlocks = 10;
-			incr += newlocks * sizeof(struct __db_lock);
-		}
-		break;
-	case DB_LOCK_OBJ:
-		if (newobjs == 0) {
-			newobjs = 10;
-			incr += newobjs * sizeof(DB_LOCKOBJ);
-		}
-		break;
-	case DB_LOCK_MEM:
-		if (newmem < howmuch * 2) {
-			incr += howmuch * 2 - newmem;
-			newmem = howmuch * 2;
-		}
-		break;
-	}
-
-	newmem += ALIGN(incr, sizeof(size_t)) - incr;
-	incr = ALIGN(incr, sizeof(size_t));
-
-	/*
-	 * Since we are going to be allocating locks at the beginning of the
-	 * new chunk, we need to make sure that the chunk is MUTEX_ALIGNMENT
-	 * aligned.  We did not guarantee this when we created the region, so
-	 * we may need to pad the old region by extra bytes to ensure this
-	 * alignment.
-	 */
-	incr += ALIGN(oldsize, MUTEX_ALIGNMENT) - oldsize;
-
-	__db_err(lt->dbenv,
-	    "Growing lock region: %lu locks %lu objs %lu bytes",
-	    (u_long)newlocks, (u_long)newobjs, (u_long)newmem);
-
-	if ((ret = __db_rgrow(&lt->reginfo, oldsize + incr)) != 0)
-		return (ret);
-	lt->region = lt->reginfo.addr;
-	__lock_reset_region(lt);
-
-	/* Update region parameters. */
-	lrp = lt->region;
-	lrp->increment = incr << 1;
-	lrp->maxlocks += newlocks;
-	lrp->numobjs += newobjs;
-	lrp->mem_bytes += newmem;
-
-	curaddr = (u_int8_t *)lrp + oldsize;
-	curaddr = (u_int8_t *)ALIGNP(curaddr, MUTEX_ALIGNMENT);
-
-	/* Put new locks onto the free list. */
-	lock_head = &lrp->free_locks;
-	for (i = 0; i++ < newlocks;
-	    curaddr += ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT)) {
-		newl = (struct __db_lock *)curaddr;
-		SH_TAILQ_INSERT_HEAD(lock_head, newl, links, __db_lock);
-	}
-
-	/* Put new objects onto the free list.  */
-	obj_head = &lrp->free_objs;
-	for (i = 0; i++ < newobjs; curaddr += sizeof(DB_LOCKOBJ)) {
-		op = (DB_LOCKOBJ *)curaddr;
-		SH_TAILQ_INSERT_HEAD(obj_head, op, links, __db_lockobj);
-	}
-
-	*((size_t *)curaddr) = newmem - sizeof(size_t);
-	curaddr += sizeof(size_t);
-	__db_shalloc_free(lt->mem, curaddr);
-
-	return (0);
-}
-
-static void
-__lock_reset_region(lt)
-	DB_LOCKTAB *lt;
-{
-	lt->conflicts = (u_int8_t *)lt->region + sizeof(DB_LOCKREGION);
-	lt->hashtab =
-	    (DB_HASHTAB *)((u_int8_t *)lt->region + lt->region->hash_off);
-	lt->mem = (void *)((u_int8_t *)lt->region + lt->region->mem_off);
 }
 
 /*
@@ -473,75 +408,48 @@ __lock_reset_region(lt)
  *	Return LOCK statistics.
  */
 int
-lock_stat(lt, gspp, db_malloc)
-	DB_LOCKTAB *lt;
-	DB_LOCK_STAT **gspp;
+lock_stat(dbenv, statp, db_malloc)
+	DB_ENV *dbenv;
+	DB_LOCK_STAT **statp;
 	void *(*db_malloc) __P((size_t));
 {
-	DB_LOCKREGION *rp;
+	DB_LOCKREGION *region;
+	DB_LOCKTAB *lt;
+	DB_LOCK_STAT *stats;
 	int ret;
 
-	*gspp = NULL;
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lk_handle, DB_INIT_LOCK);
 
-	LOCK_PANIC_CHECK(lt);
+	*statp = NULL;
 
-	if ((ret = __os_malloc(sizeof(**gspp), db_malloc, gspp)) != 0)
+	lt = dbenv->lk_handle;
+
+	if ((ret = __os_malloc(sizeof(*stats), db_malloc, &stats)) != 0)
 		return (ret);
 
 	/* Copy out the global statistics. */
-	LOCK_LOCKREGION(lt);
+	R_LOCK(dbenv, &lt->reginfo);
 
-	rp = lt->region;
-	(*gspp)->st_magic = rp->magic;
-	(*gspp)->st_version = rp->version;
-	(*gspp)->st_maxlocks = rp->maxlocks;
-	(*gspp)->st_nmodes = rp->nmodes;
-	(*gspp)->st_numobjs = rp->numobjs;
-	(*gspp)->st_nlockers = rp->nlockers;
-	(*gspp)->st_nconflicts = rp->nconflicts;
-	(*gspp)->st_nrequests = rp->nrequests;
-	(*gspp)->st_nreleases = rp->nreleases;
-	(*gspp)->st_ndeadlocks = rp->ndeadlocks;
-	(*gspp)->st_region_nowait = rp->hdr.lock.mutex_set_nowait;
-	(*gspp)->st_region_wait = rp->hdr.lock.mutex_set_wait;
-	(*gspp)->st_refcnt = rp->hdr.refcnt;
-	(*gspp)->st_regsize = rp->hdr.size;
+	region = lt->reginfo.primary;
+	stats->st_lastid = region->id;
+	stats->st_maxlocks = region->maxlocks;
+	stats->st_nmodes = region->nmodes;
+	stats->st_nlockers = region->nlockers;
+	stats->st_maxnlockers = region->maxnlockers;
+	stats->st_nconflicts = region->nconflicts;
+	stats->st_nrequests = region->nrequests;
+	stats->st_nreleases = region->nreleases;
+	stats->st_ndeadlocks = region->ndeadlocks;
 
-	UNLOCK_LOCKREGION(lt);
+	stats->st_region_wait = lt->reginfo.rp->mutex.mutex_set_wait;
+	stats->st_region_nowait = lt->reginfo.rp->mutex.mutex_set_nowait;
+	stats->st_regsize = lt->reginfo.rp->size;
 
+	R_UNLOCK(dbenv, &lt->reginfo);
+
+	*statp = stats;
 	return (0);
-}
-
-static u_int32_t
-__lock_count_locks(lrp)
-	DB_LOCKREGION *lrp;
-{
-	struct __db_lock *newl;
-	u_int32_t count;
-
-	count = 0;
-	for (newl = SH_TAILQ_FIRST(&lrp->free_locks, __db_lock);
-	    newl != NULL;
-	    newl = SH_TAILQ_NEXT(newl, links, __db_lock))
-		count++;
-
-	return (count);
-}
-
-static u_int32_t
-__lock_count_objs(lrp)
-	DB_LOCKREGION *lrp;
-{
-	DB_LOCKOBJ *obj;
-	u_int32_t count;
-
-	count = 0;
-	for (obj = SH_TAILQ_FIRST(&lrp->free_objs, __db_lockobj);
-	    obj != NULL;
-	    obj = SH_TAILQ_NEXT(obj, links, __db_lockobj))
-		count++;
-
-	return (count);
 }
 
 #define	LOCK_DUMP_CONF		0x001		/* Conflict matrix. */
@@ -554,17 +462,19 @@ __lock_count_objs(lrp)
 /*
  * __lock_dump_region --
  *
- * PUBLIC: void __lock_dump_region __P((DB_LOCKTAB *, char *, FILE *));
+ * PUBLIC: void __lock_dump_region __P((DB_ENV *, char *, FILE *));
  */
 void
-__lock_dump_region(lt, area, fp)
-	DB_LOCKTAB *lt;
+__lock_dump_region(dbenv, area, fp)
+	DB_ENV *dbenv;
 	char *area;
 	FILE *fp;
 {
 	struct __db_lock *lp;
+	DB_LOCKER *lip;
 	DB_LOCKOBJ *op;
 	DB_LOCKREGION *lrp;
+	DB_LOCKTAB *lt;
 	u_int32_t flags, i, j;
 	int label;
 
@@ -594,15 +504,19 @@ __lock_dump_region(lt, area, fp)
 			break;
 		}
 
-	lrp = lt->region;
+	lt = dbenv->lk_handle;
+	lrp = lt->reginfo.primary;
+	LOCKREGION(dbenv, lt);
 
 	fprintf(fp, "%s\nLock region parameters\n", DB_LINE);
-	fprintf(fp, "%s: %lu, %s: %lu, %s: %lu, %s: %lu\n%s: %lu, %s: %lu\n",
+	fprintf(fp,
+	    "%s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu, %s: %lu\n",
 	    "table size", (u_long)lrp->table_size,
-	    "hash_off", (u_long)lrp->hash_off,
-	    "increment", (u_long)lrp->increment,
-	    "mem_off", (u_long)lrp->mem_off,
-	    "mem_bytes", (u_long)lrp->mem_bytes,
+	    "obj_off", (u_long)lrp->obj_off,
+	    "osynch_off", (u_long)lrp->osynch_off,
+	    "locker_off", (u_long)lrp->locker_off,
+	    "lsynch_off", (u_long)lrp->lsynch_off,
+	    "memlock_off", (u_long)lrp->memlock_off,
 	    "need_dd", (u_long)lrp->need_dd);
 
 	if (LF_ISSET(LOCK_DUMP_CONF)) {
@@ -615,32 +529,40 @@ __lock_dump_region(lt, area, fp)
 		}
 	}
 
-	if (LF_ISSET(LOCK_DUMP_LOCKERS | LOCK_DUMP_OBJECTS)) {
-		fprintf(fp, "%s\nLock hash buckets\n", DB_LINE);
+	if (LF_ISSET(LOCK_DUMP_LOCKERS)) {
+		fprintf(fp, "%s\nLocker hash buckets\n", DB_LINE);
 		for (i = 0; i < lrp->table_size; i++) {
 			label = 1;
-			for (op = SH_TAILQ_FIRST(&lt->hashtab[i], __db_lockobj);
+			LOCKER_LOCK_NDX(lt, i);
+			for (lip =
+			    SH_TAILQ_FIRST(&lt->locker_tab[i], __db_locker);
+			    lip != NULL;
+			    lip = SH_TAILQ_NEXT(lip, links, __db_locker)) {
+				if (label) {
+					fprintf(fp, "Bucket %lu:\n", (u_long)i);
+					label = 0;
+				}
+				__lock_dump_locker(lt, lip, fp);
+			}
+			LOCKER_UNLOCK(lt, i);
+		}
+	}
+
+	if (LF_ISSET(LOCK_DUMP_OBJECTS)) {
+		fprintf(fp, "%s\nObject hash buckets\n", DB_LINE);
+		for (i = 0; i < lrp->table_size; i++) {
+			label = 1;
+			OBJECT_LOCK_NDX(lt, i);
+			for (op = SH_TAILQ_FIRST(&lt->obj_tab[i], __db_lockobj);
 			    op != NULL;
 			    op = SH_TAILQ_NEXT(op, links, __db_lockobj)) {
-				if (LF_ISSET(LOCK_DUMP_LOCKERS) &&
-				    op->type == DB_LOCK_LOCKER) {
-					if (label) {
-						fprintf(fp,
-						    "Bucket %lu:\n", (u_long)i);
-						label = 0;
-					}
-					__lock_dump_locker(lt, op, fp);
+				if (label) {
+					fprintf(fp, "Bucket %lu:\n", (u_long)i);
+					label = 0;
 				}
-				if (LF_ISSET(LOCK_DUMP_OBJECTS) &&
-				    op->type == DB_LOCK_OBJTYPE) {
-					if (label) {
-						fprintf(fp,
-						    "Bucket %lu:\n", (u_long)i);
-						label = 0;
-					}
-					__lock_dump_object(lt, op, fp);
-				}
+				__lock_dump_object(lt, op, fp);
 			}
+			OBJECT_UNLOCK(lt, i);
 		}
 	}
 
@@ -658,33 +580,37 @@ __lock_dump_region(lt, area, fp)
 		    op != NULL;
 		    op = SH_TAILQ_NEXT(op, links, __db_lockobj))
 			fprintf(fp, "0x%lx\n", (u_long)op);
+
+		fprintf(fp, "%s\nLocker free list\n", DB_LINE);
+		for (lip = SH_TAILQ_FIRST(&lrp->free_lockers, __db_locker);
+		    lip != NULL;
+		    lip = SH_TAILQ_NEXT(lip, links, __db_locker))
+			fprintf(fp, "0x%lx\n", (u_long)lip);
 	}
 
 	if (LF_ISSET(LOCK_DUMP_MEM))
-		__db_shalloc_dump(lt->mem, fp);
+		__db_shalloc_dump(lt->reginfo.addr, fp);
+
+	UNLOCKREGION(dbenv, lt);
 }
 
 static void
-__lock_dump_locker(lt, op, fp)
+__lock_dump_locker(lt, lip, fp)
 	DB_LOCKTAB *lt;
-	DB_LOCKOBJ *op;
+	DB_LOCKER *lip;
 	FILE *fp;
 {
 	struct __db_lock *lp;
-	u_int32_t locker;
-	void *ptr;
 
-	ptr = SH_DBT_PTR(&op->lockobj);
-	memcpy(&locker, ptr, sizeof(u_int32_t));
-	fprintf(fp, "L %lx", (u_long)locker);
+	fprintf(fp, "L %lx [%ld]", (u_long)lip->id, (long)lip->dd_id);
+	fprintf(fp, " %s ", F_ISSET(lip, DB_LOCKER_DELETED) ? "(D)" : "   ");
 
-	lp = SH_LIST_FIRST(&op->heldby, __db_lock);
-	if (lp == NULL) {
+	if ((lp = SH_LIST_FIRST(&lip->heldby, __db_lock)) == NULL)
 		fprintf(fp, "\n");
-		return;
-	}
-	for (; lp != NULL; lp = SH_LIST_NEXT(lp, locker_links, __db_lock))
-		__lock_printlock(lt, lp, 0);
+	else
+		for (; lp != NULL;
+		    lp = SH_LIST_NEXT(lp, locker_links, __db_lock))
+			__lock_printlock(lt, lp, 1);
 }
 
 static void
@@ -710,12 +636,12 @@ __lock_dump_object(lt, op, fp)
 	    SH_TAILQ_FIRST(&op->holders, __db_lock);
 	    lp != NULL;
 	    lp = SH_TAILQ_NEXT(lp, links, __db_lock))
-		__lock_printlock(lt, lp, 0);
+		__lock_printlock(lt, lp, 1);
 	lp = SH_TAILQ_FIRST(&op->waiters, __db_lock);
 	if (lp != NULL) {
 		fprintf(fp, "\nW:");
 		for (; lp != NULL; lp = SH_TAILQ_NEXT(lp, links, __db_lock))
-			__lock_printlock(lt, lp, 0);
+			__lock_printlock(lt, lp, 1);
 	}
 }
 
@@ -740,4 +666,66 @@ __lock_dump_status(status)
 		return ("waiting");
 	}
 	return ("unknown status");
+}
+
+/*
+ * __lock_region_size --
+ *	Return the region size.
+ */
+static size_t
+__lock_region_size(dbenv)
+	DB_ENV *dbenv;
+{
+	size_t retval;
+	u_int32_t i, nelements, nlocks;
+
+	nlocks = dbenv->lk_max;
+	nelements = __db_tablesize(dbenv->lk_max);
+
+	/*
+	 * Figure out how much space we're going to need.  This list should
+	 * map one-to-one with the __db_shalloc calls in __lock_init.
+	 */
+	retval = 0;
+	retval += ALIGN(sizeof(DB_LOCKREGION), 1);
+	retval += ALIGN(dbenv->lk_modes * dbenv->lk_modes, 1);
+#ifdef FINE_GRAIN
+	retval += ALIGN(sizeof(MUTEX), MUTEX_ALIGN);
+	retval += ALIGN(nelements * sizeof(MUTEX), MUTEX_ALIGN);
+	retval += ALIGN(nelements * sizeof(MUTEX), MUTEX_ALIGN);
+#endif
+	retval += ALIGN(nelements * sizeof(DB_HASHTAB), 1);
+	retval += ALIGN(nelements * sizeof(DB_HASHTAB), 1);
+	for (i = 0; i < nlocks; ++i)
+		retval += ALIGN(sizeof(struct __db_lock), MUTEX_ALIGN);
+	for (i = 0; i < nlocks; ++i)
+		retval += ALIGN(sizeof(DB_LOCKOBJ), 1);
+	for (i = 0; i < nlocks; ++i)
+		retval += ALIGN(sizeof(DB_LOCKER), 1);
+
+	/*
+	 * Aproximate the memory allocation overhead.  This breaks the
+	 * abstraction a little, but seems better than a WAG.
+	 */
+	 retval += nlocks * (2 * sizeof(ssize_t) + sizeof(size_t));
+
+	/*
+	 * Include 16 bytes of string space per lock.  DB doesn't use it
+	 * because we pre-allocate lock space for DBTs in the structure.
+	 */
+	retval += ALIGN(nlocks * 16, sizeof(size_t));
+
+#ifdef DIAGNOSTIC
+        /*
+         * The above precise calculation doesn't leave enough space for guard
+         * bytes, of which there is one plus whatever alignment wastage for
+         * each __db_shalloc.  Give ourselves some breathing room.
+         */
+        retval += nlocks * 5;
+#endif
+
+	/* And we keep getting this wrong, let's be generous. */
+	retval += 16 * 1024;
+
+	return (retval);
 }

@@ -1,15 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)log.h	10.30 (Sleepycat) 10/11/98
+ *	@(#)log.h	11.5 (Sleepycat) 9/18/99
  */
 
 #ifndef _LOG_H_
 #define	_LOG_H_
 
+struct __db_log;	typedef struct __db_log DB_LOG;
 struct __fname;		typedef struct __fname FNAME;
 struct __hdr;		typedef struct __hdr HDR;
 struct __log;		typedef struct __log LOG;
@@ -21,38 +22,24 @@ struct __log_persist;	typedef struct __log_persist LOGP;
 #define	LFNAME_V1	"log.%05d"	/* Log file name template, rev 1. */
 #define	MAXLFNAME	2000000000	/* Maximum log file name. */
 #endif
-					/* Default log name. */
-#define DB_DEFAULT_LOG_FILE	"__db_log.share"
 
-#define	DEFAULT_MAX	(10 * MEGABYTE)	/* 10 Mb. */
+#define	LG_MAX_DEFAULT		(10 * MEGABYTE)	/* 10 MB. */
+#define	LG_BSIZE_DEFAULT	(32 * 1024)	/* 32 KB. */
+#define	LG_BASE_REGION_SIZE	(60 * 1024)	/* 60 KB. */
 
-/* Macros to lock/unlock the region and threads. */
-#define	LOCK_LOGTHREAD(dblp)						\
-	if (F_ISSET(dblp, DB_AM_THREAD))				\
-		(void)__db_mutex_lock((dblp)->mutexp, -1)
-#define	UNLOCK_LOGTHREAD(dblp)						\
-	if (F_ISSET(dblp, DB_AM_THREAD))				\
-		(void)__db_mutex_unlock((dblp)->mutexp, -1);
-#define	LOCK_LOGREGION(dblp)						\
-	(void)__db_mutex_lock(&((RLAYOUT *)(dblp)->lp)->lock,		\
-	    (dblp)->reginfo.fd)
-#define	UNLOCK_LOGREGION(dblp)						\
-	(void)__db_mutex_unlock(&((RLAYOUT *)(dblp)->lp)->lock,		\
-	    (dblp)->reginfo.fd)
-
-/* Check for region catastrophic shutdown. */
-#define	LOG_PANIC_CHECK(dblp) {						\
-	if ((dblp)->lp->rlayout.panic)					\
-		return (DB_RUNRECOVERY);				\
-}
+/*
+ * The log region isn't fixed size because we store the registered
+ * file names there.
+ */
+#define	LOG_REGION_SIZE	(30 * 1024)
 
 /*
  * The per-process table that maps log file-id's to DB structures.
  */
 typedef	struct __db_entry {
 	DB	 *dbp;			/* Associated DB structure. */
-	char 	 *name;			/* File name. */
 	u_int32_t refcount;		/* Reference counted. */
+	u_int32_t count;		/* Number of ops on a deleted db. */
 	int	  deleted;		/* File was not found during open. */
 } DB_ENTRY;
 
@@ -61,8 +48,15 @@ typedef	struct __db_entry {
  *	Per-process log structure.
  */
 struct __db_log {
-/* These fields need to be protected for multi-threaded support. */
-	db_mutex_t	*mutexp;	/* Mutex for thread protection. */
+/*
+ * These fields need to be protected for multi-threaded support.
+ *
+ * !!!
+ * As this structure is allocated in per-process memory, the mutex may need
+ * to be stored elsewhere on architectures unable to support mutexes in heap
+ * memory, e.g., HP/UX 9.
+ */
+	MUTEX	  *mutexp;		/* Mutex for thread protection. */
 
 	DB_ENTRY *dbentry;		/* Recovery file-id mapping. */
 #define	DB_GROW_SIZE	64
@@ -70,28 +64,24 @@ struct __db_log {
 
 /*
  * These fields are always accessed while the region lock is held, so they do
- * not have to be protected by the thread lock as well OR, they are only used
+ * not have to be protected by the thread lock as well, OR, they are only used
  * when threads are not being used, i.e. most cursor operations are disallowed
  * on threaded logs.
  */
 	u_int32_t lfname;		/* Log file "name". */
-	int	  lfd;			/* Log file descriptor. */
+	DB_FH	  lfh;			/* Log file handle. */
 
 	DB_LSN	  c_lsn;		/* Cursor: current LSN. */
 	DBT	  c_dbt;		/* Cursor: return DBT structure. */
-	int	  c_fd;			/* Cursor: file descriptor. */
+	DB_FH	  c_fh;			/* Cursor: file handle. */
 	u_int32_t c_off;		/* Cursor: previous record offset. */
 	u_int32_t c_len;		/* Cursor: current record length. */
 
-/* These fields are not protected. */
-	LOG	 *lp;			/* Address of the shared LOG. */
+	u_int8_t *bufp;			/* Region buffer. */
 
+/* These fields are not protected. */
 	DB_ENV	 *dbenv;		/* Reference to error information. */
 	REGINFO	  reginfo;		/* Region information. */
-
-	void     *addr;			/* Address of shalloc() region. */
-
-	char	 *dir;			/* Directory argument. */
 
 /*
  * These fields are used by XA; since XA forbids threaded execution, these
@@ -107,13 +97,8 @@ struct __db_log {
 	/*
 	 * !!!
 	 * Currently used to hold:
-	 *	DB_AM_THREAD	(a DB flag)
 	 *	DBC_RECOVER	(a DBC flag)
-	 * If they are ever the same bits, we're in serious trouble.
 	 */
-#if DB_AM_THREAD == DBC_RECOVER
-	DB_AM_THREAD, DBC_RECOVER, FLAG MISMATCH
-#endif
 	u_int32_t flags;
 };
 
@@ -141,8 +126,6 @@ struct __log_persist {
  *	and describes the log.
  */
 struct __log {
-	RLAYOUT	  rlayout;		/* General region information. */
-
 	LOGP	  persist;		/* Persistent information. */
 
 	SH_TAILQ_HEAD(__fq) fq;		/* List of file names. */
@@ -176,7 +159,9 @@ struct __log {
 	 */
 	DB_LSN	  f_lsn;		/* LSN of first byte in the buffer. */
 	size_t	  b_off;		/* Current offset in the buffer. */
-	u_int8_t buf[4 * 1024];		/* Log buffer. */
+
+	roff_t	  buffer_off;		/* Log buffer offset. */
+	u_int32_t buffer_size;		/* Log buffer size. */
 };
 
 /*
@@ -188,10 +173,10 @@ struct __fname {
 
 	u_int16_t ref;			/* Reference count. */
 
-	u_int32_t id;			/* Logging file id. */
+	int32_t id;			/* Logging file id. */
 	DBTYPE	  s_type;		/* Saved DB type. */
 
-	size_t	  name_off;		/* Name offset. */
+	roff_t	  name_off;		/* Name offset. */
 	u_int8_t  ufid[DB_FILE_ID_LEN];	/* Unique file id. */
 };
 

@@ -13,52 +13,64 @@ extern "C" {
 #define com_sleepycat_db_Db_DB_HASH 2L
 #undef com_sleepycat_db_Db_DB_RECNO
 #define com_sleepycat_db_Db_DB_RECNO 3L
+#undef com_sleepycat_db_Db_DB_QUEUE
+#define com_sleepycat_db_Db_DB_QUEUE 4L
 #undef com_sleepycat_db_Db_DB_UNKNOWN
-#define com_sleepycat_db_Db_DB_UNKNOWN 4L
+#define com_sleepycat_db_Db_DB_UNKNOWN 5L
+/* Inaccessible static: DB_CXX_NO_EXCEPTIONS */
+/* Inaccessible static: DB_XA_CREATE */
 /* Inaccessible static: DB_CREATE */
 /* Inaccessible static: DB_NOMMAP */
 /* Inaccessible static: DB_THREAD */
+/* Inaccessible static: DB_PRIVATE */
+/* Inaccessible static: DB_TXN_SYNC */
+/* Inaccessible static: DB_TXN_NOWAIT */
 /* Inaccessible static: DB_EXCL */
 /* Inaccessible static: DB_RDONLY */
-/* Inaccessible static: DB_SEQUENTIAL */
-/* Inaccessible static: DB_TEMPORARY */
 /* Inaccessible static: DB_TRUNCATE */
+/* Inaccessible static: DB_UPGRADE */
 #undef com_sleepycat_db_Db_DB_INCOMPLETE
-#define com_sleepycat_db_Db_DB_INCOMPLETE -1L
+#define com_sleepycat_db_Db_DB_INCOMPLETE -30999L
 #undef com_sleepycat_db_Db_DB_KEYEMPTY
-#define com_sleepycat_db_Db_DB_KEYEMPTY -2L
+#define com_sleepycat_db_Db_DB_KEYEMPTY -30998L
 #undef com_sleepycat_db_Db_DB_KEYEXIST
-#define com_sleepycat_db_Db_DB_KEYEXIST -3L
+#define com_sleepycat_db_Db_DB_KEYEXIST -30997L
 #undef com_sleepycat_db_Db_DB_LOCK_DEADLOCK
-#define com_sleepycat_db_Db_DB_LOCK_DEADLOCK -4L
+#define com_sleepycat_db_Db_DB_LOCK_DEADLOCK -30996L
 #undef com_sleepycat_db_Db_DB_LOCK_NOTGRANTED
-#define com_sleepycat_db_Db_DB_LOCK_NOTGRANTED -5L
-#undef com_sleepycat_db_Db_DB_LOCK_NOTHELD
-#define com_sleepycat_db_Db_DB_LOCK_NOTHELD -6L
+#define com_sleepycat_db_Db_DB_LOCK_NOTGRANTED -30995L
 #undef com_sleepycat_db_Db_DB_NOTFOUND
-#define com_sleepycat_db_Db_DB_NOTFOUND -7L
+#define com_sleepycat_db_Db_DB_NOTFOUND -30994L
+#undef com_sleepycat_db_Db_DB_OLD_VERSION
+#define com_sleepycat_db_Db_DB_OLD_VERSION -30993L
+#undef com_sleepycat_db_Db_DB_RUNRECOVERY
+#define com_sleepycat_db_Db_DB_RUNRECOVERY -30992L
+/* Inaccessible static: DB_FORCE */
+/* Inaccessible static: DB_INIT_CDB */
 /* Inaccessible static: DB_INIT_LOCK */
 /* Inaccessible static: DB_INIT_LOG */
 /* Inaccessible static: DB_INIT_MPOOL */
 /* Inaccessible static: DB_INIT_TXN */
-/* Inaccessible static: DB_MPOOL_PRIVATE */
 /* Inaccessible static: DB_RECOVER */
 /* Inaccessible static: DB_RECOVER_FATAL */
+/* Inaccessible static: DB_SYSTEM_MEM */
 /* Inaccessible static: DB_TXN_NOSYNC */
 /* Inaccessible static: DB_USE_ENVIRON */
 /* Inaccessible static: DB_USE_ENVIRON_ROOT */
+/* Inaccessible static: DB_VERB_CHKPOINT */
+/* Inaccessible static: DB_VERB_DEADLOCK */
+/* Inaccessible static: DB_VERB_RECOVERY */
+/* Inaccessible static: DB_VERB_WAITSFOR */
 /* Inaccessible static: DB_LOCK_NORUN */
 /* Inaccessible static: DB_LOCK_DEFAULT */
 /* Inaccessible static: DB_LOCK_OLDEST */
 /* Inaccessible static: DB_LOCK_RANDOM */
 /* Inaccessible static: DB_LOCK_YOUNGEST */
-/* Inaccessible static: DB_DELIMITER */
 /* Inaccessible static: DB_DUP */
 /* Inaccessible static: DB_DUPSORT */
-/* Inaccessible static: DB_FIXEDLEN */
-/* Inaccessible static: DB_PAD */
 /* Inaccessible static: DB_RECNUM */
 /* Inaccessible static: DB_RENUMBER */
+/* Inaccessible static: DB_REVSPLITOFF */
 /* Inaccessible static: DB_SNAPSHOT */
 #undef com_sleepycat_db_Db_DB_LOCK_NG
 #define com_sleepycat_db_Db_DB_LOCK_NG 0L
@@ -77,11 +89,11 @@ extern "C" {
 #undef com_sleepycat_db_Db_DB_LOCK_GET
 #define com_sleepycat_db_Db_DB_LOCK_GET 1L
 #undef com_sleepycat_db_Db_DB_LOCK_PUT
-#define com_sleepycat_db_Db_DB_LOCK_PUT 2L
+#define com_sleepycat_db_Db_DB_LOCK_PUT 3L
 #undef com_sleepycat_db_Db_DB_LOCK_PUT_ALL
-#define com_sleepycat_db_Db_DB_LOCK_PUT_ALL 3L
+#define com_sleepycat_db_Db_DB_LOCK_PUT_ALL 4L
 #undef com_sleepycat_db_Db_DB_LOCK_PUT_OBJ
-#define com_sleepycat_db_Db_DB_LOCK_PUT_OBJ 4L
+#define com_sleepycat_db_Db_DB_LOCK_PUT_OBJ 5L
 /* Inaccessible static: DB_LOCK_NOWAIT */
 /* Inaccessible static: DB_LOCK_CONFLICT */
 /* Inaccessible static: DB_LOCK_RW_N */
@@ -92,6 +104,7 @@ extern "C" {
 /* Inaccessible static: DB_APPEND */
 /* Inaccessible static: DB_BEFORE */
 /* Inaccessible static: DB_CHECKPOINT */
+/* Inaccessible static: DB_CONSUME */
 /* Inaccessible static: DB_CURLSN */
 /* Inaccessible static: DB_CURRENT */
 /* Inaccessible static: DB_FIRST */
@@ -104,19 +117,30 @@ extern "C" {
 /* Inaccessible static: DB_LAST */
 /* Inaccessible static: DB_NEXT */
 /* Inaccessible static: DB_NEXT_DUP */
+/* Inaccessible static: DB_NEXT_NODUP */
 /* Inaccessible static: DB_NOOVERWRITE */
 /* Inaccessible static: DB_NOSYNC */
+/* Inaccessible static: DB_POSITION */
 /* Inaccessible static: DB_PREV */
 /* Inaccessible static: DB_RECORDCOUNT */
 /* Inaccessible static: DB_SET */
 /* Inaccessible static: DB_SET_RANGE */
 /* Inaccessible static: DB_SET_RECNO */
+/* Inaccessible static: DB_WRITECURSOR */
 /* Inaccessible static: DB_RMW */
-/* Inaccessible static: DB_DBT_INTERNAL */
 /* Inaccessible static: DB_DBT_MALLOC */
 /* Inaccessible static: DB_DBT_PARTIAL */
+/* Inaccessible static: DB_DBT_REALLOC */
 /* Inaccessible static: DB_DBT_USERMEM */
 /* Inaccessible static: already_loaded_ */
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    _init
+ * Signature: (Lcom/sleepycat/db/DbEnv;I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db__1init
+  (JNIEnv *, jobject, jobject, jint);
+
 /*
  * Class:     com_sleepycat_db_Db
  * Method:    close
@@ -143,11 +167,35 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_del
 
 /*
  * Class:     com_sleepycat_db_Db
+ * Method:    err
+ * Signature: (ILjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_err
+  (JNIEnv *, jobject, jint, jstring);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    errx
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_errx
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     com_sleepycat_db_Db
  * Method:    fd
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_fd
   (JNIEnv *, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    feedback_changed
+ * Signature: (Lcom/sleepycat/db/DbFeedback;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_feedback_1changed
+  (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -192,10 +240,10 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_join
 /*
  * Class:     com_sleepycat_db_Db
  * Method:    open
- * Signature: (Ljava/lang/String;IIILcom/sleepycat/db/DbEnv;Lcom/sleepycat/db/DbInfo;)Lcom/sleepycat/db/Db;
+ * Signature: (Ljava/lang/String;Ljava/lang/String;III)V
  */
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_open
-  (JNIEnv *, jclass, jstring, jint, jint, jint, jobject, jobject);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_open
+  (JNIEnv *, jobject, jstring, jstring, jint, jint, jint);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -204,6 +252,126 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_open
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Db_put
   (JNIEnv *, jobject, jobject, jobject, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    remove
+ * Signature: (Ljava/lang/String;Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_remove
+  (JNIEnv *, jobject, jstring, jstring, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_bt_maxkey
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1bt_1maxkey
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_bt_minkey
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1bt_1minkey
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_cachesize
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1cachesize
+  (JNIEnv *, jobject, jint, jint, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_errcall
+ * Signature: (Lcom/sleepycat/db/DbErrcall;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1errcall
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_errpfx
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1errpfx
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_flags
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1flags
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_h_ffactor
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1h_1ffactor
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_h_nelem
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1h_1nelem
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_lorder
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1lorder
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_pagesize
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1pagesize
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_re_delim
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1re_1delim
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_re_len
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1re_1len
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_re_pad
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1re_1pad
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    set_re_source
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_set_1re_1source
+  (JNIEnv *, jobject, jstring);
 
 /*
  * Class:     com_sleepycat_db_Db
@@ -220,6 +388,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Db_stat
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_sync
   (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Db
+ * Method:    upgrade
+ * Signature: (Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Db_upgrade
+  (JNIEnv *, jobject, jstring, jint);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,80 @@
+dnl @(#)programs.m4	11.7 (Sleepycat) 9/3/99
+
+dnl Check for programs used in building/installation.
+AC_DEFUN(AM_PROGRAMS_SET, [
+
+AC_PATH_PROG(db_cv_path_ar, ar, missing_ar)
+if test "$db_cv_path_ar" = missing_ar; then
+	AC_MSG_ERROR([No ar utility found.])
+fi
+AC_PATH_PROG(db_cv_path_chmod, chmod, missing_chmod)
+if test "$db_cv_path_chmod" = missing_chmod; then
+	AC_MSG_ERROR([No chmod utility found.])
+fi
+AC_PATH_PROG(db_cv_path_cp, cp, missing_cp)
+if test "$db_cv_path_cp" = missing_cp; then
+	AC_MSG_ERROR([No cp utility found.])
+fi
+AC_PATH_PROG(db_cv_path_ln, ln, missing_ln)
+if test "$db_cv_path_ln" = missing_ln; then
+	AC_MSG_ERROR([No ln utility found.])
+fi
+AC_PATH_PROG(db_cv_path_mkdir, mkdir, missing_mkdir)
+if test "$db_cv_path_mkdir" = missing_mkdir; then
+	AC_MSG_ERROR([No mkdir utility found.])
+fi
+AC_PATH_PROG(db_cv_path_ranlib, ranlib, missing_ranlib)
+AC_PATH_PROG(db_cv_path_rm, rm, missing_rm)
+if test "$db_cv_path_rm" = missing_rm; then
+	AC_MSG_ERROR([No rm utility found.])
+fi
+AC_PATH_PROG(db_cv_path_sh, sh, missing_sh)
+if test "$db_cv_path_sh" = missing_sh; then
+	AC_MSG_ERROR([No sh utility found.])
+fi
+AC_PATH_PROG(db_cv_path_strip, strip, missing_strip)
+if test "$db_cv_path_strip" = missing_strip; then
+	AC_MSG_ERROR([No strip utility found.])
+fi
+
+dnl Check for programs used in testing.
+if test "$db_cv_test" = "yes"; then
+	AC_PATH_PROG(db_cv_path_cmp, cmp, missing_cmp)
+	if test "$db_cv_path_cmp" = missing_cmp; then
+		AC_MSG_ERROR([No cmp utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_grep, grep, missing_grep)
+	if test "$db_cv_path_grep" = missing_grep; then
+		AC_MSG_ERROR([No grep utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_kill, kill, missing_kill)
+	if test "$db_cv_path_kill" = missing_kill; then
+		AC_MSG_ERROR([No kill utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_mv, mv, missing_mv)
+	if test "$db_cv_path_mv" = missing_mv; then
+		AC_MSG_ERROR([No mv utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_sed, sed, missing_sed)
+	if test "$db_cv_path_sed" = missing_sed; then
+		AC_MSG_ERROR([No sed utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_sleep, sleep, missing_sleep)
+	if test "$db_cv_path_sleep" = missing_sleep; then
+		AC_MSG_ERROR([No sleep utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_sort, sort, missing_sort)
+	if test "$db_cv_path_sort" = missing_sort; then
+		AC_MSG_ERROR([No sort utility found.])
+	fi
+	AC_PATH_PROG(db_cv_path_tr, tr, missing_tr)
+	if test "$db_cv_path_tr" = missing_tr; then
+		AC_MSG_ERROR([No tr utility found.])
+	fi
+
+	dnl Programs we want, but don't necessarily have to have.
+	AC_PATH_PROG(db_cv_path_diff, diff)
+	AC_PATH_PROG(db_cv_path_perl5, perl5)
+fi
+
+])dnl

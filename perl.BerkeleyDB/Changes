@@ -1,0 +1,56 @@
+Revision history for Perl extension BerkeleyDB.
+
+0.01  23 October 1997
+	* first alpha release as BerkDB.
+
+0.02  30 October 1997
+	* renamed module to BerkeleyDB	
+	* fixed a few bugs & added more tests
+
+0.03  5 May 1998
+	* fixed db_get with DB_SET_RECNO
+	* fixed c_get with DB_SET_RECNO and DB_GET_RECNO
+	* implemented BerkeleyDB::Unknown
+	* implemented BerkeleyDB::Recno, including push, pop etc
+	  modified the txn support. 
+
+0.04  19 May 1998
+	* Define DEFSV & SAVE_DEFSV if not already defined. This allows
+	  the module to be built with Perl 5.004_04.
+
+0.05  9 November 1998
+	* Added a note to README about how to build Berkeley DB 2.x
+	  when using HP-UX.
+	* Minor modifications to get the module to build with DB 2.5.x
+
+0.06  19 December 1998
+	* Minor modifications to get the module to build with DB 2.6.x
+	* Added support for DB 2.6.x's  Concurrent Access Method, DB_INIT_CDB.
+
+0.07  21st September 1999
+	* Numerous small bug fixes.
+	* Added support for sorting duplicate values DB_DUPSORT.
+	* Added support for DB_GET_BOTH & DB_NEXT_DUP.
+	* Added get_dup (from DB_File).
+	* beefed up the documentation.
+	* Forgot to add the DB_INIT_CDB in BerkeleyDB.pm in previous release.
+	* Merged the DBM Filter code from DB_File into BerkeleyDB.
+	* Fixed a nasty bug where a closed transaction was still used with
+	  with dp_put, db_get etc.
+	* Added logic to gracefully close everything whenever a fatal error
+	  happens. Previously the plug was just pulled.
+	* It is now a fatal error to explicitly close an environment if there
+	  is still an open database; a database when there are open cursors or
+	  an open transaction; and a cursor if there is an open transaction.
+	  Using object destruction doesn't have this issue, as object
+	  references will ensure everything gets closed in the correct order.
+	* The BOOT code now checks that the version of db.h & libdb are the
+	  same - this seems to be a common problem on Linux.
+	* MLDBM support added.  
+	* Support for the new join cursor added.
+	* Builds withe Berkeley DB 3.x
+   	* Updated dbinfo for Berkeley DB 3.x file formats.
+	* Deprecated the TxnMgr class. As with Berkeley DB version 3,
+	  txn_begin etc are now accessed via the environment object.
+	
+	

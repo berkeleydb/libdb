@@ -1,32 +1,28 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998
+ * Copyright (c) 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-/* XXX Remove the global transaction and hang it off the environment. */
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)xa.c	10.4 (Sleepycat) 10/11/98";
+static const char sccsid[] = "@(#)xa.c	11.4 (Sleepycat) 9/10/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #endif
 
 #include "db_int.h"
 #include "db_page.h"
-#include "shqueue.h"
 #include "log.h"
 #include "txn.h"
-#include "db_auto.h"
-#include "db_ext.h"
+#include "db_am.h"
 #include "db_dispatch.h"
 
 static int  __db_xa_close __P((char *, int, long));
@@ -78,8 +74,8 @@ const struct xa_switch_t db_xa_switch = {
  * such xa->db mappings.
  *	The xa_info field is instance specific information.  We require
  * that the value of DB_HOME be passed in xa_info.  Since xa_info is the
- * only thing that we get to pass to db_appinit, any config information
- * will have to be done via a config file instead of via the db_appinit
+ * only thing that we get to pass to db_env_create, any config information
+ * will have to be done via a config file instead of via the db_env_create
  * call.
  */
 static int
@@ -96,18 +92,33 @@ __db_xa_open(xa_info, rmid, flags)
 		return (XAER_INVAL);
 
 	/* Verify if we already have this environment open. */
-	if (__db_rmid_to_env(rmid, &env, 0) == 0)
+	if (__db_rmid_to_env(rmid, &env) == 0)
 		return (XA_OK);
+	if (__os_calloc(1, sizeof(DB_ENV), &env) != 0)
+		return (XAER_RMERR);
 
-	/*
-	 * Since we cannot tell whether the environment is OK or not,
-	 * we can't actually do the db_appinit in xa_open.  Instead,
-	 * we save the mapping between the rmid and the xa_info.  If
-	 * we next get a call to __xa_recover, we do the db_appinit
-	 * with DB_RECOVER set.  If we get any other call, then we
-	 * do the db_appinit.
-	 */
-	return (__db_map_rmid_name(rmid, xa_info));
+	/* Open a new environment. */
+#define	XA_FLAGS \
+	DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
+	if (db_env_create(&env, 0) != 0)
+		return (XAER_RMERR);
+	if (env->open(env, xa_info, NULL, XA_FLAGS, 0) != 0)
+		goto err;
+
+	/* Create the mapping. */
+	if (__db_map_rmid(rmid, env) != 0)
+		goto err;
+
+	/* Allocate space for the current transaction. */
+	if (__os_calloc(1, sizeof(DB_TXN), &env->xa_txn) != 0)
+		goto err;
+	env->xa_txn->txnid = TXN_INVALID;
+
+	return (XA_OK);
+
+err:	(void)env->close(env, 0);
+
+	return (XAER_RMERR);
 }
 
 /*
@@ -135,19 +146,23 @@ __db_xa_close(xa_info, rmid, flags)
 		return (XAER_INVAL);
 
 	/* If the environment is closed, then we're done. */
-	if (__db_rmid_to_env(rmid, &env, 0) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XA_OK);
 
 	/* Check if there are any pending transactions. */
 	if (env->xa_txn != NULL && env->xa_txn->txnid != TXN_INVALID)
 		return (XAER_PROTO);
 
-	/* Now, destroy the mapping and close the environment. */
+	/* Destroy the mapping. */
 	ret = __db_unmap_rmid(rmid);
-	if ((t_ret = db_appexit(env)) != 0 && ret == 0)
-		ret = t_ret;
 
-	__os_free(env, sizeof(DB_ENV));
+	/* Discard space held for the current transaction. */
+	if (env->xa_txn != NULL)
+		__os_free(env->xa_txn, sizeof(DB_TXN));
+
+	/* Close the environment. */
+	if ((t_ret = env->close(env, 0)) != 0 && ret == 0)
+		ret = t_ret;
 
 	return (ret == 0 ? XA_OK : XAER_RMERR);
 }
@@ -177,7 +192,7 @@ __db_xa_start(xid, rmid, flags)
 	if (LF_ISSET(TMASYNC))
 		return (XAER_ASYNC);
 
-	if (__db_rmid_to_env(rmid, &env, 1) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	is_known = __db_xid_to_txn(env, xid, &off) == 0;
@@ -194,8 +209,10 @@ __db_xa_start(xid, rmid, flags)
 	 * Other error conditions: RMERR, RMFAIL, OUTSIDE, PROTO, RB*
 	 */
 	if (is_known) {
-		td = (TXN_DETAIL *)((u_int8_t *)env->tx_info->region + off);
-		if (td->xa_status == TXN_XA_SUSPENDED && !LF_ISSET(TMRESUME))
+		td = (TXN_DETAIL *)
+		    R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo, off);
+		if (td->xa_status == TXN_XA_SUSPENDED &&
+		    !LF_ISSET(TMRESUME | TMJOIN))
 			return (XAER_PROTO);
 		if (td->xa_status == TXN_XA_DEADLOCKED)
 			return (XA_RBDEADLOCK);
@@ -210,7 +227,8 @@ __db_xa_start(xid, rmid, flags)
 			return (XAER_RMERR);
 		(void)__db_map_xid(env, xid, env->xa_txn->off);
 		td = (TXN_DETAIL *)
-		    ((u_int8_t *)env->tx_info->region + env->xa_txn->off);
+		    R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo,
+		    env->xa_txn->off);
 		td->xa_status = TXN_XA_STARTED;
 	}
 	return (XA_OK);
@@ -234,7 +252,7 @@ __db_xa_end(xid, rmid, flags)
 	if (flags != TMNOFLAGS && !LF_ISSET(TMSUSPEND | TMSUCCESS | TMFAIL))
 		return (XAER_INVAL);
 
-	if (__db_rmid_to_env(rmid, &env, 0) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	if (__db_xid_to_txn(env, xid, &off) != 0)
@@ -244,7 +262,7 @@ __db_xa_end(xid, rmid, flags)
 	if (off != txn->off)
 		return (XAER_PROTO);
 
-	td = (TXN_DETAIL *)((u_int8_t *)env->tx_info->region + off);
+	td = (TXN_DETAIL *)R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
@@ -295,14 +313,13 @@ __db_xa_prepare(xid, rmid, flags)
 	 * reflect that fact that prepare has been called, and if
 	 * it's ever called again, it's an error.
 	 */
-	if (__db_rmid_to_env(rmid, &env, 1) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	if (__db_xid_to_txn(env, xid, &off) != 0)
 		return (XAER_NOTA);
 
-	td = (TXN_DETAIL *)((u_int8_t *)env->tx_info->region + off);
-
+	td = (TXN_DETAIL *)R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
@@ -347,14 +364,13 @@ __db_xa_commit(xid, rmid, flags)
 	 * We need to know if we've ever called prepare on this.
 	 * We can verify this by examining the xa_status field.
 	 */
-	if (__db_rmid_to_env(rmid, &env, 1) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	if (__db_xid_to_txn(env, xid, &off) != 0)
 		return (XAER_NOTA);
 
-	td = (TXN_DETAIL *)((u_int8_t *)env->tx_info->region + off);
-
+	td = (TXN_DETAIL *)R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
@@ -371,7 +387,7 @@ __db_xa_commit(xid, rmid, flags)
 	/* Now, fill in the global transaction structure. */
 	__xa_txn_init(env, td, off);
 
-	if (txn_commit(env->xa_txn) != 0)
+	if (txn_commit(env->xa_txn, 0) != 0)
 		return (XAER_RMERR);
 
 	/* No fatal value that would require an XAER_RMFAIL. */
@@ -398,48 +414,25 @@ __db_xa_recover(xids, count, rmid, flags)
 	DB_ENV *env;
 	DB_LOG *log;
 	XID *xidp;
-	char *dbhome;
 	int err, ret;
 	u_int32_t rectype, txnid;
 
 	ret = 0;
 	xidp = xids;
 
+	/* If the environment is closed, then we're done. */
+	if (__db_rmid_to_env(rmid, &env) != 0)
+		return (XAER_PROTO);
 
 	/*
-	 * If we are starting a scan, then we need to open the environment
-	 * and run recovery.  This recovery puts us in a state where we can
-	 * either commit or abort any transactions that were prepared but not
-	 * yet committed.  Once we've done that, we need to figure out where
-	 * to begin checking for such transactions.  If we are not starting
-	 * a scan, then the environment had better have already been recovered
-	 * and we'll start from * wherever the log cursor is.  Since XA apps
-	 * cannot be threaded, we don't have to worry about someone else
-	 * having moved it.
+	 * If we are starting a scan, then we need to figure out where
+	 * to begin.  If we are not starting a scan, we'll start from
+	 * wherever the log cursor is.  Since XA apps cannot be threaded,
+	 * we don't have to worry about someone else having moved it.
 	 */
+	log = env->lg_handle;
 	if (LF_ISSET(TMSTARTRSCAN)) {
-		/* If the environment is open, we have a problem. */
-		if (__db_rmid_to_env(rmid, &env, 0) == XA_OK)
-			return (XAER_PROTO);
-
-		if ((ret = __os_calloc(1, sizeof(DB_ENV), &env)) != 0)
-			return (XAER_RMERR);
-
-		if (__db_rmid_to_name(rmid, &dbhome) != 0)
-			goto err1;
-
-#undef XA_FLAGS
-#define	XA_FLAGS DB_RECOVER | \
-	DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-		if ((ret = db_appinit(dbhome, NULL, env, XA_FLAGS)) != 0)
-			goto err1;
-
-		if (__db_map_rmid(rmid, env) != 0)
-			goto err2;
-
-		/* Now figure out from where to begin scan. */
-		log = env->lg_info;
-		if ((err = __log_findckp(log, &log->xa_first)) == DB_NOTFOUND) {
+		if ((err = __log_findckp(env, &log->xa_first)) == DB_NOTFOUND) {
 			/*
 			 * If there were no log files, then we have no
 			 * transactions to return, so we simply return 0.
@@ -447,16 +440,12 @@ __db_xa_recover(xids, count, rmid, flags)
 			return (0);
 		}
 		if ((err = __db_txnlist_init(&log->xa_info)) != 0)
-			goto err3;
+			return (XAER_RMERR);
 	} else {
-		/* We had better already know about this rmid. */
-		if (__db_rmid_to_env(rmid, &env, 0) != 0)
-			return (XAER_PROTO);
 		/*
 		 * If we are not starting a scan, the log cursor had
 		 * better be set.
 		 */
-		log = env->lg_info;
 		if (IS_ZERO_LSN(log->xa_lsn))
 			return (XAER_PROTO);
 	}
@@ -469,10 +458,10 @@ __db_xa_recover(xids, count, rmid, flags)
 	 */
 
 	memset(&data, 0, sizeof(data));
-	for (err = log_get(log, &log->xa_lsn, &data,
+	for (err = log_get(env, &log->xa_lsn, &data,
 	    LF_ISSET(TMSTARTRSCAN) ? DB_LAST : DB_SET);
 	    err == 0 && log_compare(&log->xa_lsn, &log->xa_first) > 0;
-	    err = log_get(log, &log->xa_lsn, &data, DB_PREV)) {
+	    err = log_get(env, &log->xa_lsn, &data, DB_PREV)) {
 		memcpy(&rectype, data.data, sizeof(rectype));
 
 		/*
@@ -497,7 +486,7 @@ __db_xa_recover(xids, count, rmid, flags)
 			break;
 		case DB_txn_xa_regop:
 			/*
-			 * This transaction is commited, so we needn't read
+			 * This transaction is committed, so we needn't read
 			 * the record and do anything.
 			 */
 			if (err == 0)
@@ -528,15 +517,10 @@ done:	if (LF_ISSET(TMENDRSCAN)) {
 		ZERO_LSN(log->xa_lsn);
 		ZERO_LSN(log->xa_first);
 
-out:		__db_txnlist_end(log->xa_info);
+out:		__db_txnlist_end(env, log->xa_info);
 		log->xa_info = NULL;
 	}
 	return (ret);
-
-err3:	(void)__db_unmap_rmid(rmid);
-err2:	(void)db_appexit(env);
-err1:	__os_free(env, sizeof(DB_ENV));
-	return (XAER_RMERR);
 }
 
 /*
@@ -558,22 +542,21 @@ __db_xa_rollback(xid, rmid, flags)
 	if (flags != TMNOFLAGS)
 		return (XAER_INVAL);
 
-	if (__db_rmid_to_env(rmid, &env, 1) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	if (__db_xid_to_txn(env, xid, &off) != 0)
 		return (XAER_NOTA);
 
-	td = (TXN_DETAIL *)((u_int8_t *)env->tx_info->region + off);
-
+	td = (TXN_DETAIL *)R_ADDR(&((DB_TXNMGR *)env->tx_handle)->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
 	if (td->xa_status == TXN_XA_ABORTED)
 		return (XA_RBOTHER);
 
-	if (LF_ISSET(TMONEPHASE) &&
-	    td->xa_status != TXN_XA_ENDED && td->xa_status != TXN_XA_SUSPENDED)
+	if (td->xa_status != TXN_XA_ENDED && td->xa_status != TXN_XA_SUSPENDED
+	    && td->xa_status != TXN_XA_PREPARED)
 		return (XAER_PROTO);
 
 	/* Now, fill in the global transaction structure. */
@@ -607,7 +590,7 @@ __db_xa_forget(xid, rmid, flags)
 	if (flags != TMNOFLAGS)
 		return (XAER_INVAL);
 
-	if (__db_rmid_to_env(rmid, &env, 1) != 0)
+	if (__db_rmid_to_env(rmid, &env) != 0)
 		return (XAER_PROTO);
 
 	/*
@@ -654,7 +637,7 @@ __xa_txn_init(env, td, off)
 	DB_TXN *txn;
 
 	txn = env->xa_txn;
-	txn->mgrp = env->tx_info;
+	txn->mgrp = env->tx_handle;
 	txn->parent = NULL;
 	txn->last_lsn = td->last_lsn;
 	txn->txnid = td->txnid;
@@ -676,4 +659,3 @@ __xa_txn_end(env)
 	if (txn != NULL)
 		txn->txnid = TXN_INVALID;
 }
-

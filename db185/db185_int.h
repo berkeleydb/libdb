@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -20,11 +20,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)db185_int.h	8.7 (Sleepycat) 4/10/98
+ *	@(#)db185_int.h	11.2 (Sleepycat) 9/9/99
  */
 
 #ifndef _DB185_H_
@@ -126,12 +122,4 @@ typedef struct {
 	u_char	bval;		/* delimiting byte (variable-length records */
 	char	*bfname;	/* btree file name */
 } RECNOINFO;
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
-DB185 *dbopen __P((const char *, int, int, DBTYPE, const void *));
-#if defined(__cplusplus)
-};
-#endif
 #endif /* !_DB185_H_ */

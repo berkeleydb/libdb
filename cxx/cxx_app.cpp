@@ -1,23 +1,26 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_app.cpp	10.23 (Sleepycat) 12/16/98";
+static const char sccsid[] = "@(#)cxx_app.cpp	11.10 (Sleepycat) 11/12/99";
 #endif /* not lint */
 
 #include "db_cxx.h"
 #include "cxx_int.h"
 
+extern "C" {          // needed for __db_errcall
+#include "db_int.h"
+#include "common_ext.h"
+}
+
 #include <errno.h>
-#include <fstream.h>
-#include <iostream.h>
-#include <stdio.h>              // needed for setErrorStream
+#include <stdio.h>              // needed for set_error_stream
 #include <string.h>
 
 ////////////////////////////////////////////////////////////////////////
@@ -30,94 +33,145 @@ static DbEnv *currentApp = 0;
 
 ostream *DbEnv::error_stream_ = 0;
 
-DbEnv::DbEnv(const char *homeDir, char *const *db_config, u_int32_t flags_arg)
-:   error_model_(Exception)
+DbEnv::DbEnv(u_int32_t flags)
+:	imp_(0)
+,	no_exceptions_(0)
+,	tx_recover_callback_(0)
+,	paniccall_callback_(0)
 {
-    DB_ENV *env = this;
-    memset(env, 0, sizeof(DB_ENV));
+	DB_ENV *env;
+	int ret;
 
-    int err;
+	if ((flags & DB_CXX_NO_EXCEPTIONS) != 0) {
+		no_exceptions_ = 1;
+		flags &= ~DB_CXX_NO_EXCEPTIONS;
+	}
 
-    if ((err = db_appinit(homeDir, db_config, env, flags_arg)) != 0) {
-        DB_ERROR("DbEnv::DbEnv", err);
-    }
-    currentApp = this;
+	if ((ret = ::db_env_create(&env, flags)) != 0) {
+		DB_ERROR("DbEnv::DbEnv", ret, this);
+		return;
+	}
+	imp_ = wrap(env);
+	env->cj_internal = this;    // for DB_ENV* to DbEnv* conversion
+	currentApp = this;
 }
 
-DbEnv::DbEnv()
-:   error_model_(Exception)
+DbEnv::DbEnv(DB_ENV *env, u_int32_t flags)
+:	imp_(0)
+,	no_exceptions_(0)
+,	tx_recover_callback_(0)
+,	paniccall_callback_(0)
 {
-    DB_ENV *env = this;
-    memset(env, 0, sizeof(DB_ENV));
+	if ((flags & DB_CXX_NO_EXCEPTIONS) != 0) {
+		no_exceptions_ = 1;
+		flags &= ~DB_CXX_NO_EXCEPTIONS;
+	}
+
+	imp_ = wrap(env);
+	env->cj_internal = this;    // for DB_ENV* to DbEnv* conversion
+	currentApp = this;
 }
 
 DbEnv::~DbEnv()
 {
-    if (currentApp == this)
-        currentApp = 0;
-    DB_ENV *env = this;
+	DB_ENV *env = unwrap(this);
+	env->cj_internal = 0;
 
-    // We want to call appexit() to enforce proper cleanup when
-    // a DbEnv goes out of scope or is deleted.  At the same
-    // time, we want to permit the user to call appexit() at
-    // any time, so they can check the error return and/or
-    // shut down DB at any time.  DB normally does not allow
-    // multiple appexit() calls, but to satisfy the above needs,
-    // we'll look at the (normally internal) flag DB_ENV_APPINIT,
-    // that is set on appinit(), and cleared on appexit().
-    //
-    if ((env->flags & DB_ENV_APPINIT) != 0) {
-        (void)appexit();        // ignore error return
-    }
+	if (currentApp == this)
+		currentApp = 0;
+	imp_ = 0;                   // extra safety
 }
 
-int DbEnv::appinit(const char *homeDir, char *const *db_config, u_int32_t flags_arg)
+int DbEnv::close(u_int32_t flags)
 {
-    DB_ENV *env = this;
+	DB_ENV *env = unwrap(this);
+	int ret;
 
-    int err;
-
-    if ((err = db_appinit(homeDir, db_config, env, flags_arg)) != 0) {
-        DB_ERROR("DbEnv::appinit", err);
-    }
-    currentApp = this;
-    return err;
+	if ((ret = env->close(env, flags)) != 0) {
+		DB_ERROR("DbEnv::close", ret, this);
+	}
+	return ret;
 }
 
-int DbEnv::appexit()
+void DbEnv::err(int error, const char *format, ...)
 {
-    DB_ENV *env = this;
+	va_list args;
+	DB_ENV *env = unwrap(this);
 
-    int err;
+	va_start(args, format);
+	__db_real_err(env, error, 1, 1, format, args);
+	va_end(args);
+}
 
-    if ((err = db_appexit(env)) != 0) {
-        DB_ERROR("DbEnv::appexit", err);
-    }
-    currentApp = 0;
-    return err;
+void DbEnv::errx(const char *format, ...)
+{
+	va_list args;
+	DB_ENV *env = unwrap(this);
+
+	va_start(args, format);
+	__db_real_err(env, 0, 0, 1, format, args);
+	va_end(args);
+}
+
+int DbEnv::open(const char *db_home, char * const *db_config,
+		u_int32_t flags, int mode)
+{
+	DB_ENV *env = unwrap(this);
+	int ret;
+
+	if ((ret = env->open(env, db_home, db_config, flags, mode)) != 0) {
+		DB_ERROR("DbEnv::open", ret, this);
+	}
+	return ret;
+}
+
+int DbEnv::remove(const char *db_home, char *const *db_config,
+		  u_int32_t flags)
+{
+	DB_ENV *env = unwrap(this);
+	int ret;
+
+	if ((ret = env->remove(env, db_home, db_config, flags)) != 0) {
+		DB_ERROR("DbEnv::remove", ret, this);
+	}
+	return ret;
+}
+
+int DbEnv::runtime_error(const char *caller, int error, DbEnv *env,
+			 int in_destructor, int force_throw)
+{
+	if (env == 0) {
+		env = currentApp;
+	}
+	int throwit = (env == NULL ||
+		       (env != NULL && env->no_exceptions_ == 0));
+
+	if ((throwit && !in_destructor) || force_throw) {
+		throw DbException(caller, error);
+	}
+	return error;
+}
+
+// This interface, reporting a runtime error via a Db,
+// is currently just a convenience for calling functions.
+// Someday we may maintain a back pointer to a DbEnv, but the
+// pointer management issues seem too large right now.
+// (Like, what happens if the associated DbEnv is closed/deleted
+// before the last use of the Db?).
+//
+int DbEnv::runtime_error(const char *caller, int error, Db *db,
+			 int in_destructor, int force_throw)
+{
+	DbEnv *dbenv = 0;
+	if (db != 0)
+		dbenv = db->get_env(0);
+	return runtime_error(caller, error, dbenv, in_destructor, force_throw);
 }
 
 // static method
-char *DbEnv::version(int *major, int *minor, int *patch)
+char *DbEnv::strerror(int error)
 {
-    return db_version(major, minor, patch);
-}
-
-void DbEnv::set_error_model(ErrorModel model)
-{
-    error_model_ = model;
-}
-
-int DbEnv::runtime_error(const char *caller, int err,
-                         int in_destructor, int force_throw)
-{
-    int throwit = (!currentApp ||
-                   (currentApp && currentApp->error_model_ == Exception));
-
-    if ((throwit && !in_destructor) || force_throw) {
-        throw DbException(caller, err);
-    }
-    return err;
+	return db_strerror(error);
 }
 
 // Note: This actually behaves a bit like a static function,
@@ -125,164 +179,237 @@ int DbEnv::runtime_error(const char *caller, int err,
 // db_env triggered the call.  A user that has multiple DB_ENVs
 // will simply not be able to have different streams for each one.
 //
-void DbEnv::set_error_stream(class ostream *stream)
+void DbEnv::set_error_stream(ostream *stream)
 {
-    error_stream_ = stream;
+	DB_ENV *dbenv = unwrap(this);
 
-    db_errcall = stream_error_function;
+	error_stream_ = stream;
+	dbenv->set_errcall(dbenv, (stream == 0) ? 0 : stream_error_function);
 }
 
 void DbEnv::stream_error_function(const char *prefix, char *message)
 {
-    if (error_stream_) {
-        if (prefix) {
-            (*error_stream_) << prefix << ": ";
-        }
-        if (message) {
-            (*error_stream_) << message;
-        }
-        (*error_stream_) << "\n";
-    }
+	if (error_stream_) {
+		if (prefix) {
+			(*error_stream_) << prefix << ": ";
+		}
+		if (message) {
+			(*error_stream_) << message;
+		}
+		(*error_stream_) << "\n";
+	}
 }
 
-void DbEnv::set_paniccall(DbEnv::db_paniccall_fcn fcn)
+// static method
+char *DbEnv::version(int *major, int *minor, int *patch)
 {
-    typedef void (*c_db_paniccall_fcn)(DB_ENV *, int);
-
-    DB_ENV *env = this;
-    env->db_paniccall = (c_db_paniccall_fcn)fcn;
+	return db_version(major, minor, patch);
 }
 
 // This is a variant of the DB_WO_ACCESS macro to define a simple set_
-// method, but it raises an exception if the environment has already been
-// initialized.  This is considered a configuration error (and thus
-// serious enough for an unconditional exception) because user changes
-// to the environment structure after appinit will have no effect.
+// method calling the underlying C method, but unlike a simple
+// set method, it may return an error or raise an exception.
+// Note this macro expects that input _argspec is an argument
+// list element (e.g. "char *arg") defined in terms of "arg".
 //
-#define DB_WO_ACCESS_BEFORE_APPINIT(_class, _type, _cxx_name, _field) \
+#define DB_DBENV_ACCESS(_name, _argspec)                       \
                                                                \
-void _class::set_##_cxx_name(_type value)                      \
+int DbEnv::set_##_name(_argspec)                               \
 {                                                              \
-    if ((flags & DB_ENV_APPINIT) != 0) {                       \
-        runtime_error("DbEnv::set_" #_cxx_name, EINVAL, 0, 1); \
-    }                                                          \
-    _field = value;                                            \
-}                                                              \
-
-
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, int, lorder, db_lorder)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, DbEnv::db_errcall_fcn, errcall, db_errcall)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, FILE *, errfile, db_errfile)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, int, verbose, db_verbose)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, u_int8_t *, lk_conflicts, lk_conflicts)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, int, lk_modes, lk_modes)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, unsigned int, lk_max, lk_max)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, u_int32_t, lk_detect, lk_detect)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, u_int32_t, lg_max, lg_max)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, size_t, mp_mmapsize, mp_mmapsize)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, size_t, mp_size, mp_size)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, unsigned int, tx_max, tx_max)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, DbEnv::tx_recover_fcn, tx_recover, tx_recover)
-DB_WO_ACCESS_BEFORE_APPINIT(DbEnv, u_int32_t, flags, flags)
-
-// These fields can be changed after appinit().
-//
-DB_WO_ACCESS(DbEnv, const char *, errpfx, db_errpfx)
-
-
-// These access methods require construction of
-// wrapper options DB_FOO* to DbFoo* .
-//
-
-DbLockTab *DbEnv::get_lk_info() const
-{
-    if (!lk_info)
-        return 0;
-    DbLockTab *result = new DbLockTab();
-    result->imp_ = wrap(lk_info);
-    return result;
+	int ret;                                               \
+	DB_ENV *dbenv = unwrap(this);                          \
+                                                               \
+	if ((ret = (*(dbenv->set_##_name))(dbenv, arg)) != 0) {\
+		DB_ERROR("DbEnv::set_" # _name, ret, this);    \
+	}                                                      \
+	return ret;                                            \
 }
 
-DbLog *DbEnv::get_lg_info() const
-{
-    if (!lg_info)
-        return 0;
-    DbLog *result = new DbLog();
-    result->imp_ = wrap(lg_info);
-    return result;
+#define DB_DBENV_ACCESS_NORET(_name, _argspec)                 \
+                                                               \
+void DbEnv::set_##_name(_argspec)                              \
+{                                                              \
+	DB_ENV *dbenv = unwrap(this);                          \
+                                                               \
+	(*(dbenv->set_##_name))(dbenv, arg);                   \
+	return;                                                \
 }
 
-DbMpool *DbEnv::get_mp_info() const
-{
-    if (!mp_info)
-        return 0;
-    DbMpool *result = new DbMpool();
-    result->imp_ = wrap(mp_info);
-    return result;
-}
+DB_DBENV_ACCESS_NORET(errcall, void (*arg)(const char *, char *))
+DB_DBENV_ACCESS_NORET(errfile, FILE *arg)
+DB_DBENV_ACCESS_NORET(errpfx, const char *arg)
+DB_DBENV_ACCESS(func_close, int (*arg)(int))
+DB_DBENV_ACCESS(func_dirfree, void (*arg)(char **, int))
+DB_DBENV_ACCESS(func_dirlist, int (*arg)(const char *, char ***, int *))
+DB_DBENV_ACCESS(func_exists, int (*arg)(const char *, int *))
+DB_DBENV_ACCESS(func_free, void (*arg)(void *))
+DB_DBENV_ACCESS(func_fsync, int (*arg)(int))
+DB_DBENV_ACCESS(func_ioinfo, int (*arg)(const char *,
+		int, u_int32_t *, u_int32_t *, u_int32_t *))
+DB_DBENV_ACCESS(func_malloc, void *(*arg)(size_t))
+DB_DBENV_ACCESS(func_map, int (*arg)(char *, size_t, int, int, void **))
+DB_DBENV_ACCESS(func_open, int (*arg)(const char *, int, ...))
+DB_DBENV_ACCESS(func_read, ssize_t (*arg)(int, void *, size_t))
+DB_DBENV_ACCESS(func_realloc, void *(*arg)(void *, size_t))
+DB_DBENV_ACCESS(func_seek,
+		int (*arg)(int, size_t, db_pgno_t, u_int32_t, int, int))
+DB_DBENV_ACCESS(func_sleep, int (*arg)(u_long, u_long))
+DB_DBENV_ACCESS(func_unlink, int (*arg)(const char *))
+DB_DBENV_ACCESS(func_unmap, int (*arg)(void *, size_t))
+DB_DBENV_ACCESS(func_write, ssize_t (*arg)(int, const void *, size_t))
+DB_DBENV_ACCESS(func_yield, int (*arg)(void))
+DB_DBENV_ACCESS(lg_bsize, u_int32_t arg)
+DB_DBENV_ACCESS(lg_max, u_int32_t arg)
+DB_DBENV_ACCESS(lk_detect, u_int32_t arg)
+DB_DBENV_ACCESS(lk_max, u_int32_t arg)
+DB_DBENV_ACCESS(mp_mmapsize, size_t arg)
+DB_DBENV_ACCESS(mutexlocks, int arg)
+DB_DBENV_ACCESS(pageyield, int arg)
+DB_DBENV_ACCESS(region_init, int arg)
+DB_DBENV_ACCESS(tas_spins, u_int32_t arg)
+DB_DBENV_ACCESS(tx_max, u_int32_t arg)
 
-DbTxnMgr *DbEnv::get_tx_info() const
-{
-    if (!tx_info)
-        return 0;
-    DbTxnMgr *result = new DbTxnMgr();
-    result->imp_ = wrap(tx_info);
-    return result;
-}
-
-////////////////////////////////////////////////////////////////////////
-//                                                                    //
-//                            DbInfo                                  //
-//                                                                    //
-////////////////////////////////////////////////////////////////////////
-
-// Note: in theory, the db_home and db_*_dir fields will always be zero
-// when managed by DbInfo.  That's because they are set by
-// db_appinit, not by the user, and we make a copy of the db_env used by
-// the application.
+// Here are the set methods that don't fit the above mold.
 //
 
-DbInfo::DbInfo()
+int DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache)
 {
-    DB_INFO *info = this;
-    memset(info, 0, sizeof(DB_INFO));
+	int ret;
+	DB_ENV *dbenv = unwrap(this);
+
+	if ((ret = (*(dbenv->set_cachesize))(dbenv, gbytes, bytes, ncache)) != 0) {
+		DB_ERROR("DbEnv::set_cachesize", ret, this);
+	}
+	return ret;
 }
 
-DbInfo::~DbInfo()
+int DbEnv::set_lk_conflicts(u_int8_t *lk_conflicts, int lk_max)
 {
+	int ret;
+	DB_ENV *dbenv = unwrap(this);
+
+	if ((ret = (*(dbenv->set_lk_conflicts))
+	     (dbenv, lk_conflicts, lk_max)) != 0) {
+		DB_ERROR("DbEnv::set_lk_conflicts", ret, this);
+	}
+	return ret;
 }
 
-DbInfo::DbInfo(const DbInfo &that)
+int DbEnv::set_verbose(u_int32_t which, int onoff)
 {
-    DB_INFO *to = this;
-    const DB_INFO *from = &that;
-    memcpy(to, from, sizeof(DB_INFO));
+	int ret;
+	DB_ENV *dbenv = unwrap(this);
+
+	if ((ret = (*(dbenv->set_verbose))(dbenv, which, onoff)) != 0) {
+		DB_ERROR("DbEnv::set_verbose", ret, this);
+	}
+	return ret;
 }
 
-DbInfo &DbInfo::operator = (const DbInfo &that)
+int DbEnv::tx_recover_intercept(DB_ENV *env, DBT *dbt,
+				DB_LSN *lsn, int redo, void *info)
 {
-    if (this != &that) {
-        DB_INFO *to = this;
-        const DB_INFO *from = &that;
-        memcpy(to, from, sizeof(DB_INFO));
-    }
-    return *this;
+	if (env == 0) {
+		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, (DbEnv*)0);
+		return EINVAL;
+	}
+	DbEnv *cxxenv = (DbEnv *)env->cj_internal;
+	if (cxxenv == 0) {
+		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, cxxenv);
+		return EINVAL;
+	}
+	if (cxxenv->tx_recover_callback_ == 0) {
+		DB_ERROR("DbEnv::tx_recover_callback", EINVAL, cxxenv);
+		return EINVAL;
+	}
+	Dbt *cxxdbt = (Dbt *)dbt;
+	DbLsn *cxxlsn = (DbLsn *)lsn;
+	return (*cxxenv->tx_recover_callback_)(cxxenv, cxxdbt, cxxlsn, redo, info);
 }
 
-DB_WO_ACCESS(DbInfo, int, lorder, db_lorder)
-DB_WO_ACCESS(DbInfo, size_t, cachesize, db_cachesize)
-DB_WO_ACCESS(DbInfo, size_t, pagesize, db_pagesize)
-DB_WO_ACCESS(DbInfo, DbInfo::db_malloc_fcn, malloc, db_malloc)
-DB_WO_ACCESS(DbInfo, DbInfo::dup_compare_fcn, dup_compare, dup_compare)
-DB_WO_ACCESS(DbInfo, int, bt_maxkey, bt_maxkey)
-DB_WO_ACCESS(DbInfo, int, bt_minkey, bt_minkey)
-DB_WO_ACCESS(DbInfo, DbInfo::bt_compare_fcn, bt_compare, bt_compare)
-DB_WO_ACCESS(DbInfo, DbInfo::bt_prefix_fcn, bt_prefix, bt_prefix)
-DB_WO_ACCESS(DbInfo, unsigned int, h_ffactor, h_ffactor)
-DB_WO_ACCESS(DbInfo, unsigned int, h_nelem, h_nelem)
-DB_WO_ACCESS(DbInfo, DbInfo::h_hash_fcn, h_hash, h_hash)
-DB_WO_ACCESS(DbInfo, int, re_pad, re_pad)
-DB_WO_ACCESS(DbInfo, int, re_delim, re_delim)
-DB_WO_ACCESS(DbInfo, u_int32_t, re_len, re_len)
-DB_WO_ACCESS(DbInfo, char *, re_source, re_source)
-DB_WO_ACCESS(DbInfo, u_int32_t, flags, flags)
+int DbEnv::set_tx_recover(int (*arg)(DbEnv *, Dbt *, DbLsn *, int, void *))
+{
+	int ret;
+	DB_ENV *dbenv = unwrap(this);
+
+	tx_recover_callback_ = arg;
+	if ((ret = (*(dbenv->set_tx_recover))(dbenv, tx_recover_intercept)) != 0) {
+		DB_ERROR("DbEnv::set_tx_recover", ret, this);
+	}
+	return ret;
+}
+
+void DbEnv::paniccall_intercept(DB_ENV *env, int errval)
+{
+	if (env == 0) {
+		DB_ERROR("DbEnv::paniccall_callback", EINVAL, (DbEnv*)0);
+	}
+	DbEnv *cxxenv = (DbEnv *)env->cj_internal;
+	if (cxxenv == 0) {
+		DB_ERROR("DbEnv::paniccall_callback", EINVAL, cxxenv);
+	}
+	if (cxxenv->paniccall_callback_ == 0) {
+		DB_ERROR("DbEnv::paniccall_callback", EINVAL, cxxenv);
+	}
+	(*cxxenv->paniccall_callback_)(cxxenv, errval);
+}
+
+void DbEnv::set_paniccall(void (*arg)(DbEnv *, int))
+{
+	DB_ENV *dbenv = unwrap(this);
+
+	paniccall_callback_ = arg;
+
+	(*(dbenv->set_paniccall))(dbenv, paniccall_intercept);
+}
+
+int DbEnv::recovery_init_intercept(DB_ENV *env)
+{
+	if (env == 0) {
+		DB_ERROR("DbEnv::recovery_init_callback", EINVAL, (DbEnv*)0);
+	}
+	DbEnv *cxxenv = (DbEnv *)env->cj_internal;
+	if (cxxenv == 0) {
+		DB_ERROR("DbEnv::recovery_init_callback", EINVAL, cxxenv);
+	}
+	if (cxxenv->recovery_init_callback_ == 0) {
+		DB_ERROR("DbEnv::recovery_init_callback", EINVAL, cxxenv);
+	}
+	return (*cxxenv->recovery_init_callback_)(cxxenv);
+}
+
+void DbEnv::set_recovery_init(int (*arg)(DbEnv *))
+{
+	DB_ENV *dbenv = unwrap(this);
+
+	recovery_init_callback_ = arg;
+
+	(*(dbenv->set_recovery_init))(dbenv, recovery_init_intercept);
+}
+
+void DbEnv::feedback_intercept(DB_ENV *env, int opcode, int pct)
+{
+	if (env == 0) {
+		DB_ERROR("DbEnv::feedback_callback", EINVAL, (DbEnv*)0);
+		return;
+	}
+	DbEnv *cxxenv = (DbEnv *)env->cj_internal;
+	if (cxxenv == 0) {
+		DB_ERROR("DbEnv::feedback_callback", EINVAL, cxxenv);
+		return;
+	}
+	if (cxxenv->feedback_callback_ == 0) {
+		DB_ERROR("DbEnv::feedback_callback", EINVAL, cxxenv);
+		return;
+	}
+	(*cxxenv->feedback_callback_)(cxxenv, opcode, pct);
+}
+
+void DbEnv::set_feedback(void (*arg)(DbEnv *, int, int))
+{
+	DB_ENV *dbenv = unwrap(this);
+
+	feedback_callback_ = arg;
+
+	(*(dbenv->set_feedback))(dbenv, feedback_intercept);
+}

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test011.tcl	10.8 (Sleepycat) 12/5/98
+#	@(#)test011.tcl	11.10 (Sleepycat) 9/24/99
 #
 # DB Test 11 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -14,18 +14,17 @@
 # To test if dups work when they fall off the main page, run this with
 # a very tiny page size.
 proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
-global dlist
+	global dlist
+	source ./include.tcl
+
 	set dlist ""
-	set omethod $method
-	set do_renumber [is_rrecno $method]
-	set args [convert_args $method $args]
-	set method [convert_method $method]
-	if { [is_rbtree $omethod] == 1 } {
-		puts "Test011 skipping for method $omethod"
+
+	if { [is_rbtree $method] == 1 } {
+		puts "Test011 skipping for method $method"
 		return
 	}
-	if { [string compare $method DB_RECNO] == 0 } {
-		test011_recno $do_renumber $nentries $tnum $args
+	if { [is_record_based $method] == 1 } {
+		test011_recno $method $nentries $tnum $args
 		return
 	} else {
 		puts -nonewline "Test0$tnum: $method $nentries small dup "
@@ -35,24 +34,25 @@ global dlist
 		set ndups 5
 	}
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
 
 	# Create the database and open the dictionary
-	set testfile test0$tnum.db
+	set testfile $testdir/test0$tnum.db
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set args [add_to_args $DB_DUP $args]
-	set db [eval [concat dbopen $testfile \
-	    [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+
+	set db [eval {berkdb open -create -truncate \
+	    -mode 0644} [concat $args "-dup"] {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
+
 	set did [open $dict]
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags ""
+	set txn ""
 	set count 0
 
 	# Here is the loop where we put and get each key/data pair
@@ -60,7 +60,7 @@ global dlist
 	# 0 and $ndups+1 using keyfirst/keylast.  We'll add 2 and 4 using
 	# add before and add after.
 	puts "\tTest0$tnum.a: put and get duplicate keys."
-	set dbc [$db cursor $txn]
+	set dbc [eval {$db cursor} $txn]
 	set i ""
 	for { set i 1 } { $i <= $ndups } { incr i 2 } {
 		lappend dlist $i
@@ -69,20 +69,20 @@ global dlist
 	while { [gets $did str] != -1 && $count < $nentries } {
 		for { set i 1 } { $i <= $ndups } { incr i 2 } {
 			set datastr $i:$str
-			set ret [$db put $txn $str $datastr $flags]
+			set ret [eval {$db put} $txn $pflags $str $datastr]
 			error_check_good put $ret 0
 		}
 
 		# Now retrieve all the keys matching this key
 		set x 1
-		for {set ret [$dbc get $str $DB_SET]} \
-		    {[string length $ret] != 0} \
-		    {set ret [$dbc get 0 $DB_NEXT] } {
-			set k [lindex $ret 0]
+		for {set ret [$dbc get "-set" $str ]} \
+		    {[llength $ret] != 0} \
+		    {set ret [$dbc get "-next"] } {
+			set k [lindex [lindex $ret 0] 0]
 			if { [string compare $k $str] != 0 } {
 				break
 			}
-			set datastr [lindex $ret 1]
+			set datastr [lindex [lindex $ret 0] 1]
 			set d [data_of $datastr]
 
 			if {[string length $d] == 0} {
@@ -101,46 +101,50 @@ global dlist
 
 	# Now we will get each key from the DB and compare the results
 	# to the original.
-	puts "\tTest0$tnum.b: traverse entire file checking duplicates before close."
+	puts "\tTest0$tnum.b: \
+	    traverse entire file checking duplicates before close."
 	dup_check $db $txn $t1 $dlist
 
 	# Now compare the keys to see if they match the dictionary entries
 	set q q
-	exec $SED $nentries$q $dict > $t2
+	exec $SED $nentries$q $dict > $t3
+	exec $SORT $t3 > $t2
 	exec $SORT $t1 > $t3
 
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $DIFF $t3 $t2 } res] 0
+	    [catch { exec $CMP $t3 $t2 } res] 0
 
 	error_check_good db_close [$db close] 0
-	set db [dbopen $testfile 0 0 $method]
+
+	set db [berkdb open $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
-	puts "\tTest0$tnum.c: traverse entire file checking duplicates after close."
+	puts "\tTest0$tnum.c: \
+	    traverse entire file checking duplicates after close."
 	dup_check $db $txn $t1 $dlist
 
 	# Now compare the keys to see if they match the dictionary entries
 	exec $SORT $t1 > $t3
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $DIFF $t3 $t2 } res] 0
+	    [catch { exec $CMP $t3 $t2 } res] 0
 
 	puts "\tTest0$tnum.d: Testing key_first functionality"
-	add_dup $db $txn $nentries $DB_KEYFIRST 0 0
+	add_dup $db $txn $nentries "-keyfirst" 0 0
 	set dlist [linsert $dlist 0 0]
 	dup_check $db $txn $t1 $dlist
 
 	puts "\tTest0$tnum.e: Testing key_last functionality"
-	add_dup $db $txn $nentries $DB_KEYLAST [expr $maxodd - 1] 0
+	add_dup $db $txn $nentries "-keylast" [expr $maxodd - 1] 0
 	lappend dlist [expr $maxodd - 1]
 	dup_check $db $txn $t1 $dlist
 
 	puts "\tTest0$tnum.f: Testing add_before functionality"
-	add_dup $db $txn $nentries $DB_BEFORE 2 3
+	add_dup $db $txn $nentries "-before" 2 3
 	set dlist [linsert $dlist 2 2]
 	dup_check $db $txn $t1 $dlist
 
 	puts "\tTest0$tnum.g: Testing add_after functionality"
-	add_dup $db $txn $nentries $DB_AFTER 4 4
+	add_dup $db $txn $nentries "-after" 4 4
 	set dlist [linsert $dlist 4 4]
 	dup_check $db $txn $t1 $dlist
 
@@ -148,48 +152,63 @@ global dlist
 }
 
 proc add_dup {db txn nentries flag dataval iter} {
-source ./include.tcl
+	source ./include.tcl
 
-	set dbc [$db cursor $txn]
+	set dbc [eval {$db cursor} $txn]
 	set did [open $dict]
 	set count 0
 	while { [gets $did str] != -1 && $count < $nentries } {
 		set datastr $dataval:$str
-		set ret [$dbc get $str $DB_SET]
+		set ret [$dbc get "-set" $str]
 		error_check_bad "cget(SET)" [is_substr $ret Error] 1
 		for { set i 1 } { $i < $iter } { incr i } {
-			set ret [ $dbc get $str $DB_NEXT ]
+			set ret [$dbc get "-next"]
 			error_check_bad "cget(NEXT)" [is_substr $ret Error] 1
 		}
 
-		$dbc put $str $datastr $flag
+		if { [string compare $flag "-before"] == 0 ||
+		    [string compare $flag "-after"] == 0 } {
+			set ret [$dbc put $flag $datastr]
+		} else {
+			set ret [$dbc put $flag $str $datastr]
+		}
+		error_check_good "$dbc put $flag" $ret 0
 		incr count
 	}
 	close $did
 	$dbc close
 }
 
-proc test011_recno { {renum 0} {nentries 10000} {tnum 11} largs } {
-global dlist
-	puts "Test0$tnum: RECNO ($largs) $nentries test cursor insert functionality"
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
+proc test011_recno { method {nentries 10000} {tnum 11} largs } {
+	global dlist
 	source ./include.tcl
 
+	set largs [convert_args $method $largs]
+	set omethod [convert_method $method]
+	set renum [is_rrecno $method]
+
+	puts "Test0$tnum: \
+	    $method ($largs) $nentries test cursor insert functionality"
+
 	# Create the database and open the dictionary
-	set testfile test0$tnum.db
+	set testfile $testdir/test0$tnum.db
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval [concat dbopen $testfile [expr $DB_CREATE | $DB_TRUNCATE] \
-	    0644 DB_RECNO $largs]]
+
+	if {$renum == 1} {
+		append largs " -renumber"
+	}
+	set db [eval {berkdb \
+	    open -create -truncate -mode 0644} $largs {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
+
 	set did [open $dict]
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags ""
+	set txn ""
 	set count 0
 
 	# The basic structure of the test is that we pick a random key
@@ -203,28 +222,29 @@ global dlist
 
 	# Seed the database with an initial record
 	gets $did str
-	set ret [$db put $txn 1 $str 0]
+	set ret [eval {$db put} $txn {1 [chop_data $method $str]}]
 	error_check_good put $ret 0
 	set count 1
 
 	set dlist "NULL $str"
 
 	# Open a cursor
-	set dbc [$db cursor $txn]
+	set dbc [eval {$db cursor} $txn]
 	puts "\tTest0$tnum.a: put and get entries"
 	while { [gets $did str] != -1 && $count < $nentries } {
 		# Pick a random key
-		set key [random_int 1 $count]
-		set ret [$dbc get $key $DB_SET]
-		set k [lindex $ret 0]
-		set d [lindex $ret 1]
+		set key [berkdb random_int 1 $count]
+		set ret [$dbc get -set $key]
+		set k [lindex [lindex $ret 0] 0]
+		set d [lindex [lindex $ret 0] 1]
 		error_check_good cget:SET:key $k $key
-		error_check_good cget:SET $d [lindex $dlist $key]
+		error_check_good \
+		    cget:SET $d [pad_data $method [lindex $dlist $key]]
 
 		# Current
-		set ret [$dbc put $key $str $DB_CURRENT]
+		set ret [$dbc put -current [chop_data $method $str]]
 		error_check_good cput:$key $ret 0
-		set dlist [lreplace $dlist $key $key $str]
+		set dlist [lreplace $dlist $key $key [pad_data $method $str]]
 
 		# Before
 		if { [gets $did str] == -1 } {
@@ -232,8 +252,9 @@ global dlist
 		}
 
 		if { $renum == 1 } {
-			set ret [$dbc put $key $str $DB_BEFORE]
-			error_check_good cput:$key:BEFORE $ret 0
+			set ret [$dbc put \
+			    -before [chop_data $method $str]]
+			error_check_good cput:$key:BEFORE $ret $key
 			set dlist [linsert $dlist $key $str]
 			incr count
 
@@ -241,24 +262,26 @@ global dlist
 			if { [gets $did str] == -1 } {
 				continue;
 			}
-			set ret [$dbc put $key $str $DB_AFTER]
-			error_check_good cput:$key:AFTER $ret 0
+			set ret [$dbc put \
+			    -after [chop_data $method $str]]
+			error_check_good cput:$key:AFTER $ret [expr $key + 1]
 			set dlist [linsert $dlist [expr $key + 1] $str]
 			incr count
 		}
 
 		# Now verify that the keys are in the right place
 		set i 0
-		for {set ret [$dbc get $key $DB_SET]} \
+		for {set ret [$dbc get "-set" $key]} \
 		    {[string length $ret] != 0 && $i < 3} \
-		    {set ret [$dbc get 0 $DB_NEXT] } {
+		    {set ret [$dbc get "-next"] } {
 			set check_key [expr $key + $i]
 
-			set k [lindex $ret 0]
+			set k [lindex [lindex $ret 0] 0]
 			error_check_good cget:$key:loop $k $check_key
 
-			set d [lindex $ret 1]
-			error_check_good cget:data $d [lindex $dlist $check_key]
+			set d [lindex [lindex $ret 0] 1]
+			error_check_good cget:data $d \
+			    [pad_data $method [lindex $dlist $check_key]]
 			incr i
 		}
 	}
@@ -275,26 +298,27 @@ global dlist
 	puts "\tTest0$tnum.b: dump file"
 	dump_file $db $txn $t1 test011_check
 	error_check_good Test0$tnum:diff($t2,$t1) \
-	    [catch { exec $DIFF $t2 $t1 } res] 0
+	    [catch { exec $CMP $t2 $t1 } res] 0
 
 	error_check_good db_close [$db close] 0
 
 	puts "\tTest0$tnum.c: close, open, and dump file"
 	open_and_dump_file $testfile NULL $txn $t1 test011_check \
-	    dump_file_direction $DB_FIRST $DB_NEXT
+	    dump_file_direction "-first" "-next"
 	error_check_good Test0$tnum:diff($t2,$t1) \
-	    [catch { exec $DIFF $t2 $t1 } res] 0
+	    [catch { exec $CMP $t2 $t1 } res] 0
 
 	puts "\tTest0$tnum.d: close, open, and dump file in reverse direction"
 	open_and_dump_file $testfile NULL $txn $t1 test011_check \
-	    dump_file_direction $DB_LAST $DB_PREV
+	    dump_file_direction "-last" "-prev"
 
 	exec $SORT -n $t1 > $t3
 	error_check_good Test0$tnum:diff($t2,$t3) \
-	    [catch { exec $DIFF $t2 $t3 } res] 0
+	    [catch { exec $CMP $t2 $t3 } res] 0
 }
 
 proc test011_check { key data } {
-global dlist
+	global dlist
+
 	error_check_good "get key $key" $data [lindex $dlist $key]
 }

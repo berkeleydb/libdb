@@ -1,15 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)TpcbExample.java	10.7 (Sleepycat) 12/7/98
+ *	@(#)TpcbExample.java	11.3 (Sleepycat) 9/10/99
  */
 
 package com.sleepycat.examples;
 
 import com.sleepycat.db.*;
+import java.io.FileNotFoundException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
@@ -27,14 +28,39 @@ import java.math.BigDecimal;
 //
 class TpcbExample extends DbEnv
 {
-    // XXX Margo, check these ratios and record sizes.
+    public static final int TELLERS_PER_BRANCH = 10;
+    public static final int ACCOUNTS_PER_TELLER = 10000;
+    public static final int HISTORY_PER_BRANCH = 2592000;
+
     //
-    public static final int TELLERS_PER_BRANCH = 100;
-    public static final int ACCOUNTS_PER_TELLER = 1000;
+    // The default configuration that adheres to TPCB scaling rules requires
+    // nearly 3 GB of space.  To avoid requiring that much space for testing,
+    // we set the parameters much lower.  If you want to run a valid 10 TPS
+    // configuration, uncomment the VALID_SCALING configuration
+    //
+
+    // VALID_SCALING configuration
+    /*
     public static final int ACCOUNTS = 1000000;
     public static final int BRANCHES = 10;
-    public static final int TELLERS = 1000;
-    public static final int HISTORY = 1000000;
+    public static final int TELLERS = 100;
+    public static final int HISTORY = 25920000;
+    */
+
+    // TINY configuration
+    /*
+    public static final int ACCOUNTS = 1000;
+    public static final int BRANCHES = 10;
+    public static final int TELLERS = 100;
+    public static final int HISTORY = 10000;
+    */
+
+    // Default configuration
+    public static final int ACCOUNTS = 100000;
+    public static final int BRANCHES = 10;
+    public static final int TELLERS = 100;
+    public static final int HISTORY = 259200;
+
     public static final int HISTORY_LEN = 100;
     public static final int RECLEN = 100;
     public static final int BEGID = 1000000;
@@ -47,13 +73,23 @@ class TpcbExample extends DbEnv
     private static boolean verbose = false;
     private static final String progname = "TpcbExample";    // Program name.
 
-    // Note: the constructor uses the default DbEnv() constructor,
-    // which means that appinit() can be called after all options
-    // have been set in the DbEnv.
-    //
-    public TpcbExample()
+    public TpcbExample(String home, int cachesize,
+                       boolean initializing, int flags)
+        throws DbException, FileNotFoundException
     {
-        super();
+        super(0);
+        set_error_stream(System.err);
+        set_errpfx(progname);
+        set_cachesize(0, cachesize == 0 ? 4 * 1024 * 1024 : cachesize, 0);
+
+	int local_flags = flags | Db.DB_CREATE;
+        if (initializing)
+            local_flags |= Db.DB_INIT_MPOOL;
+        else
+            local_flags |= Db.DB_INIT_TXN | Db.DB_INIT_LOCK |
+                           Db.DB_INIT_LOG | Db.DB_INIT_MPOOL;
+
+        open(home, null, local_flags, 0);        // may throw DbException
     }
 
     //
@@ -76,17 +112,17 @@ class TpcbExample extends DbEnv
         idnum = BEGID;
         balance = 500000;
 
-        DbInfo dbi = new DbInfo();
-
         h_nelem = num_a;
-        dbi.set_h_nelem(h_nelem);
 
         try {
-            dbp = Db.open("account",
-                          Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644, this, dbi);
+            dbp = new Db(this, 0);
+            dbp.set_h_nelem(h_nelem);
+            dbp.open("account", null,
+                     Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644);
         }
-        catch (DbException dbe) {
-            errExit(dbe, "Open of account file failed");
+        // can be DbException or FileNotFoundException
+        catch (Exception e1) {
+            errExit(e1, "Open of account file failed");
         }
 
         start_anum = idnum;
@@ -96,8 +132,8 @@ class TpcbExample extends DbEnv
         try {
             dbp.close(0);
         }
-        catch (DbException dbe2) {
-            errExit(dbe2, "Account file close failed");
+        catch (DbException e2) {
+            errExit(e2, "Account file close failed");
         }
 
         if (verbose)
@@ -110,17 +146,20 @@ class TpcbExample extends DbEnv
         // of getting key locking instead of page locking.
         //
         h_nelem = (int)num_b;
-        dbi.set_h_nelem(h_nelem);
-        dbi.set_h_ffactor(1);
-        dbi.set_pagesize(512);
 
         try {
-            dbp = Db.open("branch",
-                          Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644,
-                          this, dbi);
+            dbp = new Db(this, 0);
+
+            dbp.set_h_nelem(h_nelem);
+            dbp.set_h_ffactor(1);
+            dbp.set_pagesize(512);
+
+            dbp.open("branch", null,
+                     Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644);
         }
-        catch (DbException dbe3) {
-            errExit(dbe3, "Branch file create failed");
+        // can be DbException or FileNotFoundException
+        catch (Exception e3) {
+            errExit(e3, "Branch file create failed");
         }
         start_bnum = idnum;
         populateTable(dbp, idnum, balance, h_nelem, "branch");
@@ -143,16 +182,21 @@ class TpcbExample extends DbEnv
         // the fill factor dynamically adjust itself.
         //
         h_nelem = (int)num_t;
-        dbi.set_h_nelem(h_nelem);
-        dbi.set_h_ffactor(0);
-        dbi.set_pagesize(512);
 
         try {
-            dbp = Db.open("teller",
-                          Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644, this, dbi);
+
+            dbp = new Db(this, 0);
+
+            dbp.set_h_nelem(h_nelem);
+            dbp.set_h_ffactor(0);
+            dbp.set_pagesize(512);
+
+            dbp.open("teller", null,
+                     Db.DB_HASH, Db.DB_CREATE | Db.DB_TRUNCATE, 0644);
         }
-        catch (DbException dbe5) {
-            errExit(dbe5, "Teller file create failed");
+        // can be DbException or FileNotFoundException
+        catch (Exception e5) {
+            errExit(e5, "Teller file create failed");
         }
 
         start_tnum = idnum;
@@ -163,27 +207,23 @@ class TpcbExample extends DbEnv
         try {
             dbp.close(0);
         }
-        catch (DbException dbe6) {
-            errExit(dbe6, "Close of teller file failed");
+        catch (DbException e6) {
+            errExit(e6, "Close of teller file failed");
         }
 
         if (verbose)
             System.out.println("Populated tellers: "
                  + String.valueOf(start_tnum) + " - " + String.valueOf(end_tnum));
 
-        // start with a fresh DbInfo
-        //
-        DbInfo histDbi = new DbInfo();
-
-        histDbi.set_re_len(HISTORY_LEN);
-        histDbi.set_flags(Db.DB_FIXEDLEN | Db.DB_RENUMBER);
         try {
-            dbp = Db.open("history",
-                          Db.DB_RECNO, Db.DB_CREATE | Db.DB_TRUNCATE, 0644,
-                          this, histDbi);
+            dbp = new Db(this, 0);
+            dbp.set_re_len(HISTORY_LEN);
+            dbp.open("history", null,
+                     Db.DB_RECNO, Db.DB_CREATE | Db.DB_TRUNCATE, 0644);
         }
-        catch (DbException dbe7) {
-            errExit(dbe7, "Create of history file failed");
+        // can be DbException or FileNotFoundException
+        catch (Exception e7) {
+            errExit(e7, "Create of history file failed");
         }
 
         populateHistory(dbp, num_h, num_a, num_b, num_t);
@@ -191,8 +231,8 @@ class TpcbExample extends DbEnv
         try {
             dbp.close(0);
         }
-        catch (DbException dbe8) {
-            errExit(dbe8, "Close of history file failed");
+        catch (DbException e8) {
+            errExit(e8, "Close of history file failed");
         }
     }
 
@@ -309,13 +349,20 @@ class TpcbExample extends DbEnv
         //
         int err;
         try {
-            adb = Db.open("account", Db.DB_UNKNOWN, 0, 0, this, null);
-            bdb = Db.open("branch", Db.DB_UNKNOWN, 0, 0, this, null);
-            tdb = Db.open("teller", Db.DB_UNKNOWN, 0, 0, this, null);
-            hdb = Db.open("history", Db.DB_UNKNOWN, 0, 0, this, null);
+            adb = new Db(this, 0);
+            adb.open("account", null, Db.DB_UNKNOWN, 0, 0);
+            bdb = new Db(this, 0);
+            bdb.open("branch", null, Db.DB_UNKNOWN, 0, 0);
+            tdb = new Db(this, 0);
+            tdb.open("teller", null, Db.DB_UNKNOWN, 0, 0);
+            hdb = new Db(this, 0);
+            hdb.open("history", null, Db.DB_UNKNOWN, 0, 0);
         }
         catch (DbException dbe) {
             errExit(dbe, "Open of db files failed");
+        }
+        catch (FileNotFoundException fnfe) {
+            errExit(fnfe, "Open of db files failed, missing file");
         }
 
         txns = failed = ifailed = 0;
@@ -323,8 +370,7 @@ class TpcbExample extends DbEnv
         lasttime = starttime;
         while (n-- >= 0) {
             txns++;
-            DbTxnMgr txnmgr = get_tx_info();
-            ret = txn(txnmgr, adb, bdb, tdb, hdb, accounts, branches, tellers);
+            ret = txn(adb, bdb, tdb, hdb, accounts, branches, tellers);
             if (ret != 0) {
                 failed++;
                 ifailed++;
@@ -365,8 +411,7 @@ class TpcbExample extends DbEnv
     // XXX Figure out the appropriate way to pick out IDs.
     //
     public int
-    txn(DbTxnMgr txmgr,
-        Db adb, Db bdb, Db tdb, Db hdb,
+    txn(Db adb, Db bdb, Db tdb, Db hdb,
         int anum, int bnum, int tnum)
     {
         Dbc acurs = null;
@@ -412,7 +457,7 @@ class TpcbExample extends DbEnv
         // START TIMING
 
         try {
-            t = txmgr.begin(null);
+            t = txn_begin(null, 0);
 
             acurs = adb.cursor(t, 0);
             bcurs = bdb.cursor(t, 0);
@@ -452,7 +497,7 @@ class TpcbExample extends DbEnv
             tcurs.close();
             hcurs.close();
 
-            t.commit();
+            t.commit(0);
 
             // END TIMING
             return (0);
@@ -485,7 +530,7 @@ class TpcbExample extends DbEnv
         }
     }
 
-    static void errExit(DbException err, String s)
+    static void errExit(Exception err, String s)
     {
         System.err.print(progname + ": ");
         if (s != null) {
@@ -500,12 +545,13 @@ class TpcbExample extends DbEnv
     {
         long seed;
         int accounts, branches, tellers, history;
-        boolean iflag;
+        boolean iflag, txn_no_sync;
         int mpool, ntxns;
         String home, endarg;
 
-        home = null;
+        home = "TESTDIR";
         accounts = branches = history = tellers = 0;
+        txn_no_sync = false;
         mpool = ntxns = 0;
         verbose = false;
         iflag = false;
@@ -523,6 +569,15 @@ class TpcbExample extends DbEnv
                 if ((branches = Integer.parseInt(argv[++i])) <= 0)
                     invarg(argv[i]);
             }
+            else if (argv[i].equals("-c")) {
+                // Cachesize in bytes
+                if ((mpool = Integer.parseInt(argv[++i])) <= 0)
+                    invarg(argv[i]);
+            }
+            else if (argv[i].equals("-f")) {
+                // Fast mode: no txn sync.
+                txn_no_sync = true;
+            }
             else if (argv[i].equals("-h")) {
                 // DB  home.
                 home = argv[++i];
@@ -530,11 +585,6 @@ class TpcbExample extends DbEnv
             else if (argv[i].equals("-i")) {
                 // Initialize the test.
                 iflag = true;
-            }
-            else if (argv[i].equals("-m")) {
-                // Bytes in buffer pool
-                if ((mpool = Integer.parseInt(argv[++i])) <= 0)
-                    invarg(argv[i]);
             }
             else if (argv[i].equals("-n")) {
                 // Number of transactions
@@ -569,6 +619,19 @@ class TpcbExample extends DbEnv
 
         rand.setSeed((int)seed);
 
+        TpcbExample app = null;
+
+        // Initialize the database environment.
+        // Must be done in within a try block.
+        //
+        try {
+            app = new TpcbExample(home, mpool, iflag,
+                                  txn_no_sync ? Db.DB_TXN_NOSYNC : 0);
+        }
+        catch (Exception e1) {
+            errExit(e1, "initializing environment failed");
+        }
+
         accounts = accounts == 0 ? ACCOUNTS : accounts;
         branches = branches == 0 ? BRANCHES : branches;
         tellers = tellers == 0 ? TELLERS : tellers;
@@ -580,49 +643,21 @@ class TpcbExample extends DbEnv
                  + String.valueOf(tellers) + " Tellers "
                  + String.valueOf(history) + " History");
 
-        // Declaring and setting options does not need
-        // to be done in a try block, as it will never
-        // raise an exception.
-        //
-        TpcbExample app = new TpcbExample();
-        int flags = Db.DB_CREATE | Db.DB_INIT_MPOOL;
-
-        app.set_error_stream(System.err);
-        app.set_errpfx("TpcbExample");
-
-        if (mpool == 0) {
-            mpool = 4 * 1024 * 1024;
-        }
-        app.set_mp_size(mpool);
-
-        if (!iflag) {
-            flags |= Db.DB_INIT_TXN | Db.DB_INIT_LOCK | Db.DB_INIT_LOG;
-        }
-
-        // Initialize the database environment.
-        // Must be done in within a try block, unless you
-        // change the error model in the options.
-        //
-        try {
-            app.appinit(home, null, flags);
-        }
-        catch (DbException dbe1) {
-            errExit(dbe1, "appinit failed");
-        }
-
-        if (iflag && ntxns != 0) {
-            System.err.println("specify only one of -i and -n");
-            System.exit(1);
-        }
-        if (iflag)
+        if (iflag) {
+            if (ntxns != 0)
+                usage();
             app.populate(accounts, branches, history, tellers);
-        if (ntxns != 0)
+        }
+        else {
+            if (ntxns == 0)
+                usage();
             app.run(ntxns, accounts, branches, tellers);
+        }
 
         // Shut down the application.
 
         try {
-            app.appexit();
+            app.close(0);
         }
         catch (DbException dbe2) {
             errExit(dbe2, "appexit failed");
@@ -639,9 +674,10 @@ class TpcbExample extends DbEnv
 
     private static void usage()
     {
-        System.err.println("usage: TpcbExample "
-             + "[-iv] [-a accounts] [-b branches] [-h home] [-m mpool_size] "
-             + "[-n transactions ] [-S seed] [-s history] [-t tellers] ");
+        System.err.println(
+           "usage: TpcbExample [-fiv] [-a accounts] [-b branches]\n" +
+           "                   [-c cachesize] [-h home] [-n transactions ]\n" +
+           "                   [-S seed] [-s history] [-t tellers]");
         System.exit(1);
     }
 

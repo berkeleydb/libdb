@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -23,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -44,10 +40,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_overflow.c	10.21 (Sleepycat) 9/27/98";
+static const char sccsid[] = "@(#)db_overflow.c	11.2 (Sleepycat) 9/9/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -60,7 +56,6 @@ static const char sccsid[] = "@(#)db_overflow.c	10.21 (Sleepycat) 9/27/98";
 #include "db_int.h"
 #include "db_page.h"
 #include "db_am.h"
-#include "common_ext.h"
 
 /*
  * Big key/data code.
@@ -117,8 +112,12 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 		if ((ret =
 		    __os_malloc(needed, dbp->db_malloc, &dbt->data)) != 0)
 			return (ret);
+	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
+		if ((ret =
+		    __os_realloc(needed, dbp->db_realloc, &dbt->data)) != 0)
+			return (ret);
 	} else if (*bpsz == 0 || *bpsz < needed) {
-		if ((ret = __os_realloc(bpp, needed)) != 0)
+		if ((ret = __os_realloc(needed, NULL, bpp)) != 0)
 			return (ret);
 		*bpsz = needed;
 		dbt->data = *bpp;
@@ -160,15 +159,13 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
  * __db_poff --
  *	Put an offpage item.
  *
- * PUBLIC: int __db_poff __P((DBC *, const DBT *, db_pgno_t *,
- * PUBLIC:     int (*)(DBC *, u_int32_t, PAGE **)));
+ * PUBLIC: int __db_poff __P((DBC *, const DBT *, db_pgno_t *));
  */
 int
-__db_poff(dbc, dbt, pgnop, newfunc)
+__db_poff(dbc, dbt, pgnop)
 	DBC *dbc;
 	const DBT *dbt;
 	db_pgno_t *pgnop;
-	int (*newfunc) __P((DBC *, u_int32_t, PAGE **));
 {
 	DB *dbp;
 	PAGE *pagep, *lastp;
@@ -202,13 +199,13 @@ __db_poff(dbc, dbt, pgnop, newfunc)
 		 * the item onto the page.  If sz is less than pagespace, we
 		 * have a partial record.
 		 */
-		if ((ret = newfunc(dbc, P_OVERFLOW, &pagep)) != 0)
+		if ((ret = __db_new(dbc, P_OVERFLOW, &pagep)) != 0)
 			return (ret);
 		if (DB_LOGGING(dbc)) {
 			tmp_dbt.data = p;
 			tmp_dbt.size = pagespace;
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp->dbenv->lg_info, dbc->txn,
+			if ((ret = __db_big_log(dbp->dbenv, dbc->txn,
 			    &new_lsn, 0, DB_ADD_BIG, dbp->log_fileid,
 			    PGNO(pagep), lastp ? PGNO(lastp) : PGNO_INVALID,
 			    PGNO_INVALID, &tmp_dbt, &LSN(pagep),
@@ -269,7 +266,7 @@ __db_ovref(dbc, pgno, adjust)
 	}
 
 	if (DB_LOGGING(dbc))
-		if ((ret = __db_ovref_log(dbp->dbenv->lg_info, dbc->txn,
+		if ((ret = __db_ovref_log(dbp->dbenv, dbc->txn,
 		    &LSN(h), 0, dbp->log_fileid, h->pgno, adjust,
 		    &LSN(h))) != 0)
 			return (ret);
@@ -283,13 +280,12 @@ __db_ovref(dbc, pgno, adjust)
  * __db_doff --
  *	Delete an offpage chain of overflow pages.
  *
- * PUBLIC: int __db_doff __P((DBC *, db_pgno_t, int (*)(DBC *, PAGE *)));
+ * PUBLIC: int __db_doff __P((DBC *, db_pgno_t));
  */
 int
-__db_doff(dbc, pgno, freefunc)
+__db_doff(dbc, pgno)
 	DBC *dbc;
 	db_pgno_t pgno;
-	int (*freefunc) __P((DBC *, PAGE *));
 {
 	DB *dbp;
 	PAGE *pagep;
@@ -317,14 +313,14 @@ __db_doff(dbc, pgno, freefunc)
 			tmp_dbt.data = (u_int8_t *)pagep + P_OVERHEAD;
 			tmp_dbt.size = OV_LEN(pagep);
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp->dbenv->lg_info, dbc->txn,
+			if ((ret = __db_big_log(dbp->dbenv, dbc->txn,
 			    &LSN(pagep), 0, DB_REM_BIG, dbp->log_fileid,
 			    PGNO(pagep), PREV_PGNO(pagep), NEXT_PGNO(pagep),
 			    &tmp_dbt, &LSN(pagep), &null_lsn, &null_lsn)) != 0)
 				return (ret);
 		}
 		pgno = pagep->next_pgno;
-		if ((ret = freefunc(dbc, pagep)) != 0)
+		if ((ret = __db_free(dbc, pagep)) != 0)
 			return (ret);
 	} while (pgno != PGNO_INVALID);
 
@@ -383,6 +379,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 			return (ret);
 
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
+		tlen -= cmp_bytes;
 		key_left -= cmp_bytes;
 		for (p2 =
 		    (u_int8_t *)pagep + P_OVERHEAD; cmp_bytes-- > 0; ++p1, ++p2)
@@ -396,9 +393,9 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 		if (*cmpp != 0)
 			return (0);
 	}
-	if (key_left > 0)		/* DBT is longer than page key. */
+	if (key_left > 0)		/* DBT is longer than the page key. */
 		*cmpp = -1;
-	else if (pgno != PGNO_INVALID)	/* DBT is shorter than page key. */
+	else if (tlen > 0)		/* DBT is shorter than the page key. */
 		*cmpp = 1;
 	else
 		*cmpp = 0;

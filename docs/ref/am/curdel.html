@@ -1,27 +1,26 @@
-<! "@(#)curdel.so	10.2 (Sleepycat) 10/27/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)curdel.so	10.8 (Sleepycat) 10/3/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Access Methods</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td width="1%"><a href="../../ref/am/curput.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curdup.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Deleting records with a cursor</h1>
 <p>
-The <a href="../../api_c/Dbc/del.html">DBcursor->c_del</a> function is the standard function for deleting
-records from the database, with a cursor.  In general, the cursor delete
-function takes a key and deletes the associated data from the database.
-<p>
-In all cases, the cursor position is unchanged after a delete.
-<p>
-<a href="../../ref/am/curput.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/am/join.html"><img src="../../images/next.gif"></a>
-</tt>
+The <a href="../../api_c/dbc_del.html">DBcursor-&gt;c_del</a> function is the standard interface for deleting records from
+the database using a cursor.  The <a href="../../api_c/dbc_del.html">DBcursor-&gt;c_del</a> function deletes the record
+currently referenced by the cursor.  In all cases, the cursor position is
+unchanged after a delete.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/am/curput.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curdup.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

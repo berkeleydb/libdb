@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -19,11 +19,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,10 +36,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_log2.c	10.5 (Sleepycat) 4/26/98";
+static const char sccsid[] = "@(#)db_log2.c	11.2 (Sleepycat) 9/9/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -63,7 +59,7 @@ __db_log2(num)
 	u_int32_t i, limit;
 
 	limit = 1;
-	for (i = 0; limit < num; limit = limit << 1, i++)
-		;
+	for (i = 0; limit < num; limit = limit << 1)
+		++i;
 	return (i);
 }

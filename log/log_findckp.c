@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_findckp.c	10.17 (Sleepycat) 9/17/98";
+static const char sccsid[] = "@(#)log_findckp.c	11.1 (Sleepycat) 7/24/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,10 +19,8 @@ static const char sccsid[] = "@(#)log_findckp.c	10.17 (Sleepycat) 9/17/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "log.h"
 #include "txn.h"
-#include "common_ext.h"
 
 /*
  * __log_findckp --
@@ -46,61 +44,59 @@ static const char sccsid[] = "@(#)log_findckp.c	10.17 (Sleepycat) 9/17/98";
  * We find one at 500.  This means that we can truncate the log before
  * 500 or run recovery beginning at 500.
  *
- * Returns 0 if we find a suitable checkpoint or we retrieved the
- * first record in the log from which to start.
- * Returns DB_NOTFOUND if there are no log records.
- * Returns errno on error.
+ * Returns 0 if we find a suitable checkpoint or we retrieved the first
+ * record in the log from which to start.  Returns DB_NOTFOUND if there
+ * are no log records, errno on error.
  *
- * PUBLIC: int __log_findckp __P((DB_LOG *, DB_LSN *));
+ * PUBLIC: int __log_findckp __P((DB_ENV *, DB_LSN *));
  */
 int
-__log_findckp(lp, lsnp)
-	DB_LOG *lp;
+__log_findckp(dbenv, lsnp)
+	DB_ENV *dbenv;
 	DB_LSN *lsnp;
 {
 	DBT data;
 	DB_LSN ckp_lsn, final_ckp, last_ckp, next_lsn;
 	__txn_ckp_args *ckp_args;
-	int ret, verbose;
-
-	verbose = lp->dbenv != NULL && lp->dbenv->db_verbose != 0;
+	int ret;
 
 	/*
 	 * Need to find the appropriate point from which to begin
 	 * recovery.
 	 */
 	memset(&data, 0, sizeof(data));
-	if (F_ISSET(lp, DB_AM_THREAD))
+	if (F_ISSET(dbenv, DB_ENV_THREAD))
 		F_SET(&data, DB_DBT_MALLOC);
 	ZERO_LSN(ckp_lsn);
-	if ((ret = log_get(lp, &last_ckp, &data, DB_CHECKPOINT)) != 0)
+	if ((ret = log_get(dbenv, &last_ckp, &data, DB_CHECKPOINT)) != 0) {
 		if (ret == ENOENT)
 			goto get_first;
 		else
 			return (ret);
-
+	}
 	final_ckp = last_ckp;
+
 	next_lsn = last_ckp;
 	do {
-		if (F_ISSET(lp, DB_AM_THREAD))
+		if (F_ISSET(dbenv, DB_ENV_THREAD))
 			__os_free(data.data, data.size);
 
-		if ((ret = log_get(lp, &next_lsn, &data, DB_SET)) != 0)
+		if ((ret = log_get(dbenv, &next_lsn, &data, DB_SET)) != 0)
 			return (ret);
 		if ((ret = __txn_ckp_read(data.data, &ckp_args)) != 0) {
-			if (F_ISSET(lp, DB_AM_THREAD))
+			if (F_ISSET(dbenv, DB_ENV_THREAD))
 				__os_free(data.data, data.size);
 			return (ret);
 		}
 		if (IS_ZERO_LSN(ckp_lsn))
 			ckp_lsn = ckp_args->ckp_lsn;
-		if (verbose) {
-			__db_err(lp->dbenv, "Checkpoint at: [%lu][%lu]",
+		if (FLD_ISSET(dbenv->verbose, DB_VERB_CHKPOINT)) {
+			__db_err(dbenv, "Checkpoint at: [%lu][%lu]",
 			    (u_long)last_ckp.file, (u_long)last_ckp.offset);
-			__db_err(lp->dbenv, "Checkpoint LSN: [%lu][%lu]",
+			__db_err(dbenv, "Checkpoint LSN: [%lu][%lu]",
 			    (u_long)ckp_args->ckp_lsn.file,
 			    (u_long)ckp_args->ckp_lsn.offset);
-			__db_err(lp->dbenv, "Previous checkpoint: [%lu][%lu]",
+			__db_err(dbenv, "Previous checkpoint: [%lu][%lu]",
 			    (u_long)ckp_args->last_ckp.file,
 			    (u_long)ckp_args->last_ckp.offset);
 		}
@@ -110,14 +106,14 @@ __log_findckp(lp, lsnp)
 
 		/*
 		 * Keep looping until either you 1) run out of checkpoints,
-		 * 2) you've found a checkpoint before the most recent 
+		 * 2) you've found a checkpoint before the most recent
 		 * checkpoint's LSN and you have at least 2 checkpoints.
 		 */
 	} while (!IS_ZERO_LSN(next_lsn) &&
 	    (log_compare(&last_ckp, &ckp_lsn) > 0 ||
 	    log_compare(&final_ckp, &last_ckp) == 0));
 
-	if (F_ISSET(lp, DB_AM_THREAD))
+	if (F_ISSET(dbenv, DB_ENV_THREAD))
 		__os_free(data.data, data.size);
 
 	/*
@@ -127,11 +123,11 @@ __log_findckp(lp, lsnp)
 	 * next_lsn must be 0 and we need to roll forward from the
 	 * beginning of the log.
 	 */
-	if (log_compare(&last_ckp, &ckp_lsn) > 0 ||
+	if (log_compare(&last_ckp, &ckp_lsn) >= 0 ||
 	    log_compare(&final_ckp, &last_ckp) == 0) {
-get_first:	if ((ret = log_get(lp, &last_ckp, &data, DB_FIRST)) != 0)
+get_first:	if ((ret = log_get(dbenv, &last_ckp, &data, DB_FIRST)) != 0)
 			return (ret);
-		if (F_ISSET(lp, DB_AM_THREAD))
+		if (F_ISSET(dbenv, DB_ENV_THREAD))
 			__os_free(data.data, data.size);
 	}
 	*lsnp = last_ckp;

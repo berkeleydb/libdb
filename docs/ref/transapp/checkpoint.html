@@ -1,49 +1,47 @@
-<! "@(#)checkpoint.so	10.2 (Sleepycat) 11/10/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)checkpoint.so	10.8 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
+<td width="1%"><a href="../../ref/transapp/deadlock.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/archival.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Performing Checkpoints</h1>
 <p>
-The second component of the infrastructure, <i>performing
-checkpoints</i>, is necessary for two reasons.  First, you can only remove
-the Berkeley DB log files from your system after a checkpoint.  Second, the
-frequency of your checkpoints is inversely proportional to the amount of
-time it takes to run database recovery when the system or application
-fails.
+The second component of the infrastructure is performing checkpoints of
+the log files.  As transactions commit, records are written into the log
+files, but the actual changes to the database may not be written to disk.
+When a checkpoint is performed, the changes to the database which are part
+of committed transactions are written into the database.
 <p>
-As transactions commit, records are written into the log files, but
-the actual changes to the database are not written into the filesystem.
-When a checkpoint is performed, all changes to the database which are
-part of committed transactions are written into the filesystem.
+Performing checkpoints is necessary for two reasons.  First, you can only
+remove the Berkeley DB log files from your system after a checkpoint.  Second,
+the frequency of your checkpoints is inversely proportional to the amount
+of time it takes to run database recovery after a system or application
+failure.
 <p>
 Once the database pages are written, log files can be archived and removed
 from the system because they will never be needed for anything other than
 catastrophic failure.  In addition, recovery after system or application
 failure only has to redo or undo changes since the last checkpoint, since
-it is known that changes before the checkpoint have all been flushed to
-the filesystem.
+changes before the checkpoint have all been flushed to the filesystem.
 <p>
 Berkeley DB provides a separate UNIX-style utility, named <a href="../../utility/db_checkpoint.html">db_checkpoint</a>,
-which can be used to perform checkpoints.
-Alternatively, applications can write their own checkpoint utility using
-the underlying <a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a> function.
+which can be used to perform checkpoints.  Alternatively, applications
+can write their own checkpoint utility using the underlying
+<a href="../../api_c/txn_checkpoint.html">txn_checkpoint</a> function.
 <p>
 As checkpoints can be quite expensive, choosing how often to perform a
-checkpoint is a common issue needing consideration when tuning Berkeley DB
-applications.
-<p>
-<a href="../../ref/transapp/deadlock.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/transapp/archival.html"><img src="../../images/next.gif"></a>
-</tt>
+checkpoint is a common tuning parameter for Berkeley DB applications.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/deadlock.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/archival.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

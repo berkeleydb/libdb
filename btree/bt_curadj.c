@@ -1,20 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_curadj.c	10.69 (Sleepycat) 12/2/98";
+static const char sccsid[] = "@(#)bt_curadj.c	11.5 (Sleepycat) 11/10/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
-
-#include <stdlib.h>
 #endif
 
 #include "db_int.h"
@@ -32,13 +30,13 @@ int
 __bam_cprint(dbp)
 	DB *dbp;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DBC *dbc;
 
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
+		cp = (BTREE_CURSOR *)dbc->internal;
 		fprintf(stderr,
 	    "%#0x->%#0x: page: %lu index: %lu dpage %lu dindex: %lu recno: %lu",
 		    (u_int)dbc, (u_int)cp, (u_long)cp->pgno, (u_long)cp->indx,
@@ -47,7 +45,7 @@ __bam_cprint(dbp)
 			fprintf(stderr, " (deleted)");
 		fprintf(stderr, "\n");
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 
 	return (0);
 }
@@ -67,8 +65,8 @@ __bam_ca_delete(dbp, pgno, indx, delete)
 	u_int32_t indx;
 	int delete;
 {
+	BTREE_CURSOR *cp;
 	DBC *dbc;
-	CURSOR *cp;
 	int count;		/* !!!: Has to contain max number of cursors. */
 
 	/* Recno is responsible for its own adjustments. */
@@ -86,10 +84,10 @@ __bam_ca_delete(dbp, pgno, indx, delete)
 	 * locks on the same page, but, cursors within a thread must be single
 	 * threaded, so all we're locking here is the cursor linked list.
 	 */
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (count = 0, dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
+		cp = (BTREE_CURSOR *)dbc->internal;
 
 		if ((cp->pgno == pgno && cp->indx == indx) ||
 		    (cp->dpgno == pgno && cp->dindx == indx)) {
@@ -100,7 +98,7 @@ __bam_ca_delete(dbp, pgno, indx, delete)
 			++count;
 		}
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 
 	return (count);
 }
@@ -118,7 +116,7 @@ __bam_ca_di(dbp, pgno, indx, adjust)
 	u_int32_t indx;
 	int adjust;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DBC *dbc;
 
 	/* Recno is responsible for its own adjustments. */
@@ -128,16 +126,22 @@ __bam_ca_di(dbp, pgno, indx, adjust)
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
-		if (cp->pgno == pgno && cp->indx >= indx)
+		cp = (BTREE_CURSOR *)dbc->internal;
+		if (cp->pgno == pgno && cp->indx >= indx) {
+			/* Cursor indices should never be negative. */
+			DB_ASSERT(cp->indx != 0 || adjust > 0);
 			cp->indx += adjust;
-		if (cp->dpgno == pgno && cp->dindx >= indx)
+		}
+		if (cp->dpgno == pgno && cp->dindx >= indx) {
+			/* Cursor indices should never be negative. */
+			DB_ASSERT(cp->dindx != 0 || adjust > 0);
 			cp->dindx += adjust;
+		}
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 }
 
 /*
@@ -154,7 +158,7 @@ __bam_ca_dup(dbp, fpgno, first, fi, tpgno, ti)
 	db_pgno_t fpgno, tpgno;
 	u_int32_t first, fi, ti;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DBC *dbc;
 
 	/* Recno is responsible for its own adjustments. */
@@ -164,10 +168,10 @@ __bam_ca_dup(dbp, fpgno, first, fi, tpgno, ti)
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
+		cp = (BTREE_CURSOR *)dbc->internal;
 		/*
 		 * Ignore matching entries that have already been moved,
 		 * we move from the same location on the leaf page more
@@ -180,7 +184,7 @@ __bam_ca_dup(dbp, fpgno, first, fi, tpgno, ti)
 			cp->dindx = ti;
 		}
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 }
 
 /*
@@ -194,7 +198,7 @@ __bam_ca_rsplit(dbp, fpgno, tpgno)
 	DB *dbp;
 	db_pgno_t fpgno, tpgno;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DBC *dbc;
 
 	/* Recno is responsible for its own adjustments. */
@@ -204,14 +208,14 @@ __bam_ca_rsplit(dbp, fpgno, tpgno)
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
+		cp = (BTREE_CURSOR *)dbc->internal;
 		if (cp->pgno == fpgno)
 			cp->pgno = tpgno;
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 }
 
 /*
@@ -228,8 +232,8 @@ __bam_ca_split(dbp, ppgno, lpgno, rpgno, split_indx, cleft)
 	u_int32_t split_indx;
 	int cleft;
 {
+	BTREE_CURSOR *cp;
 	DBC *dbc;
-	CURSOR *cp;
 
 	/* Recno is responsible for its own adjustments. */
 	if (dbp->type == DB_RECNO)
@@ -245,11 +249,11 @@ __bam_ca_split(dbp, ppgno, lpgno, rpgno, split_indx, cleft)
 	 * the cursor is on the right page, it is decremented by the number of
 	 * records split to the left page.
 	 */
-	DB_THREAD_LOCK(dbp);
+	MUTEX_THREAD_LOCK(dbp->mutexp);
 	for (dbc = TAILQ_FIRST(&dbp->active_queue);
 	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
-		cp = (CURSOR *)dbc->internal;
-		if (cp->pgno == ppgno)
+		cp = (BTREE_CURSOR *)dbc->internal;
+		if (cp->pgno == ppgno) {
 			if (cp->indx < split_indx) {
 				if (cleft)
 					cp->pgno = lpgno;
@@ -257,7 +261,8 @@ __bam_ca_split(dbp, ppgno, lpgno, rpgno, split_indx, cleft)
 				cp->pgno = rpgno;
 				cp->indx -= split_indx;
 			}
-		if (cp->dpgno == ppgno)
+		}
+		if (cp->dpgno == ppgno) {
 			if (cp->dindx < split_indx) {
 				if (cleft)
 					cp->dpgno = lpgno;
@@ -265,6 +270,35 @@ __bam_ca_split(dbp, ppgno, lpgno, rpgno, split_indx, cleft)
 				cp->dpgno = rpgno;
 				cp->dindx -= split_indx;
 			}
+		}
 	}
-	DB_THREAD_UNLOCK(dbp);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+}
+
+/*
+ * __bam_ca_repl --
+ *	Adjust the cursors when when doing a replace.
+ *
+ * PUBLIC: void __bam_ca_repl __P((DB *,
+ * PUBLIC:    db_pgno_t, u_int32_t, db_pgno_t, u_int32_t));
+ */
+void
+__bam_ca_repl(dbp, dpgno, dindx, newpgno, newindx)
+	DB *dbp;
+	db_pgno_t dpgno, newpgno;
+	u_int32_t dindx, newindx;
+{
+	BTREE_CURSOR *cp;
+	DBC *dbc;
+
+	MUTEX_THREAD_LOCK(dbp->mutexp);
+	for (dbc = TAILQ_FIRST(&dbp->active_queue);
+	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
+		cp = (BTREE_CURSOR *)dbc->internal;
+		if (cp->dpgno == dpgno && cp->dindx == dindx) {
+			cp->dpgno = newpgno;
+			cp->dindx = newindx;
+		}
+	}
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
 }

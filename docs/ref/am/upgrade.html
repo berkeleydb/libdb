@@ -1,0 +1,49 @@
+<!--@(#)upgrade.so	10.4 (Sleepycat) 10/3/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Access Method Operations</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Method Operations</dl></h3></td>
+<td width="1%"><a href="../../ref/am/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/get.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Upgrading databases</h1>
+<p>
+When upgrading to a new release of Berkeley DB, it may be necessary to upgrade
+the on-disk format of already-created database files.
+<p>
+<b>It is important to realize that Berkeley DB database upgrades are done
+in place, and so are potentially destructive.</b>  This means that if the
+system crashes during the upgrade procedure, or if the upgrade procedure
+runs out of disk space, the databases may be left in an inconsistent and
+unrecoverable state.
+<p>
+To guard against failure, the following procedure should be followed:
+<ol>
+<p><li>Cleanly shutdown database operations.
+<p>
+To cleanly shutdown database operations, all applications accessing the
+database environment must be shutdown and a transaction checkpoint must
+be taken.  If the applications are not implemented such that they can be
+shutdown gracefully (i.e., closing all references to the database
+environment), recovery must be performed after all applications have been
+killed to ensure that the underlying databases are consistent on disk.
+<p><li>Archive the database for catastrophic recovery.  See
+<a href="../../ref/transapp/archival.html">Archival procedures</a> for more
+information.
+<p><li>Upgrade the database using the <a href="../../api_c/db_upgrade.html">DB-&gt;upgrade</a> function.  If
+this call fails for any reason, use the catastrophic recovery archive
+to restore the database.
+<p><li>Restart database applications.
+</ol>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/am/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/get.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

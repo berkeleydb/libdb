@@ -1,28 +1,24 @@
-/* Do not edit: automatically built by dist/db_gen.sh. */
-#include "config.h"
+/* Do not edit: automatically built by gen_rec.awk. */
+#include <errno.h>
+#include "db_config.h"
 
 #ifndef NO_SYSTEM_INCLUDES
+#include <sys/types.h>
+
 #include <ctype.h>
-#include <errno.h>
-#include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 #endif
 
 #include "db_int.h"
 #include "db_page.h"
 #include "db_dispatch.h"
-#include "log.h"
 #include "db_am.h"
-/*
- * PUBLIC: int __log_register_log
- * PUBLIC:     __P((DB_LOG *, DB_TXN *, DB_LSN *, u_int32_t,
- * PUBLIC:     u_int32_t, const DBT *, const DBT *, u_int32_t,
- * PUBLIC:     DBTYPE));
- */
-int __log_register_log(logp, txnid, ret_lsnp, flags,
+#include "log.h"
+#include "txn.h"
+
+int __log_register_log(dbenv, txnid, ret_lsnp, flags,
 	opcode, name, uid, id, ftype)
-	DB_LOG *logp;
+	DB_ENV *dbenv;
 	DB_TXN *txnid;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -39,6 +35,9 @@ int __log_register_log(logp, txnid, ret_lsnp, flags,
 	int ret;
 	u_int8_t *bp;
 
+	if (txnid != NULL &&
+	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
+		return (EPERM);
 	rectype = DB_log_register;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -88,24 +87,17 @@ int __log_register_log(logp, txnid, ret_lsnp, flags,
 	bp += sizeof(id);
 	memcpy(bp, &ftype, sizeof(ftype));
 	bp += sizeof(ftype);
-#ifdef DIAGNOSTIC
-	if ((u_int32_t)(bp - (u_int8_t *)logrec.data) != logrec.size)
-		fprintf(stderr, "Error in log record length");
-#endif
-	ret = __log_put(logp, ret_lsnp, (DBT *)&logrec, flags);
+	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) == logrec.size);
+	ret = __log_put(dbenv, ret_lsnp, (DBT *)&logrec, flags);
 	if (txnid != NULL)
 		txnid->last_lsn = *ret_lsnp;
-	__os_free(logrec.data, 0);
+	__os_free(logrec.data, logrec.size);
 	return (ret);
 }
 
-/*
- * PUBLIC: int __log_register_print
- * PUBLIC:    __P((DB_LOG *, DBT *, DB_LSN *, int, void *));
- */
 int
 __log_register_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_LOG *notused1;
+	DB_ENV *notused1;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	int notused2;
@@ -157,9 +149,6 @@ __log_register_print(notused1, dbtp, lsnp, notused2, notused3)
 	return (0);
 }
 
-/*
- * PUBLIC: int __log_register_read __P((void *, __log_register_args **));
- */
 int
 __log_register_read(recbuf, argpp)
 	void *recbuf;
@@ -183,10 +172,12 @@ __log_register_read(recbuf, argpp)
 	bp += sizeof(DB_LSN);
 	memcpy(&argp->opcode, bp, sizeof(argp->opcode));
 	bp += sizeof(argp->opcode);
+	memset(&argp->name, 0, sizeof(argp->name));
 	memcpy(&argp->name.size, bp, sizeof(u_int32_t));
 	bp += sizeof(u_int32_t);
 	argp->name.data = bp;
 	bp += argp->name.size;
+	memset(&argp->uid, 0, sizeof(argp->uid));
 	memcpy(&argp->uid.size, bp, sizeof(u_int32_t));
 	bp += sizeof(u_int32_t);
 	argp->uid.data = bp;
@@ -199,9 +190,6 @@ __log_register_read(recbuf, argpp)
 	return (0);
 }
 
-/*
- * PUBLIC: int __log_init_print __P((DB_ENV *));
- */
 int
 __log_init_print(dbenv)
 	DB_ENV *dbenv;

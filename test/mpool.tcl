@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mpool.tcl	10.17 (Sleepycat) 10/22/98
+#	@(#)mpool.tcl	11.14 (Sleepycat) 10/25/99
 #
 # Options are:
 # -cachesize <bytes>
@@ -13,35 +13,56 @@
 # -dir <directory in which to store memp>
 # -stat
 proc memp_usage {} {
-	puts "memp -cachesize <bytes> -nfiles <files> -iterations <iterations>"
-	puts "\t-pagesize <page size in bytes> -dir <memp directory>"
-	puts "\t-shmem {anon named}"
+	puts "memp -cachesize <gbytes bytes>"
+	puts "\t-nfiles <files>"
+	puts "\t-iterations <iterations>"
+	puts "\t-pagesize <page size in bytes>"
+	puts "\t-dir <memp directory>"
+	puts "\t-mem {private system}"
 	return
 }
+
 proc mpool { args } {
 	source ./include.tcl
 
-# Set defaults
-	set cachesize [expr 50 * 1024]
+	puts "mpool {$args} running"
+        # Set defaults
+	set cachearg ""
 	set nfiles 5
 	set iterations 500
 	set pagesize "512 1024 2048 4096 8192"
 	set npages 100
 	set procs 4
 	set seeds ""
-	set envopts ""
 	set dostat 0
+	set flags ""
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
-			-c.* { incr i; set cachesize [lindex $args $i] }
+			-c.* {
+			    incr i
+			    set cachesize [lindex $args $i]
+			    set cachearg " -cachesize $cachesize"
+			}
 			-d.* { incr i; set testdir [lindex $args $i] }
 			-i.* { incr i; set iterations [lindex $args $i] }
+			-me.* {
+				incr i
+				if { [string \
+				    compare [lindex $args $i] private] == 0 } {
+					set flags -private
+				} elseif { [string \
+				    compare [lindex $args $i] system] == 0 } {
+					set flags -system_mem
+				} else {
+					memp_usage
+					return
+				}
+			}
 			-nf.* { incr i; set nfiles [lindex $args $i] }
 			-np.* { incr i; set npages [lindex $args $i] }
 			-pa.* { incr i; set pagesize [lindex $args $i] }
 			-pr.* { incr i; set procs [lindex $args $i] }
 			-se.* { incr i; set seeds [lindex $args $i] }
-			-sh.* { incr i; set envopts "-shmem [lindex $args $i]" }
 			-st.* { set dostat 1 }
 			default {
 				memp_usage
@@ -49,97 +70,88 @@ proc mpool { args } {
 			}
 		}
 	}
-	if { [file exists $testdir] != 1 } {
-		exec $MKDIR $testdir
-	} elseif { [file isdirectory $testdir ] != 1 } {
-		error "$testdir is not a directory"
-	}
 
 	# Clean out old directory
 	cleanup $testdir
 
-	# Open the memp with regioninit specified
-	set cmd {memp "" 0644 $DB_CREATE -cachesize $cachesize}
-	set cmd [concat $cmd $envopts]
-	set ri_cmd [concat $cmd "-rinit 1"]
-	set mp [eval $ri_cmd]
-	if { [string compare $mp EINVAL] == 0 } {
-		puts "$envopts not supported; test skipped"
-		return
-	}
-	error_check_good "$ri_cmd" [is_valid_widget $mp mp] TRUE
-	error_check_good memp_close [$mp close] 0
-	error_check_good memp_unlink:$testdir [memp_unlink $testdir 1] 0
+	# Open the memp with region init specified
+	set env [eval {berkdb env -create -mode 0644 -mpool}\
+	    $cachearg {-region_init -home $testdir} $flags]
+	error_check_good evn_open [is_substr $env env] 1
+
+	reset_env $env
+	cleanup $testdir
 
 	# Now open without region init
+	set env [eval {berkdb env -create -mode 0644 -mpool}\
+	    $cachearg {-home $testdir} $flags]
+	error_check_good evn_open [is_substr $env env] 1
 
-	set mp [ eval $cmd]
-	if { [string compare $mp EINVAL] == 0 } {
-		puts "$envopts not supported"
-		return
-	}
-	error_check_good memp_open [is_valid_widget $mp mp] TRUE
-	memp001 $mp $testdir $nfiles $iterations [lindex $pagesize 0] $dostat $envopts
-	error_check_good memp_close [$mp close] 0
-	error_check_good memp_unlink:$testdir [memp_unlink $testdir 1] 0
-	set mp [ eval $cmd]
-	error_check_good memp_open [is_valid_widget $mp mp] TRUE
+	memp001 $env \
+	    $testdir $nfiles $iterations [lindex $pagesize 0] $dostat $flags
+	reset_env $env
+	cleanup $testdir
+
 	memp002 $testdir \
-	    $procs $pagesize $iterations $npages $seeds $dostat $envopts
-	error_check_good memp_close [$mp close] 0
-	error_check_good memp_unlink:$testdir [memp_unlink $testdir 1] 0
-	memp003 $envopts $iterations
-	error_check_good memp_unlink:$testdir [memp_unlink $testdir 1] 0
-	error_check_good lock_unlink:$testdir [lock_unlink $testdir 1] 0
+	    $procs $pagesize $iterations $npages $seeds $dostat $flags
+
+	memp003 $flags $iterations
+
+	cleanup $testdir
 }
 
-proc memp001 {mp dir n iter psize dostat envopts} {
+proc memp001 {env dir n iter psize dostat flags} {
 	source ./include.tcl
+	global rand_init
 
-	puts "Memp001: {$envopts} random update $iter iterations on $n files."
+	puts "Memp001: {$flags} random update $iter iterations on $n files."
+
 	# Open N memp files
 	for {set i 1} {$i <= $n} {incr i} {
 		set fname "data_file.$i"
 		file_create $dir/$fname 50 $psize
-		set files($i) [$mp open $fname $psize 0 0644]
+
+		set mpools($i) \
+		    [$env mpool -create -pagesize $psize -mode 0644 $fname]
+		error_check_good mp_open [is_substr $mpools($i) $env.mp] 1
 	}
-	srand 0xf0f0f0f0
 
 	# Now, loop, picking files at random
+	berkdb srand $rand_init
 	for {set i 0} {$i < $iter} {incr i} {
-		set f $files([random_int 1 $n])
-		set p1 [get_range $f 10]
-		set p2 [get_range $f 10]
-		set p3 [get_range $f 10]
-		replace $p1
-		replace $p3
-		set p4 [get_range $f 20]
-		replace $p4
-		set p5 [get_range $f 10]
-		set p6 [get_range $f 20]
-		set p7 [get_range $f 10]
-		set p8 [get_range $f 20]
-		replace $p5
-		replace $p6
-		set p9 [get_range $f 40]
-		replace $p2
-		set p10 [get_range $f 40]
-		replace $p7
-		replace $p8
-		replace $p9
-		replace $p10
+		set mpool $mpools([berkdb random_int 1 $n])
+		set p1 [get_range $mpool 10]
+		set p2 [get_range $mpool 10]
+		set p3 [get_range $mpool 10]
+		set p1 [replace $mpool $p1]
+		set p3 [replace $mpool $p3]
+		set p4 [get_range $mpool 20]
+		set p4 [replace $mpool $p4]
+		set p5 [get_range $mpool 10]
+		set p6 [get_range $mpool 20]
+		set p7 [get_range $mpool 10]
+		set p8 [get_range $mpool 20]
+		set p5 [replace $mpool $p5]
+		set p6 [replace $mpool $p6]
+		set p9 [get_range $mpool 40]
+		set p9 [replace $mpool $p9]
+		set p10 [get_range $mpool 40]
+		set p7 [replace $mpool $p7]
+		set p8 [replace $mpool $p8]
+		set p9 [replace $mpool $p9]
+		set p10 [replace $mpool $p10]
 	}
+
 	if { $dostat == 1 } {
-		$mp stat
+		puts [$env mpool_stat]
 		for {set i 1} {$i <= $n} {incr i} {
-			error_check_good mp_sync [$files($i) sync] 0
-#			error_check_good mp_close [$files($i) close] 0
+			error_check_good mp_sync [$mpools($i) fsync] 0
 		}
 	}
 
 	# Close N memp files
 	for {set i 1} {$i <= $n} {incr i} {
-		error_check_good memp_close:$files($i) [$files($i) close] 0
+		error_check_good memp_close:$mpools($i) [$mpools($i) close] 0
 		exec $RM -rf $dir/data_file.$i
 	}
 }
@@ -164,46 +176,57 @@ proc file_create { fname nblocks blocksize } {
 	}
 }
 
-
-proc get_range { file max } {
-	set pno [random_int 0 $max]
-	set p [$file get $pno 0 ]
-	set got [$p get]
+proc get_range { mpool max } {
+	set pno [berkdb random_int 0 $max]
+	set p [$mpool get $pno]
+	error_check_good page [is_valid_page $p $mpool] TRUE
+	set got [$p pgnum]
 	if { $got != $pno } {
-#	if {[string compare $got $pno] != 0} \{
 		puts "Get_range: Page mismatch page |$pno| val |$got|"
 	}
-	$p init "Page is pinned by [pid]"
+	set ret [$p init "Page is pinned by [pid]"]
+	error_check_good page_init $ret 0
+
 	return $p
 }
 
-proc replace { p } {
-global DB_MPOOL_DIRTY
-	$p init "Page is unpinned by [pid]"
-	$p put $DB_MPOOL_DIRTY
+proc replace { mpool p } {
+	set pgno [$p pgnum]
+
+	set ret [$p init "Page is unpinned by [pid]"]
+	error_check_good page_init $ret 0
+
+	set ret [$p put -dirty]
+	error_check_good page_put $ret 0
+
+	set p2 [$mpool get $pgno]
+	error_check_good page [is_valid_page $p2 $mpool] TRUE
+
+	return $p2
 }
 
-proc memp002 { dir procs psizes iterations npages seeds dostat envopts } {
+proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 	source ./include.tcl
 
-	puts "Memp002: {$envopts} Multiprocess mpool tester"
-	if { [string compare [lindex $envopts 1] anon] == 0 } {
-		puts "Multiple processes not supported for unnamed anonymous memory."
+	puts "Memp002: {$flags} Multiprocess mpool tester"
+
+	cleanup $dir
+
+	if { [is_substr $flags -private] != 0 } {
+		puts "Memp002 skipping\
+		    multiple processes not supported by private memory"
 		return
 	}
 	set iter [expr $iterations / $procs]
 
 	# Clean up old stuff and create new.
-	lock_unlink $dir 1
+	cleanup $dir
+
 	for { set i 0 } { $i < [llength $psizes] } { incr i } {
 		exec $RM -rf $dir/file$i
 	}
-	set lp [lock_open "" $DB_CREATE 0644 $envopts]
-	if { [string compare $lp NULL] == 0 && [string length $envopts] != 0 } {
-		puts "Unable to initialize regions with $envopts"
-		return
-	}
-	error_check_good lock_open [is_valid_widget $lp lockmgr] TRUE
+	set e [berkdb env -create -lock -mpool -home $dir]
+	error_check_good dbenv [is_valid_widget $e env] TRUE
 
 	set pidlist {}
 	for { set i 0 } { $i < $procs } {incr i} {
@@ -213,57 +236,55 @@ proc memp002 { dir procs psizes iterations npages seeds dostat envopts } {
 			set seed -1
 		}
 
-		puts "./dbtest ../test/mpoolscript.tcl $dir $i $procs \
-		    $iter \"$psizes\" $npages 3 $seed $envopts > \
-		    $dir/$i.mpoolout &"
-		set p [exec ./dbtest ../test/mpoolscript.tcl $dir $i $procs \
-		    $iter $psizes $npages 3 $seed $envopts  > \
-		    $dir/$i.mpoolout & ]
-		lappend pidlist $p
+		puts "$tclsh_path\
+		    $test_path/mpoolscript.tcl $dir $i $procs \
+		    $iter $psizes $npages 3 $flags > \
+		    $dir/memp002.$i.out &"
+		set p [exec $tclsh_path \
+		    $test_path/mpoolscript.tcl $dir $i $procs \
+		    $iter $psizes $npages 3 $flags > \
+		    $dir/memp002.$i.out &]
+		    lappend pidlist $p
 	}
 	puts "Memp002: $procs independent processes now running"
 	watch_procs $pidlist
-	# Remove output logs
-	for { set i 0 } { $i < $procs } {incr i} {
-		exec $RM $dir/$i.mpoolout
-	}
-	$lp close
-	lock_unlink $dir 1
+
+	reset_env $e
 }
 
 # Test reader-only/writer process combinations; we use the access methods
 # for testing.
-proc memp003 { envopts {nentries 10000} } {
-global alphabet
+proc memp003 { flags {nentries 10000} } {
+	global alphabet
 	source ./include.tcl
-	puts "Memp003: {$envopts} Reader/Writer tests"
-	if { [string compare [lindex $envopts 1] anon] == 0 } {
-		puts "{$envopts} Multiple processes not supported for unnamed anonymous memory."
+
+	puts "Memp003: {$flags} Reader/Writer tests"
+
+	if { [is_substr $flags -private] != 0 } {
+		puts "Memp003 skipping\
+		    multiple processes not supported by private memory"
 		return
 	}
 
 	cleanup $testdir
-	set env_flags [expr $DB_CREATE | $DB_INIT_LOCK | $DB_INIT_MPOOL]
 	set psize 1024
 	set testfile mpool.db
 	set t1 $testdir/t1
 
 	# Create an environment that the two processes can share
-	set cmd {dbenv -dbflags $env_flags -dbhome $testdir -cachesize \
-	    [expr $psize * 10]}
-	set cmd [concat $cmd $envopts]
-	set dbenv [eval $cmd]
-	error_check_good dbenv [is_valid_widget $dbenv env] TRUE
+	set c [list 0 [expr $psize * 10] 3]
+	set dbenv [berkdb env -create -lock -mpool -home $testdir -cachesize $c]
+	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 	# First open and create the file.
 
-	set db [dbopen $testfile [expr $DB_CREATE | $DB_TRUNCATE] \
-	    0644 DB_BTREE -dbenv $dbenv -psize $psize]
-	error_check_good dbopen/RW [is_substr $db db] 1
+	set db [berkdb open -env $dbenv -create -truncate \
+	    -mode 0644 -pagesize $psize -btree $testfile]
+	error_check_good dbopen/RW [is_valid_db $db] TRUE
 
 	set did [open $dict]
-	set flags 0
-	set txn 0
+	set flags ""
+	set txn ""
 	set count 0
 
 	puts "\tMemp003.a: create database"
@@ -272,11 +293,11 @@ global alphabet
 	while { [gets $did str] != -1 && $count < $nentries } {
 		lappend keys $str
 
-		set ret [$db put $txn $str $str $flags]
+		set ret [eval {$db put} $txn $flags {$str $str}]
 		error_check_good put $ret 0
 
-		set ret [$db get $txn $str $flags]
-		error_check_good get $ret $str
+		set ret [eval {$db get} $txn $flags {$str}]
+		error_check_good get $ret [list [list $str $str]]
 
 		incr count
 	}
@@ -284,14 +305,14 @@ global alphabet
 	error_check_good close [$db close] 0
 
 	# Now open the file for read-only
-	set db [dbopen $testfile $DB_RDONLY 0 DB_UNKNOWN -dbenv $dbenv]
+	set db [berkdb open -env $dbenv -rdonly $testfile]
 	error_check_good dbopen/RO [is_substr $db db] 1
 
 	puts "\tMemp003.b: verify a few keys"
 	# Read and verify a couple of keys; saving them to check later
 	set testset ""
 	for { set i 0 } { $i < 10 } { incr i } {
-		set ndx [random_int 0 [expr $nentries - 1]]
+		set ndx [berkdb random_int 0 [expr $nentries - 1]]
 		set key [lindex $keys $ndx]
 		if { [lsearch $testset $key] != -1 } {
 			incr i -1
@@ -299,99 +320,62 @@ global alphabet
 		}
 		lappend testset $key
 
-		set ret [$db get $txn $key $flags]
-		error_check_good get/RO $ret $key
+		set ret [eval {$db get} $txn $flags {$key}]
+		error_check_good get/RO $ret [list [list $key $key]]
 	}
 
 	puts "\tMemp003.c: retrieve and modify keys in remote process"
 	# Now open remote process where we will open the file RW
-	set f1 [open |./dbtest r+]
-	puts $f1 "set dbenv \[dbenv -dbflags $env_flags -dbhome $testdir\
-	    -cachesize [expr $psize * 10] $envopts \]"
-	puts $f1 "puts \$dbenv"
+	set f1 [open |$tclsh_path r+]
+	puts $f1 "source $test_path/test.tcl"
 	puts $f1 "flush stdout"
 	flush $f1
 
-	set r [gets $f1 result]
-	error_check_bad gets $r -1
-	error_check_good remote_dbenv [is_substr $result env] 1
+	set c [concat "{" [list 0 [expr $psize * 10] 3] "}" ]
+	set remote_env [send_cmd $f1 \
+	    "berkdb env -create -lock -mpool -home $testdir -cachesize $c"]
+	error_check_good remote_dbenv [is_valid_env $remote_env] TRUE
 
-	puts $f1 "set db \[dbopen $testfile 0 0 DB_UNKNOWN -dbenv \$dbenv\]"
-	puts $f1 "puts \$db"
-	puts $f1 "flush stdout"
-	flush $f1
-
-	set r [gets $f1 result]
-	error_check_bad gets $r -1
-	error_check_good remote_dbopen [is_substr $result db] 1
+	set remote_db [send_cmd $f1 "berkdb open -env $remote_env $testfile"]
+	error_check_good remote_dbopen [is_valid_db $remote_db] TRUE
 
 	foreach k $testset {
 		# Get the key
-		puts $f1 "set ret \[\$db get 0 $k 0\]"
-		puts $f1 "puts \$ret"
-		puts $f1 "flush stdout"
-		flush $f1
-
-		set r [gets $f1 result]
-		error_check_bad gets $r -1
-		error_check_good remote_get $result $k
+		set ret [send_cmd $f1 "$remote_db get $k"]
+		error_check_good remote_get $ret [list [list $k $k]]
 
 		# Now replace the key
-		puts $f1 "set ret \[\$db put 0 $k $k$k 0\]"
-		puts $f1 "puts \$ret"
-		puts $f1 "flush stdout"
-		flush $f1
-
-		set r [gets $f1 result]
-		error_check_bad gets $r -1
-		error_check_good remote_put $result 0
+		set ret [send_cmd $f1 "$remote_db put $k $k$k"]
+		error_check_good remote_put $ret 0
 	}
 
 	puts "\tMemp003.d: verify changes in local process"
 	foreach k $testset {
-		set ret [$db get $txn $key $flags]
-		error_check_good get_verify/RO $ret $key$key
+		set ret [eval {$db get} $txn $flags {$key}]
+		error_check_good get_verify/RO $ret [list [list $key $key$key]]
 	}
 
 	puts "\tMemp003.e: Fill up the cache with dirty buffers"
 	foreach k $testset {
 		# Now rewrite the keys with BIG data
 		set data [replicate $alphabet 32]
-		puts $f1 "set ret \[\$db put 0 $k $data 0\]"
-		puts $f1 "puts \$ret"
-		puts $f1 "flush stdout"
-		flush $f1
-
-		set r [gets $f1 result]
-		error_check_bad gets $r -1
-		error_check_good remote_put $result 0
+		set ret [send_cmd $f1 "$remote_db put $k $data"]
+		error_check_good remote_put $ret 0
 	}
 
 	puts "\tMemp003.f: Get more pages for the read-only file"
 	dump_file $db $txn $t1 nop
 
 	puts "\tMemp003.g: Sync from the read-only file"
-	error_check_good db_sync [$db sync 0] 0
+	error_check_good db_sync [$db sync] 0
 	error_check_good db_close [$db close] 0
 
-	puts $f1 "set ret \[\$db close\]"
-	puts $f1 "puts \$ret"
-	puts $f1 "flush stdout"
-	flush $f1
-
-	set r [gets $f1 result]
-	error_check_bad gets $r -1
-	error_check_good remote_get $result 0
+	set ret [send_cmd $f1 "$remote_db close"]
+	error_check_good remote_get $ret 0
 
 	# Close the environment both remotely and locally.
-	puts $f1 "set ret \[reset_env \$dbenv\]"
-	puts $f1 "puts \[string length \$ret\]"
-	puts $f1 "flush stdout"
-	flush $f1
-
-	set r [gets $f1 result]
-	error_check_bad gets$f1 $r -1
-	error_check_good remote_reset_env $result 0
+	set ret [send_cmd $f1 "$remote_env close"]
+	error_check_good remote:env_close $ret 0
 	close $f1
 
 	reset_env $dbenv

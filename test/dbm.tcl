@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dbm.tcl	10.2 (Sleepycat) 4/10/98
+#	@(#)dbm.tcl	11.5 (Sleepycat) 9/24/99
 #
 # Historic DBM interface test.
 # Use the first 1000 entries from the dictionary.
@@ -12,11 +12,9 @@
 # Then reopen the file, re-retrieve everything.
 # Finally, delete everything.
 proc dbm { { nentries 1000 } } {
-	puts "DBM interfaces test: $nentries"
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
 	source ./include.tcl
+
+	puts "DBM interfaces test: $nentries"
 
 	# Create the database and open the dictionary
 	set testfile $testdir/dbmtest
@@ -25,20 +23,20 @@ proc dbm { { nentries 1000 } } {
 	set t3 $testdir/t3
 	cleanup $testdir
 
-	error_check_good dbminit [dbminit $testfile] 0
+	error_check_good dbminit [berkdb dbminit $testfile] 0
 	set did [open $dict]
 
-	set flags 0
-	set txn 0
+	set flags ""
+	set txn ""
 	set count 0
 
 	puts "\tDBM.a: put/get loop"
 	# Here is the loop where we put and get each key/data pair
 	while { [gets $did str] != -1 && $count < $nentries } {
-		set ret [store $str $str]
+		set ret [berkdb store $str $str]
 		error_check_good dbm_store $ret 0
 
-		set d [fetch $str]
+		set d [berkdb fetch $str]
 		error_check_good dbm_fetch $d $str
 		incr count
 	}
@@ -48,30 +46,33 @@ proc dbm { { nentries 1000 } } {
 	# to the original.
 	puts "\tDBM.b: dump file"
 	set oid [open $t1 w]
-	for { set key [firstkey] } { $key != -1 } { set key [nextkey $key] } {
+	for { set key [berkdb firstkey] } { $key != -1 } {\
+		 set key [berkdb nextkey $key] } {
 		puts $oid $key
-		set d [fetch $key]
+		set d [berkdb fetch $key]
 		error_check_good dbm_refetch $d $key
 	}
 	close $oid
 
 	# Now compare the keys to see if they match the dictionary (or ints)
 	set q q
-	exec $SED $nentries$q $dict > $t2
+	exec $SED $nentries$q $dict > $t3
+	exec $SORT $t3 > $t2
 	exec $SORT $t1 > $t3
 
 	error_check_good DBM:diff($t3,$t2) \
-	    [catch { exec $DIFF $t3 $t2 } res] 0
+	    [catch { exec $CMP $t3 $t2 } res] 0
 
 	puts "\tDBM.c: close, open, and dump file"
 
 	# Now, reopen the file and run the last test again.
-	error_check_good dbminit2 [dbminit $testfile] 0
+	error_check_good dbminit2 [berkdb dbminit $testfile] 0
 	set oid [open $t1 w]
 
-	for { set key [firstkey] } { $key != -1 } { set key [nextkey $key] } {
+	for { set key [berkdb firstkey] } { $key != -1 } {\
+		 set key [berkdb nextkey $key] } {
 		puts $oid $key
-		set d [fetch $key]
+		set d [berkdb fetch $key]
 		error_check_good dbm_refetch $d $key
 	}
 	close $oid
@@ -80,17 +81,18 @@ proc dbm { { nentries 1000 } } {
 	exec $SORT $t1 > $t3
 
 	error_check_good DBM:diff($t2,$t3) \
-	    [catch { exec $DIFF $t2 $t3 } res] 0
+	    [catch { exec $CMP $t2 $t3 } res] 0
 
 	# Now, reopen the file and delete each entry
 	puts "\tDBM.d: sequential scan and delete"
 
-	error_check_good dbminit3 [dbminit $testfile] 0
+	error_check_good dbminit3 [berkdb dbminit $testfile] 0
 	set oid [open $t1 w]
 
-	for { set key [firstkey] } { $key != -1 } { set key [nextkey $key] } {
+	for { set key [berkdb firstkey] } { $key != -1 } {\
+		 set key [berkdb nextkey $key] } {
 		puts $oid $key
-		set ret [delete $key]
+		set ret [berkdb delete $key]
 		error_check_good dbm_delete $ret 0
 	}
 	close $oid
@@ -99,6 +101,7 @@ proc dbm { { nentries 1000 } } {
 	exec $SORT $t1 > $t3
 
 	error_check_good DBM:diff($t2,$t3) \
-	    [catch { exec $DIFF $t2 $t3 } res] 0
+	    [catch { exec $CMP $t2 $t3 } res] 0
 
+	error_check_good "dbm_close" [berkdb dbmclose] 0
 }

@@ -1,66 +1,63 @@
-<! "@(#)intro.so	10.1 (Sleepycat) 12/18/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)intro.so	10.12 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Logging Subsystem</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Logging Subsystem</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></h3></td>
+<td width="1%"><a href="../../ref/lock/nondb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/log/limits.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Berkeley DB and logging</h1>
 <p>
-The logging subsystem is the somewhat general-purpose logging facility
-used by Berkeley DB.  This module is potentially useful outside of the Berkeley DB
-package for processes that require write-ahead logging support, but is
-less likely to be generally useful than the memory pool or locking
-subsystems.
+The logging subsystem is the logging facility used by Berkeley DB.  It is
+largely Berkeley DB specific, although it is potentially useful outside of the
+Berkeley DB package for processes wanting write-ahead logging support.
+Applications wanting to rework the log for their own purposes will almost
+certainly need to make source code modifications to the Berkeley DB code base.
 <p>
 A log can be shared by any number of processes and threads within
-processes.  The <a href="../../api_c/DbLog/open.html">log_open</a> interface opens, and optionally creates,
-a log.  When the log is no longer in use, it should be closed, using the
-<a href="../../api_c/DbLog/close.html">log_close</a> interface.  Specific log entries are identified by log
-sequence numbers.  Log sequence numbers are held in an opaque object, a
-DB_LSN.
+processes.  The <a href="../../api_c/env_open.html">DBENV-&gt;open</a> interface opens, and if necessary,
+creates, a log.  When the log is no longer in use, it should be closed,
+using the <a href="../../api_c/env_close.html">DBENV-&gt;close</a> interface.
 <p>
-The <a href="../../api_c/DbLog/put.html">log_put</a> interface is used to append new log records to the
-log.  Optionally, the <a href="../../api_c/DbLog/put.html#DB_CHECKPOINT">DB_CHECKPOINT</a> flag can be used to cause
-any log record to include checkpoint information, such that the log is
+Individual log entries are identified by log sequence numbers.  Log
+sequence numbers are stored in an opaque object, a <a href="../../api_c/db_lsn.html">DB_LSN</a>.
+<p>
+The <a href="../../api_c/log_put.html">log_put</a> interface is used to append new log records to the
+log.  Optionally, the <a href="../../api_c/log_put.html#DB_CHECKPOINT">DB_CHECKPOINT</a> flag can be used to cause any
+log record to include checkpoint information, such that the log is
 consistent to that point and recoverable after a system or application
-failure.  The <a href="../../api_c/DbLog/get.html">log_get</a> interface is used to retrieve log records
+failure.  The <a href="../../api_c/log_get.html">log_get</a> interface is used to retrieve log records
 from the log.
 <p>
-There are additional interfaces for integrating the log subsystem with
-a transaction processing system:
+There are additional interfaces for integrating the log subsystem with a
+transaction processing system:
 <p>
-The <a href="../../api_c/DbLog/db_register.html">log_register</a> and <a href="../../api_c/DbLog/db_unregister.html">log_unregister</a> interfaces associate
-files with identification numbers.  These identification numbers are
+<dl compact>
+<p><dt><a href="../../api_c/log_register.html">log_register</a> and <a href="../../api_c/log_unregister.html">log_unregister</a><dd>These interfaces
+associate files with identification numbers.  These identification numbers are
 logged so that log recovery correctly associates database changes with
 the appropriate files.
-<p>
-The <a href="../../api_c/DbLog/flush.html">log_flush</a> interface flushes the log up to a particular log
-sequence number.
-<p>
-The <a href="../../api_c/DbLog/compare.html">log_compare</a> interface allows applications to compare any
-two log sequence numbers.
-<p>
-The <a href="../../api_c/DbLog/file.html">log_file</a> interface maps a log sequence number to the specific
+<p><dt><a href="../../api_c/log_flush.html">log_flush</a><dd>Flushes the log up to a particular log sequence number.
+<p><dt><a href="../../api_c/log_compare.html">log_compare</a><dd>Allows applications to compare any two log sequence numbers.
+<p><dt><a href="../../api_c/log_file.html">log_file</a>   <dd>Maps a log sequence number to the specific
 log file which contains it.
-The <a href="../../api_c/DbLog/archive.html">log_archive</a> interface returns various sets of log file names.
-These interfaces are used for database administration, e.g., to determine
-if log files may be removed from the system.
-<p>
-The <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/DbLog/stat.html">log_stat</a> interface to display
-statistics about the log.
-<p>
-Finally, the log (but not the log files themselves) may be discarded using
-the <a href="../../api_c/DbLog/unlink.html">log_unlink</a> interface.
-<p>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/log/limits.html"><img src="../../images/next.gif"></a>
-</tt>
+<p><dt><a href="../../api_c/log_archive.html">log_archive</a><dd>Returns various sets of log file names.  These interfaces are used for
+database administration, e.g., to determine if log files may be removed
+from the system.
+<p><dt><a href="../../api_c/log_stat.html">log_stat</a>   <dd>The display <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/log_stat.html">log_stat</a> interface
+to display statistics about the log.
+<p><dt><a href="../../api_c/env_remove.html">DBENV-&gt;remove</a><dd>Finally, the log meta-information (but not the log files themselves) may
+be removed using the <a href="../../api_c/env_remove.html">DBENV-&gt;remove</a> interface.
+</dl>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/lock/nondb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/log/limits.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

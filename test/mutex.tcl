@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mutex.tcl	10.6 (Sleepycat) 12/11/98
+#	@(#)mutex.tcl	11.7 (Sleepycat) 10/28/99
 #
 # Exercise mutex functionality.
 # Options are:
@@ -12,13 +12,12 @@
 # -mdegree <number of mutexes per iteration>
 # -nmutex <number of mutexes>
 # -procs <number of processes to run>
-# -seeds <list of seed values for processes>
 # -wait <wait interval after getting locks>
 proc mutex_usage {} {
 	puts stderr "mutex\n\t-dir <dir>\n\t-iter <iterations>"
 	puts stderr "\t-mdegree <locks per iteration>\n\t-nmutex <n>"
 	puts stderr "\t-procs <nprocs>"
-	puts stderr "\t-seeds <list of seeds>\n\t-wait <max wait interval>"
+	puts stderr "\n\t-wait <max wait interval>"
 	return
 }
 
@@ -30,7 +29,6 @@ proc mutex { args } {
 	set mdegree 3
 	set nmutex 20
 	set procs 5
-	set seeds {}
 	set wait 2
 
 	for { set i 0 } { $i < [llength $args] } {incr i} {
@@ -40,7 +38,6 @@ proc mutex { args } {
 			-m.* { incr i; set mdegree [lindex $args $i] }
 			-n.* { incr i; set nmutex [lindex $args $i] }
 			-p.* { incr i; set procs [lindex $args $i] }
-			-s.* { incr i; set seeds [lindex $args $i] }
 			-w.* { incr i; set wait [lindex $args $i] }
 			default {
 				mutex_usage
@@ -56,33 +53,35 @@ proc mutex { args } {
 	}
 
 	# Basic sanity tests
-	mutex001 $dir $nmutex
+	mutex001 $testdir $nmutex
 
 	# Basic synchronization tests
-	mutex002 $dir $nmutex
+	mutex002 $testdir $nmutex
 
 	# Multiprocess tests
-	mutex003 $dir $iter $nmutex $procs $mdegree $wait $seeds
+	mutex003 $testdir $iter $nmutex $procs $mdegree $wait
 }
 
 proc mutex001 { dir nlocks } {
 	source ./include.tcl
 
 	puts "Mutex001: Basic functionality"
-	mutex_cleanup $testdir/$dir
+	cleanup $dir
 
 	# Test open w/out create; should fail
-	set m [ mutex_init $dir $nlocks 0 0 ]
-	error_check_good mutex_init $m NULL
+	error_check_bad \
+	    evn_open [catch {berkdb env -mpool -lock -home $dir} env] 0
 
 	# Now open for real
-	set m [ mutex_init $dir $nlocks $DB_CREATE 0644 ]
-	error_check_bad mutex_init $m NULL
-	error_check_good mutex_init [is_substr $m mutex] 1
+	set env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
+	error_check_good evn_open [is_valid_env $env] TRUE
+
+	set m [$env mutex 0644 $nlocks]
+	error_check_good mutex_init [is_valid_mutex $m $env] TRUE
 
 	# Get, set each mutex; sleep, then get Release
 	for { set i 0 } { $i < $nlocks } { incr i } {
-		set r [ $m get $i ]
+		set r [$m get $i ]
 		error_check_good mutex_get $r 0
 
 		set r [$m setval $i $i]
@@ -90,14 +89,15 @@ proc mutex001 { dir nlocks } {
 	}
 	exec $SLEEP 5
 	for { set i 0 } { $i < $nlocks } { incr i } {
-		set r [$m getval $i $i]
+		set r [$m getval $i]
 		error_check_good mutex_getval $r $i
 
-		set r [ $m release $i ]
+		set r [$m release $i ]
 		error_check_good mutex_get $r 0
 	}
 
 	error_check_good mutex_close [$m close] 0
+	error_check_good env_close [$env close] 0
 	puts "Mutex001: completed successfully."
 }
 
@@ -106,113 +106,118 @@ proc mutex002 { dir nlocks } {
 	source ./include.tcl
 
 	puts "Mutex002: Basic synchronization"
-	mutex_cleanup $testdir/$dir
+	cleanup $dir
 
 	# Fork off child before we open any files.
-	set f1 [open |./dbtest r+]
-
-	# Now open the region we'll use for multiprocess testing.
-	set mr [mutex_init $dir $nlocks $DB_CREATE 0644]
-	error_check_bad mutex_init $mr NULL
-	error_check_good mutex_init [is_substr $mr mutex] 1
-
-	puts $f1 "set m \[mutex_init $dir $nlocks 0 0 \]"
-	puts $f1 "puts \$m"
-	puts $f1 "flush stdout"
+	set f1 [open |$tclsh_path r+]
+	puts $f1 "source $test_path/test.tcl"
 	flush $f1
 
-	set r [gets $f1 result]
-	error_check_bad remote:mutex_init $r -1
-	error_check_bad remote:mutex_init $result NULL
+	# Open the environment and the mutex locally
+	set local_env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
+	error_check_good evn_open [is_valid_env $local_env] TRUE
+
+	set local_mutex [$local_env mutex 0644 $nlocks]
+	error_check_good \
+	    mutex_init [is_valid_mutex $local_mutex $local_env] TRUE
+
+	# Open the environment and the mutex remotely
+	set remote_env [send_cmd $f1 "berkdb env -mpool -lock -home $dir"]
+	error_check_good remote:env_open [is_valid_env $remote_env] TRUE
+
+	set remote_mutex [send_cmd $f1 "$remote_env mutex 0644 $nlocks"]
+	error_check_good \
+	    mutex_init [is_valid_mutex $remote_mutex $remote_env] TRUE
 
 	# Do a get here, then set the value to be pid.
 	# On the remote side fire off a get and getval.
-
-	set r [$mr get 1]
+	set r [$local_mutex get 1]
 	error_check_good lock_get $r 0
 
-	set r [$mr setval 1 [pid]]
+	set r [$local_mutex setval 1 [pid]]
 	error_check_good lock_get $r 0
 
 	# Now have the remote side request the lock and check its
 	# value. Then wait 5 seconds, release the mutex and see
 	# what the remote side returned.
-
-	puts $f1 "set start \[timestamp -r\]"
-	puts $f1 "set r \[\$m get 1]"
-	puts $f1 "puts \[expr \[timestamp -r\] - \$start\]"
-	puts $f1 "set r \[\$m getval 1\]"
-	puts $f1 "puts \$r"
-	puts $f1 "flush stdout"
-	flush $f1
+	send_timed_cmd $f1 1 "$remote_mutex get 1"
+	send_timed_cmd $f1 1 "set ret \[$remote_mutex getval 1\]"
 
 	# Now sleep before resetting and releasing lock
 	exec $SLEEP 5
 	set newv [expr [pid] - 1]
-	set r [$mr setval 1 $newv]
+	set r [$local_mutex setval 1 $newv]
 	error_check_good mutex_setval $r 0
 
-	set r [$mr release 1]
+	set r [$local_mutex release 1]
 	error_check_good mutex_release $r 0
 
 	# Now get the result from the other script
-	set r [gets $f1 result]
-	error_check_bad remote:gets $r -1
+	# Timestamp
+	set result [rcv_result $f1]
 	error_check_good lock_get:remote_time [expr $result > 4] 1
 
-	set r [gets $f1 result]
-	error_check_bad remote:gets $r -1
+	# Timestamp
+	set result [rcv_result $f1]
+
+	# Mutex value
+	set result [send_cmd $f1 "puts \$ret"]
 	error_check_good lock_get:remote_getval $result $newv
 
 	# Close down the remote
-	puts $f1 "\$m close"
-	flush $f1
+	set ret [send_cmd $f1 "$remote_mutex close" 5]
+	# Not sure why we need this, but we do... an extra blank line
+	# someone gets output somewhere
+	gets $f1 ret
+	error_check_good remote:mutex_close $ret 0
+
+	set ret [send_cmd $f1 "$remote_env close"]
+	error_check_good remote:env_close $ret 0
+
 	catch { close $f1 } result
 
-	set r [$mr close]
-	error_check_good mutex_close $r 0
+	set ret [$local_mutex close]
+	error_check_good local:mutex_close $ret 0
+
+	set ret [$local_env close]
+	error_check_good local:env_close $ret 0
+
 	puts "Mutex002: completed successfully."
 }
 
 # Generate a bunch of parallel
 # testers that try to randomly obtain locks.
-proc mutex003 { dir iter nmutex procs mdegree wait seeds } {
+proc mutex003 { dir iter nmutex procs mdegree wait } {
 	source ./include.tcl
 
 	puts "Mutex003: Multi-process random mutex test ($procs processes)"
 
-	mutex_cleanup $testdir/$dir
+	cleanup $dir
 
 	# Now open the region we'll use for multiprocess testing.
-	set mr [mutex_init $dir $nmutex $DB_CREATE 0644]
-	error_check_bad mutex_init $mr NULL
-	error_check_good mutex_init [is_substr $mr mutex] 1
-	set r [$mr close]
-	error_check_good mutex_close $r 0
+	set env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
+	error_check_good evn_open [is_valid_env $env] TRUE
+
+	set mutex [$env mutex 0644 $nmutex]
+	error_check_good mutex_init [is_valid_mutex $mutex $env] TRUE
+
+	error_check_good mutex_close [$mutex close] 0
 
 	# Now spawn off processes
 	set proclist {}
 	for { set i 0 } {$i < $procs} {incr i} {
-		set s -1
-		if { [llength $seeds] == $procs } {
-			set s [lindex $seeds $i]
-		}
-		puts "exec ./dbtest ../test/mutexscript.tcl $testdir/$dir \
-		    $iter $nmutex $wait $mdegree $s > $testdir/$i.mutexout &"
-		set p [exec ./dbtest ../test/mutexscript.tcl $testdir/$dir \
-		    $iter $nmutex $wait $mdegree $s > $testdir/$i.mutexout &]
+		puts "$tclsh_path\
+		    $test_path/mutexscript.tcl $dir\
+		    $iter $nmutex $wait $mdegree > $testdir/$i.mutexout &"
+		set p [exec $tclsh_path\
+		    $test_path/mutexscript.tcl $dir\
+		    $iter $nmutex $wait $mdegree > "$testdir/$i.mutexout" &]
 		lappend proclist $p
 	}
 	puts "Mutex003: $procs independent processes now running"
 	watch_procs $proclist
 	# Remove output files
 	for { set i 0 } {$i < $procs} {incr i} {
-		exec $RM -f $testdir/$i.mutexout
+		exec $RM -f $dir/$i.mutexout
 	}
-}
-
-proc mutex_cleanup { dir } {
-	source ./include.tcl
-
-	exec $RM -rf $dir/__mutex.share
 }

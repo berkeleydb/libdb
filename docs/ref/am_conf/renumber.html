@@ -1,0 +1,86 @@
+<!--@(#)renumber.so	10.14 (Sleepycat) 10/3/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/bigpic.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Logically renumbering records</h1>
+<p>
+Records stored in the Queue and Recno access methods are accessed by
+logical record number.  Invariably in Queue databases, and by default in
+Recno databases, these record numbers are not mutable.  That is to say,
+if you delete record number 5, record number 6 is not automatically
+renumbered to be record number 5 and 7 renumbered to be record number 6
+and so on.  For this same reason, new records cannot be inserted between
+already-existing records.
+<p>
+In Recno databases, it is possible to make the logical record numbers
+mutable by calling the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function with the <a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a>
+flag.  This means that the record numbers may change as records
+are added to and deleted from the database.
+When record numbers are mutable, cursors behave quite a bit differently
+than usual.
+<p>
+For example, the deletion of record number 4 causes records numbered 5
+and greater to be renumbered downward by 1.  If a cursor is positioned at
+a record less than 4 before the deletion, it will be unchanged.  If a
+cursor is positioned at a record greater than 4 before the deletion, it
+will be shifted downward 1 logical record number, continuing to reference
+the same record as it did before.
+<p>
+If a cursor was positioned at record 4 when it was deleted, one of
+two things happens: if there were records greater than 4 when the
+delete happened, the cursor will suddenly reference what was
+previously record 5 and is now record number 4.  If there were no
+records greater than 4 when the delete happened, the cursor will
+suddenly reference record 3, that is, the largest record in the
+database that exists.  When a delete removes the single remaining
+record from a database, any open cursors will reference an invalid
+record number, and operations relative to the current cursor
+position, e.g., <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> with the <a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a> flag,
+will fail.
+<p>
+Similarly, if a created record is not at the end of the database, all
+records following the new record will be automatically renumbered upward
+by 1. For example, the creation of a new record numbered 8 causes records
+numbered 8 and greater to be renumbered upward by 1. If a cursor was
+positioned to record number 8 or greater before the insertion, it will be
+shifted upward 1 logical record, continuing to reference the same record
+as it did before.
+<p>
+For these reasons, concurrent access to a Recno database with the
+<a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a> flag specified is rarely useful (because threads of
+control may renumber records being accessed by other threads of control),
+although it is supported.
+<p>
+In the case of Queue and Recno databases where record numbers are not
+mutable, any attempt to retrieve deleted records will result in a special
+error return, <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.
+<p>
+When using both mutable and immutable record numbers, creating new records
+will cause the creation of multiple records if the record number is more
+than one greater than the largest record currently in the database. For
+example, creating record number 28, when record 25 was previously the
+last record in the database, will create records 26 and 27 as well as 28.
+<p>
+First, last, next and previous cursor operations will automatically skip
+over implicitly created records.  For example, if record number 5 is the
+only record the application has created, implicitly creating records 1
+through 4, the <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> interface with the <a href="../../api_c/dbc_get.html#DB_FIRST">DB_FIRST</a> flag
+will return record number 5, not record number 1.  Attempts to explicitly
+retrieve records that were created in this manner will result in a special
+error return, <a href="../../ref/program/errorret.html#DB_KEYEMPTY">DB_KEYEMPTY</a>.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/am_conf/re_source.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/arch/bigpic.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_get.c	10.38 (Sleepycat) 10/3/98";
+static const char sccsid[] = "@(#)log_get.c	11.4 (Sleepycat) 9/16/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,41 +19,43 @@ static const char sccsid[] = "@(#)log_get.c	10.38 (Sleepycat) 10/3/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_page.h"
 #include "log.h"
 #include "hash.h"
-#include "common_ext.h"
 
 /*
  * log_get --
  *	Get a log record.
  */
 int
-log_get(dblp, alsn, dbt, flags)
-	DB_LOG *dblp;
+log_get(dbenv, alsn, dbt, flags)
+	DB_ENV *dbenv;
 	DB_LSN *alsn;
 	DBT *dbt;
 	u_int32_t flags;
 {
+	DB_LOG *dblp;
 	int ret;
 
-	LOG_PANIC_CHECK(dblp);
+	PANIC_CHECK(dbenv);
+	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
 
 	/* Validate arguments. */
 	if (flags != DB_CHECKPOINT && flags != DB_CURRENT &&
 	    flags != DB_FIRST && flags != DB_LAST &&
 	    flags != DB_NEXT && flags != DB_PREV && flags != DB_SET)
-		return (__db_ferr(dblp->dbenv, "log_get", 1));
+		return (__db_ferr(dbenv, "log_get", 1));
 
-	if (F_ISSET(dblp, DB_AM_THREAD)) {
+	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
 		if (flags == DB_NEXT || flags == DB_PREV || flags == DB_CURRENT)
-			return (__db_ferr(dblp->dbenv, "log_get", 1));
-		if (!F_ISSET(dbt, DB_DBT_USERMEM | DB_DBT_MALLOC))
-			return (__db_ferr(dblp->dbenv, "threaded data", 1));
+			return (__db_ferr(dbenv, "log_get", 1));
+		if (!F_ISSET(dbt,
+		    DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM))
+			return (__db_ferr(dbenv, "threaded data", 1));
 	}
 
-	LOCK_LOGREGION(dblp);
+	dblp = dbenv->lg_handle;
+	R_LOCK(dbenv, &dblp->reginfo);
 
 	/*
 	 * If we get one of the log's header records, repeat the operation.
@@ -73,7 +75,7 @@ log_get(dblp, alsn, dbt, flags)
 		ret = __log_get(dblp, alsn, dbt, flags, 0);
 	}
 
-	UNLOCK_LOGREGION(dblp);
+	R_UNLOCK(dbenv, &dblp->reginfo);
 
 	return (ret);
 }
@@ -100,9 +102,10 @@ __log_get(dblp, alsn, dbt, flags, silent)
 	int cnt, ret;
 	char *np, *tbuf;
 	const char *fail;
-	void *p, *shortp;
+	void *shortp;
+	u_int8_t *p;
 
-	lp = dblp->lp;
+	lp = dblp->reginfo.primary;
 	fail = np = tbuf = NULL;
 
 	nlsn = dblp->c_lsn;
@@ -110,8 +113,6 @@ __log_get(dblp, alsn, dbt, flags, silent)
 	case DB_CHECKPOINT:
 		nlsn = lp->chkpt_lsn;
 		if (IS_ZERO_LSN(nlsn)) {
-			__db_err(dblp->dbenv,
-	"log_get: unable to find checkpoint record: no checkpoint set.");
 			ret = ENOENT;
 			goto err2;
 		}
@@ -165,36 +166,39 @@ __log_get(dblp, alsn, dbt, flags, silent)
 		break;
 	}
 
-retry:
-	/* Return 1 if the request is past end-of-file. */
+	if (0) {				/* Move to the next file. */
+next_file:	++nlsn.file;
+		nlsn.offset = 0;
+	}
+
+	/* Return 1 if the request is past the end of the log. */
 	if (nlsn.file > lp->lsn.file ||
 	    (nlsn.file == lp->lsn.file && nlsn.offset >= lp->lsn.offset))
 		return (DB_NOTFOUND);
 
-	/* If we've switched files, discard the current fd. */
-	if (dblp->c_lsn.file != nlsn.file && dblp->c_fd != -1) {
-		(void)__os_close(dblp->c_fd);
-		dblp->c_fd = -1;
-	}
+	/* If we've switched files, discard the current file handle. */
+	if (dblp->c_lsn.file != nlsn.file &&
+	    F_ISSET(&dblp->c_fh, DB_FH_VALID))
+		(void)__os_closehandle(&dblp->c_fh);
 
 	/* If the entire record is in the in-memory buffer, copy it out. */
 	if (nlsn.file == lp->lsn.file && nlsn.offset >= lp->w_off) {
 		/* Copy the header. */
-		p = lp->buf + (nlsn.offset - lp->w_off);
+		p = dblp->bufp + (nlsn.offset - lp->w_off);
 		memcpy(&hdr, p, sizeof(HDR));
 
 		/* Copy the record. */
 		len = hdr.len - sizeof(HDR);
-		if ((ret = __db_retcopy(dbt, (u_int8_t *)p + sizeof(HDR),
-		    len, &dblp->c_dbt.data, &dblp->c_dbt.ulen, NULL)) != 0)
+		if ((ret = __db_retcopy(NULL, dbt, p + sizeof(HDR),
+		    len, &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
 			goto err1;
 		goto cksum;
 	}
 
 	/* Acquire a file descriptor. */
-	if (dblp->c_fd == -1) {
+	if (!F_ISSET(&dblp->c_fh, DB_FH_VALID)) {
 		if ((ret = __log_name(dblp, nlsn.file,
-		    &np, &dblp->c_fd, DB_RDONLY | DB_SEQUENTIAL)) != 0) {
+		    &np, &dblp->c_fh, DB_OSO_RDONLY | DB_OSO_SEQ)) != 0) {
 			fail = np;
 			goto err1;
 		}
@@ -202,13 +206,21 @@ retry:
 		np = NULL;
 	}
 
-	/* Seek to the header offset and read the header. */
-	if ((ret =
-	    __os_seek(dblp->c_fd, 0, 0, nlsn.offset, 0, SEEK_SET)) != 0) {
+	/*
+	 * Seek to the header offset and read the header.  Because the file
+	 * may be pre-allocated, we have to make sure that we're not reading
+	 * past the information in the start of the in-memory buffer.
+	 */
+	if ((ret = __os_seek(
+	    &dblp->c_fh, 0, 0, nlsn.offset, 0, DB_OS_SEEK_SET)) != 0) {
 		fail = "seek";
 		goto err1;
 	}
-	if ((ret = __os_read(dblp->c_fd, &hdr, sizeof(HDR), &nr)) != 0) {
+	if (nlsn.file == lp->lsn.file && nlsn.offset + sizeof(HDR) > lp->w_off)
+		nr = lp->w_off - nlsn.offset;
+	else
+		nr = sizeof(HDR);
+	if ((ret = __os_read(&dblp->c_fh, &hdr, nr, &nr)) != 0) {
 		fail = "read";
 		goto err1;
 	}
@@ -219,11 +231,7 @@ retry:
 		if (nr == 0) {
 			if (flags != DB_NEXT || nlsn.file == lp->lsn.file)
 				goto corrupt;
-
-			/* Move to the next file. */
-			++nlsn.file;
-			nlsn.offset = 0;
-			goto retry;
+			goto next_file;
 		}
 
 		/*
@@ -234,25 +242,29 @@ retry:
 			goto corrupt;
 
 		/* Get the rest of the header from the in-memory buffer. */
-		memcpy((u_int8_t *)&hdr + nr, lp->buf, sizeof(HDR) - nr);
-		shortp = lp->buf + (sizeof(HDR) - nr);
+		memcpy((u_int8_t *)&hdr + nr, dblp->bufp, sizeof(HDR) - nr);
+		shortp = dblp->bufp + (sizeof(HDR) - nr);
 	}
 
 	/*
-	 * Check for buffers of 0's, that's what we usually see during
-	 * recovery, although it's certainly not something on which we
-	 * can depend.
+	 * Check for buffers of 0's, that's what we usually see during recovery,
+	 * although it's certainly not something on which we can depend.  Check
+	 * for impossibly large records.  The malloc should fail later, but we
+	 * have customers that run mallocs that handle allocation failure as a
+	 * fatal error.
 	 */
-	if (hdr.len <= sizeof(HDR))
+	if (hdr.len == 0)
+		goto next_file;
+	if (hdr.len <= sizeof(HDR) || hdr.len > lp->persist.lg_max)
 		goto corrupt;
 	len = hdr.len - sizeof(HDR);
 
 	/* If we've already moved to the in-memory buffer, fill from there. */
 	if (shortp != NULL) {
-		if (lp->b_off < ((u_int8_t *)shortp - lp->buf) + len)
+		if (lp->b_off < ((u_int8_t *)shortp - dblp->bufp) + len)
 			goto corrupt;
-		if ((ret = __db_retcopy(dbt, shortp, len,
-		    &dblp->c_dbt.data, &dblp->c_dbt.ulen, NULL)) != 0)
+		if ((ret = __db_retcopy(NULL, dbt, shortp, len,
+		    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
 			goto err1;
 		goto cksum;
 	}
@@ -272,24 +284,33 @@ retry:
 	 * there was an error or the rest of the record is in the in-memory
 	 * buffer.  Note, the information may be garbage if we're in recovery,
 	 * so don't read past the end of the buffer's memory.
+	 *
+	 * Because the file may be pre-allocated, we have to make sure that
+	 * we're not reading past the information in the start of the in-memory
+	 * buffer.
 	 */
-	if ((ret = __os_read(dblp->c_fd, tbuf, len, &nr)) != 0) {
+	if (nlsn.file == lp->lsn.file &&
+	    nlsn.offset + sizeof(HDR) + len > lp->w_off)
+		nr = lp->w_off - (nlsn.offset + sizeof(HDR));
+	else
+		nr = len;
+	if ((ret = __os_read(&dblp->c_fh, tbuf, nr, &nr)) != 0) {
 		fail = "read";
 		goto err1;
 	}
-	if (len - nr > sizeof(lp->buf))
+	if (len - nr > lp->buffer_size)
 		goto corrupt;
 	if (nr != (ssize_t)len) {
 		if (lp->b_off < len - nr)
 			goto corrupt;
 
 		/* Get the rest of the record from the in-memory buffer. */
-		memcpy((u_int8_t *)tbuf + nr, lp->buf, len - nr);
+		memcpy((u_int8_t *)tbuf + nr, dblp->bufp, len - nr);
 	}
 
 	/* Copy the record into the user's DBT. */
-	if ((ret = __db_retcopy(dbt, tbuf, len,
-	    &dblp->c_dbt.data, &dblp->c_dbt.ulen, NULL)) != 0)
+	if ((ret = __db_retcopy(NULL, dbt, tbuf, len,
+	    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
 		goto err1;
 	__os_free(tbuf, 0);
 	tbuf = NULL;
@@ -315,12 +336,13 @@ corrupt:/*
 	ret = EIO;
 	fail = "read";
 
-err1:	if (!silent)
+err1:	if (!silent) {
 		if (fail == NULL)
-			__db_err(dblp->dbenv, "log_get: %s", strerror(ret));
+			__db_err(dblp->dbenv, "log_get: %s", db_strerror(ret));
 		else
 			__db_err(dblp->dbenv,
-			    "log_get: %s: %s", fail, strerror(ret));
+			    "log_get: %s: %s", fail, db_strerror(ret));
+	}
 err2:	if (np != NULL)
 		__os_freestr(np);
 	if (tbuf != NULL)

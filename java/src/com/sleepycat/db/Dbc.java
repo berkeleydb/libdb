@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)Dbc.java	10.5 (Sleepycat) 10/20/98
+ *	@(#)Dbc.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;
@@ -22,6 +22,9 @@ public class Dbc
 
     // returns: 0, DB_KEYEMPTY, or throws error
     public native int del(int flags)
+         throws DbException;
+
+    public native Dbc dup(int flags)
          throws DbException;
 
     // returns: 0, DB_NOTFOUND, or throws error

@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mpoolscript.tcl	10.4 (Sleepycat) 4/10/98
+#	@(#)mpoolscript.tcl	11.5 (Sleepycat) 10/25/99
 #
 # Random multiple process mpool tester.
-# Usage: mpoolscript dir id numiters numfiles numpages sleepint seed
+# Usage: mpoolscript dir id numiters numfiles numpages sleepint
 # dir: lock directory.
 # id: Unique identifier for this process.
 # maxprocs: Number of procs in this test.
@@ -15,16 +15,17 @@
 #		how many files to use.
 # numpages: Number of pages per file.
 # sleepint: Maximum sleep interval.
-# seed: Seed for random number generator.  If -1, use pid.
-# envopt: Environment options.
-source ../test/testutils.tcl
+# flags: db_appinit flags
+
 source ./include.tcl
+source $test_path/test.tcl
+source $test_path/testutils.tcl
 
 set usage \
-   "mpoolscript dir id maxprocs numiters pgsizes numpages sleepint seed envopts"
+   "mpoolscript dir id maxprocs numiters pgsizes numpages sleepint flags"
 
 # Verify usage
-if { $argc != 9 } {
+if { $argc != 8 } {
 	puts stderr $usage
 	puts $argc
 	exit
@@ -38,18 +39,14 @@ set numiters [ lindex $argv 3 ]
 set pgsizes [ lindex $argv 4 ]
 set numpages [ lindex $argv 5 ]
 set sleepint [ lindex $argv 6 ]
-set seed [ lindex $argv 7 ]
-set envopts [ lindex $argv 8]
+set flags [ lindex $argv 7]
 
 # Initialize seed
-if { $seed == -1 } {
-	srand [pid]
-} else {
-	srand $seed
-}
+global rand_init
+berkdb srand $rand_init
 
 puts -nonewline "Beginning execution for $id: $maxprocs $dir $numiters"
-puts " $pgsizes $numpages $sleepint $seed"
+puts " $pgsizes $numpages $sleepint"
 flush stdout
 
 # Figure out how small/large to make the cache
@@ -59,42 +56,31 @@ foreach i $pgsizes {
 		set max $i
 	}
 }
-set cache [expr $maxprocs * ([lindex $pgsizes 0] + $max)]
 
-set cmd {memp "" 0 0 -dbhome $dir -cachesize $cache}
-set cmd [concat $cmd $envopts]
-set mp [ eval $cmd]
-error_check_bad memp $mp NULL
-error_check_good memp [is_substr $mp mp] 1
+set cache [list 0 [expr $maxprocs * ([lindex $pgsizes 0] + $max)] 1]
+set env_cmd {berkdb env -mpool -lock -cachesize $cache -home $dir}
+set e [eval $env_cmd]
+error_check_good env_open [is_valid_env $e] TRUE
 
 # Now open files
-set flist {}
+set mpools {}
 set nfiles 0
 foreach psize $pgsizes {
-	set mpf [$mp open file$nfiles $psize $DB_CREATE 0644]
-	error_check_bad memp_fopen:$nfiles $mpf NULL
-	error_check_good memp_fopen:$nfiles [is_substr $mpf $mp] 1
-	lappend flist $mpf
+	set mp [$e mpool -create -mode 0644 -pagesize $psize file$nfiles]
+	error_check_good memp_fopen:$nfiles [is_valid_mpool $mp $e] TRUE
+	lappend mpools $mp
 	incr nfiles
 }
-
-# Now create the lock region
-# We'll use the convention that we lock by fileid:pageno
-set lp [lock_open "" 0 0 -dbhome $dir $envopts]
-error_check_bad lock_open $lp NULL
-error_check_good lock_open [is_substr $lp lockmgr] 1
 
 puts "Establishing long-term pin on file 0 page $id for process $id"
 
 # Set up the long-pin page
-set lock [$lp get $id 0:$id $DB_LOCK_WRITE 0]
-error_check_bad lock_get $lock NULL
-error_check_good lock_get [is_substr $lock $lp] 1
+set lock [$e lock_get write $id 0:$id]
+error_check_good lock_get [is_valid_lock $lock $e] TRUE
 
-set mpf [lindex $flist 0]
-set master_page [$mpf get $id $DB_MPOOL_CREATE]
-error_check_bad mp_get:$master_page $master_page NULL
-error_check_good mp_get:$master_page [is_substr $master_page page] 1
+set mp [lindex $mpools 0]
+set master_page [$mp get -create $id]
+error_check_good mp_get:$master_page [is_valid_page $master_page $mp] TRUE
 
 set r [$master_page init MASTER$id]
 error_check_good page_init $r 0
@@ -118,70 +104,64 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 			set pred [expr ($id + $maxprocs + 1) % $maxprocs]
 		}
 
-		set mpf [lindex $flist $fnum]
+		set mpf [lindex $mpools $fnum]
 		for { set p 0 } { $p < $numpages } { incr p } {
-			set lock [$lp get $id $fnum:$p $DB_LOCK_WRITE 0]
-			error_check_bad lock_get:$fnum:$p $lock NULL
+			set lock [$e lock_get write $id $fnum:$p]
 			error_check_good lock_get:$fnum:$p \
-			    [is_substr $lock $lp] 1
+			    [is_valid_lock $lock $e] TRUE
 
 			# Now, get the page
-			set pp [$mpf get $p $DB_MPOOL_CREATE]
-			error_check_bad page_get:$fnum:$p $pp NULL
+			set pp [$mpf get -create $p]
 			error_check_good page_get:$fnum:$p \
-			    [is_substr $pp page] 1
+			    [is_valid_page $pp $mpf] TRUE
 
-			if { [$pp check $pred] == 0 || [$pp check nul] == 0 } {
+			if { [$pp is_setto $pred] == 0 || [$pp is_setto 0] == 0 } {
 				# Set page to self.
 				set r [$pp init $id]
 				error_check_good page_init:$fnum:$p $r 0
 				incr pages
-				set r [$pp put $DB_MPOOL_DIRTY]
+				set r [$pp put -dirty]
 				error_check_good page_put:$fnum:$p $r 0
 			} else {
-				error_check_good page_put:$fnum:$p [$pp put 0] 0
+				error_check_good page_put:$fnum:$p [$pp put] 0
 			}
 			error_check_good lock_put:$fnum:$p [$lock put] 0
 		}
 	}
-	exec $SLEEP [random_int 1 $sleepint]
+	exec $SLEEP [berkdb random_int 1 $sleepint]
 }
 
 # Now verify your master page, release its pin, then verify everyone else's
 puts "$id: End of run verification of master page"
-set r [$master_page check MASTER$id]
-error_check_good page_check $r 0
-set r [$master_page put $DB_MPOOL_DIRTY]
+set r [$master_page is_setto MASTER$id]
+error_check_good page_check $r 1
+set r [$master_page put -dirty]
 error_check_good page_put $r 0
 
 set i [expr ($id + 1) % $maxprocs]
-set mpf [lindex $flist 0]
-while { $i != $id } {
-	set p [ $mpf get $i $DB_MPOOL_CREATE ]
-	error_check_bad mp_get $p NULL
-	error_check_good mp_get [is_substr $p page] 1
+set mpf [lindex $mpools 0]
 
-	if { [$p check MASTER$i] != 0 } {
+while { $i != $id } {
+	set p [$mpf get -create $i]
+	error_check_good mp_get [is_valid_page $p $mpf] TRUE
+
+	if { [$p is_setto MASTER$i] != 1 } {
 		puts "Warning: Master page $i not set."
 	}
-	error_check_good page_put:$p [$p put 0] 0
+	error_check_good page_put:$p [$p put] 0
 
 	set i [expr ($i + 1) % $maxprocs]
 }
 
-# Close lock system
-set r [$lp close]
-error_check_good lock_close $r 0
-
 # Close files
-foreach i $flist {
+foreach i $mpools {
 	set r [$i close]
 	error_check_good mpf_close $r 0
 }
 
-# Close mpool system
-set r [$mp close]
-error_check_good memp_close $r 0
+# Close environment system
+set r [$e close]
+error_check_good env_close $r 0
 
 puts "[timestamp] $id Complete"
 flush stdout

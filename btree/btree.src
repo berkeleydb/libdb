@@ -1,13 +1,30 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)btree.src	10.8 (Sleepycat) 4/10/98
+ *	@(#)btree.src	10.12 (Sleepycat) 10/1/99
  */
 
 PREFIX	bam
+
+INCLUDE	#include "db_config.h"
+INCLUDE
+INCLUDE #ifndef NO_SYSTEM_INCLUDES
+INCLUDE #include <sys/types.h>
+INCLUDE
+INCLUDE #include <ctype.h>
+INCLUDE #include <string.h>
+INCLUDE #endif
+INCLUDE
+INCLUDE #include "db_int.h"
+INCLUDE #include "db_page.h"
+INCLUDE #include "db_dispatch.h"
+INCLUDE #include "db_am.h"
+INCLUDE #include "btree.h"
+INCLUDE #include "txn.h"
+INCLUDE
 
 /*
  * BTREE-pg_alloc: used to record allocating a new page.
@@ -18,7 +35,7 @@ PREFIX	bam
  * next:	the next page on the free list.
  */
 BEGIN pg_alloc
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 POINTER	meta_lsn	DB_LSN *	lu
 POINTER	page_lsn	DB_LSN *	lu
 ARG	pgno		db_pgno_t	lu
@@ -35,7 +52,7 @@ END
  * next:	the previous next pointer on the metadata page.
  */
 BEGIN pg_free
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
 DBT	header		DBT		s
@@ -55,7 +72,7 @@ END
  * pg:		the split page's contents before the split.
  */
 BEGIN split
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	left		db_pgno_t	lu
 POINTER	llsn		DB_LSN *	lu
 ARG	right		db_pgno_t	lu
@@ -76,7 +93,7 @@ END
  * rootlsn:	the root page's original lsn.
  */
 BEGIN rsplit
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 DBT	pgdbt		DBT		s
 ARG	nrec		db_pgno_t	lu
@@ -94,7 +111,7 @@ END
  * is_insert:	0 if a delete, 1 if an insert.
  */
 BEGIN adj
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -112,7 +129,7 @@ END
  * total:	if the total tree entries count should be adjusted
  */
 BEGIN cadjust
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -128,7 +145,7 @@ END
  * indx:	the index to be deleted.
  */
 BEGIN cdel
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -144,7 +161,7 @@ END
  * duplicate:	the prefix of the replacement that matches the original.
  */
 BEGIN repl
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -153,4 +170,14 @@ DBT	orig		DBT		s
 DBT	repl		DBT		s
 ARG	prefix		u_int32_t	lu
 ARG	suffix		u_int32_t	lu
+END
+
+/*
+ * BTREE-root: log the assignment of a root btree page.
+ */
+BEGIN root
+ARG	fileid		int32_t		lu
+ARG	meta_pgno	db_pgno_t	lu
+ARG	root_pgno	db_pgno_t	lu
+POINTER	meta_lsn	DB_LSN *	lu
 END

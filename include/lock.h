@@ -1,147 +1,155 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)lock.h	10.17 (Sleepycat) 1/3/99
+ *	@(#)lock.h	11.5 (Sleepycat) 10/27/99
  */
 
-typedef struct __db_lockobj	DB_LOCKOBJ;
-
-#define DB_DEFAULT_LOCK_FILE	"__db_lock.share"
-
 #ifndef DB_LOCK_DEFAULT_N
-#define DB_LOCK_DEFAULT_N	5000	/* Default # of locks in region. */
+#define DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
 #endif
 
 /*
+ * Out of band value for a lock.  Locks contain an offset into a lock region,
+ * so we use an invalid region offset to indicate an invalid or unset lock.
+ */
+#define	LOCK_INVALID	INVALID_ROFF
+
+/*
  * The locker id space is divided between the transaction manager and the lock
- * manager.  Lockid's start at 0 and go to DB_LOCK_MAXID.  Txn Id's start at
+ * manager.  Lock IDs start at 0 and go to DB_LOCK_MAXID.  Txn IDs start at
  * DB_LOCK_MAXID + 1 and go up to TXN_INVALID.
  */
 #define DB_LOCK_MAXID		0x7fffffff
 
-/* Check for region catastrophic shutdown. */
-#define	LOCK_PANIC_CHECK(lt) {						\
-	if ((lt)->region->hdr.panic)					\
-		return (DB_RUNRECOVERY);				\
-}
-
 /*
- * The lock region consists of:
- *	The DB_LOCKREGION structure (sizeof(DB_LOCKREGION)).
- *	The conflict matrix of nmodes * nmodes bytes (nmodes * nmodes).
- *	The hash table for object lookup (hashsize * sizeof(DB_OBJ *)).
- *	The locks themselves (maxlocks * sizeof(struct __db_lock).
- *	The objects being locked (maxlocks * sizeof(DB_OBJ)).
- *	String space to represent the DBTs that are the objects being locked.
+ * DB_LOCKREGION --
+ *	The lock shared region.
  */
-struct __db_lockregion {
-	RLAYOUT		hdr;		/* Shared region header. */
-	u_int32_t	magic;		/* lock magic number */
-	u_int32_t	version;	/* version number */
+typedef struct __db_lockregion {
 	u_int32_t	id;		/* unique id generator */
 	u_int32_t	need_dd;	/* flag for deadlock detector */
 	u_int32_t	detect;		/* run dd on every conflict */
-	SH_TAILQ_HEAD(lock_header) free_locks;	/* free lock header */
-	SH_TAILQ_HEAD(obj_header) free_objs;	/* free obj header */
+					/* free lock header */
+	SH_TAILQ_HEAD(__flock) free_locks;
+					/* free obj header */
+	SH_TAILQ_HEAD(__fobj) free_objs;
+					/* free locker header */
+	SH_TAILQ_HEAD(__flocker) free_lockers;
 	u_int32_t	maxlocks;	/* maximum number of locks in table */
 	u_int32_t	table_size;	/* size of hash table */
 	u_int32_t	nmodes;		/* number of lock modes */
-	u_int32_t	numobjs;	/* number of objects */
 	u_int32_t	nlockers;	/* number of lockers */
-	size_t		increment;	/* how much to grow region */
-	size_t		hash_off;	/* offset of hash table */
-	size_t		mem_off;	/* offset of memory region */
-	size_t		mem_bytes;	/* number of bytes in memory region */
+	u_int32_t	maxnlockers;	/* maximum number of lockers */
+	roff_t		memlock_off;	/* offset of memory mutex */
+	roff_t		conf_off;	/* offset of conflicts array */
+	roff_t		obj_off;	/* offset of object hash table */
+	roff_t		osynch_off;	/* offset of the object mutex table */
+	roff_t		locker_off;	/* offset of locker hash table */
+	roff_t		lsynch_off;	/* offset of the locker mutex table */
 	u_int32_t	nconflicts;	/* number of lock conflicts */
 	u_int32_t	nrequests;	/* number of lock gets */
 	u_int32_t	nreleases;	/* number of lock puts */
 	u_int32_t	ndeadlocks;	/* number of deadlocks */
-};
-
-/* Macros to lock/unlock the region. */
-#define	LOCK_LOCKREGION(lt)						\
-	(void)__db_mutex_lock(&(lt)->region->hdr.lock, (lt)->reginfo.fd)
-#define	UNLOCK_LOCKREGION(lt)						\
-	(void)__db_mutex_unlock(&(lt)->region->hdr.lock, (lt)->reginfo.fd)
+} DB_LOCKREGION;
 
 /*
- * Since we will be keeping DBTs in shared memory, we need the equivalent
- * of a DBT that will work in shared memory.
+ * Since we will store DBTs in shared memory, we need the equivalent of a
+ * DBT that will work in shared memory.
  */
 typedef struct __sh_dbt {
-	u_int32_t size;
-	ssize_t off;
+	u_int32_t size;			/* Byte length. */
+	ssize_t   off;			/* Region offset. */
 } SH_DBT;
 
 #define SH_DBT_PTR(p)	((void *)(((u_int8_t *)(p)) + (p)->off))
 
-struct __db_lockobj {
+/*
+ * Object structures;  these live in the object hash table.
+ */
+typedef struct __db_lockobj {
 	SH_DBT	lockobj;		/* Identifies object locked. */
 	SH_TAILQ_ENTRY links;		/* Links for free list. */
-	union {
-		SH_TAILQ_HEAD(_wait) _waiters;	/* List of waiting locks. */
-		u_int32_t	_dd_id;		/* Deadlock detector id. */
-	} wlinks;
-	union {
-		SH_LIST_HEAD(_held) _heldby;	/* Locks held by this locker. */
-		SH_TAILQ_HEAD(_hold) _holders;	/* List of held locks. */
-	} dlinks;
-#define	DB_LOCK_OBJTYPE		1
-#define	DB_LOCK_LOCKER		2
-					/* Allocate room in the object to
-					 * hold typical DB lock structures
-					 * so that we do not have to
-					 * allocate them from shalloc. */
+	SH_TAILQ_HEAD(__wait) waiters;	/* List of waiting locks. */
+	SH_TAILQ_HEAD(__hold) holders;	/* List of held locks. */
+					/* Declare room in the object to hold
+					 * typical DB lock structures so that
+					 * we do not have to allocate them from
+					 * shalloc at run-time. */
 	u_int8_t objdata[sizeof(struct __db_ilock)];
-	u_int8_t type;			/* Real object or locker id. */
-};
-
-#define dd_id	wlinks._dd_id
-#define	waiters	wlinks._waiters
-#define	holders	dlinks._holders
-#define	heldby	dlinks._heldby
+} DB_LOCKOBJ;
 
 /*
- * The lock table is the per-process cookie returned from a lock_open call.
+ * Locker structures; these live in the locker hash table.
  */
-struct __db_locktab {
+typedef struct __db_locker {
+	u_int32_t id;			/* Locker id. */
+	u_int32_t dd_id;		/* Deadlock detector id. */
+	size_t master_locker; 		/* Locker of master transaction. */
+	size_t parent_locker;		/* Parent of this child. */
+        SH_LIST_HEAD(_child) child_locker; 	/* List of descendant txns;
+						   only used in a "master"
+						   txn. */
+        SH_LIST_ENTRY child_link; 	/* Links transactions in the family;
+					   elements of the child_locker
+					   list. */
+	SH_TAILQ_ENTRY links;		/* Links for free list. */
+	SH_LIST_HEAD(_held) heldby;	/* Locks held by this locker. */
+
+#define DB_LOCKER_DELETED	0x0001
+	u_int32_t flags;
+} DB_LOCKER;
+
+/*
+ * Lockers can be freed if they are not poart of a transaction
+ * family.  Members of a family either point at the master
+ * transaction or are the master transaction and have
+ * children lockers.
+ */
+#define LOCKER_FREEABLE(lp)	((lp)->master_locker 			\
+			 == TXN_INVALID_ID && 			\
+			SH_LIST_FIRST(&(lp)->child_locker, __db_locker) \
+			 == NULL)
+
+/*
+ * DB_LOCKTAB --
+ *	The primary library lock data structure (i.e., the one referenced
+ * by the environment, as opposed to the internal one laid out in the region.)
+ */
+typedef struct __db_locktab {
 	DB_ENV		*dbenv;		/* Environment. */
 	REGINFO		 reginfo;	/* Region information. */
-	DB_LOCKREGION	*region;	/* Address of shared memory region. */
-	DB_HASHTAB 	*hashtab; 	/* Beginning of hash table. */
-	void		*mem;		/* Beginning of string space. */
+	MUTEX		*memlock;	/* Mutex to protect memory alloc. */
 	u_int8_t 	*conflicts;	/* Pointer to conflict matrix. */
-};
+	DB_HASHTAB 	*obj_tab; 	/* Beginning of object hash table. */
+	MUTEX		*osynch_tab;	/* Object mutex table. */
+	DB_HASHTAB 	*locker_tab; 	/* Beginning of locker hash table. */
+	MUTEX		*lsynch_tab;	/* Locker mutex table. */
+} DB_LOCKTAB;
 
 /* Test for conflicts. */
-#define CONFLICTS(T, HELD, WANTED) \
-	T->conflicts[HELD * T->region->nmodes + WANTED]
+#define CONFLICTS(T, R, HELD, WANTED) \
+	(T)->conflicts[(HELD) * (R)->nmodes + (WANTED)]
 
-/*
- * Resources in the lock region.  Used to indicate which resource
- * is running low when we need to grow the region.
- */
-typedef enum {
-	DB_LOCK_MEM, DB_LOCK_OBJ, DB_LOCK_LOCK
-} db_resource_t;
+#define OBJ_LINKS_VALID(L) ((L)->links.stqe_prev != -1)
 
 struct __db_lock {
 	/*
 	 * Wait on mutex to wait on lock.  You reference your own mutex with
 	 * ID 0 and others reference your mutex with ID 1.
 	 */
-	db_mutex_t	mutex;
+	MUTEX		mutex;
 
 	u_int32_t	holder;		/* Who holds this lock. */
+	u_int32_t	gen;		/* Generation count. */
 	SH_TAILQ_ENTRY	links;		/* Free or holder/waiter list. */
 	SH_LIST_ENTRY	locker_links;	/* List of locks held by a locker. */
 	u_int32_t	refcount;	/* Reference count the lock. */
 	db_lockmode_t	mode;		/* What sort of lock. */
 	ssize_t		obj;		/* Relative offset of object struct. */
-	size_t		txnoff;		/* Offset of holding transaction. */
+	roff_t		txnoff;		/* Offset of holding transaction. */
 	db_status_t	status;		/* Status of this lock. */
 };
 
@@ -152,46 +160,86 @@ struct __db_lock {
  * In order to do this, each lock held by a transaction maintains a reference
  * to the shared memory transaction structure so it can be accessed during lock
  * promotion.  As the structure is in shared memory, we cannot store a pointer
- * to it, so we use the offset within the region.  As nothing lives at region
- * offset 0, we use that to indicate that there is no transaction associated
- * with the current lock.
+ * to it, so we use the offset within the region.  An invalid region offset is
+ * used to indicate that there is no transaction associated with the current
+ * lock.
  */
-#define TXN_IS_HOLDING(L)	((L)->txnoff != 0 /* INVALID_REG_OFFSET */)
+#define TXN_IS_HOLDING(L)	((L)->txnoff != INVALID_ROFF)
 
 /*
- * We cannot return pointers to the user (else we cannot easily grow regions),
- * so we return offsets in the region.  These must be converted to and from
- * regular pointers.  Always use the macros below.
+ * Flag values for __lock_put_internal:
+ * DB_LOCK_DOALL:     Unlock all references in this lock (instead of only 1).
+ * DB_LOCK_FREE:      Free the lock (used in checklocker).
+ * DB_LOCK_IGNOREDEL: Remove from the locker hash table even if already
+		      deleted (used in checklocker).
+ * DB_LOCK_NOPROMOTE: Don't bother running promotion when releasing locks
+ *		      (used by __lock_put_internal).
+ * DB_LOCK_UNLINK:    Remove from the locker links (used in checklocker).
  */
-#define OFFSET_TO_LOCK(lt, off)	\
-	((struct __db_lock *)((u_int8_t *)((lt)->region) + (off)))
-#define LOCK_TO_OFFSET(lt, lock) \
-	((size_t)((u_int8_t *)(lock) - (u_int8_t *)lt->region))
-#define OFFSET_TO_OBJ(lt, off)	\
-	((DB_LOCKOBJ *)((u_int8_t *)((lt)->region) + (off)))
-#define OBJ_TO_OFFSET(lt, obj) \
-	((size_t)((u_int8_t *)(obj) - (u_int8_t *)lt->region))
+#define	DB_LOCK_DOALL		0x001
+#define	DB_LOCK_FREE		0x002
+#define	DB_LOCK_IGNOREDEL	0x004
+#define	DB_LOCK_NOPROMOTE	0x008
+#define	DB_LOCK_UNLINK		0x010
 
 /*
- * The lock header contains the region structure and the conflict matrix.
- * Aligned to a large boundary because we don't know what the underlying
- * type of the hash table elements are.
+ * Macros to get/release different types of mutexes.
  */
-#define LOCK_HASH_ALIGN	8
-#define LOCK_HEADER_SIZE(M)	\
-	((size_t)(sizeof(DB_LOCKREGION) + ALIGN((M * M), LOCK_HASH_ALIGN)))
+#define OBJECT_LOOKUP(lt, ndx, dbt, sh_obj)				\
+	HASHLOOKUP((lt)->objtab,					\
+	    ndx, __db_lockobj, links, dbt, sh_obj, __lock_cmp);
 
-/*
- * For the full region, we need to add the locks, the objects, the hash table
- * and the string space (which is 16 bytes per lock).
- */
-#define STRING_SIZE(N) (16 * N)
+#ifdef FINE_GRAIN
+#define OBJECT_LOCK_NDX(lt, ndx)					\
+	MUTEX_LOCK(&(lt)->osynch_tab[ndx], (lt)->dbenv->lockfhp)
+#define OBJECT_LOCK(lt, reg, obj, ndx) 					\
+	HASHACCESS((lt)->osynch_tab, obj,				\
+	    (reg)->table_size, __lock_ohash, ndx, (lt)->dbenv->lockfhp)
+#define SHOBJECT_LOCK(lt, reg, shobj, ndx)				\
+	HASHACCESS((lt)->osynch_tab, shobj,				\
+	    (reg)->table_size, __lock_lhash, ndx, (lt)->dbenv->lockfhp)
+#define	OBJECT_UNLOCK(lt, ndx)						\
+	MUTEX_UNLOCK(&(lt)->osynch_tab[ndx])
+#else
+#define	OBJECT_LOCK_NDX(lt, ndx)
+#define OBJECT_LOCK(lt, reg, obj, ndx) 					\
+	ndx = __lock_ohash(obj) % (reg)->table_size
+#define SHOBJECT_LOCK(lt, reg, shobj, ndx)				\
+	ndx = __lock_lhash(shobj) % (reg)->table_size
+#define	OBJECT_UNLOCK(lt, ndx)
+#endif
 
-#define LOCK_REGION_SIZE(M, N, H)					\
-	(ALIGN(LOCK_HEADER_SIZE(M) +					\
-	(H) * sizeof(DB_HASHTAB), MUTEX_ALIGNMENT) +			\
-	(N) * ALIGN(sizeof(struct __db_lock), MUTEX_ALIGNMENT) +	\
-	ALIGN((N) * sizeof(DB_LOCKOBJ), sizeof(size_t)) +		\
-	ALIGN(STRING_SIZE(N), sizeof(size_t)))
+#define LOCKER_LOOKUP(lt, ndx, locker, sh_locker)			\
+	HASHLOOKUP((lt)->lockertab,					\
+	    ndx, __db_locker, links, locker, sh_locker, __lock_locker_cmp);
 
+#ifdef FINE_GRAIN
+#define	LOCKER_LOCK_NDX(lt, ndx)					\
+	MUTEX_LOCK(&(lt)->lsynch_tab[ndx], (lt)->dbenv->lockfhp)
+#define	LOCKER_LOCK(lt, reg, locker, ndx)				\
+	HASHACCESS((lt)->lsynch_tab, locker,				\
+	    reg->table_size, __lock_locker_hash, ndx, (lt)->dbenv->lockfhp)
+#define	LOCKER_UNLOCK(lt, ndx)						\
+	MUTEX_UNLOCK(&(lt)->lsynch_tab[ndx])
+
+#define MEMORY_LOCK(lt)							\
+	MUTEX_LOCK((lt)->memlock, (lt)->dbenv->lockfhp)
+#define MEMORY_UNLOCK(lt)						\
+	MUTEX_UNLOCK((lt)->memlock)
+#else
+#define	LOCKER_LOCK_NDX(lt, ndx)
+#define	LOCKER_LOCK(lt, reg, locker, ndx)				\
+	ndx = __lock_locker_hash(locker) % (reg)->table_size
+#define	LOCKER_UNLOCK(lt, ndx)
+#define MEMORY_LOCK(lt)
+#define MEMORY_UNLOCK(lt)
+#endif
+
+#ifdef FINE_GRAIN
+#define	LOCKREGION(dbenv, lt)
+#define	UNLOCKREGION(dbenv, lt)
+#else
+#define	LOCKREGION(dbenv, lt)  R_LOCK((dbenv), &(lt)->reginfo)
+#define	UNLOCKREGION(dbenv, lt)  R_UNLOCK((dbenv), &(lt)->reginfo)
+#endif
 #include "lock_ext.h"

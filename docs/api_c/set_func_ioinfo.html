@@ -1,0 +1,98 @@
+<!--"@(#)set_func_ioinfo.so	10.3 (Sleepycat) 11/7/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: DBENV-&gt;set_func_ioinfo</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1>DBENV-&gt;set_func_ioinfo</h1>
+</td>
+<td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>
+#include &lt;db.h&gt;
+<p>
+int
+DBENV-&gt;set_func_ioinfo(DB_ENV *dbenv,
+    int (*func_ioinfo)(const char *path,
+    int fd, u_int32_t *mbytesp, u_int32_t *bytesp, u_int32_t *iosizep));
+</pre></h3>
+<h1>Description</h1>
+<p>
+The Berkeley DB library requires the ability to determine the size and I/O
+characteristics of a file.  The <b>func_ioinfo</b> argument must conform
+to the following interface:
+<p>
+<blockquote><pre>
+int ioinfo(const char *path, int fd,
+u_int32_t *mbytesp, u_int32_t *bytesp, u_int32_t *iosizep);</pre></blockquote>
+<p>
+The <b>path</b> argument is the pathname of the file to be checked, and the
+<b>fd</b> argument is an open file descriptor on the file.
+<p>
+If the <b>mbytesp</b> and <b>bytesp</b> arguments are non-NULL, the
+<b>ioinfo</b> function must return in them the size of the file: the
+number of megabytes in the file into the memory location referenced by the
+<b>mbytesp</b> argument, and the number of bytes over and above that number
+of megabytes into the memory location referenced by the <b>bytesp</b>
+argument.
+<p>
+In addition, if the <b>iosizep</b> argument is non-NULL, the <b>ioinfo</b>
+function must return the optimum granularity for I/O operations to the file
+in the memory location referenced by it.
+<p>
+The <b>func_ioinfo</b> function must return the value of <b>errno</b> on
+failure and 0 on success.
+<p>
+The DBENV-&gt;set_func_ioinfo interface affects the entire application, not only the
+environment in which it is called.
+<p>
+The DBENV-&gt;set_func_ioinfo interface may only be used to configure Berkeley DB before
+the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
+<p>
+The DBENV-&gt;set_func_ioinfo
+function returns a non-zero error value on failure and 0 on success.
+<p>
+<h1>Errors</h1>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../api_c/set_func_close.html">DBENV-&gt;set_func_close</a>,
+<a href="../api_c/set_func_dirfree.html">DBENV-&gt;set_func_dirfree</a>,
+<a href="../api_c/set_func_dirlist.html">DBENV-&gt;set_func_dirlist</a>,
+<a href="../api_c/set_func_exists.html">DBENV-&gt;set_func_exists</a>,
+<a href="../api_c/set_func_free.html">DBENV-&gt;set_func_free</a>,
+<a href="../api_c/set_func_fsync.html">DBENV-&gt;set_func_fsync</a>,
+<a href="../api_c/set_func_ioinfo.html">DBENV-&gt;set_func_ioinfo</a>,
+<a href="../api_c/set_func_malloc.html">DBENV-&gt;set_func_malloc</a>,
+<a href="../api_c/set_func_map.html">DBENV-&gt;set_func_map</a>,
+<a href="../api_c/set_func_open.html">DBENV-&gt;set_func_open</a>,
+<a href="../api_c/set_func_read.html">DBENV-&gt;set_func_read</a>,
+<a href="../api_c/set_func_realloc.html">DBENV-&gt;set_func_realloc</a>,
+<a href="../api_c/set_func_seek.html">DBENV-&gt;set_func_seek</a>,
+<a href="../api_c/set_func_sleep.html">DBENV-&gt;set_func_sleep</a>,
+<a href="../api_c/set_func_unlink.html">DBENV-&gt;set_func_unlink</a>,
+<a href="../api_c/set_func_unmap.html">DBENV-&gt;set_func_unmap</a>,
+<a href="../api_c/set_func_write.html">DBENV-&gt;set_func_write</a>
+and
+<a href="../api_c/set_func_yield.html">DBENV-&gt;set_func_yield</a>.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbRunRecoveryException.java	1.1 (Sleepycat) 10/4/98
+ *	@(#)DbRunRecoveryException.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;

@@ -1,13 +1,29 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)txn.src	10.6 (Sleepycat) 1/3/99
+ *	@(#)txn.src	11.3 (Sleepycat) 8/29/99
  */
 
 PREFIX	txn
+
+INCLUDE	#include "db_config.h"
+INCLUDE
+INCLUDE #ifndef NO_SYSTEM_INCLUDES
+INCLUDE #include <sys/types.h>
+INCLUDE
+INCLUDE #include <ctype.h>
+INCLUDE #include <string.h>
+INCLUDE #endif
+INCLUDE
+INCLUDE #include "db_int.h"
+INCLUDE #include "db_page.h"
+INCLUDE #include "db_dispatch.h"
+INCLUDE #include "db_am.h"
+INCLUDE #include "txn.h"
+INCLUDE
 
 /*
  * This is the standard log operation for commit.
@@ -43,7 +59,6 @@ DBT	xid		DBT		s
 ARG	formatID	int32_t		ld
 ARG	gtrid		u_int32_t	u
 ARG	bqual		u_int32_t	u
-POINTER	begin_lsn	DB_LSN *	lu		
 END
 
 /*
@@ -51,5 +66,5 @@ END
  */
 BEGIN	child
 ARG	opcode		u_int32_t	lu
-ARG	parent		u_int32_t	lu
+ARG	parent		u_int32_t	lx
 END

@@ -1,39 +1,38 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test043.tcl	10.2 (Sleepycat) 12/12/98
+#	@(#)test043.tcl	11.7 (Sleepycat) 8/19/99
 #
 # DB Test 43 {method nentries}
 # Test the Record number implicit creation and renumbering options.
-
 proc test043 { method {nentries 10000} args} {
+	source ./include.tcl
+
 	set do_renumber [is_rrecno $method]
 	set args [convert_args $method $args]
-	set method [convert_method $method]
+	set omethod [convert_method $method]
+
 	puts "Test043: $method ($args)"
 
-	if { [string compare $method DB_RECNO] != 0 } {
+	if { [is_record_based $method] != 1 } {
 		puts "Test043 skipping for method $method"
 		return
 	}
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
-
 	# Create the database and open the dictionary
-	set testfile test043.db
+	set testfile $testdir/test043.db
 	cleanup $testdir
 
 	# Create the database
-	set db [eval [concat dbopen \
-	    $testfile [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+	set db [eval {berkdb open -create -truncate -mode 0644} $args \
+		{$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags " -recno"
+	set txn ""
 
 	# First test implicit creation and retrieval
 	set count 1
@@ -43,22 +42,23 @@ proc test043 { method {nentries 10000} args} {
 	}
 	puts "\tTest043.a: insert keys at $interval record intervals"
 	while { $count <= $nentries } {
-		set ret [$db putn $txn $count $count 0]
-		error_check_good "$db putn $count" $ret 0
+		set ret [eval {$db put} \
+		    $txn $pflags {$count [chop_data $method $count]}]
+		error_check_good "$db put $count" $ret 0
 		set last $count
 		incr count $interval
 	}
 
 	puts "\tTest043.b: get keys using DB_FIRST/DB_NEXT"
-	set dbc [$db cursor $txn]
-	error_check_good "$db cursor" [is_valid_widget $dbc $db.cursor] TRUE
+	set dbc [eval {$db cursor} $txn]
+	error_check_good "$db cursor" [is_substr $dbc $db] 1
 
 	set check 1
-	for { set rec [$dbc getn 0 $DB_FIRST] } { [llength $rec] != 0 } {
-	    set rec [$dbc getn 0 $DB_NEXT] } {
-		set k [lindex $rec 0]
-		set d [lindex $rec 1]
-		error_check_good "$dbc get key==data" $k $d
+	for { set rec [$dbc get -first] } { [llength $rec] != 0 } {
+	    set rec [$dbc get -next] } {
+		set k [lindex [lindex $rec 0] 0]
+		set d [pad_data $method [lindex [lindex $rec 0] 1]]
+		error_check_good "$dbc get key==data" [pad_data $method $k] $d
 		error_check_good "$dbc get sequential" $k $check
 		if { $k > $nentries } {
 			error_check_good "$dbc get key too large" $k $nentries
@@ -68,13 +68,17 @@ proc test043 { method {nentries 10000} args} {
 
 	# Now make sure that we get DB_KEYEMPTY for non-existent keys
 	puts "\tTest043.c: Retrieve non-existent keys"
+	global errorInfo
 
 	set check 1
-	for { set rec [$dbc getn 0 $DB_FIRST] } { [llength $rec] != 0 } {
-	    set rec [$dbc getn 0 $DB_NEXT] } {
-		set k [lindex $rec 0]
-		set ret [$db getn $txn [expr $k + 1] 0]
-		error_check_good "$db getn [expr $k + 1]" $ret -1
+	for { set rec [$dbc get -first] } { [llength $rec] != 0 } {
+		set rec [$dbc get -next] } {
+		set k [lindex [lindex $rec 0] 0]
+
+		set ret [eval {$db get} $txn $gflags {[expr $k + 1]}]
+		error_check_good "$db \
+		    get [expr $k + 1]" $ret [list]
+
 		incr check $interval
 		# Make sure we don't do a retrieve past the end of file
 		if { $check >= $last }  {
@@ -84,17 +88,18 @@ proc test043 { method {nentries 10000} args} {
 
 	# Now try deleting and make sure the right thing happens.
 	puts "\tTest043.d: Delete tests"
-	set rec [$dbc getn 0 $DB_FIRST]
-	error_check_bad "$dbc get 0 $DB_FIRST" [llength $rec] 0
-	error_check_good  "$dbc get 0 $DB_FIRST key" [lindex $rec 0] 1
-	error_check_good  "$dbc get 0 $DB_FIRST data" [lindex $rec 1] 1
+	set rec [$dbc get -first]
+	error_check_bad "$dbc get -first" [llength $rec] 0
+	error_check_good  "$dbc get -first key" [lindex [lindex $rec 0] 0] 1
+	error_check_good  "$dbc get -first data" \
+	    [lindex [lindex $rec 0] 1] [pad_data $method 1]
 
 	# Delete the first item
-	error_check_good "$dbc del" [$dbc del 0] 0
+	error_check_good "$dbc del" [$dbc del] 0
 
 	# Retrieving 1 should always fail
-	set ret [$db getn $txn 1 0]
-	error_check_good "$db getn 1" $ret -1
+	set ret [eval {$db get} $txn $gflags {1}]
+	error_check_good "$db get 1" $ret [list]
 
 	# Now, retrieving other keys should work; keys will vary depending
 	# upon renumbering.
@@ -107,29 +112,31 @@ proc test043 { method {nentries 10000} args} {
 	}
 
 	while { $count <= $max } {
-		set rec [$db getn $txn $count 0]
+	set rec [eval {$db get} $txn $gflags {$count}]
 		if { $do_renumber == 1 } {
 			set data [expr $count + 1]
 		} else {
 			set data $count
 		}
-		error_check_good "$db getn $count" $data $rec
+		error_check_good "$db get $count" \
+		    [pad_data $method $data] [lindex [lindex $rec 0] 1]
 		incr count $interval
 	}
 	set max [expr $count - $interval]
 
 	puts "\tTest043.e: Verify LAST/PREV functionality"
 	set count $max
-	for { set rec [$dbc getn 0 $DB_LAST] } { [llength $rec] != 0 } {
-	    set rec [$dbc getn 0 $DB_PREV] } {
-		set k [lindex $rec 0]
-		set d [lindex $rec 1]
+	for { set rec [$dbc get -last] } { [llength $rec] != 0 } {
+	    set rec [$dbc get -prev] } {
+		set k [lindex [lindex $rec 0] 0]
+		set d [lindex [lindex $rec 0] 1]
 		if { $do_renumber == 1 } {
 			set data [expr $k + 1]
 		} else {
 			set data $k
 		}
-		error_check_good "$dbc get key==data" $data $d
+		error_check_good \
+		    "$dbc get key==data" [pad_data $method $data] $d
 		error_check_good "$dbc get sequential" $k $count
 		if { $k > $nentries } {
 			error_check_good "$dbc get key too large" $k $nentries
@@ -142,4 +149,3 @@ proc test043 { method {nentries 10000} args} {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
 }
-

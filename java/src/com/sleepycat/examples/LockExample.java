@@ -1,15 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)LockExample.java	10.4 (Sleepycat) 10/18/98
+ *	@(#)LockExample.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.examples;
 
 import com.sleepycat.db.*;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -22,14 +23,22 @@ import java.util.Vector;
 class LockExample extends DbEnv
 {
     private static final String progname = "LockExample";
-    private static final String LOCK_HOME = "/var/tmp/lock";
+    private static final String LOCK_HOME = "TESTDIR";
 
-    public LockExample(String home)
-         throws DbException
+    public LockExample(String home, int maxlocks, boolean do_unlink)
+         throws DbException, FileNotFoundException
     {
-        super(home, null, Db.DB_CREATE|Db.DB_INIT_LOCK);
-        set_error_stream(System.err);
-        set_errpfx("LockExample");
+        super(0);
+        if (do_unlink) {
+            remove(home, null, Db.DB_FORCE);
+        }
+        else {
+            set_error_stream(System.err);
+            set_errpfx("LockExample");
+            if (maxlocks != 0)
+                set_lk_max(maxlocks);
+            open(home, null, Db.DB_CREATE|Db.DB_INIT_LOCK, 0);
+        }
     }
 
     // Prompts for a line, and keeps prompting until a non blank
@@ -83,16 +92,10 @@ class LockExample extends DbEnv
         InputStreamReader in = new InputStreamReader(System.in);
         Vector locks = new Vector();
 
-        DbLockTab lockTable = get_lk_info();
-        if (lockTable == null) {
-            System.err.println("LockExample: lock table not initialized");
-            return;
-        }
-
         //
         // Accept lock requests.
         //
-        locker = lockTable.id();
+        locker = lock_id();
         for (held = 0;;) {
             String opbuf = askForLine(in, System.out,
                                       "Operation get/release [get]> ");
@@ -128,8 +131,8 @@ class LockExample extends DbEnv
 
                     DbLock lock;
                     did_get = true;
-                    lock = lockTable.get(locker, Db.DB_LOCK_NOWAIT,
-                                         dbt, lock_type);
+                    lock = lock_get(locker, Db.DB_LOCK_NOWAIT,
+                                    dbt, lock_type);
                     lockid = locks.size();
                     locks.addElement(lock);
                 } else {
@@ -147,7 +150,7 @@ class LockExample extends DbEnv
                     }
                     did_get = false;
                     DbLock lock = (DbLock)locks.elementAt(lockid);
-                    lock.put(lockTable);
+                    lock.put(this);
                 }
                 System.out.println("Lock #" + lockid + " " +
                                    (did_get ? "granted" : "released"));
@@ -155,10 +158,6 @@ class LockExample extends DbEnv
             }
             catch (DbException dbe) {
                 switch (dbe.get_errno()) {
-                case Db.DB_LOCK_NOTHELD:
-                    System.out.println("You do not hold the lock " +
-                                       String.valueOf(lockid));
-                    break;
                 case Db.DB_LOCK_NOTGRANTED:
                     System.out.println("Lock not granted");
                     break;
@@ -179,7 +178,7 @@ class LockExample extends DbEnv
 
     private static void usage()
     {
-        System.err.println("usage: LockExample [-u] [-h home]");
+        System.err.println("usage: LockExample [-u] [-h home] [-m maxlocks]");
         System.exit(1);
     }
 
@@ -187,10 +186,24 @@ class LockExample extends DbEnv
     {
         String home = LOCK_HOME;
         boolean do_unlink = false;
+        int maxlocks = 0;
 
         for (int i = 0; i < argv.length; ++i) {
             if (argv[i].equals("-h")) {
-                home = argv[++i];
+                if (++i >= argv.length)
+                    usage();
+                home = argv[i];
+            }
+            else if (argv[i].equals("-m")) {
+                if (++i >= argv.length)
+                    usage();
+
+                try {
+                    maxlocks = Integer.parseInt(argv[i]);
+                }
+                catch (NumberFormatException nfe) {
+                    usage();
+                }
             }
             else if (argv[i].equals("-u")) {
                 do_unlink = true;
@@ -202,19 +215,20 @@ class LockExample extends DbEnv
 
         try {
             if (do_unlink) {
-                LockExample temp = new LockExample(home);
-                DbLockTab.unlink(home, 1, temp);
+                // Create an environment that immediately
+                // removes all files.
+                LockExample tmp = new LockExample(home, maxlocks, do_unlink);
             }
 
-            LockExample app = new LockExample(home);
+            LockExample app = new LockExample(home, maxlocks, do_unlink);
             app.run();
-            app.appexit();
+            app.close(0);
         }
         catch (DbException dbe) {
-            System.err.println("AccessExample: " + dbe.toString());
+            System.err.println(progname + ": " + dbe.toString());
         }
         catch (Throwable t) {
-            System.err.println("AccessExample: " + t.toString());
+            System.err.println(progname + ": " + t.toString());
         }
         System.out.println("LockExample completed");
     }

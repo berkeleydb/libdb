@@ -1,13 +1,29 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)db.src	10.8 (Sleepycat) 9/20/98
+ *	@(#)db.src	11.3 (Sleepycat) 10/1/99
  */
 
 PREFIX	db
+
+INCLUDE	#include "db_config.h"
+INCLUDE
+INCLUDE #ifndef NO_SYSTEM_INCLUDES
+INCLUDE #include <sys/types.h>
+INCLUDE
+INCLUDE #include <ctype.h>
+INCLUDE #include <string.h>
+INCLUDE #endif
+INCLUDE
+INCLUDE #include "db_int.h"
+INCLUDE #include "db_page.h"
+INCLUDE #include "db_dispatch.h"
+INCLUDE #include "db_am.h"
+INCLUDE #include "txn.h"
+INCLUDE
 
 /*
  * addrem -- Add or remove an entry from a duplicate page.
@@ -27,7 +43,7 @@ PREFIX	db
  */
 BEGIN addrem
 ARG	opcode		u_int32_t	lu
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
 ARG	nbytes		size_t		lu
@@ -47,7 +63,7 @@ END
  */
 BEGIN split
 ARG	opcode		u_int32_t	lu
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 DBT	pageimage	DBT		s
 POINTER	pagelsn		DB_LSN *	lu
@@ -70,7 +86,7 @@ END
  */
 BEGIN big
 ARG	opcode		u_int32_t	lu
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 ARG	prev_pgno	db_pgno_t	lu
 ARG	next_pgno	db_pgno_t	lu
@@ -89,7 +105,7 @@ END
  * lsn:		the page's original lsn.
  */
 BEGIN ovref
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 ARG	adjust		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
@@ -108,7 +124,7 @@ END
  */
 BEGIN relink
 ARG	opcode		u_int32_t	lu
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	prev		db_pgno_t	lu
@@ -127,7 +143,7 @@ END
  * nextlsn:	lsn of nextpgno;
  */
 BEGIN addpage
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	nextpgno	db_pgno_t	lu
@@ -145,8 +161,17 @@ END
  */
 BEGIN debug
 DBT	op		DBT		s
-ARG	fileid		u_int32_t	lu
+ARG	fileid		int32_t		lu
 DBT	key		DBT		s
 DBT	data		DBT		s
 ARG	arg_flags	u_int32_t	lu
+END
+
+/*
+ * noop -- do nothing, but get an LSN.
+ */
+BEGIN noop
+ARG	fileid		int32_t		lu
+ARG	pgno		db_pgno_t	lu
+POINTER	prevlsn		DB_LSN *	lu
 END

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -23,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -44,10 +40,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)dbm.c	10.23 (Sleepycat) 11/22/98";
+static const char sccsid[] = "@(#)dbm.c	11.2 (Sleepycat) 9/9/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -60,9 +56,6 @@ static const char sccsid[] = "@(#)dbm.c	10.23 (Sleepycat) 11/22/98";
 
 #define	DB_DBM_HSEARCH	1
 #include "db_int.h"
-
-#include "db_page.h"
-#include "hash.h"
 
 /*
  *
@@ -186,35 +179,48 @@ __db_ndbm_open(file, oflags, mode)
 {
 	DB *dbp;
 	DBC *dbc;
-	DB_INFO dbinfo;
-	int sv_errno;
+	int ret;
 	char path[MAXPATHLEN];
 
-	memset(&dbinfo, 0, sizeof(dbinfo));
-	dbinfo.db_pagesize = 4096;
-	dbinfo.h_ffactor = 40;
-	dbinfo.h_nelem = 1;
 
 	/*
-	 * XXX
+	 * !!!
 	 * Don't use sprintf(3)/snprintf(3) -- the former is dangerous, and
 	 * the latter isn't standard, and we're manipulating strings handed
 	 * us by the application.
 	 */
 	if (strlen(file) + strlen(DBM_SUFFIX) + 1 > sizeof(path)) {
-		errno = ENAMETOOLONG;
+		__os_set_errno(ENAMETOOLONG);
 		return (NULL);
 	}
 	(void)strcpy(path, file);
 	(void)strcat(path, DBM_SUFFIX);
-	if ((errno = db_open(path,
-	    DB_HASH, __db_oflags(oflags), mode, NULL, &dbinfo, &dbp)) != 0)
+	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
+		__os_set_errno(ret);
 		return (NULL);
+	}
 
-	if ((errno = dbp->cursor(dbp, NULL, &dbc, 0)) != 0) {
-		sv_errno = errno;
+	/*
+	 * !!!
+	 * The historic ndbm library corrected for opening O_WRONLY.
+	 */
+	if (oflags & O_WRONLY) {
+		oflags &= ~O_WRONLY;
+		oflags |= O_RDWR;
+	}
+
+	if ((ret = dbp->set_pagesize(dbp, 4096)) != 0 ||
+	    (ret = dbp->set_h_ffactor(dbp, 40)) != 0 ||
+	    (ret = dbp->set_h_nelem(dbp, 1)) != 0 ||
+	    (ret = dbp->open(dbp,
+	    path, NULL, DB_HASH, __db_oflags(oflags), mode)) != 0) {
+		__os_set_errno(ret);
+		return (NULL);
+	}
+
+	if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0) {
 		(void)dbp->close(dbp, 0);
-		errno = sv_errno;
+		__os_set_errno(ret);
 		return (NULL);
 	}
 
@@ -270,9 +276,9 @@ __db_ndbm_fetch(dbm, key)
 		data.dptr = NULL;
 		data.dsize = 0;
 		if (ret == DB_NOTFOUND)
-			errno = ENOENT;
+			__os_set_errno(ENOENT);
 		else {
-			errno = ret;
+			__os_set_errno(ret);
 			F_SET(dbc->dbp, DB_DBM_ERROR);
 		}
 	}
@@ -305,9 +311,9 @@ __db_ndbm_firstkey(dbm)
 		key.dptr = NULL;
 		key.dsize = 0;
 		if (ret == DB_NOTFOUND)
-			errno = ENOENT;
+			__os_set_errno(ENOENT);
 		else {
-			errno = ret;
+			__os_set_errno(ret);
 			F_SET(dbc->dbp, DB_DBM_ERROR);
 		}
 	}
@@ -340,9 +346,9 @@ __db_ndbm_nextkey(dbm)
 		key.dptr = NULL;
 		key.dsize = 0;
 		if (ret == DB_NOTFOUND)
-			errno = ENOENT;
+			__os_set_errno(ENOENT);
 		else {
-			errno = ret;
+			__os_set_errno(ret);
 			F_SET(dbc->dbp, DB_DBM_ERROR);
 		}
 	}
@@ -373,9 +379,9 @@ __db_ndbm_delete(dbm, key)
 		return (0);
 
 	if (ret == DB_NOTFOUND)
-		errno = ENOENT;
+		__os_set_errno(ENOENT);
 	else {
-		errno = ret;
+		__os_set_errno(ret);
 		F_SET(dbc->dbp, DB_DBM_ERROR);
 	}
 	return (-1);
@@ -414,7 +420,7 @@ __db_ndbm_store(dbm, key, data, flags)
 	if (ret == DB_KEYEXIST)
 		return (1);
 
-	errno = ret;
+	__os_set_errno(ret);
 	F_SET(dbc->dbp, DB_DBM_ERROR);
 	return (-1);
 }

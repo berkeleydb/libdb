@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbTxnStat.java	10.5 (Sleepycat) 11/2/98
+ *	@(#)DbTxnStat.java	11.1 (Sleepycat) 7/25/99
  */
 
 package com.sleepycat.db;
@@ -17,6 +17,7 @@ public class DbTxnStat
 {
     public static class Active {
         public int txnid;               // Transaction ID
+        public int parentid;            // Transaction ID of parent
         public DbLsn lsn;               // Lsn of the begin record
     };
 
@@ -29,10 +30,10 @@ public class DbTxnStat
     public int st_nbegins;              // number of begun transactions
     public int st_ncommits;             // number of committed transactions
     public int st_nactive;              // number of active transactions
+    public int st_maxnactive;           // maximum active transactions
     public Active st_txnarray[];        // array of active transactions
     public int st_region_wait;          // Region lock granted after wait.
     public int st_region_nowait;        // Region lock granted without wait.
-    public int st_refcnt;               // Region reference count.
     public int st_regsize;              // Region size.
 }
 

@@ -1,0 +1,15 @@
+Makefile.PL         
+DB_File.pm          
+DB_File.xs          
+DB_File_BS
+Changes
+config.in
+dbinfo
+hints/dynixptx.pl
+MANIFEST
+README
+typemap
+t/db-btree.t
+t/db-hash.t
+t/db-recno.t
+version.c

@@ -18,10 +18,10 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_abort
 /*
  * Class:     com_sleepycat_db_DbTxn
  * Method:    commit
- * Signature: ()V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_commit
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_DbTxn

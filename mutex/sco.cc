@@ -19,6 +19,6 @@ _tsl_set(void *tsl)
 }
 #endif
 
-#define	TSL_SET(tsl)	_tsl_set(tsl)
-#define	TSL_UNSET(tsl)	(*(tsl) = 0)
-#define	TSL_INIT(tsl)	TSL_UNSET(tsl)
+#define	MUTEX_SET(tsl)		_tsl_set(tsl)
+#define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
+#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)

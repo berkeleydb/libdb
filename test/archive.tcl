@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)archive.tcl	10.10 (Sleepycat) 10/28/98
+#	@(#)archive.tcl	11.4 (Sleepycat) 8/17/99
 #
 # Options are:
 # -checkrec <checkpoint frequency"
@@ -16,7 +16,7 @@ proc archive_usage {} {
 }
 proc archive_command { args } {
 	source ./include.tcl
-global is_windows_test
+
 	if { $is_windows_test != 1 } {
 		eval exec ./db_archive $args
 	} else {
@@ -25,11 +25,12 @@ global is_windows_test
 	}
 }
 proc archive { args } {
+	global alphabet
 	source ./include.tcl
 
-# Set defaults
-global alphabet
-	set maxfile [expr 1024 * 20]
+	# Set defaults
+	set maxbsize [expr 8 * 1024]
+	set maxfile [expr 32 * 1024]
 	set dostat 0
 	set checkrec 500
 	for { set i 0 } { $i < [llength $args] } {incr i} {
@@ -45,32 +46,17 @@ global alphabet
 
 		}
 	}
-	if { [file exists $testdir] != 1 } {
-		exec $MKDIR $testdir
-	} elseif { [file isdirectory $testdir ] != 1 } {
-		error "$testdir is not a directory"
-	}
 
 	# Clean out old log if it existed
 	puts "Unlinking log: error message OK"
 	cleanup $testdir
 
 	# Now run the various functionality tests
-	set dbenv [dbenv -dbhome $testdir -maxsize $maxfile -dbflags \
-	    [expr $DB_CREATE | $DB_INIT_MPOOL | $DB_INIT_LOCK | \
-	    $DB_INIT_LOG | $DB_INIT_TXN]]
+	set eflags "-create -mpool -lock -log -txn \
+	    -home $testdir -log_buffer $maxbsize -log_max $maxfile"
+	set dbenv [eval {berkdb env} $eflags]
 	error_check_bad dbenv $dbenv NULL
 	error_check_good dbenv [is_substr $dbenv env] 1
-
-	# Open the log
-	set lp [ log "" 0 0 -maxsize $maxfile -dbenv $dbenv]
-	error_check_bad log:$testdir $lp NULL
-	error_check_good log:$testdir [is_substr $lp log] 1
-
-	# Open/Create the lock region
-	set txn [txn "" 0 0 -dbenv $dbenv]
-	error_check_bad txn $txn NULL
-	error_check_good txn [is_substr $txn mgr] 1
 
 	# The basic test structure here is that we write a lot of log
 	# records (enough to fill up 100 log files; each log file it
@@ -87,34 +73,40 @@ global alphabet
 	puts "Archive.a: Writing log records; checkpoint every $checkrec records"
 	set nrecs $maxfile
 	set rec 0:$baserec
+
 	# Begin transaction and write a log record
-	set t1 [$txn begin]
-	set l1 [lindex [$lp put $rec 0] 1]
-	set lsnlist [list $l1]
+	set t1 [$dbenv txn]
+	error_check_good t1:txn_begin [is_substr $t1 "txn"] 1
 
-	set t2 [$txn begin]
-	set l1 [lindex [$lp put $rec 0] 1]
-	lappend lsnlist $l1
+	set l1 [$dbenv log_put $rec]
+	error_check_bad l1:log_put [llength $l1] 0
 
-	set t3 [$txn begin]
-	set l1 [lindex [$lp put $rec 0] 1]
-	lappend lsnlist $l1
+	set lsnlist [list [lindex $l1 0]]
+
+	set t2 [$dbenv txn]
+	error_check_good t2:txn_begin [is_substr $t2 "txn"] 1
+
+	set l1 [$dbenv log_put $rec]
+	lappend lsnlist [lindex $l1 0]
+
+	set t3 [$dbenv txn]
+	set l1 [$dbenv log_put $rec]
+	lappend lsnlist [lindex $l1 0]
 
 	set txnlist [list $t1 $t2 $t3]
-	set db1 [dbopen ar1 $DB_CREATE 0644 DB_HASH -dbenv $dbenv]
-	set db2 [dbopen ar2 $DB_CREATE 0644 DB_BTREE -dbenv $dbenv]
+	set db1 [eval {berkdb open} "-create -mode 0644 -hash -env $dbenv ar1"]
+	set db2 [eval {berkdb open} "-create -mode 0644 -btree -env $dbenv ar2"]
 	set dbcount 3
 	set dblist [list $db1 $db2]
+
 	for { set i 1 } { $i <= $nrecs } { incr i } {
 		set rec $i:$baserec
-		set lsn [$lp put $rec 0]
-		error_check_bad log_put [is_substr $lsn log_cmd] 1
-
+		set lsn [$dbenv log_put $rec]
+		error_check_bad log_put [llength $lsn] 0
 		if { [expr $i % $checkrec] == 0 } {
 			# Take a checkpoint
-			$txn check
-			set ckp_file [lindex [$lp last] 0]
-
+			$dbenv txn_checkpoint
+			set ckp_file [lindex [lindex [$dbenv log_get -last] 0] 0]
 			catch { archive_command -h $testdir -a } res_log_full
 			if { [string first db_archive $res_log_full] == 0 } {
 				set res_log_full ""
@@ -127,9 +119,8 @@ global alphabet
 			catch { archive_command -h $testdir -a -s } \
 			    res_data_full
 			catch { archive_command -h $testdir -s } res_data
-
 			error_check_good nlogfiles [llength $res_alllog] \
-			    [lindex [$lp last] 0]
+			    [lindex [lindex [$dbenv log_get -last] 0] 0]
 			error_check_good logs_match [llength $res_log_full] \
 			    [llength $res_log]
 			error_check_good data_match [llength $res_data_full] \
@@ -166,22 +157,25 @@ global alphabet
 			set lsnlist [lrange $lsnlist 1 end]
 
 			if { [llength $txnlist] == 0 } {
-				set t1 [$txn begin]
+				set t1 [$dbenv txn]
 				error_check_bad tx_begin $t1 NULL
-				error_check_good tx_begin [is_substr $t1 $txn] 1
-				set l1 [lindex [$lp put $rec 0] 1]
+				error_check_good \
+				    tx_begin [is_substr $t1 $dbenv] 1
+				set l1 [lindex [$dbenv log_put $rec] 0]
 				lappend lsnlist [min $l1 $ckp_file]
 
-				set t2 [$txn begin]
+				set t2 [$dbenv txn]
 				error_check_bad tx_begin $t2 NULL
-				error_check_good tx_begin [is_substr $t2 $txn] 1
-				set l1 [lindex [$lp put $rec 0] 1]
+				error_check_good \
+				    tx_begin [is_substr $t2 $dbenv] 1
+				set l1 [lindex [$dbenv log_put $rec] 0]
 				lappend lsnlist [min $l1 $ckp_file]
 
-				set t3 [$txn begin]
+				set t3 [$dbenv txn]
 				error_check_bad tx_begin $t3 NULL
-				error_check_good tx_begin [is_substr $t3 $txn] 1
-				set l1 [lindex [$lp put $rec 0] 1]
+				error_check_good \
+				    tx_begin [is_substr $t3 $dbenv] 1
+				set l1 [lindex [$dbenv log_put $rec] 0]
 				lappend lsnlist [min $l1 $ckp_file]
 
 				set txnlist [list $t1 $t2 $t3]
@@ -189,12 +183,12 @@ global alphabet
 
 			# Open/close some DB files
 			if { [expr $dbcount % 2] == 0 } {
-				set type DB_HASH
+				set type "-hash"
 			} else {
-				set type DB_BTREE
+				set type "-btree"
 			}
-			set db [dbopen ar$dbcount \
-			    $DB_CREATE 0644 $type -dbenv $dbenv]
+			set db [eval {berkdb open} \
+			    "-create -mode 0644 $type -env $dbenv ar$dbcount"]
 			error_check_bad db_open:$dbcount $db NULL
 			error_check_good db_open:$dbcount [is_substr $db db] 1
 			incr dbcount
@@ -206,19 +200,22 @@ global alphabet
 
 		}
 	}
-
 	# Commit any transactions still running.
+	puts "Archive: Commit any transactions still running."
 	foreach t $txnlist {
 		error_check_good txn_commit:$t [$t commit] 0
 	}
 
 	# Close any files that are still open.
+	puts "Archive: Close open files."
 	foreach d $dblist {
 		error_check_good db_close:$db [$d close] 0
 	}
 
 	# Close and unlink the file
 	reset_env $dbenv
+
+	puts "Archive: Complete."
 }
 
 proc min { a b } {

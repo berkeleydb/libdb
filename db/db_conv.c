@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -20,11 +20,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -41,10 +37,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_conv.c	10.13 (Sleepycat) 4/26/98";
+static const char sccsid[] = "@(#)db_conv.c	11.4 (Sleepycat) 11/10/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -58,59 +54,134 @@ static const char sccsid[] = "@(#)db_conv.c	10.13 (Sleepycat) 4/26/98";
 #include "db_page.h"
 #include "db_swap.h"
 #include "db_am.h"
-
-static int __db_convert __P((db_pgno_t, void *, size_t, int));
+#include "btree.h"
+#include "hash.h"
+#include "qam.h"
 
 /*
  * __db_pgin --
+ *	Primary page-swap routine.
  *
- * PUBLIC: int __db_pgin __P((db_pgno_t, size_t, void *));
+ * PUBLIC: int __db_pgin __P((db_pgno_t, void *, DBT *));
  */
 int
-__db_pgin(pg, pagesize, pp)
+__db_pgin(pg, pp, cookie)
 	db_pgno_t pg;
-	size_t pagesize;
 	void *pp;
+	DBT *cookie;
 {
-	return (__db_convert(pg, pp, pagesize, 1));
+	DB_PGINFO *pginfo;
+
+	pginfo = (DB_PGINFO *)cookie->data;
+
+	switch (((PAGE *)pp)->type) {
+	case P_HASH:
+	case P_HASHMETA:
+	case P_INVALID:
+		return (__ham_pgin(pg, pp, cookie));
+	case P_BTREEMETA:
+	case P_IBTREE:
+	case P_IRECNO:
+	case P_LBTREE:
+	case P_LRECNO:
+	case P_DUPLICATE:
+	case P_OVERFLOW:
+		return (__bam_pgin(pg, pp, cookie));
+	case P_QAMMETA:
+	case P_QAMDATA:
+		return (__qam_pgin_out(pg, pp, cookie));
+	default:
+		break;
+	}
+	return (EINVAL);
 }
 
 /*
  * __db_pgout --
+ *	Primary page-swap routine.
  *
- * PUBLIC: int __db_pgout __P((db_pgno_t, size_t, void *));
+ * PUBLIC: int __db_pgout __P((db_pgno_t, void *, DBT *));
  */
 int
-__db_pgout(pg, pagesize, pp)
+__db_pgout(pg, pp, cookie)
 	db_pgno_t pg;
-	size_t pagesize;
 	void *pp;
+	DBT *cookie;
 {
-	return (__db_convert(pg, pp, pagesize, 0));
+	DB_PGINFO *pginfo;
+
+	pginfo = (DB_PGINFO *)cookie->data;
+
+	switch (((PAGE *)pp)->type) {
+	case P_HASH:
+	case P_HASHMETA:
+	case P_INVALID:
+		return (__ham_pgout(pg, pp, cookie));
+	case P_BTREEMETA:
+	case P_IBTREE:
+	case P_IRECNO:
+	case P_LBTREE:
+	case P_LRECNO:
+	case P_DUPLICATE:
+	case P_OVERFLOW:
+		return (__bam_pgout(pg, pp, cookie));
+	case P_QAMMETA:
+	case P_QAMDATA:
+		return (__qam_pgin_out(pg, pp, cookie));
+	default:
+		break;
+	}
+	return (EINVAL);
 }
 
 /*
- * __db_convert --
- *	Actually convert a page.
+ * __db_metaswap --
+ *	Byteswap the common part of the meta-data page.
+ *
+ * PUBLIC: void __db_metaswap __P((PAGE *));
  */
-static int
-__db_convert(pg, pp, pagesize, pgin)
+void
+__db_metaswap(pg)
+	PAGE *pg;
+{
+	u_int8_t *p;
+
+	p = (u_int8_t *)pg;
+
+	/* Swap the meta-data information. */
+	SWAP32(p);	/* lsn.file */
+	SWAP32(p);	/* lsn.offset */
+	SWAP32(p);	/* pgno */
+	SWAP32(p);	/* magic */
+	SWAP32(p);	/* version */
+	SWAP32(p);	/* pagesize */
+	p += 4;		/* unused, page type, unused, unused */
+	SWAP32(p);	/* free */
+	SWAP32(p);	/* flags */
+}
+
+/*
+ * __db_byteswap --
+ *	Byteswap a page.
+ *
+ * PUBLIC: int __db_byteswap __P((db_pgno_t, PAGE *, size_t, int));
+ */
+int
+__db_byteswap(pg, h, pagesize, pgin)
 	db_pgno_t pg;
-	void *pp;
+	PAGE *h;
 	size_t pagesize;
 	int pgin;
 {
 	BINTERNAL *bi;
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
-	PAGE *h;
 	RINTERNAL *ri;
 	db_indx_t i, len, tmp;
 	u_int8_t *p, *end;
 
 	COMPQUIET(pg, 0);
 
-	h = pp;
 	if (pgin) {
 		M_32_SWAP(h->lsn.file);
 		M_32_SWAP(h->lsn.offset);
@@ -177,6 +248,22 @@ __db_convert(pg, pp, pagesize, pgin)
 		for (i = 0; i < NUM_ENT(h); i++) {
 			if (pgin)
 				M_16_SWAP(h->inp[i]);
+
+			/*
+			 * In the case of on-page duplicates, key information
+			 * should only be swapped once.
+			 */
+			if (h->type == P_LBTREE && i > 1) {
+				if (pgin) {
+					if (h->inp[i] == h->inp[i - 2])
+						continue;
+				} else {
+					M_16_SWAP(h->inp[i]);
+					if (h->inp[i] == h->inp[i - 2])
+						continue;
+					M_16_SWAP(h->inp[i]);
+				}
+			}
 
 			bk = GET_BKEYDATA(h, i);
 			switch (B_TYPE(bk->type)) {

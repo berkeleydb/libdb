@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_spin.c	10.8 (Sleepycat) 10/28/98";
+static const char sccsid[] = "@(#)os_spin.c	11.1 (Sleepycat) 7/25/99";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -17,8 +17,6 @@ static const char sccsid[] = "@(#)os_spin.c	10.8 (Sleepycat) 10/28/98";
 /*
  * __os_yield --
  *	Yield the processor.
- *
- * PUBLIC: void __os_yield __P((u_long));
  */
 void
 __os_yield(usecs)
@@ -32,8 +30,6 @@ __os_yield(usecs)
 /*
  * __os_spin --
  *	Return the number of default spins before blocking.
- *
- * PUBLIC: int __os_spin __P((void));
  */
 int
 __os_spin()
@@ -42,8 +38,8 @@ __os_spin()
         SYSTEM_INFO SystemInfo;
 
 	/* If the application specified the spins, use its value. */
-	if (DB_GLOBAL(db_tsl_spins) != 0)
-		return (DB_GLOBAL(db_tsl_spins));
+	if (DB_GLOBAL(db_tas_spins) != 0)
+		return (DB_GLOBAL(db_tas_spins));
 
 	/* If we've already figured this out, return the value. */
 	if (sys_val != 0)

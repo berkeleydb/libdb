@@ -1,4 +1,5 @@
-/* Do not edit: automatically built by dist/db_gen.sh. */
+/* Do not edit: automatically built by gen_rec.awk. */
+
 #ifndef log_AUTO_H
 #define log_AUTO_H
 
@@ -15,4 +16,8 @@ typedef struct _log_register_args {
 	DBTYPE	ftype;
 } __log_register_args;
 
+int __log_register_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, u_int32_t, const DBT *, const DBT *, u_int32_t, DBTYPE));
+int __log_register_print __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+int __log_register_read __P((void *, __log_register_args **));
+int __log_init_print __P((DB_ENV *));
 #endif

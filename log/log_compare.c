@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_compare.c	10.3 (Sleepycat) 4/10/98";
+static const char sccsid[] = "@(#)log_compare.c	11.1 (Sleepycat) 7/24/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,7 +18,7 @@ static const char sccsid[] = "@(#)log_compare.c	10.3 (Sleepycat) 4/10/98";
 
 /*
  * log_compare --
- *	Compare two LSN's.
+ *	Compare two LSN's; return 1, 0, -1 if first is >, == or < second.
  */
 int
 log_compare(lsn0, lsn1)

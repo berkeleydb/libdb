@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_dump185.c	10.10 (Sleepycat) 4/10/98";
+static const char sccsid[] = "@(#)db_dump185.c	11.1 (Sleepycat) 7/24/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -23,11 +23,9 @@ static const char sccsid[] = "@(#)db_dump185.c	10.10 (Sleepycat) 4/10/98";
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #endif
 
 #include "db_185.h"
-#include "clib_ext.h"
 
 /* Hash Table Information */
 typedef struct hashhdr185 {		/* Disk resident portion */
@@ -179,9 +177,6 @@ void	dbt_print __P((DBT *));
 int	main __P((int, char *[]));
 void	usage __P((void));
 
-const char
-	*progname = "db_dump185";			/* Program name. */
-
 int
 main(argc, argv)
 	int argc;
@@ -197,8 +192,11 @@ main(argc, argv)
 	while ((ch = getopt(argc, argv, "f:p")) != EOF)
 		switch (ch) {
 		case 'f':
-			if (freopen(optarg, "w", stdout) == NULL)
-				err(1, "%s", optarg);
+			if (freopen(optarg, "w", stdout) == NULL) {
+				fprintf(stderr, "db_dump185: %s: %s\n",
+				    optarg, strerror(errno));
+				exit (1);
+			}
 			break;
 		case 'p':
 			pflag = 1;
@@ -214,8 +212,12 @@ main(argc, argv)
 		usage();
 
 	if ((dbp = dbopen(argv[0], O_RDONLY, 0, DB_BTREE, NULL)) == NULL) {
-		if ((dbp = dbopen(argv[0], O_RDONLY, 0, DB_HASH, NULL)) == NULL)
-			err(1, "%s", argv[0]);
+		if ((dbp =
+		    dbopen(argv[0], O_RDONLY, 0, DB_HASH, NULL)) == NULL) {
+			fprintf(stderr,
+			    "db_dump185: %s: %s\n", argv[0], strerror(errno));
+			exit (1);
+		}
 		db_hash(dbp, pflag);
 	} else
 		db_btree(dbp, pflag);
@@ -236,8 +238,10 @@ main(argc, argv)
 			dbt_dump(&data);
 		}
 
-	if (rval == -1)
-		err(1, "seq");
+	if (rval == -1) {
+		fprintf(stderr, "db_dump185: seq: %s\n", strerror(errno));
+		exit (1);
+	}
 	return (0);
 }
 
@@ -348,6 +352,6 @@ dbt_print(dbtp)
 void
 usage()
 {
-	(void)fprintf(stderr, "usage: db_dump [-p] [-f file] db_file\n");
+	(void)fprintf(stderr, "usage: db_dump185 [-p] [-f file] db_file\n");
 	exit(1);
 }

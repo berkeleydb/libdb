@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -23,11 +23,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -43,12 +39,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)btree.h	10.26 (Sleepycat) 12/16/98
+ *	@(#)btree.h	11.8 (Sleepycat) 9/20/99
  */
 
 /* Forward structure declarations. */
 struct __btree;		typedef struct __btree BTREE;
-struct __cursor;	typedef struct __cursor CURSOR;
+struct __cursor;	typedef struct __cursor BTREE_CURSOR;
 struct __epg;		typedef struct __epg EPG;
 struct __recno;		typedef struct __recno RECNO;
 
@@ -56,19 +52,6 @@ struct __recno;		typedef struct __recno RECNO;
 
 #define	ISINTERNAL(p)	(TYPE(p) == P_IBTREE || TYPE(p) == P_IRECNO)
 #define	ISLEAF(p)	(TYPE(p) == P_LBTREE || TYPE(p) == P_LRECNO)
-
-/*
- * If doing transactions we have to hold the locks associated with a data item
- * from a page for the entire transaction.  However, we don't have to hold the
- * locks associated with walking the tree.  Distinguish between the two so that
- * we don't tie up the internal pages of the tree longer than necessary.
- */
-#define	__BT_LPUT(dbc, lock)						\
-	(F_ISSET((dbc)->dbp, DB_AM_LOCKING) ?				\
-	    lock_put((dbc)->dbp->dbenv->lk_info, lock) : 0)
-#define	__BT_TLPUT(dbc, lock)						\
-	(F_ISSET((dbc)->dbp, DB_AM_LOCKING) && (dbc)->txn == NULL ?	\
-	    lock_put((dbc)->dbp->dbenv->lk_info, lock) : 0)
 
 /*
  * Flags to __bam_search() and __bam_rsearch().
@@ -112,18 +95,17 @@ struct __recno;		typedef struct __recno RECNO;
  * Flags to __bam_iitem().
  */
 #define	BI_DELETED	0x01		/* Key/data pair only placeholder. */
-#define	BI_DOINCR	0x02		/* Increment the record count. */
-#define	BI_NEWKEY	0x04		/* New key. */
 
 /*
- * Various routines pass around page references.  A page reference can be a
- * pointer to the page or a page number; for either, an indx can designate
- * an item on the page.
+ * Various routines pass around page references.  A page reference is
+ * a pointer to the page, and the indx indicates an item on the page.
+ * Each page reference may include a lock.
  */
 struct __epg {
-	PAGE	 *page;			/* The page. */
-	db_indx_t indx;			/* The index on the page. */
-	DB_LOCK	  lock;			/* The page's lock. */
+	PAGE	     *page;		/* The page. */
+	db_indx_t     indx;		/* The index on the page. */
+	DB_LOCK	      lock;		/* The page's lock. */
+	db_lockmode_t lock_mode;	/* The lock mode. */
 };
 
 /*
@@ -135,17 +117,18 @@ struct __epg {
 #define	BT_STK_CLR(c)							\
 	((c)->csp = (c)->sp)
 
-#define	BT_STK_ENTER(c, pagep, page_indx, lock, ret) do {		\
+#define	BT_STK_ENTER(c, pagep, page_indx, lock, mode, ret) do {		\
 	if ((ret =							\
 	    (c)->csp == (c)->esp ? __bam_stkgrow(c) : 0) == 0) {	\
 		(c)->csp->page = pagep;					\
 		(c)->csp->indx = page_indx;				\
 		(c)->csp->lock = lock;					\
+		(c)->csp->lock_mode = mode;				\
 	}								\
 } while (0)
 
-#define	BT_STK_PUSH(c, pagep, page_indx, lock, ret) do {		\
-	BT_STK_ENTER(c, pagep, page_indx, lock, ret);			\
+#define	BT_STK_PUSH(c, pagep, page_indx, lock, mode, ret) do {		\
+	BT_STK_ENTER(c, pagep, page_indx, lock, mode, ret);		\
 	++(c)->csp;							\
 } while (0)
 
@@ -168,12 +151,8 @@ typedef enum {
 	CA_IBEFORE
 } ca_recno_arg;
 
-#define	RECNO_OOB	0		/* Illegal record number. */
-
 /* Btree/Recno cursor. */
 struct __cursor {
-	DBC		*dbc;		/* Enclosing DBC. */
-
 	/* Per-thread information: shared by btree/recno. */
 	EPG		*sp;		/* Stack pointer. */
 	EPG	 	*csp;		/* Current stack entry. */
@@ -189,8 +168,8 @@ struct __cursor {
 	db_pgno_t	 dpgno;		/* Duplicate page. */
 	db_indx_t	 dindx;		/* Page item ref'd by the cursor. */
 
-	DB_LOCK		 lock;		/* Cursor read lock. */
-	db_lockmode_t	 mode;		/* Lock mode. */
+	DB_LOCK		 lock;		/* Cursor lock. */
+	db_lockmode_t	 lock_mode;	/* Lock mode. */
 
 	/* Per-thread information: recno private. */
 	db_recno_t	 recno;		/* Current record number. */
@@ -211,20 +190,38 @@ struct __cursor {
 };
 
 /*
- * The in-memory recno data structure.
- *
- * !!!
- * These fields are ignored as far as multi-threading is concerned.  There
- * are no transaction semantics associated with backing files, nor is there
- * any thread protection.
+ * The in-memory, per-tree btree/recno data structure.
  */
-struct __recno {
-	int		 re_delim;	/* Variable-length delimiting byte. */
-	int		 re_pad;	/* Fixed-length padding byte. */
-	u_int32_t	 re_len;	/* Length for fixed-length records. */
+struct __btree {
+					/* Btree access method. */
+	db_pgno_t bt_lpgno;		/* Last insert location. */
 
-	char		*re_source;	/* Source file name. */
-	int		 re_fd;		/* Source file descriptor */
+	db_indx_t bt_ovflsize;		/* Maximum key/data on-page size. */
+
+	db_pgno_t bt_meta;		/* Database meta-data page. */
+	db_pgno_t bt_root;		/* Database root page. */
+
+	u_int32_t bt_maxkey;		/* Maximum keys per page. */
+	u_int32_t bt_minkey;		/* Minimum keys per page. */
+
+					/* Btree comparison function. */
+	int (*bt_compare) __P((const DBT *, const DBT *));
+					/* Prefix function. */
+	size_t (*bt_prefix) __P((const DBT *, const DBT *));
+
+					/* Recno access method. */
+	int	  re_pad;		/* Fixed-length padding byte. */
+	int	  re_delim;		/* Variable-length delimiting byte. */
+	u_int32_t re_len;		/* Length for fixed-length records. */
+	char	 *re_source;		/* Source file name. */
+
+	/*
+	 * !!!
+	 * These fields are ignored as far as multi-threading is concerned.
+	 * There are no transaction semantics associated with backing files,
+	 * nor is there any thread protection.
+	 */
+	DB_FH		 re_fh;		/* Source file handle. */
 	db_recno_t	 re_last;	/* Last record number read. */
 	void		*re_cmap;	/* Current point in mapped space. */
 	void		*re_smap;	/* Start of mapped space. */
@@ -233,31 +230,12 @@ struct __recno {
 					/* Recno input function. */
 	int (*re_irec) __P((DBC *, db_recno_t));
 
-#define	RECNO_EOF	0x0001		/* EOF on backing source file. */
-#define	RECNO_MODIFIED	0x0002		/* Tree was modified. */
+#define	RECNO_EOF	0x01		/* EOF on backing source file. */
+#define	RECNO_MODIFIED	0x02		/* Tree was modified. */
 	u_int32_t	 flags;
 };
 
-/*
- * The in-memory, per-tree btree data structure.
- */
-struct __btree {
-	db_pgno_t	 bt_lpgno;	/* Last insert location. */
-
-	db_indx_t 	 bt_maxkey;	/* Maximum keys per page. */
-	db_indx_t 	 bt_minkey;	/* Minimum keys per page. */
-
-	int (*bt_compare)		/* Comparison function. */
-	    __P((const DBT *, const DBT *));
-	size_t(*bt_prefix)		/* Prefix function. */
-	    __P((const DBT *, const DBT *));
-
-	db_indx_t	 bt_ovflsize;	/* Maximum key/data on-page size. */
-
-	RECNO		*recno;		/* Private recno structure. */
-};
 
 #include "btree_auto.h"
 #include "btree_ext.h"
 #include "db_am.h"
-#include "common_ext.h"

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test031.tcl	8.3 (Sleepycat) 10/29/98
+#	@(#)test031.tcl	11.7 (Sleepycat) 11/8/99
 #
 # DB Test 31 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -16,75 +16,80 @@
 # Close file, reopen, do retrieve and re-verify.
 # This does not work for recno
 proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
-global alphabet
-srand 1234
-	set omethod $method
-	set method [convert_method $method]
-	set args [convert_args $method $args]
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
+	global alphabet
+	global rand_init
 	source ./include.tcl
 
+	berkdb srand $rand_init
+
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
+
 	# Create the database and open the dictionary
-	set testfile test0$tnum.db
+	set testfile $testdir/test0$tnum.db
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set args [add_to_args [expr $DB_DUP | $DB_DUPSORT] $args]
-	puts "Test0$tnum: $method ($args) $nentries small sorted dup key/data pairs"
-	if { [string compare $method DB_RECNO] == 0 || \
-	    [is_rbtree $omethod] == 1 } {
+
+	puts "Test0$tnum: \
+	    $method ($args) $nentries small sorted dup key/data pairs"
+	if { [is_record_based $method] == 1 || \
+	    [is_rbtree $method] == 1 } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval [concat dbopen $testfile \
-	    [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+	set db [eval {berkdb open -create -truncate \
+		-mode 0644} $args {$omethod -dup -dupsort $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
-	set check_db [dbopen checkdb.db [expr $DB_CREATE | $DB_TRUNCATE] \
-	    0644 DB_HASH]
+	set check_db [berkdb \
+	    open -create -truncate -mode 0644 -hash $testdir/checkdb.db]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
-	set flags 0
-	set txn 0
+	set pflags ""
+	set gflags ""
+	set txn ""
 	set count 0
 
 	# Here is the loop where we put and get each key/data pair
 	puts "\tTest0$tnum.a: Put/get loop"
-	set dbc [$db cursor $txn]
-	error_check_good cursor_open [is_valid_widget $dbc $db.cursor] TRUE
+	set dbc [eval {$db cursor} $txn]
+	error_check_good cursor_open [is_substr $dbc $db] 1
 	while { [gets $did str] != -1 && $count < $nentries } {
 		set dups ""
 		for { set i 1 } { $i <= $ndups } { incr i } {
-			set pref [string index $alphabet [random_int 0 25]]
+			set pref \
+			    [string index $alphabet [berkdb random_int 0 25]]
 			set dups $dups$pref
 			set datastr $pref:$str
-			set ret [$db put $txn $str $datastr $flags]
+			set ret [eval {$db put} \
+			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
 		}
-		set ret [$check_db put $txn $str $dups $flags]
+		set ret [eval {$check_db put} \
+		    $txn $pflags {$str [chop_data $method $dups]}]
 		error_check_good checkdb_put $ret 0
 
 		# Now retrieve all the keys matching this key
 		set x 0
 		set lastdup ""
-		for {set ret [$dbc get $str $DB_SET]} \
-		    {[string length $ret] != 0} \
-		    {set ret [$dbc get 0 $DB_NEXT_DUP] } {
-			set k [lindex $ret 0]
+		for {set ret [$dbc get -set $str]} \
+		    {[llength $ret] != 0} \
+		    {set ret [$dbc get -nextdup] } {
+			set k [lindex [lindex $ret 0] 0]
 			if { [string compare $k $str] != 0 } {
 				break
 			}
-			set datastr [lindex $ret 1]
+			set datastr [lindex [lindex $ret 0] 1]
 			if {[string length $datastr] == 0} {
 				break
 			}
-			if {[string compare $lastdup $datastr] > 0} {
-				error_check_good sorted_dups($lastdup,$datastr)\
-				    0 1
+			if {[string compare \
+			    $lastdup [pad_data $method $datastr]] > 0} {
+				error_check_good \
+				    sorted_dups($lastdup,$datastr) 0 1
 			}
 			incr x
 			set lastdup $datastr
@@ -98,15 +103,15 @@ srand 1234
 	# Now we will get each key from the DB and compare the results
 	# to the original.
 	puts "\tTest0$tnum.b: Checking file for correct duplicates"
-	set dbc [$db cursor $txn]
-	error_check_good cursor_open(2) [is_valid_widget $dbc $db.cursor] TRUE
+	set dbc [eval {$db cursor} $txn]
+	error_check_good cursor_open(2) [is_substr $dbc $db] 1
 
 	set lastkey ""
-	for {set ret [$dbc get $str $DB_FIRST]} \
-	    {[string length $ret] != 0} \
-	    {set ret [$dbc get 0 $DB_NEXT] } {
-		set k [lindex $ret 0]
-		set d [lindex $ret 1]
+	for {set ret [$dbc get -first]} \
+	    {[llength $ret] != 0} \
+	    {set ret [$dbc get -next] } {
+		set k [lindex [lindex $ret 0] 0]
+		set d [lindex [lindex $ret 0] 1]
 		error_check_bad key_check:$k [string length $k] 0
 		error_check_bad data_check:$d [string length $d] 0
 
@@ -114,11 +119,12 @@ srand 1234
 			# Remove last key from the checkdb
 			if { [string length $lastkey] != 0 } {
 				error_check_good check_db:del:$lastkey \
-				    [$check_db del $txn $lastkey 0] 0
+				    [eval {$check_db del} $txn {$lastkey}] 0
 			}
 			set lastdup ""
 			set lastkey $k
-			set dups [$check_db get $txn $k 0]
+			set dups [lindex [lindex [eval {$check_db get} \
+				$txn {$k}] 0] 1]
 			error_check_good check_db:get:$k \
 			    [string length $dups] $ndups
 		}
@@ -138,14 +144,14 @@ srand 1234
 	# Remove last key from the checkdb
 	if { [string length $lastkey] != 0 } {
 		error_check_good check_db:del:$lastkey \
-		    [$check_db del $txn $lastkey 0] 0
+		[eval {$check_db del} $txn {$lastkey}] 0
 	}
 
 	# Make sure there is nothing left in check_db
 
-	set check_c [$check_db cursor $txn]
-	set ret [$check_c get 0 $DB_FIRST]
-	error_check_good check_c:get:$ret [string length $ret] 0
+	set check_c [eval {$check_db cursor} $txn]
+	set ret [$check_c get -first]
+	error_check_good check_c:get:$ret [llength $ret] 0
 	error_check_good check_c:close [$check_c close] 0
 	error_check_good check_db:close [$check_db close] 0
 

@@ -1,57 +1,54 @@
 /*
- *	@(#)acconfig.h	8.31 (Sleepycat) 12/14/98
+ *	@(#)acconfig.h	11.16 (Sleepycat) 11/9/99
  */
 
-/* Define to `int' if <sys/types.h> doesn't define.  */
-#undef ssize_t
+/* Define if you are building a version for running the test suite. */
+#undef CONFIG_TEST
 
 /* Define if you want a debugging version. */
 #undef DEBUG
 
+/* Define if you want a version that logs read operations. */
+#undef DEBUG_ROP
+
+/* Define if you want a version that logs write operations. */
+#undef DEBUG_WOP
+
 /* Define if you want a version with run-time diagnostic checking. */
 #undef DIAGNOSTIC
 
-/* Define if you have sigfillset (and sigprocmask). */
-#undef HAVE_SIGFILLSET
+/* Define if fcntl/F_SETFD denies child access to file descriptors. */
+#undef HAVE_FCNTL_F_SETFD
 
 /* Define if building big-file environment (e.g., Solaris, HP/UX). */
 #undef HAVE_FILE_OFFSET_BITS
 
-/* Define if you have spinlocks. */
-#undef HAVE_SPINLOCKS
+/* Mutex possibilities. */
+#undef HAVE_MUTEX_68K_GCC_ASSEMBLY
+#undef HAVE_MUTEX_AIX_CHECK_LOCK
+#undef HAVE_MUTEX_ALPHA_GCC_ASSEMBLY
+#undef HAVE_MUTEX_HPPA_GCC_ASSEMBLY
+#undef HAVE_MUTEX_HPPA_MSEM_INIT
+#undef HAVE_MUTEX_MACOS
+#undef HAVE_MUTEX_MSEM_INIT
+#undef HAVE_MUTEX_PTHREADS
+#undef HAVE_MUTEX_RELIANTUNIX_INITSPIN
+#undef HAVE_MUTEX_SCO_X86_CC_ASSEMBLY
+#undef HAVE_MUTEX_SEMA_INIT
+#undef HAVE_MUTEX_SGI_INIT_LOCK
+#undef HAVE_MUTEX_SOLARIS_LOCK_TRY
+#undef HAVE_MUTEX_SOLARIS_LWP
+#undef HAVE_MUTEX_SPARC_GCC_ASSEMBLY
+#undef HAVE_MUTEX_THREADS
+#undef HAVE_MUTEX_UI_THREADS
+#undef HAVE_MUTEX_UTS_CC_ASSEMBLY
+#undef HAVE_MUTEX_VMS
+#undef HAVE_MUTEX_WIN16
+#undef HAVE_MUTEX_WIN32
+#undef HAVE_MUTEX_X86_GCC_ASSEMBLY
 
-/* Define if you want to use mc68020/gcc assembly spinlocks. */
-#undef HAVE_ASSEM_MC68020_GCC
-
-/* Define if you want to use parisc/gcc assembly spinlocks. */
-#undef HAVE_ASSEM_PARISC_GCC
-
-/* Define if you want to use sco/cc assembly spinlocks. */
-#undef HAVE_ASSEM_SCO_CC
-
-/* Define if you want to use sparc/gcc assembly spinlocks. */
-#undef HAVE_ASSEM_SPARC_GCC
-
-/* Define if you want to use uts4/cc assembly spinlocks. */
-#undef HAVE_ASSEM_UTS4_CC
-
-/* Define if you want to use x86/gcc assembly spinlocks. */
-#undef HAVE_ASSEM_X86_GCC
-
-/* Define if you have the AIX _check_lock spinlocks. */
-#undef HAVE_FUNC_AIX
-
-/* Define if you have the OSF1 or HPPA msemaphore spinlocks. */
-#undef HAVE_FUNC_MSEM
-
-/* Define if you have the SGI abilock_t spinlocks. */
-#undef HAVE_FUNC_SGI
-
-/* Define if you have the ReliantUNIX spinlock_t spinlocks. */
-#undef HAVE_FUNC_RELIANT
-
-/* Define if you have the Solaris mutex_t spinlocks. */
-#undef HAVE_FUNC_SOLARIS
+/* Define if you have the sigfillset function.  */
+#undef HAVE_SIGFILLSET
 
 /* Define if your sprintf returns a pointer, not a length. */
 #undef SPRINTF_RET_CHARPNT
@@ -59,21 +56,41 @@
 @BOTTOM@
 
 /*
- * Don't step on the namespace.  Also, other libraries have real snprintf(3)
- * implementations, don't want to override them just because they're loaded
- * after us.
- */
-#ifndef HAVE_SNPRINTF
-#define	snprintf	__db_snprintf
-#endif
-#ifndef HAVE_VSNPRINTF
-#define	vsnprintf	__db_vsnprintf
-#endif
-
-/*
  * Big-file configuration.
  */
 #ifdef	HAVE_FILE_OFFSET_BITS
-#define	_LARGE_FILES				/* AIX specific. */
 #define	_FILE_OFFSET_BITS	64
+#endif
+
+/*
+ * Don't step on the namespace.  Other libraries may have their own
+ * implementations of these functions, we don't want to use their
+ * implementations or force them to use ours based on the load order.
+ */
+#ifndef	HAVE_GETCWD
+#define	getcwd		__db_Cgetcwd
+#endif
+#ifndef	HAVE_GETOPT
+#define	getopt		__db_Cgetopt
+#endif
+#ifndef	HAVE_MEMCMP
+#define	memcmp		__db_Cmemcmp
+#endif
+#ifndef	HAVE_MEMCPY
+#define	memcpy		__db_Cmemcpy
+#endif
+#ifndef	HAVE_MEMMOVE
+#define	memmove		__db_Cmemmove
+#endif
+#ifndef	HAVE_RAISE
+#define	raise		__db_Craise
+#endif
+#ifndef HAVE_SNPRINTF
+#define	snprintf	__db_Csnprintf
+#endif
+#ifndef	HAVE_STRERROR
+#define	strerror	__db_Cstrerror
+#endif
+#ifndef HAVE_VSNPRINTF
+#define	vsnprintf	__db_Cvsnprintf
 #endif

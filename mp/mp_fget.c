@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_fget.c	10.53 (Sleepycat) 11/16/98";
+static const char sccsid[] = "@(#)mp_fget.c	11.8 (Sleepycat) 10/16/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,10 +18,8 @@ static const char sccsid[] = "@(#)mp_fget.c	10.53 (Sleepycat) 11/16/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_shash.h"
 #include "mp.h"
-#include "common_ext.h"
 
 /*
  * memp_fget --
@@ -35,18 +33,22 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	void *addrp;
 {
 	BH *bhp;
+	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	DB_HASHTAB *dbht;
+	MCACHE *mc;
 	MPOOL *mp;
 	MPOOLFILE *mfp;
-	size_t bucket, mf_offset;
+	size_t n_bucket, n_cache, mf_offset;
 	u_int32_t st_hsearch;
 	int b_incr, first, ret;
 
 	dbmp = dbmfp->dbmp;
-	mp = dbmp->mp;
+	dbenv = dbmp->dbenv;
+	mp = dbmp->reginfo.primary;
 	mfp = dbmfp->mfp;
 
-	MP_PANIC_CHECK(dbmp);
+	PANIC_CHECK(dbenv);
 
 	/*
 	 * Validate arguments.
@@ -61,20 +63,21 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * is to keep database files small.  It's sleazy as hell, but we catch
 	 * any attempt to actually write the file in memp_fput().
 	 */
-#define	OKFLAGS	(DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW)
+#define	OKFLAGS	\
+    (DB_MPOOL_CREATE | DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)
 	if (flags != 0) {
-		if ((ret =
-		    __db_fchk(dbmp->dbenv, "memp_fget", flags, OKFLAGS)) != 0)
+		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
 			return (ret);
 
 		switch (flags) {
 		case DB_MPOOL_CREATE:
 		case DB_MPOOL_LAST:
 		case DB_MPOOL_NEW:
+		case DB_MPOOL_NEW_GROUP:
 		case 0:
 			break;
 		default:
-			return (__db_ferr(dbmp->dbenv, "memp_fget", 1));
+			return (__db_ferr(dbenv, "memp_fget", 1));
 		}
 	}
 
@@ -89,18 +92,15 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 #endif
 
 	/* Initialize remaining local variables. */
-	mf_offset = R_OFFSET(dbmp, mfp);
+	mf_offset = R_OFFSET(&dbmp->reginfo, mfp);
 	bhp = NULL;
 	st_hsearch = 0;
 	b_incr = ret = 0;
 
-	/* Determine the hash bucket where this page will live. */
-	bucket = BUCKET(mp, mf_offset, *pgnoaddr);
-
-	LOCKREGION(dbmp);
+	R_LOCK(dbenv, &dbmp->reginfo);
 
 	/*
-	 * Check for the last or last + 1 page requests.
+	 * Check for the new, last or last + 1 page requests.
 	 *
 	 * Examine and update the file's last_pgno value.  We don't care if
 	 * the last_pgno value immediately changes due to another thread --
@@ -108,16 +108,51 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * current last_pgno value if the thread is asking for a new page,
 	 * however, to ensure that two threads creating pages don't get the
 	 * same one.
+	 *
+	 * If we create a page, there is the potential that a page after it
+	 * in the file will be written before it will be written.  Recovery
+	 * depends on pages that are "created" in the file by subsequent pages
+	 * being written be zeroed out, not have random garbage.  Ensure that
+	 * the OS agrees.
+	 *
+	 * !!!
+	 * DB_MPOOL_NEW_GROUP is undocumented -- the hash access method needs
+	 * to allocate contiguous groups of pages in order to do subdatabases.
+	 * We return the first page in the group, but the caller must put an
+	 * LSN on the *last* page and write it, otherwise after a crash we may
+	 * not create all of the pages we need to create.
 	 */
-	if (LF_ISSET(DB_MPOOL_LAST | DB_MPOOL_NEW)) {
-		if (LF_ISSET(DB_MPOOL_NEW))
+	if (LF_ISSET(DB_MPOOL_LAST | DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)) {
+		if (LF_ISSET(DB_MPOOL_NEW)) {
+			if ((ret = __os_fpinit(&dbmfp->fh, mfp->last_pgno + 1,
+			    1, mfp->stat.st_pagesize)) != 0) {
+				R_UNLOCK(dbenv, &dbmp->reginfo);
+				return (ret);
+			}
 			++mfp->last_pgno;
+		}
+		if (LF_ISSET(DB_MPOOL_NEW_GROUP)) {
+			if ((ret = __os_fpinit(&dbmfp->fh, mfp->last_pgno + 1,
+			    (int)*pgnoaddr, mfp->stat.st_pagesize)) != 0) {
+				R_UNLOCK(dbenv, &dbmp->reginfo);
+				return (ret);
+			}
+			mfp->last_pgno += *pgnoaddr;
+		}
 		*pgnoaddr = mfp->last_pgno;
-		bucket = BUCKET(mp, mf_offset, mfp->last_pgno);
-
-		if (LF_ISSET(DB_MPOOL_NEW))
-			goto alloc;
 	}
+
+	/*
+	 * Determine the hash bucket where this page will live, and get local
+	 * pointers to the cache and its hash table.
+	 */
+	n_cache = NCACHE(mp, *pgnoaddr);
+	mc = dbmp->c_reginfo[n_cache].primary;
+	n_bucket = NBUCKET(mc, mf_offset, *pgnoaddr);
+	dbht = R_ADDR(&dbmp->c_reginfo[n_cache], mc->htab);
+
+	if (LF_ISSET(DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP))
+		goto alloc;
 
 	/*
 	 * If mmap'ing the file and the page is not past the end of the file,
@@ -140,7 +175,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 	 * It would be possible to do so by reference counting the open
 	 * pages from the mmap, but it's unclear to me that it's worth it.
 	 */
-	if (dbmfp->addr != NULL && F_ISSET(mfp, MP_CAN_MMAP))
+	if (dbmfp->addr != NULL && F_ISSET(mfp, MP_CAN_MMAP)) {
 		if (*pgnoaddr > mfp->orig_last_pgno) {
 			/*
 			 * !!!
@@ -148,8 +183,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			 * the hash access method.
 			 */
 			if (!LF_ISSET(DB_MPOOL_CREATE)) {
-				__db_err(dbmp->dbenv,
-				    "%s: page %lu doesn't exist",
+				__db_err(dbenv, "%s: page %lu doesn't exist",
 				    __memp_fn(dbmfp), (u_long)*pgnoaddr);
 				ret = EINVAL;
 				goto err;
@@ -157,13 +191,13 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		} else {
 			*(void **)addrp =
 			    R_ADDR(dbmfp, *pgnoaddr * mfp->stat.st_pagesize);
-			++mp->stat.st_map;
 			++mfp->stat.st_map;
 			goto done;
 		}
+	}
 
 	/* Search the hash chain for the page. */
-	for (bhp = SH_TAILQ_FIRST(&dbmp->htab[bucket], __bh);
+	for (bhp = SH_TAILQ_FIRST(&dbht[n_bucket], __bh);
 	    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh)) {
 		++st_hsearch;
 		if (bhp->pgno != *pgnoaddr || bhp->mf_offset != mf_offset)
@@ -171,7 +205,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 
 		/* Increment the reference count. */
 		if (bhp->ref == UINT16_T_MAX) {
-			__db_err(dbmp->dbenv,
+			__db_err(dbenv,
 			    "%s: page %lu: reference count overflow",
 			    __memp_fn(dbmfp), (u_long)bhp->pgno);
 			ret = EINVAL;
@@ -197,7 +231,7 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 		 * the region.
 		 */
 		for (first = 1; F_ISSET(bhp, BH_LOCKED); first = 0) {
-			UNLOCKREGION(dbmp);
+			R_UNLOCK(dbenv, &dbmp->reginfo);
 
 			/*
 			 * Explicitly yield the processor if it's not the first
@@ -208,10 +242,10 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			if (!first)
 				__os_yield(1);
 
-			LOCKBUFFER(dbmp, bhp);
+			MUTEX_LOCK(&bhp->mutex, dbenv->lockfhp);
 			/* Wait for I/O to finish... */
-			UNLOCKBUFFER(dbmp, bhp);
-			LOCKREGION(dbmp);
+			MUTEX_UNLOCK(&bhp->mutex);
+			R_LOCK(dbenv, &dbmp->reginfo);
 		}
 
 		/*
@@ -233,28 +267,23 @@ memp_fget(dbmfp, pgnoaddr, flags, addrp)
 			F_CLR(bhp, BH_CALLPGIN);
 		}
 
-		++mp->stat.st_cache_hit;
 		++mfp->stat.st_cache_hit;
 		*(void **)addrp = bhp->buf;
 		goto done;
 	}
 
 alloc:	/* Allocate new buffer header and data space. */
-	if ((ret = __memp_alloc(dbmp, sizeof(BH) -
-	    sizeof(u_int8_t) + mfp->stat.st_pagesize, NULL, &bhp)) != 0)
+	if ((ret = __memp_alloc(dbmp,
+	    &dbmp->c_reginfo[n_cache], mfp, 0, NULL, &bhp)) != 0)
 		goto err;
 
-#ifdef DIAGNOSTIC
-	if ((ALIGNTYPE)bhp->buf & (sizeof(size_t) - 1)) {
-		__db_err(dbmp->dbenv,
-		    "Internal error: BH data NOT size_t aligned.");
-		ret = EINVAL;
-		goto err;
-	}
-#endif
-	/* Initialize the BH fields. */
+	++mc->stat.st_page_clean;
+
+	/*
+	 * Initialize the BH fields so that we can call the __memp_bhfree
+	 * routine if an error occurs.
+	 */
 	memset(bhp, 0, sizeof(BH));
-	LOCKINIT(dbmp, &bhp->mutex);
 	bhp->ref = 1;
 	bhp->pgno = *pgnoaddr;
 	bhp->mf_offset = mf_offset;
@@ -264,8 +293,23 @@ alloc:	/* Allocate new buffer header and data space. */
 	 * bucket hash list.  Append the bucket header to the tail of the
 	 * MPOOL LRU chain.
 	 */
-	SH_TAILQ_INSERT_HEAD(&dbmp->htab[bucket], bhp, hq, __bh);
-	SH_TAILQ_INSERT_TAIL(&mp->bhq, bhp, q);
+	SH_TAILQ_INSERT_HEAD(&dbht[n_bucket], bhp, hq, __bh);
+	SH_TAILQ_INSERT_TAIL(&mc->bhq, bhp, q);
+
+#ifdef DIAGNOSTIC
+	if ((ALIGNTYPE)bhp->buf & (sizeof(size_t) - 1)) {
+		__db_err(dbenv, "Internal error: BH data NOT size_t aligned.");
+		ret = EINVAL;
+		__memp_bhfree(dbmp, bhp, 1);
+		goto err;
+	}
+#endif
+
+	if ((ret = __db_mutex_init(dbenv, &bhp->mutex, R_OFFSET(
+	    &dbmp->reginfo, &bhp->mutex) + DB_FCNTL_OFF_MPOOL, 0)) != 0) {
+		__memp_bhfree(dbmp, bhp, 1);
+		goto err;
+	}
 
 	/*
 	 * If we created the page, zero it out and continue.
@@ -279,18 +323,17 @@ alloc:	/* Allocate new buffer header and data space. */
 	 * Otherwise, read the page into memory, optionally creating it if
 	 * DB_MPOOL_CREATE is set.
 	 */
-	if (LF_ISSET(DB_MPOOL_NEW)) {
+	if (LF_ISSET(DB_MPOOL_NEW | DB_MPOOL_NEW_GROUP)) {
 		if (mfp->clear_len == 0)
 			memset(bhp->buf, 0, mfp->stat.st_pagesize);
 		else {
 			memset(bhp->buf, 0, mfp->clear_len);
 #ifdef DIAGNOSTIC
-			memset(bhp->buf + mfp->clear_len, 0xdb,
+			memset(bhp->buf + mfp->clear_len, CLEAR_BYTE,
 			    mfp->stat.st_pagesize - mfp->clear_len);
 #endif
 		}
 
-		++mp->stat.st_page_create;
 		++mfp->stat.st_page_create;
 	} else {
 		/*
@@ -299,8 +342,8 @@ alloc:	/* Allocate new buffer header and data space. */
 		 * discards the region lock, so the buffer must be pinned
 		 * down so that it cannot move and its contents are unchanged.
 		 */
-reread:		if ((ret = __memp_pgread(dbmfp,
-		    bhp, LF_ISSET(DB_MPOOL_CREATE))) != 0) {
+reread:		if ((ret = __memp_pgread(
+		    dbmfp, bhp, LF_ISSET(DB_MPOOL_CREATE))) != 0) {
 			/*
 			 * !!!
 			 * Discard the buffer unless another thread is waiting
@@ -308,11 +351,10 @@ reread:		if ((ret = __memp_pgread(dbmfp,
 			 * the BH_TRASH flag set.
 			 */
 			if (bhp->ref == 1)
-				__memp_bhfree(dbmp, mfp, bhp, 1);
+				__memp_bhfree(dbmp, bhp, 1);
 			goto err;
 		}
 
-		++mp->stat.st_cache_miss;
 		++mfp->stat.st_cache_miss;
 	}
 
@@ -324,27 +366,26 @@ reread:		if ((ret = __memp_pgread(dbmfp,
 	if (bhp->pgno > mfp->last_pgno)
 		mfp->last_pgno = bhp->pgno;
 
-	++mp->stat.st_page_clean;
 	*(void **)addrp = bhp->buf;
 
 done:	/* Update the chain search statistics. */
 	if (st_hsearch) {
-		++mp->stat.st_hash_searches;
-		if (st_hsearch > mp->stat.st_hash_longest)
-			mp->stat.st_hash_longest = st_hsearch;
-		mp->stat.st_hash_examined += st_hsearch;
+		++mc->stat.st_hash_searches;
+		if (st_hsearch > mc->stat.st_hash_longest)
+			mc->stat.st_hash_longest = st_hsearch;
+		mc->stat.st_hash_examined += st_hsearch;
 	}
 
 	++dbmfp->pinref;
 
-	UNLOCKREGION(dbmp);
+	R_UNLOCK(dbenv, &dbmp->reginfo);
 
 	return (0);
 
 err:	/* Discard our reference. */
 	if (b_incr)
 		--bhp->ref;
-	UNLOCKREGION(dbmp);
+	R_UNLOCK(dbenv, &dbmp->reginfo);
 
 	*(void **)addrp = NULL;
 	return (ret);

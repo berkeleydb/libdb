@@ -49,7 +49,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 release/libdb.lib /nologo /subsystem:console /machine:I386
+# ADD LINK32 Release/libdb30.lib /nologo /subsystem:console /machine:I386
 
 !ELSEIF  "$(CFG)" == "db_dump - Win32 Debug"
 
@@ -73,7 +73,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 debug/libdb.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /pdb:none /debug /machine:I386 /fixed:no
+# ADD LINK32 Debug/libdb30d.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /pdb:none /debug /machine:I386 /fixed:no
 
 !ENDIF 
 
@@ -88,10 +88,6 @@ SOURCE=.\db.h
 # Begin Source File
 
 SOURCE=..\db_dump\db_dump.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\clib\err.c
 # End Source File
 # Begin Source File
 

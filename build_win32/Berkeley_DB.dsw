@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 5.00
 
 ###############################################################################
 
-Project: "DB_DLL"=.\DB_DLL.DSP - Package Owner=<4>
+Project: "DB_DLL"=.\db_dll.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -15,7 +15,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "DB_Static"=.\DB_Static.dsp - Package Owner=<4>
+Project: "DB_Static"=.\db_static.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -84,7 +84,10 @@ Package=<4>
     Project_Dep_Name ex_access
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name ex_appinit
+    Project_Dep_Name ex_btrec
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name ex_env
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name ex_lock
@@ -99,7 +102,10 @@ Package=<4>
     Project_Dep_Name excxx_access
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name excxx_appinit
+    Project_Dep_Name excxx_btrec
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name excxx_env
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name excxx_lock
@@ -145,6 +151,21 @@ Package=<4>
 ###############################################################################
 
 Project: "db_dump"=.\db_dump.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "db_java"=.\db_java.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -219,7 +240,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "dbtest"=.\dbtest.dsp - Package Owner=<4>
+Project: "db_tcl"=.\db_tcl.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -228,7 +249,7 @@ Package=<5>
 Package=<4>
 {{{
     Begin Project Dependency
-    Project_Dep_Name DB_Static
+    Project_Dep_Name DB_DLL
     End Project Dependency
 }}}
 
@@ -249,7 +270,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "ex_appinit"=.\ex_appinit.dsp - Package Owner=<4>
+Project: "ex_btrec"=.\ex_btrec.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -257,9 +278,18 @@ Package=<5>
 
 Package=<4>
 {{{
-    Begin Project Dependency
-    Project_Dep_Name DB_DLL
-    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "ex_env"=.\ex_env.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
 }}}
 
 ###############################################################################
@@ -324,7 +354,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "excxx_appinit"=.\excxx_appinit.dsp - Package Owner=<4>
+Project: "excxx_btrec"=.\excxx_btrec.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -332,9 +362,18 @@ Package=<5>
 
 Package=<4>
 {{{
-    Begin Project Dependency
-    Project_Dep_Name DB_DLL
-    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "excxx_env"=.\excxx_env.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
 }}}
 
 ###############################################################################

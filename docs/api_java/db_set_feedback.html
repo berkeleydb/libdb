@@ -1,0 +1,75 @@
+<!--"@(#)db_set_feedback.so	10.7 (Sleepycat) 8/26/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: Db.set_feedback</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1>Db.set_feedback</h1>
+</td>
+<td width="1%">
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>
+import com.sleepycat.db.*;
+<p>
+public interface DbFeedback
+{
+	public abstract void db_feedback_fcn(Db db, int opcode, int pct);
+}
+public class Db
+{
+	public void set_feedback(DbFeedback db_feedback_fcn);
+	...
+}
+</pre></h3>
+<h1>Description</h1>
+<p>
+Some operations performed by the Berkeley DB library can take non-trivial
+amounts of time.  The Db.set_feedback method can be used by
+applications to monitor progress within these operations.
+<p>
+When an operation is likely to take a long time, Berkeley DB will call the
+<b>db_feedback_fcn</b> method.  This method must be declared
+with three arguments: the first will be a reference to the enclosing
+database handle, the second a flag value, and the third the percent of
+the operation remaining to be completed, specified as an integer value
+between 0 and 100.  It is up to the <b>db_feedback_fcn</b> method
+to display this information in an appropriate manner.
+<p>
+The <b>opcode</b> argument may take on any of the following values:
+<dl compact>
+<p><dt>Db.<a name="DB_UPGRADE">DB_UPGRADE</a><dd>The underlying database is being upgraded.
+</dl>
+<p>
+The Db.set_feedback interface may be used to configure Berkeley DB at any time
+during the life of the application.
+<p>
+<h3>Class</h3>
+<a href="../api_java/dbenv_class.html">DbEnv</a>
+<p>
+<h1>See Also</h1>
+<a href="../api_java/env_close.html">DbEnv.close</a>,
+<a href="../api_java/env_open.html">DbEnv.open</a>,
+<a href="../api_java/env_remove.html">DbEnv.remove</a>,
+<a href="../api_java/env_set_cachesize.html">DbEnv.set_cachesize</a>,
+<a href="../api_java/env_set_errcall.html">DbEnv.set_errcall</a>,
+<a href="../api_java/env_set_error_stream.html">DbEnv.set_error_stream</a>,
+<a href="../api_java/env_set_errpfx.html">DbEnv.set_errpfx</a>,
+<a href="../api_java/env_set_region_init.html">DbEnv.set_region_init</a>
+and
+<a href="../api_java/env_set_verbose.html">DbEnv.set_verbose</a>.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,12 +1,11 @@
 /*-
- * @(#)LICENSE	10.10 (Sleepycat) 1/12/99
+ * @(#)LICENSE	11.4 (Sleepycat) 9/12/99
  */
 
-The following are the copyrights and redistribution conditions that apply to
-this copy of the Berkeley DB software.  For a license to use, redistribute
-or sell Berkeley DB software under conditions other than those described here,
-or to purchase support for this software, please contact Sleepycat Software at
-one of the following addresses:
+The following is the license that applies to this copy of the Berkeley DB
+software.  For a license to use the Berkeley DB software under conditions
+other than those described here, or to purchase support for this software,
+please contact Sleepycat Software at one of the following addresses:
 
 	Sleepycat Software	db@sleepycat.com
 	394 E. Riding Dr.	510-526-3972
@@ -15,7 +14,7 @@ one of the following addresses:
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 /*
- * Copyright (c) 1990, 1993, 1994, 1995, 1996, 1997, 1998
+ * Copyright (c) 1990-1999
  *	Sleepycat Software.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,22 +32,21 @@ one of the following addresses:
  *    more than the cost of distribution plus a nominal fee, and must be
  *    freely redistributable under reasonable conditions.  For an
  *    executable file, complete source code means the source code for all
- *    modules it contains.  It does not mean source code for modules or
- *    files that typically accompany the operating system on which the
- *    executable file runs, e.g., standard library modules or system
- *    header files.
+ *    modules it contains.  It does not include source code for modules or
+ *    files that typically accompany the major components of the operating
+ *    system on which the executable file runs.
  *
- * THIS SOFTWARE IS PROVIDED BY SLEEPYCAT SOFTWARE ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL SLEEPYCAT SOFTWARE BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY SLEEPYCAT SOFTWARE ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR
+ * NON-INFRINGEMENT, ARE DISCLAIMED.  IN NO EVENT SHALL SLEEPYCAT SOFTWARE
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995
@@ -62,11 +60,7 @@ one of the following addresses:
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -94,11 +88,7 @@ one of the following addresses:
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Harvard University
- *	and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *

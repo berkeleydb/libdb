@@ -1,0 +1,174 @@
+<!--@(#)printlog.so	10.9 (Sleepycat) 10/1/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Debugging Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Debugging Applications</dl></h3></td>
+<td width="1%"><a href="../../ref/debug/runtime.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/debug/common.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p>
+<h1 align=center>Reviewing Berkeley DB log files</h1>
+<p>
+If you are running with transactions and logging, the <a href="../../utility/db_printlog.html">db_printlog</a>
+utility can be a useful debugging aid.  The <a href="../../utility/db_printlog.html">db_printlog</a> utility
+will display the contents of your log files in a human readable (and
+machine-processable) format.
+<p>
+The <a href="../../utility/db_printlog.html">db_printlog</a> utility will attempt to display any and all
+logfiles present in a designated db_home directory.  For each log record,
+<a href="../../utility/db_printlog.html">db_printlog</a> will display a line of the form:
+<blockquote><pre>[22][28]db_big: rec: 43 txnid 80000963 prevlsn [21][10483281]</pre></blockquote>
+<p>
+The opening numbers in square brackets are the log sequence number (LSN)
+of the log record being displayed.  The first number indicates the log
+file in which the record appears, and the second number indicates the
+offset in that file of the record.
+<p>
+The first character string identifies the particular log operation being
+reported.  The log records corresponding to particular operations are
+described below.  The rest of the line consists of name/value pairs.
+<p>
+The rec field indicates the record type (this is used to dispatch records
+in the log to appropriate recovery functions).
+<p>
+The txnid field identifies the transaction for which this record was
+written.  A txnid of 0 means that the record was written outside the
+context of any transaction.  You will see these most frequently for
+checkpoints.
+<p>
+Finally, the prevlsn contains the LSN of the last record for this
+transaction.  By following prevlsn fields, you can accumulate all the
+updates for a particular transaction.  During normal abort processing,
+this field is used to quickly access all the records for a particular
+transaction.
+<p>
+After the initial line identifying the record type, each field of the log
+record is displayed, one item per line.  There are several fields that
+appear in many different records and a few fields that appear only in
+some records.
+<p>
+The list below presents each log record type currently produced with a brief
+description of the operation they describe.
+<dl compact>
+<p><dt>bam_adj<dd>Used when we insert/remove an index into/from the page header of a Btree page.
+<dt>bam_cadjust<dd>Keeps track of record counts in a Btree or Recno database.
+<dt>bam_cdel<dd>Used to mark a record on a page as deleted.
+<dt>bam_pg_alloc<dd>Indicates that we allocated a page to a Btree.
+<dt>bam_pg_free<dd>Indicates that we freed a page in the Btree (freed pages are added to a freelist and reused).
+<dt>bam_repl<dd>Describes a replace operation on a record.
+<dt>bam_rsplit<dd>Describes a reverse page split.
+<dt>bam_split<dd>Describes a page split.
+<dt>db_addpage<dd>Add a page to a chain of duplicates.
+<dt>db_addrem<dd>Add or remove an item from a page of duplicates.
+<dt>db_big<dd>	Add an item to an overflow page (overflow pages contain items too large to place on the main page)
+<dt>db_debug<dd>Log debug message to track operations.
+<dt>db_delete<dd>Describes the deletion of a Berkeley DB file.
+<dt>db_fileopen<dd>Describes the creation of a Berkeley DB file.
+<dt>db_metapage<dd>Describes the creation of the metadata page for a new file.
+<dt>db_metasub<dd>Describes the creation of the metadata page for a subdatabase.
+<dt>db_ovref<dd>Increment or decrement the reference count for a big item.
+<dt>db_relink<dd>Fix prev/next chains on duplicate pages because a page was added or removed.
+<dt>db_split<dd>Split a page of duplicates.
+<dt>hash_copypage<dd>Used when we empty a bucket page, but there are overflow pages for the bucket; one needs to be copied back into the actual bucket.
+<dt>hash_insdel<dd>Insert/Delete an item on a Hash page.
+<dt>hash_newpage<dd>Adds or removes overflow pages from a Hash bucket.
+<dt>hash_newpgno<dd>Allocates a new page to a Hash table.
+<dt>hash_ovfl<dd>Initialize a set of overflow pages.
+<dt>hash_replace<dd>Handle updates to records that are on the main page.
+<dt>hash_splitdata<dd>Record the page data for a split.
+<dt>hash_splitmeta<dd>Record the changes to the meta-data that are necessary for a split.
+<dt>log_register<dd>Records an open of a file (mapping the file name to a log-id that is used in subsequent log operations).
+<dt>qam_add<dd>Describes the actual addition of a new record to a Queue.
+<dt>qam_del<dd>Delete a record in a Queue.
+<dt>qam_inc<dd>Increments the maximum record number allocated in a Queue indicating that we've allocated another space in the file.
+<dt>qam_mvfirst<dd>Indicates the head of the queue has been changed.
+<dt>txn_child<dd>Commit a child transaction.
+<dt>txn_ckp<dd>	Transaction checkpoint.
+<dt>txn_regop<dd>Logs a regular (non-child) transaction commit.
+<dt>txn_xa_regop<dd>Logs a prepare message.
+</dl>
+<h3>Augmenting the Log for Debugging</h3>
+<p>
+When debugging applications, it is sometimes useful to log, not only the
+actual operations that modify pages, but also the underlying Berkeley DB
+functions being executed.  This form of logging can add significant bulk
+to your log, but can permit debugging application errors that are almost
+impossible to find any other way.  To turn on these log messages, specify
+the --enable-debug_rop and --enable-debug_wop configuration options when
+configuring Berkeley DB.  See <a href="../../ref/build_unix/conf.html">Configuring
+Berkeley DB</a> for more information.
+<dl compact>
+<p><dt>db_debug<dd>Describes an API call into the DB library.
+</dl>
+<h3>Extracting Committed Transactions and Transaction Status</h3>
+<p>
+Sometimes it is useful to use the human-readable log output to determine
+which transactions committed and aborted.  The awk script, commit.awk,
+found in the db_printlog directory of the Berkeley DB distribution allows you
+to do just that.  The command:
+<blockquote><pre>awk -f commit.awk log_output</pre></blockquote>
+where log_output is the output of db_printlog will display a list of
+the transaction IDs of all committed transactions found in the log.
+<p>
+If you need a complete list of both committed and aborted transactions,
+then the script status.awk will produce that.  The syntax is:
+<blockquote><pre>awk -f status.awk log_output</pre></blockquote>
+<h3>Extracting Transaction Histories</h3>
+<p>
+Another useful debugging aid is to print out the complete history of a
+transaction.  The awk script txn.awk, allows you to do that.  The
+command line:
+<blockquote><pre>awk -f txn.awk TXN=txnlist log_output</pre></blockquote>
+where log_output is the output of <a href="../../utility/db_printlog.html">db_printlog</a> and txnlist is
+a comma-separated list of transaction IDs, will display all log records
+associated with the designated transaction ids.
+<h3>Extracting Page Histories</h3>
+<p>
+The awk script pgno.awk, allows you to extract all log records that affect
+particular pages.  As currently designed, however, it will extract records
+of all files with the designated page number, so this script is most
+useful in conjunction with the fileid script discussed below.
+<p>
+The syntax for the pgno.awk script is:
+<blockquote><pre>awk -f pgno.awk PGNO=pgnolist log_output</pre></blockquote>
+<p>
+where log_output is the output of db_printlog and pgnolist is a
+comma-separated list of page numbers.  The script will output all log
+records that reference the designated page numbers.
+<h3>Extracting File Histories</h3>
+<p>
+The awk script fileid.awk, allows you to extract all log records that
+affect particular files.  The syntax for the fileid.awk script is:
+<blockquote><pre>awk -f fileid.awk PGNO=fids log_output</pre></blockquote>
+<p>
+where log_output is the output of db_printlog and fids is a
+comma-separated list of fileids.  The script will output all log
+records that reference the designated file.
+<h3>Other log processing tools</h3>
+<p>
+The awk script count.awk will print out the number of log records
+encountered that belonged to some transaction (that is the number of log
+records excluding those for checkpoints and non-transaction protected
+operations).
+<p>
+The script range.awk will extract a subset of a log.  This is useful
+when the output of <a href="../../utility/db_printlog.html">db_printlog</a> is too large to be reasonably
+manipulated with an editor or other tool.
+<p>
+The syntax for range.awk is:
+<blockquote><pre>awk -f range.awk START_FILE=sf START_OFFSET=so END_FILE=ef END_OFFSET=eo log_output</pre></blockquote>
+<p>
+where the tuple [sf,so] represents the log sequence number (LSN)
+of the beginning of the sublog you wish to extract and [ef, eo]
+represents the LSN of the end of the sublog you wish to extract.
+<table><tr><td><br></td><td width="1%"><a href="../../ref/debug/runtime.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/debug/common.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

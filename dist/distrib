@@ -1,33 +1,97 @@
 #!/bin/sh -
-#	@(#)distrib	10.30 (Sleepycat) 10/10/98
-
-# Build autoconf structure.
-echo "Running autoheader"
-(autoheader configure.in > config.hin) 2>&1 | \
-    sed '/warning: AC_TRY_RUN called without default/d'
-chmod 444 config.hin
-echo "Running autoconf"
-autoconf 2>&1 | sed '/warning: AC_TRY_RUN called without default/d'
-chmod 555 configure config.guess config.sub install-sh
+#	@(#)distrib	11.12 (Sleepycat) 10/19/99
 
 msgc="/* DO NOT EDIT: automatically built by dist/distrib. */"
 msgsh="# DO NOT EDIT: automatically built by dist/distrib."
+msgshb="# DO NOT EDIT BELOW THIS LINE: automatically built by dist/distrib."
 msgcxx="// DO NOT EDIT: automatically built by dist/distrib."
+msgm4="dnl DO NOT EDIT: automatically built by dist/distrib."
+msghtml="<!--DO NOT EDIT: automatically built by dist/distrib.-->"
+
+# Build the local m4 script file.
+echo "Building aclocal.m4"
+rm -f aclocal.m4
+
+. RELEASE
+(echo "$msgm4" &&
+ echo "AC_DEFUN(AM_VERSION_SET, [" &&
+ echo "AC_SUBST(DB_VERSION_MAJOR)" &&
+ echo "DB_VERSION_MAJOR=$DB_VERSION_MAJOR" &&
+ echo "AC_SUBST(DB_VERSION_MINOR)" &&
+ echo "DB_VERSION_MINOR=$DB_VERSION_MINOR" &&
+ echo "AC_SUBST(DB_VERSION_PATCH)" &&
+ echo "DB_VERSION_PATCH=$DB_VERSION_PATCH" &&
+ echo "AC_SUBST(DB_VERSION_STRING)" &&
+ echo "DB_VERSION_STRING=\"\\\"$DB_VERSION_STRING\\\"\"" &&
+ echo "])dnl" &&
+ cat aclocal/*.m4) > aclocal.m4
+chmod 444 aclocal.m4
+
+# Build autoconf structure.
+echo "Building config.hin (autoheader)"
+(autoheader configure.in > config.hin) 2>&1 | \
+    sed '/warning: AC_TRY_RUN called without default/d'
+chmod 444 config.hin
+echo "Building configure (autoconf)"
+autoconf 2>&1 | sed '/warning: AC_TRY_RUN called without default/d'
+chmod 555 configure config.guess config.sub install-sh
+
+rm -f aclocal.m4
+
+# Build the README.
+f=../README
+echo "Building $f"
+(echo "$DB_VERSION_STRING" &&
+ echo "" &&
+ echo -n "This is version " &&
+ echo -n "$DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH" &&
+ echo " of Berkeley DB from Sleepycat Software." &&
+ echo "To view the release documentation, load the distribution file" &&
+ echo "docs/index.html into your web browser.") > $f
+chmod 444 $f
+
+# Build the docs_source/index.html file.
+f=../docs_src/index.html
+echo "Building $f"
+(echo "$msghtml" && sed \
+    -e "s/DB_VERSION_MAJOR/$DB_VERSION_MAJOR/" \
+    -e "s/DB_VERSION_MINOR/$DB_VERSION_MINOR/" \
+    -e "s/DB_VERSION_PATCH/$DB_VERSION_PATCH/" \
+    -e "s/DB_RELEASE_DATE/$DB_RELEASE_DATE/" \
+    < ../docs_src/index.html.src) > $f
+chmod 444 $f
 
 # Build the automatically generated logging/recovery files.
-for i in db btree hash log txn; do
-	sh ./db_gen.sh ../$i/$i.src ../$i
+for i in db btree hash log qam txn; do
+	for f in ../$i/*.src; do
+		subsystem=`basename $f .src`
+		header_file=../include/${subsystem}_auto.h
+		source_file=../$i/${subsystem}_auto.c
+		template_file=template/rec_${subsystem}
+		template_source=.
+
+		echo "Building $source_file, $header_file, $template_file"
+		awk -f gen_rec.awk \
+		    -v subsystem=$subsystem \
+		    -v source_file=$source_file \
+		    -v header_file=$header_file \
+		    -v template_file=$template_file \
+		    -v template_dir=. < $f
+		chmod 444 $source_file $header_file $template_file
+	done
 done
 
 # Build the automatically generated function prototype files.
-for i in db btree clib common hash lock log mp mutex os txn xa; do
+for i in db btree clib common env hash lock log mp mutex os qam tcl txn xa; do
 	f=../include/${i}_ext.h
 	echo "Building $f"
 	(echo "$msgc" &&
 	    echo "#ifndef _${i}_ext_h_" &&
 	    echo "#define _${i}_ext_h_" &&
-	    sed -n "s/^ \* PUBLIC: \(.*\)/\1/p" ../$i/*.c &&
-	    echo "#endif /* _${i}_ext_h_ */") > $f
+	    sed -n "s/^ \* PUBLIC:[	 ]\(.*\)/\1/p" ../$i/*.c;
+	[ $i = os ] &&
+	    sed -n "s/^ \* PUBLIC:[	 ]\(.*\)/\1/p" ../os_win32/*.c;
+	echo "#endif /* _${i}_ext_h_ */") > $f
 	chmod 444 $f
 done
 
@@ -52,89 +116,27 @@ echo "Building $f"
     -e	 	'a\' \
     -e		'#endif' \
     -e '}' \
-    < ../include/db.h) > $f
+    -e 's/@ssize_t_decl@/typedef int ssize_t;/' \
+    -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
+    -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/" \
+    -e "s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/" \
+    -e "s/@DB_VERSION_STRING@/\"$DB_VERSION_STRING\"/" \
+    < ../include/db.src) > $f
 chmod 444 $f
 
 f=../build_win32/db_int.h
 echo "Building $f"
 (echo "$msgc" && sed \
     -e 's/\(PATH_SEPARATOR[^"]*"\)\/"/\1\\\\\/"/' \
-    -e 's/@spin_line1@/typedef unsigned int tsl_t;/' \
-    -e '/@spin_line2@/d' \
-    -e '/@spin_line3@/d' \
-    -e 's/@mutex_align@/sizeof(unsigned int)/' \
-    < ../include/db_int.h) > $f
+    < ../include/db_int.src) > $f
 chmod 444 $f
 
 f=../build_win32/libdb.rc
 echo "Building $f"
-major=`egrep DB_VERSION_MAJOR ../include/db.h | awk '{print $3}'`
-minor=`egrep DB_VERSION_MINOR ../include/db.h | awk '{print $3}'`
-patch=`egrep DB_VERSION_PATCH ../include/db.h | awk '{print $3}'`
-sed -e "s/%MAJOR%/$major/" \
-    -e "s/%MINOR%/$minor/" \
-    -e "s/%PATCH%/$patch/" \
+sed -e "s/%MAJOR%/$DB_VERSION_MAJOR/" \
+    -e "s/%MINOR%/$DB_VERSION_MINOR/" \
+    -e "s/%PATCH%/$DB_VERSION_PATCH/" \
     < ../build_win32/libdbrc.src > $f
-chmod 444 $f
-
-f=../build_win32/.dbtestrc
-echo "Building $f"
-(echo "$msgsh" && \
- sed -e "s/is_windows_test[	 ]0/is_windows_test 1/" ../test/test.tcl) > $f
-chmod 444 $f
-
-# Build the Win16 files.
-f=../build_win16/db.h
-echo "Building $f"
-(echo "$msgc" && sed \
-    -e 's/@u_int8_decl@/typedef unsigned char u_int8_t;/' \
-    -e 's/@int16_decl@/typedef short int16_t;/' \
-    -e 's/@u_int16_decl@/typedef unsigned short u_int16_t;/' \
-    -e 's/@int32_decl@/typedef long int32_t;/' \
-    -e 's/@u_int32_decl@/typedef unsigned long u_int32_t;/' \
-    -e '/@u_char_decl@/{' \
-    -e		'i\' \
-    -e		'#if !defined(_WINSOCKAPI_)' \
-    -e		's/@u_char_decl@/typedef unsigned char u_char;/' \
-    -e '}' \
-    -e 's/@u_short_decl@/typedef unsigned short u_short;/' \
-    -e 's/@u_int_decl@/typedef unsigned int u_int;/' \
-    -e '/@u_long_decl@/{' \
-    -e		's/@u_long_decl@/typedef unsigned long u_long;/' \
-    -e	 	'a\' \
-    -e		'#endif' \
-    -e '}' \
-    -e 's/(\*\(db_errcall\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(tx_recover\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(db_malloc\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(bt_compare\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(bt_prefix\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(h_hash\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(close\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(cursor\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(del\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(fd\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(get\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(put\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(stat\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(sync\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(c_close\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(c_del\))/(DB_CALLBACK *\1)/' \
-    -e 's/(\*\(c_get\))/(__cdecl __loadds *\1)/' \
-    -e 's/(\*\(c_put\))/(__cdecl __loadds *\1)/' \
-    < ../include/db.h) > $f
-chmod 444 $f
-
-f=../build_win16/db_int.h
-echo "Building $f"
-(echo "$msgc" && sed \
-    -e 's/\(PATH_SEPARATOR[^"]*"\)\/"/\1\\\\\/"/' \
-    -e 's/@spin_line1@/typedef unsigned int tsl_t;/' \
-    -e '/@spin_line2@/d' \
-    -e '/@spin_line3@/d' \
-    -e 's/@mutex_align@/sizeof(unsigned int)/' \
-    -e 's/off_t/u_int32_t/' \
-    < ../include/db_int.h) > $f
 chmod 444 $f
 
 # Build the VMS files.
@@ -150,45 +152,19 @@ echo "Building $f"
     -e '/@u_short_decl@/d' \
     -e '/@u_int_decl@/d' \
     -e '/@u_long_decl@/d' \
-    < ../include/db.h) > $f
+    -e '/@ssize_t_decl@/d' \
+    -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
+    -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/" \
+    -e "s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/" \
+    -e "s/@DB_VERSION_STRING@/\"$DB_VERSION_STRING\"/" \
+    < ../include/db.src) > $f
 chmod 444 $f
 
 f=../build_vms/db_int.h
 echo "Building $f"
-(echo "$msgc" && sed \
-    -e 's;@spin_line1@;#include <sys/mman.h>;' \
-    -e 's/@spin_line2@/typedef unsigned char tsl_t;/' \
-    -e '/@spin_line3@/d' \
-    -e 's/@mutex_align@/sizeof(unsigned int)/' \
-    < ../include/db_int.h) > $f
+(echo "$msgc" && cat \
+    < ../include/db_int.src) > $f
 chmod 444 $f
-
-# Build the MacOS files.
-#f=../build_macos/db.h
-#echo "Building $f"
-#(echo "$msgc" && sed \
-#    -e 's/@u_int8_decl@/typedef unsigned char u_int8_t;/' \
-#    -e 's/@int16_decl@/typedef short int16_t;/' \
-#    -e 's/@u_int16_decl@/typedef unsigned short u_int16_t;/' \
-#    -e 's/@int32_decl@/typedef int int32_t;/' \
-#    -e 's/@u_int32_decl@/typedef unsigned int u_int32_t;/' \
-#    -e '/@u_char_decl@/d' \
-#    -e '/@u_short_decl@/d' \
-#    -e '/@u_int_decl@/d' \
-#    -e '/@u_long_decl@/d' \
-#    < ../include/db.h) > $f
-#chmod 444 $f
-
-#f=../build_macos/db_int.h
-#echo "Building $f"
-#(echo "$msgc" && sed \
-#    -e 's/^#include."db.h".*/#include "::build_macintosh:db.h"/' \
-#    -e 's/\(PATH_SEPARATOR[^"]*"\)\/"/\1:"/' \
-#    -e 's/@spin_line1@/typedef unsigned char tsl_t;/' \
-#    -e '/@spin_line2@/d' \
-#    -e 's/@mutex_align@/sizeof(unsigned char)/' \
-#    < ../include/db_int.h) > $f
-#chmod 444 $f
 
 # Build the Java files.
 f=../java/src/com/sleepycat/db/DbConstants.java
@@ -199,9 +175,12 @@ echo "Building $f"
  echo &&
  echo 'public class DbConstants' &&
  echo '{' &&
- grep '#define.DB_' ../include/db.h | \
- sed -e '/"/d' -e 's/[()]//g' | \
- awk '{ print "\tpublic static final int " $2 " = " $3 ";" }' && \
+ egrep '^#define.DB_' ../include/db.src | \
+ sed -e '/"/d' -e '/@DB_VERSION_/d' -e 's/[()]/ /g' -e 's/\/\*/ /' | \
+ awk '{ print "\tpublic static final int " $2 " = " $3 ";" }' &&
+ echo "	public static final int DB_VERSION_MAJOR = $DB_VERSION_MAJOR;" &&
+ echo "	public static final int DB_VERSION_MINOR = $DB_VERSION_MINOR;" &&
+ echo "	public static final int DB_VERSION_PATCH = $DB_VERSION_PATCH;" &&
  echo '}') > $f
 chmod 444 $f
 
@@ -209,66 +188,89 @@ chmod 444 $f
 f=../test/include.tcl
 echo "Building $f"
 rm -f $f
-(echo "$msgsh"				&& \
- echo 'global dict'			&& \
- echo 'global testdir'			&& \
- echo ''				&& \
- echo 'set CP @db_cv_path_cp@'		&& \
- echo 'set DIFF @db_cv_path_diff@'	&& \
- echo 'set KILL @db_cv_path_kill@'	&& \
- echo 'set LS @db_cv_path_ls@'		&& \
- echo 'set MKDIR @db_cv_path_mkdir@'	&& \
- echo 'set MV @db_cv_path_mv@'		&& \
- echo 'set RM @db_cv_path_rm@'		&& \
- echo 'set SED @db_cv_path_sed@'	&& \
- echo 'set SLEEP @db_cv_path_sleep@'	&& \
- echo 'set SORT @db_cv_path_sort@'	&& \
- echo 'set TR @db_cv_path_tr@'		&& \
- echo ''				&& \
- echo 'set DB_LOCK_GET 0'		&& \
- echo 'set DB_LOCK_PUT 1'		&& \
- echo 'set DB_LOCK_PUT_ALL 2'		&& \
- echo 'set DB_LOCK_PUT_OBJ 3'		&& \
- echo 'set DB_LOCK_NG 0'		&& \
- echo 'set DB_LOCK_READ 1'		&& \
- echo 'set DB_LOCK_WRITE 2'		&& \
- echo 'set DB_LOCK_IREAD 3'		&& \
- echo 'set DB_LOCK_IWRITE 4'		&& \
- echo 'set DB_LOCK_IWR 5'		&& \
- grep '#define.DB_' ../include/db.h | sed -e '/"/d' -e 's/[()]//g' | \
+(echo "set tclsh_path SET_YOUR_TCLSH_PATH"	&& \
+ echo "set tcllib SET_YOUR_TCLLIB_PATH/libdb_tcl.so" && \
+ echo "set test_path @srcdir@/../test"		&& \
+ echo ""					&& \
+ echo "set CMP \"@db_cv_path_cmp@\""		&& \
+ echo "set CP \"@db_cv_path_cp@\""		&& \
+ echo "set GREP \"@db_cv_path_grep@\""		&& \
+ echo "set KILL \"@db_cv_path_kill@\""		&& \
+ echo "set MKDIR \"@db_cv_path_mkdir@\""	&& \
+ echo "set MV \"@db_cv_path_mv@\""		&& \
+ echo "set PERL5 \"@db_cv_path_perl5@\""	&& \
+ echo "set RM \"@db_cv_path_rm@\""		&& \
+ echo "set SED \"@db_cv_path_sed@\""		&& \
+ echo "set SLEEP \"@db_cv_path_sleep@\""	&& \
+ echo "set SORT \"@db_cv_path_sort@\""		&& \
+ echo "set TR \"@db_cv_path_tr@\""		&& \
+ echo ""					&& \
+ echo "$msgshb"					&& \
+ echo ""					&& \
+ echo "global dict"				&& \
+ echo ""					&& \
+ echo "global testdir"				&& \
+ echo "set testdir ./TESTDIR"			&& \
+ echo ""					&& \
+ echo "set is_windows_test 0"			&& \
+ echo ""					&& \
+ echo "set DB_LOCK_GET 0"			&& \
+ echo "set DB_LOCK_PUT 1"			&& \
+ echo "set DB_LOCK_PUT_ALL 2"			&& \
+ echo "set DB_LOCK_PUT_OBJ 3"			&& \
+ echo "set DB_LOCK_NG 0"			&& \
+ echo "set DB_LOCK_READ 1"			&& \
+ echo "set DB_LOCK_WRITE 2"			&& \
+ echo "set DB_LOCK_IREAD 3"			&& \
+ echo "set DB_LOCK_IWRITE 4"			&& \
+ echo "set DB_LOCK_IWR 5"			&& \
+ echo ""					&& \
+ egrep '^#define.DB_' ../include/db.src | \
+     sed -e '/"/d' -e 's/\/\*.*//' -e 's/[()]//g' | \
      awk '{ print "set " $2 " " $3}') > $f
 chmod 444 $f
 
 f=../build_win32/include.tcl
 echo "Building $f"
 rm -f $f
-(echo "$msgsh"				&& \
- echo 'global dict'			&& \
- echo 'global testdir'			&& \
- echo ''				&& \
- echo 'set CP c:/tools/cp.exe'		&& \
- echo 'set DIFF c:/tools/diff.exe'	&& \
- echo 'set KILL c:/tools/kill.exe'	&& \
- echo 'set LS c:/tools/ls.exe'		&& \
- echo 'set MKDIR c:/tools/mkdir.exe'	&& \
- echo 'set MV c:/tools/mv.exe'		&& \
- echo 'set RM c:/tools/rm.exe'		&& \
- echo 'set SED c:/tools/sed.exe'	&& \
- echo 'set SLEEP c:/tools/sleep.exe'	&& \
- echo 'set SORT c:/tools/sort.exe'	&& \
- echo 'set TR c:/tools/tr.exe'		&& \
- echo ''				&& \
- echo 'set DB_LOCK_GET 0'		&& \
- echo 'set DB_LOCK_PUT 1'		&& \
- echo 'set DB_LOCK_PUT_ALL 2'		&& \
- echo 'set DB_LOCK_PUT_OBJ 3'		&& \
- echo 'set DB_LOCK_NG 0'		&& \
- echo 'set DB_LOCK_READ 1'		&& \
- echo 'set DB_LOCK_WRITE 2'		&& \
- echo 'set DB_LOCK_IREAD 3'		&& \
- echo 'set DB_LOCK_IWRITE 4'		&& \
- echo 'set DB_LOCK_IWR 5'		&& \
- grep '#define.DB_' ../include/db.h | sed -e '/"/d' -e 's/[()]//g' | \
+(echo "set tclsh_path SET_YOUR_TCLSH_PATH"	&& \
+ echo "set test_path ../test"			&& \
+ echo "set tcllib libdb_tcl${DB_VERSION_MAJOR}${DB_VERSION_MINOR}d.dll" && \
+ echo ""					&& \
+ echo "set CMP c:/tools/cmp.exe"		&& \
+ echo "set CP c:/tools/cp.exe"			&& \
+ echo "set GREP c:/tools/grep.exe"		&& \
+ echo "set KILL c:/tools/kill.exe"		&& \
+ echo "set MKDIR c:/tools/mkdir.exe"		&& \
+ echo "set MV c:/tools/mv.exe"			&& \
+ echo "set PERL5 \"\""				&& \
+ echo "set RM c:/tools/rm.exe"			&& \
+ echo "set SED c:/tools/sed.exe"		&& \
+ echo "set SLEEP c:/tools/sleep.exe"		&& \
+ echo "set SORT c:/tools/sort.exe"		&& \
+ echo "set TR c:/tools/tr.exe"			&& \
+ echo ""					&& \
+ echo "$msgshb"					&& \
+ echo ""					&& \
+ echo "global dict"				&& \
+ echo ""					&& \
+ echo "global testdir"				&& \
+ echo "set testdir ./TESTDIR"			&& \
+ echo ""					&& \
+ echo "set is_windows_test 1"			&& \
+ echo ""					&& \
+ echo "set DB_LOCK_GET 0"			&& \
+ echo "set DB_LOCK_PUT 1"			&& \
+ echo "set DB_LOCK_PUT_ALL 2"			&& \
+ echo "set DB_LOCK_PUT_OBJ 3"			&& \
+ echo "set DB_LOCK_NG 0"			&& \
+ echo "set DB_LOCK_READ 1"			&& \
+ echo "set DB_LOCK_WRITE 2"			&& \
+ echo "set DB_LOCK_IREAD 3"			&& \
+ echo "set DB_LOCK_IWRITE 4"			&& \
+ echo "set DB_LOCK_IWR 5"			&& \
+ egrep '^#define.DB_' ../include/db.src | \
+     sed -e '/"/d' -e 's/\/\*.*//' -e 's/[()]//g' | \
      awk '{ print "set " $2 " " $3}') > $f
 chmod 444 $f
 
@@ -277,8 +279,10 @@ f=tags
 echo "Building $f"
 rm -f $f
 ctags -d -w \
-	../include/*.h ../btree/*.[ch] ../clib/*.[ch] ../common/*.[ch] \
-	../db/*.[ch] ../db185/*.[ch] ../dbm/*.[ch] ../hash/*.[ch] \
+	../include/*.h ../include/*.src \
+	../btree/*.[ch] ../clib/*.[ch] ../common/*.[ch] ../db/*.[ch] \
+	../db185/*.[ch] ../dbm/*.[ch] ../env/*.[ch] ../hash/*.[ch] \
 	../hsearch/*.[ch] ../lock/*.[ch] ../log/*.[ch] ../mp/*.[ch] \
-	../mutex/*.[ch] ../os/*.[ch] ../txn/*.[ch] ../xa/*.[ch] ../test/*.[ch]
+	../mutex/*.[ch] ../os/*.[ch] ../qam/*.[ch] ../tcl/*.[ch] \
+	../txn/*.[ch] ../xa/*.[ch]
 chmod 444 $f

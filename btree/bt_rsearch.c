@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -20,11 +20,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -41,10 +37,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_rsearch.c	10.21 (Sleepycat) 12/2/98";
+static const char sccsid[] = "@(#)bt_rsearch.c	11.8 (Sleepycat) 10/21/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -69,12 +65,13 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	int stop, *exactp;
 {
 	BINTERNAL *bi;
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_LOCK lock;
 	PAGE *h;
 	RINTERNAL *ri;
 	db_indx_t indx, top;
+	db_lockmode_t lock_mode;
 	db_pgno_t pg;
 	db_recno_t i, recno, total;
 	int ret, stack;
@@ -99,13 +96,14 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	 *
 	 * Retrieve the root page.
 	 */
-	pg = PGNO_ROOT;
+	pg = ((BTREE *)dbp->bt_internal)->bt_root;
 	stack = LF_ISSET(S_STACK);
-	if ((ret = __bam_lget(dbc,
-	    0, pg, stack ? DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
+	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
 	if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
-		(void)__BT_LPUT(dbc, lock);
+		/* Did not read it, so we can release the lock */
+		(void)__LPUT(dbc, lock);
 		return (ret);
 	}
 
@@ -121,11 +119,13 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	    ((LF_ISSET(S_PARENT) && (u_int8_t)(stop + 1) >= h->level) ||
 	    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
 		(void)memp_fput(dbp->mpf, h, 0);
-		(void)__BT_LPUT(dbc, lock);
-		if ((ret = __bam_lget(dbc, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+		(void)__LPUT(dbc, lock);
+		lock_mode = DB_LOCK_WRITE;
+		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
 		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0) {
-			(void)__BT_LPUT(dbc, lock);
+			/* Did not read it, so we can release the lock */
+			(void)__LPUT(dbc, lock);
 			return (ret);
 		}
 		stack = 1;
@@ -154,8 +154,16 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 		else {
 			*exactp = 0;
 			if (!LF_ISSET(S_PAST_EOF) || recno > total + 1) {
+				/*
+				 * Keep the page locked for serializability.
+				 *
+				 * XXX
+				 * This leaves the root page locked, which will
+				 * eliminate any concurrency.  A possible fix
+				 * would be to lock the last leaf page instead.
+				 */
 				(void)memp_fput(dbp->mpf, h, 0);
-				(void)__BT_LPUT(dbc, lock);
+				(void)__TLPUT(dbc, lock);
 				return (DB_NOTFOUND);
 			}
 		}
@@ -198,7 +206,8 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			/* Correct from 1-based to 0-based for a page offset. */
 			--recno;
-			BT_STK_ENTER(cp, h, recno * P_INDX, lock, ret);
+			BT_STK_ENTER(cp,
+			    h, recno * P_INDX, lock, lock_mode, ret);
 			return (ret);
 		case P_IBTREE:
 			for (indx = 0, top = NUM_ENT(h);;) {
@@ -214,7 +223,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			/* Correct from 1-based to 0-based for a page offset. */
 			--recno;
-			BT_STK_ENTER(cp, h, recno, lock, ret);
+			BT_STK_ENTER(cp, h, recno, lock, lock_mode, ret);
 			return (ret);
 		case P_IRECNO:
 			for (indx = 0, top = NUM_ENT(h);;) {
@@ -233,15 +242,16 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 		if (stack) {
 			/* Return if this is the lowest page wanted. */
 			if (LF_ISSET(S_PARENT) && stop == h->level) {
-				BT_STK_ENTER(cp, h, indx, lock, ret);
+				BT_STK_ENTER(cp, h, indx, lock, lock_mode, ret);
 				return (ret);
 			}
-			BT_STK_PUSH(cp, h, indx, lock, ret);
+			BT_STK_PUSH(cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 
+			lock_mode = DB_LOCK_WRITE;
 			if ((ret =
-			    __bam_lget(dbc, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+			    __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 				goto err;
 		} else {
 			/*
@@ -256,10 +266,18 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			(void)memp_fput(dbp->mpf, h, 0);
 
+			lock_mode = stack &&
+			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
 			if ((ret =
-			    __bam_lget(dbc, 1, pg, stack && LF_ISSET(S_WRITE) ?
-			    DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+			    __db_lget(dbc, 1, pg, lock_mode, 0, &lock)) != 0) {
+				/*
+				 * If we fail, discard the lock we held.  This
+				 * is OK because this only happens when we are
+				 * descending the tree holding read-locks.
+				 */
+				__LPUT(dbc, lock);
 				goto err;
+			}
 		}
 
 		if ((ret = memp_fget(dbp->mpf, &pg, 0, &h)) != 0)
@@ -283,21 +301,23 @@ __bam_adjust(dbc, adjust)
 	DBC *dbc;
 	int32_t adjust;
 {
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	EPG *epg;
 	PAGE *h;
+	db_pgno_t root_pgno;
 	int ret;
 
 	dbp = dbc->dbp;
 	cp = dbc->internal;
+	root_pgno = ((BTREE *)dbp->bt_internal)->bt_root;
 
 	/* Update the record counts for the tree. */
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
 		h = epg->page;
 		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
 			if (DB_LOGGING(dbc) &&
-			    (ret = __bam_cadjust_log(dbp->dbenv->lg_info,
+			    (ret = __bam_cadjust_log(dbp->dbenv,
 			    dbc->txn, &LSN(h), 0, dbp->log_fileid,
 			    PGNO(h), &LSN(h), (u_int32_t)epg->indx,
 			    adjust, 1)) != 0)
@@ -308,7 +328,7 @@ __bam_adjust(dbc, adjust)
 			else
 				GET_RINTERNAL(h, epg->indx)->nrecs += adjust;
 
-			if (PGNO(h) == PGNO_ROOT)
+			if (PGNO(h) == root_pgno)
 				RE_NREC_ADJ(h, adjust);
 
 			if ((ret = memp_fset(dbp->mpf, h, DB_MPOOL_DIRTY)) != 0)
@@ -337,8 +357,8 @@ __bam_nrecs(dbc, rep)
 
 	dbp = dbc->dbp;
 
-	pgno = PGNO_ROOT;
-	if ((ret = __bam_lget(dbc, 0, pgno, DB_LOCK_READ, &lock)) != 0)
+	pgno = ((BTREE *)dbp->bt_internal)->bt_root;
+	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		return (ret);
 	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
 		return (ret);
@@ -346,7 +366,7 @@ __bam_nrecs(dbc, rep)
 	*rep = RE_NREC(h);
 
 	(void)memp_fput(dbp->mpf, h, 0);
-	(void)__BT_TLPUT(dbc, lock);
+	(void)__TLPUT(dbc, lock);
 
 	return (0);
 }

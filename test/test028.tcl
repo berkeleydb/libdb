@@ -1,49 +1,52 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test028.tcl	8.8 (Sleepycat) 12/5/98
+#	@(#)test028.tcl	11.6 (Sleepycat) 8/19/99
 #
 # Put after cursor delete test.
 proc test028 { method args } {
 	global dupnum
 	global dupstr
 	global alphabet
-	set omethod $method
-	set method [convert_method $method]
-	puts "Test028: $method put after cursor delete test"
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
+	global errorInfo
 	source ./include.tcl
 
-	if { [is_rbtree $omethod] == 1 } {
-		puts "Test028 skipping for method $omethod"
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
+
+	puts "Test028: $method put after cursor delete test"
+
+	if { [is_rbtree $method] == 1 } {
+		puts "Test028 skipping for method $method"
 		return
 	}
-	if { [string compare $method DB_RECNO] == 0 } {
-		set args [add_to_args 0 $args]
+	if { [is_record_based $method] == 1 } {
 		set key 10
 	} else {
-		set args [add_to_args $DB_DUP $args]
+		append args " -dup"
 		set key "put_after_cursor_del"
 	}
 
-
 	# Create the database and open the dictionary
-	set testfile test028.db
+	set testfile $testdir/test028.db
 	set t1 $testdir/t1
 	cleanup $testdir
-	set db [eval [concat dbopen \
-	    $testfile [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+	set db [eval {berkdb \
+	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set ndups 20
-	set txn 0
-	set flags 0
+	set txn ""
+	set pflags ""
+	set gflags ""
 
-	set dbc [$db cursor $txn]
+	if { [is_record_based $method] == 1 } {
+		set gflags " -recno"
+	}
+
+	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1
 
 	foreach i { offpage onpage } {
@@ -68,48 +71,55 @@ proc test028 { method args } {
 			puts "\tTest028: $i/$b"
 
 			puts "\tTest028.a: Insert key with single data item"
-			set ret [$db put $txn $key $dupstr $flags]
+			set ret [eval {$db put} \
+			    $txn $pflags {$key [chop_data $method $dupstr]}]
 			error_check_good db_put $ret 0
 
 			# Now let's get the item and make sure its OK.
 			puts "\tTest028.b: Check initial entry"
-			set ret [$db get $txn $key $flags]
-			error_check_good db_get $ret $dupstr
+			set ret [eval {$db get} $txn $gflags {$key}]
+			error_check_good db_get \
+			    $ret [list [list $key [pad_data $method $dupstr]]]
 
 			# Now try a put with NOOVERWRITE SET (should be error)
 			puts "\tTest028.c: No_overwrite test"
-			set ret [$db put $txn $key $dupstr $DB_NOOVERWRITE]
-			error_check_bad db_put $ret 0
+			set ret [eval {$db put} $txn \
+			    {-nooverwrite $key [chop_data $method $dupstr]}]
+			error_check_good \
+			    db_put [is_substr $ret "DB_KEYEXIST"] 1
 
 			# Now delete the item with a cursor
 			puts "\tTest028.d: Delete test"
-			set ret [$dbc get $key $DB_SET]
+			set ret [$dbc get -set $key]
 			error_check_bad dbc_get:SET [llength $ret] 0
 
-			set ret [$dbc del $flags]
+			set ret [$dbc del]
 			error_check_good dbc_del $ret 0
 
 			puts "\tTest028.e: Reput the item"
-			set ret [$db put $txn $key $dupstr $DB_NOOVERWRITE]
+			set ret [eval {$db put} $txn \
+			    {-nooverwrite $key [chop_data $method $dupstr]}]
 			error_check_good db_put $ret 0
 
 			puts "\tTest028.f: Retrieve the item"
-			set ret [$db get $txn $key $flags]
-			error_check_good db_get $ret $dupstr
+			set ret [eval {$db get} $txn $gflags {$key}]
+			error_check_good db_get $ret \
+			    [list [list $key [pad_data $method $dupstr]]]
 
 			# Delete the key to set up for next test
-			set ret [$db del $txn $key $flags]
+			set ret [eval {$db del} $txn {$key}]
 			error_check_good db_del $ret 0
 
 			# Now repeat the above set of tests with
 			# duplicates (if not RECNO).
-			if { [string compare $method DB_RECNO] == 0 } {
+			if { [is_record_based $method] == 1 } {
 				continue;
 			}
 
 			puts "\tTest028.g: Insert key with duplicates"
 			for { set count 0 } { $count < $ndups } { incr count } {
-				set ret [$db put $txn $key $count$dupstr $flags]
+			set ret [eval {$db put} \
+			    $txn {$key [chop_data $method $count$dupstr]}]
 				error_check_good db_put $ret 0
 			}
 
@@ -119,41 +129,46 @@ proc test028 { method args } {
 
 			# Try no_overwrite
 			puts "\tTest028.i: No_overwrite test"
-			set ret [$db put $txn $key $dupstr $DB_NOOVERWRITE]
-			error_check_bad db_put $ret 0
+			set ret [eval {$db put} \
+			    $txn {-nooverwrite $key $dupstr}]
+			error_check_good \
+			    db_put [is_substr $ret "DB_KEYEXIST"] 1
 
 			# Now delete all the elements with a cursor
 			puts "\tTest028.j: Cursor Deletes"
 			set count 0
-			for { set ret [$dbc get $key $DB_SET] } {
+			for { set ret [$dbc get -set $key] } {
 			    [string length $ret] != 0 } {
-			    set ret [$dbc get 0 $DB_NEXT] } {
-				set k [lindex $ret 0]
-				set d [lindex $ret 1]
+			    set ret [$dbc get -next] } {
+				set k [lindex [lindex $ret 0] 0]
+				set d [lindex [lindex $ret 0] 1]
 				error_check_good db_seq(key) $k $key
 				error_check_good db_seq(data) $d $count$dupstr
-				set ret [$dbc del 0]
+				set ret [$dbc del]
 				error_check_good dbc_del $ret 0
 				incr count
 				if { $count == [expr $ndups - 1] } {
 					puts "\tTest028.k:\
 						Duplicate No_Overwrite test"
-					set ret [$db put $txn $key $dupstr \
-					    $DB_NOOVERWRITE]
-					error_check_bad db_put $ret 0
+					set $errorInfo ""
+					set ret [eval {$db put} $txn \
+					    {-nooverwrite $key $dupstr}]
+					error_check_good db_put [is_substr \
+					    $ret "DB_KEYEXIST"] 1
 				}
 			}
 
 			# Make sure all the items are gone
 			puts "\tTest028.l: Get after delete"
-			set ret [$dbc get $key $DB_SET]
+			set ret [$dbc get -set $key]
 			error_check_good get_after_del [string length $ret] 0
 
 			puts "\tTest028.m: Reput the item"
-			set ret [$db put $txn $key 0$dupstr $DB_NOOVERWRITE]
+			set ret [eval {$db put} \
+			    $txn {-nooverwrite $key 0$dupstr}]
 			error_check_good db_put $ret 0
 			for { set count 1 } { $count < $ndups } { incr count } {
-				set ret [$db put $txn $key $count$dupstr $flags]
+			set ret [eval {$db put} $txn {$key $count$dupstr}]
 				error_check_good db_put $ret 0
 			}
 
@@ -162,7 +177,7 @@ proc test028 { method args } {
 			dump_file $db $txn $t1 test028.check
 
 			# Clean out in prep for next test
-			set ret [$db del $txn $key 0]
+			set ret [eval {$db del} $txn {$key}]
 			error_check_good db_del $ret 0
 		}
 	}

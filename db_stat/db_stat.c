@@ -1,57 +1,75 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_stat.c	8.41 (Sleepycat) 10/3/98";
+static const char sccsid[] = "@(#)db_stat.c	11.2 (Sleepycat) 9/14/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+
 #include <ctype.h>
-#include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
+#include "db_page.h"
 #include "db_shash.h"
 #include "lock.h"
 #include "mp.h"
-#include "clib_ext.h"
 
-typedef enum { T_NOTSET, T_DB, T_LOCK, T_LOG, T_MPOOL, T_TXN } test_t;
+#define	PCT(f, t, pgsize)						\
+    ((t) == 0 ? 0 :							\
+    (((double)(((t) * (pgsize)) - (f)) / ((t) * (pgsize))) * 100))
 
-int	argcheck __P((char *, const char *));
-void	btree_stats __P((DB *));
-DB_ENV *db_init __P((char *, test_t));
-void	dl __P((const char *, u_long));
-void	hash_stats __P((DB *));
-int	lock_ok __P((char *));
-void	lock_stats __P((DB_ENV *));
-void	log_stats __P((DB_ENV *));
-int	main __P((int, char *[]));
-int	mpool_ok __P((char *));
-void	mpool_stats __P((DB_ENV *));
-void	nosig __P((void));
-void	prflags __P((u_int32_t, const FN *));
-int	txn_compare __P((const void *, const void *));
-void	txn_stats __P((DB_ENV *));
-void	usage __P((void));
+typedef enum { T_NOTSET, T_DB, T_ENV, T_LOCK, T_LOG, T_MPOOL, T_TXN } test_t;
 
+int	 argcheck __P((char *, const char *));
+int	 btree_stats __P((DB_ENV *, DB *));
+int	 db_init __P((char *, test_t));
+void	 dl __P((const char *, u_long));
+void	 dl_bytes __P((const char *, u_long, u_long, u_long));
+int	 env_stats __P((DB_ENV *));
+int	 hash_stats __P((DB_ENV *, DB *));
+int	 lock_ok __P((char *));
+int	 lock_stats __P((DB_ENV *));
+int	 log_stats __P((DB_ENV *));
+int	 main __P((int, char *[]));
+int	 mpool_ok __P((char *));
+int	 mpool_stats __P((DB_ENV *));
+void	 onint __P((int));
+void	 prflags __P((u_int32_t, const FN *));
+int	 queue_stats __P((DB_ENV *, DB *));
+void	 siginit __P((void));
+int	 txn_compare __P((const void *, const void *));
+int	 txn_stats __P((DB_ENV *));
+void	 usage __P((void));
+
+DB_ENV	*dbenv;
+int	 interrupted;
 char	*internal;
 const char
 	*progname = "db_stat";				/* Program name. */
@@ -64,14 +82,15 @@ main(argc, argv)
 	extern char *optarg;
 	extern int optind;
 	DB *dbp;
-	DB_ENV *dbenv;
 	test_t ttype;
-	int ch;
-	char *db, *home;
+	int ch, d_close, e_close, exitval, Nflag, ret;
+	char *db, *home, *subdb;
 
+	dbp = NULL;
 	ttype = T_NOTSET;
-	db = home = NULL;
-	while ((ch = getopt(argc, argv, "C:cd:h:lM:mNt")) != EOF)
+	d_close = e_close = exitval = Nflag = 0;
+	db = home = subdb = NULL;
+	while ((ch = getopt(argc, argv, "C:cd:eh:lM:mNs:t")) != EOF)
 		switch (ch) {
 		case 'C':
 			ttype = T_LOCK;
@@ -84,6 +103,9 @@ main(argc, argv)
 		case 'd':
 			db = optarg;
 			ttype = T_DB;
+			break;
+		case 'e':
+			ttype = T_ENV;
 			break;
 		case 'h':
 			home = optarg;
@@ -100,7 +122,11 @@ main(argc, argv)
 			ttype = T_MPOOL;
 			break;
 		case 'N':
-			(void)db_value_set(0, DB_MUTEXLOCKS);
+			Nflag = 1;
+			break;
+		case 's':
+			subdb = optarg;
+			ttype = T_DB;
 			break;
 		case 't':
 			ttype = T_TXN;
@@ -112,58 +138,193 @@ main(argc, argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 0 || ttype == T_NOTSET)
+	switch (ttype) {
+	case T_DB:
+		if (db == NULL)
+			usage();
+		break;
+	case T_NOTSET:
 		usage();
+		/* NOTREACHED */
+	default:
+		break;
+	}
+
+	/* Handle possible interruptions. */
+	siginit();
 
 	/*
-	 * Ignore signals -- we don't want to be interrupted because we're
-	 * spending all of our time in the DB library.
+	 * Create an environment object and initialize it for error
+	 * reporting.
 	 */
-	nosig();
-	dbenv = db_init(home, ttype);
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		fprintf(stderr,
+		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
+		exit (1);
+	}
+	dbenv->set_errfile(dbenv, stderr);
+	dbenv->set_errpfx(dbenv, progname);
+
+	/* Optionally turn mutexes and the panic checks off. */
+	if (Nflag) {
+		if ((ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_mutexlocks");
+			goto shutdown;
+		}
+		if ((ret = dbenv->set_panic(dbenv, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_panic");
+			goto shutdown;
+		}
+	}
+
+	/* Initialize the environment. */
+	if (db_init(home, ttype) != 0)
+		goto shutdown;
+	e_close = 1;
 
 	switch (ttype) {
 	case T_DB:
-		if ((errno = db_open(db, DB_UNKNOWN,
-		    DB_RDONLY, 0, dbenv, NULL, &dbp)) != 0) {
-			warn("%s", db);
-			return (1);
+		/* Create the DB object and open the file. */
+		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
+			dbenv->err(dbenv, ret, "db_create");
+			goto shutdown;
 		}
+		if ((ret =
+		    dbp->open(dbp, db, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
+			dbp->err(dbp, ret, "open: %s", db);
+			goto shutdown;
+		}
+		d_close = 1;
 		switch (dbp->type) {
 		case DB_BTREE:
 		case DB_RECNO:
-			btree_stats(dbp);
+			if (btree_stats(dbenv, dbp))
+				goto shutdown;
 			break;
 		case DB_HASH:
-			hash_stats(dbp);
+			if (hash_stats(dbenv, dbp))
+				goto shutdown;
+			break;
+		case DB_QUEUE:
+			if (queue_stats(dbenv, dbp))
+				goto shutdown;
 			break;
 		case DB_UNKNOWN:
 			abort();		/* Impossible. */
 			/* NOTREACHED */
 		}
-		(void)dbp->close(dbp, 0);
+		break;
+	case T_ENV:
+		if (env_stats(dbenv))
+			exitval = 1;
 		break;
 	case T_LOCK:
-		lock_stats(dbenv);
+		if (lock_stats(dbenv))
+			exitval = 1;
 		break;
 	case T_LOG:
-		log_stats(dbenv);
+		if (log_stats(dbenv))
+			exitval = 1;
 		break;
 	case T_MPOOL:
-		mpool_stats(dbenv);
+		if (mpool_stats(dbenv))
+			exitval = 1;
 		break;
 	case T_TXN:
-		txn_stats(dbenv);
+		if (txn_stats(dbenv))
+			exitval = 1;
 		break;
 	case T_NOTSET:
 		abort();			/* Impossible. */
 		/* NOTREACHED */
 	}
 
-	if ((errno = db_appexit(dbenv)) != 0) {
-		warn(NULL);
+	if (0) {
+shutdown:	exitval = 1;
+	}
+	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
+		exitval = 1;
+		dbp->err(dbp, ret, "close");
+	}
+	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
+		exitval = 1;
+		fprintf(stderr,
+		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
+	}
+
+	if (interrupted) {
+		(void)signal(interrupted, SIG_DFL);
+		(void)raise(interrupted);
+		/* NOTREACHED */
+	}
+
+	return (exitval);
+}
+
+/*
+ * env_stats --
+ *	Display environment statistics.
+ */
+int
+env_stats(dbenvp)
+	DB_ENV *dbenvp;
+{
+	REGENV renv;
+	REGION *rp, regs[1024];
+	int n, ret;
+	const char *lable;
+
+	n = sizeof(regs) / sizeof(regs[0]);
+	if ((ret = __db_e_stat(dbenvp, &renv, regs, &n)) != 0)  {
+		dbenvp->err(dbenvp, ret, "__db_e_stat");
 		return (1);
 	}
+
+	printf("%d.%d.%d\tEnvironment version.\n",
+	    renv.majver, renv.minver, renv.patch);
+	printf("%lx\tMagic number.\n", (u_long)renv.magic);
+	printf("%d\tPanic value.\n", renv.panic);
+
+	/* Adjust the reference count for us... */
+	printf("%d\tReferences.\n", renv.refcnt - 1);
+
+	dl("Locks granted without waiting.\n",
+	    (u_long)renv.mutex.mutex_set_nowait);
+	dl("Locks granted after waiting.\n",
+	    (u_long)renv.mutex.mutex_set_wait);
+
+	while (n > 0) {
+		printf("%s\n", DB_LINE);
+		rp = &regs[--n];
+		switch (rp->id) {
+		case REG_ID_ENV:
+			lable = "Environment";
+			break;
+		case REG_ID_LOCK:
+			lable = "Lock";
+			break;
+		case REG_ID_LOG:
+			lable = "Log";
+			break;
+		case REG_ID_MPOOL:
+			lable = "Mpool";
+			break;
+		case REG_ID_TXN:
+			lable = "Txn";
+			break;
+		default:
+			lable = "Unknown";
+			break;
+		}
+		printf("%s Region: %d.\n", lable, rp->id);
+		dl_bytes("Size.\n", (u_long)0, (u_long)0, (u_long)rp->size);
+		printf("%d\tSegment ID.\n", rp->segid);
+		dl("Locks granted without waiting.\n",
+		    (u_long)rp->mutex.mutex_set_nowait);
+		dl("Locks granted after waiting.\n",
+		    (u_long)rp->mutex.mutex_set_wait);
+	}
+
 	return (0);
 }
 
@@ -171,29 +332,33 @@ main(argc, argv)
  * btree_stats --
  *	Display btree/recno statistics.
  */
-void
-btree_stats(dbp)
+int
+btree_stats(dbenvp, dbp)
+	DB_ENV *dbenvp;
 	DB *dbp;
 {
 	static const FN fn[] = {
-		{ DB_DUP,	"DB_DUP" },
-		{ DB_FIXEDLEN,	"DB_FIXEDLEN" },
-		{ DB_RECNUM,	"DB_RECNUM" },
-		{ DB_RENUMBER,	"DB_RENUMBER" },
-		{ 0 }
+		{ BTM_DUP,	"duplicates" },
+		{ BTM_FIXEDLEN,	"fixed-length" },
+		{ BTM_RECNO,	"recno" },
+		{ BTM_RECNUM,	"record-numbers" },
+		{ BTM_RENUMBER,	"renumber" },
+		{ BTM_SUBDB,	"subdatabases" },
+		{ 0,		NULL }
 	};
 	DB_BTREE_STAT *sp;
+	int ret;
 
-	if (dbp->stat(dbp, &sp, NULL, 0))
-		err(1, "dbp->stat");
+	COMPQUIET(dbenvp, NULL);
 
-#define	PCT(f, t)							\
-    (t == 0 ? 0 :							\
-    (((double)((t * sp->bt_pagesize) - f) / (t * sp->bt_pagesize)) * 100))
+	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+		dbp->err(dbp, ret, "dbp->stat");
+		return (1);
+	}
 
-	printf("%#lx\tBtree magic number.\n", (u_long)sp->bt_magic);
+	printf("%lx\tBtree magic number.\n", (u_long)sp->bt_magic);
 	printf("%lu\tBtree version number.\n", (u_long)sp->bt_version);
-	prflags(sp->bt_flags, fn);
+	prflags(sp->bt_metaflags, fn);
 	if (dbp->type == DB_BTREE) {
 #ifdef NOT_IMPLEMENTED
 		dl("Maximum keys per-page.\n", (u_long)sp->bt_maxkey);
@@ -209,95 +374,199 @@ btree_stats(dbp)
 			printf("0x%x\tFixed-length record pad.\n",
 			    (int)sp->bt_re_pad);
 	}
-	dl("Underlying tree page size.\n", (u_long)sp->bt_pagesize);
+	dl("Underlying database page size.\n", (u_long)sp->bt_pagesize);
 	dl("Number of levels in the tree.\n", (u_long)sp->bt_levels);
 	dl("Number of keys in the tree.\n", (u_long)sp->bt_nrecs);
+
 	dl("Number of tree internal pages.\n", (u_long)sp->bt_int_pg);
-	dl("Number of tree leaf pages.\n", (u_long)sp->bt_leaf_pg);
-	dl("Number of tree duplicate pages.\n", (u_long)sp->bt_dup_pg);
-	dl("Number of tree overflow pages.\n", (u_long)sp->bt_over_pg);
-	dl("Number of pages on the free list.\n", (u_long)sp->bt_free);
 	dl("Number of bytes free in tree internal pages",
 	    (u_long)sp->bt_int_pgfree);
-	printf(" (%.0f%% ff).\n", PCT(sp->bt_int_pgfree, sp->bt_int_pg));
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->bt_int_pgfree, sp->bt_int_pg, sp->bt_pagesize));
+
+	dl("Number of tree leaf pages.\n", (u_long)sp->bt_leaf_pg);
 	dl("Number of bytes free in tree leaf pages",
 	    (u_long)sp->bt_leaf_pgfree);
-	printf(" (%.0f%% ff).\n", PCT(sp->bt_leaf_pgfree, sp->bt_leaf_pg));
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->bt_leaf_pgfree, sp->bt_leaf_pg, sp->bt_pagesize));
+
+	dl("Number of tree duplicate pages.\n", (u_long)sp->bt_dup_pg);
 	dl("Number of bytes free in tree duplicate pages",
 	    (u_long)sp->bt_dup_pgfree);
-	printf(" (%.0f%% ff).\n", PCT(sp->bt_dup_pgfree, sp->bt_dup_pg));
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->bt_dup_pgfree, sp->bt_dup_pg, sp->bt_pagesize));
+
+	dl("Number of tree overflow pages.\n", (u_long)sp->bt_over_pg);
 	dl("Number of bytes free in tree overflow pages",
 	    (u_long)sp->bt_over_pgfree);
-	printf(" (%.0f%% ff).\n", PCT(sp->bt_over_pgfree, sp->bt_over_pg));
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->bt_over_pgfree, sp->bt_over_pg, sp->bt_pagesize));
+
+	dl("Number of pages on the free list.\n", (u_long)sp->bt_free);
+
+	return (0);
 }
 
 /*
  * hash_stats --
  *	Display hash statistics.
  */
-void
-hash_stats(dbp)
+int
+hash_stats(dbenvp, dbp)
+	DB_ENV *dbenvp;
 	DB *dbp;
 {
-	COMPQUIET(dbp, NULL);
+	static const FN fn[] = {
+		{ DB_HASH_DUP,	"duplicates" },
+		{ DB_HASH_SUBDB,"subdatabases" },
+		{ 0,		NULL }
+	};
+	DB_HASH_STAT *sp;
+	int ret;
 
-	printf("Hash statistics not currently available.\n");
-	return;
+	COMPQUIET(dbenvp, NULL);
+
+	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+		dbp->err(dbp, ret, "dbp->stat");
+		return (1);
+	}
+
+	printf("%lx\tHash magic number.\n", (u_long)sp->hash_magic);
+	printf("%lu\tHash version number.\n", (u_long)sp->hash_version);
+	prflags(sp->hash_metaflags, fn);
+	dl("Underlying database page size.\n", (u_long)sp->hash_pagesize);
+	dl("Number of keys in the database.\n", (u_long)sp->hash_nrecs);
+
+	dl("Number of hash buckets.\n", (u_long)sp->hash_buckets);
+	dl("Number of bytes free on bucket pages", (u_long)sp->hash_bfree);
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->hash_bfree, sp->hash_buckets, sp->hash_pagesize));
+
+	dl("Number of overflow pages.\n", (u_long)sp->hash_bigpages);
+	dl("Number of bytes free in overflow pages",
+	    (u_long)sp->hash_big_bfree);
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->hash_big_bfree, sp->hash_bigpages, sp->hash_pagesize));
+
+	dl("Number of bucket overflow pages.\n", (u_long)sp->hash_overflows);
+	dl("Number of bytes free in bucket overflow pages",
+	    (u_long)sp->hash_ovfl_free);
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->hash_ovfl_free, sp->hash_overflows, sp->hash_pagesize));
+
+	dl("Number of duplicate pages.\n", (u_long)sp->hash_dup);
+	dl("Number of bytes free in duplicate pages",
+	    (u_long)sp->hash_dup_free);
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->hash_dup_free, sp->hash_dup, sp->hash_pagesize));
+
+	dl("Number of pages on the free list.\n", (u_long)sp->hash_free);
+
+	return (0);
+}
+
+/*
+ * queue_stats --
+ *	Display queue statistics.
+ */
+int
+queue_stats(dbenvp, dbp)
+	DB_ENV *dbenvp;
+	DB *dbp;
+{
+	DB_QUEUE_STAT *sp;
+	int ret;
+
+	COMPQUIET(dbenvp, NULL);
+
+	if ((ret = dbp->stat(dbp, &sp, NULL, 0)) != 0) {
+		dbp->err(dbp, ret, "dbp->stat");
+		return (1);
+	}
+
+	printf("%lx\tQueue magic number.\n", (u_long)sp->qs_magic);
+	printf("%lu\tQueue version number.\n", (u_long)sp->qs_version);
+	dl("Fixed-length record size.\n", (u_long)sp->qs_re_len);
+	if (isprint(sp->qs_re_pad))
+		printf("%c\tFixed-length record pad.\n", (int)sp->qs_re_pad);
+	else
+		printf("0x%x\tFixed-length record pad.\n", (int)sp->qs_re_pad);
+	dl("Underlying tree page size.\n", (u_long)sp->qs_pagesize);
+	dl("Number of records in the database.\n", (u_long)sp->qs_nrecs);
+	dl("Number of database pages.\n", (u_long)sp->qs_pages);
+	dl("Number of bytes free in database pages", (u_long)sp->qs_pgfree);
+	printf(" (%.0f%% ff).\n",
+	    PCT(sp->qs_pgfree, sp->qs_pages, sp->qs_pagesize));
+	printf("%lu\tFirst undeleted record.\n", (u_long)sp->qs_first_recno);
+	printf(
+	    "%lu\tLast allocated record number.\n", (u_long)sp->qs_cur_recno);
+	printf("%lu\tStart offset.\n", (u_long)sp->qs_start);
+
+	return (0);
 }
 
 /*
  * lock_stats --
  *	Display lock statistics.
  */
-void
-lock_stats(dbenv)
-	DB_ENV *dbenv;
+int
+lock_stats(dbenvp)
+	DB_ENV *dbenvp;
 {
 	DB_LOCK_STAT *sp;
+	int ret;
 
 	if (internal != NULL) {
-		__lock_dump_region(dbenv->lk_info, internal, stdout);
-		return;
+		__lock_dump_region(dbenvp, internal, stdout);
+		return (0);
 	}
 
-	if (lock_stat(dbenv->lk_info, &sp, NULL))
-		err(1, NULL);
+	if ((ret = lock_stat(dbenvp, &sp, NULL)) != 0) {
+		dbenvp->err(dbenvp, ret, NULL);
+		return (1);
+	}
 
-	printf("%#lx\tLock magic number.\n", (u_long)sp->st_magic);
-	printf("%lu\tLock version number.\n", (u_long)sp->st_version);
-	dl("Lock region reference count.\n", (u_long)sp->st_refcnt);
-	dl("Lock region size.\n", (u_long)sp->st_regsize);
-	dl("Maximum number of locks.\n", (u_long)sp->st_maxlocks);
+	dl("Last allocated locker ID.\n", (u_long)sp->st_lastid);
 	dl("Number of lock modes.\n", (u_long)sp->st_nmodes);
-	dl("Number of lock objects.\n", (u_long)sp->st_numobjs);
-	dl("Number of lockers.\n", (u_long)sp->st_nlockers);
-	dl("Number of lock conflicts.\n", (u_long)sp->st_nconflicts);
+	dl("Maximum number of locks possible.\n", (u_long)sp->st_maxlocks);
+	dl("Current lockers.\n", (u_long)sp->st_nlockers);
+	dl("Maximum current lockers.\n", (u_long)sp->st_nlockers);
 	dl("Number of lock requests.\n", (u_long)sp->st_nrequests);
 	dl("Number of lock releases.\n", (u_long)sp->st_nreleases);
+	dl("Number of lock conflicts.\n", (u_long)sp->st_nconflicts);
 	dl("Number of deadlocks.\n", (u_long)sp->st_ndeadlocks);
+	dl_bytes("Lock region size.\n",
+	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
 	dl("The number of region locks granted without waiting.\n",
 	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
+
+	return (0);
 }
 
 /*
  * log_stats --
  *	Display log statistics.
  */
-void
-log_stats(dbenv)
-	DB_ENV *dbenv;
+int
+log_stats(dbenvp)
+	DB_ENV *dbenvp;
 {
 	DB_LOG_STAT *sp;
+	int ret;
 
-	if (log_stat(dbenv->lg_info, &sp, NULL))
-		err(1, NULL);
+	if ((ret = log_stat(dbenvp, &sp, NULL)) != 0) {
+		dbenvp->err(dbenvp, ret, NULL);
+		return (1);
+	}
 
-	printf("%#lx\tLog magic number.\n", (u_long)sp->st_magic);
+	printf("%lx\tLog magic number.\n", (u_long)sp->st_magic);
 	printf("%lu\tLog version number.\n", (u_long)sp->st_version);
-	dl("Log region reference count.\n", (u_long)sp->st_refcnt);
-	dl("Log region size.\n", (u_long)sp->st_regsize);
+	dl_bytes("Log region size.\n",
+	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
+	dl_bytes("Log record cache size.\n",
+	    (u_long)0, (u_long)0, (u_long)sp->st_lg_bsize);
 	printf("%#o\tLog file mode.\n", sp->st_mode);
 	if (sp->st_lg_max % MEGABYTE == 0)
 		printf("%luMb\tLog file size.\n",
@@ -306,11 +575,13 @@ log_stats(dbenv)
 		printf("%luKb\tLog file size.\n", (u_long)sp->st_lg_max / 1024);
 	else
 		printf("%lu\tLog file size.\n", (u_long)sp->st_lg_max);
-	printf("%luMb\tLog bytes written (+%lu bytes).\n",
-	    (u_long)sp->st_w_mbytes, (u_long)sp->st_w_bytes);
-	printf("%luMb\tLog bytes written since last checkpoint (+%lu bytes).\n",
-	    (u_long)sp->st_wc_mbytes, (u_long)sp->st_wc_bytes);
+	dl_bytes("Log bytes written.\n",
+	    (u_long)0, (u_long)sp->st_w_mbytes, (u_long)sp->st_w_bytes);
+	dl_bytes("Log bytes written since last checkpoint.\n",
+	    (u_long)0, (u_long)sp->st_wc_mbytes, (u_long)sp->st_wc_bytes);
 	dl("Total log file writes.\n", (u_long)sp->st_wcount);
+	dl("Total log file write due to overflow.\n",
+	    (u_long)sp->st_wcount_fill);
 	dl("Total log file flushes.\n", (u_long)sp->st_scount);
 	printf("%lu\tCurrent log file number.\n", (u_long)sp->st_cur_file);
 	printf("%lu\tCurrent log file offset.\n", (u_long)sp->st_cur_offset);
@@ -318,31 +589,35 @@ log_stats(dbenv)
 	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
+
+	return (0);
 }
 
 /*
  * mpool_stats --
  *	Display mpool statistics.
  */
-void
-mpool_stats(dbenv)
-	DB_ENV *dbenv;
+int
+mpool_stats(dbenvp)
+	DB_ENV *dbenvp;
 {
 	DB_MPOOL_FSTAT **fsp;
 	DB_MPOOL_STAT *gsp;
+	int ret;
 
 	if (internal != NULL) {
-		__memp_dump_region(dbenv->mp_info, internal, stdout);
-		return;
+		__memp_dump_region(dbenvp, internal, stdout);
+		return (1);
 	}
 
-	if (memp_stat(dbenv->mp_info, &gsp, &fsp, NULL))
-		err(1, NULL);
+	if ((ret = memp_stat(dbenvp, &gsp, &fsp, NULL)) != 0) {
+		dbenvp->err(dbenvp, ret, NULL);
+		return (1);
+	}
 
-	dl("Pool region reference count.\n", (u_long)gsp->st_refcnt);
 	dl("Pool region size.\n", (u_long)gsp->st_regsize);
-	dl("Cache size", (u_long)gsp->st_cachesize);
-	printf(" (%luK).\n", (u_long)gsp->st_cachesize / 1024);
+	dl_bytes("Cache size.\n",
+	    (u_long)gsp->st_gbytes, (u_long)0, (u_long)gsp->st_bytes);
 	dl("Requested pages found in the cache", (u_long)gsp->st_cache_hit);
 	if (gsp->st_cache_hit + gsp->st_cache_miss != 0)
 		printf(" (%.0f%%)", ((double)gsp->st_cache_hit /
@@ -381,7 +656,7 @@ mpool_stats(dbenv)
 
 	for (; fsp != NULL && *fsp != NULL; ++fsp) {
 		printf("%s\n", DB_LINE);
-		printf("%s\n", (*fsp)->file_name);
+		printf("Pool File: %s\n", (*fsp)->file_name);
 		dl("Page size.\n", (u_long)(*fsp)->st_pagesize);
 		dl("Requested pages found in the cache",
 		    (u_long)(*fsp)->st_cache_hit);
@@ -401,25 +676,28 @@ mpool_stats(dbenv)
 		dl("Pages written from the cache to the backing file.\n",
 		    (u_long)(*fsp)->st_page_out);
 	}
+
+	return (0);
 }
 
 /*
  * txn_stats --
  *	Display transaction statistics.
  */
-void
-txn_stats(dbenv)
-	DB_ENV *dbenv;
+int
+txn_stats(dbenvp)
+	DB_ENV *dbenvp;
 {
 	DB_TXN_STAT *sp;
 	u_int32_t i;
+	int ret;
 	const char *p;
 
-	if (txn_stat(dbenv->tx_info, &sp, NULL))
-		err(1, NULL);
+	if ((ret = txn_stat(dbenvp, &sp, NULL)) != 0) {
+		dbenvp->err(dbenvp, ret, NULL);
+		return (1);
+	}
 
-	dl("Txn region reference count.\n", (u_long)sp->st_refcnt);
-	dl("Txn region size.\n", (u_long)sp->st_regsize);
 	p = sp->st_last_ckp.file == 0 ?
 	    "No checkpoint LSN." : "File/offset for last checkpoint LSN.";
 	printf("%lu/%lu\t%s\n",
@@ -437,15 +715,19 @@ txn_stats(dbenv)
 		    ctime(&sp->st_time_ckp));
 	printf("%lx\tLast transaction ID allocated.\n",
 	    (u_long)sp->st_last_txnid);
-	dl("Maximum number of active transactions.\n", (u_long)sp->st_maxtxns);
+	dl("Maximum number of active transactions possible.\n",
+	    (u_long)sp->st_maxtxns);
+	dl("Active transactions.\n", (u_long)sp->st_nactive);
+	dl("Maximum active transactions.\n", (u_long)sp->st_maxnactive);
 	dl("Number of transactions begun.\n", (u_long)sp->st_nbegins);
 	dl("Number of transactions aborted.\n", (u_long)sp->st_naborts);
 	dl("Number of transactions committed.\n", (u_long)sp->st_ncommits);
+	dl_bytes("Transaction region size.\n",
+	    (u_long)0, (u_long)0, (u_long)sp->st_regsize);
 	dl("The number of region locks granted without waiting.\n",
 	    (u_long)sp->st_region_nowait);
 	dl("The number of region locks granted after waiting.\n",
 	    (u_long)sp->st_region_wait);
-	dl("Active transactions.\n", (u_long)sp->st_nactive);
 	qsort(sp->st_txnarray,
 	    sp->st_nactive, sizeof(sp->st_txnarray[0]), txn_compare);
 	for (i = 0; i < sp->st_nactive; ++i)
@@ -453,6 +735,8 @@ txn_stats(dbenv)
 		    (u_long)sp->st_txnarray[i].txnid,
 		    (u_long)sp->st_txnarray[i].lsn.file,
 		    (u_long)sp->st_txnarray[i].lsn.offset);
+
+	return (0);
 }
 
 int
@@ -491,6 +775,45 @@ dl(msg, value)
 }
 
 /*
+ * dl_bytes --
+ *	Display a big number of bytes.
+ */
+void
+dl_bytes(msg, gbytes, mbytes, bytes)
+	const char *msg;
+	u_long gbytes, mbytes, bytes;
+{
+	const char *sep;
+
+	while (bytes > MEGABYTE) {
+		++mbytes;
+		bytes -= MEGABYTE;
+	}
+	while (mbytes > GIGABYTE / MEGABYTE) {
+		++gbytes;
+		--mbytes;
+	}
+
+	sep = "";
+	if (gbytes > 0) {
+		printf("%luGB", gbytes);
+		sep = " ";
+	}
+	if (mbytes > 0) {
+		printf("%s%luMB", sep, bytes);
+		sep = " ";
+	}
+	if (bytes > 1024) {
+		printf("%s%luKB", sep, bytes / 1024);
+		bytes %= 1024;
+		sep = " ";
+	}
+	if (bytes > 0)
+		printf("%s%lu", sep, bytes);
+	printf("\t%s", msg);
+}
+
+/*
  * prflags --
  *	Print out flag values.
  */
@@ -501,7 +824,7 @@ prflags(flags, fnp)
 {
 	const char *sep;
 
-	sep = " ";
+	sep = "\t";
 	printf("Flags:");
 	for (; fnp->mask != 0; ++fnp)
 		if (fnp->mask & flags) {
@@ -515,27 +838,23 @@ prflags(flags, fnp)
  * db_init --
  *	Initialize the environment.
  */
-DB_ENV *
+int
 db_init(home, ttype)
 	char *home;
 	test_t ttype;
 {
-	DB_ENV *dbenv;
 	u_int32_t flags;
-
-	if ((dbenv = (DB_ENV *)malloc(sizeof(DB_ENV))) == NULL) {
-		errno = ENOMEM;
-		err(1, NULL);
-	}
+	int ret;
 
 	/*
-	 * Try and use the shared regions when reporting statistics on the
-	 * DB databases, so our information is as up-to-date as possible,
-	 * even if the mpool cache hasn't been flushed.  If that fails, we
-	 * turn off the DB_INIT_MPOOL flag and try again.
+	 * Try and use the shared memory pool region when reporting statistics
+	 * on the DB databases, so our information is as up-to-date as possible,
+	 * even if the mpool cache hasn't been flushed.
 	 */
 	flags = DB_USE_ENVIRON;
 	switch (ttype) {
+	case T_ENV:
+		break;
 	case T_DB:
 	case T_MPOOL:
 		LF_SET(DB_INIT_MPOOL);
@@ -555,30 +874,36 @@ db_init(home, ttype)
 	}
 
 	/*
-	 * If it works, we're done.  Set the error output options so that
-	 * future errors are correctly reported.
+	 * If that fails, and we're trying to look at a shared region, it's
+	 * a hard failure.
 	 */
-	memset(dbenv, 0, sizeof(*dbenv));
-	if ((errno = db_appinit(home, NULL, dbenv, flags)) == 0) {
-		dbenv->db_errfile = stderr;
-		dbenv->db_errpfx = progname;
-		return (dbenv);
+	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) == 0)
+		return (0);
+	if (ttype != T_DB) {
+		dbenv->err(dbenv, ret, "open");
+		return (1);
 	}
 
-	/* Turn off the DB_INIT_MPOOL flag if it's a database. */
-	if (ttype == T_DB)
-		LF_CLR(DB_INIT_MPOOL);
+	/*
+	 * We're trying to look at a database.
+	 *
+	 * An environment is required because we may be trying to look at
+	 * databases in directories other than the current one.  We could
+	 * avoid using an environment iff the -h option wasn't specified,
+	 * but that seems like more work than it's worth.
+	 *
+	 *
+	 * No environment exists (or, at least no environment that includes
+	 * an mpool region exists).  Create one, but make it private so that
+	 * no files are actually created.
+	 */
+	LF_SET(DB_CREATE | DB_PRIVATE);
+	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) == 0)
+		return (0);
 
-	/* Set the error output options -- this time we want a message. */
-	memset(dbenv, 0, sizeof(*dbenv));
-	dbenv->db_errfile = stderr;
-	dbenv->db_errpfx = progname;
-
-	/* Try again, and it's fatal if we fail. */
-	if ((errno = db_appinit(home, NULL, dbenv, flags)) != 0)
-		err(1, "db_appinit");
-
-	return (dbenv);
+	/* An environment is required. */
+	dbenv->err(dbenv, ret, "open");
+	return (1);
 }
 
 /*
@@ -597,23 +922,40 @@ argcheck(arg, ok_args)
 }
 
 /*
- * nosig --
- *	We don't want to be interrupted.
+ * siginit --
+ *	Initialize the set of signals for which we want to clean up.
+ *	Generally, we try not to leave the shared regions locked if
+ *	we can.
  */
 void
-nosig()
+siginit()
 {
 #ifdef SIGHUP
-	(void)signal(SIGHUP, SIG_IGN);
+	(void)signal(SIGHUP, onint);
 #endif
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGTERM, SIG_IGN);
+	(void)signal(SIGINT, onint);
+#ifdef SIGPIPE
+	(void)signal(SIGPIPE, onint);
+#endif
+	(void)signal(SIGTERM, onint);
+}
+
+/*
+ * onint --
+ *	Interrupt signal handler.
+ */
+void
+onint(signo)
+	int signo;
+{
+	if ((interrupted = signo) == 0)
+		interrupted = SIGINT;
 }
 
 void
 usage()
 {
 	fprintf(stderr,
-    "usage: db_stat [-clmNt] [-C Acflmo] [-d file] [-h home] [-M Ahlm]\n");
+"usage: db_stat [-celmNt] [-C Acflmo] [-d file [-s file]] [-h home] [-M Ahlm]\n");
 	exit (1);
 }

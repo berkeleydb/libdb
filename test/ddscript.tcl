@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)ddscript.tcl	10.2 (Sleepycat) 4/10/98
+#	@(#)ddscript.tcl	11.3 (Sleepycat) 9/21/99
 #
 # Deadlock detector script tester.
 # Usage: ddscript dir test lockerid objid numprocs
@@ -12,8 +12,10 @@
 # lockerid: Lock id for this locker
 # objid: Object id to lock.
 # numprocs: Total number of processes running
-source ../test/testutils.tcl
+
 source ./include.tcl
+source $test_path/test.tcl
+source $test_path/testutils.tcl
 
 set usage "ddscript dir test lockerid objid numprocs"
 
@@ -30,8 +32,10 @@ set lockerid [ lindex $argv 2 ]
 set objid [ lindex $argv 3 ]
 set numprocs [ lindex $argv 4 ]
 
-set lm [lock_open "" 0 0 -dbhome $dir]
-error_check_bad lock_open $lm NULL
-error_check_good lock_open [is_substr $lm lockmgr] 1
+set myenv [berkdb env -lock -home $dir -create -mode 0644]
+error_check_bad lock_open $myenv NULL
+error_check_good lock_open [is_substr $myenv "env"] 1
 
-puts [eval $tnum $lm $lockerid $objid $numprocs]
+puts [eval $tnum $myenv $lockerid $objid $numprocs]
+
+exit

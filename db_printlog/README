@@ -1,4 +1,4 @@
-# @(#)README	10.3 (Sleepycat) 11/1/98
+# @(#)README	10.4 (Sleepycat) 9/12/99
 
 Berkeley DB log dump utility.  This utility dumps out a DB log in human
 readable form, a record at a time, to assist in recovery and transaction
@@ -9,6 +9,9 @@ commit.awk	Output transaction ID of committed transactions.
 
 count.awk	Print out the number of log records for transactions
 		that we encountered.
+
+fileid.awk      Take a comma-separated list of file numbers and spit out
+		all the log records that affect those file numbers.
 
 pgno.awk	Take a comma-separated list of page numbers and spit
 		out all the log records that affect those page numbers.

@@ -1,27 +1,30 @@
-<! "@(#)db_recover.so	10.11 (Sleepycat) 11/1/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--"@(#)db_recover.so	10.13 (Sleepycat) 11/7/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB: db_recover</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
 <h1>db_recover</h1>
+</td>
+<td width="1%">
+<a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3>
-<pre>
+<h3><pre>
 db_recover [<b>-cv</b>] [<b>-h home</b>]
-</pre>
-</h3>
+</pre></h3>
 <h1>Description</h1>
 <p>
-The db_recover utility must be run after an unexpected application,
+The <a href="../utility/db_recover.html">db_recover</a> utility must be run after an unexpected application,
 Berkeley DB, or system failure to restore the database to a consistent state.
-All committed transactions are guaranteed to appear after db_recover
+All committed transactions are guaranteed to appear after <a href="../utility/db_recover.html">db_recover</a>
 has run, and all uncommitted transactions will be completely undone.
 <p>
 The options are as follows:
@@ -43,24 +46,23 @@ For further information on performing recovery, see
 If the failure was not catastrophic, the files present on the system at the
 time of failure are sufficient to perform recovery.
 <p>
-If log files are missing, db_recover will identify the missing
+If log files are missing, <a href="../utility/db_recover.html">db_recover</a> will identify the missing
 log file(s) and fail, in which case the missing log files need to be
 restored and recovery performed again.
 <p>
-The db_recover utility attaches to one or more of the Berkeley DB shared memory
+The <a href="../utility/db_recover.html">db_recover</a> utility attaches to one or more of the Berkeley DB shared memory
 regions.  In order to avoid region corruption, it should always be given
-the chance to detach and exit gracefully.  To cause db_recover to clean up
+the chance to detach and exit gracefully.  To cause <a href="../utility/db_recover.html">db_recover</a> to clean up
 after itself and exit, send it an interrupt signal (SIGINT).
 <p>
-The db_recover utility exits 0 on success, and >0 if an error occurs.
+The <a href="../utility/db_recover.html">db_recover</a> utility exits 0 on success, and &gt;0 if an error occurs.
 <p>
 <h1>Environment Variables</h1>
 <p>
 <dl compact>
-<p><dt>DB_HOME<dd>
-If the <b>-h</b> option is not specified and the environment variable
+<p><dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
-in <a href="../api_c/DbEnv/appinit.html">db_appinit</a>.
+in <a href="../api_c/env_open.html">DBENV-&gt;open</a>.
 </dl>
 <p>
 <h1>See Also</h1>
@@ -69,9 +71,10 @@ in <a href="../api_c/DbEnv/appinit.html">db_appinit</a>.
 <a href="../utility/db_deadlock.html">db_deadlock</a>,
 <a href="../utility/db_dump.html">db_dump</a>,
 <a href="../utility/db_load.html">db_load</a>,
-db_recover,
+<a href="../utility/db_recover.html">db_recover</a>,
 and
 <a href="../utility/db_stat.html">db_stat</a>.
 </tt>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

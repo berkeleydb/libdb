@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -20,11 +20,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -41,10 +37,10 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_split.c	10.33 (Sleepycat) 10/13/98";
+static const char sccsid[] = "@(#)bt_split.c	11.8 (Sleepycat) 10/21/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,11 +53,13 @@ static const char sccsid[] = "@(#)bt_split.c	10.33 (Sleepycat) 10/13/98";
 
 #include "db_int.h"
 #include "db_page.h"
+#include "db_shash.h"
+#include "lock.h"
 #include "btree.h"
 
 static int __bam_broot __P((DBC *, PAGE *, PAGE *, PAGE *));
 static int __bam_page __P((DBC *, EPG *, EPG *));
-static int __bam_pinsert __P((DBC *, EPG *, PAGE *, PAGE *));
+static int __bam_pinsert __P((DBC *, EPG *, PAGE *, PAGE *, int));
 static int __bam_psplit __P((DBC *, EPG *, PAGE *, PAGE *, db_indx_t *));
 static int __bam_root __P((DBC *, EPG *));
 static int __ram_root __P((DBC *, PAGE *, PAGE *, PAGE *));
@@ -78,13 +76,15 @@ __bam_split(dbc, arg)
 	void *arg;
 {
 	BTREE *t;
-	CURSOR *cp;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	enum { UP, DOWN } dir;
+	db_pgno_t root_pgno;
 	int exact, level, ret;
 
 	dbp = dbc->dbp;
 	cp = dbc->internal;
+	root_pgno = ((BTREE *)dbp->bt_internal)->bt_root;
 
 	/*
 	 * The locking protocol we use to avoid deadlock to acquire locks by
@@ -113,7 +113,7 @@ __bam_split(dbc, arg)
 	 * split.  This would be an easy change for this code, but I have no
 	 * numbers that indicate it's worthwhile.
 	 */
-	t = dbp->internal;
+	t = dbp->bt_internal;
 	for (dir = UP, level = LEAFLEVEL;; dir == UP ? ++level : --level) {
 		/*
 		 * Acquire a page and its parent, locked.
@@ -135,7 +135,7 @@ __bam_split(dbc, arg)
 			__bam_stkrel(dbc, 1);
 			return (0);
 		}
-		ret = cp->csp[0].page->pgno == PGNO_ROOT ?
+		ret = cp->csp[0].page->pgno == root_pgno ?
 		    __bam_root(dbc, &cp->csp[0]) :
 		    __bam_page(dbc, &cp->csp[-1], &cp->csp[0]);
 		BT_STK_CLR(cp);
@@ -191,8 +191,8 @@ __bam_root(dbc, cp)
 
 	/* Create new left and right pages for the split. */
 	lp = rp = NULL;
-	if ((ret = __bam_new(dbc, TYPE(cp->page), &lp)) != 0 ||
-	    (ret = __bam_new(dbc, TYPE(cp->page), &rp)) != 0)
+	if ((ret = __db_new(dbc, TYPE(cp->page), &lp)) != 0 ||
+	    (ret = __db_new(dbc, TYPE(cp->page), &rp)) != 0)
 		goto err;
 	P_INIT(lp, dbp->pgsize, lp->pgno,
 	    PGNO_INVALID, ISINTERNAL(cp->page) ? PGNO_INVALID : rp->pgno,
@@ -213,7 +213,7 @@ __bam_root(dbc, cp)
 		__a.data = cp->page;
 		__a.size = dbp->pgsize;
 		ZERO_LSN(__lsn);
-		if ((ret = __bam_split_log(dbp->dbenv->lg_info, dbc->txn,
+		if ((ret = __bam_split_log(dbp->dbenv, dbc->txn,
 		    &LSN(cp->page), 0, dbp->log_fileid, PGNO(lp), &LSN(lp),
 		    PGNO(rp), &LSN(rp), (u_int32_t)NUM_ENT(lp), 0, &__lsn,
 		    &__a)) != 0)
@@ -232,18 +232,18 @@ __bam_root(dbc, cp)
 
 	/* Success -- write the real pages back to the store. */
 	(void)memp_fput(dbp->mpf, cp->page, DB_MPOOL_DIRTY);
-	(void)__BT_TLPUT(dbc, cp->lock);
+	(void)__TLPUT(dbc, cp->lock);
 	(void)memp_fput(dbp->mpf, lp, DB_MPOOL_DIRTY);
 	(void)memp_fput(dbp->mpf, rp, DB_MPOOL_DIRTY);
 
 	return (0);
 
 err:	if (lp != NULL)
-		(void)__bam_free(dbc, lp);
+		(void)__db_free(dbc, lp);
 	if (rp != NULL)
-		(void)__bam_free(dbc, rp);
+		(void)__db_free(dbc, rp);
 	(void)memp_fput(dbp->mpf, cp->page, 0);
-	(void)__BT_TLPUT(dbc, cp->lock);
+	(void)__TLPUT(dbc, cp->lock);
 	return (ret);
 }
 
@@ -258,37 +258,57 @@ __bam_page(dbc, pp, cp)
 {
 	DB *dbp;
 	DB_LOCK tplock;
-	PAGE *lp, *rp, *tp;
+	DB_LSN save_lsn;
+	PAGE *lp, *rp, *alloc_rp, *tp;
 	db_indx_t split;
-	int ret;
+	int ret, t_ret;
 
 	dbp = dbc->dbp;
-	lp = rp = tp = NULL;
+	alloc_rp = lp = rp = tp = NULL;
+	tplock.off = LOCK_INVALID;
 	ret = -1;
 
-	/* Create new right page for the split. */
-	if ((ret = __bam_new(dbc, TYPE(cp->page), &rp)) != 0)
+	/*
+	 * Create a new right page for the split, and fill in everything
+	 * except its LSN and page number.
+	 *
+	 * We malloc space for both the left and right pages, so we don't get
+	 * a new page from the underlying buffer pool until we know the split
+	 * is going to succeed.  The reason is that we can't release locks
+	 * acquired during the get-a-new-page process because metadata page
+	 * locks can't be discarded on failure since we may have modified the
+	 * free list.  So, if you assume that we're holding a write lock on the
+	 * leaf page which ran out of space and started this split (e.g., we
+	 * have already written records to the page, or we retrieved a record
+	 * from it with the DB_RMW flag set), failing in a split with both a
+	 * leaf page locked and the metadata page locked can potentially lock
+	 * up the tree badly, because we've violated the rule of always locking
+	 * down the tree, and never up.
+	 */
+	if ((ret = __os_malloc(dbp->pgsize, NULL, &rp)) != 0)
 		goto err;
-	P_INIT(rp, dbp->pgsize, rp->pgno,
-	    ISINTERNAL(cp->page) ? PGNO_INVALID : cp->page->pgno,
-	    ISINTERNAL(cp->page) ? PGNO_INVALID : cp->page->next_pgno,
+	P_INIT(rp, dbp->pgsize, 0,
+	    ISINTERNAL(cp->page) ? PGNO_INVALID : PGNO(cp->page),
+	    ISINTERNAL(cp->page) ? PGNO_INVALID : NEXT_PGNO(cp->page),
 	    cp->page->level, TYPE(cp->page));
 
-	/* Create new left page for the split. */
+	/*
+	 * Create new left page for the split, and fill in everything
+	 * except its LSN and next-page page number.
+	 */
 	if ((ret = __os_malloc(dbp->pgsize, NULL, &lp)) != 0)
 		goto err;
-	P_INIT(lp, dbp->pgsize, cp->page->pgno,
-	    ISINTERNAL(cp->page) ?  PGNO_INVALID : cp->page->prev_pgno,
-	    ISINTERNAL(cp->page) ?  PGNO_INVALID : rp->pgno,
+	P_INIT(lp, dbp->pgsize, PGNO(cp->page),
+	    ISINTERNAL(cp->page) ?  PGNO_INVALID : PREV_PGNO(cp->page),
+	    ISINTERNAL(cp->page) ?  PGNO_INVALID : 0,
 	    cp->page->level, TYPE(cp->page));
-	ZERO_LSN(lp->lsn);
 
 	/*
 	 * Split right.
 	 *
 	 * Only the indices are sorted on the page, i.e., the key/data pairs
 	 * aren't, so it's simpler to copy the data from the split page onto
-	 * two new pages instead of copying half the data to the right page
+	 * two new pages instead of copying half the data to a new right page
 	 * and compacting the left page in place.  Since the left page can't
 	 * change, we swap the original and the allocated left page after the
 	 * split.
@@ -297,28 +317,50 @@ __bam_page(dbc, pp, cp)
 		goto err;
 
 	/*
+	 * Test to see if we are going to be able to insert the new pages into
+	 * the parent page.  The interesting failure here is that the parent
+	 * page can't hold the new keys, and has to be split in turn, in which
+	 * case we want to release all the locks we can.
+	 */
+	if ((ret = __bam_pinsert(dbc, pp, lp, rp, 1)) != 0)
+		goto err;
+
+	/*
 	 * Fix up the previous pointer of any leaf page following the split
 	 * page.
 	 *
-	 * !!!
-	 * There are interesting deadlock situations here as we write-lock a
-	 * page that's not in our direct ancestry.  Consider a cursor walking
-	 * through the leaf pages, that has the previous page read-locked and
-	 * is waiting on a lock for the page we just split.  It will deadlock
-	 * here.  If this is a problem, we can fail in the split; it's not a
-	 * problem as the split will succeed after the cursor passes through
-	 * the page we're splitting.
+	 * There's interesting deadlock situations here as we try to write-lock
+	 * a page that's not in our direct ancestry.  Consider a cursor walking
+	 * backward through the leaf pages, that has our following page locked,
+	 * and is waiting on a lock for the page we're splitting.  In that case
+	 * we're going to deadlock here .  It's probably OK, stepping backward
+	 * through the tree isn't a common operation.
 	 */
-	if (TYPE(cp->page) == P_LBTREE && rp->next_pgno != PGNO_INVALID) {
-		if ((ret = __bam_lget(dbc,
-		    0, rp->next_pgno, DB_LOCK_WRITE, &tplock)) != 0)
+	if (ISLEAF(cp->page) && NEXT_PGNO(cp->page) != PGNO_INVALID) {
+		if ((ret = __db_lget(dbc,
+		    0, NEXT_PGNO(cp->page), DB_LOCK_WRITE, 0, &tplock)) != 0)
 			goto err;
-		if ((ret = memp_fget(dbp->mpf, &rp->next_pgno, 0, &tp)) != 0)
+		if ((ret =
+		    memp_fget(dbp->mpf, &NEXT_PGNO(cp->page), 0, &tp)) != 0)
 			goto err;
 	}
 
-	/* Insert the new pages into the parent page. */
-	if ((ret = __bam_pinsert(dbc, pp, lp, rp)) != 0)
+	/*
+	 * We've got everything locked down we need, and we know the split
+	 * is going to succeed.  Go and get the additional page we'll need.
+	 */
+	if ((ret = __db_new(dbc, TYPE(cp->page), &alloc_rp)) != 0)
+		goto err;
+
+	/*
+	 * Fix up the page numbers we didn't have before.  We have to do this
+	 * before calling __bam_pinsert because it may copy a page number onto
+	 * the parent page and it takes the page number from its page argument.
+	 */
+	PGNO(rp) = NEXT_PGNO(lp) = PGNO(alloc_rp);
+
+	/* Actually update the parent page. */
+	if ((ret = __bam_pinsert(dbc, pp, lp, rp, 0)) != 0)
 		goto err;
 
 	/* Log the change. */
@@ -330,65 +372,102 @@ __bam_page(dbc, pp, cp)
 		__a.size = dbp->pgsize;
 		if (tp == NULL)
 			ZERO_LSN(__lsn);
-		if ((ret = __bam_split_log(dbp->dbenv->lg_info, dbc->txn,
-		    &cp->page->lsn, 0, dbp->log_fileid, PGNO(cp->page),
-		    &LSN(cp->page), PGNO(rp), &LSN(rp), (u_int32_t)NUM_ENT(lp),
+		if ((ret = __bam_split_log(dbp->dbenv, dbc->txn,
+		    &LSN(cp->page), 0, dbp->log_fileid, PGNO(cp->page),
+		    &LSN(cp->page), PGNO(alloc_rp), &LSN(alloc_rp),
+		    (u_int32_t)NUM_ENT(lp),
 		    tp == NULL ? 0 : PGNO(tp),
 		    tp == NULL ? &__lsn : &LSN(tp), &__a)) != 0)
 			goto err;
 
-		LSN(lp) = LSN(rp) = LSN(cp->page);
+		/* Update the LSNs for all involved pages. */
+		LSN(alloc_rp) = LSN(lp) = LSN(rp) = LSN(cp->page);
 		if (tp != NULL)
 			LSN(tp) = LSN(cp->page);
 	}
 
-	/* Copy the allocated page into place. */
+	/*
+	 * Copy the left and right pages into place.  There are two paths
+	 * through here.  Either we are logging and we set the LSNs in the
+	 * logging path.  However, if we are not logging, then we do not
+	 * have valid LSNs on lp or rp.  The correct LSNs to use are the
+	 * ones on the page we got from __db_new or the one that was
+	 * originally on cp->page.  In both cases, we save the LSN from the
+	 * real database page (not a malloc'd one) and reapply it after we
+	 * do the copy.
+	 */
+	save_lsn = alloc_rp->lsn;
+	memcpy(alloc_rp, rp, LOFFSET(rp));
+	memcpy((u_int8_t *)alloc_rp + HOFFSET(rp),
+	    (u_int8_t *)rp + HOFFSET(rp), dbp->pgsize - HOFFSET(rp));
+	alloc_rp->lsn = save_lsn;
+
+	save_lsn = cp->page->lsn;
 	memcpy(cp->page, lp, LOFFSET(lp));
 	memcpy((u_int8_t *)cp->page + HOFFSET(lp),
 	    (u_int8_t *)lp + HOFFSET(lp), dbp->pgsize - HOFFSET(lp));
-	__os_free(lp, dbp->pgsize);
-	lp = NULL;
+	cp->page->lsn = save_lsn;
 
-	/* Finish the next-page link. */
+	/* Fix up the next-page link. */
 	if (tp != NULL)
-		tp->prev_pgno = rp->pgno;
+		PREV_PGNO(tp) = PGNO(rp);
 
-	/* Adjust any cursors.  Do so last so we don't have to undo it. */
-	__bam_ca_split(dbp, cp->page->pgno, cp->page->pgno, rp->pgno, split, 0);
+	/* Adjust any cursors.  Do it last so we don't have to undo it. */
+	__bam_ca_split(dbp, PGNO(cp->page), PGNO(cp->page), PGNO(rp), split, 0);
 
-	/* Success -- write the real pages back to the store. */
-	(void)memp_fput(dbp->mpf, pp->page, DB_MPOOL_DIRTY);
-	(void)__BT_TLPUT(dbc, pp->lock);
-	(void)memp_fput(dbp->mpf, cp->page, DB_MPOOL_DIRTY);
-	(void)__BT_TLPUT(dbc, cp->lock);
-	(void)memp_fput(dbp->mpf, rp, DB_MPOOL_DIRTY);
+	__os_free(lp, dbp->pgsize);
+	__os_free(rp, dbp->pgsize);
+
+	/*
+	 * Success -- write the real pages back to the store.  As we never
+	 * acquired any sort of lock on the new page, we release it before
+	 * releasing locks on the pages that reference it.  We're finished
+	 * modifying the page so it's not really necessary, but it's neater.
+	 */
+	if ((t_ret =
+	    memp_fput(dbp->mpf, alloc_rp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret =
+	    memp_fput(dbp->mpf, pp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
+	(void)__TLPUT(dbc, pp->lock);
+	if ((t_ret =
+	    memp_fput(dbp->mpf, cp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		ret = t_ret;
+	(void)__TLPUT(dbc, cp->lock);
 	if (tp != NULL) {
-		(void)memp_fput(dbp->mpf, tp, DB_MPOOL_DIRTY);
-		(void)__BT_TLPUT(dbc, tplock);
+		if ((t_ret =
+		    memp_fput(dbp->mpf, tp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+			ret = t_ret;
+		(void)__TLPUT(dbc, tplock);
 	}
-	return (0);
+	return (ret);
 
 err:	if (lp != NULL)
 		__os_free(lp, dbp->pgsize);
 	if (rp != NULL)
-		(void)__bam_free(dbc, rp);
-	if (tp != NULL) {
+		__os_free(rp, dbp->pgsize);
+	if (alloc_rp != NULL)
+		(void)__db_free(dbc, alloc_rp);
+
+	if (tp != NULL)
 		(void)memp_fput(dbp->mpf, tp, 0);
-		if (ret == DB_NEEDSPLIT)
-			(void)__BT_LPUT(dbc, tplock);
-		else
-			(void)__BT_TLPUT(dbc, tplock);
-	}
+	if (tplock.off != LOCK_INVALID)
+		/* We never updated the next page, we can release it. */
+		(void)__LPUT(dbc, tplock);
+
 	(void)memp_fput(dbp->mpf, pp->page, 0);
 	if (ret == DB_NEEDSPLIT)
-		(void)__BT_LPUT(dbc, pp->lock);
+		(void)__LPUT(dbc, pp->lock);
 	else
-		(void)__BT_TLPUT(dbc, pp->lock);
+		(void)__TLPUT(dbc, pp->lock);
+
 	(void)memp_fput(dbp->mpf, cp->page, 0);
 	if (ret == DB_NEEDSPLIT)
-		(void)__BT_LPUT(dbc, cp->lock);
+		(void)__LPUT(dbc, cp->lock);
 	else
-		(void)__BT_TLPUT(dbc, cp->lock);
+		(void)__TLPUT(dbc, cp->lock);
+
 	return (ret);
 }
 
@@ -405,6 +484,7 @@ __bam_broot(dbc, rootp, lp, rp)
 	BKEYDATA *child_bk;
 	DB *dbp;
 	DBT hdr, data;
+	db_pgno_t root_pgno;
 	int ret;
 
 	dbp = dbc->dbp;
@@ -414,8 +494,9 @@ __bam_broot(dbc, rootp, lp, rp)
 	 * We copy the key we split on (but not the key's data, in the case of
 	 * a leaf page) to the new root page.
 	 */
+	root_pgno = ((BTREE *)dbp->bt_internal)->bt_root;
 	P_INIT(rootp, dbp->pgsize,
-	    PGNO_ROOT, PGNO_INVALID, PGNO_INVALID, lp->level + 1, P_IBTREE);
+	    root_pgno, PGNO_INVALID, PGNO_INVALID, lp->level + 1, P_IBTREE);
 
 	memset(&data, 0, sizeof(data));
 	memset(&hdr, 0, sizeof(hdr));
@@ -529,13 +610,15 @@ __ram_root(dbc, rootp, lp, rp)
 	DB *dbp;
 	DBT hdr;
 	RINTERNAL ri;
+	db_pgno_t root_pgno;
 	int ret;
 
 	dbp = dbc->dbp;
+	root_pgno = ((BTREE *)dbp->bt_internal)->bt_root;
 
 	/* Initialize the page. */
 	P_INIT(rootp, dbp->pgsize,
-	    PGNO_ROOT, PGNO_INVALID, PGNO_INVALID, lp->level + 1, P_IRECNO);
+	    root_pgno, PGNO_INVALID, PGNO_INVALID, lp->level + 1, P_IRECNO);
 
 	/* Initialize the header. */
 	memset(&hdr, 0, sizeof(hdr));
@@ -561,10 +644,11 @@ __ram_root(dbc, rootp, lp, rp)
  *	Insert a new key into a parent page, completing the split.
  */
 static int
-__bam_pinsert(dbc, parent, lchild, rchild)
+__bam_pinsert(dbc, parent, lchild, rchild, space_check)
 	DBC *dbc;
 	EPG *parent;
 	PAGE *lchild, *rchild;
+	int space_check;
 {
 	BINTERNAL bi, *child_bi;
 	BKEYDATA *child_bk, *tmp_bk;
@@ -579,11 +663,12 @@ __bam_pinsert(dbc, parent, lchild, rchild)
 	int ret;
 
 	dbp = dbc->dbp;
-	t = dbp->internal;
+	t = dbp->bt_internal;
 	ppage = parent->page;
 
 	/* If handling record numbers, count records split to the right page. */
-	nrecs = dbp->type == DB_RECNO || F_ISSET(dbp, DB_BT_RECNUM) ?
+	nrecs = !space_check &&
+	    (dbp->type == DB_RECNO || F_ISSET(dbp, DB_BT_RECNUM)) ?
 	    __bam_total(rchild) : 0;
 
 	/*
@@ -620,6 +705,8 @@ __bam_pinsert(dbc, parent, lchild, rchild)
 
 		if (P_FREESPACE(ppage) < nbytes)
 			return (DB_NEEDSPLIT);
+		if (space_check)
+			return (0);
 
 		/* Add a new record for the right page. */
 		memset(&bi, 0, sizeof(bi));
@@ -670,6 +757,8 @@ noprefix:			nksize = child_bk->len;
 
 			if (P_FREESPACE(ppage) < nbytes)
 				return (DB_NEEDSPLIT);
+			if (space_check)
+				return (0);
 
 			memset(&bi, 0, sizeof(bi));
 			bi.len = nksize;
@@ -692,6 +781,8 @@ noprefix:			nksize = child_bk->len;
 
 			if (P_FREESPACE(ppage) < nbytes)
 				return (DB_NEEDSPLIT);
+			if (space_check)
+				return (0);
 
 			memset(&bi, 0, sizeof(bi));
 			bi.len = BOVERFLOW_SIZE;
@@ -724,6 +815,8 @@ noprefix:			nksize = child_bk->len;
 
 		if (P_FREESPACE(ppage) < nbytes)
 			return (DB_NEEDSPLIT);
+		if (space_check)
+			return (0);
 
 		/* Add a new record for the right page. */
 		memset(&hdr, 0, sizeof(hdr));
@@ -743,7 +836,7 @@ noprefix:			nksize = child_bk->len;
 	if (dbp->type == DB_RECNO || F_ISSET(dbp, DB_BT_RECNUM)) {
 		/* Log the change. */
 		if (DB_LOGGING(dbc) &&
-		    (ret = __bam_cadjust_log(dbp->dbenv->lg_info,
+		    (ret = __bam_cadjust_log(dbp->dbenv,
 		    dbc->txn, &LSN(ppage), 0, dbp->log_fileid,
 		    PGNO(ppage), &LSN(ppage), (u_int32_t)parent->indx,
 		    -(int32_t)nrecs, (int32_t)0)) != 0)

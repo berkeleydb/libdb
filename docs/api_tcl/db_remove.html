@@ -1,0 +1,53 @@
+<!--"@(#)db_remove.so	11.3 (Sleepycat) 9/20/99"-->
+<!--"@(#)m4.tcl	11.12 (Sleepycat) 11/11/99"-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<html>
+<head>
+<title>Berkeley DB: berkdb dbremove</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<table><tr valign=top>
+<td>
+<h1><b>berkdb dbremove</b></h1>
+</td>
+<td width="1%">
+<a href="../api_tcl/tcl_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>berkdb dbremove
+	[-env env]
+	[--]
+	name
+	[subname]
+</pre></h3>
+<h1>Description</h1>
+<p>
+Remove the Berkeley DB database specified by the database name <b>name</b>
+and optional subdatabase name <b>subname</b>.
+<p>
+If no subdatabase is specified, the physical file represented by name is
+removed, incidentally removing all subdatabases that it contained.
+<p>
+No reference count of database use is maintained by Berkeley DB.  Applications
+should not remove databases that are currently in use.
+<p>
+The options are as follows:
+<dl compact>
+<p><dt>-env env<dd>If a <b>-env</b> argument is given, the database in the specified Berkeley DB
+environment is removed.
+<p><dt>--<dd>Mark the end of the command arguments.
+</dl>
+<p>
+The <b>berkdb dbremove</b> command returns 0 on success, and in the case of error, a Tcl error
+is thrown.
+</tt>
+<table><tr><td><br></td><td width="1%">
+<a href="../api_tcl/tcl_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

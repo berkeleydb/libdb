@@ -1,23 +1,22 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
+"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
 	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_printlog.c	10.17 (Sleepycat) 11/1/98";
+static const char sccsid[] = "@(#)db_printlog.c	11.3 (Sleepycat) 8/27/99";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,21 +25,21 @@ static const char sccsid[] = "@(#)db_printlog.c	10.17 (Sleepycat) 11/1/98";
 #endif
 
 #include "db_int.h"
-#include "shqueue.h"
 #include "db_page.h"
 #include "btree.h"
+#include "db_am.h"
 #include "hash.h"
 #include "log.h"
+#include "qam.h"
 #include "txn.h"
-#include "db_am.h"
-#include "clib_ext.h"
 
-DB_ENV *db_init __P((char *));
+void	db_init __P((char *));
 int	main __P((int, char *[]));
 void	onint __P((int));
 void	siginit __P((void));
 void	usage __P((void));
 
+DB_ENV	*dbenv;
 int	 interrupted;
 const char
 	*progname = "db_printlog";			/* Program name. */
@@ -52,13 +51,12 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB_ENV *dbenv;
 	DBT data;
 	DB_LSN key;
-	int ch, ret;
+	int ch, e_close, exitval, Nflag, ret;
 	char *home;
 
-	ret = 0;
+	e_close = exitval = Nflag = 0;
 	home = NULL;
 	while ((ch = getopt(argc, argv, "h:N")) != EOF)
 		switch (ch) {
@@ -66,7 +64,7 @@ main(argc, argv)
 			home = optarg;
 			break;
 		case 'N':
-			(void)db_value_set(0, DB_MUTEXLOCKS);
+			Nflag = 1;
 			break;
 		case '?':
 		default:
@@ -78,50 +76,97 @@ main(argc, argv)
 	if (argc > 0)
 		usage();
 
-	/* Initialize the environment. */
+	/* Handle possible interruptions. */
 	siginit();
-	dbenv = db_init(home);
 
-	if ((errno = __bam_init_print(dbenv)) != 0 ||
-	    (errno = __db_init_print(dbenv)) != 0 ||
-	    (errno = __ham_init_print(dbenv)) != 0 ||
-	    (errno = __log_init_print(dbenv)) != 0 ||
-	    (errno = __txn_init_print(dbenv)) != 0) {
-		warn("initialization");
-		(void)db_appexit(dbenv);
-		return (1);
+	/*
+	 * Create an environment object and initialize it for error
+	 * reporting.
+	 */
+	if ((ret = db_env_create(&dbenv, 0)) != 0) {
+		fprintf(stderr,
+		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
+		exit (1);
+	}
+	dbenv->set_errfile(dbenv, stderr);
+	dbenv->set_errpfx(dbenv, progname);
+
+	/* Optionally turn mutexes and panic checks off. */
+	if (Nflag) {
+		if ((ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_mutexlocks");
+			goto shutdown;
+		}
+		if ((ret = dbenv->set_panic(dbenv, 0)) != 0) {
+			dbenv->err(dbenv, ret, "set_panic");
+			goto shutdown;
+		}
+	}
+
+	/*
+	 * An environment is required, but as we may be called to display
+	 * information for a single log file, we create one if it does not
+	 * already exist.  If we create it, we create it private so that
+	 * it automatically goes away when we're done.
+	 */
+	if (dbenv->open(dbenv,
+	    home, NULL, DB_INIT_LOG | DB_USE_ENVIRON, 0) != 0 &&
+	    (ret = dbenv->open(dbenv, home, NULL,
+	    DB_CREATE | DB_INIT_LOG | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
+		dbenv->err(dbenv, ret, "open");
+		goto shutdown;
+	}
+	e_close = 1;
+
+	/* Initialize print callbacks. */
+	if ((ret = __bam_init_print(dbenv)) != 0 ||
+	    (ret = __crdel_init_print(dbenv)) != 0 ||
+	    (ret = __db_init_print(dbenv)) != 0 ||
+	    (ret = __qam_init_print(dbenv)) != 0 ||
+	    (ret = __ham_init_print(dbenv)) != 0 ||
+	    (ret = __log_init_print(dbenv)) != 0 ||
+	    (ret = __txn_init_print(dbenv)) != 0) {
+		dbenv->err(dbenv, ret, "callback: initialization");
+		goto shutdown;
 	}
 
 	memset(&data, 0, sizeof(data));
 	while (!interrupted) {
-		if ((errno =
-		    log_get(dbenv->lg_info, &key, &data, DB_NEXT)) != 0) {
-			if (errno == DB_NOTFOUND)
+		if ((ret = log_get(dbenv, &key, &data, DB_NEXT)) != 0) {
+			if (ret == DB_NOTFOUND)
 				break;
-			warn("log_get");
-			goto err;
+			dbenv->err(dbenv, ret, "log_get");
+			goto shutdown;
 		}
-		if (dbenv->tx_recover != NULL)
-			errno = dbenv->tx_recover(dbenv->lg_info,
-			    &data, &key, 0, NULL);
-		else
-			errno = __db_dispatch(dbenv->lg_info,
-			    &data, &key, 0, NULL);
 
-		fflush(stdout);
-		if (errno != 0) {
-			warn("dispatch");
-			goto err;
+		/*
+		 * XXX
+		 * We're looking into an opaque structure, here.
+		 */
+		if (dbenv->tx_recover != NULL)
+			ret = dbenv->tx_recover(dbenv, &data, &key, 0, NULL);
+		else
+			ret = __db_dispatch(dbenv, &data, &key, 0, NULL);
+
+		/*
+		 * XXX
+		 * Just in case the underlying routines don't flush.
+		 */
+		(void)fflush(stdout);
+
+		if (ret != 0) {
+			dbenv->err(dbenv, ret, "tx: dispatch");
+			goto shutdown;
 		}
 	}
 
 	if (0) {
-err:		ret = 1;
+shutdown:	exitval = 1;
 	}
-
-	if (dbenv != NULL && (errno = db_appexit(dbenv)) != 0) {
-		ret = 1;
-		warn(NULL);
+	if (e_close && (ret = dbenv->close(dbenv, 0)) != 0) {
+		exitval = 1;
+		fprintf(stderr,
+		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
 	if (interrupted) {
@@ -130,30 +175,7 @@ err:		ret = 1;
 		/* NOTREACHED */
 	}
 
-	return (ret);
-}
-
-/*
- * db_init --
- *	Initialize the environment.
- */
-DB_ENV *
-db_init(home)
-	char *home;
-{
-	DB_ENV *dbenv;
-
-	if ((dbenv = (DB_ENV *)calloc(sizeof(DB_ENV), 1)) == NULL) {
-		errno = ENOMEM;
-		err(1, NULL);
-	}
-	dbenv->db_errfile = stderr;
-	dbenv->db_errpfx = progname;
-
-	if ((errno =
-	    db_appinit(home, NULL, dbenv, DB_CREATE | DB_INIT_LOG)) != 0)
-		err(1, "db_appinit");
-	return (dbenv);
+	return (exitval);
 }
 
 /*
@@ -169,6 +191,9 @@ siginit()
 	(void)signal(SIGHUP, onint);
 #endif
 	(void)signal(SIGINT, onint);
+#ifdef SIGPIPE
+	(void)signal(SIGPIPE, onint);
+#endif
 	(void)signal(SIGTERM, onint);
 }
 

@@ -1,59 +1,56 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test025.tcl	8.4 (Sleepycat) 4/26/98
+#	@(#)test025.tcl	11.4 (Sleepycat) 8/17/99
 #
 # DB Test 25 {method nentries}
 # Test the DB_APPEND flag.
-
 proc test025 { method {nentries 10000} args} {
-global kvals
+	global kvals
+	source ./include.tcl
+
 	set args [convert_args $method $args]
-	set method [convert_method $method]
-	set args [convert_args $method $args]
+	set omethod [convert_method $method]
 	puts "Test025: $method ($args)"
 
-	if { [string compare $method DB_BTREE] == 0 } {
+	if { [string compare $omethod "-btree"] == 0 } {
 		puts "Test025 skipping for method BTREE"
 		return
 	}
-	if { [string compare $method DB_HASH] == 0 } {
+	if { [string compare $omethod "-hash"] == 0 } {
 		puts "Test025 skipping for method HASH"
 		return
 	}
 
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
-	source ./include.tcl
-
 	# Create the database and open the dictionary
-	set testfile test025.db
+	set testfile $testdir/test025.db
 	set t1 $testdir/t1
 
 	cleanup $testdir
-	set db [eval [concat dbopen \
-	    $testfile [expr $DB_CREATE | $DB_TRUNCATE] 0644 $method $args]]
+	set db [eval {berkdb \
+	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	puts "\tTest025.a: put/get loop"
-	set txn 0
-	set flags $DB_APPEND
+	set gflags " -recno"
+	set pflags " -append"
+	set txn ""
 	set checkfunc test025_check
-
 
 	# Here is the loop where we put and get each key/data pair
 	set count 0
 	while { [gets $did str] != -1 && $count < $nentries } {
 		set k [expr $count + 1]
-		set kvals($k) $str
-		set recno [$db put $txn 0 $str $flags]
-		error_check_good db_put $recno [expr $count + 1]
+		set kvals($k) [pad_data $method $str]
+		set ret [eval {$db put} $txn $pflags {[chop_data $method $str]}]
+		error_check_good db_put $ret $k
 
-		set ret [$db get $txn $recno 0]
-		error_check_good "get $recno" $ret $str
+		set ret [eval {$db get} $txn $gflags {$k}]
+		error_check_good \
+		    get $ret [list [list $k [pad_data $method $str]]]
 		incr count
 	}
 	close $did
@@ -67,18 +64,18 @@ global kvals
 	puts "\tTest025.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
 	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
-	    dump_file_direction $DB_FIRST $DB_NEXT
+	    dump_file_direction -first -next
 
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest001.d: close, open, and dump file in reverse direction"
 	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
-	    dump_file_direction $DB_LAST $DB_PREV
-
+		dump_file_direction -last -prev
 }
 
 proc test025_check { key data } {
-global kvals
+	global kvals
+
 	error_check_good key"$key"_exists [info exists kvals($key)] 1
 	error_check_good " key/data mismatch for |$key|" $data $kvals($key)
 }

@@ -1,59 +1,62 @@
-<! "@(#)filesys.so	10.14 (Sleepycat) 11/25/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)filesys.so	10.24 (Sleepycat) 11/11/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
+<td width="1%"><a href="../../ref/transapp/recovery.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/reclimit.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>Recovery and filesystem operations</h1>
 <p>
-Filesystem operations, e.g., moving the database environment to a
-different machine or file creation, deletion or renaming, cannot be
-transaction protected.  For this reason, files cannot be re-created,
-deleted or renamed as part of the recovery process.
+When running in a transaction-protected environment, database creation
+and deletion are logged as stand-alone transactions internal to Berkeley DB.
+That is, for each such operation a new transaction is begun and aborted
+or committed internally, so that they will be recovered during recovery.
 <p>
-If recovery cannot find a database file referenced in the log, it will
-output a warning message that it was unable to locate a file it expected
-to find.  This message is only a warning, as the file may have
-subsequently been deleted as part of normal database operations before
-the failure occurred, and so cannot be known to be a problem.
+While the Berkeley DB API supports explicit removal of a file via the
+<a href="../../api_c/db_remove.html">DB-&gt;remove</a> method, Berkeley DB does not support opening a file with
+<a href="../../api_c/db_open.html#DB_TRUNCATE">DB_TRUNCATE</a> in a transaction protected environment.  This is an
+implicit file deletion, but one that does not always require the same
+operating system file permissions as does deleting and creating a file.
+Also, there is no support for renaming a database in the API, and so
+there is no way to log such an activity and therefore, no way to recover
+a filesystem rename operation.
 <p>
-<b>Note that committed transactions that involved these missing files are
-rolled forward, even though the files were not found.  If the files were
-not intentionally deleted (e.g., they were created after the last database
-snapshot, but were lost during a failure), they must be manually created
-(using <a href="../../api_c/Db/open.html">db_open</a>), and then recovery must be redone.</b>
+If you have changed the name of a file or deleted it outside of the Berkeley DB
+library (e.g., you explicitly removed a file using your normal operating
+system utilities), then it is possible that recovery will not be able to
+find a database referenced in the log.  In this case, <a href="../../utility/db_recover.html">db_recover</a>
+will produce a warning message saying it was unable to locate a file it
+expected to find.  This message is only a warning, as the file may have
+been subsequently deleted as part of normal database operations before
+the failure occurred, and so is not necessarily a problem.
 <p>
-Generally, it is simplest to perform filesystem operations at the same
-time as making a snapshot of the database.  To perform filesystem
-operations:
+Generally, any filesystem operations that are performed outside the Berkeley DB
+interface should be performed at the same time as making a snapshot of
+the database.  To perform filesystem operations correctly:
+<p>
 <ol>
 <p><li>Cleanly shutdown database operations.
-<p><li>Rename, create or delete files.
-<p><li>Make a snapshot of the database.
-<p><li>Restart database applications.
-</ol>
 <p>
-To cleanly shutdown database operations, all applications accessing the
+To shutdown database operations cleanly, all applications accessing the
 database environment must be shutdown and a transaction checkpoint must
-be taken.  If the applications are not
-implemented such that they can be shutdown gracefully (i.e., closing all
-references to the database environment), recovery must be performed after
-all applications have been killed to ensure that the underlying databases
-are consistent on disk.
-<p>
-<b>Future versions of Berkeley DB are expected to remove the restriction that
-database files must be manually created before recovery is performed.</b>
-<p>
-<a href="../../ref/transapp/recovery.html"><img src="../../images/prev.gif"></a>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif"></a>
-</tt>
+be taken.  If the applications are not implemented such that they can be
+shutdown gracefully (i.e., closing all references to the database
+environment), recovery must be performed after all applications have been
+killed to ensure that the underlying databases are consistent on disk.
+<p><li>Perform the filesystem operations, e.g., rename one or more files.
+<p><li>Make an archival snapshot of the database.
+<p><li>Restart the database applications.
+</ol>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/recovery.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/reclimit.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

@@ -1,15 +1,17 @@
-<! "@(#)utility.so	10.2 (Sleepycat) 11/2/98">
-<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<!--@(#)utility.so	10.11 (Sleepycat) 10/1/99-->
+<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
 <html>
-<body bgcolor=white>
 <head>
 <title>Berkeley DB Reference Guide: Dumping and Reloading</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
-ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
-thods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
-<h3>Berkeley DB Reference Guide: Dumping and Reloading</h3>
+<body bgcolor=white>
+<table><tr valign=top>
+<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Dumping and Reloading</dl></h3></td>
+<td width="1%"><a href="../../ref/sendmail/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/dumpload/format.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
 <p>
 <h1 align=center>The db_dump and db_load utilities</h1>
 <p>
@@ -32,18 +34,17 @@ will result in new databases that use the default hash function. While
 using the default hash function may not be optimal for the new database,
 it will continue to work correctly.
 <p>
-Dumping and reloading Btree databases that use user-defined prefix or
+Dumping and reloading B+tree databases that use user-defined prefix or
 comparison functions will result in new databases that use the default
-prefix and comparison functions. <b>In this case, it is quite likely
-that the database will be damaged beyond repair permitting neither record
-storage or retrieval.</b>
+prefix and comparison functions. In this case, it is quite likely that
+the database will be damaged beyond repair permitting neither record
+storage or retrieval.
 <p>
-The only available workaround for either Hash or Btree databases is to
+The only available workaround for either Hash or B+tree databases is to
 modify the sources for the <a href="../../utility/db_load.html">db_load</a> utility to load the database
 using the correct hash, prefix and comparison functions.
-<p>
-<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
-<a href="../../ref/dumpload/format.html"><img src="../../images/next.gif"></a>
-</tt>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/sendmail/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/dumpload/format.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>
 </html>

@@ -1,29 +1,26 @@
-/* Do not edit: automatically built by dist/distrib. */
-#include <sys/queue.h>
-#include <sys/shqueue.h>
+#include "db_config.h"
 
-#include <ctype.h>
-#include <stddef.h>
-#include <stdlib.h>
+#ifndef NO_SYSTEM_INCLUDES
+#include <sys/types.h>
+
 #include <string.h>
+#endif
 
 #include "db_int.h"
 #include "db_page.h"
-#include "../log/log.h"
 #include "log.h"
-#include "../common/db_dispatch.h"
-#include "../common/extern.h"
+#include "log.h"
 
 /*
  * __log_register_recover --
  *	Recovery function for register.
  *
  * PUBLIC: int __log_register_recover
- * PUBLIC:   __P((DB_LOG *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
  */
 int
-__log_register_recover(logp, dbtp, lsnp, redo, info)
-	DB_LOG *logp;
+__log_register_recover(dbenv, dbtp, lsnp, redo, info)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	int redo;
@@ -31,26 +28,13 @@ __log_register_recover(logp, dbtp, lsnp, redo, info)
 {
 	__log_register_args *argp;
 	DB *file_dbp;
+	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
-#ifdef DEBUG_RECOVER
-	(void)__log_register_print(logp, dbtp, lsnp, redo, info);
-#endif
-	info = info;				/* XXX: Shut the compiler up. */
-
-	if ((ret = __log_register_read(dbtp->data, &argp)) != 0)
-		goto out;
-	if (__db_fileid_to_db(logp, &file_dbp, argp->fileid)) {
-		ret = 0;
-		goto out;
-	}
-	if (file_dbp == NULL)
-		goto out;
-
-	F_SET(file_dbp, DB_AM_RECOVER);
-	mpf = file_dbp->mpf;
+	REC_PRINT(__log_register_print);
+	REC_INTRO(__log_register_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (redo) {
@@ -58,7 +42,7 @@ __log_register_recover(logp, dbtp, lsnp, redo, info)
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
-			*lsnp = *argp->prev_lsn;
+			*lsnp = argp->prev_lsn;
 			ret = 0;
 			goto out;
 		}
@@ -83,10 +67,8 @@ __log_register_recover(logp, dbtp, lsnp, redo, info)
 	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
-	*lsnp = *argp->prev_lsn;
+	*lsnp = argp->prev_lsn;
+	ret = 0;
 
-out:	if (argp != NULL)
-		free (argp);
-	F_CLR(file_dbp, DB_AM_RECOVER);
-	return (ret);
+out:	REC_CLOSE;
 }

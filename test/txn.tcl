@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)txn.tcl	10.12 (Sleepycat) 12/11/98
+#	@(#)txn.tcl	11.3 (Sleepycat) 8/17/99
 #
 # Options are:
 # -dir <directory in which to store memp>
@@ -14,14 +14,15 @@ proc txn_usage {} {
 	puts "txn -dir <directory> -iterations <number of ops> \
 	    -max <max number of transactions> -stat"
 }
-proc txntest { args } {
-source ./include.tcl
 
-# Set defaults
+proc txntest { args } {
+	source ./include.tcl
+
+	# Set defaults
 	set iterations 50
 	set max 1024
 	set dostat 0
-	set flags 0
+	set flags ""
 	for { set i 0 } { $i < [llength $args] } {incr i} {
 		switch -regexp -- [lindex $args $i] {
 			-d.* { incr i; set testdir [lindex $args $i] }
@@ -35,80 +36,42 @@ source ./include.tcl
 			}
 		}
 	}
-	if { [file exists $testdir] != 1 } {
-		exec $MKDIR $testdir
-	} elseif { [file isdirectory $testdir ] != 1 } {
-		error "$testdir is not a directory"
+	if { $max < $iterations } {
+		set max $iterations
 	}
 
-	# Clean out old txn if it existed
-	puts "Unlinking txn: error message OK"
-	txn_unlink $testdir 1
+	cleanup $testdir
 
 	# Now run the various functionality tests
-	txn001 $testdir $max $flags
-	txn002 $testdir $max $iterations $flags
-	txn003 $testdir $flags
-	txn004 $testdir $iterations
+	txn001 $testdir $max $iterations $flags
+	txn002 $testdir $max $iterations
 }
 
-proc txn001 { dir max flags } {
-source ./include.tcl
-global is_windows_test
-puts "Txn001: Open/Close/Create/Unlink test"
-	# Try opening without Create flag should error
-	set tp [ txn "" 0 0 ]
-	error_check_good txn:fail $tp NULL
+proc txn001 { dir max ntxns flags} {
+	source ./include.tcl
 
-	# Now try opening with create
-	set tp [txn "" [expr $DB_CREATE | $flags] 0644 -maxtxns $max ]
-	error_check_bad txn:$dir $tp NULL
-	error_check_good txn:$dir [is_valid_widget $tp mgr] TRUE
+	puts "Txn001: Basic begin, commit, abort"
 
-	# Make sure that close works.
-	error_check_good txn_close:$tp [$tp close] 0
+	# Open environment
+	cleanup $dir
 
-	# Make sure we can reopen -- this doesn't work on Windows
-	# because if there is only one opener, the region disappears
-	# when it is closed.  We can't do a second opener, because
-	# that will fail on HPUX.
-
-	if { $is_windows_test != 1 } {
-		set tp [ txn "" $flags 0 ]
-		error_check_bad txn:$dir $tp NULL
-		error_check_good txn:$dir [is_substr $tp mgr] 1
-
-		# Try unlinking while we're still attached, should fail.
-		error_check_good txn_unlink:$dir [txn_unlink $testdir 0] -1
-
-		# Now close it and unlink it
-		error_check_good txn_close:$tp [$tp close] 0
-	}
-	error_check_good txn_unlink:$dir [txn_unlink $testdir 0] 0
-}
-
-proc txn002 { dir max ntxns flags} {
-source ./include.tcl
-	puts "Txn002: Basic begin, commit, abort"
-
-	set e [dbenv -dbflags [expr $DB_CREATE | $DB_INIT_TXN | $flags]]
-	error_check_good dbenv [is_valid_widget $e env] TRUE
-	set tp [ txn "" 0 0644 -maxtxns $max -dbenv $e ]
-
-	error_check_bad txn:$dir $tp NULL
-	error_check_good txn:$dir [is_substr $tp mgr] 1
+	set env [eval {berkdb \
+	    env -create -mode 0644 -mpool -txn -txn_max $max -home $dir} $flags]
+	error_check_good evn_open [is_valid_env $env] TRUE
 
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
 	set tid_list {}
-	puts "Txn002.a: Beginning/Committing Transactions"
+	puts "Txn001.a: Beginning/Committing Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
+		set txn [$env txn]
+		error_check_good txn_begin [is_valid_txn $txn $env] TRUE
+
 		lappend txn_list $txn
+
 		set tid [$txn id]
 		error_check_good tid_check [lsearch $tid_list $tid] -1
+
 		lappend tid_list $tid
 	}
 
@@ -119,14 +82,16 @@ source ./include.tcl
 
 	# We will create a bunch of transactions and abort them.
 	set txn_list {}
-	puts "Txn002.b: Beginning/Aborting Transactions"
+	puts "Txn001.b: Beginning/Aborting Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
+		set txn [$env txn]
+		error_check_good txn_begin [is_valid_txn $txn $env] TRUE
+
 		lappend txn_list $txn
+
 		set tid [$txn id]
 		error_check_good tid_check [lsearch $tid_list $tid] -1
+
 		lappend tid_list $tid
 	}
 
@@ -137,14 +102,16 @@ source ./include.tcl
 
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
-	puts "Txn002.c: Beginning/Prepare/Committing Transactions"
+	puts "Txn001.c: Beginning/Prepare/Committing Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
+		set txn [$env txn]
+		error_check_good txn_begin [is_valid_txn $txn $env] TRUE
+
 		lappend txn_list $txn
+
 		set tid [$txn id]
 		error_check_good tid_check [lsearch $tid_list $tid] -1
+
 		lappend tid_list $tid
 	}
 
@@ -159,80 +126,35 @@ source ./include.tcl
 	}
 
 	# Close and unlink the file
-	error_check_good txn_close:$tp [$tp close] 0
-	reset_env $e
-	error_check_good txn_unlink:$dir [txn_unlink $testdir 0] 0
+	error_check_good env_close:$env [$env close] 0
+
+	cleanup $testdir
 }
 
-proc txn003 { dir flags } {
-source ./include.tcl
-	puts "Txn003: Transaction grow region test"
-
-	set tp [ txn "" [expr $DB_CREATE | $DB_THREAD] 0644 -maxtxns 10 ]
-	error_check_bad txn:$dir $tp NULL
-	error_check_good txn:$dir [is_substr $tp mgr] 1
-
-	# Create initial 10 transactions.
-	set txn_list {}
-	puts "Txn003.a: Creating initial set of transactions"
-	for { set i 0 } { $i < 10 } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
-		lappend txn_list $txn
-	}
-
-	# Create next set of transactions to grow region
-	puts "Txn003.b: Creating transactions to grow region"
-	for { set i 0 } { $i < 100 } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
-		lappend txn_list $txn
-	}
-
-	# Now, randomly commit/abort the transactions
-	foreach t $txn_list {
-		if { [random_int 1 2] == 1 } {
-			error_check_good txn_commit:$t [$t commit] 0
-		} else {
-			error_check_good txn_abort:$t [$t abort] 0
-		}
-	}
-
-	# Close and unlink the file
-	error_check_good txn_close:$tp [$tp close] 0
-	error_check_good txn_unlink:$dir [txn_unlink $testdir 0] 0
-}
-
-# Verify that read-only transactions do not create
-# any log records
-proc txn004 { dir ntxns } {
-	puts "Txn004: Read-only transaction test"
+# Verify that read-only transactions do not create any log records
+proc txn002 { dir max ntxns } {
 	source ./include.tcl
 
-	cleanup $dir
-	set e [dbenv -dbflags [expr $DB_CREATE | $DB_INIT_TXN | $DB_INIT_LOG]]
-	error_check_good dbenv [is_valid_widget $e env] TRUE
-	set tp [ txn "" 0 0644 -dbenv $e ]
-	error_check_bad txn:$dir $tp NULL
-	error_check_good txn:$dir [is_substr $tp mgr] 1
+	puts "Txn002: Read-only transaction test"
 
-	set log [ log "" 0 0644 -dbenv $e ]
-	error_check_bad log:$dir $log NULL
-	error_check_good log:$dir:$log [is_substr $log log] 1
+	cleanup $dir
+	set env [berkdb \
+	    env -create -mode 0644 -txn -log -txn_max $max -home $dir]
+	error_check_good dbenv [is_valid_env $env] TRUE
 
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
 	set tid_list {}
-	puts "Txn004.a: Beginning/Committing Transactions"
+	puts "Txn002.a: Beginning/Committing Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
-		set txn [$tp begin]
-		error_check_good txn_begin [is_substr $txn $tp] 1
-		error_check_bad txn_begin $txn NULL
+		set txn [$env txn]
+		error_check_good txn_begin [is_valid_txn $txn $env] TRUE
+
 		lappend txn_list $txn
+
 		set tid [$txn id]
 		error_check_good tid_check [lsearch $tid_list $tid] -1
+
 		lappend tid_list $tid
 	}
 
@@ -242,10 +164,8 @@ proc txn004 { dir ntxns } {
 	}
 
 	# Now verify that there aren't any log records.
-	set r [$log get {0 0} $DB_FIRST ]
+	set r [$env log_get -first]
 	error_check_good log_get:$r [llength $r] 0
 
-	error_check_good log_close [$log close] 0
-	error_check_good txn_close [$tp close] 0
-	reset_env $e
+	error_check_good env_close:$r [$env close] 0
 }

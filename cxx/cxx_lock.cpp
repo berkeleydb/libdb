@@ -1,162 +1,83 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998
+ * Copyright (c) 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_lock.cpp	10.10 (Sleepycat) 10/28/98";
+static const char sccsid[] = "@(#)cxx_lock.cpp	11.3 (Sleepycat) 9/30/99";
 #endif /* not lint */
 
 #include "db_cxx.h"
 #include "cxx_int.h"
 #include <errno.h>
+#include <string.h>
 
-////////////////////////////////////////////////////////////////////////
-//                                                                    //
-//                            DbLockTab                               //
-//                                                                    //
-////////////////////////////////////////////////////////////////////////
-
-DbLockTab::DbLockTab()
-:   imp_(0)
+int DbEnv::lock_detect(u_int32_t flags, u_int32_t atype, int *aborted)
 {
+	DB_ENV *env = unwrap(this);
+	int err;
+
+	if ((err = ::lock_detect(env, flags, atype, aborted)) != 0) {
+		DB_ERROR("DbEnv::lock_detect", err, this);
+		return err;
+	}
+	return err;
 }
 
-DbLockTab::~DbLockTab()
+int DbEnv::lock_get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
+		    db_lockmode_t lock_mode, DbLock *lock)
 {
+	DB_ENV *env = unwrap(this);
+	int err;
+
+	if ((err = ::lock_get(env, locker, flags, obj,
+			      lock_mode, &lock->lock_)) != 0) {
+		DB_ERROR("DbEnv::lock_get", err, this);
+		return err;
+	}
+	return err;
 }
 
-int DbLockTab::close()
+int DbEnv::lock_id(u_int32_t *idp)
 {
-    DB_LOCKTAB *locktab = unwrap(this);
-    int err;
+	DB_ENV *env = unwrap(this);
+	int err;
 
-    if (!locktab) {
-        return EINVAL;        // handle never assigned
-    }
-
-    if ((err = lock_close(locktab)) != 0) {
-        DB_ERROR("DbLockTab::close", err);
-        return err;
-    }
-    imp_ = 0;                   // extra safety
-
-    // This may seem weird, but is legal as long as we don't access
-    // any data before returning.
-    //
-    delete this;
-    return 0;
+	if ((err = ::lock_id(env, idp)) != 0) {
+		DB_ERROR("DbEnv::lock_id", err, this);
+	}
+	return err;
 }
 
-int DbLockTab::detect(u_int32_t flags, int atype)
+int DbEnv::lock_stat(DB_LOCK_STAT **statp, void *(*db_malloc)(size_t))
 {
-    DB_LOCKTAB *locktab = unwrap(this);
+	DB_ENV *env = unwrap(this);
+	int err;
 
-    if (!locktab) {
-        return EINVAL;        // handle never assigned
-    }
-
-    int err = 0;
-    if ((err = lock_detect(locktab, flags, atype)) != 0) {
-        DB_ERROR("DbLockTab::detect", err);
-        return err;
-    }
-    return err;
+	if ((err = ::lock_stat(env, statp, db_malloc)) != 0) {
+		DB_ERROR("DbEnv::lock_stat", err, this);
+		return err;
+	}
+	return 0;
 }
 
-int DbLockTab::get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
-                   db_lockmode_t lock_mode, DbLock *lock)
+int DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
+		    DB_LOCKREQ list[],
+		    int nlist, DB_LOCKREQ **elist_returned)
 {
-    DB_LOCKTAB *locktab = unwrap(this);
+	DB_ENV *env = unwrap(this);
+	int err;
 
-    if (!locktab) {
-        return EINVAL;        // handle never assigned
-    }
-
-    int err = 0;
-    if ((err = lock_get(locktab, locker, flags, obj,
-                        lock_mode, &lock->lock_)) != 0) {
-        DB_ERROR("DbLockTab::get", err);
-        return err;
-    }
-    return err;
-}
-
-int DbLockTab::id(u_int32_t *idp)
-{
-    DB_LOCKTAB *locktab = unwrap(this);
-
-    if (!locktab) {
-        return EINVAL;        // handle never assigned
-    }
-
-    int err;
-    if ((err = lock_id(locktab, idp)) != 0) {
-        DB_ERROR("DbLockTab::id", err);
-    }
-    return err;
-}
-
-int DbLockTab::stat(DB_LOCK_STAT **statp, void *(*db_malloc)(size_t))
-{
-    int err;
-    DB_LOCKTAB *locktab = unwrap(this);
-    if ((err = lock_stat(locktab, statp, db_malloc)) != 0) {
-        DB_ERROR("DbLockTab::stat", err);
-        return err;
-    }
-    return 0;
-}
-
-int DbLockTab::vec(u_int32_t locker, u_int32_t flags,
-                   DB_LOCKREQ list[],
-                   int nlist, DB_LOCKREQ **elist_returned)
-{
-    DB_LOCKTAB *locktab = unwrap(this);
-
-    if (!locktab) {
-        return EINVAL;        // handle never assigned
-    }
-
-    int err;
-    if ((err = lock_vec(locktab, locker, flags, list,
-                        nlist, elist_returned)) != 0) {
-        DB_ERROR("DbLockTab::vec", err);
-        return err;
-    }
-    return err;
-}
-
-// static method
-int DbLockTab::open(const char *dir, u_int32_t flags, int mode,
-                  DbEnv *dbenv, DbLockTab **regionp)
-{
-    *regionp = 0;
-    DB_LOCKTAB *result = 0;
-    int err;
-    if ((err = lock_open(dir, flags, mode, dbenv, &result)) != 0) {
-        DB_ERROR("DbLockTab::open", err);
-        return err;
-    }
-
-    *regionp = new DbLockTab();
-    (*regionp)->imp_ = wrap(result);
-    return 0;
-}
-
-// static method
-int DbLockTab::unlink(const char *dir, int force, DbEnv *dbenv)
-{
-    int err;
-    if ((err = lock_unlink(dir, force, dbenv)) != 0) {
-        DB_ERROR("DbLockTab::unlink", err);
-        return err;
-    }
-    return err;
+	if ((err = ::lock_vec(env, locker, flags, list,
+			      nlist, elist_returned)) != 0) {
+		DB_ERROR("DbEnv::lock_vec", err, this);
+		return err;
+	}
+	return err;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -166,37 +87,37 @@ int DbLockTab::unlink(const char *dir, int force, DbEnv *dbenv)
 ////////////////////////////////////////////////////////////////////////
 
 DbLock::DbLock(DB_LOCK value)
-:   lock_(value)
+:	lock_(value)
 {
 }
 
 DbLock::DbLock()
-:   lock_(0)
 {
+	memset(&lock_, 0, sizeof(DB_LOCK));
 }
 
 DbLock::DbLock(const DbLock &that)
-:   lock_(that.lock_)
+:	lock_(that.lock_)
 {
 }
 
 DbLock &DbLock::operator = (const DbLock &that)
 {
-    lock_ = that.lock_;
-    return *this;
+	lock_ = that.lock_;
+	return *this;
 }
 
-int DbLock::put(DbLockTab *locktab)
+int DbLock::put(DbEnv *env)
 {
-    DB_LOCKTAB *db_locktab = unwrap(locktab);
+	DB_ENV *envp = unwrap(env);
 
-    if (!db_locktab) {
-        return EINVAL;        // handle never assigned
-    }
+	if (!env) {
+		return EINVAL;        // handle never assigned
+	}
 
-    int err;
-    if ((err = lock_put(db_locktab, lock_)) != 0) {
-        DB_ERROR("DbLock::put", err);
-    }
-    return err;
+	int err;
+	if ((err = lock_put(envp, &lock_)) != 0) {
+		DB_ERROR("DbLock::put", err, env);
+	}
+	return err;
 }

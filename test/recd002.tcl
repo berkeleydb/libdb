@@ -1,34 +1,49 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998
+# Copyright (c) 1996, 1997, 1998, 1999
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd002.tcl	10.6 (Sleepycat) 4/10/98
+#	@(#)recd002.tcl	11.9 (Sleepycat) 11/10/99
 #
 # Recovery Test #2.  Verify that splits can be recovered.
-proc recd002 { method {select 0} } {
-	set opts [convert_args $method ""]
-	set method [convert_method $method]
-	puts "Recd002: $method split recovery tests"
-
-	# Get global declarations since tcl doesn't support
-	# any useful equivalent to #defines!
+proc recd002 { method {select 0} args} {
 	source ./include.tcl
+
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
+
+	# Queues don't do splits, so we don't really need the small page
+	# size and the small page size is smaller than the record, so it's
+	# a problem.
+	if { [string compare $omethod "-queue"] == 0 } {
+		set pagesize 4096
+	} else {
+		set pagesize 512
+	}
+	puts "Recd002: $method split recovery tests"
 
 	cleanup $testdir
 	set testfile recd002.db
-	set flags [expr $DB_CREATE | $DB_THREAD | \
-	    $DB_INIT_LOG | $DB_INIT_LOCK | $DB_INIT_MPOOL | $DB_INIT_TXN]
+	set testfile2 recd002-2.db
+	set eflags \
+	    "-create -log -lock -mpool -txn -lock_max 2000 -home $testdir"
 
 	puts "\tRecd002.a: creating environment"
-	set env_cmd "dbenv -dbhome $testdir -dbflags $flags"
+	set env_cmd "berkdb env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_bad dbenv $dbenv NULL
 
-	# Create the database. We will use a small page size so that splits
+	# Create the databases. We will use a small page size so that splits
 	# happen fairly quickly.
-	set db [dbopen $testfile [expr $DB_CREATE | $DB_TRUNCATE | $DB_THREAD] \
-	    0644 $method -psize 512 -dbenv $dbenv $opts]
+	set oflags "-create $args $omethod -mode 0644 -env $dbenv\
+	    -pagesize $pagesize $testfile"
+	set db [eval {berkdb open} $oflags]
+	error_check_bad db_open $db NULL
+	error_check_good db_open [is_substr $db db] 1
+	error_check_good db_close [$db close] 0
+	set oflags "-create $args $omethod -mode 0644 -env $dbenv\
+            -pagesize $pagesize $testfile2"
+	set db [eval {berkdb open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
@@ -36,7 +51,7 @@ proc recd002 { method {select 0} } {
 
 	# List of recovery tests: {CMD MSG} pairs
 	set slist {
-		{ {populate DB $method TXNID $n 0 0} "Recd002.b: splits"}
+		{ {populate DB $omethod TXNID $n 0 0} "Recd002.b: splits"}
 		{ {unpopulate DB TXNID $r} "Recd002.c: Remove keys"}
 	}
 
@@ -45,7 +60,7 @@ proc recd002 { method {select 0} } {
 	set n 512
 	set r [expr $n / 2 ]
 	foreach pair $slist {
-		set cmd [my_subst [lindex $pair 0]]
+		set cmd [subst [lindex $pair 0]]
 		set msg [lindex $pair 1]
 		if { $select != 0 } {
 			set tag [lindex $msg 0]
@@ -57,5 +72,16 @@ proc recd002 { method {select 0} } {
 		}
 		op_recover abort $testdir $env_cmd $testfile $cmd $msg
 		op_recover commit $testdir $env_cmd $testfile $cmd $msg
+		op_recover prepare $testdir $env_cmd $testfile2 $cmd $msg
+		op_recover prepare-abort $testdir $env_cmd $testfile2 \
+			$cmd $msg
+		op_recover prepare-commit $testdir $env_cmd $testfile2 \
+			$cmd $msg
 	}
+
+	puts "\tRecd002.d: Verify db_printlog can read logfile"
+	set tmpfile $testdir/printlog.out
+	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
+	error_check_good db_printlog $stat 0
+	exec $RM $tmpfile
 }

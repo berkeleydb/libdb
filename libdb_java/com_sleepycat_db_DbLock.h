@@ -18,7 +18,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_finalize
 /*
  * Class:     com_sleepycat_db_DbLock
  * Method:    put
- * Signature: (Lcom/sleepycat/db/DbLockTab;)V
+ * Signature: (Lcom/sleepycat/db/DbEnv;)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbLock_put
   (JNIEnv *, jobject, jobject);

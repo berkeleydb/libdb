@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998
+ * Copyright (c) 1996, 1997, 1998, 1999
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "config.h"
+#include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_ret.c	10.16 (Sleepycat) 10/4/98";
+static const char sccsid[] = "@(#)db_ret.c	11.1 (Sleepycat) 7/24/99";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -73,25 +73,25 @@ __db_ret(dbp, h, indx, dbt, memp, memsize)
 		return (__db_pgfmt(dbp, h->pgno));
 	}
 
-	return (__db_retcopy(dbt, data, len, memp, memsize,
-	    F_ISSET(dbt, DB_DBT_INTERNAL) ? NULL : dbp->db_malloc));
+	return (__db_retcopy(F_ISSET(dbt,
+	    DB_DBT_INTERNAL) ? NULL : dbp, dbt, data, len, memp, memsize));
 }
 
 /*
  * __db_retcopy --
  *	Copy the returned data into the user's DBT, handling special flags.
  *
- * PUBLIC: int __db_retcopy __P((DBT *,
- * PUBLIC:    void *, u_int32_t, void **, u_int32_t *, void *(*)(size_t)));
+ * PUBLIC: int __db_retcopy __P((DB *, DBT *,
+ * PUBLIC:    void *, u_int32_t, void **, u_int32_t *));
  */
 int
-__db_retcopy(dbt, data, len, memp, memsize, db_malloc)
+__db_retcopy(dbp, dbt, data, len, memp, memsize)
+	DB *dbp;
 	DBT *dbt;
 	void *data;
 	u_int32_t len;
 	void **memp;
 	u_int32_t *memsize;
-	void *(*db_malloc) __P((size_t));
 {
 	int ret;
 
@@ -115,7 +115,8 @@ __db_retcopy(dbt, data, len, memp, memsize, db_malloc)
 	dbt->size = len;
 
 	/*
-	 * Allocate memory to be owned by the application: DB_DBT_MALLOC.
+	 * Allocate memory to be owned by the application: DB_DBT_MALLOC,
+	 * DB_DBT_REALLOC.
 	 *
 	 * !!!
 	 * We always allocate memory, even if we're copying out 0 bytes. This
@@ -129,7 +130,12 @@ __db_retcopy(dbt, data, len, memp, memsize, db_malloc)
 	 * memory pointer is allowed to be NULL.
 	 */
 	if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(len, db_malloc, &dbt->data)) != 0)
+		if ((ret = __os_malloc(len,
+		    dbp == NULL ? NULL : dbp->db_malloc, &dbt->data)) != 0)
+			return (ret);
+	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
+		if ((ret = __os_realloc(len,
+		    dbp == NULL ? NULL : dbp->db_realloc, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_USERMEM)) {
 		if (len != 0 && (dbt->data == NULL || dbt->ulen < len))
@@ -138,7 +144,7 @@ __db_retcopy(dbt, data, len, memp, memsize, db_malloc)
 		return (EINVAL);
 	} else {
 		if (len != 0 && (*memsize == 0 || *memsize < len)) {
-			if ((ret = __os_realloc(memp, len)) != 0) {
+			if ((ret = __os_realloc(len, NULL, memp)) != 0) {
 				*memsize = 0;
 				return (ret);
 			}
