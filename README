@@ -1,40 +1,109 @@
-#	@(#)README	8.27 (Berkeley) 9/1/94
+# @(#)README	10.42 (Sleepycat) 1/18/98
 
-This is version 1.85 of the Berkeley DB code.
+This is version 2.3.16 (1/19/98) of the DB library.
 
-For information on compiling and installing this software, see the file
-PORT/README.
+The directory layout is as follows:
 
-Newer versions of this software will periodically be made available by
-anonymous ftp from ftp.cs.berkeley.edu.  An archive in compressed format
-is in ucb/4bsd/db.tar.Z, or in gzip format in ucb/4bsd/db.tar.gz.  If
-you'd like to receive announcements of future releases of this software,
-send email to the contact address below.
+    LICENSE ......... Copyright, use and redistribution information.
+    README .......... This file.
+    btree ........... B+tree access method source code.
+    build.unix ...... UNIX build directory.
+    build.win32 ..... WIN32/WNT build directory.
+    clib ............ C library replacement source code.
+    common .......... Source code shared by all of DB.
+    cxx ............. C++ API.
+    db .............. DB interface source code.
+    db185 ........... Compatibility source code for DB version 1.85
+    db_archive ...... The db_archive(1) utility source code.
+    db_checkpoint ... The db_checkpoint(1) utility source code.
+    db_deadlock ..... The db_deadlock(1) utility source code.
+    db_dump ......... The db_dump(1) utility source code.
+    db_dump185 ...... The db_dump185(1) utility source code.
+    db_load ......... The db_load(1) utility source code.
+    db_printlog ..... Debugging utility, never installed.
+    db_recover ...... The db_recover(1) utility source code.
+    db_stat ......... The db_stat(1) utility source code.
+    dbm ............. Compatibility source code for dbm(3) and ndbm(3).
+    dist ............ Various files used to build the DB distribution.
+    documents ....... DB documents (other than the UNIX-style manual pages).
+    examples ........ C API example source code for using the DB library.
+    examples_cxx .... C++ API example source code for using the DB library.
+    hash ............ Hash access method source code.
+    hsearch ......... Compatibility source code for hsearch(3).
+    include ......... Include files for DB.
+    java ............ Java API.
+    libdb_java ...... Sources to build the libdb_java shared library.
+    lock ............ Lock manager source code.
+    log ............. Log manager source code.
+    man/man.html .... C, C++ and Java API HTML format manual pages.
+    man/man.ps ...... C API PostScript format manual pages.
+    man/man.roff .... C API troff format (man macros) manual pages.
+    man/man.text .... C API flat text manual pages.
+    man/mancxx.ps ... C++ API PostScript format manual pages.
+    man/mancxx.roff . C++ API troff format (man macros) manual pages.
+    man/mancxx.text . C++ API flat text manual pages.
+    mp .............. Shared memory buffer pool source code.
+    mutex ........... Spin-lock source code.
+    os .............. Operating-system specific functionality.
+    os.win32 ........ Operating-system specific functionality (Win32/WNT).
+    test ............ Test directory.
+    txn ............. Transaction manager source code.
 
-Email questions may be addressed to Keith Bostic at bostic@cs.berkeley.edu.
+To build DB for a UNIX platform:
 
-============================================
-Distribution contents:
+    cd build.unix
+    ../dist/configure
+    make
 
-Makefile.inc	Ignore this, it's the 4.4BSD subsystem Makefile.
-PORT		The per OS/architecture directories to use to build
-		libdb.a, if you're not running 4.4BSD.  See the file
-		PORT/README for more information.
-README		This file.
-btree		The B+tree routines.
-changelog	List of changes, per version.
-db		The dbopen(3) interface routine.
-docs		Various USENIX papers, and the formatted manual pages.
-hash		The extended linear hashing routines.
-man		The unformatted manual pages.
-mpool		The memory pool routines.
-recno		The fixed/variable length record routines.
-test		Test package.
+To build multiple UNIX versions of DB in the same source tree, create
+a new directory, then configure and build.
 
-============================================
-Debugging:
+    mkdir build.bsdos3.0
+    cd build.bsdos3.0
+    ../dist/configure
+    make
 
-If you're running a memory checker (e.g. Purify) on DB, make sure that
-you recompile it with "-DPURIFY" in the CFLAGS, first.  By default,
-allocated pages are not initialized by the DB code, and they will show
-up as reads of uninitialized memory in the buffer write routines.
+For additional information about building DB for UNIX platforms, the
+description of possible configuration options and other information
+on DB configuration and build issues, see the file build.unix/README.
+
+To build DB for a WIN32 platform, see build.win32.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+The C++ API files and directories in the source distribution are:
+
+db/cxx/			C++ API
+db/examples_cxx/	The example programs recoded in C++.
+db/include/cxx_int.h	Internal C++ include file.
+db/include/db_cxx.h	External C++ include file.
+
+C++ support is automatically built on Win32.  To configure it under
+UNIX, specify --enable-cxx as a configuration argument (see the file
+db/build.unix/README for more information).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+The Java API files and directories in the source distribution are:
+
+db/java/src/com/sleepycat/db
+			The Java API
+db/java/README		Information on building the Java API.
+db/man/man.html/index_java.html
+			The Java API manual pages (available only in HTML).
+db/java/src/com/sleepycat/examples/
+			The example programs recoded in Java.
+db/libdb_java		Sources to build the libdb_java shared library.
+
+Java support is NEVER automatically built.  To configure and build the
+Java API, see the file db/java/README for more information.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Bug fixes, answers to Frequently Asked Questions and updated versions
+of this software are available.  For more information see:
+
+	http://www.sleepycat.com
+
+To ask questions about DB, report DB problems, request notification of
+future releases and/or bug fixes, request support contract and licensing
+information, or to contact the authors for any reason, please send email
+to:
+	db@sleepycat.com

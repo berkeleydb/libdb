@@ -1,0 +1,25 @@
+# @(#)Makefile.unix	10.1 (Sleepycat) 11/10/97
+#
+# build java source code, UNIX version
+#
+
+# Set JAVAC to your java compiler
+#
+JAVAC=javac
+
+# If $CLASSPATH is not already set in your environment,
+# adjust it here and uncomment this line:
+#
+# CLASSPATH=c:/java/lib/classes.zip
+#
+
+JAVACFLAGS=-classpath "../../../../classes:$(CLASSPATH)"
+
+all: build_java
+
+build_java:
+	mkdir -p classes
+	cd src/com/sleepycat/db; \
+	$(JAVAC) $(JAVACFLAGS) -d ../../../../classes *.java
+	cd src/com/sleepycat/examples; \
+	$(JAVAC) $(JAVACFLAGS) -d ../../../../classes *.java

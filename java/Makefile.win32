@@ -1,0 +1,30 @@
+# @(#)Makefile.win32	10.1 (Sleepycat) 11/10/97
+#
+# build java source code, win32 version - tested with Microsoft nmake
+# This makefile is very simple, but it is different from the UNIX makefile
+# in a significant way.  Commands are not grouped together on a line using
+# the ';' separator, but on separate lines.  This is done since the
+# current directory for commands is remembered between commands, and
+# the DOS shell does not have a ';' connector.
+#
+
+# Set JAVAC to your java compiler
+#
+JAVAC=javac
+
+# If $CLASSPATH is not already set in your environment,
+# adjust it here and uncomment this line:
+#
+# CLASSPATH=c:/java/lib/classes.zip
+#
+
+JAVACFLAGS=-classpath "$(CLASSPATH);../../../../classes"
+
+all: build_java
+
+build_java:
+	if not exist classes mkdir classes
+	cd src/com/sleepycat/db
+	$(JAVAC) $(JAVACFLAGS) -d ../../../../classes *.java
+	cd ../examples
+	$(JAVAC) $(JAVACFLAGS) -d ../../../../classes *.java

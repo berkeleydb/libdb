@@ -1,5 +1,15 @@
 /*-
- * Copyright (c) 1990, 1993, 1994
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996, 1997
+ *	Sleepycat Software.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994, 1995, 1996
+ *	Keith Bostic.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -34,180 +44,300 @@
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)bt_search.c	8.8 (Berkeley) 7/31/94";
-#endif /* LIBC_SCCS and not lint */
+#include "config.h"
 
+#ifndef lint
+static const char sccsid[] = "@(#)bt_search.c	10.9 (Sleepycat) 11/18/97";
+#endif /* not lint */
+
+#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#endif
 
-#include <db.h>
+#include "db_int.h"
+#include "db_page.h"
 #include "btree.h"
 
-static int __bt_snext __P((BTREE *, PAGE *, const DBT *, int *));
-static int __bt_sprev __P((BTREE *, PAGE *, const DBT *, int *));
-
 /*
- * __bt_search --
+ * __bam_search --
  *	Search a btree for a key.
  *
- * Parameters:
- *	t:	tree to search
- *	key:	key to find
- *	exactp:	pointer to exact match flag
- *
- * Returns:
- *	The EPG for matching record, if any, or the EPG for the location
- *	of the key, if it were inserted into the tree, is entered into
- *	the bt_cur field of the tree.  A pointer to the field is returned.
+ * PUBLIC: int __bam_search __P((DB *,
+ * PUBLIC:     const DBT *, u_int, int, db_recno_t *, int *));
  */
-EPG *
-__bt_search(t, key, exactp)
-	BTREE *t;
+int
+__bam_search(dbp, key, flags, stop, recnop, exactp)
+	DB *dbp;
 	const DBT *key;
-	int *exactp;
+	u_int flags;
+	int stop, *exactp;
+	db_recno_t *recnop;
 {
+	BTREE *t;
+	DB_LOCK lock;
+	EPG cur;
 	PAGE *h;
-	indx_t base, index, lim;
-	pgno_t pg;
-	int cmp;
+	db_indx_t base, i, indx, lim;
+	db_pgno_t pg;
+	db_recno_t recno;
+	int cmp, jump, ret, stack;
 
-	BT_CLR(t);
-	for (pg = P_ROOT;;) {
-		if ((h = mpool_get(t->bt_mp, pg, 0)) == NULL)
-			return (NULL);
+	t = dbp->internal;
+	recno = 0;
 
-		/* Do a binary search on the current page. */
-		t->bt_cur.page = h;
-		for (base = 0, lim = NEXTINDEX(h); lim; lim >>= 1) {
-			t->bt_cur.index = index = base + (lim >> 1);
-			if ((cmp = __bt_cmp(t, key, &t->bt_cur)) == 0) {
-				if (h->flags & P_BLEAF) {
-					*exactp = 1;
-					return (&t->bt_cur);
-				}
+	BT_STK_CLR(t);
+
+	/*
+	 * There are several ways we search a btree tree.  The flags argument
+	 * specifies if we're acquiring read or write locks, if we position
+	 * to the first or last item in a set of duplicates, if we return
+	 * deleted items, and if we are locking pairs of pages.  See btree.h
+	 * for more details.  In addition, if we're doing record numbers, we
+	 * have to lock the entire tree regardless.
+	 *
+	 * If write-locking pages, we need to know whether or not to acquire a
+	 * write lock on a page before getting it.  This depends on how deep it
+	 * is in tree, which we don't know until we acquire the root page.  So,
+	 * if we need to lock the root page we may have to upgrade it later,
+	 * because we won't get the correct lock initially.
+	 *
+	 * Retrieve the root page.
+	 */
+	pg = PGNO_ROOT;
+	stack = F_ISSET(dbp, DB_BT_RECNUM) &&
+	    (flags == S_INSERT || flags == S_DELETE);
+	if ((ret = __bam_lget(dbp,
+	    0, pg, stack ? DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+		return (ret);
+	if ((ret = __bam_pget(dbp, &h, &pg, 0)) != 0) {
+		(void)__BT_LPUT(dbp, lock);
+		return (ret);
+	}
+
+	/*
+	 * Decide if we need to save this page; if we do, write lock it.
+	 * We deliberately don't lock-couple on this call.  If the tree
+	 * is tiny, i.e., one page, and two threads are busily updating
+	 * the root page, we're almost guaranteed deadlocks galore, as
+	 * each one gets a read lock and then blocks the other's attempt
+	 * for a write lock.
+	 */
+	if (!stack &&
+	    ((LF_ISSET(S_PARENT) && (u_int8_t)(stop + 1) >= h->level) ||
+	    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
+		(void)memp_fput(dbp->mpf, h, 0);
+		(void)__BT_LPUT(dbp, lock);
+		if ((ret = __bam_lget(dbp, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+			return (ret);
+		if ((ret = __bam_pget(dbp, &h, &pg, 0)) != 0) {
+			(void)__BT_LPUT(dbp, lock);
+			return (ret);
+		}
+
+		stack = 1;
+	}
+
+	for (;;) {
+		/*
+		 * Do a binary search on the current page.  If we're searching
+		 * a leaf page, we have to manipulate the indices in groups of
+		 * two.  If we're searching an internal page, they're an index
+		 * per page item.  If we find an exact match on a leaf page,
+		 * we're done.
+		 */
+		cur.page = h;
+		jump = TYPE(h) == P_LBTREE ? P_INDX : O_INDX;
+		for (base = 0,
+		    lim = NUM_ENT(h) / (db_indx_t)jump; lim != 0; lim >>= 1) {
+			cur.indx = indx = base + ((lim >> 1) * jump);
+			if ((cmp = __bam_cmp(dbp, key, &cur)) == 0) {
+				if (TYPE(h) == P_LBTREE)
+					goto match;
 				goto next;
 			}
 			if (cmp > 0) {
-				base = index + 1;
+				base = indx + jump;
 				--lim;
 			}
 		}
 
 		/*
-		 * If it's a leaf page, we're almost done.  If no duplicates
-		 * are allowed, or we have an exact match, we're done.  Else,
-		 * it's possible that there were matching keys on this page,
-		 * which later deleted, and we're on a page with no matches
-		 * while there are matches on other pages.  If at the start or
-		 * end of a page, check the adjacent page.
+		 * No match found.  Base is the smallest index greater than
+		 * key and may be zero or a last + O_INDX index.
+		 *
+		 * If it's a leaf page, return base as the "found" value.
+		 * Delete only deletes exact matches.
 		 */
-		if (h->flags & P_BLEAF) {
-			if (!F_ISSET(t, B_NODUPS)) {
-				if (base == 0 &&
-				    h->prevpg != P_INVALID &&
-				    __bt_sprev(t, h, key, exactp))
-					return (&t->bt_cur);
-				if (base == NEXTINDEX(h) &&
-				    h->nextpg != P_INVALID &&
-				    __bt_snext(t, h, key, exactp))
-					return (&t->bt_cur);
-			}
+		if (TYPE(h) == P_LBTREE) {
 			*exactp = 0;
-			t->bt_cur.index = base;
-			return (&t->bt_cur);
+
+			if (LF_ISSET(S_EXACT))
+				goto notfound;
+
+			BT_STK_ENTER(t, h, base, lock, ret);
+			return (ret);
 		}
 
 		/*
-		 * No match found.  Base is the smallest index greater than
-		 * key and may be zero or a last + 1 index.  If it's non-zero,
-		 * decrement by one, and record the internal page which should
-		 * be a parent page for the key.  If a split later occurs, the
-		 * inserted page will be to the right of the saved page.
+		 * If it's not a leaf page, record the internal page (which is
+		 * a parent page for the key).  Decrement the base by 1 if it's
+		 * non-zero so that if a split later occurs, the inserted page
+		 * will be to the right of the saved page.
 		 */
-		index = base ? base - 1 : base;
+		indx = base > 0 ? base - O_INDX : base;
 
-next:		BT_PUSH(t, h->pgno, index);
-		pg = GETBINTERNAL(h, index)->pgno;
-		mpool_put(t->bt_mp, h, 0);
+		/*
+		 * If we're trying to calculate the record number, sum up
+		 * all the record numbers on this page up to the indx point.
+		 */
+		if (recnop != NULL)
+			for (i = 0; i < indx; ++i)
+				recno += GET_BINTERNAL(h, i)->nrecs;
+
+next:		pg = GET_BINTERNAL(h, indx)->pgno;
+		if (stack) {
+			/* Return if this is the lowest page wanted. */
+			if (LF_ISSET(S_PARENT) && stop == h->level) {
+				BT_STK_ENTER(t, h, indx, lock, ret);
+				return (ret);
+			}
+			BT_STK_PUSH(t, h, indx, lock, ret);
+			if (ret != 0)
+				goto err;
+
+			if ((ret =
+			    __bam_lget(dbp, 0, pg, DB_LOCK_WRITE, &lock)) != 0)
+				goto err;
+		} else {
+			(void)memp_fput(dbp->mpf, h, 0);
+
+			/*
+			 * Decide if we want to return a pointer to the next
+			 * page in the stack.  If we do, write lock it and
+			 * never unlock it.
+			 */
+			if ((LF_ISSET(S_PARENT) &&
+			    (u_int8_t)(stop + 1) >= (u_int8_t)(h->level - 1)) ||
+			    (h->level - 1) == LEAFLEVEL)
+				stack = 1;
+
+			if ((ret =
+			    __bam_lget(dbp, 1, pg, stack && LF_ISSET(S_WRITE) ?
+			    DB_LOCK_WRITE : DB_LOCK_READ, &lock)) != 0)
+				goto err;
+		}
+		if ((ret = __bam_pget(dbp, &h, &pg, 0)) != 0)
+			goto err;
 	}
+
+	/* NOTREACHED */
+match:	*exactp = 1;
+
+	/*
+	 * If we're trying to calculate the record number, add in the
+	 * offset on this page and correct for the fact that records
+	 * in the tree are 0-based.
+	 */
+	if (recnop != NULL)
+		*recnop = recno + (indx / P_INDX) + 1;
+
+	/*
+	 * If we got here, we know that we have a btree leaf page.
+	 *
+	 * If there are duplicates, go to the first/last one.
+	 */
+	if (LF_ISSET(S_DUPLAST))
+		while (indx < (db_indx_t)(NUM_ENT(h) - P_INDX) &&
+		    h->inp[indx] == h->inp[indx + P_INDX])
+			indx += P_INDX;
+	else
+		while (indx > 0 &&
+		    h->inp[indx] == h->inp[indx - P_INDX])
+			indx -= P_INDX;
+
+	/*
+	 * Now check if we are allowed to return deleted item; if not
+	 * find/last the first non-deleted item.
+	 */
+	if (LF_ISSET(S_DELNO)) {
+		if (LF_ISSET(S_DUPLAST))
+			while (B_DISSET(GET_BKEYDATA(h, indx + O_INDX)->type) &&
+			    indx > 0 &&
+			    h->inp[indx] == h->inp[indx - P_INDX])
+				indx -= P_INDX;
+		else
+			while (B_DISSET(GET_BKEYDATA(h, indx + O_INDX)->type) &&
+			    indx < (db_indx_t)(NUM_ENT(h) - P_INDX) &&
+			    h->inp[indx] == h->inp[indx + P_INDX])
+				indx += P_INDX;
+
+		if (B_DISSET(GET_BKEYDATA(h, indx + O_INDX)->type))
+			goto notfound;
+	}
+
+	BT_STK_ENTER(t, h, indx, lock, ret);
+	return (ret);
+
+notfound:
+	(void)memp_fput(dbp->mpf, h, 0);
+	(void)__BT_LPUT(dbp, lock);
+	ret = DB_NOTFOUND;
+
+err:	if (t->bt_csp > t->bt_sp) {
+		BT_STK_POP(t);
+		__bam_stkrel(dbp);
+	}
+	return (ret);
 }
 
 /*
- * __bt_snext --
- *	Check for an exact match after the key.
+ * __bam_stkrel --
+ *	Release all pages currently held in the stack.
  *
- * Parameters:
- *	t:	tree
- *	h:	current page
- *	key:	key
- *	exactp:	pointer to exact match flag
- *
- * Returns:
- *	If an exact match found.
+ * PUBLIC: int __bam_stkrel __P((DB *));
  */
-static int
-__bt_snext(t, h, key, exactp)
-	BTREE *t;
-	PAGE *h;
-	const DBT *key;
-	int *exactp;
+int
+__bam_stkrel(dbp)
+	DB *dbp;
 {
-	EPG e;
+	BTREE *t;
+	EPG *epg;
 
-	/*
-	 * Get the next page.  The key is either an exact
-	 * match, or not as good as the one we already have.
-	 */
-	if ((e.page = mpool_get(t->bt_mp, h->nextpg, 0)) == NULL)
-		return (0);
-	e.index = 0;
-	if (__bt_cmp(t, key, &e) == 0) {
-		mpool_put(t->bt_mp, h, 0);
-		t->bt_cur = e;
-		*exactp = 1;
-		return (1);
+	t = dbp->internal;
+	for (epg = t->bt_sp; epg <= t->bt_csp; ++epg) {
+		(void)memp_fput(dbp->mpf, epg->page, 0);
+		(void)__BT_TLPUT(dbp, epg->lock);
 	}
-	mpool_put(t->bt_mp, e.page, 0);
 	return (0);
 }
 
 /*
- * __bt_sprev --
- *	Check for an exact match before the key.
+ * __bam_stkgrow --
+ *	Grow the stack.
  *
- * Parameters:
- *	t:	tree
- *	h:	current page
- *	key:	key
- *	exactp:	pointer to exact match flag
- *
- * Returns:
- *	If an exact match found.
+ * PUBLIC: int __bam_stkgrow __P((BTREE *));
  */
-static int
-__bt_sprev(t, h, key, exactp)
+int
+__bam_stkgrow(t)
 	BTREE *t;
-	PAGE *h;
-	const DBT *key;
-	int *exactp;
 {
-	EPG e;
+	EPG *p;
+	size_t entries;
 
-	/*
-	 * Get the previous page.  The key is either an exact
-	 * match, or not as good as the one we already have.
-	 */
-	if ((e.page = mpool_get(t->bt_mp, h->prevpg, 0)) == NULL)
-		return (0);
-	e.index = NEXTINDEX(e.page) - 1;
-	if (__bt_cmp(t, key, &e) == 0) {
-		mpool_put(t->bt_mp, h, 0);
-		t->bt_cur = e;
-		*exactp = 1;
-		return (1);
-	}
-	mpool_put(t->bt_mp, e.page, 0);
+	entries = t->bt_esp - t->bt_sp;
+
+	if ((p = (EPG *)__db_calloc(entries * 2, sizeof(EPG))) == NULL)
+		return (ENOMEM);
+	memcpy(p, t->bt_sp, entries * sizeof(EPG));
+	if (t->bt_sp != t->bt_stack)
+		FREE(t->bt_sp, entries * sizeof(EPG));
+	t->bt_sp = p;
+	t->bt_csp = p + entries;
+	t->bt_esp = p + entries * 2;
 	return (0);
 }
