@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: upgrade.tcl,v 11.18 2001/01/28 19:25:58 krinsky Exp $
+# $Id: upgrade.tcl,v 11.22 2002/07/28 03:22:41 krinsky Exp $
 
 source ./include.tcl
 
@@ -110,6 +110,8 @@ proc _upgrade_test { temp_dir version method file endianness } {
 	set ret [berkdb upgrade "$temp_dir/$file-$endianness.db"]
 	error_check_good dbupgrade $ret 0
 
+	error_check_good dbupgrade_verify [verify_dir $temp_dir "" 0 0 1] 0
+
 	upgrade_dump "$temp_dir/$file-$endianness.db" "$temp_dir/temp.dump"
 
 	error_check_good "Upgrade diff.$endianness: $version $method $file" \
@@ -140,28 +142,32 @@ proc gen_upgrade { dir } {
 	global upgrade_be
 	global upgrade_method
 	global upgrade_name
-	global runtests subdbtests parms
+	global num_test
+	global parms
 	source ./include.tcl
 
 	set gen_upgrade 1
 	set upgrade_dir $dir
 
-	foreach upgrade_be { 0 1 } {
-		foreach i \
-		    "btree rbtree hash recno rrecno frecno queue queueext" {
-			puts "Running $i tests"
-			set upgrade_method $i
-			set start 1
-			for { set j $start } { $j <= $runtests } { incr j } {
-				set upgrade_name [format "test%03d" $j]
-				if { [info exists parms($upgrade_name)] != 1 } {
-					continue
-				}
+	foreach i "btree rbtree hash recno rrecno frecno queue queueext" {
+		puts "Running $i tests"
+		set upgrade_method $i
+		set start 1
+		for { set j $start } { $j <= $num_test(test) } { incr j } {
+			set upgrade_name [format "test%03d" $j]
+			if { [info exists parms($upgrade_name)] != 1 } {
+				continue
+			}
+
+			foreach upgrade_be { 0 1 } {
 				if [catch {exec $tclsh_path \
 				    << "source $test_path/test.tcl;\
-				    global upgrade_be upgrade_name;\
-				    set upgrade_name $upgrade_name;\
+				    global gen_upgrade upgrade_be;\
+				    global upgrade_method upgrade_name;\
+				    set gen_upgrade 1;\
 				    set upgrade_be $upgrade_be;\
+				    set upgrade_method $upgrade_method;\
+				    set upgrade_name $upgrade_name;\
 				    run_method -$i $j $j"} res] {
 					puts "FAIL: $upgrade_name $i"
 				}
@@ -170,7 +176,6 @@ proc gen_upgrade { dir } {
 			}
 		}
 	}
-
 	set gen_upgrade 0
 }
 

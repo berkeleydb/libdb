@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_getlong.c,v 11.15 2001/09/25 13:38:29 bostic Exp $";
+static const char revid[] = "$Id: db_getlong.c,v 11.18 2002/03/28 20:13:33 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,6 @@ static const char revid[] = "$Id: db_getlong.c,v 11.15 2001/09/25 13:38:29 bosti
 #endif
 
 #include "db_int.h"
-#include "clib_ext.h"
 
 /*
  * __db_getlong --

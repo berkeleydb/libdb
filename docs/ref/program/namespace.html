@@ -1,6 +1,7 @@
-<!--$Id: namespace.so,v 10.18 2001/03/27 15:49:31 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: namespace.so,v 10.19 2002/05/11 19:43:16 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Name spaces</title>
@@ -11,7 +12,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
-<td align=right><a href="../../ref/program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/copy.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/cache.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Name spaces</h1>
@@ -35,12 +36,12 @@ or "txn_".  All internal routines are prefixed with the strings "__db_",
 "__lock_", "__log_", "__memp_", or "__txn_".
 <h3>Filesystem Name Space</h3>
 <p>Berkeley DB environments create or use some number of files in environment
-home directories.  These files are named <a href="../../ref/env/naming.html#DB_CONFIG">DB_CONFIG</a>, "log.NNNNN"
+home directories.  These files are named <a href="../../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a>, "log.NNNNN"
 (for example, log.0000000003, where the number of digits following the
 dot is unspecified), or with the string prefix "__db" (for example,
 __db.001).  Database files that match these names should not be created
 in the environment directory.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/copy.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/cache.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

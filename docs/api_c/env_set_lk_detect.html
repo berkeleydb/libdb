@@ -1,6 +1,7 @@
-<!--$Id: env_set_lk_detect.so,v 10.27 2001/10/22 15:24:30 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_lk_detect.so,v 10.31 2002/08/29 03:24:40 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;set_lk_detect</title>
@@ -47,9 +48,15 @@ write locks.
 <dt><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Reject the lock request for a random locker ID.
 <dt><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Reject the lock request for the youngest locker ID.
 </dl>
-<p>The DB_ENV-&gt;set_lk_detect interface may be used only to configure Berkeley DB before
-the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> interface is called.
-<p>The DB_ENV-&gt;set_lk_detect function returns a non-zero error value on failure and 0 on success.
+<p>The DB_ENV-&gt;set_lk_detect method configures a database environment, not only operations
+performed using the specified <a href="../api_c/env_class.html">DB_ENV</a> handle.
+<p>The DB_ENV-&gt;set_lk_detect interface may not be called after the <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>
+interface is called.
+If the database environment already exists when
+<a href="../api_c/env_open.html">DB_ENV-&gt;open</a> is called, the information specified to DB_ENV-&gt;set_lk_detect
+must be consistent with the existing environment or an error will be
+returned.
+<p>The DB_ENV-&gt;set_lk_detect method returns a non-zero error value on failure and 0 on success.
 <p>The database environment's deadlock detector configuration may also be set using the environment's
 <b>DB_CONFIG</b> file.  The syntax of the entry in that file is a
 single line with the string "set_lk_detect", one or more whitespace characters,
@@ -58,29 +65,19 @@ and the interface <b>detect</b> argument as a string; for example,
 environment is opened, it will silently overrule configuration done
 before that time.
 <h1>Errors</h1>
-<p>The DB_ENV-&gt;set_lk_detect function may fail and return a non-zero error for the following conditions:
+<p>The DB_ENV-&gt;set_lk_detect method may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>Called after <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> was called.
 </dl>
-<p>The DB_ENV-&gt;set_lk_detect function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;set_lk_detect function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The DB_ENV-&gt;set_lk_detect method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;set_lk_detect method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/lock_class.html">DB_LOCK</a>
 <h1>See Also</h1>
-<a href="../api_c/env_set_lk_conflicts.html">DB_ENV-&gt;set_lk_conflicts</a>,
-<a href="../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a>,
-<a href="../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
-<a href="../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>,
-<a href="../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>,
-<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>,
-<a href="../api_c/lock_get.html">DB_ENV-&gt;lock_get</a>,
-<a href="../api_c/lock_id.html">DB_ENV-&gt;lock_id</a>,
-<a href="../api_c/lock_id_free.html">DB_ENV-&gt;lock_id_free</a>,
-<a href="../api_c/lock_put.html">DB_ENV-&gt;lock_put</a>,
-<a href="../api_c/lock_stat.html">DB_ENV-&gt;lock_stat</a>,
-and
-<a href="../api_c/lock_vec.html">DB_ENV-&gt;lock_vec</a>.
+<a href="../api_c/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

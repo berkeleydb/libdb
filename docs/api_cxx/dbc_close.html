@@ -1,6 +1,7 @@
-<!--$Id: dbc_close.so,v 10.22 2001/10/22 15:24:26 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_close.so,v 10.24 2002/08/18 21:16:10 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbc::close</title>
@@ -38,28 +39,22 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
 <p>The Dbc::close method may fail and throw an exception or return a non-zero error for the following conditions:
 <p><dl compact>
-<p><dt>DB_LOCK_DEADLOCK<dd>The operation was selected to resolve a deadlock.
-</dl>
-<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>The cursor was previously closed.
 </dl>
+<p>If the operation was selected to resolve a deadlock, the
+Dbc::close method will fail and
+and either return <a href="../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> or
+throw a <a href="../api_cxx/deadlock_class.html">DbDeadlockException</a> exception.
 <p>The Dbc::close method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Dbc::close method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the Dbc::close method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
 <a href="../api_cxx/dbc_class.html">Dbc</a>
 <h1>See Also</h1>
-<a href="../api_cxx/dbc_close.html">Dbc::close</a>,
-<a href="../api_cxx/dbc_count.html">Dbc::count</a>,
-<a href="../api_cxx/dbc_del.html">Dbc::del</a>,
-<a href="../api_cxx/dbc_dup.html">Dbc::dup</a>,
-<a href="../api_cxx/dbc_get.html">Dbc::get</a>,
-<a href="../api_cxx/dbc_get.html">Dbc::pget</a>,
-and
-<a href="../api_cxx/dbc_put.html">Dbc::put</a>.
+<a href="../api_cxx/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa_map.c,v 11.8 2001/05/01 18:48:06 bostic Exp $";
+static const char revid[] = "$Id: xa_map.c,v 11.19 2002/09/03 14:58:27 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,7 +18,7 @@ static const char revid[] = "$Id: xa_map.c,v 11.8 2001/05/01 18:48:06 bostic Exp
 #endif
 
 #include "db_int.h"
-#include "txn.h"
+#include "dbinc/txn.h"
 
 /*
  * This file contains all the mapping information that we need to support

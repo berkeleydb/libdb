@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_btrec.c,v 11.14 2001/10/04 18:46:28 sue Exp $
+ * $Id: ex_btrec.c,v 11.18 2002/01/23 15:33:18 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -20,7 +20,7 @@
 int	main __P((void));
 
 int	ex_btrec __P((void));
-void	show __P((char *, DBT *, DBT *));
+void	show __P((const char *, DBT *, DBT *));
 
 int
 main()
@@ -68,8 +68,8 @@ ex_btrec()
 		dbp->err(dbp, ret, "set_flags: DB_RECNUM");
 		return (1);
 	}
-	if ((ret =
-	    dbp->open(dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp->open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp->err(dbp, ret, "open: %s", DATABASE);
 		return (1);
 	}
@@ -194,8 +194,8 @@ err1:	(void)dbp->close(dbp, 0);
  */
 void
 show(msg, key, data)
+	const char *msg;
 	DBT *key, *data;
-	char *msg;
 {
 	printf("%s%.*s : %.*s\n", msg,
 	    (int)key->size, (char *)key->data,

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: MpoolExample.cpp,v 11.21 2001/11/10 04:59:08 mjc Exp $
+ * $Id: MpoolExample.cpp,v 11.23 2002/01/11 15:52:15 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -26,12 +26,12 @@ using std::ofstream;
 
 #define	MPOOL	"mpool"
 
-int init(char *, int, int);
+int init(const char *, int, int);
 int run(DB_ENV *, int, int, int);
 
 static int usage();
 
-char *progname = "MpoolExample";			// Program name.
+const char *progname = "MpoolExample";			// Program name.
 
 class MpoolExample : public DbEnv
 {
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 //	Create a backing file.
 //
 int
-init(char *file, int pagesize, int npages)
+init(const char *file, int pagesize, int npages)
 {
 	// Create a file with the right number of pages, and store a page
 	// number on each page.

@@ -1,6 +1,7 @@
 <!--$Id: mt.so,v 10.43 2001/09/28 15:09:41 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Multithreaded applications</title>
@@ -24,26 +25,26 @@ returned from the Berkeley DB library are free-threaded.  The following rules
 should be observed when using threads to access the Berkeley DB library:
 <p><ol>
 <p><li>The <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag must be specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a>
-and <a href="../../api_c/db_open.html">DB-&gt;open</a> functions if the Berkeley DB handles returned by those interfaces
+and <a href="../../api_c/db_open.html">DB-&gt;open</a> methods if the Berkeley DB handles returned by those interfaces
 will be used in the context of more than one thread.  Setting the
 <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag inconsistently may result in database corruption.
 <p>Threading is assumed in the Java API, so no special flags are required;
 and Berkeley DB functions will always behave as if the <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag
 was specified.
-<p>Only a single thread may call the <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> or <a href="../../api_c/db_close.html">DB-&gt;close</a> functions
+<p>Only a single thread may call the <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> or <a href="../../api_c/db_close.html">DB-&gt;close</a> methods
 for a returned environment or database handle.
 <p>No other Berkeley DB handles are free-threaded; for example, cursors and
 transactions may not span threads because their returned handles are
 not free-threaded.
 <p><li>When using the non-cursor Berkeley DB calls to retrieve key/data items (for
 example, <a href="../../api_c/db_get.html">DB-&gt;get</a>), the memory to which the pointer stored into
-the Dbt refers is valid only until the next call using the <a href="../../api_c/db_create.html">DB</a>
+the Dbt refers is valid only until the next call using the <a href="../../api_c/db_class.html">DB</a>
 handle returned by <a href="../../api_c/db_open.html">DB-&gt;open</a>.  This includes <b>any</b> use of
-the returned <a href="../../api_c/db_create.html">DB</a> handle, including by another thread within the
+the returned <a href="../../api_c/db_class.html">DB</a> handle, including by another thread within the
 process.
 <p>For this reason, if the <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> handle was specified to the
-<a href="../../api_c/db_open.html">DB-&gt;open</a> function, either <a href="../../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../../api_c/dbt.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a>,
-or <a href="../../api_c/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> must be specified in the <a href="../../api_c/dbt.html">DBT</a> when
+<a href="../../api_c/db_open.html">DB-&gt;open</a> method, either <a href="../../api_c/dbt_class.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../../api_c/dbt_class.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a>,
+or <a href="../../api_c/dbt_class.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> must be specified in the <a href="../../api_c/dbt_class.html">DBT</a> when
 performing any non-cursor key or data retrieval.
 <p><li>Transactions may not span threads.  Each transaction must begin and end
 in the same thread, and each transaction may be used only by a single

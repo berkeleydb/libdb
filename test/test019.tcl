@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test019.tcl,v 11.19 2001/08/03 16:39:36 bostic Exp $
+# $Id: test019.tcl,v 11.21 2002/05/22 15:42:47 sue Exp $
 #
 # TEST	test019
 # TEST	Partial get test.
@@ -14,9 +14,8 @@ proc test019 { method {nentries 10000} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
-	puts "Test019: $method ($args) $nentries partial get test"
-
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -28,7 +27,21 @@ proc test019 { method {nentries 10000} args } {
 		set testfile test019.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
+	puts "Test019: $method ($args) $nentries partial get test"
+
 	cleanup $testdir $env
 
 	set db [eval {berkdb_open \
@@ -57,6 +70,11 @@ proc test019 { method {nentries 10000} args } {
 		}
 		set repl [berkdb random_int $fixed_len 100]
 		set data [chop_data $method [replicate $str $repl]]
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set ret [eval {$db put} $txn {-nooverwrite $key $data}]
 		error_check_good dbput:$key $ret 0
 
@@ -64,6 +82,9 @@ proc test019 { method {nentries 10000} args } {
 		error_check_good \
 		    dbget:$key $ret [list [list $key [pad_data $method $data]]]
 		set kvals($key) $repl
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 	close $did
 
@@ -83,8 +104,16 @@ proc test019 { method {nentries 10000} args } {
 		set beg [berkdb random_int 0 [expr $maxndx - 1]]
 		set len [berkdb random_int 0 [expr $maxndx * 2]]
 
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set ret [eval {$db get} \
 		    $txn {-partial [list $beg $len]} $gflags {$key}]
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 
 		# In order for tcl to handle this, we have to overwrite the
 		# last character with a NULL.  That makes the length one less

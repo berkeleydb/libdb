@@ -1,6 +1,7 @@
 <!--$Id: recno.so,v 11.10 2000/12/04 18:05:41 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Managing record-based databases</title>
@@ -45,16 +46,16 @@ record length prior to creating the database.  Setting the record length
 is what causes the Recno access method to store fixed-length, not
 variable-length, records.
 <p>The length of the records is specified by calling the
-<a href="../../api_c/db_set_re_len.html">DB-&gt;set_re_len</a> function.  The default length of the records is 0 bytes.
+<a href="../../api_c/db_set_re_len.html">DB-&gt;set_re_len</a> method.  The default length of the records is 0 bytes.
 Any record read from a backing source file or otherwise stored in the
 database that is shorter than the declared length will automatically be
-padded as described for the <a href="../../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a> function.  Any record stored
+padded as described for the <a href="../../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a> method.  Any record stored
 that is longer than the declared length results in an error.  For
 further information on backing source files, see
 <a href="../../ref/am_conf/re_source.html">Flat-text backing files</a>.
 <h3>Record Padding Byte Value</h3>
 <p>When storing fixed-length records in a Queue or Recno database, a pad
-character may be specified by calling the <a href="../../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a> function.  Any
+character may be specified by calling the <a href="../../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a> method.  Any
 record read from the backing source file or otherwise stored in the
 database that is shorter than the expected length will automatically be
 padded with this byte value.  If fixed-length records are specified but

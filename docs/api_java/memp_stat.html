@@ -1,6 +1,7 @@
-<!--$Id: memp_stat.so,v 10.35 2001/10/22 15:24:37 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: memp_stat.so,v 10.42 2002/08/18 21:16:51 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.memp_stat</title>
@@ -21,50 +22,70 @@
 <h3><pre>
 import com.sleepycat.db.*;
 <p>
-public DbMpoolStat memp_stat()
+public DbMpoolStat memp_stat(int flags)
     throws DbException;
 <p>
 public DbMpoolFStat[] memp_fstat(int flags)
     throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>The DbEnv.memp_stat and <a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a> method create statistical
-structures and return to the caller.  The statistics include the number
-of files participating in the pool, the active pages in the pool, and
-information as to how effective the cache has been.
-<p>The DbEnv.memp_stat method creates a DbMpoolStat object containing global
-statistics.  The following data fields are available:
+<p>The DbEnv.memp_stat and <a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a> methods return the memory pool
+subsystem statistics.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="Db.DB_STAT_CLEAR">Db.DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
+</dl>
+<p>The DbEnv.memp_stat and <a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a> methods create the DbMpoolStat
+and DbMpoolFStat objects encapsulating the memory pool region
+statistics.  The memory pool region statistics are stored in a
+DbMpoolStat object and the per-file memory pool statistics are stored
+in DbMpoolFStat objects.  The following data fields are available from
+the DbMpoolStat object:
 <p><dl compact>
 <dt>public long st_gbytes;<dd>Gigabytes of cache (total cache size is st_gbytes + st_bytes).
 <dt>public long st_bytes;<dd>Bytes of cache (total cache size is st_gbytes + st_bytes).
 <dt>public int st_ncache;<dd>Number of caches.
 <dt>public int st_regsize;<dd>Individual cache size.
-<dt>public int st_cache_hit;<dd>Requested pages found in the cache.
-<dt>public int st_cache_miss;<dd>Requested pages not found in the cache.
 <dt>public int st_map;<dd>Requested pages mapped into the process' address space (there is no
 available information about whether or not this request caused disk I/O,
 although examining the application page fault rate may be helpful).
+<dt>public int st_cache_hit;<dd>Requested pages found in the cache.
+<dt>public int st_cache_miss;<dd>Requested pages not found in the cache.
 <dt>public int st_page_create;<dd>Pages created in the cache.
 <dt>public int st_page_in;<dd>Pages read into the cache.
 <dt>public int st_page_out;<dd>Pages written from the cache to the backing file.
 <dt>public int st_ro_evict;<dd>Clean pages forced from the cache.
 <dt>public int st_rw_evict;<dd>Dirty pages forced from the cache.
+<dt>public int st_page_trickle;<dd>Dirty pages written using the <a href="../api_java/memp_trickle.html">DbEnv.memp_trickle</a> interface.
+<dt>public int st_pages;<dd>Pages in the cache.
+<dt>public int st_page_clean;<dd>Clean pages currently in the cache.
+<dt>public int st_page_dirty;<dd>Dirty pages currently in the cache.
 <dt>public int st_hash_buckets;<dd>Number of hash buckets in buffer hash table.
 <dt>public int st_hash_searches;<dd>Total number of buffer hash table lookups.
 <dt>public int st_hash_longest;<dd>The longest chain ever encountered in buffer hash table lookups.
 <dt>public int st_hash_examined;<dd>Total number of hash elements traversed during hash table lookups.
-<dt>public int st_page_clean;<dd>Clean pages currently in the cache.
-<dt>public int st_page_dirty;<dd>Dirty pages currently in the cache.
-<dt>public int st_page_trickle;<dd>Dirty pages written using the <a href="../api_java/memp_trickle.html">DbEnv.memp_trickle</a> interface.
+<dt>public int st_hash_nowait;<dd>The number of times that a thread of control was able to obtain a hash
+bucket lock without waiting.
+<dt>public int st_hash_wait;<dd>The number of times that a thread of control was forced to wait before
+obtaining a hash bucket lock.
+<dt>public int st_hash_max_wait;<dd>The maximum number of times any hash bucket lock was waited for by a
+thread of control.
 <dt>public int st_region_wait;<dd>The number of times that a thread of control was forced to wait before
-obtaining the region lock.
-<dt>public int st_region_nowait;<dd>The number of times that a thread of control was able to obtain
-the region lock without waiting.
+obtaining a region lock.
+<dt>public int st_region_nowait;<dd>The number of times that a thread of control was able to obtain a region
+lock without waiting.
+<dt>public int st_alloc;<dd>Number of page allocations.
+<dt>public int st_alloc_buckets;<dd>Number of hash buckets checked during allocation.
+<dt>public int st_alloc_max_buckets;<dd>Maximum number of hash buckets checked during an allocation.
+<dt>public int st_alloc_pages;<dd>Number of pages checked during allocation.
+<dt>public int st_alloc_max_pages;<dd>Maximum number of pages checked during an allocation.
 </dl>
 <p>The <a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a> method creates an array of DbMpoolFStat objects
 containing statistics for individual files in the pool.  Each
 DbMpoolFStat object contains statistics for an individual DbMpoolFile.
-The following data fields are available for each DbMpoolFStat object:
+The following data fields are available for each DbMpoolFStat
+object:
 <p><dl compact>
 <dt>public String file_name;<dd>The name of the file.
 <dt>public long st_pagesize;<dd>Page size in bytes.
@@ -83,16 +104,13 @@ failure.
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
 <p>The DbEnv.memp_stat method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.memp_stat method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.memp_stat method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/mempfile_class.html">DbMpoolFile</a>
 <h1>See Also</h1>
-<a href="../api_java/memp_stat.html">DbEnv.memp_fstat</a>,
-<a href="../api_java/memp_stat.html">DbEnv.memp_stat</a>,
-and
-<a href="../api_java/memp_trickle.html">DbEnv.memp_trickle</a>.
+<a href="../api_java/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

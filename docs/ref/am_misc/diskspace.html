@@ -1,6 +1,7 @@
-<!--$Id: diskspace.so,v 10.16 2001/06/19 21:07:19 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: diskspace.so,v 10.17 2002/08/09 13:43:47 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Disk space requirements</title>
@@ -56,12 +57,13 @@ page-fill factor of any existing database can be displayed using the
 an 8K page size, with an 85% page-fill factor, there are 6941 bytes of
 useful space on each page:
 <p><blockquote><pre>6941 = (8192 - 26) * .85</pre></blockquote>
-<p>The total <b>bytes-of-data</b> is an easy calculation: It is the number
-of key/data pairs plus the overhead required to store each pair on a page.
-The overhead to store a single item on a Btree page is 5 bytes.  So,
-assuming 60,000,000 key/data pairs, each of which is 8 bytes long, there
-are 1440000000 bytes, or roughly 1.34GB of total data:
-<p><blockquote><pre>1560000000 = 60000000 * ((8 * 2) + (5 * 2))</pre></blockquote>
+<p>The total <b>bytes-of-data</b> is an easy calculation: It is the
+number of key or data items plus the overhead required to store each
+item on a page.  The overhead to store a key or data item on a Btree
+page is 5 bytes.  So, it would take 1560000000 bytes, or roughly 1.34GB
+of total data to store 60,000,000 key/data pairs, assuming each key or
+data item was 8 bytes long:
+<p><blockquote><pre>1560000000 = 60000000 * ((8 + 5) * 2)</pre></blockquote>
 <p>The total pages of data, <b>n-pages-of-data</b>, is the
 <b>bytes-of-data</b> divided by the <b>useful-bytes-per-page</b>.  In
 the example, there are 224751 pages of data.

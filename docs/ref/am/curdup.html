@@ -1,6 +1,7 @@
 <!--$Id: curdup.so,v 11.6 2001/03/01 15:57:49 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Duplicating a cursor</title>
@@ -17,7 +18,7 @@
 <h1 align=center>Duplicating a cursor</h1>
 <p>Once a cursor has been initialized (for example, by a call to
 <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a>), it can be thought of as identifying a particular
-location in a database.  The <a href="../../api_c/dbc_dup.html">DBcursor-&gt;c_dup</a> function permits an application to
+location in a database.  The <a href="../../api_c/dbc_dup.html">DBcursor-&gt;c_dup</a> method permits an application to
 create a new cursor that has the same locking and transactional
 information as the cursor from which it is copied, and which optionally
 refers to the same position in the database.

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_upgrade.c,v 1.22 2001/08/06 13:42:33 bostic Exp $";
+    "$Id: db_upgrade.c,v 1.31 2002/03/28 20:13:47 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,7 +24,6 @@ static const char revid[] =
 #endif
 
 #include "db_int.h"
-#include "clib_ext.h"
 
 int db_upgrade_main __P((int, char *[]));
 int db_upgrade_usage __P((void));
@@ -56,7 +55,7 @@ db_upgrade_main(argc, argv)
 	DB_ENV *dbenv;
 	u_int32_t flags;
 	int ch, e_close, exitval, nflag, ret, t_ret;
-	char *home;
+	char *home, *passwd;
 
 	if ((ret = db_upgrade_version_check(progname)) != 0)
 		return (ret);
@@ -64,15 +63,24 @@ db_upgrade_main(argc, argv)
 	dbenv = NULL;
 	flags = nflag = 0;
 	e_close = exitval = 0;
-	home = NULL;
+	home = passwd = NULL;
 	__db_getopt_reset = 1;
-	while ((ch = getopt(argc, argv, "h:NsV")) != EOF)
+	while ((ch = getopt(argc, argv, "h:NP:sV")) != EOF)
 		switch (ch) {
 		case 'h':
 			home = optarg;
 			break;
 		case 'N':
 			nflag = 1;
+			break;
+		case 'P':
+			passwd = strdup(optarg);
+			memset(optarg, 0, strlen(optarg));
+			if (passwd == NULL) {
+				fprintf(stderr, "%s: strdup: %s\n",
+				    progname, strerror(errno));
+				return (EXIT_FAILURE);
+			}
 			break;
 		case 's':
 			LF_SET(DB_DUPSORT);
@@ -112,10 +120,16 @@ db_upgrade_main(argc, argv)
 			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
 			goto shutdown;
 		}
-		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 0)) != 0) {
+		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
 			goto shutdown;
 		}
+	}
+
+	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
+	    passwd, DB_ENCRYPT_AES)) != 0) {
+		dbenv->err(dbenv, ret, "set_passwd");
+		goto shutdown;
 	}
 
 	/*
@@ -166,7 +180,8 @@ shutdown:	exitval = 1;
 int
 db_upgrade_usage()
 {
-	fprintf(stderr, "usage: db_upgrade [-NsV] [-h home] db_file ...\n");
+	fprintf(stderr, "%s\n",
+	    "usage: db_upgrade [-NsV] [-h home] [-P password] db_file ...");
 	return (EXIT_FAILURE);
 }
 

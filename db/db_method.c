@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_method.c,v 11.55 2001/09/20 17:02:25 bostic Exp $";
+static const char revid[] = "$Id: db_method.c,v 11.78 2002/07/02 19:26:55 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -21,41 +21,44 @@ static const char revid[] = "$Id: db_method.c,v 11.55 2001/09/20 17:02:25 bostic
 #include <string.h>
 #endif
 
-#ifdef HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
-#include "db_page.h"
-#include "db_am.h"
-#include "btree.h"
-#include "hash.h"
-#include "qam.h"
-#include "xa.h"
-#include "xa_ext.h"
+#include "dbinc/crypto.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/btree.h"
+#include "dbinc/hash.h"
+#include "dbinc/qam.h"
+#include "dbinc/xa.h"
+#include "dbinc_auto/xa_ext.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
 
 #ifdef HAVE_RPC
-#include "rpc_client_ext.h"
+#include "dbinc_auto/db_server.h"
+#include "dbinc_auto/rpc_client_ext.h"
 #endif
 
 static int  __db_get_byteswapped __P((DB *, int *));
-static int __db_get_type __P((DB *, DBTYPE *dbtype));
+static int  __db_get_type __P((DB *, DBTYPE *dbtype));
 static int  __db_init __P((DB *, u_int32_t));
 static int  __db_key_range
 		__P((DB *, DB_TXN *, DBT *, DB_KEY_RANGE *, u_int32_t));
-static int  __db_set_append_recno __P((DB *, int (*)(DB *, DBT *, db_recno_t)));
 static int  __db_set_alloc __P((DB *, void *(*)(size_t),
 		void *(*)(void *, size_t), void (*)(void *)));
+static int  __db_set_append_recno __P((DB *, int (*)(DB *, DBT *, db_recno_t)));
 static int  __db_set_cachesize __P((DB *, u_int32_t, u_int32_t, int));
+static int  __db_set_cache_priority __P((DB *, DB_CACHE_PRIORITY));
 static int  __db_set_dup_compare
 		__P((DB *, int (*)(DB *, const DBT *, const DBT *)));
-static void __db_set_errcall __P((DB *, void (*)(const char *, char *)));
-static void __db_set_errfile __P((DB *, FILE *));
+static int  __db_set_encrypt __P((DB *, const char *, u_int32_t));
 static int  __db_set_feedback __P((DB *, void (*)(DB *, int, int)));
 static int  __db_set_flags __P((DB *, u_int32_t));
 static int  __db_set_pagesize __P((DB *, u_int32_t));
-static void __db_set_errpfx __P((DB *, const char *));
 static int  __db_set_paniccall __P((DB *, void (*)(DB_ENV *, int)));
+static void __db_set_errcall __P((DB *, void (*)(const char *, char *)));
+static void __db_set_errfile __P((DB *, FILE *));
+static void __db_set_errpfx __P((DB *, const char *));
+static int  __db_stat_fail __P((DB *, void *, u_int32_t));
 static void __dbh_err __P((DB *, int, const char *, ...));
 static void __dbh_errx __P((DB *, const char *, ...));
 
@@ -105,20 +108,20 @@ db_create(dbpp, dbenv, flags)
 	if ((ret = __os_calloc(dbenv, 1, sizeof(*dbp), &dbp)) != 0)
 		return (ret);
 #ifdef HAVE_RPC
-	if (dbenv != NULL && dbenv->cl_handle != NULL)
+	if (dbenv != NULL && RPC_ON(dbenv))
 		ret = __dbcl_init(dbp, dbenv, flags);
 	else
 #endif
 		ret = __db_init(dbp, flags);
 	if (ret != 0) {
-		__os_free(dbenv, dbp, sizeof(*dbp));
+		__os_free(dbenv, dbp);
 		return (ret);
 	}
 
 	/* If we don't have an environment yet, allocate a local one. */
 	if (dbenv == NULL) {
 		if ((ret = db_env_create(&dbenv, 0)) != 0) {
-			__os_free(dbenv, dbp, sizeof(*dbp));
+			__os_free(dbenv, dbp);
 			return (ret);
 		}
 		F_SET(dbenv, DB_ENV_DBLOCAL);
@@ -142,7 +145,8 @@ __db_init(dbp, flags)
 {
 	int ret;
 
-	dbp->log_fileid = DB_LOGFILEID_INVALID;
+	dbp->lid = DB_LOCK_INVALIDID;
+	LOCK_INIT(dbp->handle_lock);
 
 	TAILQ_INIT(&dbp->free_queue);
 	TAILQ_INIT(&dbp->active_queue);
@@ -173,7 +177,9 @@ __db_init(dbp, flags)
 	dbp->set_alloc = __db_set_alloc;
 	dbp->set_append_recno = __db_set_append_recno;
 	dbp->set_cachesize = __db_set_cachesize;
+	dbp->set_cache_priority = __db_set_cache_priority;
 	dbp->set_dup_compare = __db_set_dup_compare;
+	dbp->set_encrypt = __db_set_encrypt;
 	dbp->set_errcall = __db_set_errcall;
 	dbp->set_errfile = __db_set_errfile;
 	dbp->set_errpfx = __db_set_errpfx;
@@ -182,7 +188,7 @@ __db_init(dbp, flags)
 	dbp->set_lorder = __db_set_lorder;
 	dbp->set_pagesize = __db_set_pagesize;
 	dbp->set_paniccall = __db_set_paniccall;
-	dbp->stat = NULL;		/* !!! Must be set by access method. */
+	dbp->stat = __db_stat_fail;
 	dbp->sync = __db_sync;
 	dbp->upgrade = __db_upgrade;
 	dbp->verify = __db_verify;
@@ -249,16 +255,7 @@ __dbh_err(dbp, error, fmt, va_alist)
 	va_dcl
 #endif
 {
-	va_list ap;
-
-#ifdef __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	__db_real_err(dbp->dbenv, error, 1, 1, fmt, ap);
-
-	va_end(ap);
+	DB_REAL_ERR(dbp->dbenv, error, 1, 1, fmt);
 }
 
 /*
@@ -275,16 +272,7 @@ __dbh_errx(dbp, fmt, va_alist)
 	va_dcl
 #endif
 {
-	va_list ap;
-
-#ifdef __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	__db_real_err(dbp->dbenv, 0, 0, 1, fmt, ap);
-
-	va_end(ap);
+	DB_REAL_ERR(dbp->dbenv, 0, 0, 1, fmt);
 }
 
 /*
@@ -375,6 +363,26 @@ __db_set_cachesize(dbp, cache_gbytes, cache_bytes, ncache)
 }
 
 /*
+ * __db_set_cache_priority --
+ *	Set cache priority for pages from this file.
+ */
+static int
+__db_set_cache_priority(dbp, priority)
+	DB *dbp;
+	DB_CACHE_PRIORITY priority;
+{
+	/*
+	 * If an underlying DB_MPOOLFILE exists, call it.  Otherwise, save
+	 * the information away until DB->open is called.
+	 */
+	if (dbp->mpf == NULL) {
+		dbp->priority = priority;
+		return (0);
+	}
+	return (dbp->mpf->set_priority(dbp->mpf, priority));
+}
+
+/*
  * __db_set_dup_compare --
  *	Set duplicate comparison routine.
  */
@@ -383,12 +391,48 @@ __db_set_dup_compare(dbp, func)
 	DB *dbp;
 	int (*func) __P((DB *, const DBT *, const DBT *));
 {
+	int ret;
+
 	DB_ILLEGAL_AFTER_OPEN(dbp, "dup_compare");
 	DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE | DB_OK_HASH);
+
+	if ((ret = dbp->set_flags(dbp, DB_DUPSORT)) != 0)
+		return (ret);
 
 	dbp->dup_compare = func;
 
 	return (0);
+}
+
+/*
+ * __db_set_encrypt --
+ *	Set database passwd.
+ */
+static int
+__db_set_encrypt(dbp, passwd, flags)
+	DB *dbp;
+	const char *passwd;
+	u_int32_t flags;
+{
+	DB_CIPHER *db_cipher;
+	int ret;
+
+	DB_ILLEGAL_IN_ENV(dbp, "set_encrypt");
+	DB_ILLEGAL_AFTER_OPEN(dbp, "set_encrypt");
+
+	if ((ret = dbp->dbenv->set_encrypt(dbp->dbenv, passwd, flags)) != 0)
+		return (ret);
+
+	/*
+	 * In a real env, this gets initialized with the region.  In a local
+	 * env, we must do it here.
+	 */
+	db_cipher = (DB_CIPHER *)dbp->dbenv->crypto_handle;
+	if (!F_ISSET(db_cipher, CIPHER_ANY) &&
+	    (ret = db_cipher->init(dbp->dbenv, db_cipher)) != 0)
+		return (ret);
+
+	return (dbp->set_flags(dbp, DB_ENCRYPT));
 }
 
 static void
@@ -439,6 +483,21 @@ __db_set_flags(dbp, flags)
 	 *
 	 * The queue access method takes no flags.
 	 */
+	if (LF_ISSET(DB_ENCRYPT)) {
+		if (!CRYPTO_ON(dbp->dbenv)) {
+			__db_err(dbp->dbenv,
+		    "Database environment not configured for encryption");
+			return (EINVAL);
+		}
+		F_SET(dbp, DB_AM_ENCRYPT);
+		F_SET(dbp, DB_AM_CHKSUM);
+		LF_CLR(DB_ENCRYPT);
+	}
+	if (LF_ISSET(DB_CHKSUM_SHA1)) {
+		F_SET(dbp, DB_AM_CHKSUM);
+		LF_CLR(DB_CHKSUM_SHA1);
+	}
+
 	if ((ret = __bam_set_flags(dbp, &flags)) != 0)
 		return (ret);
 	if ((ret = __ram_set_flags(dbp, &flags)) != 0)
@@ -536,6 +595,26 @@ __db_set_paniccall(dbp, paniccall)
 	return (dbp->dbenv->set_paniccall(dbp->dbenv, paniccall));
 }
 
+static int
+__db_stat_fail(dbp, sp, flags)
+	DB *dbp;
+	void *sp;
+	u_int32_t flags;
+{
+	COMPQUIET(sp, NULL);
+	COMPQUIET(flags, 0);
+
+	/*
+	 * DB->stat isn't initialized until the actual DB->open call,
+	 * but we don't want to core dump.
+	 */
+	PANIC_CHECK(dbp->dbenv);
+	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
+
+	/* NOTREACHED */
+	return (EINVAL);
+}
+
 #ifdef HAVE_RPC
 /*
  * __dbcl_init --
@@ -566,7 +645,7 @@ __dbcl_init(dbp, dbenv, flags)
 	dbp->get_type = __db_get_type;
 	dbp->join = __dbcl_db_join;
 	dbp->key_range = __dbcl_db_key_range;
-	dbp->open = __dbcl_db_open;
+	dbp->open = __dbcl_db_open_wrap;
 	dbp->pget = __dbcl_db_pget;
 	dbp->put = __dbcl_db_put;
 	dbp->remove = __dbcl_db_remove;
@@ -574,7 +653,9 @@ __dbcl_init(dbp, dbenv, flags)
 	dbp->set_alloc = __dbcl_db_alloc;
 	dbp->set_append_recno = __dbcl_db_set_append_recno;
 	dbp->set_cachesize = __dbcl_db_cachesize;
+	dbp->set_cache_priority = __dbcl_db_cache_priority;
 	dbp->set_dup_compare = __dbcl_db_dup_compare;
+	dbp->set_encrypt = __dbcl_db_encrypt;
 	dbp->set_errcall = __db_set_errcall;
 	dbp->set_errfile = __db_set_errfile;
 	dbp->set_errpfx = __db_set_errpfx;

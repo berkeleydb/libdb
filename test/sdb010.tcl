@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2001
+# Copyright (c) 2000-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb010.tcl,v 11.10 2001/08/03 16:39:31 bostic Exp $
+# $Id: sdb010.tcl,v 11.14 2002/07/11 18:53:47 sandstro Exp $
 #
 # TEST	subdb010
 # TEST	Test DB->remove() method and DB->truncate() for subdbs
@@ -21,23 +21,47 @@ proc subdb010 { method args } {
 		return
 	}
 
-	cleanup $testdir NULL
+	set txnenv 0
+	set envargs ""
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/subdb010.db
+		set tfpath $testfile
+		set env NULL
+	} else {
+		set testfile subdb010.db
+		incr eindex
+		set env [lindex $args $eindex]
+		set envargs " -env $env "
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			append envargs " -auto_commit "
+		}
+		set testdir [get_home $env]
+		set tfpath $testdir/$testfile
+	}
+	cleanup $testdir $env
 
-	set testfile $testdir/subdb010.db
+	set txn ""
 	set testdb DATABASE
 	set testdb2 DATABASE2
 
-	set db [eval {berkdb_open -create -truncate -mode 0644} $omethod \
+	set db [eval {berkdb_open -create -mode 0644} $omethod \
 	    $args $testfile $testdb]
 	error_check_good db_open [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
 	puts "\tSubdb010.a: Test of DB->remove()"
-	error_check_good file_exists_before [file exists $testfile] 1
-	error_check_good db_remove [berkdb dbremove $testfile $testdb] 0
+	error_check_good file_exists_before [file exists $tfpath] 1
+	error_check_good db_remove [eval {berkdb dbremove} $envargs \
+	    $testfile $testdb] 0
 
 	# File should still exist.
-	error_check_good file_exists_after [file exists $testfile] 1
+	error_check_good file_exists_after [file exists $tfpath] 1
 
 	# But database should not.
 	set ret [catch {eval berkdb_open $omethod $args $testfile $testdb} res]
@@ -53,14 +77,30 @@ proc subdb010 { method args } {
 	set data2 [pad_data $method data2]
 
 	set db [eval {berkdb_open -create -mode 0644} $omethod \
-	    $args $testfile $testdb]
+	    $args {$testfile $testdb}]
 	error_check_good db_open [is_valid_db $db] TRUE
-	error_check_good dbput [$db put $key1 $data1] 0
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	error_check_good dbput [eval {$db put} $txn {$key1 $data1}] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	set db2 [eval {berkdb_open -create -mode 0644} $omethod \
 	    $args $testfile $testdb2]
 	error_check_good db_open [is_valid_db $db2] TRUE
-	error_check_good dbput [$db2 put $key2 $data2] 0
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	error_check_good dbput [eval {$db2 put} $txn {$key2 $data2}] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	error_check_good db_close [$db close] 0
 	error_check_good db_close [$db2 close] 0
@@ -72,27 +112,53 @@ proc subdb010 { method args } {
 	set db [eval {berkdb_open -create -mode 0644} $omethod \
 	    $args $testfile $testdb]
 	error_check_good db_open [is_valid_db $db] TRUE
-	error_check_good trunc_subdb [$db truncate] 1
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	error_check_good trunc_subdb [eval {$db truncate} $txn] 1
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	puts "\tSubdb010.d: check"
-	set db [berkdb_open $testfile $testdb]
+	set db [eval {berkdb_open} $args {$testfile $testdb}]
 	error_check_good db_open [is_valid_db $db] TRUE
-	set dbc [$db cursor]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
 	set kd [$dbc get -first]
 	error_check_good trunc_dbcget [llength $kd] 0
 	error_check_good dbcclose [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
-	set db2 [berkdb_open $testfile $testdb2]
+	set db2 [eval {berkdb_open} $args {$testfile $testdb2}]
 	error_check_good db_open [is_valid_db $db2] TRUE
-	set dbc [$db2 cursor]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set dbc [eval {$db2 cursor} $txn]
 	error_check_good db_cursor [is_valid_cursor $dbc $db2] TRUE
 	set kd [$dbc get -first]
 	error_check_bad notrunc_dbcget1 [llength $kd] 0
+	set db2kd [list [list $key2 $data2]]
+	error_check_good key2 $kd $db2kd
 	set kd [$dbc get -next]
 	error_check_good notrunc_dbget2 [llength $kd] 0
 	error_check_good dbcclose [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	error_check_good db_close [$db close] 0
 	error_check_good db_close [$db2 close] 0

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test022.tcl,v 11.12 2001/08/03 16:39:37 bostic Exp $
+# $Id: test022.tcl,v 11.14 2002/05/22 15:42:48 sue Exp $
 #
 # TEST	test022
 # TEST	Test of DB->getbyteswapped().
@@ -15,6 +15,7 @@ proc test022 { method args } {
 
 	puts "Test022 ($args) $omethod: DB->getbyteswapped()"
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -28,6 +29,11 @@ proc test022 { method args } {
 		set testfile2 "test022b.db"
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 

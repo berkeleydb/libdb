@@ -1,6 +1,7 @@
-<!--$Id: intro.so,v 1.18 2001/11/05 21:05:18 sue Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: intro.so,v 1.20 2002/03/26 15:20:29 sue Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Building for VxWorks</title>
@@ -24,7 +25,7 @@ information about VxWorks AE.
 <tr><th>File</th><th>Description</th></tr>
 <tr>    <td align=left>Berkeley DB.wsp</td>    <td align=left>Berkeley DB Workspace file</td>    </tr>
 <tr>    <td align=left>Berkeley DB.wpj</td>    <td align=left>Berkeley DB Project file</td>    </tr>
-<tr>    <td align=left>demo/DBdemo.wpj</td>    <td align=left><a href="../../ref/build_vxworks/notes.html">Demo program</a> project file</td>    </tr>
+<tr>    <td align=left>dbdemo/dbdemo.wpj</td>    <td align=left><a href="../../ref/build_vxworks/notes.html">Demo program</a> project file</td>    </tr>
 <tr>    <td align=left>db_*/*.wpj</td>    <td align=left><a href="../../ref/build_vxworks/notes.html">Support utilities</a> project files</td>    </tr>
 </table>
 <h3>Building With Tornado 2.0</h3>
@@ -79,9 +80,6 @@ If you get an error about an inability to find header files
 you should edit the <i>include</i> and <i>include_auto</i>
 pathnames to remove the <i>build_vxworks/..</i> relative
 portion.  Then you should rebuild your dependencies.
-<p>If the architecture for this new build has the most significant byte
-first, you also need to edit the <i>db_config.h</i> file in the
-build directory and define <b>WORDS_BIGENDIAN</b>.
 <p>To build and download the Berkeley DB downloadable application for the first time
 requires several steps: 
 <p><ol>

@@ -7,9 +7,9 @@
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "ham.h"
-#include "log.h"
+#include "dbinc/db_page.h"
+#include "dbinc/__ham.h"
+#include "dbinc/log.h"
 
 /*
  * __ham_insdel_recover --
@@ -36,9 +36,9 @@ __ham_insdel_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_insdel_print);
 	REC_INTRO(__ham_insdel_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -64,7 +64,7 @@ __ham_insdel_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -98,9 +98,9 @@ __ham_newpage_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_newpage_print);
 	REC_INTRO(__ham_newpage_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -126,7 +126,7 @@ __ham_newpage_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -160,9 +160,9 @@ __ham_splitdata_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_splitdata_print);
 	REC_INTRO(__ham_splitdata_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -188,7 +188,7 @@ __ham_splitdata_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -222,9 +222,9 @@ __ham_replace_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_replace_print);
 	REC_INTRO(__ham_replace_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -250,7 +250,7 @@ __ham_replace_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -284,9 +284,9 @@ __ham_copypage_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_copypage_print);
 	REC_INTRO(__ham_copypage_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -312,7 +312,7 @@ __ham_copypage_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -346,9 +346,9 @@ __ham_metagroup_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_metagroup_print);
 	REC_INTRO(__ham_metagroup_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -374,7 +374,7 @@ __ham_metagroup_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -408,9 +408,9 @@ __ham_groupalloc_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_groupalloc_print);
 	REC_INTRO(__ham_groupalloc_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -436,7 +436,7 @@ __ham_groupalloc_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -470,9 +470,9 @@ __ham_curadj_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_curadj_print);
 	REC_INTRO(__ham_curadj_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -498,7 +498,7 @@ __ham_curadj_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;
@@ -532,9 +532,9 @@ __ham_chgpg_recover(dbenv, dbtp, lsnp, op, info)
 	REC_PRINT(__ham_chgpg_print);
 	REC_INTRO(__ham_chgpg_read, 1);
 
-	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
-			if ((ret = memp_fget(mpf,
+			if ((ret = mpf->get(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 		} else {
@@ -560,7 +560,7 @@ __ham_chgpg_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
 		goto out;
 
 	*lsnp = argp->prev_lsn;

@@ -1,6 +1,7 @@
 <!--$Id: dbinfo.so,v 11.10 2001/04/03 19:39:02 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.0: the DBINFO structure</title>
@@ -16,7 +17,7 @@
 <h1 align=center>Release 3.0: the DBINFO structure</h1>
 <p>The DB_INFO structure has been removed from the Berkeley DB 3.0 release.
 Accesses to any fields within that structure by the application should be
-replaced with method calls on the <a href="../../api_c/db_create.html">DB</a> handle.  The following
+replaced with method calls on the <a href="../../api_c/db_class.html">DB</a> handle.  The following
 example illustrates this using the historic db_cachesize structure field.
 In the Berkeley DB 2.X releases, applications could set the size of an
 underlying database cache using code similar to the following:
@@ -54,7 +55,7 @@ behavior that is backward-compatible with previous Berkeley DB releases.</td></t
 <tr><td>dup_compare</td><td><a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a></td></tr>
 <tr><td>flags</td><td><a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a>
 <p>Note: the DB_DELIMITER, DB_FIXEDLEN and DB_PAD flags no longer need to be
-set as there are specific methods off the <a href="../../api_c/db_create.html">DB</a> handle that set the
+set as there are specific methods off the <a href="../../api_c/db_class.html">DB</a> handle that set the
 file delimiter, the length of fixed-length records and the fixed-length
 record pad character.  They should simply be discarded from the application.</td></tr>
 <tr><td>h_ffactor</td><td><a href="../../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a></td></tr>

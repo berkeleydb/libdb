@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test065.tcl,v 11.12 2001/08/03 16:39:44 bostic Exp $
+# $Id: test065.tcl,v 11.16 2002/08/22 18:18:50 sandstro Exp $
 #
 # TEST	test065
 # TEST	Test of DB->stat(DB_FASTSTAT)
@@ -12,10 +12,12 @@ proc test065 { method args } {
 	global errorCode
 	global alphabet
 
+	set nentries 10000
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 	set tnum 65
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -27,6 +29,18 @@ proc test065 { method args } {
 		set testfile test0$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the 
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -56,7 +70,7 @@ proc test065 { method args } {
 	# catch EINVALs, and no longer care about __db_errs.
 	set db [eval {berkdb_open -create -mode 0644} $omethod $args $testfile]
 
-	puts "\tTest0$tnum.b: put 10000 keys."
+	puts "\tTest0$tnum.b: put $nentries keys."
 
 	if { [is_record_based $method] } {
 		set gflags " -recno "
@@ -66,80 +80,119 @@ proc test065 { method args } {
 		set keypfx "key"
 	}
 
+	set txn ""
 	set data [pad_data $method $alphabet]
 
-	for { set ndx 1 } { $ndx <= 10000 } { incr ndx } {
-		set ret [eval {$db put} $keypfx$ndx $data]
+	for { set ndx 1 } { $ndx <= $nentries } { incr ndx } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set ret [eval {$db put} $txn {$keypfx$ndx $data}]
 		error_check_good db_put $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	set ret [$db stat -faststat]
 	error_check_good recordcount_after_puts \
-	    [is_substr $ret "{{Number of keys} 10000}"] 1
+	    [is_substr $ret "{{Number of keys} $nentries}"] 1
 
-	puts "\tTest0$tnum.c: delete 9000 keys."
-	for { set ndx 1 } { $ndx <= 9000 } { incr ndx } {
+	puts "\tTest0$tnum.c: delete 90% of keys."
+	set end [expr {$nentries / 10 * 9}]
+	for { set ndx 1 } { $ndx <= $end } { incr ndx } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		if { [is_rrecno $method] == 1 } {
 			# if we're renumbering, when we hit key 5001 we'll
 			# have deleted 5000 and we'll croak!  So delete key
 			# 1, repeatedly.
-			set ret [eval {$db del} [concat $keypfx 1]]
+			set ret [eval {$db del} $txn {[concat $keypfx 1]}]
 		} else {
-			set ret [eval {$db del} $keypfx$ndx]
+			set ret [eval {$db del} $txn {$keypfx$ndx}]
 		}
 		error_check_good db_del $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	set ret [$db stat -faststat]
 	if { [is_rrecno $method] == 1 || [is_rbtree $method] == 1 } {
-		# We allow renumbering--thus the stat should return 1000
-		error_check_good recordcount_after_dels \
-		    [is_substr $ret "{{Number of keys} 1000}"] 1
+		# We allow renumbering--thus the stat should return 10%
+		# of nentries.
+		error_check_good recordcount_after_dels [is_substr $ret \
+		    "{{Number of keys} [expr {$nentries / 10}]}"] 1
 	} else {
 		# No renumbering--no change in RECORDCOUNT!
 		error_check_good recordcount_after_dels \
-		    [is_substr $ret "{{Number of keys} 10000}"] 1
+		    [is_substr $ret "{{Number of keys} $nentries}"] 1
 	}
 
-	puts "\tTest0$tnum.d: put 8000 new keys at the beginning."
-	for { set ndx 1 } { $ndx <= 8000 } {incr ndx } {
-		set ret [eval {$db put} $keypfx$ndx $data]
+	puts "\tTest0$tnum.d: put new keys at the beginning."
+	set end [expr {$nentries / 10 * 8}]
+	for { set ndx 1 } { $ndx <= $end } {incr ndx } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set ret [eval {$db put} $txn {$keypfx$ndx $data}]
 		error_check_good db_put_beginning $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	set ret [$db stat -faststat]
 	if { [is_rrecno $method] == 1 } {
-		# With renumbering we're back up to 8000
-		error_check_good recordcount_after_dels \
-		    [is_substr $ret "{{Number of keys} 8000}"] 1
+		# With renumbering we're back up to 80% of $nentries 
+		error_check_good recordcount_after_dels [is_substr $ret \
+		    "{{Number of keys} [expr {$nentries / 10 * 8}]}"] 1
 	} elseif { [is_rbtree $method] == 1 } {
-		# Total records in a btree is now 9000
-		error_check_good recordcount_after_dels \
-		    [is_substr $ret "{{Number of keys} 9000}"] 1
+		# Total records in a btree is now 90% of $nentries
+		error_check_good recordcount_after_dels [is_substr $ret \
+		    "{{Number of keys} [expr {$nentries / 10 * 9}]}"] 1
 	} else {
 		# No renumbering--still no change in RECORDCOUNT.
-		error_check_good recordcount_after_dels \
-		    [is_substr $ret "{{Number of keys} 10000}"] 1
+		error_check_good recordcount_after_dels [is_substr $ret \
+		    "{{Number of keys} $nentries}"] 1
 	}
 
-	puts "\tTest0$tnum.e: put 8000 new keys off the end."
-	for { set ndx 9001 } { $ndx <= 17000 } {incr ndx } {
-		set ret [eval {$db put} $keypfx$ndx $data]
+	puts "\tTest0$tnum.e: put new keys at the end."
+	set start [expr {1 + $nentries / 10 * 9}]
+	set end [expr {($nentries / 10 * 9) + ($nentries / 10 * 8)}]
+	for { set ndx $start } { $ndx <= $end } { incr ndx } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set ret [eval {$db put} $txn {$keypfx$ndx $data}]
 		error_check_good db_put_end $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	set ret [$db stat -faststat]
 	if { [is_rbtree $method] != 1 } {
-		# If this is a recno database, the record count should
-		# be up to 17000, the largest number we've seen, with
+		# If this is a recno database, the record count should be up
+		# to (1.7 x nentries), the largest number we've seen, with
 		# or without renumbering.
-		error_check_good recordcount_after_puts2 \
-		    [is_substr $ret "{{Number of keys} 17000}"] 1
+		error_check_good recordcount_after_puts2 [is_substr $ret \
+		    "{{Number of keys} [expr {$start - 1 + $nentries / 10 * 8}]}"] 1
 	} else {
-		# In an rbtree, 1000 of those keys were overwrites,
-		# so there are 7000 new keys + 9000 old keys == 16000
-		error_check_good recordcount_after_puts2 \
-		    [is_substr $ret "{{Number of keys} 16000}"] 1
+		# In an rbtree, 1000 of those keys were overwrites, so there
+		# are (.7 x nentries) new keys and (.9 x nentries) old keys 
+		# for a total of (1.6 x nentries).
+		error_check_good recordcount_after_puts2 [is_substr $ret \
+		    "{{Number of keys} [expr {$start -1 + $nentries / 10 * 7}]}"] 1
 	}
 
 	error_check_good db_close [$db close] 0

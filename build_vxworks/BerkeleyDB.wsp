@@ -20,7 +20,7 @@ $(PRJ_DIR)/BerkeleyDB.wpj \
 	$(PRJ_DIR)/db_stat/db_stat.wpj \
 	$(PRJ_DIR)/db_upgrade/db_upgrade.wpj \
 	$(PRJ_DIR)/db_verify/db_verify.wpj \
-	$(PRJ_DIR)/demo/DBdemo.wpj
+	$(PRJ_DIR)/dbdemo/dbdemo.wpj
 <END>
 
 <BEGIN> userComments

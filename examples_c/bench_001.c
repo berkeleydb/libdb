@@ -1,6 +1,8 @@
 /*-
- * Copyright (c) 2001
+ * Copyright (c) 2001-2002
  *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: bench_001.c,v 1.13 2002/08/15 02:45:39 bostic Exp $
  */
 
 /*
@@ -127,7 +129,7 @@ get(dbp, txn, datalen, num, dups, iter, countp)
 		else
 			while (pointer != NULL) {
 				DB_MULTIPLE_KEY_NEXT(pointer,
-				     &data, kp, klen, dp, len);
+				    &data, kp, klen, dp, len);
 				if (kp != NULL)
 					count++;
 			}
@@ -142,13 +144,19 @@ get(dbp, txn, datalen, num, dups, iter, countp)
 
 /*
  * fill - fill a db
+ *	Since we open/created the db with transactions (potentially),
+ * we need to populate it with transactions.  We'll bundle the puts
+ * 10 to a transaction.
  */
+#define	PUTS_PER_TXN	10
 int
-fill(dbp, datalen, num, dups)
+fill(dbenv, dbp, txn, datalen, num, dups)
+	DB_ENV *dbenv;
 	DB *dbp;
-	int datalen, num, dups;
+	int txn, datalen, num, dups;
 {
 	DBT key, data;
+	DB_TXN *txnp;
 	struct data {
 		int id;
 		char str[1];
@@ -158,6 +166,8 @@ fill(dbp, datalen, num, dups)
 	 * Insert records into the database, where the key is the user
 	 * input and the data is the user input in reverse order.
 	 */
+	txnp = NULL;
+	ret = 0;
 	count = 0;
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
@@ -170,22 +180,39 @@ fill(dbp, datalen, num, dups)
 	data.flags = DB_DBT_USERMEM;
 
 	for (i = 0; i < num; i++) {
+		if (txn != 0 && i % PUTS_PER_TXN == 0) {
+			if (txnp != NULL) {
+				ret = txnp->commit(txnp, 0);
+				txnp = NULL;
+				if (ret != 0)
+					goto err;
+			}
+			if ((ret =
+			    dbenv->txn_begin(dbenv, NULL, &txnp, 0)) != 0)
+				goto err;
+		}
 		data_val->id = 0;
 		do {
 			switch (ret =
-			    dbp->put(dbp, NULL, &key, &data, 0)) {
+			    dbp->put(dbp, txnp, &key, &data, 0)) {
 			case 0:
 				count++;
 				break;
 			default:
 				dbp->err(dbp, ret, "DB->put");
-				return (ret);
-				break;
+				goto err;
 			}
 		} while (++data_val->id < dups);
 	}
+	if (txnp != NULL)
+		ret = txnp->commit(txnp, 0);
+
 	printf("%d\n", count);
-	return (0);
+	return (ret);
+
+err:	if (txnp != NULL)
+		(void)txnp->abort(txnp);
+	return (ret);
 }
 
 int
@@ -197,20 +224,21 @@ main(argc, argv)
 	extern int optind;
 	DB *dbp;
 	DB_ENV *dbenv;
+	DB_TXN *txnp;
 	struct timeval start_time, end_time;
 	double secs;
-	int ch, count, env, ret;
-	int cache, datalen, dups, init, iter, num, pagesize, read, txn;
+	int cache, ch, count, datalen, dups, env, init, iter, num, pagesize;
+	int ret, rflag, txn;
 
+	txnp = NULL;
 	datalen = 20;
 	iter = num = 1000000;
+	env = 1;
+	dups = init = rflag = txn = 0;
+
 	pagesize = 65536;
 	cache = 1000 * pagesize;
-	env = 1;
-	read = 0;
-	dups = 0;
-	init = 0;
-	txn = 0;
+
 	while ((ch = getopt(argc, argv, "c:d:EIi:l:n:p:RT")) != EOF)
 		switch (ch) {
 		case 'c':
@@ -238,7 +266,7 @@ main(argc, argv)
 			pagesize = atoi(optarg);
 			break;
 		case 'R':
-			read = 1;
+			rflag = 1;
 			break;
 		case 'T':
 			txn = 1;
@@ -251,7 +279,7 @@ main(argc, argv)
 	argv += optind;
 
 	/* Remove the previous database. */
-	if (!read) {
+	if (!rflag) {
 		if (env)
 			system("rm -rf BENCH_001; mkdir BENCH_001");
 		else
@@ -290,13 +318,26 @@ main(argc, argv)
 		dbp->err(dbp, ret, "set_flags");
 		goto err1;
 	}
-	if ((ret = dbp->open(dbp,
-	     DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+
+	if (txn != 0)
+		if ((ret = dbenv->txn_begin(dbenv, NULL, &txnp, 0)) != 0)
+			goto err1;
+
+	if ((ret = dbp->open(
+	    dbp, txnp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp->err(dbp, ret, "%s: open", DATABASE);
+		if (txnp != NULL)
+			(void)txnp->abort(txnp);
 		goto err1;
 	}
 
-	if (read) {
+	if (txnp != NULL)
+		ret = txnp->commit(txnp, 0);
+	txnp = NULL;
+	if (ret != 0)
+		goto err1;
+
+	if (rflag) {
 		/* If no environment, fill the cache. */
 		if (!env && (ret =
 		    get(dbp, txn, datalen, num, dups, iter, &count)) != 0)
@@ -316,16 +357,16 @@ main(argc, argv)
 		    count, iter, secs);
 		printf("%.0f records/second\n", (double)count / secs);
 
-	} else if ((ret = fill(dbp, datalen, num, dups)) != 0)
+	} else if ((ret = fill(dbenv, dbp, txn, datalen, num, dups)) != 0)
 		goto err1;
 
 	/* Close everything down. */
-	if ((ret = dbp->close(dbp, read ? DB_NOSYNC : 0)) != 0) {
+	if ((ret = dbp->close(dbp, rflag ? DB_NOSYNC : 0)) != 0) {
 		fprintf(stderr,
 		    "%s: DB->close: %s\n", progname, db_strerror(ret));
 		return (1);
 	}
-	return (0);
+	return (ret);
 
 err1:	(void)dbp->close(dbp, 0);
 	return (1);
@@ -335,7 +376,7 @@ void
 usage()
 {
 	(void)fprintf(stderr, "usage: %s %s\n\t%s\n",
-	     progname, "[-EIRT] [-c cachesize] [-d dups]",
-	     "[-i iterations] [-l datalen] [-n keys] [-p pagesize]");
+	    progname, "[-EIRT] [-c cachesize] [-d dups]",
+	    "[-i iterations] [-l datalen] [-n keys] [-p pagesize]");
 	exit(EXIT_FAILURE);
 }

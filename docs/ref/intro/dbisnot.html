@@ -1,6 +1,7 @@
-<!--$Id: dbisnot.so,v 10.7 2001/10/29 17:04:24 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbisnot.so,v 10.8 2002/08/23 20:36:50 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: What Berkeley DB is not</title>
@@ -67,29 +68,23 @@ and store records can be faster. It eliminates the overhead of query
 parsing, optimization, and execution. The programmer must understand
 the data representation, and must write the code to do the work, but
 once that's done, the application can be very fast.
-<p>Second, Berkeley DB has no notion of <i>schema</i> in the way that
-relational systems do. Schema is the structure of records in tables,
-and the relationships among the tables in the database. For example, in
-a relational system the programmer can create a record from a fixed menu
-of data types. Because the record types are declared to the system, the
-relational engine can reach inside records and examine individual values
-in them. In addition, programmers can use SQL to declare relationships
-among tables, and to create indices on tables. Relational engines
-usually maintain these relationships and indices automatically.
-<p>In Berkeley DB, the key and value in a record are opaque
-to Berkeley DB. They may have a rich
-internal structure, but the library is unaware of it. As a result, Berkeley DB
-cannot decompose the value part of a record into its constituent parts,
-and cannot use those parts to find values of interest. Only the
-application, which knows the data structure, can do that.
-<p>Berkeley DB does allow programmers to create indices on tables, and to use
-those indices to speed up searches. However, the programmer has no way
-to tell the library how different tables and indices are related.  The
-application needs to make sure that they all stay consistent. In the
-case of indices in particular, if the application puts a new record into
-a table, it must also put a new record in the index for it. It's
-generally simple to write a single function to make the required
-updates, but it is work that relational systems do automatically.
+<p>Second, Berkeley DB has no notion of <i>schema</i> and data types in
+the way that relational systems do. Schema is the structure of records
+in tables, and the relationships among the tables in the database. For
+example, in a relational system the programmer can create a record from
+a fixed menu of data types. Because the record types are declared to
+the system, the relational engine can reach inside records and examine
+individual values in them. In addition, programmers can use SQL to
+declare relationships among tables, and to create indices on tables.
+Relational engines usually maintain these relationships and indices
+automatically.
+<p>In Berkeley DB, the key and value in a record are opaque to Berkeley DB. They may
+have a rich internal structure, but the library is unaware of it. As a
+result, Berkeley DB cannot decompose the value part of a record into its
+constituent parts, and cannot use those parts to find values of
+interest. Only the application, which knows the data structure, can do
+that.  Berkeley DB does support indices on tables and automatically maintain
+those indices as their associated tables are modified.
 <p>Berkeley DB is not a relational system. Relational database systems are
 semantically rich and offer high-level database access. Compared to such
 systems, Berkeley DB is a high-performance, transactional library for record

@@ -1,6 +1,7 @@
-<!--$Id: faq.so,v 1.24 2001/10/18 18:18:34 sue Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: faq.so,v 1.25 2002/05/22 13:26:00 sue Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: VxWorks FAQ</title>
@@ -52,6 +53,10 @@ s/_objects//
 VxWorks-specific source files.  You will need to convert this Makefile
 and list of files into a form that is acceptable to your specific build
 environment.
+<p><li><b>Does Berkeley DB use floating point registers?</b>
+<p>Yes, there are a few places in Berkeley DB where floating point computations
+are performed.  As a result, all applications that call
+<i>taskSpawn</i> should specify the <b>VX_FP_TASK</b> option.
 <p><li><b>Can I run the test suite under VxWorks?</b>
 <p>The test suite requires the Berkeley DB Tcl library.  In turn, this library
 requires Tcl 8.1 or greater.  In order to run the test suite, you would
@@ -111,7 +116,7 @@ resources.  Therefore, if an application unexpectedly fails, those
 resources could leak.  Berkeley DB solves this problem by always allocating
 mutexes in the persistent shared memory regions.  Then, if an
 application fails, running recovery or explicitly removing the database
-environment by calling the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> function will allow Berkeley DB to
+environment by calling the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> method will allow Berkeley DB to
 release those previously held mutex resources.  If an application
 specifies the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag (choosing not to use persistent
 shared memory), and then fails, mutexes allocated in that private memory

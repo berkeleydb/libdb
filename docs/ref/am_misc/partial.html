@@ -1,6 +1,7 @@
-<!--$Id: partial.so,v 10.23 2001/06/19 14:37:21 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: partial.so,v 10.24 2002/06/20 12:53:58 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Partial record storage and retrieval</title>
@@ -11,16 +12,16 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
-<td align=right><a href="../../ref/am_misc/get_bulk.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_misc/perm.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/am_misc/get_bulk.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_misc/struct.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Partial record storage and retrieval</h1>
 <p>It is possible to both store and retrieve parts of data items in all
 Berkeley DB access methods.  This is done by setting the
-<a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag in the <a href="../../api_c/dbt.html">DBT</a> structure passed to the
+<a href="../../api_c/dbt_class.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag in the <a href="../../api_c/dbt_class.html">DBT</a> structure passed to the
 Berkeley DB interface.
-<p>The <a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag is based on the values of two fields
-of the <a href="../../api_c/dbt.html">DBT</a> structure: <b>dlen</b> and <b>doff</b>.  The value
+<p>The <a href="../../api_c/dbt_class.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag is based on the values of two fields
+of the <a href="../../api_c/dbt_class.html">DBT</a> structure: <b>dlen</b> and <b>doff</b>.  The value
 of <b>dlen</b> is the number of bytes of the record in which the
 application is interested.  The value of <b>doff</b> is the offset from
 the beginning of the data item where those bytes start.
@@ -42,7 +43,7 @@ record will shrink. If the specified bytes do not exist, the record will
 be extended using nul bytes as necessary, and the store call will still
 succeed.
 <p>The following are various examples of the put case for the
-<a href="../../api_c/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag. In all examples, the initial data item is 20
+<a href="../../api_c/dbt_class.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag. In all examples, the initial data item is 20
 bytes in length:
 <p><b>ABCDEFGHIJ0123456789</b>
 <p><ol>
@@ -126,7 +127,7 @@ current data (\0 represents a nul byte).
 ABCDEFGHIJ0123456789 -&gt; ABCDEFGHIJ0123456789\0\0\0\0\0abcdefghij
 </pre></blockquote>
 </ol>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_misc/get_bulk.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_misc/perm.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_misc/get_bulk.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_misc/struct.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

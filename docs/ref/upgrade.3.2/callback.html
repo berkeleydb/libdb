@@ -1,6 +1,7 @@
 <!--$Id: callback.so,v 1.5 2000/10/26 15:20:40 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.2: DB callback functions, app_private field</title>
@@ -18,18 +19,18 @@
 callback functions set by <a href="../../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a>,
 <a href="../../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a>, <a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a> and
 <a href="../../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a>) were modified to take a reference to a
-<a href="../../api_c/db_create.html">DB</a> object as their first argument.  This change allows the Berkeley DB
+<a href="../../api_c/db_class.html">DB</a> object as their first argument.  This change allows the Berkeley DB
 Java API to reasonably support these interfaces.  There is currently no
 need for the callback functions to do anything with this additional
 argument.
 <p>C and C++ applications that specify their own Btree key comparison,
 Btree prefix comparison, duplicate data item comparison or Hash
 functions should modify these functions to take a reference to a
-<a href="../../api_c/db_create.html">DB</a> structure as their first argument.  No further change is
+<a href="../../api_c/db_class.html">DB</a> structure as their first argument.  No further change is
 required.
-<p>The app_private field of the <a href="../../api_c/dbt.html">DBT</a> structure (accessible only from
+<p>The app_private field of the <a href="../../api_c/dbt_class.html">DBT</a> structure (accessible only from
 the Berkeley DB C API) has been removed in the 3.2 release.  It was replaced
-with app_private fields in the <a href="../../api_c/env_create.html">DB_ENV</a> and <a href="../../api_c/db_create.html">DB</a> handles.
+with app_private fields in the <a href="../../api_c/env_class.html">DB_ENV</a> and <a href="../../api_c/db_class.html">DB</a> handles.
 Applications using this field will have to convert to using one of the
 replacement fields.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.2/set_flags.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.2/renumber.html"><img src="../../images/next.gif" alt="Next"></a>

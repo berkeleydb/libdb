@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: client.c,v 1.41 2001/09/07 13:31:22 bostic Exp $";
+static const char revid[] = "$Id: client.c,v 1.51 2002/08/06 06:18:15 bostic Exp $";
 #endif /* not lint */
 
 #ifdef HAVE_RPC
@@ -25,11 +25,14 @@ static const char revid[] = "$Id: client.c,v 1.41 2001/09/07 13:31:22 bostic Exp
 #include <string.h>
 #include <unistd.h>
 #endif
-#include "db_server.h"
 
 #include "db_int.h"
-#include "txn.h"
-#include "rpc_client_ext.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_am.h"
+#include "dbinc/txn.h"
+
+#include "dbinc_auto/db_server.h"
+#include "dbinc_auto/rpc_client_ext.h"
 
 static int __dbcl_c_destroy __P((DBC *));
 static int __dbcl_txn_close __P((DB_ENV *));
@@ -60,6 +63,10 @@ __dbcl_envrpcserver(dbenv, clnt, host, tsec, ssec, flags)
 		return (ERROR);
 	}
 #endif
+	if (RPC_ON(dbenv)) {
+		__db_err(dbenv, "Already set an RPC handle");
+		return (EINVAL);
+	}
 	/*
 	 * Only create the client and set its timeout if the user
 	 * did not pass us a client structure to begin with.
@@ -102,9 +109,40 @@ __dbcl_env_open_wrap(dbenv, home, flags, mode)
 {
 	int ret;
 
+	if (LF_ISSET(DB_THREAD)) {
+		__db_err(dbenv, "DB_THREAD not allowed on RPC clients");
+		return (EINVAL);
+	}
 	if ((ret = __db_home(dbenv, home, flags)) != 0)
 		return (ret);
 	return (__dbcl_env_open(dbenv, dbenv->db_home, flags, mode));
+}
+
+/*
+ * __dbcl_db_open_wrap --
+ *	Wrapper function for DB->open function for clients.
+ *	We need a wrapper function to error on DB_THREAD flag.
+ *	and we don't want to complicate the generated code.
+ *
+ * PUBLIC: int __dbcl_db_open_wrap
+ * PUBLIC:     __P((DB *, DB_TXN *, const char *, const char *,
+ * PUBLIC:     DBTYPE, u_int32_t, int));
+ */
+int
+__dbcl_db_open_wrap(dbp, txnp, name, subdb, type, flags, mode)
+	DB * dbp;
+	DB_TXN * txnp;
+	const char * name;
+	const char * subdb;
+	DBTYPE type;
+	u_int32_t flags;
+	int mode;
+{
+	if (LF_ISSET(DB_THREAD)) {
+		__db_err(dbp->dbenv, "DB_THREAD not allowed on RPC clients");
+		return (EINVAL);
+	}
+	return (__dbcl_db_open(dbp, txnp, name, subdb, type, flags, mode));
 }
 
 /*
@@ -135,6 +173,41 @@ __dbcl_refresh(dbenv)
 	if (!F_ISSET(dbenv, DB_ENV_RPCCLIENT_GIVEN) && cl != NULL)
 		clnt_destroy(cl);
 	dbenv->cl_handle = NULL;
+	if (dbenv->db_home != NULL) {
+		__os_free(dbenv, dbenv->db_home);
+		dbenv->db_home = NULL;
+	}
+	return (ret);
+}
+
+/*
+ * __dbcl_retcopy --
+ *	Copy the returned data into the user's DBT, handling allocation flags,
+ *	but not DB_DBT_PARTIAL.
+ *
+ * PUBLIC: int __dbcl_retcopy __P((DB_ENV *, DBT *,
+ * PUBLIC:    void *, u_int32_t, void **, u_int32_t *));
+ */
+int
+__dbcl_retcopy(dbenv, dbt, data, len, memp, memsize)
+	DB_ENV *dbenv;
+	DBT *dbt;
+	void *data;
+	u_int32_t len;
+	void **memp;
+	u_int32_t *memsize;
+{
+	int ret;
+	u_int32_t orig_flags;
+
+	/*
+	 * The RPC server handles DB_DBT_PARTIAL, so we mask it out here to
+	 * avoid the handling of partials in __db_retcopy.
+	 */
+	orig_flags = dbt->flags;
+	F_CLR(dbt, DB_DBT_PARTIAL);
+	ret = __db_retcopy(dbenv, dbt, data, len, memp, memsize);
+	dbt->flags = orig_flags;
 	return (ret);
 }
 
@@ -163,7 +236,7 @@ __dbcl_txn_close(dbenv)
 	while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL)
 		__dbcl_txn_end(txnp);
 
-	__os_free(dbenv, tmgrp, sizeof(*tmgrp));
+	__os_free(dbenv, tmgrp);
 	return (ret);
 
 }
@@ -203,7 +276,7 @@ __dbcl_txn_end(txnp)
 	if (txnp->parent != NULL)
 		TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
 	TAILQ_REMOVE(&mgr->txn_chain, txnp, links);
-	__os_free(dbenv, txnp, sizeof(*txnp));
+	__os_free(dbenv, txnp);
 }
 
 /*
@@ -262,7 +335,14 @@ __dbcl_c_destroy(dbc)
 	dbp = dbc->dbp;
 
 	TAILQ_REMOVE(&dbp->free_queue, dbc, links);
-	__os_free(NULL, dbc, sizeof(*dbc));
+	/* Discard any memory used to store returned data. */
+	if (dbc->my_rskey.data != NULL)
+		__os_free(dbc->dbp->dbenv, dbc->my_rskey.data);
+	if (dbc->my_rkey.data != NULL)
+		__os_free(dbc->dbp->dbenv, dbc->my_rkey.data);
+	if (dbc->my_rdata.data != NULL)
+		__os_free(dbc->dbp->dbenv, dbc->my_rdata.data);
+	__os_free(NULL, dbc);
 
 	return (0);
 }
@@ -274,22 +354,22 @@ __dbcl_c_destroy(dbc)
  * PUBLIC: void __dbcl_c_refresh __P((DBC *));
  */
 void
-__dbcl_c_refresh(dbcp)
-	DBC *dbcp;
+__dbcl_c_refresh(dbc)
+	DBC *dbc;
 {
 	DB *dbp;
 
-	dbp = dbcp->dbp;
-	dbcp->flags = 0;
-	dbcp->cl_id = 0;
+	dbp = dbc->dbp;
+	dbc->flags = 0;
+	dbc->cl_id = 0;
 
 	/*
 	 * If dbp->cursor fails locally, we use a local dbc so that
 	 * we can close it.  In that case, dbp will be NULL.
 	 */
 	if (dbp != NULL) {
-		TAILQ_REMOVE(&dbp->active_queue, dbcp, links);
-		TAILQ_INSERT_TAIL(&dbp->free_queue, dbcp, links);
+		TAILQ_REMOVE(&dbp->active_queue, dbc, links);
+		TAILQ_INSERT_TAIL(&dbp->free_queue, dbc, links);
 	}
 }
 
@@ -300,10 +380,10 @@ __dbcl_c_refresh(dbcp)
  * PUBLIC: int __dbcl_c_setup __P((long, DB *, DBC **));
  */
 int
-__dbcl_c_setup(cl_id, dbp, dbcpp)
+__dbcl_c_setup(cl_id, dbp, dbcp)
 	long cl_id;
 	DB *dbp;
-	DBC **dbcpp;
+	DBC **dbcp;
 {
 	DBC *dbc, tmpdbc;
 	int ret;
@@ -334,56 +414,7 @@ __dbcl_c_setup(cl_id, dbp, dbcpp)
 	dbc->cl_id = cl_id;
 	dbc->dbp = dbp;
 	TAILQ_INSERT_TAIL(&dbp->active_queue, dbc, links);
-	*dbcpp = dbc;
-	return (0);
-}
-
-/*
- * __dbcl_retcopy --
- *	Copy the returned data into the user's DBT, handling special flags
- *	as they apply to a client.  Modeled after __db_retcopy().
- *
- * PUBLIC: int __dbcl_retcopy __P((DB_ENV *, DBT *, void *, u_int32_t));
- */
-int
-__dbcl_retcopy(dbenv, dbt, data, len)
-	DB_ENV *dbenv;
-	DBT *dbt;
-	void *data;
-	u_int32_t len;
-{
-	int ret;
-
-	/*
-	 * No need to handle DB_DBT_PARTIAL here, server already did.
-	 */
-	dbt->size = len;
-
-	/*
-	 * Allocate memory to be owned by the application: DB_DBT_MALLOC
-	 * and DB_DBT_REALLOC.  Always allocate even if we're copying 0 bytes.
-	 * Or use memory specified by application: DB_DBT_USERMEM.
-	 */
-	if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(dbenv, len, &dbt->data)) != 0)
-			return (ret);
-	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_realloc(dbenv, len, &dbt->data)) != 0)
-			return (ret);
-	} else if (F_ISSET(dbt, DB_DBT_USERMEM)) {
-		if (len != 0 && (dbt->data == NULL || dbt->ulen < len))
-			return (ENOMEM);
-	} else {
-		/*
-		 * If no user flags, then set the DBT to point to the
-		 * returned data pointer and return.
-		 */
-		dbt->data = data;
-		return (0);
-	}
-
-	if (len != 0)
-		memcpy(dbt->data, data, len);
+	*dbcp = dbc;
 	return (0);
 }
 
@@ -418,9 +449,16 @@ __dbcl_dbclose_common(dbp)
 
 	TAILQ_INIT(&dbp->free_queue);
 	TAILQ_INIT(&dbp->active_queue);
+	/* Discard any memory used to store returned data. */
+	if (dbp->my_rskey.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rskey.data);
+	if (dbp->my_rkey.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rkey.data);
+	if (dbp->my_rdata.data != NULL)
+		__os_free(dbp->dbenv, dbp->my_rdata.data);
 
 	memset(dbp, CLEAR_BYTE, sizeof(*dbp));
-	__os_free(NULL, dbp, sizeof(*dbp));
+	__os_free(NULL, dbp);
 	return (ret);
 }
 #endif /* HAVE_RPC */

@@ -1,6 +1,7 @@
-<!--$Id: errorret.so,v 10.41 2001/05/15 17:08:38 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: errorret.so,v 10.44 2002/08/29 03:25:53 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Error returns to applications</title>
@@ -61,27 +62,8 @@ DB_KEYEMPTY for records that were created as part of a
 transaction that was later aborted and never re-created.
 <h3><a name="DB_KEYEXIST">DB_KEYEXIST</a></h3>
 <p>The DB_KEYEXIST error return indicates the <a href="../../api_c/db_put.html#DB_NOOVERWRITE">DB_NOOVERWRITE</a>
-option was specified to the <a href="../../api_c/db_put.html">DB-&gt;put</a> function and the key already exists
+option was specified to the <a href="../../api_c/db_put.html">DB-&gt;put</a> method and the key already exists
 in the database.
-<h3><a name="DB_INCOMPLETE">DB_INCOMPLETE</a></h3>
-<p>When a database cannot be flushed to disk by <a href="../../api_c/db_close.html">DB-&gt;close</a> or
-<a href="../../api_c/db_sync.html">DB-&gt;sync</a>, or by the underlying Memory Pool subsystem methods,
-<a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> and <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a>, DB_INCOMPLETE may be
-returned to the application.
-<p>In the case of <a href="../../api_c/db_close.html">DB-&gt;close</a> and <a href="../../api_c/db_sync.html">DB-&gt;sync</a>, the only reason
-for a return of DB_INCOMPLETE is if another thread of control
-was writing pages in the underlying database file at the same time as
-the <a href="../../api_c/db_close.html">DB-&gt;close</a> or <a href="../../api_c/db_sync.html">DB-&gt;sync</a> call was made. For this
-reason, a return of DB_INCOMPLETE can normally be ignored; or,
-in cases where it is a possible return value, <a href="../../api_c/db_sync.html">DB-&gt;sync</a> should
-probably never have been called, or the <a href="../../api_c/db_close.html#DB_NOSYNC">DB_NOSYNC</a> option should
-have been specified to <a href="../../api_c/db_close.html">DB-&gt;close</a>.
-<p>In the case of <a href="../../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a> or <a href="../../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a> (or other Berkeley DB
-interfaces that call those functions, <a href="../../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> for
-example), a return of DB_INCOMPLETE indicates that the database
-environment is under heavy load and the checkpoint was unable to
-complete because there were pages that could not be written at this
-time.  This is not a fatal error, and the call should be retried.
 <a name="4"><!--meow--></a>
 <h3><a name="DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a></h3>
 <p>When multiple threads of control are modifying the database, there is
@@ -105,20 +87,19 @@ aborted.
 <h3><a name="DB_RUNRECOVERY">DB_RUNRECOVERY</a></h3>
 <p>There exists a class of errors that Berkeley DB considers fatal to an entire
 Berkeley DB environment.  An example of this type of error is a corrupted
-database or a log write failure because the disk is out of free space.
-The only way to recover from these failures is to have all threads of
-control exit the Berkeley DB environment, run recovery of the environment, and
-re-enter Berkeley DB. (It is not strictly necessary that the processes exit,
-although that is the only way to recover system resources, such as file
-descriptors and memory, allocated by Berkeley DB.)
+database page.  The only way to recover from these failures is to have
+all threads of control exit the Berkeley DB environment, run recovery of the
+environment, and re-enter Berkeley DB. (It is not strictly necessary that the
+processes exit, although that is the only way to recover system
+resources, such as file descriptors and memory, allocated by Berkeley DB.)
 <p>When this type of error is encountered, the error value
 DB_RUNRECOVERY is returned. This error can be returned by any
 Berkeley DB interface.  Once DB_RUNRECOVERY is returned by any
 interface, it will be returned from all subsequent Berkeley DB calls made by
 any threads of control participating in the environment.
 <p>Optionally, applications may also specify a fatal-error callback function
-using the <a href="../../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a> function.  This callback function will be
-called with two arguments: a reference to the <a href="../../api_c/env_create.html">DB_ENV</a> structure
+using the <a href="../../api_c/env_set_paniccall.html">DB_ENV-&gt;set_paniccall</a> method.  This callback function will be
+called with two arguments: a reference to the <a href="../../api_c/env_class.html">DB_ENV</a> structure
 associated with the environment and the <b>errno</b> value
 associated with the underlying error that caused the problem.
 <p>Applications can handle such fatal errors in one of two ways: by checking

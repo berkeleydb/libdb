@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2001
+ * Copyright (c) 1998-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: xa.c,v 11.14 2001/07/26 15:52:14 bostic Exp $";
+static const char revid[] = "$Id: xa.c,v 11.23 2002/08/29 14:22:25 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,11 +19,7 @@ static const char revid[] = "$Id: xa.c,v 11.14 2001/07/26 15:52:14 bostic Exp $"
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "log.h"
-#include "txn.h"
-#include "db_am.h"
-#include "db_dispatch.h"
+#include "dbinc/txn.h"
 
 static int  __db_xa_close __P((char *, int, long));
 static int  __db_xa_commit __P((XID *, int, long));
@@ -157,7 +153,7 @@ __db_xa_close(xa_info, rmid, flags)
 
 	/* Discard space held for the current transaction. */
 	if (env->xa_txn != NULL)
-		__os_free(env, env->xa_txn, sizeof(DB_TXN));
+		__os_free(env, env->xa_txn);
 
 	/* Close the environment. */
 	if ((t_ret = env->close(env, 0)) != 0 && ret == 0)

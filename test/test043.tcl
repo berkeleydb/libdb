@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test043.tcl,v 11.15 2001/08/03 16:39:40 bostic Exp $
+# $Id: test043.tcl,v 11.17 2002/05/22 15:42:52 sue Exp $
 #
 # TEST	test043
 # TEST	Recno renumbering and implicit creation test
@@ -23,6 +23,7 @@ proc test043 { method {nentries 10000} args} {
 	}
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -34,6 +35,18 @@ proc test043 { method {nentries 10000} args} {
 		set testfile test043.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -54,16 +67,29 @@ proc test043 { method {nentries 10000} args} {
 	}
 	puts "\tTest043.a: insert keys at $interval record intervals"
 	while { $count <= $nentries } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set ret [eval {$db put} \
 		    $txn $pflags {$count [chop_data $method $count]}]
 		error_check_good "$db put $count" $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 		set last $count
 		incr count $interval
 	}
 
 	puts "\tTest043.b: get keys using DB_FIRST/DB_NEXT"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good "$db cursor" [is_substr $dbc $db] 1
+	error_check_good "$db cursor" [is_valid_cursor $dbc $db] TRUE
 
 	set check 1
 	for { set rec [$dbc get -first] } { [llength $rec] != 0 } {
@@ -159,5 +185,8 @@ proc test043 { method {nentries 10000} args} {
 		}
 	}
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 }

@@ -1,6 +1,7 @@
-<!--$Id: db_class.so,v 10.29 2001/07/31 17:25:41 dda Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_class.so,v 10.36 2002/08/29 03:24:30 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Db</title>
@@ -34,10 +35,21 @@ public:
 };
 </pre></h3>
 <h1>Description</h1>
-<p>The constructor creates a Db object that is the
-handle for a Berkeley DB database.
-The constructor allocates memory internally; calling the
-<a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a> or <a href="../api_cxx/db_rename.html">Db::rename</a> methods will
+<p>The Db handle is the handle for a Berkeley DB database, which may or
+may not be part of a database environment.  Db handles are
+free-threaded if the <a href="../api_cxx/env_open.html#DB_THREAD">DB_THREAD</a> flag is specified to the
+<a href="../api_cxx/db_open.html">Db::open</a> method when the database is opened or if the database
+environment in which the database is opened is free-threaded.  The
+handle should not be closed while any other handle that refers to the
+database is in use; for example, database handles must not be closed
+while cursor handles into the database remain open, or transactions that
+include operations on the database have not yet been committed or
+aborted.  Once the <a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a>, or
+<a href="../api_cxx/db_rename.html">Db::rename</a> methods are called, the handle may not be accessed again,
+regardless of the method's return.
+<p>The constructor creates a Db object that is the handle for a
+Berkeley DB database.  The constructor allocates memory internally; calling
+the <a href="../api_cxx/db_close.html">Db::close</a>, <a href="../api_cxx/db_remove.html">Db::remove</a> or <a href="../api_cxx/db_rename.html">Db::rename</a> methods will
 free that memory.
 <p>If no <b>dbenv</b> value is specified, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
@@ -66,68 +78,24 @@ OPENINFO parameter of the GROUPS section of the ubbconfig file.  See the
 <a href="../ref/xa/intro.html">XA Resource Manager</a> chapter in the
 Reference Guide for more information.
 </dl>
-<p>Each Db object has an associated DB struct, which is used by
-the underlying implementation of Berkeley DB and its C-language API.  The
-Db::get_DB method returns a pointer to this struct.  Given a const
-Db object, Db::get_const_DB returns a const pointer to the same
-struct.
-<p>Given a DB struct, the Db::get_Db method returns the corresponding
-Db object, if there is one.  If the DB object was not associated
-with a Db (that is, it was not returned from a call to
-Db::get_DB), then the result of Db::get_Db is undefined.  Given a const
-DB struct, Db::get_const_Db returns the associated const Db
-object, if there is one.
+<p>Each Db object has an associated DB struct, which is
+used by the underlying implementation of Berkeley DB and its C-language API.
+The Db::get_DB method returns a pointer to this struct.  Given a const
+Db object, Db::get_const_DB returns a const pointer to the
+same struct.
+<p>Given a DB struct, the Db::get_Db method returns the
+corresponding Db object, if there is one.  If the DB
+object was not associated with a Db (that is, it was not
+returned from a call to Db::get_DB), then the result of Db::get_Db is
+undefined.  Given a const DB struct, Db::get_const_Db returns
+the associated const Db object, if there is one.
 <p>These methods may be useful for Berkeley DB applications including  both C
 and C++ language software.  It should not be necessary to use these
 calls in a purely C++ application.
 <h1>Class</h1>
-<a href="../api_cxx/db_class.html">Db</a>
+Db
 <h1>See Also</h1>
-<a href="../api_cxx/db_associate.html">Db::associate</a>,
-<a href="../api_cxx/db_close.html">Db::close</a>,
-<a href="../api_cxx/db_cursor.html">Db::cursor</a>,
-<a href="../api_cxx/db_del.html">Db::del</a>,
-<a href="../api_cxx/db_err.html">Db::err</a>, <a href="../api_cxx/db_err.html">Db::errx</a>
-<a href="../api_cxx/db_fd.html">Db::fd</a>,
-<a href="../api_cxx/db_get.html">Db::get</a>,
-<a href="../api_cxx/db_get.html">Db::pget</a>,
-<a href="../api_cxx/db_get_byteswapped.html">Db::get_byteswapped</a>,
-<a href="../api_cxx/db_get_type.html">Db::get_type</a>,
-<a href="../api_cxx/db_join.html">Db::join</a>,
-<a href="../api_cxx/db_key_range.html">Db::key_range</a>,
-<a href="../api_cxx/db_open.html">Db::open</a>,
-<a href="../api_cxx/db_put.html">Db::put</a>,
-<a href="../api_cxx/db_remove.html">Db::remove</a>,
-<a href="../api_cxx/db_rename.html">Db::rename</a>,
-<a href="../api_cxx/db_set_alloc.html">Db::set_alloc</a>,
-<a href="../api_cxx/db_set_append_recno.html">Db::set_append_recno</a>,
-<a href="../api_cxx/db_set_bt_compare.html">Db::set_bt_compare</a>,
-<a href="../api_cxx/db_set_bt_minkey.html">Db::set_bt_minkey</a>,
-<a href="../api_cxx/db_set_bt_prefix.html">Db::set_bt_prefix</a>,
-<a href="../api_cxx/db_set_cachesize.html">Db::set_cachesize</a>,
-<a href="../api_cxx/db_set_dup_compare.html">Db::set_dup_compare</a>,
-<a href="../api_cxx/db_set_errcall.html">Db::set_errcall</a>,
-<a href="../api_cxx/db_set_errfile.html">Db::set_errfile</a>,
-<a href="../api_cxx/db_set_errpfx.html">Db::set_errpfx</a>,
-<a href="../api_cxx/db_set_feedback.html">Db::set_feedback</a>,
-<a href="../api_cxx/db_set_flags.html">Db::set_flags</a>,
-<a href="../api_cxx/db_set_h_ffactor.html">Db::set_h_ffactor</a>,
-<a href="../api_cxx/db_set_h_hash.html">Db::set_h_hash</a>,
-<a href="../api_cxx/db_set_h_nelem.html">Db::set_h_nelem</a>,
-<a href="../api_cxx/db_set_lorder.html">Db::set_lorder</a>,
-<a href="../api_cxx/db_set_pagesize.html">Db::set_pagesize</a>,
-<a href="../api_cxx/db_set_paniccall.html">Db::set_paniccall</a>,
-<a href="../api_cxx/db_set_q_extentsize.html">Db::set_q_extentsize</a>,
-<a href="../api_cxx/db_set_re_delim.html">Db::set_re_delim</a>,
-<a href="../api_cxx/db_set_re_len.html">Db::set_re_len</a>,
-<a href="../api_cxx/db_set_re_pad.html">Db::set_re_pad</a>,
-<a href="../api_cxx/db_set_re_source.html">Db::set_re_source</a>,
-<a href="../api_cxx/db_stat.html">Db::stat</a>,
-<a href="../api_cxx/db_sync.html">Db::sync</a>,
-<a href="../api_cxx/db_truncate.html">Db::truncate</a>,
-<a href="../api_cxx/db_upgrade.html">Db::upgrade</a>,
-and
-<a href="../api_cxx/db_verify.html">Db::verify</a>.
+<a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

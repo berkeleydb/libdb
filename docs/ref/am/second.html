@@ -1,6 +1,7 @@
-<!--$Id: second.so,v 10.7 2001/07/02 01:03:15 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: second.so,v 10.8 2002/06/24 14:50:20 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Secondary indices</title>
@@ -45,31 +46,31 @@ CREATE INDEX lname ON students(lastname);</pre></blockquote>
 void
 second()
 {
-<p><blockquote>DB *dbp, *sdbp;
-int ret;
-<p>
-/* Open/create primary */
-if ((ret = db_create(&dbp, dbenv, 0)) != 0)
-	handle_error();
-if ((ret = dbp-&gt;open(dbp,
-    "students.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
-	handle_error();
-<p>
-/*
- * Open/create secondary.  Note that it supports duplicate data
- * items, since last names might not be unique.
- */
-if ((ret = db_create(&sdbp, dbenv, 0)) != 0)
-	handle_error();
-if ((ret = dbp-&gt;set_flags(dbp, DB_DUP | DB_DUPSORT)) != 0)
-	handle_error();
-if ((ret = dbp-&gt;open(dbp,
-    "lastname.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
-	handle_error();
-<p>
-/* Associate the secondary with the primary. */
-if ((ret = dbp-&gt;associate(dbp, sdbp, getname, 0)) != 0)
-	handle_error();</blockquote>
+	DB *dbp, *sdbp;
+	int ret;
+	<p>
+	/* Open/create primary */
+	if ((ret = db_create(&dbp, dbenv, 0)) != 0)
+		handle_error(ret);
+	if ((ret = dbp-&gt;open(dbp, NULL,
+	    "students.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+		handle_error(ret);
+	<p>
+	/*
+	 * Open/create secondary.  Note that it supports duplicate data
+	 * items, since last names might not be unique.
+	 */
+	if ((ret = db_create(&sdbp, dbenv, 0)) != 0)
+		handle_error(ret);
+	if ((ret = sdbp-&gt;set_flags(sdbp, DB_DUP | DB_DUPSORT)) != 0)
+		handle_error(ret);
+	if ((ret = sdbp-&gt;open(sdbp, NULL,
+	    "lastname.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+		handle_error(ret);
+	<p>
+	/* Associate the secondary with the primary. */
+	if ((ret = dbp-&gt;associate(dbp, NULL, sdbp, getname, 0)) != 0)
+		handle_error(ret);
 }
 <p>
 /*
@@ -117,7 +118,7 @@ memcpy(&s.first_name, "Winston        ", sizeof(s.first_name));
 data.data = &s;
 data.size = sizeof(s);
 if ((ret = dbp-&gt;put(dbp, txn, &key, &data, 0)) != 0)
-	handle_error();</pre></blockquote>
+	handle_error(ret);</pre></blockquote>
 <p>Internally, a record with secondary key "Churchill" is inserted into
 the secondary database (in addition to the insertion of "WC42" into the
 primary, of course).
@@ -130,7 +131,7 @@ memset(&key, 0, sizeof(DBT));
 key.data = "WC42";
 key.size = 4;
 if ((ret = dbp-&gt;del(dbp, txn, &key, 0)) != 0)
-	handle_error();</pre></blockquote>
+	handle_error(ret);</pre></blockquote>
 <p>Deletes can also be performed on the secondary index directly; a delete
 done this way will delete the "real" record in the primary as well.  If
 the secondary supports duplicates and there are duplicate occurrences of
@@ -145,7 +146,7 @@ memset(&skey, 0, sizeof(DBT));
 skey.data = "Churchill      ";
 skey.size = 15;
 if ((ret = sdbp-&gt;del(sdbp, txn, &skey, 0)) != 0)
-	handle_error();</pre></blockquote>
+	handle_error(ret);</pre></blockquote>
 <p>Gets on a secondary automatically return the primary datum.  If
 <a href="../../api_c/db_get.html">DB-&gt;pget</a> or <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_pget</a> is used in lieu of <a href="../../api_c/db_get.html">DB-&gt;get</a>
 or <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a>, the primary key is returned as well.  Thus, the
@@ -160,7 +161,7 @@ memset(&data, 0, sizeof(DBT));
 skey.data = "Churchill      ";
 skey.size = 15;
 if ((ret = sdbp-&gt;pget(sdbp, txn, &skey, &pkey, &data, 0)) != 0)
-	handle_error();
+	handle_error(ret);
 /*
  * Now pkey contains "WC42" and data contains Winston's record.
  */</pre></blockquote>
@@ -193,7 +194,7 @@ on the primary database.
 database, up to limitations on available memory and the number of open
 file descriptors.
 <p>Note that although Berkeley DB guarantees that updates made using any
-<a href="../../api_c/db_create.html">DB</a> handle with an associated secondary will be reflected in the
+<a href="../../api_c/db_class.html">DB</a> handle with an associated secondary will be reflected in the
 that secondary, associating each primary handle with all the appropriate
 secondaries is the responsibility of the application and is not enforced
 by Berkeley DB.  It is generally unsafe, but not forbidden by Berkeley DB, to modify

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_stat.c,v 11.28 2001/10/04 21:24:08 ubell Exp $";
+static const char revid[] = "$Id: qam_stat.c,v 11.32 2002/05/11 13:40:11 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,11 +18,12 @@ static const char revid[] = "$Id: qam_stat.c,v 11.28 2001/10/04 21:24:08 ubell E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "db_am.h"
-#include "lock.h"
-#include "qam.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/db_am.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/qam.h"
 
 /*
  * __qam_stat --
@@ -190,7 +191,7 @@ meta_only:
 
 	if (0) {
 err:		if (sp != NULL)
-			__os_free(dbp->dbenv, sp, sizeof(*sp));
+			__os_ufree(dbp->dbenv, sp);
 	}
 
 	(void)__LPUT(dbc, lock);

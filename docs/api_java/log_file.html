@@ -1,6 +1,7 @@
-<!--$Id: log_file.so,v 10.22 2001/10/22 15:24:34 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: log_file.so,v 10.24 2002/08/18 21:16:40 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.log_file</title>
@@ -50,28 +51,13 @@ failure.
 <p><dt>ENOMEM<dd>The supplied buffer was too small to hold the log filename.
 </dl>
 <p>The DbEnv.log_file method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.log_file method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.log_file method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/logc_class.html">DbLogc</a>, <a href="../api_java/lsn_class.html">DbLsn</a>
 <h1>See Also</h1>
-<a href="../api_java/env_set_lg_bsize.html">DbEnv.set_lg_bsize</a>,
-<a href="../api_java/env_set_lg_dir.html">DbEnv.set_lg_dir</a>,
-<a href="../api_java/env_set_lg_max.html">DbEnv.set_lg_max</a>,
-<a href="../api_java/env_set_lg_regionmax.html">DbEnv.set_lg_regionmax</a>,
-<a href="../api_java/log_archive.html">DbEnv.log_archive</a>,
-<a href="../api_java/log_compare.html">DbEnv.log_compare</a>,
-<a href="../api_java/log_cursor.html">DbEnv.log_cursor</a>,
-<a href="../api_java/log_file.html">DbEnv.log_file</a>,
-<a href="../api_java/log_flush.html">DbEnv.log_flush</a>,
-<a href="../api_java/log_put.html">DbEnv.log_put</a>,
-<a href="../api_java/log_register.html">DbEnv.log_register</a>,
-<a href="../api_java/log_stat.html">DbEnv.log_stat</a>,
-<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>,
-<a href="../api_java/logc_close.html">DbLogc.logc_close</a>
-and
-<a href="../api_java/logc_get.html">DbLogc.logc_get</a>.
+<a href="../api_java/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,6 +1,7 @@
-<!--$Id: db_verify.so,v 10.11 2001/10/22 15:24:26 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_verify.so,v 10.18 2002/08/29 03:24:32 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB-&gt;verify</title>
@@ -26,7 +27,7 @@ DB-&gt;verify(DB *db, const char *file,
     const char *database, FILE *outfile, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The DB-&gt;verify function verifies the integrity of all databases in the
+<p>The DB-&gt;verify method verifies the integrity of all databases in the
 file specified by the <b>file</b> argument, and optionally outputs the
 databases' key/data pairs to the file stream specified by the
 <b>outfile</b> argument.
@@ -54,9 +55,16 @@ case, key/data pairs that are corrupted or have been deleted may appear
 in the output (even if the file being salvaged is in no way corrupt), and
 the output will almost certainly require editing before being loaded into
 a database.
+<p><dt><a name="DB_PRINTABLE">DB_PRINTABLE</a><dd>When using the DB_SALVAGE flag, if characters in either the key
+or data items are printing characters (as defined by <b>isprint</b>(3)), use printing characters to represent them.  This flag permits users
+to use standard text editors and tools to modify the contents of
+databases or selectively remove data from salvager output.
+<p>Note: different systems may have different notions about what characters
+are considered <i>printing characters</i>, and databases dumped in
+this manner may be less portable to external systems.
 <p><dt><a name="DB_NOORDERCHK">DB_NOORDERCHK</a><dd>Skip the database checks for btree and duplicate sort order and for
 hashing.
-<p>The DB-&gt;verify function normally verifies that btree keys and duplicate
+<p>The DB-&gt;verify method normally verifies that btree keys and duplicate
 items are correctly sorted, and hash keys are correctly hashed.  If the
 file being verified contains multiple databases using differing sorting
 or hashing algorithms, some of them must necessarily fail database
@@ -75,83 +83,45 @@ checked.  This flag is only safe to use on databases that have already
 successfully been verified using DB-&gt;verify with the
 DB_NOORDERCHK flag set.
 </dl>
-<p><b>The DB-&gt;verify function does not perform any locking, even in
-Berkeley DB environments that are configured with a locking subsystem.  As such, it
-should only be used on files that are not being modified by another thread of
-control.</b>
 <p>The database argument must be set to NULL except when the
 DB_ORDERCHKONLY flag is set.
+<p><b>The DB-&gt;verify method does not perform any locking, even in Berkeley DB
+environments that are configured with a locking subsystem.  As such, it
+should only be used on files that are not being modified by another
+thread of control.</b>
+<p>The DB-&gt;verify interface may not be called after the <a href="../api_c/db_open.html">DB-&gt;open</a>
+interface is called.
 <a name="3"><!--meow--></a>
-<p>The DB-&gt;verify function returns a non-zero error value on failure, 0 on success, and <a href="../ref/program/errorret.html#DB_VERIFY_BAD">DB_VERIFY_BAD</a> if a database is corrupted.  When the
+<p>The DB-&gt;verify method returns a non-zero error value on failure, 0 on success, and <a href="../ref/program/errorret.html#DB_VERIFY_BAD">DB_VERIFY_BAD</a> if a database is corrupted.  When the
 DB_SALVAGE flag is specified, the <a href="../ref/program/errorret.html#DB_VERIFY_BAD">DB_VERIFY_BAD</a> return
 means that all key/data pairs in the file may not have been successfully
 output.
-<p>The DB-&gt;verify function is the underlying function used by the <a href="../utility/db_verify.html">db_verify</a> utility.
+<p>The DB-&gt;verify method is the underlying interface used by the <a href="../utility/db_verify.html">db_verify</a> utility.
 See the <a href="../utility/db_verify.html">db_verify</a> utility source code for an example of using DB-&gt;verify
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <h1>Environment Variables</h1>
 <p><dl compact>
-<p><dt>DB_HOME<dd>If the <b>dbenv</b> argument to <a href="../api_c/db_create.html">db_create</a> was initialized using
-<a href="../api_c/env_open.html">DB_ENV-&gt;open</a>, the environment variable <b>DB_HOME</b> may be used
-as the path of the database environment home.  Specifically, DB-&gt;verify
-is affected by the configuration value DB_DATA_DIR.
+<p><dt>DB_HOME<dd>If a <b>dbenv</b> argument to <a href="../api_c/db_create.html">db_create</a> was specified, the
+environment variable <b>DB_HOME</b> may be used as the path of the
+database environment home.
+<p>DB-&gt;verify is affected by any database directory specified using the
+<a href="../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a> method, or by setting the "set_data_dir" string
+in the environment's <b>DB_CONFIG</b> file.
 </dl>
 <h1>Errors</h1>
-<p>The DB-&gt;verify function may fail and return a non-zero error for the following conditions:
+<p>The DB-&gt;verify method may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>DB-&gt;verify was called after <a href="../api_c/db_open.html">DB-&gt;open</a>.
 </dl>
-<p>The DB-&gt;verify function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB-&gt;verify function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The DB-&gt;verify method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB-&gt;verify method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_c/db_class.html">DB</a>
 <h1>See Also</h1>
-<a href="../api_c/db_create.html">db_create</a>,
-<a href="../api_c/db_associate.html">DB-&gt;associate</a>,
-<a href="../api_c/db_close.html">DB-&gt;close</a>,
-<a href="../api_c/db_cursor.html">DB-&gt;cursor</a>,
-<a href="../api_c/db_del.html">DB-&gt;del</a>,
-<a href="../api_c/db_err.html">DB-&gt;err</a>, <a href="../api_c/db_err.html">DB-&gt;errx</a>
-<a href="../api_c/db_fd.html">DB-&gt;fd</a>,
-<a href="../api_c/db_get.html">DB-&gt;get</a>,
-<a href="../api_c/db_get.html">DB-&gt;pget</a>,
-<a href="../api_c/db_get_byteswapped.html">DB-&gt;get_byteswapped</a>,
-<a href="../api_c/db_get_type.html">DB-&gt;get_type</a>,
-<a href="../api_c/db_join.html">DB-&gt;join</a>,
-<a href="../api_c/db_key_range.html">DB-&gt;key_range</a>,
-<a href="../api_c/db_open.html">DB-&gt;open</a>,
-<a href="../api_c/db_put.html">DB-&gt;put</a>,
-<a href="../api_c/db_remove.html">DB-&gt;remove</a>,
-<a href="../api_c/db_rename.html">DB-&gt;rename</a>,
-<a href="../api_c/db_set_alloc.html">DB-&gt;set_alloc</a>,
-<a href="../api_c/db_set_append_recno.html">DB-&gt;set_append_recno</a>,
-<a href="../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a>,
-<a href="../api_c/db_set_bt_minkey.html">DB-&gt;set_bt_minkey</a>,
-<a href="../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a>,
-<a href="../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a>,
-<a href="../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a>,
-<a href="../api_c/db_set_errcall.html">DB-&gt;set_errcall</a>,
-<a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a>,
-<a href="../api_c/db_set_errpfx.html">DB-&gt;set_errpfx</a>,
-<a href="../api_c/db_set_feedback.html">DB-&gt;set_feedback</a>,
-<a href="../api_c/db_set_flags.html">DB-&gt;set_flags</a>,
-<a href="../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a>,
-<a href="../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a>,
-<a href="../api_c/db_set_h_nelem.html">DB-&gt;set_h_nelem</a>,
-<a href="../api_c/db_set_lorder.html">DB-&gt;set_lorder</a>,
-<a href="../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a>,
-<a href="../api_c/db_set_paniccall.html">DB-&gt;set_paniccall</a>,
-<a href="../api_c/db_set_q_extentsize.html">DB-&gt;set_q_extentsize</a>,
-<a href="../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a>,
-<a href="../api_c/db_set_re_len.html">DB-&gt;set_re_len</a>,
-<a href="../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a>,
-<a href="../api_c/db_set_re_source.html">DB-&gt;set_re_source</a>,
-<a href="../api_c/db_stat.html">DB-&gt;stat</a>,
-<a href="../api_c/db_sync.html">DB-&gt;sync</a>,
-<a href="../api_c/db_truncate.html">DB-&gt;truncate</a>,
-<a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a>,
-and
-<a href="../api_c/db_verify.html">DB-&gt;verify</a>.
+<a href="../api_c/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

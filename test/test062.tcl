@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test062.tcl,v 11.17 2001/08/03 16:39:43 bostic Exp $
+# $Id: test062.tcl,v 11.20 2002/06/11 14:09:57 sue Exp $
 #
 # TEST	test062
 # TEST	Test of partial puts (using DB_CURRENT) onto duplicate pages.
@@ -20,7 +20,12 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
+		puts "Test0$tnum skipping for method $omethod"
+		return
+	}
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -32,15 +37,24 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 		set testfile test0$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 200 } {
+				set nentries 100
+			}
+			reduce_dups nentries ndups
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
 	puts "Test0$tnum:\
-	    $method ($args) Partial puts and duplicates."
-	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
-		puts "Test0$tnum skipping for method $omethod"
-		return
-	}
+	    $method ($args) $nentries Partial puts and $ndups duplicates."
 	set db [eval {berkdb_open -create -mode 0644 \
 	    $omethod -dup} $args {$testfile} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -53,25 +67,35 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 
 	# Here is the loop where we put each key/data pair
 	puts "\tTest0$tnum.a: Put loop (initialize database)"
-	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor_open [is_substr $dbc $db] 1
 	while { [gets $did str] != -1 && $count < $nentries } {
 		for { set i 1 } { $i <= $ndups } { incr i } {
 			set pref \
 			    [string index $alphabet [berkdb random_int 0 25]]
 			set datastr $pref:$str
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			set ret [eval {$db put} \
 			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 		set keys($count) $str
 
 		incr count
 	}
-	error_check_good cursor_close [$dbc close] 0
 	close $did
 
 	puts "\tTest0$tnum.b: Partial puts."
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open [is_substr $dbc $db] 1
 
@@ -122,5 +146,8 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 	}
 
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 }

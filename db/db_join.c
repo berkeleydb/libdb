@@ -1,14 +1,14 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2001
+ * Copyright (c) 1998-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_join.c,v 11.46 2001/08/15 13:30:27 bostic Exp $";
+static const char revid[] = "$Id: db_join.c,v 11.55 2002/08/08 03:57:47 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,16 +19,17 @@ static const char revid[] = "$Id: db_join.c,v 11.46 2001/08/15 13:30:27 bostic E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_join.h"
-#include "db_am.h"
-#include "btree.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_join.h"
+#include "dbinc/btree.h"
 
 static int __db_join_close __P((DBC *));
 static int __db_join_cmp __P((const void *, const void *));
 static int __db_join_del __P((DBC *, u_int32_t));
 static int __db_join_get __P((DBC *, DBT *, DBT *, u_int32_t));
 static int __db_join_getnext __P((DBC *, DBT *, DBT *, u_int32_t, u_int32_t));
+static int __db_join_primget __P((DB *,
+    DB_TXN *, u_int32_t, DBT *, DBT *, u_int32_t));
 static int __db_join_put __P((DBC *, DBT *, DBT *, u_int32_t));
 
 /*
@@ -84,7 +85,8 @@ __db_join(primary, curslist, dbcp, flags)
 	DBC *dbc;
 	JOIN_CURSOR *jc;
 	int ret;
-	u_int32_t i, ncurs, nslots;
+	u_int32_t i;
+	size_t ncurs, nslots;
 
 	COMPQUIET(nslots, 0);
 
@@ -186,7 +188,7 @@ __db_join(primary, curslist, dbcp, flags)
 		jc->j_fdupcurs[i] = NULL;
 		jc->j_exhausted[i] = 0;
 	}
-	jc->j_ncurs = ncurs;
+	jc->j_ncurs = (u_int32_t)ncurs;
 
 	/*
 	 * If DB_JOIN_NOSORT is not set, optimize secondary cursors by
@@ -228,25 +230,20 @@ __db_join(primary, curslist, dbcp, flags)
 
 err:	if (jc != NULL) {
 		if (jc->j_curslist != NULL)
-			__os_free(dbenv,
-			    jc->j_curslist, nslots * sizeof(DBC *));
+			__os_free(dbenv, jc->j_curslist);
 		if (jc->j_workcurs != NULL) {
 			if (jc->j_workcurs[0] != NULL)
-				__os_free(dbenv,
-				    jc->j_workcurs[0], sizeof(DBC));
-			__os_free(dbenv,
-			    jc->j_workcurs, nslots * sizeof(DBC *));
+				__os_free(dbenv, jc->j_workcurs[0]);
+			__os_free(dbenv, jc->j_workcurs);
 		}
 		if (jc->j_fdupcurs != NULL)
-			__os_free(dbenv,
-			    jc->j_fdupcurs, nslots * sizeof(DBC *));
+			__os_free(dbenv, jc->j_fdupcurs);
 		if (jc->j_exhausted != NULL)
-			__os_free(dbenv,
-			    jc->j_exhausted, nslots * sizeof(u_int8_t));
-		__os_free(dbenv, jc, sizeof(JOIN_CURSOR));
+			__os_free(dbenv, jc->j_exhausted);
+		__os_free(dbenv, jc);
 	}
 	if (dbc != NULL)
-		__os_free(dbenv, dbc, sizeof(DBC));
+		__os_free(dbenv, dbc);
 	return (ret);
 }
 
@@ -295,6 +292,11 @@ __db_join_get(dbc, key_arg, data_arg, flags)
 	PANIC_CHECK(dbp->dbenv);
 
 	operation = LF_ISSET(DB_OPFLAGS_MASK);
+
+	/* !!!
+	 * If the set of flags here changes, check that __db_join_primget
+	 * is updated to handle them properly.
+	 */
 	opmods = LF_ISSET(DB_RMW | DB_DIRTY_READ);
 
 	if ((ret = __db_joingetchk(dbp, key_arg, flags)) != 0)
@@ -549,8 +551,8 @@ samekey:	/*
 	    key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) || key_n == key_arg);
 
 	if (F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) &&
-	    (ret = __db_retcopy(
-	    dbp, key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
+	    (ret = __db_retcopy(dbp->dbenv,
+	    key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
 		/*
 		 * The retcopy failed, most commonly because we have a user
 		 * buffer for the key which is too small. Set things up to
@@ -584,8 +586,8 @@ samekey:	/*
 		db_manage_data = 1;
 	else
 		db_manage_data = 0;
-	if ((ret = jc->j_primary->get(jc->j_primary,
-	    jc->j_curslist[0]->txn, key_arg,
+	if ((ret = __db_join_primget(jc->j_primary,
+	    jc->j_curslist[0]->txn, jc->j_curslist[0]->locker, key_arg,
 	    db_manage_data ? &jc->j_rdata : data_arg, opmods)) != 0) {
 		if (ret == DB_NOTFOUND)
 			/*
@@ -659,15 +661,15 @@ __db_join_close(dbc)
 			ret = t_ret;
 	}
 
-	__os_free(dbenv, jc->j_exhausted, 0);
-	__os_free(dbenv, jc->j_curslist, 0);
-	__os_free(dbenv, jc->j_workcurs, 0);
-	__os_free(dbenv, jc->j_fdupcurs, 0);
-	__os_free(dbenv, jc->j_key.data, jc->j_key.ulen);
+	__os_free(dbenv, jc->j_exhausted);
+	__os_free(dbenv, jc->j_curslist);
+	__os_free(dbenv, jc->j_workcurs);
+	__os_free(dbenv, jc->j_fdupcurs);
+	__os_free(dbenv, jc->j_key.data);
 	if (jc->j_rdata.data != NULL)
-		__os_ufree(dbenv, jc->j_rdata.data, 0);
-	__os_free(dbenv, jc, sizeof(JOIN_CURSOR));
-	__os_free(dbenv, dbc, sizeof(DBC));
+		__os_ufree(dbenv, jc->j_rdata.data);
+	__os_free(dbenv, jc);
+	__os_free(dbenv, dbc);
 
 	return (ret);
 }
@@ -719,10 +721,10 @@ __db_join_getnext(dbc, key, data, exhausted, opmods)
 			 * it into data, then free the buffer we malloc'ed
 			 * above.
 			 */
-			if ((ret = __db_retcopy(dbp, data, ldata.data,
+			if ((ret = __db_retcopy(dbp->dbenv, data, ldata.data,
 			    ldata.size, &data->data, &data->size)) != 0)
 				return (ret);
-			__os_ufree(dbp->dbenv, ldata.data, 0);
+			__os_ufree(dbp->dbenv, ldata.data);
 			return (0);
 		}
 
@@ -731,7 +733,7 @@ __db_join_getnext(dbc, key, data, exhausted, opmods)
 		 * dups.  We just forget about ldata and free
 		 * its buffer--data contains the value we're searching for.
 		 */
-		__os_ufree(dbp->dbenv, ldata.data, 0);
+		__os_ufree(dbp->dbenv, ldata.data);
 		/* FALLTHROUGH */
 	case 1:
 		ret = dbc->c_real_get(dbc, key, data, opmods | DB_GET_BOTHC);
@@ -748,7 +750,6 @@ __db_join_getnext(dbc, key, data, exhausted, opmods)
  * __db_join_cmp --
  *	Comparison function for sorting DBCs in cardinality order.
  */
-
 static int
 __db_join_cmp(a, b)
 	const void *a, *b;
@@ -767,4 +768,55 @@ __db_join_cmp(a, b)
 		return (0);
 
 	return (counta - countb);
+}
+
+/*
+ * __db_join_primget --
+ *	Perform a DB->get in the primary, being careful not to use a new
+ * locker ID if we're doing CDB locking.
+ */
+static int
+__db_join_primget(dbp, txn, lockerid, key, data, flags)
+	DB *dbp;
+	DB_TXN *txn;
+	u_int32_t lockerid;
+	DBT *key, *data;
+	u_int32_t flags;
+{
+	DBC *dbc;
+	int dirty, ret, rmw, t_ret;
+
+	/*
+	 * The only allowable flags here are the two flags copied into
+	 * "opmods" in __db_join_get, DB_RMW and DB_DIRTY_READ.  The former
+	 * is an op on the c_get call, the latter on the cursor call.
+	 * It's a DB bug if we allow any other flags down in here.
+	 */
+	rmw = LF_ISSET(DB_RMW);
+	dirty = LF_ISSET(DB_DIRTY_READ);
+	LF_CLR(DB_RMW | DB_DIRTY_READ);
+	DB_ASSERT(flags == 0);
+
+	if ((ret = __db_icursor(dbp,
+	    txn, dbp->type, PGNO_INVALID, 0, lockerid, &dbc)) != 0)
+		return (ret);
+
+	if (dirty ||
+	    (txn != NULL && F_ISSET(txn, TXN_DIRTY_READ)))
+		F_SET(dbc, DBC_DIRTY_READ);
+	F_SET(dbc, DBC_TRANSIENT);
+
+	/*
+	 * This shouldn't be necessary, thanks to the fact that join cursors
+	 * swap in their own DB_DBT_REALLOC'ed buffers, but just for form's
+	 * sake, we mirror what __db_get does.
+	 */
+	SET_RET_MEM(dbc, dbp);
+
+	ret = dbc->c_get(dbc, key, data, DB_SET | rmw);
+
+	if ((t_ret = __db_c_close(dbc)) != 0 && ret == 0)
+		ret = t_ret;
+
+	return (ret);
 }

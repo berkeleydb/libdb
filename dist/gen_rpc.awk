@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 11.40 2001/10/05 02:27:33 bostic Exp $
+# $Id: gen_rpc.awk,v 11.50 2002/07/02 19:26:57 sue Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -182,18 +182,18 @@ END {
 		printf("\n") >> CFILE
 		printf("#ifdef HAVE_RPC\n") >> CFILE
 		printf("#ifndef NO_SYSTEM_INCLUDES\n") >> CFILE
-		printf("#include <sys/types.h>\n") >> CFILE
+		printf("#include <sys/types.h>\n\n") >> CFILE
 		printf("#include <rpc/rpc.h>\n") >> CFILE
 		printf("#include <rpc/xdr.h>\n") >> CFILE
 		printf("\n") >> CFILE
 		printf("#include <string.h>\n") >> CFILE
 		printf("#endif\n") >> CFILE
-		printf("#include \"db_server.h\"\n") >> CFILE
 		printf("\n") >> CFILE
 		printf("#include \"db_int.h\"\n") >> CFILE
-		printf("#include \"mp.h\"\n") >> CFILE
-		printf("#include \"rpc_client_ext.h\"\n") >> CFILE
-		printf("#include \"txn.h\"\n") >> CFILE
+		printf("#include \"dbinc/txn.h\"\n") >> CFILE
+		printf("\n") >> CFILE
+		printf("#include \"dbinc_auto/db_server.h\"\n") >> CFILE
+		printf("#include \"dbinc_auto/rpc_client_ext.h\"\n") >> CFILE
 		printf("\n") >> CFILE
 
 		printf("#include \"db_config.h\"\n") >> TFILE
@@ -205,10 +205,9 @@ END {
 		printf("\n") >> TFILE
 		printf("#include <string.h>\n") >> TFILE
 		printf("#endif\n") >> TFILE
-		printf("#include \"db_server.h\"\n") >> TFILE
-		printf("\n") >> TFILE
 		printf("#include \"db_int.h\"\n") >> TFILE
-		printf("#include \"txn.h\"\n") >> TFILE
+		printf("#include \"dbinc_auto/db_server.h\"\n") >> TFILE
+		printf("#include \"dbinc/txn.h\"\n") >> TFILE
 		printf("\n") >> TFILE
 
 		printf("#include \"db_config.h\"\n") >> SFILE
@@ -221,11 +220,11 @@ END {
 		printf("\n") >> SFILE
 		printf("#include <string.h>\n") >> SFILE
 		printf("#endif\n") >> SFILE
-		printf("#include \"db_server.h\"\n") >> SFILE
 		printf("\n") >> SFILE
 		printf("#include \"db_int.h\"\n") >> SFILE
-		printf("#include \"db_server_int.h\"\n") >> SFILE
-		printf("#include \"rpc_server_ext.h\"\n") >> SFILE
+		printf("#include \"dbinc_auto/db_server.h\"\n") >> SFILE
+		printf("#include \"dbinc/db_server_int.h\"\n") >> SFILE
+		printf("#include \"dbinc_auto/rpc_server_ext.h\"\n") >> SFILE
 		printf("\n") >> SFILE
 
 		printf("#include \"db_config.h\"\n") >> PFILE
@@ -236,12 +235,12 @@ END {
 		printf("#include <rpc/rpc.h>\n") >> PFILE
 		printf("\n") >> PFILE
 		printf("#include <string.h>\n") >> PFILE
-		printf("#include \"db_server.h\"\n") >> PFILE
 		printf("#endif\n") >> PFILE
 		printf("\n") >> PFILE
 		printf("#include \"db_int.h\"\n") >> PFILE
-		printf("#include \"db_server_int.h\"\n") >> PFILE
-		printf("#include \"rpc_server_ext.h\"\n") >> PFILE
+		printf("#include \"dbinc_auto/db_server.h\"\n") >> PFILE
+		printf("#include \"dbinc/db_server_int.h\"\n") >> PFILE
+		printf("#include \"dbinc_auto/rpc_server_ext.h\"\n") >> PFILE
 		printf("\n") >> PFILE
 
 		first = 1;
@@ -256,19 +255,31 @@ END {
 	#
 	if (nofunc_code == 1) {
 		#
-		# First time through, put out the general illegal function
+		# First time through, put out the general no server and
+		# illegal functions.
 		#
 		if (first_nofunc == 0) {
+			printf("static int __dbcl_noserver ") >> CFILE
+			printf("__P((DB_ENV *));\n\n") >> CFILE
+			printf("static int\n") >> CFILE
+			printf("__dbcl_noserver(dbenv)\n") >> CFILE
+			printf("\tDB_ENV *dbenv;\n") >> CFILE
+			printf("{\n\t__db_err(dbenv,") >> CFILE
+			printf(" \"No server environment\");\n") >> CFILE
+			printf("\treturn (DB_NOSERVER);\n") >> CFILE
+			printf("}\n\n") >> CFILE
+
 			printf("static int __dbcl_rpc_illegal ") >> CFILE
 			printf("__P((DB_ENV *, char *));\n\n") >> CFILE
 			printf("static int\n") >> CFILE
 			printf("__dbcl_rpc_illegal(dbenv, name)\n") >> CFILE
 			printf("\tDB_ENV *dbenv;\n\tchar *name;\n") >> CFILE
-			printf("{\n\t__db_err(dbenv,\n") >> CFILE
-			printf("\t    \"%%s method meaningless in RPC") >> CFILE
+			printf("{\n\t__db_err(dbenv,") >> CFILE
+			printf(" \"%%s method meaningless in an RPC") >> CFILE
 			printf(" environment\", name);\n") >> CFILE
 			printf("\treturn (__db_eopnotsup(dbenv));\n") >> CFILE
 			printf("}\n\n") >> CFILE
+
 			first_nofunc = 1
 		}
 		#
@@ -439,20 +450,24 @@ END {
 	#
 	# First spit out PUBLIC prototypes for server functions.
 	#
-	p[1] = sprintf("__%s_reply *__db_%s_%d%03d __P((__%s_msg *));",
+	p[1] = sprintf("__%s_reply *__db_%s_%d%03d __P((__%s_msg *, struct svc_req *));",
 	    name, name, major, minor, name);
 	p[2] = "";
 	proto_format(p, 0, SFILE);
 
 	printf("__%s_reply *\n", name) >> SFILE
-	printf("__db_%s_%d%03d(req)\n", name, major, minor) >> SFILE
-	printf("\t__%s_msg *req;\n", name) >> SFILE;
+	printf("__db_%s_%d%03d(msg, req)\n", name, major, minor) >> SFILE
+	printf("\t__%s_msg *msg;\n", name) >> SFILE;
+	printf("\tstruct svc_req *req;\n", name) >> SFILE;
 	printf("{\n") >> SFILE
 	printf("\tstatic __%s_reply reply; /* must be static */\n", \
 	    name) >> SFILE
 	if (xdr_free) {
 		printf("\tstatic int __%s_free = 0; /* must be static */\n\n", \
 		    name) >> SFILE
+	}
+	printf("\tCOMPQUIET(req, NULL);\n", name) >> SFILE
+	if (xdr_free) {
 		printf("\tif (__%s_free)\n", name) >> SFILE
 		printf("\t\txdr_free((xdrproc_t)xdr___%s_reply, (void *)&reply);\n", \
 		    name) >> SFILE
@@ -481,33 +496,33 @@ END {
 			continue;
 		}
 		if (rpc_type[i] == "ID") {
-			printf("%sreq->%scl_id", sep, args[i]) >> SFILE
+			printf("%smsg->%scl_id", sep, args[i]) >> SFILE
 		}
 		if (rpc_type[i] == "STRING") {
-			printf("%s(*req->%s == '\\0') ? NULL : req->%s", \
+			printf("%s(*msg->%s == '\\0') ? NULL : msg->%s", \
 			    sep, args[i], args[i]) >> SFILE
 		}
 		if (rpc_type[i] == "GID") {
-			printf("%sreq->%s", sep, args[i]) >> SFILE
+			printf("%smsg->%s", sep, args[i]) >> SFILE
 		}
 		if (rpc_type[i] == "INT") {
-			printf("%sreq->%s", sep, args[i]) >> SFILE
+			printf("%smsg->%s", sep, args[i]) >> SFILE
 		}
 		if (rpc_type[i] == "LIST") {
-			printf("%sreq->%s.%s_val", \
+			printf("%smsg->%s.%s_val", \
 			    sep, args[i], args[i]) >> SFILE
-			printf("%sreq->%s.%s_len", \
+			printf("%smsg->%s.%s_len", \
 			    sep, args[i], args[i]) >> SFILE
 		}
 		if (rpc_type[i] == "DBT") {
-			printf("%sreq->%sdlen", sep, args[i]) >> SFILE
+			printf("%smsg->%sdlen", sep, args[i]) >> SFILE
 			sep = ",\n\t    ";
-			printf("%sreq->%sdoff", sep, args[i]) >> SFILE
-			printf("%sreq->%sulen", sep, args[i]) >> SFILE
-			printf("%sreq->%sflags", sep, args[i]) >> SFILE
-			printf("%sreq->%sdata.%sdata_val", \
+			printf("%smsg->%sdoff", sep, args[i]) >> SFILE
+			printf("%smsg->%sulen", sep, args[i]) >> SFILE
+			printf("%smsg->%sflags", sep, args[i]) >> SFILE
+			printf("%smsg->%sdata.%sdata_val", \
 			    sep, args[i], args[i]) >> SFILE
-			printf("%sreq->%sdata.%sdata_len", \
+			printf("%smsg->%sdata.%sdata_len", \
 			    sep, args[i], args[i]) >> SFILE
 		}
 		sep = ",\n\t    ";
@@ -836,8 +851,8 @@ END {
 
 	printf("{\n") >> CFILE
 	printf("\tCLIENT *cl;\n") >> CFILE
-	printf("\t__%s_msg req;\n", name) >> CFILE
-	printf("\tstatic __%s_reply *replyp = NULL;\n", name) >> CFILE;
+	printf("\t__%s_msg msg;\n", name) >> CFILE
+	printf("\t__%s_reply *replyp = NULL;\n", name) >> CFILE;
 	printf("\tint ret;\n") >> CFILE
 	if (!env_handle)
 		printf("\tDB_ENV *dbenv;\n") >> CFILE
@@ -858,7 +873,6 @@ END {
 	printf("\n") >> CFILE
 	printf("\tret = 0;\n") >> CFILE
 	if (!env_handle) {
-		printf("\tdbenv = NULL;\n") >> CFILE
 		if (db_handle)
 			printf("\tdbenv = %s->dbenv;\n", args[db_idx]) >> CFILE
 		else if (dbc_handle)
@@ -867,27 +881,19 @@ END {
 		else if (txn_handle)
 			printf("\tdbenv = %s->mgrp->dbenv;\n", \
 			    args[txn_idx]) >> CFILE
-		printf("\tif (dbenv == NULL || dbenv->cl_handle == NULL) {\n") \
+		else
+			printf("\tdbenv = NULL;\n") >> CFILE
+		printf("\tif (dbenv == NULL || !RPC_ON(dbenv))\n") \
 		    >> CFILE
-		printf("\t\t__db_err(dbenv, \"No server environment.\");\n") \
-		    >> CFILE
+		printf("\t\treturn (__dbcl_noserver(NULL));\n") >> CFILE
 	} else {
-		printf("\tif (%s == NULL || %s->cl_handle == NULL) {\n", \
+		printf("\tif (%s == NULL || !RPC_ON(%s))\n", \
 		    args[env_idx], args[env_idx]) >> CFILE
-		printf("\t\t__db_err(%s, \"No server environment.\");\n", \
+		printf("\t\treturn (__dbcl_noserver(%s));\n", \
 		    args[env_idx]) >> CFILE
 	}
-	printf("\t\treturn (DB_NOSERVER);\n") >> CFILE
-	printf("\t}\n") >> CFILE
 	printf("\n") >> CFILE
 
-	#
-	# Free old reply if there was one.
-	#
-	printf("\tif (replyp != NULL) {\n") >> CFILE
-	printf("\t\txdr_free((xdrproc_t)xdr___%s_reply, (void *)replyp);\n", \
-	    name) >> CFILE
-	printf("\t\treplyp = NULL;\n\t}\n") >> CFILE
 	if (!env_handle)
 		printf("\tcl = (CLIENT *)dbenv->cl_handle;\n") >> CFILE
 	else
@@ -908,7 +914,7 @@ END {
 		} else {
 			printf("\t\t__db_err(%s, ", args[env_idx]) >> CFILE
 		}
-		printf("\"User functions not supported in RPC.\");\n") >> CFILE
+		printf("\"User functions not supported in RPC\");\n") >> CFILE
 		printf("\t\treturn (EINVAL);\n\t}\n") >> CFILE
 	}
 
@@ -918,42 +924,42 @@ END {
 	for (i = 0; i < nvars; ++i) {
 		if (rpc_type[i] == "ID") {
 			printf("\tif (%s == NULL)\n", args[i]) >> CFILE
-			printf("\t\treq.%scl_id = 0;\n\telse\n", \
+			printf("\t\tmsg.%scl_id = 0;\n\telse\n", \
 			    args[i]) >> CFILE
 			if (c_type[i] == "DB_TXN *") {
-				printf("\t\treq.%scl_id = %s->txnid;\n", \
+				printf("\t\tmsg.%scl_id = %s->txnid;\n", \
 				    args[i], args[i]) >> CFILE
 			} else {
-				printf("\t\treq.%scl_id = %s->cl_id;\n", \
+				printf("\t\tmsg.%scl_id = %s->cl_id;\n", \
 				    args[i], args[i]) >> CFILE
 			}
 		}
 		if (rpc_type[i] == "GID") {
-			printf("\tmemcpy(req.%s, %s, %d);\n", \
+			printf("\tmemcpy(msg.%s, %s, %d);\n", \
 			    args[i], args[i], xidsize) >> CFILE
 		}
 		if (rpc_type[i] == "INT") {
-			printf("\treq.%s = %s;\n", args[i], args[i]) >> CFILE
+			printf("\tmsg.%s = %s;\n", args[i], args[i]) >> CFILE
 		}
 		if (rpc_type[i] == "STRING") {
 			printf("\tif (%s == NULL)\n", args[i]) >> CFILE
-			printf("\t\treq.%s = \"\";\n", args[i]) >> CFILE
+			printf("\t\tmsg.%s = \"\";\n", args[i]) >> CFILE
 			printf("\telse\n") >> CFILE
-			printf("\t\treq.%s = (char *)%s;\n", \
+			printf("\t\tmsg.%s = (char *)%s;\n", \
 			    args[i], args[i]) >> CFILE
 		}
 		if (rpc_type[i] == "DBT") {
-			printf("\treq.%sdlen = %s->dlen;\n", \
+			printf("\tmsg.%sdlen = %s->dlen;\n", \
 			    args[i], args[i]) >> CFILE
-			printf("\treq.%sdoff = %s->doff;\n", \
+			printf("\tmsg.%sdoff = %s->doff;\n", \
 			    args[i], args[i]) >> CFILE
-			printf("\treq.%sulen = %s->ulen;\n", \
+			printf("\tmsg.%sulen = %s->ulen;\n", \
 			    args[i], args[i]) >> CFILE
-			printf("\treq.%sflags = %s->flags;\n", \
+			printf("\tmsg.%sflags = %s->flags;\n", \
 			    args[i], args[i]) >> CFILE
-			printf("\treq.%sdata.%sdata_val = %s->data;\n", \
+			printf("\tmsg.%sdata.%sdata_val = %s->data;\n", \
 			    args[i], args[i], args[i]) >> CFILE
-			printf("\treq.%sdata.%sdata_len = %s->size;\n", \
+			printf("\tmsg.%sdata.%sdata_len = %s->size;\n", \
 			    args[i], args[i], args[i]) >> CFILE
 		}
 		if (rpc_type[i] == "LIST") {
@@ -966,7 +972,7 @@ END {
 			# If we are an array of ints, *_len is how many
 			# elements.  If we are a GID, *_len is total bytes.
 			#
-			printf("\treq.%s.%s_len = %si",args[i], args[i], \
+			printf("\tmsg.%s.%s_len = %si",args[i], args[i], \
 			    args[i]) >> CFILE
 			if (list_type[i] == "GID")
 				printf(" * %d;\n", xidsize) >> CFILE
@@ -977,16 +983,16 @@ END {
 				printf("dbenv,\n") >> CFILE
 			else
 				printf("%s,\n", args[env_idx]) >> CFILE
-			printf("\t    req.%s.%s_len,", \
+			printf("\t    msg.%s.%s_len,", \
 			    args[i], args[i]) >> CFILE
 			if (list_type[i] == "GID")
 				printf(" 1,") >> CFILE
 			else
 				printf(" sizeof(u_int32_t),") >> CFILE
-			printf(" &req.%s.%s_val)) != 0)\n",\
+			printf(" &msg.%s.%s_val)) != 0)\n",\
 			    args[i], args[i], args[i], args[i]) >> CFILE
 			printf("\t\treturn (ret);\n") >> CFILE
-			printf("\tfor (%sq = req.%s.%s_val, %sp = %s; ", \
+			printf("\tfor (%sq = msg.%s.%s_val, %sp = %s; ", \
 			    args[i], args[i], args[i], \
 			    args[i], args[i]) >> CFILE
 			printf("%si--; %sq++, %sp++)\n", \
@@ -1002,7 +1008,7 @@ END {
 	}
 
 	printf("\n") >> CFILE
-	printf("\treplyp = __db_%s_%d%03d(&req, cl);\n", name, major, minor) \
+	printf("\treplyp = __db_%s_%d%03d(&msg, cl);\n", name, major, minor) \
 	    >> CFILE
 	for (i = 0; i < nvars; ++i) {
 		if (rpc_type[i] == "LIST") {
@@ -1011,11 +1017,7 @@ END {
 				printf("dbenv, ") >> CFILE
 			else
 				printf("%s, ", args[env_idx]) >> CFILE
-			printf("req.%s.%s_val, req.%s.%s_len", \
-			    args[i], args[i], args[i], args[i]) >> CFILE
-			if (list_type[i] != "GID")
-				printf(" * sizeof(u_int32_t)") >> CFILE
-			printf(");\n") >> CFILE
+			printf("msg.%s.%s_val);\n", args[i], args[i]) >> CFILE
 		}
 	}
 	printf("\tif (replyp == NULL) {\n") >> CFILE
@@ -1033,15 +1035,21 @@ END {
 	if (ret_code == 0) {
 		printf("\tret = replyp->status;\n") >> CFILE
 	} else {
-		printf("\treturn (__dbcl_%s_ret(", name) >> CFILE
+		printf("\tret = __dbcl_%s_ret(", name) >> CFILE
 		sep = "";
 		for (i = 0; i < nvars; ++i) {
 			printf("%s%s", sep, args[i]) >> CFILE
 			sep = ", ";
 		}
-		printf("%sreplyp));\n", sep) >> CFILE
+		printf("%sreplyp);\n", sep) >> CFILE
 	}
 	printf("out:\n") >> CFILE
+	#
+	# Free reply if there was one.
+	#
+	printf("\tif (replyp != NULL)\n") >> CFILE
+	printf("\t\txdr_free((xdrproc_t)xdr___%s_reply,",name) >> CFILE
+	printf(" (void *)replyp);\n") >> CFILE
 	printf("\treturn (ret);\n") >> CFILE
 	printf("}\n\n") >> CFILE
 

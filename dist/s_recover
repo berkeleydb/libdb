@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_recover,v 1.7 2001/08/19 19:48:00 bostic Exp $
+#	$Id: s_recover,v 1.14 2002/03/27 04:31:51 bostic Exp $
 #
 # Build the automatically generated logging/recovery files.
 
@@ -12,7 +12,7 @@ template=/tmp/__db_e
 trap 'rm -f $tmp $loglist $source $header $template; exit 1' 1 2 3 13 15
 trap 'rm -f $tmp $loglist $source $header $template; exit 0' 0
 
-DIR="db btree hash log qam txn"
+DIR="db dbreg btree hash qam txn"
 
 # Check to make sure we haven't duplicated a log record entry, and build
 # the list of log record types that the test suite uses.
@@ -21,14 +21,14 @@ for i in $DIR; do
 	for f in ../$i/*.src; do
 		# Grab the PREFIX;  there should only be one per file, and
 		# so it's okay to just take the first.
-		grep '^PREFIX' $f | head -1
+		grep '^PREFIX' $f | sed q
 		egrep '^BEGIN[	 ]|^IGNORED[	 ]|^DEPRECATED[	 ]' $f |
 		    awk '{print $1 "\t" $2 "\t" $3}'
 
 	done
 done > $loglist
 grep -v '^PREFIX' $loglist |
-    awk '{print $2 "\t" $3}' | sort +1 -n | uniq -d -f 1 > $tmp
+    awk '{print $2 "\t" $3}' | sort -n -k 2 | uniq -d -f 1 > $tmp
 [ -s $tmp ] && {
 	echo "DUPLICATE LOG VALUES:"
 	cat $tmp
@@ -39,16 +39,16 @@ f=../test/logtrack.list
 cmp $loglist $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $loglist $f && chmod 444 $f)
 
-for i in db btree hash log qam txn; do
+# Build DB's recovery routines.
+for i in db dbreg btree fileops hash qam txn; do
 	for f in ../$i/*.src; do
 		subsystem=`basename $f .src`
 		awk -f gen_rec.awk \
-		    -v subsystem=$subsystem \
 		    -v source_file=$source \
 		    -v header_file=$header \
 		    -v template_file=$template < $f
 
-		f=../include_auto/${subsystem}_auto.h
+		f=../dbinc_auto/${subsystem}_auto.h
 		cmp $header $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
 		    rm -f $f && cp $header $f && chmod 444 $f)
@@ -62,3 +62,6 @@ for i in db btree hash log qam txn; do
 		    rm -f $f && cp $template $f && chmod 444 $f)
 	done
 done
+
+# Build the example application's recovery routines.
+(cd ../examples_c/ex_apprec && sh auto_rebuild)

@@ -1,6 +1,7 @@
-<!--$Id: checkpoint.so,v 10.17 2001/05/08 15:03:07 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: checkpoint.so,v 10.20 2002/06/24 14:51:04 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Checkpoints</title>
@@ -106,11 +107,7 @@ checkpoint_thread(void *arg)
 <p>
 	/* Checkpoint once a minute. */
 	for (;; sleep(60))
-		switch (ret = dbenv-&gt;txn_checkpoint(dbenv, 0, 0, 0)) {
-		case 0:
-		case DB_INCOMPLETE:
-			break;
-		default:
+		if ((ret = dbenv-&gt;txn_checkpoint(dbenv, 0, 0, 0)) != 0) {
 			dbenv-&gt;err(dbenv, ret, "checkpoint thread");
 			exit (1);
 		}

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: log_archive.c,v 11.27 2001/10/04 16:10:48 bostic Exp $";
+static const char revid[] = "$Id: log_archive.c,v 11.39 2002/08/06 05:00:31 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,10 +20,10 @@ static const char revid[] = "$Id: log_archive.c,v 11.27 2001/10/04 16:10:48 bost
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "log.h"
-#include "qam.h"
-#include "clib_ext.h"			/* XXX: needed for getcwd. */
+#include "dbinc/db_page.h"
+#include "dbinc/log.h"
+#include "dbinc/qam.h"
+#include "dbinc/txn.h"
 
 static int __absname __P((DB_ENV *, char *, char *, char **));
 static int __build_data __P((DB_ENV *, char *, char ***));
@@ -46,9 +46,10 @@ __log_archive(dbenv, listp, flags)
 	DB_LOG *dblp;
 	DB_LOGC *logc;
 	DB_LSN stable_lsn;
-	u_int32_t fnum;
-	int array_size, db_arch_abs, n, ret;
+	__txn_ckp_args *ckp_args;
 	char **array, **arrayp, *name, *p, *pref, buf[MAXPATHLEN];
+	int array_size, db_arch_abs, n, ret;
+	u_int32_t fnum;
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv,
@@ -104,6 +105,9 @@ __log_archive(dbenv, listp, flags)
 		memset(&rec, 0, sizeof(rec));
 		if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0)
 			return (ret);
+#ifdef UMRW
+		ZERO_LSN(stable_lsn);
+#endif
 		ret = logc->get(logc, &stable_lsn, &rec, DB_LAST);
 		(void)logc->close(logc, 0);
 		if (ret != 0)
@@ -111,17 +115,38 @@ __log_archive(dbenv, listp, flags)
 		fnum = stable_lsn.file;
 		break;
 	case 0:
-		if ((ret = __log_findckp(dbenv, &stable_lsn)) != 0) {
+		memset(&rec, 0, sizeof(rec));
+		if (__txn_getckp(dbenv, &stable_lsn) != 0) {
 			/*
-			 * A return of DB_NOTFOUND means that we didn't find
-			 * any records in the log (so we are not going to be
-			 * deleting any log files).
+			 * A failure return means that there's no checkpoint
+			 * in the log (so we are not going to be deleting
+			 * any log files).
 			 */
-			if (ret != DB_NOTFOUND)
-				return (ret);
 			*listp = NULL;
 			return (0);
 		}
+		if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0)
+			return (ret);
+		if ((ret = logc->get(logc, &stable_lsn, &rec, DB_SET)) != 0 ||
+		    (ret = __txn_ckp_read(dbenv, rec.data, &ckp_args)) != 0) {
+			/*
+			 * A return of DB_NOTFOUND may only mean that the
+			 * checkpoint LSN is before the beginning of the
+			 * log files that we still have.  This is not
+			 * an error;  it just means our work is done.
+			 */
+			if (ret == DB_NOTFOUND) {
+				*listp = NULL;
+				ret = 0;
+			}
+			(void)logc->close(logc, 0);
+			return (ret);
+		}
+		if ((ret = logc->close(logc, 0)) != 0)
+			return (ret);
+		stable_lsn = ckp_args->ckp_lsn;
+		__os_free(dbenv, ckp_args);
+
 		/* Remove any log files before the last stable LSN. */
 		fnum = stable_lsn.file - 1;
 		break;
@@ -142,7 +167,7 @@ __log_archive(dbenv, listp, flags)
 		if (__os_exists(name, NULL) != 0) {
 			if (LF_ISSET(DB_ARCH_LOG) && fnum == stable_lsn.file)
 				continue;
-			__os_freestr(dbenv, name);
+			__os_free(dbenv, name);
 			name = NULL;
 			break;
 		}
@@ -158,11 +183,11 @@ __log_archive(dbenv, listp, flags)
 			if ((ret = __absname(dbenv,
 			    pref, name, &array[n])) != 0)
 				goto err;
-			__os_freestr(dbenv, name);
+			__os_free(dbenv, name);
 		} else if ((p = __db_rpath(name)) != NULL) {
 			if ((ret = __os_strdup(dbenv, p + 1, &array[n])) != 0)
 				goto err;
-			__os_freestr(dbenv, name);
+			__os_free(dbenv, name);
 		} else
 			array[n] = name;
 
@@ -189,11 +214,11 @@ __log_archive(dbenv, listp, flags)
 
 err:	if (array != NULL) {
 		for (arrayp = array; *arrayp != NULL; ++arrayp)
-			__os_freestr(dbenv, *arrayp);
-		__os_free(dbenv, array, sizeof(char *) * array_size);
+			__os_free(dbenv, *arrayp);
+		__os_free(dbenv, array);
 	}
 	if (name != NULL)
-		__os_freestr(dbenv, name);
+		__os_free(dbenv, name);
 	return (ret);
 }
 
@@ -209,7 +234,7 @@ __build_data(dbenv, pref, listp)
 	DBT rec;
 	DB_LOGC *logc;
 	DB_LSN lsn;
-	__log_register_args *argp;
+	__dbreg_register_args *argp;
 	u_int32_t rectype;
 	int array_size, last, n, nxt, ret, t_ret;
 	char **array, **arrayp, **list, **lp, *p, *real_name;
@@ -232,14 +257,10 @@ __build_data(dbenv, pref, listp)
 		}
 
 		memcpy(&rectype, rec.data, sizeof(rectype));
-		if (rectype != DB_log_register) {
-			if (F_ISSET(dbenv, DB_ENV_THREAD)) {
-				__os_free(dbenv, rec.data, rec.size);
-				rec.data = NULL;
-			}
+		if (rectype != DB___dbreg_register)
 			continue;
-		}
-		if ((ret = __log_register_read(dbenv, rec.data, &argp)) != 0) {
+		if ((ret =
+		    __dbreg_register_read(dbenv, rec.data, &argp)) != 0) {
 			ret = EINVAL;
 			__db_err(dbenv,
 			    "DB_ENV->log_archive: unable to read log record");
@@ -277,9 +298,9 @@ __build_data(dbenv, pref, listp)
 				array[n] = NULL;
 			}
 q_err:			if (list != NULL)
-				__os_free(dbenv, list, 0);
+				__os_free(dbenv, list);
 		}
-free_continue:	__os_free(dbenv, argp, 0);
+free_continue:	__os_free(dbenv, argp);
 		if (ret != 0)
 			break;
 	}
@@ -316,34 +337,34 @@ free_continue:	__os_free(dbenv, argp, 0);
 		}
 		for (++nxt; nxt < n &&
 		    strcmp(array[last], array[nxt]) == 0; ++nxt) {
-			__os_freestr(dbenv, array[nxt]);
+			__os_free(dbenv, array[nxt]);
 			array[nxt] = NULL;
 		}
 
 		/* Get the real name. */
 		if ((ret = __db_appname(dbenv,
-		    DB_APP_DATA, NULL, array[last], 0, NULL, &real_name)) != 0)
+		    DB_APP_DATA, array[last], 0, NULL, &real_name)) != 0)
 			goto err2;
 
 		/* If the file doesn't exist, ignore it. */
 		if (__os_exists(real_name, NULL) != 0) {
-			__os_freestr(dbenv, real_name);
-			__os_freestr(dbenv, array[last]);
+			__os_free(dbenv, real_name);
+			__os_free(dbenv, array[last]);
 			array[last] = NULL;
 			continue;
 		}
 
 		/* Rework the name as requested by the user. */
-		__os_freestr(dbenv, array[last]);
+		__os_free(dbenv, array[last]);
 		array[last] = NULL;
 		if (pref != NULL) {
 			ret = __absname(dbenv, pref, real_name, &array[last]);
-			__os_freestr(dbenv, real_name);
+			__os_free(dbenv, real_name);
 			if (ret != 0)
 				goto err2;
 		} else if ((p = __db_rpath(real_name)) != NULL) {
 			ret = __os_strdup(dbenv, p + 1, &array[last]);
-			__os_freestr(dbenv, real_name);
+			__os_free(dbenv, real_name);
 			if (ret != 0)
 				goto err2;
 		} else
@@ -368,13 +389,13 @@ err2:	/*
 	 */
 	if (array != NULL)
 		for (; nxt < n; ++nxt)
-			__os_freestr(dbenv, array[nxt]);
+			__os_free(dbenv, array[nxt]);
 	/* FALLTHROUGH */
 
 err1:	if (array != NULL) {
 		for (arrayp = array; *arrayp != NULL; ++arrayp)
-			__os_freestr(dbenv, *arrayp);
-		__os_free(dbenv, array, array_size * sizeof(char *));
+			__os_free(dbenv, *arrayp);
+		__os_free(dbenv, array);
 	}
 	return (ret);
 }
@@ -445,13 +466,13 @@ __usermem(dbenv, listp)
 		*arrayp = strp;
 		strp += len + 1;
 
-		__os_freestr(dbenv, *orig);
+		__os_free(dbenv, *orig);
 	}
 
 	/* NULL-terminate the list. */
 	*arrayp = NULL;
 
-	__os_free(dbenv, *listp, 0);
+	__os_free(dbenv, *listp);
 	*listp = array;
 
 	return (0);

@@ -1,6 +1,7 @@
-<!--$Id: curput.so,v 10.15 2001/05/19 14:51:30 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: curput.so,v 10.17 2002/09/05 16:03:53 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Storing records with a cursor</title>
@@ -15,7 +16,7 @@
 </td></tr></table>
 <p>
 <h1 align=center>Storing records with a cursor</h1>
-<p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> function is the standard interface for storing records into
+<p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> method is the standard interface for storing records into
 the database with a cursor.  In general, <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> takes a key and
 inserts the associated data into the database, at a location controlled
 by a specified flag.
@@ -25,7 +26,7 @@ by a specified flag.
 refers.
 <p><dt><a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a><dd>Create a new record, immediately before the record to which the cursor
 refers.
-<p><dt><a href="../../api_c/dbc_put.html#DB_CURRENT_PUT">DB_CURRENT</a><dd>Replace the data part of the record to which the cursor refers.
+<p><dt><a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a><dd>Replace the data part of the record to which the cursor refers.
 <p><dt><a href="../../api_c/dbc_put.html#DB_KEYFIRST">DB_KEYFIRST</a><dd>Create a new record as the first of the duplicate records for the
 supplied key.
 <p><dt><a href="../../api_c/dbc_put.html#DB_KEYLAST">DB_KEYLAST</a><dd>Create a new record, as the last of the duplicate records for the supplied

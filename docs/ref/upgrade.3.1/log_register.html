@@ -1,6 +1,7 @@
 <!--$Id: log_register.so,v 1.4 2001/07/26 19:53:12 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.1: log_register</title>
@@ -16,10 +17,10 @@
 <h1 align=center>Release 3.1: log_register</h1>
 <p>The arguments to the log_register and log_unregister interfaces have
 changed.  Instead of returning (and passing in) a logging file ID, a
-reference to the <a href="../../api_c/db_create.html">DB</a> structure being registered (or unregistered)
+reference to the <a href="../../api_c/db_class.html">DB</a> structure being registered (or unregistered)
 is passed.  The application should be searched for any occurrences of
 log_register and log_unregister.  For each one, change the arguments to
-be a reference to the <a href="../../api_c/db_create.html">DB</a> structure being registered or
+be a reference to the <a href="../../api_c/db_class.html">DB</a> structure being registered or
 unregistered.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.1/sysmem.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.1/memp_register.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

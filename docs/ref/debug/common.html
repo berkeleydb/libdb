@@ -1,6 +1,7 @@
 <!--$Id: common.so,v 10.15 2001/03/13 20:39:46 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Common errors</title>
@@ -20,7 +21,7 @@ and some suggested courses of action.
 <p><dl compact>
 <p><dt><b>Symptom:</b><dd>Core dumps or garbage returns from random Berkeley DB operations.
 <p><dt>Possible Cause:<dd>Failure to zero out DBT structure before issuing request.
-<p><dt>Fix:<dd>Before using a <a href="../../api_c/dbt.html">DBT</a>, you must initialize all its elements
+<p><dt>Fix:<dd>Before using a <a href="../../api_c/dbt_class.html">DBT</a>, you must initialize all its elements
 to 0 and then set the ones you are using explicitly.
 <p><dt><b>Symptom:</b><dd>Random crashes and/or database corruption.
 <p><dt>Possible Cause:<dd>Running multiple threads, but did not specify <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a>
@@ -32,11 +33,11 @@ specify <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> when you ope
 <p><dt>Fix:<dd>Use a locally mounted filesystem instead.
 <p><dt><b>Symptom:</b><dd><a href="../../api_c/db_get.html">DB-&gt;get</a> calls are returning EINVAL.
 <p><dt>Possible Cause:<dd>The application is running with threads, but did not specify the
-<a href="../../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../../api_c/dbt.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a> or <a href="../../api_c/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a>
-flags in the <a href="../../api_c/dbt.html">DBT</a> structures used in the call.
+<a href="../../api_c/dbt_class.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../../api_c/dbt_class.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a> or <a href="../../api_c/dbt_class.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a>
+flags in the <a href="../../api_c/dbt_class.html">DBT</a> structures used in the call.
 <p><dt>Fix:<dd>When running with threaded handles (that is, specifying <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a>
 to <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> or <a href="../../api_c/db_open.html">DB-&gt;open</a>), you must specify one of those
-flags for all <a href="../../api_c/dbt.html">DBT</a> structures in which Berkeley DB is returning data.
+flags for all <a href="../../api_c/dbt_class.html">DBT</a> structures in which Berkeley DB is returning data.
 <p><dt><b>Symptom:</b><dd>Running multiple threads or processes, and the database appears to be
 getting corrupted.
 <p><dt>Possible Cause:<dd>Locking is not enabled.
@@ -78,7 +79,7 @@ database, turning off Btree splits may help (see <a href="../../api_c/db_set_fla
 for more information.)
 <p><dt><b>Symptom:</b><dd>I run recovery and it exits cleanly, but my database changes are missing.
 <p><dt>Possible Cause:<dd>Failure to enable logging and transactions in the database environment;
-failure to specify <a href="../../api_c/env_create.html">DB_ENV</a> handle when creating <a href="../../api_c/db_create.html">DB</a> handle;
+failure to specify <a href="../../api_c/env_class.html">DB_ENV</a> handle when creating <a href="../../api_c/db_class.html">DB</a> handle;
 transaction handle not passed to Berkeley DB interface; failure to commit the
 transaction.
 <p><dt>Fix:<dd>Make sure that the environment and database handles are properly

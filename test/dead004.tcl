@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999, 2000
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-#	$Id: dead004.tcl,v 11.6 2001/10/10 16:22:10 ubell Exp $
+# $Id: dead004.tcl,v 11.11 2002/09/05 17:23:05 sandstro Exp $
 #
 # Deadlock Test 4.
 # This test is designed to make sure that we handle youngest and oldest
@@ -31,18 +31,18 @@ proc dead004 { } {
 
 		# Create the environment.
 		puts "\tDead004.a: creating environment"
-		set env [berkdb env -create -mode 0644 -lock -home $testdir]
+		set env [berkdb_env -create -mode 0644 -lock -home $testdir]
 		error_check_good lock_env:open [is_valid_env $env] TRUE
 
 		set dpid [exec $util_path/db_deadlock -v -t 5 -a $a \
 		    -h $testdir >& $testdir/dd.out &]
 
-		set pidlist ""
 		set procs 6
 
 		foreach n $procs {
 
 			sentinel_init
+			set pidlist ""
 			set ret [$env lock_id_set $lock_curid $lock_maxid]
 			error_check_good lock_id_set $ret 0
 
@@ -59,7 +59,7 @@ proc dead004 { } {
 					$testdir $locker $n $a $i &]
 				lappend pidlist $p
 			}
-			watch_procs 5
+			watch_procs $pidlist 5
 
 		}
 		# Now check output
@@ -77,6 +77,8 @@ proc dead004 { } {
 			}
 			close $did
 		}
+		tclkill $dpid
+
 		puts "dead check..."
 		dead_check oldyoung $n 0 $dead $clean $other
 
@@ -91,8 +93,6 @@ proc dead004 { } {
 		error_check_bad file:old [gets $did val] -1
 		error_check_good read:old $val 1
 		close $did
-
-		exec $KILL $dpid
 
 		# Windows needs files closed before deleting files,
 		# so pause a little

@@ -1,6 +1,7 @@
 <!--$Id: put.so,v 1.10 2001/05/05 01:49:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.1: DB-&gt;put</title>
@@ -16,19 +17,19 @@
 <h1 align=center>Release 3.1: DB-&gt;put</h1>
 <p>For the Queue and Recno access methods, when the <a href="../../api_c/db_put.html#DB_APPEND">DB_APPEND</a> flag
 is specified to the <a href="../../api_c/db_put.html">DB-&gt;put</a> interface, the allocated record
-number is returned to the application in the <b>key</b> <a href="../../api_c/dbt.html">DBT</a>
-argument.  In previous releases of Berkeley DB, this <a href="../../api_c/dbt.html">DBT</a> structure
-did not follow the usual <a href="../../api_c/dbt.html">DBT</a> conventions.  For example, it was
+number is returned to the application in the <b>key</b> <a href="../../api_c/dbt_class.html">DBT</a>
+argument.  In previous releases of Berkeley DB, this <a href="../../api_c/dbt_class.html">DBT</a> structure
+did not follow the usual <a href="../../api_c/dbt_class.html">DBT</a> conventions.  For example, it was
 not possible to cause Berkeley DB to allocate space for the returned record
 number.  Rather, it was always assumed that the <b>data</b> field of
 the <b>key</b> structure referred to memory that could be used as
 storage for a db_recno_t type.
 <p>As of the Berkeley DB 3.1.0 release, the <b>key</b> structure behaves as
-described in the <a href="../../api_c/dbt.html">DBT</a> C++/Java class or C structure documentation.
+described in the <a href="../../api_c/dbt_class.html">DBT</a> C++/Java class or C structure documentation.
 <p>Applications which are using the <a href="../../api_c/db_put.html#DB_APPEND">DB_APPEND</a> flag for Queue and
 Recno access method databases will require a change to upgrade to the
 Berkeley DB 3.1 releases.  The simplest change is likely to be to add the
-<a href="../../api_c/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> flag to the <b>key</b> structure.  For example,
+<a href="../../api_c/dbt_class.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> flag to the <b>key</b> structure.  For example,
 code that appears as follows:
 <p><blockquote><pre>DBT key;
 db_recno_t recno;

@@ -1,6 +1,7 @@
-<!--$Id: join.so,v 10.28 2001/06/19 19:49:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: join.so,v 10.29 2002/06/24 14:50:20 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Equality Join</title>
@@ -53,11 +54,11 @@ could be purchased.  For example, by first looking up <b>blue</b>,
 the data item <b>blueberry</b> could be used as the lookup key in the
 primary database, returning <b>Farmer's Market</b>.
 <p>Your data must be organized in the following manner in order to use the
-<a href="../../api_c/db_join.html">DB-&gt;join</a> function:
+<a href="../../api_c/db_join.html">DB-&gt;join</a> method:
 <p><ol>
 <p><li>The actual data should be stored in the database represented by the
-<a href="../../api_c/db_create.html">DB</a> object used to invoke this function.  Generally, this
-<a href="../../api_c/db_create.html">DB</a> object is called the <i>primary</i>.
+<a href="../../api_c/db_class.html">DB</a> object used to invoke this function.  Generally, this
+<a href="../../api_c/db_class.html">DB</a> object is called the <i>primary</i>.
 <p><li>Secondary indices should be stored in separate databases, whose keys
 are the values of the secondary indices and whose data items are the
 primary keys corresponding to the records having the designated
@@ -65,9 +66,9 @@ secondary key value.  It is acceptable (and expected) that there may be
 duplicate entries in the secondary indices.
 <p>These duplicate entries should be sorted for performance reasons, although
 it is not required.  For more information see the <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a> flag
-to the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function.
+to the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> method.
 </ol>
-<p>What the <a href="../../api_c/db_join.html">DB-&gt;join</a> function does is review a list of secondary keys, and,
+<p>What the <a href="../../api_c/db_join.html">DB-&gt;join</a> method does is review a list of secondary keys, and,
 when it finds a data item that appears as a data item for all of the
 secondary keys, it uses that data items as a lookup into the primary
 database, and returns the associated data item.
@@ -84,10 +85,10 @@ where inexpensive fruit could be purchased:
 <tr>    <td align=left>inexpensive</td>    <td align=left>pear</td>    </tr>
 <tr>    <td align=left>inexpensive</td>    <td align=left>raspberry</td>    </tr>
 </table></blockquote>
-<p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> function provides equality join functionality.  While not
+<p>The <a href="../../api_c/db_join.html">DB-&gt;join</a> method provides equality join functionality.  While not
 strictly cursor functionality, in that it is not a method off a cursor
 handle, it is more closely related to the cursor operations than to the
-standard <a href="../../api_c/db_create.html">DB</a> operations.
+standard <a href="../../api_c/db_class.html">DB</a> operations.
 <p>It is also possible to do lookups based on multiple criteria in a single
 operation.  For example, it is possible to look up fruits that are both
 red and expensive in a single operation.  If the same fruit appeared as

@@ -1,6 +1,7 @@
-<!--$Id: log_put.so,v 10.26 2001/11/06 22:20:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: log_put.so,v 10.30 2002/08/18 21:16:41 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::log_put</title>
@@ -29,10 +30,6 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);
 the put record is returned in the <b>lsn</b> argument.  The <b>flags</b>
 argument may be set to one of the following values:
 <p><dl compact>
-<p><dt><a name="DB_CHECKPOINT">DB_CHECKPOINT</a><dd>The log should write a checkpoint record, recording any information
-necessary to make the log structures recoverable after a crash.
-<p><dt><a name="DB_CURLSN">DB_CURLSN</a><dd>The <a href="../api_cxx/lsn_class.html">DbLsn</a> of the next record to be put is returned in the
-<b>lsn</b> argument.
 <p><dt><a name="DB_FLUSH">DB_FLUSH</a><dd>The log is forced to disk after this record is written, guaranteeing
 that all records with <a href="../api_cxx/lsn_class.html">DbLsn</a> values less than or equal to the
 one being "put" are on disk before DbEnv::log_put returns.
@@ -54,29 +51,14 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <p>The record to be logged is larger than the maximum log record.
 </dl>
 <p>The DbEnv::log_put method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::log_put method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the DbEnv::log_put method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/logc_class.html">DbLogc</a>, <a href="../api_cxx/lsn_class.html">DbLsn</a>
 <h1>See Also</h1>
-<a href="../api_cxx/env_set_lg_bsize.html">DbEnv::set_lg_bsize</a>,
-<a href="../api_cxx/env_set_lg_dir.html">DbEnv::set_lg_dir</a>,
-<a href="../api_cxx/env_set_lg_max.html">DbEnv::set_lg_max</a>,
-<a href="../api_cxx/env_set_lg_regionmax.html">DbEnv::set_lg_regionmax</a>,
-<a href="../api_cxx/log_archive.html">DbEnv::log_archive</a>,
-<a href="../api_cxx/log_compare.html">DbEnv::log_compare</a>,
-<a href="../api_cxx/log_cursor.html">DbEnv::log_cursor</a>,
-<a href="../api_cxx/log_file.html">DbEnv::log_file</a>,
-<a href="../api_cxx/log_flush.html">DbEnv::log_flush</a>,
-<a href="../api_cxx/log_put.html">DbEnv::log_put</a>,
-<a href="../api_cxx/log_register.html">DbEnv::log_register</a>,
-<a href="../api_cxx/log_stat.html">DbEnv::log_stat</a>,
-<a href="../api_cxx/log_unregister.html">DbEnv::log_unregister</a>,
-<a href="../api_cxx/logc_close.html">DbLogc::logc_close</a>
-and
-<a href="../api_cxx/logc_get.html">DbLogc::logc_get</a>.
+<a href="../api_cxx/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

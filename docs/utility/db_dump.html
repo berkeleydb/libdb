@@ -1,6 +1,7 @@
-<!--$Id: db_dump.so,v 10.29 2001/07/02 01:03:18 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_dump.so,v 10.32 2002/08/24 18:24:52 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_dump</title>
@@ -19,7 +20,7 @@
 <hr size=1 noshade>
 <tt>
 <h3><pre>db_dump [<b>-klNpRrV</b>] [<b>-d ahr</b>]
-	[<b>-f output</b>] [<b>-h home</b>] [<b>-s database</b>] file
+	[<b>-f output</b>] [<b>-h home</b>] [<b>-P password</b>] [<b>-s database</b>] file
 db_dump185 [<b>-p</b>] [<b>-f output</b>] file</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
@@ -47,10 +48,15 @@ without notice, between releases of the Berkeley DB library.</b>
 default, the current working directory is used.
 <p><dt><b>-k</b><dd>Dump record numbers from Queue and Recno databases as keys.
 <p><dt><b>-l</b><dd>List the databases stored in the file.
-<p><dt><b>-N</b><dd>Do not acquire shared region locks while running.  Other problems, such
-as potentially fatal errors in Berkeley DB, will be ignored as well.  This
-option is intended only for debugging errors, and should not be used
-under any other circumstances.
+<p><dt><b>-N</b><dd>Do not acquire shared region mutexes while running.  Other problems,
+such as potentially fatal errors in Berkeley DB, will be ignored as well.
+This option is intended only for debugging errors, and should not be
+used under any other circumstances.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-p</b><dd>If characters in either the key or data items are printing characters (as
 defined by <b>isprint</b>(3)), use printing characters in <b>file</b>
 to represent them.  This option permits users to use standard text editors
@@ -112,18 +118,6 @@ otherwise, the output may be corrupt.
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-db_dump,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

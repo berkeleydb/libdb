@@ -1,6 +1,7 @@
-<!--$Id: notes.so,v 10.49 2001/11/05 20:08:42 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: notes.so,v 10.50 2002/08/24 18:23:43 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Architecture independent FAQ</title>
@@ -45,9 +46,9 @@ shared libraries.  See the documentation for configuration.  If this
 doesn't work and you have a choice of compilers, try using a more recent
 gcc- or a non-gcc based compiler to build Berkeley DB.
 <p>Finally, you can disable the use of exceptions in the C++ runtime for
-Berkeley DB by using the <a href="../../api_c/db_create.html#DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a> flag with
-<a href="../../api_c/env_create.html">db_env_create</a> or <a href="../../api_c/db_create.html">db_create</a>.  When this flag is on, all
-C++ methods fail by returning an error code rather than throwing an
+Berkeley DB by using the <a href="../../api_cxx/env_class.html#DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a> flag with the
+<a href="../../api_cxx/env_class.html">DbEnv</a> or <a href="../../api_cxx/db_class.html">Db</a> constructors.  When this flag is on,
+all C++ methods fail by returning an error code rather than throwing an
 exception.
 <hr size=1 noshade>
 <p><li><b>I get unexpected results and database corruption when running

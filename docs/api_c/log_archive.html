@@ -1,6 +1,7 @@
-<!--$Id: log_archive.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: log_archive.so,v 10.38 2002/08/18 21:16:38 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;log_archive</title>
@@ -25,7 +26,7 @@ int
 DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The DB_ENV-&gt;log_archive function
+<p>The DB_ENV-&gt;log_archive method
 creates a NULL-terminated array of log or database filenames, and copies
 a pointer to them into the user-specified memory location <b>listp</b>.
 <p>By default, DB_ENV-&gt;log_archive returns the names of all of the log
@@ -37,7 +38,7 @@ the memory location to which <b>listp</b> refers will be set to NULL.
 <p>Arrays of log filenames are created in allocated memory.  If application-specific allocation
 routines have been declared (see <a href="../api_c/env_set_alloc.html">DB_ENV-&gt;set_alloc</a> for more
 information), they are used to allocate the memory; otherwise, the
-library function <b>malloc</b>(3) is used.  The caller is
+library <b>malloc</b>(3) interface is used.  The caller is
 responsible for deallocating the memory.  To deallocate the memory, free
 the memory reference; references inside the returned memory need not be
 individually freed.
@@ -57,7 +58,7 @@ use.
 </dl>
 <p>The DB_ARCH_DATA and DB_ARCH_LOG flags are mutually
 exclusive.
-<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> function) may have open
+<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> method) may have open
 file descriptors for log files in the database environment.  Also, the
 Berkeley DB interfaces to the database environment logging subsystem (for
 example, <a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a> and <a href="../api_c/txn_abort.html">DB_TXN-&gt;abort</a>) may allocate log cursors
@@ -74,43 +75,24 @@ necessary; it is hard to imagine a reason to move or rename a log file
 in which transactions are being logged or aborted.)
 <p>See the <a href="../utility/db_archive.html">db_archive</a> manual page for more information on database
 archival procedures.
-<p>The DB_ENV-&gt;log_archive function is the underlying function used by the <a href="../utility/db_archive.html">db_archive</a> utility.
+<p>The DB_ENV-&gt;log_archive method is the underlying interface used by the <a href="../utility/db_archive.html">db_archive</a> utility.
 See the <a href="../utility/db_archive.html">db_archive</a> utility source code for an example of using DB_ENV-&gt;log_archive
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
-<p>The DB_ENV-&gt;log_archive function returns a non-zero error value on failure and 0 on success.
-<h1>Bugs</h1>
-<p>In a threaded application (that is, one where the environment was created
-with the DB_THREAD flag specified), calling DB_ENV-&gt;log_archive with the
-DB_ARCH_DATA flag will fail, returning EINVAL.  To work around this
-problem, reopen the log explicitly without specifying DB_THREAD.  This
-restriction is expected to be removed in a future version of Berkeley DB.
+<p>The DB_ENV-&gt;log_archive method returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The DB_ENV-&gt;log_archive function may fail and return a non-zero error for the following conditions:
+<p>The DB_ENV-&gt;log_archive method may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>The log was corrupted.
 </dl>
-<p>The DB_ENV-&gt;log_archive function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;log_archive function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The DB_ENV-&gt;log_archive method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;log_archive method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/logc_class.html">DB_LOGC</a>, <a href="../api_c/lsn_class.html">DB_LSN</a>
 <h1>See Also</h1>
-<a href="../api_c/env_set_lg_bsize.html">DB_ENV-&gt;set_lg_bsize</a>,
-<a href="../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a>,
-<a href="../api_c/env_set_lg_max.html">DB_ENV-&gt;set_lg_max</a>,
-<a href="../api_c/env_set_lg_regionmax.html">DB_ENV-&gt;set_lg_regionmax</a>,
-<a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>,
-<a href="../api_c/log_compare.html">log_compare</a>,
-<a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a>,
-<a href="../api_c/log_file.html">DB_ENV-&gt;log_file</a>,
-<a href="../api_c/log_flush.html">DB_ENV-&gt;log_flush</a>,
-<a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a>,
-<a href="../api_c/log_register.html">DB_ENV-&gt;log_register</a>,
-<a href="../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>,
-<a href="../api_c/log_unregister.html">DB_ENV-&gt;log_unregister</a>,
-<a href="../api_c/logc_close.html">DB_LOGC-&gt;close</a>
-and
-<a href="../api_c/logc_get.html">DB_LOGC-&gt;get</a>.
+<a href="../api_c/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

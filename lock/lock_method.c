@@ -1,32 +1,33 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_method.c,v 11.24 2001/10/08 16:04:36 bostic Exp $";
+static const char revid[] = "$Id: lock_method.c,v 11.30 2002/03/27 04:32:20 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#ifdef HAVE_RPC
+#include <rpc/rpc.h>
+#endif
+
 #include <string.h>
 #endif
 
-#ifdef	HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
-#include "db_shash.h"
-#include "lock.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
 
 #ifdef HAVE_RPC
-#include "rpc_client_ext.h"
+#include "dbinc_auto/db_server.h"
+#include "dbinc_auto/rpc_client_ext.h"
 #endif
 
 static int __lock_set_lk_conflicts __P((DB_ENV *, u_int8_t *, int));
@@ -109,9 +110,8 @@ void
 __lock_dbenv_close(dbenv)
 	DB_ENV *dbenv;
 {
-	if (!F_ISSET(dbenv, DB_ENV_USER_ALLOC) && dbenv->lk_conflicts != NULL) {
-		__os_free(dbenv, dbenv->lk_conflicts,
-		    dbenv->lk_modes * dbenv->lk_modes);
+	if (dbenv->lk_conflicts != NULL) {
+		__os_free(dbenv, dbenv->lk_conflicts);
 		dbenv->lk_conflicts = NULL;
 	}
 }
@@ -131,8 +131,7 @@ __lock_set_lk_conflicts(dbenv, lk_conflicts, lk_modes)
 	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_lk_conflicts");
 
 	if (dbenv->lk_conflicts != NULL) {
-		__os_free(dbenv, dbenv->lk_conflicts,
-		    dbenv->lk_modes * dbenv->lk_modes);
+		__os_free(dbenv, dbenv->lk_conflicts);
 		dbenv->lk_conflicts = NULL;
 	}
 	if ((ret = __os_malloc(dbenv,

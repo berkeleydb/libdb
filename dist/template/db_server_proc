@@ -7,12 +7,12 @@
 #include <rpc/rpc.h>
 
 #include <string.h>
-#include "db_server.h"
 #endif
 
 #include "db_int.h"
-#include "db_server_int.h"
-#include "rpc_server_ext.h"
+#include "dbinc_auto/db_server.h"
+#include "dbinc/db_server_int.h"
+#include "dbinc_auto/rpc_server_ext.h"
 
 /* BEGIN __env_cachesize_proc */
 void
@@ -72,6 +72,93 @@ __env_create_proc(timeout, replyp)
 {
 	int ret;
 
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_dbremove_proc */
+void
+__env_dbremove_proc(dbenvcl_id, txnpcl_id, name,
+		subdb, flags, replyp)
+	long dbenvcl_id;
+	long txnpcl_id;
+	char *name;
+	char *subdb;
+	u_int32_t flags;
+	__env_dbremove_reply *replyp;
+/* END __env_dbremove_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+	DB_TXN * txnp;
+	ct_entry *txnp_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
+	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_dbrename_proc */
+void
+__env_dbrename_proc(dbenvcl_id, txnpcl_id, name,
+		subdb, newname, flags, replyp)
+	long dbenvcl_id;
+	long txnpcl_id;
+	char *name;
+	char *subdb;
+	char *newname;
+	u_int32_t flags;
+	__env_dbrename_reply *replyp;
+/* END __env_dbrename_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+	DB_TXN * txnp;
+	ct_entry *txnp_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
+	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_encrypt_proc */
+void
+__env_encrypt_proc(dbenvcl_id, passwd, flags, replyp)
+	long dbenvcl_id;
+	char *passwd;
+	u_int32_t flags;
+	__env_encrypt_reply *replyp;
+/* END __env_encrypt_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 
 	/*
 	 * XXX Code goes here
@@ -303,9 +390,10 @@ __txn_recover_proc(dbenvcl_id, count,
 
 /* BEGIN __db_associate_proc */
 void
-__db_associate_proc(dbpcl_id, sdbpcl_id,
+__db_associate_proc(dbpcl_id, txnpcl_id, sdbpcl_id,
 		flags, replyp)
 	long dbpcl_id;
+	long txnpcl_id;
 	long sdbpcl_id;
 	u_int32_t flags;
 	__db_associate_reply *replyp;
@@ -314,11 +402,15 @@ __db_associate_proc(dbpcl_id, sdbpcl_id,
 	int ret;
 	DB * dbp;
 	ct_entry *dbp_ctp;
+	DB_TXN * txnp;
+	ct_entry *txnp_ctp;
 	DB * sdbp;
 	ct_entry *sdbp_ctp;
 
 	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
+	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 	ACTIVATE_CTP(sdbp_ctp, sdbpcl_id, CT_DB);
 	sdbp = (DB *)sdbp_ctp->ct_anyp;
 
@@ -449,6 +541,30 @@ __db_del_proc(dbpcl_id, txnpcl_id, keydlen,
 	dbp = (DB *)dbp_ctp->ct_anyp;
 	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
 	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __db_encrypt_proc */
+void
+__db_encrypt_proc(dbpcl_id, passwd, flags, replyp)
+	long dbpcl_id;
+	char *passwd;
+	u_int32_t flags;
+	__db_encrypt_reply *replyp;
+/* END __db_encrypt_proc */
+{
+	int ret;
+	DB * dbp;
+	ct_entry *dbp_ctp;
+
+	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
+	dbp = (DB *)dbp_ctp->ct_anyp;
 
 	/*
 	 * XXX Code goes here
@@ -655,9 +771,10 @@ __db_lorder_proc(dbpcl_id, lorder, replyp)
 
 /* BEGIN __db_open_proc */
 void
-__db_open_proc(dbpcl_id, name, subdb,
-		type, flags, mode, replyp)
+__db_open_proc(dbpcl_id, txnpcl_id, name,
+		subdb, type, flags, mode, replyp)
 	long dbpcl_id;
+	long txnpcl_id;
 	char *name;
 	char *subdb;
 	u_int32_t type;
@@ -669,9 +786,13 @@ __db_open_proc(dbpcl_id, name, subdb,
 	int ret;
 	DB * dbp;
 	ct_entry *dbp_ctp;
+	DB_TXN * txnp;
+	ct_entry *txnp_ctp;
 
 	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
+	ACTIVATE_CTP(txnp_ctp, txnpcl_id, CT_TXN);
+	txnp = (DB_TXN *)txnp_ctp->ct_anyp;
 
 	/*
 	 * XXX Code goes here

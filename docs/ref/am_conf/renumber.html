@@ -1,6 +1,7 @@
 <!--$Id: renumber.so,v 10.25 2001/05/05 01:49:21 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Logically renumbering records</title>
@@ -17,7 +18,7 @@
 <h1 align=center>Logically renumbering records</h1>
 <p>Records stored in the Queue and Recno access methods are accessed by
 logical record number.  In all cases in Btree databases, and optionally
-in Recno databases (see the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function and the
+in Recno databases (see the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> method and the
 <a href="../../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a> flag for more information), record numbers are
 mutable.  This means that the record numbers may change as records are
 added to and deleted from the database.  The deletion of record number
@@ -43,15 +44,15 @@ positioned between the new record numbers 1 and 2, and an insertion
 using that cursor will appear between those records.   In this manner
 records can be added and deleted to a database without disrupting the
 sequential traversal of the database by a cursor.
-<p>Only cursors created using a single <a href="../../api_c/db_create.html">DB</a> handle can adjust each
-other's position in this way, however.  If multiple <a href="../../api_c/db_create.html">DB</a> handles
+<p>Only cursors created using a single <a href="../../api_c/db_class.html">DB</a> handle can adjust each
+other's position in this way, however.  If multiple <a href="../../api_c/db_class.html">DB</a> handles
 have a renumbering Recno database open simultaneously (as when multiple
 processes share a single database environment), a record referred to by
 one cursor could change underfoot if a cursor created using another
-<a href="../../api_c/db_create.html">DB</a> handle inserts or deletes records into the database.  For
+<a href="../../api_c/db_class.html">DB</a> handle inserts or deletes records into the database.  For
 this reason, applications using Recno databases with mutable record
 numbers will usually make all accesses to the database using a single
-<a href="../../api_c/db_create.html">DB</a> handle and cursors created from that handle, or will
+<a href="../../api_c/db_class.html">DB</a> handle and cursors created from that handle, or will
 otherwise single-thread access to the database, for example, by using
 the Berkeley DB Concurrent Data Store product.
 <p>In any Queue or Recno databases, creating new records will cause the

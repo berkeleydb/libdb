@@ -9,8 +9,9 @@
 /* Component information */
 
 Component INCLUDE_BERKELEYDB {
-	ENTRY_POINTS	ALL_GLOBAL_SYMBOLS 
-	MODULES		bt_compare.o \
+	ENTRY_POINTS	ALL_GLOBAL_SYMBOLS
+	MODULES			aes_method.o \
+			bt_compare.o \
 			bt_conv.o \
 			bt_curadj.o \
 			bt_cursor.o \
@@ -31,6 +32,7 @@ Component INCLUDE_BERKELEYDB {
 			client.o \
 			crdel_auto.o \
 			crdel_rec.o \
+			crypto.o \
 			db.o \
 			db_am.o \
 			db_auto.o \
@@ -41,28 +43,42 @@ Component INCLUDE_BERKELEYDB {
 			db_dup.o \
 			db_err.o \
 			db_getlong.o \
+			db_idspace.o \
 			db_iface.o \
 			db_join.o \
 			db_log2.o \
 			db_meta.o \
 			db_method.o \
+			db_open.o \
 			db_overflow.o \
 			db_pr.o \
 			db_rec.o \
 			db_reclaim.o \
+			db_remove.o \
+			db_rename.o \
 			db_ret.o \
 			db_salloc.o \
 			db_server_clnt.o \
 			db_server_xdr.o \
 			db_shash.o \
+			db_truncate.o \
 			db_upg.o \
 			db_upg_opd.o \
 			db_vrfy.o \
 			db_vrfyutil.o \
+			dbreg.o \
+			dbreg_auto.o \
+			dbreg_rec.o \
+			dbreg_util.o \
+			env_file.o \
 			env_method.o \
 			env_open.o \
 			env_recover.o \
 			env_region.o \
+			fileops_auto.o \
+			fop_basic.o \
+			fop_rec.o \
+			fop_util.o \
 			gen_client.o \
 			gen_client_ret.o \
 			getopt.o \
@@ -73,12 +89,14 @@ Component INCLUDE_BERKELEYDB {
 			hash_func.o \
 			hash_meta.o \
 			hash_method.o \
+			hash_open.o \
 			hash_page.o \
 			hash_rec.o \
 			hash_reclaim.o \
 			hash_stat.o \
 			hash_upgrade.o \
 			hash_verify.o \
+			hmac.o \
 			hsearch.o \
 			lock.o \
 			lock_deadlock.o \
@@ -88,14 +106,10 @@ Component INCLUDE_BERKELEYDB {
 			lock_util.o \
 			log.o \
 			log_archive.o \
-			log_auto.o \
 			log_compare.o \
-			log_findckp.o \
 			log_get.o \
 			log_method.o \
 			log_put.o \
-			log_rec.o \
-			log_register.o \
 			mp_alloc.o \
 			mp_bh.o \
 			mp_fget.o \
@@ -108,6 +122,7 @@ Component INCLUDE_BERKELEYDB {
 			mp_stat.o \
 			mp_sync.o \
 			mp_trickle.o \
+			mt19937db.o \
 			mut_tas.o \
 			mutex.o \
 			os_alloc.o \
@@ -117,6 +132,7 @@ Component INCLUDE_BERKELEYDB {
 			os_fid.o \
 			os_fsync.o \
 			os_handle.o \
+			os_id.o \
 			os_method.o \
 			os_oflags.o \
 			os_open.o \
@@ -132,7 +148,7 @@ Component INCLUDE_BERKELEYDB {
 			os_tmpdir.o \
 			os_unlink.o \
 			os_vx_abs.o \
-			os_vx_finit.o \
+			os_vx_config.o \
 			os_vx_map.o \
 			qam.o \
 			qam_auto.o \
@@ -148,8 +164,12 @@ Component INCLUDE_BERKELEYDB {
 			rep_record.o \
 			rep_region.o \
 			rep_util.o \
+			rijndael-alg-fst.o \
+			rijndael-api-fst.o \
+			sha1.o \
 			snprintf.o \
 			strcasecmp.o \
+			strdup.o \
 			txn.o \
 			txn_auto.o \
 			txn_method.o \
@@ -157,13 +177,15 @@ Component INCLUDE_BERKELEYDB {
 			txn_recover.o \
 			txn_region.o \
 			txn_stat.o \
+			txn_util.o \
 			util_arg.o \
+			util_cache.o \
 			util_log.o \
 			util_sig.o \
 			vsnprintf.o \
 			xa.o \
 			xa_db.o \
-			xa_map.o 
+			xa_map.o
 	NAME		BerkeleyDB
 	PREF_DOMAIN	ANY
 	_INIT_ORDER	usrComponentsInit
@@ -281,10 +303,118 @@ Module btree_auto.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../btree/btree_auto.c
 }
 
-Module client.o {
+Module getopt.o {
 
-	NAME		client.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/client.c
+	NAME		getopt.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/getopt.c
+}
+
+Module snprintf.o {
+
+	NAME		snprintf.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/snprintf.c
+}
+
+Module strcasecmp.o {
+
+	NAME		strcasecmp.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/strcasecmp.c
+}
+
+Module strdup.o {
+
+	NAME		strdup.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/strdup.c
+}
+
+Module vsnprintf.o {
+
+	NAME		vsnprintf.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/vsnprintf.c
+}
+
+Module db_byteorder.o {
+
+	NAME		db_byteorder.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_byteorder.c
+}
+
+Module db_err.o {
+
+	NAME		db_err.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_err.c
+}
+
+Module db_getlong.o {
+
+	NAME		db_getlong.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_getlong.c
+}
+
+Module db_idspace.o {
+
+	NAME		db_idspace.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_idspace.c
+}
+
+Module db_log2.o {
+
+	NAME		db_log2.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_log2.c
+}
+
+Module util_arg.o {
+
+	NAME		util_arg.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_arg.c
+}
+
+Module util_cache.o {
+
+	NAME		util_cache.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_cache.c
+}
+
+Module util_log.o {
+
+	NAME		util_log.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_log.c
+}
+
+Module util_sig.o {
+
+	NAME		util_sig.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_sig.c
+}
+
+Module aes_method.o {
+
+	NAME		aes_method.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/aes_method.c
+}
+
+Module crypto.o {
+
+	NAME		crypto.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/crypto.c
+}
+
+Module mt19937db.o {
+
+	NAME		mt19937db.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/mersenne/mt19937db.c
+}
+
+Module rijndael-alg-fst.o {
+
+	NAME		rijndael-alg-fst.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/rijndael/rijndael-alg-fst.c
+}
+
+Module rijndael-api-fst.o {
+
+	NAME		rijndael-api-fst.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../crypto/rijndael/rijndael-api-fst.c
 }
 
 Module crdel_auto.o {
@@ -317,12 +447,6 @@ Module db_auto.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_auto.c
 }
 
-Module db_byteorder.o {
-
-	NAME		db_byteorder.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_byteorder.c
-}
-
 Module db_cam.o {
 
 	NAME		db_cam.o
@@ -347,18 +471,6 @@ Module db_dup.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_dup.c
 }
 
-Module db_err.o {
-
-	NAME		db_err.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_err.c
-}
-
-Module db_getlong.o {
-
-	NAME		db_getlong.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_getlong.c
-}
-
 Module db_iface.o {
 
 	NAME		db_iface.o
@@ -371,12 +483,6 @@ Module db_join.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_join.c
 }
 
-Module db_log2.o {
-
-	NAME		db_log2.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/db_log2.c
-}
-
 Module db_meta.o {
 
 	NAME		db_meta.o
@@ -387,6 +493,12 @@ Module db_method.o {
 
 	NAME		db_method.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_method.c
+}
+
+Module db_open.o {
+
+	NAME		db_open.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_open.c
 }
 
 Module db_overflow.o {
@@ -413,34 +525,28 @@ Module db_reclaim.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_reclaim.c
 }
 
+Module db_remove.o {
+
+	NAME		db_remove.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_remove.c
+}
+
+Module db_rename.o {
+
+	NAME		db_rename.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_rename.c
+}
+
 Module db_ret.o {
 
 	NAME		db_ret.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_ret.c
 }
 
-Module db_salloc.o {
+Module db_truncate.o {
 
-	NAME		db_salloc.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../env/db_salloc.c
-}
-
-Module db_server_clnt.o {
-
-	NAME		db_server_clnt.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/db_server_clnt.c
-}
-
-Module db_server_xdr.o {
-
-	NAME		db_server_xdr.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_server/db_server_xdr.c
-}
-
-Module db_shash.o {
-
-	NAME		db_shash.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../env/db_shash.c
+	NAME		db_truncate.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_truncate.c
 }
 
 Module db_upg.o {
@@ -467,6 +573,48 @@ Module db_vrfyutil.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../db/db_vrfyutil.c
 }
 
+Module dbreg.o {
+
+	NAME		dbreg.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../dbreg/dbreg.c
+}
+
+Module dbreg_auto.o {
+
+	NAME		dbreg_auto.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../dbreg/dbreg_auto.c
+}
+
+Module dbreg_rec.o {
+
+	NAME		dbreg_rec.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../dbreg/dbreg_rec.c
+}
+
+Module dbreg_util.o {
+
+	NAME		dbreg_util.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../dbreg/dbreg_util.c
+}
+
+Module db_salloc.o {
+
+	NAME		db_salloc.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../env/db_salloc.c
+}
+
+Module db_shash.o {
+
+	NAME		db_shash.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../env/db_shash.c
+}
+
+Module env_file.o {
+
+	NAME		env_file.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../env/env_file.c
+}
+
 Module env_method.o {
 
 	NAME		env_method.o
@@ -491,22 +639,28 @@ Module env_region.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../env/env_region.c
 }
 
-Module gen_client.o {
+Module fileops_auto.o {
 
-	NAME		gen_client.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/gen_client.c
+	NAME		fileops_auto.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../fileops/fileops_auto.c
 }
 
-Module gen_client_ret.o {
+Module fop_basic.o {
 
-	NAME		gen_client_ret.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/gen_client_ret.c
+	NAME		fop_basic.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../fileops/fop_basic.c
 }
 
-Module getopt.o {
+Module fop_rec.o {
 
-	NAME		getopt.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/getopt.c
+	NAME		fop_rec.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../fileops/fop_rec.c
+}
+
+Module fop_util.o {
+
+	NAME		fop_util.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../fileops/fop_util.c
 }
 
 Module hash.o {
@@ -551,6 +705,12 @@ Module hash_method.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../hash/hash_method.c
 }
 
+Module hash_open.o {
+
+	NAME		hash_open.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../hash/hash_open.c
+}
+
 Module hash_page.o {
 
 	NAME		hash_page.o
@@ -585,6 +745,18 @@ Module hash_verify.o {
 
 	NAME		hash_verify.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../hash/hash_verify.c
+}
+
+Module hmac.o {
+
+	NAME		hmac.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../hmac/hmac.c
+}
+
+Module sha1.o {
+
+	NAME		sha1.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../hmac/sha1.c
 }
 
 Module hsearch.o {
@@ -641,22 +813,10 @@ Module log_archive.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_archive.c
 }
 
-Module log_auto.o {
-
-	NAME		log_auto.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_auto.c
-}
-
 Module log_compare.o {
 
 	NAME		log_compare.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_compare.c
-}
-
-Module log_findckp.o {
-
-	NAME		log_findckp.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_findckp.c
 }
 
 Module log_get.o {
@@ -675,18 +835,6 @@ Module log_put.o {
 
 	NAME		log_put.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_put.c
-}
-
-Module log_rec.o {
-
-	NAME		log_rec.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_rec.c
-}
-
-Module log_register.o {
-
-	NAME		log_register.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../log/log_register.c
 }
 
 Module mp_alloc.o {
@@ -773,12 +921,6 @@ Module mutex.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../mutex/mutex.c
 }
 
-Module os_vx_abs.o {
-
-	NAME		os_vx_abs.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_abs.c
-}
-
 Module os_alloc.o {
 
 	NAME		os_alloc.o
@@ -809,12 +951,6 @@ Module os_fid.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../os/os_fid.c
 }
 
-Module os_vx_finit.o {
-
-	NAME		os_vx_finit.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_finit.c
-}
-
 Module os_fsync.o {
 
 	NAME		os_fsync.o
@@ -827,10 +963,10 @@ Module os_handle.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../os/os_handle.c
 }
 
-Module os_vx_map.o {
+Module os_id.o {
 
-	NAME		os_vx_map.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_map.c
+	NAME		os_id.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../os/os_id.c
 }
 
 Module os_method.o {
@@ -917,6 +1053,24 @@ Module os_unlink.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../os/os_unlink.c
 }
 
+Module os_vx_abs.o {
+
+	NAME		os_vx_abs.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_abs.c
+}
+
+Module os_vx_config.o {
+
+	NAME		os_vx_config.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_config.c
+}
+
+Module os_vx_map.o {
+
+	NAME		os_vx_map.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../os_vxworks/os_vx_map.c
+}
+
 Module qam.o {
 
 	NAME		qam.o
@@ -1001,16 +1155,34 @@ Module rep_util.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../rep/rep_util.c
 }
 
-Module snprintf.o {
+Module client.o {
 
-	NAME		snprintf.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/snprintf.c
+	NAME		client.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/client.c
 }
 
-Module strcasecmp.o {
+Module db_server_clnt.o {
 
-	NAME		strcasecmp.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/strcasecmp.c
+	NAME		db_server_clnt.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/db_server_clnt.c
+}
+
+Module gen_client.o {
+
+	NAME		gen_client.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/gen_client.c
+}
+
+Module gen_client_ret.o {
+
+	NAME		gen_client_ret.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_client/gen_client_ret.c
+}
+
+Module db_server_xdr.o {
+
+	NAME		db_server_xdr.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../rpc_server/c/db_server_xdr.c
 }
 
 Module txn.o {
@@ -1055,22 +1227,10 @@ Module txn_stat.o {
 	SRC_PATH_NAME	$(PRJ_DIR)/../../txn/txn_stat.c
 }
 
-Module util_log.o {
+Module txn_util.o {
 
-	NAME		util_log.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_log.c
-}
-
-Module util_sig.o {
-
-	NAME		util_sig.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_sig.c
-}
-
-Module vsnprintf.o {
-
-	NAME		vsnprintf.o
-	SRC_PATH_NAME	$(PRJ_DIR)/../../clib/vsnprintf.c
+	NAME		txn_util.o
+	SRC_PATH_NAME	$(PRJ_DIR)/../../txn/txn_util.c
 }
 
 Module xa.o {
@@ -1089,10 +1249,6 @@ Module xa_map.o {
 
 	NAME		xa_map.o
 	SRC_PATH_NAME	$(PRJ_DIR)/../../xa/xa_map.c
-}
-
-Module util_arg.o {
-	SRC_PATH_NAME	$(PRJ_DIR)/../../common/util_arg.c
 }
 
 /* Parameter information */

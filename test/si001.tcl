@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001
+# Copyright (c) 2001-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: si001.tcl,v 1.5 2001/08/03 16:39:31 bostic Exp $
+# $Id: si001.tcl,v 1.7 2002/04/29 17:12:02 sandstro Exp $
 #
 # TEST	sindex001
 # TEST	Basic secondary index put/delete test
@@ -37,7 +37,7 @@ proc sindex001 { methods {nentries 200} {tnum 1} args } {
 
 	# Open an environment
 	# XXX if one is not supplied!
-	set env [berkdb env -create -home $testdir]
+	set env [berkdb_env -create -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# Open the primary.

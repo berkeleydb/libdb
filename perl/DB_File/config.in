@@ -12,7 +12,6 @@
 INCLUDE	= /usr/local/BerkeleyDB/include
 #INCLUDE	= /usr/local/include
 #INCLUDE	= /usr/include
-#INCLUDE	= ./libraries/3.2.9
 
 # 2. Where is libdb?
 #
@@ -22,7 +21,6 @@ INCLUDE	= /usr/local/BerkeleyDB/include
 LIB	= /usr/local/BerkeleyDB/lib
 #LIB	= /usr/local/lib
 #LIB	= /usr/lib
-#LIB	= ./libraries/3.2.9
 
 # 3. What version of Berkely DB have you got?
 #

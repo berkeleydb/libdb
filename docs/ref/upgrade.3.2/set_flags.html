@@ -1,6 +1,7 @@
 <!--$Id: set_flags.so,v 1.2 2001/05/15 14:44:19 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.2: DB_ENV-&gt;set_flags</title>
@@ -21,13 +22,13 @@ first of these flags, <a href="../../api_c/env_set_flags.html#DB_CDB_ALLDB">DB_C
 allowing Berkeley DB Concurrent Data Store applications to do locking across multiple databases.
 <p>The other two flags, <a href="../../api_c/env_set_flags.html#DB_NOMMAP">DB_NOMMAP</a> and <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a>, were
 specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method in previous releases.  In
-the 3.2 release, they have been moved to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> function
+the 3.2 release, they have been moved to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method
 because this allows the database environment's value to be toggled
 during the life of the application as well as because it is a more
 appropriate place for them.  Applications specifying either the
 <a href="../../api_c/env_set_flags.html#DB_NOMMAP">DB_NOMMAP</a> or <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flags to the
-<a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function should replace those flags with calls to the
-<a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> function.
+<a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method should replace those flags with calls to the
+<a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.2/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.2/callback.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

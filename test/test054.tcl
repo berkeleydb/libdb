@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test054.tcl,v 11.20 2001/10/10 04:25:10 krinsky Exp $
+# $Id: test054.tcl,v 11.23 2002/06/17 18:41:29 sue Exp $
 #
 # TEST	test054
 # TEST	Cursor maintenance during key/data deletion.
@@ -44,6 +44,7 @@ proc test054 { method args } {
 
 	# Find the environment in the argument list, we'll need it
 	# later.
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {
 		incr eindex
@@ -59,6 +60,11 @@ proc test054 { method args } {
 	} else {
 		set testfile test054-nodup.db
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -69,14 +75,27 @@ proc test054 { method args } {
 	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:nodup [is_valid_db $db] TRUE
 
-	set curs [eval {$db cursor} $txn]
-	error_check_good curs_open:nodup [is_substr $curs $db] 1
-
 	# Put three keys in the database
 	for { set key 1 } { $key <= 3 } {incr key} {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set r [eval {$db put} $txn $flags {$key datum$key}]
 		error_check_good put $r 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
+
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set curs [eval {$db cursor} $txn]
+	error_check_good curs_open:nodup [is_valid_cursor $curs $db] TRUE
 
 	# Retrieve keys sequentially so we can figure out their order
 	set i 1
@@ -99,7 +118,7 @@ proc test054 { method args } {
 	error_check_good curs_get:DB_SET:data $d datum$key_set(2)
 
 	# Now do the delete
-	set r [eval {$curs del} $txn]
+	set r [$curs del]
 	error_check_good curs_del $r 0
 
 	# Now do the get
@@ -108,17 +127,33 @@ proc test054 { method args } {
 
 	# Free up the cursor.
 	error_check_good cursor_close [eval {$curs close}] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	# Test case #2.
 	puts "\tTest054.a2: Cursor before K, delete K, cursor next"
 
 	# Replace key 2
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set r [eval {$db put} $txn {$key_set(2) datum$key_set(2)}]
 	error_check_good put $r 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	# Open and position cursor on first item.
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set curs [eval {$db cursor} $txn]
-	error_check_good curs_open:nodup [is_substr $curs $db] 1
+	error_check_good curs_open:nodup [is_valid_cursor $curs $db] TRUE
 
 	# Retrieve keys sequentially so we can figure out their order
 	set i 1
@@ -158,18 +193,34 @@ proc test054 { method args } {
 	set ret [$curs get -current]
 	error_check_good current_after_del $ret [list [list [] []]]
 	error_check_good cursor_close [$curs close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	puts "\tTest054.a4: Cursor on K, delete K, cursor next"
 
 	# Restore keys 2 and 3
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set r [eval {$db put} $txn {$key_set(2) datum$key_set(2)}]
 	error_check_good put $r 0
 	set r [eval {$db put} $txn {$key_set(3) datum$key_set(3)}]
 	error_check_good put $r 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	# Create the new cursor and put it on 1
 	set curs [eval {$db cursor} $txn]
-	error_check_good curs_open:nodup [is_substr $curs $db] 1
+	error_check_good curs_open:nodup [is_valid_cursor $curs $db] TRUE
 	set r [$curs get -set $key_set(1)]
 	error_check_bad cursor_get:DB_SET [llength $r] 0
 	set k [lindex [lindex $r 0] 0]
@@ -191,6 +242,9 @@ proc test054 { method args } {
 
 	# Close cursor
 	error_check_good curs_close [$curs close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	# Now get ready for duplicate tests
@@ -212,6 +266,7 @@ proc test054 { method args } {
 	} else {
 		set testfile test054-dup.db
 		set env [lindex $args $eindex]
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -221,16 +276,29 @@ proc test054 { method args } {
 	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:dup [is_valid_db $db] TRUE
 
-	set curs [eval {$db cursor} $txn]
-	error_check_good curs_open:dup [is_substr $curs $db] 1
-
 	# Put three keys in the database
 	for { set key 1 } { $key <= 3 } {incr key} {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set r [eval {$db put} $txn $flags {$key datum$key}]
 		error_check_good put $r 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	# Retrieve keys sequentially so we can figure out their order
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set curs [eval {$db cursor} $txn]
+	error_check_good curs_open:dup [is_valid_cursor $curs $db] TRUE
+
 	set i 1
 	for {set d [$curs get -first] } \
 	    {[llength $d] != 0 } \
@@ -280,7 +348,7 @@ proc test054 { method args } {
 
 	# Open a new cursor.
 	set curs2 [eval {$db cursor} $txn]
-	error_check_good curs_open [is_substr $curs2 $db] 1
+	error_check_good curs_open [is_valid_cursor $curs2 $db] TRUE
 
 	# Set on last of duplicate set.
 	set r [$curs2 get -set $key_set(3)]
@@ -386,5 +454,8 @@ proc test054 { method args } {
 	# Close cursor
 	error_check_good curs_close [$curs close] 0
 	error_check_good curs2_close [$curs2 close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 }

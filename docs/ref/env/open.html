@@ -1,6 +1,7 @@
-<!--$Id: open.so,v 10.15 2001/03/01 15:58:04 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: open.so,v 10.18 2002/06/24 14:50:44 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Opening databases within the environment</title>
@@ -10,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
-<td align=right><a href="../../ref/env/remote.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/error.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/env/create.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/error.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Opening databases within the environment</h1>
@@ -23,7 +24,42 @@ specified for the environment.  For example, if the <a href="../../api_c/env_ope
 or <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flags were specified when the environment was
 created or joined, database operations will automatically perform all
 necessary locking operations for the application.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/remote.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/error.html"><img src="../../images/next.gif" alt="Next"></a>
+<p>The following is a simple example of opening two databases within a
+database environment:
+<p><blockquote><pre>	DB_ENV *dbenv;
+	DB *dbp1, *dbp2;
+	int ret;
+</pre></blockquote>
+<p><blockquote><pre>	/* Open an environment with just a memory pool. */
+	if ((ret =
+	    dbenv-&gt;open(dbenv, home, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "environment open: %s", home);
+		return (ret);
+	}
+<p>
+	/* Open database #1. */
+	if ((ret = db_create(&dbp1, dbenv, 0)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "database create");
+		return (ret);
+	}
+	if ((ret = dbp1-&gt;open(dbp1,
+	    NULL, DATABASE1, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE1);
+		return (ret);
+	}
+<p>
+	/* Open database #2. */
+	if ((ret = db_create(&dbp2, dbenv, 0)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "database create");
+		return (ret);
+	}
+	if ((ret = dbp2-&gt;open(dbp2,
+	    NULL, DATABASE2, NULL, DB_HASH, DB_CREATE, 0664)) != 0) {
+		dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE2);
+		return (ret);
+	}
+</pre></blockquote>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/create.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/error.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

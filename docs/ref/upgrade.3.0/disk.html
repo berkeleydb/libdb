@@ -1,6 +1,7 @@
 <!--$Id: disk.so,v 11.15 2000/12/21 18:37:09 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.0: upgrade requirements</title>
@@ -18,7 +19,7 @@
 formats changed in the Berkeley DB 3.0 release.  (The on-disk Btree/Recno
 format changed from version 6 to version 7.  The on-disk Hash format
 changed from version 5 to version 6.) Until the underlying databases
-are upgraded, the <a href="../../api_c/db_open.html">DB-&gt;open</a> function will return a <a href="../../api_c/db_open.html#DB_OLD_VERSION">DB_OLD_VERSION</a>
+are upgraded, the <a href="../../api_c/db_open.html">DB-&gt;open</a> method will return a <a href="../../api_c/db_open.html#DB_OLD_VERSION">DB_OLD_VERSION</a>
 error.
 <p>For further information on upgrading Berkeley DB installations, see
 <a href="../../ref/upgrade/process.html">Upgrading Berkeley DB

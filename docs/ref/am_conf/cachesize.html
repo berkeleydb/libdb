@@ -1,6 +1,7 @@
-<!--$Id: cachesize.so,v 10.18 2000/03/18 21:43:08 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: cachesize.so,v 10.19 2002/02/15 19:11:34 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Selecting a cache size</title>
@@ -16,7 +17,7 @@
 <p>
 <h1 align=center>Selecting a cache size</h1>
 <p>The size of the cache used for the underlying database can be specified
-by calling the <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> function.
+by calling the <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> method.
 Choosing a cache size is, unfortunately, an art.  Your cache must be at
 least large enough for your working set plus some overlap for unexpected
 situations.
@@ -27,14 +28,13 @@ and a leaf page.  If your cache is any smaller than that, each new page
 will force out the least-recently-used page, and Berkeley DB will re-read the
 root page of the tree anew on each database request.
 <p>If your keys are of moderate size (a few tens of bytes) and your pages
-are on the order of 4K to 8K, most Btree applications
-will be only three levels.  For
-example, using 20 byte keys with 20 bytes of data associated with each
-key, a 8KB page can hold roughly 400 keys and 200 key/data pairs, so a
-fully populated three-level Btree will hold 32 million key/data pairs,
-and a tree with only a 50% page-fill factor will still hold 16 million
-key/data pairs.  We rarely expect trees to exceed five levels, although
-Berkeley DB will support trees up to 255 levels.
+are on the order of 4K to 8K, most Btree applications will be only
+three levels.  For example, using 20 byte keys with 20 bytes of data
+associated with each key, a 8KB page can hold roughly 400 keys (or 200
+key/data pairs), so a fully populated three-level Btree will hold 32
+million key/data pairs, and a tree with only a 50% page-fill factor will
+still hold 16 million key/data pairs.  We rarely expect trees to exceed
+five levels, although Berkeley DB will support trees up to 255 levels.
 <p>The rule-of-thumb is that cache is good, and more cache is better.
 Generally, applications benefit from increasing the cache size up to a
 point, at which the performance will stop improving as the cache size

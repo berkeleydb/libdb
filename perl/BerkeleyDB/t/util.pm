@@ -7,6 +7,8 @@ use BerkeleyDB ;
 use File::Path qw(rmtree);
 use vars qw(%DB_errors $FA) ;
 
+$| = 1;
+
 %DB_errors = (
     'DB_INCOMPLETE'	=> "DB_INCOMPLETE: Sync was unable to complete",
     'DB_KEYEMPTY'	=> "DB_KEYEMPTY: Non-existent key/data pair",
@@ -32,17 +34,32 @@ $FA = 0 ;
 {
     package LexFile ;
 
+    use vars qw( $basename @files ) ;
+    $basename = "db0000" ;
+
     sub new
     {
 	my $self = shift ;
-	unlink @_ ;
- 	bless [ @_ ], $self ;
+        #my @files = () ;
+        foreach (@_)
+        {
+            $_ = $basename ;
+            unlink $basename ;
+            push @files, $basename ;
+            ++ $basename ;
+        }
+ 	bless [ @files ], $self ;
     }
 
     sub DESTROY
     {
 	my $self = shift ;
-	unlink @{ $self } ;
+	#unlink @{ $self } ;
+    }
+
+    END
+    {
+        foreach (@files) { unlink $_ }
     }
 }
 
@@ -51,6 +68,8 @@ $FA = 0 ;
     package LexDir ;
 
     use File::Path qw(rmtree);
+
+    use vars qw( $basename %dirs ) ;
 
     sub new
     {
@@ -67,8 +86,18 @@ $FA = 0 ;
     sub DESTROY 
     {
         my $self = shift ;
-        rmtree $self->[0] ;
+        my $dir = $self->[0];
+        #rmtree $dir;
+        $dirs{$dir} ++ ;
     }
+
+    END
+    {
+        foreach (keys %dirs) {
+            rmtree $_ if -d $_ ;
+        }
+    }
+
 }
 
 {

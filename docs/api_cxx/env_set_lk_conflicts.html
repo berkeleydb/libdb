@@ -1,6 +1,7 @@
-<!--$Id: env_set_lk_conflicts.so,v 10.27 2001/10/22 15:24:29 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_lk_conflicts.so,v 10.30 2002/08/18 21:16:29 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::set_lk_conflicts</title>
@@ -35,8 +36,13 @@ held_mode conflict:
 <p>If DbEnv::set_lk_conflicts is never called, a standard conflicts
 array is used; see <a href="../ref/lock/stdmode.html">Standard Lock
 Modes</a> for more information.
-<p>The DbEnv::set_lk_conflicts interface may be used only to configure Berkeley DB before
-the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
+<p>The DbEnv::set_lk_conflicts method configures a database environment, not only operations
+performed using the specified <a href="../api_cxx/env_class.html">DbEnv</a> handle.
+<p>The DbEnv::set_lk_conflicts interface may not be called after the <a href="../api_cxx/env_open.html">DbEnv::open</a>
+interface is called.
+If the database environment already exists when
+<a href="../api_cxx/env_open.html">DbEnv::open</a> is called, the information specified to DbEnv::set_lk_conflicts
+will be ignored.
 <p>The DbEnv::set_lk_conflicts method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
@@ -49,26 +55,14 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 <p><dt>ENOMEM<dd>No memory was available to copy the conflicts array.
 </dl>
 <p>The DbEnv::set_lk_conflicts method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::set_lk_conflicts method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the DbEnv::set_lk_conflicts method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
 <h1>See Also</h1>
-<a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
-<a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
-<a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
-<a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
-<a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
-<a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
-<a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,
-<a href="../api_cxx/lock_id.html">DbEnv::lock_id</a>,
-<a href="../api_cxx/lock_id_free.html">DbEnv::lock_id_free</a>,
-<a href="../api_cxx/lock_put.html">DbEnv::lock_put</a>,
-<a href="../api_cxx/lock_stat.html">DbEnv::lock_stat</a>,
-and
-<a href="../api_cxx/lock_vec.html">DbEnv::lock_vec</a>.
+<a href="../api_cxx/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

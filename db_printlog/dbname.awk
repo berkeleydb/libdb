@@ -1,4 +1,4 @@
-# $Id: dbname.awk,v 1.4 2001/10/05 02:23:52 bostic Exp $
+# $Id: dbname.awk,v 1.5 2002/05/07 05:45:51 ubell Exp $
 #
 # Take a comma-separated list of database names and spit out all the
 # log records that affect those databases.
@@ -16,7 +16,7 @@ NR == 1 {
 	myfile = -1;
 }
 
-/^\[.*log_register/ {
+/^\[.*dbreg_register/ {
 	register = 1;
 }
 /opcode:/ {

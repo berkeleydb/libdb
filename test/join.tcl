@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: join.tcl,v 11.19 2001/08/03 16:39:25 bostic Exp $
+# $Id: join.tcl,v 11.21 2002/02/20 17:08:22 sandstro Exp $
 #
 # TEST	jointest
 # TEST	Test duplicate assisted joins.  Executes 1, 2, 3 and 4-way joins
@@ -28,7 +28,7 @@ proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 
 	# Use one environment for all database opens so we don't
 	# need oodles of regions.
-	set env [berkdb env -create -home $testdir]
+	set env [berkdb_env -create -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# With the new offpage duplicate code, we don't support

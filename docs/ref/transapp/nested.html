@@ -1,6 +1,7 @@
 <!--$Id: nested.so,v 10.22 2001/03/02 21:01:22 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Nested transactions</title>
@@ -20,7 +21,7 @@ allow an application to decompose a large or long-running transaction
 into smaller units that may be independently aborted.
 <p>Normally, when beginning a transaction, the application will pass a NULL
 value for the parent argument to <a href="../../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>.  If, however, the
-parent argument is a <a href="../../api_c/txn_begin.html">DB_TXN</a> handle, the newly created transaction
+parent argument is a <a href="../../api_c/txn_class.html">DB_TXN</a> handle, the newly created transaction
 will be treated as a nested transaction within the parent.  Transactions
 may nest arbitrarily deeply.  For the purposes of this discussion,
 transactions created with a parent identifier will be called

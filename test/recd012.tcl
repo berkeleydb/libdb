@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2001
+# Copyright (c) 2000-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd012.tcl,v 11.21 2001/10/05 02:38:09 bostic Exp $
+# $Id: recd012.tcl,v 11.27 2002/05/10 00:48:07 margo Exp $
 #
 # TEST	recd012
 # TEST	Test of log file ID management. [#2288]
@@ -27,7 +27,6 @@ proc recd012 { method {start 0} \
 	}
 
 	for { set i $start } { $i <= $niter } { incr i } {
-
 		env_cleanup $testdir
 
 		# For repeatability, we pass in the iteration number
@@ -39,7 +38,7 @@ proc recd012 { method {start 0} \
 		#
 		# The number of databases ranges from 4 to 8 and is
 		# a function of $niter
-#		set ndbs [expr ($i % 5) + 4]
+		# set ndbs [expr ($i % 5) + 4]
 
 		recd012_body \
 		    $method $ndbs $i $noutiter $niniter $pagesize $tnum $args
@@ -56,8 +55,15 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	puts "\tRecd0$tnum $method ($largs): Iteration $iter"
 	puts "\t\tRecd0$tnum.a: Create environment and $ndbs databases."
 
+	# We run out of lockers during some of the recovery runs, so
+	# we need to make sure that we specify a DB_CONFIG that will
+	# give us enough lockers.
+	set f [open $testdir/DB_CONFIG w]
+	puts $f "set_lk_max_lockers	5000"
+	close $f
+
 	set flags "-create -txn -home $testdir"
-	set env_cmd "berkdb env $flags"
+	set env_cmd "berkdb_env $flags"
 	error_check_good env_remove [berkdb envremove -home $testdir] 0
 	set dbenv [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
@@ -68,9 +74,12 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	# Initialize database that keeps track of number of open files (so
 	# we don't run out of descriptors).
 	set ofname of.db
-	set ofdb [berkdb_open -env $dbenv\
+	set txn [$dbenv txn]
+	error_check_good open_txn_begin [is_valid_txn $txn $dbenv] TRUE
+	set ofdb [berkdb_open -env $dbenv -txn $txn\
 	    -create -dup -mode 0644 -btree -pagesize 512 $ofname]
 	error_check_good of_open [is_valid_db $ofdb] TRUE
+	error_check_good open_txn_commit [$txn commit] 0
 	set oftxn [$dbenv txn]
 	error_check_good of_txn [is_valid_txn $oftxn $dbenv] TRUE
 	error_check_good of_put [$ofdb put -txn $oftxn $recd012_ofkey 1] 0
@@ -82,8 +91,9 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	# Create ndbs databases to work in, and a file listing db names to
 	# pick from.
 	set f [open $testdir/dblist w]
-	set oflags \
-	    "-env $dbenv -create -mode 0644 -pagesize $psz $largs $omethod"
+
+	set oflags "-auto_commit -env $dbenv \
+	    -create -mode 0644 -pagesize $psz $largs $omethod"
 	for { set i 0 } { $i < $ndbs } { incr i } {
 		# 50-50 chance of being a subdb, unless we're a queue.
 		if { [berkdb random_int 0 1] || [is_queue $method] } {
@@ -99,7 +109,6 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		error_check_good db($i)_close [$db close] 0
 	}
 	close $f
-
 	error_check_good env_close [$dbenv close] 0
 
 	# Now we get to the meat of things.  Our goal is to do some number
@@ -117,8 +126,8 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	# all handles properly.  The environment will be left lying around
 	# before we run recovery 50% of the time.
 	set out [berkdb random_int 1 $noutiter]
-	puts "\t\tRecd0$tnum.b: Performing $out recoveries of up to $niniter\
-	    ops."
+	puts \
+    "\t\tRecd0$tnum.b: Performing $out recoveries of up to $niniter ops."
 	for { set i 0 } { $i < $out } { incr i } {
 		set child [open "|$tclsh_path" w]
 
@@ -132,8 +141,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		set rnd [expr $iter * 10000 + $i * 100 + $rand_init]
 
 		# Go.
-		# puts "recd012_dochild {$env_cmd} $rnd $i $niniter\
-		#    $ndbs $tnum $method $ofname $largs"
+		berkdb debug_check
 		puts $child "recd012_dochild {$env_cmd} $rnd $i $niniter\
 		    $ndbs $tnum $method $ofname $largs"
 		close $child
@@ -141,6 +149,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 		# Run recovery 0-3 times.
 		set nrecs [berkdb random_int 0 3]
 		for { set j 0 } { $j < $nrecs } { incr j } {
+			berkdb debug_check
 			set ret [catch {exec $util_path/db_recover \
 			    -h $testdir} res]
 			if { $ret != 0 } {
@@ -153,7 +162,6 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 			}
 			error_check_good recover($j) $ret 0
 		}
-
 	}
 
 	# Run recovery one final time;  it doesn't make sense to
@@ -167,7 +175,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 
 	# Make sure each datum is the correct filename.
 	puts "\t\tRecd0$tnum.c: Checking data integrity."
-	set dbenv [berkdb env -create -private -home $testdir]
+	set dbenv [berkdb_env -create -private -home $testdir]
 	error_check_good env_open_integrity [is_valid_env $dbenv] TRUE
 	set f [open $testdir/dblist r]
 	set i 0
@@ -213,7 +221,11 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 
 	# Find out how many databases appear to be open in the log--we
 	# don't want recovery to run out of filehandles.
-	set ofdb [berkdb_open -env $dbenv $ofname]
+	set txn [$dbenv txn]
+	error_check_good child_txn_begin [is_valid_txn $txn $dbenv] TRUE
+	set ofdb [berkdb_open -env $dbenv -txn $txn $ofname]
+	error_check_good child_txn_commit [$txn commit] 0
+
 	set oftxn [$dbenv txn]
 	error_check_good of_txn [is_valid_txn $oftxn $dbenv] TRUE
 	set dbt [$ofdb get -txn $oftxn $recd012_ofkey]
@@ -255,7 +267,6 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			set num_open [llength $opendbs]
 			if { $num_open == 0 } {
 				# If none are open, do an open first.
-
 				recd012_open
 			}
 			set n [berkdb random_int 0 [expr $num_open - 1]]
@@ -279,7 +290,6 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 		}
 		2 {
 			# Close.
-
 			if { [llength $opendbs] == 0 } {
 				# If none are open, open instead of closing.
 				recd012_open
@@ -287,8 +297,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			}
 
 			# Commit curtxn first, lest we self-deadlock.
-			error_check_good txn_recommit \
-			    [$curtxn commit] 0
+			error_check_good txn_recommit [$curtxn commit] 0
 
 			# Do it.
 			set which [berkdb random_int 0 \
@@ -300,6 +309,7 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 
 			error_check_good db_close \
 			    [[lindex [lindex $opendbs $which] 0] close] 0
+
 			set opendbs [lreplace $opendbs $which $which]
 			incr nopenfiles -1
 
@@ -307,7 +317,6 @@ proc recd012_dochild { env_cmd rnd outiter niniter ndbs tnum method\
 			set curtxn [$dbenv txn]
 			error_check_good txn_reopen \
 			    [is_valid_txn $curtxn $dbenv] TRUE
-
 		}
 		}
 
@@ -361,14 +370,14 @@ proc recd012_open { } {
 
 	# Do it.
 	set which [berkdb random_int 0 [expr $ndbs - 1]]
-	set db [eval berkdb_open \
-	    $oflags $dbname($which)]
+
+	set db [eval berkdb_open -auto_commit $oflags $dbname($which)]
+
 	lappend opendbs [list $db $dbname($which)]
 
 	# Reopen txn.
 	set curtxn [$dbenv txn]
-	error_check_good txn_reopen \
-	    [is_valid_txn $curtxn $dbenv] TRUE
+	error_check_good txn_reopen [is_valid_txn $curtxn $dbenv] TRUE
 
 	incr nopenfiles
 }

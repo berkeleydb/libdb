@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd004.tcl,v 11.27 2001/08/03 16:39:26 bostic Exp $
+# $Id: recd004.tcl,v 11.29 2002/02/25 16:44:25 sandstro Exp $
 #
 # TEST	recd004
 # TEST	Big key test where big key gets elevated to internal page.
@@ -32,7 +32,7 @@ proc recd004 { method {select 0} args} {
 	set testfile2 recd004-2.db
 	set eflags "-create -txn -home $testdir"
 	puts "\tRecd004.a: creating environment"
-	set env_cmd "berkdb env $eflags"
+	set env_cmd "berkdb_env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_bad dbenv $dbenv NULL
 

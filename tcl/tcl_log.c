@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_log.c,v 11.35 2001/11/01 13:50:59 krinsky Exp $";
+static const char revid[] = "$Id: tcl_log.c,v 11.52 2002/08/14 20:11:57 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,8 +20,11 @@ static const char revid[] = "$Id: tcl_log.c,v 11.35 2001/11/01 13:50:59 krinsky 
 #endif
 
 #include "db_int.h"
-#include "tcl_db.h"
+#include "dbinc/log.h"
+#include "dbinc/tcl_db.h"
+#include "dbinc/txn.h"
 
+#ifdef CONFIG_TEST
 static int tcl_LogcGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_LOGC *));
 
 /*
@@ -76,7 +79,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 	_debug_check();
 	list = NULL;
 	ret = envp->log_archive(envp, &list, flag);
-	result = _ReturnSetup(interp, ret, "log archive");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log archive");
 	if (result == TCL_OK) {
 		res = Tcl_NewListObj(0, NULL);
 		for (file = list; file != NULL && *file != NULL; file++) {
@@ -88,7 +91,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 		Tcl_SetObjResult(interp, res);
 	}
 	if (list != NULL)
-		__os_free(envp, list, 0);
+		__os_ufree(envp, list);
 	return (result);
 }
 
@@ -168,7 +171,7 @@ tcl_LogFile(interp, objc, objv, envp)
 	name = NULL;
 	while (ret == ENOMEM) {
 		if (name != NULL)
-			__os_free(envp, name, len/2);
+			__os_free(envp, name);
 		ret = __os_malloc(envp, len, &name);
 		if (ret != 0) {
 			Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
@@ -178,14 +181,14 @@ tcl_LogFile(interp, objc, objv, envp)
 		ret = envp->log_file(envp, &lsn, name, len);
 		len *= 2;
 	}
-	result = _ReturnSetup(interp, ret, "log_file");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_file");
 	if (ret == 0) {
 		res = Tcl_NewStringObj(name, strlen(name));
 		Tcl_SetObjResult(interp, res);
 	}
 
 	if (name != NULL)
-		__os_free(envp, name, len/2);
+		__os_free(envp, name);
 
 	return (result);
 }
@@ -225,7 +228,7 @@ tcl_LogFlush(interp, objc, objv, envp)
 
 	_debug_check();
 	ret = envp->log_flush(envp, lsnp);
-	result = _ReturnSetup(interp, ret, "log_flush");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_flush");
 	return (result);
 }
 
@@ -265,20 +268,22 @@ tcl_LogPut(interp, objc, objv, envp)
 	DB_ENV *envp;			/* Environment pointer */
 {
 	static char *logputopts[] = {
-		"-checkpoint",	"-curlsn",	"-flush",
+		"-flush",
 		NULL
 	};
 	enum logputopts {
-		LOGPUT_CKP,	LOGPUT_CUR,	LOGPUT_FLUSH
+		LOGPUT_FLUSH
 	};
 	DB_LSN lsn;
 	DBT data;
 	Tcl_Obj *intobj, *res;
+	void *dtmp;
 	u_int32_t flag;
-	int itmp, optindex, result, ret;
+	int freedata, optindex, result, ret;
 
 	result = TCL_OK;
 	flag = 0;
+	freedata = 0;
 	if (objc < 3) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? record");
 		return (TCL_ERROR);
@@ -288,8 +293,14 @@ tcl_LogPut(interp, objc, objv, envp)
 	 * Data/record must be the last arg.
 	 */
 	memset(&data, 0, sizeof(data));
-	data.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
-	data.size = itmp;
+	ret = _CopyObjBytes(interp, objv[objc-1], &dtmp,
+	    &data.size, &freedata);
+	if (ret != 0) {
+		result = _ReturnSetup(interp, ret,
+		    DB_RETOK_STD(ret), "log put");
+		return (result);
+	}
+	data.data = dtmp;
 
 	/*
 	 * Get the command name index from the object based on the options
@@ -301,12 +312,6 @@ tcl_LogPut(interp, objc, objv, envp)
 			return (IS_HELP(objv[2]));
 		}
 		switch ((enum logputopts)optindex) {
-		case LOGPUT_CKP:
-			flag = DB_CHECKPOINT;
-			break;
-		case LOGPUT_CUR:
-			flag = DB_CURLSN;
-			break;
 		case LOGPUT_FLUSH:
 			flag = DB_FLUSH;
 			break;
@@ -318,7 +323,7 @@ tcl_LogPut(interp, objc, objv, envp)
 
 	_debug_check();
 	ret = envp->log_put(envp, &lsn, &data, flag);
-	result = _ReturnSetup(interp, ret, "log_put");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_put");
 	if (result == TCL_ERROR)
 		return (result);
 	res = Tcl_NewListObj(0, NULL);
@@ -327,59 +332,10 @@ tcl_LogPut(interp, objc, objv, envp)
 	intobj = Tcl_NewLongObj((long)lsn.offset);
 	result = Tcl_ListObjAppendElement(interp, res, intobj);
 	Tcl_SetObjResult(interp, res);
+	if (freedata)
+		(void)__os_free(NULL, dtmp);
 	return (result);
 }
-
-/*
- * tcl_LogRegister --
- *
- * PUBLIC: int tcl_LogRegister __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- */
-int
-tcl_LogRegister(interp, objc, objv, envp)
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
-{
-	DB *dbp;
-	Tcl_Obj *res;
-	int result, ret;
-	char *arg, msg[MSG_SIZE];
-
-	result = TCL_OK;
-	if (objc != 4) {
-		Tcl_WrongNumArgs(interp, 2, objv, "db filename");
-		return (TCL_ERROR);
-	}
-	/*
-	 * First comes the DB.
-	 */
-	arg = Tcl_GetStringFromObj(objv[2], NULL);
-	dbp = NAME_TO_DB(arg);
-	if (dbp == NULL) {
-		snprintf(msg, MSG_SIZE,
-		    "LogRegister: Invalid db: %s\n", arg);
-		Tcl_SetResult(interp, msg, TCL_VOLATILE);
-		return (TCL_ERROR);
-	}
-
-	/*
-	 * Next is the filename.
-	 */
-	arg = Tcl_GetStringFromObj(objv[3], NULL);
-
-	_debug_check();
-	ret = envp->log_register(envp, dbp, arg);
-	result = _ReturnSetup(interp, ret, "log_register");
-	if (result == TCL_OK) {
-		res = Tcl_NewLongObj((long)dbp->log_fileid);
-		Tcl_SetObjResult(interp, res);
-	}
-	return (result);
-}
-
 /*
  * tcl_LogStat --
  *
@@ -407,7 +363,7 @@ tcl_LogStat(interp, objc, objv, envp)
 	}
 	_debug_check();
 	ret = envp->log_stat(envp, &sp, 0);
-	result = _ReturnSetup(interp, ret, "log stat");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log stat");
 	if (result == TCL_ERROR)
 		return (result);
 
@@ -424,7 +380,7 @@ tcl_LogStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Region size", sp->st_regsize);
 	MAKE_STAT_LIST("Log file mode", sp->st_mode);
 	MAKE_STAT_LIST("Log record cache size", sp->st_lg_bsize);
-	MAKE_STAT_LIST("Maximum log file size", sp->st_lg_max);
+	MAKE_STAT_LIST("Current log file size", sp->st_lg_size);
 	MAKE_STAT_LIST("Mbytes written", sp->st_w_mbytes);
 	MAKE_STAT_LIST("Bytes written (over Mb)", sp->st_w_bytes);
 	MAKE_STAT_LIST("Mbytes written since checkpoint", sp->st_wc_mbytes);
@@ -440,52 +396,11 @@ tcl_LogStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("On-disk log file offset", sp->st_disk_offset);
 	MAKE_STAT_LIST("Max commits in a log flush", sp->st_maxcommitperflush);
 	MAKE_STAT_LIST("Min commits in a log flush", sp->st_mincommitperflush);
-	MAKE_STAT_LIST("Log flushes containing a commit", sp->st_flushcommit);
 	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(envp, sp, sizeof(*sp));
-	return (result);
-}
-
-/*
- * tcl_LogUnregister --
- *
- * PUBLIC: int tcl_LogUnregister __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- */
-int
-tcl_LogUnregister(interp, objc, objv, envp)
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
-{
-	DB *dbp;
-	char *arg, msg[MSG_SIZE];
-	int result, ret;
-
-	result = TCL_OK;
-	/*
-	 * 1 arg for this.  Error if more or less.
-	 */
-	if (objc != 3) {
-		Tcl_WrongNumArgs(interp, 2, objv, NULL);
-		return (TCL_ERROR);
-	}
-	arg = Tcl_GetStringFromObj(objv[2], NULL);
-	dbp = NAME_TO_DB(arg);
-	if (dbp == NULL) {
-		snprintf(msg, MSG_SIZE,
-		    "log_unregister: Invalid db identifier: %s\n", arg);
-		Tcl_SetResult(interp, msg, TCL_VOLATILE);
-		return (TCL_ERROR);
-	}
-	_debug_check();
-	ret = envp->log_unregister(envp, dbp);
-	result = _ReturnSetup(interp, ret, "log_unregister");
-
+	free(sp);
 	return (result);
 }
 
@@ -497,10 +412,10 @@ tcl_LogUnregister(interp, objc, objv, envp)
  */
 int
 logc_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;          /* Cursor handle */
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	ClientData clientData;		/* Cursor handle */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *logccmds[] = {
 		"close",
@@ -551,7 +466,8 @@ logc_Cmd(clientData, interp, objc, objv)
 		}
 		_debug_check();
 		ret = logc->close(logc, 0);
-		result = _ReturnSetup(interp, ret, "logc close");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "logc close");
 		if (result == TCL_OK) {
 			(void)Tcl_DeleteCommand(interp, logcip->i_name);
 			_DeleteInfo(logcip);
@@ -572,7 +488,6 @@ tcl_LogcGet(interp, objc, objv, logc)
 	DB_LOGC *logc;
 {
 	static char *logcgetopts[] = {
-		"-checkpoint",
 		"-current",
 		"-first",
 		"-last",
@@ -582,7 +497,6 @@ tcl_LogcGet(interp, objc, objv, logc)
 		NULL
 	};
 	enum logcgetopts {
-		LOGCGET_CHECKPOINT,
 		LOGCGET_CURRENT,
 		LOGCGET_FIRST,
 		LOGCGET_LAST,
@@ -590,7 +504,6 @@ tcl_LogcGet(interp, objc, objv, logc)
 		LOGCGET_PREV,
 		LOGCGET_SET
 	};
-	DB_ENV *envp;
 	DB_LSN lsn;
 	DBT data;
 	Tcl_Obj *dataobj, *lsnlist, *myobjv[2], *res;
@@ -600,7 +513,6 @@ tcl_LogcGet(interp, objc, objv, logc)
 	result = TCL_OK;
 	res = NULL;
 	flag = 0;
-	envp = logc->dbenv;
 
 	if (objc < 3) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? lsn");
@@ -618,10 +530,6 @@ tcl_LogcGet(interp, objc, objv, logc)
 			return (IS_HELP(objv[i]));
 		i++;
 		switch ((enum logcgetopts)optindex) {
-		case LOGCGET_CHECKPOINT:
-			FLAG_CHECK(flag);
-			flag |= DB_CHECKPOINT;
-			break;
 		case LOGCGET_CURRENT:
 			FLAG_CHECK(flag);
 			flag |= DB_CURRENT;
@@ -686,7 +594,8 @@ tcl_LogcGet(interp, objc, objv, logc)
 		}
 		result = Tcl_ListObjAppendElement(interp, res, dataobj);
 	} else
-		result = _ReturnSetup(interp, ret, "DB_LOGC->get");
+		result = _ReturnSetup(interp, ret, DB_RETOK_LGGET(ret),
+		    "DB_LOGC->get");
 
 	Tcl_SetObjResult(interp, res);
 
@@ -698,3 +607,4 @@ memerr:		if (res != NULL)
 
 	return (result);
 }
+#endif

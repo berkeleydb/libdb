@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db.src,v 11.13 2001/10/17 14:25:13 bostic Exp $
+ * $Id: db.src,v 11.18 2002/04/17 19:02:58 krinsky Exp $
  */
 
-PREFIX	db
+PREFIX	__db
+DBPRIVATE
 
 INCLUDE	#include "db_config.h"
 INCLUDE
@@ -19,12 +20,13 @@ INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
 INCLUDE #include "db_int.h"
-INCLUDE #include "db_page.h"
-INCLUDE #include "db_dispatch.h"
-INCLUDE #include "db_am.h"
-INCLUDE #include "log.h"
-INCLUDE #include "rep.h"
-INCLUDE #include "txn.h"
+INCLUDE #include "dbinc/crypto.h"
+INCLUDE #include "dbinc/db_page.h"
+INCLUDE #include "dbinc/db_dispatch.h"
+INCLUDE #include "dbinc/db_am.h"
+INCLUDE #include "dbinc/log.h"
+INCLUDE #include "dbinc/rep.h"
+INCLUDE #include "dbinc/txn.h"
 INCLUDE
 
 /*
@@ -45,7 +47,7 @@ INCLUDE
  */
 BEGIN addrem		41
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
 ARG	nbytes		u_int32_t	lu
@@ -71,7 +73,7 @@ END
  */
 BEGIN big		43
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 WRLOCKNZ prev_pgno	db_pgno_t	lu
 WRLOCKNZ next_pgno	db_pgno_t	lu
@@ -90,7 +92,7 @@ END
  * lsn:		the page's original lsn.
  */
 BEGIN ovref		44
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 ARG	adjust		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
@@ -109,7 +111,7 @@ END
  */
 BEGIN relink		45
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 WRLOCKNZ prev		db_pgno_t	lu
@@ -139,7 +141,7 @@ END
  * noop -- do nothing, but get an LSN.
  */
 BEGIN noop		48
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 POINTER	prevlsn		DB_LSN *	lu
 END
@@ -155,7 +157,7 @@ END
  * next:	the next page on the free list.
  */
 BEGIN pg_alloc	49
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 POINTER	meta_lsn	DB_LSN *	lu
 WRLOCK	meta_pgno	db_pgno_t	lu
 POINTER	page_lsn	DB_LSN *	lu
@@ -174,7 +176,7 @@ END
  * next:	the previous next pointer on the metadata page.
  */
 BEGIN pg_free		50
-ARG	fileid		int32_t		ld
+DB	fileid		int32_t		ld
 WRLOCK	pgno		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
 WRLOCK	meta_pgno	db_pgno_t	lu
@@ -182,4 +184,12 @@ PGDBT	header		DBT		s
 ARG	next		db_pgno_t	lu
 END
 
-
+/*
+ * cksum --
+ *	This log record is written when we're unable to checksum a page,
+ *	before returning DB_RUNRECOVERY.  This log record causes normal
+ *	recovery to itself return DB_RUNRECOVERY, as only catastrophic
+ *	recovery can fix things.
+ */
+BEGIN cksum		51
+END

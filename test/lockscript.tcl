@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lockscript.tcl,v 11.15 2001/10/05 02:38:09 bostic Exp $
+# $Id: lockscript.tcl,v 11.17 2002/02/20 17:08:23 sandstro Exp $
 #
 # Random lock tester.
 # Usage: lockscript dir numiters numobjs sleepint degree readratio
@@ -38,7 +38,7 @@ global rand_init
 berkdb srand $rand_init
 
 
-catch { berkdb env -create -lock -home $dir } e
+catch { berkdb_env -create -lock -home $dir } e
 error_check_good env_open [is_substr $e env] 1
 catch { $e lock_id } locker
 error_check_good locker [is_valid_locker $locker] TRUE

@@ -1,6 +1,7 @@
-<!--$Id: lock_vec.so,v 10.44 2001/10/22 15:24:33 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: lock_vec.so,v 10.51 2002/08/29 03:25:05 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.lock_vec</title>
@@ -20,10 +21,117 @@
 <tt>
 <h3><pre>
 import com.sleepycat.db.*;
+<p>
+public void lock_vec(int locker, int flags, DbLockRequest[] list,
+    int offset, int count)
+    throws DbException
 </pre></h3>
 <h1>Description</h1>
-<p>A DbEnv.lock_vec method is not available in the Berkeley DB
-Java API.
+<p>The DbEnv.lock_vec method atomically obtains and releases one or more locks
+from the lock table.  The DbEnv.lock_vec method is intended to support
+acquisition or trading of multiple locks under one lock table semaphore,
+as is needed for lock coupling or in multigranularity locking for lock
+escalation.
+<p>The <b>locker</b> argument specified to DbEnv.lock_vec is an unsigned
+32-bit integer quantity.  It represents the entity requesting or releasing
+the locks.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="Db.DB_LOCK_NOWAIT">Db.DB_LOCK_NOWAIT</a><dd>If a lock cannot be granted because the requested lock conflicts with
+an existing lock,
+throw a <a href="../api_java/lockng_class.html">DbLockNotGrantedException</a> immediately instead of waiting
+for the lock to become available. In this case, the index of the request
+that was not granted can be found by calling
+DbLockNotGrantedException.get_index.
+</dl>
+<p>The <b>list</b> array provided to DbEnv.lock_vec is a set of
+DbLockRequest objects. Only <b>count</b> elements of <b>list</b>
+starting at <b>offset</b> are considered by DbEnv.lock_vec.
+A DbLockRequest object has at least the following fields.
+For each field there is a corresponding get_ and set_ method
+<p><dl compact>
+<p><dt>int <a name="op">op</a>;<dd>The operation to be performed, which must be set to one of the
+following values:
+<p><dl compact>
+<p><dt><a name="Db.DB_LOCK_GET">Db.DB_LOCK_GET</a><dd>Get the lock defined by the values of the <b>mode</b> and <b>obj</b>
+structure fields, for the specified <b>locker</b>.  Upon return from
+DbEnv.lock_vec, if the <b>lock</b> field is non-null, a reference
+to the acquired lock is stored there.  (This reference is invalidated
+by any call to DbEnv.lock_vec or <a href="../api_java/lock_put.html">DbEnv.lock_put</a> that releases the
+lock.)
+<p><dt><a name="Db.DB_LOCK_GET_TIMEOUT">Db.DB_LOCK_GET_TIMEOUT</a><dd>Identical to Db.DB_LOCK_GET except that the value in the <b>timeout</b>
+structure field overrides any previously specified timeout value for
+this lock.  A value of 0 turns off any previously specified timeout.
+<p><dt><a name="Db.DB_LOCK_PUT">Db.DB_LOCK_PUT</a><dd>The lock to which the <b>lock</b> structure field refers is released.
+The <b>locker</b> argument, and <b>mode</b> and <b>obj</b> fields
+are ignored.
+<p><dt><a name="Db.DB_LOCK_PUT_ALL">Db.DB_LOCK_PUT_ALL</a><dd>All locks held by the specified <b>locker</b> are released.  The
+<b>lock</b>, <b>mode</b>, and <b>obj</b> structure fields are
+ignored.  Locks acquired in operations performed by the current call to
+DbEnv.lock_vec which appear before the Db.DB_LOCK_PUT_ALL
+operation are released; those acquired in operations appearing after
+the Db.DB_LOCK_PUT_ALL operation are not released.
+<p><dt><a name="Db.DB_LOCK_PUT_OBJ">Db.DB_LOCK_PUT_OBJ</a><dd>All locks held on the object <b>obj</b> are released.  The
+<b>locker</b> argument and the <b>lock</b> and <b>mode</b> structure
+fields are ignored.  Locks acquired in operations performed by the
+current call to DbEnv.lock_vec that appear before the
+Db.DB_LOCK_PUT_OBJ operation are released; those acquired in
+operations appearing after the Db.DB_LOCK_PUT_OBJ operation are
+not released.
+<p><dt><a name="Db.DB_LOCK_TIMEOUT">Db.DB_LOCK_TIMEOUT</a><dd>Cause the specified <b>locker</b> to timeout immediately.  If the
+database environment has not configured automatic deadlock detection,
+the transaction will timeout the next time deadlock detection is
+performed.  As transactions acquire locks on behalf of a single locker
+ID, timing out the locker ID associated with a transaction will time
+out the transaction itself.
+</dl>
+<p><dt>DbLock <a name="lock">lock</a>;<dd>A lock reference.
+<p><dt>int <a name="mode">mode</a>;<dd>The lock mode, used as an index into the environment's lock conflict matrix.
+When using the default lock conflict matrix, <b>mode</b> must be set to one
+of the following values:
+<p><dl compact>
+<dt><a name="Db.DB_LOCK_READ">Db.DB_LOCK_READ</a><dd>read (shared)
+<dt><a name="Db.DB_LOCK_WRITE">Db.DB_LOCK_WRITE</a><dd>write (exclusive)
+<dt><a name="Db.DB_LOCK_IWRITE">Db.DB_LOCK_IWRITE</a><dd>intention to write (shared)
+<dt><a name="Db.DB_LOCK_IREAD">Db.DB_LOCK_IREAD</a><dd>intention to read (shared)
+<dt><a name="Db.DB_LOCK_IWR">Db.DB_LOCK_IWR</a><dd>intention to read and write (shared)
+</dl>
+<p>See <a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a> and <a href="../ref/lock/stdmode.html">Standard Lock Modes</a> for more information on the lock conflict matrix.
+<p><dt>Dbt <a name="obj">obj</a>;<dd>An untyped byte string that specifies the object to be locked or
+released.  Applications using the locking subsystem directly while also
+doing locking via the Berkeley DB access methods must take care not to
+inadvertently lock objects that happen to be equal to the unique file
+IDs used to lock files.  See <a href="../ref/lock/am_conv.html">Access
+method locking conventions</a> for more information.
+<p><dt>int timeout;<dd>The lock timeout value.
+</dl>
+<p>If any of the requested locks cannot be acquired, or any of the locks to
+be released cannot be released, the operations before the failing
+operation are guaranteed to have completed successfully, and
+DbEnv.lock_vec throws an exception
+<p>
+Otherwise, the DbEnv.lock_vec method throws an exception that encapsulates a non-zero error value on
+failure.
+<h1>Errors</h1>
+<p>The DbEnv.lock_vec method may fail and throw an exception encapsulating a non-zero error for the following conditions:
+<p><dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+</dl>
+<p><dl compact>
+<p><dt>ENOMEM<dd>The maximum number of locks has been reached.
+</dl>
+<p>If the operation was selected to resolve a deadlock, the
+DbEnv.lock_vec method will fail and
+throw a <a href="../api_java/deadlock_class.html">DbDeadlockException</a> exception.
+<p>The DbEnv.lock_vec method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv.lock_vec method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/lock_class.html">DbLock</a>
+<h1>See Also</h1>
+<a href="../api_java/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

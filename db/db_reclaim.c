@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_reclaim.c,v 11.17 2001/07/26 20:22:09 krinsky Exp $";
+static const char revid[] = "$Id: db_reclaim.c,v 11.28 2002/08/06 06:11:17 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,11 +17,10 @@ static const char revid[] = "$Id: db_reclaim.c,v 11.17 2001/07/26 20:22:09 krins
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_am.h"
-#include "db_shash.h"
-#include "btree.h"
-#include "lock.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/btree.h"
+#include "dbinc/lock.h"
 
 /*
  * __db_traverse_big
@@ -123,20 +122,29 @@ __db_truncate_callback(dbp, p, cookie, putp)
 	case P_LBTREE:
 		/* Skip for off-page duplicates and deleted items. */
 		for (indx = 0; indx < top; indx += P_INDX) {
-			type = GET_BKEYDATA(p, indx + O_INDX)->type;
+			type = GET_BKEYDATA(dbp, p, indx + O_INDX)->type;
 			if (!B_DISSET(type) && B_TYPE(type) != B_DUPLICATE)
 				++param->count;
 		}
 		/* FALLTHROUGH */
 	case P_IBTREE:
 	case P_IRECNO:
-	case P_OVERFLOW:
 	case P_INVALID:
 		if (dbp->type != DB_HASH &&
 		    ((BTREE *)dbp->bt_internal)->bt_root == PGNO(p)) {
 			type = dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE;
 			goto reinit;
 		}
+		break;
+	case P_OVERFLOW:
+		if (DBC_LOGGING(param->dbc)) {
+			if ((ret = __db_ovref_log(dbp, param->dbc->txn,
+			    &LSN(p), 0, p->pgno, -1, &LSN(p))) != 0)
+				return (ret);
+		} else
+			LSN_NOT_LOGGED(LSN(p));
+		if (--OV_REF(p) != 0)
+			*putp = 0;
 		break;
 	case P_LRECNO:
 		param->count += top;
@@ -148,14 +156,14 @@ __db_truncate_callback(dbp, p, cookie, putp)
 	case P_LDUP:
 		/* Correct for deleted items. */
 		for (indx = 0; indx < top; indx += O_INDX)
-			if (!B_DISSET(GET_BKEYDATA(p, indx)->type))
+			if (!B_DISSET(GET_BKEYDATA(dbp, p, indx)->type))
 				++param->count;
 
 		break;
 	case P_HASH:
 		/* Correct for on-page duplicates and deleted items. */
 		for (indx = 0; indx < top; indx += P_INDX) {
-			switch (*H_PAIRDATA(p, indx)) {
+			switch (*H_PAIRDATA(dbp, p, indx)) {
 			case H_OFFDUP:
 			case H_OFFPAGE:
 				break;
@@ -163,8 +171,8 @@ __db_truncate_callback(dbp, p, cookie, putp)
 				++param->count;
 				break;
 			case H_DUPLICATE:
-				tlen = LEN_HDATA(p, 0, indx);
-				hk = H_PAIRDATA(p, indx);
+				tlen = LEN_HDATA(dbp, p, 0, indx);
+				hk = H_PAIRDATA(dbp, p, indx);
 				for (off = 0; off < tlen;
 				    off += len + 2 * sizeof (db_indx_t)) {
 					++param->count;
@@ -179,37 +187,38 @@ __db_truncate_callback(dbp, p, cookie, putp)
 			type = P_HASH;
 
 reinit:			*putp = 0;
-			if (DB_LOGGING(param->dbc)) {
+			if (DBC_LOGGING(param->dbc)) {
 				pgno = PGNO_BASE_MD;
 				if ((ret = __db_lget(param->dbc, LCK_ALWAYS,
-				     pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+				    pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 					return (ret);
 				if ((ret = mpf->get(mpf,
-				     &pgno, 0, (PAGE **)&meta)) != 0) {
+				    &pgno, 0, (PAGE **)&meta)) != 0) {
 					goto err;
 				}
 				memset(&ldbt, 0, sizeof(ldbt));
 				ldbt.data = p;
-				ldbt.size = P_OVERHEAD;
-				if ((ret =
-				    __db_pg_free_log(dbp->dbenv, param->dbc->txn,
-				    &LSN(meta), 0, dbp->log_fileid, p->pgno,
-				    &LSN(meta), PGNO_BASE_MD,
-				    &ldbt, meta->free)) != 0)
-					goto err;
-
-				LSN(p) = LSN(meta);
-				if ((ret =
-				    __db_pg_alloc_log(dbp->dbenv,
+				ldbt.size = P_OVERHEAD(dbp);
+				if ((ret = __db_pg_free_log(dbp,
 				    param->dbc->txn, &LSN(meta), 0,
-				    dbp->log_fileid, &LSN(meta), PGNO_BASE_MD,
+				    p->pgno, &LSN(meta),
+				    PGNO_BASE_MD, &ldbt, meta->free)) != 0)
+					goto err;
+				LSN(p) = LSN(meta);
+
+				if ((ret =
+				    __db_pg_alloc_log(dbp,
+				    param->dbc->txn, &LSN(meta), 0,
+				    &LSN(meta), PGNO_BASE_MD,
 				    &p->lsn, p->pgno, type, meta->free)) != 0) {
 err:					(void)mpf->put(mpf, (PAGE *)meta, 0);
 					(void)__TLPUT(param->dbc, metalock);
 					return (ret);
 				}
+				LSN(p) = LSN(meta);
+
 				if ((ret = mpf->put(mpf,
-				     (PAGE *)meta, DB_MPOOL_DIRTY)) != 0) {
+				    (PAGE *)meta, DB_MPOOL_DIRTY)) != 0) {
 					(void)__TLPUT(param->dbc, metalock);
 					return (ret);
 				}
@@ -219,7 +228,7 @@ err:					(void)mpf->put(mpf, (PAGE *)meta, 0);
 				LSN_NOT_LOGGED(LSN(p));
 
 			P_INIT(p, dbp->pgsize, PGNO(p), PGNO_INVALID,
-			     PGNO_INVALID, type == P_HASH ? 0 : 1, type);
+			    PGNO_INVALID, type == P_HASH ? 0 : 1, type);
 		}
 		break;
 	default:

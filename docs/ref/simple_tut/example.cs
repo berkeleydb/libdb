@@ -20,8 +20,8 @@ main()
 		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
 	}
-	if ((ret =
-	    dbp->open(dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp->open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp->err(dbp, ret, "%s", DATABASE);
 		goto err;
 	}

@@ -1,6 +1,7 @@
-<!--$Id: except_class.so,v 10.16 2001/04/12 18:48:44 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: except_class.so,v 10.24 2002/08/29 03:24:34 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbException</title>
@@ -22,15 +23,14 @@
 #include &lt;db_cxx.h&gt;
 <p>
 class DbException {
-	DbException(int err);
-	DbException(const char *description);
-	DbException(const char *prefix, int err);
-	DbException(const char *prefix1, const char *prefix2, int err);
+public:
+	int get_errno() const;
+	virtual const char *what() const;
 };
 </pre></h3>
 <h1>Description</h1>
-<p>This manual page describes the DbException class and how it is used
-by the various Berkeley DB classes.
+<p>This manual page describes the DbException class and how it is used by
+the various Berkeley DB classes.
 <p>Most methods in the Berkeley DB classes return an int, but also throw an
 exception.  This allows for two different error behaviors.  By default,
 the Berkeley DB C++ API is configured to throw an exception whenever a serious
@@ -38,10 +38,11 @@ error occurs.  This generally allows for cleaner logic for transaction
 processing because a try block can surround a single transaction.
 Alternatively, Berkeley DB can be configured to not throw exceptions, and
 instead have the individual function return an error code, by setting
-the constructor flags for the Db and <a href="../api_cxx/dbenv_class.html">DbEnv</a> objects.
+the <a href="../api_cxx/env_class.html#DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a> for the <a href="../api_cxx/db_class.html">Db</a> and <a href="../api_cxx/env_class.html">DbEnv</a>
+constructors.
 <p>A DbException object contains an informational string and an errno.
-The errno can be obtained by using <a href="../api_cxx/get_errno.html">DbException::get_errno</a>.
-The informational string can be obtained by using <a href="../api_cxx/what.html">DbException::what</a>.
+The errno can be obtained by using DbException::get_errno.
+The informational string can be obtained by using DbException::what.
 <p>We expect in the future that this class will inherit from the standard
 class exception, but certain language implementation bugs currently
 prevent this on some platforms.
@@ -49,13 +50,6 @@ prevent this on some platforms.
 This occurs in situations that are not normally considered an error, but
 when some informational status is returned.  For example, <a href="../api_cxx/db_get.html">Db::get</a>
 returns DB_NOTFOUND when a requested key does not appear in the database.
-<h1>Class</h1>
-<a href="../api_cxx/except_class.html">DbException</a>
-<h1>See Also</h1>
-<a href="../api_cxx/get_errno.html">DbException::get_errno</a>,
-<a href="../api_cxx/what.html">DbException::what</a>,
-and
-<a href="../api_cxx/mem_class.html">DbMemoryException</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

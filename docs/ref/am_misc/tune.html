@@ -1,6 +1,7 @@
 <!--$Id: tune.so,v 10.6 2001/03/10 19:59:24 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Access method tuning</title>
@@ -68,7 +69,7 @@ be too large).  Accessing these overflow pages requires at least one
 additional page reference over a normal access, so it is usually better
 to increase the page size than to create a database with a large number
 of overflow pages.  Use the <a href="../../utility/db_stat.html">db_stat</a> utility (or the statistics
-returned by the <a href="../../api_c/db_stat.html">DB-&gt;stat</a> function) to review the number of overflow
+returned by the <a href="../../api_c/db_stat.html">DB-&gt;stat</a> method) to review the number of overflow
 pages in the database.
 <p>The second issue is using large key/data items instead of duplicate data
 items.  While this can offer performance gains to some applications

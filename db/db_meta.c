@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_meta.c,v 11.47 2001/11/16 16:32:35 bostic Exp $";
+static const char revid[] = "$Id: db_meta.c,v 11.61 2002/08/08 03:57:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -53,12 +53,37 @@ static const char revid[] = "$Id: db_meta.c,v 11.47 2001/11/16 16:32:35 bostic E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "txn.h"
-#include "db_am.h"
-#include "btree.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
+#include "dbinc/db_am.h"
+
+static void __db_init_meta __P((void *, u_int32_t, db_pgno_t, u_int32_t));
+
+/*
+ * __db_init_meta --
+ *	Helper function for __db_new that initializes the important fields in
+ * a meta-data page (used instead of P_INIT).  We need to make sure that we
+ * retain the page number and LSN of the existing page.
+ */
+static void
+__db_init_meta(p, pgsize, pgno, pgtype)
+	void *p;
+	u_int32_t pgsize;
+	db_pgno_t pgno;
+	u_int32_t pgtype;
+{
+	DB_LSN save_lsn;
+	DBMETA *meta;
+
+	meta = (DBMETA *)p;
+	save_lsn = meta->lsn;
+	memset(meta, 0, sizeof(DBMETA));
+	meta->lsn = save_lsn;
+	meta->pagesize = pgsize;
+	meta->pgno = pgno;
+	meta->type = (u_int8_t)pgtype;
+}
 
 /*
  * __db_new --
@@ -118,9 +143,8 @@ __db_new(dbc, type, pagepp)
 	 * don't have room in the log then we don't want to tell
 	 * mpool to extend the file.
 	 */
-	if (DB_LOGGING(dbc)) {
-		if ((ret = __db_pg_alloc_log(dbp->dbenv,
-		    dbc->txn, &LSN(meta), 0, dbp->log_fileid,
+	if (DBC_LOGGING(dbc)) {
+		if ((ret = __db_pg_alloc_log(dbp, dbc->txn, &LSN(meta), 0,
 		    &LSN(meta), PGNO_BASE_MD, &lsn, pgno,
 		    (u_int32_t)type, newnext)) != 0)
 			goto err;
@@ -131,11 +155,11 @@ __db_new(dbc, type, pagepp)
 	meta->free = newnext;
 
 	if (extend == 1) {
+		meta->last_pgno++;
 		if ((ret = mpf->get(mpf, &pgno, DB_MPOOL_NEW, &h)) != 0)
 			goto err;
 		ZERO_LSN(h->lsn);
 		h->pgno = pgno;
-		meta->last_pgno++;
 		DB_ASSERT(pgno == meta->last_pgno);
 	}
 	LSN(h) = LSN(meta);
@@ -148,7 +172,31 @@ __db_new(dbc, type, pagepp)
 	(void)mpf->put(mpf, (PAGE *)meta, DB_MPOOL_DIRTY);
 	(void)__TLPUT(dbc, metalock);
 
-	P_INIT(h, dbp->pgsize, h->pgno, PGNO_INVALID, PGNO_INVALID, 0, type);
+	switch (type) {
+		case P_BTREEMETA:
+		case P_HASHMETA:
+		case P_QAMMETA:
+			__db_init_meta(h, dbp->pgsize, h->pgno, type);
+			break;
+		default:
+			P_INIT(h, dbp->pgsize,
+			    h->pgno, PGNO_INVALID, PGNO_INVALID, 0, type);
+			break;
+	}
+
+	/*
+	 * If dirty reads are enabled and we are in a transaction, we could
+	 * abort this allocation after the page(s) pointing to this
+	 * one have their locks downgraded.  This would permit dirty readers
+	 * to access this page which is ok, but they must be off the
+	 * page when we abort.  This will also prevent updates happening
+	 * to this page until we commit.
+	 */
+	if (F_ISSET(dbc->dbp, DB_AM_DIRTY) && dbc->txn != NULL) {
+		if ((ret = __db_lget(dbc, 0,
+		    h->pgno, DB_LOCK_WWRITE, 0, &metalock)) != 0)
+			goto err;
+	}
 	*pagepp = h;
 	return (0);
 
@@ -192,7 +240,7 @@ __db_free(dbc, h)
 	dirty_flag = 0;
 	pgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc,
-	     LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
 	if ((ret = mpf->get(mpf, &pgno, 0, (PAGE **)&meta)) != 0) {
 		(void)__TLPUT(dbc, metalock);
@@ -201,12 +249,12 @@ __db_free(dbc, h)
 
 	DB_ASSERT(h->pgno != meta->free);
 	/* Log the change. */
-	if (DB_LOGGING(dbc)) {
+	if (DBC_LOGGING(dbc)) {
 		memset(&ldbt, 0, sizeof(ldbt));
 		ldbt.data = h;
-		ldbt.size = P_OVERHEAD;
-		if ((ret = __db_pg_free_log(dbp->dbenv,
-		    dbc->txn, &LSN(meta), 0, dbp->log_fileid, h->pgno,
+		ldbt.size = P_OVERHEAD(dbp);
+		if ((ret = __db_pg_free_log(dbp,
+		    dbc->txn, &LSN(meta), 0, h->pgno,
 		    &LSN(meta), PGNO_BASE_MD, &ldbt, meta->free)) != 0) {
 			(void)mpf->put(mpf, (PAGE *)meta, 0);
 			(void)__TLPUT(dbc, metalock);
@@ -264,11 +312,10 @@ __db_lprint(dbc)
 #endif
 
 /*
- * Implement the rules for transactional locking.  We can release the
- * previous lock if we are not in a transaction or COUPLE_ALWAYS
- * is specifed (used in record locking).  If we are
- * doing dirty reads then we can release read locks and down grade
- * write locks.
+ * Implement the rules for transactional locking.  We can release the previous
+ * lock if we are not in a transaction or COUPLE_ALWAYS is specifed (used in
+ * record locking).  If we are doing dirty reads then we can release read locks
+ * and down grade write locks.
  */
 #define	DB_PUT_ACTION(dbc, action, lockp)				\
 	    (((action == LCK_COUPLE || action == LCK_COUPLE_ALWAYS) &&	\
@@ -276,9 +323,8 @@ __db_lprint(dbc)
 	    (dbc->txn == NULL || action == LCK_COUPLE_ALWAYS ||		\
 	    (F_ISSET(dbc, DBC_DIRTY_READ) &&				\
 	    (lockp)->mode == DB_LOCK_DIRTY)) ? LCK_COUPLE :		\
-	    (F_ISSET((dbc)->dbp, DB_AM_DIRTY)				\
-	    && (lockp)->mode == DB_LOCK_WRITE) ? LCK_DOWNGRADE :	\
-	    0 : 0)
+	    (F_ISSET((dbc)->dbp, DB_AM_DIRTY) &&			\
+	    (lockp)->mode == DB_LOCK_WRITE) ? LCK_DOWNGRADE : 0 : 0)
 
 /*
  * __db_lget --
@@ -310,10 +356,11 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	 * We do not always check if we're configured for locking before
 	 * calling __db_lget to acquire the lock.
 	 */
-	if (CDB_LOCKING(dbenv)
-	    || !LOCKING_ON(dbenv) || F_ISSET(dbc, DBC_COMPENSATE)
-	    || (action != LCK_ROLLBACK && F_ISSET(dbc, DBC_RECOVER))
-	    || (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
+	if (CDB_LOCKING(dbenv) ||
+	    !LOCKING_ON(dbenv) || F_ISSET(dbc, DBC_COMPENSATE) ||
+	    (F_ISSET(dbc, DBC_RECOVER) &&
+	    (action != LCK_ROLLBACK || F_ISSET(dbenv, DB_ENV_REP_CLIENT))) ||
+	    (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
 		LOCK_INIT(*lockp);
 		return (0);
 	}
@@ -344,6 +391,7 @@ lck_couple:	couple[0].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 		couple[0].mode = mode;
 		if (action == LCK_COUPLE_ALWAYS)
 			action = LCK_COUPLE;
+		UMRW_SET(couple[0].timeout);
 		if (has_timeout)
 			couple[0].timeout = txn->lock_timeout;
 		if (action == LCK_COUPLE) {

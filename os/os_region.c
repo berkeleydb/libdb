@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_region.c,v 11.11 2001/04/03 15:14:26 krinsky Exp $";
+static const char revid[] = "$Id: os_region.c,v 11.15 2002/07/12 18:56:51 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,7 +17,6 @@ static const char revid[] = "$Id: os_region.c,v 11.11 2001/04/03 15:14:26 krinsk
 #endif
 
 #include "db_int.h"
-#include "os_jump.h"
 
 /*
  * __os_r_attach --
@@ -79,8 +78,8 @@ __os_r_attach(dbenv, infop, rp)
 	}
 
 	/* If the user replaced the map call, call through their interface. */
-	if (__db_jump.j_map != NULL)
-		return (__db_jump.j_map(infop->name,
+	if (DB_GLOBAL(j_map) != NULL)
+		return (DB_GLOBAL(j_map)(infop->name,
 		    rp->size, 1, 0, &infop->addr));
 
 	return (__os_r_sysattach(dbenv, infop, rp));
@@ -104,13 +103,13 @@ __os_r_detach(dbenv, infop, destroy)
 
 	/* If a region is private, free the memory. */
 	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
-		__os_free(dbenv, infop->addr, rp->size);
+		__os_free(dbenv, infop->addr);
 		return (0);
 	}
 
 	/* If the user replaced the map call, call through their interface. */
-	if (__db_jump.j_unmap != NULL)
-		return (__db_jump.j_unmap(infop->addr, rp->size));
+	if (DB_GLOBAL(j_unmap) != NULL)
+		return (DB_GLOBAL(j_unmap)(infop->addr, rp->size));
 
 	return (__os_r_sysdetach(dbenv, infop, destroy));
 }

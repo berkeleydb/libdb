@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001
+ * Copyright (c) 2001-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_recover.c,v 1.22 2001/10/02 01:33:44 bostic Exp $";
+static const char revid[] = "$Id: txn_recover.c,v 1.36 2002/08/19 16:59:15 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,12 +18,12 @@ static const char revid[] = "$Id: txn_recover.c,v 1.22 2001/10/02 01:33:44 bosti
 #endif
 
 #include "db_int.h"
-#include "txn.h"
-#include "db_page.h"
-#include "log.h"
-#include "db_auto.h"
-#include "crdel_auto.h"
-#include "db_ext.h"
+#include "dbinc/txn.h"
+#include "dbinc/db_page.h"
+#include "dbinc/log.h"
+#include "dbinc_auto/db_auto.h"
+#include "dbinc_auto/crdel_auto.h"
+#include "dbinc_auto/db_ext.h"
 
 /*
  * __txn_continue
@@ -46,7 +46,7 @@ __txn_continue(env, txnp, td, off)
 	txnp->parent = NULL;
 	txnp->last_lsn = td->last_lsn;
 	txnp->txnid = td->txnid;
-	txnp->off = off;
+	txnp->off = (roff_t)off;
 
 	txnp->abort = __txn_abort;
 	txnp->commit = __txn_commit;
@@ -120,7 +120,7 @@ __txn_recover(dbenv, preplist, count, retp, flags)
 	if (F_ISSET((DB_TXNREGION *)
 	    ((DB_TXNMGR *)dbenv->tx_handle)->reginfo.primary,
 	    TXN_IN_RECOVERY)) {
-		__db_err(dbenv, "operation not permitted while in recovery.");
+		__db_err(dbenv, "operation not permitted while in recovery");
 		return (EINVAL);
 	}
 	return (__txn_get_prepared(dbenv, NULL, preplist, count, retp, flags));
@@ -258,39 +258,40 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 			goto err;
 
 		memset(&data, 0, sizeof(data));
-		for (ret = logc->get(logc, &open_lsn, &data, DB_CHECKPOINT);
-		    ret == 0 && log_compare(&min, &open_lsn) < 0;
-		    ret = logc->get(logc, &open_lsn, &data, DB_SET)) {
-
-			/* Format the log record. */
-			if ((ret = __txn_ckp_read(dbenv,
-			    data.data, &ckp_args)) != 0) {
-				__db_err(dbenv,
-				    "Invalid checkpoint record at [%ld][%ld]",
-				    (u_long)open_lsn.file,
-				    (u_long)open_lsn.offset);
-				goto err;
+		if ((ret = __txn_getckp(dbenv, &open_lsn)) == 0)
+			while (!IS_ZERO_LSN(open_lsn) && (ret =
+			    logc->get(logc, &open_lsn, &data, DB_SET)) == 0 &&
+			    log_compare(&min, &open_lsn) < 0) {
+				/* Format the log record. */
+				if ((ret = __txn_ckp_read(dbenv,
+				    data.data, &ckp_args)) != 0) {
+					__db_err(dbenv,
+				    "Invalid checkpoint record at [%lu][%lu]",
+					    (u_long)open_lsn.file,
+					    (u_long)open_lsn.offset);
+					goto err;
+				}
+				open_lsn = ckp_args->last_ckp;
+				__os_free(dbenv, ckp_args);
 			}
-			open_lsn = ckp_args->last_ckp;
-			__os_free(dbenv, ckp_args, sizeof(*ckp_args));
-		}
 
 		/*
-		 * There are three ways we got here.
-		 * We got a DB_NOTFOUND -- we need to read the first log record.
-		 * We found a checkpoint before min.  We're done.
-		 * We found a checkpoint after min who's last_ckp is 0.  We
+		 * There are three ways by which we may have gotten here.
+		 * - We got a DB_NOTFOUND -- we need to read the first
+		 *	log record.
+		 * - We found a checkpoint before min.  We're done.
+		 * - We found a checkpoint after min who's last_ckp is 0.  We
 		 *	need to start at the beginning of the log.
 		 */
 		if ((ret == DB_NOTFOUND || IS_ZERO_LSN(open_lsn)) &&
 		    (ret = logc->get(logc, &open_lsn, &data, DB_FIRST)) != 0) {
-			__db_err(dbenv, "No log records.");
+			__db_err(dbenv, "No log records");
 			goto err;
 		}
 
-		if ((ret = __db_txnlist_init(dbenv, 0, 0, &txninfo)) != 0)
+		if ((ret = __db_txnlist_init(dbenv, 0, 0, NULL, &txninfo)) != 0)
 			goto err;
-		ret = __env_openfiles(dbenv,
+		ret = __env_openfiles(dbenv, logc,
 		    txninfo, &data, &open_lsn, NULL, 0, 0);
 		if (txninfo != NULL)
 			__db_txnlist_end(dbenv, txninfo);

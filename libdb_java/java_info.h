@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_info.h,v 11.28 2001/10/26 23:50:16 bostic Exp $
+ * $Id: java_info.h,v 11.35 2002/08/29 14:22:23 margo Exp $
  */
 
 #ifndef _JAVA_INFO_H_
@@ -96,10 +96,11 @@ typedef struct _db_env_javainfo
 	jobject errcall;	/* global reference */
 	jobject feedback;	/* global reference */
 	jobject rep_transport;	/* global reference */
-	jobject tx_recover;	/* global reference */
+	jobject app_dispatch;	/* global reference */
 	jobject recovery_init;	/* global reference */
-	unsigned char *conflict;
+	u_char *conflict;
 	size_t conflict_size;
+	jint construct_flags;
 }
 DB_ENV_JAVAINFO;	/* used with all 'dbjie' functions */
 
@@ -123,7 +124,7 @@ extern void dbjie_set_errpfx(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 extern jstring dbjie_get_errpfx(DB_ENV_JAVAINFO *, JNIEnv *jnienv);
 extern void dbjie_set_errcall(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 			      jobject new_errcall);
-extern void dbjie_set_conflict(DB_ENV_JAVAINFO *, unsigned char *v, size_t sz);
+extern void dbjie_set_conflict(DB_ENV_JAVAINFO *, u_char *v, size_t sz);
 extern void dbjie_set_feedback_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 				      DB_ENV *dbenv, jobject value);
 extern void dbjie_call_feedback(DB_ENV_JAVAINFO *, DB_ENV *dbenv, jobject jenv,
@@ -137,13 +138,13 @@ extern void dbjie_set_rep_transport_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 extern int dbjie_call_rep_transport(DB_ENV_JAVAINFO *, DB_ENV *dbenv,
 				    jobject jenv, const DBT *control,
 				    const DBT *rec, int envid, int flags);
-extern void dbjie_set_tx_recover_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
+extern void dbjie_set_app_dispatch_object(DB_ENV_JAVAINFO *, JNIEnv *jnienv,
 					DB_ENV *dbenv, jobject value);
-extern int dbjie_call_tx_recover(DB_ENV_JAVAINFO *,
+extern int dbjie_call_app_dispatch(DB_ENV_JAVAINFO *,
 				 DB_ENV *dbenv, jobject jenv,
 				 DBT *dbt, DB_LSN *lsn, int recops);
 extern jobject dbjie_get_errcall(DB_ENV_JAVAINFO *) ;
-extern int dbjie_is_dbopen(DB_ENV_JAVAINFO *);
+extern jint dbjie_is_dbopen(DB_ENV_JAVAINFO *);
 
 /****************************************************************
  *
@@ -199,8 +200,9 @@ extern void dbji_call_feedback(DB_JAVAINFO *, DB *db, jobject jdb,
 extern void dbji_set_append_recno_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);
 extern int dbji_call_append_recno(DB_JAVAINFO *, DB *db, jobject jdb,
 				  DBT *dbt, jint recno);
-extern void dbji_set_assoc_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db,
-				  DB *second, jobject value, int flags);
+extern void dbji_set_assoc_object(DB_JAVAINFO *, JNIEnv *jnienv,
+				  DB *db, DB_TXN *txn, DB *second,
+				  jobject value, int flags);
 extern int dbji_call_assoc(DB_JAVAINFO *, DB *db, jobject jdb,
 			   const DBT *key, const DBT* data, DBT *result);
 extern void dbji_set_bt_compare_object(DB_JAVAINFO *, JNIEnv *jnienv, DB *db, jobject value);

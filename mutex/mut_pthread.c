@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_pthread.c,v 11.39 2001/08/07 01:42:42 bostic Exp $";
+static const char revid[] = "$Id: mut_pthread.c,v 11.53 2002/08/13 19:56:47 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -36,7 +36,11 @@ static const char revid[] = "$Id: mut_pthread.c,v 11.39 2001/08/07 01:42:42 bost
 #define	pthread_mutex_lock		_lwp_mutex_lock
 #define	pthread_mutex_trylock		_lwp_mutex_trylock
 #define	pthread_mutex_unlock		_lwp_mutex_unlock
-#define	pthread_self			_lwp_self
+/*
+ * _lwp_self returns the LWP process ID which isn't a unique per-thread
+ * identifier.  Use pthread_self instead, it appears to work even if we
+ * are not a pthreads application.
+ */
 #define	pthread_mutex_destroy(x)	0
 #endif
 #ifdef HAVE_MUTEX_UI_THREADS
@@ -63,10 +67,21 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	DB_MUTEX *mutexp;
 	u_int32_t flags;
 {
+	u_int32_t save;
 	int ret;
 
 	ret = 0;
+
+	/*
+	 * The only setting/checking of the MUTEX_MPOOL flags is in the mutex
+	 * mutex allocation code (__db_mutex_alloc/free).  Preserve only that
+	 * flag.  This is safe because even if this flag was never explicitly
+	 * set, but happened to be set in memory, it will never be checked or
+	 * acted upon.
+	 */
+	save = F_ISSET(mutexp, MUTEX_MPOOL);
 	memset(mutexp, 0, sizeof(*mutexp));
+	F_SET(mutexp, save);
 
 	/*
 	 * If this is a thread lock or the process has told us that there are
@@ -81,7 +96,6 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 			F_SET(mutexp, MUTEX_IGNORE);
 			return (0);
 		}
-		F_SET(mutexp, MUTEX_THREAD);
 	}
 
 #ifdef HAVE_MUTEX_PTHREADS
@@ -89,11 +103,13 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	pthread_condattr_t condattr, *condattrp = NULL;
 	pthread_mutexattr_t mutexattr, *mutexattrp = NULL;
 
-	if (!F_ISSET(mutexp, MUTEX_THREAD)) {
+	if (!LF_ISSET(MUTEX_THREAD)) {
 		ret = pthread_mutexattr_init(&mutexattr);
+#ifndef HAVE_MUTEX_THREAD_ONLY
 		if (ret == 0)
 			ret = pthread_mutexattr_setpshared(
 			    &mutexattr, PTHREAD_PROCESS_SHARED);
+#endif
 		mutexattrp = &mutexattr;
 	}
 
@@ -102,13 +118,15 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	if (mutexattrp != NULL)
 		pthread_mutexattr_destroy(mutexattrp);
 	if (ret == 0 && LF_ISSET(MUTEX_SELF_BLOCK)) {
-		if (!F_ISSET(mutexp, MUTEX_THREAD)) {
+		if (!LF_ISSET(MUTEX_THREAD)) {
 			ret = pthread_condattr_init(&condattr);
+#ifndef HAVE_MUTEX_THREAD_ONLY
 			if (ret == 0) {
 				condattrp = &condattr;
 				ret = pthread_condattr_setpshared(
 				    &condattr, PTHREAD_PROCESS_SHARED);
 			}
+#endif
 		}
 
 		if (ret == 0)
@@ -116,7 +134,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 
 		F_SET(mutexp, MUTEX_SELF_BLOCK);
 		if (condattrp != NULL)
-			pthread_condattr_destroy(condattrp);
+			(void)pthread_condattr_destroy(condattrp);
 	}
 
 	}
@@ -130,7 +148,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	 * initialization values doesn't have surrounding braces.  There's not
 	 * much we can do.
 	 */
-	if (F_ISSET(mutexp, MUTEX_THREAD)) {
+	if (LF_ISSET(MUTEX_THREAD)) {
 		static lwp_mutex_t mi = DEFAULTMUTEX;
 
 		mutexp->mutex = mi;
@@ -140,7 +158,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 		mutexp->mutex = mi;
 	}
 	if (LF_ISSET(MUTEX_SELF_BLOCK)) {
-		if (F_ISSET(mutexp, MUTEX_THREAD)) {
+		if (LF_ISSET(MUTEX_THREAD)) {
 			static lwp_cond_t ci = DEFAULTCV;
 
 			mutexp->cond = ci;
@@ -156,7 +174,7 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	{
 	int type;
 
-	type = F_ISSET(mutexp, MUTEX_THREAD) ? USYNC_THREAD : USYNC_PROCESS;
+	type = LF_ISSET(MUTEX_THREAD) ? USYNC_THREAD : USYNC_PROCESS;
 
 	ret = mutex_init(&mutexp->mutex, type, NULL);
 	if (ret == 0 && LF_ISSET(MUTEX_SELF_BLOCK)) {
@@ -167,11 +185,14 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 #endif
 
 	mutexp->spins = __os_spin(dbenv);
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 	mutexp->reg_off = INVALID_ROFF;
 #endif
 	if (ret == 0)
 		F_SET(mutexp, MUTEX_INITED);
+	else
+		__db_err(dbenv,
+		    "unable to initialize mutex: %s", strerror(ret));
 
 	return (ret);
 }
@@ -199,7 +220,7 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 			break;
 
 	if (nspins == 0 && (ret = pthread_mutex_lock(&mutexp->mutex)) != 0)
-		return (ret);
+		goto err;
 
 	if (F_ISSET(mutexp, MUTEX_SELF_BLOCK)) {
 		for (waited = 0; mutexp->locked != 0; waited = 1) {
@@ -214,8 +235,14 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 			 * call, and Solaris delivers the signal to the wrong
 			 * LWP.
 			 */
-			if (ret != 0 && ret != ETIME && ret != ETIMEDOUT)
+			if (ret != 0 && ret != EINTR &&
+#ifdef ETIME
+			    ret != ETIME &&
+#endif
+			    ret != ETIMEDOUT) {
+				(void)pthread_mutex_unlock(&mutexp->mutex);
 				return (ret);
+			}
 		}
 
 		if (waited)
@@ -242,11 +269,14 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 			ret = pthread_mutex_unlock(&mutexp->mutex);
 		} while (ret == EFAULT && --i > 0);
 		if (ret != 0)
-			return (ret);
+			goto err;
 	} else {
 		if (nspins == mutexp->spins)
 			++mutexp->mutex_set_nowait;
-		else
+		else if (nspins > 0) {
+			++mutexp->mutex_set_spin;
+			mutexp->mutex_set_spins += mutexp->spins - nspins;
+		} else
 			++mutexp->mutex_set_wait;
 #ifdef DIAGNOSTIC
 		if (mutexp->locked) {
@@ -261,6 +291,9 @@ __db_pthread_mutex_lock(dbenv, mutexp)
 #endif
 	}
 	return (0);
+
+err:	__db_err(dbenv, "unable to lock mutex: %s", strerror(ret));
+	return (ret);
 }
 
 /*
@@ -286,33 +319,25 @@ __db_pthread_mutex_unlock(dbenv, mutexp)
 
 	if (F_ISSET(mutexp, MUTEX_SELF_BLOCK)) {
 		if ((ret = pthread_mutex_lock(&mutexp->mutex)) != 0)
-			return (ret);
+			goto err;
 
 		mutexp->locked = 0;
 
 		if ((ret = pthread_cond_signal(&mutexp->cond)) != 0)
 			return (ret);
 
-		/* See comment above;  workaround for [#2471]. */
-		i = PTHREAD_UNLOCK_ATTEMPTS;
-		do {
-			ret = pthread_mutex_unlock(&mutexp->mutex);
-		} while (ret == EFAULT && --i > 0);
-		if (ret != 0)
-			return (ret);
-	} else {
+	} else
 		mutexp->locked = 0;
 
-		/* See comment above;  workaround for [#2471]. */
-		i = PTHREAD_UNLOCK_ATTEMPTS;
-		do {
-			ret = pthread_mutex_unlock(&mutexp->mutex);
-		} while (ret == EFAULT && --i > 0);
-		if (ret != 0)
-			return (ret);
-	}
+	/* See comment above;  workaround for [#2471]. */
+	i = PTHREAD_UNLOCK_ATTEMPTS;
+	do {
+		ret = pthread_mutex_unlock(&mutexp->mutex);
+	} while (ret == EFAULT && --i > 0);
+	return (ret);
 
-	return (0);
+err:	__db_err(dbenv, "unable to unlock mutex: %s", strerror(ret));
+	return (ret);
 }
 
 /*
@@ -325,8 +350,12 @@ int
 __db_pthread_mutex_destroy(mutexp)
 	DB_MUTEX *mutexp;
 {
+	int ret;
+
 	if (F_ISSET(mutexp, MUTEX_IGNORE))
 		return (0);
 
-	return (pthread_mutex_destroy(&mutexp->mutex));
+	if ((ret = pthread_mutex_destroy(&mutexp->mutex)) != 0)
+		__db_err(NULL, "unable to destroy mutex: %s", strerror(ret));
+	return (ret);
 }

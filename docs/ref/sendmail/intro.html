@@ -1,6 +1,7 @@
 <!--$Id: intro.so,v 10.22 2001/09/18 16:14:06 sue Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Using Berkeley DB with Sendmail</title>
@@ -31,8 +32,8 @@ Sendmail, please review the README and src/README files in the Sendmail
 distribution.
 <p>To load sendmail against Berkeley DB, add the following lines to
 BuildTools/Site/site.config.m4:
-<p><blockquote><pre>APPENDDEF(`confINCDIRS', `-I/usr/local/BerkeleyDB.4.0/include')
-APPENDDEF(`confLIBDIRS', `-L/usr/local/BerkeleyDB.4.0/lib')</pre></blockquote>
+<p><blockquote><pre>APPENDDEF(`confINCDIRS', `-I/usr/local/BerkeleyDB.4.1/include')
+APPENDDEF(`confLIBDIRS', `-L/usr/local/BerkeleyDB.4.1/lib')</pre></blockquote>
 <p>where those are the paths to #include &lt;db.h&gt; and libdb.a respectively.
 Then, run "Build -c" from the src directory.
 <p>Note that this Build script will use -DNEWDB on the compiles

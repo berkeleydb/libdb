@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test008.tcl,v 11.21 2001/08/03 16:39:33 bostic Exp $
+# $Id: test008.tcl,v 11.23 2002/05/22 15:42:45 sue Exp $
 #
 # TEST	test008
 # TEST	Small keys/large data
@@ -17,7 +17,7 @@
 # TEST	Take the source files and dbtest executable and enter their names as
 # TEST	the key with their contents as data.  After all are entered, begin
 # TEST	looping through the entries; deleting some pairs and then readding them.
-proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
+proc test008 { method {reopen 8} {debug 0} args} {
 	source ./include.tcl
 
 	set tnum test00$reopen
@@ -37,6 +37,7 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 	}
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -48,6 +49,11 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 		set testfile $tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
@@ -73,9 +79,25 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 		set names($count) $f
 		set key $f
 
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		put_file $db $txn $pflags $f
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		get_file $db $txn $gflags $f $t4
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 
 		error_check_good Test00$reopen:diff($f,$t4) \
 		    [filecmp $f $t4] 0
@@ -96,11 +118,27 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 	puts "\tTest00$reopen.b: Delete re-add loop"
 	foreach i "1 2 4 8 16" {
 		for {set ndx 0} {$ndx < $count} { incr ndx $i} {
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			set r [eval {$db del} $txn {$names($ndx)}]
 			error_check_good db_del:$names($ndx) $r 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 		for {set ndx 0} {$ndx < $count} { incr ndx $i} {
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			put_file $db $txn $pflags $names($ndx)
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 	}
 
@@ -112,7 +150,15 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 
 	# Now, reopen the file and make sure the key/data pairs look right.
 	puts "\tTest00$reopen.c: Dump contents forward"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dump_bin_file $db $txn $t1 test008.check
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	set oid [open $t2.tmp w]
 	foreach f $file_list {
@@ -128,7 +174,15 @@ proc test008 { method {nentries 10000} {reopen 8} {debug 0} args} {
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest00$reopen.d: Dump contents backward"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dump_bin_file_direction $db $txn $t1 test008.check "-last" "-prev"
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	filesort $t1 $t3
 

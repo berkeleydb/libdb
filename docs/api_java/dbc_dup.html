@@ -1,6 +1,7 @@
-<!--$Id: dbc_dup.so,v 10.11 2001/10/22 15:24:26 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_dup.so,v 10.17 2002/08/29 03:24:35 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbc.dup</title>
@@ -42,8 +43,9 @@ uninitialized and will behave like a cursor newly created using
 at a time.  For this reason, attempting to duplicate a cursor for which
 the <a href="../api_java/db_cursor.html#DB_WRITECURSOR">Db.DB_WRITECURSOR</a> flag was specified during creation will return
 an error.
-<p>If the <b>cursor</b> argument is not yet initialized, the Dbc.dup method throws an exception that encapsulates EINVAL.
-<p>Otherwise, the Dbc.dup method throws an exception that encapsulates a non-zero error value on
+<p>
+If the <b>cursor</b> argument is not yet initialized, the Dbc.dup method throws an exception that encapsulates Db.EINVAL.
+Otherwise, the Dbc.dup method throws an exception that encapsulates a non-zero error value on
 failure.
 <h1>Errors</h1>
 <p>The Dbc.dup method may fail and throw an exception encapsulating a non-zero error for the following conditions:
@@ -53,20 +55,13 @@ failure.
 <a href="../api_java/db_cursor.html#DB_WRITECURSOR">Db.DB_WRITECURSOR</a> flag in the Berkeley DB Concurrent Data Store product.
 </dl>
 <p>The Dbc.dup method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Dbc.dup method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the Dbc.dup method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
 <a href="../api_java/dbc_class.html">Dbc</a>
 <h1>See Also</h1>
-<a href="../api_java/dbc_close.html">Dbc.close</a>,
-<a href="../api_java/dbc_count.html">Dbc.count</a>,
-<a href="../api_java/dbc_del.html">Dbc.del</a>,
-<a href="../api_java/dbc_dup.html">Dbc.dup</a>,
-<a href="../api_java/dbc_get.html">Dbc.get</a>,
-<a href="../api_java/dbc_get.html">Dbc.pget</a>,
-and
-<a href="../api_java/dbc_put.html">Dbc.put</a>.
+<a href="../api_java/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,14 +1,14 @@
-<!--$Id: reftoc.html,v 10.211 2001/11/18 15:17:21 bostic Exp $-->
+<!--$Id: reftoc.html,v 10.224 2002/09/03 20:09:26 bostic Exp $-->
 <html>
 <head>
-<title>Berkeley DB Tutorial and Reference Guide (Version: 4.0.14)</title>
+<title>Berkeley DB Tutorial and Reference Guide (Version: 4.1.25)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 
 <center>
-<h1><b>Berkeley DB Tutorial and Reference Guide, Version 4.0.14</b></h1>
+<h1><b>Berkeley DB Tutorial and Reference Guide, Version 4.1.25</b></h1>
 </center>
 
 <ol>
@@ -102,6 +102,7 @@
     <li><a href="ref/am_misc/align.html">Data alignment</a>
     <li><a href="ref/am_misc/get_bulk.html">Retrieving records in bulk</a>
     <li><a href="ref/am_misc/partial.html">Partial record storage and retrieval</a>
+    <li><a href="ref/am_misc/struct.html">Storing C/C++ structures/objects</a>
     <li><a href="ref/am_misc/perm.html">Retrieved key/data permanence for C/C++</a>
     <li><a href="ref/am_misc/error.html">Error support</a>
     <li><a href="ref/am_misc/stability.html">Cursor stability</a>
@@ -122,12 +123,14 @@
     <ol>
     <li><a href="ref/env/intro.html">Introduction</a>
     <li><a href="ref/env/create.html">Creating a database environment</a>
-    <li><a href="ref/env/naming.html">File naming</a>
-    <li><a href="ref/env/security.html">Security</a>
-    <li><a href="ref/env/region.html">Shared memory regions</a>
-    <li><a href="ref/env/remote.html">Remote filesystems</a>
     <li><a href="ref/env/open.html">Opening databases within the environment</a>
     <li><a href="ref/env/error.html">Error support</a>
+    <li><a href="ref/env/db_config.html">DB_CONFIG configuration file</a>
+    <li><a href="ref/env/naming.html">File naming</a>
+    <li><a href="ref/env/region.html">Shared memory regions</a>
+    <li><a href="ref/env/security.html">Security</a>
+    <li><a href="ref/env/encrypt.html">Encryption</a>
+    <li><a href="ref/env/remote.html">Remote filesystems</a>
     <li><a href="ref/env/faq.html">Environment FAQ</a>
     </ol>
 <font size="+1"><li><a name="cam">Berkeley DB Concurrent Data Store Applications</a></font>
@@ -142,9 +145,10 @@
     <li><a href="ref/transapp/app.html">Application structure</a>
     <li><a href="ref/transapp/env_open.html">Opening the environment</a>
     <li><a href="ref/transapp/data_open.html">Opening the databases</a>
-    <li><a href="ref/transapp/put.html">Recoverability and deadlock avoidance</a>
-    <li><a href="ref/transapp/inc.html">Atomicity</a>
-    <li><a href="ref/transapp/read.html">Repeatable reads</a>
+    <li><a href="ref/transapp/put.html">Recoverability and deadlock handling</a>
+    <li><a href="ref/transapp/atomicity.html">Atomicity</a>
+    <li><a href="ref/transapp/inc.html">Isolation</a>
+    <li><a href="ref/transapp/read.html">Degrees of isolation</a>
     <li><a href="ref/transapp/cursor.html">Transactional cursors</a>
     <li><a href="ref/transapp/nested.html">Nested transactions</a>
     <li><a href="ref/transapp/admin.html">Environment infrastructure</a>
@@ -186,6 +190,13 @@
     <li><a href="ref/xa/xa_config.html">Configuring Berkeley DB with the Tuxedo System</a>
     <li><a href="ref/xa/faq.html">Frequently Asked Questions</a>
     </ol>
+<font size="+1"><li><a name="apprec">Application Specific Logging and Recovery</a></font>
+    <ol>
+    <li><a href="ref/apprec/intro.html">Introduction</a>
+    <li><a href="ref/apprec/def.html">Defining application-specific log records</a>
+    <li><a href="ref/apprec/auto.html">Automatically generated functions</a>
+    <li><a href="ref/apprec/config.html">Application configuration</a>
+    </ol>
 <font size="+1"><li><a name="program">Programmer Notes</a></font>
     <ol>
     <li><a href="ref/program/appsignals.html">Signal handling</a>
@@ -194,10 +205,11 @@
     <li><a href="ref/program/mt.html">Multithreaded applications</a>
     <li><a href="ref/program/scope.html">Berkeley DB handles</a>
     <li><a href="ref/program/namespace.html">Name spaces</a>
+    <li><a href="ref/program/cache.html">Disk drive caches</a>
     <li><a href="ref/program/copy.html">Copying databases</a>
     <li><a href="ref/program/compatible.html">Compatibility with historic UNIX interfaces</a>
-    <li><a href="ref/program/extending.html">Application-specific logging and recovery</a>
     <li><a href="ref/program/runtime.html">Run-time configuration</a>
+    <li><a href="ref/program/faq.html">Programmer notes FAQ</a>
     </ol>
 <font size="+1"><li><a name="lock">The Locking Subsystem</a></font>
     <ol>
@@ -207,6 +219,7 @@
     <li><a href="ref/lock/stdmode.html">Standard lock modes</a>
     <li><a href="ref/lock/dead.html">Deadlock detection</a>
     <li><a href="ref/lock/timeout.html">Deadlock detection using timers</a>
+    <li><a href="ref/lock/deaddbg.html">Deadlock debugging</a>
     <li><a href="ref/lock/page.html">Locking granularity</a>
     <li><a href="ref/lock/notxn.html">Locking without transactions</a>
     <li><a href="ref/lock/twopl.html">Locking with transactions: two-phase locking</a>
@@ -230,13 +243,13 @@
     <li><a href="ref/txn/intro.html">Berkeley DB and transactions</a>
     <li><a href="ref/txn/config.html">Configuring transactions</a>
     <li><a href="ref/txn/limits.html">Transaction limits</a>
-    <li><a href="ref/txn/other.html">Transactions and non-Berkeley DB applications</a>
     </ol>
 <font size="+1"><li><a name="rpc">RPC Client/Server</a></font>
     <ol>
     <li><a href="ref/rpc/intro.html">Introduction</a>
     <li><a href="ref/rpc/client.html">Client program</a>
     <li><a href="ref/rpc/server.html">Server program</a>
+    <li><a href="ref/rpc/faq.html">RPC FAQ</a>
     </ol>
 <font size="+1"><li><a name="java">Java API</a></font>
     <ol>
@@ -281,7 +294,7 @@
     <li><a href="ref/debug/printlog.html">Reviewing Berkeley DB log files</a>
     <li><a href="ref/debug/common.html">Common errors</a>
     </ol>
-<font size="+1"><li><a name="build_unix">Berkeley DB for UNIX and QNX systems</a></font>
+<font size="+1"><li><a name="build_unix">Berkeley DB for UNIX/POSIX systems</a></font>
     <ol>
     <li><a href="ref/build_unix/intro.html">Building for UNIX</a>
     <li><a href="ref/build_unix/conf.html">Configuring Berkeley DB</a>
@@ -336,6 +349,8 @@
 	    Upgrading Berkeley DB 3.2.X applications to Berkeley DB 3.3</a>
     <li><a href="ref/upgrade.4.0/toc.html">
 	    Upgrading Berkeley DB 3.3.X applications to Berkeley DB 4.0</a>
+    <li><a href="ref/upgrade.4.1/toc.html">
+	    Upgrading Berkeley DB 4.0.X applications to Berkeley DB 4.1</a>
     </ol>
 <font size="+1"><li><a name="test">Test Suite</a></font>
     <ol>
@@ -344,6 +359,7 @@
     </ol>
 <font size="+1"><li><a name="distrib">Distribution</a></font>
     <ol>
+    <li><a href="ref/distrib/port.html">Porting Berkeley DB to new architectures</a>
     <li><a href="ref/distrib/layout.html">Source code layout</a>
     </ol>
 <font size="+1"><li><a name="refs">Additional References</a></font>

@@ -1,6 +1,8 @@
-<!--$Id: dbt_class.so,v 10.47 2001/09/08 19:28:37 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbt_class.so,v 10.1 2002/08/24 18:22:30 bostic Exp $-->
+<!--$Id: dbt_cxx.so,v 10.54 2002/09/13 02:27:31 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbt</title>
@@ -29,6 +31,12 @@ public class Dbt extends Object
 	public void set_data(byte[] data);
 	public byte[] get_data();
 <p>
+	public Object get_object() throws java.io.IOException, java.lang.ClassNotFoundException;
+	public void set_object(Object serialobj) throws java.io.IOException;
+<p>
+	public void set_recno_key_data(int recno);
+	public int get_recno_key_data();
+<p>
 	public void set_offset(int off);
 	public int get_offset();
 <p>
@@ -46,9 +54,6 @@ public class Dbt extends Object
 <p>
 	public int get_flags();
 	public void set_flags(int flags);
-<p>
-	public void set_recno_key_data(int recno);
-	public int get_recno_key_data();
 }
 </pre></h3>
 <h1>Description</h1>
@@ -56,7 +61,7 @@ public class Dbt extends Object
 used to encode keys and data items in a database.
 <a name="3"><!--meow--></a>
 <h3>Key/Data Pairs</h3>
-<p>Storage and retrieval for the Db access methods are based on
+<p>Storage and retrieval for the <a href="../api_java/db_class.html">Db</a> access methods are based on
 key/data pairs.  Both key and data items are represented by Dbt
 objects.  Key and data byte strings may refer to strings of zero length
 up to strings of essentially unlimited length.  See
@@ -87,7 +92,7 @@ flags are specified, the operation occurs as if Db.DB_DBT_MALLOC
 was used.
 <p>Access to Dbt objects is not re-entrant.  In particular, if
 multiple threads simultaneously access the same Dbt object using
-Db API calls, the results are undefined, and may result in a
+<a href="../api_java/db_class.html">Db</a> API calls, the results are undefined, and may result in a
 crash.  One easy way to avoid problems is to use Dbt objects
 that are
 created as local variables and not shared among threads.
@@ -99,6 +104,19 @@ Dbt.set_data, and may be initialized using one
 of the constructors.
 Note that the array data is not copied immediately, but only when the
 Dbt is used.
+<p>The Java API also provides helper methods Dbt.get_object and
+Dbt.set_object to encode and decode objects using the Java
+serialization API.  These methods use <i>ObjectInputStream</i> and
+<i>ObjectOutputStream</i> internally to manipulate an array of bytes
+representing an object (and any connected objects).  All of the rules of Java
+Serialization apply.  In particular, the object(s) must implement either the
+<i>Serializable</i> or <i>Externalizable</i> interface.  Note that the
+serialized encoding trades efficiency for convenience.
+<p><dt>int recno_key_data;<dd>The data representing a key used with a Recno database.  Recno database
+records are ordered by integer keys starting at 1.  When the
+Dbt.set_recno_key_data method is called, the data, size and offset
+fields in the Dbt are implicitly set to hold a byte array representation
+of the integer key.
 <p><dt>int offset;<dd>The number of bytes offset into the <b>data</b> array to determine the
 portion of the array actually used.  This element is accessed using
 Dbt.get_offset and Dbt.set_offset.  Although Java
@@ -112,7 +130,7 @@ Dbt.set_size, and may be initialized
 implicitly to the length of the data array with the constructor having
 one argument.
 <p><dt>int ulen;<dd>The size of the user's buffer (referred to by <b>data</b>), in bytes.
-This location is not written by the Db methods.
+This location is not written by the <a href="../api_java/db_class.html">Db</a> methods.
 <p>Note that applications can determine the length of a record by setting
 the <b>ulen</b> to 0 and checking the return value found in <b>size</b>.
 See the Db.DB_DBT_USERMEM flag for more information.
@@ -147,7 +165,7 @@ might decrease the memory burden and speed your application by allocating
 your own byte array and using Db.DB_DBT_USERMEM.  Even if you don't
 know the maximum size, you can use this option and reallocate your array
 whenever your retrieval API call
-throws a <a href="../api_java/mem_class.html">DbMemoryException</a>.
+throws a <a href="../api_java/memp_class.html">DbMemoryException</a>.
 <p>It is an error to specify more than one of Db.DB_DBT_MALLOC,
 Db.DB_DBT_REALLOC, and Db.DB_DBT_USERMEM.
 <p><dt><a name="Db.DB_DBT_REALLOC">Db.DB_DBT_REALLOC</a><dd>When this flag is set Berkeley DB
@@ -177,7 +195,7 @@ you are retrieving, you might decrease the memory burden and speed your
 application by allocating your own byte array and using
 Db.DB_DBT_USERMEM.  Even if you don't know the maximum size, you can
 use this option and reallocate your array whenever your retrieval API call
-throws a <a href="../api_java/mem_class.html">DbMemoryException</a>.
+throws a <a href="../api_java/memp_class.html">DbMemoryException</a>.
 <p><dl compact>
 <p><dt><a name="Db.DB_DBT_PARTIAL">Db.DB_DBT_PARTIAL</a><dd>Do partial retrieval or storage of an item.  If the calling application
 is doing a get, the <b>dlen</b> bytes starting <b>doff</b> bytes from

@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: txn.src,v 11.14 2001/07/27 19:07:18 krinsky Exp $
+ * $Id: txn.src,v 11.19 2002/03/27 04:33:15 bostic Exp $
  */
 
-PREFIX	txn
+PREFIX	__txn
+DBPRIVATE
 
 INCLUDE	#include "db_config.h"
 INCLUDE
@@ -19,12 +20,13 @@ INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
 INCLUDE #include "db_int.h"
-INCLUDE #include "db_page.h"
-INCLUDE #include "db_dispatch.h"
-INCLUDE #include "db_am.h"
-INCLUDE #include "log.h"
-INCLUDE #include "rep.h"
-INCLUDE #include "txn.h"
+INCLUDE #include "dbinc/crypto.h"
+INCLUDE #include "dbinc/db_page.h"
+INCLUDE #include "dbinc/db_dispatch.h"
+INCLUDE #include "dbinc/db_am.h"
+INCLUDE #include "dbinc/log.h"
+INCLUDE #include "dbinc/rep.h"
+INCLUDE #include "dbinc/txn.h"
 INCLUDE
 
 /*
@@ -59,6 +61,18 @@ ARG	timestamp	int32_t		ld
 END
 
 /*
+ * This is the (new) log operation for a child commit.  It is
+ * logged as a record in the PARENT.  The child field contains
+ * the transaction ID of the child committing and the c_lsn is
+ * the last LSN of the child's log trail.
+ */
+BEGIN child		12
+ARG	child	u_int32_t	lx
+POINTER	c_lsn	DB_LSN *	lu
+END
+
+
+/*
  * This is the standard log operation for prepare.
  */
 BEGIN xa_regop		13
@@ -71,12 +85,9 @@ POINTER	begin_lsn	DB_LSN *	lu
 END
 
 /*
- * This is the (new) log operation for a child commit.  It is
- * logged as a record in the PARENT.  The child field contains
- * the transaction ID of the child committing and the c_lsn is
- * the last LSN of the child's log trail.
+ * Log the fact that we are recycling txnids.
  */
-BEGIN child	12
-ARG	child	u_int32_t	lx
-POINTER	c_lsn	DB_LSN *	lu
+BEGIN recycle		14
+ARG	min		u_int32_t	u
+ARG	max		u_int32_t	u
 END

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test094.tcl,v 11.10 2001/10/15 15:34:56 bostic Exp $
+# $Id: test094.tcl,v 11.16 2002/06/20 19:01:02 sue Exp $
 #
 # TEST	test094
 # TEST	Test using set_dup_compare.
@@ -19,18 +19,13 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	set dbargs [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Test0$tnum: $method ($args) $ndups dups using dupcompare"
-
 	if { [is_btree $method] != 1 && [is_hash $method] != 1 } {
 		puts "Test0$tnum: skipping for method $method."
 		return
 	}
 
+	set txnenv 0
 	set eindex [lsearch -exact $dbargs "-env"]
-	if { $eindex != -1 } {
-		incr eindex
-	}
-
 	# Create the database and open the dictionary
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -40,24 +35,30 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 		set env NULL
 	} else {
 		set testfile test0$tnum-a.db
+		incr eindex
 		set env [lindex $dbargs $eindex]
+		set rpcenv [is_rpcenv $env]
+		if { $rpcenv == 1 } {
+			puts "Test0$tnum: skipping for RPC"
+			return
+		}
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append dbargs " -auto_commit "
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+			reduce_dups nentries ndups
+		}
+		set testdir [get_home $env]
 	}
+	puts "Test0$tnum: $method ($args) $nentries \
+	    with $ndups dups using dupcompare"
+
 	cleanup $testdir $env
 
-	set stat [catch {eval {berkdb_open_noerr -dupcompare test094_cmp \
-	    -dup -dupsort \
-	    -create -mode 0644} $omethod $dbargs $testfile} db]
-	if { $stat == 1 } {
-		#
-		# Only failure we expect is for RPC.   We want to skip
-		# for RPC, but we cannot tell if we are using RPC except
-		# by the error message.
-		#
-		error_check_good dbopen \
-		    [is_substr $errorInfo "meaningless in RPC env"] 1
-		puts "Test0$tnum: skipping for RPC"
-		return
-	}
+	set db [eval {berkdb_open_noerr -dupcompare test094_cmp \
+	    -dup -dupsort -create -mode 0644} $omethod $dbargs {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -76,9 +77,17 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 		set key $str
 		for {set i 0} {$i < $ndups} {incr i} {
 			set data $i:$str
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			set ret [eval {$db put} \
 			    $txn $pflags {$key [chop_data $omethod $data]}]
 			error_check_good put $ret 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 
 		set ret [eval {$db get} $gflags {$key}]
@@ -89,7 +98,15 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	# Now we will get each key from the DB and compare the results
 	# to the original.
 	puts "\tTest0$tnum.b: traverse checking duplicates before close"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dup_check $db $txn $t1 $dlist
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	# Set up second testfile so truncate flag is not needed.
@@ -101,6 +118,7 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	} else {
 		set testfile test0$tnum-b.db
 		set env [lindex $dbargs $eindex]
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -114,6 +132,9 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 
 	# Here is the loop where we put and get each key/data pair
 	set file_list [get_file_list 1]
+	if { [llength $file_list] > $nentries } {
+		set file_list [lrange $file_list 1 $nentries]
+	}
 
 	set count 0
 	foreach f $file_list {
@@ -125,9 +146,17 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 		set key $f
 		for {set i 0} {$i < $ndups} {incr i} {
 			set data $i:$cont
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			set ret [eval {$db put} \
 			    $txn $pflags {$key [chop_data $omethod $data]}]
 			error_check_good put $ret 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 
 		set ret [eval {$db get} $gflags {$key}]
@@ -136,7 +165,16 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "94"} args} {
 	}
 
 	puts "\tTest0$tnum.d: traverse checking duplicates before close"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dup_file_check $db $txn $t1 $dlist
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+		set testdir [get_home $env]
+	}
 	error_check_good db_close [$db close] 0
 
 	# Clean up the test directory, since there's currently

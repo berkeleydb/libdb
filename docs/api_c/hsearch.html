@@ -1,6 +1,7 @@
-<!--$Id: hsearch.so,v 10.21 2001/05/05 01:49:14 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: hsearch.so,v 10.22 2002/08/29 03:24:48 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: hsearch</title>
@@ -85,14 +86,14 @@ should be the allocation of additional memory.
 success, and NULL, setting <b>errno</b>, if the <b>action</b>
 specified was FIND and the item did not appear in the database.
 <h1>Errors</h1>
-<p>The hcreate function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the hcreate function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
-<p>The hsearch function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the hsearch function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The hcreate method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the hcreate method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<p>The hsearch method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the hsearch method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <p>In addition, the <b>hsearch</b> function will fail, setting <b>errno</b>
 to 0, if the <b>action</b> specified was FIND and the item did not appear in
 the database.

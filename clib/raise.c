@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: raise.c,v 11.4 2001/01/25 18:22:37 bostic Exp $";
+static const char revid[] = "$Id: raise.c,v 11.6 2002/01/11 15:51:28 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,5 +28,9 @@ int
 raise(s)
 	int s;
 {
+	/*
+	 * Do not use __os_id(), as it may not return the process ID -- any
+	 * system with kill(3) probably has getpid(3).
+	 */
 	return (kill(getpid(), s));
 }

@@ -1,6 +1,7 @@
-<!--$Id: cursor.so,v 10.18 2001/06/19 19:49:26 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: cursor.so,v 10.20 2002/08/30 20:01:28 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Cursor operations</title>
@@ -21,7 +22,7 @@ individual duplicate data items.  Cursors are used for operating on
 collections of records, for iterating over a database, and for saving
 handles to individual records, so that they can be modified after they
 have been read.
-<p>The <a href="../../api_c/db_cursor.html">DB-&gt;cursor</a> function is the standard interface for opening a cursor
+<p>The <a href="../../api_c/db_cursor.html">DB-&gt;cursor</a> method is the standard interface for opening a cursor
 into a database.  Upon return the cursor is uninitialized -- positioning
 occurs as part of the first cursor operation.
 <p>Once a database cursor has been opened, records may be retrieved (<a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a>),
@@ -30,6 +31,18 @@ stored (<a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a>), and deleted 
 (<a href="../../api_c/dbc_dup.html">DBcursor-&gt;c_dup</a>), equality join (<a href="../../api_c/db_join.html">DB-&gt;join</a>), and a count of
 duplicate data items (<a href="../../api_c/dbc_count.html">DBcursor-&gt;c_count</a>).  Cursors are eventually closed
 using <a href="../../api_c/dbc_close.html">DBcursor-&gt;c_close</a>.
+<!--$Id: m4.methods,v 1.1 2002/08/30 20:00:49 bostic Exp $-->
+<p><table border=1 align=center>
+<tr><th>Database Cursors and Related Methods</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/db_cursor.html">DB-&gt;cursor</a></td><td>Create a cursor handle</td></tr>
+<tr><td><a href="../../api_c/dbc_close.html">DBcursor-&gt;c_close</a></td><td>Close a cursor</td></tr>
+<tr><td><a href="../../api_c/dbc_count.html">DBcursor-&gt;c_count</a></td><td>Return count of duplicates</td></tr>
+<tr><td><a href="../../api_c/dbc_del.html">DBcursor-&gt;c_del</a></td><td>Delete by cursor</td></tr>
+<tr><td><a href="../../api_c/dbc_dup.html">DBcursor-&gt;c_dup</a></td><td>Duplicate a cursor</td></tr>
+<tr><td><a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a></td><td>Retrieve by cursor</td></tr>
+<tr><td><a href="../../api_c/dbc_get.html">DBcursor-&gt;c_pget</a></td><td>Retrieve by cursor</td></tr>
+<tr><td><a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a></td><td>Store by cursor</td></tr>
+</table>
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am/second.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curget.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

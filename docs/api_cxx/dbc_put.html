@@ -1,6 +1,7 @@
-<!--$Id: dbc_put.so,v 10.38 2001/10/22 15:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_put.so,v 10.42 2002/08/29 03:24:36 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbc::put</title>
@@ -109,7 +110,8 @@ data items.
 <p>The DB_NODUPDATA flag may not be specified to the Queue or Recno
 access methods.
 </dl>
-<p>Otherwise, the Dbc::put method either returns a non-zero error value or throws an exception that
+<p>
+Otherwise, the Dbc::put method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <p>If Dbc::put fails for any reason, the state of the cursor will be
 unchanged.  If Dbc::put succeeds and an item is inserted into the
@@ -117,9 +119,6 @@ database, the cursor is always positioned to refer to the newly inserted
 item.
 <h1>Errors</h1>
 <p>The Dbc::put method may fail and throw an exception or return a non-zero error for the following conditions:
-<p><dl compact>
-<p><dt>DB_LOCK_DEADLOCK<dd>The operation was selected to resolve a deadlock.
-</dl>
 <p><dl compact>
 <p><dt>EACCES<dd>An attempt was made to modify a read-only database.
 </dl>
@@ -135,22 +134,19 @@ large to fit.
 <p><dt>EPERM  <dd>Write attempted on read-only cursor when the <a href="../api_cxx/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flag was
 specified to <a href="../api_cxx/env_open.html">DbEnv::open</a>.
 </dl>
+<p>If the operation was selected to resolve a deadlock, the
+Dbc::put method will fail and
+and either return <a href="../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> or
+throw a <a href="../api_cxx/deadlock_class.html">DbDeadlockException</a> exception.
 <p>The Dbc::put method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Dbc::put method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the Dbc::put method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
 <a href="../api_cxx/dbc_class.html">Dbc</a>
 <h1>See Also</h1>
-<a href="../api_cxx/dbc_close.html">Dbc::close</a>,
-<a href="../api_cxx/dbc_count.html">Dbc::count</a>,
-<a href="../api_cxx/dbc_del.html">Dbc::del</a>,
-<a href="../api_cxx/dbc_dup.html">Dbc::dup</a>,
-<a href="../api_cxx/dbc_get.html">Dbc::get</a>,
-<a href="../api_cxx/dbc_get.html">Dbc::pget</a>,
-and
-<a href="../api_cxx/dbc_put.html">Dbc::put</a>.
+<a href="../api_cxx/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

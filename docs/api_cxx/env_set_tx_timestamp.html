@@ -1,6 +1,7 @@
-<!--$Id: env_set_tx_timestamp.so,v 10.12 2001/10/22 15:24:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_tx_timestamp.so,v 10.15 2002/08/18 21:16:32 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::set_tx_timestamp</title>
@@ -33,8 +34,11 @@ Time; that is, the Epoch.
 <p>Once a database environment has been upgraded to a new version of Berkeley DB
 involving a log format change (see <a href="../ref/upgrade/process.html">Upgrading Berkeley DB installations</a>), it is no longer possible to recover
 to a specific time before that upgrade.
-<p>The DbEnv::set_tx_timestamp interface may be used only to configure Berkeley DB before
-the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
+<p>The DbEnv::set_tx_timestamp method configures operations performed using the specified
+<a href="../api_cxx/env_class.html">DbEnv</a> handle, not all operations performed on the underlying
+database environment.
+<p>The DbEnv::set_tx_timestamp interface may not be called after the <a href="../api_cxx/env_open.html">DbEnv::open</a>
+interface is called.
 <p>The DbEnv::set_tx_timestamp method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
@@ -45,27 +49,14 @@ encapsulates a non-zero error value on failure, and returns 0 on success.
 currently present in the environment.
 </dl>
 <p>The DbEnv::set_tx_timestamp method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::set_tx_timestamp method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the DbEnv::set_tx_timestamp method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/txn_class.html">DbTxn</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/txn_class.html">DbTxn</a>
 <h1>See Also</h1>
-<a href="../api_cxx/env_set_tx_max.html">DbEnv::set_tx_max</a>,
-<a href="../api_cxx/env_set_tx_recover.html">DbEnv::set_tx_recover</a>,
-<a href="../api_cxx/env_set_tx_timestamp.html">DbEnv::set_tx_timestamp</a>,
-<a href="../api_cxx/txn_abort.html">DbTxn::abort</a>,
-<a href="../api_cxx/txn_begin.html">DbEnv::txn_begin</a>,
-<a href="../api_cxx/txn_checkpoint.html">DbEnv::txn_checkpoint</a>,
-<a href="../api_cxx/txn_commit.html">DbTxn::commit</a>,
-<a href="../api_cxx/txn_discard.html">DbTxn::discard</a>,
-<a href="../api_cxx/txn_id.html">DbTxn::id</a>,
-<a href="../api_cxx/txn_prepare.html">DbTxn::prepare</a>,
-<a href="../api_cxx/txn_recover.html">DbEnv::txn_recover</a>,
-<a href="../api_cxx/txn_set_timeout.html">DbTxn::set_timeout</a>
-and
-<a href="../api_cxx/txn_stat.html">DbEnv::txn_stat</a>.
+<a href="../api_cxx/txn_list.html">Transaction Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

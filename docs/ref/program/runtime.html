@@ -1,6 +1,7 @@
-<!--$Id: runtime.so,v 10.28 2001/08/07 01:42:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: runtime.so,v 10.32 2002/05/16 18:55:37 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Run-time configuration</title>
@@ -10,13 +11,15 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
-<td align=right><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/program/compatible.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Run-time configuration</h1>
-<p>There are a few interfaces that support run-time configuration of Berkeley DB
-by allowing applications to intercept Berkeley DB calls to underlying library
-or system call functionality:
+<p>It is possible to configure Berkeley DB at run-time so applications can
+redirect all Berkeley DB calls to underlying library or system call
+functionality.  For example, an application might want Berkeley DB to call
+debugging memory allocation routines rather than the standard C library
+interfaces.  The following interfaces support this functionality:
 <p><blockquote><pre><a href="../../api_c/set_func_close.html">db_env_set_func_close</a>
 <a href="../../api_c/set_func_dirfree.html">db_env_set_func_dirfree</a>
 <a href="../../api_c/set_func_dirlist.html">db_env_set_func_dirlist</a>
@@ -35,14 +38,17 @@ or system call functionality:
 <a href="../../api_c/set_func_unmap.html">db_env_set_func_unmap</a>
 <a href="../../api_c/set_func_write.html">db_env_set_func_write</a>
 <a href="../../api_c/set_func_yield.html">db_env_set_func_yield</a></pre></blockquote>
-<p>These interfaces are available only from the Berkeley DB C language API.
+<p>These interfaces are available only from the Berkeley DB C language API, and
+are not available from all of the operating systems Berkeley DB supports.
 <p>A not-uncommon problem for applications is the new API in Solaris 2.6
 for manipulating large files.  Because this API was not part of Solaris
 2.5, it is difficult to create a single binary that takes advantage of
 the large file functionality in Solaris 2.6, but still runs on Solaris
 2.5.  <a href="solaris.txt">Example code</a> that supports this is
-included in the Berkeley DB distribution.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/program/extending.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+included in the Berkeley DB distribution, however, the example code was
+written using previous versions of the Berkeley DB APIs, and is only useful
+as an example.
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/program/compatible.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/program/faq.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

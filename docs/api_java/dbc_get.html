@@ -1,6 +1,7 @@
-<!--$Id: dbc_get.so,v 10.68 2001/10/22 15:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_get.so,v 10.74 2002/08/29 03:24:35 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbc.get</title>
@@ -50,9 +51,9 @@ will be skipped during a sequential scan.
 <p>The <b>flags</b> value must be set to one of the following values:
 <p><dl compact>
 <p><dt><a name="Db.DB_CURRENT">Db.DB_CURRENT</a><dd>Return the key/data pair to which the cursor refers.
-<p>If the cursor key/data pair was deleted, Dbc.get will return
-<a href="../ref/program/errorret.html#DB_KEYEMPTY">Db.DB_KEYEMPTY</a>.
-<p>If the cursor is not yet initialized, the Dbc.get method throws an exception that encapsulates EINVAL.
+<p>
+If the cursor key/data pair was deleted, the Dbc.get method will return Db.DB_KEYEMPTY.
+If the cursor is not yet initialized, the Dbc.get method throws an exception that encapsulates Db.EINVAL.
 <p><dt><a name="Db.DB_FIRST">Db.DB_FIRST</a>, <a name="Db.DB_LAST">Db.DB_LAST</a><dd>The cursor is set to refer to the first (last) key/data pair of the
 database, and that pair is returned.  In the presence of duplicate key
 values, the first (last) data item in the set of duplicates is returned.
@@ -60,7 +61,8 @@ values, the first (last) data item in the set of duplicates is returned.
 Db.DB_FIRST (Db.DB_LAST) flags will ignore any keys that exist
 but were never explicitly created by the application, or were created and
 later deleted.
-<p>If the database is empty, Dbc.get will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
+<p>
+If the database is empty, the Dbc.get method will return Db.DB_NOTFOUND.
 <p><dt><a name="Db.DB_GET_BOTH">Db.DB_GET_BOTH</a><dd>The Db.DB_GET_BOTH flag is identical to the Db.DB_SET flag,
 except that both the key and the data arguments must be matched by the
 key and data item in the database.
@@ -96,13 +98,14 @@ the key may not change.
 Db.DB_NEXT (Db.DB_PREV) flag will skip any keys that exist
 but were never explicitly created by the application, or those that were
 created and later deleted.
-<p>If the cursor is already on the last (first) record in the database,
-Dbc.get will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
+<p>
+If the cursor is already on the last (first) record in the database, the Dbc.get method will return Db.DB_NOTFOUND.
 <p><dt><a name="Db.DB_NEXT_DUP">Db.DB_NEXT_DUP</a><dd>If the next key/data pair of the database is a duplicate data record for
 the current key/data pair, the cursor is moved to the next key/data pair
-of the database, and that pair is returned.  Otherwise, Dbc.get
-will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
-<p>If the cursor is not yet initialized, the Dbc.get method throws an exception that encapsulates EINVAL.
+of the database, and that pair is returned.
+If the next key/data pair of the database is not a duplicate data record
+for the current key/data pair, the Dbc.get method will return Db.DB_NOTFOUND.
+If the cursor is not yet initialized, the Dbc.get method throws an exception that encapsulates Db.EINVAL.
 <p><dt><a name="Db.DB_NEXT_NODUP">Db.DB_NEXT_NODUP</a>, <a name="Db.DB_PREV_NODUP">Db.DB_PREV_NODUP</a><dd>If the cursor is not yet initialized, Db.DB_NEXT_NODUP
 (Db.DB_PREV_NODUP) is identical to Db.DB_FIRST
 (Db.DB_LAST).  Otherwise, the cursor is moved to the next (previous)
@@ -111,20 +114,19 @@ non-duplicate key of the database, and that key/data pair is returned.
 Db.DB_NEXT_NODUP (Db.DB_PREV_NODUP) flags will ignore any keys
 that exist but were never explicitly created by the application, or those
 that were created and later deleted.
-<p>If no non-duplicate key/data pairs occur after (before) the cursor
-position in the database, Dbc.get will return <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
+<p>
+If no non-duplicate key/data pairs occur after (before) the cursor
+position in the database, the Dbc.get method will return Db.DB_NOTFOUND.
 <p><dt><a name="Db.DB_SET">Db.DB_SET</a><dd>Move the cursor to the specified key/data pair of the database, and
 return the datum associated with the given key.
 <p>In the presence of duplicate key values, Dbc.get will return the
 first data item for the given key.
-<p>If the database is a Queue or Recno database, and the specified key exists,
-but was never explicitly created by the application or was later deleted,
-Dbc.get will return <a href="../ref/program/errorret.html#DB_KEYEMPTY">Db.DB_KEYEMPTY</a>.
-<p>If no matching keys are found, Dbc.get will return
-<a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
+If no matching keys are found, the Dbc.get method will return Db.DB_NOTFOUND.
+If the database is a Queue or Recno database, and the specified key exists,
+but was never explicitly created by the application or was later deleted, the Dbc.get method will return Db.DB_KEYEMPTY.
 <p><dt><a name="Db.DB_SET_RANGE">Db.DB_SET_RANGE</a><dd>The Db.DB_SET_RANGE flag is identical to the Db.DB_SET flag,
-except that the key is returned as well as the data item; and, in the case
-of the Btree access method, the returned key/data pair is the smallest
+except that in the case of the Btree access method, the key is returned
+as well as the data item and the returned key/data pair is the smallest
 key greater than or equal to the specified key (as determined by the
 comparison method), permitting partial key matches and range
 searches.
@@ -147,7 +149,7 @@ database was opened.
 argument refers is filled with the specified key's data items.  If the
 first data item associated with the key cannot fit into the buffer, the
 size field of the <b>data</b> argument is set to the length needed to
-retrieve it, and a <a href="../api_java/mem_class.html">DbMemoryException</a> is thrown.  Subsequent calls with both the
+retrieve it, and a <a href="../api_java/memp_class.html">DbMemoryException</a> is thrown.  Subsequent calls with both the
 Db.DB_NEXT_DUP and Db.DB_MULTIPLE flags specified will return
 additional data items associated with the current key or
 <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a> if there is no additional data items to return.
@@ -171,7 +173,7 @@ made into secondary indices using the <a href="../api_java/db_associate.html">Db
 <b>data</b> argument refers is filled with key and data pairs.  If the
 first key and data pair cannot fit into the buffer, the size field of
 the <b>data</b> argument is set to the length needed to retrieve them,
-and a <a href="../api_java/mem_class.html">DbMemoryException</a> is thrown.
+and a <a href="../api_java/memp_class.html">DbMemoryException</a> is thrown.
 <p>The buffer to which the <b>data</b> argument refers should be large
 relative to the page size of the underlying database, aligned for
 unsigned integer access, and be a multiple of 1024 bytes in size.
@@ -188,7 +190,8 @@ cycle by acquiring the write lock during the read part of the cycle so
 that another thread of control acquiring a read lock for the same item,
 in its own read-modify-write cycle, will not result in deadlock.
 </dl>
-<p>Otherwise, the Dbc.get method throws an exception that encapsulates a non-zero error value on
+<p>
+Otherwise, the Dbc.get method throws an exception that encapsulates a non-zero error value on
 failure.
 <p>If Dbc.get fails for any reason, the state of the cursor will be
 unchanged.
@@ -208,22 +211,15 @@ Dbc.get method will fail and
 throw a <a href="../api_java/deadlock_class.html">DbDeadlockException</a> exception.
 <p>If the requested item could not be returned due to insufficient memory,
 the Dbc.get method will fail and
-throw a <a href="../api_java/mem_class.html">DbMemoryException</a> exception.
+throw a <a href="../api_java/memp_class.html">DbMemoryException</a> exception.
 <p>The Dbc.get method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Dbc.get method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the Dbc.get method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
 <a href="../api_java/dbc_class.html">Dbc</a>
 <h1>See Also</h1>
-<a href="../api_java/dbc_close.html">Dbc.close</a>,
-<a href="../api_java/dbc_count.html">Dbc.count</a>,
-<a href="../api_java/dbc_del.html">Dbc.del</a>,
-<a href="../api_java/dbc_dup.html">Dbc.dup</a>,
-<a href="../api_java/dbc_get.html">Dbc.get</a>,
-<a href="../api_java/dbc_get.html">Dbc.pget</a>,
-and
-<a href="../api_java/dbc_put.html">Dbc.put</a>.
+<a href="../api_java/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

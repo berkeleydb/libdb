@@ -1,6 +1,7 @@
-<!--$Id: pagesize.so,v 10.21 2001/05/23 21:03:30 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: pagesize.so,v 10.22 2002/02/11 14:55:53 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Selecting a page size</title>
@@ -16,13 +17,13 @@
 <p>
 <h1 align=center>Selecting a page size</h1>
 <p>The size of the pages used in the underlying database can be specified by
-calling the <a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a> function.  The minimum page size is 512 bytes
+calling the <a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a> method.  The minimum page size is 512 bytes
 and the maximum page size is 64K bytes, and must be a power of two.  If
 no page size is specified by the application, a page size is selected
 based on the underlying filesystem I/O block size.  (A page size selected
 in this way has a lower limit of 512 bytes and an upper limit of 16K
 bytes.)
-<p>There are four issues to consider when selecting a pagesize: overflow
+<p>There are several issues to consider when selecting a pagesize: overflow
 record sizes, locking, I/O efficiency, and recoverability.
 <p>First, the page size implicitly sets the size of an overflow record.
 Overflow records are key or data items that are too large to fit on a
@@ -42,19 +43,30 @@ modifying records on the same page, can impact the performance of your
 application.
 <p>Third, the page size specifies the granularity of I/O from the database
 to the operating system.  Berkeley DB will give a page-sized unit of bytes to
-the operating system to be scheduled for writing to the disk.  For many
-operating systems, there is an internal <b>block size</b> which is used
-as the granularity of I/O from the operating system to the disk.  If the
-page size is smaller than the block size, the operating system may be
-forced to read a block from the disk, copy the page into the buffer it
-read, and then write out the block to disk.  Obviously, it will be much
-more efficient for Berkeley DB to write filesystem-sized blocks to the operating
-system and for the operating system to write those same blocks to the
-disk.  Selecting a page size that is too small, and which causes the
-operating system to coalesce or otherwise manipulate Berkeley DB pages, can
-impact the performance of your application.  Alternatively, selecting a
-page size that is too large may cause Berkeley DB and the operating system to
-write more data than is strictly necessary.
+the operating system to be scheduled for reading/writing from/to the
+disk.  For many operating systems, there is an internal <b>block
+size</b> which is used as the granularity of I/O from the operating system
+to the disk.  Generally, it will be more efficient for Berkeley DB to write
+filesystem-sized blocks to the operating system and for the operating
+system to write those same blocks to the disk.
+<p>Selecting a database page size smaller than the filesystem block size
+may cause the operating system to coalesce or otherwise manipulate Berkeley DB
+pages and can impact the performance of your application.  When the page
+size is smaller than the filesystem block size and a page written by
+Berkeley DB is not found in the operating system's cache, the operating system
+may be forced to read a block from the disk, copy the page into the
+block it read, and then write out the block to disk, rather than simply
+writing the page to disk.  Additionally, as the operating system is
+reading more data into its buffer cache than is strictly necessary to
+satisfy each Berkeley DB request for a page, the operating system buffer cache
+may be wasting memory.
+<p>Alternatively, selecting a page size larger than the filesystem block
+size may cause the operating system to read more data than necessary.
+On some systems, reading filesystem blocks sequentially may cause the
+operating system to begin performing read-ahead.  If requesting a single
+database page implies reading enough filesystem blocks to satisfy the
+operating system's criteria for read-ahead, the operating system may do
+more I/O than is required.
 <p>Fourth, when using the Berkeley DB Transactional Data Store product, the page size may affect the errors
 from which your database can recover  See
 <a href="../../ref/transapp/reclimit.html">Berkeley DB Recoverability</a> for more

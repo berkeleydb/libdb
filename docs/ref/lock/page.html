@@ -1,6 +1,7 @@
-<!--$Id: page.so,v 10.18 2001/08/18 16:53:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: page.so,v 10.19 2002/06/01 23:42:12 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Locking granularity</title>
@@ -11,13 +12,13 @@
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
-<td align=right><a href="../../ref/lock/timeout.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/notxn.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/lock/deaddbg.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/notxn.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Locking granularity</h1>
 <p>With the exception of the Queue access method, the Berkeley DB access methods
 do page-level locking.  The size of pages in a database may be set when
-the database is created by calling the <a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a> function.  If
+the database is created by calling the <a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a> method.  If
 not specified by the application, Berkeley DB selects a page size that will
 provide the best I/O performance by setting the page size equal to the
 block size of the underlying file system.  Selecting a smaller page size
@@ -64,7 +65,7 @@ until the update completes.
 the key value also acts as a lock on all duplicates of that key.
 Therefore, two conflicting threads of control cannot access the same
 duplicate set simultaneously.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/timeout.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/notxn.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/lock/deaddbg.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/notxn.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

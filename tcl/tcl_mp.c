@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_mp.c,v 11.30 2001/09/27 22:50:10 ubell Exp $";
+static const char revid[] = "$Id: tcl_mp.c,v 11.39 2002/08/06 06:21:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,7 @@ static const char revid[] = "$Id: tcl_mp.c,v 11.30 2001/09/27 22:50:10 ubell Exp
 #endif
 
 #include "db_int.h"
-#include "tcl_db.h"
+#include "dbinc/tcl_db.h"
 
 /*
  * Prototypes for procedures defined later in this file:
@@ -45,7 +45,7 @@ static int      tcl_PgIsset __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
  */
 void
 _MpInfoDelete(interp, mpip)
-	Tcl_Interp *interp;             /* Interpreter */
+	Tcl_Interp *interp;		/* Interpreter */
 	DBTCL_INFO *mpip;		/* Info for mp */
 {
 	DBTCL_INFO *nextp, *p;
@@ -63,6 +63,7 @@ _MpInfoDelete(interp, mpip)
 	}
 }
 
+#if CONFIG_TEST
 /*
  * tcl_MpSync --
  *
@@ -76,25 +77,28 @@ tcl_MpSync(interp, objc, objv, envp)
 	DB_ENV *envp;			/* Environment pointer */
 {
 
-	DB_LSN lsn;
+	DB_LSN lsn, *lsnp;
 	int result, ret;
 
 	result = TCL_OK;
+	lsnp = NULL;
 	/*
 	 * No flags, must be 3 args.
 	 */
-	if (objc != 3) {
+	if (objc == 3) {
+		result = _GetLsn(interp, objv[2], &lsn);
+		if (result == TCL_ERROR)
+			return (result);
+		lsnp = &lsn;
+	}
+	else if (objc != 2) {
 		Tcl_WrongNumArgs(interp, 2, objv, "lsn");
 		return (TCL_ERROR);
 	}
 
-	result = _GetLsn(interp, objv[2], &lsn);
-	if (result == TCL_ERROR)
-		return (result);
-
 	_debug_check();
-	ret = envp->memp_sync(envp, &lsn);
-	result = _ReturnSetup(interp, ret, "memp sync");
+	ret = envp->memp_sync(envp, lsnp);
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp sync");
 	return (result);
 }
 
@@ -133,7 +137,7 @@ tcl_MpTrickle(interp, objc, objv, envp)
 
 	_debug_check();
 	ret = envp->memp_trickle(envp, percent, &pages);
-	result = _ReturnSetup(interp, ret, "memp trickle");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp trickle");
 	if (result == TCL_ERROR)
 		return (result);
 
@@ -267,7 +271,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 
 	_debug_check();
 	if ((ret = envp->memp_fcreate(envp, &mpf, 0)) != 0) {
-		result = _ReturnSetup(interp, ret, "mpool");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "mpool");
 		_DeleteInfo(ip);
 		goto error;
 	}
@@ -277,7 +281,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 	 * Interface doesn't currently support DB_MPOOLFILE configuration.
 	 */
 	if ((ret = mpf->open(mpf, file, flag, mode, (size_t)pgsize)) != 0) {
-		result = _ReturnSetup(interp, ret, "mpool");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "mpool");
 		_DeleteInfo(ip);
 
 		(void)mpf->close(mpf, 0);
@@ -331,7 +335,7 @@ tcl_MpStat(interp, objc, objv, envp)
 	}
 	_debug_check();
 	ret = envp->memp_stat(envp, &sp, &fsp, 0);
-	result = _ReturnSetup(interp, ret, "memp stat");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp stat");
 	if (result == TCL_ERROR)
 		return (result);
 
@@ -343,35 +347,48 @@ tcl_MpStat(interp, objc, objv, envp)
 	/*
 	 * MAKE_STAT_LIST assumes 'res' and 'error' label.
 	 */
-	MAKE_STAT_LIST("Region size", sp->st_regsize);
 	MAKE_STAT_LIST("Cache size (gbytes)", sp->st_gbytes);
 	MAKE_STAT_LIST("Cache size (bytes)", sp->st_bytes);
+	MAKE_STAT_LIST("Number of caches", sp->st_ncache);
+	MAKE_STAT_LIST("Region size", sp->st_regsize);
+	MAKE_STAT_LIST("Pages mapped into address space", sp->st_map);
 	MAKE_STAT_LIST("Cache hits", sp->st_cache_hit);
 	MAKE_STAT_LIST("Cache misses", sp->st_cache_miss);
-	MAKE_STAT_LIST("Number of caches", sp->st_ncache);
-	MAKE_STAT_LIST("Pages mapped into address space", sp->st_map);
 	MAKE_STAT_LIST("Pages created", sp->st_page_create);
 	MAKE_STAT_LIST("Pages read in", sp->st_page_in);
 	MAKE_STAT_LIST("Pages written", sp->st_page_out);
 	MAKE_STAT_LIST("Clean page evictions", sp->st_ro_evict);
 	MAKE_STAT_LIST("Dirty page evictions", sp->st_rw_evict);
+	MAKE_STAT_LIST("Dirty pages trickled", sp->st_page_trickle);
+	MAKE_STAT_LIST("Cached pages", sp->st_pages);
+	MAKE_STAT_LIST("Cached clean pages", sp->st_page_clean);
+	MAKE_STAT_LIST("Cached dirty pages", sp->st_page_dirty);
 	MAKE_STAT_LIST("Hash buckets", sp->st_hash_buckets);
 	MAKE_STAT_LIST("Hash lookups", sp->st_hash_searches);
 	MAKE_STAT_LIST("Longest hash chain found", sp->st_hash_longest);
 	MAKE_STAT_LIST("Hash elements examined", sp->st_hash_examined);
-	MAKE_STAT_LIST("Cached clean pages", sp->st_page_clean);
-	MAKE_STAT_LIST("Cached dirty pages", sp->st_page_dirty);
-	MAKE_STAT_LIST("Dirty pages trickled", sp->st_page_trickle);
-	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_STAT_LIST("Number of hash bucket nowaits", sp->st_hash_nowait);
+	MAKE_STAT_LIST("Number of hash bucket waits", sp->st_hash_wait);
+	MAKE_STAT_LIST("Maximum number of hash bucket waits",
+	    sp->st_hash_max_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_STAT_LIST("Page allocations", sp->st_alloc);
+	MAKE_STAT_LIST("Buckets examined during allocation",
+	    sp->st_alloc_buckets);
+	MAKE_STAT_LIST("Maximum buckets examined during allocation",
+	    sp->st_alloc_max_buckets);
+	MAKE_STAT_LIST("Pages examined during allocation", sp->st_alloc_pages);
+	MAKE_STAT_LIST("Maximum pages examined during allocation",
+	    sp->st_alloc_max_pages);
+
 	/*
 	 * Save global stat list as res1.  The MAKE_STAT_LIST
 	 * macro assumes 'res' so we'll use that to build up
 	 * our per-file sublist.
 	 */
 	res1 = res;
-	savefsp = fsp;
-	for (; fsp != NULL && *fsp != NULL; fsp++) {
+	for (savefsp = fsp; fsp != NULL && *fsp != NULL; fsp++) {
 		res = Tcl_NewObj();
 		result = _SetListElem(interp, res, "File Name",
 		    strlen("File Name"), (*fsp)->file_name,
@@ -379,16 +396,16 @@ tcl_MpStat(interp, objc, objv, envp)
 		if (result != TCL_OK)
 			goto error;
 		MAKE_STAT_LIST("Page size", (*fsp)->st_pagesize);
-		MAKE_STAT_LIST("Cache Hits", (*fsp)->st_cache_hit);
-		MAKE_STAT_LIST("Cache Misses", (*fsp)->st_cache_miss);
 		MAKE_STAT_LIST("Pages mapped into address space",
 		    (*fsp)->st_map);
+		MAKE_STAT_LIST("Cache hits", (*fsp)->st_cache_hit);
+		MAKE_STAT_LIST("Cache misses", (*fsp)->st_cache_miss);
 		MAKE_STAT_LIST("Pages created", (*fsp)->st_page_create);
 		MAKE_STAT_LIST("Pages read in", (*fsp)->st_page_in);
 		MAKE_STAT_LIST("Pages written", (*fsp)->st_page_out);
 		/*
-		 * Now that we have a complete "per-file" stat
-		 * list, append that to the other list.
+		 * Now that we have a complete "per-file" stat list, append
+		 * that to the other list.
 		 */
 		result = Tcl_ListObjAppendElement(interp, res1, res);
 		if (result != TCL_OK)
@@ -396,9 +413,9 @@ tcl_MpStat(interp, objc, objv, envp)
 	}
 	Tcl_SetObjResult(interp, res1);
 error:
-	__os_free(envp, sp, sizeof(*sp));
+	free(sp);
 	if (savefsp != NULL)
-		__os_free(envp, savefsp, 0);
+		free(savefsp);
 	return (result);
 }
 
@@ -408,17 +425,21 @@ error:
  */
 static int
 mp_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;          /* Mp handle */
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	ClientData clientData;		/* Mp handle */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *mpcmds[] = {
-		"close",	"fsync",	"get",
+		"close",
+		"fsync",
+		"get",
 		NULL
 	};
 	enum mpcmds {
-		MPCLOSE,	MPFSYNC,	MPGET
+		MPCLOSE,
+		MPFSYNC,
+		MPGET
 	};
 	DB_MPOOLFILE *mp;
 	int cmdindex, length, result, ret;
@@ -458,7 +479,8 @@ mp_Cmd(clientData, interp, objc, objv)
 		}
 		_debug_check();
 		ret = mp->close(mp, 0);
-		result = _ReturnSetup(interp, ret, "mp close");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "mp close");
 		_MpInfoDelete(interp, mpip);
 		(void)Tcl_DeleteCommand(interp, mpip->i_name);
 		_DeleteInfo(mpip);
@@ -497,11 +519,15 @@ tcl_MpGet(interp, objc, objv, mp, mpip)
 	DBTCL_INFO *mpip;		/* mp info pointer */
 {
 	static char *mpget[] = {
-		"-create",	"-last",	"-new",
+		"-create",
+		"-last",
+		"-new",
 		NULL
 	};
 	enum mpget {
-		MPGET_CREATE,	MPGET_LAST,	MPGET_NEW
+		MPGET_CREATE,
+		MPGET_LAST,
+		MPGET_NEW
 	};
 
 	DBTCL_INFO *ip;
@@ -570,7 +596,7 @@ tcl_MpGet(interp, objc, objv, mp, mpip)
 	_debug_check();
 	pgno = ipgno;
 	ret = mp->get(mp, &pgno, flag, &page);
-	result = _ReturnSetup(interp, ret, "mpool get");
+	result = _ReturnSetup(interp, ret, DB_RETOK_MPGET(ret), "mpool get");
 	if (result == TCL_ERROR)
 		_DeleteInfo(ip);
 	else {
@@ -598,10 +624,10 @@ error:
  */
 static int
 pg_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;          /* Page handle */
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	ClientData clientData;		/* Page handle */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *pgcmds[] = {
 		"init",
@@ -695,11 +721,15 @@ tcl_Pg(interp, objc, objv, page, mp, pgip, putop)
 	int putop;			/* Operation */
 {
 	static char *pgopt[] = {
-		"-clean",	"-dirty",	"-discard",
+		"-clean",
+		"-dirty",
+		"-discard",
 		NULL
 	};
 	enum pgopt {
-		PGCLEAN,	PGDIRTY,	PGDISCARD
+		PGCLEAN,
+		PGDIRTY,
+		PGDISCARD
 	};
 	u_int32_t flag;
 	int i, optindex, result, ret;
@@ -731,7 +761,7 @@ tcl_Pg(interp, objc, objv, page, mp, pgip, putop)
 	else
 		ret = mp->set(mp, page, flag);
 
-	result = _ReturnSetup(interp, ret, "page");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "page");
 
 	if (putop) {
 		(void)Tcl_DeleteCommand(interp, pgip->i_name);
@@ -831,3 +861,4 @@ tcl_PgIsset(interp, objc, objv, page, pgip)
 	Tcl_SetObjResult(interp, res);
 	return (result);
 }
+#endif

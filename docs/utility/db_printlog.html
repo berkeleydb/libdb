@@ -1,6 +1,7 @@
-<!--$Id: db_printlog.so,v 10.11 2001/09/28 15:09:44 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_printlog.so,v 10.14 2002/08/24 18:24:53 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_printlog</title>
@@ -18,7 +19,7 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_printlog [<b>-NrV</b>] [<b>-h home</b>]</pre></h3>
+<h3><pre>db_printlog [<b>-NrV</b>] [<b>-h home</b>] [<b>-P password</b>]</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_printlog utility is a debugging utility that dumps Berkeley DB
@@ -27,10 +28,15 @@ log files in a human-readable format.
 <p><dl compact>
 <p><dt><b>-h</b><dd>Specify a home directory for the database environment; by
 default, the current working directory is used.
-<p><dt><b>-N</b><dd>Do not acquire shared region locks while running.  Other problems, such
-as potentially fatal errors in Berkeley DB, will be ignored as well.  This
-option is intended only for debugging errors, and should not be used
-under any other circumstances.
+<p><dt><b>-N</b><dd>Do not acquire shared region mutexes while running.  Other problems,
+such as potentially fatal errors in Berkeley DB, will be ignored as well.
+This option is intended only for debugging errors, and should not be
+used under any other circumstances.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-r</b><dd>Read the log files in reverse order.
 <p><dt><b>-V</b><dd>Write the library version number to the standard output, and exit.
 </dl>
@@ -52,18 +58,6 @@ interrupt signal (SIGINT).
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-<a href="../utility/db_dump.html">db_dump</a>,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,6 +1,7 @@
-<!--$Id: open.so,v 10.29 2001/05/07 19:28:40 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: open.so,v 10.30 2002/06/24 14:50:55 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Opening a database</title>
@@ -14,7 +15,7 @@
 </td></tr></table>
 <p>
 <h1 align=center>Opening a database</h1>
-<p>Opening a database is done in two steps: first, a <a href="../../api_c/db_create.html">DB</a> handle is
+<p>Opening a database is done in two steps: first, a <a href="../../api_c/db_class.html">DB</a> handle is
 created using the Berkeley DB <a href="../../api_c/db_create.html">db_create</a> interface, and then the
 actual database is opened using the <a href="../../api_c/db_open.html">DB-&gt;open</a> function.
 <p>The <a href="../../api_c/db_create.html">db_create</a> interface takes three arguments:
@@ -60,8 +61,8 @@ main()
 		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
 	}
-	if ((ret = dbp-&gt;open(
-	    dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp-&gt;open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp-&gt;err(dbp, ret, "%s", DATABASE);
 		goto err;
 	}</b>

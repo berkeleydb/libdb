@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_iface.c,v 11.58 2001/11/16 16:32:34 bostic Exp $";
+static const char revid[] = "$Id: db_iface.c,v 11.77 2002/08/08 03:57:47 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,11 +16,11 @@ static const char revid[] = "$Id: db_iface.c,v 11.58 2001/11/16 16:32:34 bostic 
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_am.h"
-#include "btree.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_am.h"
 
 static int __db_curinval __P((const DB_ENV *));
+static int __db_fnl __P((const DB_ENV *, const char *));
 static int __db_rdonly __P((const DB_ENV *, const char *));
 static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
 
@@ -29,9 +29,10 @@ static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
  * specified as such or if we're a client in a replicated environment and
  * we don't have the special "client-writer" designation.
  */
-#define	IS_READONLY(D)						\
-    F_ISSET((D), DB_AM_RDONLY) ||				\
-    (F_ISSET((D)->dbenv, DB_ENV_REP_CLIENT) && !F_ISSET((D), DB_CL_WRITER))
+#define	IS_READONLY(dbp)						\
+    (F_ISSET(dbp, DB_AM_RDONLY) ||					\
+    (F_ISSET((dbp)->dbenv, DB_ENV_REP_CLIENT) &&			\
+    !F_ISSET((dbp), DB_AM_CL_WRITER)))
 
 /*
  * __db_cursorchk --
@@ -44,6 +45,13 @@ __db_cursorchk(dbp, flags)
 	const DB *dbp;
 	u_int32_t flags;
 {
+	/* DB_DIRTY_READ is the only valid bit-flag and requires locking. */
+	if (LF_ISSET(DB_DIRTY_READ)) {
+		if (!LOCKING_ON(dbp->dbenv))
+			return (__db_fnl(dbp->dbenv, "DB->cursor"));
+		LF_CLR(DB_DIRTY_READ);
+	}
+
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case 0:
@@ -151,11 +159,8 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	 */
 	dirty = 0;
 	if (LF_ISSET(DB_DIRTY_READ | DB_RMW)) {
-		if (!LOCKING_ON(dbp->dbenv)) {
-			__db_err(dbp->dbenv,
-		    "the DB_DIRTY_READ and DB_RMW flags require locking");
-			return (EINVAL);
-		}
+		if (!LOCKING_ON(dbp->dbenv))
+			return (__db_fnl(dbp->dbenv, "DBcursor->c_get"));
 		if (LF_ISSET(DB_DIRTY_READ))
 			dirty = 1;
 		LF_CLR(DB_DIRTY_READ | DB_RMW);
@@ -202,11 +207,18 @@ multi_err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 1));
 			goto err;
 		break;
 	case DB_GET_RECNO:
-		if (!F_ISSET(dbp, DB_BT_RECNUM))
+		/*
+		 * The one situation in which this might be legal with a
+		 * non-RECNUM dbp is if dbp is a secondary and its primary is
+		 * DB_AM_RECNUM.
+		 */
+		if (!F_ISSET(dbp, DB_AM_RECNUM) &&
+		    (!F_ISSET(dbp, DB_AM_SECONDARY) ||
+		    !F_ISSET(dbp->s_primary, DB_AM_RECNUM)))
 			goto err;
 		break;
 	case DB_SET_RECNO:
-		if (!F_ISSET(dbp, DB_BT_RECNUM))
+		if (!F_ISSET(dbp, DB_AM_RECNUM))
 			goto err;
 		break;
 	default:
@@ -221,7 +233,7 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 
 	if (multi && !F_ISSET(data, DB_DBT_USERMEM)) {
 		__db_err(dbp->dbenv,
-		    "DB_MULTIPLE(_KEY) requires that DB_DBT_USERMEM be set.");
+		    "DB_MULTIPLE(_KEY) requires that DB_DBT_USERMEM be set");
 		return (EINVAL);
 	}
 	if (multi &&
@@ -232,10 +244,11 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 	}
 
 	/*
-	 * The cursor must be initialized for DB_CURRENT or DB_NEXT_DUP,
-	 * return EINVAL for an invalid cursor, otherwise 0.
+	 * The cursor must be initialized for DB_CURRENT, DB_GET_RECNO and
+	 * DB_NEXT_DUP.  Return EINVAL for an invalid cursor, otherwise 0.
 	 */
-	if (isvalid || (flags != DB_CURRENT && flags != DB_NEXT_DUP))
+	if (isvalid || (flags != DB_CURRENT &&
+	    flags != DB_GET_RECNO && flags != DB_NEXT_DUP))
 		return (0);
 
 	return (__db_curinval(dbp->dbenv));
@@ -270,7 +283,7 @@ __db_cputchk(dbp, key, data, flags, isvalid)
 			flags = DB_KEYLAST;
 		else {
 			__db_err(dbp->dbenv,
-		    "DBcursor->c_put() forbidden on secondary indices");
+		    "DBcursor->c_put forbidden on secondary indices");
 			return (EINVAL);
 		}
 	}
@@ -290,7 +303,7 @@ __db_cputchk(dbp, key, data, flags, isvalid)
 		case DB_QUEUE:		/* Not permitted. */
 			goto err;
 		case DB_RECNO:		/* Only with mutable record numbers. */
-			if (!F_ISSET(dbp, DB_RE_RENUMBER))
+			if (!F_ISSET(dbp, DB_AM_RENUMBER))
 				goto err;
 			key_flags = 1;
 			break;
@@ -355,7 +368,7 @@ __db_pgetchk(dbp, skey, pkey, data, flags)
 
 	if (!F_ISSET(dbp, DB_AM_SECONDARY)) {
 		__db_err(dbp->dbenv,
-		    "DB->pget() may only be used on secondary indices");
+		    "DB->pget may only be used on secondary indices");
 		return (EINVAL);
 	}
 
@@ -415,7 +428,7 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 
 	if (!F_ISSET(dbp, DB_AM_SECONDARY)) {
 		__db_err(dbp->dbenv,
-		    "DBcursor->c_pget() may only be used on secondary indices");
+		    "DBcursor->c_pget may only be used on secondary indices");
 		return (EINVAL);
 	}
 
@@ -463,29 +476,6 @@ __db_cpgetchk(dbp, skey, pkey, data, flags, isvalid)
 }
 
 /*
- * __db_closechk --
- *	DB->close flag check.
- *
- * PUBLIC: int __db_closechk __P((const DB *, u_int32_t));
- */
-int
-__db_closechk(dbp, flags)
-	const DB *dbp;
-	u_int32_t flags;
-{
-	/* Check for invalid function flags. */
-	switch (flags) {
-	case 0:
-	case DB_NOSYNC:
-		break;
-	default:
-		return (__db_ferr(dbp->dbenv, "DB->close", 0));
-	}
-
-	return (0);
-}
-
-/*
  * __db_delchk --
  *	Common delete argument checking routine.
  *
@@ -504,6 +494,7 @@ __db_delchk(dbp, key, flags)
 		return (__db_rdonly(dbp->dbenv, "delete"));
 
 	/* Check for invalid function flags. */
+	LF_CLR(DB_AUTO_COMMIT);
 	switch (flags) {
 	case 0:
 		break;
@@ -539,11 +530,8 @@ __db_getchk(dbp, key, data, flags)
 	 */
 	dirty = 0;
 	if (LF_ISSET(DB_DIRTY_READ | DB_RMW)) {
-		if (!LOCKING_ON(dbp->dbenv)) {
-			__db_err(dbp->dbenv,
-		    "the DB_DIRTY_READ and DB_RMW flags require locking");
-			return (EINVAL);
-		}
+		if (!LOCKING_ON(dbp->dbenv))
+			return (__db_fnl(dbp->dbenv, "DB->get"));
 		if (LF_ISSET(DB_DIRTY_READ))
 			dirty = 1;
 		LF_CLR(DB_DIRTY_READ | DB_RMW);
@@ -563,7 +551,7 @@ __db_getchk(dbp, key, data, flags)
 	case DB_GET_BOTH:
 		break;
 	case DB_SET_RECNO:
-		if (!F_ISSET(dbp, DB_BT_RECNUM))
+		if (!F_ISSET(dbp, DB_AM_RECNUM))
 			goto err;
 		break;
 	case DB_CONSUME:
@@ -595,7 +583,7 @@ err:		return (__db_ferr(dbp->dbenv, "DB->get", 0));
 
 	if (multi && !F_ISSET(data, DB_DBT_USERMEM)) {
 		__db_err(dbp->dbenv,
-		     "DB_MULTIPLE requires that DB_DBT_USERMEM be set.");
+		    "DB_MULTIPLE requires that DB_DBT_USERMEM be set");
 		return (EINVAL);
 	}
 	if (multi &&
@@ -661,21 +649,11 @@ __db_joingetchk(dbp, key, flags)
 	u_int32_t flags;
 {
 
-	if (LF_ISSET(DB_RMW)) {
-		if (!LOCKING_ON(dbp->dbenv)) {
-			__db_err(dbp->dbenv,
-			    "the DB_RMW flag requires locking");
-			return (EINVAL);
-		}
-		LF_CLR(DB_RMW);
-	}
-	if (LF_ISSET(DB_DIRTY_READ)) {
-		if (!LOCKING_ON(dbp->dbenv)) {
-			__db_err(dbp->dbenv,
-			    "the DB_DIRTY_READ flag requires locking");
-			return (EINVAL);
-		}
-		LF_CLR(DB_DIRTY_READ);
+	if (LF_ISSET(DB_DIRTY_READ | DB_RMW)) {
+		if (!LOCKING_ON(dbp->dbenv))
+			return (__db_fnl(dbp->dbenv, "DBcursor->c_get"));
+
+		LF_CLR(DB_DIRTY_READ | DB_RMW);
 	}
 
 	switch (flags) {
@@ -721,13 +699,22 @@ __db_putchk(dbp, key, data, flags, isdup)
 	u_int32_t flags;
 	int isdup;
 {
-	int ret;
+	int ret, returnkey;
+
+	returnkey = 0;
 
 	/* Check for changes to a read-only tree. */
 	if (IS_READONLY(dbp))
 		return (__db_rdonly(dbp->dbenv, "put"));
 
+	/* Check for puts on a secondary. */
+	if (F_ISSET(dbp, DB_AM_SECONDARY)) {
+		__db_err(dbp->dbenv, "DB->put forbidden on secondary indices");
+		return (EINVAL);
+	}
+
 	/* Check for invalid function flags. */
+	LF_CLR(DB_AUTO_COMMIT);
 	switch (flags) {
 	case 0:
 	case DB_NOOVERWRITE:
@@ -735,6 +722,7 @@ __db_putchk(dbp, key, data, flags, isdup)
 	case DB_APPEND:
 		if (dbp->type != DB_RECNO && dbp->type != DB_QUEUE)
 			goto err;
+		returnkey = 1;
 		break;
 	case DB_NODUPDATA:
 		if (F_ISSET(dbp, DB_AM_DUPSORT))
@@ -745,7 +733,7 @@ err:		return (__db_ferr(dbp->dbenv, "DB->put", 0));
 	}
 
 	/* Check for invalid key/data flags. */
-	if ((ret = __dbt_ferr(dbp, "key", key, 0)) != 0)
+	if ((ret = __dbt_ferr(dbp, "key", key, returnkey)) != 0)
 		return (ret);
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);
@@ -755,28 +743,6 @@ err:		return (__db_ferr(dbp->dbenv, "DB->put", 0));
 		__db_err(dbp->dbenv,
 "a partial put in the presence of duplicates requires a cursor operation");
 		return (EINVAL);
-	}
-
-	return (0);
-}
-
-/*
- * __db_removechk --
- *	DB->remove flag check.
- *
- * PUBLIC: int __db_removechk __P((const DB *, u_int32_t));
- */
-int
-__db_removechk(dbp, flags)
-	const DB *dbp;
-	u_int32_t flags;
-{
-	/* Check for invalid function flags. */
-	switch (flags) {
-	case 0:
-		break;
-	default:
-		return (__db_ferr(dbp->dbenv, "DB->remove", 0));
 	}
 
 	return (0);
@@ -797,12 +763,12 @@ __db_statchk(dbp, flags)
 	switch (flags) {
 	case 0:
 	case DB_FAST_STAT:
-	case DB_CACHED_COUNTS:
+	case DB_CACHED_COUNTS:		/* Deprecated and undocumented. */
 		break;
-	case DB_RECORDCOUNT:
+	case DB_RECORDCOUNT:		/* Deprecated and undocumented. */
 		if (dbp->type == DB_RECNO)
 			break;
-		if (dbp->type == DB_BTREE && F_ISSET(dbp, DB_BT_RECNUM))
+		if (dbp->type == DB_BTREE && F_ISSET(dbp, DB_AM_RECNUM))
 			break;
 		goto err;
 	default:
@@ -895,6 +861,20 @@ __db_rdonly(dbenv, name)
 }
 
 /*
+ * __db_fnl --
+ *	Common flag-needs-locking message.
+ */
+static int
+__db_fnl(dbenv, name)
+	const DB_ENV *dbenv;
+	const char *name;
+{
+	__db_err(dbenv,
+	    "%s: the DB_DIRTY_READ and DB_RMW flags require locking", name);
+	return (EINVAL);
+}
+
+/*
  * __db_curinval
  *	Report that a cursor is in an invalid state.
  */
@@ -956,7 +936,7 @@ __db_associatechk(dbp, sdbp, callback, flags)
 		    "Primary databases may not be configured with duplicates");
 		return (EINVAL);
 	}
-	if (F_ISSET(dbp, DB_RE_RENUMBER)) {
+	if (F_ISSET(dbp, DB_AM_RENUMBER)) {
 		__db_err(dbenv,
 	    "Renumbering recno databases may not be used as primary databases");
 		return (EINVAL);
@@ -968,13 +948,36 @@ __db_associatechk(dbp, sdbp, callback, flags)
 		return (EINVAL);
 	}
 
-	switch (flags) {
-	case 0:
-	case DB_CREATE:
-		break;
-	default:
-		return (__db_ferr(dbenv, "DB->associate", 0));
+	return (__db_fchk(dbenv,
+	    "DB->associate", flags, DB_CREATE | DB_AUTO_COMMIT));
+}
+
+/*
+ * __db_txn_auto --
+ *	Handle DB_AUTO_COMMIT initialization.
+ *
+ * PUBLIC: int __db_txn_auto __P((DB *, DB_TXN **));
+ */
+int
+__db_txn_auto(dbp, txnidp)
+	DB *dbp;
+	DB_TXN **txnidp;
+{
+	DB_ENV *dbenv;
+
+	dbenv = dbp->dbenv;
+
+	if (*txnidp != NULL) {
+		__db_err(dbenv,
+    "DB_AUTO_COMMIT may not be specified along with a transaction handle");
+		return (EINVAL);
 	}
 
-	return (0);
+	if (!TXN_ON(dbenv)) {
+		__db_err(dbenv,
+    "DB_AUTO_COMMIT may not be specified in non-transactional environment");
+		return (EINVAL);
+	}
+
+	return (dbenv->txn_begin(dbenv, NULL, txnidp, 0));
 }

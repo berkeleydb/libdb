@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env002.tcl,v 11.13 2001/08/03 16:39:23 bostic Exp $
+# $Id: env002.tcl,v 11.15 2002/02/20 16:35:20 sandstro Exp $
 #
 # TEST	env002
 # TEST	Test of DB_LOG_DIR and env name resolution.
@@ -30,7 +30,7 @@ proc env002 { } {
 
 	puts "Env002: set_lg_dir test."
 
-	puts "\tEnv002: Running with -home argument to berkdb env."
+	puts "\tEnv002: Running with -home argument to berkdb_env."
 	env002_body "-home $testdir"
 
 	puts "\tEnv002: Running with environment variable DB_HOME set."
@@ -125,8 +125,8 @@ proc env002_run_test { major minor msg env_args log_path} {
 
 	# Create an environment, with logging, and scribble some
 	# stuff in a [btree] database in it.
-	# puts [concat {berkdb env -create -log -private} $env_args]
-	set dbenv [eval {berkdb env -create -log -private} $env_args]
+	# puts [concat {berkdb_env -create -log -private} $env_args]
+	set dbenv [eval {berkdb_env -create -log -private} $env_args]
 	error_check_good env_open [is_valid_env $dbenv] TRUE
 	set db [berkdb_open -env $dbenv -create -btree -mode 0644 $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE

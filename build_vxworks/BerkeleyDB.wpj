@@ -36,8 +36,7 @@ cc386
 	-DCPU=PENTIUM \
 	-O0 \
 	-I$(PRJ_DIR) \
-	-I$(PRJ_DIR)/../include \
-	-I$(PRJ_DIR)/../include_auto \
+	-I$(PRJ_DIR)/.. \
 	-DDIAGNOSTIC \
 	-DDEBUG
 <END>
@@ -65,10 +64,6 @@ cc386 -E -P -xc
 
 <BEGIN> BUILD_PENTIUM_debug_MACRO_LD
 ld386
-<END>
-
-<BEGIN> BUILD_PENTIUM_debug_MACRO_LDDEPS
-
 <END>
 
 <BEGIN> BUILD_PENTIUM_debug_MACRO_LDFLAGS
@@ -113,27 +108,27 @@ size386
 ::tc_PENTIUMgnu
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_BUILDRULE
+<BEGIN> BUILD_PENTIUM_release_BUILDRULE
 BerkeleyDB.out
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_AR
+<BEGIN> BUILD_PENTIUM_release_MACRO_AR
 ar386
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_ARCHIVE
+<BEGIN> BUILD_PENTIUM_release_MACRO_ARCHIVE
 $(PRJ_DIR)/PENTIUMgnu/BerkeleyDB_sim.a
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_AS
+<BEGIN> BUILD_PENTIUM_release_MACRO_AS
 cc386
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_CC
+<BEGIN> BUILD_PENTIUM_release_MACRO_CC
 cc386
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_CFLAGS
+<BEGIN> BUILD_PENTIUM_release_MACRO_CFLAGS
 -mpentium \
 	-ansi \
 	-nostdinc \
@@ -148,11 +143,10 @@ cc386
 	-DCPU=PENTIUM \
 	-O2 \
 	-I$(PRJ_DIR) \
-	-I$(PRJ_DIR)/../include \
-	-I$(PRJ_DIR)/../include_auto
+	-I$(PRJ_DIR)/.. 
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_CFLAGS_AS
+<BEGIN> BUILD_PENTIUM_release_MACRO_CFLAGS_AS
 -g \
 	-mpentium \
 	-ansi \
@@ -169,57 +163,57 @@ cc386
 	-DCPU=PENTIUM
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_CPP
+<BEGIN> BUILD_PENTIUM_release_MACRO_CPP
 cc386 -E -P -xc
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_LD
+<BEGIN> BUILD_PENTIUM_release_MACRO_LD
 ld386
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_LDDEPS
+<BEGIN> BUILD_PENTIUM_release_MACRO_LDDEPS
 
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_LDFLAGS
+<BEGIN> BUILD_PENTIUM_release_MACRO_LDFLAGS
 -X -N
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_LD_PARTIAL_FLAGS
+<BEGIN> BUILD_PENTIUM_release_MACRO_LD_PARTIAL_FLAGS
 -X -r
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_NM
+<BEGIN> BUILD_PENTIUM_release_MACRO_NM
 nm386 -g
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_OPTION_DEFINE_MACRO
+<BEGIN> BUILD_PENTIUM_release_MACRO_OPTION_DEFINE_MACRO
 -D
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_OPTION_INCLUDE_DIR
+<BEGIN> BUILD_PENTIUM_release_MACRO_OPTION_INCLUDE_DIR
 -I
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_POST_BUILD_RULE
+<BEGIN> BUILD_PENTIUM_release_MACRO_POST_BUILD_RULE
 
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_PRJ_LIBS
+<BEGIN> BUILD_PENTIUM_release_MACRO_PRJ_LIBS
 
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_MACRO_SIZE
+<BEGIN> BUILD_PENTIUM_release_MACRO_SIZE
 size386
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_RO_DEPEND_PATH
+<BEGIN> BUILD_PENTIUM_release_RO_DEPEND_PATH
 {$(WIND_BASE)/target/h/} \
 	{$(WIND_BASE)/target/src/} \
 	{$(WIND_BASE)/target/config/}
 <END>
 
-<BEGIN> BUILD_PENTIUM_nodebug_TC
+<BEGIN> BUILD_PENTIUM_release_TC
 ::tc_PENTIUMgnu
 <END>
 
@@ -244,7 +238,7 @@ PENTIUM_debug
 <END>
 
 <BEGIN> BUILD__LIST
-PENTIUM_nodebug PENTIUM_debug
+PENTIUM_release PENTIUM_debug
 <END>
 
 <BEGIN> CORE_INFO_TYPE
@@ -262,26 +256,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compare.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compare.c_objects
@@ -299,27 +274,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_conv.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_conv.c_objects
@@ -337,31 +292,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_curadj.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_curadj.c_objects
@@ -379,32 +310,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_cursor.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_cursor.c_objects
@@ -422,29 +328,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_delete.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_delete.c_objects
@@ -462,29 +346,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_method.c_objects
@@ -502,35 +364,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_open.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_open.c_objects
@@ -548,26 +382,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_put.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_put.c_objects
@@ -585,35 +400,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_rec.c_objects
@@ -631,29 +418,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_reclaim.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_reclaim.c_objects
@@ -671,37 +436,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_recno.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_recno.c_objects
@@ -719,29 +454,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_rsearch.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_rsearch.c_objects
@@ -759,29 +472,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_search.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_search.c_objects
@@ -799,29 +490,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_split.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_split.c_objects
@@ -839,29 +508,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_stat.c_objects
@@ -879,28 +526,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_upgrade.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_upgrade.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_upgrade.c_objects
@@ -918,27 +544,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_verify.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_verify.c_objects
@@ -956,36 +562,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../btree/btree_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../btree/btree_auto.c_objects
@@ -1003,17 +580,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../clib/getopt.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../clib/getopt.c_objects
@@ -1031,17 +598,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../clib/snprintf.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../clib/snprintf.c_objects
@@ -1057,7 +614,9 @@ TRUE
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../clib/strcasecmp.c_dependencies
-$(PRJ_DIR)/db_config.h
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../clib/strcasecmp.c_objects
@@ -1068,6 +627,24 @@ strcasecmp.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../clib/strdup.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../clib/strdup.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../clib/strdup.c_objects
+strdup.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../clib/strdup.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../clib/vsnprintf.c_dependDone
 TRUE
 <END>
@@ -1075,17 +652,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../clib/vsnprintf.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../clib/vsnprintf.c_objects
@@ -1103,17 +670,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_byteorder.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_byteorder.c_objects
@@ -1131,24 +688,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_err.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_err.c_objects
@@ -1166,18 +706,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_getlong.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_getlong.c_objects
@@ -1188,6 +717,24 @@ db_getlong.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_idspace.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_idspace.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_idspace.c_objects
+db_idspace.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_idspace.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_log2.c_dependDone
 TRUE
 <END>
@@ -1195,17 +742,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_log2.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_log2.c_objects
@@ -1223,17 +760,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_arg.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_arg.c_objects
@@ -1244,6 +771,24 @@ util_arg.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../common/util_cache.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/util_cache.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/util_cache.c_objects
+util_cache.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/util_cache.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_log.c_dependDone
 TRUE
 <END>
@@ -1251,17 +796,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_log.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_log.c_objects
@@ -1279,17 +814,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_sig.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/util_sig.c_objects
@@ -1300,6 +825,96 @@ util_sig.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_objects
+aes_method.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/aes_method.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_objects
+crypto.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/crypto.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_objects
+mt19937db.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/mersenne/mt19937db.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_objects
+rijndael-alg-fst.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_objects
+rijndael-api-fst.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_auto.c_dependDone
 TRUE
 <END>
@@ -1307,33 +922,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_auto.c_objects
@@ -1351,31 +940,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/crdel_rec.c_objects
@@ -1393,42 +958,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db.c_objects
@@ -1446,42 +976,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_am.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_am.c_objects
@@ -1499,33 +994,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_auto.c_objects
@@ -1543,40 +1012,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_cam.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_cam.c_objects
@@ -1594,33 +1030,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_conv.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_conv.c_objects
@@ -1638,31 +1048,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_dispatch.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_dispatch.c_objects
@@ -1680,32 +1066,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_dup.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_dup.c_objects
@@ -1723,26 +1084,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_iface.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_iface.c_objects
@@ -1760,27 +1102,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_join.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_join.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_join.c_objects
@@ -1798,34 +1120,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_meta.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_meta.c_objects
@@ -1842,37 +1137,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_method.c_objects
@@ -1883,6 +1149,24 @@ db_method.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_open.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_open.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_open.c_objects
+db_open.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_open.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_overflow.c_dependDone
 TRUE
 <END>
@@ -1890,24 +1174,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_overflow.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_verify.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_overflow.c_objects
@@ -1925,36 +1192,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_pr.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_pr.c_objects
@@ -1972,29 +1210,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_rec.c_objects
@@ -2012,29 +1228,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_reclaim.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_reclaim.c_objects
@@ -2045,6 +1239,42 @@ db_reclaim.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_remove.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_remove.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_remove.c_objects
+db_remove.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_remove.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_rename.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_rename.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_rename.c_objects
+db_rename.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_rename.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_ret.c_dependDone
 TRUE
 <END>
@@ -2052,26 +1282,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_ret.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_ret.c_objects
@@ -2082,6 +1293,24 @@ db_ret.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_truncate.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_truncate.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_truncate.c_objects
+db_truncate.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_truncate.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_upg.c_dependDone
 TRUE
 <END>
@@ -2089,33 +1318,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_upg.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_upg.c_objects
@@ -2133,33 +1336,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_upg_opd.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_upg_opd.c_objects
@@ -2177,39 +1354,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_vrfy.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_vrfy.c_objects
@@ -2227,24 +1372,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_vrfyutil.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_vrfyutil.c_objects
@@ -2255,6 +1383,78 @@ db_vrfyutil.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg.c_objects
+dbreg.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_auto.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_auto.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_auto.c_objects
+dbreg_auto.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_auto.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_rec.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_rec.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_rec.c_objects
+dbreg_rec.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_rec.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_util.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_util.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_util.c_objects
+dbreg_util.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../dbreg/dbreg_util.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../env/db_salloc.c_dependDone
 TRUE
 <END>
@@ -2262,17 +1462,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../env/db_salloc.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/db_salloc.c_objects
@@ -2290,17 +1480,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../env/db_shash.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/db_shash.c_objects
@@ -2311,47 +1491,32 @@ db_shash.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../env/env_file.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../env/env_file.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../env/env_file.c_objects
+env_file.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../env/env_file.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_method.c_dependDone
 TRUE
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_method.c_objects
@@ -2369,46 +1534,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_open.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_open.c_objects
@@ -2426,33 +1552,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_recover.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_recover.c_objects
@@ -2470,31 +1570,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../env/env_region.c_objects
@@ -2505,6 +1581,78 @@ env_region.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fileops_auto.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fileops_auto.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fileops_auto.c_objects
+fileops_auto.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fileops_auto.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_basic.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_basic.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_basic.c_objects
+fop_basic.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_basic.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_rec.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_rec.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_rec.c_objects
+fop_rec.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_rec.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_util.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_util.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_util.c_objects
+fop_util.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../fileops/fop_util.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash.c_dependDone
 TRUE
 <END>
@@ -2512,43 +1660,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash.c_objects
@@ -2566,36 +1678,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_auto.c_objects
@@ -2613,27 +1696,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_conv.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_conv.c_objects
@@ -2651,34 +1714,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_dup.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_dup.c_objects
@@ -2696,26 +1732,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_func.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_func.c_objects
@@ -2733,34 +1750,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_meta.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_meta.c_objects
@@ -2778,26 +1768,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_method.c_objects
@@ -2808,6 +1779,24 @@ hash_method.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../hash/hash_open.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hash/hash_open.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hash/hash_open.c_objects
+hash_open.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hash/hash_open.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_page.c_dependDone
 TRUE
 <END>
@@ -2815,34 +1804,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_page.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_page.c_objects
@@ -2860,37 +1822,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_rec.c_objects
@@ -2908,29 +1840,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_reclaim.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_reclaim.c_objects
@@ -2948,32 +1858,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_stat.c_objects
@@ -2991,28 +1876,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_upgrade.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_upgrade.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_upgrade.c_objects
@@ -3030,30 +1894,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_verify.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hash/hash_verify.c_objects
@@ -3064,6 +1905,42 @@ hash_verify.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/hmac.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/hmac.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/hmac.c_objects
+hmac.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/hmac.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/sha1.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/sha1.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/sha1.c_objects
+sha1.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../hmac/sha1.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../hsearch/hsearch.c_dependDone
 TRUE
 <END>
@@ -3071,17 +1948,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../hsearch/hsearch.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../hsearch/hsearch.c_objects
@@ -3099,34 +1966,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock.c_objects
@@ -3144,25 +1984,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_deadlock.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_deadlock.c_objects
@@ -3179,23 +2001,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_method.c_objects
@@ -3213,20 +2020,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_region.c_objects
@@ -3244,20 +2038,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_stat.c_objects
@@ -3275,29 +2056,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_util.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../lock/lock_util.c_objects
@@ -3315,26 +2074,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../log/log.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log.c_objects
@@ -3352,25 +2092,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_archive.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_archive.c_objects
@@ -3381,50 +2103,6 @@ log_archive.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_auto.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_auto.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_auto.c_objects
-log_auto.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_auto.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_compare.c_dependDone
 TRUE
 <END>
@@ -3432,17 +2110,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_compare.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_compare.c_objects
@@ -3453,42 +2121,6 @@ log_compare.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_findckp.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_findckp.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_findckp.c_objects
-log_findckp.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_findckp.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_get.c_dependDone
 TRUE
 <END>
@@ -3496,29 +2128,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_get.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_get.c_objects
@@ -3535,23 +2145,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_method.c_objects
@@ -3569,37 +2164,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_put.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_put.c_objects
@@ -3610,74 +2175,6 @@ log_put.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_rec.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_rec.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_rec.c_objects
-log_rec.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_rec.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_register.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_register.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_register.c_objects
-log_register.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../log/log_register.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_alloc.c_dependDone
 TRUE
 <END>
@@ -3685,20 +2182,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_alloc.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_alloc.c_objects
@@ -3716,24 +2200,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_bh.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/db_page.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_bh.c_objects
@@ -3751,20 +2218,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fget.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fget.c_objects
@@ -3782,20 +2236,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fopen.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fopen.c_objects
@@ -3813,20 +2254,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fput.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fput.c_objects
@@ -3844,20 +2272,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fset.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_fset.c_objects
@@ -3874,23 +2289,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_method.c_objects
@@ -3908,20 +2308,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_region.c_objects
@@ -3939,20 +2326,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_register.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_register.c_objects
@@ -3970,26 +2344,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_stat.c_objects
@@ -4007,20 +2362,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_sync.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_sync.c_objects
@@ -4038,20 +2380,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_trickle.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mp/mp_trickle.c_objects
@@ -4069,18 +2398,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mutex/mut_tas.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mutex/mut_tas.c_objects
@@ -4098,17 +2416,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../mutex/mutex.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../mutex/mutex.c_objects
@@ -4126,18 +2434,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_alloc.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_alloc.c_objects
@@ -4155,18 +2452,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_clock.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_clock.c_objects
@@ -4184,18 +2470,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_dir.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_dir.c_objects
@@ -4213,17 +2488,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_errno.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_errno.c_objects
@@ -4241,17 +2506,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_fid.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_fid.c_objects
@@ -4269,18 +2524,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_fsync.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_fsync.c_objects
@@ -4298,18 +2542,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_handle.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_handle.c_objects
@@ -4320,6 +2553,24 @@ os_handle.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../os/os_id.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../os/os_id.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../os/os_id.c_objects
+os_id.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../os/os_id.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_method.c_dependDone
 TRUE
 <END>
@@ -4327,18 +2578,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_method.c_objects
@@ -4356,17 +2596,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_oflags.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_oflags.c_objects
@@ -4384,17 +2614,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_open.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_open.c_objects
@@ -4412,18 +2632,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_region.c_objects
@@ -4441,18 +2650,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rename.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rename.c_objects
@@ -4470,17 +2668,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_root.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_root.c_objects
@@ -4498,17 +2686,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rpath.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rpath.c_objects
@@ -4526,18 +2704,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rw.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_rw.c_objects
@@ -4555,18 +2722,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_seek.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_seek.c_objects
@@ -4584,18 +2740,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_sleep.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_sleep.c_objects
@@ -4613,18 +2758,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_spin.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_spin.c_objects
@@ -4642,18 +2776,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_stat.c_objects
@@ -4671,17 +2794,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_tmpdir.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_tmpdir.c_objects
@@ -4699,18 +2812,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_unlink.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/os_jump.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os/os_unlink.c_objects
@@ -4728,17 +2830,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_abs.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_abs.c_objects
@@ -4749,31 +2841,21 @@ os_vx_abs.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_finit.c_dependDone
+<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_config.c_dependDone
 TRUE
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_finit.c_dependencies
+<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_config.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_finit.c_objects
-os_vx_finit.o
+<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_config.c_objects
+os_vx_config.o
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_finit.c_tool
+<BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_config.c_tool
 C/C++ compiler
 <END>
 
@@ -4784,17 +2866,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_map.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../os_vxworks/os_vx_map.c_objects
@@ -4812,37 +2884,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam.c_objects
@@ -4860,36 +2902,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_auto.c_objects
@@ -4907,27 +2920,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_conv.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_conv.c_objects
@@ -4945,35 +2938,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_files.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_files.c_objects
@@ -4991,35 +2956,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include_auto/clib_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_method.c_objects
@@ -5037,30 +2974,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_open.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_open.c_objects
@@ -5078,32 +2992,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_rec.c_objects
@@ -5121,29 +3010,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_stat.c_objects
@@ -5161,28 +3028,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_upgrade.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_swap.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_upgrade.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_upgrade.c_objects
@@ -5200,27 +3046,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_verify.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_verify.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../qam/qam_verify.c_objects
@@ -5237,22 +3063,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_method.c_objects
@@ -5270,36 +3082,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_record.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_record.c_objects
@@ -5316,22 +3099,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_region.c_objects
@@ -5349,45 +3118,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_util.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/btree.h \
-	$(PRJ_DIR)/../include_auto/btree_auto.h \
-	$(PRJ_DIR)/../include_auto/btree_ext.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/qam.h \
-	$(PRJ_DIR)/../include_auto/qam_auto.h \
-	$(PRJ_DIR)/../include_auto/qam_ext.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rep/rep_util.c_objects
@@ -5404,25 +3135,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/client.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/client.c_objects
@@ -5439,7 +3153,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/db_server_clnt.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/db_server_clnt.c_objects
@@ -5456,27 +3171,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/gen_client.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/mp.h \
-	$(PRJ_DIR)/../include_auto/mp_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/gen_client.c_objects
@@ -5493,31 +3189,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/gen_client_ret.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../rpc_client/gen_client_ret.c_objects
@@ -5528,20 +3201,21 @@ gen_client_ret.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/db_server_xdr.c_dependDone
+<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/c/db_server_xdr.c_dependDone
 TRUE
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/db_server_xdr.c_dependencies
+<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/c/db_server_xdr.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/db_server_xdr.c_objects
+<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/c/db_server_xdr.c_objects
 db_server_xdr.o
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/db_server_xdr.c_tool
+<BEGIN> FILE_$(PRJ_DIR)/../rpc_server/c/db_server_xdr.c_tool
 C/C++ compiler
 <END>
 
@@ -5552,37 +3226,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_shash.h \
-	$(PRJ_DIR)/../include/hash.h \
-	$(PRJ_DIR)/../include_auto/hash_auto.h \
-	$(PRJ_DIR)/../include_auto/hash_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/lock.h \
-	$(PRJ_DIR)/../include_auto/lock_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn.c_objects
@@ -5600,33 +3244,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_auto.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/rep.h \
-	$(PRJ_DIR)/../include_auto/rep_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_auto.c_objects
@@ -5643,29 +3261,8 @@ TRUE
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_method.c_dependencies
 $(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/../include_auto/db_server.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include_auto/rpc_client_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_method.c_objects
@@ -5683,28 +3280,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_rec.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_rec.c_objects
@@ -5722,29 +3298,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_recover.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_recover.c_objects
@@ -5762,26 +3316,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_region.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_region.c_objects
@@ -5799,22 +3334,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_stat.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../txn/txn_stat.c_objects
@@ -5825,6 +3345,24 @@ txn_stat.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../txn/txn_util.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../txn/txn_util.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../txn/txn_util.c_objects
+txn_util.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../txn/txn_util.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_dependDone
 TRUE
 <END>
@@ -5832,31 +3370,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/db_page.h \
-	$(PRJ_DIR)/../include/log.h \
-	$(PRJ_DIR)/../include_auto/log_auto.h \
-	$(PRJ_DIR)/../include_auto/log_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/db_am.h \
-	$(PRJ_DIR)/../include/db_dispatch.h \
-	$(PRJ_DIR)/../include_auto/db_auto.h \
-	$(PRJ_DIR)/../include_auto/crdel_auto.h \
-	$(PRJ_DIR)/../include_auto/db_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_objects
@@ -5874,22 +3388,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_objects
@@ -5907,22 +3406,7 @@ TRUE
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_dependencies
 $(PRJ_DIR)/db_config.h \
 	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h \
-	$(PRJ_DIR)/../include/queue.h \
-	$(PRJ_DIR)/../include/shqueue.h \
-	$(PRJ_DIR)/../include/debug.h \
-	$(PRJ_DIR)/../include/mutex.h \
-	$(PRJ_DIR)/../include/region.h \
-	$(PRJ_DIR)/../include_auto/mutex_ext.h \
-	$(PRJ_DIR)/../include_auto/env_ext.h \
-	$(PRJ_DIR)/../include/os.h \
-	$(PRJ_DIR)/../include_auto/os_ext.h \
-	$(PRJ_DIR)/../include_auto/common_ext.h \
-	$(PRJ_DIR)/../include/txn.h \
-	$(PRJ_DIR)/../include/xa.h \
-	$(PRJ_DIR)/../include_auto/txn_auto.h \
-	$(PRJ_DIR)/../include_auto/txn_ext.h \
-	$(PRJ_DIR)/../include_auto/xa_ext.h
+	$(PRJ_DIR)/db.h
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_objects
@@ -5934,83 +3418,7 @@ C/C++ compiler
 <END>
 
 <BEGIN> PROJECT_FILES
-$(PRJ_DIR)/../hsearch/hsearch.c \
-	$(PRJ_DIR)/../mp/mp_trickle.c \
-	$(PRJ_DIR)/../mp/mp_bh.c \
-	$(PRJ_DIR)/../mp/mp_fget.c \
-	$(PRJ_DIR)/../mp/mp_fopen.c \
-	$(PRJ_DIR)/../mp/mp_fput.c \
-	$(PRJ_DIR)/../mp/mp_fset.c \
-	$(PRJ_DIR)/../mp/mp_method.c \
-	$(PRJ_DIR)/../mp/mp_region.c \
-	$(PRJ_DIR)/../mp/mp_register.c \
-	$(PRJ_DIR)/../mp/mp_stat.c \
-	$(PRJ_DIR)/../mp/mp_sync.c \
-	$(PRJ_DIR)/../mp/mp_alloc.c \
-	$(PRJ_DIR)/../db/crdel_rec.c \
-	$(PRJ_DIR)/../db/db.c \
-	$(PRJ_DIR)/../db/db_am.c \
-	$(PRJ_DIR)/../db/db_auto.c \
-	$(PRJ_DIR)/../db/db_cam.c \
-	$(PRJ_DIR)/../db/db_conv.c \
-	$(PRJ_DIR)/../db/db_dispatch.c \
-	$(PRJ_DIR)/../db/db_dup.c \
-	$(PRJ_DIR)/../db/db_iface.c \
-	$(PRJ_DIR)/../db/db_join.c \
-	$(PRJ_DIR)/../db/db_meta.c \
-	$(PRJ_DIR)/../db/db_method.c \
-	$(PRJ_DIR)/../db/db_overflow.c \
-	$(PRJ_DIR)/../db/db_pr.c \
-	$(PRJ_DIR)/../db/db_rec.c \
-	$(PRJ_DIR)/../db/db_reclaim.c \
-	$(PRJ_DIR)/../db/db_ret.c \
-	$(PRJ_DIR)/../db/crdel_auto.c \
-	$(PRJ_DIR)/../clib/getopt.c \
-	$(PRJ_DIR)/../clib/snprintf.c \
-	$(PRJ_DIR)/../clib/strcasecmp.c \
-	$(PRJ_DIR)/../os/os_unlink.c \
-	$(PRJ_DIR)/../os/os_alloc.c \
-	$(PRJ_DIR)/../os/os_dir.c \
-	$(PRJ_DIR)/../os/os_errno.c \
-	$(PRJ_DIR)/../os/os_fid.c \
-	$(PRJ_DIR)/../os/os_fsync.c \
-	$(PRJ_DIR)/../os/os_handle.c \
-	$(PRJ_DIR)/../os/os_method.c \
-	$(PRJ_DIR)/../os/os_oflags.c \
-	$(PRJ_DIR)/../os/os_open.c \
-	$(PRJ_DIR)/../os/os_region.c \
-	$(PRJ_DIR)/../os/os_rename.c \
-	$(PRJ_DIR)/../os/os_root.c \
-	$(PRJ_DIR)/../os/os_rpath.c \
-	$(PRJ_DIR)/../os/os_rw.c \
-	$(PRJ_DIR)/../os/os_seek.c \
-	$(PRJ_DIR)/../os/os_spin.c \
-	$(PRJ_DIR)/../os/os_stat.c \
-	$(PRJ_DIR)/../os/os_tmpdir.c \
-	$(PRJ_DIR)/../qam/qam_upgrade.c \
-	$(PRJ_DIR)/../qam/qam_auto.c \
-	$(PRJ_DIR)/../qam/qam_conv.c \
-	$(PRJ_DIR)/../qam/qam_method.c \
-	$(PRJ_DIR)/../qam/qam_open.c \
-	$(PRJ_DIR)/../qam/qam_rec.c \
-	$(PRJ_DIR)/../qam/qam_stat.c \
-	$(PRJ_DIR)/../qam/qam.c \
-	$(PRJ_DIR)/../hash/hash_upgrade.c \
-	$(PRJ_DIR)/../hash/hash_auto.c \
-	$(PRJ_DIR)/../hash/hash_conv.c \
-	$(PRJ_DIR)/../hash/hash_dup.c \
-	$(PRJ_DIR)/../hash/hash_func.c \
-	$(PRJ_DIR)/../hash/hash_meta.c \
-	$(PRJ_DIR)/../hash/hash_method.c \
-	$(PRJ_DIR)/../hash/hash_page.c \
-	$(PRJ_DIR)/../hash/hash_rec.c \
-	$(PRJ_DIR)/../hash/hash_reclaim.c \
-	$(PRJ_DIR)/../hash/hash_stat.c \
-	$(PRJ_DIR)/../hash/hash.c \
-	$(PRJ_DIR)/../xa/xa_map.c \
-	$(PRJ_DIR)/../xa/xa_db.c \
-	$(PRJ_DIR)/../xa/xa.c \
-	$(PRJ_DIR)/../btree/btree_auto.c \
+$(PRJ_DIR)/../btree/bt_compare.c \
 	$(PRJ_DIR)/../btree/bt_conv.c \
 	$(PRJ_DIR)/../btree/bt_curadj.c \
 	$(PRJ_DIR)/../btree/bt_cursor.c \
@@ -6026,71 +3434,168 @@ $(PRJ_DIR)/../hsearch/hsearch.c \
 	$(PRJ_DIR)/../btree/bt_split.c \
 	$(PRJ_DIR)/../btree/bt_stat.c \
 	$(PRJ_DIR)/../btree/bt_upgrade.c \
-	$(PRJ_DIR)/../btree/bt_compare.c \
-	$(PRJ_DIR)/../common/db_log2.c \
+	$(PRJ_DIR)/../btree/bt_verify.c \
+	$(PRJ_DIR)/../btree/btree_auto.c \
+	$(PRJ_DIR)/../clib/getopt.c \
+	$(PRJ_DIR)/../clib/snprintf.c \
+	$(PRJ_DIR)/../clib/strcasecmp.c \
+	$(PRJ_DIR)/../clib/strdup.c \
+	$(PRJ_DIR)/../clib/vsnprintf.c \
+	$(PRJ_DIR)/../common/db_byteorder.c \
 	$(PRJ_DIR)/../common/db_err.c \
 	$(PRJ_DIR)/../common/db_getlong.c \
-	$(PRJ_DIR)/../common/db_byteorder.c \
-	$(PRJ_DIR)/../env/env_region.c \
+	$(PRJ_DIR)/../common/db_idspace.c \
+	$(PRJ_DIR)/../common/db_log2.c \
+	$(PRJ_DIR)/../common/util_arg.c \
+	$(PRJ_DIR)/../common/util_cache.c \
+	$(PRJ_DIR)/../common/util_log.c \
+	$(PRJ_DIR)/../common/util_sig.c \
+	$(PRJ_DIR)/../crypto/aes_method.c \
+	$(PRJ_DIR)/../crypto/crypto.c \
+	$(PRJ_DIR)/../crypto/mersenne/mt19937db.c \
+	$(PRJ_DIR)/../crypto/rijndael/rijndael-alg-fst.c \
+	$(PRJ_DIR)/../crypto/rijndael/rijndael-api-fst.c \
+	$(PRJ_DIR)/../db/crdel_auto.c \
+	$(PRJ_DIR)/../db/crdel_rec.c \
+	$(PRJ_DIR)/../db/db.c \
+	$(PRJ_DIR)/../db/db_am.c \
+	$(PRJ_DIR)/../db/db_auto.c \
+	$(PRJ_DIR)/../db/db_cam.c \
+	$(PRJ_DIR)/../db/db_conv.c \
+	$(PRJ_DIR)/../db/db_dispatch.c \
+	$(PRJ_DIR)/../db/db_dup.c \
+	$(PRJ_DIR)/../db/db_iface.c \
+	$(PRJ_DIR)/../db/db_join.c \
+	$(PRJ_DIR)/../db/db_meta.c \
+	$(PRJ_DIR)/../db/db_method.c \
+	$(PRJ_DIR)/../db/db_open.c \
+	$(PRJ_DIR)/../db/db_overflow.c \
+	$(PRJ_DIR)/../db/db_pr.c \
+	$(PRJ_DIR)/../db/db_rec.c \
+	$(PRJ_DIR)/../db/db_reclaim.c \
+	$(PRJ_DIR)/../db/db_remove.c \
+	$(PRJ_DIR)/../db/db_rename.c \
+	$(PRJ_DIR)/../db/db_ret.c \
+	$(PRJ_DIR)/../db/db_truncate.c \
+	$(PRJ_DIR)/../db/db_upg.c \
+	$(PRJ_DIR)/../db/db_upg_opd.c \
+	$(PRJ_DIR)/../db/db_vrfy.c \
+	$(PRJ_DIR)/../db/db_vrfyutil.c \
+	$(PRJ_DIR)/../dbreg/dbreg.c \
+	$(PRJ_DIR)/../dbreg/dbreg_auto.c \
+	$(PRJ_DIR)/../dbreg/dbreg_rec.c \
+	$(PRJ_DIR)/../dbreg/dbreg_util.c \
+	$(PRJ_DIR)/../env/db_salloc.c \
 	$(PRJ_DIR)/../env/db_shash.c \
+	$(PRJ_DIR)/../env/env_file.c \
 	$(PRJ_DIR)/../env/env_method.c \
 	$(PRJ_DIR)/../env/env_open.c \
 	$(PRJ_DIR)/../env/env_recover.c \
-	$(PRJ_DIR)/../env/db_salloc.c \
-	$(PRJ_DIR)/../lock/lock_util.c \
-	$(PRJ_DIR)/../lock/lock_deadlock.c \
-	$(PRJ_DIR)/../lock/lock_region.c \
+	$(PRJ_DIR)/../env/env_region.c \
+	$(PRJ_DIR)/../fileops/fileops_auto.c \
+	$(PRJ_DIR)/../fileops/fop_basic.c \
+	$(PRJ_DIR)/../fileops/fop_rec.c \
+	$(PRJ_DIR)/../fileops/fop_util.c \
+	$(PRJ_DIR)/../hash/hash.c \
+	$(PRJ_DIR)/../hash/hash_auto.c \
+	$(PRJ_DIR)/../hash/hash_conv.c \
+	$(PRJ_DIR)/../hash/hash_dup.c \
+	$(PRJ_DIR)/../hash/hash_func.c \
+	$(PRJ_DIR)/../hash/hash_meta.c \
+	$(PRJ_DIR)/../hash/hash_method.c \
+	$(PRJ_DIR)/../hash/hash_open.c \
+	$(PRJ_DIR)/../hash/hash_page.c \
+	$(PRJ_DIR)/../hash/hash_rec.c \
+	$(PRJ_DIR)/../hash/hash_reclaim.c \
+	$(PRJ_DIR)/../hash/hash_stat.c \
+	$(PRJ_DIR)/../hash/hash_upgrade.c \
+	$(PRJ_DIR)/../hash/hash_verify.c \
+	$(PRJ_DIR)/../hmac/hmac.c \
+	$(PRJ_DIR)/../hmac/sha1.c \
+	$(PRJ_DIR)/../hsearch/hsearch.c \
 	$(PRJ_DIR)/../lock/lock.c \
-	$(PRJ_DIR)/../txn/txn_region.c \
-	$(PRJ_DIR)/../txn/txn_auto.c \
-	$(PRJ_DIR)/../txn/txn_rec.c \
-	$(PRJ_DIR)/../txn/txn.c \
-	$(PRJ_DIR)/../log/log_register.c \
+	$(PRJ_DIR)/../lock/lock_deadlock.c \
+	$(PRJ_DIR)/../lock/lock_method.c \
+	$(PRJ_DIR)/../lock/lock_region.c \
+	$(PRJ_DIR)/../lock/lock_stat.c \
+	$(PRJ_DIR)/../lock/lock_util.c \
+	$(PRJ_DIR)/../log/log.c \
 	$(PRJ_DIR)/../log/log_archive.c \
-	$(PRJ_DIR)/../log/log_auto.c \
 	$(PRJ_DIR)/../log/log_compare.c \
-	$(PRJ_DIR)/../log/log_findckp.c \
 	$(PRJ_DIR)/../log/log_get.c \
 	$(PRJ_DIR)/../log/log_method.c \
 	$(PRJ_DIR)/../log/log_put.c \
-	$(PRJ_DIR)/../log/log_rec.c \
-	$(PRJ_DIR)/../log/log.c \
+	$(PRJ_DIR)/../mp/mp_alloc.c \
+	$(PRJ_DIR)/../mp/mp_bh.c \
+	$(PRJ_DIR)/../mp/mp_fget.c \
+	$(PRJ_DIR)/../mp/mp_fopen.c \
+	$(PRJ_DIR)/../mp/mp_fput.c \
+	$(PRJ_DIR)/../mp/mp_fset.c \
+	$(PRJ_DIR)/../mp/mp_method.c \
+	$(PRJ_DIR)/../mp/mp_region.c \
+	$(PRJ_DIR)/../mp/mp_register.c \
+	$(PRJ_DIR)/../mp/mp_stat.c \
+	$(PRJ_DIR)/../mp/mp_sync.c \
+	$(PRJ_DIR)/../mp/mp_trickle.c \
 	$(PRJ_DIR)/../mutex/mut_tas.c \
 	$(PRJ_DIR)/../mutex/mutex.c \
-	$(PRJ_DIR)/../clib/vsnprintf.c \
-	$(PRJ_DIR)/../common/util_log.c \
-	$(PRJ_DIR)/../common/util_sig.c \
+	$(PRJ_DIR)/../os/os_alloc.c \
+	$(PRJ_DIR)/../os/os_clock.c \
+	$(PRJ_DIR)/../os/os_dir.c \
+	$(PRJ_DIR)/../os/os_errno.c \
+	$(PRJ_DIR)/../os/os_fid.c \
+	$(PRJ_DIR)/../os/os_fsync.c \
+	$(PRJ_DIR)/../os/os_handle.c \
+	$(PRJ_DIR)/../os/os_id.c \
+	$(PRJ_DIR)/../os/os_method.c \
+	$(PRJ_DIR)/../os/os_oflags.c \
+	$(PRJ_DIR)/../os/os_open.c \
+	$(PRJ_DIR)/../os/os_region.c \
+	$(PRJ_DIR)/../os/os_rename.c \
+	$(PRJ_DIR)/../os/os_root.c \
+	$(PRJ_DIR)/../os/os_rpath.c \
+	$(PRJ_DIR)/../os/os_rw.c \
+	$(PRJ_DIR)/../os/os_seek.c \
 	$(PRJ_DIR)/../os/os_sleep.c \
-	$(PRJ_DIR)/../btree/bt_verify.c \
-	$(PRJ_DIR)/../hash/hash_verify.c \
-	$(PRJ_DIR)/../qam/qam_verify.c \
-	$(PRJ_DIR)/../db/db_upg_opd.c \
-	$(PRJ_DIR)/../rpc_client/gen_client_ret.c \
-	$(PRJ_DIR)/../rpc_client/db_server_clnt.c \
-	$(PRJ_DIR)/../rpc_client/gen_client.c \
-	$(PRJ_DIR)/../rpc_client/client.c \
-	$(PRJ_DIR)/../rpc_server/db_server_xdr.c \
-	$(PRJ_DIR)/../os_vxworks/os_vx_map.c \
-	$(PRJ_DIR)/../db/db_vrfy.c \
-	$(PRJ_DIR)/../db/db_upg.c \
-	$(PRJ_DIR)/../db/db_vrfyutil.c \
-	$(PRJ_DIR)/../os_vxworks/os_vx_finit.c \
+	$(PRJ_DIR)/../os/os_spin.c \
+	$(PRJ_DIR)/../os/os_stat.c \
+	$(PRJ_DIR)/../os/os_tmpdir.c \
+	$(PRJ_DIR)/../os/os_unlink.c \
 	$(PRJ_DIR)/../os_vxworks/os_vx_abs.c \
-	$(PRJ_DIR)/../lock/lock_method.c \
-	$(PRJ_DIR)/../lock/lock_stat.c \
+	$(PRJ_DIR)/../os_vxworks/os_vx_config.c \
+	$(PRJ_DIR)/../os_vxworks/os_vx_map.c \
+	$(PRJ_DIR)/../qam/qam.c \
+	$(PRJ_DIR)/../qam/qam_auto.c \
+	$(PRJ_DIR)/../qam/qam_conv.c \
 	$(PRJ_DIR)/../qam/qam_files.c \
-	$(PRJ_DIR)/../txn/txn_stat.c \
-	$(PRJ_DIR)/../txn/txn_recover.c \
+	$(PRJ_DIR)/../qam/qam_method.c \
+	$(PRJ_DIR)/../qam/qam_open.c \
+	$(PRJ_DIR)/../qam/qam_rec.c \
+	$(PRJ_DIR)/../qam/qam_stat.c \
+	$(PRJ_DIR)/../qam/qam_upgrade.c \
+	$(PRJ_DIR)/../qam/qam_verify.c \
 	$(PRJ_DIR)/../rep/rep_method.c \
 	$(PRJ_DIR)/../rep/rep_record.c \
-	$(PRJ_DIR)/../rep/rep_util.c \
-	$(PRJ_DIR)/../txn/txn_method.c \
-	$(PRJ_DIR)/../common/util_arg.c \
 	$(PRJ_DIR)/../rep/rep_region.c \
-	$(PRJ_DIR)/../os/os_clock.c
+	$(PRJ_DIR)/../rep/rep_util.c \
+	$(PRJ_DIR)/../rpc_client/client.c \
+	$(PRJ_DIR)/../rpc_client/db_server_clnt.c \
+	$(PRJ_DIR)/../rpc_client/gen_client.c \
+	$(PRJ_DIR)/../rpc_client/gen_client_ret.c \
+	$(PRJ_DIR)/../rpc_server/c/db_server_xdr.c \
+	$(PRJ_DIR)/../txn/txn.c \
+	$(PRJ_DIR)/../txn/txn_auto.c \
+	$(PRJ_DIR)/../txn/txn_method.c \
+	$(PRJ_DIR)/../txn/txn_rec.c \
+	$(PRJ_DIR)/../txn/txn_recover.c \
+	$(PRJ_DIR)/../txn/txn_region.c \
+	$(PRJ_DIR)/../txn/txn_stat.c \
+	$(PRJ_DIR)/../txn/txn_util.c \
+	$(PRJ_DIR)/../xa/xa.c \
+	$(PRJ_DIR)/../xa/xa_db.c \
+	$(PRJ_DIR)/../xa/xa_map.c
 <END>
 
 <BEGIN> userComments
 BerkeleyDB
 <END>
-

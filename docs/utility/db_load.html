@@ -1,6 +1,7 @@
-<!--$Id: db_load.so,v 10.33 2001/10/12 19:19:17 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_load.so,v 10.38 2002/08/24 18:24:53 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_load</title>
@@ -19,7 +20,7 @@
 <hr size=1 noshade>
 <tt>
 <h3><pre>db_load [<b>-nTV</b>] [<b>-c name=value</b>] [<b>-f file</b>]
-    [<b>-h home</b>] [<b>-t btree | hash | queue | recno</b>] file</pre></h3>
+    [<b>-h home</b>] [<b>-P password</b>] [<b>-t btree | hash | queue | recno</b>] file</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_load utility reads from the standard input and loads it
@@ -31,9 +32,9 @@ below.
 <p>The options are as follows:
 <p><dl compact>
 <p><dt><b>-c</b><dd>Specify configuration options ignoring any value they may have based on
-the input.  The command-line format is <b>name=value</b>.  See
-<a href="db_load.html#Supported Keywords">Supported Keywords</a> for a
-list of supported words for the <b>-c</b> option.
+the input.  The command-line format is <b>name=value</b>.  See the
+Supported Keywords section below for a list of keywords supported by
+the <b>-c</b> option.
 <p><dt><b>-f</b><dd>Read from the specified <b>input</b> file instead of from the standard
 input.
 <p><dt><b>-h</b><dd>Specify a home directory for the database environment.
@@ -49,6 +50,11 @@ environment is ignored; for example, no locking is done.
 already existing database.  If a key/data pair cannot be loaded into the
 database for this reason, a warning message is displayed on the standard
 error output, and the key/data pair are skipped.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-T</b><dd>The <b>-T</b> option allows non-Berkeley DB applications to easily load text
 files into databases.
 <p>If the database to be created is of type Btree or Hash, or the keyword
@@ -120,6 +126,7 @@ as (number) convert value to a number.  Items listed as (string) use
 the string value without modification.
 <p><dl compact>
 <dt>bt_minkey (number)<dd>The minimum number of keys per page.
+<dt>chksum (boolean)<dd>Enable page checksums.
 <dt>database (string)<dd>The database to load.
 <dt>db_lorder (number)<dd>The byte order for integers in the stored database metadata.
 <dt>db_pagesize (number)<dd>The size of database pages, in bytes.
@@ -134,19 +141,8 @@ to use extents.
 <dt>re_pad (string)<dd>Specify the fixed-length record pad character.
 <dt>recnum (boolean)<dd>The value of the <a href="../api_c/db_set_flags.html#DB_RECNUM">DB_RECNUM</a> flag.
 <dt>renumber (boolean)<dd>The value of the <a href="../api_c/db_set_flags.html#DB_RENUMBER">DB_RENUMBER</a> flag.
+<dt>subdatabase (string)<dd>The subdatabase to load.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-<a href="../utility/db_dump.html">db_dump</a>,
-db_load,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

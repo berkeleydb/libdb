@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env007.tcl,v 11.11 2001/08/19 19:35:51 bostic Exp $
+# $Id: env007.tcl,v 11.21 2002/08/12 20:49:36 sandstro Exp $
 #
 # TEST	env007
 # TEST	Test various DB_CONFIG config file options.
@@ -33,18 +33,18 @@ proc env007 { } {
 	{ " -txn_max " "set_tx_max" "19" "31" "Env007.a: Txn Max"
 	    "txn_stat" "Max Txns"}
 	{ " -lock_max_locks " "set_lk_max_locks" "17" "29" "Env007.b: Lock Max"
-	    "lock_stat" "Max locks"}
+	    "lock_stat" "Maximum locks"}
 	{ " -lock_max_lockers " "set_lk_max_lockers" "1500" "2000"
-	    "Env007.c: Max Lockers" "lock_stat" "Max lockers"}
+	    "Env007.c: Max Lockers" "lock_stat" "Maximum lockers"}
 	{ " -lock_max_objects " "set_lk_max_objects" "1500" "2000"
-	    "Env007.d: Max Objects" "lock_stat" "Max objects"}
+	    "Env007.d: Max Objects" "lock_stat" "Maximum objects"}
 	{ " -log_buffer " "set_lg_bsize" "65536" "131072" "Env007.e: Log Bsize"
 	    "log_stat" "Log record cache size"}
 	{ " -log_max " "set_lg_max" "8388608" "9437184" "Env007.f: Log Max"
-	    "log_stat" "Maximum log file size"}
+	    "log_stat" "Current log file size"}
 	}
 
-	set e "berkdb env -create -mode 0644 -home $testdir -log -lock -txn "
+	set e "berkdb_env -create -mode 0644 -home $testdir -log -lock -txn "
 	foreach item $rlist {
 		set envarg [lindex $item 0]
 		set configarg [lindex $item 1]
@@ -90,11 +90,15 @@ proc env007 { } {
 	{ "set_cachesize" "0 1048576 0" }
 	{ "set_data_dir" "." }
 	{ "set_flags" "db_cdb_alldb" }
+	{ "set_flags" "db_direct_db" }
+	{ "set_flags" "db_direct_log" }
 	{ "set_flags" "db_nolocking" }
 	{ "set_flags" "db_nommap" }
 	{ "set_flags" "db_nopanic" }
+	{ "set_flags" "db_overwrite" }
 	{ "set_flags" "db_region_init" }
 	{ "set_flags" "db_txn_nosync" }
+	{ "set_flags" "db_txn_write_nosync" }
 	{ "set_flags" "db_yieldcpu" }
 	{ "set_lg_bsize" "65536" }
 	{ "set_lg_dir" "." }
@@ -127,7 +131,7 @@ proc env007 { } {
 	}
 
 	puts "\tEnv007.g: Config file settings"
-	set e "berkdb env -create -mode 0644 -home $testdir -log -lock -txn "
+	set e "berkdb_env -create -mode 0644 -home $testdir -log -lock -txn "
 	foreach item $cfglist {
 		env_cleanup $testdir
 		set configarg [lindex $item 0]
@@ -138,7 +142,7 @@ proc env007 { } {
 		#  verify using just config file
 		puts "\t\t $configarg $configval"
 		set env [eval $e]
-		error_check_good envopen:1 [is_valid_env $env] TRUE
+		error_check_good envvalid:1 [is_valid_env $env] TRUE
 		error_check_good envclose:1 [$env close] 0
 	}
 
@@ -167,7 +171,8 @@ proc env007 { } {
 	{ "set_verbose" "db_verb_recovery x" }
 	}
 	puts "\tEnv007.h: Config value errors"
-	set e "berkdb env -create -mode 0644 -home $testdir -log -lock -txn "
+	set e "berkdb_env_noerr -create -mode 0644 \
+	    -home $testdir -log -lock -txn "
 	foreach item $cfglist {
 		set configarg [lindex $item 0]
 		set configval [lindex $item 1]
@@ -183,7 +188,8 @@ proc env007 { } {
 	}
 
 	puts "\tEnv007.i: Config name error set_xxx"
-	set e "berkdb env -create -mode 0644 -home $testdir -log -lock -txn "
+	set e "berkdb_env_noerr -create -mode 0644 \
+	    -home $testdir -log -lock -txn "
 	env007_make_config "set_xxx" 1
 	set stat [catch {eval $e} ret]
 	error_check_good envopen $stat 1

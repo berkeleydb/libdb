@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_stat.c,v 11.16 2001/10/04 21:27:57 bostic Exp $";
+static const char revid[] = "$Id: os_stat.c,v 11.20 2002/07/12 18:56:53 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,7 +19,6 @@ static const char revid[] = "$Id: os_stat.c,v 11.16 2001/10/04 21:27:57 bostic E
 #endif
 
 #include "db_int.h"
-#include "os_jump.h"
 
 /*
  * __os_exists --
@@ -35,8 +34,8 @@ __os_exists(path, isdirp)
 	int ret;
 	struct stat sb;
 
-	if (__db_jump.j_exists != NULL)
-		return (__db_jump.j_exists(path, isdirp));
+	if (DB_GLOBAL(j_exists) != NULL)
+		return (DB_GLOBAL(j_exists)(path, isdirp));
 
 	do {
 		ret =
@@ -82,22 +81,14 @@ __os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
 	u_int32_t *mbytesp, *bytesp, *iosizep;
 {
 	int ret;
-#ifdef HAVE__FSTATI64
-	struct _stati64 sb;
-#else
 	struct stat sb;
-#endif
 
-	if (__db_jump.j_ioinfo != NULL)
-		return (__db_jump.j_ioinfo(path,
+	if (DB_GLOBAL(j_ioinfo) != NULL)
+		return (DB_GLOBAL(j_ioinfo)(path,
 		    fhp->fd, mbytesp, bytesp, iosizep));
 
 retry:
-#ifdef HAVE__FSTATI64
-	if (_fstati64(fhp->fd, &sb) == -1) {
-#else
 	if (fstat(fhp->fd, &sb) == -1) {
-#endif
 		if ((ret = __os_get_errno()) == EINTR)
 			goto retry;
 		__db_err(dbenv, "fstat: %s", strerror(ret));

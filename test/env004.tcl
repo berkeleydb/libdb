@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env004.tcl,v 11.16 2001/08/03 16:39:24 bostic Exp $
+# $Id: env004.tcl,v 11.18 2002/02/20 17:08:21 sandstro Exp $
 #
 # TEST	env004
 # TEST	Test multiple data directories.  Do a bunch of different opens
@@ -38,19 +38,19 @@ proc env004 { } {
 	set fulldir [pwd]
 	cd $curdir
 
-	set e [berkdb env -create -private -home $testdir]
+	set e [berkdb_env -create -private -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE
 	ddir_test $fulldir $method $e $args
 	error_check_good env_close [$e close] 0
 
-	puts "\tEnv004.b: Multiple data directories in berkdb env call."
+	puts "\tEnv004.b: Multiple data directories in berkdb_env call."
 	env_cleanup $testdir
 	file mkdir $testdir/data1
 	file mkdir $testdir/data2
 	file mkdir $testdir/data3
 
 	# Now call dbenv with config specified
-	set e [berkdb env -create -private \
+	set e [berkdb_env -create -private \
 	    -data_dir . -data_dir data1 -data_dir data2 \
 	    -data_dir data3 -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001
+# Copyright (c) 2001-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: si003.tcl,v 1.4 2001/08/03 16:39:31 bostic Exp $
+# $Id: si003.tcl,v 1.6 2002/04/29 17:12:03 sandstro Exp $
 #
 # TEST	sindex003
 # TEST	sindex001 with secondaries created and closed mid-test
@@ -39,7 +39,7 @@ proc sindex003 { methods {nentries 200} {tnum 3} args } {
 
 	# Open an environment
 	# XXX if one is not supplied!
-	set env [eval {berkdb env -create -home $testdir}]
+	set env [eval {berkdb_env -create -home $testdir}]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# Open the primary.

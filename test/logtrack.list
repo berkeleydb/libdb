@@ -1,10 +1,6 @@
-PREFIX	crdel
-BEGIN	fileopen	141
+PREFIX	__crdel
 BEGIN	metasub	142
-BEGIN	metapage	143
-BEGIN	rename	145
-BEGIN	delete	146
-PREFIX	db
+PREFIX	__db
 BEGIN	addrem	41
 BEGIN	big	43
 BEGIN	ovref	44
@@ -13,7 +9,10 @@ BEGIN	debug	47
 BEGIN	noop	48
 BEGIN	pg_alloc	49
 BEGIN	pg_free	50
-PREFIX	bam
+BEGIN	cksum	51
+PREFIX	__dbreg
+BEGIN	register	2
+PREFIX	__bam
 BEGIN	split	62
 BEGIN	rsplit	63
 BEGIN	adj	55
@@ -23,7 +22,7 @@ BEGIN	repl	58
 BEGIN	root	59
 BEGIN	curadj	64
 BEGIN	rcuradj	65
-PREFIX	ham
+PREFIX	__ham
 BEGIN	insdel	21
 BEGIN	newpage	22
 BEGIN	splitdata	24
@@ -33,18 +32,15 @@ BEGIN	metagroup	29
 BEGIN	groupalloc	32
 BEGIN	curadj	33
 BEGIN	chgpg	34
-PREFIX	log
-BEGIN	register	2
-PREFIX	qam
+PREFIX	__qam
 BEGIN	incfirst	84
 BEGIN	mvptr	85
 BEGIN	del	79
 BEGIN	add	80
-BEGIN	delete	81
-BEGIN	rename	82
 BEGIN	delext	83
-PREFIX	txn
+PREFIX	__txn
 BEGIN	regop	10
 BEGIN	ckp	11
-BEGIN	xa_regop	13
 BEGIN	child	12
+BEGIN	xa_regop	13
+BEGIN	recycle	14

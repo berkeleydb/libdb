@@ -1,6 +1,7 @@
 <!--$Id: re_source.so,v 10.15 2001/03/01 15:57:51 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Flat-text backing files</title>
@@ -19,16 +20,16 @@
 length) with a flat-text source file.  This provides fast read (and
 potentially write) access to databases that are normally created and
 stored as flat-text files.  The backing source file may be specified by
-calling the <a href="../../api_c/db_set_re_source.html">DB-&gt;set_re_source</a> function.
+calling the <a href="../../api_c/db_set_re_source.html">DB-&gt;set_re_source</a> method.
 <p>The backing source file will be read to initialize the database.  In the
 case of variable length records, the records are assumed to be separated
-as described for the <a href="../../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a> function interface.  For example,
+as described for the <a href="../../api_c/db_set_re_delim.html">DB-&gt;set_re_delim</a> method interface.  For example,
 standard UNIX byte stream files can be interpreted as a sequence of
 variable length records separated by ASCII newline characters.  This is
 the default.
 <p>When cached data would normally be written back to the underlying
 database file (for example, when the <a href="../../api_c/db_close.html">DB-&gt;close</a> or
-<a href="../../api_c/db_sync.html">DB-&gt;sync</a> functions are called), the in-memory copy of the database will
+<a href="../../api_c/db_sync.html">DB-&gt;sync</a> methods are called), the in-memory copy of the database will
 be written back to the backing source file.
 <p>The backing source file must already exist (but may be zero-length) when
 <a href="../../api_c/db_open.html">DB-&gt;open</a> is called.  By default, the backing source file is read
@@ -39,7 +40,7 @@ inserting or deleting records, the backing source file must be read in
 its entirety before more than a single process accesses the database,
 and only that process should specify the backing source file as part of
 the <a href="../../api_c/db_open.html">DB-&gt;open</a> call.  This can be accomplished by calling the
-<a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function with the <a href="../../api_c/db_set_flags.html#DB_SNAPSHOT">DB_SNAPSHOT</a> flag.
+<a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> method with the <a href="../../api_c/db_set_flags.html#DB_SNAPSHOT">DB_SNAPSHOT</a> flag.
 <p>Reading and writing the backing source file cannot be transactionally
 protected because it involves filesystem operations that are not part of
 the Berkeley DB transaction methodology. For this reason, if a temporary

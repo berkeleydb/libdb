@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_recover.c,v 11.26 2001/09/07 13:31:18 bostic Exp $";
+    "$Id: db_recover.c,v 11.33 2002/03/28 20:13:42 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,9 +34,7 @@ static const char revid[] =
 #endif
 
 #include "db_int.h"
-#include "txn.h"
-#include "common_ext.h"
-#include "clib_ext.h"
+#include "dbinc/txn.h"
 
 int main __P((int, char *[]));
 int read_timestamp __P((const char *, char *, time_t *));
@@ -56,15 +54,15 @@ main(argc, argv)
 	time_t now, timestamp;
 	u_int32_t flags;
 	int ch, exitval, fatal_recover, ret, retain_env, verbose;
-	char *home;
+	char *home, *passwd;
 
 	if ((ret = version_check(progname)) != 0)
 		return (ret);
 
-	home = NULL;
+	home = passwd = NULL;
 	timestamp = 0;
 	exitval = fatal_recover = retain_env = verbose = 0;
-	while ((ch = getopt(argc, argv, "ceh:t:Vv")) != EOF)
+	while ((ch = getopt(argc, argv, "ceh:P:t:Vv")) != EOF)
 		switch (ch) {
 		case 'c':
 			fatal_recover = 1;
@@ -74,6 +72,15 @@ main(argc, argv)
 			break;
 		case 'h':
 			home = optarg;
+			break;
+		case 'P':
+			passwd = strdup(optarg);
+			memset(optarg, 0, strlen(optarg));
+			if (passwd == NULL) {
+				fprintf(stderr, "%s: strdup: %s\n",
+				    progname, strerror(errno));
+				return (EXIT_FAILURE);
+			}
 			break;
 		case 't':
 			if ((ret =
@@ -117,6 +124,12 @@ main(argc, argv)
 	if (timestamp &&
 	    (ret = dbenv->set_tx_timestamp(dbenv, &timestamp)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->set_timestamp");
+		goto shutdown;
+	}
+
+	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
+	    passwd, DB_ENCRYPT_AES)) != 0) {
+		dbenv->err(dbenv, ret, "set_passwd");
 		goto shutdown;
 	}
 
@@ -275,8 +288,8 @@ terr:		fprintf(stderr,
 int
 usage()
 {
-	(void)fprintf(stderr,
-	    "usage: db_recover [-ceVv] [-h home] [-t [[CC]YY]MMDDhhmm[.SS]]\n");
+	(void)fprintf(stderr, "%s\n",
+"usage: db_recover [-ceVv] [-h home] [-P password] [-t [[CC]YY]MMDDhhmm[.SS]]");
 	return (EXIT_FAILURE);
 }
 

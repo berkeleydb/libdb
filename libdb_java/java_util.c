@@ -1,19 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_util.c,v 11.36 2001/10/28 04:45:52 krinsky Exp $";
+static const char revid[] = "$Id: java_util.c,v 11.49 2002/09/13 03:09:30 mjc Exp $";
 #endif /* not lint */
 
 #include <jni.h>
 #include <errno.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "db_int.h"
 #include "java_util.h"
@@ -41,11 +39,13 @@ const char * const name_DB_MPOOL_FSTAT     = "DbMpoolFStat";
 const char * const name_DB_MPOOL_STAT      = "DbMpoolStat";
 const char * const name_DB_PREPLIST        = "DbPreplist";
 const char * const name_DB_QUEUE_STAT      = "DbQueueStat";
+const char * const name_DB_REP_STAT        = "DbRepStat";
 const char * const name_DB_RUNRECOVERY_EX  = "DbRunRecoveryException";
 const char * const name_DBT                = "Dbt";
 const char * const name_DB_TXN             = "DbTxn";
 const char * const name_DB_TXN_STAT        = "DbTxnStat";
 const char * const name_DB_TXN_STAT_ACTIVE = "DbTxnStat$Active";
+const char * const name_DB_UTIL            = "DbUtil";
 const char * const name_DbAppendRecno      = "DbAppendRecno";
 const char * const name_DbBtreeCompare     = "DbBtreeCompare";
 const char * const name_DbBtreePrefix      = "DbBtreePrefix";
@@ -71,9 +71,11 @@ jfieldID fid_Dbt_ulen;
 jfieldID fid_Dbt_dlen;
 jfieldID fid_Dbt_doff;
 jfieldID fid_Dbt_flags;
+jfieldID fid_Dbt_private_dbobj_;
 jfieldID fid_Dbt_must_create_data;
 jfieldID fid_DbLockRequest_op;
 jfieldID fid_DbLockRequest_mode;
+jfieldID fid_DbLockRequest_timeout;
 jfieldID fid_DbLockRequest_obj;
 jfieldID fid_DbLockRequest_lock;
 jfieldID fid_RepProcessMessage_envid;
@@ -81,17 +83,18 @@ jfieldID fid_RepProcessMessage_envid;
 /****************************************************************
  *
  * Utility functions used by "glue" functions.
- *
  */
 
-/* Do any one time initialization, especially initializing any
+/*
+ * Do any one time initialization, especially initializing any
  * unchanging methodIds, fieldIds, etc.
  */
 void one_time_init(JNIEnv *jnienv)
 {
     jclass cl;
 
-    cl = get_class(jnienv, name_DBT);
+    if ((cl = get_class(jnienv, name_DBT)) == NULL)
+	return;	/* An exception has been posted. */
     fid_Dbt_data = (*jnienv)->GetFieldID(jnienv, cl, "data", "[B");
     fid_Dbt_offset = (*jnienv)->GetFieldID(jnienv, cl, "offset", "I");
     fid_Dbt_size = (*jnienv)->GetFieldID(jnienv, cl, "size", "I");
@@ -101,21 +104,28 @@ void one_time_init(JNIEnv *jnienv)
     fid_Dbt_flags = (*jnienv)->GetFieldID(jnienv, cl, "flags", "I");
     fid_Dbt_must_create_data = (*jnienv)->GetFieldID(jnienv, cl,
 						     "must_create_data", "Z");
+    fid_Dbt_private_dbobj_ =
+	(*jnienv)->GetFieldID(jnienv, cl, "private_dbobj_", "J");
 
-    cl = get_class(jnienv, name_DbLockRequest);
+    if ((cl = get_class(jnienv, name_DbLockRequest)) == NULL)
+	return;	/* An exception has been posted. */
     fid_DbLockRequest_op = (*jnienv)->GetFieldID(jnienv, cl, "op", "I");
     fid_DbLockRequest_mode = (*jnienv)->GetFieldID(jnienv, cl, "mode", "I");
+    fid_DbLockRequest_timeout =
+	(*jnienv)->GetFieldID(jnienv, cl, "timeout", "I");
     fid_DbLockRequest_obj = (*jnienv)->GetFieldID(jnienv, cl, "obj",
 						  "Lcom/sleepycat/db/Dbt;");
     fid_DbLockRequest_lock = (*jnienv)->GetFieldID(jnienv, cl, "lock",
 						   "Lcom/sleepycat/db/DbLock;");
 
-    cl = get_class(jnienv, name_RepProcessMessage);
+    if ((cl = get_class(jnienv, name_RepProcessMessage)) == NULL)
+	return;	/* An exception has been posted. */
     fid_RepProcessMessage_envid =
 	(*jnienv)->GetFieldID(jnienv, cl, "envid", "I");
 }
 
-/* Get the private data from a Db* object that points back to a C DB_* object.
+/*
+ * Get the private data from a Db* object that points back to a C DB_* object.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
@@ -129,13 +139,15 @@ void *get_private_dbobj(JNIEnv *jnienv, const char *classname,
 	if (!obj)
 		return (0);
 
-	dbClass = get_class(jnienv, classname);
+	if ((dbClass = get_class(jnienv, classname)) == NULL)
+		return (NULL);	/* An exception has been posted. */
 	id = (*jnienv)->GetFieldID(jnienv, dbClass, "private_dbobj_", "J");
 	lp.java_long = (*jnienv)->GetLongField(jnienv, obj, id);
 	return (lp.ptr);
 }
 
-/* Set the private data in a Db* object that points back to a C DB_* object.
+/*
+ * Set the private data in a Db* object that points back to a C DB_* object.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
@@ -148,12 +160,14 @@ void set_private_dbobj(JNIEnv *jnienv, const char *classname,
 
 	lp.java_long = 0;	/* no junk in case sizes mismatch */
 	lp.ptr = value;
-	dbClass = get_class(jnienv, classname);
+	if ((dbClass = get_class(jnienv, classname)) == NULL)
+		return;	/* An exception has been posted. */
 	id = (*jnienv)->GetFieldID(jnienv, dbClass, "private_dbobj_", "J");
 	(*jnienv)->SetLongField(jnienv, obj, id, lp.java_long);
 }
 
-/* Get the private data in a Db/DbEnv object that holds additional 'side data'.
+/*
+ * Get the private data in a Db/DbEnv object that holds additional 'side data'.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
@@ -165,15 +179,17 @@ void *get_private_info(JNIEnv *jnienv, const char *classname,
 	long_to_ptr lp;
 
 	if (!obj)
-		return (0);
+		return (NULL);
 
-	dbClass = get_class(jnienv, classname);
+	if ((dbClass = get_class(jnienv, classname)) == NULL)
+		return (NULL);	/* An exception has been posted. */
 	id = (*jnienv)->GetFieldID(jnienv, dbClass, "private_info_", "J");
 	lp.java_long = (*jnienv)->GetLongField(jnienv, obj, id);
 	return (lp.ptr);
 }
 
-/* Set the private data in a Db/DbEnv object that holds additional 'side data'.
+/*
+ * Set the private data in a Db/DbEnv object that holds additional 'side data'.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
@@ -186,7 +202,8 @@ void set_private_info(JNIEnv *jnienv, const char *classname,
 
 	lp.java_long = 0;	/* no junk in case sizes mismatch */
 	lp.ptr = value;
-	dbClass = get_class(jnienv, classname);
+	if ((dbClass = get_class(jnienv, classname)) == NULL)
+		return;	/* An exception has been posted. */
 	id = (*jnienv)->GetFieldID(jnienv, dbClass, "private_info_", "J");
 	(*jnienv)->SetLongField(jnienv, obj, id, lp.java_long);
 }
@@ -197,7 +214,8 @@ void set_private_info(JNIEnv *jnienv, const char *classname,
  */
 jclass get_class(JNIEnv *jnienv, const char *classname)
 {
-	/* Note: PERFORMANCE: It should be possible to cache jclass's.
+	/*
+	 * Note: PERFORMANCE: It should be possible to cache jclass's.
 	 * If we do a NewGlobalRef on each one, we can keep them
 	 * around in a table.  A jclass is a jobject, and
 	 * since NewGlobalRef returns a jobject, it isn't
@@ -211,7 +229,33 @@ jclass get_class(JNIEnv *jnienv, const char *classname)
 	return ((*jnienv)->FindClass(jnienv, fullname));
 }
 
-/* Set an individual field in a Db* object.
+/*
+ * Given a fully qualified name (e.g. "java.util.Hashtable")
+ * return the jclass object.  If it can't be found, an
+ * exception is raised and NULL is return.
+ * This is appropriate to be used for classes that may
+ * not be present.
+ */
+jclass get_fully_qualified_class(JNIEnv *jnienv, const char *classname)
+{
+	jclass result;
+
+	result = ((*jnienv)->FindClass(jnienv, classname));
+	if (result == NULL) {
+		jclass cnfe;
+		char message[1024];
+
+		cnfe = (*jnienv)->FindClass(jnienv,
+				    "java/lang/ClassNotFoundException");
+		strncpy(message, classname, sizeof(message));
+		strncat(message, ": class not found", sizeof(message));
+		(*jnienv)->ThrowNew(jnienv, cnfe, message);
+	}
+	return (result);
+}
+
+/*
+ * Set an individual field in a Db* object.
  * The field must be a DB object type.
  */
 void set_object_field(JNIEnv *jnienv, jclass class_of_this,
@@ -228,17 +272,20 @@ void set_object_field(JNIEnv *jnienv, jclass class_of_this,
 	(*jnienv)->SetObjectField(jnienv, jthis, id, obj);
 }
 
-/* Set an individual field in a Db* object.
+/*
+ * Set an individual field in a Db* object.
  * The field must be an integer type.
  */
 void set_int_field(JNIEnv *jnienv, jclass class_of_this,
 		   jobject jthis, const char *name_of_field, jint value)
 {
-	jfieldID id  = (*jnienv)->GetFieldID(jnienv, class_of_this, name_of_field, "I");
+	jfieldID id  =
+	    (*jnienv)->GetFieldID(jnienv, class_of_this, name_of_field, "I");
 	(*jnienv)->SetIntField(jnienv, jthis, id, value);
 }
 
-/* Set an individual field in a Db* object.
+/*
+ * Set an individual field in a Db* object.
  * The field must be an integer type.
  */
 void set_long_field(JNIEnv *jnienv, jclass class_of_this,
@@ -249,7 +296,8 @@ void set_long_field(JNIEnv *jnienv, jclass class_of_this,
 	(*jnienv)->SetLongField(jnienv, jthis, id, value);
 }
 
-/* Set an individual field in a Db* object.
+/*
+ * Set an individual field in a Db* object.
  * The field must be an integer type.
  */
 void set_lsn_field(JNIEnv *jnienv, jclass class_of_this,
@@ -259,7 +307,8 @@ void set_lsn_field(JNIEnv *jnienv, jclass class_of_this,
 			 name_of_field, get_DbLsn(jnienv, value));
 }
 
-/* Report an exception back to the java side.
+/*
+ * Report an exception back to the java side.
  */
 void report_exception(JNIEnv *jnienv, const char *text,
 		      int err, unsigned long expect_mask)
@@ -274,63 +323,73 @@ void report_exception(JNIEnv *jnienv, const char *text,
 	javaexcept = NULL;
 
 	switch (err) {
-	/* DB_JAVA_CALLBACK is returned by dbji_call_append_recno()
-	 * (the append_recno callback) when the Java version of the
-	 * callback has thrown an exception, and we want to pass the
-	 * exception on.  The exception has already been thrown, we
+	/*
+	 * DB_JAVA_CALLBACK is returned by
+	 * dbji_call_append_recno() (the append_recno callback)
+	 * when the Java version of the callback has thrown
+	 * an exception, and we want to pass the exception on.
+	 * The exception has already been thrown, we
 	 * don't want to throw a new one.
 	 */
-	case DB_JAVA_CALLBACK:
-		break;
-	case ENOENT:
-		/* In this case there is a corresponding standard java
-		 * exception type that we'll use.  First we make sure
-		 * that the calling function expected this kind of error,
-		 * if not we give an 'internal error' DbException, since
-		 * we must not throw an exception type that isn't
-		 * declared in the signature.
-		 *
-		 * We'll make this a little more general if/when we add
-		 * more java standard exceptions.
-		 */
-		if ((expect_mask & EXCEPTION_FILE_NOT_FOUND) == 0) {
-			char errstr[1024];
+		case DB_JAVA_CALLBACK:
+			break;
+		case ENOENT:
+			/*
+			 * In this case there is a corresponding
+			 * standard java exception type that we'll use.
+			 * First we make sure that the calling function
+			 * expected this kind of error, if not we give
+			 * an 'internal error' DbException, since
+			 * we must not throw an exception type that isn't
+			 * declared in the signature.
+			 *
+			 * We'll make this a little more general if/when
+			 * we add more java standard exceptions.
+			 */
+			if ((expect_mask & EXCEPTION_FILE_NOT_FOUND) != 0) {
+				javaexcept = (*jnienv)->FindClass(jnienv,
+				    "java/io/FileNotFoundException");
+			}
+			else {
+				char errstr[1024];
 
-			strncpy(errstr, "internal error: unexpected errno: ",
-				sizeof(errstr));
-			strncat(errstr, text, sizeof(errstr));
-			textString = get_java_string(jnienv, errstr);
+				snprintf(errstr, sizeof(errstr),
+				  "internal error: unexpected errno: %s",
+					 text);
+				textString = get_java_string(jnienv,
+							     errstr);
+				dbexcept = get_class(jnienv,
+						     name_DB_EXCEPTION);
+			}
+			break;
+		case DB_RUNRECOVERY:
+			dbexcept = get_class(jnienv,
+					     name_DB_RUNRECOVERY_EX);
+			break;
+		case DB_LOCK_DEADLOCK:
+			dbexcept = get_class(jnienv, name_DB_DEADLOCK_EX);
+			break;
+		default:
 			dbexcept = get_class(jnienv, name_DB_EXCEPTION);
-		}
-		else {
-			javaexcept =
-			  (*jnienv)->FindClass(jnienv, "java/io/FileNotFoundException");
-		}
-		break;
-	case DB_RUNRECOVERY:
-		dbexcept = get_class(jnienv, name_DB_RUNRECOVERY_EX);
-		break;
-	case DB_LOCK_DEADLOCK:
-		dbexcept = get_class(jnienv, name_DB_DEADLOCK_EX);
-		break;
-	default:
-		dbexcept = get_class(jnienv, name_DB_EXCEPTION);
-		break;
+			break;
 	}
 	if (dbexcept != NULL) {
 		if (textString == NULL)
 			textString = get_java_string(jnienv, text);
-		obj = create_exception(jnienv, textString, err, dbexcept);
-		(*jnienv)->Throw(jnienv, obj);
+		if ((obj = create_exception(jnienv, textString, err, dbexcept))
+		    != NULL)
+			(*jnienv)->Throw(jnienv, obj);
+		/* Otherwise, an exception has been posted. */
 	}
-	else if (javaexcept != NULL) {
-		javaexcept =
-			(*jnienv)->FindClass(jnienv, "java/io/FileNotFoundException");
+	else if (javaexcept != NULL)
 		(*jnienv)->ThrowNew(jnienv, javaexcept, text);
-	}
+	else
+		fprintf(stderr,
+		    "report_exception: failed to create an exception\n");
 }
 
-/* Report an exception back to the java side, for the specific
+/*
+ * Report an exception back to the java side, for the specific
  * case of DB_LOCK_NOTGRANTED, as more things are added to the
  * constructor of this type of exception.
  */
@@ -343,20 +402,24 @@ void report_notgranted_exception(JNIEnv *jnienv, const char *text,
 	jthrowable obj;
 	jmethodID mid;
 
-	dbexcept = get_class(jnienv, name_DB_LOCKNOTGRANTED_EX);
+	if ((dbexcept = get_class(jnienv, name_DB_LOCKNOTGRANTED_EX)) == NULL)
+		return;	/* An exception has been posted. */
 	textString = get_java_string(jnienv, text);
 
 	mid = (*jnienv)->GetMethodID(jnienv, dbexcept, "<init>",
 				     "(Ljava/lang/String;II"
 				     "Lcom/sleepycat/db/Dbt;"
 				     "Lcom/sleepycat/db/DbLock;I)V");
-	obj = (jthrowable)(*jnienv)->NewObject(jnienv, dbexcept, mid,
-					       textString, op, mode,
-					       jdbt, jlock, index);
-	(*jnienv)->Throw(jnienv, obj);
+	if ((obj = (jthrowable)(*jnienv)->NewObject(jnienv, dbexcept,
+	    mid, textString, op, mode, jdbt, jlock, index)) != NULL)
+		(*jnienv)->Throw(jnienv, obj);
+	else
+		fprintf(stderr,
+	    "report_notgranted_exception: failed to create an exception\n");
 }
 
-/* Create an exception object and return it.
+/*
+ * Create an exception object and return it.
  * The given class must have a constructor that has a
  * constructor with args (java.lang.String text, int errno);
  * DbException and its subclasses fit this bill.
@@ -369,12 +432,19 @@ jobject create_exception(JNIEnv *jnienv, jstring text,
 
 	mid = (*jnienv)->GetMethodID(jnienv, dbexcept, "<init>",
 				     "(Ljava/lang/String;I)V");
-	obj = (jthrowable)(*jnienv)->NewObject(jnienv, dbexcept, mid,
+	if (mid != NULL)
+		obj = (jthrowable)(*jnienv)->NewObject(jnienv, dbexcept, mid,
 					       text, err);
-	return obj;
+	else {
+		fprintf(stderr, "Cannot get exception init method ID!\n");
+		obj = NULL;
+	}
+
+	return (obj);
 }
 
-/* Report an error via the errcall mechanism.
+/*
+ * Report an error via the errcall mechanism.
  */
 void report_errcall(JNIEnv *jnienv, jobject errcall,
 		    jstring prefix, const char *message)
@@ -383,7 +453,8 @@ void report_errcall(JNIEnv *jnienv, jobject errcall,
 	jclass errcall_class;
 	jstring msg;
 
-	errcall_class = get_class(jnienv, name_DbErrcall);
+	if ((errcall_class = get_class(jnienv, name_DbErrcall)) == NULL)
+		return;	/* An exception has been posted. */
 	msg = get_java_string(jnienv, message);
 
 	id = (*jnienv)->GetMethodID(jnienv, errcall_class,
@@ -398,7 +469,8 @@ void report_errcall(JNIEnv *jnienv, jobject errcall,
 	(*jnienv)->CallVoidMethod(jnienv, errcall, id, prefix, msg);
 }
 
-/* If the object is null, report an exception and return false (0),
+/*
+ * If the object is null, report an exception and return false (0),
  * otherwise return true (1).
  */
 int verify_non_null(JNIEnv *jnienv, void *obj)
@@ -410,19 +482,21 @@ int verify_non_null(JNIEnv *jnienv, void *obj)
 	return (1);
 }
 
-/* If the error code is non-zero, report an exception and return false (0),
+/*
+ * If the error code is non-zero, report an exception and return false (0),
  * otherwise return true (1).
  */
 int verify_return(JNIEnv *jnienv, int err, unsigned long expect_mask)
 {
 	if (err == 0)
-		return 1;
+		return (1);
 
 	report_exception(jnienv, db_strerror(err), err, expect_mask);
-	return 0;
+	return (0);
 }
 
-/* Verify that there was no memory error due to undersized Dbt.
+/*
+ * Verify that there was no memory error due to undersized Dbt.
  * If there is report a DbMemoryException, with the Dbt attached
  * and return false (0), otherwise return true (1).
  */
@@ -435,14 +509,15 @@ int verify_dbt(JNIEnv *jnienv, int err, LOCKED_DBT *ldbt)
 	jmethodID mid;
 
 	if (err != ENOMEM)
-		return 1;
+		return (1);
 
 	dbt = &ldbt->javainfo->dbt;
 	if (!F_ISSET(dbt, DB_DBT_USERMEM) || dbt->size <= dbt->ulen)
-		return 1;
+		return (1);
 
 	/* Create/throw an exception of type DbMemoryException */
-	dbexcept = get_class(jnienv, name_DB_MEMORY_EX);
+	if ((dbexcept = get_class(jnienv, name_DB_MEMORY_EX)) == NULL)
+		return (1);	/* An exception has been posted. */
 	text = get_java_string(jnienv,
 			       "Dbt not large enough for available data");
 	exception = create_exception(jnienv, text, ENOMEM, dbexcept);
@@ -452,20 +527,25 @@ int verify_dbt(JNIEnv *jnienv, int err, LOCKED_DBT *ldbt)
 				     "(L" DB_PACKAGE_NAME "Dbt;)V");
 	(*jnienv)->CallVoidMethod(jnienv, exception, mid, ldbt->jdbt);
 	(*jnienv)->Throw(jnienv, exception);
-	return 0;
+	return (0);
 }
 
-/* Create an object of the given class, calling its default constructor.
+/*
+ * Create an object of the given class, calling its default constructor.
  */
 jobject create_default_object(JNIEnv *jnienv, const char *class_name)
 {
-	jclass dbclass = get_class(jnienv, class_name);
-	jmethodID id = (*jnienv)->GetMethodID(jnienv, dbclass, "<init>", "()V");
-	jobject object = (*jnienv)->NewObject(jnienv, dbclass, id);
-	return (object);
+	jmethodID id;
+	jclass dbclass;
+
+	if ((dbclass = get_class(jnienv, class_name)) == NULL)
+		return (NULL);	/* An exception has been posted. */
+	id = (*jnienv)->GetMethodID(jnienv, dbclass, "<init>", "()V");
+	return ((*jnienv)->NewObject(jnienv, dbclass, id));
 }
 
-/* Convert an DB object to a Java encapsulation of that object.
+/*
+ * Convert an DB object to a Java encapsulation of that object.
  * Note: This implementation creates a new Java object on each call,
  * so it is generally useful when a new DB object has just been created.
  */
@@ -481,7 +561,8 @@ jobject convert_object(JNIEnv *jnienv, const char *class_name, void *dbobj)
 	return (jo);
 }
 
-/* Create a copy of the string
+/*
+ * Create a copy of the string
  */
 char *dup_string(const char *str)
 {
@@ -496,7 +577,8 @@ char *dup_string(const char *str)
 	return (retval);
 }
 
-/* Create a java string from the given string
+/*
+ * Create a java string from the given string
  */
 jstring get_java_string(JNIEnv *jnienv, const char* string)
 {
@@ -505,7 +587,8 @@ jstring get_java_string(JNIEnv *jnienv, const char* string)
 	return ((*jnienv)->NewStringUTF(jnienv, string));
 }
 
-/* Create a copy of the java string using __os_malloc.
+/*
+ * Create a copy of the java string using __os_malloc.
  * Caller must free it.
  */
 char *get_c_string(JNIEnv *jnienv, jstring jstr)
@@ -516,10 +599,11 @@ char *get_c_string(JNIEnv *jnienv, jstring jstr)
 	utf = (*jnienv)->GetStringUTFChars(jnienv, jstr, NULL);
 	retval = dup_string(utf);
 	(*jnienv)->ReleaseStringUTFChars(jnienv, jstr, utf);
-	return retval;
+	return (retval);
 }
 
-/* Convert a java object to the various C pointers they represent.
+/*
+ * Convert a java object to the various C pointers they represent.
  */
 DB *get_DB(JNIEnv *jnienv, jobject obj)
 {
@@ -528,7 +612,8 @@ DB *get_DB(JNIEnv *jnienv, jobject obj)
 
 DB_BTREE_STAT *get_DB_BTREE_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_BTREE_STAT *)get_private_dbobj(jnienv, name_DB_BTREE_STAT, obj));
+	return ((DB_BTREE_STAT *)
+	    get_private_dbobj(jnienv, name_DB_BTREE_STAT, obj));
 }
 
 DBC *get_DBC(JNIEnv *jnienv, jobject obj)
@@ -548,7 +633,8 @@ DB_ENV_JAVAINFO *get_DB_ENV_JAVAINFO(JNIEnv *jnienv, jobject obj)
 
 DB_HASH_STAT *get_DB_HASH_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_HASH_STAT *)get_private_dbobj(jnienv, name_DB_HASH_STAT, obj));
+	return ((DB_HASH_STAT *)
+	    get_private_dbobj(jnienv, name_DB_HASH_STAT, obj));
 }
 
 DB_JAVAINFO *get_DB_JAVAINFO(JNIEnv *jnienv, jobject obj)
@@ -568,7 +654,8 @@ DB_LOGC *get_DB_LOGC(JNIEnv *jnienv, jobject obj)
 
 DB_LOG_STAT *get_DB_LOG_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_LOG_STAT *)get_private_dbobj(jnienv, name_DB_LOG_STAT, obj));
+	return ((DB_LOG_STAT *)
+	    get_private_dbobj(jnienv, name_DB_LOG_STAT, obj));
 }
 
 DB_LSN *get_DB_LSN(JNIEnv *jnienv, /* DbLsn */ jobject obj) {
@@ -611,17 +698,20 @@ DB_LSN *get_DB_LSN(JNIEnv *jnienv, /* DbLsn */ jobject obj) {
 
 DB_MPOOL_FSTAT *get_DB_MPOOL_FSTAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_MPOOL_FSTAT *)get_private_dbobj(jnienv, name_DB_MPOOL_FSTAT, obj));
+	return ((DB_MPOOL_FSTAT *)
+	    get_private_dbobj(jnienv, name_DB_MPOOL_FSTAT, obj));
 }
 
 DB_MPOOL_STAT *get_DB_MPOOL_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_MPOOL_STAT *)get_private_dbobj(jnienv, name_DB_MPOOL_STAT, obj));
+	return ((DB_MPOOL_STAT *)
+	    get_private_dbobj(jnienv, name_DB_MPOOL_STAT, obj));
 }
 
 DB_QUEUE_STAT *get_DB_QUEUE_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_QUEUE_STAT *)get_private_dbobj(jnienv, name_DB_QUEUE_STAT, obj));
+	return ((DB_QUEUE_STAT *)
+	    get_private_dbobj(jnienv, name_DB_QUEUE_STAT, obj));
 }
 
 DB_TXN *get_DB_TXN(JNIEnv *jnienv, jobject obj)
@@ -631,7 +721,8 @@ DB_TXN *get_DB_TXN(JNIEnv *jnienv, jobject obj)
 
 DB_TXN_STAT *get_DB_TXN_STAT(JNIEnv *jnienv, jobject obj)
 {
-	return ((DB_TXN_STAT *)get_private_dbobj(jnienv, name_DB_TXN_STAT, obj));
+	return ((DB_TXN_STAT *)
+	    get_private_dbobj(jnienv, name_DB_TXN_STAT, obj));
 }
 
 DBT *get_DBT(JNIEnv *jnienv, jobject obj)
@@ -650,7 +741,8 @@ DBT_JAVAINFO *get_DBT_JAVAINFO(JNIEnv *jnienv, jobject obj)
 	return ((DBT_JAVAINFO *)get_private_dbobj(jnienv, name_DBT, obj));
 }
 
-/* Convert a C pointer to the various Java objects they represent.
+/*
+ * Convert a C pointer to the various Java objects they represent.
  */
 jobject get_DbBtreeStat(JNIEnv *jnienv, DB_BTREE_STAT *dbobj)
 {
@@ -677,7 +769,8 @@ jobject get_DbLogStat(JNIEnv *jnienv, DB_LOG_STAT *dbobj)
 	return (convert_object(jnienv, name_DB_LOG_STAT, dbobj));
 }
 
-/* LSNs are different since they are really normally
+/*
+ * LSNs are different since they are really normally
  * treated as by-value objects.  We actually create
  * a pointer to the LSN and store that, deleting it
  * when the LSN is GC'd.
@@ -723,7 +816,8 @@ static jobject get_Dbt_shared(JNIEnv *jnienv, const DBT *dbt, int readonly,
 	if (dbt == NULL)
 		return (NULL);
 
-	/* Note that a side effect of creating a Dbt object
+	/*
+	 * Note that a side effect of creating a Dbt object
 	 * is the creation of the attached DBT_JAVAINFO object
 	 * (see the native implementation of Dbt.init())
 	 * A DBT_JAVAINFO object contains its own DBT.
@@ -732,7 +826,8 @@ static jobject get_Dbt_shared(JNIEnv *jnienv, const DBT *dbt, int readonly,
 	dbtji = get_DBT_JAVAINFO(jnienv, jdbt);
 	memcpy(&dbtji->dbt, dbt, sizeof(DBT));
 
-	/* Set the boolean indicator so that the Java side knows to
+	/*
+	 * Set the boolean indicator so that the Java side knows to
 	 * call back when it wants to look at the array.  This avoids
 	 * needlessly creating/copying arrays that may never be looked at.
 	 */
@@ -741,20 +836,21 @@ static jobject get_Dbt_shared(JNIEnv *jnienv, const DBT *dbt, int readonly,
 
 	if (ret_info != NULL)
 	    *ret_info = dbtji;
-	return jdbt;
+	return (jdbt);
 }
 
-/* Get a writeable Dbt.
+/*
+ * Get a writeable Dbt.
  *
  * Currently we're sharing code with get_const_Dbt.
- * It really shouldn't be this way, we DBT that we can
+ * It really shouldn't be this way, we have a DBT that we can
  * change, and have some mechanism for copying back
  * any changes to the original DBT.
  */
 jobject get_Dbt(JNIEnv *jnienv, DBT *dbt,
 		DBT_JAVAINFO **ret_info)
 {
-	return get_Dbt_shared(jnienv, dbt, 0, ret_info);
+	return (get_Dbt_shared(jnienv, dbt, 0, ret_info));
 }
 
 /*
@@ -765,7 +861,7 @@ jobject get_Dbt(JNIEnv *jnienv, DBT *dbt,
 jobject get_const_Dbt(JNIEnv *jnienv, const DBT *dbt,
 		      DBT_JAVAINFO **ret_info)
 {
-	return get_Dbt_shared(jnienv, dbt, 1, ret_info);
+	return (get_Dbt_shared(jnienv, dbt, 1, ret_info));
 }
 
 jobject get_DbMpoolFStat(JNIEnv *jnienv, DB_MPOOL_FSTAT *dbobj)

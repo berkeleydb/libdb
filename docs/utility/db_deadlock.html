@@ -1,6 +1,7 @@
-<!--$Id: db_deadlock.so,v 10.28 2001/09/07 16:55:57 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_deadlock.so,v 10.30 2002/08/24 18:24:51 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_deadlock</title>
@@ -72,7 +73,7 @@ interrupt signal (SIGINT).
 shared memory regions if they do not already exist.  The application
 which creates the region should be started first, and then, once the
 region is created, the db_deadlock utility should be started.
-<p>The <a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> function is the underlying function used by the db_deadlock utility.
+<p>The <a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> method is the underlying interface used by the db_deadlock utility.
 See the db_deadlock utility source code for an example of using <a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <p>The db_deadlock utility exits 0 on success, and &gt;0 if an error occurs.
@@ -82,18 +83,6 @@ in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-db_deadlock,
-<a href="../utility/db_dump.html">db_dump</a>,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

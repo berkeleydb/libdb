@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd014.tcl,v 1.14 2001/08/03 16:39:28 bostic Exp $
+# $Id: recd014.tcl,v 1.19 2002/08/15 19:21:24 sandstro Exp $
 #
 # TEST	recd014
 # TEST	This is a recovery test for create/delete of queue extents.  We
@@ -49,7 +49,7 @@ proc recd014 { method args} {
 	set flags "-create -txn -home $testdir"
 
 	puts "\tRecd014.a: creating environment"
-	set env_cmd "berkdb env $flags"
+	set env_cmd "berkdb_env $flags"
 
 	puts "\tRecd014.b: Create test commit"
 	ext_recover_create $testdir $env_cmd $omethod \
@@ -96,7 +96,11 @@ proc ext_recover_create { dir env_cmd method opts dbfile txncmd } {
 	set t [$env txn]
 	error_check_good txn_begin [is_valid_txn $t $env] TRUE
 
-	set ret [catch {eval {berkdb_open} $oflags} db]
+	set ret [catch {eval {berkdb_open} -txn $t $oflags} db]
+	error_check_good txn_commit [$t commit] 0
+
+	set t [$env txn]
+	error_check_good txn_begin [is_valid_txn $t $env] TRUE
 
 	#
 	# The command to execute to create an extent is a put.
@@ -140,7 +144,10 @@ proc ext_recover_create { dir env_cmd method opts dbfile txncmd } {
 		catch { file copy -force $dir/$dbfile $init_file } res
 		copy_extent_file $dir $dbfile init
 	}
+	set t [$env txn]
+	error_check_good txn_begin [is_valid_txn $t $env] TRUE
 	error_check_good db_close [$db close] 0
+	error_check_good txn_commit [$t commit] 0
 	error_check_good env_close [$env close] 0
 
 	#
@@ -232,7 +239,7 @@ proc ext_create_check { dir txncmd init_file dbfile oflags putrecno } {
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff "-dar" $init_file $dir/$dbfile] 0
+		    [dbdump_diff "-dar" $init_file $dir $dbfile] 0
 	} else {
 		#
 		# Operation aborted.  The file is there, but make
@@ -260,7 +267,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 	# Open the environment and set the copy/abort locations
 	set env [eval $env_cmd]
 
-	set oflags "-create $method -mode 0644 -pagesize 512 \
+	set oflags "-create -auto_commit $method -mode 0644 -pagesize 512 \
 	   -env $env $opts $dbfile"
 
 	#
@@ -320,7 +327,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 		error_check_good postconsume.1 [file exists $dbq] 1
 		error_check_good \
 		    diff(init,postconsume.2):diff($init_file,$dir/$dbfile)\
-		    [dbdump_diff "-dar" $init_file $dir/$dbfile] 0
+		    [dbdump_diff "-dar" $init_file $dir $dbfile] 0
 	} else {
 		#
 		# Operation was committed, verify it does
@@ -355,7 +362,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 		#
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff "-dar" $init_file $dir/$dbfile] 0
+		    [dbdump_diff "-dar" $init_file $dir $dbfile] 0
 	} else {
 		#
 		# Operation was committed, verify it does
@@ -389,7 +396,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 		#
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff "-dar" $init_file $dir/$dbfile] 0
+		    [dbdump_diff "-dar" $init_file $dir $dbfile] 0
 	} else {
 		#
 		# Operation was committed, verify it does
@@ -427,7 +434,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff "-dar" $init_file $dir/$dbfile] 0
+		    [dbdump_diff "-dar" $init_file $dir $dbfile] 0
 	} else {
 		#
 		# Operation was committed, verify it still does

@@ -1,6 +1,7 @@
 <!--$Id: dup.so,v 10.26 2001/07/10 13:54:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Duplicate data items</title>
@@ -19,7 +20,7 @@
 items for a single key item.  By default, multiple data items are not
 permitted, and each database store operation will overwrite any previous
 data item for that key.  To configure Berkeley DB for duplicate data items,
-call the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function with the <a href="../../api_c/db_set_flags.html#DB_DUP">DB_DUP</a> flag.  Only one
+call the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> method with the <a href="../../api_c/db_set_flags.html#DB_DUP">DB_DUP</a> flag.  Only one
 copy of the key will be stored for each set of duplicate data items.
 If the Btree access method comparison routine returns that two keys
 compare equally, it is undefined which of the two keys will be stored
@@ -27,14 +28,14 @@ and returned from future database operations.
 <p>By default, Berkeley DB stores duplicates in the order in which they were added,
 that is, each new duplicate data item will be stored after any already
 existing data items.  This default behavior can be overridden by using
-the <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> function and one of the <a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a>, <a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a>
+the <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> method and one of the <a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a>, <a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a>
 <a href="../../api_c/dbc_put.html#DB_KEYFIRST">DB_KEYFIRST</a> or <a href="../../api_c/dbc_put.html#DB_KEYLAST">DB_KEYLAST</a> flags.  Alternatively, Berkeley DB
 may be configured to sort duplicate data items.
 <p>When stepping through the database sequentially, duplicate data items will
 be returned individually, as a key/data pair, where the key item only
 changes after the last duplicate data item has been returned.  For this
 reason, duplicate data items cannot be accessed using the
-<a href="../../api_c/db_get.html">DB-&gt;get</a> function, as it always returns the first of the duplicate data
+<a href="../../api_c/db_get.html">DB-&gt;get</a> method, as it always returns the first of the duplicate data
 items.  Duplicate data items should be retrieved using the Berkeley DB cursor
 interface, <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a>.
 <p>There is an interface flag that permits applications to request the
@@ -48,9 +49,9 @@ information.
 duplicates will significantly increase performance when searching them
 and performing equality joins, common operations when using secondary
 indices.  To configure Berkeley DB to sort duplicate data items, the application
-must call the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> function with the <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a> flag (in
+must call the <a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a> method with the <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a> flag (in
 addition to the <a href="../../api_c/db_set_flags.html#DB_DUP">DB_DUP</a> flag).  In addition, a custom sorting
-function may be specified using the <a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a> function.  If the
+function may be specified using the <a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a> method.  If the
 <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a> flag is given, but no comparison routine is specified,
 then Berkeley DB defaults to the same lexicographical sorting used for Btree
 keys, with shorter items collating before longer items.

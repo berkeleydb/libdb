@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_mpool.c,v 11.22 2001/10/04 18:46:29 sue Exp $
+ * $Id: ex_mpool.c,v 11.26 2002/08/15 14:34:56 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -16,8 +16,6 @@
 #include <time.h>
 
 #ifdef _WIN32
-extern int optind;
-extern char *optarg;
 extern int getopt(int, char * const *, const char *);
 #else
 #include <unistd.h>
@@ -25,11 +23,11 @@ extern int getopt(int, char * const *, const char *);
 
 #include <db.h>
 
-int	init __P((char *, int, int, char *));
-int	run __P((int, int, int, int, char *));
-int	run_mpool __P((int, int, int, int, char *));
+int	init __P((const char *, int, int, const char *));
+int	run __P((int, int, int, int, const char *));
+int	run_mpool __P((int, int, int, int, const char *));
 int	main __P((int, char *[]));
-int	usage __P((char *));
+int	usage __P((const char *));
 #define	MPOOL	"mpool"					/* File. */
 
 int
@@ -78,7 +76,7 @@ main(argc, argv)
 
 int
 usage(progname)
-	char *progname;
+	const char *progname;
 {
 	(void)fprintf(stderr,
 	    "usage: %s [-c cachesize] [-h hits] [-n npages] [-p pagesize]\n",
@@ -89,7 +87,7 @@ usage(progname)
 int
 run_mpool(pagesize, cachesize, hits, npages, progname)
 	int pagesize, cachesize, hits, npages;
-	char *progname;
+	const char *progname;
 {
 	int ret;
 
@@ -110,21 +108,17 @@ run_mpool(pagesize, cachesize, hits, npages, progname)
  */
 int
 init(file, pagesize, npages, progname)
-	char *file, *progname;
+	const char *file, *progname;
 	int pagesize, npages;
 {
 	FILE *fp;
-	int cnt, flags;
+	int cnt;
 	char *p;
 
 	/*
 	 * Create a file with the right number of pages, and store a page
 	 * number on each page.
 	 */
-	flags = O_CREAT | O_RDWR | O_TRUNC;
-#ifdef DB_WIN32
-	flags |= O_BINARY;
-#endif
 	if ((fp = fopen(file, "wb")) == NULL) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, file, strerror(errno));
@@ -157,7 +151,7 @@ init(file, pagesize, npages, progname)
 int
 run(hits, cachesize, pagesize, npages, progname)
 	int hits, cachesize, pagesize, npages;
-	char *progname;
+	const char *progname;
 {
 	DB_ENV *dbenv;
 	DB_MPOOLFILE *mfp;

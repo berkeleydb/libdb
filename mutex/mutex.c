@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mutex.c,v 11.23 2001/09/04 02:22:16 bostic Exp $";
+static const char revid[] = "$Id: mutex.c,v 11.37 2002/05/31 19:37:46 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,44 +19,133 @@ static const char revid[] = "$Id: mutex.c,v 11.23 2001/09/04 02:22:16 bostic Exp
 
 #include "db_int.h"
 
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(HAVE_MUTEX_SYSTEM_RESOURCES)
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/mp.h"
+#include "dbinc/txn.h"
+#endif
+
+static int __db_mutex_alloc_int __P((DB_ENV *, REGINFO *, DB_MUTEX **));
+#ifdef	HAVE_MUTEX_SYSTEM_RESOURCES
+static REGMAINT * __db_mutex_maint __P((DB_ENV *, REGINFO *));
+#endif
+
 /*
- * __db_mutex_alloc --
- *	Allocate and initialize a mutex.
+ * __db_mutex_setup --
+ *	External interface to allocate, and/or initialize, record
+ *	mutexes.
  *
- * PUBLIC: int __db_mutex_alloc __P((DB_ENV *, REGINFO *, int, DB_MUTEX **));
+ * PUBLIC: int __db_mutex_setup __P((DB_ENV *, REGINFO *, void *, u_int32_t));
  */
 int
-__db_mutex_alloc(dbenv, infop, is_locked, storep)
+__db_mutex_setup(dbenv, infop, ptr, flags)
 	DB_ENV *dbenv;
 	REGINFO *infop;
-	int is_locked;
+	void *ptr;
+	u_int32_t flags;
+{
+	DB_MUTEX *mutex;
+	REGMAINT *maint;
+	u_int32_t iflags, offset;
+	int ret;
+
+	ret = 0;
+	/*
+	 * If they indicated the region is not locked, then lock it.
+	 * This is only needed when we have unusual mutex resources.
+	 * (I.e. MUTEX_NO_MALLOC_LOCKS or HAVE_MUTEX_SYSTEM_RESOURCES)
+	 */
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(HAVE_MUTEX_SYSTEM_RESOURCES)
+	if (!LF_ISSET(MUTEX_NO_RLOCK))
+		R_LOCK(dbenv, infop);
+#endif
+	/*
+	 * Allocate the mutex if they asked us to.
+	 */
+	mutex = NULL;
+	if (LF_ISSET(MUTEX_ALLOC)) {
+		if ((ret = __db_mutex_alloc_int(dbenv, infop, ptr)) != 0)
+			goto err;
+		mutex = *(DB_MUTEX **)ptr;
+	} else
+		mutex = (DB_MUTEX *)ptr;
+
+	/*
+	 * Set up to initialize the mutex.
+	 */
+	iflags = LF_ISSET(MUTEX_THREAD | MUTEX_SELF_BLOCK);
+	switch (infop->type) {
+	case REGION_TYPE_LOCK:
+		offset = P_TO_UINT32(mutex) + DB_FCNTL_OFF_LOCK;
+		break;
+	case REGION_TYPE_MPOOL:
+		offset = P_TO_UINT32(mutex) + DB_FCNTL_OFF_MPOOL;
+		break;
+	default:
+		offset = P_TO_UINT32(mutex) + DB_FCNTL_OFF_GEN;
+		break;
+	}
+	maint = NULL;
+#ifdef	HAVE_MUTEX_SYSTEM_RESOURCES
+	if (!LF_ISSET(MUTEX_NO_RECORD))
+		maint = (REGMAINT *)__db_mutex_maint(dbenv, infop);
+#endif
+
+	ret = __db_mutex_init(dbenv, mutex, offset, iflags, infop, maint);
+err:
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(HAVE_MUTEX_SYSTEM_RESOURCES)
+	if (!LF_ISSET(MUTEX_NO_RLOCK))
+		R_UNLOCK(dbenv, infop);
+#endif
+	/*
+	 * If we allocated the mutex but had an error on init'ing,
+	 * then we must free it before returning.
+	 * !!!
+	 * Free must be done after releasing region lock.
+	 */
+	if (ret != 0 && LF_ISSET(MUTEX_ALLOC) && mutex != NULL) {
+		__db_mutex_free(dbenv, infop, mutex);
+		*(DB_MUTEX **)ptr = NULL;
+	}
+	return (ret);
+}
+
+/*
+ * __db_mutex_alloc_int --
+ *	Allocate and initialize a mutex.
+ */
+static int
+__db_mutex_alloc_int(dbenv, infop, storep)
+	DB_ENV *dbenv;
+	REGINFO *infop;
 	DB_MUTEX **storep;
 {
 	int ret;
 
 	/*
-	 * If the architecture supports mutexes in heap memory, use that
-	 * memory.  If it doesn't, we have to allocate space in a region.
-	 *
-	 * XXX
-	 * There's a nasty starvation issue here for applications running
-	 * on systems that don't support mutexes in heap memory.  If the
-	 * normal state of the entire region is dirty (e.g., mpool), then
-	 * we can run out of memory to allocate for mutexes when new files
-	 * are opened in the pool.  We're not trying to fix this for now,
-	 * because the only known system where we can see this failure at
-	 * the moment is HP-UX 10.XX.
+	 * If the architecture supports mutexes in heap memory, use heap memory.
+	 * If it doesn't, we have to allocate space in a region.  If allocation
+	 * in the region fails, fallback to allocating from the mpool region,
+	 * because it's big, it almost always exists and if it's entirely dirty,
+	 * we can free buffers until memory is available.
 	 */
-#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
-	if (is_locked == 0)
-		R_LOCK(dbenv, infop);
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(HAVE_MUTEX_SYSTEM_RESOURCES)
 	ret = __db_shalloc(infop->addr, sizeof(DB_MUTEX), MUTEX_ALIGN, storep);
-	if (is_locked == 0)
-		R_UNLOCK(dbenv, infop);
+
+	if (ret == ENOMEM && MPOOL_ON(dbenv)) {
+		DB_MPOOL *dbmp;
+
+		dbmp = dbenv->mp_handle;
+		if ((ret = __memp_alloc(dbmp,
+		    dbmp->reginfo, NULL, sizeof(DB_MUTEX), NULL, storep)) == 0)
+			(*storep)->flags = MUTEX_MPOOL;
+	} else
+		(*storep)->flags = 0;
 #else
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
-	COMPQUIET(is_locked, 0);
 	ret = __os_calloc(dbenv, 1, sizeof(DB_MUTEX), storep);
 #endif
 	if (ret != 0)
@@ -76,23 +165,30 @@ __db_mutex_free(dbenv, infop, mutexp)
 	REGINFO *infop;
 	DB_MUTEX *mutexp;
 {
-#if	defined(MUTEX_SYSTEM_RESOURCES)
+#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(HAVE_MUTEX_SYSTEM_RESOURCES)
+	R_LOCK(dbenv, infop);
+#if	defined(HAVE_MUTEX_SYSTEM_RESOURCES)
 	if (F_ISSET(mutexp, MUTEX_INITED))
 		__db_shlocks_clear(mutexp, infop, NULL);
 #endif
+	if (F_ISSET(mutexp, MUTEX_MPOOL)) {
+		DB_MPOOL *dbmp;
 
-#if	defined(MUTEX_NO_MALLOC_LOCKS) || defined(MUTEX_SYSTEM_RESOURCES)
-	R_LOCK(dbenv, infop);
-	__db_shalloc_free(infop->addr, mutexp);
+		dbmp = dbenv->mp_handle;
+		R_LOCK(dbenv, dbmp->reginfo);
+		__db_shalloc_free(dbmp->reginfo[0].addr, mutexp);
+		R_UNLOCK(dbenv, dbmp->reginfo);
+	} else
+		__db_shalloc_free(infop->addr, mutexp);
 	R_UNLOCK(dbenv, infop);
 #else
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
-	__os_free(dbenv, mutexp, sizeof(*mutexp));
+	__os_free(dbenv, mutexp);
 #endif
 }
 
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 /*
  * __db_shreg_locks_record --
  *	Record an entry in the shared locks area.
@@ -144,7 +240,6 @@ __db_shreg_locks_record(dbenv, mutexp, infop, rp)
 /*
  * __db_shreg_locks_clear --
  *	Erase an entry in the shared locks area.
- *	Region lock must be held in caller.
  *
  * PUBLIC: void __db_shreg_locks_clear __P((DB_MUTEX *, REGINFO *, REGMAINT *));
  */
@@ -154,12 +249,15 @@ __db_shreg_locks_clear(mutexp, infop, rp)
 	REGINFO *infop;
 	REGMAINT *rp;
 {
+	/*
+	 * !!!
+	 * Assumes the caller's region lock is held.
+	 */
 	if (!F_ISSET(mutexp, MUTEX_INITED))
 		return;
 	/*
-	 * This function is generally only called on a forcible
-	 * remove of an environment.  We recorded our index in
-	 * the mutex.  Find it and clear it.
+	 * This function is generally only called on a forcible remove of an
+	 * environment.  We recorded our index in the mutex, find and clear it.
 	 */
 	DB_ASSERT(mutexp->reg_off != INVALID_ROFF);
 	DB_ASSERT(*(roff_t *)R_ADDR(infop, mutexp->reg_off) == \
@@ -215,11 +313,17 @@ __db_shreg_mutex_init(dbenv, mutexp, offset, flags, infop, rp)
 {
 	int ret;
 
-	if ((ret = __db_mutex_init(dbenv, mutexp, offset, flags)) != 0)
+	if ((ret = __db_mutex_init_int(dbenv, mutexp, offset, flags)) != 0)
+		return (ret);
+	/*
+	 * Some mutexes cannot be recorded, but we want one interface.
+	 * So, if we have no REGMAINT, then just return.
+	 */
+	if (rp == NULL)
 		return (ret);
 	/*
 	 * !!!
-	 * Since __db_mutex_init is a macro, we may not be
+	 * Since __db_mutex_init_int is a macro, we may not be
 	 * using the 'offset' as it is only used for one type
 	 * of mutex.  We COMPQUIET it here, after the call above.
 	 */
@@ -258,4 +362,34 @@ __db_shreg_maintinit(infop, addr, size)
 	for (i = 0; i < rp->reglocks; i++)
 		rp->regmutexes[i] = INVALID_ROFF;
 }
-#endif /* MUTEX_SYSTEM_RESOURCES */
+
+static REGMAINT *
+__db_mutex_maint(dbenv, infop)
+	DB_ENV *dbenv;
+	REGINFO *infop;
+{
+	roff_t moff;
+
+	switch (infop->type) {
+	case REGION_TYPE_LOCK:
+		moff = ((DB_LOCKREGION *)R_ADDR(infop,
+		    infop->rp->primary))->maint_off;
+		break;
+	case REGION_TYPE_LOG:
+		moff = ((LOG *)R_ADDR(infop, infop->rp->primary))->maint_off;
+		break;
+	case REGION_TYPE_MPOOL:
+		moff = ((MPOOL *)R_ADDR(infop, infop->rp->primary))->maint_off;
+		break;
+	case REGION_TYPE_TXN:
+		moff = ((DB_TXNREGION *)R_ADDR(infop,
+		    infop->rp->primary))->maint_off;
+		break;
+	default:
+		__db_err(dbenv,
+	"Attempting to record mutex in a region not set up to do so");
+		return (NULL);
+	}
+	return ((REGMAINT *)R_ADDR(infop, moff));
+}
+#endif /* HAVE_MUTEX_SYSTEM_RESOURCES */

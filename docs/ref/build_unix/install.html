@@ -1,6 +1,7 @@
-<!--$Id: install.so,v 10.13 2001/03/23 21:15:07 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: install.so,v 10.14 2002/01/24 23:48:55 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Installing Berkeley DB</title>
@@ -40,6 +41,10 @@ info format.  For this reason, Berkeley DB configuration does not support
 <b>--infodir</b> or <b>--mandir</b>.  To change the default
 installation location for the Berkeley DB documentation, modify the Makefile
 variable, <b>docdir</b>.
+<p>When installing Berkeley DB on filesystems shared by machines of different
+architectures, please note that although Berkeley DB include files are
+installed based on the value of $(prefix), rather than $(exec_prefix),
+the Berkeley DB include files are not always architecture independent.
 <p>To move the entire installation tree to somewhere besides
 <b>/usr/local</b>, change the value of <b>prefix</b>.
 <p>To move the binaries and libraries to a different location, change the

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead001.tcl,v 11.27 2001/10/20 14:24:34 bostic Exp $
+# $Id: dead001.tcl,v 11.33 2002/09/05 17:23:05 sandstro Exp $
 #
 # TEST	dead001
 # TEST	Use two different configurations to test deadlock detection among a
@@ -22,23 +22,22 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } \
 
 	# Create the environment.
 	puts "\tDead$tnum.a: creating environment"
-	set env [berkdb env -create \
+	set env [berkdb_env -create \
 	     -mode 0644 -lock -txn_timeout $timeout -home $testdir]
 	error_check_good lock_env:open [is_valid_env $env] TRUE
 
-	if {$timeout == 0 } {
-		set dpid [exec $util_path/db_deadlock -vw -h $testdir \
-		    >& $testdir/dd.out &]
-	} else {
-		set dpid [exec $util_path/db_deadlock -vw -ae -h $testdir \
-		    >& $testdir/dd.out &]
-	}
-
 	foreach t $tests {
-		set pidlist ""
 		foreach n $procs {
+			if {$timeout == 0 } {
+				set dpid [exec $util_path/db_deadlock -vw \
+				    -h $testdir >& $testdir/dd.out &]
+			} else {
+				set dpid [exec $util_path/db_deadlock -vw \
+				    -ae -h $testdir >& $testdir/dd.out &]
+			}
 
 			sentinel_init
+			set pidlist ""
 			set ret [$env lock_id_set $lock_curid $lock_maxid]
 			error_check_good lock_id_set $ret 0
 
@@ -55,7 +54,7 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } \
 					$testdir $t $locker $i $n &]
 				lappend pidlist $p
 			}
-			watch_procs 5
+			watch_procs $pidlist 5
 
 			# Now check output
 			set dead 0
@@ -72,14 +71,14 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } \
 				}
 				close $did
 			}
+			tclkill $dpid
 			puts "dead check..."
 			dead_check $t $n $timeout $dead $clean $other
 		}
 	}
 
-	exec $KILL $dpid
 	# Windows needs files closed before deleting files, so pause a little
-	tclsleep 2
+	tclsleep 3
 	fileremove -f $testdir/dd.out
 	# Remove log files
 	for { set i 0 } { $i < $n } { incr i } {

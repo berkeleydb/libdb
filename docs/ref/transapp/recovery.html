@@ -1,6 +1,7 @@
-<!--$Id: recovery.so,v 10.30 2001/11/05 17:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: recovery.so,v 10.32 2002/05/14 15:01:45 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Recovery procedures</title>
@@ -28,7 +29,7 @@ restarting the application.
 failure.  In this case, recovery processing must be performed on any
 database environments that were active at the time of the failure.
 Recovery processing involves running the <a href="../../utility/db_recover.html">db_recover</a> utility or
-calling the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function with the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> or
+calling the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method with the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> or
 <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> flags.
 <p>During recovery processing, all database changes made by aborted or
 unfinished transactions are undone, and all database changes made by
@@ -41,22 +42,23 @@ may be restarted.
 <i>normal</i> and <i>catastrophic</i>.  Which you choose depends
 on the source for the database and log files you are using to recover.
 <p>If up-to-the-minute database and log files are accessible on a stable
-filesystem, normal recovery is sufficient.  Run the <a href="../../utility/db_recover.html">db_recover</a>
-utility or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function specifying the
-<a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> flag.  Note this case never includes recovery using
-archival snapshots of the database environment.  For example, you cannot
-archive databases and log files, restore the backup and then run normal
-recovery -- you must always run catastrophic recovery when using
+filesystem, normal recovery is usually sufficient.  Run the
+<a href="../../utility/db_recover.html">db_recover</a> utility or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method specifying
+the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> flag.  Note this case never includes recovery
+using archival snapshots of the database environment.  For example, you
+cannot archive databases and log files, restore the backup and then run
+normal recovery -- you must always run catastrophic recovery when using
 archived files.
 <p>If the database or log files have been destroyed or corrupted, or normal
 recovery fails, catastrophic recovery is required.  For example,
-catastrophic failure includes the case where the disk drive where the
-database or log files are stored has been physically destroyed, or when
-the underlying filesystem is corrupted and the operating system's normal
-filesystem checking procedures cannot bring that filesystem to a
-consistent state.  This is often difficult to detect, and a common sign
-of the need for catastrophic recovery is when normal Berkeley DB recovery
-procedures fail.  When catastrophic recovery is necessary, take the
+catastrophic failure includes the case where the disk drive on which
+the database or log files are stored has been physically destroyed, or
+when the underlying filesystem is corrupted and the operating system's
+normal filesystem checking procedures cannot bring that filesystem to
+a consistent state.  This is often difficult to detect, and a common
+sign of the need for catastrophic recovery is when normal Berkeley DB recovery
+procedures fail, or when checksum errors are displayed during normal
+database procedures.  When catastrophic recovery is necessary, take the
 following steps:
 <p><ol>
 <p><li>Restore the most recent snapshots of the database and log files from
@@ -72,7 +74,7 @@ order is important because it's possible the same log file appears on
 multiple backups, and you want to run recovery using the most recent
 version of each log file.
 <p><li>Run the <a href="../../utility/db_recover.html">db_recover</a> utility, specifying its <b>-c</b> option;
-or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function, specifying the <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
+or call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method, specifying the <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
 flag.  The catastrophic recovery process will review the logs and
 database files to bring the environment databases to a consistent state
 as of the time of the last uncorrupted log file that is found.  It is

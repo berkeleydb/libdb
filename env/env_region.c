@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_region.c,v 11.45 2001/11/03 18:43:47 bostic Exp $";
+static const char revid[] = "$Id: env_region.c,v 11.64 2002/07/17 15:09:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,13 +20,12 @@ static const char revid[] = "$Id: env_region.c,v 11.45 2001/11/03 18:43:47 bosti
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "log.h"
-#include "mp.h"
-#include "rep.h"
-#include "txn.h"
-#include "clib_ext.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/mp.h"
+#include "dbinc/rep.h"
+#include "dbinc/txn.h"
 
 static int  __db_des_destroy __P((DB_ENV *, REGION *));
 static int  __db_des_get __P((DB_ENV *, REGINFO *, REGINFO *, REGION **));
@@ -118,7 +117,7 @@ loop:	renv = NULL;
 	/* Build the region name. */
 	(void)snprintf(buf, sizeof(buf), "%s", DB_REGION_ENV);
 	if ((ret = __db_appname(dbenv,
-	    DB_APP_NONE, NULL, buf, 0, NULL, &infop->name)) != 0)
+	    DB_APP_NONE, buf, 0, NULL, &infop->name)) != 0)
 		goto err;
 
 	/*
@@ -130,8 +129,8 @@ loop:	renv = NULL;
 	 * errno return value -- I sure hope they're right.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_CREATE)) {
-		if ((ret = __os_open(dbenv,
-		    infop->name, DB_OSO_REGION | DB_OSO_CREATE | DB_OSO_EXCL,
+		if ((ret = __os_open(dbenv, infop->name,
+		    DB_OSO_CREATE | DB_OSO_DIRECT | DB_OSO_EXCL | DB_OSO_REGION,
 		    dbenv->db_mode, dbenv->lockfhp)) == 0)
 			goto creation;
 		if (ret != EEXIST) {
@@ -145,8 +144,8 @@ loop:	renv = NULL;
 	 * If we couldn't create the file, try and open it.  (If that fails,
 	 * we're done.)
 	 */
-	if ((ret = __os_open(dbenv, infop->name,
-	    DB_OSO_REGION, dbenv->db_mode, dbenv->lockfhp)) != 0)
+	if ((ret = __os_open(dbenv, infop->name, DB_OSO_REGION | DB_OSO_DIRECT,
+	    dbenv->db_mode, dbenv->lockfhp)) != 0)
 		goto err;
 
 	/*
@@ -232,12 +231,12 @@ loop:	renv = NULL;
 	 * the better.
 	 */
 #ifdef HAVE_MUTEX_THREADS
-	 __os_closehandle(dbenv->lockfhp);
+	 __os_closehandle(dbenv, dbenv->lockfhp);
 #endif
 
 	/* Call the region join routine to acquire the region. */
 	memset(&tregion, 0, sizeof(tregion));
-	tregion.size = size;
+	tregion.size = (roff_t)size;
 	tregion.segid = segid;
 	if ((ret = __os_r_attach(dbenv, infop, &tregion)) != 0)
 		goto err;
@@ -289,7 +288,7 @@ loop:	renv = NULL;
 	}
 
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &renv->mutex);
 
 	/*
 	 * Finally!  We own the environment now.  Repeat the panic check, it's
@@ -354,9 +353,12 @@ creation:
 	 * Allocate room for 50 REGION structures plus overhead (we're going
 	 * to use this space for last-ditch allocation requests), although we
 	 * should never need anything close to that.
+	 *
+	 * Encryption passwds are stored in the env region.  Add that in too.
 	 */
 	memset(&tregion, 0, sizeof(tregion));
-	tregion.size = 50 * sizeof(REGION) + 2048;
+	tregion.size = (roff_t)(50 * sizeof(REGION) +
+	    dbenv->passwd_len + 2048);
 	tregion.segid = INVALID_REGION_SEGID;
 	if ((ret = __os_r_attach(dbenv, infop, &tregion)) != 0)
 		goto err;
@@ -398,6 +400,7 @@ creation:
 	db_version(&renv->majver, &renv->minver, &renv->patch);
 	SH_LIST_INIT(&renv->regionq);
 	renv->refcnt = 1;
+	renv->cipher_off = INVALID_ROFF;
 	renv->rep_off = INVALID_ROFF;
 
 	/*
@@ -415,15 +418,15 @@ creation:
 	 * filesystem as the database home.  But you knew that, I'm sure -- it
 	 * probably wasn't even worth mentioning.)
 	 */
-	if ((ret =
-	    __db_mutex_init(dbenv, &renv->mutex, DB_FCNTL_OFF_GEN, 0)) != 0) {
+	if ((ret = __db_mutex_setup(dbenv, infop, &renv->mutex,
+	    MUTEX_NO_RECORD | MUTEX_NO_RLOCK)) != 0) {
 		__db_err(dbenv, "%s: unable to initialize environment lock: %s",
 		    infop->name, db_strerror(ret));
 		goto err;
 	}
 
 	if (!F_ISSET(&renv->mutex, MUTEX_IGNORE) &&
-	    (ret = __db_mutex_lock(dbenv, &renv->mutex, dbenv->lockfhp)) != 0) {
+	    (ret = __db_mutex_lock(dbenv, &renv->mutex)) != 0) {
 		__db_err(dbenv, "%s: unable to acquire environment lock: %s",
 		    infop->name, db_strerror(ret));
 		goto err;
@@ -462,8 +465,8 @@ find_err:	__db_err(dbenv,
 	if (tregion.segid != INVALID_REGION_SEGID) {
 		ref.size = tregion.size;
 		ref.segid = tregion.segid;
-		if ((ret = __os_write(dbenv, dbenv->lockfhp,
-		    &ref, sizeof(ref), &nrw)) != 0 || nrw != sizeof(ref)) {
+		if ((ret = __os_write(
+		    dbenv, dbenv->lockfhp, &ref, sizeof(ref), &nrw)) != 0) {
 			__db_err(dbenv,
 			    "%s: unable to write out public environment ID: %s",
 			    infop->name, db_strerror(ret));
@@ -479,7 +482,7 @@ find_err:	__db_err(dbenv,
 	 */
 #if defined(HAVE_MUTEX_THREADS)
 	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
-		 __os_closehandle(dbenv->lockfhp);
+		 __os_closehandle(dbenv, dbenv->lockfhp);
 #endif
 
 	/* Validate the file. */
@@ -495,7 +498,7 @@ find_err:	__db_err(dbenv,
 err:
 retry:	/* Close any open file handle. */
 	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
-		(void)__os_closehandle(dbenv->lockfhp);
+		(void)__os_closehandle(dbenv, dbenv->lockfhp);
 
 	/*
 	 * If we joined or created the region, detach from it.  If we created
@@ -516,8 +519,8 @@ retry:	/* Close any open file handle. */
 
 	/* Free the allocated name and/or REGINFO structure. */
 	if (infop->name != NULL)
-		__os_freestr(dbenv, infop->name);
-	__os_free(dbenv, infop, sizeof(REGINFO));
+		__os_free(dbenv, infop->name);
+	__os_free(dbenv, infop);
 
 	/* If we had a temporary error, wait awhile and try again. */
 	if (ret == 0) {
@@ -550,8 +553,10 @@ __db_e_detach(dbenv, destroy)
 	infop = dbenv->reginfo;
 	renv = infop->primary;
 
+	if (F_ISSET(dbenv, DB_ENV_PRIVATE))
+		destroy = 1;
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &renv->mutex);
 
 	/* Decrement the reference count. */
 	if (renv->refcnt == 0) {
@@ -566,7 +571,7 @@ __db_e_detach(dbenv, destroy)
 
 	/* Close the locking file handle. */
 	if (F_ISSET(dbenv->lockfhp, DB_FH_VALID))
-		(void)__os_closehandle(dbenv->lockfhp);
+		(void)__os_closehandle(dbenv, dbenv->lockfhp);
 
 	/* Reset the addr value that we "corrected" above. */
 	infop->addr = infop->primary;
@@ -582,6 +587,7 @@ __db_e_detach(dbenv, destroy)
 	if (destroy) {
 		__rep_region_destroy(dbenv);
 		__db_mutex_destroy(&renv->mutex);
+		__db_mutex_destroy(&infop->rp->mutex);
 	}
 
 	/*
@@ -596,8 +602,8 @@ __db_e_detach(dbenv, destroy)
 	(void)__os_r_detach(dbenv, infop, destroy);
 
 	if (infop->name != NULL)
-		__os_free(dbenv, infop->name, 0);
-	__os_free(dbenv, dbenv->reginfo, sizeof(REGINFO));
+		__os_free(dbenv, infop->name);
+	__os_free(dbenv, dbenv->reginfo);
 	dbenv->reginfo = NULL;
 
 	return (0);
@@ -607,19 +613,20 @@ __db_e_detach(dbenv, destroy)
  * __db_e_remove --
  *	Discard an environment if it's not in use.
  *
- * PUBLIC: int __db_e_remove __P((DB_ENV *, int));
+ * PUBLIC: int __db_e_remove __P((DB_ENV *, u_int32_t));
  */
 int
-__db_e_remove(dbenv, force)
+__db_e_remove(dbenv, flags)
 	DB_ENV *dbenv;
-	int force;
+	u_int32_t flags;
 {
 	REGENV *renv;
 	REGINFO *infop, reginfo;
 	REGION *rp;
 	u_int32_t db_env_reset;
-	int ret;
+	int force, ret;
 
+	force = LF_ISSET(DB_FORCE) ? 1 : 0;
 	/*
 	 * This routine has to walk a nasty line between not looking into
 	 * the environment (which may be corrupted after an app or system
@@ -663,7 +670,7 @@ __db_e_remove(dbenv, force)
 	renv = infop->primary;
 
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &renv->mutex);
 
 	/*
 	 * If it's in use, we're done unless we're forcing the issue or the
@@ -728,7 +735,7 @@ restart:	for (rp = SH_LIST_FIRST(&renv->regionq, __db_region);
 		/* Destroy the environment's region. */
 		(void)__db_e_detach(dbenv, 1);
 
-		/* Discard the physical files. */
+		/* Discard any remaining physical files. */
 remfiles:	(void)__db_e_remfile(dbenv);
 	} else {
 		/* Unlock the environment. */
@@ -768,8 +775,7 @@ __db_e_remfile(dbenv)
 
 	/* Get the full path of a file in the environment. */
 	(void)snprintf(buf, sizeof(buf), "%s", DB_REGION_ENV);
-	if ((ret =
-	    __db_appname(dbenv, DB_APP_NONE, NULL, buf, 0, NULL, &path)) != 0)
+	if ((ret = __db_appname(dbenv, DB_APP_NONE, buf, 0, NULL, &path)) != 0)
 		return (ret);
 
 	/* Get the parent directory for the environment. */
@@ -786,16 +792,15 @@ __db_e_remfile(dbenv)
 	}
 
 	/* Get the list of file names. */
-	ret = __os_dirlist(dbenv, dir, &names, &fcnt);
+	if ((ret = __os_dirlist(dbenv, dir, &names, &fcnt)) != 0)
+		__db_err(dbenv, "%s: %s", dir, db_strerror(ret));
 
 	/* Restore the path, and free it. */
 	*p = saved_byte;
-	__os_freestr(dbenv, path);
+	__os_free(dbenv, path);
 
-	if (ret != 0) {
-		__db_err(dbenv, "%s: %s", dir, db_strerror(ret));
+	if (ret != 0)
 		return (ret);
-	}
 
 	/*
 	 * Search for valid region names, and remove them.  We remove the
@@ -816,17 +821,21 @@ __db_e_remfile(dbenv)
 			continue;
 
 		if (__db_appname(dbenv,
-		    DB_APP_NONE, NULL, names[cnt], 0, NULL, &path) == 0) {
+		    DB_APP_NONE, names[cnt], 0, NULL, &path) == 0) {
+			if (F_ISSET(dbenv, DB_ENV_OVERWRITE))
+				(void)__db_overwrite(dbenv, path);
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(dbenv, path);
+			__os_free(dbenv, path);
 		}
 	}
 
 	if (lastrm != -1)
 		if (__db_appname(dbenv,
-		    DB_APP_NONE, NULL, names[lastrm], 0, NULL, &path) == 0) {
+		    DB_APP_NONE, names[lastrm], 0, NULL, &path) == 0) {
+			if (F_ISSET(dbenv, DB_ENV_OVERWRITE))
+				(void)__db_overwrite(dbenv, path);
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(dbenv, path);
+			__os_free(dbenv, path);
 		}
 	__os_dirfree(dbenv, names, fcnt);
 
@@ -837,9 +846,9 @@ __db_e_remfile(dbenv)
 	 */
 	for (names = (char **)old_region_names; *names != NULL; ++names)
 		if (__db_appname(dbenv,
-		    DB_APP_NONE, NULL, *names, 0, NULL, &path) == 0) {
+		    DB_APP_NONE, *names, 0, NULL, &path) == 0) {
 			(void)__os_unlink(dbenv, path);
-			__os_freestr(dbenv, path);
+			__os_free(dbenv, path);
 		}
 
 	return (0);
@@ -873,7 +882,7 @@ __db_e_stat(dbenv, arg_renv, arg_regions, arg_regions_cnt, flags)
 		return (ret);
 
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &rp->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &rp->mutex);
 
 	*arg_renv = *renv;
 	if (LF_ISSET(DB_STAT_CLEAR)) {
@@ -918,12 +927,15 @@ __db_r_attach(dbenv, infop, size)
 	char buf[sizeof(DB_REGION_FMT) + 20];
 
 	renv = ((REGINFO *)dbenv->reginfo)->primary;
-	F_CLR(infop, REGION_CREATE);
 
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &renv->mutex);
 
-	/* Find or create a REGION structure for this region. */
+	/*
+	 * Find or create a REGION structure for this region.  If we create
+	 * it, the REGION_CREATE flag will be set in the infop structure.
+	 */
+	F_CLR(infop, REGION_CREATE);
 	if ((ret = __db_des_get(dbenv, dbenv->reginfo, infop, &rp)) != 0) {
 		MUTEX_UNLOCK(dbenv, &renv->mutex);
 		return (ret);
@@ -934,12 +946,12 @@ __db_r_attach(dbenv, infop, size)
 
 	/* If we're creating the region, set the desired size. */
 	if (F_ISSET(infop, REGION_CREATE))
-		rp->size = size;
+		rp->size = (roff_t)size;
 
 	/* Join/create the underlying region. */
 	(void)snprintf(buf, sizeof(buf), DB_REGION_FMT, infop->id);
 	if ((ret = __db_appname(dbenv,
-	    DB_APP_NONE, NULL, buf, 0, NULL, &infop->name)) != 0)
+	    DB_APP_NONE, buf, 0, NULL, &infop->name)) != 0)
 		goto err;
 	if ((ret = __os_r_attach(dbenv, infop, rp)) != 0)
 		goto err;
@@ -971,7 +983,7 @@ __db_r_attach(dbenv, infop, size)
 	 * for it and release our lock on the environment.
 	 */
 	if (infop->type != REGION_TYPE_ENV) {
-		MUTEX_LOCK(dbenv, &rp->mutex, dbenv->lockfhp);
+		MUTEX_LOCK(dbenv, &rp->mutex);
 		MUTEX_UNLOCK(dbenv, &renv->mutex);
 	}
 
@@ -985,8 +997,10 @@ err:	if (infop->addr != NULL)
 	infop->id = INVALID_REGION_ID;
 
 	/* Discard the REGION structure if we created it. */
-	if (F_ISSET(infop, REGION_CREATE))
+	if (F_ISSET(infop, REGION_CREATE)) {
 		(void)__db_des_destroy(dbenv, rp);
+		F_CLR(infop, REGION_CREATE);
+	}
 
 	/* Release the environment lock. */
 	MUTEX_UNLOCK(dbenv, &renv->mutex);
@@ -1012,12 +1026,14 @@ __db_r_detach(dbenv, infop, destroy)
 
 	renv = ((REGINFO *)dbenv->reginfo)->primary;
 	rp = infop->rp;
+	if (F_ISSET(dbenv, DB_ENV_PRIVATE))
+		destroy = 1;
 
 	/* Lock the environment. */
-	MUTEX_LOCK(dbenv, &renv->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &renv->mutex);
 
 	/* Acquire the lock for the REGION. */
-	MUTEX_LOCK(dbenv, &rp->mutex, dbenv->lockfhp);
+	MUTEX_LOCK(dbenv, &rp->mutex);
 
 	/*
 	 * We need to call destroy on per-subsystem info before
@@ -1042,7 +1058,7 @@ __db_r_detach(dbenv, infop, destroy)
 
 	/* Destroy the structure. */
 	if (infop->name != NULL)
-		__os_freestr(dbenv, infop->name);
+		__os_free(dbenv, infop->name);
 
 	return (ret);
 }
@@ -1120,9 +1136,8 @@ __db_des_get(dbenv, env_infop, infop, rpp)
 
 		/* Initialize the region. */
 		memset(rp, 0, sizeof(*rp));
-		if ((ret = __db_mutex_init(dbenv, &rp->mutex,
-		    R_OFFSET(env_infop, &rp->mutex) + DB_FCNTL_OFF_GEN,
-		    0)) != 0) {
+		if ((ret = __db_mutex_setup(dbenv, env_infop, &rp->mutex,
+		    MUTEX_NO_RECORD | MUTEX_NO_RLOCK)) != 0) {
 			__db_shalloc_free(env_infop->addr, rp);
 			return (ret);
 		}

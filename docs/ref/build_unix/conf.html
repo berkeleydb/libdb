@@ -1,6 +1,7 @@
-<!--$Id: conf.so,v 10.46 2001/07/20 18:30:24 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: conf.so,v 10.49 2002/06/25 19:31:56 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Configuring Berkeley DB</title>
@@ -15,12 +16,12 @@
 </td></tr></table>
 <p>
 <h1 align=center>Configuring Berkeley DB</h1>
-<p>There are several options that you can specify when configuring Berkeley DB.
+<p>There are several arguments you can specify when configuring Berkeley DB.
 Although only the Berkeley DB-specific ones are described here, most of the
-standard GNU autoconf options are available and supported.  To see a
-complete list of the options, specify the --help flag to the configure
-program.
-<p>The Berkeley DB specific options are as follows:
+standard GNU autoconf arguments are available and supported.  To see a
+complete list of possible arguments, specify the --help flag to the
+configure program.
+<p>The Berkeley DB specific arguments are as follows:
 <p><dl compact>
 <a name="4"><!--meow--></a>
 <p><dt><a name="--enable-compat185">--enable-compat185</a><dd>To compile or load Berkeley DB 1.85 applications against this release of the
@@ -34,19 +35,19 @@ configure.
 argument to configure.  This will create a Berkeley DB library and utilities
 with debugging symbols, as well as load various routines that can be
 called from a debugger to display pages, cursor queues, and so forth.
-If installed, the utilities will not be stripped.  This option should
+If installed, the utilities will not be stripped.  This argument should
 not be specified when configuring to build production binaries.
 <p><dt><a name="--enable-debug_rop">--enable-debug_rop</a><dd>To build Berkeley DB to output log records for read operations, enter
---enable-debug_rop as an argument to configure.  This option should not
+--enable-debug_rop as an argument to configure.  This argument should not
 be specified when configuring to build production binaries.
 <p><dt><a name="--enable-debug_wop">--enable-debug_wop</a><dd>To build Berkeley DB to output log records for write operations, enter
---enable-debug_wop as an argument to configure.  This option should not
+--enable-debug_wop as an argument to configure.  This argument should not
 be specified when configuring to build production binaries.
 <p><dt><a name="--enable-diagnostic">--enable-diagnostic</a><dd>To build Berkeley DB with run-time debugging checks, enter --enable-diagnostic
 as an argument to configure.  This will cause a number of special checks
 to be performed when Berkeley DB is running.  Applications built using this
-option should not share database environments with applications built
-without this option.  This option should not be specified when
+argument should not share database environments with applications built
+without this argument.  This argument should not be specified when
 configuring to build production binaries.
 <a name="6"><!--meow--></a>
 <p><dt><a name="--enable-dump185">--enable-dump185</a><dd>To convert Berkeley DB 1.85 (or earlier) databases to this release of Berkeley DB,
@@ -80,16 +81,29 @@ with these compile-time options, enter --disable-largefile as an argument
 to configure.
 <p><dt><a name="--enable-posixmutexes">--enable-posixmutexes</a><dd>To force Berkeley DB to use the POSIX pthread mutex interfaces for underlying
 mutex support, enter --enable-posixmutexes as an argument to configure.
-The Berkeley DB library requires that the POSIX pthread implementation support
-mutexes shared between multiple processes, as described for the
-pthread_condattr_setpshared and pthread_mutexattr_setpshared interfaces.
-In addition, this configuration option requires that Berkeley DB be linked
-with the -lpthread library.  On systems where POSIX mutexes are the
-preferred mutex support (for example, HP-UX), they will be selected
-automatically.
+This is rarely necessary: POSIX mutexes will be selected automatically
+on systems where they are the preferred implementation.
+<p>The --enable-posixmutexes configuration argument is normally used in
+two ways: First, when there are multiple mutex implementations available
+and the POSIX mutex implementation is not the preferred one (for
+example, on Solaris where the LWP mutexes are used by default).  Second,
+by default the Berkeley DB library will only select the POSIX mutex
+implementation if it supports mutexes shared between multiple processes,
+as described for the pthread_condattr_setpshared and
+pthread_mutexattr_setpshared interfaces.  The --enable-posixmutexes
+configuration argument can be used to force the selection of POSIX
+mutexes in this case, which can improve application performance
+significantly when the alternative mutex implementation is a
+non-blocking one (for example test-and-set assembly instructions).
+However, configuring to use POSIX mutexes when the implementation does
+not have inter-process support will only allow the creation of private
+database environments, that is, environments where the
+<a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag is specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method.
+<p>Specifying the --enable-posixmutexes configuration argument may require
+that Berkeley DB be linked with the -lpthread library.
 <a name="9"><!--meow--></a>
 <p><dt><a name="--enable-rpc">--enable-rpc</a><dd>To build the Berkeley DB RPC client code and server utility, enter --enable-rpc
-as an argument to configure.  The --enable-rpc option requires that RPC
+as an argument to configure.  The --enable-rpc argument requires that RPC
 libraries already be installed on your system.
 <a name="10"><!--meow--></a><a name="11"><!--meow--></a>
 <p><dt><a name="--disable-shared">--disable-shared</a>, <a name="--disable-static">--disable-static</a><dd>On systems supporting shared libraries, Berkeley DB builds both static and
@@ -97,13 +111,13 @@ shared libraries by default.  (Shared libraries are built using
 <a href="http://www.gnu.org/software/libtool/libtool.html">the GNU
 Project's Libtool</a> distribution, which supports shared library builds
 on many (although not all) systems.)  To not build shared libraries,
-configure using the --disable-shared option.  To not build static
-libraries, configure using the --disable-static option.
+configure using the --disable-shared argument.  To not build static
+libraries, configure using the --disable-static argument.
 <a name="12"><!--meow--></a>
 <p><dt><a name="--enable-tcl">--enable-tcl</a><dd>To build the Berkeley DB Tcl API, enter --enable-tcl as an argument to
-configure.  This configuration option expects to find Tcl's tclConfig.sh
+configure.  This configuration argument expects to find Tcl's tclConfig.sh
 file in the <b>/usr/local/lib</b> directory.  See the --with-tcl
-option for instructions on specifying a non-standard location for the
+argument for instructions on specifying a non-standard location for the
 Tcl installation.  See <a href="../../ref/tcl/intro.html">Loading Berkeley DB
 with Tcl</a> for information on sites from which you can download Tcl and
 which Tcl versions are compatible with Berkeley DB.  To build Tcl, you must
@@ -111,29 +125,41 @@ also build with shared libraries.
 <a name="13"><!--meow--></a>
 <p><dt><a name="--enable-test">--enable-test</a><dd>To build the Berkeley DB test suite, enter --enable-test as an argument to
 configure.  To run the Berkeley DB test suite, you must also build the Tcl
-API.  This option should not be specified when configuring to build
+API.  This argument should not be specified when configuring to build
 production binaries.
 <p><dt><a name="--enable-uimutexes">--enable-uimutexes</a><dd>To force Berkeley DB to use the UNIX International (UI) mutex interfaces for
 underlying mutex support, enter --enable-uimutexes as an argument to
-configure.  This configuration option requires that Berkeley DB be linked with
-the -lthread library.  On systems where UI mutexes are the preferred
-mutex support, (for example, SCO's UnixWare 2), they will be selected
-automatically.
+configure.  This is rarely necessary: UI mutexes will be selected
+automatically on systems where they are the preferred implementation.
+<p>The --enable-uimutexes configuration argument is normally used when
+there are multiple mutex implementations available and the UI mutex
+implementation is not the preferred one (for example, on Solaris where
+the LWP mutexes are used by default).
+<p>Specifying the --enable-uimutexes configuration argument may require
+that Berkeley DB be linked with the -lthread library.
 <p><dt><a name="--enable-umrw">--enable-umrw</a><dd>Rational Software's Purify product and other run-time tools complain
 about uninitialized reads/writes of structure fields whose only purpose
 is padding, as well as when heap memory that was never initialized is
-written to disk.  Specify the --enable-umrw option during configuration
-to mask these errors.  This option should not be specified when
-configuring to build production binaries.
+written to disk.  Specify the --enable-umrw argument during
+configuration to mask these errors.  This argument should not be
+specified when configuring to build production binaries.
 <p><dt><a name="--with-embedix=DIR">--with-embedix=DIR</a><dd>To build Berkeley DB for Embedix, configure with --with-embedix=DIR, where
 DIR is the directory in which Embedix is installed.  If "=DIR" is not
 specified, a default installation directory of <b>/opt/Embedix</b> is
-used.  This configuration option creates an Embedix Component Descriptor
+used.  This configuration argument creates an Embedix Component Descriptor
 file (ECD) for Berkeley DB.  To configure for Embedix, you must also specify
-the --with-rpm option.
+the --with-rpm argument.
+<p><dt><a name="--with-mutex=MUTEX">--with-mutex=MUTEX</a><dd>To force Berkeley DB to use a specific mutex implementation, configure with
+--with-mutex=MUTEX, where MUTEX is the mutex implementation you want.
+For example, --with-mutex=x86/gcc-assembly will configure Berkeley DB to use
+the x86 GNU gcc compiler based test-and-set assembly mutexes.  This is
+rarely necessary and should be done only when the default configuration
+selects the wrong mutex implementation.  A list of available mutex
+implementations can be found in the distribution file
+<b>dist/aclocal/mutex.ac</b>.
 <p><dt><a name="--with-rpm=DIR">--with-rpm=DIR</a><dd>To build Berkeley DB as an RPM software package, configure with --with-rpm=DIR,
 where DIR is the directory in which the gzipped tar archive file of the
-distribution may be found.  This configuration option will create an
+distribution may be found.  This configuration argument will create an
 RPM specification file from which the RPM software package can be built,
 using the "make" command.
 <p><dt><a name="--with-tcl=DIR">--with-tcl=DIR</a><dd>To build the Berkeley DB Tcl API, enter --with-tcl=DIR, replacing DIR with

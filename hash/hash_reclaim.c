@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: hash_reclaim.c,v 11.9 2001/05/15 16:01:24 sue Exp $";
+static const char revid[] = "$Id: hash_reclaim.c,v 11.12 2002/03/28 19:49:43 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,10 +18,8 @@ static const char revid[] = "$Id: hash_reclaim.c,v 11.9 2001/05/15 16:01:24 sue 
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "hash.h"
-#include "lock.h"
+#include "dbinc/db_page.h"
+#include "dbinc/hash.h"
 
 /*
  * __ham_reclaim --

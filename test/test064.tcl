@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test064.tcl,v 11.11 2001/08/03 16:39:44 bostic Exp $
+# $Id: test064.tcl,v 11.13 2002/05/22 15:42:57 sue Exp $
 #
 # TEST	test064
 # TEST	Test of DB->get_type
@@ -17,6 +17,7 @@ proc test064 { method args } {
 	set omethod [convert_method $method]
 	set tnum 64
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -28,6 +29,11 @@ proc test064 { method args } {
 		set testfile test0$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 

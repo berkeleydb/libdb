@@ -1,6 +1,7 @@
 <!--$Id: h_hash.so,v 10.12 2000/07/04 18:28:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Specifying a database hash</title>
@@ -28,9 +29,9 @@ function can be checked using <a href="../../utility/db_stat.html">db_stat</a> u
 number of hash buckets and the number of keys, one can decide if the entries
 are hashing in a well-distributed manner.
 <p>The hash function for the hash table can be specified by calling the
-<a href="../../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a> function.  If no hash function is specified, a default
+<a href="../../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a> method.  If no hash function is specified, a default
 function will be used.  Any application-specified hash function must
-take a reference to a <a href="../../api_c/db_create.html">DB</a> object, a pointer to a byte string and
+take a reference to a <a href="../../api_c/db_class.html">DB</a> object, a pointer to a byte string and
 its length, as arguments and return an unsigned, 32-bit hash value.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/h_ffactor.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/h_nelem.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

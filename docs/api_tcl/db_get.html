@@ -1,7 +1,8 @@
-<!--$Id: db_get.so,v 11.15 2001/06/19 14:37:20 bostic Exp $-->
-<!--$Id: m4.tcl,v 11.22 2001/04/18 15:50:10 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_get.so,v 11.18 2002/08/18 21:17:25 bostic Exp $-->
+<!--$Id: m4.tcl,v 11.25 2002/02/22 18:59:43 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db get</title>
@@ -61,6 +62,7 @@ command "db0 get Jones" will return all occurrences of "Jones" in the
 database, and the command "db0 get -glob Jo*" will return both "Jones"
 and "Johnson" from the database.  The command "db0 get -glob *" will
 return all of the key/data pairs in the database.
+This option only works on databases using the Btree access method.
 <p><dt>-partial {doff dlen}<dd>The <b>dlen</b> bytes starting <b>doff</b> bytes from the beginning
 of the retrieved data record are returned as if they comprised the
 entire record. If any or all of the specified bytes do not exist in the
@@ -79,8 +81,10 @@ result in deadlock.
 interface calls in nontransactional environments, the <b>-rmw</b>
 argument to the <i>db</i> <b>get</b> call is only meaningful in the presence
 of transactions.
-<p><dt>-txn txnid<dd>If the operation is to be transaction-protected, the <b>txnid</b>
-parameter is a transaction handle returned from <i>env</i> <b>txn</b>.
+<p><dt>-txn txnid<dd>If the operation is to be
+transaction-protected,
+the <b>txnid</b> parameter is a transaction handle returned from
+<i>env</i> <b>txn</b>.
 </dl>
 <p>If the underlying database is a Queue or Recno database, the given key
 will be interpreted by Tcl as an integer.  For all other database types,

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test074.tcl,v 11.14 2001/08/03 16:39:45 bostic Exp $
+# $Id: test074.tcl,v 11.17 2002/05/24 15:24:56 sue Exp $
 #
 # TEST	test074
 # TEST	Test of DB_NEXT_NODUP.
@@ -32,6 +32,7 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 
 	puts "\tTest0$tnum.a: No duplicates."
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -43,11 +44,17 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 		set testfile test0$tnum-nodup.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 	set db [eval {berkdb_open -create -mode 0644} $omethod\
 	    $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
+	set txn ""
 
 	# Insert nitems items.
 	puts "\t\tTest0$tnum.a.1: Put loop."
@@ -62,14 +69,28 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 			set key "key$i"
 		}
 		set data "$globaldata$i"
-		error_check_good put($i) [$db put $key\
-		    [chop_data $method $data]] 0
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set ret [eval {$db put} $txn {$key \
+		    [chop_data $method $data]}]
+		error_check_good put($i) $ret 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 
 	puts "\t\tTest0$tnum.a.2: Get($dir)"
 
 	# foundarray($i) is set when key number i is found in the database
-	set dbc [$db cursor]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
 
 	# Initialize foundarray($i) to zero for all $i
@@ -106,17 +127,28 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 	}
 
 	error_check_good dbc_close(nodup) [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	# If we are a method that doesn't allow dups, verify that
 	# we get an empty list if we try to use DB_NEXT_DUP
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		puts "\t\tTest0$tnum.a.5: Check DB_NEXT_DUP for $method."
-		set dbc [$db cursor]
+		set dbc [eval {$db cursor} $txn]
 		error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
 
 		set dbt [$dbc get $dir]
 		error_check_good $method:nextdup [$dbc get -nextdup] [list]
 		error_check_good dbc_close(nextdup) [$dbc close] 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 	}
 	error_check_good db_close(nodup) [$db close] 0
 
@@ -161,8 +193,17 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 					set data "$globaldata$j"
 				}
 
-				error_check_good put($i,$j) \
-				    [$db put $key $data] 0
+				if { $txnenv == 1 } {
+					set t [$env txn]
+					error_check_good txn \
+					    [is_valid_txn $t $env] TRUE
+					set txn "-txn $t"
+				}
+				set ret [eval {$db put} $txn {$key $data}]
+				error_check_good put($i,$j) $ret 0
+				if { $txnenv == 1 } {
+					error_check_good txn [$t commit] 0
+				}
 			}
 		}
 
@@ -176,7 +217,12 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 		# within the duplicate set.
 		puts "\t\tTest0$tnum.b.2 ($opt): Get loop."
 		set one "001"
-		set dbc [$db cursor]
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set dbc [eval {$db cursor} $txn]
 		error_check_good dbc($opt) [is_valid_cursor $dbc $db] TRUE
 		for { set i 1 } { $i <= $nitems } { incr i } {
 			set dbt [$dbc get $dir]
@@ -217,6 +263,9 @@ proc test074 { method {dir -nextnodup} {nitems 100} {tnum 74} args } {
 		}
 
 		error_check_good dbc_close [$dbc close] 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 		error_check_good db_close [$db close] 0
 	}
 }

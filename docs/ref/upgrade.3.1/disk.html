@@ -1,6 +1,7 @@
 <!--$Id: disk.so,v 1.9 2000/12/21 18:37:09 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.1: upgrade requirements</title>
@@ -19,10 +20,10 @@ database formats changed in the Berkeley DB 3.1 release.  (The on-disk
 Btree/Recno format changed from version 7 to version 8.  The on-disk
 Hash format changed from version 6 to version 7.  The on-disk Queue
 format changed from version 1 to version 2.)  Until the underlying
-databases are upgraded, the <a href="../../api_c/db_open.html">DB-&gt;open</a> function will return a
+databases are upgraded, the <a href="../../api_c/db_open.html">DB-&gt;open</a> method will return a
 <a href="../../api_c/db_open.html#DB_OLD_VERSION">DB_OLD_VERSION</a> error.
 <p>An additional flag, <a href="../../api_c/db_set_flags.html#DB_DUPSORT">DB_DUPSORT</a>, has been added to the
-<a href="../../api_c/db_upgrade.html">DB-&gt;upgrade</a> function for this upgrade.   Please review the
+<a href="../../api_c/db_upgrade.html">DB-&gt;upgrade</a> method for this upgrade.   Please review the
 <a href="../../api_c/db_upgrade.html">DB-&gt;upgrade</a> documentation for further information.
 <p>For further information on upgrading Berkeley DB installations, see
 <a href="../../ref/upgrade/process.html">Upgrading Berkeley DB

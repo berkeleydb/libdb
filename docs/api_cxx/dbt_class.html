@@ -1,6 +1,8 @@
-<!--$Id: dbt_class.so,v 10.47 2001/09/08 19:28:37 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbt_class.so,v 10.1 2002/08/24 18:22:30 bostic Exp $-->
+<!--$Id: dbt_cxx.so,v 10.54 2002/09/13 02:27:31 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbt</title>
@@ -23,6 +25,12 @@
 <p>
 class Dbt {
 public:
+	Dbt(void *data, size_t size);
+	Dbt();
+	Dbt(const Dbt &);
+	Dbt &operator = (const Dbt &);
+	~Dbt();
+<p>
 	void *get_data() const;
 	void set_data(void *);
 <p>
@@ -41,12 +49,6 @@ public:
 	u_int32_t get_flags() const;
 	void set_flags(u_int32_t);
 <p>
-	Dbt(void *data, size_t size);
-	Dbt();
-	Dbt(const Dbt &);
-	Dbt &operator = (const Dbt &);
-	~Dbt();
-<p>
 	DBT *Dbt::get_DBT();
 	const DBT *Dbt::get_const_DBT() const;
 	static Dbt *Dbt::get_Dbt(DBT *dbt);
@@ -58,7 +60,7 @@ public:
 used to encode keys and data items in a database.
 <a name="3"><!--meow--></a>
 <h3>Key/Data Pairs</h3>
-<p>Storage and retrieval for the Db access methods are based on
+<p>Storage and retrieval for the <a href="../api_cxx/db_class.html">Db</a> access methods are based on
 key/data pairs.  Both key and data items are represented by Dbt
 objects.  Key and data byte strings may refer to strings of zero length
 up to strings of essentially unlimited length.  See
@@ -84,7 +86,7 @@ a byte string of <b>size</b> bytes, and the memory to which the pointer
 refers will be allocated and managed by Berkeley DB.
 <p>Access to Dbt objects is not re-entrant.  In particular, if
 multiple threads simultaneously access the same Dbt object using
-Db API calls, the results are undefined, and may result in a
+<a href="../api_cxx/db_class.html">Db</a> API calls, the results are undefined, and may result in a
 crash.  One easy way to avoid problems is to use Dbt objects
 that are
 constructed as stack variables.
@@ -99,7 +101,7 @@ This element is accessed using Dbt::get_size and
 Dbt::set_size, and may be initialized
 using the constructor with two arguments.
 <p><dt>u_int32_t ulen;<dd>The size of the user's buffer (referred to by <b>data</b>), in bytes.
-This location is not written by the Db methods.
+This location is not written by the <a href="../api_cxx/db_class.html">Db</a> methods.
 <p>Note that applications can determine the length of a record by setting
 the <b>ulen</b> to 0 and checking the return value found in <b>size</b>.
 See the DB_DBT_USERMEM flag for more information.

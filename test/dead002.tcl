@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead002.tcl,v 11.20 2001/10/11 16:15:30 sandstro Exp $
+# $Id: dead002.tcl,v 11.23 2002/09/05 17:23:05 sandstro Exp $
 #
 # TEST	dead002
 # TEST	Same test as dead001, but use "detect on every collision" instead
@@ -22,14 +22,14 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
 	if { $timeout != 0 } {
 		set lmode "expire"
 	}
-	set env [berkdb env \
+	set env [berkdb_env \
 	    -create -mode 0644 -home $testdir \
 	    -lock -txn_timeout $timeout -lock_detect $lmode]
 	error_check_good lock_env:open [is_valid_env $env] TRUE
 
 	foreach t $tests {
-		set pidlist ""
 		foreach n $procs {
+			set pidlist ""
 			sentinel_init
 
 			# Fire off the tests
@@ -45,7 +45,7 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
 					$testdir $t $locker $i $n &]
 				lappend pidlist $p
 			}
-			watch_procs 5
+			watch_procs $pidlist 5
 
 			# Now check output
 			set dead 0

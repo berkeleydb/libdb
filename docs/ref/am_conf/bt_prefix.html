@@ -1,6 +1,7 @@
-<!--$Id: bt_prefix.so,v 10.20 2001/05/07 19:28:38 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: bt_prefix.so,v 10.21 2002/06/24 14:50:23 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Btree prefix comparison</title>
@@ -27,11 +28,11 @@ depends entirely on the function used to compare them.  This means that
 if a prefix comparison routine is specified by the application, a
 compatible overall comparison routine must also have been specified.
 <p>Prefix comparison routines are passed pointers to keys as arguments.  The
-keys are represented as <a href="../../api_c/dbt.html">DBT</a> structures.  The prefix comparison
+keys are represented as <a href="../../api_c/dbt_class.html">DBT</a> structures.  The prefix comparison
 function must return the number of bytes of the second key argument that
 are necessary to determine if it is greater than the first key argument.
 If the keys are equal, the length of the second key should be returned.
-The only fields that the routines may examine in the <a href="../../api_c/dbt.html">DBT</a>
+The only fields that the routines may examine in the <a href="../../api_c/dbt_class.html">DBT</a>
 structures are <b>data</b> and <b>size</b> fields.
 <p>An example prefix comparison routine follows:
 <p><blockquote><pre>u_int32_t

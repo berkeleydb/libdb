@@ -1,7 +1,8 @@
-<!--$Id: db_open.so,v 11.23 2001/05/05 01:49:18 bostic Exp $-->
-<!--$Id: m4.tcl,v 11.22 2001/04/18 15:50:10 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_open.so,v 11.29 2002/08/18 21:17:26 bostic Exp $-->
+<!--$Id: m4.tcl,v 11.25 2002/02/22 18:59:43 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: berkdb open</title>
@@ -20,6 +21,7 @@
 <hr size=1 noshade>
 <tt>
 <h3><pre>berkdb open
+	[-auto_commit]
 	[-btree | -hash | -recno | -queue | -unknown]
 	[-cachesize {gbytes bytes ncache}]
 	[-create]
@@ -42,7 +44,7 @@
 	[-snapshot]
 	[-source file]
 	[-truncate]
-	[-upgrade]
+	[-txn txnid]
 	[--]
 	[file [database]]
 </pre></h3>
@@ -54,6 +56,9 @@ db1).  It is through this Tcl command that the script accesses the
 database methods.
 <p>The options are as follows:
 <p><dl compact>
+<p><dt>-auto_commit<dd>Enclose the call within a transaction. If the call succeeds, changes
+made by the operation will be recoverable. If the call fails, the
+operation will have made no changes.
 <p><dt>-btree<dd>Open/create a database of type Btree.  The Btree format
 is a representation of a sorted, balanced tree structure.
 <p><dt>-hash<dd>Open/create a database of type Hash.  The Hash format is
@@ -137,10 +142,7 @@ as during application debugging.
 <p>For database handles opened inside of Berkeley DB environments, specifying the
 <b>-errfile</b> argument affects the entire environment and is equivalent
 to specifying the same argument to the <b>berkdb env</b> command.
-<p><dt>-excl<dd>Return an error if the file already exists. Underlying filesystem
-primitives are used to implement this flag.  For this reason, it is only
-applicable to the physical database file and cannot be used to test if
-a database in a file already exists.
+<p><dt>-excl<dd>Return an error if the database already exists.
 <p><dt>-extent size<dd>Set the size of the extents of the Queue database; the size is specified
 as the number of pages in an extent.  Each extent is created as a
 separate physical file. If no extent size is set, the default behavior
@@ -274,13 +276,10 @@ implement this flag.  For this reason, it is only applicable to the
 physical file and cannot be used to discard databases within a file.
 <p>The <b>-truncate</b> argument cannot be transaction-protected, and it is
 an error to specify it in a transaction-protected environment.
-<p><dt>-upgrade<dd>Upgrade the database represented by <b>file</b>, if necessary.
-<p><b>Note: Database upgrades are done in place and are
-destructive.  For example, if pages need to be allocated and no disk
-space is available, the database may be left corrupted.  Backups should
-be made before databases are upgraded.  See
-<a href="../ref/am/upgrade.html">Upgrading databases</a> for more
-information.</b>
+<p><dt>-txn txnid<dd>If the operation is to be
+transaction-protected (other than by specifying the -auto_commit flag),
+the <b>txnid</b> parameter is a transaction handle returned from
+<i>env</i> <b>txn</b>.
 <p><dt>--<dd>Mark the end of the command arguments.
 <p><dt>file<dd>The name of a single physical file on disk that will be used to back the
 database.

@@ -1,6 +1,7 @@
-<!--$Id: txn_begin.so,v 10.52 2001/10/22 15:24:38 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: txn_begin.so,v 10.56 2002/08/29 03:26:07 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.txn_begin</title>
@@ -53,8 +54,9 @@ transaction may be undone during recovery.
 <a href="../api_java/env_set_flags.html">DbEnv.set_flags</a> interface.  Any value specified in this
 interface overrides that setting.
 <p><dt><a name="Db.DB_TXN_NOWAIT">Db.DB_TXN_NOWAIT</a><dd>If a lock is unavailable for any Berkeley DB operation performed in the context
-of this transaction, return immediately instead of blocking on the lock.
-The error return in the case will be <a href="../ref/program/errorret.html#DB_LOCK_NOTGRANTED">Db.DB_LOCK_NOTGRANTED</a>.
+of this transaction,
+throw a <a href="../api_java/lockng_class.html">DbLockNotGrantedException</a>
+immediately instead of blocking on the lock.
 <p><dt><a name="Db.DB_TXN_SYNC">Db.DB_TXN_SYNC</a><dd>Synchronously flush the log when this transaction commits or prepares.
 This means the transaction will exhibit all of the ACID (atomicity,
 consistency, isolation, and durability) properties.
@@ -80,25 +82,13 @@ failure.
 <p><dt>ENOMEM<dd>The maximum number of concurrent transactions has been reached.
 </dl>
 <p>The DbEnv.txn_begin method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.txn_begin method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.txn_begin method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
 <h1>See Also</h1>
-<a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
-<a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a>,
-<a href="../api_java/txn_abort.html">DbTxn.abort</a>,
-<a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
-<a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,
-<a href="../api_java/txn_commit.html">DbTxn.commit</a>,
-<a href="../api_java/txn_discard.html">DbTxn.discard</a>,
-<a href="../api_java/txn_id.html">DbTxn.id</a>,
-<a href="../api_java/txn_prepare.html">DbTxn.prepare</a>,
-<a href="../api_java/txn_recover.html">DbEnv.txn_recover</a>,
-<a href="../api_java/txn_set_timeout.html">DbTxn.set_timeout</a>
-and
-<a href="../api_java/txn_stat.html">DbEnv.txn_stat</a>.
+<a href="../api_java/txn_list.html">Transaction Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

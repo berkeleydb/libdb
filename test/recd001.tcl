@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd001.tcl,v 11.36 2001/08/03 16:39:26 bostic Exp $
+# $Id: recd001.tcl,v 11.40 2002/05/08 19:36:18 sandstro Exp $
 #
 # TEST	recd001
 # TEST	Per-operation recovery tests for non-duplicate, non-split
@@ -51,7 +51,7 @@ proc recd001 { method {select 0} args} {
 	set flags "-create -txn -home $testdir"
 
 	puts "\tRecd001.a.0: creating environment"
-	set env_cmd "berkdb env $flags"
+	set env_cmd "berkdb_env $flags"
 	set dbenv [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
@@ -215,27 +215,24 @@ proc recd001 { method {select 0} args} {
 
 		set dbenv [eval $env_cmd]
 		error_check_good dbenv [is_valid_env $dbenv] TRUE
+		set t [$dbenv txn]
+		error_check_good txn_begin [is_valid_txn $t $dbenv] TRUE
 		set oflags "-create $omethod -mode 0644 \
-		    -env $dbenv $opts $testfile"
+		    -env $dbenv -txn $t $opts $testfile"
 		set db [eval {berkdb_open} $oflags]
 		error_check_good db_open [is_valid_db $db] TRUE
 		set oflags "-create $omethod -mode 0644 \
-		    -env $dbenv $opts $testfile2"
+		    -env $dbenv -txn $t $opts $testfile2"
 		set db2 [eval {berkdb_open} $oflags]
 		error_check_good db_open [is_valid_db $db2] TRUE
 
-		set t [$dbenv txn]
-		error_check_good txn_begin [is_valid_txn $t $dbenv] TRUE
 		set ret [$db put -txn $t -partial $p $key $data]
 		error_check_good dbput $ret 0
-		error_check_good txncommit [$t commit] 0
-		error_check_good dbclose [$db close] 0
 
-		set t [$dbenv txn]
-		error_check_good txn_begin [is_valid_txn $t $dbenv] TRUE
 		set ret [$db2 put -txn $t -partial $p $key $data]
 		error_check_good dbput $ret 0
 		error_check_good txncommit [$t commit] 0
+		error_check_good dbclose [$db close] 0
 		error_check_good dbclose [$db2 close] 0
 		error_check_good dbenvclose [$dbenv close] 0
 

@@ -1,12 +1,12 @@
 #!/bin/sh -
-#	$Id: buildrel,v 1.31 2001/10/14 15:31:11 bostic Exp $
+#	$Id: buildrel,v 1.39 2002/09/06 14:30:31 bostic Exp $
 #
 # Build the distribution archives.
 #
 # A set of commands intended to be cut and pasted into a csh window.
 
 # Development tree, release home.
-setenv D /a/db
+setenv D `pwd`
 
 # Update the release number.
 cd $D/dist
@@ -32,23 +32,24 @@ cd $D && tar cf - \
 cd $R/dist && sh s_perm
 cd $R/dist && sh s_symlink
 
-# Build the documentation.
-cd $R/docs_src && make
-
 # Build a version.
 cd $R && rm -rf build_run && mkdir build_run
 cd $R/build_run && ~bostic/bin/dbconf && make >& mklog
 
 # Smoke test.
-./ex_access
+cd $R/build_run && ./ex_access
+
+# Build the documentation.
+cd $R/docs_src && sh build clean
+cd $R/docs_src && sh build |& sed '/.html$/d'
 
 # Check the install
-make prefix=`pwd`/BDB install
+cd $R/build_run && make prefix=`pwd`/BDB install
 
 # Clean up the tree.
 cd $R && rm -rf build_run docs_src
-cd $R && rm -rf test/TODO test/upgrade
-cd $R && rm -rf test_perf test_purify test_server test_thread test_vxworks
+cd $R && rm -rf test/TODO test/upgrade test_perf test_purify
+cd $R && rm -rf test_server test_thread test_vxworks test_xa
 
 # ACQUIRE ROOT PRIVILEGES
 cd $R && find . -type d | xargs chmod 775
@@ -65,19 +66,44 @@ cd $R/../db-${LR} && find . | sort > /tmp/__OLD
 cd $R && find . | sort > /tmp/__NEW
 diff -c /tmp/__OLD /tmp/__NEW
 
-# Create the tar archive release.
+# Create the crypto tar archive release.
 setenv T "$R/../db-$VERSION.tar.gz"
 cd $R/.. && tar cf - db-$VERSION | gzip --best > $T
 chmod 444 $T
 
-# Create the zip archive release.
-#
-# Remove symbolic links to tags files.  They're large and we don't want to
-# store real symbolic links in the archive for portability reasons.
+# Create the non-crypto tree.
+setenv RNC "$R/../db-$VERSION.NC"
+rm -rf $RNC $R/../__TMP && mkdir $R/../__TMP
+cd $R/../__TMP && gzcat $T | tar xpf - && mv -i db-$VERSION $RNC
+cd $R && rm -rf $R/../__TMP
+cd $RNC/dist && sh s_crypto
+
 # ACQUIRE ROOT PRIVILEGES
-cd $R && rm -f `find . -type l -name 'tags'`
+cd $RNC && find . -type d | xargs chmod 775
+cd $RNC && find . -type f | xargs chmod 444
+cd $RNC && chmod 664 build_win32/*.dsp
+cd $RNC/dist && sh s_perm
+chown -R 100.100 $RNC
 # DISCARD ROOT PRIVILEGES
 
+# Create the non-crypto tar archive release.
+setenv T "$R/../db-$VERSION.NC.tar.gz"
+cd $RNC/.. && tar cf - db-$VERSION.NC | gzip --best > $T
+chmod 444 $T
+
+# Remove symbolic links to tags files.  They're large and we don't want
+# to store real symbolic links in the zip archive for portability reasons.
+# ACQUIRE ROOT PRIVILEGES
+cd $R && rm -f `find . -type l -name 'tags'`
+cd $RNC && rm -f `find . -type l -name 'tags'`
+# DISCARD ROOT PRIVILEGES
+
+# Create the crypto zip archive release.
 setenv T "$R/../db-$VERSION.zip"
 cd $R/.. && zip -r - db-$VERSION > $T
+chmod 444 $T
+
+# Create the non-crypto zip archive release.
+setenv T "$R/../db-$VERSION.NC.zip"
+cd $RNC/.. && zip -r - db-$VERSION.NC > $T
 chmod 444 $T

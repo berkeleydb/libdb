@@ -1,6 +1,7 @@
-<!--$Id: db_archive.so,v 10.23 2001/09/28 16:06:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_archive.so,v 10.26 2002/08/24 18:24:51 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_archive</title>
@@ -18,7 +19,7 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_archive [<b>-alsVv</b>] [<b>-h home</b>]</pre></h3>
+<h3><pre>db_archive [<b>-alsVv</b>] [<b>-h home</b>] [<b>-P password</b>]</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_archive utility writes the pathnames of log files that
@@ -36,6 +37,11 @@ database home directories.
 default, the current working directory is used.
 <p><dt><b>-l</b><dd>Write out the pathnames of all the database log files, whether or not
 they are involved in active transactions.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-s</b><dd>Write the pathnames of all the database files that need to be archived
 in order to recover the database from catastrophic failure.  If any of
 the database files have not been accessed during the lifetime of the
@@ -50,7 +56,7 @@ deleted and will not be recovered.
 <p><dt><b>-v</b><dd>Run in verbose mode, listing the checkpoints in the log files as they
 are reviewed.
 </dl>
-<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> function) may have open
+<p>Log cursor handles (returned by the <a href="../api_c/log_cursor.html">DB_ENV-&gt;log_cursor</a> method) may have open
 file descriptors for log files in the database environment.  Also, the
 Berkeley DB interfaces to the database environment logging subsystem (for
 example, <a href="../api_c/log_put.html">DB_ENV-&gt;log_put</a> and <a href="../api_c/txn_abort.html">DB_TXN-&gt;abort</a>) may allocate log cursors
@@ -73,7 +79,7 @@ Berkeley DB environment, db_archive should always be given the chance to
 detach from the environment and exit gracefully.  To cause db_archive
 to release all environment resources and exit cleanly, send it an
 interrupt signal (SIGINT).
-<p>The <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a> function is the underlying function used by the db_archive utility.
+<p>The <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a> method is the underlying interface used by the db_archive utility.
 See the db_archive utility source code for an example of using <a href="../api_c/log_archive.html">DB_ENV-&gt;log_archive</a>
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <p>The db_archive utility exits 0 on success, and &gt;0 if an error occurs.
@@ -83,18 +89,6 @@ in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-db_archive,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-<a href="../utility/db_dump.html">db_dump</a>,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

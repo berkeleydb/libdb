@@ -1,6 +1,7 @@
-<!--$Id: dbc_dup.so,v 10.11 2001/10/22 15:24:26 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_dup.so,v 10.17 2002/08/29 03:24:35 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DBcursor-&gt;c_dup</title>
@@ -22,10 +23,10 @@
 #include &lt;db.h&gt;
 <p>
 int
-DBC-&gt;c_dup(DBC *cursor, DBC **cursorp, u_int32_t flags);
+DBcursor-&gt;c_dup(DBC *cursor, DBC **cursorp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>The DBcursor-&gt;c_dup function creates a new cursor that uses the same transaction
+<p>The DBcursor-&gt;c_dup method creates a new cursor that uses the same transaction
 and locker ID as the original cursor.  This is useful when an application
 is using locking and requires two or more cursors in the same thread of
 control.
@@ -42,28 +43,24 @@ uninitialized and will behave like a cursor newly created using
 at a time.  For this reason, attempting to duplicate a cursor for which
 the <a href="../api_c/db_cursor.html#DB_WRITECURSOR">DB_WRITECURSOR</a> flag was specified during creation will return
 an error.
-<p>If the <b>cursor</b> argument is not yet initialized, the DBcursor-&gt;c_dup function will return EINVAL.
-<p>Otherwise, the DBcursor-&gt;c_dup function returns a non-zero error value on failure and 0 on success.
+<p>
+If the <b>cursor</b> argument is not yet initialized, the DBcursor-&gt;c_dup method will return EINVAL.
+Otherwise, the DBcursor-&gt;c_dup method returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The DBcursor-&gt;c_dup function may fail and return a non-zero error for the following conditions:
+<p>The DBcursor-&gt;c_dup method may fail and return a non-zero error for the following conditions:
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 <p>The <b>cursor</b> argument was created using the
 <a href="../api_c/db_cursor.html#DB_WRITECURSOR">DB_WRITECURSOR</a> flag in the Berkeley DB Concurrent Data Store product.
 </dl>
-<p>The DBcursor-&gt;c_dup function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DBcursor-&gt;c_dup function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The DBcursor-&gt;c_dup method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DBcursor-&gt;c_dup method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_c/dbc_class.html">DBC</a>
 <h1>See Also</h1>
-<a href="../api_c/dbc_close.html">DBcursor-&gt;c_close</a>,
-<a href="../api_c/dbc_count.html">DBcursor-&gt;c_count</a>,
-<a href="../api_c/dbc_del.html">DBcursor-&gt;c_del</a>,
-<a href="../api_c/dbc_dup.html">DBcursor-&gt;c_dup</a>,
-<a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a>,
-<a href="../api_c/dbc_get.html">DBcursor-&gt;c_pget</a>,
-and
-<a href="../api_c/dbc_put.html">DBcursor-&gt;c_put</a>.
+<a href="../api_c/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

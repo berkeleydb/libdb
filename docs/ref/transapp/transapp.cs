@@ -164,11 +164,7 @@ checkpoint_thread(void *arg)
 
 	/* Checkpoint once a minute. */
 	for (;; sleep(60))
-		switch (ret = dbenv->txn_checkpoint(dbenv, 0, 0, 0)) {
-		case 0:
-		case DB_INCOMPLETE:
-			break;
-		default:
+		if ((ret = dbenv->txn_checkpoint(dbenv, 0, 0, 0)) != 0) {
 			dbenv->err(dbenv, ret, "checkpoint thread");
 			exit (1);
 		}
@@ -265,7 +261,7 @@ db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 	 *	free-threaded handle
 	 *	read/write owner only
 	 */
-	if ((ret = db->open(db, name, NULL,
+	if ((ret = db->open(db, NULL, name, NULL,
 	    DB_BTREE, DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
 		dbenv->err(dbenv, ret, "db->open: %s", name);
 		exit (1);

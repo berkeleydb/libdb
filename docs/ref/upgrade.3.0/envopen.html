@@ -1,6 +1,7 @@
 <!--$Id: envopen.so,v 11.13 2001/03/01 15:58:20 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.0: environment open/close/unlink</title>
@@ -20,8 +21,8 @@ remove calls.
 <p>There were two logical changes in this part of the Berkeley DB interface.
 First, in Berkeley DB 3.0, there are no longer separate structures that
 represent each subsystem (for example, DB_LOCKTAB or DB_TXNMGR) and an
-overall <a href="../../api_c/env_create.html">DB_ENV</a> environment structure.  Instead there is only the
-<a href="../../api_c/env_create.html">DB_ENV</a> structure.  This means that <a href="../../api_c/env_create.html">DB_ENV</a> references
+overall <a href="../../api_c/env_class.html">DB_ENV</a> environment structure.  Instead there is only the
+<a href="../../api_c/env_class.html">DB_ENV</a> structure.  This means that <a href="../../api_c/env_class.html">DB_ENV</a> references
 should be passed around by your application instead of passing around
 DB_LOCKTAB or DB_TXNMGR references.  This is likely to be a simple
 change for most applications as few applications use the lock_XXX,
@@ -125,13 +126,13 @@ you should carefully consider this change before converting to use the
 <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag.
 <p>Translating db_appexit or XXX_close calls to <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> is equally
 simple.  Instead of taking a reference to a per-subsystem structure such
-as DB_LOCKTAB or DB_TXNMGR, all calls take a reference to a <a href="../../api_c/env_create.html">DB_ENV</a>
+as DB_LOCKTAB or DB_TXNMGR, all calls take a reference to a <a href="../../api_c/env_class.html">DB_ENV</a>
 structure.  The calling sequence is otherwise unchanged.  Note that as
 the application no longer allocates the memory for the DB_ENV structure,
 application code to discard it after the call to db_appexit() is no longer
 needed.
 <p>Translating XXX_unlink calls to <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> is slightly more complex.
-As with <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a>, the call takes a reference to a <a href="../../api_c/env_create.html">DB_ENV</a>
+As with <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a>, the call takes a reference to a <a href="../../api_c/env_class.html">DB_ENV</a>
 structure instead of a per-subsystem structure.  The calling sequence is
 slightly different, however.  Here is an example of removing a lock region
 using the 2.X interface:

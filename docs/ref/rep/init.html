@@ -1,6 +1,7 @@
 <!--$Id: init.so,v 1.2 2001/11/05 17:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Initializing a new site</title>
@@ -30,7 +31,7 @@ replication group.
 </ol>
 <p>If copying the backup to the client takes a long time relative to the
 frequency with which log files are reclaimed using the
-<a href="../../utility/db_archive.html">db_archive</a> utility or the <a href="../../api_c/log_archive.html">DB_ENV-&gt;log_archive</a> function, it may be
+<a href="../../utility/db_archive.html">db_archive</a> utility or the <a href="../../api_c/log_archive.html">DB_ENV-&gt;log_archive</a> method, it may be
 necessary to suppress log reclamation until the newly restarted client
 has "caught up" and applied all log records generated during its
 downtime.

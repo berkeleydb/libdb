@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test032.tcl,v 11.19 2001/08/13 19:11:43 bostic Exp $
+# $Id: test032.tcl,v 11.23 2002/06/11 14:09:57 sue Exp $
 #
 # TEST	test032
 # TEST	DB_GET_BOTH, DB_GET_BOTH_RANGE
@@ -27,6 +27,7 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	berkdb srand $rand_init
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -40,6 +41,19 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 		set checkdb checkdb.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+			reduce_dups nentries ndups
+		}
+		set testdir [get_home $env]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
@@ -47,7 +61,7 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	cleanup $testdir $env
 
 	puts "Test0$tnum:\
-	    $method ($args) $nentries small sorted dup key/data pairs"
+	    $method ($args) $nentries small sorted $ndups dup key/data pairs"
 	if { [is_record_based $method] == 1 || \
 	    [is_rbtree $method] == 1 } {
 		puts "Test0$tnum skipping for method $omethod"
@@ -69,8 +83,13 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 
 	# Here is the loop where we put and get each key/data pair
 	puts "\tTest0$tnum.a: Put/get loop"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor_open [is_substr $dbc $db] 1
+	error_check_good cursor_open [is_valid_cursor $dbc $db] TRUE
 	while { [gets $did str] != -1 && $count < $nentries } {
 		# Re-initialize random string generator
 		randstring_init $ndups
@@ -114,14 +133,22 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 		incr count
 	}
 	error_check_good cursor_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	close $did
 
 	# Now we will get each key from the DB and compare the results
 	# to the original.
 	puts "\tTest0$tnum.b: Checking file for correct duplicates (no cursor)"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set check_c [eval {$check_db cursor} $txn]
 	error_check_good check_c_open(2) \
-	    [is_substr $check_c $check_db] 1
+	    [is_valid_cursor $check_c $check_db] TRUE
 
 	for {set ndx 0} {$ndx < [expr 4 * $ndups]} {incr ndx 4} {
 		for {set ret [$check_c get -first]} \
@@ -144,7 +171,7 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	# Now repeat the above test using cursor ops
 	puts "\tTest0$tnum.c: Checking file for correct duplicates (cursor)"
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor_open [is_substr $dbc $db] 1
+	error_check_good cursor_open [is_valid_cursor $dbc $db] TRUE
 
 	for {set ndx 0} {$ndx < [expr 4 * $ndups]} {incr ndx 4} {
 		for {set ret [$check_c get -first]} \
@@ -195,8 +222,10 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	}
 
 	error_check_good check_c:close [$check_c close] 0
-	error_check_good check_db:close [$check_db close] 0
-
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
+	error_check_good check_db:close [$check_db close] 0
 	error_check_good db_close [$db close] 0
 }

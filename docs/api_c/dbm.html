@@ -1,6 +1,7 @@
-<!--$Id: dbm.so,v 10.22 2001/06/22 18:25:29 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbm.so,v 10.23 2002/08/29 03:24:46 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: dbm/ndbm</title>
@@ -110,8 +111,8 @@ dbmclose.
 data is placed under a key by store.  A key (and its associated
 contents) are deleted by delete.  A linear pass through all keys
 in a database may be made, in an (apparently) random order, by using
-firstkey and nextkey.  The firstkey function will return
-the first key in the database.  The nextkey function will return the next
+firstkey and nextkey.  The firstkey method will return
+the first key in the database.  The nextkey method will return the next
 key in the database.
 <p>The following code will traverse the database:
 <p><blockquote><pre>for (key = firstkey();
@@ -135,8 +136,8 @@ replace an existing entry if it has the same key.  A key (and its
 associated contents) are deleted by dbm_delete.  A linear pass
 through all keys in a database may be made, in an (apparently) random
 order, by using dbm_firstkey and dbm_nextkey.  The
-dbm_firstkey function will return the first key in the database.  The
-dbm_nextkey function will return the next key in the database.
+dbm_firstkey method will return the first key in the database.  The
+dbm_nextkey method will return the next key in the database.
 <p>The following code will traverse the database:
 <p><blockquote><pre>for (key = dbm_firstkey(db);
     key.dptr != NULL; key = dbm_nextkey(db)) {
@@ -184,9 +185,9 @@ and returns a non-NULL <b>dptr</b> on success.
 fail and return an error for errors specified for other Berkeley DB and C
 library or system functions.
 <h3>Ndbm Diagnostics</h3>
-<p>The dbm_close function returns non-zero when an error has occurred reading or
+<p>The dbm_close method returns non-zero when an error has occurred reading or
 writing the database.
-<p>The dbm_close function resets the error condition on the named database.
+<p>The dbm_close method resets the error condition on the named database.
 <p>The dbm_open function returns NULL on failure, setting <b>errno</b>,
 and a DBM reference on success.
 <p>The dbm_fetch function sets the <b>dptr</b> field of the returned

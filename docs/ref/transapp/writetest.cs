@@ -1,7 +1,7 @@
 /*
  * writetest --
  *
- * $Id: writetest.cs,v 10.3 1999/11/19 17:21:06 bostic Exp $
+ * $Id: writetest.cs,v 10.4 2002/01/17 16:49:55 bostic Exp $
  */
 #include <sys/types.h>
 
@@ -80,6 +80,10 @@ main(argc, argv)
 	}
 	(void)gettimeofday(&end_time, NULL);
 
+	if (end_time.tv_sec != start_time.tv_sec) {
+		end_time.tv_usec += 1000000;
+		--end_time.tv_sec;
+	}
 	usecs = (end_time.tv_sec - start_time.tv_sec) * 1000000 +
 	    end_time.tv_usec - start_time.tv_usec;
 	printf("Elapsed time: %ld.%06ld seconds\n",

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2001
+ * Copyright (c) 1998-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_handle.c,v 11.23 2001/10/04 21:27:57 bostic Exp $";
+static const char revid[] = "$Id: os_handle.c,v 11.28 2002/07/12 18:56:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,6 @@ static const char revid[] = "$Id: os_handle.c,v 11.23 2001/10/04 21:27:57 bostic
 #endif
 
 #include "db_int.h"
-#include "os_jump.h"
 
 /*
  * __os_openhandle --
@@ -43,14 +42,15 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
 	memset(fhp, 0, sizeof(*fhp));
 
 	/* If the application specified an interface, use it. */
-	if (__db_jump.j_open != NULL) {
-		if ((fhp->fd = __db_jump.j_open(name, flags, mode)) == -1)
+	if (DB_GLOBAL(j_open) != NULL) {
+		if ((fhp->fd = DB_GLOBAL(j_open)(name, flags, mode)) == -1)
 			return (__os_get_errno());
 		F_SET(fhp, DB_FH_VALID);
 		return (0);
 	}
 
-	for (ret = 0, nrepeat = 1; nrepeat < 4; ++nrepeat) {
+	for (nrepeat = 1; nrepeat < 4; ++nrepeat) {
+		ret = 0;
 #ifdef	HAVE_VXWORKS
 		/*
 		 * VxWorks does not support O_CREAT on open, you have to use
@@ -136,7 +136,7 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
 				ret = __os_get_errno();
 				__db_err(dbenv, "fcntl(F_SETFD): %s",
 				    strerror(ret));
-				(void)__os_closehandle(fhp);
+				(void)__os_closehandle(dbenv, fhp);
 			} else
 #endif
 				F_SET(fhp, DB_FH_VALID);
@@ -151,10 +151,11 @@ __os_openhandle(dbenv, name, flags, mode, fhp)
  * __os_closehandle --
  *	Close a file.
  *
- * PUBLIC: int __os_closehandle __P((DB_FH *));
+ * PUBLIC: int __os_closehandle __P((DB_ENV *, DB_FH *));
  */
 int
-__os_closehandle(fhp)
+__os_closehandle(dbenv, fhp)
+	DB_ENV *dbenv;
 	DB_FH *fhp;
 {
 	int ret;
@@ -163,9 +164,15 @@ __os_closehandle(fhp)
 	DB_ASSERT(F_ISSET(fhp, DB_FH_VALID) && fhp->fd != -1);
 
 	do {
-		ret = __db_jump.j_close != NULL ?
-		    __db_jump.j_close(fhp->fd) : close(fhp->fd);
-	} while (ret != 0 && __os_get_errno() == EINTR);
+		ret = DB_GLOBAL(j_close) != NULL ?
+		    DB_GLOBAL(j_close)(fhp->fd) : close(fhp->fd);
+	} while (ret != 0 && (ret = __os_get_errno()) == EINTR);
+
+	/* Unlink the file if we haven't already done so. */
+	if (F_ISSET(fhp, DB_FH_UNLINK)) {
+		(void)__os_unlink(dbenv, fhp->name);
+		(void)__os_free(dbenv, fhp->name);
+	}
 
 	/*
 	 * Smash the POSIX file descriptor -- it's never tested, but we want
@@ -174,5 +181,5 @@ __os_closehandle(fhp)
 	fhp->fd = -1;
 	F_CLR(fhp, DB_FH_VALID);
 
-	return (ret == 0 ? 0 : __os_get_errno());
+	return (ret);
 }

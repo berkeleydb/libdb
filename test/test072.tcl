@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test072.tcl,v 11.22 2001/08/04 14:03:51 bostic Exp $
+# $Id: test072.tcl,v 11.27 2002/07/01 15:40:48 krinsky Exp $
 #
 # TEST	test072
 # TEST	Test of cursor stability when duplicates are moved off-page.
@@ -14,6 +14,7 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -25,6 +26,11 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 		set testfile test0$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -53,21 +59,33 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 	}
 
 	append args " -pagesize $pagesize "
+	set txn ""
 
-	foreach { dupopt testid } { "-dup" 1 "-dup -dupsort" 2 } {
+	set dlist [list "-dup" "-dup -dupsort"]
+	set testid 0
+	foreach dupopt $dlist {
+		incr testid
 		set duptestfile $testfile$testid
 		set db [eval {berkdb_open -create -mode 0644} \
-		    $omethod $args $dupopt $duptestfile]
+		    $omethod $args $dupopt {$duptestfile}]
 		error_check_good "db open" [is_valid_db $db] TRUE
 
 		puts \
 "\tTest0$tnum.a: ($dupopt) Set up surrounding keys and cursors."
-		error_check_good pre_put [$db put $prekey $predatum] 0
-		error_check_good post_put [$db put $postkey $postdatum] 0
-		set precursor [$db cursor]
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+		set ret [eval {$db put} $txn {$prekey $predatum}]
+		error_check_good pre_put $ret 0
+		set ret [eval {$db put} $txn {$postkey $postdatum}]
+		error_check_good post_put $ret 0
+
+		set precursor [eval {$db cursor} $txn]
 		error_check_good precursor [is_valid_cursor $precursor \
 		    $db] TRUE
-		set postcursor [$db cursor]
+		set postcursor [eval {$db cursor} $txn]
 		error_check_good postcursor [is_valid_cursor $postcursor \
 		    $db] TRUE
 		error_check_good preset [$precursor get -set $prekey] \
@@ -87,9 +105,10 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 			#     [catch {exec $util_path/db_dump \
 			#	-da $duptestfile > $testdir/out.$i}] 0
 
-			error_check_good "db put ($i)" [$db put $key $datum] 0
+			set ret [eval {$db put} $txn {$key $datum}]
+			error_check_good "db put ($i)" $ret 0
 
-			set dbc($i) [$db cursor]
+			set dbc($i) [eval {$db cursor} $txn]
 			error_check_good "db cursor ($i)"\
 			    [is_valid_cursor $dbc($i) $db] TRUE
 
@@ -147,7 +166,7 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 
 		puts "\tTest0$tnum.c: Reverse Put/create cursor/verify all cursor loop."
 		set end [expr $ndups * 2 - 1]
-		for { set i $end } { $i > $ndups } { set i [expr $i - 1] } {
+		for { set i $end } { $i >= $ndups } { set i [expr $i - 1] } {
 			set datum [format "%4d$alphabet" [expr $i + 1000]]
 			set data($i) $datum
 
@@ -157,9 +176,11 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 			#     [catch {exec $util_path/db_dump \
 			# 	-da $duptestfile > $testdir/out.$i}] 0
 
-			error_check_good "db put ($i)" [$db put $key $datum] 0
+			set ret [eval {$db put} $txn {$key $datum}]
+			error_check_good "db put ($i)" $ret 0
 
-			set dbc($i) [$db cursor]
+			error_check_bad dbc($i)_stomped [info exists dbc($i)] 1
+			set dbc($i) [eval {$db cursor} $txn]
 			error_check_good "db cursor ($i)"\
 			    [is_valid_cursor $dbc($i) $db] TRUE
 
@@ -217,8 +238,14 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum 72} args } {
 
 		# Close cursors.
 		puts "\tTest0$tnum.d: Closing cursors."
-		for { set i 0 } { $i < $ndups } { incr i } {
+		for { set i 0 } { $i <= $end } { incr i } {
 			error_check_good "dbc close ($i)" [$dbc($i) close] 0
+		}
+		unset dbc
+		error_check_good precursor_close [$precursor close] 0
+		error_check_good postcursor_close [$postcursor close] 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
 		}
 		error_check_good "db close" [$db close] 0
 	}

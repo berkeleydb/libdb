@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: txn_stat.c,v 11.10 2001/09/27 22:50:13 ubell Exp $";
+static const char revid[] = "$Id: txn_stat.c,v 11.15 2002/04/26 23:00:36 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,7 +18,7 @@ static const char revid[] = "$Id: txn_stat.c,v 11.10 2001/09/27 22:50:13 ubell E
 #endif
 
 #include "db_int.h"
-#include "txn.h"
+#include "dbinc/txn.h"
 
 /*
  * __txn_stat --
@@ -65,7 +65,6 @@ __txn_stat(dbenv, statp, flags)
 	memcpy(stats, &region->stat, sizeof(*stats));
 	stats->st_last_txnid = region->last_txnid;
 	stats->st_last_ckp = region->last_ckp;
-	stats->st_pending_ckp = region->pending_ckp;
 	stats->st_time_ckp = region->time_ckp;
 	stats->st_txnarray = (DB_TXN_ACTIVE *)&stats[1];
 
@@ -75,7 +74,7 @@ __txn_stat(dbenv, statp, flags)
 	    txnp = SH_TAILQ_NEXT(txnp, links, __txn_detail)) {
 		stats->st_txnarray[ndx].txnid = txnp->txnid;
 		if (txnp->parent == INVALID_ROFF)
-			stats->st_txnarray[ndx].parentid = TXN_INVALID_ID;
+			stats->st_txnarray[ndx].parentid = TXN_INVALID;
 		else
 			stats->st_txnarray[ndx].parentid =
 			    ((TXN_DETAIL *)R_ADDR(&mgr->reginfo,
@@ -92,6 +91,8 @@ __txn_stat(dbenv, statp, flags)
 		mgr->reginfo.rp->mutex.mutex_set_nowait = 0;
 		memset(&region->stat, 0, sizeof(region->stat));
 		region->stat.st_maxtxns = region->maxtxns;
+		region->stat.st_maxnactive =
+		    region->stat.st_nactive = stats->st_nactive;
 	}
 
 	R_UNLOCK(dbenv, &mgr->reginfo);

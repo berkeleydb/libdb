@@ -1,6 +1,7 @@
-<!--$Id: env_set_tx_max.so,v 10.24 2001/10/22 15:24:31 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_tx_max.so,v 10.27 2002/08/18 21:16:32 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.set_tx_max</title>
@@ -32,8 +33,13 @@ ultimate parent commits or aborts.
 <p>When there are more than the specified number of concurrent transactions,
 calls to <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a> will fail (until some active transactions
 complete).  If no value is specified, a default value of 20 is used.
-<p>The DbEnv.set_tx_max interface may be used only to configure Berkeley DB before
-the <a href="../api_java/env_open.html">DbEnv.open</a> interface is called.
+<p>The DbEnv.set_tx_max method configures a database environment, not only operations
+performed using the specified <a href="../api_java/env_class.html">DbEnv</a> handle.
+<p>The DbEnv.set_tx_max interface may not be called after the <a href="../api_java/env_open.html">DbEnv.open</a>
+interface is called.
+If the database environment already exists when
+<a href="../api_java/env_open.html">DbEnv.open</a> is called, the information specified to DbEnv.set_tx_max
+will be ignored.
 <p>The DbEnv.set_tx_max method throws an exception that encapsulates a non-zero error value on
 failure.
 <p>The database environment's maximum number of active transactions may also be set using the environment's
@@ -49,25 +55,13 @@ before that time.
 <p>Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
 </dl>
 <p>The DbEnv.set_tx_max method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.set_tx_max method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.set_tx_max method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
 <h1>See Also</h1>
-<a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
-<a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a>,
-<a href="../api_java/txn_abort.html">DbTxn.abort</a>,
-<a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
-<a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,
-<a href="../api_java/txn_commit.html">DbTxn.commit</a>,
-<a href="../api_java/txn_discard.html">DbTxn.discard</a>,
-<a href="../api_java/txn_id.html">DbTxn.id</a>,
-<a href="../api_java/txn_prepare.html">DbTxn.prepare</a>,
-<a href="../api_java/txn_recover.html">DbEnv.txn_recover</a>,
-<a href="../api_java/txn_set_timeout.html">DbTxn.set_timeout</a>
-and
-<a href="../api_java/txn_stat.html">DbEnv.txn_stat</a>.
+<a href="../api_java/txn_list.html">Transaction Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

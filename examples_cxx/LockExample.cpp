@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 11.19 2001/11/10 04:59:07 mjc Exp $
+ * $Id: LockExample.cpp,v 11.22 2002/01/11 15:52:15 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -20,7 +20,7 @@ using std::cin;
 using std::cout;
 using std::cerr;
 
-char *progname = "LockExample";				// Program name.
+const char *progname = "LockExample";				// Program name.
 
 //
 // An example of a program using DBLock and related classes.
@@ -206,7 +206,7 @@ void LockExample::run()
 				continue;
 			}
 			DbLock lock = locks[lockid];
-			ret = lock.put(this);
+			ret = lock_put(&lock);
 			did_get = 0;
 		}
 

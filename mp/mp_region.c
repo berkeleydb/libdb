@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_region.c,v 11.37 2001/10/25 22:47:49 ubell Exp $";
+static const char revid[] = "$Id: mp_region.c,v 11.49 2002/05/07 18:42:20 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,11 +17,11 @@ static const char revid[] = "$Id: mp_region.c,v 11.37 2001/10/25 22:47:49 ubell 
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "mp.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/mp.h"
 
 static int __mpool_init __P((DB_ENV *, DB_MPOOL *, int, int));
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 static size_t __mpool_region_maint __P((REGINFO *));
 #endif
 
@@ -170,16 +170,10 @@ __memp_open(dbenv)
 		    R_ADDR(&dbmp->reginfo[i], dbmp->reginfo[i].rp->primary);
 
 	/* If the region is threaded, allocate a mutex to lock the handles. */
-	if (F_ISSET(dbenv, DB_ENV_THREAD)) {
-		if ((ret = __db_mutex_alloc(
-		    dbenv, dbmp->reginfo, 1, &dbmp->mutexp)) != 0) {
-			goto err;
-		}
-		if ((ret = __db_shmutex_init(dbenv, dbmp->mutexp, 0,
-		    MUTEX_THREAD, dbmp->reginfo,
-		    (REGMAINT *)R_ADDR(dbmp->reginfo, mp->maint_off))) != 0)
-			goto err;
-	}
+	if (F_ISSET(dbenv, DB_ENV_THREAD) &&
+	    (ret = __db_mutex_setup(dbenv, dbmp->reginfo, &dbmp->mutexp,
+	    MUTEX_ALLOC | MUTEX_THREAD)) != 0)
+		goto err;
 
 	dbenv->mp_handle = dbmp;
 	return (0);
@@ -194,12 +188,11 @@ err:	if (dbmp->reginfo != NULL && dbmp->reginfo[0].addr != NULL) {
 			if (dbmp->reginfo[i].id != INVALID_REGION_ID)
 				(void)__db_r_detach(
 				    dbenv, &dbmp->reginfo[i], 0);
-		__os_free(dbenv, dbmp->reginfo,
-		    dbmp->nreg * sizeof(*dbmp->reginfo));
+		__os_free(dbenv, dbmp->reginfo);
 	}
 	if (dbmp->mutexp != NULL)
 		__db_mutex_free(dbenv, dbmp->reginfo, dbmp->mutexp);
-	__os_free(dbenv, dbmp, sizeof(*dbmp));
+	__os_free(dbenv, dbmp);
 	return (ret);
 }
 
@@ -213,13 +206,13 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	DB_MPOOL *dbmp;
 	int reginfo_off, htab_buckets;
 {
-	DB_HASHTAB *htab;
+	DB_MPOOL_HASH *htab;
 	MPOOL *mp;
 	REGINFO *reginfo;
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 	size_t maint_size;
 #endif
-	int ret;
+	int i, ret;
 	void *p;
 
 	mp = NULL;
@@ -232,7 +225,7 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	mp = reginfo->primary;
 	memset(mp, 0, sizeof(*mp));
 
-#ifdef	MUTEX_SYSTEM_RESOURCES
+#ifdef	HAVE_MUTEX_SYSTEM_RESOURCES
 	maint_size = __mpool_region_maint(reginfo);
 	/* Allocate room for the maintenance info and initialize it. */
 	if ((ret = __db_shalloc(reginfo->addr,
@@ -245,14 +238,7 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	if (reginfo_off == 0) {
 		SH_TAILQ_INIT(&mp->mpfq);
 
-		if ((ret = __db_shmutex_init(dbenv, &mp->sync_mutex,
-		    R_OFFSET(dbmp->reginfo, &mp->sync_mutex) +
-		    DB_FCNTL_OFF_MPOOL, 0, dbmp->reginfo,
-		    (REGMAINT *)R_ADDR(dbmp->reginfo, mp->maint_off))) != 0)
-			goto err;
-
 		ZERO_LSN(mp->lsn);
-		mp->lsn_cnt = 0;
 
 		mp->nreg = dbmp->nreg;
 		if ((ret = __db_shalloc(dbmp->reginfo[0].addr,
@@ -261,16 +247,20 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 		mp->regids = R_OFFSET(dbmp->reginfo, p);
 	}
 
-	SH_TAILQ_INIT(&mp->bhq);
-
 	/* Allocate hash table space and initialize it. */
 	if ((ret = __db_shalloc(reginfo->addr,
-	    htab_buckets * sizeof(DB_HASHTAB), 0, &htab)) != 0)
+	    htab_buckets * sizeof(DB_MPOOL_HASH), 0, &htab)) != 0)
 		goto mem_err;
-	__db_hashinit(htab, htab_buckets);
 	mp->htab = R_OFFSET(reginfo, htab);
-	mp->htab_buckets = htab_buckets;
-	mp->stat.st_hash_buckets = htab_buckets;
+	for (i = 0; i < htab_buckets; i++) {
+		if ((ret = __db_mutex_setup(dbenv,
+		    reginfo, &htab[i].hash_mutex,
+		    MUTEX_NO_RLOCK)) != 0)
+			return (ret);
+		SH_TAILQ_INIT(&htab[i].hash_bucket);
+		htab[i].hash_page_dirty = htab[i].hash_priority = 0;
+	}
+	mp->htab_buckets = mp->stat.st_hash_buckets = htab_buckets;
 
 	/*
 	 * Only the environment creator knows the total cache size, fill in
@@ -278,19 +268,15 @@ __mpool_init(dbenv, dbmp, reginfo_off, htab_buckets)
 	 */
 	mp->stat.st_gbytes = dbenv->mp_gbytes;
 	mp->stat.st_bytes = dbenv->mp_bytes;
-
 	return (0);
 
 mem_err:__db_err(dbenv, "Unable to allocate memory for mpool region");
-err:	if (reginfo->primary != NULL)
-		__db_shalloc_free(reginfo->addr, reginfo->primary);
 	return (ret);
 }
 
 /*
  * __memp_dbenv_refresh --
- *	Clean up after the mpool system on a close or failed open.  Called
- * only from __dbenv_refresh.  (Formerly called __memp_close.)
+ *	Clean up after the mpool system on a close or failed open.
  *
  * PUBLIC: int __memp_dbenv_refresh __P((DB_ENV *));
  */
@@ -310,12 +296,12 @@ __memp_dbenv_refresh(dbenv)
 	/* Discard DB_MPREGs. */
 	while ((mpreg = LIST_FIRST(&dbmp->dbregq)) != NULL) {
 		LIST_REMOVE(mpreg, q);
-		__os_free(dbenv, mpreg, sizeof(DB_MPREG));
+		__os_free(dbenv, mpreg);
 	}
 
 	/* Discard DB_MPOOLFILEs. */
 	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
-		if ((t_ret = __memp_fclose_int(dbmfp, 0, 1)) != 0 && ret == 0)
+		if ((t_ret = __memp_fclose_int(dbmfp, 0)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* Discard the thread mutex. */
@@ -328,14 +314,14 @@ __memp_dbenv_refresh(dbenv)
 		    dbenv, &dbmp->reginfo[i], 0)) != 0 && ret == 0)
 			ret = t_ret;
 
-	__os_free(dbenv, dbmp->reginfo, dbmp->nreg * sizeof(*dbmp->reginfo));
-	__os_free(dbenv, dbmp, sizeof(*dbmp));
+	__os_free(dbenv, dbmp->reginfo);
+	__os_free(dbenv, dbmp);
 
 	dbenv->mp_handle = NULL;
 	return (ret);
 }
 
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 /*
  * __mpool_region_maint --
  *	Return the amount of space needed for region maintenance info.
@@ -377,4 +363,104 @@ __mpool_region_destroy(dbenv, infop)
 
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(infop, NULL);
+}
+
+/*
+ * __memp_nameop
+ *	Remove or rename a file in the pool.
+ *
+ * PUBLIC: int  __memp_nameop __P((DB_ENV *,
+ * PUBLIC:     u_int8_t *, const char *, const char *, const char *));
+ *
+ * XXX
+ * Undocumented interface: DB private.
+ */
+int
+__memp_nameop(dbenv, fileid, newname, fullold, fullnew)
+	DB_ENV *dbenv;
+	u_int8_t *fileid;
+	const char *newname, *fullold, *fullnew;
+{
+	DB_MPOOL *dbmp;
+	MPOOL *mp;
+	MPOOLFILE *mfp;
+	roff_t newname_off;
+	int locked, ret;
+	void *p;
+
+	locked = 0;
+	dbmp = NULL;
+
+	if (!MPOOL_ON(dbenv))
+		goto fsop;
+
+	dbmp = dbenv->mp_handle;
+	mp = dbmp->reginfo[0].primary;
+
+	/*
+	 * Remove or rename a file that the mpool might know about.  We assume
+	 * that the fop layer has the file locked for exclusive access, so we
+	 * don't worry about locking except for the mpool mutexes.  Checkpoint
+	 * can happen at any time, independent of file locking, so we have to
+	 * do the actual unlink or rename system call to avoid any race.
+	 *
+	 * If this is a rename, allocate first, because we can't recursively
+	 * grab the region lock.
+	 */
+	if (newname == NULL)
+		p = NULL;
+	else {
+		if ((ret = __memp_alloc(dbmp, dbmp->reginfo,
+		    NULL, strlen(newname) + 1, &newname_off, &p)) != 0)
+			return (ret);
+		memcpy(p, newname, strlen(newname) + 1);
+	}
+
+	locked = 1;
+	R_LOCK(dbenv, dbmp->reginfo);
+
+	/*
+	 * Find the file -- if mpool doesn't know about this file, that's not
+	 * an error-- we may not have it open.
+	 */
+	for (mfp = SH_TAILQ_FIRST(&mp->mpfq, __mpoolfile);
+	    mfp != NULL; mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile)) {
+		/* Ignore non-active files. */
+		if (F_ISSET(mfp, MP_DEADFILE | MP_TEMP))
+			continue;
+
+		/* Ignore non-matching files. */
+		if (memcmp(fileid, R_ADDR(
+		    dbmp->reginfo, mfp->fileid_off), DB_FILE_ID_LEN) != 0)
+			continue;
+
+		/* If newname is NULL, we're removing the file. */
+		if (newname == NULL) {
+			MUTEX_LOCK(dbenv, &mfp->mutex);
+			MPOOLFILE_IGNORE(mfp);
+			MUTEX_UNLOCK(dbenv, &mfp->mutex);
+		} else {
+			/*
+			 * Else, it's a rename.  We've allocated memory
+			 * for the new name.  Swap it with the old one.
+			 */
+			p = R_ADDR(dbmp->reginfo, mfp->path_off);
+			mfp->path_off = newname_off;
+		}
+		break;
+	}
+
+	/* Delete the memory we no longer need. */
+	if (p != NULL)
+		__db_shalloc_free(dbmp->reginfo[0].addr, p);
+
+fsop:	if (newname == NULL)
+		(void)__os_unlink(dbenv, fullold);
+	else
+		(void)__os_rename(dbenv, fullold, fullnew, 1);
+
+	if (locked)
+		R_UNLOCK(dbenv, dbmp->reginfo);
+
+	return (0);
 }

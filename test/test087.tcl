@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test087.tcl,v 11.10 2001/08/03 16:39:47 bostic Exp $
+# $Id: test087.tcl,v 11.14 2002/07/08 20:16:31 sue Exp $
 #
 # TEST	test087
 # TEST	Test of cursor stability when converting to and modifying
@@ -29,8 +29,10 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 	source ./include.tcl
 	global alphabet
 
-	set omethod [convert_method $method]
 	set args [convert_args $method $args]
+	set encargs ""
+	set args [split_encargs $args encargs]
+	set omethod [convert_method $method]
 
 	puts "Test0$tnum $omethod ($args): "
 	set eindex [lsearch -exact $args "-env"]
@@ -57,11 +59,11 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum 87} args } {
 		puts "Cursor stability on dup. pages w/ aborts."
 	}
 
-	set env [berkdb env -create -home $testdir -txn]
+	set env [eval {berkdb_env -create -home $testdir -txn} $encargs]
 	error_check_good env_create [is_valid_env $env] TRUE
 
-	set db [eval {berkdb_open -env $env \
-	     -create -mode 0644} $omethod $args $testfile]
+	set db [eval {berkdb_open -auto_commit \
+	     -create -env $env -mode 0644} $omethod $args $testfile]
 	error_check_good "db open" [is_valid_db $db] TRUE
 
 	# Number of outstanding keys.

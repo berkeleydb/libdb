@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd007.tcl,v 11.47 2001/08/03 16:39:27 bostic Exp $
+# $Id: recd007.tcl,v 11.60 2002/08/08 15:38:07 bostic Exp $
 #
 # TEST	recd007
 # TEST	File create/delete tests.
@@ -30,10 +30,10 @@ proc recd007 { method args} {
 	set flags "-create -txn -home $testdir"
 
 	puts "\tRecd007.a: creating environment"
-	set env_cmd "berkdb env $flags"
+	set env_cmd "berkdb_env $flags"
 
 	set env [eval $env_cmd]
-	#
+
 	# We need to create a database to get the pagesize (either
 	# the default or whatever might have been specified).
 	# Then remove it so we can compute fixed_len and create the
@@ -56,7 +56,6 @@ proc recd007 { method args} {
 	# Convert the args again because fixed_len is now real.
 	set opts [convert_args $method ""]
 
-	#
 	# List of recovery tests: {HOOKS MSG} pairs
 	# Where each HOOK is a list of {COPY ABORT}
 	#
@@ -109,7 +108,8 @@ proc recd007 { method args} {
 	}
 
 	if { $is_windows_test != 1 } {
-		do_file_recover_delmk $testdir $env_cmd $omethod $opts $testfile
+		set env_cmd "berkdb_env_noerr $flags"
+		do_file_recover_delmk $testdir $env_cmd $method $opts $testfile
 	}
 
 	puts "\tRecd007.r: Verify db_printlog can read logfile"
@@ -170,17 +170,16 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		return
 	}
 
-	#
 	# Basically non-existence is our initial state.  When we
 	# abort, it is also our final state.
 	#
 	switch $sub {
 		0 {
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env $env $opts $dbfile"
 		}
 		1 {
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env $env $opts $dbfile sub0"
 		}
 		2 {
@@ -188,14 +187,14 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 			# If we are aborting here, then we need to
 			# create a first subdb, then create a second
 			#
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env $env $opts $dbfile sub0"
 			set db [eval {berkdb_open} $oflags]
 			error_check_good db_open [is_valid_db $db] TRUE
 			error_check_good db_close [$db close] 0
 			set init_file $dir/$dbfile.init
 			catch { file copy -force $dir/$dbfile $init_file } res
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env $env $opts $dbfile sub1"
 		}
 		default {
@@ -217,8 +216,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	# Sync the mpool so any changes to the file that are
 	# in mpool get written to the disk file before the
 	# diff.
-	puts "\t\tSyncing"
-	$env mpool_sync "0 0"
+	$env mpool_sync
 
 	#
 	# If we don't abort, then we expect success.
@@ -241,7 +239,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		} else {
 			error_check_good \
 			    diff(init,postcreate):diff($init_file,$dir/$dbfile)\
-			    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                          [dbdump_diff $dflags $init_file $dir $dbfile] 0
 		}
 	} else {
 		#
@@ -292,7 +290,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                  [dbdump_diff $dflags $init_file $dir $dbfile] 0
 		#
 		# Need a new copy to get the right LSN into the file.
 		#
@@ -303,7 +301,6 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		}
 	}
 
-	#
 	# If we didn't make a copy, then we are done.
 	#
 	if {[string first "none" $copy] != -1} {
@@ -313,11 +310,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	#
 	# Now move the .afterop file to $dbfile.  Run recovery again.
 	#
-	file copy -force $dir/$dbfile.afterop $dir/$dbfile
-
-	if { [is_queue $method] == 1 } {
-		move_file_extent $dir $dbfile afterop copy
-	}
+	copy_afterop $dir
 
 	berkdb debug_check
 	puts -nonewline "\t\tAbout to run recovery ... "
@@ -342,7 +335,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                  [dbdump_diff $dflags $init_file $dir $dbfile] 0
 	}
 
 }
@@ -413,14 +406,14 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 			set subdb ""
 			set new $dbfile.new
 			set dflags "-dar"
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env \$env $opts $dbfile"
 		}
 		1 {
 			set subdb sub0
 			set new $subdb.new
 			set dflags ""
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env \$env $opts $dbfile $subdb"
 		}
 		2 {
@@ -431,7 +424,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 			set subdb sub1
 			set new $subdb.new
 			set dflags ""
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env \$env $opts $dbfile sub0"
 			set db [eval {berkdb_open} $oflags]
 			error_check_good db_open [is_valid_db $db] TRUE
@@ -440,7 +433,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 			error_check_good db_put $ret 0
 			error_check_good commit [$txn commit] 0
 			error_check_good db_close [$db close] 0
-			set oflags "-create $method -mode 0644 \
+			set oflags "-create $method -auto_commit -mode 0644 \
 			    -env \$env $opts $dbfile $subdb"
 		}
 		default {
@@ -471,6 +464,8 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	error_check_good commit [$txn commit] 0
 	error_check_good db_close [$db close] 0
 
+	$env mpool_sync
+
 	set init_file $dir/$dbfile.init
 	catch { file copy -force $dir/$dbfile $init_file } res
 
@@ -484,21 +479,23 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	#
 	switch $op {
 	"dbrename" {
-		set ret [catch { eval {berkdb} $op -env $env \
+		set ret [catch { eval {berkdb} $op -env $env -auto_commit \
 		    $dbfile $subdb $new } remret]
 	}
 	"dbremove" {
-		set ret [catch { eval {berkdb} $op -env $env \
+		set ret [catch { eval {berkdb} $op -env $env -auto_commit \
 		    $dbfile $subdb } remret]
 	}
 	"dbtruncate" {
 		set txn [$env txn]
-		set db [eval {berkdb_open_noerr -env} $env $dbfile $subdb]
+		set db [eval {berkdb_open_noerr -env} \
+		    $env -auto_commit $dbfile $subdb]
 		error_check_good dbopen [is_valid_db $db] TRUE
 		error_check_good txnbegin [is_valid_txn $txn $env] TRUE
 		set ret [catch {$db truncate -txn $txn} remret]
 	}
 	}
+	$env mpool_sync
 	if { $abort == "none" } {
 		if { $op == "dbtruncate" } {
 			error_check_good txncommit [$txn commit] 0
@@ -535,14 +532,15 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		error_check_good post$op.1 [file exists $dir/$dbfile] 1
 		error_check_good \
 		    diff(init,post$op.2):diff($init_file,$dir/$dbfile)\
-		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                  [dbdump_diff $dflags $init_file $dir $dbfile] 0
 	}
+	$env mpool_sync
 	error_check_good env_close [$env close] 0
 	catch { file copy -force $dir/$dbfile $init_file } res
-
 	if { [is_queue $method] == 1} {
 		copy_extent_file $dir $dbfile init
 	}
+
 
 	#
 	# Run recovery here.  Should be a no-op.  Verify that
@@ -558,7 +556,9 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		error "FAIL: Recovery error: $result."
 		return
 	}
+
 	puts "complete"
+
 	if { $abort == "none" } {
 		#
 		# Operate was committed.
@@ -570,9 +570,10 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		#
 		# Operation was aborted, verify it did not change.
 		#
+		berkdb debug_check
 		error_check_good \
 		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                  [dbdump_diff $dflags $init_file $dir $dbfile] 0
 	}
 
 	#
@@ -583,16 +584,10 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	}
 
 	#
-	# Now move the .afterop file to $dbfile.  Run recovery again.
+	# Now restore the .afterop file(s) to their original name.
+	# Run recovery again.
 	#
-	set filecopy [glob $dir/*.afterop]
-	set filecopy [lsort -decreasing $filecopy]
-	set afterop [lindex $filecopy 0]
-#	set afterop [string range $afterop \
-#	    [expr [string last "/" $afterop] + 1]  \
-#	    [string last "." $afterop]]
-	catch { file rename -force $afterop $dir/$dbfile} res
-	move_file_extent $dir $dbfile afterop rename
+	copy_afterop $dir
 
 	berkdb debug_check
 	puts -nonewline "\t\tAbout to run recovery ... "
@@ -615,7 +610,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		#
 		error_check_good \
 		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
-		    [dbdump_diff $dflags $init_file $dir/$dbfile] 0
+                  [dbdump_diff $dflags $init_file $dir $dbfile] 0
 	}
 
 }
@@ -638,11 +633,13 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	if { $log_log_record_types == 1} {
 		logtrack_read $dir
 	}
+	set omethod [convert_method $method]
 
 	puts "\tRecd007.q: Delete and recreate a database"
 	env_cleanup $dir
 	# Open the environment and set the copy/abort locations
 	set env [eval $env_cmd]
+	error_check_good env_open [is_valid_env $env] TRUE
 
 	if { [is_record_based $method] == 1 } {
 		set key 1
@@ -652,13 +649,14 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	set data1 recd007_data
 	set data2 NEWrecd007_data2
 
-	set oflags "-create $method -mode 0644 -env $env $opts $dbfile"
+	set oflags \
+	    "-create $omethod -auto_commit -mode 0644 $opts $dbfile"
 
 	#
 	# Open our db, add some data, close and copy as our
 	# init file.
 	#
-	set db [eval {berkdb_open} $oflags]
+	set db [eval {berkdb_open_noerr} -env $env $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set txn [$env txn]
 	set ret [$db put -txn $txn $key $data1]
@@ -666,7 +664,9 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	error_check_good commit [$txn commit] 0
 	error_check_good db_close [$db close] 0
 
-	set ret [catch { berkdb dbremove -env $env $dbfile } remret]
+	set ret \
+	    [catch { berkdb dbremove -env $env -auto_commit $dbfile } remret]
+
 	#
 	# Operation was committed, verify it does
 	# not exist.
@@ -678,10 +678,10 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	#
 	# Now create a new db with the same name.
 	#
-	set db [eval {berkdb_open} $oflags]
+	set db [eval {berkdb_open_noerr} -env $env $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set txn [$env txn]
-	set ret [$db put -txn $txn $key $data1]
+	set ret [$db put -txn $txn $key [chop_data $method $data2]]
 	error_check_good db_put $ret 0
 	error_check_good commit [$txn commit] 0
 	error_check_good db_sync [$db sync] 0
@@ -704,9 +704,29 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	# up the Tcl widgets.
 	#
 	set stat [catch {$db close} ret]
+	error_check_bad dbclose_after_remove $stat 0
+	error_check_good dbclose_after_remove [is_substr $ret recovery] 1
 	set stat [catch {$env close} ret]
+	error_check_bad envclose_after_remove $stat 0
+	error_check_good envclose_after_remove [is_substr $ret recovery] 1
 
+	#
+	# Reopen env and db and verify 2nd database is there.
+	#
+	set env [eval $env_cmd]
+	error_check_good env_open [is_valid_env $env] TRUE
+	set db [eval {berkdb_open} -env $env $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set ret [$db get $key]
+	error_check_good dbget [llength $ret] 1
+	set kd [lindex $ret 0]
+	error_check_good key [lindex $kd 0] $key
+	error_check_good data2 [lindex $kd 1] [pad_data $method $data2]
+
+	error_check_good dbclose [$db close] 0
+	error_check_good envclose [$env close] 0
 }
+
 proc is_valid_create_loc { loc } {
 	switch $loc {
 		none		-
@@ -738,7 +758,7 @@ proc is_valid_delete_loc { loc } {
 # just a free/invalid page.
 # Return 1 if they are different, 0 if logically the same (or identical).
 #
-proc dbdump_diff { flags initfile dbfile } {
+proc dbdump_diff { flags initfile dir dbfile } {
 	source ./include.tcl
 
 	set initdump $initfile.dump
@@ -750,11 +770,11 @@ proc dbdump_diff { flags initfile dbfile } {
 
 	# Do a dump without the freelist which should eliminate any
 	# recovery differences.
-	set stat [catch {eval {exec $util_path/db_dump} $flags -f $dbdump \
-	    $dbfile} ret]
+	set stat [catch {eval {exec $util_path/db_dump} $flags -f $dir/$dbdump \
+          $dir/$dbfile} ret]
 	error_check_good dbdump.db $stat 0
 
-	set stat [filecmp $dbdump $initdump]
+	set stat [filecmp $dir/$dbdump $initdump]
 
 	if {$stat == 0} {
 		return 0
@@ -853,3 +873,14 @@ proc recd007_check { op sub dir dbfile subdb new env oflags } {
 	}
 }
 
+proc copy_afterop { dir } {
+	set r [catch { set filecopy [glob $dir/*.afterop] } res]
+	if { $r == 1 } {
+		return
+	}
+	foreach f $filecopy {
+		set orig [string range $f 0 \
+			[expr [string last "." $f] - 1]]
+		catch { file rename -force $f $orig} res
+	}
+}

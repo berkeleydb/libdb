@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_overflow.c,v 11.36 2001/10/30 19:42:15 ubell Exp $";
+static const char revid[] = "$Id: db_overflow.c,v 11.46 2002/08/08 03:57:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -53,9 +53,9 @@ static const char revid[] = "$Id: db_overflow.c,v 11.36 2001/10/30 19:42:15 ubel
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_am.h"
-#include "db_verify.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_am.h"
+#include "dbinc/db_verify.h"
 
 /*
  * Big key/data code.
@@ -143,7 +143,7 @@ __db_goff(dbp, dbt, tlen, pgno, bpp, bpsz)
 
 		/* Check if we need any bytes from this page. */
 		if (curoff + OV_LEN(h) >= start) {
-			src = (u_int8_t *)h + P_OVERHEAD;
+			src = (u_int8_t *)h + P_OVERHEAD(dbp);
 			bytes = OV_LEN(h);
 			if (start > curoff) {
 				src += start - curoff;
@@ -191,7 +191,7 @@ __db_poff(dbc, dbt, pgnop)
 	 */
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
-	pagespace = P_MAXSPACE(dbp->pgsize);
+	pagespace = P_MAXSPACE(dbp, dbp->pgsize);
 
 	ret = 0;
 	lastp = NULL;
@@ -210,14 +210,14 @@ __db_poff(dbc, dbt, pgnop)
 		 * have a partial record.
 		 */
 		if ((ret = __db_new(dbc, P_OVERFLOW, &pagep)) != 0)
-			return (ret);
-		if (DB_LOGGING(dbc)) {
+			break;
+		if (DBC_LOGGING(dbc)) {
 			tmp_dbt.data = p;
 			tmp_dbt.size = pagespace;
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp->dbenv, dbc->txn,
-			    &new_lsn, 0, DB_ADD_BIG, dbp->log_fileid,
-			    PGNO(pagep), lastp ? PGNO(lastp) : PGNO_INVALID,
+			if ((ret = __db_big_log(dbp, dbc->txn,
+			    &new_lsn, 0, DB_ADD_BIG, PGNO(pagep),
+			    lastp ? PGNO(lastp) : PGNO_INVALID,
 			    PGNO_INVALID, &tmp_dbt, &LSN(pagep),
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
 			    &null_lsn)) != 0) {
@@ -229,8 +229,9 @@ __db_poff(dbc, dbt, pgnop)
 			}
 		} else
 			LSN_NOT_LOGGED(new_lsn);
-		/* Move lsn onto page. */
-		if (lastp)
+
+		/* Move LSN onto page. */
+		if (lastp != NULL)
 			LSN(lastp) = new_lsn;
 		LSN(pagep) = new_lsn;
 
@@ -238,7 +239,7 @@ __db_poff(dbc, dbt, pgnop)
 		    PGNO(pagep), PGNO_INVALID, PGNO_INVALID, 0, P_OVERFLOW);
 		OV_LEN(pagep) = pagespace;
 		OV_REF(pagep) = 1;
-		memcpy((u_int8_t *)pagep + P_OVERHEAD, p, pagespace);
+		memcpy((u_int8_t *)pagep + P_OVERHEAD(dbp), p, pagespace);
 
 		/*
 		 * If this is the first entry, update the user's info.
@@ -254,7 +255,8 @@ __db_poff(dbc, dbt, pgnop)
 		}
 		lastp = pagep;
 	}
-	if ((t_ret = mpf->put(mpf, lastp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+	if (lastp != NULL &&
+	    (t_ret = mpf->put(mpf, lastp, DB_MPOOL_DIRTY)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -280,14 +282,13 @@ __db_ovref(dbc, pgno, adjust)
 	mpf = dbp->mpf;
 
 	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0) {
-		(void)__db_pgerr(dbp, pgno);
+		__db_pgerr(dbp, pgno, ret);
 		return (ret);
 	}
 
-	if (DB_LOGGING(dbc)) {
-		if ((ret = __db_ovref_log(dbp->dbenv, dbc->txn,
-		    &LSN(h), 0, dbp->log_fileid, h->pgno, adjust,
-		    &LSN(h))) != 0) {
+	if (DBC_LOGGING(dbc)) {
+		if ((ret = __db_ovref_log(dbp,
+		    dbc->txn, &LSN(h), 0, h->pgno, adjust, &LSN(h))) != 0) {
 			(void)mpf->put(mpf, h, 0);
 			return (ret);
 		}
@@ -322,7 +323,7 @@ __db_doff(dbc, pgno)
 
 	do {
 		if ((ret = mpf->get(mpf, &pgno, 0, &pagep)) != 0) {
-			(void)__db_pgerr(dbp, pgno);
+			__db_pgerr(dbp, pgno, ret);
 			return (ret);
 		}
 
@@ -336,12 +337,12 @@ __db_doff(dbc, pgno)
 			return (__db_ovref(dbc, pgno, -1));
 		}
 
-		if (DB_LOGGING(dbc)) {
-			tmp_dbt.data = (u_int8_t *)pagep + P_OVERHEAD;
+		if (DBC_LOGGING(dbc)) {
+			tmp_dbt.data = (u_int8_t *)pagep + P_OVERHEAD(dbp);
 			tmp_dbt.size = OV_LEN(pagep);
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp->dbenv, dbc->txn,
-			    &LSN(pagep), 0, DB_REM_BIG, dbp->log_fileid,
+			if ((ret = __db_big_log(dbp, dbc->txn,
+			    &LSN(pagep), 0, DB_REM_BIG,
 			    PGNO(pagep), PREV_PGNO(pagep),
 			    NEXT_PGNO(pagep), &tmp_dbt,
 			    &LSN(pagep), &null_lsn, &null_lsn)) != 0) {
@@ -403,7 +404,7 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 			return (ret);
 		/* Pass the key as the first argument */
 		*cmpp = cmpfunc(dbp, dbt, &local_dbt);
-		__os_free(dbp->dbenv, buf, bufsize);
+		__os_free(dbp->dbenv, buf);
 		return (0);
 	}
 
@@ -416,8 +417,8 @@ __db_moff(dbp, dbt, pgno, tlen, cmpfunc, cmpp)
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
 		tlen -= cmp_bytes;
 		key_left -= cmp_bytes;
-		for (p2 =
-		    (u_int8_t *)pagep + P_OVERHEAD; cmp_bytes-- > 0; ++p1, ++p2)
+		for (p2 = (u_int8_t *)pagep + P_OVERHEAD(dbp);
+		    cmp_bytes-- > 0; ++p1, ++p2)
 			if (*p1 != *p2) {
 				*cmpp = (long)*p1 - (long)*p2;
 				break;
@@ -470,7 +471,7 @@ __db_vrfy_overflow(dbp, vdp, h, pgno, flags)
 	pip->refcount = OV_REF(h);
 	if (pip->refcount < 1) {
 		EPRINT((dbp->dbenv,
-		    "Overflow page %lu has zero reference count",
+		    "Page %lu: overflow page has zero reference count",
 		    (u_long)pgno));
 		isbad = 1;
 	}
@@ -525,7 +526,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 
 	if (pip->type != P_OVERFLOW) {
 		EPRINT((dbp->dbenv,
-		    "Overflow page %lu of invalid type",
+		    "Page %lu: overflow page of invalid type %lu",
 		    (u_long)pgno, (u_long)pip->type));
 		ret = DB_VERIFY_BAD;
 		goto err;		/* Unsafe to continue. */
@@ -534,7 +535,8 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 	prev = pip->prev_pgno;
 	if (prev != PGNO_INVALID) {
 		EPRINT((dbp->dbenv,
-		    "First overflow page %lu has a prev_pgno", (u_long)pgno));
+	    "Page %lu: first page in overflow chain has a prev_pgno %lu",
+		    (u_long)pgno, (u_long)prev));
 		isbad = 1;
 	}
 
@@ -573,7 +575,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 		 */
 		if ((u_int32_t)p > refcount) {
 			EPRINT((dbp->dbenv,
-			    "Page %lu encountered twice in overflow traversal",
+			    "Page %lu: encountered twice in overflow traversal",
 			    (u_long)pgno));
 			ret = DB_VERIFY_BAD;
 			goto err;
@@ -601,8 +603,8 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 		if (!IS_VALID_PGNO(next)) {
 			DB_ASSERT(0);
 			EPRINT((dbp->dbenv,
-			    "Overflow page %lu has bad next_pgno",
-			    (u_long)pgno));
+			    "Page %lu: bad next_pgno %lu on overflow page",
+			    (u_long)pgno, (u_long)next));
 			ret = DB_VERIFY_BAD;
 			goto err;
 		}
@@ -612,8 +614,9 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 			return (ret);
 		if (pip->prev_pgno != pgno) {
 			EPRINT((dbp->dbenv,
-			    "Overflow page %lu has bogus prev_pgno value",
-			    (u_long)next));
+		"Page %lu: bad prev_pgno %lu on overflow page (should be %lu)",
+			    (u_long)next, (u_long)pip->prev_pgno,
+			    (u_long)pgno));
 			isbad = 1;
 			/*
 			 * It's safe to continue because we have separate
@@ -627,7 +630,7 @@ __db_vrfy_ovfl_structure(dbp, vdp, pgno, tlen, flags)
 	if (tlen > 0) {
 		isbad = 1;
 		EPRINT((dbp->dbenv,
-		    "Overflow item incomplete on page %lu", (u_long)pgno));
+		    "Page %lu: overflow item incomplete", (u_long)pgno));
 	}
 
 err:	if ((t_ret =
@@ -684,11 +687,11 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 			break;
 		}
 
-		src = (u_int8_t *)h + P_OVERHEAD;
+		src = (u_int8_t *)h + P_OVERHEAD(dbp);
 		bytes = OV_LEN(h);
 
-		if (bytes + P_OVERHEAD > dbp->pgsize)
-			bytes = dbp->pgsize - P_OVERHEAD;
+		if (bytes + P_OVERHEAD(dbp) > dbp->pgsize)
+			bytes = dbp->pgsize - P_OVERHEAD(dbp);
 
 		if ((ret = __os_realloc(dbp->dbenv,
 		    bytesgot + bytes, buf)) != 0)

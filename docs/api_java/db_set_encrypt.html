@@ -1,0 +1,71 @@
+<!--$Id: db_set_encrypt.so,v 10.3 2002/08/18 21:15:54 bostic Exp $-->
+<!--$Id: env_set_encrypt.so,v 10.5 2002/09/03 19:33:33 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
+<!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB: Db.set_encrypt</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td>
+<h1>Db.set_encrypt</h1>
+</td>
+<td align=right>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<hr size=1 noshade>
+<tt>
+<h3><pre>
+import com.sleepycat.db.*;
+<p>
+public void set_encrypt(String passwd, int flags)
+    throws DbException;
+</pre></h3>
+<h1>Description</h1>
+<p>Set the password used by the <a href="../api_java/env_class.html">DbEnv</a> and <a href="../api_java/db_class.html">Db</a> methods to
+perform encryption and decryption.
+<p>The <b>flags</b> value must be set to 0 or
+the following value:
+<p><dl compact>
+<p><dt><a name="Db.DB_ENCRYPT_AES">Db.DB_ENCRYPT_AES</a><dd>Use the Rijndael/AES (also known as the Advanced Encryption Standard
+and Federal Information Processing Standard (FIPS) 197) algorithm for
+encryption or decryption.
+</dl>
+<p>Because databases opened within Berkeley DB environments use the password
+specified to the environment, it is an error to attempt to set a
+password in a database created within an environment.
+<p>The Db.set_encrypt interface may not be called after the <a href="../api_java/db_open.html">Db.open</a>
+interface is called.
+<p>The Db.set_encrypt method throws an exception that encapsulates a non-zero error value on
+failure.
+<h1>Errors</h1>
+<p>The Db.set_encrypt method may fail and throw an exception encapsulating a non-zero error for the following conditions:
+<p><dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>Called after
+<a href="../api_java/db_open.html">Db.open</a>
+was called.
+</dl>
+<p><dl compact>
+<p><dt>EOPNOTSUPP<dd>Cryptography is not available in this Berkeley DB release.
+</dl>
+<p>The Db.set_encrypt method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the Db.set_encrypt method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_java/db_class.html">Db</a>
+<h1>See Also</h1>
+<a href="../api_java/db_list.html">Databases and Related Methods</a>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
+</body>
+</html>

@@ -1,6 +1,7 @@
-<!--$Id: mempfile_class.so,v 10.12 2001/07/31 17:25:41 dda Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: mempfile_class.so,v 10.18 2002/08/24 18:23:33 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbMpoolFile</title>
@@ -21,47 +22,45 @@
 <h3><pre>
 #include &lt;db_cxx.h&gt;
 <p>
-class DbMpoolFile { ... };
+class DbMpoolFile {
+public:
+	DB_MPOOLFILE *DbMpoolFile::get_DB_MPOOLFILE();
+	const DB_MPOOLFILE *DbMpoolFile::get_const_DB_MPOOLFILE() const;
+	...
+};
 </pre></h3>
 <h1>Description</h1>
-<p>This manual page describes the specific details of the DbMpoolFile
-class.  DbMpoolFile objects are created
-using the <a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a> method.
-<p>The <a href="../api_cxx/dbenv_class.html">DbEnv</a> memory pool methods and the DbMpoolFile class
-are the library interface that provide general-purpose, page-oriented
-buffer management of one or more files.  Although designed to work with
-the other Db classes, they are also useful for more general
+<p>The memory pool interfaces for the Berkeley DB database environment are
+methods of the <a href="../api_cxx/env_class.html">DbEnv</a> handle.  The <a href="../api_cxx/env_class.html">DbEnv</a> memory pool
+methods and the DbMpoolFile class provide general-purpose,
+page-oriented buffer management of files.  Although designed to work
+with the other <a href="../api_cxx/db_class.html">Db</a> classes, they are also useful for more general
 purposes.  The memory pools are referred to in this document as simply
 <i>pools</i>.
-<p>Pools may be shared between processes.  Pools are usually filled by pages
-from one or more files.  Pages in the pool are replaced in LRU
+<p>Pools may be shared between processes.  Pools are usually filled by
+pages from one or more files.  Pages in the pool are replaced in LRU
 (least-recently-used) order, with each new page replacing the page that
 has been unused the longest.  Pages retrieved from the pool using
 <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a> are <i>pinned</i> in the pool until they are
 returned to the control of the buffer pool using the <a href="../api_cxx/memp_fput.html">DbMpoolFile::put</a>
 method.
+<p>The DbMpoolFile object is the handle for a file in the memory
+pool.  The handle is not free-threaded.  Once the <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a> method
+is called, the handle may not be accessed again, regardless of that
+method's return.
+<p>Each DbMpoolFile object has an associated DB_MPOOLFILE
+structure, which is used by the underlying implementation of Berkeley DB and
+its C-language API.  The DbMpoolFile::get_DB_MPOOLFILE method returns
+a pointer to this struct.  Given a const DbMpoolFile object,
+DbTxn::get_const_DB_MPOOLFILE returns a const pointer to the same
+struct.
+<p>These methods may be useful for Berkeley DB applications including  both C
+and C++ language software.  It should not be necessary to use these
+calls in a purely C++ application.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>, DbMpoolFile
 <h1>See Also</h1>
-<a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
-<a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a>,
-<a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a>,
-<a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a>,
-<a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>,
-<a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>,
-<a href="../api_cxx/memp_fput.html">DbMpoolFile::put</a>,
-<a href="../api_cxx/memp_fset.html">DbMpoolFile::set</a>,
-<a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a>,
-<a href="../api_cxx/memp_register.html">DbEnv::memp_register</a>,
-<a href="../api_cxx/memp_set_clear_len.html">DbMpoolFile::set_clear_len</a>,
-<a href="../api_cxx/memp_set_fileid.html">DbMpoolFile::set_fileid</a>,
-<a href="../api_cxx/memp_set_ftype.html">DbMpoolFile::set_ftype</a>,
-<a href="../api_cxx/memp_set_lsn_offset.html">DbMpoolFile::set_lsn_offset</a>,
-<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a>,
-<a href="../api_cxx/memp_stat.html">DbEnv::memp_stat</a>,
-<a href="../api_cxx/memp_sync.html">DbEnv::memp_sync</a>,
-and
-<a href="../api_cxx/memp_trickle.html">DbEnv::memp_trickle</a>.
+<a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

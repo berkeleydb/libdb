@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: java_locked.h,v 11.15 2001/05/31 13:18:11 dda Exp $
+ * $Id: java_locked.h,v 11.18 2002/05/07 16:12:42 dda Exp $
  */
 
 #ifndef _JAVA_LOCKED_H_
@@ -20,8 +20,7 @@ typedef enum _OpKind {
 } OpKind;
 
 /*
- *
- * Declaration of LOCKED_DBT
+ * LOCKED_DBT
  *
  * A stack variable LOCKED_DBT should be declared for each Dbt used in a
  * native call to the DB API.  Before the DBT can be used, locked_dbt_get()
@@ -50,17 +49,16 @@ typedef struct _locked_dbt
 } LOCKED_DBT;
 
 /* Fill the LOCKED_DBT struct and lock the Java byte array */
-extern int locked_dbt_get(LOCKED_DBT *, JNIEnv *jnienv, jobject jdbt, OpKind kind);
+extern int locked_dbt_get(LOCKED_DBT *, JNIEnv *, DB_ENV *, jobject, OpKind);
 
 /* unlock the Java byte array */
-extern void locked_dbt_put(LOCKED_DBT *, JNIEnv *jnienv);
+extern void locked_dbt_put(LOCKED_DBT *, JNIEnv *, DB_ENV *);
 
 /* realloc the Java byte array */
-extern int locked_dbt_realloc(LOCKED_DBT *, JNIEnv *jnienv);
+extern int locked_dbt_realloc(LOCKED_DBT *, JNIEnv *, DB_ENV *);
 
-/****************************************************************
- *
- * Declaration of LOCKED_STRING
+/*
+ * LOCKED_STRING
  *
  * A LOCKED_STRING exists temporarily to convert a java jstring object
  * to a char *.  Because the memory for the char * string is

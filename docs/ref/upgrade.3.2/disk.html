@@ -1,6 +1,7 @@
 <!--$Id: disk.so,v 1.5 2001/03/28 13:55:10 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.2: upgrade requirements</title>
@@ -17,7 +18,7 @@
 <p>Log file formats and the Queue Access Method database formats changed
 in the Berkeley DB 3.2 release.  (The on-disk Queue format changed from
 version 2 to version 3.)  Until the underlying databases are upgraded,
-the <a href="../../api_c/db_open.html">DB-&gt;open</a> function will return a <a href="../../api_c/db_open.html#DB_OLD_VERSION">DB_OLD_VERSION</a> error.
+the <a href="../../api_c/db_open.html">DB-&gt;open</a> method will return a <a href="../../api_c/db_open.html#DB_OLD_VERSION">DB_OLD_VERSION</a> error.
 <p>For further information on upgrading Berkeley DB installations, see
 <a href="../../ref/upgrade/process.html">Upgrading Berkeley DB
 installations</a>.

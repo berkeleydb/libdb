@@ -32,8 +32,7 @@ cc386
 	-fno-builtin \
 	-fno-defer-pop \
 	-I$(PRJ_DIR)/.. \
-	-I$(PRJ_DIR)/../../include \
-	-I$(PRJ_DIR)/../../include_auto \
+	-I$(PRJ_DIR)/../.. \
 	-I$(WIND_BASE)/target/h \
 	-DCPU=PENTIUM
 <END>

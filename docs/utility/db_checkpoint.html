@@ -1,6 +1,7 @@
-<!--$Id: db_checkpoint.so,v 10.23 2001/04/21 19:23:16 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_checkpoint.so,v 10.26 2002/08/24 18:24:51 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_checkpoint</title>
@@ -18,8 +19,8 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_checkpoint [<b>-1Vv</b>]
-    [<b>-h home</b>] [<b>-k kbytes</b>] [<b>-L file</b>] [<b>-p min</b>]</pre></h3>
+<h3><pre>db_checkpoint [<b>-1Vv</b>] [<b>-h home</b>]
+    [<b>-k kbytes</b>] [<b>-L file</b>] [<b>-P password</b>] [<b>-p min</b>]</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a>
 <p>The db_checkpoint utility is a daemon process that monitors the
@@ -38,6 +39,11 @@ following format, where <i>###</i> is the process ID, and the date
 is the time the utility was started.
 <p><blockquote><pre>db_checkpoint: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
 This file will be removed if the db_checkpoint utility exits gracefully.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-p</b><dd>Checkpoint the database at least every <b>min</b> minutes if there has
 been any activity since the last checkpoint.
 <p><dt><b>-V</b><dd>Write the library version number to the standard output, and exit.
@@ -57,7 +63,7 @@ interrupt signal (SIGINT).
 shared memory regions if they do not already exist.  The application
 that creates the region should be started first, and once the region is
 created, the db_checkpoint utility should be started.
-<p>The <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> function is the underlying function used by the db_checkpoint utility.
+<p>The <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> method is the underlying interface used by the db_checkpoint utility.
 See the db_checkpoint utility source code for an example of using <a href="../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a>
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 <p>The db_checkpoint utility exits 0 on success, and &gt;0 if an error occurs.
@@ -67,18 +73,6 @@ in a IEEE/ANSI Std 1003.1 (POSIX) environment.
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-db_checkpoint,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-<a href="../utility/db_dump.html">db_dump</a>,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,6 +1,7 @@
-<!--$Id: set_tx_recover.so,v 1.11 2001/05/15 14:44:17 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: set_tx_recover.so,v 1.12 2002/02/23 20:05:28 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.1: DB_ENV-&gt;set_tx_recover</title>
@@ -14,11 +15,11 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.1: DB_ENV-&gt;set_tx_recover</h1>
-<p>The redo parameter of the function passed to <a href="../../api_c/env_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a>
+<p>The redo parameter of the function passed to DB_ENV-&gt;set_tx_recover
 used to be an integer set to any one of a number of #defined values.  In
 the 3.1 release of Berkeley DB, the redo parameter has been replaced by the op
 parameter which is an enumerated type of type db_recops.
-<p>If your application calls <a href="../../api_c/env_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a>, then find the
+<p>If your application calls DB_ENV-&gt;set_tx_recover, then find the
 function referred to by the call.  Replace the flag values in that
 function as follows:
 <p><table border=1 align=center>

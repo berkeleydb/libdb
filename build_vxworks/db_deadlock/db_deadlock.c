@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_deadlock.c,v 11.34 2001/10/22 18:35:20 sue Exp $";
+    "$Id: db_deadlock.c,v 11.38 2002/08/08 03:50:32 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -36,7 +36,6 @@ static const char revid[] =
 #endif
 
 #include "db_int.h"
-#include "clib_ext.h"
 
 int db_deadlock_main __P((int, char *[]));
 int db_deadlock_usage __P((void));
@@ -224,8 +223,9 @@ shutdown:	exitval = 1;
 int
 db_deadlock_usage()
 {
-	(void)fprintf(stderr,
-"usage: db_deadlock [-Vv]\n\t[-a e | m | n | o | w | y] [-h home] [-L file] [-t sec.usec]\n");
+	(void)fprintf(stderr, "%s\n\t%s\n",
+	    "usage: db_deadlock [-Vv]",
+	    "[-a e | m | n | o | w | y] [-h home] [-L file] [-t sec.usec]");
 	return (EXIT_FAILURE);
 }
 

@@ -1,6 +1,7 @@
 <!--$Id: partition.so,v 1.1 2001/10/25 20:05:34 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Network partitions</title>
@@ -63,7 +64,7 @@ database environments in the replication group, applications can keep
 systems from declaring themselves the master unless they can talk to at
 a large percentage of the sites in the system.  For example, if there
 are 20 database environments in the replication group, and an argument
-of 30 is specified to the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> function, then a system will have
+of 30 is specified to the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method, then a system will have
 to be able to talk to at least 16 of the sites to declare itself the
 master.
 <p>Specifying a <b>nsites</b> argument to <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> that is

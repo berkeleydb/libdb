@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test044.tcl,v 11.28 2001/08/03 16:39:40 bostic Exp $
+# $Id: test044.tcl,v 11.32 2002/07/16 20:53:04 bostic Exp $
 #
 # TEST	test044
 # TEST	Small system integration tests
@@ -25,6 +25,7 @@
 # This test uses grow-only files currently!
 proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 	source ./include.tcl
+	global encrypt
 	global rand_init
 
 	set args [convert_args $method $args]
@@ -38,6 +39,10 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 		incr eindex
 		set env [lindex $args $eindex]
 		puts "Test044 skipping for env $env"
+		return
+	}
+	if { $encrypt != 0 } {
+		puts "Test044 skipping for security"
 		return
 	}
 
@@ -67,7 +72,7 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 
 		# Create an environment
 		puts "\tTest044.a: creating environment and $nfiles files"
-		set dbenv [berkdb env -create -txn -home $testdir]
+		set dbenv [berkdb_env -create -txn -home $testdir]
 		error_check_good env_open [is_valid_env $dbenv] TRUE
 
 		# Create a bunch of files
@@ -102,7 +107,7 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 	set cycle 1
 	set ncycles 3
 	while { $cycle <= $ncycles } {
-		set dbenv [berkdb env -create -txn -home $testdir]
+		set dbenv [berkdb_env -create -txn -home $testdir]
 		error_check_good env_open [is_valid_env $dbenv] TRUE
 
 		# Fire off deadlock detector and checkpointer
@@ -133,16 +138,13 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 		#
 		error_check_good env_close [$dbenv close] 0
 
-		exec $KILL -9 $ddpid
-		exec $KILL -9 $cppid
-		#
-		# Use catch so that if any of the children died, we don't
-		# stop the script
-		#
+		tclkill $ddpid
+		tclkill $cppid
+
 		foreach p $pidlist {
-			set e [catch {eval exec \
-			    [concat $KILL -9 $p]} res]
+			tclkill $p
 		}
+
 		# Check for test failure
 		set e [eval findfail [glob $testdir/test044.*.log]]
 		error_check_good "FAIL: error message(s) in log files" $e 0

@@ -1,6 +1,7 @@
-<!--$Id: create.so,v 10.27 2001/05/31 12:52:37 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: create.so,v 10.29 2002/06/24 14:50:40 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Creating a database environment</title>
@@ -11,7 +12,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
-<td align=right><a href="../../ref/env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/naming.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Creating a database environment</h1>
@@ -20,14 +21,14 @@ and <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> interfaces.  In situ
 desired, such as storing log files on a separate disk drive or selection
 of a particular cache size, applications must describe the customization
 by either creating an environment configuration file in the environment
-home directory or by arguments passed to other <a href="../../api_c/env_create.html">DB_ENV</a> handle methods.
+home directory or by arguments passed to other <a href="../../api_c/env_class.html">DB_ENV</a> handle methods.
 <p>Once an environment has been created, database files specified using
 relative pathnames will be named relative to the home directory.  Using
 pathnames relative to the home directory allows the entire environment
 to be easily moved, simplifying restoration and recovery of a database
 in a different directory or on a different system.
 <p>Applications first obtain an environment handle using the
-<a href="../../api_c/env_create.html">db_env_create</a> function, then call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function which creates
+<a href="../../api_c/env_create.html">db_env_create</a> method, then call the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method which creates
 or joins the database environment.  There are a number of options you
 can set to customize <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> for your environment.  These
 options fall into four broad categories:
@@ -122,7 +123,7 @@ db_setup(home, data_dir, errfp, progname)
 err:	(void)dbenv-&gt;close(dbenv, 0);
 	return (NULL);
 }</pre></blockquote>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/naming.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

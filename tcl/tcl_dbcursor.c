@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_dbcursor.c,v 11.40 2001/08/13 19:11:42 bostic Exp $";
+static const char revid[] = "$Id: tcl_dbcursor.c,v 11.51 2002/08/06 06:20:59 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,7 @@ static const char revid[] = "$Id: tcl_dbcursor.c,v 11.40 2001/08/13 19:11:42 bos
 #endif
 
 #include "db_int.h"
-#include "tcl_db.h"
+#include "dbinc/tcl_db.h"
 
 /*
  * Prototypes for procedures defined later in this file:
@@ -37,26 +37,30 @@ static int tcl_DbcPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
  */
 int
 dbc_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;          /* Cursor handle */
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	ClientData clientData;		/* Cursor handle */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *dbccmds[] = {
+#if CONFIG_TEST
+		"pget",
+#endif
 		"close",
 		"del",
 		"dup",
 		"get",
-		"pget",
 		"put",
 		NULL
 	};
 	enum dbccmds {
+#if CONFIG_TEST
+		DBCPGET,
+#endif
 		DBCCLOSE,
 		DBCDELETE,
 		DBCDUP,
 		DBCGET,
-		DBCPGET,
 		DBCPUT
 	};
 	DBC *dbc;
@@ -89,6 +93,11 @@ dbc_Cmd(clientData, interp, objc, objv)
 	    TCL_EXACT, &cmdindex) != TCL_OK)
 		return (IS_HELP(objv[1]));
 	switch ((enum dbccmds)cmdindex) {
+#if CONFIG_TEST
+	case DBCPGET:
+		result = tcl_DbcGet(interp, objc, objv, dbc, 1);
+		break;
+#endif
 	case DBCCLOSE:
 		/*
 		 * No args for this.  Error if there are some.
@@ -99,7 +108,8 @@ dbc_Cmd(clientData, interp, objc, objv)
 		}
 		_debug_check();
 		ret = dbc->c_close(dbc);
-		result = _ReturnSetup(interp, ret, "dbc close");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "dbc close");
 		if (result == TCL_OK) {
 			(void)Tcl_DeleteCommand(interp, dbip->i_name);
 			_DeleteInfo(dbip);
@@ -115,16 +125,14 @@ dbc_Cmd(clientData, interp, objc, objv)
 		}
 		_debug_check();
 		ret = dbc->c_del(dbc, 0);
-		result = _ReturnSetup(interp, ret, "dbc delete");
+		result = _ReturnSetup(interp, ret, DB_RETOK_DBCDEL(ret),
+		    "dbc delete");
 		break;
 	case DBCDUP:
 		result = tcl_DbcDup(interp, objc, objv, dbc);
 		break;
 	case DBCGET:
 		result = tcl_DbcGet(interp, objc, objv, dbc, 0);
-		break;
-	case DBCPGET:
-		result = tcl_DbcGet(interp, objc, objv, dbc, 1);
 		break;
 	case DBCPUT:
 		result = tcl_DbcPut(interp, objc, objv, dbc);
@@ -144,14 +152,26 @@ tcl_DbcPut(interp, objc, objv, dbc)
 	DBC *dbc;			/* Cursor pointer */
 {
 	static char *dbcutopts[] = {
-		"-after",	"-before",	"-current",
-		"-keyfirst",	"-keylast",	"-nodupdata",
+#if CONFIG_TEST
+		"-nodupdata",
+#endif
+		"-after",
+		"-before",
+		"-current",
+		"-keyfirst",
+		"-keylast",
 		"-partial",
 		NULL
 	};
 	enum dbcutopts {
-		DBCPUT_AFTER,	DBCPUT_BEFORE,	DBCPUT_CURRENT,
-		DBCPUT_KEYFIRST,DBCPUT_KEYLAST,	DBCPUT_NODUPDATA,
+#if CONFIG_TEST
+		DBCPUT_NODUPDATA,
+#endif
+		DBCPUT_AFTER,
+		DBCPUT_BEFORE,
+		DBCPUT_CURRENT,
+		DBCPUT_KEYFIRST,
+		DBCPUT_KEYLAST,
 		DBCPUT_PART
 	};
 	DB *thisdbp;
@@ -159,12 +179,14 @@ tcl_DbcPut(interp, objc, objv, dbc)
 	DBTCL_INFO *dbcip, *dbip;
 	DBTYPE type;
 	Tcl_Obj **elemv, *res;
+	void *dtmp, *ktmp;
 	db_recno_t recno;
 	u_int32_t flag;
-	int elemc, i, itmp, optindex, result, ret;
+	int elemc, freekey, freedata, i, optindex, result, ret;
 
 	result = TCL_OK;
 	flag = 0;
+	freekey = freedata = 0;
 
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? ?key?");
@@ -195,6 +217,12 @@ tcl_DbcPut(interp, objc, objv, dbc)
 		}
 		i++;
 		switch ((enum dbcutopts)optindex) {
+#if CONFIG_TEST
+		case DBCPUT_NODUPDATA:
+			FLAG_CHECK(flag);
+			flag = DB_NODUPDATA;
+			break;
+#endif
 		case DBCPUT_AFTER:
 			FLAG_CHECK(flag);
 			flag = DB_AFTER;
@@ -214,10 +242,6 @@ tcl_DbcPut(interp, objc, objv, dbc)
 		case DBCPUT_KEYLAST:
 			FLAG_CHECK(flag);
 			flag = DB_KEYLAST;
-			break;
-		case DBCPUT_NODUPDATA:
-			FLAG_CHECK(flag);
-			flag = DB_NODUPDATA;
 			break;
 		case DBCPUT_PART:
 			if (i > (objc - 2)) {
@@ -310,21 +334,38 @@ tcl_DbcPut(interp, objc, objv, dbc)
 			} else
 				return (result);
 		} else {
-			key.data = Tcl_GetByteArrayFromObj(objv[objc-2], &itmp);
-			key.size = itmp;
+			ret = _CopyObjBytes(interp, objv[objc-2], &ktmp,
+			    &key.size, &freekey);
+			if (ret != 0) {
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_DBCPUT(ret), "dbc put");
+				return (result);
+			}
+			key.data = ktmp;
 		}
 	}
-	data.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
-	data.size = itmp;
+	ret = _CopyObjBytes(interp, objv[objc-1], &dtmp,
+	    &data.size, &freedata);
+	data.data = dtmp;
+	if (ret != 0) {
+		result = _ReturnSetup(interp, ret,
+		    DB_RETOK_DBCPUT(ret), "dbc put");
+		goto out;
+	}
 	_debug_check();
 	ret = dbc->c_put(dbc, &key, &data, flag);
-	result = _ReturnSetup(interp, ret, "dbc put");
-	if (ret == 0 && (flag == DB_AFTER || flag == DB_BEFORE)
-	    && type == DB_RECNO) {
+	result = _ReturnSetup(interp, ret, DB_RETOK_DBCPUT(ret),
+	    "dbc put");
+	if (ret == 0 &&
+	    (flag == DB_AFTER || flag == DB_BEFORE) && type == DB_RECNO) {
 		res = Tcl_NewLongObj((long)*(db_recno_t *)key.data);
 		Tcl_SetObjResult(interp, res);
 	}
 out:
+	if (freedata)
+		(void)__os_free(NULL, dtmp);
+	if (freekey)
+		(void)__os_free(NULL, ktmp);
 	return (result);
 }
 
@@ -340,16 +381,18 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	int ispget;			/* 1 for pget, 0 for get */
 {
 	static char *dbcgetopts[] = {
-		"-current",
+#if CONFIG_TEST
 		"-dirty",
+		"-get_both_range",
+		"-multi",
+		"-multi_key",
+#endif
+		"-current",
 		"-first",
 		"-get_both",
-		"-get_both_range",
 		"-get_recno",
 		"-join_item",
 		"-last",
-		"-multi",
-		"-multi_key",
 		"-next",
 		"-nextdup",
 		"-nextnodup",
@@ -363,16 +406,18 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		NULL
 	};
 	enum dbcgetopts {
-		DBCGET_CURRENT,
+#if CONFIG_TEST
 		DBCGET_DIRTY,
+		DBCGET_BOTH_RANGE,
+		DBCGET_MULTI,
+		DBCGET_MULTI_KEY,
+#endif
+		DBCGET_CURRENT,
 		DBCGET_FIRST,
 		DBCGET_BOTH,
-		DBCGET_BOTH_RANGE,
 		DBCGET_RECNO,
 		DBCGET_JOIN,
 		DBCGET_LAST,
-		DBCGET_MULTI,
-		DBCGET_MULTI_KEY,
 		DBCGET_NEXT,
 		DBCGET_NEXTDUP,
 		DBCGET_NEXTNODUP,
@@ -389,12 +434,14 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	DBTCL_INFO *dbcip, *dbip;
 	DBTYPE ptype, type;
 	Tcl_Obj **elemv, *myobj, *retlist;
+	void *dtmp, *ktmp;
 	db_recno_t precno, recno;
 	u_int32_t flag, op;
-	int bufsize, elemc, i, itmp, optindex, result, ret;
+	int bufsize, elemc, freekey, freedata, i, optindex, result, ret;
 
 	result = TCL_OK;
 	flag = 0;
+	freekey = freedata = 0;
 
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? ?key?");
@@ -424,8 +471,14 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		}
 		i++;
 		switch ((enum dbcgetopts)optindex) {
+#if CONFIG_TEST
 		case DBCGET_DIRTY:
 			flag |= DB_DIRTY_READ;
+			break;
+		case DBCGET_BOTH_RANGE:
+			FLAG_CHECK2(flag,
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			flag |= DB_GET_BOTH_RANGE;
 			break;
 		case DBCGET_MULTI:
 			flag |= DB_MULTIPLE;
@@ -441,82 +494,78 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				goto out;
 			i++;
 			break;
+#endif
 		case DBCGET_RMW:
 			flag |= DB_RMW;
 			break;
 		case DBCGET_CURRENT:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_CURRENT;
 			break;
 		case DBCGET_FIRST:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_FIRST;
 			break;
 		case DBCGET_LAST:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_LAST;
 			break;
 		case DBCGET_NEXT:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_NEXT;
 			break;
 		case DBCGET_PREV:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_PREV;
 			break;
 		case DBCGET_PREVNODUP:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_PREV_NODUP;
 			break;
 		case DBCGET_NEXTNODUP:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_NEXT_NODUP;
 			break;
 		case DBCGET_NEXTDUP:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_NEXT_DUP;
 			break;
 		case DBCGET_BOTH:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_GET_BOTH;
-			break;
-		case DBCGET_BOTH_RANGE:
-			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
-			flag |= DB_GET_BOTH_RANGE;
 			break;
 		case DBCGET_RECNO:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_GET_RECNO;
 			break;
 		case DBCGET_JOIN:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_JOIN_ITEM;
 			break;
 		case DBCGET_SET:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_SET;
 			break;
 		case DBCGET_SETRANGE:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_SET_RANGE;
 			break;
 		case DBCGET_SETRECNO:
 			FLAG_CHECK2(flag,
-			     DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
 			flag |= DB_SET_RECNO;
 			break;
 		case DBCGET_PART:
@@ -591,7 +640,9 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	op = flag & DB_OPFLAGS_MASK;
 	switch (op) {
 	case DB_GET_BOTH:
+#if CONFIG_TEST
 	case DB_GET_BOTH_RANGE:
+#endif
 		if (i != (objc - 2)) {
 			Tcl_WrongNumArgs(interp, 2, objv,
 			    "?-args? -get_both key data");
@@ -607,9 +658,19 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				} else
 					goto out;
 			} else {
-				key.data = Tcl_GetByteArrayFromObj(
-				    objv[objc - 2], &itmp);
-				key.size = itmp;
+				/*
+				 * Some get calls (SET_*) can change the
+				 * key pointers.  So, we need to store
+				 * the allocated key space in a tmp.
+				 */
+				ret = _CopyObjBytes(interp, objv[objc-2],
+				    &ktmp, &key.size, &freekey);
+				if (ret != 0) {
+					result = _ReturnSetup(interp, ret,
+					    DB_RETOK_DBCGET(ret), "dbc get");
+					return (result);
+				}
+				key.data = ktmp;
 			}
 			if (ptype == DB_RECNO || ptype == DB_QUEUE) {
 				result = _GetUInt32(
@@ -620,9 +681,14 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				} else
 					goto out;
 			} else {
-				data.data = Tcl_GetByteArrayFromObj(
-				    objv[objc - 1], &itmp);
-				data.size = itmp;
+				ret = _CopyObjBytes(interp, objv[objc-1],
+				    &dtmp, &data.size, &freedata);
+				if (ret != 0) {
+					result = _ReturnSetup(interp, ret,
+					    DB_RETOK_DBCGET(ret), "dbc get");
+					goto out;
+				}
+				data.data = dtmp;
 			}
 		}
 		break;
@@ -646,9 +712,19 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			key.data = &recno;
 			key.size = sizeof(db_recno_t);
 		} else {
-			key.data =
-			    Tcl_GetByteArrayFromObj(objv[objc - 1], &itmp);
-			key.size = itmp;
+			/*
+			 * Some get calls (SET_*) can change the
+			 * key pointers.  So, we need to store
+			 * the allocated key space in a tmp.
+			 */
+			ret = _CopyObjBytes(interp, objv[objc-1],
+			    &ktmp, &key.size, &freekey);
+			if (ret != 0) {
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_DBCGET(ret), "dbc get");
+				return (result);
+			}
+			key.data = ktmp;
 		}
 		break;
 	default:
@@ -659,7 +735,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		}
 		key.flags |= DB_DBT_MALLOC;
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY)) {
-			data.data = malloc(bufsize);
+			(void)__os_malloc(NULL, bufsize, &data.data);
 			data.ulen = bufsize;
 			data.flags |= DB_DBT_USERMEM;
 		} else
@@ -673,7 +749,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		ret = dbc->c_pget(dbc, &key, &data, &pdata, flag);
 	} else
 		ret = dbc->c_get(dbc, &key, &data, flag);
-	result = _ReturnSetup(interp, ret, "dbc get");
+	result = _ReturnSetup(interp, ret, DB_RETOK_DBCGET(ret), "dbc get");
 	if (result == TCL_ERROR)
 		goto out;
 
@@ -687,9 +763,9 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	} else {
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY))
 			result = _SetMultiList(interp,
-			     retlist, &key, &data, type, flag);
-		else if ((type == DB_RECNO
-		    || type == DB_QUEUE) && key.data != NULL) {
+			    retlist, &key, &data, type, flag);
+		else if ((type == DB_RECNO || type == DB_QUEUE) &&
+		    key.data != NULL) {
 			if (ispget)
 				result = _Set3DBTList(interp, retlist, &key, 1,
 				    &data,
@@ -710,18 +786,22 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				    key.data, key.size, data.data, data.size);
 		}
 	}
-	if (F_ISSET(&key, DB_DBT_MALLOC))
-		__os_free(NULL, key.data, key.size);
-	if (F_ISSET(&data, DB_DBT_MALLOC))
-		__os_free(NULL, data.data, data.size);
-	if (F_ISSET(&pdata, DB_DBT_MALLOC))
-		__os_free(NULL, pdata.data, pdata.size);
+	if (key.data != NULL && F_ISSET(&key, DB_DBT_MALLOC))
+		__os_ufree(dbc->dbp->dbenv, key.data);
+	if (data.data != NULL && F_ISSET(&data, DB_DBT_MALLOC))
+		__os_ufree(dbc->dbp->dbenv, data.data);
+	if (pdata.data != NULL && F_ISSET(&pdata, DB_DBT_MALLOC))
+		__os_ufree(dbc->dbp->dbenv, pdata.data);
 out1:
 	if (result == TCL_OK)
 		Tcl_SetObjResult(interp, retlist);
 out:
 	if (data.data != NULL && flag & (DB_MULTIPLE|DB_MULTIPLE_KEY))
-		__os_free(NULL, data.data, 0);
+		__os_free(dbc->dbp->dbenv, data.data);
+	if (freedata)
+		(void)__os_free(NULL, dtmp);
+	if (freekey)
+		(void)__os_free(NULL, ktmp);
 	return (result);
 
 }
@@ -830,7 +910,8 @@ tcl_DbcDup(interp, objc, objv, dbc)
 			_SetInfoData(newdbcip, newdbc);
 			Tcl_SetObjResult(interp, res);
 		} else {
-			result = _ReturnSetup(interp, ret, "db dup");
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "db dup");
 			_DeleteInfo(newdbcip);
 		}
 	} else {

@@ -1,6 +1,7 @@
-<!--$Id: curget.so,v 10.18 2001/08/13 19:11:36 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: curget.so,v 10.19 2002/06/24 14:50:19 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Retrieving records with a cursor</title>
@@ -15,8 +16,8 @@
 </td></tr></table>
 <p>
 <h1 align=center>Retrieving records with a cursor</h1>
-<p>The <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> function is the standard interface for retrieving records from
-the database with a cursor.  The <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> function takes a flag which
+<p>The <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> method is the standard interface for retrieving records from
+the database with a cursor.  The <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> method takes a flag which
 controls how the cursor is positioned within the database and returns the
 key/data item associated with that positioning.  Similar to
 <a href="../../api_c/db_get.html">DB-&gt;get</a>, <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> may also take a supplied key and retrieve
@@ -95,7 +96,7 @@ display(database)
 <p>
 	/* Open the database. */
 	if ((ret =
-	    dbp-&gt;open(dbp, database, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
+	    dbp-&gt;open(dbp, NULL, database, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
 		dbp-&gt;err(dbp, ret, "%s: DB-&gt;open", database);
 		goto err;
 	}

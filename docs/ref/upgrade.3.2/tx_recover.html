@@ -1,6 +1,7 @@
-<!--$Id: tx_recover.so,v 1.13 2001/05/15 14:44:19 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: tx_recover.so,v 1.14 2002/02/23 20:05:28 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.2: DB_ENV-&gt;set_tx_recover</title>
@@ -15,15 +16,15 @@
 <p>
 <h1 align=center>Release 3.2: DB_ENV-&gt;set_tx_recover</h1>
 <p>The <b>info</b> parameter of the function passed to
-<a href="../../api_c/env_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a> is no longer needed.  If your application
-calls <a href="../../api_c/env_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a>, find the callback function referred
+DB_ENV-&gt;set_tx_recover is no longer needed.  If your application
+calls DB_ENV-&gt;set_tx_recover, find the callback function referred
 to by that call and remove the <b>info</b> parameter.
 <p>In addition, the called function no longer needs to handle Berkeley DB log
 records, Berkeley DB will handle them internally as well as call the
 application-specified function.  Any handling of Berkeley DB log records in the
 application's callback function may be removed.
 <p>In addition, the callback function will no longer be called with the
-<a href="../../api_c/env_set_tx_recover.html#DB_TXN_FORWARD_ROLL">DB_TXN_FORWARD_ROLL</a> flag specified unless the transaction
+<a href="../../api_c/env_set_app_dispatch.html#DB_TXN_FORWARD_ROLL">DB_TXN_FORWARD_ROLL</a> flag specified unless the transaction
 enclosing the operation successfully committed.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/upgrade.3.2/incomplete.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.2/mutexlock.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

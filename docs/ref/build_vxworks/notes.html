@@ -1,6 +1,7 @@
 <!--$Id: notes.so,v 1.16 2001/11/05 21:05:19 sue Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: VxWorks notes</title>
@@ -53,7 +54,7 @@ tasks running on the target.  For this reason, the <a href="../../api_c/env_open
 flag is implied for any application that does not specify the
 <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag.  Additionally, applications must use a segment
 ID to ensure that different applications do not overwrite each other's
-database environments.  See the <a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a> function for more
+database environments.  See the <a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a> method for more
 information.  Also, the <a href="../../api_c/env_open.html#DB_LOCKDOWN">DB_LOCKDOWN</a> flag has no effect.
 <h3>Notes for VxWorks AE 1.1</h3>
 <p>All tasks wishing to access a particular environment must run in

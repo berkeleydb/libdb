@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_dir.c,v 11.10 2001/04/03 15:14:26 krinsky Exp $";
+static const char revid[] = "$Id: os_dir.c,v 11.14 2002/07/12 18:56:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,7 +34,6 @@ static const char revid[] = "$Id: os_dir.c,v 11.10 2001/04/03 15:14:26 krinsky E
 #endif
 
 #include "db_int.h"
-#include "os_jump.h"
 
 /*
  * __os_dirlist --
@@ -54,8 +53,8 @@ __os_dirlist(dbenv, dir, namesp, cntp)
 	int arraysz, cnt, ret;
 	char **names;
 
-	if (__db_jump.j_dirlist != NULL)
-		return (__db_jump.j_dirlist(dir, namesp, cntp));
+	if (DB_GLOBAL(j_dirlist) != NULL)
+		return (DB_GLOBAL(j_dirlist)(dir, namesp, cntp));
 
 #ifdef HAVE_VXWORKS
 	if ((dirp = opendir((char *)dir)) == NULL)
@@ -99,11 +98,11 @@ __os_dirfree(dbenv, names, cnt)
 	char **names;
 	int cnt;
 {
-	if (__db_jump.j_dirfree != NULL)
-		__db_jump.j_dirfree(names, cnt);
+	if (DB_GLOBAL(j_dirfree) != NULL)
+		DB_GLOBAL(j_dirfree)(names, cnt);
 	else {
 		while (cnt > 0)
-			__os_free(dbenv, names[--cnt], 0);
-		__os_free(dbenv, names, 0);
+			__os_free(dbenv, names[--cnt]);
+		__os_free(dbenv, names);
 	}
 }

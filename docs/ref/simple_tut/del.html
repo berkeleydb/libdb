@@ -1,6 +1,7 @@
-<!--$Id: del.so,v 10.23 2001/05/23 21:03:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: del.so,v 10.24 2002/06/24 14:50:55 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Removing elements from a database</title>
@@ -50,8 +51,8 @@ main()
 		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
 	}
-	if ((ret = dbp-&gt;open(
-	    dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp-&gt;open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp-&gt;err(dbp, ret, "%s", DATABASE);
 		goto err;
 	}

@@ -1,6 +1,7 @@
-<!--$Id: memp_register.so,v 10.26 2001/10/22 15:24:36 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: memp_register.so,v 10.31 2002/08/24 18:23:32 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DB_ENV-&gt;memp_register</title>
@@ -27,18 +28,18 @@ DB_ENV-&gt;memp_register(DB_ENV *env, int ftype,
     int (*pgout_fcn)(DB_ENV *, db_pgno_t pgno, void *pgaddr, DBT *pgcookie));
 </pre></h3>
 <h1>Description</h1>
-<p>The DB_ENV-&gt;memp_register function registers page-in and page-out
+<p>The DB_ENV-&gt;memp_register method registers page-in and page-out
 functions for files of type <b>ftype</b> in the specified pool.
 <p>If the <b>pgin_fcn</b> function is non-NULL, it is called each time
 a page is read into the memory pool from a file of type <b>ftype</b>, or
 a page is created for a file of type <b>ftype</b> (see the
-DB_MPOOL_CREATE flag for the <a href="../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a> function).
+DB_MPOOL_CREATE flag for the <a href="../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a> method).
 <p>If the <b>pgout_fcn</b> function is non-NULL, it is called each time
 a page is written to a file of type <b>ftype</b>.
 <p>Both the <b>pgin_fcn</b> and <b>pgout_fcn</b> functions are called
 with a reference to the current environment, the page number, a pointer
 to the page being read or written, and any argument <b>pgcookie</b>
-that was specified to the <a href="../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a> function.  The
+that was specified to the <a href="../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a> method.  The
 <b>pgin_fcn</b> and <b>pgout_fcn</b> functions should return 0 on
 success, and an applicable non-zero <b>errno</b> value on failure, in
 which case the shared memory pool interface routine (and, by extension,
@@ -60,36 +61,20 @@ a pool for each type of file included in the pool, regardless of whether
 or not the application itself uses files of that type.
 <p>There are no standard values for <b>ftype</b>, <b>pgin_fcn</b>,
 <b>pgout_fcn</b>, and <b>pgcookie</b>, except that the <b>ftype</b>
-value for a file must be a non-zero positive number because negative
-numbers are reserved for internal use by the Berkeley DB library.  For this
-reason, applications sharing a pool must coordinate their values among
-themselves.
-<p>The DB_ENV-&gt;memp_register function returns a non-zero error value on failure and 0 on success.
+value for a file must be a non-zero positive number less than 128
+(0 and negative numbers are reserved for internal use by the Berkeley DB
+library).  For this reason, applications sharing a pool must coordinate
+the values among themselves.
+<p>The DB_ENV-&gt;memp_register method returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>The DB_ENV-&gt;memp_register function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
-If a catastrophic error has occurred, the DB_ENV-&gt;memp_register function may fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+<p>The DB_ENV-&gt;memp_register method may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB_ENV-&gt;memp_register method may fail and
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
+<h1>Class</h1>
+<a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/mempfile_class.html">DB_MPOOLFILE</a>
 <h1>See Also</h1>
-<a href="../api_c/env_set_cachesize.html">DB_ENV-&gt;set_cachesize</a>,
-<a href="../api_c/env_set_mp_mmapsize.html">DB_ENV-&gt;set_mp_mmapsize</a>,
-<a href="../api_c/memp_fcreate.html">DB_ENV-&gt;memp_fcreate</a>,
-<a href="../api_c/memp_fclose.html">DB_MPOOLFILE-&gt;close</a>,
-<a href="../api_c/memp_fget.html">DB_MPOOLFILE-&gt;get</a>,
-<a href="../api_c/memp_fopen.html">DB_MPOOLFILE-&gt;open</a>,
-<a href="../api_c/memp_fput.html">DB_MPOOLFILE-&gt;put</a>,
-<a href="../api_c/memp_fset.html">DB_MPOOLFILE-&gt;set</a>,
-<a href="../api_c/memp_fsync.html">DB_MPOOLFILE-&gt;sync</a>,
-<a href="../api_c/memp_register.html">DB_ENV-&gt;memp_register</a>,
-<a href="../api_c/memp_set_clear_len.html">DB_MPOOLFILE-&gt;set_clear_len</a>,
-<a href="../api_c/memp_set_fileid.html">DB_MPOOLFILE-&gt;set_fileid</a>,
-<a href="../api_c/memp_set_ftype.html">DB_MPOOLFILE-&gt;set_ftype</a>,
-<a href="../api_c/memp_set_lsn_offset.html">DB_MPOOLFILE-&gt;set_lsn_offset</a>,
-<a href="../api_c/memp_set_pgcookie.html">DB_MPOOLFILE-&gt;set_pgcookie</a>,
-<a href="../api_c/memp_stat.html">DB_ENV-&gt;memp_stat</a>,
-<a href="../api_c/memp_sync.html">DB_ENV-&gt;memp_sync</a>,
-and
-<a href="../api_c/memp_trickle.html">DB_ENV-&gt;memp_trickle</a>.
+<a href="../api_c/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

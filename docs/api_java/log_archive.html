@@ -1,6 +1,7 @@
-<!--$Id: log_archive.so,v 10.35 2001/10/22 15:24:33 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: log_archive.so,v 10.38 2002/08/18 21:16:38 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.log_archive</title>
@@ -68,12 +69,6 @@ in which transactions are being logged or aborted.)
 archival procedures.
 <p>The DbEnv.log_archive method throws an exception that encapsulates a non-zero error value on
 failure.
-<h1>Bugs</h1>
-<p>In a threaded application (that is, one where the environment was created
-with the DB_THREAD flag specified), calling DbEnv.log_archive with the
-DB_ARCH_DATA flag will fail, returning EINVAL.  To work around this
-problem, reopen the log explicitly without specifying DB_THREAD.  This
-restriction is expected to be removed in a future version of Berkeley DB.
 <h1>Errors</h1>
 <p>The DbEnv.log_archive method may fail and throw an exception encapsulating a non-zero error for the following conditions:
 <p><dl compact>
@@ -81,28 +76,13 @@ restriction is expected to be removed in a future version of Berkeley DB.
 <p>The log was corrupted.
 </dl>
 <p>The DbEnv.log_archive method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.log_archive method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.log_archive method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/logc_class.html">DbLogc</a>, <a href="../api_java/lsn_class.html">DbLsn</a>
 <h1>See Also</h1>
-<a href="../api_java/env_set_lg_bsize.html">DbEnv.set_lg_bsize</a>,
-<a href="../api_java/env_set_lg_dir.html">DbEnv.set_lg_dir</a>,
-<a href="../api_java/env_set_lg_max.html">DbEnv.set_lg_max</a>,
-<a href="../api_java/env_set_lg_regionmax.html">DbEnv.set_lg_regionmax</a>,
-<a href="../api_java/log_archive.html">DbEnv.log_archive</a>,
-<a href="../api_java/log_compare.html">DbEnv.log_compare</a>,
-<a href="../api_java/log_cursor.html">DbEnv.log_cursor</a>,
-<a href="../api_java/log_file.html">DbEnv.log_file</a>,
-<a href="../api_java/log_flush.html">DbEnv.log_flush</a>,
-<a href="../api_java/log_put.html">DbEnv.log_put</a>,
-<a href="../api_java/log_register.html">DbEnv.log_register</a>,
-<a href="../api_java/log_stat.html">DbEnv.log_stat</a>,
-<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>,
-<a href="../api_java/logc_close.html">DbLogc.logc_close</a>
-and
-<a href="../api_java/logc_get.html">DbLogc.logc_get</a>.
+<a href="../api_java/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

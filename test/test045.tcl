@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test045.tcl,v 11.22 2001/08/03 16:39:41 bostic Exp $
+# $Id: test045.tcl,v 11.24 2002/02/07 17:50:10 sue Exp $
 #
 # TEST	test045
 # TEST	Small random tester
@@ -23,6 +23,7 @@
 #	-keyavg <average key size>
 proc test045 { method {nops 10000} args } {
 	source ./include.tcl
+	global encrypt
 
 	#
 	# If we are using an env, then skip this test.  It needs its own.
@@ -34,6 +35,10 @@ proc test045 { method {nops 10000} args } {
 		return
 	}
 	set args [convert_args $method $args]
+	if { $encrypt != 0 } {
+		puts "Test045 skipping for security"
+		return
+	}
 	set omethod [convert_method $method]
 
 	puts "Test045: Random tester on $method for $nops operations"

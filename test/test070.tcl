@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test070.tcl,v 11.22 2001/08/03 16:39:45 bostic Exp $
+# $Id: test070.tcl,v 11.27 2002/09/05 17:23:07 sandstro Exp $
 #
 # TEST	test070
 # TEST	Test of DB_CONSUME (Four consumers, 1000 items.)
@@ -16,6 +16,7 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
     {nitems 1000} {mode CONSUME } {start 0} {txn -txn} {tnum 70} args } {
 	source ./include.tcl
 	global alphabet
+	global encrypt
 
 	#
 	# If we are using an env, then skip this test.  It needs its own.
@@ -28,6 +29,10 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 	}
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
+	if { $encrypt != 0 } {
+		puts "Test0$tnum skipping for security"
+		return
+	}
 
 	puts "Test0$tnum: $method ($args) Test of DB_$mode flag to DB->get."
 	puts "\tUsing $txn environment."
@@ -44,7 +49,7 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 	set testfile test0$tnum.db
 
 	# Create environment
-	set dbenv [eval {berkdb env -create $txn -home } $testdir]
+	set dbenv [eval {berkdb_env -create $txn -home } $testdir]
 	error_check_good dbenv_create [is_valid_env $dbenv] TRUE
 
 	# Create database
@@ -88,7 +93,7 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 	}
 
 	# Wait for all children.
-	watch_procs 10
+	watch_procs $pidlist 10
 
 	# Verify: slurp all record numbers into list, sort, and make
 	# sure each appears exactly once.

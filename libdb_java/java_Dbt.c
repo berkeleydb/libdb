@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_Dbt.c,v 11.15 2001/04/30 18:34:13 dda Exp $";
+static const char revid[] = "$Id: java_Dbt.c,v 11.18 2002/06/20 11:11:55 mjc Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -32,32 +32,18 @@ JNIEXPORT jbyteArray JNICALL Java_com_sleepycat_db_Dbt_create_1data
   (JNIEnv *jnienv, jobject jthis)
 {
 	DBT_JAVAINFO *db_this;
-	jbyteArray arr;
+	jbyteArray arr = NULL;
 	int len;
 
 	db_this = get_DBT_JAVAINFO(jnienv, jthis);
 	if (verify_non_null(jnienv, db_this)) {
 		len = db_this->dbt.size;
-		arr = (*jnienv)->NewByteArray(jnienv, len);
+		if ((arr = (*jnienv)->NewByteArray(jnienv, len)) == NULL)
+			goto out;
 		(*jnienv)->SetByteArrayRegion(jnienv, arr, 0, len,
 					      db_this->dbt.data);
-		return (arr);
 	}
-	return (0);
-}
-
-JNIEXPORT jboolean JNICALL Java_com_sleepycat_db_Dbt_is_1big_1endian
-  (JNIEnv *jnienv, jclass jthis_class)
-{
-	u_int32_t one;
-	u_int8_t *pbyte;
-
-	COMPQUIET(jthis_class, NULL);
-	COMPQUIET(jnienv, NULL);
-
-	one = 1;
-	pbyte = (u_int8_t *)&one;
-	return (*pbyte == 1 ? 0 : 1);
+out:	return (arr);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_finalize

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: qam_rec.c,v 11.55 2001/10/04 21:28:35 bostic Exp $";
+static const char revid[] = "$Id: qam_rec.c,v 11.69 2002/08/06 06:17:10 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,12 +18,12 @@ static const char revid[] = "$Id: qam_rec.c,v 11.55 2001/10/04 21:28:35 bostic E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "db_am.h"
-#include "qam.h"
-#include "log.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/db_am.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/qam.h"
 
 /*
  * __qam_incfirst_recover --
@@ -99,8 +99,8 @@ __qam_incfirst_recover(dbenv, dbtp, lsnp, op, info)
 		cp = (QUEUE_CURSOR *)dbc->internal;
 		if (meta->first_recno == RECNO_OOB)
 			meta->first_recno++;
-		while (meta->first_recno != meta->cur_recno
-		    && !QAM_BEFORE_FIRST(meta, argp->recno + 1)) {
+		while (meta->first_recno != meta->cur_recno &&
+		    !QAM_BEFORE_FIRST(meta, argp->recno + 1)) {
 			if ((ret = __qam_position(dbc,
 			    &meta->first_recno, QAM_READ, &exact)) != 0)
 				goto err;
@@ -259,7 +259,7 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 	REC_INTRO(__qam_del_read, 1);
 
 	if ((ret = __qam_fget(file_dbp,
-	     &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
+	    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 		goto out;
 
 	modified = 0;
@@ -282,9 +282,9 @@ __qam_del_recover(dbenv, dbtp, lsnp, op, info)
 			goto err;
 		}
 		if (meta->first_recno == RECNO_OOB ||
-		    (QAM_BEFORE_FIRST(meta, argp->recno)
-		    && (meta->first_recno <= meta->cur_recno
-		    || meta->first_recno -
+		    (QAM_BEFORE_FIRST(meta, argp->recno) &&
+		    (meta->first_recno <= meta->cur_recno ||
+		    meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
 			(void)mpf->put(mpf, meta, DB_MPOOL_DIRTY);
@@ -391,9 +391,9 @@ __qam_delext_recover(dbenv, dbtp, lsnp, op, info)
 			goto err;
 		}
 		if (meta->first_recno == RECNO_OOB ||
-		    (QAM_BEFORE_FIRST(meta, argp->recno)
-		    && (meta->first_recno <= meta->cur_recno
-		    || meta->first_recno -
+		    (QAM_BEFORE_FIRST(meta, argp->recno) &&
+		    (meta->first_recno <= meta->cur_recno ||
+		    meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
 			(void)mpf->put(mpf, meta, DB_MPOOL_DIRTY);
@@ -488,14 +488,8 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 
 	cmp_n = log_compare(lsnp, &LSN(pagep));
 
-	if (cmp_n > 0 && DB_REDO(op)) {
-		/* Need to redo add - put the record on page */
-		if ((ret = __qam_pitem(dbc,
-		    pagep, argp->indx, argp->recno, &argp->data)) != 0)
-			goto err;
-		LSN(pagep) = *lsnp;
-		modified = 1;
-		/* Make sure pointers include this record. */
+	if (DB_REDO(op)) {
+		/* Fix meta-data page. */
 		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
 		if ((ret = mpf->get(mpf, &metapg, 0, &meta)) != 0)
 			goto err;
@@ -512,6 +506,18 @@ __qam_add_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret =
 		    mpf->put(mpf, meta, meta_dirty? DB_MPOOL_DIRTY : 0)) != 0)
 			goto err;
+
+		/* Now update the actual page if necessary. */
+		if (cmp_n > 0) {
+			/* Need to redo add - put the record on page */
+			if ((ret = __qam_pitem(dbc,
+			    pagep, argp->indx, argp->recno, &argp->data)) != 0)
+				goto err;
+			LSN(pagep) = *lsnp;
+			modified = 1;
+			/* Make sure pointers include this record. */
+			metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
+		}
 	} else if (DB_UNDO(op)) {
 		/*
 		 * Need to undo add
@@ -559,150 +565,4 @@ err:		(void)__qam_fput(file_dbp, argp->pgno, pagep, 0);
 	}
 
 out:	REC_CLOSE;
-}
-
-/*
- * __qam_delete_recover --
- *	Recovery function for delete of an extent.
- *
- * PUBLIC: int __qam_delete_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
- */
-int
-__qam_delete_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
-	DBT *dbtp;
-	DB_LSN *lsnp;
-	db_recops op;
-	void *info;
-{
-	__qam_delete_args *argp;
-	int ret;
-	char *backup, *real_back, *real_name;
-
-	COMPQUIET(info, NULL);
-
-	REC_PRINT(__qam_delete_print);
-
-	backup = real_back = real_name = NULL;
-	if ((ret = __qam_delete_read(dbenv, dbtp->data, &argp)) != 0)
-		goto out;
-
-	if (DB_REDO(op)) {
-		/*
-		 * On a recovery, as we recreate what was going on, we
-		 * recreate the creation of the file.  And so, even though
-		 * it committed, we need to delete it.  Try to delete it,
-		 * but it is not an error if that delete fails.
-		 */
-		if ((ret = __db_appname(dbenv, DB_APP_DATA,
-		    NULL, argp->name.data, 0, NULL, &real_name)) != 0)
-			goto out;
-		if (__os_exists(real_name, NULL) == 0) {
-			if ((ret = __os_unlink(dbenv, real_name)) != 0)
-				goto out;
-		}
-	} else if (DB_UNDO(op)) {
-		/*
-		 * Trying to undo.  File may or may not have been deleted.
-		 * Try to move the backup to the original.  If the backup
-		 * exists, then this is right.  If it doesn't exist, then
-		 * nothing will happen and that's OK.
-		 */
-		if ((ret = __db_backup_name(dbenv, argp->name.data,
-		    &backup, &argp->lsn)) != 0)
-			goto out;
-		if ((ret = __db_appname(dbenv,
-		    DB_APP_DATA, NULL, backup, 0, NULL, &real_back)) != 0)
-			goto out;
-		if ((ret = __db_appname(dbenv, DB_APP_DATA,
-		    NULL, argp->name.data, 0, NULL, &real_name)) != 0)
-			goto out;
-		if (__os_exists(real_back, NULL) == 0)
-			if ((ret =
-			     __os_rename(dbenv, real_back, real_name)) != 0)
-				goto out;
-	}
-	*lsnp = argp->prev_lsn;
-	ret = 0;
-
-out:	if (argp != NULL)
-		__os_free(dbenv, argp, 0);
-	if (backup != NULL)
-		__os_freestr(dbenv, backup);
-	if (real_back != NULL)
-		__os_freestr(dbenv, real_back);
-	if (real_name != NULL)
-		__os_freestr(dbenv, real_name);
-	return (ret);
-}
-
-/*
- * __qam_rename_recover --
- *	Recovery function for rename.
- *
- * PUBLIC: int __qam_rename_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
- */
-int
-__qam_rename_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
-	DBT *dbtp;
-	DB_LSN *lsnp;
-	db_recops op;
-	void *info;
-{
-	__qam_rename_args *argp;
-	char *new_name, *real_name;
-	int ret;
-
-	COMPQUIET(info, NULL);
-
-	REC_PRINT(__qam_rename_print);
-
-	new_name = real_name = NULL;
-
-	if ((ret = __qam_rename_read(dbenv, dbtp->data, &argp)) != 0)
-		goto out;
-
-	if (DB_REDO(op)) {
-		if ((ret = __db_appname(dbenv, DB_APP_DATA,
-		    NULL, argp->name.data, 0, NULL, &real_name)) != 0)
-			goto out;
-		if (__os_exists(real_name, NULL) == 0) {
-			if ((ret = __db_appname(dbenv, DB_APP_DATA,
-			    NULL, argp->newname.data, 0, NULL, &new_name)) != 0)
-				goto out;
-			if ((ret =
-			    __os_rename(dbenv, real_name, new_name)) != 0)
-				goto out;
-		}
-	} else {
-		if ((ret = __db_appname(dbenv, DB_APP_DATA,
-		    NULL, argp->newname.data, 0, NULL, &new_name)) != 0)
-			goto out;
-		if (__os_exists(new_name, NULL) == 0) {
-			if ((ret = __db_appname(dbenv,
-			    DB_APP_DATA, NULL, argp->name.data,
-			    0, NULL, &real_name)) != 0)
-				goto out;
-			if ((ret = __os_rename(dbenv,
-			    new_name, real_name)) != 0)
-				goto out;
-		}
-	}
-
-	*lsnp = argp->prev_lsn;
-	ret = 0;
-
-out:	if (argp != NULL)
-		__os_free(dbenv, argp, 0);
-
-	if (new_name != NULL)
-		__os_free(dbenv, new_name, 0);
-
-	if (real_name != NULL)
-		__os_free(dbenv, real_name, 0);
-
-	return (ret);
 }

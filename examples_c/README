@@ -1,6 +1,8 @@
-# $Id: README,v 11.4 2001/08/07 14:30:13 krinsky Exp $
+# $Id: README,v 11.5 2002/02/26 16:22:45 krinsky Exp $
 
 ex_access.c	Using just the DB access methods.
+
+ex_apprec	Application-specific recovery.
 
 ex_btrec.c	Using the BTREE access method with record numbers.
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env005.tcl,v 11.12 2001/09/29 05:26:00 krinsky Exp $
+# $Id: env005.tcl,v 11.15 2002/02/22 14:28:37 sandstro Exp $
 #
 # TEST	env005
 # TEST	Test that using subsystems without initializing them correctly
@@ -17,7 +17,7 @@ proc env005 { } {
 	env_cleanup $testdir
 	puts "\tEnv005.a: Creating env with no subsystems."
 
-	set e [berkdb env -create -home $testdir]
+	set e [berkdb_env_noerr -create -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE
 	set db [berkdb_open -create -btree $testdir/env005.db]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -33,9 +33,7 @@ proc env005 { } {
 	{ "log_file {1 1}"		"Env005.c2"}
 	{ "log_flush"			"Env005.c3"}
 	{ "log_put record"		"Env005.c4"}
-	{ "log_register $db xxx"	"Env005.c5"}
-	{ "log_stat"			"Env005.c6"}
-	{ "log_unregister $db"		"Env005.c7"}
+	{ "log_stat"			"Env005.c5"}
 	{ "txn"				"Env005.d0"}
 	{ "txn_checkpoint"		"Env005.d1"}
 	{ "txn_stat"			"Env005.d2"}

@@ -1,6 +1,7 @@
 <!--$Id: program.so,v 10.25 2001/11/14 02:18:56 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Java programming notes</title>
@@ -42,14 +43,14 @@ check for typical data-driven errors by watching return values without
 special casing exceptions.
 <p>An object of type <a href="../../api_java/deadlock_class.html">DbDeadlockException</a> is thrown when a deadlock
 would occur.
-<p>An object of type <a href="../../api_java/mem_class.html">DbMemoryException</a> is thrown when the system
+<p>An object of type <a href="../../api_java/memp_class.html">DbMemoryException</a> is thrown when the system
 cannot provide enough memory to complete the operation (the ENOMEM
 system error on UNIX).
 <p>An object of type <a href="../../api_java/runrec_class.html">DbRunRecoveryException</a>, a subclass of
 <a href="../../api_java/except_class.html">DbException</a>, is thrown when there is an error that requires a
 recovery of the database using <a href="../../utility/db_recover.html">db_recover</a>.
 <p><li>There is no class corresponding to the C++ DbMpoolFile class in the Berkeley DB
-Java API.  There is a subset of the memp_XXX methods in the <a href="../../api_java/dbenv_class.html">DbEnv</a>
+Java API.  There is a subset of the memp_XXX methods in the <a href="../../api_java/env_class.html">DbEnv</a>
 class.  This has been provided to allow you to perform certain
 administrative actions on underlying memory pools opened as a consequence
 of <a href="../../api_java/env_open.html">DbEnv.open</a>.  Direct access to other memory pool functionality

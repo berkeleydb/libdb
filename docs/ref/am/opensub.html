@@ -1,6 +1,7 @@
-<!--$Id: opensub.so,v 10.9 2001/07/18 20:10:40 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: opensub.so,v 10.13 2002/04/08 16:51:58 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Opening multiple databases in a single file</title>
@@ -40,23 +41,36 @@ is returned from such a call is a handle on a database whose key values
 are the names of the databases stored in the database file and whose data
 values are opaque objects.  No keys or data values may be modified or
 stored using this database handle.
-<p>Storing multiple databases in a single file is almost identical to
-storing each database in its own separate file.  The one crucial
-difference is how locking and the underlying memory pool services must
-to be configured.  As an example, consider two databases instantiated
-in two different physical files.  If access to each separate database
-is single-threaded, there is no reason to perform any locking of any
-kind, and the two databases may be read and written simultaneously.
-Further, there would be no requirement to create a shared database
-environment in which to open the databases.  Because multiple databases
-in a file exist in a single physical file, opening two databases in the
-same file requires that locking be enabled, unless access to the
-databases is known to be single-threaded, that is, only one of the
-databases is ever open at a time.  (As the locks for the two databases
-can only conflict during page allocation, this additional locking is
-unlikely to effect performance.)  Further, the databases must share an
-underlying memory pool so that per-physical-file information is updated
-correctly.
+<p>Storing multiple databases in a single file is identical to storing each
+database in a separate file with the exception of some configuration
+information and the likely need for locking and a shared underlying
+memory pool.
+<p>There are four types of configuration information which must be specified
+consistently for all databases in a file, rather than differing on a
+per-database basis.  They are: byte order, checksum and encryption
+behavior, and page size.  When creating additional databases in a file,
+any of these configuration values specified must be consistent with the
+existing databases in the file or an error will be returned.
+<p>
+An additional difference is how locking and the underlying memory pool
+services must to be configured.  As an example, consider two databases
+instantiated in two different physical files.  If access to each
+separate database is single-threaded, there is no reason to perform any
+locking of any kind, and the two databases may be read and written
+simultaneously.  Further, there would be no requirement to create a
+shared database environment in which to open the databases.
+<p>Because multiple databases in a file exist in a single physical file,
+opening two databases in the same file requires locking be enabled
+(unless access to the databases is known to be single-threaded, that
+is, only one of the databases is ever read or written at a time).
+As the locks for the two databases can only conflict during page
+allocation, this additional locking is unlikely to effect performance.
+<p>Also, because multiple databases in a file exist in a single physical
+file, opening two databases in the same file requires the databases
+share an underlying memory pool so that per-physical-file information
+common between the two databases is updated correctly.
+<p>In summary, applications opening multiple databases in a single file,
+will almost certainly need to create a shared database environment.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am/open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/get.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001
+# Copyright (c) 2001-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sindex.tcl,v 1.3 2001/05/19 01:04:00 krinsky Exp $
+# $Id: sindex.tcl,v 1.8 2002/05/07 17:15:46 krinsky Exp $
 #
 # Secondary index test driver and maintenance routines.
 #
@@ -21,7 +21,7 @@ global nsecondaries
 set nsecondaries 2
 
 # Run the secondary index tests.
-proc sindex { {verbose 1} args } {
+proc sindex { {verbose 0} args } {
 	global verbose_check_secondaries
 	set verbose_check_secondaries $verbose
 
@@ -40,6 +40,8 @@ proc sindex { {verbose 1} args } {
 					sindex003 [list $pm $sm $sm] $n
 					sindex004 [list $pm $sm $sm] $n
 				}
+
+				sindex006 [list $pm $sm $sm] $n
 			}
 		}
 	}

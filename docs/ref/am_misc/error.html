@@ -1,6 +1,7 @@
-<!--$Id: error.so,v 10.20 2001/05/07 19:28:38 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: error.so,v 10.21 2002/06/24 14:50:29 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Error support</title>
@@ -30,8 +31,8 @@ if ((ret = dbp-&gt;put(dbp, NULL, &key, &data, 0)) != 0) {
 <a href="../../api_c/db_err.html">DB-&gt;errx</a>.  These interfaces work like the ANSI C X3.159-1989 (ANSI C) printf
 interface, taking a printf-style format string and argument list, and
 writing a message constructed from the format string and arguments.
-<p>The <a href="../../api_c/db_err.html">DB-&gt;err</a> function appends the standard error string to the constructed
-message; the <a href="../../api_c/db_err.html">DB-&gt;errx</a> function does not.  These interfaces provide simpler
+<p>The <a href="../../api_c/db_err.html">DB-&gt;err</a> method appends the standard error string to the constructed
+message; the <a href="../../api_c/db_err.html">DB-&gt;errx</a> method does not.  These interfaces provide simpler
 ways of displaying Berkeley DB error messages.  For example, if your application
 tracks session IDs in a variable called session_id, it can include that
 information in its error messages:
@@ -43,8 +44,8 @@ int ret;
 <p>
 (void)dbp-&gt;set_errpfx(dbp, program_name);
 <p>
-if ((ret =
-	dbp-&gt;open(dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+if ((ret = dbp-&gt;open(dbp,
+    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 	dbp-&gt;err(dbp, ret, "%s", DATABASE);
 	dbp-&gt;errx(dbp,
 		"contact your system administrator: session ID was %d",

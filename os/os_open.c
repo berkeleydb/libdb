@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_open.c,v 11.24 2001/06/13 15:54:49 bostic Exp $";
+static const char revid[] = "$Id: os_open.c,v 11.37 2002/06/21 20:35:16 sandstro Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -41,6 +41,15 @@ __os_open(dbenv, name, flags, mode, fhp)
 	int oflags, ret;
 
 	oflags = 0;
+
+#ifdef DIAGNOSTIC
+#define	OKFLAGS								\
+	(DB_OSO_CREATE | DB_OSO_DIRECT | DB_OSO_EXCL | DB_OSO_LOG |	\
+	 DB_OSO_RDONLY | DB_OSO_REGION | DB_OSO_SEQ | DB_OSO_TEMP |	\
+	 DB_OSO_TRUNC)
+	if ((ret = __db_fchk(dbenv, "__os_open", flags, OKFLAGS)) != 0)
+		return (ret);
+#endif
 
 #if defined(O_BINARY)
 	/*
@@ -84,6 +93,11 @@ __os_open(dbenv, name, flags, mode, fhp)
 	if (LF_ISSET(DB_OSO_TRUNC))
 		oflags |= O_TRUNC;
 
+#ifdef HAVE_O_DIRECT
+	if (LF_ISSET(DB_OSO_DIRECT))
+		oflags |= O_DIRECT;
+#endif
+
 #ifdef HAVE_QNX
 	if (LF_ISSET(DB_OSO_REGION))
 		return (__os_region_open(dbenv, name, oflags, mode, fhp));
@@ -91,6 +105,11 @@ __os_open(dbenv, name, flags, mode, fhp)
 	/* Open the file. */
 	if ((ret = __os_openhandle(dbenv, name, oflags, mode, fhp)) != 0)
 		return (ret);
+
+#ifdef HAVE_DIRECTIO
+	if (LF_ISSET(DB_OSO_DIRECT))
+		(void)directio(fhp->fd, DIRECTIO_ON);
+#endif
 
 	/*
 	 * Delete any temporary file.
@@ -102,8 +121,18 @@ __os_open(dbenv, name, flags, mode, fhp)
 	 * reasonable way to avoid the race (playing signal games isn't worth
 	 * the portability nightmare), so we just live with it.
 	 */
-	if (LF_ISSET(DB_OSO_TEMP))
+	if (LF_ISSET(DB_OSO_TEMP)) {
+#if defined(HAVE_UNLINK_WITH_OPEN_FAILURE) || defined(CONFIG_TEST)
+		if ((ret = __os_strdup(dbenv, name, &fhp->name)) != 0) {
+			(void)__os_closehandle(dbenv, fhp);
+			(void)__os_unlink(dbenv, name);
+			return (ret);
+		}
+		F_SET(fhp, DB_FH_UNLINK);
+#else
 		(void)__os_unlink(dbenv, name);
+#endif
+	}
 
 	return (0);
 }
@@ -136,7 +165,7 @@ __os_region_open(dbenv, name, oflags, mode, fhp)
 		if (fcntl(fhp->fd, F_SETFD, 1) == -1) {
 			ret = __os_get_errno();
 			__db_err(dbenv, "fcntl(F_SETFD): %s", strerror(ret));
-			__os_closehandle(fhp);
+			__os_closehandle(dbenv, fhp);
 		} else
 #endif
 		F_SET(fhp, DB_FH_VALID);
@@ -147,7 +176,7 @@ __os_region_open(dbenv, name, oflags, mode, fhp)
 	 */
 err:
 	if (newname != NULL)
-		__os_free(dbenv, newname, 0);
+		__os_free(dbenv, newname);
 	return (ret);
 }
 
@@ -208,7 +237,7 @@ __os_shmname(dbenv, name, newnamep)
 		 * If we have a path component, copy and return it.
 		 */
 		ret = __os_strdup(dbenv, p, newnamep);
-		__os_free(dbenv, tmpname, 0);
+		__os_free(dbenv, tmpname);
 		return (ret);
 	}
 
@@ -221,7 +250,7 @@ __os_shmname(dbenv, name, newnamep)
 		return (ret);
 	p[0] = '/';
 	memcpy(&p[1], tmpname, size-1);
-	__os_free(dbenv, tmpname, 0);
+	__os_free(dbenv, tmpname);
 	*newnamep = p;
 	return (0);
 }

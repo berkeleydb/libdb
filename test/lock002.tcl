@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lock002.tcl,v 11.16 2001/10/10 16:22:10 ubell Exp $
+# $Id: lock002.tcl,v 11.19 2002/04/25 19:30:29 sue Exp $
 #
 # TEST	lock002
 # TEST	Exercise basic multi-process aspects of lock.
@@ -28,11 +28,11 @@ proc mlock_open { maxl nmodes conflicts } {
 	global lock_curid
 	global lock_maxid
 
-	puts "Lock002.a multi-process open/close test"
+	puts "\tLock002.a multi-process open/close test"
 
 	# Open/Create region here.  Then close it and try to open from
 	# other test process.
-	set env_cmd [concat "berkdb env -create -mode 0644 \
+	set env_cmd [concat "berkdb_env -create -mode 0644 \
 	    -lock -lock_max $maxl -lock_conflict" \
 	    [list [list $nmodes $conflicts]] "-home $testdir"]
 	set local_env [eval $env_cmd]
@@ -43,7 +43,7 @@ proc mlock_open { maxl nmodes conflicts } {
 	error_check_good env_close $ret 0
 
 	# Open from other test process
-	set env_cmd "berkdb env -mode 0644 -home $testdir"
+	set env_cmd "berkdb_env -mode 0644 -home $testdir"
 
 	set f1 [open |$tclsh_path r+]
 	puts $f1 "source $test_path/test.tcl"
@@ -62,7 +62,7 @@ proc mlock_open { maxl nmodes conflicts } {
 	error_check_good remote:lock_close $ret 0
 
 	# Try opening for create.  Will succeed because region exists.
-	set env_cmd [concat "berkdb env -create -mode 0644 \
+	set env_cmd [concat "berkdb_env -create -mode 0644 \
 	    -lock -lock_max $maxl -lock_conflict" \
 	    [list [list $nmodes $conflicts]] "-home $testdir"]
 	set local_env [eval $env_cmd]
@@ -80,10 +80,10 @@ proc mlock_open { maxl nmodes conflicts } {
 proc mlock_wait { } {
 	source ./include.tcl
 
-	puts "Lock002.b multi-process get/put wait test"
+	puts "\tLock002.b multi-process get/put wait test"
 
 	# Open region locally
-	set env_cmd "berkdb env -lock -home $testdir"
+	set env_cmd "berkdb_env -lock -home $testdir"
 	set local_env [eval $env_cmd]
 	error_check_good env_open [is_valid_env $local_env] TRUE
 

@@ -79,8 +79,7 @@ ccpentium
 	-I. \
 	-I$(WIND_BASE)/target/h \
 	-I$(PRJ_DIR)/../.. \
-	-I$(PRJ_DIR)/../../../include \
-	-I$(PRJ_DIR)/../../../include_auto \
+	-I$(PRJ_DIR)/../../.. \
 	-DCPU=PENTIUM2
 <END>
 
@@ -220,8 +219,7 @@ ccpentium
 	-I. \
 	-I$(WIND_BASE)/target/h \
 	-I$(PRJ_DIR)/../.. \
-	-I$(PRJ_DIR)/../../../include \
-	-I$(PRJ_DIR)/../../../include_auto \
+	-I$(PRJ_DIR)/../../.. \
 	-DCPU=PENTIUM2
 <END>
 
@@ -361,8 +359,7 @@ ccpentium
 	-I. \
 	-I$(WIND_BASE)/target/h \
 	-I$(PRJ_DIR)/../.. \
-	-I$(PRJ_DIR)/../../../include \
-	-I$(PRJ_DIR)/../../../include_auto \
+	-I$(PRJ_DIR)/../../.. \
 	-DCPU=PENTIUM
 <END>
 

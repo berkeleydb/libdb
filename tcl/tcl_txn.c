@@ -8,7 +8,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: tcl_txn.c,v 11.44 2001/10/11 18:32:29 ubell Exp $";
+static const char revid[] = "$Id: tcl_txn.c,v 11.57 2002/08/06 06:21:36 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,7 @@ static const char revid[] = "$Id: tcl_txn.c,v 11.44 2001/10/11 18:32:29 ubell Ex
 #endif
 
 #include "db_int.h"
-#include "tcl_db.h"
+#include "dbinc/tcl_db.h"
 
 static int tcl_TxnCommit __P((Tcl_Interp *,
 	       int, Tcl_Obj * CONST *, DB_TXN *, DBTCL_INFO *));
@@ -37,7 +37,7 @@ static int txn_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST *));
  */
 void
 _TxnInfoDelete(interp, txnip)
-	Tcl_Interp *interp;             /* Interpreter */
+	Tcl_Interp *interp;		/* Interpreter */
 	DBTCL_INFO *txnip;		/* Info for txn */
 {
 	DBTCL_INFO *nextp, *p;
@@ -114,7 +114,8 @@ tcl_TxnCheckpoint(interp, objc, objv, envp)
 	}
 	_debug_check();
 	ret = envp->txn_checkpoint(envp, (u_int32_t)kb, (u_int32_t)min, 0);
-	result = _ReturnSetup(interp, ret, "txn checkpoint");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "txn checkpoint");
 	return (result);
 }
 
@@ -133,23 +134,27 @@ tcl_Txn(interp, objc, objv, envp, envip)
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	static char *txnopts[] = {
+#if CONFIG_TEST
 		"-dirty",
 		"-lock_timeout",
+		"-txn_timeout",
+#endif
 		"-nosync",
 		"-nowait",
 		"-parent",
 		"-sync",
-		"-txn_timeout",
 		NULL
 	};
 	enum txnopts {
+#if CONFIG_TEST
 		TXNDIRTY,
 		TXN_LOCK_TIMEOUT,
+		TXN_TIMEOUT,
+#endif
 		TXNNOSYNC,
 		TXNNOWAIT,
 		TXNPARENT,
-		TXNSYNC,
-		TXN_TIMEOUT
+		TXNSYNC
 	};
 	DBTCL_INFO *ip;
 	DB_TXN *parent;
@@ -174,37 +179,9 @@ tcl_Txn(interp, objc, objv, envp, envip)
 		}
 		i++;
 		switch ((enum txnopts)optindex) {
-		case TXNPARENT:
-			if (i == objc) {
-				Tcl_WrongNumArgs(interp, 2, objv,
-				    "?-parent txn?");
-				result = TCL_ERROR;
-				break;
-			}
-			arg = Tcl_GetStringFromObj(objv[i++], NULL);
-			parent = NAME_TO_TXN(arg);
-			if (parent == NULL) {
-				snprintf(msg, MSG_SIZE,
-				    "Invalid parent txn: %s\n",
-				    arg);
-				Tcl_SetResult(interp, msg, TCL_VOLATILE);
-				return (TCL_ERROR);
-			}
-			break;
+#ifdef CONFIG_TEST
 		case TXNDIRTY:
 			flag |= DB_DIRTY_READ;
-			break;
-		case TXNNOWAIT:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
-			flag |= DB_TXN_NOWAIT;
-			break;
-		case TXNSYNC:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
-			flag |= DB_TXN_SYNC;
-			break;
-		case TXNNOSYNC:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
-			flag |= DB_TXN_NOSYNC;
 			break;
 		case TXN_LOCK_TIMEOUT:
 			lk_timeflag = DB_SET_LOCK_TIMEOUT;
@@ -223,6 +200,36 @@ getit:
 			if (result != TCL_OK)
 				return (TCL_ERROR);
 			break;
+#endif
+		case TXNNOSYNC:
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
+			flag |= DB_TXN_NOSYNC;
+			break;
+		case TXNNOWAIT:
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
+			flag |= DB_TXN_NOWAIT;
+			break;
+		case TXNPARENT:
+			if (i == objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-parent txn?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			parent = NAME_TO_TXN(arg);
+			if (parent == NULL) {
+				snprintf(msg, MSG_SIZE,
+				    "Invalid parent txn: %s\n",
+				    arg);
+				Tcl_SetResult(interp, msg, TCL_VOLATILE);
+				return (TCL_ERROR);
+			}
+			break;
+		case TXNSYNC:
+			FLAG_CHECK2(flag, DB_DIRTY_READ);
+			flag |= DB_TXN_SYNC;
+			break;
 		}
 	}
 	snprintf(newname, sizeof(newname), "%s.txn%d",
@@ -235,7 +242,8 @@ getit:
 	}
 	_debug_check();
 	ret = envp->txn_begin(envp, parent, &txn, flag);
-	result = _ReturnSetup(interp, ret, "txn");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "txn");
 	if (result == TCL_ERROR)
 		_DeleteInfo(ip);
 	else {
@@ -257,7 +265,8 @@ getit:
 			ret = txn->set_timeout(txn, tx_time, tx_timeflag);
 			if (ret != 0) {
 				result =
-				    _ReturnSetup(interp, ret, "set_timeout");
+				    _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+					"set_timeout");
 				_DeleteInfo(ip);
 			}
 		}
@@ -265,7 +274,8 @@ getit:
 			ret = txn->set_timeout(txn, lk_time, lk_timeflag);
 			if (ret != 0) {
 				result =
-				    _ReturnSetup(interp, ret, "set_timeout");
+				    _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+					"set_timeout");
 				_DeleteInfo(ip);
 			}
 		}
@@ -286,21 +296,6 @@ tcl_TxnStat(interp, objc, objv, envp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_ENV *envp;			/* Environment pointer */
 {
-#define	MAKE_STAT_LSN(s, lsn)						\
-do {									\
-	myobjc = 2;							\
-	myobjv[0] = Tcl_NewLongObj((long)(lsn)->file);			\
-	myobjv[1] = Tcl_NewLongObj((long)(lsn)->offset);		\
-	lsnlist = Tcl_NewListObj(myobjc, myobjv);			\
-	myobjc = 2;							\
-	myobjv[0] = Tcl_NewStringObj((s), strlen(s));			\
-	myobjv[1] = lsnlist;						\
-	thislist = Tcl_NewListObj(myobjc, myobjv);			\
-	result = Tcl_ListObjAppendElement(interp, res, thislist);	\
-	if (result != TCL_OK)						\
-		goto error;						\
-} while (0);
-
 	DBTCL_INFO *ip;
 	DB_TXN_ACTIVE *p;
 	DB_TXN_STAT *sp;
@@ -318,7 +313,8 @@ do {									\
 	}
 	_debug_check();
 	ret = envp->txn_stat(envp, &sp, 0);
-	result = _ReturnSetup(interp, ret, "txn stat");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "txn stat");
 	if (result == TCL_ERROR)
 		return (result);
 
@@ -332,7 +328,6 @@ do {									\
 	 */
 	MAKE_STAT_LIST("Region size", sp->st_regsize);
 	MAKE_STAT_LSN("LSN of last checkpoint", &sp->st_last_ckp);
-	MAKE_STAT_LSN("LSN of pending checkpoint", &sp->st_pending_ckp);
 	MAKE_STAT_LIST("Time of last checkpoint", sp->st_time_ckp);
 	MAKE_STAT_LIST("Last txn ID allocated", sp->st_last_txnid);
 	MAKE_STAT_LIST("Max Txns", sp->st_maxtxns);
@@ -362,7 +357,7 @@ do {									\
 		}
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_free(envp, sp, 0);
+	free(sp);
 	return (result);
 }
 
@@ -394,7 +389,8 @@ tcl_TxnTimeout(interp, objc, objv, envp)
 		return (result);
 	_debug_check();
 	ret = envp->set_timeout(envp, (u_int32_t)timeout, DB_SET_TXN_TIMEOUT);
-	result = _ReturnSetup(interp, ret, "lock timeout");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "lock timeout");
 	return (result);
 }
 
@@ -404,25 +400,29 @@ tcl_TxnTimeout(interp, objc, objv, envp)
  */
 static int
 txn_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;          /* Txn handle */
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	ClientData clientData;		/* Txn handle */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 {
 	static char *txncmds[] = {
-		"abort",
-		"commit",
+#if CONFIG_TEST
 		"discard",
 		"id",
 		"prepare",
+#endif
+		"abort",
+		"commit",
 		NULL
 	};
 	enum txncmds {
-		TXNABORT,
-		TXNCOMMIT,
+#if CONFIG_TEST
 		TXNDISCARD,
 		TXNID,
-		TXNPREPARE
+		TXNPREPARE,
+#endif
+		TXNABORT,
+		TXNCOMMIT
 	};
 	DBTCL_INFO *txnip;
 	DB_TXN *txnp;
@@ -453,6 +453,20 @@ txn_Cmd(clientData, interp, objc, objv)
 
 	res = NULL;
 	switch ((enum txncmds)cmdindex) {
+#if CONFIG_TEST
+	case TXNDISCARD:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		ret = txnp->discard(txnp, 0);
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "txn discard");
+		_TxnInfoDelete(interp, txnip);
+		(void)Tcl_DeleteCommand(interp, txnip->i_name);
+		_DeleteInfo(txnip);
+		break;
 	case TXNID:
 		if (objc != 2) {
 			Tcl_WrongNumArgs(interp, 1, objv, NULL);
@@ -478,26 +492,10 @@ txn_Cmd(clientData, interp, objc, objv)
 		 * we do not call _DeleteInfo on ourselves.
 		 */
 		_TxnInfoDelete(interp, txnip);
-		result = _ReturnSetup(interp, ret, "txn prepare");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "txn prepare");
 		break;
-	case TXNCOMMIT:
-		result = tcl_TxnCommit(interp, objc, objv, txnp, txnip);
-		_TxnInfoDelete(interp, txnip);
-		(void)Tcl_DeleteCommand(interp, txnip->i_name);
-		_DeleteInfo(txnip);
-		break;
-	case TXNDISCARD:
-		if (objc != 2) {
-			Tcl_WrongNumArgs(interp, 1, objv, NULL);
-			return (TCL_ERROR);
-		}
-		_debug_check();
-		ret = txnp->discard(txnp, 0);
-		result = _ReturnSetup(interp, ret, "txn discard");
-		_TxnInfoDelete(interp, txnip);
-		(void)Tcl_DeleteCommand(interp, txnip->i_name);
-		_DeleteInfo(txnip);
-		break;
+#endif
 	case TXNABORT:
 		if (objc != 2) {
 			Tcl_WrongNumArgs(interp, 1, objv, NULL);
@@ -505,7 +503,14 @@ txn_Cmd(clientData, interp, objc, objv)
 		}
 		_debug_check();
 		ret = txnp->abort(txnp);
-		result = _ReturnSetup(interp, ret, "txn abort");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "txn abort");
+		_TxnInfoDelete(interp, txnip);
+		(void)Tcl_DeleteCommand(interp, txnip->i_name);
+		_DeleteInfo(txnip);
+		break;
+	case TXNCOMMIT:
+		result = tcl_TxnCommit(interp, objc, objv, txnp, txnip);
 		_TxnInfoDelete(interp, txnip);
 		(void)Tcl_DeleteCommand(interp, txnip->i_name);
 		_DeleteInfo(txnip);
@@ -522,9 +527,9 @@ txn_Cmd(clientData, interp, objc, objv)
 
 static int
 tcl_TxnCommit(interp, objc, objv, txnp, txnip)
-	Tcl_Interp *interp;             /* Interpreter */
-	int objc;                       /* How many arguments? */
-	Tcl_Obj *CONST objv[];          /* The argument objects */
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_TXN *txnp;			/* Transaction pointer */
 	DBTCL_INFO *txnip;		/* Info pointer */
 {
@@ -566,10 +571,12 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
 
 	_debug_check();
 	ret = txnp->commit(txnp, flag);
-	result = _ReturnSetup(interp, ret, "txn commit");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "txn commit");
 	return (result);
 }
 
+#if CONFIG_TEST
 /*
  * tcl_TxnRecover --
  *
@@ -623,7 +630,8 @@ for (i = 0; i < count; i++) {						\
 	}
 	_debug_check();
 	ret = envp->txn_recover(envp, prep, DBTCL_PREP, &count, DB_FIRST);
-	result = _ReturnSetup(interp, ret, "txn recover");
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "txn recover");
 	if (result == TCL_ERROR)
 		return (result);
 	res = Tcl_NewObj();
@@ -636,7 +644,8 @@ for (i = 0; i < count; i++) {						\
 	while (count == DBTCL_PREP) {
 		ret = envp->txn_recover(
 		    envp, prep, DBTCL_PREP, &count, DB_NEXT);
-		result = _ReturnSetup(interp, ret, "txn recover");
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "txn recover");
 		if (result == TCL_ERROR)
 			return (result);
 		DO_PREPLIST(count);
@@ -645,3 +654,4 @@ for (i = 0; i < count; i++) {						\
 error:
 	return (result);
 }
+#endif

@@ -1,6 +1,7 @@
-<!--$Id: where.so,v 10.28 2001/10/31 21:40:23 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: where.so,v 10.31 2002/09/05 15:58:01 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Where does Berkeley DB run?</title>
@@ -17,8 +18,12 @@
 <p>Berkeley DB requires only underlying IEEE/ANSI Std 1003.1 (POSIX) system calls and can be
 ported easily to new architectures by adding stub routines to connect
 the native system interfaces to the Berkeley DB POSIX-style system calls.
-<p>Berkeley DB will autoconfigure and run on almost any modern UNIX system, and
-even on most historical UNIX platforms.  See
+See <a href="../../ref/distrib/port.html">Porting Berkeley DB to new
+architectures</a> for more information.
+<p>Berkeley DB will autoconfigure and run on almost any modern UNIX, POSIX or
+Linux systems, and on most historical UNIX platforms.  Berkeley DB will
+autoconfigure and run on almost any GNU gcc toolchain-based embedded
+platform, including Cygwin, Embedix, OpenLinux and others.  See
 <a href="../../ref/build_unix/intro.html">Building for UNIX systems</a> for
 more information.
 <p>The Berkeley DB distribution includes support for QNX Neutrino.  See
@@ -29,8 +34,10 @@ and project files for Tornado 2.0.  See
 <a href="../../ref/build_vxworks/intro.html">Building for VxWorks</a> for more
 information.
 <p>The Berkeley DB distribution includes support for Windows/95, Windows/98,
-Windows/NT, Windows/2000 and Windows/XP, via the MSVC 5 and 6
-development environments.  See <a href="../../ref/build_win/intro.html">Building for Windows systems</a> for more information.
+Windows/NT, Windows/2000 and Windows/XP, via the Microsoft Visual C++
+6.0 and .NET development environments.  See
+<a href="../../ref/build_win/intro.html">Building for Windows systems</a>
+for more information.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/intro/distrib.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/products.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

@@ -3,7 +3,7 @@
 /* Header for class com_sleepycat_db_Dbt */
 
 #ifndef _Included_com_sleepycat_db_Dbt
-#define	_Included_com_sleepycat_db_Dbt
+#define _Included_com_sleepycat_db_Dbt
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,14 +30,6 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_init
  */
 JNIEXPORT jbyteArray JNICALL Java_com_sleepycat_db_Dbt_create_1data
   (JNIEnv *, jobject);
-
-/*
- * Class:     com_sleepycat_db_Dbt
- * Method:    is_big_endian
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_sleepycat_db_Dbt_is_1big_1endian
-  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

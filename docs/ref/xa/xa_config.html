@@ -1,6 +1,7 @@
-<!--$Id: xa_config.so,v 10.21 2001/03/30 20:34:54 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: xa_config.so,v 10.22 2002/01/18 19:09:06 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Configuring Berkeley DB with the Tuxedo System</title>
@@ -50,7 +51,7 @@ BERKELEY-DB) and dir is the directory for the Berkeley DB home environment
 <p>Because Tuxedo resource manager startup accepts only a single string
 for configuration, any environment customization that might have been
 done via the config parameter to <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> must instead be done
-by placing a <a href="../../ref/env/naming.html#DB_CONFIG">DB_CONFIG</a> file in the Berkeley DB environment directory.
+by placing a <a href="../../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file in the Berkeley DB environment directory.
 See <a href="../../ref/env/naming.html">Berkeley DB File Naming</a> for further
 information.
 <p>Consider the following configuration.  We have built a transaction
@@ -61,10 +62,10 @@ to be <b>/home/dbhome</b>, our database files to be maintained in
 <p>The GROUPS section of the ubb file might look like the following
 <p><blockquote><pre>group_tm LMID=myname GRPNO=1 TMSNAME=DBRM TMSCOUNT=2 \
 	OPENINFO="BERKELEY-DB:/home/dbhome"</pre></blockquote>
-<p>There would be a <a href="../../ref/env/naming.html#DB_CONFIG">DB_CONFIG</a> configuration file in the directory
+<p>There would be a <a href="../../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> configuration file in the directory
 <b>/home/dbhome</b> that contained the following two lines:
-<p><blockquote><pre>DB_DATA_DIR	/home/datafiles
-DB_LOG_DIR	/home/log
+<p><blockquote><pre>set_data_dir	/home/datafiles
+set_log_dir	/home/log
 </pre></blockquote>
 <p>Finally, the ubb file must be translated into a binary version using
 Tuxedo's <b>tmloadcf</b>(1) utility, and then the pathname of that

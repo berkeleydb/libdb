@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb011.tcl,v 11.6 2001/08/03 16:39:31 bostic Exp $
+# $Id: sdb011.tcl,v 11.9 2002/07/11 18:53:47 sandstro Exp $
 #
 # TEST	subdb011
 # TEST	Test deleting Subdbs with overflow pages
@@ -20,18 +20,51 @@ proc subdb011 { method {ndups 13} {nsubdbs 10} args} {
 		puts "Subdb011: skipping for method $method"
 		return
 	}
-
-	puts "Subdb011: $method ($args) overflow dups with \
-	    filename=key filecontents=data pairs"
+	set txnenv 0
+	set envargs ""
+	set max_files 0
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/subdb011.db
+		set env NULL
+		set tfpath $testfile
+	} else {
+		set testfile subdb011.db
+		incr eindex
+		set env [lindex $args $eindex]
+		set envargs " -env $env "
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			append envargs " -auto_commit "
+			set max_files 50
+			if { $ndups == 13 } {
+				set ndups 7
+			}
+		}
+		set testdir [get_home $env]
+		set tfpath $testdir/$testfile
+	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/subdb011.db
 
-	cleanup $testdir NULL
+	cleanup $testdir $env
+	set txn ""
 
 	# Here is the loop where we put and get each key/data pair
 	set file_list [get_file_list]
-	puts "\tSubdb011.a: Create each subdb and dups"
+	if { $max_files != 0 && [llength $file_list] > $max_files } {
+		set fend [expr $max_files - 1]
+		set file_list [lrange $file_list 0 $fend]
+	}
+	set flen [llength $file_list]
+	puts "Subdb011: $method ($args) $ndups overflow dups with \
+	    $flen filename=key filecontents=data pairs"
+
+	puts "\tSubdb011.a: Create each of $nsubdbs subdbs and dups"
 	set slist {}
 	set i 0
 	set count 0
@@ -55,9 +88,17 @@ proc subdb011 { method {ndups 13} {nsubdbs 10} args} {
 		error_check_good dbopen [is_valid_db $db] TRUE
 		for {set dup 0} {$dup < $ndups} {incr dup} {
 			set data $dup:$filecont
-			set ret [eval {$db put} {$key \
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
+			set ret [eval {$db put} $txn {$key \
 			    [chop_data $method $data]}]
 			error_check_good put $ret 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 		error_check_good dbclose [$db close] 0
 		incr i
@@ -94,8 +135,9 @@ proc subdb011 { method {ndups 13} {nsubdbs 10} args} {
 		#
 		# Delete the one we did from the list
 		set slist [lreplace $slist $sindex $sindex]
-		error_check_good file_exists_before [file exists $testfile] 1
-		error_check_good db_remove [berkdb dbremove $testfile $subdb] 0
+		error_check_good file_exists_before [file exists $tfpath] 1
+		error_check_good db_remove [eval {berkdb dbremove} $envargs \
+		    {$testfile $subdb}] 0
 	}
 }
 

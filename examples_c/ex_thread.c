@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_thread.c,v 11.26 2001/08/06 13:51:27 bostic Exp $
+ * $Id: ex_thread.c,v 11.34 2002/08/15 14:37:13 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -19,8 +19,6 @@
 #include <time.h>
 
 #ifdef _WIN32
-extern int optind;
-extern char *optarg;
 extern int getopt(int, char * const *, const char *);
 #else
 #include <unistd.h>
@@ -34,9 +32,9 @@ extern int getopt(int, char * const *, const char *);
  */
 extern int sched_yield __P((void));		/* Pthread yield function. */
 
-int	db_init __P((char *, DB_ENV **));
+int	db_init __P((const char *));
 void   *deadlock __P((void *));
-void	fatal __P((char *, int, int));
+void	fatal __P((const char *, int, int));
 void	onint __P((int));
 int	main __P((int, char *[]));
 int	reader __P((int));
@@ -98,11 +96,13 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int errno, optind;
+	DB_TXN *txnp;
 	pthread_t *tids;
 	int ch, i, ret;
-	char *home;
+	const char *home;
 	void *retp;
 
+	txnp = NULL;
 	nlist = 1000;
 	nreaders = nwriters = 4;
 	home = "TESTDIR";
@@ -146,7 +146,7 @@ main(argc, argv)
 	(void)remove(DATABASE);
 
 	/* Initialize the database environment. */
-	if ((ret = db_init(home, &dbenv)) != 0)
+	if ((ret = db_init(home)) != 0)
 		return (ret);
 
 	/* Initialize the database. */
@@ -159,10 +159,18 @@ main(argc, argv)
 		dbp->err(dbp, ret, "set_pagesize");
 		goto err;
 	}
-	if ((ret = dbp->open(dbp,
+
+	if ((ret = dbenv->txn_begin(dbenv, NULL, &txnp, 0)) != 0)
+		fatal("txn_begin", ret, 1);
+	if ((ret = dbp->open(dbp, txnp,
 	     DATABASE, NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0664)) != 0) {
 		dbp->err(dbp, ret, "%s: open", DATABASE);
 		goto err;
+	} else {
+		ret = txnp->commit(txnp, 0);
+		txnp = NULL;
+		if (ret != 0)
+			goto err;
 	}
 
 	nthreads = nreaders + nwriters + 2;
@@ -199,7 +207,9 @@ main(argc, argv)
 	printf("Exiting\n");
 	stats();
 
-err:	(void)dbp->close(dbp, 0);
+err:	if (txnp != NULL)
+		(void)txnp->abort(txnp);
+	(void)dbp->close(dbp, 0);
 	(void)dbenv->close(dbenv, 0);
 
 	return (EXIT_SUCCESS);
@@ -422,11 +432,9 @@ stats()
  *	Initialize the environment.
  */
 int
-db_init(home, dbenvp)
-	char *home;
-	DB_ENV **dbenvp;
+db_init(home)
+	const char *home;
 {
-	DB_ENV *dbenv;
 	int ret;
 
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
@@ -452,7 +460,6 @@ db_init(home, dbenvp)
 		return (EXIT_FAILURE);
 	}
 
-	*dbenvp = dbenv;
 	return (0);
 }
 
@@ -579,7 +586,7 @@ word()
  */
 void
 fatal(msg, err, syserr)
-	char *msg;
+	const char *msg;
 	int err, syserr;
 {
 	fprintf(stderr, "%s: ", progname);

@@ -1,6 +1,7 @@
-<!--$Id: reclimit.so,v 11.24 2001/08/13 20:55:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: reclimit.so,v 11.27 2002/05/15 15:36:15 margo Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Berkeley DB recoverability</title>
@@ -50,29 +51,35 @@ system and the underlying hardware.  The interface requirements here are
 not as simple.
 <p>First, it is necessary to consider the underlying page size of the Berkeley DB
 databases.  The Berkeley DB library performs all database writes using the
-page size specified by the application.  These pages are not
-checksummed, and Berkeley DB assumes that they are written atomically.  This
-means that if the operating system performs filesystem I/O in blocks of
-different sizes than the database page size, it may increase the
-possibility for database corruption.  For example, assume that Berkeley DB is
-writing 32KB pages for a database, and the operating system does
-filesystem I/O in 16KB blocks.  If the operating system writes the first
-16KB of the database page successfully, but crashes before being able
-to write the second 16KB of the database, the database has been
-corrupted and this corruption will not be detected during recovery.
-For this reason, it may be important to select database page sizes that
-will be written as single block transfers by the underlying operating
-system.
+page size specified by the application, and Berkeley DB assumes pages are written
+atomically.  This means that if the operating system performs filesystem
+I/O in blocks of different sizes than the database page size, it may
+increase the possibility for database corruption.  For example, assume
+that Berkeley DB is writing 32KB pages for a database, and the operating
+system does filesystem I/O in 16KB blocks.  If the operating system
+writes the first 16KB of the database page successfully, but crashes
+before being able to write the second 16KB of the database, the database
+has been corrupted and this corruption may or may not be detected during
+recovery.  For this reason, it may be important to select database page
+sizes that will be written as single block transfers by the underlying
+operating system.  If you do not select a page size that the underlying
+operating system will write as a single block, you may want to configure
+the database to use checksums (see the <a href="../../api_c/db_set_flags.html#DB_CHKSUM_SHA1">DB_CHKSUM_SHA1</a> flag for
+more information).  By configuring checksums, you guarantee this kind
+of corruption will be detected at the expense of the CPU required to
+generate the checksums.  When such an error is detected, the only
+course of recovery is to perform catastrophic recovery to restore the
+database.
 <p>Second, if you are copying database files (either as part of doing a
 hot backup or creation of a hot failover area), there is an additional
 question related to the page size of the Berkeley DB databases.  You must copy
 databases atomically, in units of the database page size.  In other
 words, the reads made by the copy program must not be interleaved with
 writes by other threads of control, and the copy program must read the
-databases in chunks which are a multiple of the underlying database page
+databases in chunks that are a multiple of the underlying database page
 size.  Generally, this is not a problem, as operating systems already
 make this guarantee and system utilities normally read in power-of-2
-sized chunks which are larger than the largest possible Berkeley DB database
+sized chunks, which are larger than the largest possible Berkeley DB database
 page size.
 <p>However, we have seen one problem in this area because some releases of
 Solaris implemented the cp utility using the mmap system call rather
@@ -83,7 +90,7 @@ Using the dd utility instead of the cp utility (and specifying an
 appropriate block size), fixed the problem.  If you plan to use a system
 utility to copy database files, you may want to use a system call trace
 utility (for example, ktrace or truss) to check for an I/O size smaller
-or not a multiple of the database page size, and system calls other than
+or not a multiple of the database page size and system calls other than
 read.
 <p>Third, it is necessary to consider the behavior of the system's
 underlying stable storage hardware.  For example, consider a SCSI
@@ -101,28 +108,39 @@ be coherent after a crash.
 <p>If the underlying hardware can fail in any way so that only part of the
 block was written, the failure conditions are the same as those
 described previously for an operating system failure that writes only
-part of a logical database block.
-<p>For these reasons, it is important to select hardware that does not do
-partial writes and does not cache data writes (or does not return that
-the data has been written to stable storage until it has either been
-written to stable storage or the actual writing of all of the data is
-guaranteed, barring catastrophic hardware failure -- that is, your disk
-drive exploding).  You should also be aware that Berkeley DB does not protect
-against all cases of stable storage hardware failure, nor does it
-protect against hardware misbehavior.
+part of a logical database block.  In such cases, configuring the
+database for checksums will ensure the corruption is detected.
+<p>For these reasons, it may be important to select hardware that does not
+do partial writes and does not cache data writes (or does not return
+that the data has been written to stable storage until it has either
+been written to stable storage or the actual writing of all of the data
+is guaranteed, barring catastrophic hardware failure -- that is, your
+disk drive exploding).
 <p>If the disk drive on which you are storing your databases explodes, you
 can perform normal Berkeley DB catastrophic recovery, because it requires only
-a snapshot of your databases plus all of the log files you have archived
-since those snapshots were taken.  In this case, you will lose no
-database changes at all.  If the disk drive on which you are storing
-your log files explodes, you can still perform catastrophic recovery,
-but you will lose any database changes that were part of transactions
-committed since your last archival of the log files.  For this reason,
-storing your databases and log files on different disks should be
-considered a safety measure as well as a performance enhancement.
-<p>Finally, if your hardware misbehaves (for example, a SCSI controller
-writes incorrect data to the disk), Berkeley DB will not detect it and your
-data may be corrupted.
+a snapshot of your databases plus the log files you have archived since
+those snapshots were taken.  In this case, you should lose no database
+changes at all.
+<p>If the disk drive on which you are storing your log files explodes, you
+can also perform catastrophic recovery, but you will lose any database
+changes made as part of  transactions committed since your last archival
+of the log files.   Alternatively, if your database environment and
+databases are still available after you lose the log file disk, you
+should be able to dump your databases.  However, you may see an
+inconsistent snapshot of your data after doing the dump, because
+changes that were part of transactions that were not yet committed
+may appear in the database dump.  Depending on the value of the data,
+a reasonable alternative may be to perform both the database dump and
+the catastrophic recovery and then compare the databases created by
+the two methods.
+<p>Regardless, for these reasons, storing your databases and log files on
+different disks should be considered a safety measure as well as a
+performance enhancement.
+<p>Finally, you should be aware that Berkeley DB does not protect against all
+cases of stable storage hardware failure, nor does it protect against
+simple hardware misbehavior (for example, a disk controller writing
+incorrect data to the disk).  However, configuring the database for
+checksums will ensure that any such corruption is detected.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/transapp/filesys.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/tune.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

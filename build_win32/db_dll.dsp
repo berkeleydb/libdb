@@ -1,5 +1,5 @@
 # Microsoft Developer Studio Project File - Name="db_dll" - Package Owner=<4>
-# Microsoft Developer Studio Generated Build File, Format Version 5.00
+# Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Dynamic-Link Library" 0x0102
@@ -13,19 +13,16 @@ CFG=db_dll - Win32 Debug
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE /f "db_dll.mak" CFG="db_dll - Win32 Debug Static"
+!MESSAGE NMAKE /f "db_dll.mak" CFG="db_dll - Win32 Debug"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
 !MESSAGE "db_dll - Win32 Release" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "db_dll - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_dll - Win32 Release Static" (based on\
- "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_dll - Win32 Debug Static" (based on\
- "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
+# PROP AllowPerConfigDependencies 0
 # PROP Scc_ProjName ""
 # PROP Scc_LocalPath ""
 CPP=cl.exe
@@ -46,9 +43,9 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /I "../dbinc" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -56,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb41.dll"
 
 !ELSEIF  "$(CFG)" == "db_dll - Win32 Debug"
 
@@ -72,74 +69,18 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_WINDLL" /D "_AFXDLL" /D "_MBCS" /YX"config.h" /FD /c
+# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /I "../dbinc" /D "DB_CREATE_DLL" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
 # SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
+# ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
-
-!ELSEIF  "$(CFG)" == "db_dll - Win32 Release Static"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "DB_DLL__"
-# PROP BASE Intermediate_Dir "DB_DLL__"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release"
-# PROP Intermediate_Dir "Release"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb40.dll"
-
-!ELSEIF  "$(CFG)" == "db_dll - Win32 Debug Static"
-
-# PROP BASE Use_MFC 2
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "DB_DLL_0"
-# PROP BASE Intermediate_Dir "DB_DLL_0"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 2
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug"
-# PROP Intermediate_Dir "Debug"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_WINDLL" /D "_AFXDLL" /YX"config.h" /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "DB_CREATE_DLL" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_WINDLL" /D "_AFXDLL" /D "_MBCS" /YX"config.h" /FD /c
-# SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
-# ADD RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb40d.dll" /fixed:no
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb41d.dll" /fixed:no
 
 !ENDIF 
 
@@ -147,8 +88,6 @@ LINK32=link.exe
 
 # Name "db_dll - Win32 Release"
 # Name "db_dll - Win32 Debug"
-# Name "db_dll - Win32 Release Static"
-# Name "db_dll - Win32 Debug Static"
 # Begin Source File
 
 SOURCE=..\btree\bt_compare.c
@@ -251,7 +190,15 @@ SOURCE=..\common\db_getlong.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\common\db_idspace.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\common\db_log2.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\util_cache.c
 # End Source File
 # Begin Source File
 
@@ -260,6 +207,26 @@ SOURCE=..\common\util_log.c
 # Begin Source File
 
 SOURCE=..\common\util_sig.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\crypto\aes_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\crypto\crypto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\crypto\mersenne\mt19937db.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\crypto\rijndael\rijndael-alg-fst.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\crypto\rijndael\rijndael-api-fst.c
 # End Source File
 # Begin Source File
 
@@ -351,6 +318,10 @@ SOURCE=..\db\db_method.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\db\db_open.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_overflow.c
 # End Source File
 # Begin Source File
@@ -367,7 +338,19 @@ SOURCE=..\db\db_reclaim.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\db\db_remove.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_rename.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_ret.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_truncate.c
 # End Source File
 # Begin Source File
 
@@ -391,11 +374,31 @@ SOURCE=..\dbm\dbm.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\dbreg\dbreg.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\dbreg\dbreg_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\dbreg\dbreg_rec.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\dbreg\dbreg_util.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\env\db_salloc.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\env\db_shash.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_file.c
 # End Source File
 # Begin Source File
 
@@ -412,6 +415,22 @@ SOURCE=..\env\env_recover.c
 # Begin Source File
 
 SOURCE=..\env\env_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\fileops\fileops_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\fileops\fop_basic.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\fileops\fop_rec.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\fileops\fop_util.c
 # End Source File
 # Begin Source File
 
@@ -443,6 +462,10 @@ SOURCE=..\hash\hash_method.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\hash\hash_open.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\hash\hash_page.c
 # End Source File
 # Begin Source File
@@ -464,6 +487,14 @@ SOURCE=..\hash\hash_upgrade.c
 # Begin Source File
 
 SOURCE=..\hash\hash_verify.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hmac\hmac.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hmac\sha1.c
 # End Source File
 # Begin Source File
 
@@ -503,15 +534,7 @@ SOURCE=..\log\log_archive.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\log\log_auto.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\log\log_compare.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\log\log_findckp.c
 # End Source File
 # Begin Source File
 
@@ -524,14 +547,6 @@ SOURCE=..\log\log_method.c
 # Begin Source File
 
 SOURCE=..\log\log_put.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\log\log_rec.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\log\log_register.c
 # End Source File
 # Begin Source File
 
@@ -583,7 +598,7 @@ SOURCE=..\mp\mp_trickle.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\mutex\mut_tas.c
+SOURCE=..\mutex\mut_win32.c
 # End Source File
 # Begin Source File
 
@@ -595,11 +610,7 @@ SOURCE=..\os\os_alloc.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_fsync.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os\os_handle.c
+SOURCE=..\os\os_id.c
 # End Source File
 # Begin Source File
 
@@ -623,14 +634,6 @@ SOURCE=..\os\os_rpath.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_rw.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os\os_stat.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\os\os_tmpdir.c
 # End Source File
 # Begin Source File
@@ -647,6 +650,10 @@ SOURCE=..\os_win32\os_clock.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_config.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os_win32\os_dir.c
 # End Source File
 # Begin Source File
@@ -659,7 +666,11 @@ SOURCE=..\os_win32\os_fid.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os_win32\os_finit.c
+SOURCE=..\os_win32\os_fsync.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os_win32\os_handle.c
 # End Source File
 # Begin Source File
 
@@ -675,6 +686,10 @@ SOURCE=..\os_win32\os_rename.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\os_win32\os_rw.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\os_win32\os_seek.c
 # End Source File
 # Begin Source File
@@ -684,6 +699,10 @@ SOURCE=..\os_win32\os_sleep.c
 # Begin Source File
 
 SOURCE=..\os_win32\os_spin.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os_win32\os_stat.c
 # End Source File
 # Begin Source File
 
@@ -772,6 +791,10 @@ SOURCE=..\txn\txn_region.c
 # Begin Source File
 
 SOURCE=..\txn\txn_stat.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_util.c
 # End Source File
 # Begin Source File
 

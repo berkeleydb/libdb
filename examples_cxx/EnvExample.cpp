@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: EnvExample.cpp,v 11.22 2001/11/10 04:59:07 mjc Exp $
+ * $Id: EnvExample.cpp,v 11.24 2002/01/11 15:52:15 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -35,10 +35,10 @@ using std::cerr;
 #endif
 #endif
 
-void	db_setup(char *, char *, ostream&);
-void	db_teardown(char *, char *, ostream&);
+void	db_setup(const char *, const char *, ostream&);
+void	db_teardown(const char *, const char *, ostream&);
 
-char *progname = "EnvExample";			/* Program name. */
+const char *progname = "EnvExample";			/* Program name. */
 
 //
 // An example of a program creating/configuring a Berkeley DB environment.
@@ -53,7 +53,7 @@ main(int, char **)
 	// and check error returns from all methods.
 	//
 	try {
-		char *data_dir, *home;
+		const char *data_dir, *home;
 
 		//
 		// All of the shared database files live in /home/database,
@@ -77,7 +77,7 @@ main(int, char **)
 
 // Note that any of the db calls can throw DbException
 void
-db_setup(char *home, char *data_dir, ostream& err_stream)
+db_setup(const char *home, const char *data_dir, ostream& err_stream)
 {
 	//
 	// Create an environment object and initialize it for error
@@ -107,7 +107,7 @@ db_setup(char *home, char *data_dir, ostream& err_stream)
 }
 
 void
-db_teardown(char *home, char *data_dir, ostream& err_stream)
+db_teardown(const char *home, const char *data_dir, ostream& err_stream)
 {
 	// Remove the shared database regions.
 	DbEnv *dbenv = new DbEnv(0);

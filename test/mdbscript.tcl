@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: mdbscript.tcl,v 11.26 2001/10/30 21:40:37 dda Exp $
+# $Id: mdbscript.tcl,v 11.29 2002/03/22 21:43:06 krinsky Exp $
 #
 # Process script for the multi-process db tester.
 
@@ -84,8 +84,8 @@ set klock NOLOCK
 # flushes in the main part of the loop below.
 flush stdout
 
-set dbenv [berkdb env -create -cdb -home $dir]
-#set dbenv [berkdb env -create -cdb -log -home $dir]
+set dbenv [berkdb_env -create -cdb -home $dir]
+#set dbenv [berkdb_env -create -cdb -log -home $dir]
 error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 set locker [ $dbenv lock_id ]
@@ -366,13 +366,9 @@ for { set i 0 } { $i < $iter } { incr i } {
 	}
 }
 
-if {[catch {$db close} ret] != 0 } {
-	error_check_good close [is_substr $errorInfo "DB_INCOMPLETE"] 1
-	puts "Warning: sync incomplete on close ([pid])"
-} else  {
-	error_check_good close $ret 0
-}
-$dbenv close
+error_check_good db_close_catch [catch {$db close} ret] 0
+error_check_good db_close $ret 0
+error_check_good dbenv_close [$dbenv close] 0
 
 flush stdout
 exit

@@ -1,6 +1,7 @@
-<!--$Id: aix.so,v 11.17 2001/09/07 21:29:42 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: aix.so,v 11.20 2002/09/13 02:20:39 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: AIX</title>
@@ -31,6 +32,25 @@ cc -D_THREAD_SAFE -lc_r ...</pre></blockquote>
 <p>AIX 4.1 allows applications to map only 10 system shared memory
 segments.  In AIX 4.3, this has been raised to 256K segments, but only
 if you set the environment variable "export EXTSHM=ON".
+<hr size=1 noshade>
+<p><li><b>On AIX 4.3.2 (or before) I see undefined symbols when linking C++
+applications.  Also, Java complains about missing symbols on this
+platform even though I've configured and built for Java.</b>
+<p>Versions of AIX 4.3.2 and before do not have the tools necessary to
+produce shared libraries for languages such as C++ and Java that use
+"name mangling" to map their names to C names.  The Berkeley DB C++ API can
+be only used on this platform as a static library.  The Berkeley DB Java API
+cannot be used on this platform.
+<hr size=1 noshade>
+<p><li><b>On AIX 4.3.3 I see undefined symbols for DbEnv::set_error_stream,
+Db::set_error_stream or DbEnv::verify when linking C++ applications.
+(These undefined symbols also appear when building the Berkeley DB C++ example
+applications).</b>
+<p>By default, Berkeley DB is built with _LARGE_FILES set to 1 to support the
+creation of "large" database files.  However, this also affects how
+standard classes, like iostream, are named internally.  When building
+your application, use a "-D_LARGE_FILES=1" compilation option, or insert
+"#define _LARGE_FILES 1" before any #include statements.
 <hr size=1 noshade>
 <p><li><b>I can't create database files larger than 1GB on AIX.</b>
 <p>If you're running on AIX 4.1 or earlier, try changing the source code

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test021.tcl,v 11.13 2001/08/03 16:39:37 bostic Exp $
+# $Id: test021.tcl,v 11.15 2002/05/22 15:42:47 sue Exp $
 #
 # TEST	test021
 # TEST	Btree range tests.
@@ -19,9 +19,8 @@ proc test021 { method {nentries 10000} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Test021: $method ($args) $nentries equal key/data pairs"
-
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -33,7 +32,21 @@ proc test021 { method {nentries 10000} args } {
 		set testfile test021.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
+	puts "Test021: $method ($args) $nentries equal key/data pairs"
+
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -67,9 +80,17 @@ proc test021 { method {nentries 10000} args } {
 			set key [reverse $str]
 		}
 
+		if { $txnenv == 1 } {
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
 		set r [eval {$db put} \
 		    $txn $pflags {$key [chop_data $method $str]}]
 		error_check_good db_put $r 0
+		if { $txnenv == 1 } {
+			error_check_good txn [$t commit] 0
+		}
 		incr count
 	}
 	close $did
@@ -83,6 +104,11 @@ proc test021 { method {nentries 10000} args } {
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Open a cursor
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1
 
@@ -113,6 +139,10 @@ proc test021 { method {nentries 10000} args } {
 			$checkfunc $k $d
 		}
 		incr i
+	}
+	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
 	}
 	error_check_good db_close [$db close] 0
 	close $did

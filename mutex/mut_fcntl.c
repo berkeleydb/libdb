@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mut_fcntl.c,v 11.14 2001/07/27 18:25:13 bostic Exp $";
+static const char revid[] = "$Id: mut_fcntl.c,v 11.21 2002/05/31 19:37:45 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,7 +34,18 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
 	DB_MUTEX *mutexp;
 	u_int32_t offset;
 {
+	u_int32_t save;
+
+	/*
+	 * The only setting/checking of the MUTEX_MPOOL flags is in the mutex
+	 * mutex allocation code (__db_mutex_alloc/free).  Preserve only that
+	 * flag.  This is safe because even if this flag was never explicitly
+	 * set, but happened to be set in memory, it will never be checked or
+	 * acted upon.
+	 */
+	save = F_ISSET(mutexp, MUTEX_MPOOL);
 	memset(mutexp, 0, sizeof(*mutexp));
+	F_SET(mutexp, save);
 
 	/*
 	 * This is where we decide to ignore locks we don't need to set -- if
@@ -46,7 +57,7 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
 	}
 
 	mutexp->off = offset;
-#ifdef MUTEX_SYSTEM_RESOURCES
+#ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 	mutexp->reg_off = INVALID_ROFF;
 #endif
 	F_SET(mutexp, MUTEX_INITED);
@@ -58,13 +69,12 @@ __db_fcntl_mutex_init(dbenv, mutexp, offset)
  * __db_fcntl_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, DB_MUTEX *, DB_FH *));
+ * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, DB_MUTEX *));
  */
 int
-__db_fcntl_mutex_lock(dbenv, mutexp, fhp)
+__db_fcntl_mutex_lock(dbenv, mutexp)
 	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
-	DB_FH *fhp;
 {
 	struct flock k_lock;
 	int locked, ms, waited;
@@ -91,18 +101,18 @@ __db_fcntl_mutex_lock(dbenv, mutexp, fhp)
 
 		/* Acquire an exclusive kernel lock. */
 		k_lock.l_type = F_WRLCK;
-		if (fcntl(fhp->fd, F_SETLKW, &k_lock))
+		if (fcntl(dbenv->lockfhp->fd, F_SETLKW, &k_lock))
 			return (__os_get_errno());
 
 		/* If the resource is still available, it's ours. */
 		if (mutexp->pid == 0) {
 			locked = 1;
-			mutexp->pid = (u_int32_t)getpid();
+			__os_id(&mutexp->pid);
 		}
 
 		/* Release the kernel lock. */
 		k_lock.l_type = F_UNLCK;
-		if (fcntl(fhp->fd, F_SETLK, &k_lock))
+		if (fcntl(dbenv->lockfhp->fd, F_SETLK, &k_lock))
 			return (__os_get_errno());
 
 		/*

@@ -1,6 +1,7 @@
-<!--$Id: put.so,v 10.34 2001/05/08 15:03:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: put.so,v 10.35 2002/06/24 14:50:56 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Adding elements to a database</title>
@@ -45,8 +46,8 @@ main()
 		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
 		exit (1);
 	}
-	if ((ret = dbp-&gt;open(
-	    dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp-&gt;open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp-&gt;err(dbp, ret, "%s", DATABASE);
 		goto err;
 	}
@@ -65,7 +66,7 @@ main()
 	}
 </b></pre></blockquote>
 <p>The first thing to notice about this new code is that we clear the
-<a href="../../api_c/dbt.html">DBT</a> structures that we're about to pass as arguments to Berkeley DB
+<a href="../../api_c/dbt_class.html">DBT</a> structures that we're about to pass as arguments to Berkeley DB
 functions.  This is very important, and being careful to do so will
 result in fewer errors in your programs.  All Berkeley DB structures
 instantiated in the application and handed to Berkeley DB should be cleared

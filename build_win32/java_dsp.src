@@ -1,5 +1,5 @@
 # Microsoft Developer Studio Project File - Name="@project_name@" - Package Owner=<4>
-# Microsoft Developer Studio Generated Build File, Format Version 5.00
+# Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Dynamic-Link Library" 0x0102
@@ -17,12 +17,12 @@ CFG=@project_name@ - Win32 Debug
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
-!MESSAGE "@project_name@ - Win32 Release" (based on\
- "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "@project_name@ - Win32 Release" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "@project_name@ - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
+# PROP AllowPerConfigDependencies 0
 # PROP Scc_ProjName ""
 # PROP Scc_LocalPath ""
 CPP=cl.exe
@@ -43,9 +43,9 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I "../include" /I "../include_auto" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /YX /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o NUL /win32
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /I "../dbinc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /YX /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -57,18 +57,14 @@ LINK32=link.exe
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
 InputPath=.\Release\libdb_java@DB_VERSION_MAJOR@@DB_VERSION_MINOR@.dll
-SOURCE=$(InputPath)
+SOURCE="$(InputPath)"
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	mkdir $(ProjDir)\Release\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d $(ProjDir)/Release/classes -classpath\
-   "$(CLASSPATH);$(ProjDir)/Release/classes"\
-   ..\java\src\com\sleepycat\db\*.java 
+	javac -g -d $(ProjDir)/Release/classes -classpath "$(CLASSPATH);$(ProjDir)/Release/classes" ..\java\src\com\sleepycat\db\*.java 
 	echo compiling examples 
-	javac -g -d $(ProjDir)/Release/classes -classpath\
-   "$(CLASSPATH);$(ProjDir)/Release/classes"\
-   ..\java\src\com\sleepycat\examples\*.java 
+	javac -g -d $(ProjDir)/Release/classes -classpath "$(CLASSPATH);$(ProjDir)/Release/classes" ..\java\src\com\sleepycat\examples\*.java 
 	echo creating jar files 
 	cd $(ProjDir)\Release\classes 
 	jar cf ../db.jar com\sleepycat\db\*.class 
@@ -91,10 +87,10 @@ SOURCE=$(InputPath)
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I "../include" /I "../include_auto" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /D "_WINDLL" /D "_AFXDLL" /YX"config.h" /FD /c
+# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /I "../dbinc" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "DB_CREATE_DLL" /D "_WINDLL" /D "_AFXDLL" /YX"config.h" /FD /c
 # SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o NUL /win32
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
 BSC32=bscmake.exe
@@ -106,18 +102,14 @@ LINK32=link.exe
 # Begin Custom Build - Compiling java files using javac
 ProjDir=.
 InputPath=.\Debug\libdb_java@DB_VERSION_MAJOR@@DB_VERSION_MINOR@d.dll
-SOURCE=$(InputPath)
+SOURCE="$(InputPath)"
 
 "force_compilation.txt" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
 	mkdir $(ProjDir)\Debug\classes 
 	echo compiling Berkeley DB classes 
-	javac -g -d $(ProjDir)/Debug/classes -classpath\
-   "$(CLASSPATH);$(ProjDir)/Debug/classes"\
-   ..\java\src\com\sleepycat\db\*.java 
+	javac -g -d $(ProjDir)/Debug/classes -classpath "$(CLASSPATH);$(ProjDir)/Debug/classes" ..\java\src\com\sleepycat\db\*.java 
 	echo compiling examples 
-	javac -g -d $(ProjDir)/Debug/classes -classpath\
-   "$(CLASSPATH);$(ProjDir)/Debug/classes"\
-   ..\java\src\com\sleepycat\examples\*.java 
+	javac -g -d $(ProjDir)/Debug/classes -classpath "$(CLASSPATH);$(ProjDir)/Debug/classes" ..\java\src\com\sleepycat\examples\*.java 
 	echo creating jar files 
 	cd $(ProjDir)\Debug\classes 
 	jar cf ../db.jar com\sleepycat\db\*.class 

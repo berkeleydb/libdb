@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999, 2000
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TestAppendRecno.java,v 1.2 2001/10/05 02:36:08 bostic Exp $
+ * $Id: TestAppendRecno.java,v 1.4 2002/08/16 19:35:53 dda Exp $
  */
 
 package com.sleepycat.test;
@@ -64,10 +64,9 @@ public class TestAppendRecno
         table = new Db(null, 0);
         table.set_error_stream(System.err);
         table.set_errpfx("TestAppendRecno");
-        //table.open(FileName, null, Db.DB_BTREE, Db.DB_CREATE, 0644);
         table.set_append_recno(this);
 
-        table.open(FileName, null, Db.DB_RECNO, Db.DB_CREATE, 0644);
+        table.open(null, FileName, null, Db.DB_RECNO, Db.DB_CREATE, 0644);
         for (int i=0; i<10; i++) {
             System.out.println("\n*** Iteration " + i );
             try {

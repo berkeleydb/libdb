@@ -1,19 +1,17 @@
-# DO NOT EDIT BELOW THIS LINE: automatically built by dist/s_test.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-  rep001
-	Replication smoke test.
-	
-	Run a modified version of test001 in a replicated master environment;
-	  verify that the database on the client is correct.
+# Automatically built by dist/s_test; may require local editing.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 bigfile001
 	Create a database greater than 4 GB in size.  Close, verify.
+	Grow the database somewhat.  Close, reverify.  Lather, rinse,
+	repeat.  Since it will not work on all systems, this test is
+	not run by default.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 bigfile002
 	This one should be faster and not require so much disk space,
+	although it doesn't test as extensively.  Create an mpool file
+	with 1K pages.  Dirty page 6000000.  Sync.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dbm
@@ -37,7 +35,7 @@ dead002
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dead003
-	
+
 	Same test as dead002, but explicitly specify DB_LOCK_OLDEST and
 	DB_LOCK_YOUNGEST.  Verify the correct lock was aborted/granted.
 
@@ -59,12 +57,12 @@ env002
 	With an environment path specified using -home, and then again
 	with it specified by the environment variable DB_HOME:
 	1) Make sure that the set_lg_dir option is respected
-		a) as a relative pathname.
-		b) as an absolute pathname.
+	a) as a relative pathname.
+	b) as an absolute pathname.
 	2) Make sure that the DB_LOG_DIR db_config argument is respected,
-		again as relative and absolute pathnames.
+	again as relative and absolute pathnames.
 	3) Make sure that if -both- db_config and a file are present,
-		only the file is respected (see doc/env/naming.html).
+	only the file is respected (see doc/env/naming.html).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env003
@@ -72,12 +70,12 @@ env003
 	With an environment path specified using -home, and then again
 	with it specified by the environment variable DB_HOME:
 	1) Make sure that the DB_TMP_DIR config file option is respected
-		a) as a relative pathname.
-		b) as an absolute pathname.
-	2) Make sure that the DB_TMP_DIR db_config argument is respected,
-		again as relative and absolute pathnames.
-	3) Make sure that if -both- db_config and a file are present,
-		only the file is respected (see doc/env/naming.html).
+	a) as a relative pathname.
+	b) as an absolute pathname.
+	2) Make sure that the -tmp_dir config option is respected,
+	again as relative and absolute pathnames.
+	3) Make sure that if -both- -tmp_dir and a file are present,
+	only the file is respected (see doc/env/naming.html).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env004
@@ -100,7 +98,7 @@ env007
 	1) Make sure command line option is respected
 	2) Make sure that config file option is respected
 	3) Make sure that if -both- DB_CONFIG and the set_<whatever>
-		method is used,	only the file is respected.
+	method is used,	only the file is respected.
 	Then test all known config options.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -119,10 +117,14 @@ env010
 	create a database in that directory.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+env011
+	Run with region overwrite flag.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 jointest
 	Test duplicate assisted joins.  Executes 1, 2, 3 and 4-way joins
 	with differing index orders and selectivity.
-	
+
 	We'll test 2-way, 3-way, and 4-way joins and figure that if those
 	work, everything else does as well.  We'll create test databases
 	called join1.db, join2.db, join3.db, and join4.db.  The number on
@@ -130,7 +132,7 @@ jointest
 	form 0, N, 2N, 3N, ...  where N is the number of the database.
 	Primary.db is the primary database, and null.db is the database
 	that has no matching duplicates.
-	
+
 	We should test this on all btrees, all hash, and a combination thereof
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -163,8 +165,8 @@ log001
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 log002
 	Tests multiple logs
-		Log truncation
-		LSN comparison and file functionality.
+	Log truncation
+	LSN comparison and file functionality.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 log003
@@ -176,12 +178,33 @@ log004
 	log has been truncated, we do the right thing.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+log005
+	Check that log file sizes can change on the fly.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 memp001
 	Randomly updates pages.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 memp002
 	Tests multiple processes accessing and modifying the same files.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+memp003
+	Test reader-only/writer process combinations; we use the access methods
+	for testing.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mutex001
+	Test basic mutex functionality
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mutex002
+	Test basic mutex synchronization
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mutex003
+	Generate a bunch of parallel testers that try to randomly obtain locks.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 recd001
@@ -192,7 +215,7 @@ recd001
 	running it again so that we can change the state of the data base
 	to prepare for the next test (this applies to all other recovery
 	tests as well).
-	
+
 	These are the most basic recovery tests.  We do individual recovery
 	tests for each operation in the access method interface.  First we
 	create a file and capture the state of the database (i.e., we copy
@@ -211,7 +234,7 @@ recd002
 recd003
 	Duplicate recovery tests.  For every known duplicate log message,
 	makes sure that we exercise redo, undo, and do-nothing condition.
-	
+
 	Test all the duplicate log messages and recovery operations.  We make
 	sure that we exercise all possible recovery actions: redo, undo, undo
 	but no fix necessary and redo but no fix necessary.
@@ -223,7 +246,7 @@ recd004
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 recd005
 	Verify reuse of file ids works on catastrophic recovery.
-	
+
 	Make sure that we can do catastrophic recovery even if we open
 	files using the same log file id.
 
@@ -234,7 +257,7 @@ recd006
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 recd007
 	File create/delete tests.
-	
+
 	This is a recovery test for create/delete of databases.  We have
 	hooks in the database so that we can abort the process at various
 	points and make sure that the transaction doesn't commit.  We
@@ -286,6 +309,67 @@ recd016
 	happen, if recovery is then run properly, things should be correct.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+recd017
+	Test recovery and security.  This is basically a watered
+	down version of recd001 just to verify that encrypted environments
+	can be recovered.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+recd018
+	Test recover of closely interspersed checkpoints and commits.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+recd019
+	Test txn id wrap-around and recovery.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+recd020
+	Test recovery after checksum error.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep001
+	Replication rename and forced-upgrade test.
+
+	Run a modified version of test001 in a replicated master environment;
+	verify that the database on the client is correct.
+	Next, remove the database, close the master, upgrade the 
+	client, reopen the master, and make sure the new master can correctly
+	run test001 and propagate it in the other direction.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep002
+	Basic replication election test.
+
+	Run a modified version of test001 in a replicated master environment;
+	hold an election among a group of clients to make sure they select
+	a proper master from amongst themselves, in various scenarios.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep003
+	Repeated shutdown/restart replication test
+
+	Run a quick put test in a replicated master environment;  start up, 
+	shut down, and restart client processes, with and without recovery.
+	To ensure that environment state is transient, use DB_PRIVATE.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep004
+	Test of DB_REP_LOGSONLY.
+
+	Run a quick put test in a master environment that has one logs-only
+	client.  Shut down, then run catastrophic recovery in the logs-only
+	client and check that the database is present and populated.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep005
+	Replication election test with error handling.
+
+	Run a modified version of test001 in a replicated master environment;
+	hold an election among a group of clients to make sure they select
+	a proper master from amongst themselves, forcing errors at various
+	locations in the election path.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc001
 	Test RPC server timeouts for cursor, txn and env handles.
 	Test RPC specifics, primarily that unsupported functions return
@@ -294,6 +378,14 @@ rpc001
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc002
 	Test invalid RPC functions and make sure we error them correctly
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rpc004
+	Test RPC server and security
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rpc005
+	Test RPC server handle ID sharing
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rsrc001
@@ -322,6 +414,53 @@ scr###
 	tests won't run on most systems, so don't even try to run them.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdbtest001
+	Tests multiple access methods in one subdb
+	Open several subdbs, each with a different access method
+	Small keys, small data
+	Put/get per key per subdb
+	Dump file, verify per subdb
+	Close, reopen per subdb
+	Dump file, verify per subdb
+
+	Make several subdb's of different access methods all in one DB.
+	Rotate methods and repeat [#762].
+	Use the first 10,000 entries from the dictionary.
+	Insert each with self as key and data; retrieve each.
+	After all are entered, retrieve all; compare output to original.
+	Close file, reopen, do retrieve and re-verify.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sdbtest002
+	Tests multiple access methods in one subdb access by multiple
+	processes.
+	Open several subdbs, each with a different access method
+	Small keys, small data
+	Put/get per key per subdb
+	Fork off several child procs to each delete selected
+	data from their subdb and then exit
+	Dump file, verify contents of each subdb is correct
+	Close, reopen per subdb
+	Dump file, verify per subdb
+
+	Make several subdb's of different access methods all in one DB.
+	Fork of some child procs to each manipulate one subdb and when
+	they are finished, verify the contents of the databases.
+	Use the first 10,000 entries from the dictionary.
+	Insert each with self as key and data; retrieve each.
+	After all are entered, retrieve all; compare output to original.
+	Close file, reopen, do retrieve and re-verify.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sec001
+	Test of security interface
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sec002
+	Test of security interface and catching errors in the
+	face of attackers overwriting parts of existing files.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 sindex001
 	Basic secondary index put/delete test
 
@@ -342,12 +481,16 @@ sindex004
 	secondaries created mid-test.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+sindex006
+	Basic secondary index put/delete test with transactions
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb001	Tests mixing db and subdb operations
 	Tests mixing db and subdb operations
 	Create a db, add data, try to create a subdb.
 	Test naming db and subdb with a leading - for correct parsing
 	Existence check -- test use of -excl with subdbs
-	
+
 	Test non-subdb and subdb operations
 	Test naming (filenames begin with -)
 	Test existence (cannot create subdb of same name with -excl)
@@ -355,12 +498,12 @@ subdb001	Tests mixing db and subdb operations
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb002
 	Tests basic subdb functionality
-		Small keys, small data
-		Put/get per key
-		Dump file
-		Close, reopen
-		Dump file
-	
+	Small keys, small data
+	Put/get per key
+	Dump file
+	Close, reopen
+	Dump file
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; retrieve each.
 	After all are entered, retrieve all; compare output to original.
@@ -370,9 +513,9 @@ subdb002
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb003
 	Tests many subdbs
-		Creates many subdbs and puts a small amount of
-		data in each (many defaults to 2000)
-	
+	Creates many subdbs and puts a small amount of
+	data in each (many defaults to 2000)
+
 	Use the first 10,000 entries from the dictionary as subdbnames.
 	Insert each with entry as name of subdatabase and a partial list
 	as key/data.  After all are entered, retrieve all; compare output
@@ -381,12 +524,12 @@ subdb003
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb004
 	Tests large subdb names
-		subdb name = filecontents,
-		key = filename, data = filecontents
-			Put/get per key
-			Dump file
-			Dump subdbs, verify data and subdb name match
-	
+	subdb name = filecontents,
+	key = filename, data = filecontents
+	Put/get per key
+	Dump file
+	Dump subdbs, verify data and subdb name match
+
 	Create 1 db with many large subdbs.  Use the contents as subdb names.
 	Take the source files and dbtest executable and enter their names as
 	the key with their contents as data.  After all are entered, retrieve
@@ -396,15 +539,15 @@ subdb004
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb005
 	Tests cursor operations in subdbs
-		Put/get per key
-		Verify cursor operations work within subdb
-		Verify cursor operations do not work across subdbs
-	
+	Put/get per key
+	Verify cursor operations work within subdb
+	Verify cursor operations do not work across subdbs
+
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb006
 	Tests intra-subdb join
-	
+
 	We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 	everything else does as well.  We'll create test databases called
 	sub1.db, sub2.db, sub3.db, and sub4.db.  The number on the database
@@ -415,35 +558,27 @@ subdb006
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb007
-	Tests page size differences between subdbs
-		Open several subdbs, each with a different pagesize
-		Small keys, small data
-		Put/get per key per subdb
-		Dump file, verify per subdb
-		Close, reopen per subdb
-		Dump file, verify per subdb
-	
-	Use the first 10,000 entries from the dictionary spread across each
-	subdb.  Use a different page size for every subdb.  Insert each with
-	self as key and data; retrieve each.  After all are entered, retrieve
-	all; compare output to original.  Close file, reopen, do retrieve and
-	re-verify.
+	Tests page size difference errors between subdbs.
+	Test 3 different scenarios for page sizes.
+	1.  Create/open with a default page size, 2nd subdb create with
+	specified different one, should error.
+	2.  Create/open with specific page size, 2nd subdb create with
+	different one, should error.
+	3.  Create/open with specified page size, 2nd subdb create with
+	same specified size, should succeed.
+	(4th combo of using all defaults is a basic test, done elsewhere)
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb008
-	Tests lorder differences between subdbs
-		Open several subdbs, each with a different/random lorder
-		Small keys, small data
-		Put/get per key per subdb
-		Dump file, verify per subdb
-		Close, reopen per subdb
-		Dump file, verify per subdb
-	
-	Use the first 10,000 entries from the dictionary.
-	Use a different or random lorder for each subdb.
-	Insert each with self as key and data; retrieve each.
-	After all are entered, retrieve all; compare output to original.
-	Close file, reopen, do retrieve and re-verify.
+	Tests lorder difference errors between subdbs.
+	Test 3 different scenarios for lorder.
+	1.  Create/open with specific lorder, 2nd subdb create with
+	different one, should error.
+	2.  Create/open with a default lorder 2nd subdb create with
+	specified different one, should error.
+	3.  Create/open with specified lorder, 2nd subdb create with
+	same specified lorder, should succeed.
+	(4th combo of using all defaults is a basic test, done elsewhere)
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 subdb009
@@ -460,51 +595,19 @@ subdb011
 	Test subdatabases with overflow pages.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdbtest001
-	Tests multiple access methods in one subdb
-		Open several subdbs, each with a different access method
-		Small keys, small data
-		Put/get per key per subdb
-		Dump file, verify per subdb
-		Close, reopen per subdb
-		Dump file, verify per subdb
-	
-	Make several subdb's of different access methods all in one DB.
-	Rotate methods and repeat [#762].
-	Use the first 10,000 entries from the dictionary.
-	Insert each with self as key and data; retrieve each.
-	After all are entered, retrieve all; compare output to original.
-	Close file, reopen, do retrieve and re-verify.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-subdbtest002
-	Tests multiple access methods in one subdb access by multiple
-	processes.
-		Open several subdbs, each with a different access method
-		Small keys, small data
-		Put/get per key per subdb
-		Fork off several child procs to each delete selected
-		    data from their subdb and then exit
-		Dump file, verify contents of each subdb is correct
-		Close, reopen per subdb
-		Dump file, verify per subdb
-	
-	Make several subdb's of different access methods all in one DB.
-	Fork of some child procs to each manipulate one subdb and when
-	they are finished, verify the contents of the databases.
-	Use the first 10,000 entries from the dictionary.
-	Insert each with self as key and data; retrieve each.
-	After all are entered, retrieve all; compare output to original.
-	Close file, reopen, do retrieve and re-verify.
+subdb012
+	Test subdbs with locking and transactions
+	Tests creating and removing subdbs while handles
+	are open works correctly, and in the face of txns.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
 	Small keys/data
-		Put/get per key
-		Dump file
-		Close, reopen
-		Dump file
-	
+	Put/get per key
+	Dump file
+	Close, reopen
+	Dump file
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; retrieve each.
 	After all are entered, retrieve all; compare output to original.
@@ -513,11 +616,11 @@ test001
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test002
 	Small keys/medium data
-		Put/get per key
-		Dump file
-		Close, reopen
-		Dump file
-	
+	Put/get per key
+	Dump file
+	Close, reopen
+	Dump file
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and a fixed, medium length data string;
 	retrieve each. After all are entered, retrieve all; compare output
@@ -526,11 +629,11 @@ test002
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test003
 	Small keys/large data
-		Put/get per key
-		Dump file
-		Close, reopen
-		Dump file
-	
+	Put/get per key
+	Dump file
+	Close, reopen
+	Dump file
+
 	Take the source files and dbtest executable and enter their names
 	as the key with their contents as data.  After all are entered,
 	retrieve all; compare output to original. Close file, reopen, do
@@ -539,9 +642,9 @@ test003
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test004
 	Small keys/medium data
-		Put/get per key
-		Sequential (cursor) get/delete
-	
+	Put/get per key
+	Sequential (cursor) get/delete
+
 	Check that cursor operations work.  Create a database.
 	Read through the database sequentially using cursors and
 	delete each element.
@@ -549,10 +652,10 @@ test004
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test005
 	Small keys/medium data
-		Put/get per key
-		Close, reopen
-		Sequential (cursor) get/delete
-	
+	Put/get per key
+	Close, reopen
+	Sequential (cursor) get/delete
+
 	Check that cursor operations work.  Create a database; close
 	it and reopen it.  Then read through the database sequentially
 	using cursors and delete each element.
@@ -560,9 +663,9 @@ test005
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test006
 	Small keys/medium data
-		Put/get per key
-		Keyed delete and verify
-	
+	Put/get per key
+	Keyed delete and verify
+
 	Keyed delete test.
 	Create database.
 	Go through database, deleting all entries by key.
@@ -570,10 +673,10 @@ test006
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test007
 	Small keys/medium data
-		Put/get per key
-		Close, reopen
-		Keyed delete
-	
+	Put/get per key
+	Close, reopen
+	Keyed delete
+
 	Check that delete operations work.  Create a database; close
 	database and reopen it.  Then issues delete by key for each
 	entry.
@@ -581,13 +684,13 @@ test007
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test008
 	Small keys/large data
-		Put/get per key
-		Loop through keys by steps (which change)
-		    ... delete each key at step
-		    ... add each key back
-		    ... change step
-		Confirm that overflow pages are getting reused
-	
+	Put/get per key
+	Loop through keys by steps (which change)
+	... delete each key at step
+	... add each key back
+	... change step
+	Confirm that overflow pages are getting reused
+
 	Take the source files and dbtest executable and enter their names as
 	the key with their contents as data.  After all are entered, begin
 	looping through the entries; deleting some pairs and then readding them.
@@ -595,8 +698,8 @@ test008
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test009
 	Small keys/large data
-		Same as test008; close and reopen database
-	
+	Same as test008; close and reopen database
+
 	Check that we reuse overflow pages.  Create database with lots of
 	big key/data pairs.  Go through and delete and add keys back
 	randomly.  Then close the DB and make sure that we have everything
@@ -605,8 +708,8 @@ test009
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test010
 	Duplicate test
-		Small key/data pairs.
-	
+	Small key/data pairs.
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; add duplicate records for each.
 	After all are entered, retrieve all; verify output.
@@ -616,24 +719,24 @@ test010
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test011
 	Duplicate test
-		Small key/data pairs.
-		Test DB_KEYFIRST, DB_KEYLAST, DB_BEFORE and DB_AFTER.
-		To test off-page duplicates, run with small pagesize.
-	
+	Small key/data pairs.
+	Test DB_KEYFIRST, DB_KEYLAST, DB_BEFORE and DB_AFTER.
+	To test off-page duplicates, run with small pagesize.
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; add duplicate records for each.
 	Then do some key_first/key_last add_before, add_after operations.
 	This does not work for recno
-	
+
 	To test if dups work when they fall off the main page, run this with
 	a very tiny page size.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test012
 	Large keys/small data
-		Same as test003 except use big keys (source files and
-		executables) and small data (the file/executable names).
-	
+	Same as test003 except use big keys (source files and
+	executables) and small data (the file/executable names).
+
 	Take the source files and dbtest executable and enter their contents
 	as the key with their names as data.  After all are entered, retrieve
 	all; compare output to original. Close file, reopen, do retrieve and
@@ -642,21 +745,21 @@ test012
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test013
 	Partial put test
-		Overwrite entire records using partial puts.
-		Make surethat NOOVERWRITE flag works.
-	
+	Overwrite entire records using partial puts.
+	Make surethat NOOVERWRITE flag works.
+
 	1. Insert 10000 keys and retrieve them (equal key/data pairs).
 	2. Attempt to overwrite keys with NO_OVERWRITE set (expect error).
 	3. Actually overwrite each one with its datum reversed.
-	
+
 	No partial testing here.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test014
 	Exercise partial puts on short data
-		Run 5 combinations of numbers of characters to replace,
-		and number of times to increase the size by.
-	
+	Run 5 combinations of numbers of characters to replace,
+	and number of times to increase the size by.
+
 	Partial put test, small data, replacing with same size.  The data set
 	consists of the first nentries of the dictionary.  We will insert them
 	(and retrieve them) as we do in test 1 (equal key/data pairs).  Then
@@ -666,13 +769,13 @@ test014
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test015
 	Partial put test
-		Partial put test where the key does not initially exist.
+	Partial put test where the key does not initially exist.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test016
 	Partial put test
 	Partial put where the datum gets shorter as a result of the put.
-	
+
 	Partial put test where partial puts make the record smaller.
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and a fixed, medium length data string;
@@ -683,7 +786,7 @@ test016
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test017
 	Basic offpage duplicate test.
-	
+
 	Run duplicates with small page size so that we test off page duplicates.
 	Then after we have an off-page database, test with overflow pages too.
 
@@ -705,7 +808,7 @@ test020
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test021
 	Btree range tests.
-	
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self, reversed as key and self as data.
 	After all are entered, retrieve each using a cursor SET_RANGE, and
@@ -736,18 +839,18 @@ test025
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test026
 	Small keys/medium data w/duplicates
-		Put/get per key.
-		Loop through keys -- delete each key
-		    ... test that cursors delete duplicates correctly
-	
+	Put/get per key.
+	Loop through keys -- delete each key
+	... test that cursors delete duplicates correctly
+
 	Keyed delete test through cursor.  If ndups is small; this will
 	test on-page dups; if it's large, it will test off-page dups.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test027
 	Off-page duplicate test
-		Test026 with parameters to force off-page duplicates.
-	
+	Test026 with parameters to force off-page duplicates.
+
 	Check that delete operations work.  Create a database; close
 	database and reopen it.  Then issues delete by key for each
 	entry.
@@ -769,14 +872,14 @@ test030
 test031
 	Duplicate sorting functionality
 	Make sure DB_NODUPDATA works.
-	
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and "ndups" duplicates
 	For the data field, prepend random five-char strings (see test032)
 	that we force the duplicate sorting code to do something.
 	Along the way, test that we cannot insert duplicate duplicates
 	using DB_NODUPDATA.
-	
+
 	By setting ndups large, we can make this an off-page test
 	After all are entered, retrieve all; verify output.
 	Close file, reopen, do retrieve and re-verify.
@@ -785,13 +888,13 @@ test031
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test032
 	DB_GET_BOTH, DB_GET_BOTH_RANGE
-	
+
 	Use the first 10,000 entries from the dictionary.  Insert each with
 	self as key and "ndups" duplicates.   For the data field, prepend the
 	letters of the alphabet in a random order so we force the duplicate
-	  sorting code to do something.  By setting ndups large, we can make
+	sorting code to do something.  By setting ndups large, we can make
 	this an off-page test.
-	
+
 	Test the DB_GET_BOTH functionality by retrieving each dup in the file
 	explicitly.  Test the DB_GET_BOTH_RANGE functionality by retrieving
 	the unique key prefix (cursor only).  Finally test the failure case.
@@ -799,15 +902,15 @@ test032
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test033
 	DB_GET_BOTH without comparison function
-	
+
 	Use the first 10,000 entries from the dictionary.  Insert each with
 	self as key and data; add duplicate records for each.  After all are
 	entered, retrieve all and verify output using DB_GET_BOTH (on DB and
-	DBC handles) and DB_GET_BOTH_RANGE (on a DBC handle) on existant and
-	nonexistant keys.
-	
+	DBC handles) and DB_GET_BOTH_RANGE (on a DBC handle) on existent and
+	nonexistent keys.
+
 	XXX
-	This does not work for Recno.
+	This does not work for rbtree.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test034
@@ -833,13 +936,13 @@ test037
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test038
 	DB_GET_BOTH, DB_GET_BOTH_RANGE on deleted items
-	
-	  Use the first 10,000 entries from the dictionary.  Insert each with
+
+	Use the first 10,000 entries from the dictionary.  Insert each with
 	self as key and "ndups" duplicates.  For the data field, prepend the
 	letters of the alphabet in a random order so we force the duplicate
 	sorting code to do something.  By setting ndups large, we can make
 	this an off-page test
-	
+
 	Test the DB_GET_BOTH and DB_GET_BOTH_RANGE functionality by retrieving
 	each dup in the file explicitly.  Then remove each duplicate and try
 	the retrieval again.
@@ -848,13 +951,13 @@ test038
 test039
 	DB_GET_BOTH/DB_GET_BOTH_RANGE on deleted items without comparison
 	function.
-	
+
 	Use the first 10,000 entries from the dictionary.  Insert each with
 	self as key and "ndups" duplicates.  For the data field, prepend the
 	letters of the alphabet in a random order so we force the duplicate
 	sorting code to do something.  By setting ndups large, we can make
 	this an off-page test.
-	
+
 	Test the DB_GET_BOTH and DB_GET_BOTH_RANGE functionality by retrieving
 	each dup in the file explicitly.  Then remove each duplicate and try
 	the retrieval again.
@@ -871,11 +974,11 @@ test041
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test042
-	Concurrent Data Store test
-	
+	Concurrent Data Store test (CDB)
+
 	Multiprocess DB test; verify that locking is working for the
 	concurrent access method product.
-	
+
 	Use the first "nentries" words from the dictionary.  Insert each with
 	self as key and a fixed, medium length data string.  Then fire off
 	multiple processes that bang on the database.  Each one should try to
@@ -892,12 +995,12 @@ test043
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test044
 	Small system integration tests
-		Test proper functioning of the checkpoint daemon,
-		recovery, transactions, etc.
-	
+	Test proper functioning of the checkpoint daemon,
+	recovery, transactions, etc.
+
 	System integration DB test: verify that locking, recovery, checkpoint,
 	and all the other utilities basically work.
-	
+
 	The test consists of $nprocs processes operating on $nfiles files.  A
 	transaction consists of adding the same key/data pair to some random
 	number of these files.  We generate a bimodal distribution in key size
@@ -909,9 +1012,9 @@ test044
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test045
 	Small random tester
-		Runs a number of random add/delete/retrieve operations.
-		Tests both successful conditions and error conditions.
-	
+	Runs a number of random add/delete/retrieve operations.
+	Tests both successful conditions and error conditions.
+
 	Run the random db tester on the specified access method.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -937,10 +1040,10 @@ test050
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test051
 	Fixed-length record Recno test.
-		0. Test various flags (legal and illegal) to open
-		1. Test partial puts where dlen != size (should fail)
-		2. Partial puts for existent record -- replaces at beg, mid, and
-			end of record, as well as full replace
+	0. Test various flags (legal and illegal) to open
+	1. Test partial puts where dlen != size (should fail)
+	2. Partial puts for existent record -- replaces at beg, mid, and
+	end of record, as well as full replace
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test052
@@ -954,25 +1057,25 @@ test053
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test054
 	Cursor maintenance during key/data deletion.
-	
+
 	This test checks for cursor maintenance in the presence of deletes.
 	There are N different scenarios to tests:
-	 1. No duplicates.  Cursor A deletes a key, do a  GET for the key.
-	 2. No duplicates.  Cursor is positioned right before key K, Delete K,
-	    do a next on the cursor.
-	 3. No duplicates.  Cursor is positioned on key K, do a regular delete
-	    of K, do a current get on K.
-	 4. Repeat 3 but do a next instead of current.
-	 5. Duplicates. Cursor A is on the first item of a duplicate set, A
-	    does a delete.  Then we do a non-cursor get.
-	 6. Duplicates.  Cursor A is in a duplicate set and deletes the item.
-	    do a delete of the entire Key. Test cursor current.
-	 7. Continue last test and try cursor next.
-	 8. Duplicates.  Cursor A is in a duplicate set and deletes the item.
-	    Cursor B is in the same duplicate set and deletes a different item.
-	    Verify that the cursor is in the right place.
-	 9. Cursors A and B are in the place in the same duplicate set.  A
-	    deletes its item.  Do current on B.
+	1. No duplicates.  Cursor A deletes a key, do a  GET for the key.
+	2. No duplicates.  Cursor is positioned right before key K, Delete K,
+	do a next on the cursor.
+	3. No duplicates.  Cursor is positioned on key K, do a regular delete
+	of K, do a current get on K.
+	4. Repeat 3 but do a next instead of current.
+	5. Duplicates. Cursor A is on the first item of a duplicate set, A
+	does a delete.  Then we do a non-cursor get.
+	6. Duplicates.  Cursor A is in a duplicate set and deletes the item.
+	do a delete of the entire Key. Test cursor current.
+	7. Continue last test and try cursor next.
+	8. Duplicates.  Cursor A is in a duplicate set and deletes the item.
+	Cursor B is in the same duplicate set and deletes a different item.
+	Verify that the cursor is in the right place.
+	9. Cursors A and B are in the place in the same duplicate set.  A
+	deletes its item.  Do current on B.
 	10. Continue 8 and do a next on B.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -1054,7 +1157,7 @@ test065
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test066
 	Test of cursor overwrites of DB_CURRENT w/ duplicates.
-	
+
 	Make sure a cursor put to DB_CURRENT acts as an overwrite in a
 	database with duplicates.
 
@@ -1062,11 +1165,11 @@ test066
 test067
 	Test of DB_CURRENT partial puts onto almost empty duplicate
 	pages, with and without DB_DUP_SORT.
-	
+
 	Test of DB_CURRENT partial puts on almost-empty duplicate pages.
 	This test was written to address the following issue, #2 in the
 	list of issues relating to bug #0820:
-	
+
 	2. DBcursor->put, DB_CURRENT flag, off-page duplicates, hash and btree:
 	In Btree, the DB_CURRENT overwrite of off-page duplicate records
 	first deletes the record and then puts the new one -- this could
@@ -1074,7 +1177,7 @@ test067
 	Suggested solution is to acquire a cursor to lock down the current
 	record, put a new record after that record, and then delete using
 	the held cursor.
-	
+
 	It also tests the following, #5 in the same list of issues:
 	5. DBcursor->put, DB_AFTER/DB_BEFORE/DB_CURRENT flags, DB_DBT_PARTIAL
 	set, duplicate comparison routine specified.
@@ -1097,7 +1200,7 @@ test069
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test070
 	Test of DB_CONSUME (Four consumers, 1000 items.)
-	
+
 	Fork off six processes, four consumers and two producers.
 	The producers will each put 20000 records into a queue;
 	the consumers will each get 10000.
@@ -1115,21 +1218,21 @@ test072
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test073
 	Test of cursor stability on duplicate pages.
-	
+
 	Does the following:
 	a. Initialize things by DB->putting ndups dups and
-	   setting a reference cursor to point to each.
+	setting a reference cursor to point to each.
 	b. c_put ndups dups (and correspondingly expanding
-	   the set of reference cursors) after the last one, making sure
-	   after each step that all the reference cursors still point to
-	   the right item.
+	the set of reference cursors) after the last one, making sure
+	after each step that all the reference cursors still point to
+	the right item.
 	c. Ditto, but before the first one.
 	d. Ditto, but after each one in sequence first to last.
 	e. Ditto, but after each one in sequence from last to first.
-	   occur relative to the new datum)
+	occur relative to the new datum)
 	f. Ditto for the two sequence tests, only doing a
-	   DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
-	   new one.
+	DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
+	new one.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test074
@@ -1155,7 +1258,7 @@ test078
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test079
 	Test of deletes in large trees.  (test006 w/ sm. pagesize).
-	
+
 	Check that delete operations work in large btrees.  10000 entries
 	and a pagesize of 512 push this out to a four-level btree, with a
 	small fraction of the entries going on overflow pages.
@@ -1195,23 +1298,23 @@ test086
 test087
 	Test of cursor stability when converting to and modifying
 	off-page duplicate pages with subtransaction aborts. [#2373]
-	
+
 	Does the following:
 	a. Initialize things by DB->putting ndups dups and
-	   setting a reference cursor to point to each.  Do each put twice,
-	   first aborting, then committing, so we're sure to abort the move
-	   to off-page dups at some point.
+	setting a reference cursor to point to each.  Do each put twice,
+	first aborting, then committing, so we're sure to abort the move
+	to off-page dups at some point.
 	b. c_put ndups dups (and correspondingly expanding
-	   the set of reference cursors) after the last one, making sure
-	   after each step that all the reference cursors still point to
-	   the right item.
+	the set of reference cursors) after the last one, making sure
+	after each step that all the reference cursors still point to
+	the right item.
 	c. Ditto, but before the first one.
 	d. Ditto, but after each one in sequence first to last.
 	e. Ditto, but after each one in sequence from last to first.
-	   occur relative to the new datum)
+	occur relative to the new datum)
 	f. Ditto for the two sequence tests, only doing a
-	   DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
-	   new one.
+	DBC->c_put(DB_CURRENT) of a larger datum instead of adding a
+	new one.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test088
@@ -1219,8 +1322,15 @@ test088
 	deep trees (a variant of test048). [#2514]
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test089
+	Concurrent Data Store test (CDB)
+
+	Enhanced CDB testing to test off-page dups, cursor dups and
+	cursor operations like c_del then c_get.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test090
-	Test for functionality near the end of the queue.
+	Test for functionality near the end of the queue using test001.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test091
@@ -1229,7 +1339,7 @@ test091
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test092
 	Test of DB_DIRTY_READ [#3395]
-	
+
 	We set up a database with nentries in it.  We then open the
 	database read-only twice.  One with dirty read and one without.
 	We open the database for writing and update some entries in it.
@@ -1239,7 +1349,7 @@ test092
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test093
 	Test using set_bt_compare.
-	
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; retrieve each.
 	After all are entered, retrieve all; compare output to original.
@@ -1248,7 +1358,7 @@ test093
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test094
 	Test using set_dup_compare.
-	
+
 	Use the first 10,000 entries from the dictionary.
 	Insert each with self as key and data; retrieve each.
 	After all are entered, retrieve all; compare output to original.
@@ -1263,9 +1373,65 @@ test096
 	Db->truncate test.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test097
+	Open up a large set of database files simultaneously.
+	Adjust for local file descriptor resource limits.
+	Then use the first 1000 entries from the dictionary.
+	Insert each with self as key and a fixed, medium length data string;
+	retrieve each. After all are entered, retrieve all; compare output
+	to original.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test098
+	Test of DB_GET_RECNO and secondary indices.  Open a primary and
+	a secondary, and do a normal cursor get followed by a get_recno.
+	(This is a smoke test for "Bug #1" in [#5811].)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test099
+
+	Test of DB->get and DBC->c_get with set_recno and get_recno.
+
+	Populate a small btree -recnum database.
+	After all are entered, retrieve each using -recno with DB->get.
+	Open a cursor and do the same for DBC->c_get with set_recno.
+	Verify that set_recno sets the record number position properly.
+	Verify that get_recno returns the correct record numbers.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test100
+	Test for functionality near the end of the queue
+	using test025 (DB_APPEND).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test101
+	Test for functionality near the end of the queue 
+	using test070 (DB_CONSUME).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001
 	Begin, commit, abort testing.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn002
 	Verify that  read-only transactions do not write log records.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn003
+	Test abort/commit/prepare of txns with outstanding child txns.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn004
+	Test of wraparound txnids (txn001)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn005
+	Test transaction ID wraparound and recovery.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn008
+	Test of wraparound txnids (txn002)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+txn009
+	Test of wraparound txnids (txn003)

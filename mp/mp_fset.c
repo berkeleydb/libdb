@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_fset.c,v 11.19 2001/07/24 18:31:30 bostic Exp $";
+static const char revid[] = "$Id: mp_fset.c,v 11.25 2002/05/03 15:21:17 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,8 +16,8 @@ static const char revid[] = "$Id: mp_fset.c,v 11.19 2001/07/24 18:31:30 bostic E
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "mp.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/mp.h"
 
 /*
  * __memp_fset --
@@ -34,7 +34,9 @@ __memp_fset(dbmfp, pgaddr, flags)
 	BH *bhp;
 	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
 	MPOOL *c_mp;
+	u_int32_t n_cache;
 	int ret;
 
 	dbmp = dbmfp->dbmp;
@@ -47,7 +49,7 @@ __memp_fset(dbmfp, pgaddr, flags)
 		return (__db_ferr(dbenv, "memp_fset", 1));
 
 	if ((ret = __db_fchk(dbenv, "memp_fset", flags,
-	    DB_MPOOL_DIRTY | DB_MPOOL_CLEAN | DB_MPOOL_DISCARD)) != 0)
+	    DB_MPOOL_CLEAN | DB_MPOOL_DIRTY | DB_MPOOL_DISCARD)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(dbenv, "memp_fset",
 	    flags, DB_MPOOL_CLEAN, DB_MPOOL_DIRTY)) != 0)
@@ -59,30 +61,29 @@ __memp_fset(dbmfp, pgaddr, flags)
 		return (EACCES);
 	}
 
-	/* Convert the page address to a buffer header. */
+	/* Convert the page address to a buffer header and hash bucket. */
 	bhp = (BH *)((u_int8_t *)pgaddr - SSZA(BH, buf));
+	n_cache = NCACHE(dbmp->reginfo[0].primary, bhp->mf_offset, bhp->pgno);
+	c_mp = dbmp->reginfo[n_cache].primary;
+	hp = R_ADDR(&dbmp->reginfo[n_cache], c_mp->htab);
+	hp = &hp[NBUCKET(c_mp, bhp->mf_offset, bhp->pgno)];
 
-	/* Convert the buffer header to a cache. */
-	c_mp = BH_TO_CACHE(dbmp, bhp);
+	MUTEX_LOCK(dbenv, &hp->hash_mutex);
 
-	R_LOCK(dbenv, dbmp->reginfo);
-
+	/* Set/clear the page bits. */
 	if (LF_ISSET(DB_MPOOL_CLEAN) &&
 	    F_ISSET(bhp, BH_DIRTY) && !F_ISSET(bhp, BH_DIRTY_CREATE)) {
-		++c_mp->stat.st_page_clean;
-		DB_ASSERT(c_mp->stat.st_page_dirty != 0);
-		--c_mp->stat.st_page_dirty;
+		DB_ASSERT(hp->hash_page_dirty != 0);
+		--hp->hash_page_dirty;
 		F_CLR(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DIRTY) && !F_ISSET(bhp, BH_DIRTY)) {
-		DB_ASSERT(c_mp->stat.st_page_clean != 0);
-		--c_mp->stat.st_page_clean;
-		++c_mp->stat.st_page_dirty;
+		++hp->hash_page_dirty;
 		F_SET(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DISCARD))
 		F_SET(bhp, BH_DISCARD);
 
-	R_UNLOCK(dbenv, dbmp->reginfo);
+	MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
 	return (0);
 }

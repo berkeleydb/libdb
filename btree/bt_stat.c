@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_stat.c,v 11.40 2001/09/04 16:00:50 bostic Exp $";
+static const char revid[] = "$Id: bt_stat.c,v 11.52 2002/05/30 15:40:27 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,10 +18,11 @@ static const char revid[] = "$Id: bt_stat.c,v 11.40 2001/09/04 16:00:50 bostic E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "btree.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/btree.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
 
 /*
  * __bam_stat --
@@ -142,7 +143,7 @@ meta_only:
 	}
 	if (flags == DB_FAST_STAT) {
 		if (dbp->type == DB_RECNO ||
-		    (dbp->type == DB_BTREE && F_ISSET(dbp, DB_BT_RECNUM))) {
+		    (dbp->type == DB_BTREE && F_ISSET(dbp, DB_AM_RECNUM))) {
 			if ((ret = __db_lget(dbc, 0,
 			    cp->root, DB_LOCK_READ, 0, &lock)) != 0)
 				goto err;
@@ -188,7 +189,7 @@ err:	/* Discard the second page. */
 		ret = t_ret;
 
 	if (ret != 0 && sp != NULL) {
-		__os_free(dbp->dbenv, sp, sizeof(*sp));
+		__os_ufree(dbp->dbenv, sp);
 		*(DB_BTREE_STAT **)spp = NULL;
 	}
 
@@ -234,7 +235,7 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 	switch (TYPE(h)) {
 	case P_IBTREE:
 		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
-			bi = GET_BINTERNAL(h, indx);
+			bi = GET_BINTERNAL(dbp, h, indx);
 			if (B_TYPE(bi->type) == B_OVERFLOW &&
 			    (ret = __db_traverse_big(dbp,
 			    ((BOVERFLOW *)bi->data)->pgno,
@@ -247,7 +248,7 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 		break;
 	case P_IRECNO:
 		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
-			ri = GET_RINTERNAL(h, indx);
+			ri = GET_RINTERNAL(dbp, h, indx);
 			if ((ret = __bam_traverse(
 			    dbc, mode, ri->pgno, callback, cookie)) != 0)
 				goto err;
@@ -255,21 +256,21 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 		break;
 	case P_LBTREE:
 		for (indx = 0; indx < NUM_ENT(h); indx += P_INDX) {
-			bk = GET_BKEYDATA(h, indx);
+			bk = GET_BKEYDATA(dbp, h, indx);
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
 			    (ret = __db_traverse_big(dbp,
-			    GET_BOVERFLOW(h, indx)->pgno,
+			    GET_BOVERFLOW(dbp, h, indx)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
-			bk = GET_BKEYDATA(h, indx + O_INDX);
+			bk = GET_BKEYDATA(dbp, h, indx + O_INDX);
 			if (B_TYPE(bk->type) == B_DUPLICATE &&
 			    (ret = __bam_traverse(dbc, mode,
-			    GET_BOVERFLOW(h, indx + O_INDX)->pgno,
+			    GET_BOVERFLOW(dbp, h, indx + O_INDX)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
 			    (ret = __db_traverse_big(dbp,
-			    GET_BOVERFLOW(h, indx + O_INDX)->pgno,
+			    GET_BOVERFLOW(dbp, h, indx + O_INDX)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
 		}
@@ -277,10 +278,10 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 	case P_LDUP:
 	case P_LRECNO:
 		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
-			bk = GET_BKEYDATA(h, indx);
+			bk = GET_BKEYDATA(dbp, h, indx);
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
 			    (ret = __db_traverse_big(dbp,
-			    GET_BOVERFLOW(h, indx)->pgno,
+			    GET_BOVERFLOW(dbp, h, indx)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
 		}
@@ -310,33 +311,34 @@ __bam_stat_callback(dbp, h, cookie, putp)
 	int *putp;
 {
 	DB_BTREE_STAT *sp;
-	db_indx_t indx, top;
+	db_indx_t indx, *inp, top;
 	u_int8_t type;
 
 	sp = cookie;
 	*putp = 0;
 	top = NUM_ENT(h);
+	inp = P_INP(dbp, h);
 
 	switch (TYPE(h)) {
 	case P_IBTREE:
 	case P_IRECNO:
 		++sp->bt_int_pg;
-		sp->bt_int_pgfree += P_FREESPACE(h);
+		sp->bt_int_pgfree += P_FREESPACE(dbp, h);
 		break;
 	case P_LBTREE:
 		/* Correct for on-page duplicates and deleted items. */
 		for (indx = 0; indx < top; indx += P_INDX) {
 			if (indx + P_INDX >= top ||
-			    h->inp[indx] != h->inp[indx + P_INDX])
+			    inp[indx] != inp[indx + P_INDX])
 				++sp->bt_nkeys;
 
-			type = GET_BKEYDATA(h, indx + O_INDX)->type;
+			type = GET_BKEYDATA(dbp, h, indx + O_INDX)->type;
 			if (!B_DISSET(type) && B_TYPE(type) != B_DUPLICATE)
 				++sp->bt_ndata;
 		}
 
 		++sp->bt_leaf_pg;
-		sp->bt_leaf_pgfree += P_FREESPACE(h);
+		sp->bt_leaf_pgfree += P_FREESPACE(dbp, h);
 		break;
 	case P_LRECNO:
 		/*
@@ -350,36 +352,36 @@ __bam_stat_callback(dbp, h, cookie, putp)
 			 * Correct for deleted items in non-renumbering
 			 * Recno databases.
 			 */
-			if (F_ISSET(dbp, DB_RE_RENUMBER))
+			if (F_ISSET(dbp, DB_AM_RENUMBER))
 				sp->bt_ndata += top;
 			else
 				for (indx = 0; indx < top; indx += O_INDX) {
-					type = GET_BKEYDATA(h, indx)->type;
+					type = GET_BKEYDATA(dbp, h, indx)->type;
 					if (!B_DISSET(type))
 						++sp->bt_ndata;
 				}
 
 			++sp->bt_leaf_pg;
-			sp->bt_leaf_pgfree += P_FREESPACE(h);
+			sp->bt_leaf_pgfree += P_FREESPACE(dbp, h);
 		} else {
 			sp->bt_ndata += top;
 
 			++sp->bt_dup_pg;
-			sp->bt_dup_pgfree += P_FREESPACE(h);
+			sp->bt_dup_pgfree += P_FREESPACE(dbp, h);
 		}
 		break;
 	case P_LDUP:
 		/* Correct for deleted items. */
 		for (indx = 0; indx < top; indx += O_INDX)
-			if (!B_DISSET(GET_BKEYDATA(h, indx)->type))
+			if (!B_DISSET(GET_BKEYDATA(dbp, h, indx)->type))
 				++sp->bt_ndata;
 
 		++sp->bt_dup_pg;
-		sp->bt_dup_pgfree += P_FREESPACE(h);
+		sp->bt_dup_pgfree += P_FREESPACE(dbp, h);
 		break;
 	case P_OVERFLOW:
 		++sp->bt_over_pg;
-		sp->bt_over_pgfree += P_OVFLSPACE(dbp->pgsize, h);
+		sp->bt_over_pgfree += P_OVFLSPACE(dbp, dbp->pgsize, h);
 		break;
 	default:
 		return (__db_pgfmt(dbp->dbenv, h->pgno));
@@ -414,6 +416,10 @@ __bam_key_range(dbp, txn, dbt, kp, flags)
 
 	if (flags != 0)
 		return (__db_ferr(dbp->dbenv, "DB->key_range", 0));
+
+	/* Check for consistent transaction usage. */
+	if ((ret = __db_check_txn(dbp, txn, DB_LOCK_INVALIDID, 1)) != 0)
+		return (ret);
 
 	/* Acquire a cursor. */
 	if ((ret = dbp->cursor(dbp, txn, &dbc, 0)) != 0)

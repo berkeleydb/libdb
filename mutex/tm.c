@@ -34,11 +34,11 @@ void  unmap_file();
 
 #define	MUTEX_WAKEME	0x80			/* Wake-me flag. */
 
-int	 align;					/* Mutex alignment in file. */
 DB_ENV	 dbenv;					/* Fake out DB. */
-char	*file = "mutex.file";			/* Backing file. */
 size_t	 len;					/* Backing file size. */
+int	 align;					/* Mutex alignment in file. */
 int	 quit;					/* End-of-test flag. */
+char	*file = "mutex.file";			/* Backing file. */
 
 int	 maxlocks = 20;				/* -l: Backing locks. */
 int	 nlocks = 10000;			/* -n: Locks per processes. */
@@ -56,7 +56,9 @@ main(argc, argv)
 	extern char *optarg;
 	pid_t pid;
 	int ch, eval, i, status;
+	char *tmpath;
 
+	tmpath = argv[0];
 	while ((ch = getopt(argc, argv, "l:n:p:st:v")) != EOF)
 		switch(ch) {
 		case 'l':
@@ -87,8 +89,7 @@ main(argc, argv)
 		case '?':
 		default:
 			(void)fprintf(stderr,
-    "usage: %s [-v] [-l maxlocks] [-n locks] [-p procs] [-t threads]\n",
-			    argv[0]);
+    "usage: tm [-v] [-l maxlocks] [-n locks] [-p procs] [-t threads]\n");
 			return (EXIT_FAILURE);
 		}
 	argc -= optind;
@@ -105,7 +106,8 @@ main(argc, argv)
 	len =
 	    align * (1 + nthreads +  maxlocks) + sizeof(u_long) * maxlocks * 2;
 	printf(
-	    "mutex alignment %d, backing file %lu bytes\n", align, (u_long)len);
+    "mutex alignment %d, structure alignment %d, backing file %lu bytes\n",
+	    MUTEX_ALIGN, align, (u_long)len);
 
 	if (child) {
 		run_proc();
@@ -124,7 +126,7 @@ main(argc, argv)
 			perror("fork");
 			return (EXIT_FAILURE);
 		case 0:
-			exec_proc();
+			exec_proc(tmpath);
 			break;
 		default:
 			break;
@@ -147,7 +149,8 @@ main(argc, argv)
 }
 
 void
-exec_proc()
+exec_proc(tmpath)
+	char *tmpath;
 {
 	char *argv[10], **ap, b_l[10], b_n[10], b_t[10];
 
@@ -164,9 +167,9 @@ exec_proc()
 		*ap++ = "-v";
 
 	*ap = NULL;
-	execv("./tm", argv);
+	execvp(tmpath, argv);
 
-	fprintf(stderr, "./tm: %s\n", strerror(errno));
+	fprintf(stderr, "%s: %s\n", tmpath, strerror(errno));
 	exit(EXIT_FAILURE);
 }
 
@@ -266,7 +269,7 @@ run_thread(arg)
 		if (verbose)
 			printf("%lu/%lx: %03d\n", gid1, gid2, lock);
 
-		if (__db_mutex_lock(&dbenv, mp, NULL)) {
+		if (__db_mutex_lock(&dbenv, mp)) {
 			fprintf(stderr,
 			    "%lu/%lx: never got lock\n", gid1, gid2);
 			return ((void *)EXIT_FAILURE);
@@ -308,7 +311,7 @@ run_thread(arg)
 		 *
 		 * The wakeup thread will wake us up.
 		 */
-		if (__db_mutex_lock(&dbenv, gm_addr, NULL)) {
+		if (__db_mutex_lock(&dbenv, gm_addr)) {
 			fprintf(stderr, "%lu/%lx: global lock\n", gid1, gid2);
 			return ((void *)EXIT_FAILURE);
 		}
@@ -319,7 +322,7 @@ run_thread(arg)
 			    "%lu/%lx: per-thread wakeup failed\n", gid1, gid2);
 			return ((void *)EXIT_FAILURE);
 		}
-		if (__db_mutex_lock(&dbenv, mp, NULL)) {
+		if (__db_mutex_lock(&dbenv, mp)) {
 			fprintf(stderr,
 			    "%lu/%lx: per-thread lock\n", gid1, gid2);
 			return ((void *)EXIT_FAILURE);
@@ -377,7 +380,7 @@ run_thread_wake(arg)
 		id = 0;
 
 		/* Acquire the global lock. */
-retry:		if (__db_mutex_lock(&dbenv, gm_addr, NULL)) {
+retry:		if (__db_mutex_lock(&dbenv, gm_addr)) {
 			fprintf(stderr, "wt: global lock failed\n");
 			return ((void *)EXIT_FAILURE);
 		}
@@ -417,11 +420,17 @@ tm_file_init()
 {
 	int fd;
 
-	(void)remove(file);
 
 	/* Initialize the backing file. */
 	printf("Create the backing file...\n");
+#ifdef	HAVE_QNX
+	(void)shm_unlink(file);
+	if ((fd = shm_open(file, O_CREAT | O_RDWR | O_TRUNC,
+#else
+	(void)remove(file);
 	if ((fd = open(file, O_CREAT | O_RDWR | O_TRUNC,
+#endif
+
 	    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) == -1) {
 		(void)fprintf(stderr, "%s: open: %s\n", file, strerror(errno));
 		exit(EXIT_FAILURE);
@@ -447,7 +456,7 @@ tm_mutex_init()
 	map_file(&gm_addr, &tm_addr, &lm_addr, NULL, &fd);
 
 	printf("Initialize the global mutex...\n");
-	if (__db_mutex_init( &dbenv, gm_addr, 0, 0)) {
+	if (__db_mutex_init_int(&dbenv, gm_addr, 0, 0)) {
 		fprintf(stderr,
 		    "__db_mutex_init (global): %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -456,12 +465,12 @@ tm_mutex_init()
 	printf("Initialize the per-thread mutexes...\n");
 	for (i = 1, mp = tm_addr;
 	    i <= nthreads; ++i, mp = (DB_MUTEX *)((u_int8_t *)mp + align)) {
-		if (__db_mutex_init(&dbenv, mp, 0, MUTEX_SELF_BLOCK)) {
+		if (__db_mutex_init_int(&dbenv, mp, 0, MUTEX_SELF_BLOCK)) {
 			fprintf(stderr, "__db_mutex_init (per-thread %d): %s\n",
 			    i, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		if (__db_mutex_lock(&dbenv, mp, NULL)) {
+		if (__db_mutex_lock(&dbenv, mp)) {
 			fprintf(stderr,
 			    "__db_mutex_init (per-thread %d) lock: %s\n",
 			    i, strerror(errno));
@@ -472,7 +481,7 @@ tm_mutex_init()
 	printf("Initialize the per-lock mutexes...\n");
 	for (i = 1, mp = lm_addr;
 	    i <= maxlocks; ++i, mp = (DB_MUTEX *)((u_int8_t *)mp + align))
-		if (__db_mutex_init(&dbenv, mp, 0, 0)) {
+		if (__db_mutex_init_int(&dbenv, mp, 0, 0)) {
 			fprintf(stderr, "__db_mutex_init (per-lock: %d): %s\n",
 			    i, strerror(errno));
 			exit(EXIT_FAILURE);
@@ -522,6 +531,9 @@ tm_mutex_destroy()
 		}
 
 	unmap_file((void *)gm_addr, fd);
+#ifdef HAVE_QNX
+	(void)shm_unlink(file);
+#endif
 }
 
 /*
@@ -564,7 +576,11 @@ map_file(gm_addrp, tm_addrp, lm_addrp, id_addrp, fdp)
 #ifndef MAP_FILE
 #define	MAP_FILE	0
 #endif
+#ifdef	HAVE_QNX
+	if ((fd = shm_open(file, O_RDWR, 0)) == -1) {
+#else
 	if ((fd = open(file, O_RDWR, 0)) == -1) {
+#endif
 		fprintf(stderr, "%s: open %s\n", file, strerror(errno));
 		exit(EXIT_FAILURE);
 	}

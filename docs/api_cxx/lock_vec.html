@@ -1,6 +1,7 @@
-<!--$Id: lock_vec.so,v 10.44 2001/10/22 15:24:33 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: lock_vec.so,v 10.51 2002/08/29 03:25:05 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::lock_vec</title>
@@ -37,9 +38,14 @@ the locks.
 <p>The <b>flags</b> value must be set to 0 or
 the following value:
 <p><dl compact>
-<p><dt><a name="DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a><dd>If a lock cannot be immediately granted because the requested lock
-conflicts with an existing lock, return instead of waiting for the lock
-to become available.
+<p><dt><a name="DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a><dd>If a lock cannot be granted because the requested lock conflicts with
+an existing lock,
+return DB_LOCK_NOTGRANTED or throw a
+<a href="../api_cxx/lockng_class.html">DbLockNotGrantedException</a> immediately instead of waiting for
+the lock to become available.  In this case, if non-NULL,
+<b>elistp</b> identifies the request that was not granted, or, if an
+exception is thrown, the index of the request that was not granted can
+be found by calling DbLockNotGrantedException.get_index.
 </dl>
 <p>The <b>list</b> array provided to DbEnv::lock_vec is typedef'd as
 DB_LOCKREQ.  A DB_LOCKREQ structure has at least the following fields.
@@ -89,11 +95,11 @@ out the transaction itself.
 When using the default lock conflict matrix, <b>mode</b> must be set to one
 of the following values:
 <p><dl compact>
-<dt>DB_LOCK_READ<dd>read (shared)
-<dt>DB_LOCK_WRITE<dd>write (exclusive)
-<dt>DB_LOCK_IWRITE<dd>intention to write (shared)
-<dt>DB_LOCK_IREAD<dd>intention to read (shared)
-<dt>DB_LOCK_IWR<dd>intention to read and write (shared)
+<dt><a name="DB_LOCK_READ">DB_LOCK_READ</a><dd>read (shared)
+<dt><a name="DB_LOCK_WRITE">DB_LOCK_WRITE</a><dd>write (exclusive)
+<dt><a name="DB_LOCK_IWRITE">DB_LOCK_IWRITE</a><dd>intention to write (shared)
+<dt><a name="DB_LOCK_IREAD">DB_LOCK_IREAD</a><dd>intention to read (shared)
+<dt><a name="DB_LOCK_IWR">DB_LOCK_IWR</a><dd>intention to read and write (shared)
 </dl>
 <p>See <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a> and <a href="../ref/lock/stdmode.html">Standard Lock Modes</a> for more information on the lock conflict matrix.
 <p><dt>const Dbt <a name="obj">obj</a>;<dd>An untyped byte string that specifies the object to be locked or
@@ -112,46 +118,30 @@ operation are guaranteed to have completed successfully, and
 DbEnv::lock_vec returns a non-zero value.  In addition, if <b>elistp</b>
 is not NULL, it is set to point to the DB_LOCKREQ entry that was being
 processed when the error occurred.
-<p>If a lock is requested that cannot be immediately granted, and the
-<b>flags</b> parameter was set to <a href="../api_cxx/lock_vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a>, the
-DbEnv::lock_vec method may
-return or throw an exception encapsulating
-<a name="DB_LOCK_NOTGRANTED">DB_LOCK_NOTGRANTED</a>.  In this case, if non-NULL,
-<b>elistp</b> identifies the request that was not granted.
-<p>Otherwise, the DbEnv::lock_vec method either returns a non-zero error value or throws an exception that
+<p>
+Otherwise, the DbEnv::lock_vec method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
 <h1>Errors</h1>
 <p>The DbEnv::lock_vec method may fail and throw an exception or return a non-zero error for the following conditions:
-<p><dl compact>
-<p><dt>DB_LOCK_DEADLOCK<dd>The operation was selected to resolve a deadlock.
-</dl>
 <p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
 <p><dl compact>
 <p><dt>ENOMEM<dd>The maximum number of locks has been reached.
 </dl>
+<p>If the operation was selected to resolve a deadlock, the
+DbEnv::lock_vec method will fail and
+and either return <a href="../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> or
+throw a <a href="../api_cxx/deadlock_class.html">DbDeadlockException</a> exception.
 <p>The DbEnv::lock_vec method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::lock_vec method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the DbEnv::lock_vec method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
 <h1>See Also</h1>
-<a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
-<a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,
-<a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a>,
-<a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a>,
-<a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a>,
-<a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a>,
-<a href="../api_cxx/lock_get.html">DbEnv::lock_get</a>,
-<a href="../api_cxx/lock_id.html">DbEnv::lock_id</a>,
-<a href="../api_cxx/lock_id_free.html">DbEnv::lock_id_free</a>,
-<a href="../api_cxx/lock_put.html">DbEnv::lock_put</a>,
-<a href="../api_cxx/lock_stat.html">DbEnv::lock_stat</a>,
-and
-<a href="../api_cxx/lock_vec.html">DbEnv::lock_vec</a>.
+<a href="../api_cxx/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

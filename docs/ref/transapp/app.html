@@ -1,6 +1,7 @@
 <!--$Id: app.so,v 10.7 2001/06/09 13:39:04 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Application structure</title>
@@ -43,14 +44,14 @@ for any reason (including application or system failure).
 <p>Requirements for shutting down the environment cleanly differ, depending
 on the type of environment created.  If the environment is public and
 persistent (that is, the <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was not specified to
-the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function), recovery must be performed if any transaction
-was not committed or aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> function was not called
-for any open <a href="../../api_c/env_create.html">DB_ENV</a> handle.
+the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method), recovery must be performed if any transaction
+was not committed or aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method was not called
+for any open <a href="../../api_c/env_class.html">DB_ENV</a> handle.
 <p>If the environment is private and temporary (that is, the
-<a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> function),
+<a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag was specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method),
 recovery must be performed if any transaction was not committed or
-aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> function was not called for any open
-<a href="../../api_c/env_create.html">DB_ENV</a> handle.  In addition, at least one transaction checkpoint
+aborted, or <a href="../../api_c/env_close.html">DB_ENV-&gt;close</a> method was not called for any open
+<a href="../../api_c/env_class.html">DB_ENV</a> handle.  In addition, at least one transaction checkpoint
 must be performed after all existing transactions have been committed
 or aborted.
 <p><dt>The easy way:<dd>It greatly simplifies matters that recovery may be performed regardless
@@ -70,7 +71,7 @@ application starts, it opens and potentially creates the environment,
 runs recovery (whether it was needed or not), and then opens its
 databases.  From then on, the application can create new threads of
 control as it chooses.  All threads of control share the open Berkeley DB
-<a href="../../api_c/env_create.html">DB_ENV</a> and <a href="../../api_c/db_create.html">DB</a> handles.  In this model, databases are
+<a href="../../api_c/env_class.html">DB_ENV</a> and <a href="../../api_c/db_class.html">DB</a> handles.  In this model, databases are
 rarely opened or closed when more than a single thread of control is
 running; that is, they are opened when only a single thread is running,
 and closed after all threads but one have exited.  The last thread of

@@ -1,16 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2001
+ * Copyright (c) 2000-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfyutil.c,v 11.18 2001/04/19 01:52:44 bostic Exp $
+ * $Id: db_vrfyutil.c,v 11.29 2002/08/08 03:57:50 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_vrfyutil.c,v 11.18 2001/04/19 01:52:44 bostic Exp $";
+static const char revid[] = "$Id: db_vrfyutil.c,v 11.29 2002/08/08 03:57:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,11 +20,11 @@ static const char revid[] = "$Id: db_vrfyutil.c,v 11.18 2001/04/19 01:52:44 bost
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_verify.h"
-#include "db_am.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_verify.h"
+#include "dbinc/db_am.h"
 
-static int __db_vrfy_pageinfo_create __P((VRFY_PAGEINFO **));
+static int __db_vrfy_pageinfo_create __P((DB_ENV *, VRFY_PAGEINFO **));
 static int __db_vrfy_pgset_iinc __P((DB *, db_pgno_t, int));
 
 /*
@@ -35,7 +35,7 @@ static int __db_vrfy_pgset_iinc __P((DB *, db_pgno_t, int));
  * PUBLIC:     __P((DB_ENV *, u_int32_t, VRFY_DBINFO **));
  */
 int
-__db_vrfy_dbinfo_create (dbenv, pgsize, vdpp)
+__db_vrfy_dbinfo_create(dbenv, pgsize, vdpp)
 	DB_ENV *dbenv;
 	u_int32_t pgsize;
 	VRFY_DBINFO **vdpp;
@@ -54,14 +54,14 @@ __db_vrfy_dbinfo_create (dbenv, pgsize, vdpp)
 	if ((ret = db_create(&cdbp, dbenv, 0)) != 0)
 		goto err;
 
-	if ((ret = cdbp->set_flags(cdbp, DB_DUP | DB_DUPSORT)) != 0)
+	if ((ret = cdbp->set_flags(cdbp, DB_DUP)) != 0)
 		goto err;
 
 	if ((ret = cdbp->set_pagesize(cdbp, pgsize)) != 0)
 		goto err;
 
 	if ((ret =
-	    cdbp->open(cdbp, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+	    cdbp->open(cdbp, NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
 		goto err;
 
 	if ((ret = db_create(&pgdbp, dbenv, 0)) != 0)
@@ -70,8 +70,8 @@ __db_vrfy_dbinfo_create (dbenv, pgsize, vdpp)
 	if ((ret = pgdbp->set_pagesize(pgdbp, pgsize)) != 0)
 		goto err;
 
-	if ((ret =
-	    pgdbp->open(pgdbp, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+	if ((ret = pgdbp->open(pgdbp,
+	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
 		goto err;
 
 	if ((ret = __db_vrfy_pgset(dbenv, pgsize, &pgset)) != 0)
@@ -91,7 +91,7 @@ err:	if (cdbp != NULL)
 	if (pgdbp != NULL)
 		(void)pgdbp->close(pgdbp, 0);
 	if (vdp != NULL)
-		__os_free(dbenv, vdp, sizeof(VRFY_DBINFO));
+		__os_free(dbenv, vdp);
 	return (ret);
 }
 
@@ -114,7 +114,7 @@ __db_vrfy_dbinfo_destroy(dbenv, vdp)
 
 	for (c = LIST_FIRST(&vdp->subdbs); c != NULL; c = d) {
 		d = LIST_NEXT(c, links);
-		__os_free(NULL, c, 0);
+		__os_free(NULL, c);
 	}
 
 	if ((t_ret = vdp->pgdbp->close(vdp->pgdbp, 0)) != 0)
@@ -128,7 +128,7 @@ __db_vrfy_dbinfo_destroy(dbenv, vdp)
 
 	DB_ASSERT(LIST_FIRST(&vdp->activepips) == NULL);
 
-	__os_free(dbenv, vdp, sizeof(VRFY_DBINFO));
+	__os_free(dbenv, vdp);
 	return (ret);
 }
 
@@ -194,7 +194,7 @@ __db_vrfy_getpageinfo(vdp, pgno, pipp)
 		return (ret);
 
 	/* Case 3 */
-	if ((ret = __db_vrfy_pageinfo_create(&pip)) != 0)
+	if ((ret = __db_vrfy_pageinfo_create(pgdbp->dbenv, &pip)) != 0)
 		return (ret);
 
 	LIST_INSERT_HEAD(&vdp->activepips, pip, links);
@@ -259,7 +259,7 @@ __db_vrfy_putpageinfo(dbenv, vdp, pip)
 #endif
 
 	DB_ASSERT(pip->pi_refcount == 0);
-	__os_free(dbenv, pip, 0);
+	__os_ufree(dbenv, pip);
 	return (0);
 }
 
@@ -284,7 +284,8 @@ __db_vrfy_pgset(dbenv, pgsize, dbpp)
 		return (ret);
 	if ((ret = dbp->set_pagesize(dbp, pgsize)) != 0)
 		goto err;
-	if ((ret = dbp->open(dbp, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) == 0)
+	if ((ret = dbp->open(dbp,
+	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600)) == 0)
 		*dbpp = dbp;
 	else
 err:		(void)dbp->close(dbp, 0);
@@ -467,8 +468,10 @@ __db_vrfy_childput(vdp, pgno, cip)
 	db_pgno_t pgno;
 	VRFY_CHILDINFO *cip;
 {
-	DBT key, data;
 	DB *cdbp;
+	DBC *cc;
+	DBT key, data;
+	VRFY_CHILDINFO *oldcip;
 	int ret;
 
 	cdbp = vdp->cdbp;
@@ -478,17 +481,44 @@ __db_vrfy_childput(vdp, pgno, cip)
 	key.data = &pgno;
 	key.size = sizeof(db_pgno_t);
 
+	/*
+	 * We want to avoid adding multiple entries for a single child page;
+	 * we only need to verify each child once, even if a child (such
+	 * as an overflow key) is multiply referenced.
+	 *
+	 * However, we also need to make sure that when walking the list
+	 * of children, we encounter them in the order they're referenced
+	 * on a page.  (This permits us, for example, to verify the
+	 * prev_pgno/next_pgno chain of Btree leaf pages.)
+	 *
+	 * Check the child database to make sure that this page isn't
+	 * already a child of the specified page number.  If it's not,
+	 * put it at the end of the duplicate set.
+	 */
+	if ((ret = __db_vrfy_childcursor(vdp, &cc)) != 0)
+		return (ret);
+	for (ret = __db_vrfy_ccset(cc, pgno, &oldcip); ret == 0;
+	    ret = __db_vrfy_ccnext(cc, &oldcip))
+		if (oldcip->pgno == cip->pgno) {
+			/*
+			 * Found a matching child.  Return without
+			 * putting it again.
+			 */
+			if ((ret = __db_vrfy_ccclose(cc)) != 0)
+				return (ret);
+			return (0);
+		}
+	if (ret != DB_NOTFOUND) {
+		(void)__db_vrfy_ccclose(cc);
+		return (ret);
+	}
+	if ((ret = __db_vrfy_ccclose(cc)) != 0)
+		return (ret);
+
 	data.data = cip;
 	data.size = sizeof(VRFY_CHILDINFO);
 
-	/*
-	 * Don't add duplicate (data) entries for a given child, and accept
-	 * DB_KEYEXIST as a successful return;  we only need to verify
-	 * each child once, even if a child (such as an overflow key) is
-	 * multiply referenced.
-	 */
-	ret = cdbp->put(cdbp, NULL, &key, &data, DB_NODUPDATA);
-	return (ret == DB_KEYEXIST ? 0 : ret);
+	return (cdbp->put(cdbp, NULL, &key, &data, 0));
 }
 
 /*
@@ -574,15 +604,24 @@ __db_vrfy_ccclose(dbc)
  *	Constructor for VRFY_PAGEINFO;  allocates and initializes.
  */
 static int
-__db_vrfy_pageinfo_create(pgipp)
+__db_vrfy_pageinfo_create(dbenv, pgipp)
+	DB_ENV *dbenv;
 	VRFY_PAGEINFO **pgipp;
 {
 	VRFY_PAGEINFO *pgip;
 	int ret;
 
-	if ((ret = __os_calloc(NULL,
-	    1, sizeof(VRFY_PAGEINFO), (void **)&pgip)) != 0)
+	/*
+	 * pageinfo structs are sometimes allocated here and sometimes
+	 * allocated by fetching them from a database with DB_DBT_MALLOC.
+	 * There's no easy way for the destructor to tell which was
+	 * used, and so we always allocate with __os_umalloc so we can free
+	 * with __os_ufree.
+	 */
+	if ((ret = __os_umalloc(dbenv,
+	    sizeof(VRFY_PAGEINFO), (void **)&pgip)) != 0)
 		return (ret);
+	memset(pgip, 0, sizeof(VRFY_PAGEINFO));
 
 	DB_ASSERT(pgip->pi_refcount == 0);
 
@@ -609,7 +648,8 @@ __db_salvage_init(vdp)
 	if ((ret = dbp->set_pagesize(dbp, 1024)) != 0)
 		goto err;
 
-	if ((ret = dbp->open(dbp, NULL, NULL, DB_BTREE, DB_CREATE, 0)) != 0)
+	if ((ret = dbp->open(dbp,
+	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0)) != 0)
 		goto err;
 
 	vdp->salvage_pages = dbp;

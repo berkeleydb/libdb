@@ -1,11 +1,11 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdbtest001.tcl,v 11.15 2001/08/03 16:39:31 bostic Exp $
+# $Id: sdbtest001.tcl,v 11.19 2002/05/22 15:42:42 sue Exp $
 #
-# TEST	subdbtest001
+# TEST	sdbtest001
 # TEST	Tests multiple access methods in one subdb
 # TEST		Open several subdbs, each with a different access method
 # TEST		Small keys, small data
@@ -20,7 +20,7 @@
 # TEST	Insert each with self as key and data; retrieve each.
 # TEST	After all are entered, retrieve all; compare output to original.
 # TEST	Close file, reopen, do retrieve and re-verify.
-proc subdbtest001 { {nentries 10000} } {
+proc sdbtest001 { {nentries 10000} } {
 	source ./include.tcl
 
 	puts "Subdbtest001: many different subdb access methods in one"
@@ -49,16 +49,25 @@ proc subdbtest001 { {nentries 10000} } {
 	lappend method_list [list "-btree" "-rbtree" "-ddbtree" "-dbtree"]
 	lappend method_list [list "-dbtree" "-ddbtree" "-btree" "-rbtree"]
 	lappend method_list [list "-ddbtree" "-dbtree" "-rbtree" "-btree"]
+	set plist [list 512 8192 1024 4096 2048 16384]
+	set mlen [llength $method_list]
+	set plen [llength $plist]
+	while { $plen < $mlen } {
+		set plist [concat $plist $plist]
+		set plen [llength $plist]
+	}
+	set pgsz 0
 	foreach methods $method_list {
 		cleanup $testdir NULL
 		puts "\tSubdbtest001.a: create subdbs of different access methods:"
 		puts "\tSubdbtest001.a: $methods"
-		set psize {8192 4096}
 		set nsubdbs [llength $methods]
 		set duplist ""
 		for { set i 0 } { $i < $nsubdbs } { incr i } {
 			lappend duplist -1
 		}
+		set psize [lindex $plist $pgsz]
+		incr pgsz
 		set newent [expr $nentries / $nsubdbs]
 		build_all_subdb $testfile $methods $psize $duplist $newent
 
@@ -103,7 +112,7 @@ proc subdbtest001 { {nentries 10000} } {
 
 			puts "\tSubdbtest001.c: sub$subdb.db: close, open, and dump file"
 			# Now, reopen the file and run the last test again.
-			open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
+			open_and_dump_subfile $testfile NULL $t1 $checkfunc \
 			    dump_file_direction "-first" "-next" sub$subdb.db
 			if { [string compare $method "-recno"] != 0 } {
 				filesort $t1 $t3
@@ -115,7 +124,7 @@ proc subdbtest001 { {nentries 10000} } {
 			# Now, reopen the file and run the last test again in the
 			# reverse direction.
 			puts "\tSubdbtest001.d: sub$subdb.db: close, open, and dump file in reverse direction"
-			open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
+			open_and_dump_subfile $testfile NULL $t1 $checkfunc \
 			    dump_file_direction "-last" "-prev" sub$subdb.db
 
 			if { [string compare $method "-recno"] != 0 } {

@@ -1,13 +1,19 @@
-# Sentinel file wrapper for multi-process tests.
-# This is designed to avoid a set of nasty bugs, primarily on Windows,
-# where pid reuse causes watch_procs to sit around waiting for some
-# random process that's not DB's and is not exiting.
+# See the file LICENSE for redistribution information.
+#
+# Copyright (c) 2000-2002
+#	Sleepycat Software.  All rights reserved.
+#
+# $Id: wrap.tcl,v 11.6 2002/04/25 13:35:02 bostic Exp $
+#
+# Sentinel file wrapper for multi-process tests.  This is designed to avoid a
+# set of nasty bugs, primarily on Windows, where pid reuse causes watch_procs
+# to sit around waiting for some random process that's not DB's and is not
+# exiting.
 
 source ./include.tcl
 source $test_path/testutils.tcl
 
 # Arguments:
-#
 if { $argc < 3 } {
 	puts "FAIL: wrap.tcl: Usage: wrap.tcl script log scriptargs"
 	exit

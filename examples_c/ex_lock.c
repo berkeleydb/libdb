@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_lock.c,v 11.15 2001/08/06 13:51:27 bostic Exp $
+ * $Id: ex_lock.c,v 11.18 2002/04/10 21:48:20 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -13,8 +13,6 @@
 #include <string.h>
 
 #ifdef _WIN32
-extern int optind;
-extern char *optarg;
 extern int getopt(int, char * const *, const char *);
 #else
 #include <unistd.h>
@@ -22,7 +20,7 @@ extern int getopt(int, char * const *, const char *);
 
 #include <db.h>
 
-int db_init __P((char *, u_int32_t, int));
+int db_init __P((const char *, u_int32_t, int));
 int main __P((int, char *[]));
 int usage __P((void));
 
@@ -44,7 +42,8 @@ main(argc, argv)
 	long held;
 	u_int32_t len, locker, maxlocks;
 	int ch, do_unlink, did_get, i, lockid, lockcount, ret;
-	char *home, opbuf[16], objbuf[1024], lockbuf[16];
+	const char *home;
+	char opbuf[16], objbuf[1024], lockbuf[16];
 
 	home = "TESTDIR";
 	maxlocks = 0;
@@ -192,7 +191,7 @@ main(argc, argv)
  */
 int
 db_init(home, maxlocks, do_unlink)
-	char *home;
+	const char *home;
 	u_int32_t maxlocks;
 	int do_unlink;
 {

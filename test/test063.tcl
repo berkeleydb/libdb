@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test063.tcl,v 11.14 2001/08/03 16:39:43 bostic Exp $
+# $Id: test063.tcl,v 11.17 2002/05/24 15:24:55 sue Exp $
 #
 # TEST	test063
 # TEST	Test of the DB_RDONLY flag to DB->open
@@ -17,6 +17,7 @@ proc test063 { method args } {
 	set omethod [convert_method $method]
 	set tnum 63
 
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -28,6 +29,11 @@ proc test063 { method args } {
 		set testfile test0$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	cleanup $testdir $env
 
@@ -37,6 +43,7 @@ proc test063 { method args } {
 	set data2 "more_data"
 
 	set gflags ""
+	set txn ""
 
 	if { [is_record_based $method] == 1 } {
 	    set key "1"
@@ -53,13 +60,21 @@ proc test063 { method args } {
 	error_check_good db_create [is_valid_db $db] TRUE
 
 	# Put and get an item so it's nonempty.
-	set ret [eval {$db put} $key [chop_data $method $data]]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set ret [eval {$db put} $txn {$key [chop_data $method $data]}]
 	error_check_good initial_put $ret 0
 
-	set dbt [eval {$db get} $gflags $key]
+	set dbt [eval {$db get} $txn $gflags {$key}]
 	error_check_good initial_get $dbt \
 	    [list [list $key [pad_data $method $data]]]
 
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	if { $eindex == -1 } {
@@ -75,19 +90,33 @@ proc test063 { method args } {
 	set db [eval {berkdb_open_noerr -rdonly} $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
 
-	set dbt [eval {$db get} $gflags $key]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set dbt [eval {$db get} $txn $gflags {$key}]
 	error_check_good db_get $dbt \
 	    [list [list $key [pad_data $method $data]]]
 
-	set ret [catch {eval {$db put} $key2 [chop_data $method $data]} res]
+	set ret [catch {eval {$db put} $txn \
+	    {$key2 [chop_data $method $data]}} res]
 	error_check_good put_failed $ret 1
 	error_check_good db_put_rdonly [is_substr $errorCode "EACCES"] 1
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	set errorCode "NONE"
 
 	puts "\tTest0$tnum.c: Attempting cursor put."
 
-	set dbc [$db cursor]
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
+	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_create [is_valid_cursor $dbc $db] TRUE
 
 	error_check_good cursor_set [$dbc get -first] $dbt
@@ -95,17 +124,17 @@ proc test063 { method args } {
 	error_check_good c_put_failed $ret 1
 	error_check_good dbc_put_rdonly [is_substr $errorCode "EACCES"] 1
 
-	set dbt [eval {$db get} $gflags $key2]
+	set dbt [eval {$db get} $gflags {$key2}]
 	error_check_good db_get_key2 $dbt ""
 
 	puts "\tTest0$tnum.d: Attempting ordinary delete."
 
 	set errorCode "NONE"
-	set ret [catch {eval {$db del} $key} 1]
+	set ret [catch {eval {$db del} $txn {$key}} 1]
 	error_check_good del_failed $ret 1
 	error_check_good db_del_rdonly [is_substr $errorCode "EACCES"] 1
 
-	set dbt [eval {$db get} $gflags $key]
+	set dbt [eval {$db get} $txn $gflags {$key}]
 	error_check_good db_get_key $dbt \
 	    [list [list $key [pad_data $method $data]]]
 
@@ -125,6 +154,9 @@ proc test063 { method args } {
 	puts "\tTest0$tnum.f: Close, reopen db;  verify unchanged."
 
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	set db [eval {berkdb_open} $omethod $args $testfile]

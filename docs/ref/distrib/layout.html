@@ -1,6 +1,7 @@
-<!--$Id: layout.so,v 10.29 2001/08/02 18:35:22 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: layout.so,v 10.35 2002/08/29 13:56:35 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Source code layout</title>
@@ -11,7 +12,7 @@
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Distribution</dl></h3></td>
-<td align=right><a href="../../ref/test/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/refs/refs.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/distrib/port.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/refs/refs.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Source code layout</h1>
@@ -24,6 +25,7 @@
 <tr><td>build_win32</td><td>Windows build directory.</td></tr>
 <tr><td>clib</td><td>C library replacement functions</td></tr>
 <tr><td>common</td><td>Common Berkeley DB functions</td></tr>
+<tr><td>crypto</td><td>Cryptographic support</td></tr>
 <tr><td>cxx</td><td>C++ API</td></tr>
 <tr><td>db</td><td>Berkeley DB database interfaces</td></tr>
 <tr><td>db185</td><td>Berkeley DB version 1.85 compatibility API</td></tr>
@@ -38,17 +40,20 @@
 <tr><td>db_stat</td><td>The db_stat utility</td></tr>
 <tr><td>db_upgrade</td><td>The db_upgrade utility</td></tr>
 <tr><td>db_verify</td><td>The db_verify utility</td></tr>
+<tr><td>dbinc</td><td>C language include files</td></tr>
+<tr><td>dbinc_auto</td><td>Automatically generated C language include files</td></tr>
 <tr><td>dbm</td><td>The dbm/ndbm compatibility APIs</td></tr>
+<tr><td>dbreg</td><td>Berkeley DB database handle logging support</td></tr>
 <tr><td>dist</td><td>Berkeley DB administration/distribution tools</td></tr>
 <tr><td>docs</td><td>Documentation</td></tr>
 <tr><td>env</td><td>Berkeley DB environment interfaces</td></tr>
 <tr><td>examples_c</td><td>C API example programs</td></tr>
 <tr><td>examples_cxx</td><td>C++ API example programs</td></tr>
 <tr><td>examples_java</td><td>Java API example programs</td></tr>
+<tr><td>fileops</td><td>File object operation support</td></tr>
 <tr><td>hash</td><td>Hash access method</td></tr>
+<tr><td>hmac</td><td>Checksum support</td></tr>
 <tr><td>hsearch</td><td>The hsearch compatibility API</td></tr>
-<tr><td>include</td><td>Include files</td></tr>
-<tr><td>include_auto</td><td>Automatically generated include files</td></tr>
 <tr><td>java</td><td>Java API</td></tr>
 <tr><td>libdb_java</td><td>The libdb_java shared library</td></tr>
 <tr><td>lock</td><td>Lock manager</td></tr>
@@ -68,7 +73,7 @@
 <tr><td>txn</td><td>Transaction manager</td></tr>
 <tr><td>xa</td><td>X/Open Distributed Transaction Processing XA interface</td></tr>
 </table>
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/test/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/refs/refs.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/distrib/port.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/refs/refs.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

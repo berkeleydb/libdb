@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test005.tcl,v 11.6 2001/08/03 16:39:33 bostic Exp $
+# $Id: test005.tcl,v 11.7 2002/01/11 15:53:40 bostic Exp $
 #
 # TEST	test005
 # TEST	Small keys/medium data

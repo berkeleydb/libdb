@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test014.tcl,v 11.22 2001/08/03 16:39:34 bostic Exp $
+# $Id: test014.tcl,v 11.24 2002/05/22 15:42:46 sue Exp $
 #
 # TEST	test014
 # TEST	Exercise partial puts on short data
@@ -74,6 +74,7 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 	}
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -85,6 +86,18 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 		set testfile test014.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
@@ -120,7 +133,15 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 			global dvals
 
 			# initial put
-			set ret [$db put $key $str]
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
+			set ret [eval {$db put} $txn {$key $str}]
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 			error_check_good dbput $ret 0
 
 			set offset [string length $str]
@@ -136,11 +157,28 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 			    a[set offset]x[set chars]a[set increase] \
 			    $str $data]
 			set offset [expr $offset + $chars]
-			set ret [$db put -partial [list $offset 0] $key $data]
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
+			set ret [eval {$db put -partial [list $offset 0]} \
+			    $txn {$key $data}]
 			error_check_good dbput:post $ret 0
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		} else {
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
 			partial_put $method $db $txn \
 			    $gflags $key $str $chars $increase
+			if { $txnenv == 1 } {
+				error_check_good txn [$t commit] 0
+			}
 		}
 		incr count
 	}
@@ -148,7 +186,15 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 
 	# Now make sure that everything looks OK
 	puts "\tTest014.b: check entire file contents"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dump_file $db $txn $t1 test014.check
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	# Now compare the keys to see if they match the dictionary (or ints)
@@ -171,7 +217,7 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 
 	puts "\tTest014.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile $env $txn \
+	open_and_dump_file $testfile $env \
 	    $t1 test014.check dump_file_direction "-first" "-next"
 
 	if { [string compare $omethod "-recno"] != 0 } {
@@ -185,7 +231,7 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest014.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $txn $t1 \
+	open_and_dump_file $testfile $env $t1 \
 	    test014.check dump_file_direction "-last" "-prev"
 
 	if { [string compare $omethod "-recno"] != 0 } {

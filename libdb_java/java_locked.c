@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_locked.c,v 11.23 2001/07/31 14:29:22 dda Exp $";
+static const char revid[] = "$Id: java_locked.c,v 11.32 2002/08/06 05:19:07 bostic Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -21,13 +21,14 @@ static const char revid[] = "$Id: java_locked.c,v 11.23 2001/07/31 14:29:22 dda 
 /****************************************************************
  *
  * Implementation of functions to manipulate LOCKED_DBT.
- *
  */
 int
-locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
+locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, DB_ENV *dbenv,
+	       jobject jdbt, OpKind kind)
 {
 	DBT *dbt;
 
+	COMPQUIET(dbenv, NULL);
 	ldbt->jdbt = jdbt;
 	ldbt->java_array_len = 0;
 	ldbt->flags = 0;
@@ -64,15 +65,17 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 	ldbt->javainfo->offset = (*jnienv)->GetIntField(jnienv, jdbt,
 						    fid_Dbt_offset);
 
-	/* If no flags are set, use default behavior of DB_DBT_MALLOC.
+	/*
+	 * If no flags are set, use default behavior of DB_DBT_MALLOC.
 	 * We can safely set dbt->flags because flags will never be copied
 	 * back to the Java Dbt.
 	 */
-	if (kind == outOp &&
+	if (kind != inOp &&
 	    !F_ISSET(dbt, DB_DBT_USERMEM | DB_DBT_MALLOC | DB_DBT_REALLOC))
 		F_SET(dbt, DB_DBT_MALLOC);
 
-	/* If this is requested to be realloc with an existing array,
+	/*
+	 * If this is requested to be realloc with an existing array,
 	 * we cannot use the underlying realloc, because the array we
 	 * will pass in is allocated by the Java VM, not us, so it
 	 * cannot be realloced.  We simulate the reallocation by using
@@ -89,7 +92,8 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 	if ((F_ISSET(dbt, DB_DBT_USERMEM) || kind != outOp) &&
 	    !F_ISSET(ldbt, LOCKED_CREATE_DATA)) {
 
-		/* If writing with DB_DBT_USERMEM
+		/*
+		 * If writing with DB_DBT_USERMEM
 		 * or it's a set (or get/set) operation,
 		 * then the data should point to a java array.
 		 * Note that outOp means data is coming out of the database
@@ -110,13 +114,6 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 			F_SET(ldbt, LOCKED_ERROR);
 			return (EINVAL);
 		}
-		if (dbt->ulen + ldbt->javainfo->offset > ldbt->java_array_len) {
-			report_exception(jnienv,
-			 "Dbt.ulen + Dbt.offset greater than array length",
-					 0, 0);
-			F_SET(ldbt, LOCKED_ERROR);
-			return (EINVAL);
-		}
 		if (dbt->size + ldbt->javainfo->offset > ldbt->java_array_len) {
 			report_exception(jnienv,
 			 "Dbt.size + Dbt.offset greater than array length",
@@ -134,7 +131,8 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 	}
 	else if (!F_ISSET(ldbt, LOCKED_CREATE_DATA)) {
 
-		/* If writing with DB_DBT_MALLOC or DB_DBT_REALLOC with
+		/*
+		 * If writing with DB_DBT_MALLOC or DB_DBT_REALLOC with
 		 * a null array, then the data is allocated by DB.
 		 */
 		dbt->data = ldbt->before_data = 0;
@@ -159,7 +157,8 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
 	return (0);
 }
 
-/* locked_dbt_put must be called for any LOCKED_DBT struct before a
+/*
+ * locked_dbt_put must be called for any LOCKED_DBT struct before a
  * java handler returns to the user.  It can be thought of as the
  * LOCKED_DBT destructor.  It copies any information from temporary
  * structures back to user accessible arrays, and of course must free
@@ -170,13 +169,14 @@ locked_dbt_get(LOCKED_DBT *ldbt, JNIEnv *jnienv, jobject jdbt, OpKind kind)
  * limited ways, e.g. to look at values in the C DBT.
  */
 void
-locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
+locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv, DB_ENV *dbenv)
 {
 	DBT *dbt;
 
 	dbt = &ldbt->javainfo->dbt;
 
-	/* If the error flag was set, we never succeeded
+	/*
+	 * If the error flag was set, we never succeeded
 	 * in allocating storage.
 	 */
 	if (F_ISSET(ldbt, LOCKED_ERROR))
@@ -186,7 +186,8 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 	      F_ISSET(ldbt, LOCKED_REALLOC_NONNULL)) ||
 	     ldbt->kind == inOp) && !F_ISSET(ldbt, LOCKED_CREATE_DATA)) {
 
-		/* If writing with DB_DBT_USERMEM or it's a set
+		/*
+		 * If writing with DB_DBT_USERMEM or it's a set
 		 * (or get/set) operation, then the data may be already in
 		 * the java array, in which case, we just need to release it.
 		 * If DB didn't put it in the array (indicated by the
@@ -204,17 +205,19 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 						    ldbt->java_data, 0);
 		dbt->data = 0;
 	}
-	if (F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC) &&
+	else if (F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC) &&
 	    ldbt->kind != inOp && !F_ISSET(ldbt, LOCKED_CREATE_DATA)) {
 
-		/* If writing with DB_DBT_MALLOC, or DB_DBT_REALLOC
+		/*
+		 * If writing with DB_DBT_MALLOC, or DB_DBT_REALLOC
 		 * with a zero buffer, then the data was allocated by
 		 * DB.  If dbt->data is zero, it means an error
 		 * occurred (and should have been already reported).
 		 */
 		if (dbt->data) {
 
-			/* In the case of SET_RANGE, the key is inOutOp
+			/*
+			 * In the case of SET_RANGE, the key is inOutOp
 			 * and when not found, its data will be left as
 			 * its original value.  Only copy and free it
 			 * here if it has been allocated by DB
@@ -223,8 +226,12 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 			if (dbt->data != ldbt->before_data) {
 				jbyteArray newarr;
 
-				newarr = (jbyteArray)
-				   (*jnienv)->NewByteArray(jnienv, dbt->size);
+				if ((newarr = (*jnienv)->NewByteArray(jnienv,
+				    dbt->size)) == NULL) {
+					/* The JVM has posted an exception. */
+					F_SET(ldbt, LOCKED_ERROR);
+					return;
+				}
 				(*jnienv)->SetObjectField(jnienv, ldbt->jdbt,
 							  fid_Dbt_data,
 							  newarr);
@@ -232,13 +239,14 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 				(*jnienv)->SetByteArrayRegion(jnienv,
 					      newarr, 0, dbt->size,
 					      (jbyte *)dbt->data);
-				(void)__os_free(NULL, dbt->data, dbt->size);
+				(void)__os_ufree(dbenv, dbt->data);
 				dbt->data = 0;
 			}
 		}
 	}
 
-	/* The size field may have changed after a DB API call,
+	/*
+	 * The size field may have changed after a DB API call,
 	 * so we set that back too.
 	 */
 	(*jnienv)->SetIntField(jnienv, ldbt->jdbt, fid_Dbt_size, dbt->size);
@@ -246,40 +254,44 @@ locked_dbt_put(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 	F_CLR(ldbt->javainfo, DBT_JAVAINFO_LOCKED);
 }
 
-/* Realloc the java array to receive data if the DBT used
+/*
+ * Realloc the java array to receive data if the DBT used
  * DB_DBT_REALLOC flag with a non-null data array, and the last
  * operation set the size field to an amount greater than ulen.
  * Return 1 if these conditions are met, otherwise 0.  This is used
  * internally to simulate the operations needed for DB_DBT_REALLOC.
  */
-int locked_dbt_realloc(LOCKED_DBT *ldbt, JNIEnv *jnienv)
+int locked_dbt_realloc(LOCKED_DBT *ldbt, JNIEnv *jnienv, DB_ENV *dbenv)
 {
 	DBT *dbt;
 
+	COMPQUIET(dbenv, NULL);
 	dbt = &ldbt->javainfo->dbt;
 
-	if (!F_ISSET(ldbt, LOCKED_REALLOC_NONNULL)
-	    || F_ISSET(ldbt, LOCKED_ERROR)
-	    || dbt->size <= dbt->ulen)
+	if (!F_ISSET(ldbt, LOCKED_REALLOC_NONNULL) ||
+	    F_ISSET(ldbt, LOCKED_ERROR) || dbt->size <= dbt->ulen)
 		return (0);
 
 	(*jnienv)->ReleaseByteArrayElements(jnienv, ldbt->javainfo->array,
 					    ldbt->java_data, 0);
 
-	/* We allocate a new array of the needed size.
+	/*
+	 * We allocate a new array of the needed size.
 	 * We'll set the offset to 0, as the old offset
 	 * really doesn't make any sense.
 	 */
+	if ((ldbt->javainfo->array = (*jnienv)->NewByteArray(jnienv,
+	    dbt->size)) == NULL) {
+		F_SET(ldbt, LOCKED_ERROR);
+		return (0);
+	}
+
 	ldbt->java_array_len = dbt->ulen = dbt->size;
 	ldbt->javainfo->offset = 0;
-	ldbt->javainfo->array = (*jnienv)->NewByteArray(jnienv, dbt->size);
-	(*jnienv)->SetObjectField(jnienv, ldbt->jdbt,
-				  fid_Dbt_data,
-				  ldbt->javainfo->array);
-
+	(*jnienv)->SetObjectField(jnienv, ldbt->jdbt, fid_Dbt_data,
+	    ldbt->javainfo->array);
 	ldbt->java_data = (*jnienv)->GetByteArrayElements(jnienv,
-						     ldbt->javainfo->array,
-						     (jboolean *)0);
+	    ldbt->javainfo->array, (jboolean *)0);
 	memcpy(ldbt->java_data, ldbt->before_data, dbt->ulen);
 	dbt->data = ldbt->before_data = ldbt->java_data;
 	return (1);
@@ -288,7 +300,6 @@ int locked_dbt_realloc(LOCKED_DBT *ldbt, JNIEnv *jnienv)
 /****************************************************************
  *
  * Implementation of functions to manipulate LOCKED_STRING.
- *
  */
 int
 locked_string_get(LOCKED_STRING *ls, JNIEnv *jnienv, jstring jstr)

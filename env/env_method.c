@@ -1,24 +1,24 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2001
+ * Copyright (c) 1999-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: env_method.c,v 11.58 2001/10/30 21:39:50 margo Exp $";
+static const char revid[] = "$Id: env_method.c,v 11.87 2002/08/29 14:22:21 margo Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <string.h>
+#ifdef HAVE_RPC
+#include <rpc/rpc.h>
 #endif
 
-#ifdef HAVE_RPC
-#include "db_server.h"
+#include <string.h>
 #endif
 
 /*
@@ -29,17 +29,20 @@ static const char revid[] = "$Id: env_method.c,v 11.58 2001/10/30 21:39:50 margo
 #define	DB_INITIALIZE_DB_GLOBALS	1
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "db_page.h"
-#include "db_am.h"
-#include "lock.h"
-#include "log.h"
-#include "mp.h"
-#include "rep.h"
-#include "txn.h"
+#include "dbinc/crypto.h"
+#include "dbinc/hmac.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_am.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/mp.h"
+#include "dbinc/rep.h"
+#include "dbinc/txn.h"
 
 #ifdef HAVE_RPC
-#include "rpc_client_ext.h"
+#include "dbinc_auto/db_server.h"
+#include "dbinc_auto/rpc_client_ext.h"
 #endif
 
 static void __dbenv_err __P((const DB_ENV *, int, const char *, ...));
@@ -47,14 +50,16 @@ static void __dbenv_errx __P((const DB_ENV *, const char *, ...));
 static int  __dbenv_init __P((DB_ENV *));
 static int  __dbenv_set_alloc __P((DB_ENV *, void *(*)(size_t),
     void *(*)(void *, size_t), void (*)(void *)));
+static int  __dbenv_set_app_dispatch __P((DB_ENV *,
+    int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
 static int  __dbenv_set_data_dir __P((DB_ENV *, const char *));
+static int  __dbenv_set_encrypt __P((DB_ENV *, const char *, u_int32_t));
 static void __dbenv_set_errcall __P((DB_ENV *, void (*)(const char *, char *)));
 static void __dbenv_set_errfile __P((DB_ENV *, FILE *));
 static void __dbenv_set_errpfx __P((DB_ENV *, const char *));
 static int  __dbenv_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
 static int  __dbenv_set_flags __P((DB_ENV *, u_int32_t, int));
 static int  __dbenv_set_paniccall __P((DB_ENV *, void (*)(DB_ENV *, int)));
-static int  __dbenv_set_recovery_init __P((DB_ENV *, int (*)(DB_ENV *)));
 static int  __dbenv_set_rpc_server_noclnt
     __P((DB_ENV *, void *, const char *, long, long, u_int32_t));
 static int  __dbenv_set_shm_key __P((DB_ENV *, long));
@@ -99,7 +104,7 @@ db_env_create(dbenvpp, flags)
 	ret = __dbenv_init(dbenv);
 
 	if (ret != 0) {
-		__os_free(NULL, dbenv, sizeof(*dbenv));
+		__os_free(NULL, dbenv);
 		return (ret);
 	}
 
@@ -132,14 +137,17 @@ __dbenv_init(dbenv)
 #ifdef	HAVE_RPC
 	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
 		dbenv->close = __dbcl_env_close;
+		dbenv->dbremove = __dbcl_env_dbremove;
+		dbenv->dbrename = __dbcl_env_dbrename;
 		dbenv->open = __dbcl_env_open_wrap;
 		dbenv->remove = __dbcl_env_remove;
 		dbenv->set_alloc = __dbcl_env_alloc;
+		dbenv->set_app_dispatch = __dbcl_set_app_dispatch;
 		dbenv->set_data_dir = __dbcl_set_data_dir;
+		dbenv->set_encrypt = __dbcl_env_encrypt;
 		dbenv->set_feedback = __dbcl_env_set_feedback;
 		dbenv->set_flags = __dbcl_env_flags;
 		dbenv->set_paniccall = __dbcl_env_paniccall;
-		dbenv->set_recovery_init = __dbcl_set_recovery_init;
 		dbenv->set_rpc_server = __dbcl_envrpcserver;
 		dbenv->set_shm_key = __dbcl_set_shm_key;
 		dbenv->set_tas_spins = __dbcl_set_tas_spins;
@@ -149,14 +157,17 @@ __dbenv_init(dbenv)
 	} else {
 #endif
 		dbenv->close = __dbenv_close;
+		dbenv->dbremove = __dbenv_dbremove;
+		dbenv->dbrename = __dbenv_dbrename;
 		dbenv->open = __dbenv_open;
 		dbenv->remove = __dbenv_remove;
 		dbenv->set_alloc = __dbenv_set_alloc;
+		dbenv->set_app_dispatch = __dbenv_set_app_dispatch;
 		dbenv->set_data_dir = __dbenv_set_data_dir;
+		dbenv->set_encrypt = __dbenv_set_encrypt;
 		dbenv->set_feedback = __dbenv_set_feedback;
 		dbenv->set_flags = __dbenv_set_flags;
 		dbenv->set_paniccall = __dbenv_set_paniccall;
-		dbenv->set_recovery_init = __dbenv_set_recovery_init;
 		dbenv->set_rpc_server = __dbenv_set_rpc_server_noclnt;
 		dbenv->set_shm_key = __dbenv_set_shm_key;
 		dbenv->set_tas_spins = __dbenv_set_tas_spins;
@@ -192,16 +203,7 @@ __dbenv_err(dbenv, error, fmt, va_alist)
 	va_dcl
 #endif
 {
-	va_list ap;
-
-#ifdef __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	__db_real_err(dbenv, error, 1, 1, fmt, ap);
-
-	va_end(ap);
+	DB_REAL_ERR(dbenv, error, 1, 1, fmt);
 }
 
 /*
@@ -218,16 +220,7 @@ __dbenv_errx(dbenv, fmt, va_alist)
 	va_dcl
 #endif
 {
-	va_list ap;
-
-#ifdef __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	__db_real_err(dbenv, 0, 0, 1, fmt, ap);
-
-	va_end(ap);
+	DB_REAL_ERR(dbenv, 0, 0, 1, fmt);
 }
 
 static int
@@ -245,6 +238,93 @@ __dbenv_set_alloc(dbenv, mal_func, real_func, free_func)
 	return (0);
 }
 
+/*
+ * __dbenv_set_app_dispatch --
+ *	Set the transaction abort recover function.
+ */
+static int
+__dbenv_set_app_dispatch(dbenv, app_dispatch)
+	DB_ENV *dbenv;
+	int (*app_dispatch) __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
+{
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_app_dispatch");
+
+	dbenv->app_dispatch = app_dispatch;
+	return (0);
+}
+
+static int
+__dbenv_set_encrypt(dbenv, passwd, flags)
+	DB_ENV *dbenv;
+	const char *passwd;
+	u_int32_t flags;
+{
+#ifdef HAVE_CRYPTO
+	DB_CIPHER *db_cipher;
+	int ret;
+
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_encrypt");
+#define	OK_CRYPTO_FLAGS	(DB_ENCRYPT_AES)
+
+	if (flags != 0 && LF_ISSET(~OK_CRYPTO_FLAGS))
+		return (__db_ferr(dbenv, "DB_ENV->set_encrypt", 0));
+
+	if (passwd == NULL || strlen(passwd) == 0) {
+		__db_err(dbenv, "Empty password specified to set_encrypt");
+		return (EINVAL);
+	}
+	if (!CRYPTO_ON(dbenv)) {
+		if ((ret = __os_calloc(dbenv, 1, sizeof(DB_CIPHER), &db_cipher))
+		    != 0)
+			goto err;
+		dbenv->crypto_handle = db_cipher;
+	} else
+		db_cipher = (DB_CIPHER *)dbenv->crypto_handle;
+
+	if (dbenv->passwd != NULL)
+		__os_free(dbenv, dbenv->passwd);
+	if ((ret = __os_strdup(dbenv, passwd, &dbenv->passwd)) != 0) {
+		__os_free(dbenv, db_cipher);
+		goto err;
+	}
+	/*
+	 * We're going to need this often enough to keep around
+	 */
+	dbenv->passwd_len = strlen(dbenv->passwd) + 1;
+	/*
+	 * The MAC key is for checksumming, and is separate from
+	 * the algorithm.  So initialize it here, even if they
+	 * are using CIPHER_ANY.
+	 */
+	__db_derive_mac((u_int8_t *)dbenv->passwd,
+	    dbenv->passwd_len, db_cipher->mac_key);
+	switch (flags) {
+	case 0:
+		F_SET(db_cipher, CIPHER_ANY);
+		break;
+	case DB_ENCRYPT_AES:
+		if ((ret = __crypto_algsetup(dbenv, db_cipher, CIPHER_AES, 0))
+		    != 0)
+			goto err1;
+		break;
+	}
+	return (0);
+
+err1:
+	__os_free(dbenv, dbenv->passwd);
+	__os_free(dbenv, db_cipher);
+	dbenv->crypto_handle = NULL;
+err:
+	return (ret);
+#else
+	COMPQUIET(dbenv, NULL);
+	COMPQUIET(passwd, NULL);
+	COMPQUIET(flags, 0);
+
+	return (__db_eopnotsup(dbenv));
+#endif
+}
+
 static int
 __dbenv_set_flags(dbenv, flags, onoff)
 	DB_ENV *dbenv;
@@ -252,18 +332,40 @@ __dbenv_set_flags(dbenv, flags, onoff)
 	int onoff;
 {
 #define	OK_FLAGS							\
-	(DB_CDB_ALLDB | DB_NOLOCKING | DB_NOMMAP | DB_NOPANIC |		\
-	 DB_PANIC_ENVIRONMENT | DB_REGION_INIT | DB_TXN_NOSYNC | DB_YIELDCPU)
+	(DB_AUTO_COMMIT | DB_CDB_ALLDB | DB_DIRECT_DB | DB_DIRECT_LOG |	\
+	    DB_NOLOCKING | DB_NOMMAP | DB_NOPANIC | DB_OVERWRITE |	\
+	    DB_PANIC_ENVIRONMENT | DB_REGION_INIT | DB_TXN_NOSYNC |	\
+	    DB_TXN_WRITE_NOSYNC | DB_YIELDCPU)
 
 	if (LF_ISSET(~OK_FLAGS))
 		return (__db_ferr(dbenv, "DB_ENV->set_flags", 0));
+	if (onoff && LF_ISSET(DB_TXN_WRITE_NOSYNC) && LF_ISSET(DB_TXN_NOSYNC))
+		return (__db_ferr(dbenv, "DB_ENV->set_flags", 1));
 
+	if (LF_ISSET(DB_AUTO_COMMIT)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_AUTO_COMMIT);
+		else
+			F_CLR(dbenv, DB_ENV_AUTO_COMMIT);
+	}
 	if (LF_ISSET(DB_CDB_ALLDB)) {
 		ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_flags: DB_CDB_ALLDB");
 		if (onoff)
 			F_SET(dbenv, DB_ENV_CDB_ALLDB);
 		else
 			F_CLR(dbenv, DB_ENV_CDB_ALLDB);
+	}
+	if (LF_ISSET(DB_DIRECT_DB)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_DIRECT_DB);
+		else
+			F_CLR(dbenv, DB_ENV_DIRECT_DB);
+	}
+	if (LF_ISSET(DB_DIRECT_LOG)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_DIRECT_LOG);
+		else
+			F_CLR(dbenv, DB_ENV_DIRECT_LOG);
 	}
 	if (LF_ISSET(DB_NOLOCKING)) {
 		if (onoff)
@@ -283,6 +385,12 @@ __dbenv_set_flags(dbenv, flags, onoff)
 		else
 			F_CLR(dbenv, DB_ENV_NOPANIC);
 	}
+	if (LF_ISSET(DB_OVERWRITE)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_OVERWRITE);
+		else
+			F_CLR(dbenv, DB_ENV_OVERWRITE);
+	}
 	if (LF_ISSET(DB_PANIC_ENVIRONMENT)) {
 		ENV_ILLEGAL_BEFORE_OPEN(dbenv,
 		    "set_flags: DB_PANIC_ENVIRONMENT");
@@ -300,6 +408,12 @@ __dbenv_set_flags(dbenv, flags, onoff)
 			F_SET(dbenv, DB_ENV_TXN_NOSYNC);
 		else
 			F_CLR(dbenv, DB_ENV_TXN_NOSYNC);
+	}
+	if (LF_ISSET(DB_TXN_WRITE_NOSYNC)) {
+		if (onoff)
+			F_SET(dbenv, DB_ENV_TXN_WRITE_NOSYNC);
+		else
+			F_CLR(dbenv, DB_ENV_TXN_WRITE_NOSYNC);
 	}
 	if (LF_ISSET(DB_YIELDCPU)) {
 		if (onoff)
@@ -377,18 +491,6 @@ __dbenv_set_paniccall(dbenv, paniccall)
 }
 
 static int
-__dbenv_set_recovery_init(dbenv, recovery_init)
-	DB_ENV *dbenv;
-	int (*recovery_init) __P((DB_ENV *));
-{
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_recovery_init");
-
-	dbenv->db_recovery_init = recovery_init;
-
-	return (0);
-}
-
-static int
 __dbenv_set_shm_key(dbenv, shm_key)
 	DB_ENV *dbenv;
 	long shm_key;			/* !!!: really a key_t. */
@@ -414,7 +516,7 @@ __dbenv_set_tmp_dir(dbenv, dir)
 	const char *dir;
 {
 	if (dbenv->db_tmp_dir != NULL)
-		__os_freestr(dbenv, dbenv->db_tmp_dir);
+		__os_free(dbenv, dbenv->db_tmp_dir);
 	return (__os_strdup(dbenv, dir, &dbenv->db_tmp_dir));
 }
 
@@ -452,7 +554,7 @@ __db_mi_env(dbenv, name)
 	DB_ENV *dbenv;
 	const char *name;
 {
-	__db_err(dbenv, "%s: method meaningless in shared environment", name);
+	__db_err(dbenv, "%s: method not permitted in shared environment", name);
 	return (EINVAL);
 }
 
@@ -468,8 +570,8 @@ __db_mi_open(dbenv, name, after)
 	const char *name;
 	int after;
 {
-	__db_err(dbenv,
-	    "%s: method meaningless %s open", name, after ? "after" : "before");
+	__db_err(dbenv, "%s: method not permitted %s open",
+	    name, after ? "after" : "before");
 	return (EINVAL);
 }
 
@@ -525,6 +627,6 @@ __dbenv_set_rpc_server_noclnt(dbenv, cl, host, tsec, ssec, flags)
 	COMPQUIET(flags, 0);
 
 	__db_err(dbenv,
-	    "set_rpc_server method meaningless in non-RPC environment");
+	    "set_rpc_server method not permitted in non-RPC environment");
 	return (__db_eopnotsup(dbenv));
 }

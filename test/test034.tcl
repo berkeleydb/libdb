@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1998-2001
+# Copyright (c) 1998-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test034.tcl,v 11.7 2001/08/13 19:11:43 bostic Exp $
+# $Id: test034.tcl,v 11.8 2002/01/11 15:53:46 bostic Exp $
 #
 # TEST	test034
 # TEST	test032 with off-page duplicates

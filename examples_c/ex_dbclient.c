@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_dbclient.c,v 1.23 2001/10/04 18:46:29 sue Exp $
+ * $Id: ex_dbclient.c,v 1.28 2002/08/06 06:11:24 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -20,8 +20,8 @@
 
 #define	DATABASE	"access.db"
 
-int	db_clientrun __P((DB_ENV *, char *));
-int	ex_dbclient_run __P((char *, FILE *, char *, char *));
+int	db_clientrun __P((DB_ENV *, const char *));
+int	ex_dbclient_run __P((const char *, FILE *, const char *, const char *));
 int	main __P((int, char *[]));
 
 /*
@@ -32,7 +32,7 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	char *home;
+	const char *home;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s hostname\n", argv[0]);
@@ -50,10 +50,10 @@ main(argc, argv)
 
 int
 ex_dbclient(host)
-	char *host;
+	const char *host;
 {
-	char *home;
-	char *progname = "ex_dbclient";		/* Program name. */
+	const char *home;
+	const char *progname = "ex_dbclient";		/* Program name. */
 	int ret;
 
 	/*
@@ -70,7 +70,7 @@ ex_dbclient(host)
 
 int
 ex_dbclient_run(home, errfp, host, progname)
-	char *home, *host, *progname;
+	const char *home, *host, *progname;
 	FILE *errfp;
 {
 	DB_ENV *dbenv;
@@ -145,7 +145,7 @@ retry:
 int
 db_clientrun(dbenv, progname)
 	DB_ENV *dbenv;
-	char *progname;
+	const char *progname;
 {
 	DB *dbp;
 	DBT key, data;
@@ -165,8 +165,8 @@ db_clientrun(dbenv, progname)
 		dbp->err(dbp, ret, "set_pagesize");
 		goto err1;
 	}
-	if ((ret =
-	    dbp->open(dbp, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+	if ((ret = dbp->open(dbp,
+	    NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
 		dbp->err(dbp, ret, "%s: open", DATABASE);
 		goto err1;
 	}

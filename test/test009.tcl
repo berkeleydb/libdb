@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test009.tcl,v 11.6 2001/08/03 16:39:33 bostic Exp $
+# $Id: test009.tcl,v 11.8 2002/05/22 15:42:45 sue Exp $
 #
 # TEST	test009
 # TEST	Small keys/large data
@@ -13,6 +13,6 @@
 # TEST	big key/data pairs.  Go through and delete and add keys back
 # TEST	randomly.  Then close the DB and make sure that we have everything
 # TEST	we think we should.
-proc test009 { method {nentries 10000} args} {
-	eval {test008 $method $nentries 9 0} $args
+proc test009 { method args} {
+	eval {test008 $method 9 0} $args
 }

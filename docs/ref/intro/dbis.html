@@ -1,6 +1,7 @@
-<!--$Id: dbis.so,v 10.7 2001/03/01 15:58:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbis.so,v 10.9 2002/07/05 17:49:10 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: What is Berkeley DB?</title>
@@ -83,11 +84,11 @@ of reference</i>.  If the application is likely to touch keys near each
 other at the same time, the Btrees work well. The tree structure keeps
 keys that are close together near one another in storage, so fetching
 nearby values usually doesn't require a disk access.
-<p>Record-number-based storage is natural for applications that need
-to store and fetch records, but that do not have a simple way to
-generate keys of their own. In a record number table, the record
-number is the key for the record. Berkeley DB will can generate these
-record numbers automatically.
+<p>Record-number-based storage is natural for applications that need to
+store and fetch records, but that do not have a simple way to generate
+keys of their own. In a record number table, the record number is the
+key for the record. Berkeley DB will generate these record numbers
+automatically.
 <p>Queues are well-suited for applications that create records, and then
 must deal with those records in creation order. A good example is
 on-line purchasing systems. Orders can enter the system at any time,
@@ -99,10 +100,9 @@ storage structures.
 <p>Many users can work on the same database concurrently. Berkeley DB handles
 locking transparently, ensuring that two users working on the same
 record do not interfere with one another.
-<p>The library provides strict ACID transaction semantics. Some systems
-allow the user to relax, for example, the isolation guarantees that the
-database system makes. Berkeley DB ensures that all applications can see only
-committed updates.
+<p>The library provides strict ACID transaction semantics, by default.
+However, applications are allowed to relax the isolation guarantees
+the database system makes.
 <p>Multiple operations can be grouped into a single transaction, and can
 be committed or rolled back atomically. Berkeley DB uses a technique called
 <i>two-phase locking</i> to be sure that concurrent transactions

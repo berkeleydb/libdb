@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test023.tcl,v 11.16 2001/08/03 16:39:37 bostic Exp $
+# $Id: test023.tcl,v 11.18 2002/05/22 15:42:48 sue Exp $
 #
 # TEST	test023
 # TEST	Duplicate test
@@ -28,6 +28,7 @@ proc test023 { method args } {
 	}
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -39,6 +40,11 @@ proc test023 { method args } {
 		set testfile test023.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+		}
+		set testdir [get_home $env]
 	}
 	set t1 $testdir/t1
 	cleanup $testdir $env
@@ -50,8 +56,13 @@ proc test023 { method args } {
 	set gflags ""
 	set txn ""
 
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good db_cursor [is_substr $dbc $db] 1
+	error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
 
 	foreach i { onpage offpage } {
 		if { $i == "onpage" } {
@@ -161,7 +172,7 @@ proc test023 { method args } {
 		puts "\tTest023.f: Count keys, overwrite current, count again"
 		# At this point we should have 17 keys the (initial 20 minus
 		# 3 deletes)
-		set dbc2 [$db cursor]
+		set dbc2 [eval {$db cursor} $txn]
 		error_check_good db_cursor:2 [is_substr $dbc2 $db] 1
 
 		set count_check 0
@@ -180,6 +191,7 @@ proc test023 { method args } {
 			incr count_check
 		}
 		error_check_good numdups $count_check 17
+		error_check_good dbc2_close [$dbc2 close] 0
 
 		# Done, delete all the keys for next iteration
 		set ret [eval {$db del} $txn {$key}]
@@ -192,6 +204,9 @@ proc test023 { method args } {
 	}
 
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 }

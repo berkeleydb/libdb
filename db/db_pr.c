@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_pr.c,v 11.61 2001/11/16 16:32:35 bostic Exp $";
+static const char revid[] = "$Id: db_pr.c,v 11.84 2002/09/10 02:45:20 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -21,35 +21,22 @@ static const char revid[] = "$Id: db_pr.c,v 11.61 2001/11/16 16:32:35 bostic Exp
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "btree.h"
-#include "hash.h"
-#include "qam.h"
-#include "db_am.h"
-#include "db_verify.h"
-#include "mp.h"
-#include "clib_ext.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/btree.h"
+#include "dbinc/hash.h"
+#include "dbinc/mp.h"
+#include "dbinc/qam.h"
+#include "dbinc/db_verify.h"
 
 static int	 __db_bmeta __P((DB *, FILE *, BTMETA *, u_int32_t));
 static int	 __db_hmeta __P((DB *, FILE *, HMETA *, u_int32_t));
 static void	 __db_meta __P((DB *, DBMETA *, FILE *, FN const *, u_int32_t));
-static const char *__db_dbtype_to_string __P((DB *));
 static const char *__db_pagetype_to_string __P((u_int32_t));
 static void	 __db_prdb __P((DB *, FILE *));
-static FILE	*__db_prinit __P((FILE *));
-static void	 __db_proff __P((void *));
-static int	 __db_prtree __P((DB *, u_int32_t));
-static void	 __db_psize __P((DB *));
+static void	 __db_proff __P((void *, FILE *));
+static int	 __db_prtree __P((DB *, FILE *, u_int32_t));
 static int	 __db_qmeta __P((DB *, FILE *, QMETA *, u_int32_t));
-
-/*
- * 64K is the maximum page size, so by default we check for offsets larger
- * than that, and, where possible, we refine the test.
- */
-#define	PSIZE_BOUNDARY	(64 * 1024 + 1)
-static size_t set_psize = PSIZE_BOUNDARY;
-
-static FILE *set_fp;				/* Output file descriptor. */
 
 /*
  * __db_loadme --
@@ -60,7 +47,9 @@ static FILE *set_fp;				/* Output file descriptor. */
 void
 __db_loadme()
 {
-	getpid();
+	u_int32_t id;
+
+	__os_id(&id);
 }
 
 /*
@@ -74,21 +63,9 @@ __db_dump(dbp, op, name)
 	DB *dbp;
 	char *op, *name;
 {
-	FILE *fp, *save_fp;
+	FILE *fp;
 	u_int32_t flags;
-
-	COMPQUIET(save_fp, NULL);
-
-	if (set_psize == PSIZE_BOUNDARY)
-		__db_psize(dbp);
-
-	if (name != NULL) {
-		if ((fp = fopen(name, "w")) == NULL)
-			return (__os_get_errno());
-		save_fp = set_fp;
-		set_fp = fp;
-	} else
-		fp = __db_prinit(NULL);
+	int ret;
 
 	for (flags = 0; *op != '\0'; ++op)
 		switch (*op) {
@@ -104,19 +81,24 @@ __db_dump(dbp, op, name)
 			return (EINVAL);
 		}
 
+	if (name == NULL)
+		fp = stdout;
+	else {
+		if ((fp = fopen(name, "w")) == NULL)
+			return (__os_get_errno());
+	}
+
 	__db_prdb(dbp, fp);
 
 	fprintf(fp, "%s\n", DB_LINE);
 
-	(void)__db_prtree(dbp, flags);
+	ret = __db_prtree(dbp, fp, flags);
 
 	fflush(fp);
-
-	if (name != NULL) {
+	if (name != NULL)
 		fclose(fp);
-		set_fp = save_fp;
-	}
-	return (0);
+
+	return (ret);
 }
 
 /*
@@ -134,22 +116,35 @@ __db_inmemdbflags(flags, cookie, callback)
 	void (*callback) __P((u_int32_t, const FN *, void *));
 {
 	static const FN fn[] = {
+		{ DB_AM_CHKSUM,		"checksumming" },
+		{ DB_AM_CL_WRITER,	"client replica writer" },
+		{ DB_AM_COMPENSATE,	"created by compensating transaction" },
+		{ DB_AM_CREATED,	"database created" },
+		{ DB_AM_CREATED_MSTR,	"encompassing file created" },
+		{ DB_AM_DBM_ERROR,	"dbm/ndbm error" },
+		{ DB_AM_DELIMITER,	"variable length" },
+		{ DB_AM_DIRTY,		"dirty reads" },
 		{ DB_AM_DISCARD,	"discard cached pages" },
 		{ DB_AM_DUP,		"duplicates" },
+		{ DB_AM_DUPSORT,	"sorted duplicates" },
+		{ DB_AM_ENCRYPT,	"encrypted" },
+		{ DB_AM_FIXEDLEN,	"fixed-length records" },
 		{ DB_AM_INMEM,		"in-memory" },
+		{ DB_AM_IN_RENAME,	"file is being renamed" },
+		{ DB_AM_OPEN_CALLED,	"DB->open called" },
+		{ DB_AM_PAD,		"pad value" },
 		{ DB_AM_PGDEF,		"default page size" },
 		{ DB_AM_RDONLY,		"read-only" },
-		{ DB_AM_SUBDB,		"multiple-databases" },
+		{ DB_AM_RECNUM,		"Btree record numbers" },
+		{ DB_AM_RECOVER,	"opened for recovery" },
+		{ DB_AM_RENUMBER,	"renumber" },
+		{ DB_AM_REVSPLITOFF,	"no reverse splits" },
+		{ DB_AM_SECONDARY,	"secondary" },
+		{ DB_AM_SNAPSHOT,	"load on open" },
+		{ DB_AM_SUBDB,		"subdatabases" },
 		{ DB_AM_SWAP,		"needswap" },
-		{ DB_BT_RECNUM,		"btree:recnum" },
-		{ DB_BT_REVSPLIT,	"btree:no reverse split" },
-		{ DB_DBM_ERROR,		"dbm/ndbm error" },
-		{ DB_OPEN_CALLED,	"DB->open called" },
-		{ DB_RE_DELIMITER,	"recno:delimiter" },
-		{ DB_RE_FIXEDLEN,	"recno:fixed-length" },
-		{ DB_RE_PAD,		"recno:pad" },
-		{ DB_RE_RENUMBER,	"recno:renumber" },
-		{ DB_RE_SNAPSHOT,	"recno:snapshot" },
+		{ DB_AM_TXN,		"transactional" },
+		{ DB_AM_VERIFYING,	"verifier" },
 		{ 0,			NULL }
 	};
 
@@ -171,7 +166,7 @@ __db_prdb(dbp, fp)
 
 	fprintf(fp,
 	    "In-memory DB structure:\n%s: %#lx",
-	    __db_dbtype_to_string(dbp), (u_long)dbp->flags);
+	    __db_dbtype_to_string(dbp->type), (u_long)dbp->flags);
 	__db_inmemdbflags(dbp->flags, fp, __db_prflags);
 	fprintf(fp, "\n");
 
@@ -184,7 +179,7 @@ __db_prdb(dbp, fp)
 		fprintf(fp, "bt_maxkey: %lu bt_minkey: %lu\n",
 		    (u_long)bt->bt_maxkey, (u_long)bt->bt_minkey);
 		fprintf(fp, "bt_compare: %#lx bt_prefix: %#lx\n",
-		    (u_long)bt->bt_compare, (u_long)bt->bt_prefix);
+		    P_TO_ULONG(bt->bt_compare), P_TO_ULONG(bt->bt_prefix));
 		fprintf(fp, "bt_lpgno: %lu\n", (u_long)bt->bt_lpgno);
 		if (dbp->type == DB_RECNO) {
 			fprintf(fp,
@@ -201,7 +196,7 @@ __db_prdb(dbp, fp)
 		fprintf(fp, "meta_pgno: %lu\n", (u_long)h->meta_pgno);
 		fprintf(fp, "h_ffactor: %lu\n", (u_long)h->h_ffactor);
 		fprintf(fp, "h_nelem: %lu\n", (u_long)h->h_nelem);
-		fprintf(fp, "h_hash: %#lx\n", (u_long)h->h_hash);
+		fprintf(fp, "h_hash: %#lx\n", P_TO_ULONG(h->h_hash));
 		break;
 	case DB_QUEUE:
 		q = dbp->q_internal;
@@ -222,8 +217,9 @@ __db_prdb(dbp, fp)
  *	Print out the entire tree.
  */
 static int
-__db_prtree(dbp, flags)
+__db_prtree(dbp, fp, flags)
 	DB *dbp;
+	FILE *fp;
 	u_int32_t flags;
 {
 	DB_MPOOLFILE *mpf;
@@ -233,13 +229,8 @@ __db_prtree(dbp, flags)
 
 	mpf = dbp->mpf;
 
-	if (set_psize == PSIZE_BOUNDARY)
-		__db_psize(dbp);
-
-	if (dbp->type == DB_QUEUE) {
-		ret = __db_prqueue(dbp, flags);
-		goto done;
-	}
+	if (dbp->type == DB_QUEUE)
+		return (__db_prqueue(dbp, fp, flags));
 
 	/*
 	 * Find out the page number of the last page in the database, then
@@ -249,12 +240,11 @@ __db_prtree(dbp, flags)
 	for (i = 0; i <= last; ++i) {
 		if ((ret = mpf->get(mpf, &i, 0, &h)) != 0)
 			return (ret);
-		(void)__db_prpage(dbp, h, flags);
+		(void)__db_prpage(dbp, h, fp, flags);
 		if ((ret = mpf->put(mpf, h, 0)) != 0)
 			return (ret);
 	}
 
-done:	(void)fflush(__db_prinit(NULL));
 	return (0);
 }
 
@@ -425,29 +415,28 @@ __db_qmeta(dbp, fp, h, flags)
  * __db_prnpage
  *	-- Print out a specific page.
  *
- * PUBLIC: int __db_prnpage __P((DB *, db_pgno_t));
+ * PUBLIC: int __db_prnpage __P((DB *, db_pgno_t, FILE *));
  */
 int
-__db_prnpage(dbp, pgno)
+__db_prnpage(dbp, pgno, fp)
 	DB *dbp;
 	db_pgno_t pgno;
+	FILE *fp;
 {
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	int ret;
+	int ret, t_ret;
 
 	mpf = dbp->mpf;
-
-	if (set_psize == PSIZE_BOUNDARY)
-		__db_psize(dbp);
 
 	if ((ret = mpf->get(mpf, &pgno, 0, &h)) != 0)
 		return (ret);
 
-	ret = __db_prpage(dbp, h, DB_PR_PAGE);
-	(void)fflush(__db_prinit(NULL));
+	ret = __db_prpage(dbp, h, fp, DB_PR_PAGE);
 
-	(void)mpf->put(mpf, h, 0);
+	if ((t_ret = mpf->put(mpf, h, 0)) != 0 && ret == 0)
+		ret = t_ret;
+
 	return (ret);
 }
 
@@ -455,30 +444,28 @@ __db_prnpage(dbp, pgno)
  * __db_prpage
  *	-- Print out a page.
  *
- * PUBLIC: int __db_prpage __P((DB *, PAGE *, u_int32_t));
+ * PUBLIC: int __db_prpage __P((DB *, PAGE *, FILE *, u_int32_t));
  */
 int
-__db_prpage(dbp, h, flags)
+__db_prpage(dbp, h, fp, flags)
 	DB *dbp;
 	PAGE *h;
+	FILE *fp;
 	u_int32_t flags;
 {
 	BINTERNAL *bi;
 	BKEYDATA *bk;
-	FILE *fp;
 	HOFFPAGE a_hkd;
 	QAMDATA *qp, *qep;
 	RINTERNAL *ri;
-	db_indx_t dlen, len, i;
+	db_indx_t dlen, len, i, *inp;
 	db_pgno_t pgno;
 	db_recno_t recno;
+	u_int32_t pagesize, qlen;
+	u_int8_t *ep, *hk, *p;
 	int deleted, ret;
 	const char *s;
-	u_int32_t qlen;
-	u_int8_t *ep, *hk, *p;
 	void *sp;
-
-	fp = __db_prinit(NULL);
 
 	/*
 	 * If we're doing recovery testing and this page is P_INVALID,
@@ -493,6 +480,14 @@ __db_prpage(dbp, h, flags)
 		    (u_long)h->pgno, (u_long)TYPE(h));
 		return (1);
 	}
+
+	/*
+	 * !!!
+	 * Find out the page size.  We don't want to do it the "right" way,
+	 * by reading the value from the meta-data page, that's going to be
+	 * slow.  Reach down into the mpool region.
+	 */
+	pagesize = (u_int32_t)dbp->mpf->mfp->stat.st_pagesize;
 
 	/* Page number, page type. */
 	fprintf(fp, "page %lu: %s level: %lu",
@@ -523,7 +518,7 @@ __db_prpage(dbp, h, flags)
 		qlen = ((QUEUE *)dbp->q_internal)->re_len;
 		recno = (h->pgno - 1) * QAM_RECNO_PER_PAGE(dbp) + 1;
 		i = 0;
-		qep = (QAMDATA *)((u_int8_t *)h + set_psize - qlen);
+		qep = (QAMDATA *)((u_int8_t *)h + pagesize - qlen);
 		for (qp = QAM_GET_RECORD(dbp, h, i); qp < qep;
 		    recno++, i++, qp = QAM_GET_RECORD(dbp, h, i)) {
 			if (!F_ISSET(qp, QAM_SET))
@@ -531,9 +526,9 @@ __db_prpage(dbp, h, flags)
 
 			fprintf(fp, "%s",
 			    F_ISSET(qp, QAM_VALID) ? "\t" : "       D");
-			fprintf(fp, "[%03lu] %4lu ",
-			    (u_long)recno, (u_long)qp - (u_long)h);
-			__db_pr(qp->data, qlen);
+			fprintf(fp, "[%03lu] %4lu ", (u_long)recno,
+			    (u_long)((u_int8_t *)qp - (u_int8_t *)h));
+			__db_pr(qp->data, qlen, fp);
 		}
 		return (0);
 	}
@@ -551,7 +546,7 @@ __db_prpage(dbp, h, flags)
 	}
 	if (TYPE(h) == P_OVERFLOW) {
 		fprintf(fp, "%sref cnt: %4lu ", s, (u_long)OV_REF(h));
-		__db_pr((u_int8_t *)h + P_OVERHEAD, OV_LEN(h));
+		__db_pr((u_int8_t *)h + P_OVERHEAD(dbp), OV_LEN(h), fp);
 		return (0);
 	}
 	fprintf(fp, "%sentries: %4lu", s, (u_long)NUM_ENT(h));
@@ -561,12 +556,14 @@ __db_prpage(dbp, h, flags)
 		return (0);
 
 	ret = 0;
+	inp = P_INP(dbp, h);
 	for (i = 0; i < NUM_ENT(h); i++) {
-		if (P_ENTRY(h, i) - (u_int8_t *)h < P_OVERHEAD ||
-		    (size_t)(P_ENTRY(h, i) - (u_int8_t *)h) >= set_psize) {
+		if ((db_alignp_t)(P_ENTRY(dbp, h, i) - (u_int8_t *)h) <
+		    (db_alignp_t)(P_OVERHEAD(dbp)) ||
+		    (size_t)(P_ENTRY(dbp, h, i) - (u_int8_t *)h) >= pagesize) {
 			fprintf(fp,
 			    "ILLEGAL PAGE OFFSET: indx: %lu of %lu\n",
-			    (u_long)i, (u_long)h->inp[i]);
+			    (u_long)i, (u_long)inp[i]);
 			ret = EINVAL;
 			continue;
 		}
@@ -575,17 +572,17 @@ __db_prpage(dbp, h, flags)
 		case P_HASH:
 		case P_IBTREE:
 		case P_IRECNO:
-			sp = P_ENTRY(h, i);
+			sp = P_ENTRY(dbp, h, i);
 			break;
 		case P_LBTREE:
-			sp = P_ENTRY(h, i);
+			sp = P_ENTRY(dbp, h, i);
 			deleted = i % 2 == 0 &&
-			    B_DISSET(GET_BKEYDATA(h, i + O_INDX)->type);
+			    B_DISSET(GET_BKEYDATA(dbp, h, i + O_INDX)->type);
 			break;
 		case P_LDUP:
 		case P_LRECNO:
-			sp = P_ENTRY(h, i);
-			deleted = B_DISSET(GET_BKEYDATA(h, i)->type);
+			sp = P_ENTRY(dbp, h, i);
+			deleted = B_DISSET(GET_BKEYDATA(dbp, h, i)->type);
 			break;
 		default:
 			fprintf(fp,
@@ -594,7 +591,7 @@ __db_prpage(dbp, h, flags)
 			continue;
 		}
 		fprintf(fp, "%s", deleted ? "       D" : "\t");
-		fprintf(fp, "[%03lu] %4lu ", (u_long)i, (u_long)h->inp[i]);
+		fprintf(fp, "[%03lu] %4lu ", (u_long)i, (u_long)inp[i]);
 		switch (TYPE(h)) {
 		case P_HASH:
 			hk = sp;
@@ -613,7 +610,7 @@ __db_prpage(dbp, h, flags)
 				 * set.
 				 */
 				if (i != 0)
-					len = LEN_HKEYDATA(h, 0, i);
+					len = LEN_HKEYDATA(dbp, h, 0, i);
 				else
 					len = 1;
 
@@ -623,13 +620,14 @@ __db_prpage(dbp, h, flags)
 					memcpy(&dlen, p, sizeof(db_indx_t));
 					p += sizeof(db_indx_t);
 					fprintf(fp, "\t\t");
-					__db_pr(p, dlen);
+					__db_pr(p, dlen, fp);
 					p += sizeof(db_indx_t) + dlen;
 				}
 				break;
 			case H_KEYDATA:
 				__db_pr(HKEYDATA_DATA(hk),
-				    LEN_HKEYDATA(h, i == 0 ? set_psize : 0, i));
+				    LEN_HKEYDATA(dbp, h, i == 0 ?
+				    pagesize : 0, i), fp);
 				break;
 			case H_OFFPAGE:
 				memcpy(&a_hkd, hk, HOFFPAGE_SIZE);
@@ -646,11 +644,11 @@ __db_prpage(dbp, h, flags)
 			    (u_long)bi->type);
 			switch (B_TYPE(bi->type)) {
 			case B_KEYDATA:
-				__db_pr(bi->data, bi->len);
+				__db_pr(bi->data, bi->len, fp);
 				break;
 			case B_DUPLICATE:
 			case B_OVERFLOW:
-				__db_proff(bi->data);
+				__db_proff(bi->data, fp);
 				break;
 			default:
 				fprintf(fp, "ILLEGAL BINTERNAL TYPE: %lu\n",
@@ -670,11 +668,11 @@ __db_prpage(dbp, h, flags)
 			bk = sp;
 			switch (B_TYPE(bk->type)) {
 			case B_KEYDATA:
-				__db_pr(bk->data, bk->len);
+				__db_pr(bk->data, bk->len, fp);
 				break;
 			case B_DUPLICATE:
 			case B_OVERFLOW:
-				__db_proff(bk);
+				__db_proff(bk, fp);
 				break;
 			default:
 				fprintf(fp,
@@ -694,18 +692,16 @@ __db_prpage(dbp, h, flags)
  * __db_pr --
  *	Print out a data element.
  *
- * PUBLIC: void __db_pr __P((u_int8_t *, u_int32_t));
+ * PUBLIC: void __db_pr __P((u_int8_t *, u_int32_t, FILE *));
  */
 void
-__db_pr(p, len)
+__db_pr(p, len, fp)
 	u_int8_t *p;
 	u_int32_t len;
-{
 	FILE *fp;
+{
 	u_int lastch;
 	int i;
-
-	fp = __db_prinit(NULL);
 
 	fprintf(fp, "len: %3lu", (u_long)len);
 	lastch = '.';
@@ -765,6 +761,13 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 			    handle, callback, vdp, 0);
 		F_CLR(vdp, SALVAGE_PRINTHEADER);
 		F_SET(vdp, SALVAGE_PRINTFOOTER);
+
+		/*
+		 * Even if the printable flag wasn't set by our immediate
+		 * caller, it may be set on a salvage-wide basis.
+		 */
+		if (F_ISSET(vdp, SALVAGE_PRINTABLE))
+			checkprint = 1;
 	}
 
 	/*
@@ -786,7 +789,7 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
 
 		/* If we're printing data as hex, print keys as hex too. */
 		if (!checkprint) {
-			for (len = strlen(buf), p = buf, hp = hbuf;
+			for (len = (u_int32_t)strlen(buf), p = buf, hp = hbuf;
 			    len-- > 0; ++p) {
 				*hp++ = hex[(u_int8_t)(*p & 0xf0) >> 4];
 				*hp++ = hex[*p & 0x0f];
@@ -831,13 +834,11 @@ __db_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
  *	Print out an off-page element.
  */
 static void
-__db_proff(vp)
+__db_proff(vp, fp)
 	void *vp;
-{
 	FILE *fp;
+{
 	BOVERFLOW *bo;
-
-	fp = __db_prinit(NULL);
 
 	bo = vp;
 	switch (B_TYPE(bo->type)) {
@@ -886,56 +887,15 @@ __db_prflags(flags, fn, vfp)
 }
 
 /*
- * __db_prinit --
- *	Initialize tree printing routines.
- */
-static FILE *
-__db_prinit(fp)
-	FILE *fp;
-{
-	if (set_fp == NULL)
-		set_fp = fp == NULL ? stdout : fp;
-	return (set_fp);
-}
-
-/*
- * __db_psize --
- *	Get the page size.
- */
-static void
-__db_psize(dbp)
-	DB *dbp;
-{
-	DBMETA *mp;
-	DB_MPOOLFILE *mpf;
-	db_pgno_t pgno;
-
-	mpf = dbp->mpf;
-	set_psize = PSIZE_BOUNDARY - 1;
-
-	pgno = PGNO_BASE_MD;
-	if (mpf->get(mpf, &pgno, 0, &mp) != 0)
-		return;
-
-	switch (mp->magic) {
-	case DB_BTREEMAGIC:
-	case DB_HASHMAGIC:
-	case DB_QAMMAGIC:
-		set_psize = mp->pagesize;
-		break;
-	}
-	(void)mpf->put(mpf, mp, 0);
-}
-
-/*
  * __db_dbtype_to_string --
  *	Return the name of the database type.
+ * PUBLIC: const char * __db_dbtype_to_string __P((DBTYPE));
  */
-static const char *
-__db_dbtype_to_string(dbp)
-	DB *dbp;
+const char *
+__db_dbtype_to_string(type)
+	DBTYPE type;
 {
-	switch (dbp->type) {
+	switch (type) {
 	case DB_BTREE:
 		return ("btree");
 	case DB_HASH:
@@ -1048,10 +1008,16 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	 * If we've been passed a verifier statistics object, use
 	 * that;  we're being called in a context where dbp->stat
 	 * is unsafe.
+	 *
+	 * Also, the verifier may set the pflag on a per-salvage basis.
+	 * If so, respect that.
 	 */
 	if (vdp != NULL) {
 		if ((ret = __db_vrfy_getpageinfo(vdp, meta_pgno, &pip)) != 0)
 			return (ret);
+
+		if (F_ISSET(vdp, SALVAGE_PRINTABLE))
+			pflag = 1;
 	} else
 		pip = NULL;
 
@@ -1110,7 +1076,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			goto err;
 		memset(&dbt, 0, sizeof(dbt));
 		dbt.data = subname;
-		dbt.size = strlen(subname);
+		dbt.size = (u_int32_t)strlen(subname);
 		if ((ret = __db_prdbt(&dbt,
 		    1, NULL, handle, callback, 0, NULL)) != 0)
 			goto err;
@@ -1143,7 +1109,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
-		if (F_ISSET(dbp, DB_BT_RECNUM))
+		if (F_ISSET(dbp, DB_AM_RECNUM))
 			if ((ret = callback(handle, "recnum=1\n")) != 0)
 				goto err;
 		if (btsp->bt_maxkey != 0) {
@@ -1187,10 +1153,9 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}
-		if (hsp->hash_nelem != 0 || hsp->hash_nkeys != 0) {
-			snprintf(buf, buflen, "h_nelem=%lu\n",
-			    hsp->hash_nelem > hsp->hash_nkeys ?
-			    (u_long)hsp->hash_nelem : (u_long)hsp->hash_nkeys);
+		if (hsp->hash_nkeys != 0) {
+			snprintf(buf, buflen,
+			    "h_nelem=%lu\n", (u_long)hsp->hash_nkeys);
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}
@@ -1218,7 +1183,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				goto err;
 		}
 		if (qsp->qs_extentsize != 0) {
-			snprintf(buf, buflen, "extentsize=%d\n", qsp->qs_extentsize);
+			snprintf(buf, buflen,
+			    "extentsize=%lu\n", (u_long)qsp->qs_extentsize);
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}
@@ -1243,10 +1209,10 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			dbp->err(dbp, ret, "DB->stat");
 			goto err;
 		}
-		if (F_ISSET(dbp, DB_RE_RENUMBER))
+		if (F_ISSET(dbp, DB_AM_RENUMBER))
 			if ((ret = callback(handle, "renumber=1\n")) != 0)
 				goto err;
-		if (F_ISSET(dbp, DB_RE_FIXEDLEN)) {
+		if (F_ISSET(dbp, DB_AM_FIXEDLEN)) {
 			snprintf(buf, buflen,
 			    "re_len=%lu\n", (u_long)btsp->bt_re_len);
 			if ((ret = callback(handle, buf)) != 0)
@@ -1274,6 +1240,9 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				goto err;
 		/* We should handle page size. XXX */
 	} else {
+		if (F_ISSET(dbp, DB_AM_CHKSUM))
+			if ((ret = callback(handle, "chksum=1\n")) != 0)
+				goto err;
 		if (F_ISSET(dbp, DB_AM_DUP))
 			if ((ret = callback(handle, "duplicates=1\n")) != 0)
 				goto err;
@@ -1297,13 +1266,13 @@ err:	if (pip != NULL &&
 	    (t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (btsp != NULL)
-		__os_free(dbenv, btsp, 0);
+		__os_ufree(dbenv, btsp);
 	if (hsp != NULL)
-		__os_free(dbenv, hsp, 0);
+		__os_ufree(dbenv, hsp);
 	if (qsp != NULL)
-		__os_free(dbenv, qsp, 0);
+		__os_ufree(dbenv, qsp);
 	if (buf != NULL)
-		__os_free(dbenv, buf, buflen);
+		__os_free(dbenv, buf);
 
 	return (ret);
 }

@@ -1,6 +1,7 @@
-<!--$Id: bt_compare.so,v 10.23 2001/05/07 19:28:37 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: bt_compare.so,v 10.24 2002/06/24 14:50:22 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Btree comparison</title>
@@ -18,13 +19,13 @@
 <p>The Btree data structure is a sorted, balanced tree structure storing
 associated key/data pairs.  By default, the sort order is lexicographical,
 with shorter keys collating before longer keys.  The user can specify the
-sort order for the Btree by using the <a href="../../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a> function.
+sort order for the Btree by using the <a href="../../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a> method.
 <p>Sort routines are passed pointers to keys as arguments.  The keys are
-represented as <a href="../../api_c/dbt.html">DBT</a> structures.  The routine must return an integer
+represented as <a href="../../api_c/dbt_class.html">DBT</a> structures.  The routine must return an integer
 less than, equal to, or greater than zero if the first argument is
 considered to be respectively less than, equal to, or greater than the
 second argument.  The only fields that the routines may examine in the
-<a href="../../api_c/dbt.html">DBT</a> structures are <b>data</b> and <b>size</b> fields.
+<a href="../../api_c/dbt_class.html">DBT</a> structures are <b>data</b> and <b>size</b> fields.
 <p>An example routine that might be used to sort integer keys in the database
 is as follows:
 <p><blockquote><pre>int
@@ -85,7 +86,7 @@ interfaces which retrieve data items based on a user-specified key (for
 example, <a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> with the <a href="../../api_c/dbc_get.html#DB_SET">DB_SET</a>
 flag), will not modify the user-specified key by returning the actual
 key stored in the database.  The actual key can be retrieved by calling
-the <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> function with the <a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a> flag.
+the <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a> method with the <a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a> flag.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/malloc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/bt_prefix.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

@@ -1,6 +1,7 @@
-<!--$Id: lock_class.so,v 10.14 2001/04/12 18:48:44 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: lock_class.so,v 10.18 2002/08/24 18:22:41 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbLock</title>
@@ -24,27 +25,13 @@ import com.sleepycat.db.*;
 public class DbLock extends Object { ... }
 </pre></h3>
 <h1>Description</h1>
-<p>The <a href="../api_java/dbenv_class.html">DbEnv</a> lock methods and the DbLock class are used to
-provide general-purpose locking.  Although designed to work with the
-other Db classes, they are also useful for more general locking
-purposes.  Locks can be shared between processes.
-<p>In most cases, when multiple threads or processes are using locking, the
-deadlock detector, <a href="../utility/db_deadlock.html">db_deadlock</a> should be run.
+<p>The locking interfaces for the Berkeley DB database environment are methods
+of the <a href="../api_java/env_class.html">DbEnv</a> handle.  The DbLock object is the handle
+for a single lock, and has no methods of its own.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/lock_class.html">DbLock</a>
+<a href="../api_java/env_class.html">DbEnv</a>, DbLock
 <h1>See Also</h1>
-<a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a>,
-<a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a>,
-<a href="../api_java/env_set_lk_max_lockers.html">DbEnv.set_lk_max_lockers</a>,
-<a href="../api_java/env_set_lk_max_locks.html">DbEnv.set_lk_max_locks</a>,
-<a href="../api_java/env_set_lk_max_objects.html">DbEnv.set_lk_max_objects</a>,
-<a href="../api_java/lock_detect.html">DbEnv.lock_detect</a>,
-<a href="../api_java/lock_get.html">DbEnv.lock_get</a>,
-<a href="../api_java/lock_id.html">DbEnv.lock_id</a>,
-<a href="../api_java/lock_id_free.html">DbEnv.lock_id_free</a>,
-<a href="../api_java/lock_put.html">DbEnv.lock_put</a>,
-and
-<a href="../api_java/lock_stat.html">DbEnv.lock_stat</a>.
+<a href="../api_java/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

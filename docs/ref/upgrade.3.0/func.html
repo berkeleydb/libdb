@@ -1,6 +1,7 @@
 <!--$Id: func.so,v 11.9 2001/03/01 15:58:20 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Release 3.0: function arguments</title>
@@ -16,8 +17,8 @@
 <h1 align=center>Release 3.0: function arguments</h1>
 <p>In Berkeley DB 3.0, there are no longer separate structures that represent
 each subsystem (for example, DB_LOCKTAB or DB_TXNMGR), and an overall
-<a href="../../api_c/env_create.html">DB_ENV</a> environment structure.  Instead there is only the
-<a href="../../api_c/env_create.html">DB_ENV</a> structure.  This means that <a href="../../api_c/env_create.html">DB_ENV</a> references
+<a href="../../api_c/env_class.html">DB_ENV</a> environment structure.  Instead there is only the
+<a href="../../api_c/env_class.html">DB_ENV</a> structure.  This means that <a href="../../api_c/env_class.html">DB_ENV</a> references
 should be passed around by your application instead of passing around
 DB_LOCKTAB or DB_TXNMGR references.
 <p>Each of the following functions:
@@ -28,7 +29,7 @@ lock_put
 lock_stat
 lock_vec</pre></blockquote>
 <p>should have its first argument, a reference to the DB_LOCKTAB structure,
-replaced with a reference to the enclosing <a href="../../api_c/env_create.html">DB_ENV</a> structure.  For
+replaced with a reference to the enclosing <a href="../../api_c/env_class.html">DB_ENV</a> structure.  For
 example, the following line of code from a Berkeley DB 2.X application:
 <p><blockquote><pre>DB_LOCKTAB *lt;
 DB_LOCK lock;
@@ -48,14 +49,14 @@ log_register
 log_stat
 log_unregister</pre></blockquote>
 <p>should have their DB_LOG argument replaced with a reference to a
-<a href="../../api_c/env_create.html">DB_ENV</a> structure, and the functions:
+<a href="../../api_c/env_class.html">DB_ENV</a> structure, and the functions:
 <p><blockquote><pre>memp_fopen
 memp_register
 memp_stat
 memp_sync
 memp_trickle</pre></blockquote>
 <p>should have their DB_MPOOL argument replaced with a reference to a
-<a href="../../api_c/env_create.html">DB_ENV</a> structure.
+<a href="../../api_c/env_class.html">DB_ENV</a> structure.
 <p>You should remove all references to DB_LOCKTAB, DB_LOG, DB_MPOOL, and
 DB_TXNMGR structures from your application, they are no longer useful
 in any way.  In fact, a simple way to identify all of the places that

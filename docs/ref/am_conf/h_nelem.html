@@ -1,6 +1,7 @@
 <!--$Id: h_nelem.so,v 10.12 2000/03/18 21:43:08 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Hash table size</title>
@@ -20,10 +21,10 @@ that will be stored in the hash table is useful.  This value can be used
 by the Hash access method implementation to more accurately construct the
 necessary number of buckets that the database will eventually require.
 <p>The anticipated number of elements in the hash table can be specified by
-calling the <a href="../../api_c/db_set_h_nelem.html">DB-&gt;set_h_nelem</a> function.  If not specified, or set too low,
+calling the <a href="../../api_c/db_set_h_nelem.html">DB-&gt;set_h_nelem</a> method.  If not specified, or set too low,
 hash tables will expand gracefully as keys are entered, although a slight
 performance degradation may be noticed.  In order for the estimated number
-of elements to be a useful value to Berkeley DB, the <a href="../../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a> function
+of elements to be a useful value to Berkeley DB, the <a href="../../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a> method
 must also be called to set the page fill factor.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am_conf/h_hash.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/recno.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

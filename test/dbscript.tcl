@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dbscript.tcl,v 11.12 2001/01/30 21:36:31 krinsky Exp $
+# $Id: dbscript.tcl,v 11.14 2002/04/01 16:28:16 bostic Exp $
 #
 # Random db tester.
 # Usage: dbscript file numops min_del max_add key_avg data_avgdups
@@ -22,8 +22,6 @@
 source ./include.tcl
 source $test_path/test.tcl
 source $test_path/testutils.tcl
-
-set alphabet "abcdefghijklmnopqrstuvwxyz"
 
 set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errpcnt"
 

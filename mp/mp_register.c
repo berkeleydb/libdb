@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: mp_register.c,v 11.17 2001/07/24 18:31:31 bostic Exp $";
+static const char revid[] = "$Id: mp_register.c,v 11.21 2002/03/27 04:32:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -15,8 +15,8 @@ static const char revid[] = "$Id: mp_register.c,v 11.17 2001/07/24 18:31:31 bost
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "mp.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/mp.h"
 
 /*
  * memp_register --

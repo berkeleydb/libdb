@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,22 +9,21 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
 static const char revid[] =
-    "$Id: db_archive.c,v 11.26 2001/08/06 13:30:41 bostic Exp $";
+    "$Id: db_archive.c,v 11.36 2002/03/28 20:13:34 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
-#include "common_ext.h"
-#include "clib_ext.h"
 
 int db_archive_main __P((int, char *[]));
 int db_archive_usage __P((void));
@@ -55,16 +54,16 @@ db_archive_main(argc, argv)
 	DB_ENV	*dbenv;
 	u_int32_t flags;
 	int ch, e_close, exitval, ret, verbose;
-	char **file, *home, **list;
+	char **file, *home, **list, *passwd;
 
 	if ((ret = db_archive_version_check(progname)) != 0)
 		return (ret);
 
 	flags = 0;
 	e_close = exitval = verbose = 0;
-	home = NULL;
+	home = passwd = NULL;
 	__db_getopt_reset = 1;
-	while ((ch = getopt(argc, argv, "ah:lsVv")) != EOF)
+	while ((ch = getopt(argc, argv, "ah:lP:sVv")) != EOF)
 		switch (ch) {
 		case 'a':
 			LF_SET(DB_ARCH_ABS);
@@ -74,6 +73,15 @@ db_archive_main(argc, argv)
 			break;
 		case 'l':
 			LF_SET(DB_ARCH_LOG);
+			break;
+		case 'P':
+			passwd = strdup(optarg);
+			memset(optarg, 0, strlen(optarg));
+			if (passwd == NULL) {
+				fprintf(stderr, "%s: strdup: %s\n",
+				    progname, strerror(errno));
+				return (EXIT_FAILURE);
+			}
 			break;
 		case 's':
 			LF_SET(DB_ARCH_DATA);
@@ -114,6 +122,11 @@ db_archive_main(argc, argv)
 	if (verbose)
 		(void)dbenv->set_verbose(dbenv, DB_VERB_CHKPOINT, 1);
 
+	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
+	    passwd, DB_ENCRYPT_AES)) != 0) {
+		dbenv->err(dbenv, ret, "set_passwd");
+		goto shutdown;
+	}
 	/*
 	 * If attaching to a pre-existing environment fails, create a
 	 * private one and try again.
@@ -136,7 +149,7 @@ db_archive_main(argc, argv)
 	if (list != NULL) {
 		for (file = list; *file != NULL; ++file)
 			printf("%s\n", *file);
-		__os_free(dbenv, list, 0);
+		free(list);
 	}
 
 	if (0) {
@@ -157,7 +170,8 @@ shutdown:	exitval = 1;
 int
 db_archive_usage()
 {
-	(void)fprintf(stderr, "usage: db_archive [-alsVv] [-h home]\n");
+	(void)fprintf(stderr,
+	    "usage: db_archive [-alsVv] [-h home] [-P password]\n");
 	return (EXIT_FAILURE);
 }
 

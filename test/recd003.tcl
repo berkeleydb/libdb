@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd003.tcl,v 11.28 2001/08/03 16:39:26 bostic Exp $
+# $Id: recd003.tcl,v 11.30 2002/02/25 16:44:24 sandstro Exp $
 #
 # TEST	recd003
 # TEST	Duplicate recovery tests.  For every known duplicate log message,
@@ -34,7 +34,7 @@ proc recd003 { method {select 0} args } {
 	set eflags "-create -txn -home $testdir"
 
 	puts "\tRecd003.a: creating environment"
-	set env_cmd "berkdb env $eflags"
+	set env_cmd "berkdb_env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_bad dbenv $dbenv NULL
 

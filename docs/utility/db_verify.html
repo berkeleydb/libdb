@@ -1,6 +1,7 @@
-<!--$Id: db_verify.so,v 10.5 2001/07/02 01:03:18 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: db_verify.so,v 10.9 2002/08/24 18:24:54 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: db_verify</title>
@@ -18,7 +19,7 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_verify [<b>-NqV</b>] [<b>-h home</b>] file ...</pre></h3>
+<h3><pre>db_verify [<b>-NoqV</b>] [<b>-h home</b>] [<b>-P password</b>] file ...</pre></h3>
 <h1>Description</h1>
 <a name="3"><!--meow--></a><a name="4"><!--meow--></a>
 <p>The db_verify utility verifies the structure of one or more
@@ -27,23 +28,33 @@ files and the databases they contain.
 <p><dl compact>
 <p><dt><b>-h</b><dd>Specify a home directory for the database environment; by
 default, the current working directory is used.
-<p><dt><b>-N</b><dd>Do not acquire shared region locks while running.  Other problems, such
-as potentially fatal errors in Berkeley DB, will be ignored as well.  This
-option is intended only for debugging errors, and should not be used
-under any other circumstances.
+<p><dt><b>-o</b><dd>Skip the database checks for btree and duplicate sort order and for
+hashing.
+<p>If the file being verified contains databases using non-default
+comparison or hashing functions, calling the db_verify
+utility without the <b>-o</b> flag will usually return failure.  The
+<b>-o</b> flag causes db_verify to ignore database sort or
+hash ordering and allows db_verify to be used on these files.
+To fully verify these files, verify them explicitly using the
+<a href="../api_c/db_verify.html">DB-&gt;verify</a> method, after setting the correct comparison or hashing
+functions.
+<p><dt><b>-N</b><dd>Do not acquire shared region mutexes while running.  Other problems,
+such as potentially fatal errors in Berkeley DB, will be ignored as well.
+This option is intended only for debugging errors, and should not be
+used under any other circumstances.
+<p><dt><b>-P</b><dd>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.
 <p><dt><b>-q</b><dd>Suppress the printing of any error descriptions, simply exit success or
 failure.
 <p><dt><b>-V</b><dd>Write the library version number to the standard output, and exit.
 </dl>
 <p><b>The db_verify utility does not perform any locking, even in
-Berkeley DB environments that are configured with a locking subsystem.  As such, it
-should only be used on files that are not being modified by another thread of
-control.</b>
-<p>If the file being verified contains databases using non-default
-comparison or hashing functions, the db_verify utility may
-not be used for verification, as it will likely always return failure.
-Such files must be verified explicitly, using the <a href="../api_c/db_verify.html">DB-&gt;verify</a> function,
-after setting the correct comparison or hashing functions.
+Berkeley DB environments that are configured with a locking subsystem.  As
+such, it should only be used on files that are not being modified by
+another thread of control.</b>
 <p>The db_verify utility may be used with a Berkeley DB environment (as described for the
 <b>-h</b> option, the environment variable <b>DB_HOME</b>, or
 because the utility was run in a directory containing a Berkeley DB
@@ -59,18 +70,6 @@ interrupt signal (SIGINT).
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
-<h1>See Also</h1>
-<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
-<a href="../utility/db_archive.html">db_archive</a>,
-<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
-<a href="../utility/db_deadlock.html">db_deadlock</a>,
-<a href="../utility/db_dump.html">db_dump</a>,
-<a href="../utility/db_load.html">db_load</a>,
-<a href="../utility/db_recover.html">db_recover</a>,
-<a href="../utility/db_stat.html">db_stat</a>,
-<a href="../utility/db_upgrade.html">db_upgrade</a>,
-and
-db_verify.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,6 +1,7 @@
-<!--$Id: cursor.so,v 1.8 2001/05/08 15:03:07 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: cursor.so,v 1.11 2002/06/24 14:51:05 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Transactional cursors</title>
@@ -15,7 +16,7 @@
 <p>
 <h1 align=center>Transactional cursors</h1>
 <p>Berkeley DB cursors may be used inside a transaction, exactly as any other
-<a href="../../api_c/db_create.html">DB</a> method.  The enclosing transaction ID must be specified when
+<a href="../../api_c/db_class.html">DB</a> method.  The enclosing transaction ID must be specified when
 the cursor is created, but it does not then need to be further specified
 on operations performed using the cursor.  One important point to
 remember is that a cursor <b>must be closed</b> before the enclosing

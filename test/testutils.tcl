@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: testutils.tcl,v 11.130 2001/11/07 18:45:03 sue Exp $
+# $Id: testutils.tcl,v 11.165 2002/09/05 17:54:04 sandstro Exp $
 #
 # Test system utilities
 #
@@ -12,20 +12,25 @@
 proc timestamp {{opt ""}} {
 	global __timestamp_start
 
+	set now [clock seconds]
+
+	# -c	accurate to the click, instead of the second.
+	# -r	seconds since the Epoch
+	# -t	current time in the format expected by db_recover -t.
+	# -w	wallclock time
+	# else	wallclock plus elapsed time.
 	if {[string compare $opt "-r"] == 0} {
-		clock seconds
+		return $now
 	} elseif {[string compare $opt "-t"] == 0} {
-		# -t gives us the current time in the format expected by
-		# db_recover -t.
-		return [clock format [clock seconds] -format "%y%m%d%H%M.%S"]
+		return [clock format $now -format "%y%m%d%H%M.%S"]
+	} elseif {[string compare $opt "-w"] == 0} {
+		return [clock format $now -format "%c"]
 	} else {
 		if {[string compare $opt "-c"] == 0} {
 			set printclicks 1
 		} else {
 			set printclicks 0
 		}
-
-		set now [clock seconds]
 
 		if {[catch {set start $__timestamp_start}] != 0} {
 			set __timestamp_start $now
@@ -127,32 +132,68 @@ proc get_file_as_key { db txn flags file} {
 
 # open file and call dump_file to dumpkeys to tempfile
 proc open_and_dump_file {
-    dbname dbenv txn outfile checkfunc dump_func beg cont} {
+    dbname env outfile checkfunc dump_func beg cont } {
+	global encrypt
+	global passwd
 	source ./include.tcl
-	if { $dbenv == "NULL" } {
-		set db [berkdb open -rdonly -unknown $dbname]
-		error_check_good dbopen [is_valid_db $db] TRUE
-	} else {
-		set db [berkdb open -env $dbenv -rdonly -unknown $dbname]
-		error_check_good dbopen [is_valid_db $db] TRUE
+
+	set encarg ""
+	if { $encrypt > 0 && $env == "NULL" } {
+		set encarg "-encryptany $passwd"
 	}
+	set envarg ""
+	set txn ""
+	set txnenv 0
+	if { $env != "NULL" } {
+		append envarg " -env $env "
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append envarg " -auto_commit "
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+	}
+	set db [eval {berkdb open} $envarg -rdonly -unknown $encarg $dbname]
+	error_check_good dbopen [is_valid_db $db] TRUE
 	$dump_func $db $txn $outfile $checkfunc $beg $cont
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 }
 
 # open file and call dump_file to dumpkeys to tempfile
 proc open_and_dump_subfile {
-    dbname dbenv txn outfile checkfunc dump_func beg cont subdb} {
+    dbname env outfile checkfunc dump_func beg cont subdb} {
+	global encrypt
+	global passwd
 	source ./include.tcl
 
-	if { $dbenv == "NULL" } {
-		set db [berkdb open -rdonly -unknown $dbname $subdb]
-		error_check_good dbopen [is_valid_db $db] TRUE
-	} else {
-		set db [berkdb open -env $dbenv -rdonly -unknown $dbname $subdb]
-		error_check_good dbopen [is_valid_db $db] TRUE
+	set encarg ""
+	if { $encrypt > 0 && $env == "NULL" } {
+		set encarg "-encryptany $passwd"
 	}
+	set envarg ""
+	set txn ""
+	set txnenv 0
+	if { $env != "NULL" } {
+		append envarg "-env $env"
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append envarg " -auto_commit "
+			set t [$env txn]
+			error_check_good txn [is_valid_txn $t $env] TRUE
+			set txn "-txn $t"
+		}
+	}
+	set db [eval {berkdb open -rdonly -unknown} \
+	    $envarg $encarg {$dbname $subdb}]
+	error_check_good dbopen [is_valid_db $db] TRUE
 	$dump_func $db $txn $outfile $checkfunc $beg $cont
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 }
 
@@ -592,16 +633,33 @@ proc sentinel_init { } {
 	}
 }
 
-proc watch_procs { {delay 30} {max 3600} {quiet 0} } {
+proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
 	source ./include.tcl
 
 	set elapsed 0
+
+	# Don't start watching the processes until a sentinel
+	# file has been created for each one.
+	foreach pid $pidlist {
+		while { [file exists $testdir/begin.$pid] == 0 } {
+			tclsleep $delay
+			incr elapsed $delay
+			# If pids haven't been created in one-tenth
+			# of the time allowed for the whole test, 
+			# there's a problem.  Report an error and fail.
+			if { $elapsed > [expr {$max / 10}] } {
+				puts "FAIL: begin.pid not created"
+				break
+			}	
+		}
+	}
+
 	while { 1 } {
 
 		tclsleep $delay
 		incr elapsed $delay
 
-		# Find the list of processes withoutstanding sentinel
+		# Find the list of processes with outstanding sentinel
 		# files (i.e. a begin.pid and no end.pid).
 		set beginlist {}
 		set endlist {}
@@ -651,15 +709,9 @@ proc watch_procs { {delay 30} {max 3600} {quiet 0} } {
 		if { $elapsed > $max } {
 			# We have exceeded the limit; kill processes
 			# and report an error
-			set rlist {}
 			foreach i $l {
-				set r [catch { exec $KILL $i } result]
-				if { $r == 0 } {
-					lappend rlist $i
-				}
+				tclkill $i
 			}
-			error_check_good "Processes still running" \
-			    [llength $rlist] 0
 		}
 	}
 	if { $quiet == 0 } {
@@ -1002,7 +1054,7 @@ proc filecheck { file txn } {
 		unset check_array
 	}
 
-	open_and_dump_file $file NULL $txn $file.dump dbcheck dump_full_file \
+	open_and_dump_file $file NULL $file.dump dbcheck dump_full_file \
 	    "-first" "-next"
 
 	# Check that everything we checked had all its data
@@ -1033,6 +1085,9 @@ proc filecheck { file txn } {
 
 proc cleanup { dir env { quiet 0 } } {
 	global gen_upgrade
+	global is_qnx_test
+	global old_encrypt
+	global passwd
 	global upgrade_dir
 	global upgrade_be
 	global upgrade_method
@@ -1044,11 +1099,21 @@ proc cleanup { dir env { quiet 0 } } {
 		set maj [lindex $vers 0]
 		set min [lindex $vers 1]
 
+		# Is this machine big or little endian?  We want to mark
+		# the test directories appropriately, since testing
+		# little-endian databases generated by a big-endian machine,
+		# and/or vice versa, is interesting.
+		if { [big_endian] } {
+			set myendianness be
+		} else {
+			set myendianness le
+		}
+
 		if { $upgrade_be == 1 } {
-			set version_dir "$maj.${min}be"
+			set version_dir "$myendianness-$maj.${min}be"
 			set en be
 		} else {
-			set version_dir "$maj.${min}le"
+			set version_dir "$myendianness-$maj.${min}le"
 			set en le
 		}
 
@@ -1064,7 +1129,7 @@ proc cleanup { dir env { quiet 0 } } {
 
 			# db_dump file
 			error_check_good db_dump($dbfile) \
-			    [catch {exec $util_path/db_dump $dbfile > \
+			    [catch {exec $util_path/db_dump -k $dbfile > \
 			    $dir/$newbasename.dump}] 0
 
 			# tcl_dump file
@@ -1094,7 +1159,7 @@ proc cleanup { dir env { quiet 0 } } {
 	set remfiles {}
 	set ret [catch { glob $dir/* } result]
 	if { $ret == 0 } {
-		foreach file $result {
+		foreach fileorig $result {
 			#
 			# We:
 			# - Ignore any env-related files, which are
@@ -1105,21 +1170,38 @@ proc cleanup { dir env { quiet 0 } } {
 			# - Call 'dbremove' on any databases.
 			# Remove any remaining temp files.
 			#
-			switch -glob -- $file {
+			switch -glob -- $fileorig {
 			*/DIR_* -
 			*/__db.* -
 			*/log.*	{
 				if { $env != "NULL" } {
 					continue
 				} else {
-					lappend remfiles $file
+					if { $is_qnx_test } {
+						catch {berkdb envremove -force \
+						    -home $dir} r
+					}
+					lappend remfiles $fileorig
 				}
 				}
 			*.db	{
 				set envargs ""
+				set encarg ""
+				#
+				# If in an env, it should be open crypto
+				# or not already.
+				#
 				if { $env != "NULL"} {
-					set file [file tail $file]
+					set file [file tail $fileorig]
 					set envargs " -env $env "
+					if { [is_txnenv $env] } {
+						append envargs " -auto_commit "
+					}
+				} else {
+					if { $old_encrypt != 0 } {
+						set encarg "-encryptany $passwd"
+					}
+					set file $fileorig
 				}
 
 				# If a database is left in a corrupt
@@ -1129,17 +1211,33 @@ proc cleanup { dir env { quiet 0 } } {
 				# just forcibly remove the file with a warning
 				# message.
 				set ret [catch \
-				    {eval {berkdb dbremove} $envargs $file} res]
+				    {eval {berkdb dbremove} $envargs $encarg \
+				    $file} res]
 				if { $ret != 0 } {
-					if { $quiet == 0 } {
-						puts \
-				    "FAIL: dbremove in cleanup failed: $res"
+					# If it failed, there is a chance
+					# that the previous run was using
+					# encryption and we cannot know about
+					# it (different tclsh instantiation).
+					# Try to remove it with crypto.
+					if { $env == "NULL" && \
+					    $old_encrypt == 0} {
+						set ret [catch \
+				    		    {eval {berkdb dbremove} \
+						    -encryptany $passwd \
+				    		    $envargs $file} res]
 					}
-					lappend remfiles $file
+					if { $ret != 0 } {
+						if { $quiet == 0 } {
+							puts \
+				    "FAIL: dbremove in cleanup failed: $res"
+						}
+						set file $fileorig
+						lappend remfiles $file
+					}
 				}
 				}
 			default	{
-				lappend remfiles $file
+				lappend remfiles $fileorig
 				}
 			}
 		}
@@ -1161,9 +1259,15 @@ proc log_cleanup { dir } {
 }
 
 proc env_cleanup { dir } {
+	global old_encrypt
+	global passwd
 	source ./include.tcl
 
-	set stat [catch {berkdb envremove -home $dir} ret]
+	set encarg ""
+	if { $old_encrypt != 0 } {
+		set encarg "-encryptany $passwd"
+	}
+	set stat [catch {eval {berkdb envremove -home} $dir $encarg} ret]
 	#
 	# If something failed and we are left with a region entry
 	# in /dev/shmem that is zero-length, the envremove will
@@ -1279,15 +1383,16 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 		# Fork off a child to run the cmd
 		# We append the gid, so start here making sure
 		# we don't have old gid's around.
+		set outfile $testdir/childlog
 		fileremove -f $testdir/gidfile
 		set gidf $testdir/gidfile
-		set proclist {}
+		set pidlist {}
 		# puts "$tclsh_path $test_path/recdscript.tcl $testdir/recdout \
 		#    $op $dir $env_cmd $dbfile $gidf $cmd"
 		set p [exec $tclsh_path $test_path/wrap.tcl recdscript.tcl \
 		    $testdir/recdout $op $dir $env_cmd $dbfile $gidf $cmd &]
-		lappend proclist $p
-		watch_procs 5
+		lappend pidlist $p
+		watch_procs $pidlist 5
 		set f1 [open $testdir/recdout r]
 		set r [read $f1]
 		puts -nonewline $r
@@ -1298,6 +1403,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	}
 	op_recover_rec $op $op2 $dir $env_cmd $dbfile $gidf
 }
+
 proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	global log_log_record_types
 	global recd_debug
@@ -1320,14 +1426,15 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.init } res
 	copy_extent_file $dir $dbfile init
 
+	convert_encrypt $env_cmd
 	set env [eval $env_cmd]
 	error_check_good envopen [is_valid_env $env] TRUE
-	set db [berkdb open -env $env $dbfile]
+
+	set db [berkdb open -auto_commit -env $env $dbfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Dump out file contents for initial case
-	set tflags ""
-	open_and_dump_file $dbfile $env $tflags $init_file nop \
+	open_and_dump_file $dbfile $env $init_file nop \
 	    dump_file_direction "-first" "-next"
 
 	set t [$env txn]
@@ -1382,17 +1489,14 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	set record_exec_cmd_ret 0
 	set lenient_exec_cmd_ret 0
 
-	# Sync the file so that we can capture a snapshot to test
-	# recovery.
+	# Sync the file so that we can capture a snapshot to test recovery.
 	error_check_good sync:$db [$db sync] 0
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.afterop } res
 	copy_extent_file $dir $dbfile afterop
+	open_and_dump_file $dir/$dbfile.afterop NULL \
+		$afterop_file nop dump_file_direction "-first" "-next"
 
-	#set tflags "-txn $t"
-	open_and_dump_file $dir/$dbfile.afterop NULL $tflags \
-		$afterop_file nop dump_file_direction \
-		"-first" "-next"
 	#puts "\t\t\tExecuting txn_$op:$t"
 	if { $op == "prepare" } {
 		set gid [make_gid global:$t]
@@ -1410,13 +1514,13 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 		"prepare" { puts "\t\tCommand executed and prepared." }
 	}
 
-	# Dump out file and save a copy.
+	# Sync the file so that we can capture a snapshot to test recovery.
 	error_check_good sync:$db [$db sync] 0
-	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
-	    dump_file_direction "-first" "-next"
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.final } res
 	copy_extent_file $dir $dbfile final
+	open_and_dump_file $dir/$dbfile.final NULL \
+	    $final_file nop dump_file_direction "-first" "-next"
 
 	# If this is an abort or prepare-abort, it should match the
 	#   original file.
@@ -1471,6 +1575,8 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	global recd_debug
 	global recd_id
 	global recd_op
+	global encrypt
+	global passwd
 	source ./include.tcl
 
 	#puts "op_recover_rec: $op $op2 $dir $env_cmd $dbfile $gidf"
@@ -1488,16 +1594,20 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	puts -nonewline "\t\top_recover_rec: Running recovery ... "
 	flush stdout
 
-	set stat [catch {exec $util_path/db_recover -h $dir -e -c} result]
+	set recargs "-h $dir -c "
+	if { $encrypt > 0 } {
+		append recargs " -P $passwd "
+	}
+	set stat [catch {eval exec $util_path/db_recover -e $recargs} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}
 	puts -nonewline "complete ... "
 
 	#
-	# We cannot run db_recover here because that will
-	# open an env, run recovery, then close it, which will
-	# abort the outstand txns.  We want to do it ourselves.
+	# We cannot run db_recover here because that will open an env, run
+	# recovery, then close it, which will abort the outstanding txns.
+	# We want to do it ourselves.
 	#
 	set env [eval $env_cmd]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
@@ -1536,8 +1646,7 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 		}
 	}
 
-	set tflags ""
-	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
+	open_and_dump_file $dir/$dbfile NULL $final_file nop \
 	    dump_file_direction "-first" "-next"
 	if { $op == "commit" || $op2 == "commit" } {
 		filesort $afterop_file $afterop_file.sort
@@ -1565,11 +1674,10 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	}
 
 	berkdb debug_check
-	puts -nonewline \
-	    "\t\tRunning recovery on pre-op database ... "
+	puts -nonewline "\t\tRunning recovery on pre-op database ... "
 	flush stdout
 
-	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
+	set stat [catch {eval exec $util_path/db_recover $recargs} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}
@@ -1581,7 +1689,7 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 
 	set env [eval $env_cmd]
 
-	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
+	open_and_dump_file $dir/$dbfile NULL $final_file nop \
 	    dump_file_direction "-first" "-next"
 	if { $op == "commit" || $op2 == "commit" } {
 		filesort $final_file $final_file.sort
@@ -1885,6 +1993,9 @@ proc reverse { s } {
 	return $res
 }
 
+#
+# This is a internal only proc.  All tests should use 'is_valid_db' etc.
+#
 proc is_valid_widget { w expected } {
 	# First N characters must match "expected"
 	set l [string length $expected]
@@ -1952,8 +2063,9 @@ proc is_valid_locker {l } {
 proc send_cmd { fd cmd {sleep 2}} {
 	source ./include.tcl
 
-	puts $fd "set v \[$cmd\]"
-	puts $fd "puts \$v"
+	puts $fd "if \[catch {set v \[$cmd\] ; puts \$v} ret\] { \
+		puts \"FAIL: \$ret\" \
+	}"
 	puts $fd "flush stdout"
 	flush $fd
 	berkdb debug_check
@@ -2157,6 +2269,32 @@ proc convert_method { method } {
 	}
 }
 
+proc split_encargs { largs encargsp } {
+	global encrypt
+	upvar $encargsp e
+	set eindex [lsearch $largs "-encrypta*"]
+	if { $eindex == -1 } {
+		set e ""
+		set newl $largs
+	} else {
+		set eend [expr $eindex + 1]
+		set e [lrange $largs $eindex $eend]
+		set newl [lreplace $largs $eindex $eend "-encrypt"]
+	}
+	return $newl
+}
+
+proc convert_encrypt { largs } {
+	global encrypt
+	global old_encrypt
+
+	set old_encrypt $encrypt
+	set encrypt 0
+	if { [lsearch $largs "-encrypt*"] != -1 } {
+		set encrypt 1
+	}
+}
+
 # If recno-with-renumbering or btree-with-renumbering is specified, then
 # fix the arguments to specify the DB_RENUMBER/DB_RECNUM option for the
 # -flags argument.
@@ -2176,6 +2314,7 @@ proc convert_args { method {largs ""} } {
 		return -code return
 	}
 
+	convert_encrypt $largs
 	if { $gen_upgrade == 1 && $upgrade_be == 1 } {
 		append largs " -lorder 4321 "
 	} elseif { $gen_upgrade == 1 && $upgrade_be != 1 } {
@@ -2432,6 +2571,16 @@ proc tclsleep { s } {
 	after [expr $s * 1000 + 56]
 }
 
+# Kill a process.
+proc tclkill { id } {
+	source ./include.tcl
+
+	while { [ catch {exec $KILL -0 $id} ] == 0 } {
+		catch {exec $KILL -9 $id}
+		tclsleep 5
+	}
+}
+
 # Compare two files, a la diff.  Returns 1 if non-identical, 0 if identical.
 proc filecmp { file_a file_b } {
 	set fda [open $file_a r]
@@ -2488,6 +2637,9 @@ proc fileextract { superset subset outfile } {
 # Verify all .db files in the specified directory.
 proc verify_dir { {directory $testdir} \
     { pref "" } { noredo 0 } { quiet 0 } { nodump 0 } { cachesize 0 } } {
+	global encrypt
+	global passwd
+
 	# If we're doing database verification between tests, we don't
 	# want to do verification twice without an intervening cleanup--some
 	# test was skipped.  Always verify by default (noredo == 0) so
@@ -2523,8 +2675,13 @@ proc verify_dir { {directory $testdir} \
 	if { $cachesize == 0 } {
 		set cachesize [expr 1024 * 1024]
 	}
+	set encarg ""
+	if { $encrypt != 0 } {
+		set encarg "-encryptaes $passwd"
+	}
 
-	set env [berkdb env -create -private -cachesize [list 0 $cachesize 0]]
+	set env [eval {berkdb_env -create -private} $encarg \
+	    {-cachesize [list 0 $cachesize 0]}]
 	set earg " -env $env $errarg "
 
 	foreach db $dbs {
@@ -2569,8 +2726,8 @@ proc check_for_subdbs { db } {
 		set elem [lindex $stat $i]
 		if { [string compare [lindex $elem 0] Flags] == 0 } {
 			# This is the list of flags;  look for
-			# "multiple-databases".
-			if { [is_substr [lindex $elem 1] multiple-databases] } {
+			# "subdatabases".
+			if { [is_substr [lindex $elem 1] subdatabases] } {
 				return 1
 			}
 		}
@@ -2580,14 +2737,23 @@ proc check_for_subdbs { db } {
 
 proc dumploadtest { db {subdb ""} } {
 	global util_path
+	global encrypt
+	global passwd
 
 	set newdbname $db-dumpload.db
 
 	# Open original database, or subdb if we have one.
-	set olddb [eval {berkdb_open -rdonly $db} $subdb]
-	error_check_good olddb($db) [is_valid_db $olddb] TRUE
-
+	set dbarg ""
+	set utilflag ""
+	if { $encrypt != 0 } {
+		set dbarg "-encryptany $passwd"
+		set utilflag "-P $passwd"
+	}
+	set max_size [expr 15 * 1024]
 	if { [string length $subdb] == 0 } {
+		set olddb [eval {berkdb_open -rdonly} $dbarg $db]
+		error_check_good olddb($db) [is_valid_db $olddb] TRUE
+
 		if { [check_for_subdbs $olddb] } {
 			# If $db has subdatabases, dumploadtest each one
 			# separately.
@@ -2599,24 +2765,44 @@ proc dumploadtest { db {subdb ""} } {
 			    { [llength $dbt] > 0 } \
 			    { set dbt [$oc get -next] } {
 				set subdb [lindex [lindex $dbt 0] 0]
-				dumploadtest $db $subdb
-			}
 
+            	   		# Skip any files over this size. The problem is
+            	   		# that when when we dump/load it, files that are
+            	   		# too big result in E2BIG errors because the
+            	   		# arguments to db_dump are too long.  64K seems
+            	   		# to be the limit (on FreeBSD), cut it to 32K
+            	   		# just to be safe.
+				if {[string length $subdb] < $max_size && \
+				    [string length $subdb] != 0} {
+					dumploadtest $db $subdb
+				}
+			}
+			error_check_good oldcclose [$oc close] 0
+			error_check_good olddbclose [$olddb close] 0
 			return 0
 		}
 		# No subdatabase
-		set subdbdumpflag ""
+		set have_subdb 0
 	} else {
-		set subdbdumpflag "-s $subdb"
+		set olddb [eval {berkdb_open -rdonly} $dbarg {$db $subdb}]
+		error_check_good olddb($db) [is_valid_db $olddb] TRUE
+
+		set have_subdb 1
 	}
 
 	# Do a db_dump test.  Dump/load each file.
-	set rval [catch {eval exec $util_path/db_dump -k $subdbdumpflag $db | \
-	    $util_path/db_load $newdbname} res]
-	error_check_good db_dump($db:$subdb:$res) $rval 0
+	if { $have_subdb } {
+		set rval [catch {eval {exec $util_path/db_dump} $utilflag -k \
+		    -s {$subdb} $db | \
+		    $util_path/db_load $utilflag $newdbname} res]
+	} else {
+		set rval [catch {eval {exec $util_path/db_dump} $utilflag -k \
+		    $db | $util_path/db_load $utilflag $newdbname} res]
+	}
+	error_check_good db_dump/db_load($db:$res) $rval 0
 
 	# Now open new database.
-	set newdb [eval {berkdb_open -rdonly $newdbname}]
+	set newdb [eval {berkdb_open -rdonly} $dbarg $newdbname]
 	error_check_good newdb($db) [is_valid_db $newdb] TRUE
 
 	# Walk through olddb and newdb and make sure their contents
@@ -2632,7 +2818,7 @@ proc dumploadtest { db {subdb ""} } {
 	    { set odbt [$oc get -next] } {
 		set ndbt [$nc get -get_both \
 		    [lindex [lindex $odbt 0] 0] [lindex [lindex $odbt 0] 1]]
-		error_check_good db_compare($db) $ndbt $odbt
+		error_check_good db_compare($db/$newdbname) $ndbt $odbt
 	}
 
 	for { set ndbt [$nc get -first] } { [llength $ndbt] > 0 } \
@@ -2648,7 +2834,7 @@ proc dumploadtest { db {subdb ""} } {
 	error_check_good orig_db_close($db) [$olddb close] 0
 	error_check_good new_db_close($db) [$newdb close] 0
 
-	berkdb dbremove $newdbname
+	eval berkdb dbremove $dbarg $newdbname
 
 	return 0
 }
@@ -2768,7 +2954,7 @@ proc berkdb_open { args } {
 	set errargs {}
 	if { $is_envmethod == 0 && [file exists /dev/stderr] == 1 } {
 		append errargs " -errfile /dev/stderr "
-		append errargs " -errpfx \\F\\A\\I\\L "
+		append errargs " -errpfx \\F\\A\\I\\L"
 	}
 
 	eval {berkdb open} $errargs $args
@@ -2777,6 +2963,29 @@ proc berkdb_open { args } {
 # Version without errpfx/errfile, used when we're expecting a failure.
 proc berkdb_open_noerr { args } {
 	eval {berkdb open} $args
+}
+
+# Wrapper for berkdb env, used throughout the test suite so that we can
+# set an errfile/errpfx as appropriate.
+proc berkdb_env { args } {
+	global is_envmethod
+
+	if { [info exists is_envmethod] == 0 } {
+		set is_envmethod 0
+	}
+
+	set errargs {}
+	if { $is_envmethod == 0 && [file exists /dev/stderr] == 1 } {
+		append errargs " -errfile /dev/stderr "
+		append errargs " -errpfx \\F\\A\\I\\L"
+	}
+
+	eval {berkdb env} $errargs $args
+}
+
+# Version without errpfx/errfile, used when we're expecting a failure.
+proc berkdb_env_noerr { args } {
+	eval {berkdb env} $args
 }
 
 proc check_handles { {outf stdout} } {
@@ -2886,5 +3095,115 @@ proc get_file_list { {small 0} } {
 		    [glob $src_root/*/*.c */*.obj */libdb??.dll */libdb??d.dll]
 	} else {
 		return [glob $src_root/*/*.c ./*.o ./.libs/libdb-?.?.s?]
+	}
+}
+
+proc is_cdbenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -cdb] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_lockenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -lock] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_logenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -log] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_mpoolenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -mpool] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_rpcenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -rpc] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_secenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -crypto] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_txnenv { env } {
+	set sys [$env attributes]
+	if { [lsearch $sys -txn] != -1 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc get_home { env } {
+	set sys [$env attributes]
+	set h [lsearch $sys -home]
+	if { $h == -1 } {
+		return NULL
+	}
+	incr h
+	return [lindex $sys $h]
+}
+
+proc reduce_dups { nent ndp } {
+	upvar $nent nentries
+	upvar $ndp ndups
+
+	# If we are using a txnenv, assume it is using
+	# the default maximum number of locks, cut back
+	# so that we don't run out of locks.  Reduce
+	# by 25% until we fit.
+	#
+	while { [expr $nentries * $ndups] > 5000 } {
+		set nentries [expr ($nentries / 4) * 3]
+		set ndups [expr ($ndups / 4) * 3]
+	}
+}
+
+proc getstats { statlist field } {
+	foreach pair $statlist {
+		set txt [lindex $pair 0]
+		if { [string equal $txt $field] == 1 } {
+			return [lindex $pair 1]
+		}
+	}
+	return -1
+}
+
+proc big_endian { } {
+	global tcl_platform
+	set e $tcl_platform(byteOrder)
+	if { [string compare $e littleEndian] == 0 } {
+		return 0
+	} elseif { [string compare $e bigEndian] == 0 } {
+		return 1
+	} else {
+		error "FAIL: Unknown endianness $e"
 	}
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: BtRecExample.cpp,v 11.17 2001/11/10 04:59:07 mjc Exp $
+ * $Id: BtRecExample.cpp,v 11.21 2002/01/23 15:33:20 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -25,7 +25,7 @@ using std::cerr;
 #define	DATABASE	"access.db"
 #define	WORDLIST	"../test/wordlist"
 
-char *progname = "BtRecExample";		// Program name.
+const char *progname = "BtRecExample";		// Program name.
 
 class BtRecExample
 {
@@ -34,7 +34,7 @@ public:
 	~BtRecExample();
 	void run();
 	void stats();
-	void show(char *msg, Dbt *key, Dbt *data);
+	void show(const char *msg, Dbt *key, Dbt *data);
 
 private:
 	Db *dbp;
@@ -56,7 +56,7 @@ BtRecExample::BtRecExample(FILE *fp)
 	dbp->set_pagesize(1024);			// 1K page sizes.
 
 	dbp->set_flags(DB_RECNUM);			// Record numbers.
-	dbp->open(DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
+	dbp->open(NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664);
 
 	//
 	// Insert records into the database, where the key is the word
@@ -187,7 +187,7 @@ void BtRecExample::run()
 // show --
 //	Display a key/data pair.
 //
-void BtRecExample::show(char *msg, Dbt *key, Dbt *data)
+void BtRecExample::show(const char *msg, Dbt *key, Dbt *data)
 {
 	cout << msg << (char *)key->get_data()
 	     << " : " << (char *)data->get_data() << "\n";

@@ -1,6 +1,7 @@
-<!--$Id: region.so,v 10.26 2001/11/09 15:33:45 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: region.so,v 10.28 2002/02/04 17:52:38 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Shared memory regions</title>
@@ -10,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
-<td align=right><a href="../../ref/env/security.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/remote.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../../ref/env/naming.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/security.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Shared memory regions</h1>
@@ -41,7 +42,7 @@ interfaces are used. Additionally, VxWorks systems use system memory.
 In these cases, an initial segment ID must be specified by the
 application to ensure that applications do not overwrite each other's
 database environments, so that the number of segments created does not
-grow without bounds.  See the <a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a> function for more
+grow without bounds.  See the <a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a> method for more
 information.
 <p>On Windows platforms, the use of the <a href="../../api_c/env_open.html#DB_SYSTEM_MEM">DB_SYSTEM_MEM</a> flag is
 problematic because the operating system uses reference counting to
@@ -54,6 +55,7 @@ the Berkeley DB library will use the POSIX mmap interface.  If mmap is not
 available, the UNIX shmget interfaces will be used, assuming they are
 available.
 </ol>
+<a name="2"><!--meow--></a>
 <p>Any files created in the filesystem to back the regions are created in
 the environment home directory specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> call.
 These files are named __db.### (for example, __db.001, __db.002 and
@@ -64,7 +66,7 @@ name in the filesystem so that multiple processes can locate the system
 shared memory that is being used by the environment.
 <p>Statistics about the shared memory regions in the environment can be
 displayed using the <b>-e</b> option to the <a href="../../utility/db_stat.html">db_stat</a> utility.
-<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/security.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/remote.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../../ref/env/naming.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/security.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

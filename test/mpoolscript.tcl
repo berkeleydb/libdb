@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: mpoolscript.tcl,v 11.14 2001/09/26 19:35:12 ubell Exp $
+# $Id: mpoolscript.tcl,v 11.16 2002/04/29 14:47:16 sandstro Exp $
 #
 # Random multiple process mpool tester.
 # Usage: mpoolscript dir id numiters numfiles numpages sleepint
@@ -61,7 +61,7 @@ foreach i $pgsizes {
 }
 
 set cache [list 0 [expr $maxprocs * ([lindex $pgsizes 0] + $max)] 1]
-set env_cmd {berkdb env -lock -cachesize $cache -home $dir}
+set env_cmd {berkdb_env -lock -cachesize $cache -home $dir}
 set e [eval $env_cmd $flags]
 error_check_good env_open [is_valid_env $e] TRUE
 

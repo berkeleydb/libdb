@@ -1065,6 +1065,13 @@ compiler."
 	continue
 	;;
 
+      #### Local change for Sleepycat's Berkeley DB [#6117]:
+      -jnimodule)
+	module=yes
+	jnimodule=yes
+	continue
+	;;
+
       -no-fast-install)
 	fast_install=no
 	continue
@@ -4930,6 +4937,7 @@ The following components of LINK-COMMAND are treated specially:
 		    try to export only the symbols matching REGEX
   -LLIBDIR          search LIBDIR for required installed libraries
   -lNAME            OUTPUT-FILE requires the installed library libNAME
+  -jnimodule        build a library that can dlopened via Java JNI
   -module           build a library that can dlopened
   -no-fast-install  disable the fast-install mode
   -no-install       link a not-installable executable

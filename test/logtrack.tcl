@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information
 #
-# Copyright (c) 2000-2001
+# Copyright (c) 2000-2002
 #       Sleepycat Software.  All rights reserved.
 #
-#       $Id: logtrack.tcl,v 11.8 2001/06/15 17:40:54 krinsky Exp $
+# $Id: logtrack.tcl,v 11.11 2002/09/03 16:44:37 sue Exp $
 #
 # logtrack.tcl:  A collection of routines, formerly implemented in Perl
 # as log.pl, to track which log record types the test suite hits.
@@ -35,20 +35,26 @@ proc logtrack_init { } {
 # records were seen.
 proc logtrack_read { dirname } {
 	global ltsname tmpname util_path
+	global encrypt passwd
 
 	set seendb [berkdb_open $ltsname]
 	error_check_good seendb_open [is_valid_db $seendb] TRUE
 
 	file delete -force $tmpname
-	set ret [catch {exec $util_path/db_printlog -N \
-	    -h "$dirname" > $tmpname} res]
+	set pargs " -N -h $dirname "
+	if { $encrypt > 0 } {
+		append pargs " -P $passwd "
+	}
+	set ret [catch {eval exec $util_path/db_printlog $pargs > $tmpname} res]
 	error_check_good printlog $ret 0
 	error_check_good tmpfile_exists [file exists $tmpname] 1
 
 	set f [open $tmpname r]
 	while { [gets $f record] >= 0 } {
-		regexp {\[[^\]]*\]\[[^\]]*\]([^\:]*)\:} $record whl name
-		error_check_good seendb_put [$seendb put $name ""] 0
+		set r [regexp {\[[^\]]*\]\[[^\]]*\]([^\:]*)\:} $record whl name]
+		if { $r == 1 } {
+			error_check_good seendb_put [$seendb put $name ""] 0
+		}
 	}
 	close $f
 	file delete -force $tmpname

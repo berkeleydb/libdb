@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_curadj.c,v 11.23 2001/07/19 19:54:59 bostic Exp $";
+static const char revid[] = "$Id: bt_curadj.c,v 11.30 2002/07/03 19:03:48 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,9 +16,8 @@ static const char revid[] = "$Id: bt_curadj.c,v 11.23 2001/07/19 19:54:59 bostic
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "btree.h"
-#include "txn.h"
+#include "dbinc/db_page.h"
+#include "dbinc/btree.h"
 
 static int __bam_opd_cursor __P((DB *, DBC *, db_pgno_t, u_int32_t, u_int32_t));
 
@@ -203,10 +202,9 @@ __bam_ca_di(my_dbc, pgno, indx, adjust)
 	}
 	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
 
-	if (found != 0 && DB_LOGGING(my_dbc)) {
-		if ((ret = __bam_curadj_log(dbenv,
-		    my_dbc->txn, &lsn, 0, dbp->log_fileid,
-		    DB_CA_DI, pgno, 0, 0, adjust, indx, 0)) != 0)
+	if (found != 0 && DBC_LOGGING(my_dbc)) {
+		if ((ret = __bam_curadj_log(dbp, my_dbc->txn,
+		    &lsn, 0, DB_CA_DI, pgno, 0, 0, adjust, indx, 0)) != 0)
 			return (ret);
 	}
 
@@ -234,8 +232,13 @@ __bam_opd_cursor(dbp, dbc, first, tpgno, ti)
 	 * Allocate a new cursor and create the stack.  If duplicates
 	 * are sorted, we've just created an off-page duplicate Btree.
 	 * If duplicates aren't sorted, we've just created a Recno tree.
+	 *
+	 * Note that in order to get here at all, there shouldn't be
+	 * an old off-page dup cursor--to augment the checking db_c_newopd
+	 * will do, assert this.
 	 */
-	if ((ret = __db_c_newopd(dbc, tpgno, &dbc_nopd)) != 0)
+	DB_ASSERT(orig_cp->opd == NULL);
+	if ((ret = __db_c_newopd(dbc, tpgno, orig_cp->opd, &dbc_nopd)) != 0)
 		return (ret);
 
 	cp = (BTREE_CURSOR *)dbc_nopd->internal;
@@ -328,10 +331,9 @@ loop:		MUTEX_THREAD_LOCK(dbenv, dbp->mutexp);
 	}
 	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
 
-	if (found != 0 && DB_LOGGING(my_dbc)) {
-		if ((ret = __bam_curadj_log(dbenv,
-		    my_dbc->txn, &lsn, 0, dbp->log_fileid,
-		    DB_CA_DUP, fpgno, tpgno, 0, first, fi, ti)) != 0)
+	if (found != 0 && DBC_LOGGING(my_dbc)) {
+		if ((ret = __bam_curadj_log(dbp, my_dbc->txn,
+		    &lsn, 0, DB_CA_DUP, fpgno, tpgno, 0, first, fi, ti)) != 0)
 			return (ret);
 	}
 	return (0);
@@ -448,10 +450,9 @@ __bam_ca_rsplit(my_dbc, fpgno, tpgno)
 	}
 	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
 
-	if (found != 0 && DB_LOGGING(my_dbc)) {
-		if ((ret = __bam_curadj_log(dbenv,
-		    my_dbc->txn, &lsn, 0, dbp->log_fileid,
-		    DB_CA_RSPLIT, fpgno, tpgno, 0, 0, 0, 0)) != 0)
+	if (found != 0 && DBC_LOGGING(my_dbc)) {
+		if ((ret = __bam_curadj_log(dbp, my_dbc->txn,
+		    &lsn, 0, DB_CA_RSPLIT, fpgno, tpgno, 0, 0, 0, 0)) != 0)
 			return (ret);
 	}
 	return (0);
@@ -520,9 +521,9 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 	}
 	MUTEX_THREAD_UNLOCK(dbenv, dbenv->dblist_mutexp);
 
-	if (found != 0 && DB_LOGGING(my_dbc)) {
-		if ((ret = __bam_curadj_log(dbenv, my_dbc->txn,
-		    &lsn, 0, dbp->log_fileid, DB_CA_SPLIT, ppgno, rpgno,
+	if (found != 0 && DBC_LOGGING(my_dbc)) {
+		if ((ret = __bam_curadj_log(dbp,
+		    my_dbc->txn, &lsn, 0, DB_CA_SPLIT, ppgno, rpgno,
 		    cleft ? lpgno : PGNO_INVALID, 0, split_indx, 0)) != 0)
 			return (ret);
 	}

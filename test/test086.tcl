@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2001
+# Copyright (c) 1999-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test086.tcl,v 11.5 2001/08/03 16:39:47 bostic Exp $
+# $Id: test086.tcl,v 11.9 2002/08/06 17:58:00 sandstro Exp $
 #
 # TEST	test086
 # TEST	Test of cursor stability across btree splits/rsplits with
@@ -13,6 +13,9 @@ proc test086 { method args } {
 	source ./include.tcl
 
 	set tstn 086
+	set args [convert_args $method $args]
+	set encargs ""
+	set args [split_encargs $args encargs]
 
 	if { [is_btree $method] != 1 } {
 		puts "Test$tstn skipping for method $method."
@@ -42,11 +45,11 @@ proc test086 { method args } {
 	set t1 $testdir/t1
 	env_cleanup $testdir
 
-	set env [berkdb env -create -home $testdir -txn]
+	set env [eval {berkdb_env -create -home $testdir -txn} $encargs]
 	error_check_good berkdb_env [is_valid_env $env] TRUE
 
 	puts "\tTest$tstn.a: Create $method database."
-	set oflags "-create -env $env -mode 0644 $args $method"
+	set oflags "-auto_commit -create -env $env -mode 0644 $args $method"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

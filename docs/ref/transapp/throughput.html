@@ -1,6 +1,7 @@
-<!--$Id: throughput.so,v 10.30 2001/09/25 22:37:47 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: throughput.so,v 10.31 2002/04/02 17:07:05 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Transaction throughput</title>
@@ -68,14 +69,15 @@ controller and bus can have as much to do with the disk performance as
 the disk itself.  It is also important to remember that throughput is
 rarely the limiting factor, and that disk seek times are normally the true
 performance issue for Berkeley DB.
-<li>Turn on the <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag.  This changes the Berkeley DB behavior
-so that the log files are not flushed when transactions are committed.
-Although this change will greatly increase your transaction throughput,
-it means that transactions will exhibit the ACI (atomicity, consistency,
-and isolation) properties, but not D (durability).  Database integrity
-will be maintained, but it is possible that some number of the most
-recently committed transactions may be undone during recovery instead
-of being redone.
+<li>Turn on the <a href="../../api_c/env_set_flags.html#DB_TXN_WRITE_NOSYNC">DB_TXN_WRITE_NOSYNC</a> or <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flags.
+This changes the Berkeley DB behavior so that the log files are not written
+and/or flushed when transactions are committed.  Although this change
+will greatly increase your transaction throughput, it means that
+transactions will exhibit the ACI (atomicity, consistency, and
+isolation) properties, but not D (durability).  Database integrity will
+be maintained, but it is possible that some number of the most recently
+committed transactions may be undone during recovery instead of being
+redone.
 </ul>
 <p>If you are bottlenecked on logging, the following test will help you
 confirm that the number of transactions per second that your application

@@ -14,7 +14,7 @@ BEGIN {
 use BerkeleyDB; 
 use t::util ;
 
-print "1..224\n";
+print "1..226\n";
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -477,6 +477,10 @@ umask(0) ;
 		        	-Txn	  => $txn ;
 
     
+    ok 171, $txn->txn_commit() == 0 ;
+    ok 172, $txn = $env->txn_begin() ;
+    $db1->Txn($txn);
+
     # create some data
     my @data =  (
 		"boat",
@@ -489,31 +493,31 @@ umask(0) ;
     for ($i = 0 ; $i < @data ; ++$i) {
         $ret += $db1->db_put($i, $data[$i]) ;
     }
-    ok 171, $ret == 0 ;
+    ok 173, $ret == 0 ;
 
     # should be able to see all the records
 
-    ok 172, my $cursor = $db1->db_cursor() ;
+    ok 174, my $cursor = $db1->db_cursor() ;
     my ($k, $v) = (0, "") ;
     my $count = 0 ;
     # sequence forwards
     while ($cursor->c_get($k, $v, DB_NEXT) == 0) {
         ++ $count ;
     }
-    ok 173, $count == 3 ;
+    ok 175, $count == 3 ;
     undef $cursor ;
 
     # now abort the transaction
-    ok 174, $txn->txn_abort() == 0 ;
+    ok 176, $txn->txn_abort() == 0 ;
 
     # there shouldn't be any records in the database
     $count = 0 ;
     # sequence forwards
-    ok 175, $cursor = $db1->db_cursor() ;
+    ok 177, $cursor = $db1->db_cursor() ;
     while ($cursor->c_get($k, $v, DB_NEXT) == 0) {
         ++ $count ;
     }
-    ok 176, $count == 0 ;
+    ok 178, $count == 0 ;
 
     undef $txn ;
     undef $cursor ;
@@ -530,14 +534,14 @@ umask(0) ;
     my $recs = ($BerkeleyDB::db_version >= 3.1 ? "bt_ndata" : "bt_nrecs") ;
     my @array ;
     my ($k, $v) ;
-    ok 177, my $db = new BerkeleyDB::Recno -Filename 	=> $Dfile, 
+    ok 179, my $db = new BerkeleyDB::Recno -Filename 	=> $Dfile, 
 				     	   -Flags    	=> DB_CREATE,
 					   -Pagesize	=> 4 * 1024,
 					;
 
     my $ref = $db->db_stat() ; 
-    ok 178, $ref->{$recs} == 0;
-    ok 179, $ref->{'bt_pagesize'} == 4 * 1024;
+    ok 180, $ref->{$recs} == 0;
+    ok 181, $ref->{'bt_pagesize'} == 4 * 1024;
 
     # create some data
     my @data =  (
@@ -551,10 +555,10 @@ umask(0) ;
     for ($i = $db->ArrayOffset ; @data ; ++$i) {
         $ret += $db->db_put($i, shift @data) ;
     }
-    ok 180, $ret == 0 ;
+    ok 182, $ret == 0 ;
 
     $ref = $db->db_stat() ; 
-    ok 181, $ref->{$recs} == 3;
+    ok 183, $ref->{$recs} == 3;
 }
 
 {
@@ -605,35 +609,37 @@ EOM
 
     BEGIN { push @INC, '.'; }    
     eval 'use SubDB ; ';
-    main::ok 182, $@ eq "" ;
+    main::ok 184, $@ eq "" ;
     my @h ;
     my $X ;
     eval '
-	$X = tie(@h, "SubDB", -Filename => "dbbtree.tmp", 
+	$X = tie(@h, "SubDB", -Filename => "dbrecno.tmp", 
 			-Flags => DB_CREATE,
 			-Mode => 0640 );
 	' ;
 
-    main::ok 183, $@ eq "" ;
+    main::ok 185, $@ eq "" ;
 
     my $ret = eval '$h[1] = 3 ; return $h[1] ' ;
-    main::ok 184, $@ eq "" ;
-    main::ok 185, $ret == 7 ;
+    main::ok 186, $@ eq "" ;
+    main::ok 187, $ret == 7 ;
 
     my $value = 0;
     $ret = eval '$X->db_put(1, 4) ; $X->db_get(1, $value) ; return $value' ;
-    main::ok 186, $@ eq "" ;
-    main::ok 187, $ret == 10 ;
+    main::ok 188, $@ eq "" ;
+    main::ok 189, $ret == 10 ;
 
     $ret = eval ' DB_NEXT eq main::DB_NEXT ' ;
-    main::ok 188, $@ eq ""  ;
-    main::ok 189, $ret == 1 ;
+    main::ok 190, $@ eq ""  ;
+    main::ok 191, $ret == 1 ;
 
     $ret = eval '$X->A_new_method(1) ' ;
-    main::ok 190, $@ eq "" ;
-    main::ok 191, $ret eq "[[10]]" ;
+    main::ok 192, $@ eq "" ;
+    main::ok 193, $ret eq "[[10]]" ;
 
-    unlink "SubDB.pm", "dbbtree.tmp" ;
+    undef $X;
+    untie @h;
+    unlink "SubDB.pm", "dbrecno.tmp" ;
 
 }
 
@@ -644,7 +650,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 192, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
+    ok 194, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 						-Source	=> $Dfile2 ;
@@ -654,7 +660,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 193, $x eq "abc\ndef\n\nghi\n" ;
+    ok 195, $x eq "abc\ndef\n\nghi\n" ;
 }
 
 {
@@ -664,7 +670,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 194, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
+    ok 196, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 						-Source	=> $Dfile2 ,
@@ -675,7 +681,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 195, $x eq "abc-def--ghi-";
+    ok 197, $x eq "abc-def--ghi-";
 }
 
 {
@@ -685,7 +691,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 196, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
+    ok 198, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 						-Len 	=> 5,
@@ -696,7 +702,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 197, $x eq "abc  def       ghi  " ;
+    ok 199, $x eq "abc  def       ghi  " ;
 }
 
 {
@@ -706,7 +712,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 198, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
+    ok 200, tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 						-Len	=> 5,
@@ -718,7 +724,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 199, $x eq "abc--def-------ghi--" ;
+    ok 201, $x eq "abc--def-------ghi--" ;
 }
 
 {
@@ -727,7 +733,7 @@ EOM
     my $lex = new LexFile $Dfile;
     my @array ;
     my $value ;
-    ok 200, my $db = tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
+    ok 202, my $db = tie @array, 'BerkeleyDB::Recno', -Filename  => $Dfile,
 				    	    	-Property => DB_RENUMBER,
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ;
@@ -736,14 +742,14 @@ EOM
     $array[1] = "def" ;
     $array[3] = "ghi" ;
 
-    ok 201, my ($length, $joined) = joiner($db, "|") ;
-    ok 202, $length == 3 ;
-    ok 203, $joined eq "abc|def|ghi";
+    ok 203, my ($length, $joined) = joiner($db, "|") ;
+    ok 204, $length == 3 ;
+    ok 205, $joined eq "abc|def|ghi";
 
-    ok 204, $db->db_del(1) == 0 ;
-    ok 205, ($length, $joined) = joiner($db, "|") ;
-    ok 206, $length == 2 ;
-    ok 207, $joined eq "abc|ghi";
+    ok 206, $db->db_del(1) == 0 ;
+    ok 207, ($length, $joined) = joiner($db, "|") ;
+    ok 208, $length == 2 ;
+    ok 209, $joined eq "abc|ghi";
 
     undef $db ;
     untie @array ;
@@ -756,7 +762,7 @@ EOM
     my $lex = new LexFile $Dfile;
     my @array ;
     my $value ;
-    ok 208, my $db = tie @array, 'BerkeleyDB::Recno', 
+    ok 210, my $db = tie @array, 'BerkeleyDB::Recno', 
 					-Filename  => $Dfile,
                                        	-Flags     => DB_CREATE ;
 
@@ -765,8 +771,8 @@ EOM
     $array[3] = "ghi" ;
 
     my $k = 0 ;
-    ok 209, $db->db_put($k, "fred", DB_APPEND) == 0 ;
-    ok 210, $k == 4 ;
+    ok 211, $db->db_put($k, "fred", DB_APPEND) == 0 ;
+    ok 212, $k == 4 ;
 
     undef $db ;
     untie @array ;
@@ -779,7 +785,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 211, tie @array, 'BerkeleyDB::Recno',    -Source => $Dfile2 ,
+    ok 213, tie @array, 'BerkeleyDB::Recno',    -Source => $Dfile2 ,
 						-ArrayBase => 0,
 				    	    	-Property => DB_RENUMBER,
                                       	       	-Flags  => DB_CREATE ;
@@ -789,7 +795,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 212, $x eq "abc\ndef\n\nghi\n" ;
+    ok 214, $x eq "abc\ndef\n\nghi\n" ;
 }
 
 {
@@ -799,7 +805,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 213, tie @array, 'BerkeleyDB::Recno', 
+    ok 215, tie @array, 'BerkeleyDB::Recno', 
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 						-Source	=> $Dfile2 ,
@@ -811,7 +817,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 214, $x eq "abc-def--ghi-";
+    ok 216, $x eq "abc-def--ghi-";
 }
 
 {
@@ -821,7 +827,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 215, tie @array, 'BerkeleyDB::Recno', 	-ArrayBase => 0,
+    ok 217, tie @array, 'BerkeleyDB::Recno', 	-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 				    	    	-Property => DB_RENUMBER,
 						-Len 	=> 5,
@@ -832,7 +838,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 216, $x eq "abc  def       ghi  " ;
+    ok 218, $x eq "abc  def       ghi  " ;
 }
 
 {
@@ -842,7 +848,7 @@ EOM
     touch $Dfile2 ;
     my @array ;
     my $value ;
-    ok 217, tie @array, 'BerkeleyDB::Recno', 
+    ok 219, tie @array, 'BerkeleyDB::Recno', 
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 				    	    	-Property => DB_RENUMBER,
@@ -855,7 +861,7 @@ EOM
     untie @array ;
 
     my $x = docat($Dfile2) ;
-    ok 218, $x eq "abc--def-------ghi--" ;
+    ok 220, $x eq "abc--def-------ghi--" ;
 }
 
 {
@@ -863,7 +869,7 @@ EOM
     my $lex = new LexFile $Dfile ;
     my @array ;
     my $db ;
-    ok 219, $db = tie @array, 'BerkeleyDB::Recno', 
+    ok 221, $db = tie @array, 'BerkeleyDB::Recno', 
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 				    	    	-Property => DB_RENUMBER,
@@ -871,8 +877,8 @@ EOM
     $FA ? push @array, "first"
         : $db->push("first") ;
 
-    ok 220, $array[0] eq "first" ;
-    ok 221, $FA ? pop @array : $db->pop() eq "first" ;
+    ok 222, $array[0] eq "first" ;
+    ok 223, $FA ? pop @array : $db->pop() eq "first" ;
 
     undef $db;
     untie @array ;
@@ -884,7 +890,7 @@ EOM
     my $lex = new LexFile $Dfile ;
     my @array ;
     my $db ;
-    ok 222, $db = tie @array, 'BerkeleyDB::Recno', 
+    ok 224, $db = tie @array, 'BerkeleyDB::Recno', 
 						-ArrayBase => 0,
                                       	       	-Flags  => DB_CREATE ,
 				    	    	-Property => DB_RENUMBER,
@@ -892,8 +898,8 @@ EOM
     $FA ? unshift @array, "first"
         : $db->unshift("first") ;
 
-    ok 223, $array[0] eq "first" ;
-    ok 224, ($FA ? shift @array : $db->shift()) eq "first" ;
+    ok 225, $array[0] eq "first" ;
+    ok 226, ($FA ? shift @array : $db->shift()) eq "first" ;
 
     undef $db;
     untie @array ;

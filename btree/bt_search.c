@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: bt_search.c,v 11.37 2001/07/24 18:31:00 bostic Exp $";
+static const char revid[] = "$Id: bt_search.c,v 11.43 2002/07/03 19:03:50 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -53,10 +53,10 @@ static const char revid[] = "$Id: bt_search.c,v 11.37 2001/07/24 18:31:00 bostic
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "db_shash.h"
-#include "btree.h"
-#include "lock.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/btree.h"
+#include "dbinc/lock.h"
 
 /*
  * __bam_search --
@@ -80,7 +80,7 @@ __bam_search(dbc, root_pgno, key, flags, stop, recnop, exactp)
 	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	db_indx_t base, i, indx, lim;
+	db_indx_t base, i, indx, *inp, lim;
 	db_lockmode_t lock_mode;
 	db_pgno_t pg;
 	db_recno_t recno;
@@ -144,8 +144,8 @@ try_again:
 			(void)__LPUT(dbc, lock);
 			return (ret);
 		}
-		if (!((LF_ISSET(S_PARENT)
-		    && (u_int8_t)(stop + 1) >= h->level) ||
+		if (!((LF_ISSET(S_PARENT) &&
+		    (u_int8_t)(stop + 1) >= h->level) ||
 		    (LF_ISSET(S_WRITE) && h->level == LEAFLEVEL))) {
 			/* Someone else split the root, start over. */
 			(void)mpf->put(mpf, h, 0);
@@ -161,6 +161,7 @@ try_again:
 	    t->bt_compare;
 
 	for (;;) {
+		inp = P_INP(dbp, h);
 		/*
 		 * Do a binary search on the current page.  If we're searching
 		 * a Btree leaf page, we have to walk the indices in groups of
@@ -235,9 +236,9 @@ try_again:
 		 */
 next:		if (recnop != NULL)
 			for (i = 0; i < indx; ++i)
-				recno += GET_BINTERNAL(h, i)->nrecs;
+				recno += GET_BINTERNAL(dbp, h, i)->nrecs;
 
-		pg = GET_BINTERNAL(h, indx)->pgno;
+		pg = GET_BINTERNAL(dbp, h, indx)->pgno;
 
 		if (LF_ISSET(S_STK_ONLY)) {
 			if (stop == h->level) {
@@ -249,7 +250,7 @@ next:		if (recnop != NULL)
 			BT_STK_NUMPUSH(dbp->dbenv, cp, h, indx, ret);
 			(void)mpf->put(mpf, h, 0);
 			if ((ret = __db_lget(dbc,
-			    LCK_COUPLE, pg, lock_mode, 0, &lock)) != 0) {
+			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
 				/*
 				 * Discard our lock and return on failure.  This
 				 * is OK because it only happens when descending
@@ -292,7 +293,7 @@ next:		if (recnop != NULL)
 			lock_mode = stack &&
 			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
 			if ((ret = __db_lget(dbc,
-			    LCK_COUPLE, pg, lock_mode, 0, &lock)) != 0) {
+			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
 				/*
 				 * If we fail, discard the lock we held.  This
 				 * is OK because this only happens when we are
@@ -330,11 +331,11 @@ found:	*exactp = 1;
 	if (TYPE(h) == P_LBTREE) {
 		if (LF_ISSET(S_DUPLAST))
 			while (indx < (db_indx_t)(NUM_ENT(h) - P_INDX) &&
-			    h->inp[indx] == h->inp[indx + P_INDX])
+			    inp[indx] == inp[indx + P_INDX])
 				indx += P_INDX;
 		else
 			while (indx > 0 &&
-			    h->inp[indx] == h->inp[indx - P_INDX])
+			    inp[indx] == inp[indx - P_INDX])
 				indx -= P_INDX;
 	}
 
@@ -347,22 +348,22 @@ found:	*exactp = 1;
 	if (LF_ISSET(S_DELNO)) {
 		deloffset = TYPE(h) == P_LBTREE ? O_INDX : 0;
 		if (LF_ISSET(S_DUPLAST))
-			while (B_DISSET(GET_BKEYDATA(
+			while (B_DISSET(GET_BKEYDATA(dbp,
 			    h, indx + deloffset)->type) && indx > 0 &&
-			    h->inp[indx] == h->inp[indx - adjust])
+			    inp[indx] == inp[indx - adjust])
 				indx -= adjust;
 		else
-			while (B_DISSET(GET_BKEYDATA(
+			while (B_DISSET(GET_BKEYDATA(dbp,
 			    h, indx + deloffset)->type) &&
 			    indx < (db_indx_t)(NUM_ENT(h) - adjust) &&
-			    h->inp[indx] == h->inp[indx + adjust])
+			    inp[indx] == inp[indx + adjust])
 				indx += adjust;
 
 		/*
 		 * If we weren't able to find a non-deleted duplicate, return
 		 * DB_NOTFOUND.
 		 */
-		if (B_DISSET(GET_BKEYDATA(h, indx + deloffset)->type))
+		if (B_DISSET(GET_BKEYDATA(dbp, h, indx + deloffset)->type))
 			goto notfound;
 	}
 
@@ -466,7 +467,7 @@ __bam_stkgrow(dbenv, cp)
 		return (ret);
 	memcpy(p, cp->sp, entries * sizeof(EPG));
 	if (cp->sp != cp->stack)
-		__os_free(dbenv, cp->sp, entries * sizeof(EPG));
+		__os_free(dbenv, cp->sp);
 	cp->sp = p;
 	cp->csp = p + entries;
 	cp->esp = p + entries * 2;

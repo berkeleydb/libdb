@@ -1,6 +1,7 @@
-<!--$Id: archival.so,v 10.49 2001/06/12 14:12:18 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: archival.so,v 10.51 2002/06/24 14:51:04 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Database and log file archival</title>
@@ -51,7 +52,7 @@ from catastrophic failure, take the following steps:
 <p><li>Stop writing your databases until the backup has completed.  Read-only
 operations are permitted, but no write operations and no filesystem
 operations may be performed (for example, the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> and
-<a href="../../api_c/db_open.html">DB-&gt;open</a> functions may not be called).
+<a href="../../api_c/db_open.html">DB-&gt;open</a> methods may not be called).
 <p><li>Force an environment checkpoint (see <a href="../../utility/db_checkpoint.html">db_checkpoint</a> for more
 information).
 <p><li>Run <a href="../../utility/db_archive.html">db_archive</a> <b>-s</b> to identify all the database data
@@ -61,7 +62,7 @@ or tape.
 Berkeley DB files, it may be simpler to archive the directory itself instead
 of the individual files (see <a href="../../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a> for additional
 information).  <b>Note: if any of the database files did not have
-an open <a href="../../api_c/db_create.html">DB</a> handle during the lifetime of the current log files,
+an open <a href="../../api_c/db_class.html">DB</a> handle during the lifetime of the current log files,
 <a href="../../utility/db_archive.html">db_archive</a> will not list them in its output!</b>  This is another
 reason it may be simpler to use a separate database file directory and
 archive the entire directory instead of archiving only the files listed
@@ -70,6 +71,7 @@ by <a href="../../utility/db_archive.html">db_archive</a>.
 and copy the last one (that is, the one with the highest number) to a
 backup device such as CD-ROM, alternate disk, or tape.
 </ol>
+<a name="4"><!--meow--></a>
 <p>To create a <i>hot</i> backup of your database that can be used to
 recover from catastrophic failure, take the following steps:
 <p><ol>
@@ -89,7 +91,7 @@ the <b>-l</b> option to identify all the database log files, and
 copy them to your backup media.  If the database log files are stored
 in a separate directory from the other database files, it may be simpler
 to archive the directory itself instead of the individual files (see
-the <a href="../../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a> function for more information).
+the <a href="../../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a> method for more information).
 </ol>
 <p>Once these steps are completed, your database can be recovered from
 catastrophic failure (see <a href="recovery.html">Recovery procedures</a> for

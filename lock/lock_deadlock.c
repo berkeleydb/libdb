@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: lock_deadlock.c,v 11.46 2001/10/04 21:26:00 bostic Exp $";
+static const char revid[] = "$Id: lock_deadlock.c,v 11.54 2002/08/06 05:05:21 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,10 +18,10 @@ static const char revid[] = "$Id: lock_deadlock.c,v 11.46 2001/10/04 21:26:00 bo
 #endif
 
 #include "db_int.h"
-#include "db_shash.h"
-#include "lock.h"
-#include "txn.h"
-#include "rep.h"
+#include "dbinc/db_shash.h"
+#include "dbinc/lock.h"
+#include "dbinc/txn.h"
+#include "dbinc/rep.h"
 
 #define	ISSET_MAP(M, N)	((M)[(N) / 32] & (1 << (N) % 32))
 
@@ -56,6 +56,7 @@ static int  __dd_build __P((DB_ENV *,
 	    u_int32_t, u_int32_t **, u_int32_t *, u_int32_t *, locker_info **));
 static int  __dd_find __P((DB_ENV *,
 	    u_int32_t *, locker_info *, u_int32_t, u_int32_t, u_int32_t ***));
+static int  __dd_isolder __P((u_int32_t, u_int32_t, u_int32_t, u_int32_t));
 static int __dd_verify __P((locker_info *, u_int32_t *, u_int32_t *,
 	    u_int32_t *, u_int32_t, u_int32_t, u_int32_t));
 
@@ -77,9 +78,11 @@ __lock_detect(dbenv, flags, atype, abortp)
 {
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
+	DB_TXNMGR *tmgr;
 	locker_info *idmap;
 	u_int32_t *bitmap, *copymap, **deadp, **free_me, *tmpmap;
 	u_int32_t i, keeper, killid, limit, nalloc, nlockers;
+	u_int32_t lock_max, txn_max;
 	int ret;
 
 	PANIC_CHECK(dbenv);
@@ -134,7 +137,25 @@ __lock_detect(dbenv, flags, atype, abortp)
 
 	/* Build the waits-for bitmap. */
 	ret = __dd_build(dbenv, atype, &bitmap, &nlockers, &nalloc, &idmap);
+	lock_max = region->stat.st_cur_maxid;
 	UNLOCKREGION(dbenv, lt);
+
+	/*
+	 * We need the cur_maxid from the txn region as well.  In order
+	 * to avoid tricky synchronization between the lock and txn
+	 * regions, we simply unlock the lock region and then lock the
+	 * txn region.  This introduces a small window during which the
+	 * transaction system could then wrap.  We're willing to return
+	 * the wrong answer for "oldest" or "youngest" in those rare
+	 * circumstances.
+	 */
+	tmgr = dbenv->tx_handle;
+	if (tmgr != NULL) {
+		R_LOCK(dbenv, &tmgr->reginfo);
+		txn_max = ((DB_TXNREGION *)tmgr->reginfo.primary)->cur_maxid;
+		R_UNLOCK(dbenv, &tmgr->reginfo);
+	} else
+		txn_max = TXN_MAXIMUM;
 	if (ret != 0 || atype == DB_LOCK_EXPIRE)
 		return (ret);
 
@@ -163,7 +184,7 @@ __lock_detect(dbenv, flags, atype, abortp)
 	for (; *deadp != NULL; deadp++) {
 		if (abortp != NULL)
 			++*abortp;
-		killid = (*deadp - bitmap) / nalloc;
+		killid = (u_int32_t)((*deadp - bitmap) / nalloc);
 		limit = killid;
 		keeper = BAD_KILLID;
 
@@ -196,12 +217,14 @@ __lock_detect(dbenv, flags, atype, abortp)
 				continue;
 			switch (atype) {
 			case DB_LOCK_OLDEST:
-				if (idmap[i].id > idmap[killid].id)
+				if (__dd_isolder(idmap[killid].id,
+				    idmap[i].id, lock_max, txn_max))
 					continue;
 				keeper = i;
 				break;
 			case DB_LOCK_YOUNGEST:
-				if (idmap[i].id < idmap[killid].id)
+				if (__dd_isolder(idmap[i].id,
+				    idmap[killid].id, lock_max, txn_max))
 					continue;
 				keeper = i;
 				break;
@@ -272,13 +295,13 @@ dokill:		if (killid == BAD_KILLID)
 			__db_err(dbenv,
 			    "Aborting locker %lx", (u_long)idmap[killid].id);
 	}
-	__os_free(dbenv, tmpmap, 0);
-err1:	__os_free(dbenv, copymap, 0);
+	__os_free(dbenv, tmpmap);
+err1:	__os_free(dbenv, copymap);
 
 err:	if (free_me != NULL)
-		__os_free(dbenv, free_me, 0);
-	__os_free(dbenv, bitmap, 0);
-	__os_free(dbenv, idmap, 0);
+		__os_free(dbenv, free_me);
+	__os_free(dbenv, bitmap);
+	__os_free(dbenv, idmap);
 
 	return (ret);
 }
@@ -333,7 +356,7 @@ __dd_build(dbenv, atype, bmp, nlockers, allocp, idmap)
 	 * verify that we have enough room when we go back in and get the
 	 * mutex the second time.
 	 */
-retry:	count = region->nlockers;
+retry:	count = region->stat.st_nlockers;
 
 	if (count == 0) {
 		*nlockers = 0;
@@ -359,24 +382,24 @@ retry:	count = region->nlockers;
 
 	if ((ret = __os_calloc(dbenv,
 	    sizeof(u_int32_t), nentries, &tmpmap)) != 0) {
-		__os_free(dbenv, bitmap, sizeof(u_int32_t) * nentries);
+		__os_free(dbenv, bitmap);
 		return (ret);
 	}
 
 	if ((ret = __os_calloc(dbenv,
 	    (size_t)count, sizeof(locker_info), &id_array)) != 0) {
-		__os_free(dbenv, bitmap, count * sizeof(u_int32_t) * nentries);
-		__os_free(dbenv, tmpmap, sizeof(u_int32_t) * nentries);
+		__os_free(dbenv, bitmap);
+		__os_free(dbenv, tmpmap);
 		return (ret);
 	}
 
 	/*
 	 * Now go back in and actually fill in the matrix.
 	 */
-	if (region->nlockers > count) {
-		__os_free(dbenv, bitmap, count * sizeof(u_int32_t) * nentries);
-		__os_free(dbenv, tmpmap, sizeof(u_int32_t) * nentries);
-		__os_free(dbenv, id_array, count * sizeof(locker_info));
+	if (region->stat.st_nlockers > count) {
+		__os_free(dbenv, bitmap);
+		__os_free(dbenv, tmpmap);
+		__os_free(dbenv, id_array);
 		goto retry;
 	}
 
@@ -430,9 +453,8 @@ obj_loop:
 				continue;
 
 			if (lockerp->dd_id == DD_INVALID_ID) {
-				dd = ((DB_LOCKER *)
-				     R_ADDR(&lt->reginfo,
-				     lockerp->master_locker))->dd_id;
+				dd = ((DB_LOCKER *)R_ADDR(&lt->reginfo,
+				    lockerp->master_locker))->dd_id;
 				lockerp->dd_id = dd;
 				if (atype == DB_LOCK_MINLOCKS ||
 				    atype == DB_LOCK_MAXLOCKS)
@@ -466,20 +488,23 @@ look_waiters:
 			if ((ret = __lock_getlocker(lt,
 			    lp->holder, ndx, 0, &lockerp)) != 0)
 				continue;
-			if (__lock_expired(dbenv, &now, &lockerp->lk_expire)) {
-				lp->status = DB_LSTAT_EXPIRED;
-				MUTEX_UNLOCK(dbenv, &lp->mutex);
-				continue;
+			if (lp->status == DB_LSTAT_WAITING) {
+				if (__lock_expired(dbenv,
+				    &now, &lockerp->lk_expire)) {
+					lp->status = DB_LSTAT_EXPIRED;
+					MUTEX_UNLOCK(dbenv, &lp->mutex);
+					continue;
+				}
+				need_timeout =
+				    LOCK_TIME_ISVALID(&lockerp->lk_expire);
 			}
-			need_timeout = LOCK_TIME_ISVALID(&lockerp->lk_expire);
 
 			if (expire_only)
 				continue;
 
 			if (lockerp->dd_id == DD_INVALID_ID) {
-				dd = ((DB_LOCKER *)
-				     R_ADDR(&lt->reginfo,
-				     lockerp->master_locker))->dd_id;
+				dd = ((DB_LOCKER *)R_ADDR(&lt->reginfo,
+				    lockerp->master_locker))->dd_id;
 				lockerp->dd_id = dd;
 				if (atype == DB_LOCK_MINLOCKS ||
 				    atype == DB_LOCK_MAXLOCKS)
@@ -541,7 +566,7 @@ look_waiters:
 			do {
 				lp = SH_LIST_FIRST(&child->heldby, __db_lock);
 				if (lp != NULL &&
-				     lp->status == DB_LSTAT_WAITING) {
+				    lp->status == DB_LSTAT_WAITING) {
 					id_array[id].last_locker_id = child->id;
 					goto get_lock;
 				}
@@ -577,7 +602,7 @@ look_waiters:
 	*idmap = id_array;
 	*bmp = bitmap;
 	*allocp = nentries;
-	__os_free(dbenv, tmpmap, sizeof(u_int32_t) * nentries);
+	__os_free(dbenv, tmpmap);
 	return (0);
 }
 
@@ -746,7 +771,7 @@ __dd_debug(dbenv, idmap, bitmap, nlockers, nalloc)
 		__db_err(dbenv, msgbuf);
 	}
 
-	__os_free(dbenv, msgbuf, MSGBUF_LEN);
+	__os_free(dbenv, msgbuf);
 }
 #endif
 
@@ -816,4 +841,46 @@ __dd_verify(idmap, deadmap, tmpmap, origmap, nlockers, nalloc, which)
 			return (1);
 	}
 	return (0);
+}
+
+/*
+ * __dd_isolder --
+ *
+ * Figure out the relative age of two lockers.  We make all lockers
+ * older than all transactions, because that's how it's worked
+ * historically (because lockers are lower ids).
+ */
+static int
+__dd_isolder(a, b, lock_max, txn_max)
+	u_int32_t	a, b;
+	u_int32_t	lock_max, txn_max;
+{
+	u_int32_t max;
+
+	/* Check for comparing lock-id and txnid. */
+	if (a <= DB_LOCK_MAXID && b > DB_LOCK_MAXID)
+		return (1);
+	if (b <= DB_LOCK_MAXID && a > DB_LOCK_MAXID)
+		return (0);
+
+	/* In the same space; figure out which one. */
+	max = txn_max;
+	if (a <= DB_LOCK_MAXID)
+		max = lock_max;
+
+	/*
+	 * We can't get a 100% correct ordering, because we don't know
+	 * where the current interval started and if there were older
+	 * lockers outside the interval.  We do the best we can.
+	 */
+
+	/*
+	 * Check for a wrapped case with ids above max.
+	 */
+	if (a > max && b < max)
+		return (1);
+	if (b > max && a < max)
+		return (0);
+
+	return (a < b);
 }

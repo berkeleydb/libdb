@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test036.tcl,v 11.16 2001/08/03 16:39:39 bostic Exp $
+# $Id: test036.tcl,v 11.18 2002/05/22 15:42:51 sue Exp $
 #
 # TEST	test036
 # TEST	Test KEYFIRST and KEYLAST when the key doesn't exist
@@ -15,14 +15,13 @@ proc test036 { method {nentries 10000} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
-
-	puts "Test036: $method ($args) $nentries equal key/data pairs"
 	if { [is_record_based $method] == 1 } {
 		puts "Test036 skipping for method recno"
 		return
 	}
 
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -34,7 +33,21 @@ proc test036 { method {nentries 10000} args } {
 		set testfile test036.db
 		incr eindex
 		set env [lindex $args $eindex]
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+		}
+		set testdir [get_home $env]
 	}
+
+	puts "Test036: $method ($args) $nentries equal key/data pairs"
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -57,8 +70,13 @@ proc test036 { method {nentries 10000} args } {
 	}
 	puts "\tTest036.a: put/get loop KEYFIRST"
 	# Here is the loop where we put and get each key/data pair
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor [is_substr $dbc $db] 1
+	error_check_good cursor [is_valid_cursor $dbc $db] TRUE
 	while { [gets $did str] != -1 && $count < $nentries } {
 		if { [is_record_based $method] == 1 } {
 			global kvals
@@ -68,7 +86,7 @@ proc test036 { method {nentries 10000} args } {
 		} else {
 			set key $str
 		}
-		set ret [eval {$dbc put} $txn $pflags {-keyfirst $key $str}]
+		set ret [eval {$dbc put} $pflags {-keyfirst $key $str}]
 		error_check_good put $ret 0
 
 		set ret [eval {$db get} $txn $gflags {$key}]
@@ -76,10 +94,18 @@ proc test036 { method {nentries 10000} args } {
 		incr count
 	}
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 
 	puts "\tTest036.a: put/get loop KEYLAST"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor [is_substr $dbc $db] 1
+	error_check_good cursor [is_valid_cursor $dbc $db] TRUE
 	while { [gets $did str] != -1 && $count < $nentries } {
 		if { [is_record_based $method] == 1 } {
 			global kvals
@@ -97,12 +123,23 @@ proc test036 { method {nentries 10000} args } {
 		incr count
 	}
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	close $did
 
 	# Now we will get each key from the DB and compare the results
 	# to the original.
 	puts "\tTest036.c: dump file"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	dump_file $db $txn $t1 $checkfunc
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	error_check_good db_close [$db close] 0
 
 	# Now compare the keys to see if they match the dictionary (or ints)

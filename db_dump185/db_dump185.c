@@ -1,15 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #ifndef lint
 static char copyright[] =
-    "Copyright (c) 1996-2001\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2002\nSleepycat Software Inc.  All rights reserved.\n";
 static char revid[] =
-    "$Id: db_dump185.c,v 11.15 2001/08/17 13:38:10 bostic Exp $";
+    "$Id: db_dump185.c,v 11.17 2002/08/08 03:50:35 bostic Exp $";
 #endif
 
 #include <sys/types.h>
@@ -65,7 +65,8 @@ typedef struct hashhdr186 {	/* Disk resident portion */
 	int32_t	h_charkey;	/* value of hash(CHARKEY) */
 #define	NCACHED	32		/* number of bit maps and spare points */
 	int32_t	spares[NCACHED];/* spare pages for overflow */
-	u_int16_t	bitmaps[NCACHED];	/* address of overflow page bitmaps */
+				/* address of overflow page bitmaps */
+	u_int16_t bitmaps[NCACHED];
 } HASHHDR186;
 typedef struct htab186	 {		/* Memory resident data structure */
 	void *unused[2];

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_config,v 1.6 2001/09/09 18:28:59 bostic Exp $
+#	$Id: s_config,v 1.9 2002/05/20 19:18:13 bostic Exp $
 #
 # Build the autoconfiguration files.
 
@@ -27,12 +27,19 @@ echo "Building aclocal.m4"
 
 echo "Running autoheader to build config.hin"
 rm -f config.hin
-autoheader -W all > config.hin
+autoheader
 chmod 444 config.hin
 
 echo "Running autoconf to build configure"
 rm -f configure
-autoconf -W no-cross
+autoconf
+
+# Edit version information we couldn't pre-compute.
+(echo "1,\$s/__EDIT_DB_VERSION__/$DB_VERSION/g" &&
+ echo "w" &&
+ echo "q") | ed configure
+
+rm -rf autom4te.cache
 chmod 555 configure
 
 chmod 555 config.guess config.sub install-sh

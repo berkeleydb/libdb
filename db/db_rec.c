@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: db_rec.c,v 11.16 2001/07/26 20:22:09 krinsky Exp $";
+static const char revid[] = "$Id: db_rec.c,v 11.35 2002/08/08 03:57:49 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,9 +18,9 @@ static const char revid[] = "$Id: db_rec.c,v 11.16 2001/07/26 20:22:09 krinsky E
 #endif
 
 #include "db_int.h"
-#include "db_page.h"
-#include "log.h"
-#include "hash.h"
+#include "dbinc/db_page.h"
+#include "dbinc/log.h"
+#include "dbinc/hash.h"
 
 /*
  * PUBLIC: int __db_addrem_recover
@@ -45,6 +45,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 	u_int32_t change;
 	int cmp_n, cmp_p, ret;
 
+	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__db_addrem_print);
 	REC_INTRO(__db_addrem_read, 1);
@@ -75,7 +76,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 		if ((ret = __db_pitem(dbc, pagep, argp->indx, argp->nbytes,
 		    argp->hdr.size == 0 ? NULL : &argp->hdr,
 		    argp->dbt.size == 0 ? NULL : &argp->dbt)) != 0)
-			goto err;
+			goto out;
 
 		change = DB_MPOOL_DIRTY;
 
@@ -84,7 +85,7 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo an add, or redo a delete. */
 		if ((ret = __db_ditem(dbc,
 		    pagep, argp->indx, argp->nbytes)) != 0)
-			goto err;
+			goto out;
 		change = DB_MPOOL_DIRTY;
 	}
 
@@ -95,13 +96,16 @@ __db_addrem_recover(dbenv, dbtp, lsnp, op, info)
 			LSN(pagep) = argp->pagelsn;
 	}
 
-err:	if ((ret = mpf->put(mpf, pagep, change)) != 0)
+	if ((ret = mpf->put(mpf, pagep, change)) != 0)
 		goto out;
+	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	REC_CLOSE;
 }
 
 /*
@@ -124,6 +128,7 @@ __db_big_recover(dbenv, dbtp, lsnp, op, info)
 	u_int32_t change;
 	int cmp_n, cmp_p, ret;
 
+	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__db_big_print);
 	REC_INTRO(__db_big_read, 1);
@@ -161,7 +166,7 @@ __db_big_recover(dbenv, dbtp, lsnp, op, info)
 			argp->next_pgno, 0, P_OVERFLOW);
 		OV_LEN(pagep) = argp->dbt.size;
 		OV_REF(pagep) = 1;
-		memcpy((u_int8_t *)pagep + P_OVERHEAD, argp->dbt.data,
+		memcpy((u_int8_t *)pagep + P_OVERHEAD(file_dbp), argp->dbt.data,
 		    argp->dbt.size);
 		PREV_PGNO(pagep) = argp->prev_pgno;
 		change = DB_MPOOL_DIRTY;
@@ -179,6 +184,7 @@ __db_big_recover(dbenv, dbtp, lsnp, op, info)
 
 	if ((ret = mpf->put(mpf, pagep, change)) != 0)
 		goto out;
+	pagep = NULL;
 
 	/*
 	 * We only delete a whole chain of overflow.
@@ -226,6 +232,7 @@ ppage:	if (argp->prev_pgno != PGNO_INVALID) {
 		if ((ret = mpf->put(mpf, pagep, change)) != 0)
 			goto out;
 	}
+	pagep = NULL;
 
 	/* Now check the next page.  Can only be set on a delete. */
 npage:	if (argp->next_pgno != PGNO_INVALID) {
@@ -260,18 +267,22 @@ npage:	if (argp->next_pgno != PGNO_INVALID) {
 		if ((ret = mpf->put(mpf, pagep, change)) != 0)
 			goto out;
 	}
+	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	REC_CLOSE;
 }
 
 /*
  * __db_ovref_recover --
  *	Recovery function for __db_ovref().
  *
- * PUBLIC: int __db_ovref_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC: int __db_ovref_recover
+ * PUBLIC:     __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
 __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
@@ -288,6 +299,7 @@ __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
 	PAGE *pagep;
 	int cmp, modified, ret;
 
+	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__db_ovref_print);
 	REC_INTRO(__db_ovref_read, 1);
@@ -295,7 +307,7 @@ __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0) {
 		if (DB_UNDO(op))
 			goto done;
-		(void)__db_pgerr(file_dbp, argp->pgno);
+		__db_pgerr(file_dbp, argp->pgno, ret);
 		goto out;
 	}
 
@@ -317,11 +329,14 @@ __db_ovref_recover(dbenv, dbtp, lsnp, op, info)
 	}
 	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	REC_CLOSE;
 }
 
 /*
@@ -346,6 +361,7 @@ __db_relink_recover(dbenv, dbtp, lsnp, op, info)
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__db_relink_print);
 	REC_INTRO(__db_relink_read, 1);
@@ -358,7 +374,7 @@ __db_relink_recover(dbenv, dbtp, lsnp, op, info)
 	 */
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0) {
 		if (DB_REDO(op)) {
-			(void)__db_pgerr(file_dbp, argp->pgno);
+			__db_pgerr(file_dbp, argp->pgno, ret);
 			goto out;
 		}
 		goto next2;
@@ -383,10 +399,11 @@ __db_relink_recover(dbenv, dbtp, lsnp, op, info)
 	}
 next1:	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	pagep = NULL;
 
 next2:	if ((ret = mpf->get(mpf, &argp->next, 0, &pagep)) != 0) {
 		if (DB_REDO(op)) {
-			(void)__db_pgerr(file_dbp, argp->next);
+			__db_pgerr(file_dbp, argp->next, ret);
 			goto out;
 		}
 		goto prev;
@@ -416,12 +433,13 @@ next2:	if ((ret = mpf->get(mpf, &argp->next, 0, &pagep)) != 0) {
 	}
 	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	pagep = NULL;
 	if (argp->opcode == DB_ADD_PAGE)
 		goto done;
 
 prev:	if ((ret = mpf->get(mpf, &argp->prev, 0, &pagep)) != 0) {
 		if (DB_REDO(op)) {
-			(void)__db_pgerr(file_dbp, argp->prev);
+			__db_pgerr(file_dbp, argp->prev, ret);
 			goto out;
 		}
 		goto done;
@@ -448,11 +466,14 @@ prev:	if ((ret = mpf->get(mpf, &argp->prev, 0, &pagep)) != 0) {
 	}
 	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	REC_CLOSE;
 }
 
 /*
@@ -473,8 +494,8 @@ __db_debug_recover(dbenv, dbtp, lsnp, op, info)
 	__db_debug_args *argp;
 	int ret;
 
-	COMPQUIET(op, 0);
 	COMPQUIET(dbenv, NULL);
+	COMPQUIET(op, DB_TXN_ABORT);
 	COMPQUIET(info, NULL);
 
 	REC_PRINT(__db_debug_print);
@@ -509,6 +530,7 @@ __db_noop_recover(dbenv, dbtp, lsnp, op, info)
 	u_int32_t change;
 	int cmp_n, cmp_p, ret;
 
+	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__db_noop_print);
 	REC_INTRO(__db_noop_read, 0);
@@ -528,9 +550,12 @@ __db_noop_recover(dbenv, dbtp, lsnp, op, info)
 		change = DB_MPOOL_DIRTY;
 	}
 	ret = mpf->put(mpf, pagep, change);
+	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	REC_CLOSE;
 }
 
 /*
@@ -557,6 +582,8 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	db_pgno_t pgno;
 	int cmp_n, cmp_p, created, level, modified, ret;
 
+	meta = NULL;
+	pagep = NULL;
 	REC_PRINT(__db_pg_alloc_print);
 	REC_INTRO(__db_pg_alloc_read, 0);
 
@@ -572,11 +599,10 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	 * it on the freelist.
 	 */
 	pgno = PGNO_BASE_MD;
-	meta = NULL;
 	if ((ret = mpf->get(mpf, &pgno, 0, &meta)) != 0) {
 		/* The metadata page must always exist on redo. */
 		if (DB_REDO(op)) {
-			(void)__db_pgerr(file_dbp, pgno);
+			__db_pgerr(file_dbp, pgno, ret);
 			goto out;
 		} else
 			goto done;
@@ -593,8 +619,8 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		if ((ret =
 		    mpf->get(mpf, &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0) {
-			(void)__db_pgerr(file_dbp, argp->pgno);
-			goto err;
+			__db_pgerr(file_dbp, argp->pgno, ret);
+			goto out;
 		}
 		created = modified = 1;
 	}
@@ -655,19 +681,20 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 		modified = 1;
 	}
 
-	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
-		goto err;
-
 	/*
 	 * If the page was newly created, put it on the limbo list.
 	 */
 	if (IS_ZERO_LSN(LSN(pagep)) &&
-	     IS_ZERO_LSN(argp->page_lsn) && DB_UNDO(op)) {
+	    IS_ZERO_LSN(argp->page_lsn) && DB_UNDO(op)) {
 		/* Put the page in limbo.*/
 		if ((ret = __db_add_limbo(dbenv,
 		    info, argp->fileid, argp->pgno, 1)) != 0)
-			goto err;
+			goto out;
 	}
+
+	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
+		goto out;
+	pagep = NULL;
 
 	/* Fix up the metadata page. */
 	modified = 0;
@@ -694,6 +721,7 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 	}
 	if ((ret = mpf->put(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	meta = NULL;
 	/*
 	 * This could be the metapage from a subdb which is read from disk
 	 * to recover its creation.
@@ -710,12 +738,13 @@ __db_pg_alloc_recover(dbenv, dbtp, lsnp, op, info)
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-	if (0) {
-err:
-		if (meta != NULL)
-			(void)mpf->put(mpf, meta, 0);
-	}
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	if (meta != NULL)
+		(void)mpf->put(mpf, meta, 0);
+	if (ret == ENOENT && op == DB_TXN_BACKWARD_ALLOC)
+		ret = 0;
+	REC_CLOSE;
 }
 
 /*
@@ -744,6 +773,8 @@ __db_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	int cmp_n, cmp_p, modified, ret;
 
 	COMPQUIET(info, NULL);
+	meta = NULL;
+	pagep = NULL;
 	REC_PRINT(__db_pg_free_print);
 	REC_INTRO(__db_pg_free_read, 1);
 
@@ -779,6 +810,7 @@ __db_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	}
 	if ((ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	pagep = NULL;
 
 	/*
 	 * Fix up the metadata page.  If we're redoing or undoing the operation
@@ -787,7 +819,7 @@ __db_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	pgno = PGNO_BASE_MD;
 	if ((ret = mpf->get(mpf, &pgno, 0, &meta)) != 0) {
 		/* The metadata page must always exist. */
-		(void)__db_pgerr(file_dbp, pgno);
+		__db_pgerr(file_dbp, pgno, ret);
 		goto out;
 	}
 
@@ -808,9 +840,58 @@ __db_pg_free_recover(dbenv, dbtp, lsnp, op, info)
 	}
 	if ((ret = mpf->put(mpf, meta, modified ? DB_MPOOL_DIRTY : 0)) != 0)
 		goto out;
+	meta = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (pagep != NULL)
+		(void)mpf->put(mpf, pagep, 0);
+	if (meta != NULL)
+		(void)mpf->put(mpf, meta, 0);
+	REC_CLOSE;
+}
+
+/*
+ * __db_cksum_recover --
+ *	Recovery function for checksum failure log record.
+ *
+ * PUBLIC: int __db_cksum_recover __P((DB_ENV *,
+ * PUBLIC:      DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_cksum_recover(dbenv, dbtp, lsnp, op, info)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_cksum_args *argp;
+
+	int ret;
+
+	COMPQUIET(info, NULL);
+	COMPQUIET(lsnp, NULL);
+	COMPQUIET(op, DB_TXN_ABORT);
+
+	REC_PRINT(__db_cksum_print);
+
+	if ((ret = __db_cksum_read(dbenv, dbtp->data, &argp)) != 0)
+		return (ret);
+
+	/*
+	 * We had a checksum failure -- the only option is to run catastrophic
+	 * recovery.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_FATAL))
+		ret = 0;
+	else {
+		__db_err(dbenv,
+		    "Checksum failure requires catastrophic recovery");
+		ret = __db_panic(dbenv, DB_RUNRECOVERY);
+	}
+
+	__os_free(dbenv, argp);
+	return (ret);
 }

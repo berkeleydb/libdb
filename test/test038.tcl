@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test038.tcl,v 11.18 2001/10/20 14:24:35 bostic Exp $
+# $Id: test038.tcl,v 11.23 2002/06/11 14:09:57 sue Exp $
 #
 # TEST	test038
 # TEST	DB_GET_BOTH, DB_GET_BOTH_RANGE on deleted items
@@ -27,7 +27,13 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	if { [is_record_based $method] == 1 || \
+	    [is_rbtree $method] == 1 } {
+		puts "Test0$tnum skipping for method $method"
+		return
+	}
 	# Create the database and open the dictionary
+	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
 	# If we are using an env, then testfile should just be the db name.
@@ -36,13 +42,24 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 		set testfile $testdir/test0$tnum.db
 		set checkdb $testdir/checkdb.db
 		set env NULL
-		set checkdbargs ""
 	} else {
 		set testfile test0$tnum.db
 		set checkdb checkdb.db
 		incr eindex
 		set env [lindex $args $eindex]
-		set checkdbargs " -env $env"
+		set txnenv [is_txnenv $env]
+		if { $txnenv == 1 } {
+			append args " -auto_commit "
+			#
+			# If we are using txns and running with the
+			# default, set the default down a bit.
+			#
+			if { $nentries == 10000 } {
+				set nentries 100
+			}
+			reduce_dups nentries ndups
+		}
+		set testdir [get_home $env]
 	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
@@ -51,18 +68,13 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 
 	puts "Test0$tnum: \
 	    $method ($args) $nentries small sorted dup key/data pairs"
-	if { [is_record_based $method] == 1 || \
-	    [is_rbtree $method] == 1 } {
-		puts "Test0$tnum skipping for method $method"
-		return
-	}
 	set db [eval {berkdb_open -create -mode 0644 \
 		$omethod -dup -dupsort} $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	set check_db [eval {berkdb_open \
-	     -create -mode 0644 -hash} $checkdbargs {$checkdb}]
+	     -create -mode 0644 -hash} $args {$checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -72,8 +84,13 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 
 	# Here is the loop where we put and get each key/data pair
 	puts "\tTest0$tnum.a: Put/get loop"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor_open [is_substr $dbc $db] 1
+	error_check_good cursor_open [is_valid_cursor $dbc $db] TRUE
 	while { [gets $did str] != -1 && $count < $nentries } {
 		set dups ""
 		for { set i 1 } { $i <= $ndups } { incr i } {
@@ -129,14 +146,22 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 		incr count
 	}
 	error_check_good cursor_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
 	close $did
 
 	# Now check the duplicates, then delete then recheck
 	puts "\tTest0$tnum.b: Checking and Deleting duplicates"
+	if { $txnenv == 1 } {
+		set t [$env txn]
+		error_check_good txn [is_valid_txn $t $env] TRUE
+		set txn "-txn $t"
+	}
 	set dbc [eval {$db cursor} $txn]
-	error_check_good cursor_open [is_substr $dbc $db] 1
+	error_check_good cursor_open [is_valid_cursor $dbc $db] TRUE
 	set check_c [eval {$check_db cursor} $txn]
-	error_check_good cursor_open [is_substr $check_c $check_db] 1
+	error_check_good cursor_open [is_valid_cursor $check_c $check_db] TRUE
 
 	for {set ndx 0} {$ndx < $ndups} {incr ndx} {
 		for {set ret [$check_c get -first]} \
@@ -149,14 +174,13 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 			set nn [expr $ndx * 3]
 			set pref [string range $d $nn [expr $nn + 1]]
 			set data $pref:$k
-			set ret [eval {$dbc get} $txn {-get_both $k $data}]
+			set ret [$dbc get -get_both $k $data]
 			error_check_good \
 			    get_both_key:$k [lindex [lindex $ret 0] 0] $k
 			error_check_good \
 			    get_both_data:$k [lindex [lindex $ret 0] 1] $data
 
-			set ret \
-			    [eval {$dbc get} $txn {-get_both_range $k $pref}]
+			set ret [$dbc get -get_both_range $k $pref]
 			error_check_good \
 			    get_both_key:$k [lindex [lindex $ret 0] 0] $k
 			error_check_good \
@@ -171,8 +195,7 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 			# We should either not find anything (if deleting the
 			# largest duplicate in the set) or a duplicate that
 			# sorts larger than the one we deleted.
-			set ret \
-			    [eval {$dbc get} $txn {-get_both_range $k $pref}]
+			set ret [$dbc get -get_both_range $k $pref]
 			if { [llength $ret] != 0 } {
 				set datastr [lindex [lindex $ret 0] 1]]
 				if {[string compare \
@@ -194,8 +217,11 @@ proc test038 { method {nentries 10000} {ndups 5} {tnum 38} args } {
 	}
 
 	error_check_good check_c:close [$check_c close] 0
-	error_check_good check_db:close [$check_db close] 0
-
 	error_check_good dbc_close [$dbc close] 0
+	if { $txnenv == 1 } {
+		error_check_good txn [$t commit] 0
+	}
+
+	error_check_good check_db:close [$check_db close] 0
 	error_check_good db_close [$db close] 0
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead003.tcl,v 1.14 2001/10/10 16:22:09 ubell Exp $
+# $Id: dead003.tcl,v 1.17 2002/09/05 17:23:05 sandstro Exp $
 #
 # TEST	dead003
 # TEST
@@ -21,13 +21,13 @@ proc dead003 { { procs "2 4 10" } {tests "ring clump" } } {
 	foreach d $detects {
 		env_cleanup $testdir
 		puts "\tDead003.a: creating environment for $d"
-		set env [berkdb env \
+		set env [berkdb_env \
 		    -create -mode 0644 -home $testdir -lock -lock_detect $d]
 		error_check_good lock_env:open [is_valid_env $env] TRUE
 
 		foreach t $tests {
-			set pidlist ""
 			foreach n $procs {
+				set pidlist ""
 				sentinel_init
 				set ret [$env lock_id_set \
 				     $lock_curid $lock_maxid]
@@ -48,7 +48,7 @@ proc dead003 { { procs "2 4 10" } {tests "ring clump" } } {
 					    $t $locker $i $n &]
 					lappend pidlist $p
 				}
-				watch_procs 5
+				watch_procs $pidlist 5
 
 				# Now check output
 				set dead 0

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: java_DbEnv.c,v 11.80 2001/11/16 16:30:50 bostic Exp $";
+static const char revid[] = "$Id: java_DbEnv.c,v 11.105 2002/08/29 14:22:23 margo Exp $";
 #endif /* not lint */
 
 #include <jni.h>
@@ -16,24 +16,25 @@ static const char revid[] = "$Id: java_DbEnv.c,v 11.80 2001/11/16 16:30:50 bosti
 
 #include "db_int.h"
 #include "java_util.h"
+#include "java_stat_auto.h"
 #include "com_sleepycat_db_DbEnv.h"
 
 /* We keep these lined up, and alphabetical by field name,
  * for comparison with C++'s list.
  */
-JAVADB_WO_ACCESS_STRING(DbEnv,        data_1dir, DB_ENV, data_dir)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lg_1bsize, DB_ENV, lg_bsize)
-JAVADB_WO_ACCESS_STRING(DbEnv,        lg_1dir, DB_ENV, lg_dir)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lg_1max, DB_ENV, lg_max)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lg_1regionmax, DB_ENV, lg_regionmax)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lk_1detect, DB_ENV, lk_detect)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lk_1max, DB_ENV, lk_max)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lk_1max_1locks, DB_ENV, lk_max_locks)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lk_1max_1lockers, DB_ENV, lk_max_lockers)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  lk_1max_1objects, DB_ENV, lk_max_objects)
+JAVADB_SET_METH_STR(DbEnv,   data_1dir, DB_ENV, data_dir)
+JAVADB_SET_METH(DbEnv, jint, lg_1bsize, DB_ENV, lg_bsize)
+JAVADB_SET_METH_STR(DbEnv,   lg_1dir, DB_ENV, lg_dir)
+JAVADB_SET_METH(DbEnv, jint, lg_1max, DB_ENV, lg_max)
+JAVADB_SET_METH(DbEnv, jint, lg_1regionmax, DB_ENV, lg_regionmax)
+JAVADB_SET_METH(DbEnv, jint, lk_1detect, DB_ENV, lk_detect)
+JAVADB_SET_METH(DbEnv, jint, lk_1max, DB_ENV, lk_max)
+JAVADB_SET_METH(DbEnv, jint, lk_1max_1locks, DB_ENV, lk_max_locks)
+JAVADB_SET_METH(DbEnv, jint, lk_1max_1lockers, DB_ENV, lk_max_lockers)
+JAVADB_SET_METH(DbEnv, jint, lk_1max_1objects, DB_ENV, lk_max_objects)
 /* mp_mmapsize is declared below, it needs an extra cast */
-JAVADB_WO_ACCESS_STRING(DbEnv,        tmp_1dir, DB_ENV, tmp_dir)
-JAVADB_WO_ACCESS_METHOD(DbEnv, jint,  tx_1max, DB_ENV, tx_max)
+JAVADB_SET_METH_STR(DbEnv,   tmp_1dir, DB_ENV, tmp_dir)
+JAVADB_SET_METH(DbEnv, jint, tx_1max, DB_ENV, tx_max)
 
 static void DbEnv_errcall_callback(const char *prefix, char *message)
 {
@@ -41,7 +42,8 @@ static void DbEnv_errcall_callback(const char *prefix, char *message)
 	DB_ENV_JAVAINFO *envinfo = (DB_ENV_JAVAINFO *)prefix;
 	jstring pre;
 
-	/* Note: these error cases are "impossible", and would
+	/*
+	 * Note: these error cases are "impossible", and would
 	 * normally warrant an exception.  However, without
 	 * a jnienv, we cannot throw an exception...
 	 * We don't want to trap or exit, since the point of
@@ -49,7 +51,8 @@ static void DbEnv_errcall_callback(const char *prefix, char *message)
 	 * error situations.
 	 */
 	if (envinfo == NULL) {
-		/* Something is *really* wrong here, the
+		/*
+		 * Something is *really* wrong here, the
 		 * prefix is set in every environment created.
 		 */
 		fprintf(stderr, "Error callback failed!\n");
@@ -85,11 +88,12 @@ static void DbEnv_initialize(JNIEnv *jnienv, DB_ENV *dbenv,
 	set_private_info(jnienv, name_DB_ENV, jenv, envinfo);
 	dbenv->set_errpfx(dbenv, (const char*)envinfo);
 	dbenv->set_errcall(dbenv, DbEnv_errcall_callback);
-	dbenv->cj_internal = envinfo;
+	dbenv->api2_internal = envinfo;
 	set_private_dbobj(jnienv, name_DB_ENV, jenv, dbenv);
 }
 
-/* This is called when this DbEnv was made on behalf of a Db
+/*
+ * This is called when this DbEnv was made on behalf of a Db
  * created directly (without a parent DbEnv), and the Db is
  * being closed.  We'll zero out the pointer to the DB_ENV,
  * since it is no longer valid, to prevent mistakes.
@@ -142,7 +146,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1init_1using_1db
 
 	db = get_DB(jnienv, jdb);
 	dbenv = db->dbenv;
-	DbEnv_initialize(jnienv, dbenv, jthis, jerrcall, 1);
+	DbEnv_initialize(jnienv, dbenv, jthis, jerrcall, 0);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_open
@@ -219,6 +223,65 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1close
 	verify_return(jnienv, err, 0);
 }
 
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_dbremove
+  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbTxn*/ jobject jtxn,
+   jstring name, jstring subdb, jint flags)
+{
+	LOCKED_STRING ls_name, ls_subdb;
+	DB_ENV *dbenv;
+	DB_TXN *txn;
+	int err;
+
+	dbenv = get_DB_ENV(jnienv, jthis);
+	if (!verify_non_null(jnienv, dbenv))
+		return;
+	txn = get_DB_TXN(jnienv, jtxn);
+	if (locked_string_get(&ls_name, jnienv, name) != 0)
+		return;
+	if (locked_string_get(&ls_subdb, jnienv, subdb) != 0)
+		goto err1;
+
+	err = dbenv->dbremove(dbenv, txn, ls_name.string, ls_subdb.string,
+	    flags);
+
+	/* Throw an exception if the dbremove failed. */
+	verify_return(jnienv, err, 0);
+
+	locked_string_put(&ls_subdb, jnienv);
+err1:	locked_string_put(&ls_name, jnienv);
+}
+
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_dbrename
+  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbTxn*/ jobject jtxn,
+   jstring name, jstring subdb, jstring newname, jint flags)
+{
+	LOCKED_STRING ls_name, ls_subdb, ls_newname;
+	DB_ENV *dbenv;
+	DB_TXN *txn;
+	int err;
+
+	dbenv = get_DB_ENV(jnienv, jthis);
+	if (!verify_non_null(jnienv, dbenv))
+		return;
+	txn = get_DB_TXN(jnienv, jtxn);
+	if (locked_string_get(&ls_name, jnienv, name) != 0)
+		return;
+	if (locked_string_get(&ls_subdb, jnienv, subdb) != 0)
+		goto err2;
+	if (locked_string_get(&ls_newname, jnienv, newname) != 0)
+		goto err1;
+
+	err = dbenv->dbrename(dbenv, txn, ls_name.string, ls_subdb.string,
+	    ls_newname.string, flags);
+
+	/* Throw an exception if the dbrename failed. */
+	verify_return(jnienv, err, 0);
+
+	locked_string_put(&ls_newname, jnienv);
+err1:	locked_string_put(&ls_subdb, jnienv);
+err2:	locked_string_put(&ls_name, jnienv);
+}
+
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_err
   (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint ecode, jstring msg)
 {
@@ -232,7 +295,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_err
 	if (locked_string_get(&ls_msg, jnienv, msg) != 0)
 		goto out;
 
-	dbenv->err(dbenv, ecode, ls_msg.string);
+	dbenv->err(dbenv, ecode, "%s", ls_msg.string);
  out:
 	locked_string_put(&ls_msg, jnienv);
 }
@@ -250,7 +313,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_errx
 	if (locked_string_get(&ls_msg, jnienv, msg) != 0)
 		goto out;
 
-	dbenv->errx(dbenv, ls_msg.string);
+	dbenv->errx(dbenv, "%s", ls_msg.string);
  out:
 	locked_string_put(&ls_msg, jnienv);
 }
@@ -266,94 +329,42 @@ JNIEXPORT jstring JNICALL Java_com_sleepycat_db_DbEnv_strerror
 	return (get_java_string(jnienv, message));
 }
 
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1cachesize
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint gbytes, jint bytes,
-   jint ncaches)
-{
-	DB_ENV *dbenv;
-	int err;
+JAVADB_METHOD(DbEnv_set_1cachesize,
+    (JAVADB_ARGS, jint gbytes, jint bytes, jint ncaches), DB_ENV,
+    set_cachesize, (c_this, gbytes, bytes, ncaches))
 
-	dbenv = get_DB_ENV(jnienv, jthis);
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_cachesize(dbenv, gbytes, bytes, ncaches);
-		verify_return(jnienv, err, 0);
-	}
-}
-
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1flags
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint flags, jboolean onoff)
-{
-	DB_ENV *dbenv;
-	int err;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_flags(dbenv, flags, onoff ? 1 : 0);
-		verify_return(jnienv, err, 0);
-	}
-}
-
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1mp_1mmapsize
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jlong value)
-{
-	DB_ENV *dbenv;
-	int err;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_mp_mmapsize(dbenv, (size_t)value);
-		verify_return(jnienv, err, 0);
-	}
-}
-
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1tas_1spins
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint value)
-{
-	DB_ENV *dbenv;
-	int err;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_tas_spins(dbenv, (u_int32_t)value);
-
-		/* Throw an exception if the call failed. */
-		verify_return(jnienv, err, 0);
-	}
-}
-
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1timeout
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jlong timeout, jint flags)
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1encrypt
+  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jstring jpasswd, jint flags)
 {
 	int err;
 	DB_ENV *dbenv;
+	LOCKED_STRING ls_passwd;
 
 	dbenv = get_DB_ENV(jnienv, jthis);
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_timeout(dbenv, (u_int32_t)timeout, flags);
-
-		/* Throw an exception if the call failed. */
-		verify_return(jnienv, err, 0);
-	}
-}
-
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_recovery_1init_1changed
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbRecoveryInit*/ jobject jrecoveryinit)
-{
-	DB_ENV *dbenv;
-	DB_ENV_JAVAINFO *dbenvinfo;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	dbenvinfo = get_DB_ENV_JAVAINFO(jnienv, jthis);
-	if (!verify_non_null(jnienv, dbenv) ||
-	    !verify_non_null(jnienv, dbenv))
+	if (!verify_non_null(jnienv, dbenv))
 		return;
+	if (locked_string_get(&ls_passwd, jnienv, jpasswd) != 0)
+		goto out;
 
-	dbjie_set_recovery_init_object(dbenvinfo, jnienv, dbenv, jrecoveryinit);
+	err = dbenv->set_encrypt(dbenv, ls_passwd.string, flags);
+	verify_return(jnienv, err, 0);
+
+out:	locked_string_put(&ls_passwd, jnienv);
 }
+
+JAVADB_METHOD(DbEnv_set_1flags,
+    (JAVADB_ARGS, jint flags, jboolean onoff), DB_ENV,
+    set_flags, (c_this, flags, onoff ? 1 : 0))
+
+JAVADB_METHOD(DbEnv_set_1mp_1mmapsize, (JAVADB_ARGS, jlong value), DB_ENV,
+    set_mp_mmapsize, (c_this, (size_t)value))
+
+JAVADB_METHOD(DbEnv_set_1tas_1spins, (JAVADB_ARGS, jint spins), DB_ENV,
+    set_tas_spins, (c_this, (u_int32_t)spins))
+
+JAVADB_METHOD(DbEnv_set_1timeout,
+    (JAVADB_ARGS, jlong timeout, jint flags), DB_ENV,
+    set_timeout, (c_this, (u_int32_t)timeout, flags))
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1conflicts
   (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jobjectArray array)
@@ -362,7 +373,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1conflicts
 	DB_ENV_JAVAINFO *dbenvinfo;
 	int err;
 	jsize i, len;
-	unsigned char *newarr;
+	u_char *newarr;
 	int bytesize;
 
 	dbenv = get_DB_ENV(jnienv, jthis);
@@ -372,7 +383,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_set_1lk_1conflicts
 		return;
 
 	len = (*jnienv)->GetArrayLength(jnienv, array);
-	bytesize = sizeof(unsigned char) * len * len;
+	bytesize = sizeof(u_char) * len * len;
 
 	if ((err = __os_malloc(dbenv, bytesize, &newarr)) != 0) {
 		if (!verify_return(jnienv, err, 0))
@@ -427,9 +438,9 @@ JNIEXPORT jint JNICALL
 	err = 0;
 
 	/* The DBTs are always inputs. */
-	if (locked_dbt_get(&cdbt, jnienv, control, inOp) != 0)
+	if (locked_dbt_get(&cdbt, jnienv, dbenv, control, inOp) != 0)
 		goto out2;
-	if (locked_dbt_get(&rdbt, jnienv, rec, inOp) != 0)
+	if (locked_dbt_get(&rdbt, jnienv, dbenv, rec, inOp) != 0)
 		goto out1;
 
 	envid = (*jnienv)->GetIntField(jnienv,
@@ -441,12 +452,11 @@ JNIEXPORT jint JNICALL
 	if (err == DB_REP_NEWMASTER)
 		(*jnienv)->SetIntField(jnienv,
 		    result, fid_RepProcessMessage_envid, envid);
-	else if (err != DB_REP_HOLDELECTION && err != DB_REP_NEWSITE &&
-	    err != DB_REP_OUTDATED)
+	else if (!DB_RETOK_REPPMSG(err))
 		verify_return(jnienv, err, 0);
 
-out1:	locked_dbt_put(&rdbt, jnienv);
-out2:	locked_dbt_put(&cdbt, jnienv);
+out1:	locked_dbt_put(&rdbt, jnienv, dbenv);
+out2:	locked_dbt_put(&cdbt, jnienv, dbenv);
 
 	return (err);
 }
@@ -468,7 +478,7 @@ JNIEXPORT void JNICALL
 
 	/* The Dbt cookie may be null;  if so, pass in a NULL DBT. */
 	if (cookie != NULL) {
-		if (locked_dbt_get(&ldbt, jnienv, cookie, inOp) != 0)
+		if (locked_dbt_get(&ldbt, jnienv, dbenv, cookie, inOp) != 0)
 			goto out;
 		dbtp = &ldbt.javainfo->dbt;
 	} else
@@ -478,7 +488,49 @@ JNIEXPORT void JNICALL
 	verify_return(jnienv, err, 0);
 
 out:	if (cookie != NULL)
-		locked_dbt_put(&ldbt, jnienv);
+		locked_dbt_put(&ldbt, jnienv, dbenv);
+}
+
+JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_rep_1stat
+  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint flags)
+{
+	int err;
+	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
+	DB_REP_STAT *statp = NULL;
+	jobject retval = NULL;
+	jclass dbclass;
+
+	if (!verify_non_null(jnienv, dbenv))
+		return (NULL);
+
+	err = dbenv->rep_stat(dbenv, &statp, (u_int32_t)flags);
+	if (verify_return(jnienv, err, 0)) {
+		if ((dbclass = get_class(jnienv, name_DB_REP_STAT)) == NULL ||
+		    (retval =
+		      create_default_object(jnienv, name_DB_REP_STAT)) == NULL)
+			goto err;	/* An exception has been posted. */
+
+		__jv_fill_rep_stat(jnienv, dbclass, retval, statp);
+
+err:		__os_ufree(dbenv, statp);
+	}
+	return (retval);
+}
+
+JNIEXPORT void JNICALL
+Java_com_sleepycat_db_DbEnv_set_1rep_1limit
+  (JNIEnv *jnienv, /* DbEnv */ jobject jthis, jint gbytes, jint bytes)
+{
+	DB_ENV *dbenv;
+	int err;
+
+	dbenv = get_DB_ENV(jnienv, jthis);
+
+	if (verify_non_null(jnienv, dbenv)) {
+		err = dbenv->set_rep_limit(dbenv,
+		    (u_int32_t)gbytes, (u_int32_t)bytes);
+		verify_return(jnienv, err, 0);
+	}
 }
 
 JNIEXPORT void JNICALL
@@ -524,20 +576,8 @@ JNIEXPORT void JNICALL
 	}
 }
 
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1shm_1key
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jlong shm_key)
-{
-	int err;
-	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
-
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_shm_key(dbenv, (long)shm_key);
-
-		/* Throw an exception if the call failed. */
-		verify_return(jnienv, err, 0);
-	}
-}
+JAVADB_METHOD(DbEnv_set_1shm_1key, (JAVADB_ARGS, jlong shm_key), DB_ENV,
+    set_shm_key, (c_this, (long)shm_key))
 
 JNIEXPORT void JNICALL
   Java_com_sleepycat_db_DbEnv__1set_1tx_1timestamp
@@ -555,20 +595,9 @@ JNIEXPORT void JNICALL
 	}
 }
 
-JNIEXPORT void JNICALL
-  Java_com_sleepycat_db_DbEnv_set_1verbose
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint which, jboolean onoff)
-{
-	int err;
-	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
-
-	if (verify_non_null(jnienv, dbenv)) {
-		err = dbenv->set_verbose(dbenv, which, onoff ? 1 : 0);
-
-		/* Throw an exception if the call failed. */
-		verify_return(jnienv, err, 0);
-	}
-}
+JAVADB_METHOD(DbEnv_set_1verbose,
+    (JAVADB_ARGS, jint which, jboolean onoff), DB_ENV,
+    set_verbose, (c_this, which, onoff ? 1 : 0))
 
 /*static*/
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_get_1version_1major
@@ -623,17 +652,8 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_lock_1id
 	return (id);
 }
 
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1id_1free
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint id)
-{
-	int err;
-	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
-
-	if (!verify_non_null(jnienv, dbenv))
-		return;
-	err = dbenv->lock_id_free(dbenv, id);
-	verify_return(jnienv, err, 0);
-}
+JAVADB_METHOD(DbEnv_lock_1id_1free, (JAVADB_ARGS, jint id), DB_ENV,
+    lock_id_free, (c_this, id))
 
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_lock_1stat
   (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint flags)
@@ -649,50 +669,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_lock_1stat
 
 	err = dbenv->lock_stat(dbenv, &statp, (u_int32_t)flags);
 	if (verify_return(jnienv, err, 0)) {
-		retval = create_default_object(jnienv, name_DB_LOCK_STAT);
-		dbclass = get_class(jnienv, name_DB_LOCK_STAT);
+		if ((dbclass = get_class(jnienv, name_DB_LOCK_STAT)) == NULL ||
+		    (retval =
+		      create_default_object(jnienv, name_DB_LOCK_STAT)) == NULL)
+			goto err;	/* An exception has been posted. */
 
-		/* Set the individual fields */
-		set_int_field(jnienv, dbclass, retval,
-			      "st_lastid", statp->st_lastid);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxlocks", statp->st_maxlocks);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxlockers", statp->st_maxlockers);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxobjects", statp->st_maxobjects);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nmodes", statp->st_nmodes);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nlocks", statp->st_nlocks);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxnlocks", statp->st_maxnlocks);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nlockers", statp->st_nlockers);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxnlockers", statp->st_maxnlockers);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nobjects", statp->st_nobjects);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxnobjects", statp->st_maxnobjects);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nconflicts", statp->st_nconflicts);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nrequests", statp->st_nrequests);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nreleases", statp->st_nreleases);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nnowaits", statp->st_nnowaits);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_ndeadlocks", statp->st_ndeadlocks);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_wait", statp->st_region_wait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_nowait", statp->st_region_nowait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_regsize", statp->st_regsize);
+		__jv_fill_lock_stat(jnienv, dbclass, retval, statp);
 
-		__os_ufree(dbenv, statp, sizeof(DB_LOCK_STAT));
+err:		__os_ufree(dbenv, statp);
 	}
 	return (retval);
 }
@@ -732,7 +716,7 @@ JNIEXPORT /*DbLock*/ jobject JNICALL Java_com_sleepycat_db_DbEnv_lock_1get
 	memset(dblock, 0, sizeof(DB_LOCK));
 	err = 0;
 	retval = NULL;
-	if (locked_dbt_get(&lobj, jnienv, obj, inOp) != 0)
+	if (locked_dbt_get(&lobj, jnienv, dbenv, obj, inOp) != 0)
 		goto out;
 
 	err = dbenv->lock_get(dbenv, locker, flags, &lobj.javainfo->dbt,
@@ -749,7 +733,7 @@ JNIEXPORT /*DbLock*/ jobject JNICALL Java_com_sleepycat_db_DbEnv_lock_1get
 	}
 
  out:
-	locked_dbt_put(&lobj, jnienv);
+	locked_dbt_put(&lobj, jnienv, dbenv);
 	return (retval);
 }
 
@@ -802,25 +786,32 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 
 	/* fill in the lockreq array */
 	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++) {
-		jlockreq = (*jnienv)->GetObjectArrayElement(jnienv, list, offset + i);
+		jlockreq = (*jnienv)->GetObjectArrayElement(jnienv, list,
+		    offset + i);
 		if (jlockreq == NULL) {
 			report_exception(jnienv,
 					 "DbEnv.lock_vec list entry is null",
 					 0, 0);
 			goto out2;
 		}
-		op = (*jnienv)->GetIntField(jnienv, jlockreq, fid_DbLockRequest_op);
+		op = (*jnienv)->GetIntField(jnienv, jlockreq,
+		    fid_DbLockRequest_op);
 		prereq->op = op;
 
 		switch (op) {
+		case DB_LOCK_GET_TIMEOUT:
+			/* Needed: mode, timeout, obj.  Returned: lock. */
+			prereq->op = (*jnienv)->GetIntField(jnienv, jlockreq,
+			    fid_DbLockRequest_timeout);
+			/* FALLTHROUGH */
 		case DB_LOCK_GET:
-			/* Needed: mode, obj.  Returned: lock.  Ignored: (none). */
+			/* Needed: mode, obj.  Returned: lock. */
 			prereq->mode = (*jnienv)->GetIntField(jnienv, jlockreq,
-								 fid_DbLockRequest_mode);
+			    fid_DbLockRequest_mode);
 			jobj = (*jnienv)->GetObjectField(jnienv, jlockreq,
-				fid_DbLockRequest_obj);
+			    fid_DbLockRequest_obj);
 			if ((err = locked_dbt_get(&locked_dbts[i], jnienv,
-					   jobj, inOp)) != 0)
+			    dbenv, jobj, inOp)) != 0)
 				goto out2;
 			prereq->obj = &locked_dbts[i].javainfo->dbt;
 			break;
@@ -837,6 +828,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 			prereq->lock = *lockp;
 			break;
 		case DB_LOCK_PUT_ALL:
+		case DB_LOCK_TIMEOUT:
 			/* Needed: (none).  Ignored: lock, mode, obj. */
 			break;
 		case DB_LOCK_PUT_OBJ:
@@ -844,7 +836,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 			jobj = (*jnienv)->GetObjectField(jnienv, jlockreq,
 				fid_DbLockRequest_obj);
 			if ((err = locked_dbt_get(&locked_dbts[i], jnienv,
-					   jobj, inOp)) != 0)
+					   dbenv, jobj, inOp)) != 0)
 				goto out2;
 			prereq->obj = &locked_dbts[i].javainfo->dbt;
 			break;
@@ -866,19 +858,21 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 	for (i = 0; i < completed; i++) {
 		op = lockreq[i].op;
 		if (op == DB_LOCK_PUT) {
-			/* After a successful put, the DbLock can no longer
+			/*
+			 * After a successful put, the DbLock can no longer
 			 * be used, so we release the storage related to it.
 			 */
 			jlockreq = (*jnienv)->GetObjectArrayElement(jnienv,
-								    list, i + offset);
+			    list, i + offset);
 			jlock = (*jnienv)->GetObjectField(jnienv, jlockreq,
 				fid_DbLockRequest_lock);
 			lockp = get_DB_LOCK(jnienv, jlock);
-			__os_free(NULL, lockp, sizeof(DB_LOCK));
+			__os_free(NULL, lockp);
 			set_private_dbobj(jnienv, name_DB_LOCK, jlock, 0);
 		}
 		else if (op == DB_LOCK_GET) {
-			/* Store the lock that was obtained.
+			/*
+			 * Store the lock that was obtained.
 			 * We need to create storage for it since
 			 * the lockreq array only exists during this
 			 * method call.
@@ -890,7 +884,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 			*lockp = lockreq[i].lock;
 
 			jlockreq = (*jnienv)->GetObjectArrayElement(jnienv,
-								    list, i + offset);
+			    list, i + offset);
 			jlock = create_default_object(jnienv, name_DB_LOCK);
 			set_private_dbobj(jnienv, name_DB_LOCK, jlock, lockp);
 			(*jnienv)->SetObjectField(jnienv, jlockreq,
@@ -923,12 +917,12 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1vec
 	for (i = 0 ; i < (prereq - lockreq); i++) {
 		if ((op = lockreq[i].op) == DB_LOCK_GET ||
 		    op == DB_LOCK_PUT_OBJ)
-			locked_dbt_put(&locked_dbts[i], jnienv);
+			locked_dbt_put(&locked_dbts[i], jnienv, dbenv);
 	}
-	__os_free(dbenv, locked_dbts, ldbtsize);
+	__os_free(dbenv, locked_dbts);
 
  out1:
-	__os_free(dbenv, lockreq, bytesize);
+	__os_free(dbenv, lockreq);
 
  out0:
 	return;
@@ -951,11 +945,12 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_lock_1put
 
 	err = dbenv->lock_put(dbenv, dblock);
 	if (verify_return(jnienv, err, 0)) {
-		/* After a successful put, the DbLock can no longer
+		/*
+		 * After a successful put, the DbLock can no longer
 		 * be used, so we release the storage related to it
 		 * (allocated in DbEnv.lock_get()).
 		 */
-		__os_free(NULL, dblock, sizeof(DB_LOCK));
+		__os_free(NULL, dblock);
 
 		set_private_dbobj(jnienv, name_DB_LOCK, jlock, 0);
 	}
@@ -983,15 +978,16 @@ JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_log_1archive
 		while (ret[len] != NULL)
 			len++;
 		stringClass = (*jnienv)->FindClass(jnienv, "java/lang/String");
-		strarray = (*jnienv)->NewObjectArray(jnienv, len,
-						     stringClass, 0);
+		if ((strarray = (*jnienv)->NewObjectArray(jnienv,
+		    len, stringClass, 0)) == NULL)
+			goto out;
 		for (i=0; i<len; i++) {
 			jstring str = (*jnienv)->NewStringUTF(jnienv, ret[i]);
 			(*jnienv)->SetObjectArrayElement(jnienv, strarray,
-							 i, str);
+			     i, str);
 		}
 	}
-	return (strarray);
+out:	return (strarray);
 }
 
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_log_1compare
@@ -1039,19 +1035,9 @@ JNIEXPORT jstring JNICALL Java_com_sleepycat_db_DbEnv_log_1file
 	return (get_java_string(jnienv, filename));
 }
 
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_log_1flush
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbLsn*/ jobject lsn)
-{
-	int err;
-	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
-	DB_LSN *dblsn = get_DB_LSN(jnienv, lsn);
-
-	if (!verify_non_null(jnienv, dbenv))
-		return;
-
-	err = dbenv->log_flush(dbenv, dblsn);
-	verify_return(jnienv, err, 0);
-}
+JAVADB_METHOD(DbEnv_log_1flush,
+    (JAVADB_ARGS, /*DbLsn*/ jobject lsn), DB_ENV,
+    log_flush, (c_this, get_DB_LSN(jnienv, lsn)))
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_log_1put
   (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbLsn*/ jobject lsn,
@@ -1071,52 +1057,13 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_log_1put
 	if (!verify_non_null(jnienv, dblsn))
 		return;
 
-	if (locked_dbt_get(&ldata, jnienv, data, inOp) != 0)
+	if (locked_dbt_get(&ldata, jnienv, dbenv, data, inOp) != 0)
 		goto out;
 
 	err = dbenv->log_put(dbenv, dblsn, &ldata.javainfo->dbt, flags);
 	verify_return(jnienv, err, 0);
  out:
-	locked_dbt_put(&ldata, jnienv);
-}
-
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_log_1register
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*Db*/ jobject dbp,
-   jstring name)
-{
-	int err;
-	DB_ENV *dbenv;
-	DB *dbdb;
-	LOCKED_STRING ls_name;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	dbdb = get_DB(jnienv, dbp);
-	if (!verify_non_null(jnienv, dbenv))
-		return;
-
-	if (locked_string_get(&ls_name, jnienv, name) != 0)
-		goto out;
-
-	err = dbenv->log_register(dbenv, dbdb, ls_name.string);
-	verify_return(jnienv, err, 0);
- out:
-	locked_string_put(&ls_name, jnienv);
-}
-
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_log_1unregister
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*Db*/ jobject dbp)
-{
-	int err;
-	DB_ENV *dbenv;
-	DB *dbdb;
-
-	dbenv = get_DB_ENV(jnienv, jthis);
-	dbdb = get_DB(jnienv, dbp);
-	if (!verify_non_null(jnienv, dbenv))
-		return;
-
-	err = dbenv->log_unregister(dbenv, dbdb);
-	verify_return(jnienv, err, 0);
+	locked_dbt_put(&ldata, jnienv, dbenv);
 }
 
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_log_1stat
@@ -1136,54 +1083,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_log_1stat
 
 	err = dbenv->log_stat(dbenv, &statp, (u_int32_t)flags);
 	if (verify_return(jnienv, err, 0)) {
-		retval = create_default_object(jnienv, name_DB_LOG_STAT);
-		dbclass = get_class(jnienv, name_DB_LOG_STAT);
+		if ((dbclass = get_class(jnienv, name_DB_LOG_STAT)) == NULL ||
+		    (retval =
+		       create_default_object(jnienv, name_DB_LOG_STAT)) == NULL)
+			goto err;	/* An exception has been posted. */
 
-		/* Set the individual fields */
-		set_int_field(jnienv, dbclass, retval,
-			      "st_magic", statp->st_magic);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_version", statp->st_version);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_mode", statp->st_mode);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_lg_bsize", statp->st_lg_bsize);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_lg_max", statp->st_lg_max);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_w_bytes", statp->st_w_bytes);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_w_mbytes", statp->st_w_mbytes);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_wc_bytes", statp->st_wc_bytes);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_wc_mbytes", statp->st_wc_mbytes);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_wcount", statp->st_wcount);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_wcount_fill", statp->st_wcount_fill);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_scount", statp->st_scount);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_wait", statp->st_region_wait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_nowait", statp->st_region_nowait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_cur_file", statp->st_cur_file);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_cur_offset", statp->st_cur_offset);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_regsize", statp->st_regsize);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_flushcommit", statp->st_flushcommit);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxcommitperflush",
-			      statp->st_maxcommitperflush);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_mincommitperflush",
-			      statp->st_mincommitperflush);
+		__jv_fill_log_stat(jnienv, dbclass, retval, statp);
 
-		__os_ufree(dbenv, statp, sizeof(DB_LOG_STAT));
+err:		__os_ufree(dbenv, statp);
 	}
 	return (retval);
 }
@@ -1205,47 +1112,14 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_memp_1stat
 
 	err = dbenv->memp_stat(dbenv, &statp, 0, (u_int32_t)flags);
 	if (verify_return(jnienv, err, 0)) {
-		retval = create_default_object(jnienv, name_DB_MPOOL_STAT);
-		dbclass = get_class(jnienv, name_DB_MPOOL_STAT);
+		if ((dbclass = get_class(jnienv, name_DB_MPOOL_STAT)) == NULL ||
+		    (retval =
+		     create_default_object(jnienv, name_DB_MPOOL_STAT)) == NULL)
+			goto err;	/* An exception has been posted. */
 
-		set_int_field(jnienv, dbclass, retval,
-			      "st_cache_hit", statp->st_cache_hit);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_cache_miss", statp->st_cache_miss);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_map", statp->st_map);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_create", statp->st_page_create);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_in", statp->st_page_in);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_out", statp->st_page_out);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_ro_evict", statp->st_ro_evict);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_rw_evict", statp->st_rw_evict);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_hash_buckets", statp->st_hash_buckets);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_hash_searches", statp->st_hash_searches);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_hash_longest", statp->st_hash_longest);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_hash_examined", statp->st_hash_examined);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_clean", statp->st_page_clean);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_dirty", statp->st_page_dirty);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_page_trickle", statp->st_page_trickle);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_wait", statp->st_region_wait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_nowait", statp->st_region_nowait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_regsize", statp->st_regsize);
+		__jv_fill_mpool_stat(jnienv, dbclass, retval, statp);
 
-		__os_ufree(dbenv, statp, sizeof(DB_MPOOL_STAT));
+err:		__os_ufree(dbenv, statp);
 	}
 	return (retval);
 }
@@ -1272,42 +1146,43 @@ JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_memp_1fstat
 		len = 0;
 		while (fstatp[len] != NULL)
 			len++;
-		fstat_class = get_class(jnienv, name_DB_MPOOL_FSTAT);
-		retval = (*jnienv)->NewObjectArray(jnienv, len,
-						   fstat_class, 0);
+		if ((fstat_class =
+			get_class(jnienv, name_DB_MPOOL_FSTAT)) == NULL ||
+		    (retval = (*jnienv)->NewObjectArray(jnienv, len,
+			fstat_class, 0)) == NULL)
+			goto err;
 		for (i=0; i<len; i++) {
-			jobject obj = create_default_object(jnienv,
-							    name_DB_MPOOL_FSTAT);
+			jobject obj;
+			if ((obj = create_default_object(jnienv,
+			    name_DB_MPOOL_FSTAT)) == NULL)
+				goto err;
 			(*jnienv)->SetObjectArrayElement(jnienv, retval,
-							 i, obj);
+			    i, obj);
 
 			/* Set the string field. */
-			filename_id =
-				(*jnienv)->GetFieldID(jnienv, fstat_class,
-						      "file_name",
-						      string_signature);
-			jfilename =
-				get_java_string(jnienv, fstatp[i]->file_name);
+			filename_id = (*jnienv)->GetFieldID(jnienv,
+			    fstat_class, "file_name", string_signature);
+			jfilename = get_java_string(jnienv,
+			    fstatp[i]->file_name);
 			(*jnienv)->SetObjectField(jnienv, obj,
-						  filename_id, jfilename);
-
+			    filename_id, jfilename);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_pagesize", fstatp[i]->st_pagesize);
+			    "st_pagesize", fstatp[i]->st_pagesize);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_cache_hit", fstatp[i]->st_cache_hit);
+			    "st_cache_hit", fstatp[i]->st_cache_hit);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_cache_miss", fstatp[i]->st_cache_miss);
+			    "st_cache_miss", fstatp[i]->st_cache_miss);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_map", fstatp[i]->st_map);
+			    "st_map", fstatp[i]->st_map);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_page_create", fstatp[i]->st_page_create);
+			    "st_page_create", fstatp[i]->st_page_create);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_page_in", fstatp[i]->st_page_in);
+			    "st_page_in", fstatp[i]->st_page_in);
 			set_int_field(jnienv, fstat_class, obj,
-				      "st_page_out", fstatp[i]->st_page_out);
-			__os_ufree(dbenv, fstatp[i], sizeof(DB_MPOOL_FSTAT));
+			    "st_page_out", fstatp[i]->st_page_out);
+			__os_ufree(dbenv, fstatp[i]);
 		}
-		__os_ufree(dbenv, fstatp, sizeof(DB_MPOOL_FSTAT*) * (len+1));
+err:		__os_ufree(dbenv, fstatp);
 	}
 	return (retval);
 }
@@ -1346,22 +1221,12 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1begin
 	return (get_DbTxn(jnienv, result));
 }
 
-JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbEnv_txn_1checkpoint
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, jint kbyte, jint min, jint flags)
-{
-	int err;
-	DB_ENV *dbenv = get_DB_ENV(jnienv, jthis);
+JAVADB_METHOD(DbEnv_txn_1checkpoint,
+    (JAVADB_ARGS, jint kbyte, jint min, jint flags), DB_ENV,
+    txn_checkpoint, (c_this, kbyte, min, flags))
 
-	if (!verify_non_null(jnienv, dbenv))
-		return (0);
-	err = dbenv->txn_checkpoint(dbenv, kbyte, min, flags);
-	if (err != DB_INCOMPLETE)
-		verify_return(jnienv, err, 0);
-	return (err);
-}
-
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_tx_1recover_1changed
-  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbFeedback*/ jobject jtxrecover)
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_app_1dispatch_1changed
+  (JNIEnv *jnienv, /*DbEnv*/ jobject jthis, /*DbFeedback*/ jobject jappdispatch)
 {
 	DB_ENV *dbenv;
 	DB_ENV_JAVAINFO *dbenvinfo;
@@ -1372,7 +1237,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv_tx_1recover_1changed
 	    !verify_non_null(jnienv, dbenvinfo))
 		return;
 
-	dbjie_set_tx_recover_object(dbenvinfo, jnienv, dbenv, jtxrecover);
+	dbjie_set_app_dispatch_object(dbenvinfo, jnienv, dbenv, jappdispatch);
 }
 
 JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_txn_1recover
@@ -1417,9 +1282,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_txn_1recover
 	err = dbenv->txn_recover(dbenv, preps, count, &retcount, flags);
 
 	if (verify_return(jnienv, err, 0)) {
-		preplist_class = get_class(jnienv, name_DB_PREPLIST);
-		retval = (*jnienv)->NewObjectArray(jnienv, retcount,
-						   preplist_class, 0);
+		if ((preplist_class =
+		    get_class(jnienv, name_DB_PREPLIST)) == NULL ||
+		    (retval = (*jnienv)->NewObjectArray(jnienv, retcount,
+		    preplist_class, 0)) == NULL)
+			goto err;
 
 		(void)snprintf(signature, sizeof(signature),
 		    "L%s%s;", DB_PACKAGE_NAME, name_DB_TXN);
@@ -1429,33 +1296,33 @@ JNIEXPORT jobjectArray JNICALL Java_com_sleepycat_db_DbEnv_txn_1recover
 						    "gid", "[B");
 
 		for (i=0; i<retcount; i++) {
-			/* First, make a blank DbPreplist object
+			/*
+			 * First, make a blank DbPreplist object
 			 * and set the array entry.
 			 */
-			obj = create_default_object(jnienv, name_DB_PREPLIST);
-			(*jnienv)->SetObjectArrayElement(jnienv, retval,
-							 i, obj);
+			if ((obj = create_default_object(jnienv,
+			    name_DB_PREPLIST)) == NULL)
+				goto err;
+			(*jnienv)->SetObjectArrayElement(jnienv,
+			    retval, i, obj);
 
 			/* Set the txn field. */
 			txnobj = get_DbTxn(jnienv, preps[i].txn);
-			(*jnienv)->SetObjectField(jnienv, obj,
-						  txn_fieldid, txnobj);
+			(*jnienv)->SetObjectField(jnienv,
+			    obj, txn_fieldid, txnobj);
 
 			/* Build the gid array and set the field. */
-			bytearr = (*jnienv)->NewByteArray(jnienv,
-							  sizeof(preps[i].gid));
+			if ((bytearr = (*jnienv)->NewByteArray(jnienv,
+			    sizeof(preps[i].gid))) == NULL)
+				goto err;
 			(*jnienv)->SetByteArrayRegion(jnienv, bytearr, 0,
-						      sizeof(preps[i].gid),
-						      (jbyte *)&preps[i].gid[0]);
+			    sizeof(preps[i].gid), (jbyte *)&preps[i].gid[0]);
 			(*jnienv)->SetObjectField(jnienv, obj,
-						  gid_fieldid,
-						  bytearr);
+			    gid_fieldid, bytearr);
 		}
 	}
-	__os_free(dbenv, preps, bytesize);
-
- out:
-	return (retval);
+err:	__os_free(dbenv, preps);
+out:	return (retval);
 }
 
 JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1stat
@@ -1479,39 +1346,22 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1stat
 
 	err = dbenv->txn_stat(dbenv, &statp, (u_int32_t)flags);
 	if (verify_return(jnienv, err, 0)) {
-		retval = create_default_object(jnienv, name_DB_TXN_STAT);
-		dbclass = get_class(jnienv, name_DB_TXN_STAT);
+		if ((dbclass = get_class(jnienv, name_DB_TXN_STAT)) == NULL ||
+		    (retval =
+		       create_default_object(jnienv, name_DB_TXN_STAT)) == NULL)
+			goto err;
 
 		/* Set the individual fields */
+		__jv_fill_txn_stat(jnienv, dbclass, retval, statp);
 
-		set_lsn_field(jnienv, dbclass, retval,
-			      "st_last_ckp", statp->st_last_ckp);
-		set_lsn_field(jnienv, dbclass, retval,
-			      "st_pending_ckp", statp->st_pending_ckp);
-		set_long_field(jnienv, dbclass, retval,
-			       "st_time_ckp", statp->st_time_ckp);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_last_txnid", statp->st_last_txnid);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxtxns", statp->st_maxtxns);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_naborts", statp->st_naborts);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nbegins", statp->st_nbegins);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_ncommits", statp->st_ncommits);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nactive", statp->st_nactive);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_nrestores", statp->st_nrestores);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_maxnactive", statp->st_maxnactive);
+		if ((active_class =
+		    get_class(jnienv, name_DB_TXN_STAT_ACTIVE)) == NULL ||
+		    (actives = (*jnienv)->NewObjectArray(jnienv,
+		    statp->st_nactive, active_class, 0)) == NULL)
+			goto err;
 
-		active_class = get_class(jnienv, name_DB_TXN_STAT_ACTIVE);
-		actives = (*jnienv)->NewObjectArray(jnienv, statp->st_nactive,
-						  active_class, 0);
-
-		/* Set the st_txnarray field.  This is a little more involved
+		/*
+		 * Set the st_txnarray field.  This is a little more involved
 		 * than other fields, since the type is an array, so none
 		 * of our utility functions help.
 		 */
@@ -1536,14 +1386,8 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_DbEnv_txn_1stat
 			set_lsn_field(jnienv, active_class, obj,
 				      "lsn", statp->st_txnarray[i].lsn);
 		}
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_wait", statp->st_region_wait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_region_nowait", statp->st_region_nowait);
-		set_int_field(jnienv, dbclass, retval,
-			      "st_regsize", statp->st_regsize);
 
-		__os_ufree(dbenv, statp, sizeof(DB_TXN_STAT));
+err:		__os_ufree(dbenv, statp);
 	}
 	return (retval);
 }
@@ -1560,7 +1404,6 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1set_1errcall
 
 	if (verify_non_null(jnienv, dbenv) &&
 	    verify_non_null(jnienv, dbenvinfo)) {
-
 		dbjie_set_errcall(dbenvinfo, jnienv, errcall);
 	}
 }
@@ -1576,7 +1419,6 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1set_1errpfx
 
 	if (verify_non_null(jnienv, dbenv) &&
 	    verify_non_null(jnienv, dbenvinfo)) {
-
 		dbjie_set_errpfx(dbenvinfo, jnienv, str);
 	}
 }
@@ -1592,8 +1434,7 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbEnv__1finalize
 	envinfo = get_DB_ENV_JAVAINFO(jnienv, jthis);
 	DB_ASSERT(envinfo != NULL);
 
-	/* Note:  We detect unclosed DbEnvs and report it.
-	 */
+	/* Note:  We detect and report unclosed DbEnvs. */
 	if (dbenv != NULL && envinfo != NULL && !dbjie_is_dbopen(envinfo)) {
 
 		/* If this error occurs, this object was never closed. */

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: archive.tcl,v 11.17 2001/09/29 05:25:59 krinsky Exp $
+# $Id: archive.tcl,v 11.20 2002/04/30 19:21:21 sue Exp $
 #
 # Options are:
 # -checkrec <checkpoint frequency"
@@ -33,13 +33,14 @@ proc archive { args } {
 	}
 
 	# Clean out old log if it existed
+	puts "Archive: Log archive test"
 	puts "Unlinking log: error message OK"
 	env_cleanup $testdir
 
 	# Now run the various functionality tests
 	set eflags "-create -txn -home $testdir \
 	    -log_buffer $maxbsize -log_max $maxfile"
-	set dbenv [eval {berkdb env} $eflags]
+	set dbenv [eval {berkdb_env} $eflags]
 	error_check_bad dbenv $dbenv NULL
 	error_check_good dbenv [is_substr $dbenv env] 1
 
@@ -58,7 +59,7 @@ proc archive { args } {
 	# open data file and CDx is close datafile.
 
 	set baserec "1:$alphabet:2:$alphabet:3:$alphabet:4:$alphabet"
-	puts "Archive.a: Writing log records; checkpoint every $checkrec records"
+	puts "\tArchive.a: Writing log records; checkpoint every $checkrec records"
 	set nrecs $maxfile
 	set rec 0:$baserec
 
@@ -189,13 +190,13 @@ proc archive { args } {
 		}
 	}
 	# Commit any transactions still running.
-	puts "Archive: Commit any transactions still running."
+	puts "\tArchive.b: Commit any transactions still running."
 	foreach t $txnlist {
 		error_check_good txn_commit:$t [$t commit] 0
 	}
 
 	# Close any files that are still open.
-	puts "Archive: Close open files."
+	puts "\tArchive.c: Close open files."
 	foreach d $dblist {
 		error_check_good db_close:$db [$d close] 0
 	}
@@ -203,8 +204,6 @@ proc archive { args } {
 	# Close and unlink the file
 	error_check_good log_cursor_close [$logc close] 0
 	reset_env $dbenv
-
-	puts "Archive: Complete."
 }
 
 proc archive_command { args } {

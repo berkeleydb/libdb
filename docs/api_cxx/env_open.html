@@ -1,6 +1,7 @@
-<!--$Id: env_open.so,v 10.70 2001/10/22 15:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: env_open.so,v 10.73 2002/08/29 03:24:39 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv::open</title>
@@ -106,14 +107,14 @@ and <a href="../utility/db_recover.html">db_recover</a>.
 <p><dt><a name="DB_USE_ENVIRON">DB_USE_ENVIRON</a><dd>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.  Because permitting users to specify which files
 are used can create security problems, environment information will be
-used in file naming for all users only if the DB_USE_ENVIRON flag is
-set.
+used in file naming for all users only if the DB_USE_ENVIRON
+flag is set.
 <p><dt><a name="DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a><dd>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.  Because permitting users to specify which files
-are used can create security problems, if the DB_USE_ENVIRON_ROOT flag
-is set, environment information will be used for file naming only for
-users with appropriate permissions (for example, users with a user-ID
-of 0 on UNIX systems).
+are used can create security problems, if the
+DB_USE_ENVIRON_ROOT flag is set, environment information will
+be used for file naming only for users with appropriate permissions (for
+example, users with a user-ID of 0 on UNIX systems).
 </dl>
 <p>Finally, there are a few additional unrelated flags:
 <p><dl compact>
@@ -135,7 +136,7 @@ specified.
 <p><dt><a name="DB_SYSTEM_MEM">DB_SYSTEM_MEM</a><dd>Allocate memory from system shared memory instead of from memory backed
 by the filesystem.  See <a href="../ref/env/region.html">Shared Memory
 Regions</a> for more information.
-<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_cxx/dbenv_class.html">DbEnv</a> handle returned by DbEnv::open to be
+<p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_cxx/env_class.html">DbEnv</a> handle returned by DbEnv::open to be
 <i>free-threaded</i>; that is, usable by multiple threads within a
 single address space.
 </dl>
@@ -171,38 +172,19 @@ available for this architecture.
 <p><dt>ENOSPC<dd>HP-UX only: a previously created Berkeley DB environment for this process still
 exists.
 </dl>
+<p>If the file or directory does not exist, the DbEnv::open method will
+fail and
+and either return ENOENT or
+throw a FileNotFoundException exception.
 <p>The DbEnv::open method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv::open method may fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
-in the same way.
+If a catastrophic error has occurred, the DbEnv::open method may fail and
+either return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw a
+<a href="../api_cxx/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_cxx/dbenv_class.html">DbEnv</a>
+<a href="../api_cxx/env_class.html">DbEnv</a>
 <h1>See Also</h1>
-<a href="../api_cxx/env_close.html">DbEnv::close</a>,
-<a href="../api_cxx/env_err.html">DbEnv::err</a>, <a href="../api_cxx/env_err.html">DbEnv::errx</a>
-<a href="../api_cxx/env_open.html">DbEnv::open</a>,
-<a href="../api_cxx/env_remove.html">DbEnv::remove</a>,
-<a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a>,
-<a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a>,
-<a href="../api_cxx/env_set_data_dir.html">DbEnv::set_data_dir</a>,
-<a href="../api_cxx/env_set_errcall.html">DbEnv::set_errcall</a>,
-<a href="../api_cxx/env_set_errfile.html">DbEnv::set_errfile</a>,
-<a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>,
-<a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
-<a href="../api_cxx/env_set_feedback.html">DbEnv::set_feedback</a>,
-<a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a>,
-<a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
-<a href="../api_cxx/env_set_rec_init.html">DbEnv::set_recovery_init</a>,
-<a href="../api_cxx/env_set_rpc_server.html">DbEnv::set_rpc_server</a>,
-<a href="../api_cxx/env_set_shm_key.html">DbEnv::set_shm_key</a>,
-<a href="../api_cxx/env_set_tas_spins.html">DbEnv::set_tas_spins</a>,
-<a href="../api_cxx/env_set_tmp_dir.html">DbEnv::set_tmp_dir</a>,
-<a href="../api_cxx/env_set_timeout.html">DbEnv::set_timeout</a>,
-<a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>,
-<a href="../api_cxx/env_strerror.html">DbEnv::strerror</a>
-and
-<a href="../api_cxx/env_version.html">DbEnv::version</a>.
+<a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

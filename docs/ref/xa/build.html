@@ -1,6 +1,7 @@
-<!--$Id: build.so,v 10.8 2001/07/11 14:22:32 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: build.so,v 10.9 2002/04/02 17:07:06 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Building a Global Transaction Manager</title>
@@ -132,12 +133,12 @@ that all GTMs must recover before any GTM can begin issuing new transactions.
 <p>Because Berkeley DB flushed both commit and abort records to disk for
 two-phase transaction, once the global transaction has either committed
 or aborted, no action will be necessary in any environment.  If local
-environments are running with the <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> option (that
-is, is not writing the log synchronously at commit time), then it is
-possible that a commit or abort operation may not have been written in
-the environment.  In this case, the GTM must always have a record of
-completed transactions to determine if prepared transactions should be
-committed or aborted.
+environments are running with the <a href="../../api_c/env_set_flags.html#DB_TXN_WRITE_NOSYNC">DB_TXN_WRITE_NOSYNC</a> or
+<a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> options (that is, is not writing and/or flushing
+the log synchronously at commit time), then it is possible that a commit
+or abort operation may not have been written in the environment.  In
+this case, the GTM must always have a record of completed transactions
+to determine if prepared transactions should be committed or aborted.
 <h3>Recovering from GTM failure</h3>
 <p>If the GTM fails, it must first recover its local state.  Assuming the
 GTM uses Berkeley DB tables to maintain state, it should run

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2001
+ * Copyright (c) 1996-2002
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_env.c,v 11.24 2001/10/04 18:46:29 sue Exp $
+ * $Id: ex_env.c,v 11.27 2002/08/15 14:34:11 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -28,8 +28,8 @@
 #endif
 #endif
 
-int	db_setup __P((char *, char *, FILE *, char *));
-int	db_teardown __P((char *, char *, FILE *, char *));
+int	db_setup __P((const char *, const char *, FILE *, const char *));
+int	db_teardown __P((const char *, const char *, FILE *, const char *));
 int	main __P((void));
 
 /*
@@ -38,9 +38,8 @@ int	main __P((void));
 int
 main()
 {
-	int ret;
-	char *data_dir, *home;
-	char *progname = "ex_env";		/* Program name. */
+	const char *data_dir, *home;
+	const char *progname = "ex_env";		/* Program name. */
 
 	/*
 	 * All of the shared database files live in DATABASE_HOME, but
@@ -50,11 +49,11 @@ main()
 	data_dir = CONFIG_DATA_DIR;
 
 	printf("Setup env\n");
-	if ((ret = db_setup(home, data_dir, stderr, progname)) != 0)
+	if (db_setup(home, data_dir, stderr, progname) != 0)
 		return (EXIT_FAILURE);
 
 	printf("Teardown env\n");
-	if ((ret = db_teardown(home, data_dir, stderr, progname)) != 0)
+	if (db_teardown(home, data_dir, stderr, progname) != 0)
 		return (EXIT_FAILURE);
 
 	return (EXIT_SUCCESS);
@@ -62,7 +61,7 @@ main()
 
 int
 db_setup(home, data_dir, errfp, progname)
-	char *home, *data_dir, *progname;
+	const char *home, *data_dir, *progname;
 	FILE *errfp;
 {
 	DB_ENV *dbenv;
@@ -113,7 +112,7 @@ db_setup(home, data_dir, errfp, progname)
 
 int
 db_teardown(home, data_dir, errfp, progname)
-	char *home, *data_dir, *progname;
+	const char *home, *data_dir, *progname;
 	FILE *errfp;
 {
 	DB_ENV *dbenv;

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2001
+# Copyright (c) 1996-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dbm.tcl,v 11.14 2001/08/03 16:39:22 bostic Exp $
+# $Id: dbm.tcl,v 11.15 2002/01/11 15:53:19 bostic Exp $
 #
 # TEST	dbm
 # TEST	Historic DBM interface test.  Use the first 1000 entries from the

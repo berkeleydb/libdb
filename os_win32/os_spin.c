@@ -1,18 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2001
+ * Copyright (c) 1997-2002
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char revid[] = "$Id: os_spin.c,v 11.8 2001/08/07 01:42:44 bostic Exp $";
+static const char revid[] = "$Id: os_spin.c,v 11.11 2002/07/12 18:56:56 bostic Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
-#include "os_jump.h"
 
 /*
  * __os_spin --
@@ -54,7 +53,7 @@ __os_yield(dbenv, usecs)
 	DB_ENV *dbenv;
 	u_long usecs;
 {
-	if (__db_jump.j_yield != NULL && __db_jump.j_yield() == 0)
+	if (DB_GLOBAL(j_yield) != NULL && DB_GLOBAL(j_yield)() == 0)
 		return;
 	__os_sleep(dbenv, 0, usecs);
 }

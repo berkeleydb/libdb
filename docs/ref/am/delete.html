@@ -1,6 +1,7 @@
 <!--$Id: delete.so,v 10.15 2001/03/10 19:05:21 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Deleting records</title>
@@ -15,11 +16,11 @@
 </td></tr></table>
 <p>
 <h1 align=center>Deleting records</h1>
-<p>The <a href="../../api_c/db_del.html">DB-&gt;del</a> function is the standard interface for deleting records from
+<p>The <a href="../../api_c/db_del.html">DB-&gt;del</a> method is the standard interface for deleting records from
 the database.  In general, <a href="../../api_c/db_del.html">DB-&gt;del</a> takes a key and deletes the
 data item associated with it from the database.
 <p>If the database has been configured to support duplicate records, the
-<a href="../../api_c/db_del.html">DB-&gt;del</a> function will remove all of the duplicate records.  To remove
+<a href="../../api_c/db_del.html">DB-&gt;del</a> method will remove all of the duplicate records.  To remove
 individual duplicate records, you must use a Berkeley DB cursor interface.
 <table width="100%"><tr><td><br></td><td align=right><a href="../../ref/am/put.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../reftoc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/stat.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

@@ -1,6 +1,7 @@
-<!--$Id: dbc_put.so,v 10.38 2001/10/22 15:24:27 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbc_put.so,v 10.42 2002/08/29 03:24:36 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: Dbc.put</title>
@@ -109,7 +110,8 @@ data items.
 <p>The Db.DB_NODUPDATA flag may not be specified to the Queue or Recno
 access methods.
 </dl>
-<p>Otherwise, the Dbc.put method throws an exception that encapsulates a non-zero error value on
+<p>
+Otherwise, the Dbc.put method throws an exception that encapsulates a non-zero error value on
 failure.
 <p>If Dbc.put fails for any reason, the state of the cursor will be
 unchanged.  If Dbc.put succeeds and an item is inserted into the
@@ -136,20 +138,13 @@ specified to <a href="../api_java/env_open.html">DbEnv.open</a>.
 Dbc.put method will fail and
 throw a <a href="../api_java/deadlock_class.html">DbDeadlockException</a> exception.
 <p>The Dbc.put method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the Dbc.put method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the Dbc.put method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
 <a href="../api_java/dbc_class.html">Dbc</a>
 <h1>See Also</h1>
-<a href="../api_java/dbc_close.html">Dbc.close</a>,
-<a href="../api_java/dbc_count.html">Dbc.count</a>,
-<a href="../api_java/dbc_del.html">Dbc.del</a>,
-<a href="../api_java/dbc_dup.html">Dbc.dup</a>,
-<a href="../api_java/dbc_get.html">Dbc.get</a>,
-<a href="../api_java/dbc_get.html">Dbc.pget</a>,
-and
-<a href="../api_java/dbc_put.html">Dbc.put</a>.
+<a href="../api_java/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

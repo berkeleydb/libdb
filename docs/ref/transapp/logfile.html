@@ -1,6 +1,7 @@
-<!--$Id: logfile.so,v 11.5 2001/05/08 15:03:09 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: logfile.so,v 11.7 2002/06/24 14:51:07 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB Reference Guide: Log file removal</title>
@@ -28,8 +29,8 @@ to archival media.
 <p>Log files may be removed at any time, as long as:
 <p><ul type=disc>
 <li>the log file is not involved in an active transaction.
-<li>at least two checkpoints have been written subsequent to the
-log file's creation.
+<li>a checkpoint has been written subsequent to the log file's
+creation.
 <li>the log file is not the only log file in the environment.
 </ul>
 <p>Obviously, if you are preparing for catastrophic failure, you will want

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2001
+# Copyright (c) 2000-2002
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd011.tcl,v 11.16 2001/09/14 21:29:41 margo Exp $
+# $Id: recd011.tcl,v 11.19 2002/02/25 16:44:26 sandstro Exp $
 #
 # TEST	recd011
 # TEST	Verify that recovery to a specific timestamp works.
@@ -29,11 +29,11 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 	puts "\tRecd0$tnum.a: Create environment and database."
 	set flags "-create -txn -home $testdir"
 
-	set env_cmd "berkdb env $flags"
+	set env_cmd "berkdb_env $flags"
 	set dbenv [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
-	set oflags "-env $dbenv -create -mode 0644 $args $omethod"
+	set oflags "-auto_commit -env $dbenv -create -mode 0644 $args $omethod"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -1,6 +1,7 @@
-<!--$Id: log_stat.so,v 10.30 2001/10/22 15:24:34 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: log_stat.so,v 10.36 2002/08/18 21:16:41 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DbEnv.log_stat</title>
@@ -25,23 +26,21 @@ public DbLogStat log_stat(int flags)
     throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>The DbEnv.log_stat method
-creates a DbLogStat object encapsulating a statistical structure.
-The log region statistics are stored in a DbLogStat object.
-The following data fields are available from the DbLogStat object:
+<p>The DbEnv.log_stat method returns the logging subsystem statistics.
 <p>The <b>flags</b> value must be set to 0 or
 the following value:
 <p><dl compact>
 <p><dt><a name="Db.DB_STAT_CLEAR">Db.DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
 </dl>
-<p>The log region statistics are stored in a structure of type DB_LOG_STAT.
-The following DB_LOG_STAT fields will be filled in:
+<p>The DbEnv.log_stat method creates a DbLogStat object encapsulating the log
+region statistics.  The following data fields are available from the
+DbLogStat object:
 <p><dl compact>
 <dt>public int st_magic;<dd>The magic number that identifies a file as a log file.
 <dt>public int st_version;<dd>The version of the log file type.
 <dt>public int st_mode;<dd>The mode of any created log files.
 <dt>public int st_lg_bsize;<dd>The in-memory log record cache size.
-<dt>public int st_lg_max;<dd>The maximum size of any individual file comprising the log.
+<dt>public int st_lg_size;<dd>The current log file size.
 <dt>public int st_w_mbytes;<dd>The number of megabytes written to this log.
 <dt>public int st_w_bytes;<dd>The number of bytes over and above <b>st_w_mbytes</b> written to this log.
 <dt>public int st_wc_mbytes;<dd>The number of megabytes written to this log since the last checkpoint.
@@ -56,7 +55,6 @@ in-memory log record cache filled up.
 <dt>public int st_disk_file;<dd>The log file number of the last record known to be on disk.
 <dt>public int st_disk_offset;<dd>The byte offset of the last record known to be on disk.
 <dt>public int st_cur_offset;<dd>The byte offset of the last record known to be on disk.
-<dt>public int st_flushcommit;<dd>The number of log flushes that contained a transaction commit record.
 <dt>public int st_maxcommitperflush;<dd>The maximum number of commits contained in a single log flush.
 <dt>public int st_mincommitperflush;<dd>The minimum number of commits contained in a single log flush that
 contained a commit.]
@@ -70,28 +68,13 @@ the region lock without waiting.
 failure.
 <h1>Errors</h1>
 <p>The DbEnv.log_stat method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
-If a catastrophic error has occurred, the DbEnv.log_stat method may fail and throw
-a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
-will fail in the same way.
+If a catastrophic error has occurred, the DbEnv.log_stat method may fail and
+throw a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>,
+in which case all subsequent Berkeley DB calls will fail in the same way.
 <h1>Class</h1>
-<a href="../api_java/dbenv_class.html">DbEnv</a>
+<a href="../api_java/env_class.html">DbEnv</a>, <a href="../api_java/logc_class.html">DbLogc</a>, <a href="../api_java/lsn_class.html">DbLsn</a>
 <h1>See Also</h1>
-<a href="../api_java/env_set_lg_bsize.html">DbEnv.set_lg_bsize</a>,
-<a href="../api_java/env_set_lg_dir.html">DbEnv.set_lg_dir</a>,
-<a href="../api_java/env_set_lg_max.html">DbEnv.set_lg_max</a>,
-<a href="../api_java/env_set_lg_regionmax.html">DbEnv.set_lg_regionmax</a>,
-<a href="../api_java/log_archive.html">DbEnv.log_archive</a>,
-<a href="../api_java/log_compare.html">DbEnv.log_compare</a>,
-<a href="../api_java/log_cursor.html">DbEnv.log_cursor</a>,
-<a href="../api_java/log_file.html">DbEnv.log_file</a>,
-<a href="../api_java/log_flush.html">DbEnv.log_flush</a>,
-<a href="../api_java/log_put.html">DbEnv.log_put</a>,
-<a href="../api_java/log_register.html">DbEnv.log_register</a>,
-<a href="../api_java/log_stat.html">DbEnv.log_stat</a>,
-<a href="../api_java/log_unregister.html">DbEnv.log_unregister</a>,
-<a href="../api_java/logc_close.html">DbLogc.logc_close</a>
-and
-<a href="../api_java/logc_get.html">DbLogc.logc_get</a>.
+<a href="../api_java/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_java/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../reftoc.html"><img src="../images/ref.gif" alt="Ref"></a>

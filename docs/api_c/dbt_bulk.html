@@ -1,6 +1,7 @@
-<!--$Id: dbt_bulk.so,v 10.6 2001/05/27 17:59:05 bostic Exp $-->
-<!--Copyright 1997-2001 by Sleepycat Software, Inc.-->
+<!--$Id: dbt_bulk.so,v 10.9 2002/08/29 03:24:32 bostic Exp $-->
+<!--Copyright 1997-2002 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
 <title>Berkeley DB: DBT</title>
@@ -19,22 +20,22 @@
 <hr size=1 noshade>
 <tt>
 <a name="3"><!--meow--></a>
-<p>If either of the DB_MULTIPLE or DB_MULTIPLE_KEY flags
-were specified to the <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> functions, the data
-<a href="../api_c/dbt.html">DBT</a> returned by those interfaces will refer to a buffer that
+<p>If either of the <a href="../api_c/dbc_get.html#DB_MULTIPLE">DB_MULTIPLE</a> or <a href="../api_c/dbc_get.html#DB_MULTIPLE_KEY">DB_MULTIPLE_KEY</a> flags
+were specified to the <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> methods, the data
+<a href="../api_c/dbt_class.html">DBT</a> returned by those interfaces will refer to a buffer that
 is filled with data.  Access to that data is through the following
 macros:
 <p><dl compact>
-<p><dt><a name="DB_MULTIPLE_INIT">DB_MULTIPLE_INIT</a><dd><pre>DB_MULTIPLE_INIT(void *pointer, <a href="../api_c/dbt.html">DBT</a> *data);</pre>
+<p><dt><a name="DB_MULTIPLE_INIT">DB_MULTIPLE_INIT</a><dd><pre>DB_MULTIPLE_INIT(void *pointer, <a href="../api_c/dbt_class.html">DBT</a> *data);</pre>
 <p>Initialize the retrieval.  The <b>pointer</b> argument is a variable
-to be initialized.  The <b>data</b> argument is a <a href="../api_c/dbt.html">DBT</a> structure
+to be initialized.  The <b>data</b> argument is a <a href="../api_c/dbt_class.html">DBT</a> structure
 returned from a successful call to <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a>
-for which one of the DB_MULTIPLE or DB_MULTIPLE_KEY
+for which one of the <a href="../api_c/dbc_get.html#DB_MULTIPLE">DB_MULTIPLE</a> or <a href="../api_c/dbc_get.html#DB_MULTIPLE_KEY">DB_MULTIPLE_KEY</a>
 flags was specified.
-<p><dt><a name="DB_MULTIPLE_NEXT">DB_MULTIPLE_NEXT</a><dd><pre>DB_MULTIPLE_NEXT(void *pointer, <a href="../api_c/dbt.html">DBT</a> *data, void *retdata, size_t retdlen);</pre>
-<p>The <b>data</b> argument is a <a href="../api_c/dbt.html">DBT</a> structure returned from a
+<p><dt><a name="DB_MULTIPLE_NEXT">DB_MULTIPLE_NEXT</a><dd><pre>DB_MULTIPLE_NEXT(void *pointer, <a href="../api_c/dbt_class.html">DBT</a> *data, void *retdata, size_t retdlen);</pre>
+<p>The <b>data</b> argument is a <a href="../api_c/dbt_class.html">DBT</a> structure returned from a
 successful call to <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> for which the
-DB_MULTIPLE flag was specified.  The <b>pointer</b> and
+<a href="../api_c/dbc_get.html#DB_MULTIPLE">DB_MULTIPLE</a> flag was specified.  The <b>pointer</b> and
 <b>data</b> arguments must have been previously initialized by a call
 to DB_MULTIPLE_INIT.  The <b>retdata</b> argument is set to
 refer to the next data element in the returned set, and the
@@ -43,11 +44,11 @@ element.  When used with the Queue and Recno access methods,
 <b>retdata</b> will be set to NULL for deleted records.  The
 <b>pointer</b> argument is set to NULL if there are no more data
 elements in the returned set.
-<p><dt><a name="DB_MULTIPLE_KEY_NEXT">DB_MULTIPLE_KEY_NEXT</a><dd><pre>DB_MULTIPLE_KEY_NEXT(void *pointer, <a href="../api_c/dbt.html">DBT</a> *data,
+<p><dt><a name="DB_MULTIPLE_KEY_NEXT">DB_MULTIPLE_KEY_NEXT</a><dd><pre>DB_MULTIPLE_KEY_NEXT(void *pointer, <a href="../api_c/dbt_class.html">DBT</a> *data,
 	void *retkey, size_t retklen, void *retdata, size_t retdlen);</pre>
-<p>The <b>data</b> argument is a <a href="../api_c/dbt.html">DBT</a> structure returned from a
+<p>The <b>data</b> argument is a <a href="../api_c/dbt_class.html">DBT</a> structure returned from a
 successful call to <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> for which the
-DB_MULTIPLE_KEY flag was specified.  The <b>pointer</b> and
+<a href="../api_c/dbc_get.html#DB_MULTIPLE_KEY">DB_MULTIPLE_KEY</a> flag was specified.  The <b>pointer</b> and
 <b>data</b> arguments must have been previously initialized by a call
 to DB_MULTIPLE_INIT.  The <b>retkey</b> argument is set to
 refer to the next key element in the returned set, and the
@@ -57,11 +58,11 @@ element in the returned set, and the <b>retdlen</b> argument is set to
 the length, in bytes, of that data element.  The <b>pointer</b>
 argument is set to NULL if there are no more key/data pairs in the
 returned set.
-<p><dt><a name="DB_MULTIPLE_RECNO_NEXT">DB_MULTIPLE_RECNO_NEXT</a><dd><pre>DB_MULTIPLE_RECNO_NEXT(void *pointer, <a href="../api_c/dbt.html">DBT</a> *data,
+<p><dt><a name="DB_MULTIPLE_RECNO_NEXT">DB_MULTIPLE_RECNO_NEXT</a><dd><pre>DB_MULTIPLE_RECNO_NEXT(void *pointer, <a href="../api_c/dbt_class.html">DBT</a> *data,
 	db_recno_t recno, void * retdata, size_t retdlen);</pre>
-<p>The <b>data</b> argument is a <a href="../api_c/dbt.html">DBT</a> structure returned from a
+<p>The <b>data</b> argument is a <a href="../api_c/dbt_class.html">DBT</a> structure returned from a
 successful call to <a href="../api_c/db_get.html">DB-&gt;get</a> or <a href="../api_c/dbc_get.html">DBcursor-&gt;c_get</a> for which the
-DB_MULTIPLE_KEY flag was specified.  The <b>pointer</b> and
+<a href="../api_c/dbc_get.html#DB_MULTIPLE_KEY">DB_MULTIPLE_KEY</a> flag was specified.  The <b>pointer</b> and
 <b>data</b> arguments must have been previously initialized by a call
 to DB_MULTIPLE_INIT.  The <b>recno</b> argument is set to the
 record number of the next record in the returned set.  The

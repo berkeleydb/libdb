@@ -1,5 +1,10 @@
+# See the file LICENSE for redistribution information.
 #
-# $Id: rpc.src,v 1.59 2001/10/28 15:45:41 bostic Exp $
+# Copyright (c) 1999-2002
+#       Sleepycat Software.  All rights reserved.
+#
+# $Id: rpc.src,v 1.75 2002/07/18 02:57:19 margo Exp $
+#
 # Syntax:
 # BEGIN	function_name  {CODE | RETCODE | NOFUNC}
 #	CODE:	generate XDR and client code, return status
@@ -55,6 +60,11 @@ FUNCARG	void *(*func1) __P((void *, size_t))
 FUNCPROT	void (*)(void *)
 FUNCARG	void (*func2) __P((void *))
 END
+BEGIN	set_app_dispatch	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+FUNCPROT	int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)
+FUNCARG	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops))
+END
 BEGIN	env_cachesize	CODE
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	gbytes
@@ -73,6 +83,26 @@ END
 BEGIN	set_data_dir	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	dir
+END
+BEGIN	env_dbremove		CODE
+ARG	ID	DB_ENV *	dbenv
+ARG	ID	DB_TXN *	txnp
+ARG	STRING	const char *	name
+ARG	STRING	const char *	subdb
+ARG	INT	u_int32_t	flags
+END
+BEGIN	env_dbrename		CODE
+ARG	ID	DB_ENV *	dbenv
+ARG	ID	DB_TXN *	txnp
+ARG	STRING	const char *	name
+ARG	STRING	const char *	subdb
+ARG	STRING	const char *	newname
+ARG	INT	u_int32_t	flags
+END
+BEGIN	env_encrypt		CODE
+ARG	ID	DB_ENV *	dbenv
+ARG	STRING	const char *	passwd
+ARG	INT	u_int32_t	flags
 END
 BEGIN	env_set_feedback	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -141,11 +171,6 @@ ARG	ID	DB_ENV *	dbenv
 FUNCPROT	void (*)(DB_ENV *, int)
 FUNCARG	void (*func0) __P((DB_ENV *, int))
 END
-BEGIN	set_recovery_init	NOFUNC
-ARG	ID	DB_ENV *	dbenv
-FUNCPROT	int (*)(DB_ENV *)
-FUNCARG	int (*func0) __P((DB_ENV *))
-END
 BEGIN	env_remove	RETCODE
 ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	home
@@ -167,11 +192,6 @@ END
 BEGIN	set_tmp_dir	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	dir
-END
-BEGIN	set_tx_recover	NOFUNC
-ARG	ID	DB_ENV *	dbenv
-FUNCPROT	int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)
-FUNCARG	int (*func0) __P((DB_ENV *, DBT *, DB_LSN *, db_recops))
 END
 BEGIN	set_tx_max	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -247,11 +267,24 @@ ARG	INT	int		pri
 ARG	INT	u_int32_t	timeout
 ARG	IGNORE	int *		idp
 END
+BEGIN	rep_flush	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+END
 BEGIN	rep_process_message	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	DBT	DBT *		rec
 ARG	DBT	DBT *		control
 ARG	IGNORE	int *		idp
+END
+BEGIN	rep_set_limit		NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	mbytes
+ARG	INT	u_int32_t	bytes
+END
+BEGIN	rep_set_request		NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	INT	u_int32_t	min
+ARG	INT	u_int32_t	max
 END
 BEGIN	rep_set_rep_transport	NOFUNC
 ARG	ID	DB_ENV *	dbenv
@@ -262,6 +295,11 @@ END
 BEGIN	rep_start	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	DBT	DBT *		cdata
+ARG	INT	u_int32_t	flags
+END
+BEGIN	rep_stat	NOFUNC
+ARG	ID	DB_ENV *	dbenv
+ARG	IGNORE	DB_REP_STAT **	statp
 ARG	INT	u_int32_t	flags
 END
 
@@ -279,6 +317,7 @@ FUNCARG	void (*func2) __P((void *))
 END
 BEGIN	db_associate	CODE
 ARG	ID	DB *		dbp
+ARG	ID	DB_TXN *	txnp
 ARG	ID	DB *		sdbp
 FUNCPROT	int (*)(DB *, const DBT *, const DBT *, DBT *)
 FUNCARG	int (*func0) __P((DB *, const DBT *, const DBT *, DBT *))
@@ -307,6 +346,10 @@ ARG	ID	DB *		dbp
 FUNCPROT	int (*)(DB *, DBT *, db_recno_t)
 FUNCARG	int (*func0) __P((DB *, DBT *, db_recno_t))
 END
+BEGIN	db_cache_priority	NOFUNC
+ARG	ID	DB *		dbp
+ARG	INT	DB_CACHE_PRIORITY	priority
+END
 BEGIN	db_cachesize	NOFUNC
 ARG	ID	DB *		dbp
 ARG	INT	u_int32_t	gbytes
@@ -333,6 +376,11 @@ BEGIN	db_dup_compare	NOFUNC
 ARG	ID	DB *		dbp
 FUNCPROT	int (*)(DB *, const DBT *, const DBT *)
 FUNCARG	int (*func0) __P((DB *, const DBT *, const DBT *))
+END
+BEGIN	db_encrypt		CODE
+ARG	ID	DB *		dbp
+ARG	STRING	const char *	passwd
+ARG	INT	u_int32_t	flags
 END
 BEGIN	db_extentsize	CODE
 ARG	ID	DB *		dbp
@@ -395,6 +443,7 @@ END
 #
 BEGIN	db_open		RETCODE
 ARG	ID	DB *		dbp
+ARG	ID	DB_TXN *	txnp
 ARG	STRING	const char *	name
 ARG	STRING	const char *	subdb
 ARG	INT	DBTYPE		type
@@ -628,22 +677,13 @@ END
 BEGIN	log_put		NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_LSN *	lsn
-ARG	CONST	const DBT *	data
+ARG	DBT	const DBT *	data
 ARG	INT	u_int32_t	flags
-END
-BEGIN	log_register	NOFUNC
-ARG	ID	DB_ENV *	dbenv
-ARG	ID	DB *		dbp
-ARG	CONST	const char *	namep
 END
 BEGIN	log_stat	NOFUNC
 ARG	ID	DB_ENV *	dbenv
 ARG	IGNORE	DB_LOG_STAT **	statp
 ARG	INT	u_int32_t	flags
-END
-BEGIN	log_unregister	NOFUNC
-ARG	ID	DB_ENV *	dbenv
-ARG	ID	DB *		dbp
 END
 #
 # Mpool Subsystem
