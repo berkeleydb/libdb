@@ -14,15 +14,15 @@ package com.sleepycat.db;
     db_javaJNI.DbEnv_lock_vec(DbEnv.getCPtr(dbenv), locker, flags, list, offset, nlist);
   }
 
-   static Object initDbEnvRef0(DbEnv self, Object handle) {
+   static long initDbEnvRef0(DbEnv self, Object handle) {
     return db_javaJNI.initDbEnvRef0(DbEnv.getCPtr(self), handle);
   }
 
-   static Object initDbRef0(Db self, Object handle) {
+   static long initDbRef0(Db self, Object handle) {
     return db_javaJNI.initDbRef0(Db.getCPtr(self), handle);
   }
 
-   static void deleteRef0(Object ref) {
+   static void deleteRef0(long ref) {
     db_javaJNI.deleteRef0(ref);
   }
 

@@ -61,7 +61,7 @@ public class DbEnv {
     // Internally, the JNI layer creates a global reference to each DbEnv,
     // which can potentially be different to this.  We keep a copy here so
     // we can clean up after destructors.
-    private Object dbenv_ref;
+    private long dbenv_ref;
     private DbAppDispatch app_dispatch_handler;
     private DbEnvFeedbackHandler env_feedback_handler;
     private DbErrorHandler error_handler;
@@ -94,7 +94,7 @@ public class DbEnv {
     void cleanup() {
         swigCPtr = 0;
         db_java.deleteRef0(dbenv_ref);
-        dbenv_ref = null;
+        dbenv_ref = 0L;
     }
 
 

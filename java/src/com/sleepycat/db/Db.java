@@ -57,7 +57,7 @@ public class Db {
     // Internally, the JNI layer creates a global reference to each Db,
     // which can potentially be different to this.  We keep a copy here so
     // we can clean up after destructors.
-    private Object db_ref;
+    private long db_ref;
     private DbEnv dbenv;
     private boolean private_dbenv;
     private DbAppendRecno append_recno_handler;
@@ -84,7 +84,7 @@ public class Db {
     private void cleanup() {
         swigCPtr = 0;
         db_java.deleteRef0(db_ref);
-        db_ref = null;
+        db_ref = 0L;
         if (private_dbenv) {
             dbenv.cleanup();
         }

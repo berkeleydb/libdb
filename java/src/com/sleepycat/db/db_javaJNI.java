@@ -45,9 +45,9 @@ class db_javaJNI {
 	static native final void initialize();
 
   public final static native void DbEnv_lock_vec(long jarg1, int jarg2, int jarg3, DbLockRequest[] jarg4, int jarg5, int jarg6) throws DbException;
-   final static native Object initDbEnvRef0(long jarg1, Object jarg2);
-   final static native Object initDbRef0(long jarg1, Object jarg2);
-   final static native void deleteRef0(Object jarg1);
+   final static native long initDbEnvRef0(long jarg1, Object jarg2);
+   final static native long initDbRef0(long jarg1, Object jarg2);
+   final static native void deleteRef0(long jarg1);
    final static native long getDbEnv0(long jarg1);
   public final static native long new_Db(long jarg1, int jarg2) throws DbException;
   public final static native void Db_associate(long jarg1, long jarg2, long jarg3, DbSecondaryKeyCreate jarg4, int jarg5) throws DbException;

@@ -53,7 +53,7 @@
 	// Internally, the JNI layer creates a global reference to each DbEnv,
 	// which can potentially be different to this.  We keep a copy here so
 	// we can clean up after destructors.
-	private Object dbenv_ref;
+	private long dbenv_ref;
 	private DbAppDispatch app_dispatch_handler;
 	private DbEnvFeedbackHandler env_feedback_handler;
 	private DbErrorHandler error_handler;
@@ -76,7 +76,7 @@
 	void cleanup() {
 		swigCPtr = 0;
 		db_java.deleteRef0(dbenv_ref);
-		dbenv_ref = null;
+		dbenv_ref = 0L;
 	}
 
 	public synchronized void close(int flags) throws DbException {
@@ -220,7 +220,7 @@
 	// Internally, the JNI layer creates a global reference to each Db,
 	// which can potentially be different to this.  We keep a copy here so
 	// we can clean up after destructors.
-	private Object db_ref;
+	private long db_ref;
 	private DbEnv dbenv;
 	private boolean private_dbenv;
 	private DbAppendRecno append_recno_handler;
@@ -245,7 +245,7 @@
 	private void cleanup() {
 		swigCPtr = 0;
 		db_java.deleteRef0(db_ref);
-		db_ref = null;
+		db_ref = 0L;
 		if (private_dbenv)
 			dbenv.cleanup();
 		dbenv = null;
@@ -503,46 +503,42 @@
 	}
 %}
 
-%native(initDbEnvRef0) jobject initDbEnvRef0(DB_ENV *self, void *handle);
-%native(initDbRef0) jobject initDbRef0(DB *self, void *handle);
-%native(deleteRef0) void deleteRef0(jobject ref);
+%native(initDbEnvRef0) jlong initDbEnvRef0(DB_ENV *self, void *handle);
+%native(initDbRef0) jlong initDbRef0(DB *self, void *handle);
+%native(deleteRef0) void deleteRef0(jlong ref);
 %native(getDbEnv0) DB_ENV *getDbEnv0(DB *self);
 
 %{
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbEnvRef0(
+JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbEnvRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
 	DB_ENV *self = *(DB_ENV **)&jarg1;
+	jlong ret;
 	COMPQUIET(jcls, NULL);
 
 	DB_ENV_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
 	self->set_errpfx(self, (const char*)self);
-	return (jobject)DB_ENV_INTERNAL(self);
+	*(jobject *)&ret = (jobject)DB_ENV_INTERNAL(self);
+	return (ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbRef0(
+JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
 	DB *self = *(DB **)&jarg1;
+	jlong ret;
 	COMPQUIET(jcls, NULL);
 
 	DB_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
-	return (jobject)DB_INTERNAL(self);
+	*(jobject *)&ret = (jobject)DB_INTERNAL(self);
+	return (ret);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_db_1javaJNI_deleteRef0(
-    JNIEnv *jenv, jclass jcls, jobject jref) {
-	COMPQUIET(jcls, NULL);
-
-	if (jref != NULL)
-		(*jenv)->DeleteGlobalRef(jenv, jref);
-}
-
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1) {
-	DB *self = *(DB **)&jarg1;
+	jobject jref = *(jobject *)&jarg1;
 	COMPQUIET(jcls, NULL);
-	COMPQUIET(jenv, NULL);
 
-	return (jobject)DB_INTERNAL(self);
+	if (jref != 0L)
+		(*jenv)->DeleteGlobalRef(jenv, jref);
 }
 
 JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbEnv0(
@@ -554,7 +550,7 @@ JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbEnv0(
 	COMPQUIET(jcls, NULL);
 
 	*(DB_ENV **)&env_cptr = self->dbenv;
-	return env_cptr;
+	return (env_cptr);
 }
 
 JNIEXPORT jboolean JNICALL

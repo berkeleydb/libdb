@@ -1192,40 +1192,36 @@ static u_int32_t __dbj_h_hash(DB *db, const void *data, u_int32_t len)
 }
 
 
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbEnvRef0(
+JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbEnvRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
 	DB_ENV *self = *(DB_ENV **)&jarg1;
+	jlong ret;
 	COMPQUIET(jcls, NULL);
 
 	DB_ENV_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
 	self->set_errpfx(self, (const char*)self);
-	return (jobject)DB_ENV_INTERNAL(self);
+	*(jobject *)&ret = (jobject)DB_ENV_INTERNAL(self);
+	return (ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbRef0(
+JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_initDbRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
 	DB *self = *(DB **)&jarg1;
+	jlong ret;
 	COMPQUIET(jcls, NULL);
 
 	DB_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
-	return (jobject)DB_INTERNAL(self);
+	*(jobject *)&ret = (jobject)DB_INTERNAL(self);
+	return (ret);
 }
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_db_1javaJNI_deleteRef0(
-    JNIEnv *jenv, jclass jcls, jobject jref) {
-	COMPQUIET(jcls, NULL);
-
-	if (jref != NULL)
-		(*jenv)->DeleteGlobalRef(jenv, jref);
-}
-
-JNIEXPORT jobject JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1) {
-	DB *self = *(DB **)&jarg1;
+	jobject jref = *(jobject *)&jarg1;
 	COMPQUIET(jcls, NULL);
-	COMPQUIET(jenv, NULL);
 
-	return (jobject)DB_INTERNAL(self);
+	if (jref != 0L)
+		(*jenv)->DeleteGlobalRef(jenv, jref);
 }
 
 JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbEnv0(
@@ -1237,7 +1233,7 @@ JNIEXPORT jlong JNICALL Java_com_sleepycat_db_db_1javaJNI_getDbEnv0(
 	COMPQUIET(jcls, NULL);
 
 	*(DB_ENV **)&env_cptr = self->dbenv;
-	return env_cptr;
+	return (env_cptr);
 }
 
 JNIEXPORT jboolean JNICALL
