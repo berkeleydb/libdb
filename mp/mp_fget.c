@@ -555,8 +555,11 @@ alloc:		/*
 	 */
 	if (state != SECOND_MISS && bhp->ref == 1) {
 		bhp->priority = UINT32_T_MAX;
-		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
-		SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
+		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) !=
+		     SH_TAILQ_LAST(&hp->hash_bucket, hq, __bh)) {
+			SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
+			SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
+		}
 		hp->hash_priority =
 		    SH_TAILQ_FIRST(&hp->hash_bucket, __bh)->priority;
 	}
