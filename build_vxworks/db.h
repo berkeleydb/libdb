@@ -21,6 +21,10 @@
 extern "C" {
 #endif
 
+#ifndef	HAVE_VXWORKS
+#define	HAVE_VXWORKS	1
+#endif
+
 /*
  * XXX
  * Handle function prototypes and the keyword "const".  This steps on name
