@@ -222,7 +222,7 @@ check_next:	/*
 		 * previous-page pointer updated to our new page.  The next
 		 * page must exist because we're redoing the operation.
 		 */
-		if (!rootsplit && !IS_ZERO_LSN(argp->nlsn)) {
+		if (!rootsplit && argp->npgno != PGNO_INVALID) {
 			if ((ret =
 			    __memp_fget(mpf, &argp->npgno, 0, &np)) != 0) {
 				ret = __db_pgerr(file_dbp, argp->npgno, ret);
@@ -294,7 +294,7 @@ lrundo:		if ((rootsplit && lp != NULL) || rp != NULL) {
 		 * possible that the next-page never existed, we ignore it as
 		 * if there's nothing to undo.
 		 */
-		if (!rootsplit && !IS_ZERO_LSN(argp->nlsn)) {
+		if (!rootsplit && argp->npgno != PGNO_INVALID) {
 			if ((ret =
 			    __memp_fget(mpf, &argp->npgno, 0, &np)) != 0) {
 				np = NULL;
