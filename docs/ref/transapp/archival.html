@@ -1,0 +1,121 @@
+<! "@(#)archival.so	10.17 (Sleepycat) 12/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Archival procedures</h1>
+<p>
+The third component of the infrastructure, <i>archival procedures</i>,
+concerns the recoverability of the database and the disk consumption of
+the database log files.
+<p>
+There are two separate aspects to these issues.  First, you may want to
+periodically create snapshots (i.e., backups) of your databases to make
+it possible to recover them from catastrophic failure.  Second, you'll
+want to periodically remove log files in order to conserve disk space.
+The two procedures are distinct from each other, and you cannot remove
+the current log files simply because you have created a database snapshot.
+<p>
+<h1>Archival for recovery:</h1>
+<p>
+To create a snapshot of your database that can be used to recover from
+catastrophic failure, the following steps should be taken:
+<ol>
+<p><li>Run <a href="../../utility/db_archive.html">db_archive</a> <b>-s</b> to identify all of the database data
+files that must be saved, and copy them to a backup device, (e.g., tape).
+If the database files are stored in a separate directory from the other
+Berkeley DB files, it may be simpler to archive the directory itself instead
+of the individual files.
+<p>
+<b>More importantly, if any of the database files have not been
+accessed during the lifetime of the current log files, <a href="../../utility/db_archive.html">db_archive</a>
+will not list them in its output!</b> For this reason, it may be important
+to use a separate database file directory, archiving it instead of the
+files listed by <a href="../../utility/db_archive.html">db_archive</a>.
+<p><li>If your database is currently active, i.e., you are reading and writing
+to the database files while the snapshot is being taken, run
+<a href="../../utility/db_archive.html">db_archive</a> <b>-l</b> to identify the database log files that
+you must save, and
+copy them to a backup device, (e.g., tape).  If the database log files
+are stored in a separate directory from the other database files, it may
+be simpler to archive the directory itself instead of the individual
+files.
+</ol>
+<p>
+Note that the order of these operations is important, and that the
+database files <b>must</b> be archived before the log files.
+<p>
+The Berkeley DB library supports on-line backups, and it is not necessary to
+stop reading or writing your databases during the time when you create
+this snapshot.  It is important to note, however, that the snapshot of an
+active database will be consistent as of some unspecified time between
+the start of the archival and when archival is completed.
+<p>
+To create a snapshot as of a specific time, you must stop reading and
+writing your databases for the entire time of the archival, force a
+checkpoint (see <a href="../../utility/db_checkpoint.html">db_checkpoint</a>), and then archive the files listed
+by the <a href="../../utility/db_archive.html">db_archive</a> utility's <b>-s</b> and <b>-l</b> options.
+<p>
+Once these steps are completed, your database can be recovered from
+catastrophic failure to its state as of the time the archival was done.
+To update your snapshot so that recovery from catastrophic failure is
+possible up to a new point in time, repeat step #2, copying all existing
+log files to a backup device.
+<p>
+Each time that a complete snapshot is made, i.e. all database and log
+files are copied to backup media, you may discard all previous snapshots
+and saved log files.
+<p>
+The time to restore from catastrophic failure is a function of the number
+of log records that have been written since the snapshot was originally
+created.  Perhaps more importantly, the more separate pieces of backup
+media you use, the more likely that you will have a problem reading from
+one of them.  For these reasons, it is often best to make snapshots on a
+regular basis.
+<p>
+<b>For archival safety remember to ensure that you have multiple copies of
+your database backups, that you verify that your archival media is
+error-free, and that copies of your backups are stored off-site!</b>
+<p>
+To restore your database after catastrophic failure,
+the following steps should be taken:
+<ol>
+<p><li>Restore the copies of the database files from the backup media.
+<p><li>Restore the copies of the log files from the backup media, <b>in
+the order in which they were written</b>.  (It's possible that the same log
+file appears on multiple backups, and you only want the most recent
+version of that log file!)
+<p><li>Run <a href="../../utility/db_recover.html">db_recover</a> <b>-c</b> to recover the database.
+</ol>
+<p>
+It is possible to recreate the database in a location different than the
+original, by specifying appropriate pathnames to the <b>-h</b> option
+of the <a href="../../utility/db_recover.html">db_recover</a> utility.
+<p>
+<h1>Archival to conserve log file space:</h1>
+<p>
+To remove log files, the following steps should be taken:
+<ol>
+<p><li>If you are concerned with catastrophic failure, first copy them to backup
+media (e.g., tape), as described above.  This is because log files are
+necessary for recovery from catastrophic failure.
+<p><li>Run <a href="../../utility/db_archive.html">db_archive</a> without options, to identify all of the log files
+that are no longer in use (e.g., no longer involved in an active
+transaction).
+<p><li>Remove those log files from the system.
+</ol>
+<p>
+<a href="../../ref/transapp/admin.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/recovery.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

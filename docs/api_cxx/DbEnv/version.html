@@ -1,0 +1,69 @@
+<! "@(#)version.so	10.7 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbEnv::version</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbEnv::version</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+static char *
+DbEnv::version(int *major, int *minor, int *patch);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbEnv::version method returns a pointer to a string containing
+Berkeley DB version information.
+If <b>major</b> is non-NULL, the major version of the Berkeley DB release
+is stored in the memory it references.
+If <b>minor</b> is non-NULL, the minor version of the Berkeley DB release
+is stored in the memory it references.
+If <b>patch</b> is non-NULL, the patch version of the Berkeley DB release
+is stored in the memory it references.
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbEnv/class.html">DbEnv</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a>,
+<a href="../../api_cxx/DbEnv/appexit.html">DbEnv::appexit</a>,
+DbEnv::version,
+dbenv_get_data_dir,
+dbenv_get_errcall,
+dbenv_get_errfile
+dbenv_get_error_model,
+dbenv_get_error_model
+dbenv_get_error_stream,
+dbenv_get_errpfx,
+dbenv_get_flags,
+dbenv_get_home,
+<a href="../../api_cxx/DbEnv/get_lg_info.html">DbEnv::get_lg_info</a>,
+dbenv_get_lg_max,
+dbenv_get_lk_conflicts,
+dbenv_get_lk_detect,
+<a href="../../api_cxx/DbEnv/get_lk_info.html">DbEnv::get_lk_info</a>,
+dbenv_get_lk_modes,
+dbenv_get_log_dir,
+dbenv_get_lorder,
+<a href="../../api_cxx/DbEnv/get_mp_info.html">DbEnv::get_mp_info</a>,
+dbenv_get_mp_mmapsize,
+dbenv_get_mp_size,
+dbenv_get_tmp_dir,
+<a href="../../api_cxx/DbEnv/get_tx_info.html">DbEnv::get_tx_info</a>,
+dbenv_get_tx_max,
+dbenv_get_tx_recover
+and
+dbenv_get_verbose.
+</tt>
+</body>
+</html>

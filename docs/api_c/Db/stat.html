@@ -1,0 +1,144 @@
+<! "@(#)stat.so	10.12 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DB->stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DB->stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+DB->stat(DB *db,
+    void *sp, void *(*db_malloc)(size_t), u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DB->stat function creates a statistical structure and
+copies a pointer to it into user-specified memory locations.
+Specifically, if <b>sp</b> is non-NULL, a pointer to the
+statistics for the database are copied into the memory location
+it references.
+<p>
+Statistical structures are created in allocated memory.
+If
+<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
+otherwise, the library function <b>malloc</b>(3)) is used.
+The function <b>db_malloc</b> must match the calling conventions of
+the <b>malloc</b>(3)) library routine.
+Regardless, the caller is responsible for deallocating the returned
+memory.
+To deallocate the returned memory, free each returned memory pointer;
+pointers inside the memory do not need to be individually freed.
+<p>
+<b>The DB->stat function cannot be transaction protected, and, should
+be done outside of the scope of a transaction.</b>
+<p>
+<b>In the presence of multiple threads or processes accessing an active
+database, the returned information may be out-of-date.</b>
+<p>
+<b>This function may access all of the pages in the database, and
+therefore may incur a severe performance penalty and have obvious
+negative effects on the underlying buffer pool.</b>
+<p>
+The <b>flags</b> parameter must be set to 0 or the following value:
+<dl compact>
+<a name="DB_RECORDCOUNT">
+<p><dt>DB_RECORDCOUNT<dd>Fill in the <b>bt_nrecs</b> information of the statistics structure,
+but do not collect any other information.  This flag makes it reasonable
+for applications to request a record count from a database without
+incurring a performance penalty.  It is only available for Recno
+databases, or Btree databases where the underlying database was created
+with the DB_RECNUM flag.
+</dl>
+<p>
+The DB->stat
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<h1>Btree and Recno Statistics</h1>
+<p>
+In the case of a Btree or Recno database,
+the statistics are stored in a structure of type DB_BTREE_STAT.  The
+following fields will be filled in:
+<dl compact>
+<p><dt>u_int32_t bt_magic;<dd>Magic number that identifies the file as a btree file.
+<dt>u_int32_t bt_version;<dd>The version of the btree file type.
+<dt>u_int32_t bt_flags;<dd>Permanent database flags, including
+DB_DUP, DB_FIXEDLEN, DB_RECNUM and DB_RENUMBER.
+<dt>u_int32_t bt_minkey;<dd>The <b>bt_minkey</b> value specified to <a href="../../api_c/Db/open.html">db_open</a>, if any.
+<dt>u_int32_t bt_re_len;<dd>The <b>re_len</b> value specified to <a href="../../api_c/Db/open.html">db_open</a>, if any.
+<dt>u_int32_t bt_re_pad;<dd>The <b>re_pad</b> value specified to <a href="../../api_c/Db/open.html">db_open</a>, if any.
+<dt>u_int32_t bt_pagesize;<dd>Underlying tree page size.
+<dt>u_int32_t bt_levels;<dd>Number of levels in the tree.
+<dt>u_int32_t bt_nrecs;<dd>Number of data items in the tree (since there may be multiple data items
+per key, this number may not be the same as the number of keys).
+<dt>u_int32_t bt_int_pg;<dd>Number of tree internal pages.
+<dt>u_int32_t bt_leaf_pg;<dd>Number of tree leaf pages.
+<dt>u_int32_t bt_dup_pg;<dd>Number of tree duplicate pages.
+<dt>u_int32_t bt_over_pg;<dd>Number of tree overflow pages.
+<dt>u_int32_t bt_free;<dd>Number of pages on the free list.
+<dt>u_int32_t bt_int_pgfree;<dd>Number of bytes free in tree internal pages.
+<dt>u_int32_t bt_leaf_pgfree;<dd>Number of bytes free in tree leaf pages.
+<dt>u_int32_t bt_dup_pgfree;<dd>Number of bytes free in tree duplicate pages.
+<dt>u_int32_t bt_over_pgfree;<dd>Number of bytes free in tree overflow pages.
+</dl>
+<p>
+The DB->stat
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DB->stat function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The DB->stat
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+DBcursor->c_close(3),
+dbenv->db_paniccall(3),
+fflush(3),
+fprintf(3),
+<a href="../../api_c/DbLockTab/get.html">lock_get</a>,
+<a href="../../api_c/DbLock/put.html">lock_put</a>,
+<a href="../../api_c/DbLockTab/vec.html">lock_vec</a>,
+malloc(3),
+<a href="../../api_c/DbMpoolFile/get.html">memp_fget</a>,
+<a href="../../api_c/DbMpoolFile/put.html">memp_fput</a>,
+memset(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+<a href="../../api_c/DbEnv/version.html">db_version</a>,
+<a href="../../api_c/Db/close.html">DB->close</a>,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/del.html">DB->del</a>,
+<a href="../../api_c/Db/fd.html">DB->fd</a>,
+<a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/join.html">DB->join</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+<a href="../../api_c/Db/put.html">DB->put</a>,
+DB->stat,
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+<a href="../../api_c/Dbc/close.html">DBcursor->c_close</a>,
+<a href="../../api_c/Dbc/del.html">DBcursor->c_del</a>,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>
+and
+<a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<! "@(#)bt_compare.so	10.5 (Sleepycat) 10/19/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Btree comparison function (bt_compare)</h1>
+<p>
+The Btree data structure is a sorted, balanced tree structure storing
+associated key/data pairs.
+<p>
+The sort order for the Btree can be specified as part of the
+<a href="../../api_c/Db/open.html">db_open</a> call to open the database, specifically by setting the
+<a href="../../api_c/DbInfo/info.html#bt_compare">bt_compare</a> element of the DB_INFO structure.  If no
+comparison routine is specified, the sort order is lexical, with shorter
+keys collating before longer keys.
+<p>
+Sort routines are passed pointers to keys as arguments.  The keys are
+represented as DBT structures.  The routine must return an integer
+less than, equal to, or greater than zero if the first argument is
+considered to be respectively less than, equal to, or greater than the
+second argument.  The only fields that the routines may examine in the
+DBT structures are <b>data</b> and <b>size</b> fields.
+<p>
+An example routine that might be used to sort integer keys in the database
+is as follows:
+<p><ul><pre>
+compare_int(a, b)
+	const DBT *a, *b;
+{
+	int ai, bi;
+<p>
+	/*
+	 * Returns:
+	 *	< 0 if a < b
+	 *	= 0 if a = b
+	 *	> 0 if a > b
+	 */
+	memcpy(&ai, a->data, sizeof(int));
+	memcpy(&bi, b->data, sizeof(int));
+	return (ai - bi);
+}
+</pre></ul><p>
+<p>
+Note that the data must first be copied into memory that is
+appropriately aligned, as Berkeley DB does not guarantee any kind of
+alignment of the underlying data, including for comparison
+routines.
+<p>
+When doing integer comparison routines, it is important to remember
+that databases created on machines of different architectures may
+have different integer byte orders, for which your code may need to
+compensate.
+<p>
+An example routine that might be used to sort keys based on the first
+five bytes of the key (ignoring any subsequent keys) is as follows:
+<p><ul><pre>
+compare_dbt(a, b)
+	const DBT *a, *b;
+{
+	u_char *p1, *p2;
+<p>
+	/*
+	 * Returns:
+	 *	< 0 if a < b
+	 *	= 0 if a = b
+	 *	> 0 if a > b
+	 */
+	for (p1 = a->data, p2 = b->data, len = 5; len--; ++p1, ++p2)
+		if (*p1 != *p2)
+			return ((long)*p1 - (long)*p2);
+	return (0);
+}
+</pre></ul><p>
+<p>
+<a href="../../ref/am/malloc.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/bt_prefix.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

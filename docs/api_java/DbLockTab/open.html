@@ -1,0 +1,197 @@
+<! "@(#)open.so	10.13 (Sleepycat) 10/4/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLockTab.open</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLockTab.open</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public static DbLockTab open(String dir, int flags, int mode, DbEnv dbenv)
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+The DbLockTab.open
+method returns a "lock region" identified by the <i>directory</i> <b>dir</b>.
+<p>
+The
+<b>dir</b> pathname argument is interpreted as described in
+<a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.
+<p>
+The <b>flags</b> and <b>mode</b> arguments specify how files will be opened
+and/or created if they do not already exist.
+The flags value is specified by logically <b>OR</b>'ing together one or more of the
+following values:
+<dl compact>
+<a name="DB_CREATE">
+<p><dt>Db.DB_CREATE<dd>Create any underlying files, as necessary.  If the files do not already
+exist and the DB_CREATE flag is not specified, the call will fail.
+<a name="DB_THREAD">
+<p><dt>Db.DB_THREAD<dd>Cause the m4_reg(DbLockTab) handle returned by DbLockTab.open to be useable
+by multiple threads within a single address space, i.e., to be
+<i>free-threaded</i>.
+Note, threading is assumed in the Java API, so no special flags are required,
+and Berkeley DB functions will always behave as if the DB_THREAD flag was specified.
+</dl>
+<p>
+All files created by the lock subsystem are created with mode <b>mode</b> (as described
+in <b>chmod</b>(2)) and modified by the process' umask value at the time
+of creation (see <b>umask</b>(2)))).
+The group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.
+<p>
+The locking subsystem is configured
+based on the <b>dbenv</b> argument.  It is expected that applications
+will use a single <a href="../../api_java/DbEnv/class.html">DbEnv</a> object as the argument to all of the
+subsystems in the Berkeley DB package.  The fields of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object
+used by DbLockTab.open are described below.
+Any of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> fields that are not explicitly set will default
+to appropriate values.
+<p>
+The following fields in the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object may be initialized, using
+the appropriate set method, before calling DbLockTab.open:
+<p>
+<dl compact>
+<p><dt>DbErrcall db_errcall;<dd>
+<dt>String db_errpfx;<dd>
+<dt>int db_verbose;<dd>The error fields of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> behave as described for
+<a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a>.
+<a name="lk_conflicts">
+<p><dt>byte[][] lk_conflicts;<dd>A <b>lk_modes</b> by <b>lk_modes</b> array.
+A non-0 value for the array element:
+<p><ul><pre>lk_conflicts[requested_mode][held_mode]</pre></ul><p>
+indicates that requested_mode and held_mode conflict.
+The <i>not-granted</i> mode must be represented by 0.
+If <b>lk_conflicts</b> is null, the conflicts array
+<b>db_rw_conflicts</b> is used; see <a href="../../ref/lock/stdmode.html">Standard Lock Modes</a> for a description of that array.
+<a name="lk_detect">
+<p><dt>int lk_detect;<dd>If non-0, specifies that the deadlock detector be run whenever a lock
+conflict occurs, and specifies which transaction should be aborted in
+the case of a deadlock.
+The <b>lk_detect</b> field must be set to one of the following values.
+<dl compact>
+<a name="DB_LOCK_DEFAULT">
+<p><dt>Db.DB_LOCK_DEFAULT<dd>Use the default policy as specified by <a href="../../utility/db_deadlock.html">db_deadlock</a>.
+<a name="DB_LOCK_OLDEST">
+<p><dt>Db.DB_LOCK_OLDEST<dd>Abort the oldest transaction.
+<a name="DB_LOCK_RANDOM">
+<p><dt>Db.DB_LOCK_RANDOM<dd>Abort a random transaction involved in the deadlock.
+<a name="DB_LOCK_YOUNGEST">
+<p><dt>Db.DB_LOCK_YOUNGEST<dd>Abort the youngest transaction.
+</dl>
+<a name="lk_max">
+<p><dt>int lk_max;<dd>The maximum number of locks to be held or requested in the table.
+This value is used by DbLockTab.open to estimate how much space to
+allocate for various lock-table data structures.
+If <b>lk_max</b> is 0, a default value is used.
+<a name="lk_modes">
+<p><dt>int lk_modes;<dd>The number of lock modes to be recognized by the lock table (including
+the <i>not-granted</i> mode).  If <b>lk_modes</b> is 0, the value
+<a href="../../ref/lock/stdmode.html">DB_LOCK_RW_N</a> is used.
+</dl>
+<p>
+The DbLockTab.open
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Environment Variables</h1>
+<dl compact>
+<p><dt>DB_HOME<dd>If the <b>dbenv</b> argument to DbLockTab.open was initialized using
+<a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a> the environment variable <b>DB_HOME</b> may
+be used as the path of the database home for the interpretation of
+the <b>dir</b> argument.
+</dl>
+<p>
+<dl compact>
+<p><dt>TMPDIR<dd>If the <b>dbenv</b> argument to DbLockTab.open was NULL or not initialized
+using <a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a> the environment variable <b>TMPDIR</b> may
+be used as the directory in which to create the lock table, as described in
+DbLockTab.open.
+</dl>
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLockTab.open method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLockTab.open
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+<a href="../../api_java/DbEnv/version.html">DbEnv.version</a>,
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fstat(3),
+fsync(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+<a href="../../api_java/DbLockTab/unlink.html">DbLockTab.unlink</a>,
+lseek(3),
+malloc(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+open(3),
+pstat_getdynamic(3),
+read(3),
+shmat(3),
+shmctl(3),
+shmdt(3),
+sigfillset(3),
+sigprocmask(3),
+stat(3),
+strerror(3),
+strlen(3),
+sysconf(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbLockTab.open
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EAGAIN<dd>The shared memory region was locked and (repeatedly) unavailable.
+</dl>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The DB_THREAD flag was specified and spinlocks are not implemented for
+this architecture.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLockTab/class.html">DbLockTab</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLockTab/close.html">DbLockTab.close</a>,
+<a href="../../api_java/DbLockTab/detect.html">DbLockTab.detect</a>,
+<a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>,
+<a href="../../api_java/DbLockTab/id.html">DbLockTab.id</a>,
+DbLockTab.open,
+<a href="../../api_java/DbLockTab/stat.html">DbLockTab.stat</a>
+<a href="../../api_java/DbLockTab/unlink.html">DbLockTab.unlink</a>
+and
+<a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a>.
+</tt>
+</body>
+</html>

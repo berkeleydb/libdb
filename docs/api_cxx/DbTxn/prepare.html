@@ -1,0 +1,78 @@
+<! "@(#)prepare.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbTxn::prepare</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbTxn::prepare</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbTxn::prepare();
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbTxn::prepare method initiates the beginning of a two-phase commit.
+<p>
+In a distributed transaction environment, Berkeley DB can be used as a local
+transaction manager.  In this case, the distributed transaction manager
+must send <i>prepare</i> messages to each local manager.  The local
+manager must then issue a DbTxn::prepare and await its successful
+return before responding to the distributed transaction manager.  Only
+after the distributed transaction manager receives successful responses
+from all of its <i>prepare</i> messages should it issue any
+<i>commit</i> messages.
+<p>
+The DbTxn::prepare
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbTxn::prepare method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbTxn::prepare
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+<a href="../../api_cxx/DbLog/put.html">DbLog::put</a>,
+malloc(3),
+memcpy(3),
+memset(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbTxn/class.html">DbTxn</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbTxn/abort.html">DbTxn::abort</a>,
+<a href="../../api_cxx/DbTxn/commit.html">DbTxn::commit</a>,
+<a href="../../api_cxx/DbTxn/id.html">DbTxn::id</a>
+and
+DbTxn::prepare.
+</tt>
+</body>
+</html>

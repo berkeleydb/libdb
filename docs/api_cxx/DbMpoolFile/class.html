@@ -1,0 +1,57 @@
+<! "@(#)class.so	10.4 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbMpoolFile</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbMpoolFile</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the specific details of the DbMpoolFile
+class.
+<p>
+The DbMpoolFile and <a href="../../api_cxx/DbMpool/class.html">DbMpool</a> classes are
+the library interface intended to provide general-purpose, page-oriented
+buffer management of one or more files.
+While designed to work with the other <a href="../../api_cxx/Db/class.html">Db</a> classes, this class is
+also useful for more general purposes.
+The memory pools (<a href="../../api_cxx/DbMpool/class.html">DbMpool</a>'s) are referred to in this document as
+simply <i>pools</i>.
+<p>
+Pools may be shared between processes.
+Pools are usually filled by pages from one or more files
+(DbMpoolFile's).
+Pages in the pool are replaced in LRU (least-recently-used) order, with
+each new page replacing the page that has been unused the longest.
+Pages retrieved from the pool using
+<a href="../../api_cxx/DbMpoolFile/get.html">DbMpoolFile::get</a> are <i>pinned</i> in the pool, by default,
+until they are returned to the pool's control using the
+<a href="../../api_cxx/DbMpoolFile/put.html">DbMpoolFile::put</a> method.
+<p>
+<h1>Class</h1>
+DbMpoolFile
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbMpoolFile/close.html">DbMpoolFile::close</a>,
+<a href="../../api_cxx/DbMpoolFile/get.html">DbMpoolFile::get</a>,
+<a href="../../api_cxx/DbMpoolFile/open.html">DbMpoolFile::open</a>,
+<a href="../../api_cxx/DbMpoolFile/put.html">DbMpoolFile::put</a>,
+<a href="../../api_cxx/DbMpoolFile/set.html">DbMpoolFile::set</a>
+and
+<a href="../../api_cxx/DbMpoolFile/sync.html">DbMpoolFile::sync</a>.
+</tt>
+</body>
+</html>

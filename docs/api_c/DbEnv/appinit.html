@@ -1,0 +1,355 @@
+<! "@(#)appinit.so	10.15 (Sleepycat) 11/21/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: db_appinit</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>db_appinit</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+db_appinit(char *db_home,
+    char *db_config, DB_ENV *dbenv, u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The db_appinit function provides a simple way to initialize and configure
+the Berkeley DB environment.  It is not necessary that it be called, but it
+provides a structure for creating a consistent environment for processes
+using one or more of the features of Berkeley DB.
+<p>
+The <b>db_home</b> and <b>db_config</b> arguments to db_appinit
+are described in <a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.
+<p>
+The <b>flags</b> argument specifies the subsystems that are initialized
+and how the environment affects Berkeley DB file naming, among other things.
+The <b>flags</b> value is specified by logically <b>OR</b>'ing together one or more of the
+following values:
+<dl compact>
+<a name="DB_CREATE">
+<p><dt>DB_CREATE<dd>Cause subsystems to create any underlying files, as necessary.
+<a name="DB_INIT_CDB">
+<p><dt>DB_INIT_CDB<dd>Initialize locking for the Berkeley DB Concurrent Access Methods product.  In this mode, Berkeley DB provides
+multiple reader/single writer access.  No other locking should be
+specified (e.g., do not set <a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a>).  Access method calls
+are largely unchanged when using the <a href="../../api_c/DbEnv/appinit.html#DB_INIT_CDB">DB_INIT_CDB</a> flag, although
+any cursors through which update operations (e.g., <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>,
+<a href="../../api_c/Dbc/del.html">DBcursor->c_del</a>) will be made, must have the <a href="../../api_c/Dbc/get.html#DB_RMW">DB_RMW</a> value set in
+the flags parameter to the cursor call that creates the cursor.  See
+<a href="../../api_c/Db/cursor.html">DB->cursor</a> for more information.
+<a name="DB_INIT_LOCK">
+<p><dt>DB_INIT_LOCK<dd>Initialize the lock subsystem; see
+<a href="../../api_c/DbLockTab/open.html">lock_open</a>.
+This subsystem should be used when multiple processes or threads are going
+to be reading and writing a Berkeley DB database, so that they do not interfere
+with each other.  If all threads are accessing the database(s) read-only,
+then locking is unnecessary.  When the DB_INIT_LOCK flag is specified, it
+is usually necessary to run the deadlock detector, as well.  See
+<a href="../../utility/db_deadlock.html">db_deadlock</a> and <a href="../../api_c/DbLockTab/detect.html">lock_detect</a> for more information.
+<a name="DB_INIT_LOG">
+<p><dt>DB_INIT_LOG<dd>Initialize the log subsystem; see
+<a href="../../api_c/DbLog/open.html">log_open</a>.
+This subsystem is used when recovery from application or system failure
+is necessary.]
+<a name="DB_INIT_MPOOL">
+<p><dt>DB_INIT_MPOOL<dd>Initialize the mpool subsystem; see
+<a href="../../api_c/DbMpool/open.html">memp_open</a>.
+This subsystem is used whenever the application is using the Berkeley DB access
+methods for any purpose.]
+<a name="DB_INIT_TXN">
+<p><dt>DB_INIT_TXN<dd>Initialize the transaction subsystem; see
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>.
+This subsystem is used when atomicity of multiple operations and recovery
+are important.  The DB_INIT_TXN flag implies the DB_INIT_LOG flag.
+<a name="DB_MPOOL_PRIVATE">
+<p><dt>DB_MPOOL_PRIVATE<dd>Create a private memory pool; see
+<a href="../../api_c/DbMpool/open.html">memp_open</a>.
+Ignored unless DB_INIT_MPOOL is also specified.
+<a name="DB_NOMMAP">
+<p><dt>DB_NOMMAP<dd>Do not memory map database files within this environment; see
+<a href="../../api_c/DbMpool/open.html">memp_open</a>.
+Ignored unless DB_INIT_MPOOL is also specified.
+<a name="DB_RECOVER">
+<p><dt>DB_RECOVER<dd>Run normal recovery on this environment before opening it for normal use.
+If this flag is set, the DB_CREATE flag must also be set since the regions
+will be removed and recreated.
+<p>
+The db_appinit function returns successfully if DB_RECOVER is
+specified and no log files exist, so it is necessary to ensure all
+necessary log files are present before running recovery.
+For further information, consult <a href="../../utility/db_archive.html">db_archive</a> and <a href="../../utility/db_recover.html">db_recover</a>.
+<a name="DB_RECOVER_FATAL">
+<p><dt>DB_RECOVER_FATAL<dd>Run catastrophic recovery on this environment before opening it for
+normal use.  If this flag is set, the DB_CREATE flag must also be set
+since the regions will be removed and recreated.
+<p>
+The db_appinit function returns successfully if DB_RECOVER_FATAL
+is specified and no log files exist, so it is necessary to ensure all
+necessary log files are present before running recovery.  For further
+information, consult <a href="../../utility/db_archive.html">db_archive</a> and <a href="../../utility/db_recover.html">db_recover</a>.
+<a name="DB_THREAD">
+<p><dt>DB_THREAD<dd>Ensure that handles returned by the Berkeley DB subsystems are useable by multiple
+threads within a single process, i.e., that the system is
+<i>free-threaded</i>.
+<a name="DB_TXN_NOSYNC">
+<p><dt>DB_TXN_NOSYNC<dd>On transaction commit, do not synchronously flush the log; see
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>.
+Ignored unless DB_INIT_TXN is also specified.
+<a name="DB_USE_ENVIRON">
+<p><dt>DB_USE_ENVIRON<dd>The Berkeley DB process' environment may be permitted to specify information to
+be used when naming files; see <a href="../../ref/env/naming.html">Berkeley DB
+File Naming</a>.  As permitting users to specify which files are used can
+create security problems, environment information will be used in file
+naming for all users only if the DB_USE_ENVIRON flag is set.
+<a name="DB_USE_ENVIRON_ROOT">
+<p><dt>DB_USE_ENVIRON_ROOT<dd>The Berkeley DB process' environment may be permitted to specify information
+to be used when naming files; see <a href="../../ref/env/naming.html">Berkeley DB
+File Naming</a>.  As permitting users to specify which files are used can
+create security problems, if the DB_USE_ENVIRON_ROOT flag is set,
+environment information will be used for file naming only for users with
+a user-ID matching that of the superuser (specifically, users for whom
+the <b>getuid</b>(2) system call returns the user-ID 0).
+</dl>
+<p>
+The Berkeley DB environment is configured
+based on the <b>dbenv</b> argument to db_appinit which is a pointer to
+a structure of type DB_ENV.  Applications normally use the same DB_ENV
+structure (initialized by db_appinit) as an argument to all of
+the subsystems in the Berkeley DB package.
+<p>
+References to the DB_ENV structure are maintained by Berkeley DB, so it may not
+be discarded until the last close function, corresponding to an open
+function for which it was an argument, has returned.  To ensure
+compatibility with future releases of Berkeley DB, all fields of the DB_ENV
+structure that are not explicitly set should be initialized to 0 before
+the first time the structure is used.  Do this by declaring the structure
+external or static, or by calling one of the C library routines
+<b>bzero</b>(3) or <b>memset</b>(3).
+<p>
+The fields of the DB_ENV structure used by db_appinit are described below.
+The <b>dbenv</b> argument may not be NULL.  If any of the fields of
+the <b>dbenv</b> structure are set to 0, defaults appropriate for the
+system are used where possible.
+<p>
+The following fields in the DB_ENV structure may be initialized before
+calling db_appinit:
+<dl compact>
+<a name="db_paniccall">
+<p><dt>void (*db_paniccall)(DB_ENV *dbenv, int errno);<dd>Errors can occur in the Berkeley DB library where the only solution is to shut
+down the application and run recovery.  (For example, if Berkeley DB is unable
+to write log records to disk because there is insufficient disk space.)
+In these cases, the value DB_RUNRECOVERY is returned by the function.  It
+is often simpler, however, to simply shut down the application when such
+errors occur instead of attempting to gracefully return error values up
+the stack.
+<p>
+If <b>db_paniccall</b> is non-NULL and such an error occurs, it will
+called.  The <b>dbenv</b> argument is a reference to the current
+environment, and the <b>errval</b> argument is the system errno value
+that was returned when the error occurred.
+<a name="db_errcall">
+<p><dt>void (*db_errcall)(char *db_errpfx, char *buffer);<dd>When an error occurs in the Berkeley DB library, an <b>errno</b> value is
+returned by the function.  In some cases, however, the <b>errno</b>
+value may be insufficient to completely describe the cause of the error
+especially during initial application debugging.
+<p>
+If <b>db_errcall</b> is non-NULL, it may be called with additional error
+information.  The <b>db_errpfx</b> argument is the current environment's
+<b>db_errpfx</b> field.  The <b>buffer</b> argument contains a
+nul-terminated string with the additional information.
+<p>
+This error logging facility does not slow performance or significantly
+increase application size, and may be run during normal operation as
+well as during debugging.
+<a name="db_errfile">
+except that the error message is written to the OutputStream
+represented by <b>error_stream</b>.
+allowing errors to be
+redirected to a C++ error stream.  It is unwise to use both error_stream
+with nonzero values of either errcall or errfile.
+<p><dt>FILE *db_errfile;<dd>The <b>db_errfile</b> field behaves similarly to the <b>db_errcall</b>
+field
+<a name="db_errpfx">
+<p><dt>const char *db_errpfx;<dd>A prefix to prepend to error messages.  Because Berkeley DB does not copy the
+memory referenced by the <b>db_errpfx</b> field, applications may modify
+the error message prefix at any time.
+<a name="db_verbose">
+<p><dt>int db_verbose;<dd>Include informational and debugging messages as well as error messages
+in the <b>db_errcall</b> and <b>db_errfile</b> output.
+</dl>
+<p>
+Each of the open functions that db_appinit may call
+(<a href="../../api_c/DbLockTab/open.html">lock_open</a>, <a href="../../api_c/DbLog/open.html">log_open</a>, <a href="../../api_c/DbMpool/open.html">memp_open</a> and
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>), is called as follows, where the DB_CREATE
+flag is optional:
+<p><ul><pre>XXX_open(NULL, DB_CREATE,
+    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, dbenv);</pre></ul><p>
+<p>
+This call will cause each subsystem to construct pathnames as described
+in <a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.  The subsystem
+has permission to read and write underlying files as necessary, and
+optionally to create files.  (All created files will be created readable
+and writeable by the owner and the group.  The group ownership of created
+files is based on the system and directory defaults, and is not further
+specified by Berkeley DB.)
+<p>
+In addition, the <b>dbenv</b> argument is passed to the open functions
+of any subsystems initialized by db_appinit.  For this reason the
+fields of the DB_ENV structure relevant to the subsystems being
+initialized must themselves be initialized before db_appinit is
+called.  See the appropriate subsystem documentation for a list of these
+fields and their uses.
+<p>
+The return value from each of these calls is placed in the appropriate
+field of the DB_ENV structure:
+<dl compact>
+<a name="lk_info">
+<dt>DB_LOCKTAB *lk_info;<dd>The return value of the <a href="../../api_c/DbLockTab/open.html">lock_open</a> call.
+<a name="lg_info">
+<dt>DB_LOG *lg_info;<dd>The return value of the <a href="../../api_c/DbLog/open.html">log_open</a> call.
+<a name="mp_info">
+<dt>DB_MPOOL *mp_info;<dd>The return value of the <a href="../../api_c/DbMpool/open.html">memp_open</a> call.
+<a name="tx_info">
+<dt>DB_TXNMGR *tx_info;<dd>The return value of the <a href="../../api_c/DbTxnMgr/open.html">txn_open</a> call.
+</dl>
+<p>
+In general, these fields are not directly used by applications; subsystems
+of Berkeley DB that use these fields simply reference them using the DB_ENV
+structure passed to the subsystem.
+<p>
+For example,
+an application using the Berkeley DB hash access method functions to access a
+database will first call <a href="../../api_c/Db/open.html">db_open</a> passing it the DB_ENV
+argument initialized by a call to db_appinit.  Then, all future
+calls to the hash access method functions for that database will
+automatically use the underlying shared memory buffer pool that was
+specified by the <b>mp_info</b> field of that DB_ENV structure.
+<p>
+The single exception to this rule is the <b>tx_info</b> field, which
+applications must explicitly specify to the <a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>,
+<a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a> and <a href="../../api_c/DbTxnMgr/close.html">txn_close</a> functions.
+<p>
+The <b>db_prefix</b> field of DB_ENV allows the user to configure
+the error message prefix, and may be changed at any time, including after
+the call to db_appinit.
+<p>
+Otherwise, once the Berkeley DB environment has been initialized by a call to
+db_appinit, no fields should be modified.
+<p>
+<h1>Architecture Notes</h1>
+Due to the constraints of the PA-RISC memory architecture, HP-UX does not
+allow a process to map a file into its address space multiple times.
+For this reason, each Berkeley DB environment may be opened only once by a
+process on HP-UX, i.e., calls to db_appinit will fail if the
+specified Berkeley DB environment has been opened and not subsequently closed.
+<p>
+On Windows/95, files that are opened by multiple processes do not share
+data correctly.  To cause Berkeley DB to use the paging file to share memory
+among processes, use the <a href="../../api_c/internal/db_value_set.html#DB_REGION_NAME">DB_REGION_NAME</a> flag of the
+<a href="../../api_c/internal/db_value_set.html">db_value_set</a> function.  Obviously, you do not need to do this if
+only a single process will be accessing database files.
+<p>
+The db_appinit
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the db_appinit function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The db_appinit
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Db/close.html">DB->close</a>,
+abort(3),
+ctime(3),
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+dbenv->tx_recover(3),
+fclose(3),
+fcntl(3),
+fflush(3),
+fgets(3),
+fopen(3),
+fprintf(3),
+free(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isspace(3),
+<a href="../../api_c/DbLockTab/open.html">lock_open</a>,
+<a href="../../api_c/DbLockTab/unlink.html">lock_unlink</a>,
+<a href="../../api_c/DbLog/compare.html">log_compare</a>,
+<a href="../../api_c/DbLog/get.html">log_get</a>,
+<a href="../../api_c/DbLog/open.html">log_open</a>,
+<a href="../../api_c/DbLog/unlink.html">log_unlink</a>,
+malloc(3),
+memcpy(3),
+<a href="../../api_c/DbMpool/open.html">memp_open</a>,
+<a href="../../api_c/DbMpool/unlink.html">memp_unlink</a>,
+memset(3),
+realloc(3),
+stat(3),
+strcat(3),
+strchr(3),
+strcmp(3),
+strcpy(3),
+strlen(3),
+time(3),
+<a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a>,
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>,
+<a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a>,
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the db_appinit
+function may fail and return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The DB_THREAD flag was specified and spinlocks are not implemented for
+this architecture.
+<p>
+The DB_HOME or TMPDIR environment variables were set but empty.
+<p>
+An incorrectly formatted <b>NAME VALUE</b> entry or line was found.
+</dl>
+<p>
+<dl compact>
+<p><dt>ENOSPC<dd>HP-UX only: a previously created Berkeley DB environment for this process still
+exists.
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+db_appinit,
+<a href="../../api_c/DbEnv/version.html">db_version</a>,
+<a href="../../api_c/Db/close.html">DB->close</a>,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/del.html">DB->del</a>,
+<a href="../../api_c/Db/fd.html">DB->fd</a>,
+<a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+<a href="../../api_c/Db/put.html">DB->put</a>,
+<a href="../../api_c/Db/stat.html">DB->stat</a>,
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+<a href="../../api_c/Dbc/close.html">DBcursor->c_close</a>,
+<a href="../../api_c/Dbc/del.html">DBcursor->c_del</a>,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>
+and
+<a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<! "@(#)class.so	10.7 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbTxnMgr</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbTxnMgr</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the specific details of the DbTxnMgr
+class.
+<p>
+The DbTxnMgr class is used in conjunction with <a href="../../api_java/DbTxn/class.html">DbTxn</a> to
+provide transaction semantics.
+Full transaction support is provided by a collection of modules that
+provide interfaces to the services required for transaction processing.
+These services are recovery (see <a href="../../api_java/DbLog/class.html">DbLog</a>),
+concurrency control (see <a href="../../api_java/DbLock/class.html">DbLock</a> and <a href="../../api_java/DbLockTab/class.html">DbLockTab</a>) and the
+management of shared data (see <a href="../../api_java/DbMpool/class.html">DbMpool</a> and <a href="../../api_java/DbMpoolFile/class.html">DbMpoolFile</a>).
+<p>
+Transaction semantics can be applied to the access methods described in
+<a href="../../api_java/Db/class.html">Db</a> through method call parameters.
+<p>
+The model intended for transactional use (and the one that is used by
+the access methods) is write-ahead logging provided by <a href="../../api_java/DbLog/class.html">DbLog</a>
+to record both before- and after-images.
+Locking follows a two-phase protocol, with all locks being released
+at transaction commit.
+<p>
+See the <a href="../../ref/toc.html#txn">Reference Guide</a> for
+more information.
+<p>
+<h1>Class</h1>
+DbTxnMgr
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbTxnMgr/begin.html">DbTxnMgr.begin</a>,
+<a href="../../api_java/DbTxnMgr/checkpoint.html">DbTxnMgr.checkpoint</a>,
+<a href="../../api_java/DbTxnMgr/close.html">DbTxnMgr.close</a>,
+<a href="../../api_java/DbTxnMgr/open.html">DbTxnMgr.open</a>,
+<a href="../../api_java/DbTxnMgr/stat.html">DbTxnMgr.stat</a>
+and
+<a href="../../api_java/DbTxnMgr/unlink.html">DbTxnMgr.unlink</a>.
+</tt>
+</body>
+</html>

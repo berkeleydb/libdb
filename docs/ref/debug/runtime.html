@@ -1,0 +1,41 @@
+<! "@(#)runtime.so	10.1 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Debugging</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Debugging</h3>
+<p>
+<h1 align=center>Run-time Error Information</h1>
+<p>
+Normally, when an error occurs in the Berkeley DB library, an
+<b>errno</b> value is returned by the function.  In some cases,
+however, this value may be insufficient to completely describe the
+cause of the error, especially during initial application debugging.
+<p>
+There are four additional configuration options intended to provide
+applications with additional run-time error information.  They are
+<a href="../../api_c/DbEnv/appinit.html#db_errcall">db_errcall</a>, <a href="../../api_c/DbEnv/appinit.html#db_errfile">db_errfile</a>, <a href="../../api_c/DbEnv/appinit.html#db_errpfx">db_errpfx</a> and
+<a href="../../api_c/DbEnv/appinit.html#db_verbose">db_verbose</a>.
+<p>
+If these options are configured when the environment is first
+initialized by calling <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>, many Berkeley DB errors
+will result in additional information being written to a file
+or passed as an argument to an application function.
+<p>
+The Berkeley DB error reporting facility does not slow performance or
+significantly increase application size, and may be run during normal
+operation as well as during debugging.  Where possible, we recommend that
+these options always be configured and the output saved in the filesystem.
+We have found that that this often saves time when debugging installation
+or other system integration problems.
+<p>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+</tt>
+</body>
+</html>

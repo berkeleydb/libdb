@@ -1,0 +1,77 @@
+<! "@(#)db_recover.so	10.11 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: db_recover</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>db_recover</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+db_recover [<b>-cv</b>] [<b>-h home</b>]
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The db_recover utility must be run after an unexpected application,
+Berkeley DB, or system failure to restore the database to a consistent state.
+All committed transactions are guaranteed to appear after db_recover
+has run, and all uncommitted transactions will be completely undone.
+<p>
+The options are as follows:
+<dl compact>
+<p><dt><b>-c</b><dd>Failure was catastrophic.
+<p><dt><b>-h</b><dd>Specify a home directory for the database.
+<p><dt><b>-v</b><dd>Run in verbose mode.
+</dl>
+<p>
+In the case of catastrophic failure, an archival copy, or <i>snapshot</i>
+of all database files must be restored along with all of the log files written
+since the database file snapshot was made.
+(If disk space is a problem, log files may be referenced by symbolic links).
+For further information on creating a database snapshot, see
+<a href="../ref/transapp/archival.html">Archival Procedures</a>.
+For further information on performing recovery, see
+<a href="../ref/transapp/recovery.html">Recovery Procedures</a>.
+<p>
+If the failure was not catastrophic, the files present on the system at the
+time of failure are sufficient to perform recovery.
+<p>
+If log files are missing, db_recover will identify the missing
+log file(s) and fail, in which case the missing log files need to be
+restored and recovery performed again.
+<p>
+The db_recover utility attaches to one or more of the Berkeley DB shared memory
+regions.  In order to avoid region corruption, it should always be given
+the chance to detach and exit gracefully.  To cause db_recover to clean up
+after itself and exit, send it an interrupt signal (SIGINT).
+<p>
+The db_recover utility exits 0 on success, and >0 if an error occurs.
+<p>
+<h1>Environment Variables</h1>
+<p>
+<dl compact>
+<p><dt>DB_HOME<dd>
+If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in <a href="../api_c/DbEnv/appinit.html">db_appinit</a>.
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../utility/db_archive.html">db_archive</a>,
+<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
+<a href="../utility/db_deadlock.html">db_deadlock</a>,
+<a href="../utility/db_dump.html">db_dump</a>,
+<a href="../utility/db_load.html">db_load</a>,
+db_recover,
+and
+<a href="../utility/db_stat.html">db_stat</a>.
+</tt>
+</body>
+</html>

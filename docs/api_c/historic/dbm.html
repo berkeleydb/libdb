@@ -1,0 +1,359 @@
+<! "@(#)dbm.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: dbm/ndbm</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>dbm/ndbm</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#define DB_DBM_HSEARCH    1
+#include &lt;db.h&gt;
+<p>
+<p>
+typedef struct {
+	char *dptr;
+	int dsize;
+} datum;
+<hr size=1 noshade>
+<h1>Dbm Functions</h1>
+int
+dbminit(char *file);
+<p>
+int
+dbmclose();
+<p>
+datum
+fetch(datum key);
+<p>
+int
+store(datum key, datum content);
+<p>
+int
+delete(datum key);
+<p>
+datum
+firstkey(void);
+<p>
+datum
+nextkey(datum key);
+<hr size=1 noshade>
+<h1>Ndbm Functions</h1>
+DBM *
+dbm_open(char *file, int flags, int mode);
+<p>
+void
+dbm_close(DBM *db);
+<p>
+datum
+dbm_fetch(DBM *db, datum key);
+<p>
+int
+dbm_store(DBM *db, datum key, datum content, int flags);
+<p>
+int
+dbm_delete(DBM *db, datum key);
+<p>
+datum
+dbm_firstkey(DBM *db);
+<p>
+datum
+dbm_nextkey(DBM *db);
+<p>
+int
+dbm_error(DBM *db);
+<p>
+int
+dbm_clearerr(DBM *db);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The dbm interfaces to the Berkeley DB library are intended to provide
+high-performance implementations and source code compatibility for
+applications written to historic interfaces.
+They are not recommended for any other purpose.
+The historic dbm database format <b>is not supported</b>,
+and databases previously built using the real dbm libraries
+cannot be read by the Berkeley DB functions.
+<p>
+To compile dbm applications, replace the application's
+<b>#include</b> of the dbm or ndbm include file (e.g.,
+<b>#include &lt;dbm.h&gt;</b> or <b>#include &lt;ndbm.h&gt;</b>)
+with the following two lines:
+<p><ul><pre>
+#define DB_DBM_HSEARCH    1
+#include &lt;db.h&gt;
+</pre></ul><p>
+and recompile.
+If the application attempts to load against a dbm library (e.g.,
+<b>-ldbm</b>), remove the library from the load line.
+<p>
+<b>Key</b> and <b>content</b> arguments are objects described by the
+<b>datum</b> typedef.
+A <b>datum</b> specifies a string of <b>dsize</b> bytes pointed to by
+<b>dptr</b>.
+Arbitrary binary data, as well as normal text strings, is allowed.
+<h1>Dbm Functions</h1>
+Before a database can be accessed, it must be opened by <b>dbminit</b>.
+This will open and/or create the database <b>file</b>.db.
+If created, the database file is created read/write by owner only (as
+described in <b>chmod</b>(2) and modified by the process' umask value
+at the time of creation (see <b>umask</b>(2)).
+The group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.
+<p>
+A database may be closed, and any held resources released, by calling
+<b>dbmclose</b>.
+<p>
+Once open, the data stored under a key is accessed by <b>fetch</b>
+and data is placed under a key by <b>store</b>.
+A key (and its associated contents) is deleted by <b>delete</b>.
+A linear pass through all keys in a database may be made, in an
+(apparently) random order, by use of
+<b>firstkey</b> and <b>nextkey</b>.
+<b>Firstkey</b> will return the first key in the database.
+With any key <b>nextkey</b> will return the next key in the database.
+<p>
+The following code will traverse the data base:
+<p><ul><pre>
+for (key = firstkey();
+    key.dptr != NULL; key = nextkey(key)) {
+	...
+}
+</pre></ul><p>
+<h1>Ndbm Functions</h1>
+<p>
+Before a database can be accessed, it must be opened by <b>dbm_open</b>.
+This will open and/or create the database file <b>file.db</b> depending
+on the flags parameter (see <b>open</b>(2)).
+If created, the database file is created with mode <b>mode</b> (as
+described in <b>chmod</b>(2)) and modified by the process' umask
+value at the time of creation (see <b>umask</b>(2)).
+The group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.
+<p>
+Once open, the data stored under a key is accessed by <b>dbm_fetch</b>
+and data is placed under a key by <b>dbm_store</b>.
+The <b>flags</b> field can be either <b>DBM_INSERT</b> or
+<b>DBM_REPLACE</b>.
+<b>DBM_INSERT</b> will only insert new entries into the database and will
+not change an existing entry with the same key.
+<b>DBM_REPLACE</b> will replace an existing entry if it has the same key.
+A key (and its associated contents) is deleted by
+<b>dbm_delete</b>.
+A linear pass through all keys in a database may be made,
+in an (apparently) random order, by use of
+<b>dbm_firstkey</b> and <b>dbm_nextkey</b>.
+<b>Dbm_firstkey</b> will return the first key in the database.
+<b>Dbm_nextkey</b> will return the next key in the database.
+The following code will traverse the data base:
+<p><ul><pre>
+for (key = dbm_firstkey(db);
+    key.dptr != NULL; key = dbm_nextkey(db)) {
+	...
+}
+</pre></ul><p>
+<h1>Compatibility Notes</h1>
+<p>
+The historic dbm library created two underlying database files,
+traditionally named <b>file.dir</b> and <b>file.pag</b>.
+The Berkeley DB library creates a single database file named <b>file.db</b>.
+Applications that are aware of the underlying database file names may
+require additional source code modifications.
+<p>
+The historic <b>dbminit</b> interface required that the underlying
+<b>.dir</b> and <b>.pag</b> files already exist (empty databases
+were created by first manually creating zero-length <b>.dir</b> and
+<b>.pag</b> files).
+Applications that expect to create databases using this method
+may require additional source code modifications.
+<p>
+The historic <b>dbm_dirfno</b> and <b>dbm_pagfno</b> macros are
+supported, but will return identical file descriptors as there is
+only a single underlying file used by the Berkeley DB hashing access method.
+Applications using both file descriptors for locking may require
+additional source code modifications.
+<p>
+If applications using the dbm interface exits without first closing
+the database, it may lose updates because the Berkeley DB library buffers
+writes to underlying databases.
+Such applications will require additional source code modifications
+to work correctly with the Berkeley DB library.
+<h1>Dbm Diagnostics</h1>
+<p>
+The <b>dbminit</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>fetch</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+The <b>store</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>delete</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>firstkey</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+The <b>nextkey</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the dbminit function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+<p>
+The fetch
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/historic/dbm.html">dbm_fetch</a>,
+and
+fprintf(3).
+<p>
+The store
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/historic/dbm.html">dbm_store</a>,
+and
+fprintf(3).
+<p>
+The delete
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/historic/dbm.html">dbm_store</a>,
+and
+fprintf(3).
+<p>
+The firstkey
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/historic/dbm.html">dbm_firstkey</a>,
+and
+fprintf(3).
+<p>
+The nextkey
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/historic/dbm.html">dbm_nextkey</a>,
+and
+fprintf(3).
+<h1>Ndbm Diagnostics</h1>
+<p>
+<b>Dbm_error</b> returns non-zero when an error has occurred reading or
+writing the database.
+<p>
+<b>Dbm_clearerr</b> resets the error condition on the named database.
+<p>
+The <b>dbm_open</b> function returns NULL on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>dbm_fetch</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+The <b>dbm_store</b> function returns -1 on failure, setting <b>errno</b>,
+0 on success, and 1 if DBM_INSERT was set and the specified key already
+existed in the database.
+<p>
+The <b>dbm_delete</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>dbm_firstkey</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+The <b>dbm_nextkey</b> function sets the <b>dptr</b> field of the returned
+<b>datum</b> to NULL on failure, setting <b>errno</b>,
+and returns a non-NULL <b>dptr</b> on success.
+<p>
+The <b>dbm_error</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+The <b>dbm_clearerr</b> function returns -1 on failure, setting <b>errno</b>,
+and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the <a href="../../api_c/historic/dbm.html">dbm_open</a> function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_open</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Db/close.html">DB->close</a>,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+memset(3),
+strcat(3),
+strcpy(3),
+and
+strlen(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_close</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+dbc->dbp->close(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_fetch</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+dbc->dbp->get(3),
+and
+memset(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_store</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+dbc->dbp->put(3),
+and
+memset(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_delete</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+dbc->dbp->del(3),
+and
+memset(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_firstkey</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>,
+and
+memset(3).
+<p>
+The <a href="../../api_c/historic/dbm.html">dbm_nextkey</a>
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>,
+and
+memset(3).
+<p>
+</tt>
+</body>
+</html>

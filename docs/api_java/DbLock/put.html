@@ -1,0 +1,82 @@
+<! "@(#)put.so	10.6 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLock.put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLock.put</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public native void put(DbLockTab locktab)
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLock.put method releases a lock, previously obtained from
+the specified <a href="../../api_java/DbLockTab/class.html">DbLockTab</a> using <a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>.
+<p>
+If a process dies while holding locks, those locks remain held and are
+<b>never</b> released.  In this case, all processes should exit as
+quickly as possible, so that database recovery can be run.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLock.put method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLock.put
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+fsync(3),
+getpid(3),
+<a href="../../api_java/DbLockTab/detect.html">DbLockTab.detect</a>,
+lseek(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+shmat(3),
+shmdt(3),
+strerror(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbLock.put
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EACCES<dd>An attempt was made to release lock held by another locker.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLock/class.html">DbLock</a>
+<p>
+<h1>See Also</h1>
+DbLock.put
+</tt>
+</body>
+</html>

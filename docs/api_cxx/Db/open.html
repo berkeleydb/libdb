@@ -1,0 +1,261 @@
+<! "@(#)open.so	10.9 (Sleepycat) 10/4/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Db::open</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Db::open</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+static int
+Db::open(const char *fname, DBTYPE type, u_int32_t flags,
+	int mode, DbEnv *dbenv, DbInfo *dbinfo, Db **dbpp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The Db::open function opens the database represented by
+<b>file</b> for both reading and writing.
+Files never intended to be shared or preserved on disk may be created by
+setting the file parameter to NULL.
+<p>
+Note, while most of the access methods use <b>file</b> as the name of an
+underlying file on disk, this is not guaranteed.
+Also, calling Db::open is a reasonably expensive operation.
+(This is based on a model where the DBMS keeps a set of files open for a
+long time rather than opening and closing them on each query.)
+<p>
+The <b>type</b> argument is of type DBTYPE and must be set to one of DB_BTREE, DB_HASH,
+DB_RECNO or DB_UNKNOWN.
+If <b>type</b> is DB_UNKNOWN, the database must already exist
+and Db::open will then determine if it is of type DB_BTREE,
+DB_HASH or DB_RECNO.
+<p>
+The Btree access method is a sorted, balanced tree structure storing
+associated key/data pairs.
+Searches, insertions, and deletions in the btree will all complete in
+O (lg base N) where base is the average number of keys per page.
+Often, inserting ordered data into btrees results in pages that are
+half-full.
+This implementation has been modified to make ordered (or inverse ordered)
+insertion the best case, resulting in nearly perfect page space utilization.
+<p>
+Space freed by deleting key/data pairs from the database is never reclaimed
+from the filesystem, although it is reused where possible.
+This means that the btree storage structure is grow-only.
+If sufficiently many keys are deleted from a tree that shrinking the
+underlying database file is desirable, this can be accomplished by
+creating a new tree from a scan of the existing one.
+<p>
+The Hash access method is an extensible, dynamic hashing scheme.
+<p>
+The Recno access method provides support for fixed and variable length
+records, optionally backed by a flat text (byte stream) file.
+Both fixed and variable length records are accessed by their logical
+record number.
+<p>
+It is valid to create a record whose record number is more than one
+greater than the last record currently in the database.
+For example, the creation of record number 8, when records 6 and 7
+do not yet exist, is not an error.
+However, any attempt to retrieve such records (e.g., records 6 and 7)
+will return DB_KEYEMPTY.
+<p>
+Deleting a record will not, by default, renumber records following
+the deleted record (see the DB_RENUMBER flag for more information).
+Any attempt to retrieve deleted records will return DB_KEYEMPTY.
+<p>
+The <b>flags</b> and <b>mode</b> arguments specify how files will be opened
+and/or created if they do not already exist.
+The flags value is specified by logically <b>OR</b>'ing together one or more of the
+following values:
+<dl compact>
+<a name="DB_CREATE">
+<p><dt>DB_CREATE<dd>Create any underlying files, as necessary.  If the files do not already
+exist and the DB_CREATE flag is not specified, the call will fail.
+<a name="DB_NOMMAP">
+<p><dt>DB_NOMMAP<dd>Do not map this file (see <a href="../../api_cxx/DbMpool/open.html">DbMpool::open</a> for further information).
+<a name="DB_RDONLY">
+<p><dt>DB_RDONLY<dd>Open the database for reading only.
+Any attempt to modify items in the database will fail regardless of the
+actual permissions of any underlying files.
+<a name="DB_THREAD">
+<p><dt>DB_THREAD<dd>Cause the m4_reg(Db) handle returned by Db::open to be useable
+by multiple threads within a single address space, i.e., to be
+<i>free-threaded</i>.
+<a name="DB_TRUNCATE">
+<p><dt>DB_TRUNCATE<dd>Logically truncate the database if it exists, i.e., behave as if the
+database were just created, discarding any previous contents.
+</dl>
+<p>
+All files created by the access methods are created with mode <b>mode</b> (as described
+in <b>chmod</b>(2)) and modified by the process' umask value at the time
+of creation (see <b>umask</b>(2)))).
+The group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.
+<p>
+When sharing a database environment with other processes, it is necessary
+to provide the access methods with database environment information.
+See <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> for a description of the <b>dbenv</b> argument.
+<p>
+Additionally, there is access method specific information that may be
+specified when calling Db::open.
+See <a href="../../api_cxx/DbInfo/class.html">DbInfo</a> for a description of the <b>db_info</b> argument.
+<p>
+The Db::open method
+copies a pointer to a <a href="../../api_cxx/Db/class.html">Db</a> object into the memory location referenced
+by <b>dbpp</b>.
+The methods of this object allow you to perform various database actions.
+The methods are described in the following manual pages:
+<a href="../../api_cxx/Db/close.html">Db::close</a>,
+<a href="../../api_cxx/Db/cursor.html">Db::cursor</a>,
+<a href="../../api_cxx/Db/del.html">Db::del</a>,
+<a href="../../api_cxx/Db/fd.html">Db::fd</a>,
+<a href="../../api_cxx/Db/get.html">Db::get</a>,
+<a href="../../api_cxx/Db/get_type.html">Db::get_type</a>,
+<a href="../../api_cxx/Db/put.html">Db::put</a>
+and
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>.
+<h1>Environment Variables</h1>
+<p>
+<dl compact>
+<p><dt>DB_HOME<dd>
+If the <b>dbenv</b> argument to Db::open was initialized using
+<a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a> the environment variable <b>DB_HOME</b> may
+be used as the path of the database home for the interpretation of
+the <b>dir</b>.  Specifically, Db::open is affected by the
+configuration string value of DB_DATA_DIR.
+</dl>
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Db::open method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The Db::open
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_cxx/Db/cursor.html">Db::cursor</a>,
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>,
+DBcursor->c_close(3),
+DBmemp->pgin(3),
+DBmemp->pgout(3),
+__account_page(3),
+abort(3),
+close(3),
+dbenv->db_paniccall(3),
+dbp->h_hash(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fstat(3),
+fsync(3),
+func(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+<a href="../../api_cxx/DbLockTab/get.html">DbLockTab::get</a>,
+<a href="../../api_cxx/DbLockTab/id.html">DbLockTab::id</a>,
+<a href="../../api_cxx/DbLock/put.html">DbLock::put</a>,
+<a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a>,
+<a href="../../api_cxx/DbLog/compare.html">DbLog::compare</a>,
+<a href="../../api_cxx/DbLog/flush.html">DbLog::flush</a>,
+<a href="../../api_cxx/DbLog/put.html">DbLog::put</a>,
+<a href="../../api_cxx/DbLog/db_register.html">DbLog::db_register</a>,
+<a href="../../api_cxx/DbLog/db_unregister.html">DbLog::db_unregister</a>,
+lseek(3),
+malloc(3),
+memcmp(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_cxx/DbMpool/close.html">DbMpool::close</a>,
+<a href="../../api_cxx/DbMpoolFile/close.html">DbMpoolFile::close</a>,
+<a href="../../api_cxx/DbMpoolFile/get.html">DbMpoolFile::get</a>,
+<a href="../../api_cxx/DbMpoolFile/open.html">DbMpoolFile::open</a>,
+<a href="../../api_cxx/DbMpoolFile/put.html">DbMpoolFile::put</a>,
+<a href="../../api_cxx/DbMpoolFile/set.html">DbMpoolFile::set</a>,
+<a href="../../api_cxx/DbMpoolFile/sync.html">DbMpoolFile::sync</a>,
+<a href="../../api_cxx/DbMpool/open.html">DbMpool::open</a>,
+<a href="../../api_cxx/DbMpool/db_register.html">DbMpool::db_register</a>,
+memset(3),
+mmap(3),
+munmap(3),
+open(3),
+pread(3),
+pstat_getdynamic(3),
+pwrite(3),
+read(3),
+realloc(3),
+sigfillset(3),
+sigprocmask(3),
+stat(3),
+strerror(3),
+strlen(3),
+sysconf(3),
+time(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the Db::open
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EAGAIN<dd>A lock was unavailable.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified (e.g., unknown database
+type, page size, hash function, recno pad byte, byte order) or a flag value
+or parameter that is incompatible with the current <b>file</b> specification.
+<p>
+The DB_THREAD flag was specified and spinlocks are not implemented for
+this architecture.
+<p>
+There is a mismatch between the version number of <b>file</b> and the
+software.
+<p>
+A <b>re_source</b> file was specified with either the DB_THREAD flag or a
+non-NULL <b>tx_info</b> field in the DB_ENV argument to Db::open.
+<p><dt>ENOENT<dd>A non-existent <b>re_source</b> file was specified.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/Db/class.html">Db</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/Db/close.html">Db::close</a>,
+<a href="../../api_cxx/Db/cursor.html">Db::cursor</a>,
+<a href="../../api_cxx/Db/del.html">Db::del</a>,
+<a href="../../api_cxx/Db/fd.html">Db::fd</a>,
+<a href="../../api_cxx/Db/get.html">Db::get</a>,
+<a href="../../api_cxx/Db/get_byteswapped.html">Db::get_byteswapped</a>,
+<a href="../../api_cxx/Db/get_type.html">Db::get_type</a>,
+<a href="../../api_cxx/Db/join.html">Db::join</a>,
+Db::open,
+<a href="../../api_cxx/Db/put.html">Db::put</a>,
+<a href="../../api_cxx/Db/stat.html">Db::stat</a>
+and
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>.
+</tt>
+</body>
+</html>

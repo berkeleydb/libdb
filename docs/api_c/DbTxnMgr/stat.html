@@ -1,0 +1,103 @@
+<! "@(#)stat.so	10.10 (Sleepycat) 10/26/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: txn_stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>txn_stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+txn_stat(DB_TXNMGR *txnp,
+    DB_TXN_STAT **statp, void *(*db_malloc)(size_t));
+</pre>
+</h3>
+<h1>Description</h1>
+method creates a statistical structure and copies pointers to it into
+user-specified memory locations.
+<p>
+Statistical structure are created in allocated memory.
+If
+<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
+otherwise, the library function <b>malloc</b>(3)) is used.
+The function <b>db_malloc</b> must match the calling conventions of
+the <b>malloc</b>(3)) library routine.
+Regardless, the caller is responsible for deallocating the returned
+memory.
+To deallocate the returned memory, free each returned memory pointer;
+pointers inside the memory do not need to be individually freed.
+<p>
+The transaction region statistics are stored in a structure of type
+DB_TXN_STAT.  The following DB_TXN_STAT fields will be filled in:
+<dl compact>
+<p><dt>u_int32_t st_refcnt;<dd>The number of references to the region.
+<dt>u_int32_t st_regsize;<dd>The size of the region.
+<dt>DB_LSN st_last_ckp;<dd>The LSN of the last checkpoint.
+<dt>DB_LSN st_pending_ckp;<dd>The LSN of any checkpoint that is currently in progress.  If
+<b>st_pending_ckp</b> is the same as <b>st_last_ckp</b> there
+is no checkpoint in progress.
+<dt>time_t st_time_ckp;<dd>The time the last completed checkpoint finished (as returned by
+<b>time</b>(2)).
+<dt>u_int32_t st_last_txnid;<dd>The last transaction ID allocated.
+<dt>u_int32_t st_maxtxns;<dd>The maximum number of active transactions supported by the region.
+<dt>u_int32_t st_naborts;<dd>The number of transactions that have aborted.
+<dt>u_int32_t st_nactive;<dd>The number of transactions that are currently active.
+<dt>u_int32_t st_nbegins;<dd>The number of transactions that have begun.
+<dt>u_int32_t st_ncommits;<dd>The number of transactions that have committed.
+<dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
+obtaining the region lock.
+<dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
+the region lock without waiting.
+<dt>DB_TXN_ACTIVE * st_txnarray;<dd>A pointer to an array of <b>st_nactive</b> DB_TXN_ACTIVE structures,
+describing the currently active transactions.  The following fields of
+the DB_TXN_ACTIVE structure will be filled in:
+<dl compact>
+<p><dt>u_int32_t txnid;<dd>The transaction ID as returned by <a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>.
+<dt>DB_LSN lsn;<dd>The log sequence number of the transaction-begin record.
+</dl>
+</dl>
+<p>
+The txn_stat
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the txn_stat function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The txn_stat
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fprintf(3),
+getpid(3),
+malloc(3),
+and
+memset(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbTxn/abort.html">txn_abort</a>,
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>,
+<a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a>,
+<a href="../../api_c/DbTxnMgr/close.html">txn_close</a>,
+<a href="../../api_c/DbTxn/commit.html">txn_commit</a>,
+<a href="../../api_c/DbTxn/id.html">txn_id</a>,
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>,
+<a href="../../api_c/DbTxn/prepare.html">txn_prepare</a>,
+txn_stat
+and
+<a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a>.
+</tt>
+</body>
+</html>

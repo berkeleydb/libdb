@@ -1,0 +1,58 @@
+<! "@(#)set_tx_max.so	10.7 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbEnv.set_tx_max</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbEnv.set_tx_max</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void set_tx_max(int tx_max);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+Set the maximum number of simultaneous transactions that are supported.
+This bounds the size of backing files and is used to derive limits for
+the size of the lock region and logfiles.
+When there are more than the specified number of concurrent transactions,
+calls to <a href="../../api_java/DbTxnMgr/begin.html">DbTxnMgr.begin</a> may cause backing files to grow.
+If no value is specified, a default value is used.
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbEnv/class.html">DbEnv</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a>,
+<a href="../../api_java/DbEnv/appexit.html">DbEnv.appexit</a>,
+<a href="../../api_java/DbEnv/version.html">DbEnv.version</a>,
+<a href="../../api_java/DbEnv/get_lg_info.html">DbEnv.get_lg_info</a>,
+<a href="../../api_java/DbEnv/get_lk_info.html">DbEnv.get_lk_info</a>,
+<a href="../../api_java/DbEnv/get_mp_info.html">DbEnv.get_mp_info</a>,
+<a href="../../api_java/DbEnv/get_tx_info.html">DbEnv.get_tx_info</a>,
+dbenv_set_data_dir,
+<a href="../../api_java/DbEnv/set_errcall.html">DbEnv.set_errcall</a>,
+<a href="../../api_java/DbEnv/set_error_stream.html">DbEnv.set_error_stream</a>,
+<a href="../../api_java/DbEnv/set_errpfx.html">DbEnv.set_errpfx</a>,
+<a href="../../api_java/DbEnv/set_lg_max.html">DbEnv.set_lg_max</a>,
+<a href="../../api_java/DbEnv/set_lk_conflicts.html">DbEnv.set_lk_conflicts</a>,
+<a href="../../api_java/DbEnv/set_lk_detect.html">DbEnv.set_lk_detect</a>,
+<a href="../../api_java/DbEnv/set_lk_modes.html">DbEnv.set_lk_modes</a>,
+<a href="../../api_java/DbEnv/set_lorder.html">DbEnv.set_lorder</a>,
+<a href="../../api_java/DbEnv/set_mp_mmapsize.html">DbEnv.set_mp_mmapsize</a>,
+<a href="../../api_java/DbEnv/set_mp_size.html">DbEnv.set_mp_size</a>,
+DbEnv.set_tx_max,
+and
+<a href="../../api_java/DbEnv/set_verbose.html">DbEnv.set_verbose</a>.
+</tt>
+</body>
+</html>

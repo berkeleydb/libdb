@@ -1,4 +1,14 @@
 /*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996, 1997, 1998
+ *	Sleepycat Software.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994
+ *	Margo Seltzer.  All rights reserved.
+ */
+/*
  * Copyright (c) 1990, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -34,1016 +44,1293 @@
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash.c	8.12 (Berkeley) 11/7/95";
-#endif /* LIBC_SCCS and not lint */
+#include "config.h"
 
-#include <sys/param.h>
-#include <sys/stat.h>
+#ifndef lint
+static const char sccsid[] = "@(#)hash.c	10.63 (Sleepycat) 12/11/98";
+#endif /* not lint */
+
+#ifndef NO_SYSTEM_INCLUDES
+#include <sys/types.h>
 
 #include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#ifdef DEBUG
-#include <assert.h>
 #endif
 
-#include <db.h>
+#include "db_int.h"
+#include "shqueue.h"
+#include "db_page.h"
+#include "db_am.h"
+#include "db_ext.h"
 #include "hash.h"
-#include "page.h"
-#include "extern.h"
+#include "btree.h"
+#include "log.h"
+#include "db_shash.h"
+#include "lock.h"
+#include "lock_ext.h"
 
-static int32_t flush_meta __P((HTAB *));
-static int32_t hash_access __P((HTAB *, ACTION, DBT *, DBT *));
-static int32_t hash_close __P((DB *));
-static int32_t hash_delete __P((const DB *, const DBT *, u_int32_t));
-static int32_t hash_fd __P((const DB *));
-static int32_t hash_get __P((const DB *, const DBT *, DBT *, u_int32_t));
-static int32_t hash_put __P((const DB *, DBT *, const DBT *, u_int32_t));
-static int32_t hash_seq __P((const DB *, DBT *, DBT *, u_int32_t));
-static int32_t hash_sync __P((const DB *, u_int32_t));
-static int32_t hdestroy __P((HTAB *));
-static int32_t cursor_get __P((const DB *, CURSOR *, DBT *, DBT *, \
-	u_int32_t));
-static int32_t cursor_delete __P((const DB *, CURSOR *, u_int32_t));
-static HTAB *init_hash __P((HTAB *, const char *, HASHINFO *));
-static int32_t init_htab __P((HTAB *, int32_t));
-#if BYTE_ORDER == LITTLE_ENDIAN
-static void swap_header __P((HTAB *));
-static void swap_header_copy __P((HASHHDR *, HASHHDR *));
-#endif
-static u_int32_t hget_header __P((HTAB *, u_int32_t));
-static void hput_header __P((HTAB *));
-
-#define RETURN_ERROR(ERR, LOC)	{ save_errno = ERR; goto LOC; }
-
-/* Return values */
-#define	SUCCESS	 (0)
-#define	ERROR	(-1)
-#define	ABNORMAL (1)
-
-#ifdef HASH_STATISTICS
-u_int32_t hash_accesses, hash_collisions, hash_expansions, hash_overflows,
-	hash_bigpages;
-#endif
+static int  __ham_c_close __P((DBC *));
+static int  __ham_c_del __P((DBC *, u_int32_t));
+static int  __ham_c_destroy __P((DBC *));
+static int  __ham_c_get __P((DBC *, DBT *, DBT *, u_int32_t));
+static int  __ham_c_put __P((DBC *, DBT *, DBT *, u_int32_t));
+static int  __ham_delete __P((DB *, DB_TXN *, DBT *, u_int32_t));
+static int  __ham_dup_return __P((DBC *, DBT *, u_int32_t));
+static int  __ham_expand_table __P((DBC *));
+static void __ham_init_htab __P((DBC *, u_int32_t, u_int32_t));
+static int  __ham_lookup __P((DBC *, const DBT *, u_int32_t, db_lockmode_t));
+static int  __ham_overwrite __P((DBC *, DBT *));
 
 /************************** INTERFACE ROUTINES ***************************/
 /* OPEN/CLOSE */
 
-extern DB *
-__hash_open(file, flags, mode, info, dflags)
-	const char *file;
-	int32_t flags, mode, dflags;
-	const HASHINFO *info;	/* Special directives for create */
-{
-	struct stat statbuf;
+/*
+ * __ham_open --
+ *
+ * PUBLIC: int __ham_open __P((DB *, DB_INFO *));
+ */
+int
+__ham_open(dbp, dbinfo)
 	DB *dbp;
-	DBT mpool_key;
-	HTAB *hashp;
-	int32_t bpages, csize, new_table, save_errno, specified_file;
+	DB_INFO *dbinfo;
+{
+	DB_ENV *dbenv;
+	DBC *dbc;
+	HASH_CURSOR *hcp;
+	int file_existed, ret;
 
-	if ((flags & O_ACCMODE) == O_WRONLY) {
-		errno = EINVAL;
-		return (NULL);
-	}
-	if (!(hashp = (HTAB *)calloc(1, sizeof(HTAB))))
-		return (NULL);
-	hashp->fp = -1;
+	dbc = NULL;
+	dbenv = dbp->dbenv;
 
-	/* set this now, before file goes away... */
-	specified_file = (file != NULL);
-	if (!file) {
-		file = tmpnam(NULL);
-		/* store the file name so that we can unlink it later */
-		hashp->fname = (char *)file;
-#ifdef DEBUG
-		fprintf(stderr, "Using file name %s.\n", file);
-#endif
-	}
+	/* Set the hash function if specified by the user. */
+	if (dbinfo != NULL && dbinfo->h_hash != NULL)
+		dbp->h_hash = dbinfo->h_hash;
+
 	/*
-	 * Even if user wants write only, we need to be able to read
-	 * the actual file, so we need to open it read/write. But, the
-	 * field in the hashp structure needs to be accurate so that
-	 * we can check accesses.
+	 * Initialize the remaining fields of the dbp.  The only function
+	 * that differs from the default set is __ham_stat().
 	 */
-	hashp->flags = flags;
-	hashp->save_file = specified_file && (hashp->flags & O_RDWR);
+	dbp->internal = NULL;
+	dbp->am_close = __ham_close;
+	dbp->del = __ham_delete;
+	dbp->stat = __ham_stat;
 
-	new_table = 0;
-	if (!file || (flags & O_TRUNC) ||
-	    (stat(file, &statbuf) && (errno == ENOENT))) {
-		if (errno == ENOENT)
-			errno = 0;	/* In case someone looks at errno. */
-		new_table = 1;
-	}
-	if (file) {
-		if ((hashp->fp = open(file, flags, mode)) == -1)
-			RETURN_ERROR(errno, error0);
-		(void)fcntl(hashp->fp, F_SETFD, 1);
-	}
+	/* Get a cursor we can use for the rest of this function. */
+	if ((ret = dbp->cursor(dbp, NULL, &dbc, 0)) != 0)
+		goto out;
 
-	/* Process arguments to set up hash table header. */
-	if (new_table) {
-		if (!(hashp = init_hash(hashp, file, (HASHINFO *)info)))
-			RETURN_ERROR(errno, error1);
+	hcp = (HASH_CURSOR *)dbc->internal;
+	GET_META(dbp, hcp, ret);
+	if (ret != 0)
+		goto out;
+
+	/*
+	 * If this is a new file, initialize it, and put it back dirty.
+	 */
+
+	/* Initialize the hdr structure */
+	if (hcp->hdr->magic == DB_HASHMAGIC) {
+		file_existed = 1;
+		/* File exists, verify the data in the header. */
+		if (dbp->h_hash == NULL)
+			dbp->h_hash =
+			    hcp->hdr->version < 5 ? __ham_func4 : __ham_func5;
+		if (dbp->h_hash(CHARKEY, sizeof(CHARKEY)) !=
+		    hcp->hdr->h_charkey) {
+			__db_err(dbp->dbenv, "hash: incompatible hash function");
+			ret = EINVAL;
+			goto out;
+		}
+		if (F_ISSET(hcp->hdr, DB_HASH_DUP))
+			F_SET(dbp, DB_AM_DUP);
 	} else {
-		/* Table already exists */
-		if (info && info->hash)
-			hashp->hash = info->hash;
-		else
-			hashp->hash = __default_hash;
-
-		/* copy metadata from page into header */
-		if (hget_header(hashp,
-		    (info && info->bsize ? info->bsize : DEF_BUCKET_SIZE)) !=
-		    sizeof(HASHHDR))
-			RETURN_ERROR(EFTYPE, error1);
-
-		/* Verify file type, versions and hash function */
-		if (hashp->hdr.magic != HASHMAGIC)
-			RETURN_ERROR(EFTYPE, error1);
-#define	OLDHASHVERSION	1
-		if (hashp->hdr.version != HASHVERSION &&
-		    hashp->hdr.version != OLDHASHVERSION)
-			RETURN_ERROR(EFTYPE, error1);
-		if (hashp->hash(CHARKEY, sizeof(CHARKEY))
-		    != hashp->hdr.h_charkey)
-			RETURN_ERROR(EFTYPE, error1);
 		/*
-		 * Figure out how many segments we need.  Max_Bucket is the
-		 * maximum bucket number, so the number of buckets is
-		 * max_bucket + 1.
+		 * File does not exist, we must initialize the header.  If
+		 * locking is enabled that means getting a write lock first.
 		 */
+		file_existed = 0;
+		if (F_ISSET(dbp, DB_AM_LOCKING) &&
+		    ((ret = lock_put(dbenv->lk_info, hcp->hlock)) != 0 ||
+		    (ret = lock_get(dbenv->lk_info, dbc->locker, 0,
+		        &dbc->lock_dbt, DB_LOCK_WRITE, &hcp->hlock)) != 0)) {
+			if (ret < 0)
+				ret = EAGAIN;
+			goto out;
+		}
 
-		/* Read in bitmaps */
-		bpages = (hashp->hdr.spares[hashp->hdr.ovfl_point] +
-		    (hashp->hdr.bsize << BYTE_SHIFT) - 1) >>
-		    (hashp->hdr.bshift + BYTE_SHIFT);
-
-		hashp->nmaps = bpages;
-		(void)memset(&hashp->mapp[0], 0, bpages * sizeof(u_int32_t *));
+		__ham_init_htab(dbc, dbinfo != NULL ? dbinfo->h_nelem : 0,
+		    dbinfo != NULL ? dbinfo->h_ffactor : 0);
+		if (F_ISSET(dbp, DB_AM_DUP))
+			F_SET(hcp->hdr, DB_HASH_DUP);
+		if ((ret = __ham_dirty_page(dbp, (PAGE *)hcp->hdr)) != 0)
+			goto out;
 	}
 
-	/* start up mpool */
-	mpool_key.data = (u_int8_t *)file;
-	mpool_key.size = strlen(file);
+	/* Release the meta data page */
+	RELEASE_META(dbp, hcp);
+	if ((ret  = dbc->c_close(dbc)) != 0)
+		goto out;
 
-	if (info && info->cachesize)
-		csize = info->cachesize / hashp->hdr.bsize;
-	else
-		csize = DEF_CACHESIZE / hashp->hdr.bsize;
-	hashp->mp = mpool_open(&mpool_key, hashp->fp, hashp->hdr.bsize, csize);
+	/* Sync the file so that we know that the meta data goes to disk. */
+	if (!file_existed && (ret = dbp->sync(dbp, 0)) != 0)
+		goto out;
+	return (0);
 
-	if (!hashp->mp)
-		RETURN_ERROR(errno, error1);
-	mpool_filter(hashp->mp, __pgin_routine, __pgout_routine, hashp);
-
-	/*
-	 * For a new table, set up the bitmaps.
-	 */
-	if (new_table &&
-	   init_htab(hashp, info && info->nelem ? info->nelem : 1))
-		goto error2;
-
-	/* initialize the cursor queue */
-	TAILQ_INIT(&hashp->curs_queue);
-	hashp->seq_cursor = NULL;
-
-
-	/* get a chunk of memory for our split buffer */
-	hashp->split_buf = (PAGE16 *)malloc(hashp->hdr.bsize);
-	if (!hashp->split_buf)
-		goto error2;
-
-	hashp->new_file = new_table;
-
-	if (!(dbp = (DB *)malloc(sizeof(DB))))
-		goto error2;
-
-	dbp->internal = hashp;
-	dbp->close = hash_close;
-	dbp->del = hash_delete;
-	dbp->fd = hash_fd;
-	dbp->get = hash_get;
-	dbp->put = hash_put;
-	dbp->seq = hash_seq;
-	dbp->sync = hash_sync;
-	dbp->type = DB_HASH;
-
-#ifdef DEBUG
-	(void)fprintf(stderr,
-	    "%s\n%s%lx\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
-	    "init_htab:",
-	    "TABLE POINTER   ", (void *)hashp,
-	    "BUCKET SIZE     ", hashp->hdr.bsize,
-	    "BUCKET SHIFT    ", hashp->hdr.bshift,
-	    "FILL FACTOR     ", hashp->hdr.ffactor,
-	    "MAX BUCKET      ", hashp->hdr.max_bucket,
-	    "OVFL POINT      ", hashp->hdr.ovfl_point,
-	    "LAST FREED      ", hashp->hdr.last_freed,
-	    "HIGH MASK       ", hashp->hdr.high_mask,
-	    "LOW  MASK       ", hashp->hdr.low_mask,
-	    "NKEYS           ", hashp->hdr.nkeys);
-#endif
-#ifdef HASH_STATISTICS
-	hash_overflows = hash_accesses = hash_collisions = hash_expansions = 0;
-	hash_bigpages = 0;
-#endif
-	return (dbp);
-
-error2:
-	save_errno = errno;
-	hdestroy(hashp);
-	errno = save_errno;
-	return (NULL);
-
-error1:
-	if (hashp != NULL)
-		(void)close(hashp->fp);
-
-error0:
-	free(hashp);
-	errno = save_errno;
-	return (NULL);
+out:	(void)__ham_close(dbp);
+	return (ret);
 }
 
-static int32_t
-hash_close(dbp)
+/*
+ * PUBLIC: int __ham_close __P((DB *));
+ */
+int
+__ham_close(dbp)
 	DB *dbp;
 {
-	HTAB *hashp;
-	int32_t retval;
-
-	if (!dbp)
-		return (ERROR);
-
-	hashp = (HTAB *)dbp->internal;
-	retval = hdestroy(hashp);
-	free(dbp);
-	return (retval);
-}
-
-static int32_t
-hash_fd(dbp)
-	const DB *dbp;
-{
-	HTAB *hashp;
-
-	if (!dbp)
-		return (ERROR);
-
-	hashp = (HTAB *)dbp->internal;
-	if (hashp->fp == -1) {
-		errno = ENOENT;
-		return (-1);
-	}
-	return (hashp->fp);
+	COMPQUIET(dbp, NULL);
+	return (0);
 }
 
 /************************** LOCAL CREATION ROUTINES **********************/
-static HTAB *
-init_hash(hashp, file, info)
-	HTAB *hashp;
-	const char *file;
-	HASHINFO *info;
-{
-	struct stat statbuf;
-	int32_t nelem;
-
-	nelem = 1;
-	hashp->hdr.nkeys = 0;
-	hashp->hdr.lorder = BYTE_ORDER;
-	hashp->hdr.bsize = DEF_BUCKET_SIZE;
-	hashp->hdr.bshift = DEF_BUCKET_SHIFT;
-	hashp->hdr.ffactor = DEF_FFACTOR;
-	hashp->hash = __default_hash;
-	memset(hashp->hdr.spares, 0, sizeof(hashp->hdr.spares));
-	memset(hashp->hdr.bitmaps, 0, sizeof(hashp->hdr.bitmaps));
-
-	/* Fix bucket size to be optimal for file system */
-	if (file != NULL) {
-		if (stat(file, &statbuf))
-			return (NULL);
-		hashp->hdr.bsize = statbuf.st_blksize;
-		hashp->hdr.bshift = __log2(hashp->hdr.bsize);
-	}
-	if (info) {
-		if (info->bsize) {
-			/* Round pagesize up to power of 2 */
-			hashp->hdr.bshift = __log2(info->bsize);
-			hashp->hdr.bsize = 1 << hashp->hdr.bshift;
-			if (hashp->hdr.bsize > MAX_BSIZE) {
-				errno = EINVAL;
-				return (NULL);
-			}
-		}
-		if (info->ffactor)
-			hashp->hdr.ffactor = info->ffactor;
-		if (info->hash)
-			hashp->hash = info->hash;
-		if (info->lorder) {
-			if ((info->lorder != BIG_ENDIAN) &&
-			    (info->lorder != LITTLE_ENDIAN)) {
-				errno = EINVAL;
-				return (NULL);
-			}
-			hashp->hdr.lorder = info->lorder;
-		}
-	}
-	return (hashp);
-}
-
 /*
  * Returns 0 on No Error
  */
-static int32_t
-init_htab(hashp, nelem)
-	HTAB *hashp;
-	int32_t nelem;
+static void
+__ham_init_htab(dbc, nelem, ffactor)
+	DBC *dbc;
+	u_int32_t nelem, ffactor;
 {
+	DB *dbp;
+	HASH_CURSOR *hcp;
 	int32_t l2, nbuckets;
-	pgno_t i;
 
-	/*
-	 * Divide number of elements by the fill factor and determine a
-	 * desired number of buckets.  Allocate space for the next greater
-	 * power of two number of buckets.
-	 */
-	nelem = (nelem - 1) / hashp->hdr.ffactor + 1;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	dbp = dbc->dbp;
+	memset(hcp->hdr, 0, sizeof(HASHHDR));
+	hcp->hdr->ffactor = ffactor;
+	hcp->hdr->pagesize = dbp->pgsize;
+	ZERO_LSN(hcp->hdr->lsn);
+	hcp->hdr->magic = DB_HASHMAGIC;
+	hcp->hdr->version = DB_HASHVERSION;
 
-	l2 = __log2(MAX(nelem, 2));
+	if (dbp->h_hash == NULL)
+		dbp->h_hash = hcp->hdr->version < 5 ? __ham_func4 : __ham_func5;
+	hcp->hdr->h_charkey = dbp->h_hash(CHARKEY, sizeof(CHARKEY));
+	if (nelem != 0 && hcp->hdr->ffactor != 0) {
+		nelem = (nelem - 1) / hcp->hdr->ffactor + 1;
+		l2 = __db_log2(nelem > 2 ? nelem : 2);
+	} else
+		l2 = 2;
+
 	nbuckets = 1 << l2;
 
-	hashp->hdr.spares[l2] = l2 + 1;
-	hashp->hdr.spares[l2 + 1] = l2 + 1;
-	hashp->hdr.ovfl_point = l2;
-	hashp->hdr.last_freed = 2;
+	hcp->hdr->ovfl_point = l2;
+	hcp->hdr->last_freed = PGNO_INVALID;
 
-	hashp->hdr.max_bucket = hashp->hdr.low_mask = nbuckets - 1;
-	hashp->hdr.high_mask = (nbuckets << 1) - 1;
-
-	/*
-	 * The number of header pages is the size of the header divided by
-	 * the amount of freespace on header pages (the page size - the
-	 * size of 1 integer where the length of the header info on that
-	 * page is stored) plus another page if it didn't divide evenly.
-	 */
-	hashp->hdr.hdrpages =
-	    (sizeof(HASHHDR) / (hashp->hdr.bsize - HEADER_OVERHEAD)) +
-	    (((sizeof(HASHHDR) % (hashp->hdr.bsize - HEADER_OVERHEAD)) == 0)
-	    ? 0 : 1);
-
-	/* Create pages for these buckets */
-	/*
-	for (i = 0; i <= hashp->hdr.max_bucket; i++) {
-		if (__new_page(hashp, (u_int32_t)i, A_BUCKET) != 0)
-			return (-1);
-	}
-	*/
-
-	/* First bitmap page is at: splitpoint l2 page offset 1 */
-	if (__ibitmap(hashp, OADDR_OF(l2, 1), l2 + 1, 0))
-		return (-1);
-
-	return (0);
+	hcp->hdr->max_bucket = hcp->hdr->high_mask = nbuckets - 1;
+	hcp->hdr->low_mask = (nbuckets >> 1) - 1;
+	memcpy(hcp->hdr->uid, dbp->fileid, DB_FILE_ID_LEN);
 }
 
-/*
- * Functions to get/put hash header.  We access the file directly.
- */
-u_int32_t
-hget_header(hashp, page_size)
-	HTAB *hashp;
-	u_int32_t page_size;
-{
-	u_int32_t num_copied, i;
-	u_int8_t *hdr_dest;
-
-	num_copied = 0;
-	i = 0;
-
-	hdr_dest = (u_int8_t *)&hashp->hdr;
-
-	/* 
-	 * XXX
-	 * This should not be printing to stderr on a "normal" error case.
-	 */
-	lseek(hashp->fp, 0, SEEK_SET);
-	num_copied = read(hashp->fp, hdr_dest, sizeof(HASHHDR));
-	if (num_copied != sizeof(HASHHDR)) {
-		fprintf(stderr, "hash: could not retrieve header");
-		return (0);
-	}
-#if BYTE_ORDER == LITTLE_ENDIAN
-	swap_header(hashp);
-#endif
-	return (num_copied);
-}
-
-void
-hput_header(hashp)
-	HTAB *hashp;
-{
-	HASHHDR *whdrp;
-#if BYTE_ORDER == LITTLE_ENDIAN
-	HASHHDR whdr;
-#endif
-	u_int32_t num_copied, i;
-
-	num_copied = i = 0;
-
-	whdrp = &hashp->hdr;
-#if BYTE_ORDER == LITTLE_ENDIAN
-	whdrp = &whdr;
-	swap_header_copy(&hashp->hdr, whdrp);
-#endif
-
-	lseek(hashp->fp, 0, SEEK_SET);
-	num_copied = write(hashp->fp, whdrp, sizeof(HASHHDR));
-	if (num_copied != sizeof(HASHHDR))
-		(void)fprintf(stderr, "hash: could not write hash header");
-	return;
-}
-
-/********************** DESTROY/CLOSE ROUTINES ************************/
-
-/*
- * Flushes any changes to the file if necessary and destroys the hashp
- * structure, freeing all allocated space.
- */
-static int32_t
-hdestroy(hashp)
-	HTAB *hashp;
-{
-	int32_t save_errno;
-
-	save_errno = 0;
-
-#ifdef HASH_STATISTICS
-	{ int i;
-	(void)fprintf(stderr, "hdestroy: accesses %ld collisions %ld\n",
-	    hash_accesses, hash_collisions);
-	(void)fprintf(stderr,
-	    "hdestroy: expansions %ld\n", hash_expansions);
-	(void)fprintf(stderr,
-	    "hdestroy: overflows %ld\n", hash_overflows);
-	(void)fprintf(stderr,
-	    "hdestroy: big key/data pages %ld\n", hash_bigpages);
-	(void)fprintf(stderr,
-	    "keys %ld maxp %d\n", hashp->hdr.nkeys, hashp->hdr.max_bucket);
-
-	for (i = 0; i < NCACHED; i++)
-		(void)fprintf(stderr,
-		    "spares[%d] = %d\n", i, hashp->hdr.spares[i]);
-	}
-#endif
-
-	if (flush_meta(hashp) && !save_errno)
-		save_errno = errno;
-
-	/* Free the split page, big key buf and big data buf */
-	if (hashp->split_buf)
-		free(hashp->split_buf);
-	if (hashp->bigdata_buf)
-		free(hashp->bigdata_buf);
-	if (hashp->bigkey_buf)
-		free(hashp->bigkey_buf);
-
-	/* shut down mpool */
-	mpool_sync(hashp->mp);
-	mpool_close(hashp->mp);
-
-	if (hashp->fp != -1)
-		(void)close(hashp->fp);
-
-	/* 
-	 * *** This may cause problems if hashp->fname is set in any case
-	 * other than the case that we are generating a temporary file name.
-	 * Note that the new version of mpool should support temporary
-	 * files within mpool itself.
-	 */
-	if (hashp->fname && !hashp->save_file) {
-#ifdef DEBUG
-		fprintf(stderr, "Unlinking file %s.\n", hashp->fname);
-#endif
-		/* we need to chmod the file to allow it to be deleted... */
-		chmod(hashp->fname, 0700);
-		unlink(hashp->fname);
-		/* destroy the temporary name */
-		tmpnam(NULL);
-	}
-	free(hashp);
-
-	if (save_errno) {
-		errno = save_errno;
-		return (ERROR);
-	}
-	return (SUCCESS);
-}
-
-/*
- * Write modified pages to disk
- *
- * Returns:
- *	 0 == OK
- *	-1 ERROR
- */
-static int32_t
-hash_sync(dbp, flags)
-	const DB *dbp;
+static int
+__ham_delete(dbp, txn, key, flags)
+	DB *dbp;
+	DB_TXN *txn;
+	DBT *key;
 	u_int32_t flags;
 {
-	HTAB *hashp;
+	DBC *dbc;
+	HASH_CURSOR *hcp;
+	int ret, tret;
 
-	hashp = (HTAB *)dbp->internal;
+	DB_PANIC_CHECK(dbp);
 
-	/*
-	 * XXX
-	 * Check success/failure conditions.
-	 */
-	return (flush_meta(hashp) || mpool_sync(hashp->mp));
-}
+	if ((ret =
+	    __db_delchk(dbp, key, flags, F_ISSET(dbp, DB_AM_RDONLY))) != 0)
+		return (ret);
 
-/*
- * Returns:
- *	 0 == OK
- *	-1 indicates that errno should be set
- */
-static int32_t
-flush_meta(hashp)
-	HTAB *hashp;
-{
-	int32_t i;
+	if ((ret = dbp->cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
+		return (ret);
 
-	if (!hashp->save_file)
-		return (0);
-	hashp->hdr.magic = HASHMAGIC;
-	hashp->hdr.version = HASHVERSION;
-	hashp->hdr.h_charkey = hashp->hash(CHARKEY, sizeof(CHARKEY));
+	DEBUG_LWRITE(dbc, txn, "ham_delete", key, NULL, flags);
 
-	/* write out metadata */
-	hput_header(hashp);
+	hcp = (HASH_CURSOR *)dbc->internal;
+	GET_META(dbp, hcp, ret);
+	if (ret != 0)
+		goto out;
 
-	for (i = 0; i < NCACHED; i++)
-		if (hashp->mapp[i]) {
-			if (__put_page(hashp,
-			    (PAGE16 *)hashp->mapp[i], A_BITMAP, 1))
-				return (-1);
-			hashp->mapp[i] = NULL;
-		}
-	return (0);
-}
-
-/*******************************SEARCH ROUTINES *****************************/
-/*
- * All the access routines return
- *
- * Returns:
- *	 0 on SUCCESS
- *	 1 to indicate an external ERROR (i.e. key not found, etc)
- *	-1 to indicate an internal ERROR (i.e. out of memory, etc)
- */
-
-/* *** make sure this is true! */
-
-static int32_t
-hash_get(dbp, key, data, flag)
-	const DB *dbp;
-	const DBT *key;
-	DBT *data;
-	u_int32_t flag;
-{
-	HTAB *hashp;
-
-	hashp = (HTAB *)dbp->internal;
-	if (flag) {
-		hashp->errno = errno = EINVAL;
-		return (ERROR);
-	}
-	return (hash_access(hashp, HASH_GET, (DBT *)key, data));
-}
-
-static int32_t
-hash_put(dbp, key, data, flag)
-	const DB *dbp;
-	DBT *key;
-	const DBT *data;
-	u_int32_t flag;
-{
-	HTAB *hashp;
-
-	hashp = (HTAB *)dbp->internal;
-	if (flag && flag != R_NOOVERWRITE) {
-		hashp->errno = errno = EINVAL;
-		return (ERROR);
-	}
-	if ((hashp->flags & O_ACCMODE) == O_RDONLY) {
-		hashp->errno = errno = EPERM;
-		return (ERROR);
-	}
-	return (hash_access(hashp, flag == R_NOOVERWRITE ?
-		HASH_PUTNEW : HASH_PUT, (DBT *)key, (DBT *)data));
-}
-
-static int32_t
-hash_delete(dbp, key, flag)
-	const DB *dbp;
-	const DBT *key;
-	u_int32_t flag;		/* Ignored */
-{
-	HTAB *hashp;
-
-	hashp = (HTAB *)dbp->internal;
-	if (flag) {
-		hashp->errno = errno = EINVAL;
-		return (ERROR);
-	}
-	if ((hashp->flags & O_ACCMODE) == O_RDONLY) {
-		hashp->errno = errno = EPERM;
-		return (ERROR);
-	}
-
-	return (hash_access(hashp, HASH_DELETE, (DBT *)key, NULL));
-}
-
-/*
- * Assume that hashp has been set in wrapper routine.
- */
-static int32_t
-hash_access(hashp, action, key, val)
-	HTAB *hashp;
-	ACTION action;
-	DBT *key, *val;
-{
-	DBT page_key, page_val;
-	CURSOR cursor;
-	ITEM_INFO item_info;
-	u_int32_t bucket;
-	u_int32_t num_items;
-
-#ifdef HASH_STATISTICS
-	hash_accesses++;
-#endif
-
-	num_items = 0;
-
-	/* 
-	 * Set up item_info so that we're looking for space to add an item
-	 * as we cycle through the pages looking for the key.
-	 */
-	if (action == HASH_PUT || action == HASH_PUTNEW) {
-		if (ISBIG(key->size + val->size, hashp))
-			item_info.seek_size = PAIR_OVERHEAD;
+	hcp->stats.hash_deleted++;
+	if ((ret = __ham_lookup(dbc, key, 0, DB_LOCK_WRITE)) == 0)
+		if (F_ISSET(hcp, H_OK))
+			ret = __ham_del_pair(dbc, 1);
 		else
-			item_info.seek_size = key->size + val->size;
-	} else
-		item_info.seek_size = 0;
-	item_info.seek_found_page = 0;
+			ret = DB_NOTFOUND;
 
-	bucket = __call_hash(hashp, (int8_t *)key->data, key->size);
-
-	cursor.pagep = NULL;
-	__get_item_reset(hashp, &cursor);
-
-	cursor.bucket = bucket;
-	while (1) {
-		__get_item_next(hashp, &cursor, &page_key, &page_val, &item_info);
-		if (item_info.status == ITEM_ERROR)
-			return (ABNORMAL);
-		if (item_info.status == ITEM_NO_MORE)
-			break;
-		num_items++;
-		if (item_info.key_off == BIGPAIR) {
-			/*
-			 * !!!
-			 * 0 is a valid index.
-			 */
-			if (__find_bigpair(hashp, &cursor, (int8_t *)key->data,
-			    key->size) > 0)
-				goto found;
-		} else if (key->size == page_key.size &&
-		    !memcmp(key->data, page_key.data, key->size))
-			goto found;
-	}
-#ifdef HASH_STATISTICS
-	hash_collisions++;
-#endif
-	__get_item_done(hashp, &cursor);
-
-	/*
-	 * At this point, item_info will list either the last page in
-	 * the chain, or the last page in the chain plus a pgno for where
-	 * to find the first page in the chain with space for the
-	 * item we wish to add.
-	 */
-
-	/* Not found */
-	switch (action) {
-	case HASH_PUT:
-	case HASH_PUTNEW:
-		if (__addel(hashp, &item_info, key, val, num_items, 0))
-			return (ERROR);
-		break;
-	case HASH_GET:
-	case HASH_DELETE:
-	default:
-		return (ABNORMAL);
-	}
-
-	if (item_info.caused_expand)
-		__expand_table(hashp);
-	return (SUCCESS);
-
-found:	__get_item_done(hashp, &cursor);
-
-	switch (action) {
-	case HASH_PUTNEW:
-		/* mpool_put(hashp->mp, pagep, 0); */
-		return (ABNORMAL);
-	case HASH_GET:
-		if (item_info.key_off == BIGPAIR) {
-			if (__big_return(hashp, &item_info, val, 0))
-				return (ERROR);
-		} else {
-			val->data = page_val.data;
-			val->size = page_val.size;
-		}
-		/* *** data may not be available! */
-		break;
-	case HASH_PUT:
-		if (__delpair(hashp, &cursor, &item_info) ||
-		    __addel(hashp, &item_info, key, val, UNKNOWN, 0))
-			return (ERROR);
-		__get_item_done(hashp, &cursor);
-		if (item_info.caused_expand)
-			__expand_table(hashp);
-		break;
-	case HASH_DELETE:
-		if (__delpair(hashp, &cursor, &item_info))
-			return (ERROR);
-		break;
-	default:
-		abort();
-	}
-	return (SUCCESS);
+	RELEASE_META(dbp, hcp);
+out:	if ((tret = dbc->c_close(dbc)) != 0 && ret == 0)
+		ret = tret;
+	return (ret);
 }
 
 /* ****************** CURSORS ********************************** */
-CURSOR *
-__cursor_creat(dbp)
-	const DB *dbp;
-{
-	CURSOR *new_curs;
-	HTAB *hashp;
+/*
+ * __ham_c_init --
+ *	Initialize the hash-specific portion of a cursor.
+ *
+ * PUBLIC: int __ham_c_init __P((DBC *));
+ */
+int
+__ham_c_init(dbc)
+	DBC *dbc;
+  {
+	HASH_CURSOR *new_curs;
+	int ret;
 
-	new_curs = (CURSOR *)malloc(sizeof(struct cursor_t));
-	if (!new_curs)
-		return NULL;
-	new_curs->internal =
-	    (struct item_info *)malloc(sizeof(struct item_info));
-	if (!new_curs->internal) {
-		free(new_curs);
-		return NULL;
+	if ((ret = __os_calloc(1, sizeof(struct cursor_t), &new_curs)) != 0)
+		return (ret);
+	if ((ret =
+	    __os_malloc(dbc->dbp->pgsize, NULL, &new_curs->split_buf)) != 0) {
+		__os_free(new_curs, sizeof(*new_curs));
+		return (ret);
 	}
-	new_curs->get = cursor_get;
-	new_curs->delete = cursor_delete;
 
-	new_curs->bucket = 0;
-	new_curs->pgno = INVALID_PGNO;
-	new_curs->ndx = 0;
-	new_curs->pgndx = 0;
-	new_curs->pagep = NULL;
+	new_curs->dbc = dbc;
 
-	/* place onto queue of cursors */
-	hashp = (HTAB *)dbp->internal;
-	TAILQ_INSERT_TAIL(&hashp->curs_queue, new_curs, queue);
+	dbc->internal = new_curs;
+	dbc->c_am_close = __ham_c_close;
+	dbc->c_am_destroy = __ham_c_destroy;
+	dbc->c_del = __ham_c_del;
+	dbc->c_get = __ham_c_get;
+	dbc->c_put = __ham_c_put;
 
-	return new_curs;
+	__ham_item_init(new_curs);
+
+	return (0);
 }
 
-int32_t
-cursor_get(dbp, cursorp, key, val, flags)
-	const DB *dbp;
-	CURSOR *cursorp;
-	DBT *key, *val;
+/*
+ * __ham_c_close --
+ *	Close down the cursor from a single use.
+ */
+static int
+__ham_c_close(dbc)
+	DBC *dbc;
+{
+	int ret;
+
+	if ((ret = __ham_item_done(dbc, 0)) != 0)
+		return (ret);
+
+	__ham_item_init((HASH_CURSOR *)dbc->internal);
+	return (0);
+}
+
+/*
+ * __ham_c_destroy --
+ *	Cleanup the access method private part of a cursor.
+ */
+static int
+__ham_c_destroy(dbc)
+	DBC *dbc;
+{
+	HASH_CURSOR *hcp;
+
+	hcp = (HASH_CURSOR *)dbc->internal;
+	if (hcp->split_buf != NULL)
+		__os_free(hcp->split_buf, dbc->dbp->pgsize);
+	__os_free(hcp, sizeof(HASH_CURSOR));
+
+	return (0);
+}
+
+static int
+__ham_c_del(dbc, flags)
+	DBC *dbc;
 	u_int32_t flags;
 {
-	HTAB *hashp;
-	ITEM_INFO item_info;
+	DB *dbp;
+	DBT repldbt;
+	HASH_CURSOR *hcp;
+	HASH_CURSOR save_curs;
+	db_pgno_t ppgno, chg_pgno;
+	int ret, t_ret;
 
-	hashp = (HTAB *)dbp->internal;
+	DEBUG_LWRITE(dbc, dbc->txn, "ham_c_del", NULL, NULL, flags);
+	dbp = dbc->dbp;
+	DB_PANIC_CHECK(dbp);
+	hcp = (HASH_CURSOR *)dbc->internal;
 
-	if (flags && flags != R_FIRST && flags != R_NEXT) {
-		hashp->errno = errno = EINVAL;
-		return (ERROR);
-	}
-#ifdef HASH_STATISTICS
-	hash_accesses++;
-#endif
+	if ((ret = __db_cdelchk(dbc->dbp, flags,
+	    F_ISSET(dbc->dbp, DB_AM_RDONLY), IS_VALID(hcp))) != 0)
+		return (ret);
 
-	item_info.seek_size = 0;
-
-	if (flags == R_FIRST)
-		__get_item_first(hashp, cursorp, key, val, &item_info);
-	else
-		__get_item_next(hashp, cursorp, key, val, &item_info);
+	if (F_ISSET(hcp, H_DELETED))
+		return (DB_NOTFOUND);
 
 	/*
-	 * This needs to be changed around.  As is, get_item_next advances
-	 * the pointers on the page but this function actually advances
-	 * bucket pointers.  This works, since the only other place we 
-	 * use get_item_next is in hash_access which only deals with one
-	 * bucket at a time.  However, there is the problem that certain other
-	 * functions (such as find_bigpair and delpair) depend on the
-	 * pgndx member of the cursor.  Right now, they are using pngdx - 1
-	 * since indices refer to the __next__ item that is to be fetched
-	 * from the page.  This is ugly, as you may have noticed, whoever
-	 * you are.  The best solution would be to depend on item_infos to
-	 * deal with _current_ information, and have the cursors only
-	 * deal with _next_ information.  In that scheme, get_item_next
-	 * would also advance buckets.  Version 3...
+	 * If we are in the concurrent DB product and this cursor
+	 * is not a write cursor, then this request is invalid.
+	 * If it is a simple write cursor, then we need to upgrade its
+	 * lock.
 	 */
+	if (F_ISSET(dbp, DB_AM_CDB)) {
+		/* Make sure it's a valid update cursor. */
+		if (!F_ISSET(dbc, DBC_RMW | DBC_WRITER))
+			return (EINVAL);
 
+		if (F_ISSET(dbc, DBC_RMW) &&
+		    (ret = lock_get(dbp->dbenv->lk_info, dbc->locker,
+		    DB_LOCK_UPGRADE, &dbc->lock_dbt, DB_LOCK_WRITE,
+		    &dbc->mylock)) != 0)
+			return (EAGAIN);
+	}
+
+	GET_META(dbp, hcp, ret);
+	if (ret != 0)
+		return (ret);
+
+	SAVE_CURSOR(hcp, &save_curs);
+	hcp->stats.hash_deleted++;
+
+	if ((ret = __ham_get_cpage(dbc, DB_LOCK_WRITE)) != 0)
+		goto out;
+	if (F_ISSET(hcp, H_ISDUP) && hcp->dpgno != PGNO_INVALID) {
+		/*
+		 * We are about to remove a duplicate from offpage.
+		 *
+		 * There are 4 cases.
+		 * 1. We will remove an item on a page, but there are more
+		 *    items on that page.
+		 * 2. We will remove the last item on a page, but there is a
+		 *    following page of duplicates.
+		 * 3. We will remove the last item on a page, this page was the
+		 *    last page in a duplicate set, but there were dups before
+		 *    it.
+		 * 4. We will remove the last item on a page, removing the last
+		 *    duplicate.
+		 * In case 1 hcp->dpagep is unchanged.
+		 * In case 2 hcp->dpagep comes back pointing to the next dup
+		 *     page.
+		 * In case 3 hcp->dpagep comes back NULL.
+		 * In case 4 hcp->dpagep comes back NULL.
+		 *
+		 * Case 4 results in deleting the pair off the master page.
+		 * The normal code for doing this knows how to delete the
+		 * duplicates, so we will handle this case in the normal code.
+		 */
+		ppgno = PREV_PGNO(hcp->dpagep);
+		if (ppgno == PGNO_INVALID &&
+		    NEXT_PGNO(hcp->dpagep) == PGNO_INVALID &&
+		    NUM_ENT(hcp->dpagep) == 1)
+			goto normal;
+
+		/* Remove item from duplicate page. */
+		chg_pgno = hcp->dpgno;
+		if ((ret = __db_drem(dbc,
+		    &hcp->dpagep, hcp->dndx, __ham_del_page)) != 0)
+			goto out;
+
+		if (hcp->dpagep == NULL) {
+			if (ppgno != PGNO_INVALID) {		/* Case 3 */
+				hcp->dpgno = ppgno;
+				if ((ret = __ham_get_cpage(dbc,
+				    DB_LOCK_READ)) != 0)
+					goto out;
+				hcp->dndx = NUM_ENT(hcp->dpagep);
+				F_SET(hcp, H_DELETED);
+			} else {				/* Case 4 */
+				ret = __ham_del_pair(dbc, 1);
+				hcp->dpgno = PGNO_INVALID;
+				/*
+				 * Delpair updated the cursor queue, so we
+				 * don't have to do that here.
+				 */
+				chg_pgno = PGNO_INVALID;
+			}
+		} else if (PGNO(hcp->dpagep) != hcp->dpgno) {
+			hcp->dndx = 0;				/* Case 2 */
+			hcp->dpgno = PGNO(hcp->dpagep);
+			if (ppgno == PGNO_INVALID)
+				memcpy(HOFFDUP_PGNO(P_ENTRY(hcp->pagep,
+				    H_DATAINDEX(hcp->bndx))),
+				    &hcp->dpgno, sizeof(db_pgno_t));
+			/*
+			 * We need to put the master page here, because
+			 * although we have a duplicate page, the master
+			 * page is dirty, and ham_item_done assumes that
+			 * if you have a duplicate page, it's the only one
+			 * that can be dirty.
+			 */
+			ret = __ham_put_page(dbp, hcp->pagep, 1);
+			hcp->pagep = NULL;
+			F_SET(hcp, H_DELETED);
+		} else						/* Case 1 */
+			F_SET(hcp, H_DELETED);
+		if (chg_pgno != PGNO_INVALID)
+			__ham_c_update(hcp, chg_pgno, 0, 0, 1);
+	} else if (F_ISSET(hcp, H_ISDUP)) {			/* on page */
+		if (hcp->dup_off == 0 && DUP_SIZE(hcp->dup_len) ==
+		    LEN_HDATA(hcp->pagep, hcp->hdr->pagesize, hcp->bndx))
+			ret = __ham_del_pair(dbc, 1);
+		else {
+			repldbt.flags = 0;
+			F_SET(&repldbt, DB_DBT_PARTIAL);
+			repldbt.doff = hcp->dup_off;
+			repldbt.dlen = DUP_SIZE(hcp->dup_len);
+			repldbt.size = 0;
+			repldbt.data =
+			    HKEYDATA_DATA(H_PAIRDATA(hcp->pagep, hcp->bndx));
+			ret = __ham_replpair(dbc, &repldbt, 0);
+			hcp->dup_tlen -= DUP_SIZE(hcp->dup_len);
+			F_SET(hcp, H_DELETED);
+			__ham_c_update(hcp, hcp->pgno,
+			    DUP_SIZE(hcp->dup_len), 0, 1);
+		}
+
+	} else
+		/* Not a duplicate */
+normal:		ret = __ham_del_pair(dbc, 1);
+
+out:	if ((t_ret = __ham_item_done(dbc, ret == 0)) != 0 && ret == 0)
+		ret = t_ret;
+	RELEASE_META(dbp, hcp);
+	RESTORE_CURSOR(dbp, hcp, &save_curs, ret);
+	if (F_ISSET(dbp, DB_AM_CDB) && F_ISSET(dbc, DBC_RMW))
+		(void)__lock_downgrade(dbp->dbenv->lk_info, dbc->mylock,
+		    DB_LOCK_IWRITE, 0);
+	return (ret);
+}
+
+static int
+__ham_c_get(dbc, key, data, flags)
+	DBC *dbc;
+	DBT *key;
+	DBT *data;
+	u_int32_t flags;
+{
+	DB *dbp;
+	HASH_CURSOR *hcp, save_curs;
+	db_lockmode_t lock_type;
+	int get_key, ret, t_ret;
+
+	DEBUG_LREAD(dbc, dbc->txn, "ham_c_get",
+	    flags == DB_SET || flags == DB_SET_RANGE ? key : NULL,
+	    NULL, flags);
+
+	hcp = (HASH_CURSOR *)dbc->internal;
+	dbp = dbc->dbp;
+	DB_PANIC_CHECK(dbp);
+	SAVE_CURSOR(hcp, &save_curs);
+	if ((ret =
+	    __db_cgetchk(dbp, key, data, flags, IS_VALID(hcp))) != 0)
+		return (ret);
+
+	/* Clear OR'd in additional bits so we can check for flag equality. */
+	if (LF_ISSET(DB_RMW)) {
+		lock_type = DB_LOCK_WRITE;
+		LF_CLR(DB_RMW);
+	} else
+		lock_type = DB_LOCK_READ;
+
+	GET_META(dbp, hcp, ret);
+	if (ret != 0)
+		return (ret);
+	hcp->stats.hash_get++;
+	hcp->seek_size = 0;
+
+	ret = 0;
+	get_key = 1;
+	switch (flags) {
+	case DB_PREV:
+		if (hcp->bucket != BUCKET_INVALID) {
+			ret = __ham_item_prev(dbc, lock_type);
+			break;
+		}
+		/* FALLTHROUGH */
+	case DB_LAST:
+		ret = __ham_item_last(dbc, lock_type);
+		break;
+	case DB_FIRST:
+		ret = __ham_item_first(dbc, lock_type);
+		break;
+	case DB_NEXT_DUP:
+		if (hcp->bucket == BUCKET_INVALID)
+			ret = EINVAL;
+		else {
+			F_SET(hcp, H_DUPONLY);
+			ret = __ham_item_next(dbc, lock_type);
+		}
+		break;
+	case DB_NEXT:
+		if (hcp->bucket == BUCKET_INVALID)
+			hcp->bucket = 0;
+		ret = __ham_item_next(dbc, lock_type);
+		break;
+	case DB_SET:
+	case DB_SET_RANGE:
+	case DB_GET_BOTH:
+		if (F_ISSET(dbc, DBC_CONTINUE)) {
+			F_SET(hcp, H_DUPONLY);
+			ret = __ham_item_next(dbc, lock_type);
+		} else if (F_ISSET(dbc, DBC_KEYSET))
+			ret = __ham_item(dbc, lock_type);
+		else
+			ret = __ham_lookup(dbc, key, 0, lock_type);
+		get_key = 0;
+		break;
+	case DB_CURRENT:
+		if (F_ISSET(hcp, H_DELETED)) {
+			ret = DB_KEYEMPTY;
+			goto out;
+		}
+
+		ret = __ham_item(dbc, lock_type);
+		break;
+	}
 
 	/*
 	 * Must always enter this loop to do error handling and
 	 * check for big key/data pair.
 	 */
 	while (1) {
-		if (item_info.status == ITEM_OK) {
-			if (item_info.key_off == BIGPAIR &&
-			    __big_keydata(hashp, cursorp->pagep, key, val,
-			    item_info.pgndx))
-				return (ABNORMAL);
+		if (ret != 0 && ret != DB_NOTFOUND)
+			goto out1;
+		else if (F_ISSET(hcp, H_OK)) {
+			/* Get the key. */
+			if (get_key && (ret = __db_ret(dbp, hcp->pagep,
+			    H_KEYINDEX(hcp->bndx), key, &dbc->rkey.data,
+			    &dbc->rkey.size)) != 0)
+				goto out1;
 
+			ret = __ham_dup_return(dbc, data, flags);
 			break;
-		} else if (item_info.status != ITEM_NO_MORE)
-			return (ABNORMAL);
+		} else if (!F_ISSET(hcp, H_NOMORE)) {
+			abort();
+			break;
+		}
 
-		__put_page(hashp, cursorp->pagep, A_RAW, 0);
-		cursorp->ndx = cursorp->pgndx = 0;
-		cursorp->bucket++;
-		cursorp->pgno = INVALID_PGNO;
-		cursorp->pagep = NULL;
-		if (cursorp->bucket > hashp->hdr.max_bucket)
-			return (ABNORMAL);
-		__get_item_next(hashp, cursorp, key, val, &item_info);
+		/*
+		 * Ran out of entries in a bucket; change buckets.
+		 */
+		switch (flags) {
+			case DB_LAST:
+			case DB_PREV:
+				ret = __ham_item_done(dbc, 0);
+				if (hcp->bucket == 0) {
+					ret = DB_NOTFOUND;
+					goto out1;
+				}
+				hcp->bucket--;
+				hcp->bndx = NDX_INVALID;
+				if (ret == 0)
+					ret = __ham_item_prev(dbc, lock_type);
+				break;
+			case DB_FIRST:
+			case DB_NEXT:
+				ret = __ham_item_done(dbc, 0);
+				hcp->bndx = NDX_INVALID;
+				hcp->bucket++;
+				hcp->pgno = PGNO_INVALID;
+				hcp->pagep = NULL;
+				if (hcp->bucket > hcp->hdr->max_bucket) {
+					ret = DB_NOTFOUND;
+					goto out1;
+				}
+				if (ret == 0)
+					ret = __ham_item_next(dbc, lock_type);
+				break;
+			case DB_GET_BOTH:
+			case DB_NEXT_DUP:
+			case DB_SET:
+			case DB_SET_RANGE:
+				/* Key not found. */
+				ret = DB_NOTFOUND;
+				goto out1;
+		}
 	}
-
-	__get_item_done(hashp, cursorp);
-	return (0);
+out1:	if ((t_ret = __ham_item_done(dbc, 0)) != 0 && ret == 0)
+		ret = t_ret;
+out:	RELEASE_META(dbp, hcp);
+	RESTORE_CURSOR(dbp, hcp, &save_curs, ret);
+	return (ret);
 }
 
-int32_t
-cursor_delete(dbp, cursor, flags)
-	const DB *dbp;
-	CURSOR *cursor;
+static int
+__ham_c_put(dbc, key, data, flags)
+	DBC *dbc;
+	DBT *key;
+	DBT *data;
 	u_int32_t flags;
 {
-	return (0);
-}
+	DB *dbp;
+	DBT tmp_val, *myval;
+	HASH_CURSOR *hcp, save_curs;
+	u_int32_t nbytes;
+	int ret, t_ret;
 
-static int32_t
-hash_seq(dbp, key, val, flag)
-	const DB *dbp;
-	DBT *key, *val;
-	u_int32_t flag;
-{
-	HTAB *hashp;
+	dbp = dbc->dbp;
+	DB_PANIC_CHECK(dbp);
+	DEBUG_LWRITE(dbc, dbc->txn, "ham_c_put",
+	    flags == DB_KEYFIRST || flags == DB_KEYLAST ? key : NULL,
+	    data, flags);
+	hcp = (HASH_CURSOR *)dbc->internal;
+
+	if ((ret = __db_cputchk(dbp, key, data, flags,
+	    F_ISSET(dbp, DB_AM_RDONLY), IS_VALID(hcp))) != 0)
+		return (ret);
+
+	if (F_ISSET(hcp, H_DELETED) &&
+	    flags != DB_KEYFIRST && flags != DB_KEYLAST)
+		return (DB_NOTFOUND);
 
 	/*
-	 * Seq just uses the default cursor to go sequecing through the
-	 * database.  Note that the default cursor is the first in the list. 
+	 * If we are in the concurrent DB product and this cursor
+	 * is not a write cursor, then this request is invalid.
+	 * If it is a simple write cursor, then we need to upgrade its
+	 * lock.
 	 */
+	if (F_ISSET(dbp, DB_AM_CDB)) {
+		/* Make sure it's a valid update cursor. */
+		if (!F_ISSET(dbc, DBC_RMW | DBC_WRITER))
+			return (EINVAL);
 
-	hashp = (HTAB *)dbp->internal;
-	if (!hashp->seq_cursor)
-		hashp->seq_cursor = __cursor_creat(dbp);
+		if (F_ISSET(dbc, DBC_RMW) &&
+		    (ret = lock_get(dbp->dbenv->lk_info, dbc->locker,
+		    DB_LOCK_UPGRADE, &dbc->lock_dbt, DB_LOCK_WRITE,
+		    &dbc->mylock)) != 0)
+			return (EAGAIN);
+	}
 
-	return (hashp->seq_cursor->get(dbp, hashp->seq_cursor, key, val, flag));
+	GET_META(dbp, hcp, ret);
+	if (ret != 0)
+		return (ret);
+
+	SAVE_CURSOR(hcp, &save_curs);
+	hcp->stats.hash_put++;
+
+	switch (flags) {
+	case DB_KEYLAST:
+	case DB_KEYFIRST:
+		nbytes = (ISBIG(hcp, key->size) ? HOFFPAGE_PSIZE :
+		    HKEYDATA_PSIZE(key->size)) +
+		    (ISBIG(hcp, data->size) ? HOFFPAGE_PSIZE :
+		    HKEYDATA_PSIZE(data->size));
+		if ((ret = __ham_lookup(dbc,
+		    key, nbytes, DB_LOCK_WRITE)) == DB_NOTFOUND) {
+			ret = 0;
+			if (hcp->seek_found_page != PGNO_INVALID &&
+			    hcp->seek_found_page != hcp->pgno) {
+				if ((ret = __ham_item_done(dbc, 0)) != 0)
+					goto out;
+				hcp->pgno = hcp->seek_found_page;
+				hcp->bndx = NDX_INVALID;
+			}
+
+			if (F_ISSET(data, DB_DBT_PARTIAL) && data->doff != 0) {
+				/*
+				 * A partial put, but the key does not exist
+				 * and we are not beginning the write at 0.
+				 * We must create a data item padded up to doff
+				 * and then write the new bytes represented by
+				 * val.
+				 */
+				if ((ret = __ham_init_dbt(&tmp_val,
+				    data->size + data->doff,
+				    &dbc->rdata.data, &dbc->rdata.size)) == 0) {
+					memset(tmp_val.data, 0, data->doff);
+					memcpy((u_int8_t *)tmp_val.data +
+					    data->doff, data->data, data->size);
+					myval = &tmp_val;
+				}
+			} else
+				myval = (DBT *)data;
+
+			if (ret == 0)
+				ret = __ham_add_el(dbc, key, myval, H_KEYDATA);
+			goto done;
+		}
+		break;
+	case DB_BEFORE:
+	case DB_AFTER:
+	case DB_CURRENT:
+		ret = __ham_item(dbc, DB_LOCK_WRITE);
+		break;
+	}
+
+	if (ret == 0) {
+		if ((flags == DB_CURRENT && !F_ISSET(hcp, H_ISDUP)) ||
+		    ((flags == DB_KEYFIRST || flags == DB_KEYLAST) &&
+		    !F_ISSET(dbp, DB_AM_DUP)))
+			ret = __ham_overwrite(dbc, data);
+		else
+			ret = __ham_add_dup(dbc, data, flags);
+	}
+
+done:	if (ret == 0 && F_ISSET(hcp, H_EXPAND)) {
+		ret = __ham_expand_table(dbc);
+		F_CLR(hcp, H_EXPAND);
+	}
+
+	if ((t_ret = __ham_item_done(dbc, ret == 0)) != 0 && ret == 0)
+		ret = t_ret;
+
+out:	RELEASE_META(dbp, hcp);
+	RESTORE_CURSOR(dbp, hcp, &save_curs, ret);
+	if (F_ISSET(dbp, DB_AM_CDB) && F_ISSET(dbc, DBC_RMW))
+		(void)__lock_downgrade(dbp->dbenv->lk_info, dbc->mylock,
+		    DB_LOCK_IWRITE, 0);
+	return (ret);
 }
 
 /********************************* UTILITIES ************************/
 
 /*
- * Returns:
- *	 0 ==> OK
- *	-1 ==> Error
+ * __ham_expand_table --
  */
-int32_t
-__expand_table(hashp)
-	HTAB *hashp;
+static int
+__ham_expand_table(dbc)
+	DBC *dbc;
 {
-	u_int32_t old_bucket, new_bucket;
-	int32_t spare_ndx;
+	DB *dbp;
+	HASH_CURSOR *hcp;
+	DB_LSN new_lsn;
+	u_int32_t old_bucket, new_bucket, spare_ndx;
+	int ret;
 
-#ifdef HASH_STATISTICS
-	hash_expansions++;
-#endif
-	new_bucket = ++hashp->hdr.max_bucket;
-	old_bucket = (hashp->hdr.max_bucket & hashp->hdr.low_mask);
-
-	/* Get a page for this new bucket */
-	if (__new_page(hashp, new_bucket, A_BUCKET) != 0)
-		return (-1);
+	dbp = dbc->dbp;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	ret = 0;
+	DIRTY_META(dbp, hcp, ret);
+	if (ret)
+		return (ret);
 
 	/*
-	 * If the split point is increasing (hdr.max_bucket's log base 2
-	 * increases), we need to copy the current contents of the spare
-	 * split bucket to the next bucket.
+	 * If the split point is about to increase, make sure that we
+	 * have enough extra pages.  The calculation here is weird.
+	 * We'd like to do this after we've upped max_bucket, but it's
+	 * too late then because we've logged the meta-data split.  What
+	 * we'll do between then and now is increment max bucket and then
+	 * see what the log of one greater than that is; here we have to
+	 * look at the log of max + 2.  VERY NASTY STUFF.
 	 */
-	spare_ndx = __log2(hashp->hdr.max_bucket + 1);
-	if (spare_ndx > hashp->hdr.ovfl_point) {
-		hashp->hdr.spares[spare_ndx] = hashp->hdr.spares[hashp->hdr.ovfl_point];
-		hashp->hdr.ovfl_point = spare_ndx;
+	if (__db_log2(hcp->hdr->max_bucket + 2) > hcp->hdr->ovfl_point) {
+		/*
+		 * We are about to shift the split point.  Make sure that
+		 * if the next doubling is going to be big (more than 8
+		 * pages), we have some extra pages around.
+		 */
+		if (hcp->hdr->max_bucket + 1 >= 8 &&
+		    hcp->hdr->spares[hcp->hdr->ovfl_point] <
+		    hcp->hdr->spares[hcp->hdr->ovfl_point - 1] +
+		    hcp->hdr->ovfl_point + 1)
+			__ham_init_ovflpages(dbc);
 	}
-	if (new_bucket > hashp->hdr.high_mask) {
+
+	/* Now we can log the meta-data split. */
+	if (DB_LOGGING(dbc)) {
+		if ((ret = __ham_splitmeta_log(dbp->dbenv->lg_info,
+		    dbc->txn, &new_lsn, 0, dbp->log_fileid,
+		    hcp->hdr->max_bucket, hcp->hdr->ovfl_point,
+		    hcp->hdr->spares[hcp->hdr->ovfl_point],
+		    &hcp->hdr->lsn)) != 0)
+			return (ret);
+
+		hcp->hdr->lsn = new_lsn;
+	}
+
+	hcp->stats.hash_expansions++;
+	new_bucket = ++hcp->hdr->max_bucket;
+	old_bucket = (hcp->hdr->max_bucket & hcp->hdr->low_mask);
+
+	/*
+	 * If the split point is increasing, copy the current contents
+	 * of the spare split bucket to the next bucket.
+	 */
+	spare_ndx = __db_log2(hcp->hdr->max_bucket + 1);
+	if (spare_ndx > hcp->hdr->ovfl_point) {
+		hcp->hdr->spares[spare_ndx] =
+		    hcp->hdr->spares[hcp->hdr->ovfl_point];
+		hcp->hdr->ovfl_point = spare_ndx;
+	}
+
+	if (new_bucket > hcp->hdr->high_mask) {
 		/* Starting a new doubling */
-		hashp->hdr.low_mask = hashp->hdr.high_mask;
-		hashp->hdr.high_mask = new_bucket | hashp->hdr.low_mask;
+		hcp->hdr->low_mask = hcp->hdr->high_mask;
+		hcp->hdr->high_mask = new_bucket | hcp->hdr->low_mask;
 	}
-	if (BUCKET_TO_PAGE(new_bucket) > MAX_PAGES(hashp)) {
-		fprintf(stderr, "hash: Cannot allocate new bucket.  Pages exhausted.\n");
-		return (-1);
+
+	if (BUCKET_TO_PAGE(hcp, new_bucket) > MAX_PAGES(hcp)) {
+		__db_err(dbp->dbenv,
+		    "hash: Cannot allocate new bucket.  Pages exhausted.");
+		return (ENOSPC);
 	}
+
 	/* Relocate records to the new bucket */
-	return (__split_page(hashp, old_bucket, new_bucket));
+	return (__ham_split_page(dbc, old_bucket, new_bucket));
 }
 
+/*
+ * PUBLIC: u_int32_t __ham_call_hash __P((HASH_CURSOR *, u_int8_t *, int32_t));
+ */
 u_int32_t
-__call_hash(hashp, k, len)
-	HTAB *hashp;
-	int8_t *k;
+__ham_call_hash(hcp, k, len)
+	HASH_CURSOR *hcp;
+	u_int8_t *k;
 	int32_t len;
 {
-	int32_t n, bucket;
+	u_int32_t n, bucket;
 
-	n = hashp->hash(k, len);
-	bucket = n & hashp->hdr.high_mask;
-	if (bucket > hashp->hdr.max_bucket)
-		bucket = bucket & hashp->hdr.low_mask;
+	n = (u_int32_t)(hcp->dbc->dbp->h_hash(k, len));
+
+	bucket = n & hcp->hdr->high_mask;
+	if (bucket > hcp->hdr->max_bucket)
+		bucket = bucket & hcp->hdr->low_mask;
 	return (bucket);
 }
 
-#if BYTE_ORDER == LITTLE_ENDIAN
 /*
- * Hashp->hdr needs to be byteswapped.
+ * Check for duplicates, and call __db_ret appropriately.  Release
+ * everything held by the cursor.
  */
-static void
-swap_header_copy(srcp, destp)
-	HASHHDR *srcp, *destp;
+static int
+__ham_dup_return(dbc, val, flags)
+	DBC *dbc;
+	DBT *val;
+	u_int32_t flags;
 {
-	int32_t i;
+	DB *dbp;
+	HASH_CURSOR *hcp;
+	PAGE *pp;
+	DBT *myval, tmp_val;
+	db_indx_t ndx;
+	db_pgno_t pgno;
+	u_int32_t off, tlen;
+	u_int8_t *hk, type;
+	int cmp, ret;
+	db_indx_t len;
 
-	P_32_COPY(srcp->magic, destp->magic);
-	P_32_COPY(srcp->version, destp->version);
-	P_32_COPY(srcp->lorder, destp->lorder);
-	P_32_COPY(srcp->bsize, destp->bsize);
-	P_32_COPY(srcp->bshift, destp->bshift);
-	P_32_COPY(srcp->ovfl_point, destp->ovfl_point);
-	P_32_COPY(srcp->last_freed, destp->last_freed);
-	P_32_COPY(srcp->max_bucket, destp->max_bucket);
-	P_32_COPY(srcp->high_mask, destp->high_mask);
-	P_32_COPY(srcp->low_mask, destp->low_mask);
-	P_32_COPY(srcp->ffactor, destp->ffactor);
-	P_32_COPY(srcp->nkeys, destp->nkeys);
-	P_32_COPY(srcp->hdrpages, destp->hdrpages);
-	P_32_COPY(srcp->h_charkey, destp->h_charkey);
-	for (i = 0; i < NCACHED; i++) {
-		P_32_COPY(srcp->spares[i], destp->spares[i]);
-		P_16_COPY(srcp->bitmaps[i], destp->bitmaps[i]);
+	/* Check for duplicate and return the first one. */
+	dbp = dbc->dbp;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	ndx = H_DATAINDEX(hcp->bndx);
+	type = HPAGE_TYPE(hcp->pagep, ndx);
+	pp = hcp->pagep;
+	myval = val;
+
+	/*
+	 * There are 4 cases:
+	 * 1. We are not in duplicate, simply call db_ret.
+	 * 2. We are looking at keys and stumbled onto a duplicate.
+	 * 3. We are in the middle of a duplicate set. (ISDUP set)
+	 * 4. This is a duplicate and we need to return a specific item.
+	 */
+
+	/*
+	 * Here we check for the case where we just stumbled onto a
+	 * duplicate.  In this case, we do initialization and then
+	 * let the normal duplicate code handle it.
+	 */
+	if (!F_ISSET(hcp, H_ISDUP))
+		if (type == H_DUPLICATE) {
+			F_SET(hcp, H_ISDUP);
+			hcp->dup_tlen = LEN_HDATA(hcp->pagep,
+			    hcp->hdr->pagesize, hcp->bndx);
+			hk = H_PAIRDATA(hcp->pagep, hcp->bndx);
+			if (flags == DB_LAST || flags == DB_PREV) {
+				hcp->dndx = 0;
+				hcp->dup_off = 0;
+				do {
+					memcpy(&len,
+					    HKEYDATA_DATA(hk) + hcp->dup_off,
+					    sizeof(db_indx_t));
+					hcp->dup_off += DUP_SIZE(len);
+					hcp->dndx++;
+				} while (hcp->dup_off < hcp->dup_tlen);
+				hcp->dup_off -= DUP_SIZE(len);
+				hcp->dndx--;
+			} else {
+				memcpy(&len,
+				    HKEYDATA_DATA(hk), sizeof(db_indx_t));
+				hcp->dup_off = 0;
+				hcp->dndx = 0;
+			}
+			hcp->dup_len = len;
+		} else if (type == H_OFFDUP) {
+			F_SET(hcp, H_ISDUP);
+			memcpy(&pgno, HOFFDUP_PGNO(P_ENTRY(hcp->pagep, ndx)),
+			    sizeof(db_pgno_t));
+			if (flags == DB_LAST || flags == DB_PREV) {
+				if ((ret = __db_dend(dbc,
+				    pgno, &hcp->dpagep)) != 0)
+					return (ret);
+				hcp->dpgno = PGNO(hcp->dpagep);
+				hcp->dndx = NUM_ENT(hcp->dpagep) - 1;
+			} else if ((ret = __ham_next_cpage(dbc,
+			    pgno, 0, H_ISDUP)) != 0)
+				return (ret);
+		}
+
+
+	/*
+	 * If we are retrieving a specific key/data pair, then we
+	 * may need to adjust the cursor before returning data.
+	 */
+	if (flags == DB_GET_BOTH) {
+		if (F_ISSET(hcp, H_ISDUP)) {
+			if (hcp->dpgno != PGNO_INVALID) {
+				if ((ret = __db_dsearch(dbc, 0, val,
+				    hcp->dpgno, &hcp->dndx, &hcp->dpagep, &cmp))
+				    != 0)
+					return (ret);
+				if (cmp == 0)
+					hcp->dpgno = PGNO(hcp->dpagep);
+			} else {
+				__ham_dsearch(dbc, val, &off, &cmp);
+				hcp->dup_off = off;
+			}
+		} else {
+			hk = H_PAIRDATA(hcp->pagep, hcp->bndx);
+			if (((HKEYDATA *)hk)->type == H_OFFPAGE) {
+				memcpy(&tlen,
+				    HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
+				memcpy(&pgno,
+				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
+				if ((ret = __db_moff(dbp, val,
+				    pgno, tlen, dbp->dup_compare, &cmp)) != 0)
+					return (ret);
+			} else {
+				/*
+				 * We do not zero tmp_val since the comparison
+				 * routines may only look at data and size.
+				 */
+				tmp_val.data = HKEYDATA_DATA(hk);
+				tmp_val.size = LEN_HDATA(hcp->pagep,
+				    dbp->pgsize, hcp->bndx);
+				cmp = dbp->dup_compare == NULL ?
+				    __bam_defcmp(&tmp_val, val) :
+				    dbp->dup_compare(&tmp_val, val);
+			}
+		}
+
+		if (cmp != 0)
+			return (DB_NOTFOUND);
 	}
+
+	/*
+	 * Now, everything is initialized, grab a duplicate if
+	 * necessary.
+	 */
+	if (F_ISSET(hcp, H_ISDUP))
+		if (hcp->dpgno != PGNO_INVALID) {
+			pp = hcp->dpagep;
+			ndx = hcp->dndx;
+		} else {
+			/*
+			 * Copy the DBT in case we are retrieving into user
+			 * memory and we need the parameters for it.  If the
+			 * user requested a partial, then we need to adjust
+			 * the user's parameters to get the partial of the
+			 * duplicate which is itself a partial.
+			 */
+			memcpy(&tmp_val, val, sizeof(*val));
+			if (F_ISSET(&tmp_val, DB_DBT_PARTIAL)) {
+				/*
+				 * Take the user's length unless it would go
+				 * beyond the end of the duplicate.
+				 */
+				if (tmp_val.doff + hcp->dup_off > hcp->dup_len)
+					tmp_val.dlen = 0;
+				else if (tmp_val.dlen + tmp_val.doff >
+				    hcp->dup_len)
+					tmp_val.dlen =
+					    hcp->dup_len - tmp_val.doff;
+				
+				/*
+				 * Calculate the new offset.
+				 */
+				tmp_val.doff += hcp->dup_off;
+			} else {
+				F_SET(&tmp_val, DB_DBT_PARTIAL);
+				tmp_val.dlen = hcp->dup_len;
+				tmp_val.doff = hcp->dup_off + sizeof(db_indx_t);
+			}
+			myval = &tmp_val;
+		}
+
+
+	/*
+	 * Finally, if we had a duplicate, pp, ndx, and myval should be
+	 * set appropriately.
+	 */
+	if ((ret = __db_ret(dbp, pp, ndx, myval, &dbc->rdata.data,
+	    &dbc->rdata.size)) != 0)
+		return (ret);
+
+	/*
+	 * In case we sent a temporary off to db_ret, set the real
+	 * return values.
+	 */
+	val->data = myval->data;
+	val->size = myval->size;
+
+	return (0);
 }
 
-static void
-swap_header(hashp)
-	HTAB *hashp;
+static int
+__ham_overwrite(dbc, nval)
+	DBC *dbc;
+	DBT *nval;
 {
-	HASHHDR *hdrp;
-	int32_t i;
+	HASH_CURSOR *hcp;
+	DBT *myval, tmp_val;
+	u_int8_t *hk;
 
-	hdrp = &hashp->hdr;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	if (F_ISSET(dbc->dbp, DB_AM_DUP))
+		return (__ham_add_dup(dbc, nval, DB_KEYLAST));
+	else if (!F_ISSET(nval, DB_DBT_PARTIAL)) {
+		/* Put/overwrite */
+		memcpy(&tmp_val, nval, sizeof(*nval));
+		F_SET(&tmp_val, DB_DBT_PARTIAL);
+		tmp_val.doff = 0;
+		hk = H_PAIRDATA(hcp->pagep, hcp->bndx);
+		if (HPAGE_PTYPE(hk) == H_OFFPAGE)
+			memcpy(&tmp_val.dlen,
+			    HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
+		else
+			tmp_val.dlen = LEN_HDATA(hcp->pagep,
+			    hcp->hdr->pagesize,hcp->bndx);
+		myval = &tmp_val;
+	} else /* Regular partial put */
+		myval = nval;
 
-	M_32_SWAP(hdrp->magic);
-	M_32_SWAP(hdrp->version);
-	M_32_SWAP(hdrp->lorder);
-	M_32_SWAP(hdrp->bsize);
-	M_32_SWAP(hdrp->bshift);
-	M_32_SWAP(hdrp->ovfl_point);
-	M_32_SWAP(hdrp->last_freed);
-	M_32_SWAP(hdrp->max_bucket);
-	M_32_SWAP(hdrp->high_mask);
-	M_32_SWAP(hdrp->low_mask);
-	M_32_SWAP(hdrp->ffactor);
-	M_32_SWAP(hdrp->nkeys);
-	M_32_SWAP(hdrp->hdrpages);
-	M_32_SWAP(hdrp->h_charkey);
-	for (i = 0; i < NCACHED; i++) {
-		M_32_SWAP(hdrp->spares[i]);
-		M_16_SWAP(hdrp->bitmaps[i]);
-	}
+	return (__ham_replpair(dbc, myval, 0));
 }
-#endif /* BYTE_ORDER == LITTLE_ENDIAN */
+
+/*
+ * Given a key and a cursor, sets the cursor to the page/ndx on which
+ * the key resides.  If the key is found, the cursor H_OK flag is set
+ * and the pagep, bndx, pgno (dpagep, dndx, dpgno) fields are set.
+ * If the key is not found, the H_OK flag is not set.  If the sought
+ * field is non-0, the pagep, bndx, pgno (dpagep, dndx, dpgno) fields
+ * are set indicating where an add might take place.  If it is 0,
+ * non of the cursor pointer field are valid.
+ */
+static int
+__ham_lookup(dbc, key, sought, mode)
+	DBC *dbc;
+	const DBT *key;
+	u_int32_t sought;
+	db_lockmode_t mode;
+{
+	DB *dbp;
+	HASH_CURSOR *hcp;
+	db_pgno_t pgno;
+	u_int32_t tlen;
+	int match, ret, t_ret;
+	u_int8_t *hk;
+
+	dbp = dbc->dbp;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	/*
+	 * Set up cursor so that we're looking for space to add an item
+	 * as we cycle through the pages looking for the key.
+	 */
+	if ((ret = __ham_item_reset(dbc)) != 0)
+		return (ret);
+	hcp->seek_size = sought;
+
+	hcp->bucket = __ham_call_hash(hcp, (u_int8_t *)key->data, key->size);
+	while (1) {
+		if ((ret = __ham_item_next(dbc, mode)) != 0)
+			return (ret);
+
+		if (F_ISSET(hcp, H_NOMORE))
+			break;
+
+		hk = H_PAIRKEY(hcp->pagep, hcp->bndx);
+		switch (HPAGE_PTYPE(hk)) {
+		case H_OFFPAGE:
+			memcpy(&tlen, HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
+			if (tlen == key->size) {
+				memcpy(&pgno,
+				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
+				if ((ret = __db_moff(dbp,
+				    key, pgno, tlen, NULL, &match)) != 0)
+					return (ret);
+				if (match == 0) {
+					F_SET(hcp, H_OK);
+					return (0);
+				}
+			}
+			break;
+		case H_KEYDATA:
+			if (key->size == LEN_HKEY(hcp->pagep,
+			    hcp->hdr->pagesize, hcp->bndx) &&
+			    memcmp(key->data,
+			    HKEYDATA_DATA(hk), key->size) == 0) {
+				F_SET(hcp, H_OK);
+				return (0);
+			}
+			break;
+		case H_DUPLICATE:
+		case H_OFFDUP:
+			/*
+			 * These are errors because keys are never
+			 * duplicated, only data items are.
+			 */
+			return (__db_pgfmt(dbp, PGNO(hcp->pagep)));
+		}
+		hcp->stats.hash_collisions++;
+	}
+
+	/*
+	 * Item was not found, adjust cursor properly.
+	 */
+
+	if (sought != 0)
+		return (ret);
+
+	if ((t_ret = __ham_item_done(dbc, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
+}
+
+/*
+ * Initialize a dbt using some possibly already allocated storage
+ * for items.
+ * PUBLIC: int __ham_init_dbt __P((DBT *, u_int32_t, void **, u_int32_t *));
+ */
+int
+__ham_init_dbt(dbt, size, bufp, sizep)
+	DBT *dbt;
+	u_int32_t size;
+	void **bufp;
+	u_int32_t *sizep;
+{
+	int ret;
+
+	memset(dbt, 0, sizeof(*dbt));
+	if (*sizep < size) {
+		if ((ret = __os_realloc(bufp, size)) != 0) {
+			*sizep = 0;
+			return (ret);
+		}
+		*sizep = size;
+	}
+	dbt->data = *bufp;
+	dbt->size = size;
+	return (0);
+}
+
+/*
+ * Adjust the cursor after an insert or delete.  The cursor passed is
+ * the one that was operated upon; we just need to check any of the
+ * others.
+ *
+ * len indicates the length of the item added/deleted
+ * add indicates if the item indicated by the cursor has just been
+ * added (add == 1) or deleted (add == 0).
+ * dup indicates if the addition occurred into a duplicate set.
+ *
+ * PUBLIC: void __ham_c_update
+ * PUBLIC:    __P((HASH_CURSOR *, db_pgno_t, u_int32_t, int, int));
+ */
+void
+__ham_c_update(hcp, chg_pgno, len, add, is_dup)
+	HASH_CURSOR *hcp;
+	db_pgno_t chg_pgno;
+	u_int32_t len;
+	int add, is_dup;
+{
+	DB *dbp;
+	DBC *cp;
+	HASH_CURSOR *lcp;
+	int page_deleted;
+
+	/*
+	 * Regular adds are always at the end of a given page, so we never
+	 * have to adjust anyone's cursor after a regular add.
+	 */
+	if (!is_dup && add)
+		return;
+
+	/*
+	 * Determine if a page was deleted.    If this is a regular update
+	 * (i.e., not is_dup) then the deleted page's number will be that in
+	 * chg_pgno, and the pgno in the cursor will be different.  If this
+	 * was an onpage-duplicate, then the same conditions apply.  If this
+	 * was an off-page duplicate, then we need to verify if hcp->dpgno
+	 * is the same (no delete) or different (delete) than chg_pgno.
+	 */
+	if (!is_dup || hcp->dpgno == PGNO_INVALID)
+		page_deleted =
+		    chg_pgno != PGNO_INVALID && chg_pgno != hcp->pgno;
+	else
+		page_deleted =
+		    chg_pgno != PGNO_INVALID && chg_pgno != hcp->dpgno;
+
+	dbp = hcp->dbc->dbp;
+	DB_THREAD_LOCK(dbp);
+
+	for (cp = TAILQ_FIRST(&dbp->active_queue); cp != NULL;
+	    cp = TAILQ_NEXT(cp, links)) {
+		if (cp->internal == hcp)
+			continue;
+
+		lcp = (HASH_CURSOR *)cp->internal;
+
+		if (!is_dup && lcp->pgno != chg_pgno)
+			continue;
+
+		if (is_dup) {
+			if (F_ISSET(hcp, H_DELETED) && lcp->pgno != chg_pgno)
+				continue;
+			if (!F_ISSET(hcp, H_DELETED) && lcp->dpgno != chg_pgno)
+				continue;
+		}
+
+		if (page_deleted) {
+			if (is_dup) {
+				lcp->dpgno = hcp->dpgno;
+				lcp->dndx = hcp->dndx;
+			} else {
+				lcp->pgno = hcp->pgno;
+				lcp->bndx = hcp->bndx;
+				lcp->bucket = hcp->bucket;
+			}
+			F_CLR(lcp, H_ISDUP);
+			continue;
+		}
+
+		if (!is_dup && lcp->bndx > hcp->bndx)
+			lcp->bndx--;
+		else if (!is_dup && lcp->bndx == hcp->bndx)
+			F_SET(lcp, H_DELETED);
+		else if (is_dup && lcp->bndx == hcp->bndx) {
+			/* Assign dpgno in case there was page conversion. */
+			lcp->dpgno = hcp->dpgno;
+			if (add && lcp->dndx >= hcp->dndx )
+				lcp->dndx++;
+			else if (!add && lcp->dndx > hcp->dndx)
+				lcp->dndx--;
+			else if (!add && lcp->dndx == hcp->dndx)
+				F_SET(lcp, H_DELETED);
+
+			/* Now adjust on-page information. */
+			if (lcp->dpgno == PGNO_INVALID)
+				if (add) {
+					lcp->dup_tlen += len;
+					if (lcp->dndx > hcp->dndx)
+						lcp->dup_off += len;
+				} else {
+					lcp->dup_tlen -= len;
+					if (lcp->dndx > hcp->dndx)
+						lcp->dup_off -= len;
+				}
+		}
+	}
+	DB_THREAD_UNLOCK(dbp);
+}
+

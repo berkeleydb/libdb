@@ -1,0 +1,77 @@
+<! "@(#)close.so	10.9 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: memp_fclose</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>memp_fclose</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+memp_fclose(DB_MPOOLFILE *mpf);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The memp_fclose function closes the source file indicated by the
+DB_MPOOLFILE structure.  Calling memp_fclose does not imply
+a call to <a href="../../api_c/DbMpoolFile/sync.html">memp_fsync</a>, i.e. no pages are written to the source
+file as as a result of calling memp_fclose.
+<p>
+In addition, if the <b>file</b> argument to <a href="../../api_c/DbMpoolFile/open.html">memp_fopen</a> was NULL,
+any underlying files created for this DB_MPOOLFILE will be removed.
+<p>
+The memp_fclose
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the memp_fclose function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The memp_fclose
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+memset(3),
+munmap(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbMpool/close.html">memp_close</a>,
+memp_fclose,
+<a href="../../api_c/DbMpoolFile/get.html">memp_fget</a>,
+<a href="../../api_c/DbMpoolFile/open.html">memp_fopen</a>,
+<a href="../../api_c/DbMpoolFile/put.html">memp_fput</a>,
+<a href="../../api_c/DbMpoolFile/set.html">memp_fset</a>,
+<a href="../../api_c/DbMpoolFile/sync.html">memp_fsync</a>,
+<a href="../../api_c/DbMpool/open.html">memp_open</a>,
+<a href="../../api_c/DbMpool/db_register.html">memp_register</a>,
+<a href="../../api_c/DbMpool/stat.html">memp_stat</a>,
+<a href="../../api_c/DbMpool/stat.html">memp_stat</a>,
+<a href="../../api_c/DbMpool/sync.html">memp_sync</a>,
+<a href="../../api_c/DbMpool/trickle.html">memp_trickle</a>
+and
+<a href="../../api_c/DbMpool/unlink.html">memp_unlink</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<! "@(#)intro.so	10.3 (Sleepycat) 11/21/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Introduction</h1>
+<p>
+So far, this Reference Guide has discussed how applications can use the
+Berkeley DB Access Methods to store and retrieve data items to and from
+database files.  This chapter will discuss how to write
+applications to include transactional support.  First, there are a few
+terms that will be helpful:
+<dl compact>
+<p><dt>System or application failure<dd>This is the phrase that we will use to describe when something bad happens
+near your data.  It can be an application dumping core, being interrupted
+by a signal, the disk filling up, or the entire system crashing.  In any
+case, for whatever reason, the application can no longer continue to make
+forward progress.
+<p><dt>Transaction<dd>A transaction is a group of changes, to one or more databases, that
+should be treated as a single unit of work.  That is, either all of
+the changes must be applied to the database(s) or none of them
+should.  The
+application specifies when each transaction starts, what database changes
+are included in it, and when it ends.
+<p><dt>Transaction commit<dd>Every transaction ends by <i>committing</i> or <i>aborting</i>.
+If a transaction commits, then Berkeley DB guarantees that the database changes
+inside it will never be lost, even after system or application failure.
+If a transaction aborts, or is unfinished when the system or application
+fails, then the changes involved will never appear in the database.
+<p><dt>Deadlock<dd>Deadlock, in its simplest form, happens when one thread of control owns
+resource A, but needs resource B, while another thread of control owns
+resource B, but needs resource A.  Neither thread of control can make
+progress, and so one has to give up and release all of its resources,
+at which point the other can again make forward progress.
+<p><dt>Recovery<dd>Whenever system or application failure occurs, the application must run
+recovery.  Recovery is what makes the database consistent, i.e., reviews
+the log files and the databases to ensure that the changes from each
+committed transaction appear in the database, and that none of the
+changes from any unfinished (or aborted) transactions do.
+<p>
+To run recovery, all applications in the environment must exit Berkeley DB.
+(Normally, and always, of course, in the case of system failure, the
+applications will stop running entirely.)
+<p>
+Once none of the applications are still using the database environment,
+recovery is performed by calling the Berkeley DB interface with
+special flags (either <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER">DB_RECOVER</a> or <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>).
+<p>
+When recovery is complete, the database environment is again available
+for normal use.
+<p><dt>Write-ahead-logging<dd>This is a term that describes the underlying implementation that Berkeley DB
+uses to ensure recovery.  What it means is that before any change is
+made to a database, information about the change is written to the database
+log.  During recovery, the log is read, and databases are checked to ensure
+that changes described in the log for committed transactions appear in the
+database.  Changes that appear in the database but which are related to
+aborted or unfinished transactions in the log are undone from the database.
+</dl>
+<p>
+There are a number of reasons for using transactional support in your
+programs.  The most common are:
+<dl compact>
+<p><dt>Recoverability<dd>Applications often need to ensure that, no matter how the system or
+application fails, previously saved data is available the next time the
+application runs.
+<p><dt>Deadlock avoidance<dd>When multiple threads of control are changing the database at the same
+time, there is usually the possibility of deadlock.  The way this is
+resolved is that one of the transactions involved has to release the
+resources it owns so that the other one can proceed.  (The transaction
+that releases its resources is usually just tried again later.) However,
+using transactions is necessary so that any changes that have already been
+made to the database can be undone, so that the database doesn't end up
+corrupted.
+<p><dt>Atomicity<dd>Applications often need to make multiple changes, but want to ensure that
+either all of the changes happen, or none of them.  Transactions guarantee
+that a group of changes are atomic, i.e., that if the application or
+system fails, either all of the changes will appear when the application
+next runs, or none of them.
+<p><dt>Repeatable reads<dd>Applications sometimes need to ensure that, while doing a group of
+operations on a database, that the value returned as a result of a
+database retrieval doesn't change, i.e., if you retrieve the same key
+more than once, the data item will be the same each time.  Transactions
+guarantee this behavior.
+</dl>
+<p>
+<a href="../../ref/cam/intro.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/apps.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

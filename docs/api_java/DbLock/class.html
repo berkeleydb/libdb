@@ -1,0 +1,46 @@
+<! "@(#)class.so	10.5 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLock</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLock</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public DbLock()
+    throws DbException;
+<p>
+public DbLock(DbLock that)
+    throws DbException;
+<p>
+public DbLock(int lockid);
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLock class is used in conjunction with the <a href="../../api_java/DbLockTab/class.html">DbLockTab</a>
+class to provide general-purpose locking.
+While designed to work with the other Db classes, these classes are also
+useful for more general locking purposes.
+Locks can be shared between processes.
+In most cases, when multiple threads or processes are using locking,
+the deadlock detector, <a href="../../utility/db_deadlock.html">db_deadlock</a> should be run.
+<p>
+<h1>Class</h1>
+DbLock
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLock/put.html">DbLock.put</a>
+</tt>
+</body>
+</html>

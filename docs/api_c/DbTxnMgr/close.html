@@ -1,0 +1,86 @@
+<! "@(#)close.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: txn_close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>txn_close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+txn_close(DB_TXNMGR *txnp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The txn_close function detaches a process from the transaction environment
+specified by the DB_TXNMGR structure.  All mapped regions are unmapped
+and any allocated resources are freed.  Any uncommitted transactions are
+aborted.
+<p>
+In addition, if the <b>dir</b> argument to <a href="../../api_c/DbTxnMgr/open.html">txn_open</a> was NULL and
+<b>dbenv</b> was not initialized using <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+all files created for this shared region will be removed, as if
+the <a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a> function were called.
+<p>
+<p>
+In multi-threaded applications, only a single thread may call the
+txn_close function.
+<p>
+The txn_close
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the txn_close function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The txn_close
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+<a href="../../api_c/DbLockTab/vec.html">lock_vec</a>,
+<a href="../../api_c/DbLog/flush.html">log_flush</a>,
+memset(3),
+munmap(3),
+shmctl(3),
+shmdt(3),
+strerror(3),
+strlen(3),
+<a href="../../api_c/DbTxn/abort.html">txn_abort</a>,
+unlink(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbTxn/abort.html">txn_abort</a>,
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>,
+<a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a>,
+txn_close,
+<a href="../../api_c/DbTxn/commit.html">txn_commit</a>,
+<a href="../../api_c/DbTxn/id.html">txn_id</a>,
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>,
+<a href="../../api_c/DbTxn/prepare.html">txn_prepare</a>,
+<a href="../../api_c/DbTxnMgr/stat.html">txn_stat</a>
+and
+<a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a>.
+</tt>
+</body>
+</html>

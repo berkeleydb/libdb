@@ -1,0 +1,37 @@
+<! "@(#)sync.so	10.3 (Sleepycat) 10/19/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Flushing the database cache</h1>
+<p>
+The <a href="../../api_c/Db/sync.html">DB->sync</a> function is the standard function for flushing
+all modified records from the database cache to disk.
+<p>
+<b>It is important to understand that flushing cached information
+to disk only minimizes the window of opportunity for corrupted data.</b>
+<p>
+While unlikely, it is possible for database corruption to happen if a
+system or application crash occurs while writing data to the database. To
+ensure that database corruption never occurs, applications must either:
+use transactions and logging with automatic recovery, use logging and
+application-specific recovery, or edit a copy of the database, and, once
+all applications using the database have successfully called
+<a href="../../api_c/Db/close.html">DB->close</a>, use system operations (e.g., the POSIX 1003.1 rename
+system call) to atomically replace the original database with the updated
+copy.
+<p>
+<a href="../../ref/am/delete.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/stat.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

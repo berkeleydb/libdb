@@ -1,0 +1,116 @@
+<! "@(#)stat.so	10.11 (Sleepycat) 10/26/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbMpool.stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbMpool.stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public DbMpoolStat stat()
+    throws DbException;
+<p>
+public DbMpoolFStat fstat()
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbMpool.stat and <a href="../../api_java/DbMpool/stat.html">DbMpool.fstat</a> methods create statistical
+structures and return to the caller.  The statistics include the number
+of files participating in the pool, the active pages in the pool, and
+information as to how effective the cache has been.
+<p>
+The DbMpool.stat method creates a DbMpoolStat object containing global
+statistics.  The following data fields are available:
+<dl compact>
+<dt>public int st_refcnt;<dd>The number of references to the region.
+<dt>public int st_regsize;<dd>The size of the region.
+<dt>public long st_cachesize;<dd>Cache size in bytes.
+<dt>public int st_cache_hit;<dd>Requested pages found in the cache.
+<dt>public int st_cache_miss;<dd>Requested pages not found in the cache.
+<dt>public int st_map;<dd>Requested pages mapped into the process' address space (there is no
+available information as to whether or not this request caused disk I/O,
+although examining the application page fault rate may be helpful).
+<dt>public int st_page_create;<dd>Pages created in the cache.
+<dt>public int st_page_in;<dd>Pages read into the cache.
+<dt>public int st_page_out;<dd>Pages written from the cache to the backing file.
+<dt>public int st_ro_evict;<dd>Clean pages forced from the cache.
+<dt>public int st_rw_evict;<dd>Dirty pages forced from the cache.
+<dt>public int st_hash_buckets;<dd>Number of hash buckets in buffer hash table.
+<dt>public int st_hash_searches;<dd>Total number of buffer hash table lookups.
+<dt>public int st_hash_longest;<dd>The longest chain ever encountered in buffer hash table lookups.
+<dt>public int st_hash_examined;<dd>Total number of hash elements traversed during hash table lookups.
+<dt>public int st_page_clean;<dd>Clean pages currently in the cache.
+<dt>public int st_page_dirty;<dd>Dirty pages currently in the cache.
+<dt>public int st_page_trickle;<dd>Dirty pages written using the <a href="../../api_java/DbMpool/trickle.html">DbMpool.trickle</a> interface.
+<dt>public int st_region_wait;<dd>The number of times that a thread of control was forced to wait before
+obtaining the region lock.
+<dt>public int st_region_nowait;<dd>The number of times that a thread of control was able to obtain
+the region lock without waiting.
+</dl>
+The <a href="../../api_java/DbMpool/stat.html">DbMpool.fstat</a> method creates an array of DbMpoolFStat objects
+containing statistics for individual files in the pool.  Each
+DbMpoolFStat object contains statistics for an individual DbMpoolFile.
+The following data fields are available for each DbMpoolFStat object:
+<dl compact>
+<dt>public String file_name;<dd>The name of the file.
+<dt>public long st_pagesize;<dd>Page size in bytes.
+<dt>public int st_cache_hit;<dd>Requested pages found in the cache.
+<dt>public int st_cache_miss;<dd>Requested pages not found in the cache.
+<dt>public int st_map;<dd>Requested pages mapped into the process' address space.
+<dt>public int st_page_create;<dd>Pages created in the cache.
+<dt>public int st_page_in;<dd>Pages read into the cache.
+<dt>public int st_page_out;<dd>Pages written from the cache to the backing file.
+</dl>
+<p>
+The DbMpool.stat
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbMpool.stat method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbMpool.stat
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fprintf(3),
+getpid(3),
+malloc(3),
+memcpy(3),
+memset(3),
+and
+strlen(3).
+In addition, the DbMpool.stat
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbMpool/class.html">DbMpool</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbMpool/stat.html">DbMpool.fstat</a>,
+DbMpool.stat
+and
+<a href="../../api_java/DbMpool/trickle.html">DbMpool.trickle</a>.
+</tt>
+</body>
+</html>

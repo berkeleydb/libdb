@@ -1,0 +1,175 @@
+<! "@(#)convert.so	8.13 (Sleepycat) 12/11/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Integrating version 1.85 applications</h1>
+<p>
+It is not difficult to upgrade Berkeley DB 1.85 applications to use the Berkeley DB
+version 2 library.  The Berkeley DB version 2 library has a Berkeley DB 1.85
+compatibility mode, which you can use by either recompiling your
+application's source code or by relinking its object files against the
+version 2 library.
+<p>
+<b> The underlying databases must be converted, however, as the
+Berkeley DB version 2 library has a different underlying database format.</b>
+<h1>System Integration</h1>
+<ol>
+<p><li>
+It is possible to maintain both the Berkeley DB 1.85 and Berkeley DB version 2
+libraries on your system.  However, the <b>db.h</b> include file
+that was distributed with Berkeley DB 1.85 is <b>not</b> compatible with
+the <b>db.h</b> file distributed with Berkeley DB version 2, so you will
+have to install them in different locations.  In addition, both the
+Berkeley DB 1.85 and Berkeley DB version 2 libraries are named <b>libdb.a</b>.
+<p>
+As the Berkeley DB 1.85 library did not have an installation target in the
+Makefile, there's no way to know exactly where it was installed on the
+system.  In addition, many vendors included it in the C library instead
+of as a separate library, and so it may actually be part of <b>libc</b>
+and the <b>db.h</b> include file may be installed in <b>/usr/include</b>.
+<p>
+For these reasons, the simplest way to maintain both libraries is to
+install Berkeley DB version 2 in a completely separate area of your system.
+The Berkeley DB version 2 installation process allows you to install into a
+standalone directory hierarchy on your system.  See the
+<a href="../../build/unix.html">Building for UNIX platforms</a> documentation
+for more information and instructions on how to install the Berkeley DB version
+2 library, include files and documentation into specific locations.
+<p><li>
+Alternatively, you can replace Berkeley DB 1.85 on your system with Berkeley DB
+version 2.  In this case, you'll probably want to install Berkeley DB version
+2 in the normal place on your system, wherever that may be, and delete
+the Berkeley DB 1.85 include files, manual pages and libraries.
+<p>
+To replace 1.85 with version 2, you must either convert your 1.85
+applications to use the version 2 API or build the Berkeley DB version 2 library
+to include Berkeley DB 1.85 interface compatibility code.  Whether converting
+your applications to use the version 2 interface or using the version 1.85
+compatibility API, you will need to recompile or relink your 1.85
+applications, and you must convert any persistent application databases
+to the Berkeley DB version 2 database formats.
+<p>
+There is no requirement that you recompile your Berkeley DB 1.85 applications,
+as you can simply link their object files against the Berkeley DB version 2
+library.
+<p>
+If you want to recompile your Berkeley DB 1.85 applications, you will have to
+change them to include the file <b>db_185.h</b> instead of
+<b>db.h</b>.  (The <b>db_185.h</b> file is automatically installed
+during the Berkeley DB version 2 installation process.)  You can then recompile
+the applications, linking them against the Berkeley DB version 2 library.
+<p>
+For more information on compiling the Berkeley DB 1.85 compatibility code into
+the Berkeley DB version 2 library, see <a href="../../build/unix.html">Building
+for UNIX platforms</a>.
+<p>
+For more information on converting databases from the Berkeley DB 1.85 formats
+to the Berkeley DB version 2 formats, see the <a href="../../utility/db_dump.html">db_dump185</a> and
+<a href="../../utility/db_load.html">db_load</a> documentation.
+<p><li>
+Finally, although we certainly do not recommend it, it is possible to load
+both Berkeley DB 1.85 and Berkeley DB version 2 into the same library.  Similarly, it
+is possible to use both Berkeley DB 1.85 and Berkeley DB version 2 within a single
+application, although it's not possible to use them from within the same
+file.
+<p>
+The name space in Berkeley DB version 2 has been changed from that of previous
+Berkeley DB versions, notably version 1.85, for portability and consistency
+reasons.  The only name collisions in the two libraries are the names used
+by the historic <a href="../../api_c/historic/dbm.html">dbm</a>, <a href="../../api_c/historic/dbm.html">ndbm</a> and <a href="../../api_c/historic/hsearch.html">hsearch</a> interfaces,
+and the Berkeley DB 1.85 compatibility interfaces in the Berkeley DB version 2
+library.
+<p>
+If you are loading both Berkeley DB 1.85 and Berkeley DB version 2 into a single
+library, remove the historic interfaces from one of the two library
+builds, and configure the Berkeley DB version 2 build to not include the Berkeley DB
+1.85 compatibility API, otherwise you could have collisions and undefined
+behavior.  This can be done by editing the library Makefiles and
+reconfiguring and rebuilding the Berkeley DB version 2 library.  Obviously, if
+you use the historic interfaces, you will get the version in the library
+from which you did not remove it.  Similarly, you will not be able to
+access Berkeley DB version 2 files using the Berkeley DB 1.85 compatibility interface,
+since you have removed that from the library as well.
+</ol>
+<h1>Converting Applications</h1>
+Mapping the Berkeley DB 1.85 functionality into Berkeley DB version 2 is almost always
+a simple, one-to-one mapping.  The manual page <a href="../../api_c/Db/open.html">db_open</a> replaces
+the Berkeley DB 1.85 manual pages <b>dbopen</b>(3), <b>btree</b>(3),
+<b>hash</b>(3) and <b>recno</b>(3).  You should be able to convert
+each 1.85 function call into a Berkeley DB version 2 function call using just
+the <a href="../../api_c/Db/open.html">db_open</a> documentation.
+<p>
+Some guidelines and things to watch out for:
+<ol>
+<p><li>
+Most access method functions have exactly the same semantics as in Berkeley DB
+1.85, although the arguments to the functions have changed in some cases.
+To get your code to compile, the most common change is to add the
+transaction ID as an argument (NULL, since Berkeley DB 1.85 did not support
+transactions).
+<p><li>
+You must always initialize DBT structures to zero before using them
+with any Berkeley DB version 2 function.  (They do not normally have to be
+reinitialized each time, only when they are first allocated.  Do this by
+declaring the DBT structure external or static, or by calling the C
+library routine <b>bzero</b>(3) or <b>memset</b>(3).
+<p><li>
+The error returns are completely different in the two versions.  In Berkeley DB
+1.85, < 0 meant an error, and > 0 meant a minor Berkeley DB exception.  In Berkeley DB
+2.0, > 0 means an error (the Berkeley DB version 2 functions return
+<b>errno</b> on error) and < 0 means a Berkeley DB exception.  See
+<a href="../../ref/program/errorret.html">Error Returns to Applications</a> for
+more information.
+<p><li>
+The Berkeley DB 1.85 <b>seq()</b> function has been replaced by cursors in
+Berkeley DB version 2.  The semantics are approximately the same, but cursors
+require the creation of an extra object (the DBC * object), which is then
+used to access the database.
+<p>
+Specifically, the partial key match and range search functionality of the
+R_CURSOR flag in <b>db->seq()</b> has been replaced by the
+<a href="../../api_c/Dbc/get.html#DB_SET_RANGE">DB_SET_RANGE</a> flag in <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>.
+<p><li>
+In version 2 of the Berkeley DB library, additions or deletions into Recno
+(fixed and variable-length record) databases no longer automatically
+logically renumber all records after the add/delete point, by default.
+The default behavior is that deleting records does not cause subsequent
+records to be renumbered, and it is an error to attempt to add new records
+between records already in the database.  Applications wanting the
+historic recno access method semantics should specify the
+<a href="../../api_c/DbInfo/info.html#DB_RENUMBER">DB_RENUMBER</a> flag in the DB_INFO structure.
+<p><li>
+Opening a database in Berkeley DB version 2 is a much heavier-weight operation
+than it was in Berkeley DB 1.85.  Therefore, if your historic applications were
+written to open a database, perform a single operation, and close the
+database, you may observe performance degradation.  In most cases, this
+is due to the expense of creating the environment upon each open.   While
+we encourage restructuring your application to avoid repeated opens and
+closes, you can probably recover most of the lost performance by simply
+using a persistent environment across invocations.
+</ol>
+<p>
+While simply converting Berkeley DB 1.85 function calls to Berkeley DB version 2
+function calls will work, we recommend that you eventually reconsider your
+application's interface to the Berkeley DB database library in light of the
+additional functionality supplied by Berkeley DB version 2, as it is likely to
+result in enhanced application performance.
+<h1>Converting Databases</h1>
+For information on converting application databases from Berkeley DB 1.85 to
+Berkeley DB 2.0, see the <a href="../../utility/db_dump.html">db_dump185</a> and <a href="../../utility/db_load.html">db_load</a> documentation.
+<p>
+<a href="../../ref/program/compatible.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/runtime.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

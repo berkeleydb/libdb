@@ -1,0 +1,34 @@
+<! "@(#)config.so	10.1 (Sleepycat) 12/23/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Subsystem</h3>
+<p>
+<h1 align=center>Configuring transactions</h1>
+<p>
+There is only a single parameter used in configuring transactions, the
+<a href="../../api_c/DbEnv/appinit.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag.  Setting the <a href="../../api_c/DbEnv/appinit.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag when
+opening a transaction region (using either <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> or
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>) changes the behavior of transactions to <b>not</b>
+synchronously flush the log during transaction commit.
+<p>
+This change will significantly increase application transactional
+throughput, however, it means that while transactions will continue to
+exhibit the ACI (atomicity, consistency and isolation) properties, they
+will not have D (durability), i.e., database integrity will be maintained
+but it is possible that some number of the most recently committed
+transactions may be undone during recovery instead of being redone.
+<p>
+<a href="../../ref/txn/limits.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/txn/other.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

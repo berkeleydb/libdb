@@ -1,0 +1,41 @@
+<! "@(#)id.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbTxn.id</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbTxn.id</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public int id()
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbTxn.id method returns the unique transaction id associated with the
+specified transaction.  Locking calls made on behalf of this transaction
+should use the value returned from DbTxn.id as the locker parameter
+to the <a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a> or <a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a> calls.
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbTxn/class.html">DbTxn</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbTxn/abort.html">DbTxn.abort</a>,
+<a href="../../api_java/DbTxn/commit.html">DbTxn.commit</a>,
+DbTxn.id
+and
+<a href="../../api_java/DbTxn/prepare.html">DbTxn.prepare</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<! "@(#)info.so	10.17 (Sleepycat) 12/3/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Berkeley DB Access Method Specific Initialization</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Berkeley DB Access Method Specific Initialization</h1>
+<hr size=1 noshade>
+<tt>
+<p>
+Access method specific information is provided to <a href="../../api_c/Db/open.html">db_open</a>
+using the DB_INFO data argument.
+The DB_INFO structure has a large number of fields, most specific to a
+single access method, although a few are shared.  The fields that are
+common to all access methods are listed here; those specific to an
+individual access method are described below.  No reference to the DB_INFO
+structure is maintained by Berkeley DB, so it is possible to discard it as soon
+as the <a href="../../api_c/Db/open.html">db_open</a> call returns.
+<p>
+In order to ensure compatibility with future releases of Berkeley DB, all fields
+of the DB_INFO structure should be initialized to 0 before the structure
+is used.
+Do this by declaring the structure external or static, or by calling the
+C library function <b>bzero</b>(3) or <b>memset</b>(3).
+<p>
+If possible, defaults appropriate for the system are used for the DB_INFO
+fields if <b>dbinfo</b> is NULL or any fields of the DB_INFO structure
+are set to 0.
+The following DB_INFO fields may be initialized before calling
+<a href="../../api_c/Db/open.html">db_open</a>:
+<dl compact>
+<a name="db_cachesize">
+<p><dt>size_t db_cachesize;<dd>A suggested maximum size of the memory pool cache, in bytes.
+If <b>db_cachesize</b> is 0, an appropriate default is used.
+It is an error to specify both the <b>mp_info</b> field and a
+non-zero <b>db_cachesize</b>.
+<p>
+<b>Note, the minimum number of pages in the cache should be no less
+than 10, and the access methods will fail if an insufficiently large
+cache is specified.</b>
+In addition, for applications that exhibit strong locality in their
+data access patterns, increasing the size of the cache can significantly
+improve application performance.
+<p>
+For information on tuning the Berkeley DB cache size, see
+<a href="../../ref/am/cachesize.html">Selecting a cache size</a>.
+<a name="db_lorder">
+<p><dt>int db_lorder;<dd>The byte order for integers in the stored database metadata.
+The number should represent the order as an integer, for example,
+big endian order is the number 4,321, and little endian order is
+the number 1,234.
+If <b>db_lorder</b> is 0, the host order of the machine where the Berkeley DB
+library was compiled is used.
+<p>
+The value of <b>db_lorder</b> is ignored except when databases are being
+created.
+If a database already exists, the byte order it uses is determined when
+the file is read.
+<p>
+<b>The access methods provide no guarantees about the byte ordering of the
+application data stored in the database,
+and applications are responsible for maintaining any necessary ordering.</b>
+<a name="db_pagesize">
+<p><dt>size_t db_pagesize;<dd>The size of the pages used to hold items in the database, in bytes.
+The minimum page size is 512 bytes and the maximum page size is 64K bytes.
+If <b>db_pagesize</b> is 0, a page size is selected based on the underlying
+filesystem I/O block size.
+The selected size has a lower limit of 512 bytes and an upper limit
+of 16K bytes.
+<p>
+For information on tuning the Berkeley DB page size, see
+<a href="../../ref/am/pagesize.html">Selecting a page size</a>.
+<a name="dup_compare">
+<p><dt>int (*dup_compare)(const DBT *, const DBT *);<dd>Specify a duplicate comparison function.  It must return an integer less
+than, equal to, or greater than zero if the first key argument is
+considered to be respectively less than, equal to, or greater than the
+second key argument. The same comparison function must be used on a given
+tree every time it is opened.  See <a href="../../api_c/DbInfo/info.html#DB_DUPSORT">DB_DUPSORT</a> for more
+information.
+<a name="db_malloc">
+<p><dt>void *(*db_malloc)(size_t);<dd>The flag <a href="../../api_c/Dbt/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, when specified in the DBT structure,
+will cause the Berkeley DB library to allocate memory which then becomes the
+responsibility of the calling application.
+<p>
+On systems where there may be multiple library versions of malloc (notably
+Windows NT), specifying the <a href="../../api_c/Dbt/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> flag will fail because
+the Berkeley DB library will allocate memory from a different heap than the
+application will use to free it.
+To avoid this problem, the <b>db_malloc</b> field should be set to
+point to the application's allocation routine.
+If <b>db_malloc</b> is non-NULL, it will be used to allocate the memory
+returned when the <a href="../../api_c/Dbt/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> flag is set.
+The <b>db_malloc</b> function must match the calling conventions of the
+<b>malloc</b>(3) library routine.
+</dl>
+<h1>Btree</h1>
+<p>
+The following additional fields and flags may be initialized in the DB_INFO
+structure before calling <a href="../../api_c/Db/open.html">db_open</a>, when using the Btree access method:
+<dl compact>
+<a name="bt_compare">
+<p><dt>int (*bt_compare)(const DBT *, const DBT *);<dd>The <b>bt_compare</b> function is the key comparison function.
+It must return an integer less than, equal to, or greater than zero if the
+first key argument is considered to be respectively less than, equal to,
+or greater than the second key argument.
+The same comparison function must be used on a given tree every time it
+is opened.
+<p>
+The <b>data</b> and <b>size</b> fields of the DBT are the only fields that
+may be used for the purposes of this comparison.
+<p>
+If <b>bt_compare</b> is NULL, the keys are compared lexically, with
+shorter keys collating before longer keys.
+<a name="bt_minkey">
+<p><dt>u_int32_t bt_minkey;<dd>The minimum number of keys that will be stored on any single page.
+This value is used to determine which keys will be stored on overflow
+pages, i.e. if a key or data item is larger than the pagesize divided
+by the <b>bt_minkey</b> value, it will be stored on overflow pages
+instead of in the page itself.
+The <b>bt_minkey</b> value specified must be at least 2; if
+<b>bt_minkey</b> is 0, a value of 2 is used.
+<a name="bt_prefix">
+<p><dt>size_t (*bt_prefix)(const DBT *, const DBT *);<dd>The <b>bt_prefix</b> function is the prefix comparison function.
+If specified, this function must return the number of bytes of the second key
+argument that are necessary to determine that it is greater than the first
+key argument.
+If the keys are equal, the key length should be returned.
+<p>
+The <b>data</b> and <b>size</b> fields of the DBT are the only fields
+that may be used for the purposes of this comparison.
+<p>
+This function is used to compress the keys stored on the btree internal
+pages.  The usefulness of this is data dependent, but in some data sets
+can produce significantly reduced tree sizes and search times.
+<p>
+If <b>bt_prefix</b> is NULL, and no key comparison function
+is specified, a default lexical comparison function is used for
+prefix compression.  If <b>bt_prefix</b> is NULL and a key
+comparison function is specified, no prefix compression is done.
+It is an error to specify a prefix compression function without
+also specifying a key comparison function.
+<a name="bt_flags">
+<p><dt>u_int32_t flags;<dd>The following additional flags may be specified by logically <b>OR</b>'ing together one or
+more of the following values:
+<dl compact>
+<a name="DB_DUP">
+<p><dt>DB_DUP<dd>Permit duplicate data items in the tree, i.e. insertion when the key of
+the key/data pair being inserted already exists in the tree will be
+successful.  The ordering of duplicates in the tree is determined by the
+order of insertion, unless the ordering is otherwise specified by use of
+a cursor or a duplicate comparison function.
+It is an error to specify both DB_DUP and DB_RECNUM.
+<a name="DB_DUPSORT">
+<p><dt>DB_DUPSORT<dd>Sort duplicates within a set of data items.  If the application does not
+specify a comparison function using the dup_compare element of
+the DB_INFO structure, a default, lexical comparison will be used.
+<p>
+Specifying that duplicates are to be sorted changes the behavior of the
+<a href="../../api_c/Db/put.html">DB->put</a> operation as well as the <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> operation when
+the <a href="../../api_c/Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a>, <a href="../../api_c/Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a> and <a href="../../api_c/Dbc/get.html#DB_CURRENT">DB_CURRENT</a>
+flags are specified.
+<a name="DB_RECNUM">
+<p><dt>DB_RECNUM<dd>Support retrieval from btrees using record numbers.
+For more information, see the DB_SET_RECNO flag to the <a href="../../api_c/Db/get.html">DB->get</a>
+function and the cursor <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a> function.
+<p>
+Logical record numbers in btrees are mutable in the face of record
+insertion or deletion.
+See the DB_RENUMBER flag in the RECNO section below for further discussion.
+<p>
+Maintaining record counts within a btree introduces a serious point of
+contention, namely the page locations where the record counts are stored.
+In addition, the entire tree must be locked during both insertions and
+deletions, effectively single-threading the tree for those operations.
+Specifying DB_RECNUM can result in serious performance degradation for
+some applications and data sets.
+It is an error to specify both DB_DUP and DB_RECNUM.
+</dl>
+</dl>
+<h1>Hash</h1>
+<p>
+The following additional fields and flags may be initialized in the DB_INFO
+structure before calling <a href="../../api_c/Db/open.html">db_open</a>, when using the hash access method:
+<dl compact>
+<a name="h_ffactor">
+<p><dt>u_int32_t h_ffactor;<dd>The desired density within the hash table.
+It is an approximation of the number of keys allowed to accumulate in any
+one bucket, determining when the hash table grows or shrinks.
+The default value is 0, indicating that the fill factor will be selected
+dynamically as pages are filled.
+<a name="h_hash">
+<p><dt>u_int32_t (*h_hash)(const void *, u_int32_t);<dd>The <b>h_hash</b> field is a user defined hash function;
+if <b>h_hash</b> is NULL, a default hash function is used.
+Since no hash function performs equally well on all possible data,
+the user may find that the built-in hash function performs poorly with
+a particular data set.
+User specified hash functions must take a pointer to a byte string and
+a length as arguments and return a u_int32_t value.
+<p>
+If a hash function is specified, <b>hash_open</b> will attempt to determine
+if the hash function specified is the same as the one with which the database
+was created, and will fail if it detects that it is not.
+<a name="h_nelem">
+<p><dt>u_int32_t h_nelem;<dd>An estimate of the final size of the hash table.
+If not set or set too low,
+hash tables will expand gracefully as keys are entered,
+although a slight performance degradation may be noticed.
+The default value is 1.
+<a name="h_flags">
+<p><dt>u_int32_t flags;<dd>The following additional flags may be specified by logically <b>OR</b>'ing together one or
+more of the following values:
+<dl compact>
+<a name="DB_DUP">
+<p><dt>DB_DUP<dd>Permit duplicate data items in the tree, i.e. insertion when the key of
+the key/data pair being inserted already exists in the tree will be
+successful.  The ordering of duplicates in the tree is determined by the
+order of insertion, unless the ordering is otherwise specified by use of
+a cursor or a duplicate comparison function.
+<a name="DB_DUPSORT">
+<p><dt>DB_DUPSORT<dd>Sort duplicates within a set of data items.  If the application does not
+specify a comparison function using the dup_compare element of
+the DB_INFO structure, a default, lexical comparison will be used.
+<p>
+Specifying that duplicates are to be sorted changes the behavior of the
+<a href="../../api_c/Db/put.html">DB->put</a> operation as well as the <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> operation when
+the <a href="../../api_c/Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a>, <a href="../../api_c/Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a> and <a href="../../api_c/Dbc/get.html#DB_CURRENT">DB_CURRENT</a>
+flags are specified.
+</dl>
+</dl>
+<h1>Recno</h1>
+<p>
+The following additional fields and flags may be initialized in the DB_INFO
+structure before calling <a href="../../api_c/Db/open.html">db_open</a>, when using the recno access method:
+<dl compact>
+<a name="re_delim">
+<p><dt>int re_delim;<dd>For variable length records, if the <b>re_source</b> file is specified
+and the DB_DELIMITER flag is set, the delimiting byte used to mark the end
+of a record in the source file.
+If the <b>re_source</b> file is specified and the DB_DELIMITER flag is not
+set, <newline> characters (i.e. \n, 0x0a) are interpreted as
+end-of-record markers.
+<a name="re_len">
+<p><dt>u_int32_t re_len;<dd>The length of a fixed-length record.
+<a name="re_pad">
+<p><dt>int re_pad;<dd>For fixed length records, if the DB_PAD flag is set, the pad character for
+short records.  If the DB_PAD flag is not set, <space> characters (i.e.,
+0x20) are used for padding.
+<a name="re_source">
+<p><dt>char *re_source;<dd>The purpose of the <b>re_source</b> field is to provide fast access and
+modification to databases that are normally stored as flat text files.
+<p>
+If the <b>re_source</b> field is non-NULL, it specifies an underlying flat
+text database file that is read to initialize a transient record number index.
+In the case of variable length records, the records are separated by the byte
+value <b>re_delim</b>.
+For example, standard UNIX byte stream files can be interpreted as a sequence
+of variable length records separated by <newline> characters.
+<p>
+In addition, when cached data would normally be written back to the underlying
+database file (e.g., the <b>close</b>(2) or <b>sync</b> functions are
+called), the in-memory copy of the database will be written back to the
+<b>re_source</b> file.
+<p>
+By default, the backing source file is read lazily, i.e., records are not read
+from the file until they are requested by the application.
+<b>If multiple processes (not threads) are accessing a recno database
+concurrently and either inserting or deleting records,
+the backing source file must be read in its entirety before more than
+a single process accesses the database,
+and only that process should specify the backing source file as part
+of the <a href="../../api_c/Db/open.html">db_open</a> call.</b>
+See the DB_SNAPSHOT flag below for more information.
+<p>
+<b>Reading and writing the backing source file specified by re_source
+cannot be transactionally protected because it involves filesystem
+operations that are not part of the Berkeley DB transaction methodology.</b>
+For this reason, if a temporary database is used to hold the records,
+i.e., a NULL was specified as the <b>file</b> argument to
+<a href="../../api_c/Db/open.html">db_open</a>, it is possible to lose the contents of the
+<b>re_source</b> file, e.g., if the system crashes at the right instant.
+If a file is used to hold the database, i.e., a file name was specified
+as the <b>file</b> argument to <a href="../../api_c/Db/open.html">db_open</a>, normal database recovery
+on that file can be used to prevent information loss, although it is still
+possible that the contents of <b>re_source</b> will be lost if the system
+crashes.
+<p>
+The <b>re_source</b> file must already exist (but may be zero-length) when
+<a href="../../api_c/Db/open.html">db_open</a> is called.
+<p>
+For all of the above reasons, the <b>re_source</b> field is generally used
+to specify databases that are read-only for Berkeley DB applications, and that are
+either generated on the fly by software tools, or modified using a different
+mechanism, e.g., a text editor.
+<a name="re_flags">
+<p><dt>u_int32_t flags;<dd>The following additional flags may be specified by logically <b>OR</b>'ing together one or
+more of the following values:
+<dl compact>
+<a name="DB_DELIMITER">
+<p><dt>DB_DELIMITER<dd>The <b>re_delim</b> field is set.
+<a name="DB_FIXEDLEN">
+<p><dt>DB_FIXEDLEN<dd>The records are fixed-length, not byte delimited.
+The structure element <b>re_len</b> specifies the length of the record,
+and the structure element <b>re_pad</b> is used as the pad character.
+<p>
+Any records added to the database that are less than <b>re_len</b>
+bytes long are automatically padded.
+Any attempt to insert records into the database that are greater than
+<b>re_len</b> bytes long will cause the call to fail immediately and
+return an error.
+<a name="DB_PAD">
+<p><dt>DB_PAD<dd>The <b>re_pad</b> field is set.
+<a name="DB_RENUMBER">
+<p><dt>DB_RENUMBER<dd>Specifying the DB_RENUMBER flag causes the logical record numbers to be
+mutable, and change as records are added to and deleted from the database.
+For example, the deletion of record number 4 causes records numbered 5
+and greater to be renumbered downward by 1.
+If a cursor was positioned to record number 4 before the deletion,
+it will reference the new record number 4, if any such record exists,
+after the deletion.
+If a cursor was positioned after record number 4 before the deletion,
+it will be shifted downward 1 logical record,
+continuing to reference the same record as it did before.
+<p>
+Using the <a href="../../api_c/Db/put.html">DB->put</a> or <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> interfaces to create
+new records will cause the creation of multiple records if the record number
+is more than one greater than the largest record currently in the database.
+For example, creating record 28, when record 25 was previously the last record
+in the database, will create records 26 and 27 as well as 28.
+Attempts to retrieve records that were created in this manner will result in
+an error return of DB_KEYEMPTY.
+<p>
+If a created record is not at the end of the database,
+all records following the new record will be automatically renumbered
+upward by 1.
+For example,
+the creation of a new record numbered 8 causes records numbered 8 and
+greater to be renumbered upward by 1.
+If a cursor was positioned to record number 8 or greater before the insertion,
+it will be shifted upward 1 logical record,
+continuing to reference the same record as it did before.
+<p>
+For these reasons, concurrent access to a recno database with the DB_RENUMBER
+flag specified may be largely meaningless, although it is supported.
+<a name="DB_SNAPSHOT">
+<p><dt>DB_SNAPSHOT<dd>This flag specifies that any specified <b>re_source</b> file be read in
+its entirety when <a href="../../api_c/Db/open.html">db_open</a> is called.
+If this flag is not specified, the <b>re_source</b> file may be read lazily.
+</dl>
+</dl>
+</tt>
+</body>
+</html>

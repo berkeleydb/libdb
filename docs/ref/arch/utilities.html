@@ -1,0 +1,48 @@
+<! "@(#)utilities.so	10.13 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Architecture</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Architecture</h3>
+<p>
+<h1 align=center>Supporting utilities</h1>
+<p>
+There are several stand-alone utilities that support the Berkeley DB environment.
+They are as follows:
+<dl compact>
+<p><dt>db_archive<dd>The <a href="../../utility/db_archive.html">db_archive</a> utility supports database backup, archival and
+log file administration.
+<p><dt>db_recover<dd>The <a href="../../utility/db_recover.html">db_recover</a> utility runs after an unexpected Berkeley DB or system
+failure to restore the database to a consistent state.
+<p><dt>db_checkpoint<dd>The <a href="../../utility/db_checkpoint.html">db_checkpoint</a> utility runs as a daemon process, monitoring
+the database log and periodically issuing checkpoints.
+<p><dt>db_deadlock<dd>The <a href="../../utility/db_deadlock.html">db_deadlock</a> utility runs as a daemon process, periodically
+traversing the database lock structures and aborting transactions when
+it detects a deadlock.
+<p><dt>db_dump<dd>The <a href="../../utility/db_dump.html">db_dump</a> utility writes a copy of the database to a flat-text
+file in a portable format.
+<p><dt>db_load<dd>The <a href="../../utility/db_load.html">db_load</a>, utility reads the flat-text file produced by
+<a href="../../utility/db_dump.html">db_dump</a> and loads it into a database file.
+<p><dt>db_stat<dd>The <a href="../../utility/db_stat.html">db_stat</a> utility displays statistics for databases and database
+environments.
+</dl>
+<p>
+All of the functionality described for these utilities is available as
+part of the Berkeley DB API as well.  This means that threaded applications can
+simply create a thread to perform this functionality and call the same
+underlying Berkeley DB functions as do the utilities.  This often simplifies
+the application environment by removing the necessity for multiple
+processes to negotiate database and database environment creation.
+<p>
+<a href="../../ref/arch/subsystem.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/arch/progmodel.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

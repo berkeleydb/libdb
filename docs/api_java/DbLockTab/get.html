@@ -1,0 +1,55 @@
+<! "@(#)get.so	10.2 (Sleepycat) 9/25/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLockTab.get</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLockTab.get</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public DbLock get(int locker, int flags, Dbt obj, int lock_mode)
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The <a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a> method gets a lock, as defined by the values of
+<b>locker</b>, <b>obj</b> and <b>mode</b>.  The <b>locker</b>
+argument is an unsigned 32-bit integer quantity.  It represents
+the entity requesting or releasing the lock.
+<p>
+The <b>flags</b> value must be set to 0 or the following value:
+<dl compact>
+<p><dt>Db.DB_LOCK_NOWAIT<dd>If a lock cannot be granted because the requested lock conflicts with an
+existing lock, return immediately instead of waiting for the lock to
+become available.
+</dl>
+<p>
+A reference to the acquired lock is returned.  (This reference is
+invalidated by any call to <a href="../../api_java/DbLock/put.html">DbLock.put</a> that releases the lock.)
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLockTab/class.html">DbLockTab</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLockTab/close.html">DbLockTab.close</a>,
+<a href="../../api_java/DbLockTab/detect.html">DbLockTab.detect</a>,
+<a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>,
+<a href="../../api_java/DbLockTab/id.html">DbLockTab.id</a>,
+<a href="../../api_java/DbLockTab/open.html">DbLockTab.open</a>,
+<a href="../../api_java/DbLockTab/stat.html">DbLockTab.stat</a>,
+<a href="../../api_java/DbLockTab/unlink.html">DbLockTab.unlink</a>
+and
+<a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<! "@(#)set_malloc.so	10.6 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbInfo::set_malloc</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbInfo::set_malloc</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+typedef void *(*db_malloc_fcn)(size_t);
+void DbInfo::set_malloc(db_malloc_fcn);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+Set the malloc function used by the <a href="../../api_cxx/Db/class.html">Db</a> methods.
+<p>
+The DB_DBT_MALLOC flag, when specified in the <a href="../../api_cxx/Dbt/class.html">Dbt</a> object, will
+cause the <a href="../../api_cxx/Db/class.html">Db</a> methods to allocate memory which then becomes the
+responsibility of the calling application.
+See <a href="../../api_cxx/Dbt/class.html">Dbt</a> for more information.
+<p>
+On systems where there may be multiple library versions of malloc
+(notably Windows NT), specifying the DB_DBT_MALLOC flag will fail
+because the <a href="../../api_cxx/Db/class.html">Db</a> library will allocate memory from a different heap
+than the application will use to free it.
+To avoid this problem, the <b>malloc</b> function should be set to
+point to the application's allocation routine.
+If <b>malloc</b> is not explicitly set, it will be used to allocate
+the memory returned when the DB_DBT_MALLOC flag is set.
+The <b>malloc</b> method must match the calling conventions of the
+<b>malloc</b>(3) library routine.
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbInfo/class.html">DbInfo</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbInfo/set_bt_compare.html">DbInfo::set_bt_compare</a>,
+<a href="../../api_cxx/DbInfo/set_bt_maxkey.html">DbInfo::set_bt_maxkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_minkey.html">DbInfo::set_bt_minkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_prefix.html">DbInfo::set_bt_prefix</a>,
+<a href="../../api_cxx/DbInfo/set_cachesize.html">DbInfo::set_cachesize</a>,
+<a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a>,
+<a href="../../api_cxx/DbInfo/set_flags.html">DbInfo::set_flags</a>,
+<a href="../../api_cxx/DbInfo/set_h_ffactor.html">DbInfo::set_h_ffactor</a>,
+<a href="../../api_cxx/DbInfo/set_h_hash.html">DbInfo::set_h_hash</a>,
+<a href="../../api_cxx/DbInfo/set_h_nelem.html">DbInfo::set_h_nelem</a>,
+<a href="../../api_cxx/DbInfo/set_lorder.html">DbInfo::set_lorder</a>,
+DbInfo::set_malloc,
+<a href="../../api_cxx/DbInfo/set_pagesize.html">DbInfo::set_pagesize</a>,
+<a href="../../api_cxx/DbInfo/set_re_delim.html">DbInfo::set_re_delim</a>,
+<a href="../../api_cxx/DbInfo/set_re_len.html">DbInfo::set_re_len</a>,
+<a href="../../api_cxx/DbInfo/set_re_pad.html">DbInfo::set_re_pad</a>
+and
+<a href="../../api_cxx/DbInfo/set_re_source.html">DbInfo::set_re_source</a>.
+</tt>
+</body>
+</html>

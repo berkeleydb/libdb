@@ -1,0 +1,30 @@
+<! "@(#)byteorder.so	10.11 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Byte ordering</h1>
+<p>
+The database files created by Berkeley DB can be created in either little or
+big-endian formats.
+By default, the native format of the machine on which the database
+is created will be used.
+Any format database can be used on a machine with a different native
+format,
+although it is possible that the application will incur a performance
+penalty for the run-time conversion.
+<p>
+<a href="../../ref/program/dbsizes.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/compatible.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

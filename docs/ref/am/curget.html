@@ -1,0 +1,57 @@
+<! "@(#)curget.so	10.1 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Retrieving records with a cursor</h1>
+<p>
+The <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a> function is the standard function for retrieving
+records from the database, with a cursor.  In general, the cursor get
+function takes a key and returns the associated data from the database.
+<p>
+There are several flags that you can set to customize retrieval:
+<dl compact>
+<p><dt><a href="../../api_c/Dbc/get.html#DB_FIRST">DB_FIRST</a><dd>Return the first record from the database.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_LAST">DB_LAST</a><dd>Return the last record from the database.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_NEXT">DB_NEXT</a><dd>Return the record from the database immediately following the cursor.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_NEXT_DUP">DB_NEXT_DUP</a><dd>Return the record from the database immediately following the cursor, if
+it is a duplicate data item for the current key.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_PREV">DB_PREV</a><dd>Return the record from the database immediately preceding the cursor.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_CURRENT">DB_CURRENT</a><dd>Return the record from the database currently pointed to by the cursor.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_SET">DB_SET</a><dd>Return the record from the database that matches the supplied key.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_SET_RANGE">DB_SET_RANGE</a><dd>Return the smallest record in the database greater than or equal to the
+supplied key.  This functionality permits partial key matches and range
+searches.
+<p><dt><a href="../../api_c/Db/get.html#DB_GET_BOTH">DB_GET_BOTH</a><dd>Return the record from the database that matches both the supplied key
+and data items.  This is particularly useful when there are large numbers
+of duplicate records for a key, as it allows the cursor to easily be
+positioned at the correct place for traversal of some part of a large set
+of duplicate records.
+<p><dt><a href="../../api_c/Db/get.html#DB_SET_RECNO">DB_SET_RECNO</a><dd>If the underlying database is a Btree, and was configured so that it is
+possible to search it by logical record number, retrieve a specific
+record.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_GET_RECNO">DB_GET_RECNO</a><dd>If the underlying database is a Btree, and was configured so that it is
+possible to search it by logical record number, return the record number
+for the current cursor record.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_RMW">DB_RMW</a><dd>Acquire write locks instead of read locks during retrieval. This can
+enhance performance in threaded applications where deadlock is a
+concern.
+</dl>
+<p>
+In all cases, the cursor is repositioned by a <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a> operation
+to point to the newly returned key/data pair in the database.
+<p>
+<a href="../../ref/am/cursor.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/curput.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

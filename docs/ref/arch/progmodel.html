@@ -1,0 +1,48 @@
+<! "@(#)progmodel.so	10.15 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Architecture</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Architecture</h3>
+<p>
+<h1 align=center>Programming model</h1>
+<p>
+The Berkeley DB library is intended to support an embedded model of applications,
+although it is relatively easy to create client-server applications as
+well.
+<p>
+In the client-server model,
+a database server is created by writing an application that accepts requests
+via some form of IPC and issues calls to the Berkeley DB functions based on those
+queries.
+In this model,
+applications are client programs that attach to the server and issue queries.
+The client-server model trades performance for protection,
+as it does not require that the applications share a protection domain with
+the server,
+but IPC/RPC is generally slower than a function call.
+In addition,
+this model simplifies the creation of network client-server applications.
+<p>
+In the embedded model,
+an application links the Berkeley DB library directly into its address space.
+This provides for faster access to database functionality,
+but means that the applications sharing log files, lock manager,
+transaction manager or memory pool manager have the ability to read,
+write, and corrupt each other's data.
+<p>
+It is the application designer's responsibility to select the appropriate
+model for the application.
+<p>
+<a href="../../ref/arch/utilities.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/arch/apis.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

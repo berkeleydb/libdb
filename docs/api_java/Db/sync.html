@@ -1,0 +1,111 @@
+<! "@(#)sync.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Db.sync</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Db.sync</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void sync(int flags)
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The Db.sync method flushes any cached information to disk.
+<p>
+If the database is in memory only, the Db.sync method has no effect and
+will always succeed.
+<p>
+The <b>flags</b> parameter is currently unused, and must be set to 0.
+<p>
+See <a href="../../api_java/Db/close.html">Db.close</a> for a discussion of Berkeley DB and cached data.
+<p>
+The Db.sync
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Db.sync method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The Db.sync
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_java/Db/cursor.html">Db.cursor</a>,
+<a href="../../api_java/Db/get.html">Db.get</a>,
+Db.sync,
+DBcursor->c_close(3),
+__account_page(3),
+close(3),
+dbenv->db_paniccall(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+func(3),
+<a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>,
+<a href="../../api_java/DbLock/put.html">DbLock.put</a>,
+<a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a>,
+<a href="../../api_java/DbLog/put.html">DbLog.put</a>,
+malloc(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_java/DbMpoolFile/get.html">DbMpoolFile.get</a>,
+<a href="../../api_java/DbMpoolFile/put.html">DbMpoolFile.put</a>,
+<a href="../../api_java/DbMpoolFile/set.html">DbMpoolFile.set</a>,
+<a href="../../api_java/DbMpoolFile/sync.html">DbMpoolFile.sync</a>,
+memset(3),
+munmap(3),
+open(3),
+realloc(3),
+sigfillset(3),
+sigprocmask(3),
+strerror(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the Db.sync
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/Db/class.html">Db</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/Db/close.html">Db.close</a>,
+<a href="../../api_java/Db/cursor.html">Db.cursor</a>,
+<a href="../../api_java/Db/del.html">Db.del</a>,
+<a href="../../api_java/Db/fd.html">Db.fd</a>,
+<a href="../../api_java/Db/get.html">Db.get</a>,
+<a href="../../api_java/Db/get_byteswapped.html">Db.get_byteswapped</a>,
+<a href="../../api_java/Db/get_type.html">Db.get_type</a>,
+<a href="../../api_java/Db/join.html">Db.join</a>,
+<a href="../../api_java/Db/open.html">Db.open</a>,
+<a href="../../api_java/Db/put.html">Db.put</a>,
+<a href="../../api_java/Db/stat.html">Db.stat</a>
+and
+Db.sync.
+</tt>
+</body>
+</html>

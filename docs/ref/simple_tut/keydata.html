@@ -1,0 +1,50 @@
+<! "@(#)keydata.so	10.7 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Simple Tutorial</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<p>
+<h1 align=center>Key/data pairs</h1>
+<p>
+Berkeley DB uses key/data pairs to identify elements in the database.
+That is, in the general case, whenever you call a Berkeley DB interface,
+you present a key to identify the key/data pair on which you intend
+to operate.
+<p>
+For example, you might store the key/data pairs:
+<p><ul><pre>
+<b>Key:</b>		<b>Data:</b>
+fruit		apple
+sport		cricket
+drink		water
+</pre></ul><p>
+In each case, the first element of the pair is the key, and the second
+is the data.
+<p>
+To store the first of these key data pairs into the database, you would
+call the Berkeley DB interface to store items, with <b>fruit</b> as the key,
+and <b>apple</b> as the data.  At some future time, you could then
+retrieve the data item associated with <b>fruit</b>, and the Berkeley DB
+retrieval interface would return <b>apple</b> to you.
+<p>
+While there are many variations and some subtleties, <b>all</b> accesses
+to data in Berkeley DB come down to key/data pairs.
+<p>
+Both key and data items are stored in simple structures
+(called DBTs) that contain
+a reference to memory and a length, counted in bytes.  The key and
+data items can be arbitrary binary data of practically any length.
+<p>
+<a href="../../ref/simple_tut/intro.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/simple_tut/errors.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

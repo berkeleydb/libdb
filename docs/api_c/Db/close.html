@@ -1,0 +1,111 @@
+<! "@(#)close.so	10.9 (Sleepycat) 10/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DB->close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DB->close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+DB->close(DB *db, u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DB->close function flushes any cached database information to disk,
+closes any open cursors, frees any allocated resources, and closes any
+underlying files.
+Since key/data pairs are cached in memory, failing to sync the file with
+the DB->close or <a href="../../api_c/Db/sync.html">DB->sync</a> function may result in inconsistent or
+lost information.
+<p>
+The <b>flags</b> parameter must be set to 0 or the following value:
+<dl compact>
+<a name="DB_NOSYNC">
+<p><dt>DB_NOSYNC<dd>Do not flush cached information to disk.
+<p>
+The DB_NOSYNC flag is a dangerous option.
+It should only be set if the application is doing logging (with
+transactions) so that the database is recoverable after a system
+or application crash, or if the database is always generated from
+scratch after any system or application crash.
+<p>
+<b>It is important to understand that flushing cached information to disk
+only minimizes the window of opportunity for corrupted data.</b>
+While unlikely, it is possible for database corruption to happen if a
+system or application crash occurs while writing data to the database.
+To ensure that database corruption never occurs, applications must either:
+use transactions and logging with automatic recovery, use logging and
+application-specific recovery, or edit a copy of the database,
+and, once all applications using the database have successfully called
+DB->close, atomically replace the original database with the
+updated copy.
+</dl>
+<p>
+When multiple threads are using the Berkeley DB handle concurrently, only a single
+thread may call the DB->close function.
+<p>
+Once DB->close has been called, regardless of its return, the
+Berkeley DB handle may not be used again.
+<p>
+The DB->close
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DB->close function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The DB->close
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+DBcursor->c_close(3),
+dbc->c_am_destroy(3),
+<a href="../../api_c/historic/dbm.html">dbm_close</a>,
+dbp->am_close(3),
+fflush(3),
+fprintf(3),
+free(3),
+<a href="../../api_c/DbLog/db_unregister.html">log_unregister</a>,
+<a href="../../api_c/DbMpool/close.html">memp_close</a>,
+<a href="../../api_c/DbMpoolFile/close.html">memp_fclose</a>,
+<a href="../../api_c/DbMpoolFile/sync.html">memp_fsync</a>,
+memset(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+<a href="../../api_c/DbEnv/version.html">db_version</a>,
+DB->close,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/del.html">DB->del</a>,
+<a href="../../api_c/Db/fd.html">DB->fd</a>,
+<a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/join.html">DB->join</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+<a href="../../api_c/Db/put.html">DB->put</a>,
+<a href="../../api_c/Db/stat.html">DB->stat</a>,
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+<a href="../../api_c/Dbc/close.html">DBcursor->c_close</a>,
+<a href="../../api_c/Dbc/del.html">DBcursor->c_del</a>,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>
+and
+<a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>.
+</tt>
+</body>
+</html>

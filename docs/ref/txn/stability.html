@@ -1,0 +1,48 @@
+<! "@(#)stability.so	10.8 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Subsystem</h3>
+<p>
+<h1 align=center>Cursor Stability</h1>
+<p>
+In the absence of locking, no guarantees are made about the stability
+of cursors in different processes or threads.
+However, the btree and recno access methods guarantee that cursor operations,
+interspersed with other cursor or non-cursor operations in the same
+thread of control (i.e., thread or single-threaded process),
+will always return keys in order and will return each non-deleted
+key/data pair exactly once.
+Because the hash access method uses a dynamic hashing algorithm,
+it cannot guarantee any form of stability in the presence of inserts and
+deletes unless locking is performed.
+<p>
+If locking was specified when the Berkeley DB file was opened,
+but transactions are not in effect,
+the access methods provide repeatable reads with respect to the cursor.
+That is, a DB_CURRENT call on the cursor is guaranteed to return the same
+record as was returned on the last call to the cursor.
+<p>
+In the presence of transactions, the access method calls between a call
+to <a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a> and a call to <a href="../../api_c/DbTxn/abort.html">txn_abort</a> or <a href="../../api_c/DbTxn/commit.html">txn_commit</a>
+provide degree 3 consistency.
+For all access methods,
+a cursor scan of the database performed within the context of a transaction
+is guaranteed to return each key/data pair once and only once,
+except in the following case.
+If, while performing a cursor scan using the hash access method,
+the transaction performing the scan inserts a new pair into the database,
+it is possible that duplicate key/data pairs will be returned.
+<p>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/txn/limits.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

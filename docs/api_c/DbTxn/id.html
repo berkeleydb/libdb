@@ -1,0 +1,44 @@
+<! "@(#)id.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: txn_id</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>txn_id</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+u_int32_t
+txn_id(DB_TXN *tid);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The txn_id function returns the unique transaction id associated with the
+specified transaction.  Locking calls made on behalf of this transaction
+should use the value returned from txn_id as the locker parameter
+to the <a href="../../api_c/DbLockTab/get.html">lock_get</a> or <a href="../../api_c/DbLockTab/vec.html">lock_vec</a> calls.
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbTxn/abort.html">txn_abort</a>,
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>,
+<a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a>,
+<a href="../../api_c/DbTxnMgr/close.html">txn_close</a>,
+<a href="../../api_c/DbTxn/commit.html">txn_commit</a>,
+txn_id,
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>,
+<a href="../../api_c/DbTxn/prepare.html">txn_prepare</a>,
+<a href="../../api_c/DbTxnMgr/stat.html">txn_stat</a>
+and
+<a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a>.
+</tt>
+</body>
+</html>

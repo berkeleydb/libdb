@@ -1,0 +1,35 @@
+<! "@(#)compatible.so	10.16 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Compatibility with historic interfaces</h1>
+<p>
+The Berkeley DB version 2 library provides backward compatible interfaces
+for the historic UNIX <a href="../../api_c/historic/dbm.html">dbm</a>, <a href="../../api_c/historic/dbm.html">ndbm</a> and <a href="../../api_c/historic/hsearch.html">hsearch</a>
+interfaces.
+It also provides a backward compatible interface for the historic
+Berkeley DB 1.85 release.
+<p>
+<b>
+Berkeley DB version 2 does not provide database compatibility for any of the
+above interfaces, and existing databases must be converted manually.</b>
+To convert existing databases from the Berkeley DB 1.85 format to the Berkeley DB
+version 2 format, review the <a href="../../utility/db_dump.html">db_dump185</a> and <a href="../../utility/db_load.html">db_load</a>
+information.  No utilities are provided to convert UNIX <a href="../../api_c/historic/dbm.html">dbm</a>,
+<a href="../../api_c/historic/dbm.html">ndbm</a> or <a href="../../api_c/historic/hsearch.html">hsearch</a> databases.
+<p>
+<a href="../../ref/program/byteorder.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/convert.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

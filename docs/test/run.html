@@ -1,0 +1,281 @@
+<! "@(#)run.so	10.9 (Sleepycat) 12/11/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Running the Test Suite</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>Running the Test Suite</h1>
+<p>
+All Berkeley DB tests are run from the Tcl front-end application,
+<b>dbtest</b>.  The dbtest application prompts for input with
+a percent sign (%).
+<p>
+To run the entire test suite, enter:
+<p><ul><pre>% run_all</pre></ul><p>
+<p>
+The output from dbtest will be re-directed to a file in the current
+directory named <b>ALL.OUT</b>, as running all the tests <b>can
+take from a few hours to multiple days</b>.
+After the test suite has finished, you will get a single message on
+the screen that indicates whether the entire suite succeeded or failed.
+If it failed, the <b>ALL.OUT</b> file will contain details describing
+what failed.  Any errors will appear in that file as output lines
+beginning with the string: FAIL.
+<p>
+It is also possible to run tests for a particular subsystem:
+<p><ul><pre>
+% r btree
+% r hash
+% r lock
+% r log
+% r mpool
+% r mutex
+% r recd
+% r recno
+% r txn
+</pre></ul><p>
+Or to run a single, individual test:
+<p><ul><pre>
+%test001 btree
+</pre></ul><p>
+<p>
+In all cases, when not running the entire test suite as described above,
+a successful test run will return you to the dbtest prompt (%).  On
+failure, you will get a message indicating what failed and why.
+<p>
+Tests are run, by default, in the directory <b>./TESTDIR</b>.  However,
+the test files are often <b>very</b> large.  To use a different
+directory for the test directory, edit the file <b>.dbtestrc</b> in your
+build directory, and change the line:
+<p><ul><pre>
+set testdir ./TESTDIR
+</pre></ul><p>
+<p>
+to a more appropriate value for your system, e.g.:
+<p><ul><pre>
+set testdir /var/tmp/db.test
+</pre></ul><p>
+<p>
+Alternatively, you can create a symbolic link named <b>TESTDIR</b> in
+your build directory to an appropriate location for running the tests.
+<p>
+<b>
+WARNING: On many platforms, the <b>mmap</b>(2) and/or <b>fcntl</b>(2) locking system calls won't work correctly over remote filesystems
+(e.g., NFS and AFS), so we strongly recommend that the test directory be
+a local filesystem.</b>
+<p>
+There are two different modes of RECNO access method tests, with and
+without record renumbering.  The test type RECNO is without renumbering,
+and RRECNO is with renumbering.
+<p>
+The DB tester currently includes the following tests:
+<table border=1 align=center>
+<tr><th>Access Method Tests</th><th>Action</th></tr>
+<tr><td>test001</td><td>Small keys/data<ul type=disc>
+	<li>Put/get per key
+	<li>Dump file, verify
+	<li>Close, reopen
+	<li>Dump file, verify
+</ul></td></tr>
+<tr><td>test002</td><td>Small keys/medium data<ul type=disc>
+	<li>Put/get per key
+	<li>Dump file, verify
+	<li>Close, reopen
+	<li>Dump file, verify
+</ul></td></tr>
+<tr><td>test003</td><td>Small keys/large data<ul type=disc>
+	<li>Put/get per key
+	<li>Dump file, verify
+	<li>Close, reopen
+	<li>Dump file, verify
+</ul></td></tr>
+<tr><td>test004</td><td>Small keys/medium data<ul type=disc>
+	<li>Put/get per key
+	<li>Sequential (cursor) get/delete and verify
+</ul></td></tr>
+<tr><td>test005</td><td>Small keys/medium data<ul type=disc>
+	<li>Put/get per key
+	<li>Close, reopen
+	<li>Sequential (cursor) get/delete and verify
+</ul></td></tr>
+<tr><td>test006</td><td>Small keys/medium data<ul type=disc>
+	<li>Put/get per key
+	<li>Keyed delete and verify
+</ul></td></tr>
+<tr><td>test007</td><td>Small keys/medium data<ul type=disc>
+	<li>Put/get per key
+	<li>Close, reopen
+	<li>Keyed delete and verify
+</ul></td></tr>
+<tr><td>test008</td><td>Small keys/large data<ul type=disc>
+	<li>Put/get per key
+	<li>Loop through keys by steps (which change)
+	<li>... delete each key at step
+	<li>... add each key back
+	<li>... change step
+	<li>Tests that overflow pages are getting reused appropriately
+</ul></td></tr>
+<tr><td>test009</td><td>Small keys/large data<ul type=disc>
+	<li>Same as test008; close and reopen database
+</ul></td></tr>
+<tr><td>test010</td><td>Duplicate test<ul type=disc>
+	<li>Small key/data pairs.
+</ul></td></tr>
+<tr><td>test011</td><td>Duplicate test<ul type=disc>
+	<li>Small key/data pairs.
+	<li>Test Keyfirst, Keylast, add_before and add_after.  To verify
+	duplicates onto overflow pages, run with small pagesize.
+</ul></td></tr>
+<tr><td>test012</td><td>Large keys/small data<ul type=disc>
+	<li>Same as test003 except use big keys (source files and
+	executables) and small data (the file/executable names).
+</ul></td></tr>
+<tr><td>test013</td><td>Partial put test<ul type=disc>
+	<li>Overwrite entire records using partial puts.  Make sure
+	that we do not allow overwrites when the NOOVERWRITE flag is set.
+</ul></td></tr>
+<tr><td>test014</td><td>Exercise partial puts on short data<ul type=disc>
+	<li>Run 5 combinations of numbers of characters to replace,
+	and number of times to increase the size by.
+</ul></td></tr>
+<tr><td>test015</td><td>Partial put test.<ul type=disc>
+	<li>Partial put teset where the key does not initially exist.
+</ul></td></tr>
+<tr><td>test016</td><td>Partial put test.<ul type=disc>
+	<li>Partial put where the datum gets shorter as a result of
+	the put.
+</ul></td></tr>
+<tr><td>test017</td><td>Basic offpage duplicate test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test018</td><td>Offpage duplicate test.<ul type=disc>
+	<li>Key_{first,last,before,after} offpage duplicates.
+</ul></td></tr>
+<tr><td>test019</td><td>Partial get test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test020</td><td>In-Memory database tests.<ul type=disc>
+</ul></td></tr>
+<tr><td>test021</td><td>Btree range tests.<ul type=disc>
+</ul></td></tr>
+<tr><td>test022</td><td>Multiple data directories test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test023</td><td>Duplicate test.<ul type=disc>
+	<li>Exercise deletes and cursor operations within a duplicate set.
+</ul></td></tr>
+<tr><td>test024</td><td>Record number retrieval test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test025</td><td>DB_APPEND flag test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test026</td><td>Small keys/medium data w/duplicates<ul type=disc>
+	<li>Put/get per key.
+	<li>Loop through keys -- delete each key
+	<li>... test that we are deleting dups correctly with the cursor
+</ul></td></tr>
+<tr><td>test027</td><td>Off-page duplicate test.<ul type=disc>
+	<li>Call test026 with parameters to force off-page duplicates.
+</ul></td></tr>
+<tr><td>test028</td><td>Cursor delete test.<ul type=disc>
+	<li>Test put operations after deleting through a cursor.
+</ul></td></tr>
+<tr><td>test029</td><td>Record renumbering.<ul type=disc>
+</ul></td></tr>
+<tr><td>test030</td><td>DB_NEXT_DUP functionality<ul type=disc>
+</ul></td></tr>
+<tr><td>test031</td><td>Duplicate sorting functionality<ul type=disc>
+</ul></td></tr>
+<tr><td>test032</td><td>DB_GET_BOTH<ul type=disc>
+</ul></td></tr>
+<tr><td>test033</td><td>DB_GET_BOTH without comparison function<ul type=disc>
+</ul></td></tr>
+<tr><td>test034</td><td>Test032 with off-page duplicates<ul type=disc>
+</ul></td></tr>
+<tr><td>test035</td><td>Test033 with off-page duplicates<ul type=disc>
+</ul></td></tr>
+<tr><td>test036</td><td>Test KEYFIRST and KEYLAST when the key doesn't exist.<ul type=disc>
+</ul></td></tr>
+<tr><td>test037</td><td>Test DB_RMW<ul type=disc>
+</ul></td></tr>
+<tr><td>test038</td><td>DB_GET_BOTH on deleted items<ul type=disc>
+</ul></td></tr>
+<tr><td>test039</td><td>DB_GET_BOTH  on deleted items without comparison function<ul type=disc>
+</ul></td></tr>
+<tr><td>test040</td><td>Test038 with off-page duplicates<ul type=disc>
+</ul></td></tr>
+<tr><td>test041</td><td>Test039 with off-page duplicates<ul type=disc>
+</ul></td></tr>
+<tr><td>test042</td><td>Multi-process random test (tests the concurrent DB product)<ul type=disc>
+	<li>Tests multiple processes running random operations
+	concurrently.
+</ul></td></tr>
+<tr><td>test043</td><td>Recno renumbering and implicit creation test.<ul type=disc>
+</ul></td></tr>
+<tr><td>test044</td><td>System integration tests.<ul type=disc>
+	<li>Requires proper functioning of the checkpoint daemon,
+	recovery, transactions, etc.
+	<li>Not run by default.
+</ul></td></tr>
+<tr><td>test045</td><td>Random tester<ul type=disc>
+	<li>Runs a number of random add/delete/retrieve operations.
+	Tests both successful conditions and error conditions.
+	<li>Not run by default.
+</ul></td></tr>
+<tr><td>test046</td><td>Get/Put/Delete operation flags (not yet completed).<ul type=disc>
+	<li>Not run by default.
+</ul></td></tr>
+<tr><td>jointest</td><td>Tests duplicate assisted joins.<ul type=disc>
+	<li>Executes 1, 2, 3, and 4 way joins with differing index
+	orders and selectivity.
+</ul></td></tr>
+<tr><th>Locking Subsystem Tests</th><th>Action</th></tr>
+<tr><td>lock001</td><td>Open, close, unlink
+<tr><td>lock002</td><td>Gets/Puts.  Contention without waiting.
+<tr><td>lock003</td><td>Growing a shared region.
+<tr><td>lock004</td><td>Multi-process lock tests.
+<tr><td>lock005</td><td>Multiprocess random lock test.
+<tr><th>Logging Subsystem Tests</th><th>Action</th></tr>
+<tr><td>log001</td><td>Open, close, unlink
+<tr><td>log002</td><td>Read/write log records.
+<tr><td>log003</td><td>Tests multiple logs, truncation, lsn comparison and file functionality.
+<tr><td>log004</td><td>Verify that log_flush is flushing records correctly.
+<tr><th>Memory Pool Subsystem Tests</th><th>Action</th></tr>
+<tr><td>memp001</td><td>Randomly updates pages.
+<tr><td>memp002</td><td>Tests multiple processes accessing and modifying the same files.
+<tr><th>Transaction Subsystem Tests</th><th>Action</th></tr>
+<tr><td>txn001</td><td>Open, close, unlink
+<tr><td>txn002</td><td>Begin, commit, abort testing.
+<tr><td>txn003</td><td>Growing a shared region.
+<tr><th>Access Method Recovery Tests</th><th>Action</th></tr>
+<tr><td>recd001</td><td>Per-operation recovery tests for non-duplicate, non-split messages.
+    Makes sure that we exercise redo, undo, and do-nothing condition.
+    Any test that appears with the message (change state) indicates that
+    we've already run the particular test, but we are running it again
+    so that we can change the state of the data base to prepare for the
+    next test (this applies to all other recovery tests as well).
+<tr><td>recd002</td><td>Split recovery tests.  For every known split log message, makes sure
+    that we exercise redo, undo, and do-nothing condition.
+<tr><td>recd003</td><td>Duplicate recovery tests.  For every known duplicate log message,
+    makes sure that we exercise redo, undo, and do-nothing condition.
+<tr><td>recd004</td><td>Big key test where big key gets elevated to internal page.
+<tr><th>Deadlock detection Tests</th><th>Action</th></tr>
+<tr><td>dead001</td><td>Use two different configurations to test deadlock detection among
+    a variable number of processes.  One configuration has the processes
+    deadlocked in a ring.  The other has the processes all deadlocked on
+    a single resource.
+<tr><td>dead002</td><td>Same test as dead001, but use "detect on every collision" instead
+    of separate deadlock detector.
+<tr><th>Bug Tests</th><th>Action</th></tr>
+<tr><td>bug001</td><td>Cursor maintenance in duplicates.
+<tr><td>bug002</td><td>Cursor ops not in duplicates.
+<tr><td>bug003</td><td>Delete with cursor on a key.
+<tr><td>bug004</td><td>Delete cursor key and re-add.
+<tr><td>bug005</td><td>Verify that deleting and readding duplicates results in correct ordering.
+<tr><td>bug006</td><td>Log prev works across log files.
+<tr><td>bug007</td><td>Cursor ops work with a partial length of 0.
+</table>
+</tt>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<! "@(#)db_register.so	10.11 (Sleepycat) 12/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: log_register</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>log_register</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+log_register(DB_LOG *logp, const DB *dbp,
+    const char *name, DBTYPE type, u_int32_t *fidp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The log_register function registers a file name with the log manager and
+copies a file identification number into the memory location referenced by
+<b>fidp</b>.
+<p>
+This file identification number should be used in all subsequent log
+messages that refer to operations on the file.  The log manager records
+all file name to file identification number mappings at each checkpoint
+so that a recovery process can identify the file to which a record in the
+log refers.
+<p>
+The log_register function is called when an access method registers the
+open of a file.  The <b>dbp</b> parameter should be a
+pointer to the DB structure
+which is being returned by the access method.
+<p>
+The <b>type</b> parameter should be one of the types of databases
+specified in <a href="../../api_c/Db/open.html">db_open</a>, e.g., DB_HASH.
+<p>
+The log_register
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the log_register function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The log_register
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+dbenv->db_paniccall(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fsync(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+lseek(3),
+malloc(3),
+memcmp(3),
+memcpy(3),
+memset(3),
+open(3),
+realloc(3),
+sigfillset(3),
+sigprocmask(3),
+snprintf(3),
+stat(3),
+strerror(3),
+strlen(3),
+time(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the log_register
+function may fail and return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbLog/archive.html">log_archive</a>,
+<a href="../../api_c/DbLog/close.html">log_close</a>,
+<a href="../../api_c/DbLog/compare.html">log_compare</a>,
+<a href="../../api_c/DbLog/file.html">log_file</a>,
+<a href="../../api_c/DbLog/flush.html">log_flush</a>,
+<a href="../../api_c/DbLog/get.html">log_get</a>,
+<a href="../../api_c/DbLog/open.html">log_open</a>,
+<a href="../../api_c/DbLog/put.html">log_put</a>,
+log_register,
+<a href="../../api_c/DbLog/stat.html">log_stat</a>,
+<a href="../../api_c/DbLog/unlink.html">log_unlink</a>
+and
+<a href="../../api_c/DbLog/db_unregister.html">log_unregister</a>.
+</tt>
+</body>
+</html>

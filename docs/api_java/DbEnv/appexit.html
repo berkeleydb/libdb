@@ -1,0 +1,85 @@
+<! "@(#)appexit.so	10.8 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbEnv.appexit</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbEnv.appexit</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void appexit()
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbEnv.appexit method closes the initialized Berkeley DB subsystems, freeing
+any allocated resources and closing any underlying subsystems.
+<p>
+In multi-threaded applications, only a single thread may call
+DbEnv.appexit.
+<p>
+The DbEnv.appexit
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbEnv.appexit method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbEnv.appexit
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+free(3),
+<a href="../../api_java/DbLockTab/close.html">DbLockTab.close</a>,
+<a href="../../api_java/DbLog/close.html">DbLog.close</a>,
+<a href="../../api_java/DbMpool/close.html">DbMpool.close</a>,
+memset(3),
+strlen(3),
+and
+<a href="../../api_java/DbTxnMgr/close.html">DbTxnMgr.close</a>.
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbEnv/class.html">DbEnv</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a>,
+DbEnv.appexit,
+<a href="../../api_java/DbEnv/version.html">DbEnv.version</a>,
+dbenv_get_data_dir,
+dbenv_get_errcall,
+dbenv_get_error_model,
+dbenv_get_error_stream,
+dbenv_get_errpfx,
+dbenv_get_flags,
+dbenv_get_home,
+<a href="../../api_java/DbEnv/get_lg_info.html">DbEnv.get_lg_info</a>,
+dbenv_get_lg_max,
+dbenv_get_lk_conflicts,
+dbenv_get_lk_detect,
+<a href="../../api_java/DbEnv/get_lk_info.html">DbEnv.get_lk_info</a>,
+dbenv_get_lk_modes,
+dbenv_get_log_dir,
+dbenv_get_lorder,
+<a href="../../api_java/DbEnv/get_mp_info.html">DbEnv.get_mp_info</a>,
+dbenv_get_mp_mmapsize,
+dbenv_get_mp_size,
+dbenv_get_tmp_dir,
+<a href="../../api_java/DbEnv/get_tx_info.html">DbEnv.get_tx_info</a>,
+dbenv_get_tx_max,
+dbenv_get_tx_recover
+and
+dbenv_get_verbose.
+</tt>
+</body>
+</html>

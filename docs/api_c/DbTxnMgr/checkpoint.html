@@ -1,0 +1,95 @@
+<! "@(#)checkpoint.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: txn_checkpoint</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>txn_checkpoint</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+txn_checkpoint(const DB_TXNMGR *txnp,
+    u_int32_t kbyte, u_int32_t min);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The txn_checkpoint function flushes the underlying memory pool,
+writes a checkpoint record to the log and then flushes the log.
+<p>
+If either <b>kbyte</b> or <b>min</b> is non-zero, the checkpoint is only
+done if more than <b>min</b> minutes have passed since the last checkpoint,
+or if more than <b>kbyte</b> kilobytes of log data have been written since
+the last checkpoint.
+<p>
+The txn_checkpoint
+function returns the value of <b>errno</b> on failure, 0 on success,
+ and DB_INCOMPLETE if there were pages that
+needed to be written but that <a href="../../api_c/DbMpool/sync.html">memp_sync</a> was unable to write
+immediately.
+In this case, the txn_checkpoint call should be retried.
+<p>
+The txn_checkpoint function is the underlying function used by the <a href="../../utility/db_checkpoint.html">db_checkpoint</a> utility.
+See the <a href="../../utility/db_checkpoint.html">db_checkpoint</a> utility source code for an example of using txn_checkpoint
+in a POSIX 1003.1 environment.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the txn_checkpoint function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The txn_checkpoint
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+<a href="../../api_c/DbLog/compare.html">log_compare</a>,
+<a href="../../api_c/DbLog/put.html">log_put</a>,
+malloc(3),
+memcpy(3),
+<a href="../../api_c/DbMpool/sync.html">memp_sync</a>,
+memset(3),
+strerror(3),
+time(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the txn_checkpoint
+function may fail and return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbTxn/abort.html">txn_abort</a>,
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>,
+txn_checkpoint,
+<a href="../../api_c/DbTxnMgr/close.html">txn_close</a>,
+<a href="../../api_c/DbTxn/commit.html">txn_commit</a>,
+<a href="../../api_c/DbTxn/id.html">txn_id</a>,
+<a href="../../api_c/DbTxnMgr/open.html">txn_open</a>,
+<a href="../../api_c/DbTxn/prepare.html">txn_prepare</a>,
+<a href="../../api_c/DbTxnMgr/stat.html">txn_stat</a>
+and
+<a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<! "@(#)cursor.so	10.3 (Sleepycat) 10/19/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Database cursors</h1>
+<p>
+The <a href="../../api_c/Db/cursor.html">DB->cursor</a> function is the standard function for opening
+a cursor into a database.
+<p>
+Once a database cursor has been opened there are four additional standard
+access method operations that can be performed.  Each of these operations
+is performed using a function that is referenced from the returned cursor
+handle.  The four operations are as follows:
+<p>
+<dl compact>
+<p><dt><a href="../../api_c/Dbc/get.html">DBcursor->c_get</a><dd>Retrieve a record
+<dt><a href="../../api_c/Dbc/put.html">DBcursor->c_put</a><dd>Store a record
+<dt><a href="../../api_c/Dbc/del.html">DBcursor->c_del</a><dd>Delete a record
+<dt><a href="../../api_c/Dbc/close.html">DBcursor->c_close</a><dd>Close the cursor
+</dl>
+<p>
+<a href="../../ref/am/close.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/curget.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

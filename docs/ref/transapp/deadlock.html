@@ -1,0 +1,60 @@
+<! "@(#)deadlock.so	10.2 (Sleepycat) 11/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Deadlock Detection</h1>
+<p>
+The first component of the infrastructure, <i>deadlock detection</i>,
+is not so much a requirement specific to transaction protected
+applications, but rather is necessary for almost all applications where
+more than a single thread of control will be accessing the database at
+one time.  (It is not required by <b>all</b> such applications, as
+read-only applications cannot deadlock, however there are a <b>very</b> few
+applications where the access pattern to the data is sufficiently well
+structured that deadlock cannot occur.) Regardless, while Berkeley DB
+automatically handles database locking issues, it is
+normally possible for deadlock to occur.
+<p>
+When the deadlock actually occurs, what happens is that two (or more)
+processes (or threads, i.e., any thread of control) that hold locks
+request other locks that cannot be granted, and will never be granted
+because one of the processes now waiting holds the resource in question.
+<p>
+For example, consider two processes A and B.  Let's say that A obtains an
+exclusive lock on item X, and B obtains an exclusive lock on item Y.  Then,
+A requests a lock on Y and B requests a lock on X.  A will wait until
+resource Y becomes available and B will wait until resource X becomes
+available.  Unfortunately, since both A and B are waiting, neither will
+release the locks they hold and neither will ever obtain the resource on
+which it is waiting.  In order to detect that deadlock has happened, a
+separate process or thread must review the locks currently held in the
+database.  If deadlock has occurred, a victim must be selected, and that
+victim will then return the error EAGAIN from the database call it was
+making.
+<p>
+Berkeley DB provides a separate UNIX-style utility which can be used to perform
+this deadlock detection, named, cleverly enough, <a href="../../utility/db_deadlock.html">db_deadlock</a>.
+Alternatively, applications can create their own deadlock utility or
+thread using the underlying <a href="../../api_c/DbLockTab/detect.html">lock_detect</a> function, or specify that
+Berkeley DB run the deadlock detector internally whenever there is a conflict
+over a lock (see lk_detect for more information).
+<p>
+Deciding how often to run the deadlock detector and which of the
+deadlocked transactions will be forced to abort when the deadlock is
+detected is a common tuning parameter for Berkeley DB applications.
+<p>
+<a href="../../ref/transapp/admin.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/checkpoint.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

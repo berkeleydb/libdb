@@ -1,0 +1,61 @@
+<! "@(#)intro.so	10.7 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>What are the available access methods?</h1>
+<p>
+Berkeley DB currently offers three access methods: Btree, Hash and Recno.
+<h1>Btree</h1>
+<p>
+The Btree access method is an implementation of a sorted, balanced tree
+structure, more specifically a B+tree.  Searches, insertions, and
+deletions in the tree all take O(log base_b N) time, where base_b is the
+average number of keys per page, and N is the total number of keys stored.
+Often, inserting ordered data into btree implementations results in pages
+that are half-full.  This implementation has been modified to make ordered
+(or inverse ordered) insertion the best case, resulting in nearly perfect
+page space utilization.
+<p>
+Space freed by deleting key/data pairs from a Btree database is never
+reclaimed from the filesystem, although it is reused where possible.  This
+means that the Btree storage structure is grow-only.  If sufficiently many
+keys are deleted from a tree that shrinking the underlying database file
+is desirable, this can be accomplished by creating a new tree from a scan
+of the existing one.
+<h1>Hash</h1>
+<p>
+The Hash access method data structure is an implementation of Extended
+Linear Hashing, as described in
+<i>Linear Hashing: A New Tool for File and Table Addressing</i>,
+Witold Litwin, Proceedings of the 6th International Conference on Very
+Large Databases (VLDB), 1980.
+<h1>Recno</h1>
+<p>
+The Recno access method is an implementation of Fixed and Variable-length
+records, optionally backed by a flat text (byte stream) file.  Both fixed
+and variable length records are accessed by their logical record number.
+<p>
+It is valid to create a record whose record number is more than one
+greater than the last record currently in the database.  For example,
+the creation of record number 8, when records 6 and 7 do not yet exist,
+is not an error.  However, any attempt to retrieve such records (e.g.,
+records 6 and 7) will fail.
+<p>
+By default, deleting a record will not renumber records following the
+deleted record.  Any attempt to retrieve deleted records will fail.
+<p>
+<a href="../../ref/am/partial.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/select.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<! "@(#)bt_recnum.so	10.5 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Retrieving Btree records by number (DB_RECNUM)</h1>
+<p>
+The Btree access method optionally supports retrieval by
+<a href="../am/logrec.html">logical record number</a>.  To configure a Btree
+database for record numbers, set the <a href="../../api_c/DbInfo/info.html#DB_RECNUM">DB_RECNUM</a> flag in the
+DB_INFO structure.
+<p>
+Configuring a Btree for record numbers should not be done lightly.
+While useful, it introduces a severe hot-spot in the database when
+storing key/data items, and can severely impact application throughput.
+<p>
+To retrieve by record number, use the <a href="../../api_c/Db/get.html#DB_SET_RECNO">DB_SET_RECNO</a> flag
+to the <a href="../../api_c/Db/get.html">DB->get</a> and <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a> interfaces.
+<p>
+<a href="../../ref/am/bt_dup.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/h_ffactor.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

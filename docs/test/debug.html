@@ -1,0 +1,222 @@
+<! "@(#)debug.html	10.3 (Sleepycat) 9/8/98">
+<html>
+<head>
+<title>Berkeley DB: Debugging the Library</title>
+</head>
+<body bgcolor=white>
+
+The <b>debug</b> command to the <b>dbtest</b> utility provides assistance
+for debugging the test suite.  If you don't specify a parameter, e.g.:
+<p>
+<ul>
+<pre>
+% debug
+% r btree
+</pre>
+</ul>
+
+debug causes dbtest to display a running count of the calls made into the
+DB library.  There is an optional argument to debug which is the number
+of the operation on which you want to stop.  By using your debugger to
+set a breakpoint in the function <b>__db_loadme</b>, you can obtain control
+of the tester immediately before a particular operation.  For example:
+<ul>
+<pre>
+mongoose:build_unix {1} gdb dbtest
+(gdb) break __db_loadme
+Breakpoint 1 at 0xe3f7: file ../dist/../db/db_pr.c, line 43.
+(gdb) run
+Starting program: /usr/src/db/build_unix/dbtest
+% debug 10
+10
+% r btree
+run_method: btree 1 19
+09:29:32 (00:00:00)
+Test001: DB_BTREE 10000 equal key/data pairs
+     1:	Test001.a: put/get loop
+    10:
+Breakpoint 1, __db_loadme () at ../dist/../db/db_pr.c:43
+43		getpid();
+(gdb) n
+44	}
+(gdb) n
+debug_check () at ../dist/../test/utils.c:1254
+1254	}
+(gdb) n
+db_put_cmd (interp=0x54000, argc=6, argv=0xefbfc408, dbp=0xea080)
+    at ../dist/../test/utils.c:859
+859		if ((err = dbp->put(dbp, txnid, &key, &data, flags)) == 0) {
+(gdb) s
+__bt_put (dbp=0xea080, txn=0x0, key=0xefbfc2bc, data=0xefbfc2d4, flags=0)
+    at ../dist/../btree/bt_put.c:91
+91		t = dbp->internal;
+(gdb) where
+#0  __bt_put (dbp=0xea080, txn=0x0, key=0xefbfc2bc, data=0xefbfc2d4, flags=0)
+    at ../dist/../btree/bt_put.c:91
+#1  0x7691 in db_put_cmd (interp=0x54000, argc=6, argv=0xefbfc408, dbp=0xea080)
+    at ../dist/../test/utils.c:859
+#2  0x68b2 in dbwidget_cmd (cd_dbp=0xea080, interp=0x54000, argc=6,
+    argv=0xefbfc408) at ../dist/../test/utils.c:517
+#3  0x3a690 in Tcl_Eval ()
+(gdb) quit
+The program is running.  Quit anyway (and kill it)? (y or n) y
+mongoose:build_unix {2}
+</pre>
+</ul>
+
+<p>
+To set a counter breakpoint from inside a debugger, set the global variable
+<b>debug_test</b> to the counter value at which you want to stop.  For
+example, you might first stop at operation 100, and then stop at operation
+200 by initially setting a breakpoint in <b>__db_loadme</b>, issuing a debug
+100 command and then setting debug_test to 200 in the debugger.  (Some of
+the trickier bugs in DB are best solved by binary search, looking for the
+precise moment at which the page contents go bad.)
+
+<p>
+If you want to stop on each iteration, set the variable <b>debug_stop</b>
+to a non-zero value.
+
+<hr size=1 noshade>
+<p>
+There are a number of routines to help you display page and tree contents.
+These routines live in the file <b>../db/db_pr.c</b>.  Some of the more
+useful ones are:
+
+<p>
+<ul>
+<pre>
+__db_prpage(page_address, dump_all)	# Display a page's contents
+__db_prnpage(DB_MPOOLFILE *, pageno)	# Display a page's contents
+__db_dump(DB *, file_name, dump_all)	# Dump the entire database.
+</pre>
+</ul>
+
+<p>
+Examples of calling these functions from gdb are as follows.
+<hr size=1 noshade>
+<p>
+The <b>__db_prpage</b> function displays a page as specified by a
+reference to a PAGE structure.
+In this case, <b>cp</b> references a CURSOR structure, which contains
+the pointer to the page.
+<p>
+<pre>
+(gdb) whatis cp
+type = CURSOR *
+(gdb) whatis cp->page
+type = PAGE *
+(gdb) print *cp
+$1 = {dbc = 0x807e040, page = 0xc110400, pgno = 2, indx = 0, dpgno = 0,
+  dindx = 0, lock = 0, mode = DB_LOCK_NG, flags = 0}
+(gdb) print __db_prpage(cp->page, 1)
+page    2: (btree leaf)
+    lsn.file: 0 lsn.offset: 0
+    prev:    0 next:    3 level:  1 entries:   28 offset:  136
+    [000]  500 len:   6 data: aback0x00
+    [001]  488 len:   6 data: aback0x00
+    [002]  476 len:   6 data: abaft0x00
+    [003]  464 len:   6 data: abaft0x00
+    [004]  452 len:   8 data: abandon0x00
+    [005]  440 len:   8 data: abandon0x00
+    [006]  424 len:  10 data: abandoned0x00
+    [007]  408 len:  10 data: abandoned0x00
+    [008]  392 len:  11 data: abandoning0x00
+    [009]  376 len:  11 data: abandoning0x00
+    [010]  360 len:  12 data: abandonment0x00
+    [011]  344 len:  12 data: abandonment0x00
+    [012]  332 len:   9 data: abandons0x00
+    [013]  320 len:   9 data: abandons0x00
+    [014]  308 len:   6 data: abase0x00
+    [015]  296 len:   6 data: abase0x00
+    [016]  284 len:   7 data: abased0x00
+    [017]  272 len:   7 data: abased0x00
+    [018]  256 len:  10 data: abasement0x00
+    [019]  240 len:  10 data: abasement0x00
+    [020]  224 len:  11 data: abasements0x00
+    [021]  208 len:  11 data: abasements0x00
+    [022]  196 len:   7 data: abases0x00
+    [023]  184 len:   7 data: abases0x00
+    [024]  172 len:   6 data: abash0x00
+    [025]  160 len:   6 data: abash0x00
+    [026]  148 len:   8 data: abashed0x00
+    [027]  136 len:   8 data: abashed0x00
+$2 = 0
+(gdb)
+</pre>
+<hr size=1 noshade>
+<p>
+The <b>__db_prnpage</b> function displays any page in the database, as
+specified by a page number argument.
+The <b>dbp->mpf</b> pointer references a DB_MPOOLFILE structure, which
+is the per-process shared memory buffer pool structure.
+<pre>
+(gdb) whatis dbp->mpf
+type = DB_MPOOLFILE *
+(gdb) print __db_prnpage(dbp->mpf, 2)
+page    2: (btree leaf)
+    lsn.file: 0 lsn.offset: 0
+    prev:    0 next:    3 level:  1 entries:   28 offset:  136
+    [000]  500 len:   6 data: aback0x00
+    [001]  488 len:   6 data: aback0x00
+    [002]  476 len:   6 data: abaft0x00
+    [003]  464 len:   6 data: abaft0x00
+    [004]  452 len:   8 data: abandon0x00
+    [005]  440 len:   8 data: abandon0x00
+    [006]  424 len:  10 data: abandoned0x00
+    [007]  408 len:  10 data: abandoned0x00
+    [008]  392 len:  11 data: abandoning0x00
+    [009]  376 len:  11 data: abandoning0x00
+    [010]  360 len:  12 data: abandonment0x00
+    [011]  344 len:  12 data: abandonment0x00
+    [012]  332 len:   9 data: abandons0x00
+    [013]  320 len:   9 data: abandons0x00
+    [014]  308 len:   6 data: abase0x00
+    [015]  296 len:   6 data: abase0x00
+    [016]  284 len:   7 data: abased0x00
+    [017]  272 len:   7 data: abased0x00
+    [018]  256 len:  10 data: abasement0x00
+    [019]  240 len:  10 data: abasement0x00
+    [020]  224 len:  11 data: abasements0x00
+    [021]  208 len:  11 data: abasements0x00
+    [022]  196 len:   7 data: abases0x00
+    [023]  184 len:   7 data: abases0x00
+    [024]  172 len:   6 data: abash0x00
+    [025]  160 len:   6 data: abash0x00
+    [026]  148 len:   8 data: abashed0x00
+    [027]  136 len:   8 data: abashed0x00
+$1 = 0
+(gdb)
+</pre>
+<hr size=1 noshade>
+<p>
+The <b>__db_dump</b> function dumps the entire database to a file.
+The <b>dbp</b> pointer references a DB structure as might be returned
+by the <b>db_open</b> function.  After this command has been run, the
+file <b>/tmp/dump</b> will have a copy of the entire database.  This is
+often useful to compare all the changes in the database after running
+a single subroutine that may have split pages and/or otherwise modified
+more than a single page.
+<p>
+<pre>
+(gdb) whatis dbp
+type = DB *
+(gdb) print *dbp
+$3 = {mutexp = 0x0, type = DB_BTREE, dbenv = 0x807b000, mp_dbenv = 0x0,
+  master = 0x807d000, internal = 0x807d100, mp = 0x807b080, mpf = 0x807e000,
+  curs_queue = {tqh_first = 0x807e040, tqh_last = 0x807e048}, handleq = {
+    lh_first = 0x807d000}, links = {le_next = 0x0, le_prev = 0x807d028},
+  log_fileid = 0, txn = 0x0, locker = 0, lock_dbt = {data = 0x0, size = 0,
+    ulen = 0, dlen = 0, doff = 0, flags = 0}, lock = {pgno = 0,
+    fileid = "\000\004\017\001\001 \000\a5\223ýÖ\000\000\000\000\000\000\000"}, pgsize = 512, db_malloc = 0, close = 0x804a810 <db_close>,
+  cursor = 0x8064540 <__bam_cursor>, del = 0x8066554 <__bam_delete>,
+  fd = 0x804aa60 <db_fd>, get = 0x80649b0 <__bam_get>,
+  put = 0x8067b50 <__bam_put>, stat = 0x806c708 <__bam_stat>,
+  sync = 0x8063f30 <__bam_sync>, flags = 80}
+(gdb) print __db_dump(dbp, "/tmp/dump", 1)
+$4 = 0
+(gdb)
+</pre>
+
+</body>
+</html>

@@ -1,0 +1,146 @@
+<! "@(#)put.so	10.10 (Sleepycat) 10/3/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DB->put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DB->put</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+DB->put(DB *db,
+    DB_TXN *txnid, DBT *key, DBT *data, u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DB->put function stores key/data pairs in the database.
+<p>
+If the database supports duplicates, the DB->put function adds the new data
+value at the end of the duplicate set.  If the database supports sorted
+duplicates, the new data value is inserted at the correct sorted location.
+<p>
+If the file is being accessed under transaction protection,
+the <b>txnid</b> parameter is a transaction ID returned from
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>, otherwise, NULL.
+<p>
+The <b>flags</b> parameter must be set to 0 or one of the following
+values:
+<dl compact>
+<a name="DB_APPEND">
+<p><dt>DB_APPEND<dd>Append the key/data pair to the end of the database.
+For DB_APPEND to be specified, the underlying database must be
+of type DB_RECNO.
+The record number allocated to the record is returned in the specified
+<b>key</b>.
+<a name="DB_NOOVERWRITE">
+<p><dt>DB_NOOVERWRITE<dd>Enter the new key/data pair only if the key does not already appear
+in the database.
+</dl>
+<p>
+The default behavior of the DB->put function is to enter the
+new key/data pair, replacing any previously existing key if duplicates
+are disallowed, or to add a duplicate entry if duplicates are allowed.
+Even if the designated database allows duplicates, a call to
+DB->put with the DB_NOOVERWRITE flag set will fail if the key
+already exists in the database.
+<p>
+The DB->put
+function returns the value of <b>errno</b> on failure, 0 on success,
+and DB_KEYEXIST if the DB_NOOVERWRITE <b>flag</b> was set and the key
+already exists in the file.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DB->put function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The DB->put
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+DBcursor->c_close(3),
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>,
+DBcursor->c_put(3),
+__account_page(3),
+dbenv->db_paniccall(3),
+fflush(3),
+fprintf(3),
+free(3),
+func(3),
+<a href="../../api_c/DbLockTab/get.html">lock_get</a>,
+<a href="../../api_c/DbLock/put.html">lock_put</a>,
+<a href="../../api_c/DbLockTab/vec.html">lock_vec</a>,
+<a href="../../api_c/DbLog/put.html">log_put</a>,
+malloc(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_c/DbMpoolFile/get.html">memp_fget</a>,
+<a href="../../api_c/DbMpoolFile/put.html">memp_fput</a>,
+<a href="../../api_c/DbMpoolFile/set.html">memp_fset</a>,
+memset(3),
+realloc(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the DB->put
+function may fail and return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EACCES<dd>An attempt was made to modify a read-only database.
+</dl>
+<p>
+<dl compact>
+<p><dt>EAGAIN<dd>A lock was unavailable.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+A record number of 0 was specified.
+<p>
+An attempt was made to add a record to a fixed-length database that
+was too large to fit.
+<p>
+An attempt was made to do a partial put.
+</dl>
+<p>
+<dl compact>
+<p><dt>ENOSPC<dd>A btree exceeded the maximum btree depth (255).
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+<a href="../../api_c/DbEnv/version.html">db_version</a>,
+<a href="../../api_c/Db/close.html">DB->close</a>,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/del.html">DB->del</a>,
+<a href="../../api_c/Db/fd.html">DB->fd</a>,
+<a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/join.html">DB->join</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+DB->put,
+<a href="../../api_c/Db/stat.html">DB->stat</a>,
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+<a href="../../api_c/Dbc/close.html">DBcursor->c_close</a>,
+<a href="../../api_c/Dbc/del.html">DBcursor->c_del</a>,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>
+and
+<a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>.
+</tt>
+</body>
+</html>

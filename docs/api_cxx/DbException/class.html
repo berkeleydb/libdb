@@ -1,0 +1,65 @@
+<! "@(#)class.so	10.7 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbException</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbException</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+DbException::DbException(int err);
+DbException::DbException(const char *description);
+DbException::DbException(const char *prefix, int err);
+DbException::DbException(const char *prefix1,
+    const char *prefix2, int err);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the DbException class and how it is used
+by the various Db* classes.
+<p>
+Most methods in the Db classes return an int but also throw an exception.
+This allows for two different error behaviors, that are known as
+<b>error models</b>.
+By default, the error model is configured to throw an exception whenever
+a serious error occurs.
+This generally allows for cleaner logic for transaction processing,
+as a try block can surround a single transaction.
+Alternatively, the error model can be set to not throw exceptions,
+and instead request the individual function to return an error code.
+The error model can be changed using the <a href="../../api_cxx/DbEnv/set_error_model.html">DbEnv::set_error_model</a>
+method.
+<p>
+A DbException object contains an informational string and an errno.
+The errno can be obtained by using <a href="../../api_cxx/DbException/get_errno.html">DbException::get_errno</a>.
+The informational string can be obtained by using <a href="../../api_cxx/DbException/what.html">DbException::what</a>.
+<p>
+We expect in the future that this class will inherit from the standard
+class exception, but certain language implementation bugs currently
+prevent this on some platforms.
+<p>
+Some methods may return non-zero values without issuing an exception.
+This occurs in situations that are not normally considered an error, but
+when some informational status is returned.  For example, <a href="../../api_cxx/Db/get.html">Db::get</a>
+returns DB_NOTFOUND when a requested key does not appear in the database.
+<p>
+<h1>Class</h1>
+DbException
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbException/get_errno.html">DbException::get_errno</a>
+and
+<a href="../../api_cxx/DbException/what.html">DbException::what</a>.
+</tt>
+</body>
+</html>

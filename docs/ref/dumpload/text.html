@@ -1,0 +1,32 @@
+<! "@(#)text.so	10.2 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Dumping and Reloading</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Dumping and Reloading</h3>
+<p>
+<h1 align=center>Loading text into databases</h1>
+<p>
+The <a href="../../utility/db_load.html">db_load</a> utility can be used to load random text into databases.
+<p>
+For example, the following command loads the standard UNIX
+<i>/etc/passwd</i> file into a database, with the login name as
+the key item and the entire password entry as the data item:
+<p><ul><pre>
+awk -F: '{print $1; print $0}' < /etc/passwd |
+    sed 's/\\/\\\\/g' | db_load -T -t hash passwd.db</pre></ul><p>
+<p>
+Note that backslash characters naturally occurring in the text are escaped
+to avoid interpretation as escape characters by <a href="../../utility/db_load.html">db_load</a>.
+<p>
+<a href="../../ref/dumpload/format.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+</tt>
+</body>
+</html>

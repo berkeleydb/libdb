@@ -1,0 +1,73 @@
+<! "@(#)apis.so	10.14 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Architecture</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Architecture</h3>
+<p>
+<h1 align=center>Available APIs</h1>
+<h1>C</h1>
+The Berkeley DB library is written entirely in ANSI C.  C applications use a
+single include file, #include &lt;db.h&gt;.
+<h1>C++</h1>
+The C++ classes provide a thin wrapper around the C API, with the major
+advantages being improved encapsulation and an optional exception
+mechanism for errors.  C++ applications use a single include file,
+#include &lt;db_cxx.h&gt;.
+<p> The classes and methods are named in a fashion that directly
+corresponds to structures and functions in the C interface.  Likewise,
+arguments to methods appear in the same order as the C interface, except
+to remove the explicit <b>this</b> pointer.  The #defines used for flags
+are identical between the C and C++ interfaces.
+<p>
+As a rule, each C++ object has exactly one structure from the underlying C
+API associated with it.
+The C structure is allocated with each constructor call and deallocated
+with each destructor call.
+Thus, the rules the user needs to follow in allocating and deallocating
+structures are the same between the C and C++ interfaces.
+<p>
+To ensure portability to many platforms, both new and old, we make few
+assumptions about the C++ compiler and library.
+For example, we do not expect STL, templates or namespaces to be available.
+The newest C++ feature used is exceptions, which are used liberally to
+transmit error information.
+Even the use of exceptions can be disabled at runtime, by using
+set_error_model.
+<h1>JAVA</h1>
+The Java classes provide a layer around the C API that is almost
+identical to the C++ layer.
+The classes and methods are, for the most part identical to the C++
+layer.  Db constants and #defines are represented as "static final int"
+values.  Errors conditions appear as Java exceptions.
+<p>
+As in C++, each Java object has exactly one structure from the underlying C
+API associated with it.  The Java structure is allocated with each constructor
+or open call, but is deallocated only when the Java garbage collector does so.
+Because the timing or ordering of garbage collection is not predictable,
+the user should take
+care to do a <b>close</b> when finished with any object that has such a
+method.
+<p>
+<h1>Dbm/Ndbm, Hsearch</h1>
+Berkeley DB supports the standard UNIX interfaces <a href="../../api_c/historic/dbm.html">dbm/ndbm</a> and
+<a href="../../api_c/historic/hsearch.html">hsearch</a>.
+After including a new header file and recompiling, <a href="../../api_c/historic/dbm.html">dbm/ndbm</a>
+programs will  run orders of magnitude faster and their underlying
+databases can grow as large as you like (historic <a href="../../api_c/historic/dbm.html">dbm/ndbm</a>
+applications will fail when some number of entries are inserted into
+the database, where the number depends on the effectiveness of the
+hashing function on the particular data set).
+<p>
+<a href="../../ref/arch/progmodel.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/arch/script.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

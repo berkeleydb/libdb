@@ -1,0 +1,71 @@
+<! "@(#)select.so	10.10 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Selecting an access method</h1>
+<p>
+Keys in the Btree are stored in sorted order, and the relationship between
+them is defined by that sort order.  The default sort order is lexical,
+but applications may provide any sort order they choose.  For this reason,
+the Btree access method should be used when there is a locality of
+reference between keys.  Locality of reference means that accessing one
+particular key in the Btree means that the application is more likely to
+want to access keys that are somehow related to the key being accessed.
+For example, if keys are timestamps, and it's likely that a request for an 8AM
+timestamp will be followed by a request for a 9AM timestamp, the
+Btree access method is generally the right choice.  Or, for example, if the
+keys are individual surnames, and the application will want to review all
+individuals with the same last name, the Btree access method is again
+the right choice.
+<p>
+The Hash access method should be used when there is no locality of
+reference between keys.
+<p>
+The Recno access method should be used when it is desirable to store
+and retrieve records based on logical record numbers.
+<p>
+It is possible to store and retrieve records based on logical record
+numbers in the Btree access method.
+However, those record numbers are
+always mutable, i.e., as records are deleted or inserted, the logical
+record number for other records in the database can change.  The Recno
+access method can be configured to run in either mutable or fixed mode:
+mutable, where logical record numbers change as records are deleted or
+inserted, and fixed, where record numbers never change regardless of
+the database operation.  Generally, the Recno access method should be
+used when the primary method for accessing the database is a logical
+record number.)
+<p>
+In addition, the Recno access method provides support for databases whose
+permanent storage is a flat text file and the database is used as a fast,
+temporary storage area while the data is being read or modified.
+<p>
+Because the access method implementation unavoidably interacts with the
+application's data set, locking requirements and data access patterns,
+using one access method instead of another can sometimes provide superior
+performance. For applications whose data can potentially be stored in more
+than one type of database, it may be useful to benchmark the application's
+performance using the two access methods.
+<p>
+One of the strengths of Berkeley DB is that it provides multiple access methods
+and provides almost identical interfaces to the different access methods.
+Because of this, it is a simple task to modify an application to use a
+different access method.  This allows applications to benchmark the
+different Berkeley DB access methods against each other for their particular
+data set and access pattern.
+<p>
+<a href="../../ref/am/intro.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/logrec.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

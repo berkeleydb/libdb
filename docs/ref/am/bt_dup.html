@@ -1,0 +1,35 @@
+<! "@(#)bt_dup.so	10.3 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Duplicate data items (DB_DUP)</h1>
+<p>
+The Btree access method supports the creation of multiple data items for
+a single key item.  By default, multiple data items are not supported,
+and each database store operation will overwrite any previous data item
+for that key.  To configure Berkeley DB for duplicate data items, set the
+<a href="../../api_c/DbInfo/info.html#DB_DUP">DB_DUP</a> flag in the DB_INFO structure.
+<p>
+When stepping through the database sequentially, duplicate data items will
+be returned individually, as a key/data pair, where the key item only
+changes when the last duplicate data item has been returned.  For this
+reason, duplicate data items cannot be accessed using the <a href="../../api_c/Db/get.html">DB->get</a>
+function, as it always returns the first of the duplicate data items.
+Duplicate data items should be retrieved using the Berkeley DB cursor function,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>.
+<p>
+<a href="../../ref/am/bt_maxkey.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/bt_recnum.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

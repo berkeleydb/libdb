@@ -1,0 +1,89 @@
+<! "@(#)create.so	10.4 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Environment</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Environment</h3>
+<p>
+<h1 align=center>Creating an Environment</h1>
+<p>
+The <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> function is the standard function for creating
+or joining a database environment.
+Every transaction-protected or multi-process application should call
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a> before making any other calls to the Berkeley DB library.
+<p>
+There are several flags that you can set to customize <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>:
+<p>
+<dl compact>
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_CREATE">DB_CREATE</a><dd>Create underlying files as necessary.  This flag is normally specified
+by applications that have the right to create the region and not by those
+that simply want to join it if it already exists.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a><dd>Applications reading and writing databases opened in this environment
+will be using locking to ensure that they do not overwrite each other's
+changes.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOG">DB_INIT_LOG</a><dd>Applications reading and writing databases opened in this environment
+will be using logging.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a><dd>The databases opened in the environment should use a shared underlying
+memory pool.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_INIT_TXN">DB_INIT_TXN</a><dd>Applications reading and writing databases opened in this environment
+may be using transactions.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_MPOOL_PRIVATE">DB_MPOOL_PRIVATE</a><dd>Create a private memory pool, not shared by other processes.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_NOMMAP">DB_NOMMAP</a><dd>
+Files that are opened read-only in the pool (and that satisfy a few other
+criteria) are, by default, mapped into the process address space instead
+of being copied into the local cache.  This can enhance performance or
+degrade it, depending on the architecture where it is done.  Setting the
+<a href="../../api_c/DbEnv/appinit.html#DB_NOMMAP">DB_NOMMAP</a> flag causes Berkeley DB to never map such files into memory,
+instead, they are read into the cache using the standard read system calls.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_RECOVER">DB_RECOVER</a><dd>Run normal recovery on this environment before opening it for normal use.
+Normal recovery is sufficient to handle most application or system failures.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a><dd>Run catastrophic recovery on this environment before opening it for
+normal use.  Catastrophic recovery is necessary when restoring a database
+from an archive.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_THREAD">DB_THREAD</a><dd>Ensure that handles returned by the Berkeley DB subsystems are useable
+by multiple threads within a single process, i.e., that the system is
+free-threaded.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><dd>On transaction commit, do not synchronously flush the log.  This means
+that Berkeley DB will provide atomicity, consistency, and isolation for your
+transactions, but not durability.  Upon recovery, some previously committed
+transactions may be lost, but your database will be restored to a consistent
+state.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a><dd>Use environment variables as part of file naming.
+<p><dt><a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a><dd>Use environment variables as part of file naming for users with
+appropriate privileges.
+</dl>
+<p>
+Almost all applications either specify only the <a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>
+flag or they specify all four flags, <a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>,
+<a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOG">DB_INIT_LOG</a> and <a href="../../api_c/DbEnv/appinit.html#DB_INIT_TXN">DB_INIT_TXN</a>.
+The former configuration is for applications that simply want to use the
+basic Access Method interfaces with a shared underlying buffer pool, but
+don't care about recoverability after failure.  The latter is for
+applications that need recoverability.  There are situations where other
+combinations of the initialization flags make sense, but they are quite
+rare.
+<p>
+The flag <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER">DB_RECOVER</a> is specified by applications that want to
+perform any necessary database recovery when they start running, i.e., if
+there was a system or application failure the last time they ran, they
+want the databases to be made consistent before they start running again.
+(It is not an error to specify this flag when no recovery needs to be
+done.)  The flag <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> is more special-purpose.  It
+performs catastrophic database recovery, and normally requires that some
+initial arrangements be made, i.e., archived log files be brought back
+into the filesystem.  Applications should not normally specify this flag.
+Instead, under these rare conditions, the <a href="../../utility/db_recover.html">db_recover</a> utility
+should be used.
+<p>
+<a href="../../ref/arch/extending.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/env/open.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

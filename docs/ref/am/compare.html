@@ -1,0 +1,43 @@
+<! "@(#)compare.so	10.8 (Sleepycat) 10/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Sorting duplicate data items</h1>
+<p>
+Both the Btree and Hash access methods support duplicates, i.e., a
+key item can have more than one data item associated with it.  To
+create a database that can support duplicates, you should specify
+the <a href="../../api_c/DbInfo/info.html#DB_DUP">DB_DUP</a> flag in the DB_INFO structure.
+<p>
+It is also possible to maintain duplicate records in sorted order.
+This will minimize the effort needed to search them and to perform
+logical joins using them.  To create a database where the duplicates
+are sorted, you should specify the <a href="../../api_c/DbInfo/info.html#DB_DUPSORT">DB_DUPSORT</a> flag in the
+DB_INFO structure.
+<p>
+The sort order for duplicates in the underlying database can also be
+specified as part of the <a href="../../api_c/Db/open.html">db_open</a> call to open the database,
+specifically by setting the dup_compare element of the
+DB_INFO structure.  If the <a href="../../api_c/DbInfo/info.html#DB_DUPSORT">DB_DUPSORT</a> flag is specified
+and no comparison routine is specified, duplicates are maintained in a
+default lexical order.
+<p>
+For information on how searching and insertion behaves in the
+presence of duplicates (sorted or not), see the <a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/put.html">DB->put</a>, <a href="../../api_c/Dbc/get.html">DBcursor->c_get</a> and <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> functions.
+<p>
+<a href="../../ref/am/byteorder.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/malloc.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

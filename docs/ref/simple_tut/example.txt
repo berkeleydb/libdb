@@ -1,0 +1,85 @@
+#include <sys/types.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "db.h"
+
+#define	DATABASE	"access.db"
+
+int
+main()
+{
+	extern int errno;
+	DB *dbp;
+	DBT key, data;
+
+	if ((errno = db_open(DATABASE,
+	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
+		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+		exit (1);
+	}
+
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	key.data = "fruit";
+	key.size = sizeof("fruit");
+	data.data = "apple";
+	data.size = sizeof("apple");
+
+	switch (errno = dbp->put(dbp, NULL, &key, &data, 0)) {
+	case 0:
+		printf("db: %s: key stored.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: put: %s\n", strerror(errno));
+		exit (1);
+	}
+
+	switch (errno = dbp->get(dbp, NULL, &key, &data, 0)) {
+	case 0:
+		printf("db: %s: key retrieved: data was %s.\n",
+		    (char *)key.data, (char *)data.data);
+		break;
+	case DB_NOTFOUND:
+		printf("db: %s: key not found.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: get: %s\n", strerror(errno));
+		exit (1);
+	}
+
+	switch (errno = dbp->del(dbp, NULL, &key, 0)) {
+	case 0:
+		printf("db: %s: key was deleted.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: del: %s\n", strerror(errno));
+		exit (1);
+	}
+
+	switch (errno = dbp->get(dbp, NULL, &key, &data, 0)) {
+	case 0:
+		printf("db: %s: key retrieved: data was %s.\n",
+		    (char *)key.data, (char *)data.data);
+		break;
+	case DB_NOTFOUND:
+		printf("db: %s: key not found.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: get: %s\n", strerror(errno));
+		exit (1);
+	}
+
+	switch (errno = dbp->close(dbp, 0)) {
+	case 0:
+		printf("db: database closed.\n");
+		break;
+	default:
+		fprintf(stderr, "db: get: %s\n", strerror(errno));
+		exit (1);
+	}
+
+	exit(0);
+}

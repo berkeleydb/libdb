@@ -1,0 +1,44 @@
+<! "@(#)region.so	10.5 (Sleepycat) 11/21/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Environment</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Environment</h3>
+<p>
+<h1 align=center>Shared Memory Regions</h1>
+<p>
+Each of the Berkeley DB subsystems is described by one or more shared memory
+regions.  These regions live in the environment home directory, and
+contain all of the shared information, including mutexes, that describes
+the Berkeley DB environment.
+<p>
+The Berkeley DB library uses the POSIX mmap (or other similar) interface to map
+the shared memory regions.  Most remote file systems (e.g., the Network
+File System (NFS) and the Andrew File System (AFS)), do not support
+mapping files into process memory.  For this reason, we strongly recommend
+that the database home directory reside in a local filesystem.
+<p>
+For remote file systems that do allow system files to be mapped into
+process memory, it is important to note that home directories accessed
+via remote file systems cannot be used simultaneously from multiple
+clients.  None of the commercial remote file systems available today
+implement a coherent, distributed shared memory paradigm for
+remote-mounted files.  As a result, different machines will see different
+versions of these shared regions and the system behavior is undefined.
+<p>
+Databases, log files and temporary files may be placed on remote
+filesystems, although the application may incur a performance penalty
+for doing so.
+<p>
+<a href="../../ref/env/security.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/cam/intro.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

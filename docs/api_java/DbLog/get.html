@@ -1,0 +1,174 @@
+<! "@(#)get.so	10.10 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLog.get</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLog.get</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void get(DbLsn lsn, Dbt data, int flags)
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLog.get method implements a cursor inside of the log,
+retrieving records from the log according to the <b>lsn</b> and
+<b>flags</b> arguments.
+<p>
+The data field of the <b>data</b> structure is set to the record retrieved
+and the size field indicates the number of bytes in the record.
+See <a href="../../api_java/Dbt/class.html">Dbt</a> for a description of other fields in the <b>data</b>
+structure.
+<b>When multiple threads are using the returned log handle concurrently,
+either the <a href="../../api_java/Dbt/class.html#DB_DBT_MALLOC">Db.DB_DBT_MALLOC</a> or <a href="../../api_java/Dbt/class.html#DB_DBT_USERMEM">Db.DB_DBT_USERMEM</a> flags must
+be specified for any <a href="../../api_java/Dbt/class.html">Dbt</a> used for data retrieval.</b>
+<p>
+The <b>flags</b> argument must be set to exactly one of the following values:
+<dl compact>
+<a name="DB_CHECKPOINT">
+<p><dt>Db.DB_CHECKPOINT<dd>The last record written with the DB_CHECKPOINT flag specified to the
+<a href="../../api_java/DbLog/put.html">DbLog.put</a> method is returned in the <b>data</b> argument.  The
+<b>lsn</b> argument is overwritten with the <a href="../../api_java/DbLsn/class.html">DbLsn</a> of the record
+returned.  If no record has been previously written with the DB_CHECKPOINT
+flag specified, the first record in the log is returned.
+ <p>
+If the log is empty, the DbLog.get method will return DB_NOTFOUND.
+<a name="DB_FIRST">
+<p><dt>Db.DB_FIRST<dd>The first record from any of the log files found in the log directory
+is returned in the <b>data</b> argument.
+The <b>lsn</b> argument is overwritten with the <a href="../../api_java/DbLsn/class.html">DbLsn</a> of the
+record returned.
+<p>
+If the log is empty, the DbLog.get method will return DB_NOTFOUND.
+<a name="DB_LAST">
+<p><dt>Db.DB_LAST<dd>The last record in the log is returned in the <b>data</b> argument.
+The <b>lsn</b> argument is overwritten with the <a href="../../api_java/DbLsn/class.html">DbLsn</a> of the
+record returned.
+<p>
+If the log is empty, the DbLog.get method will return DB_NOTFOUND.
+<a name="DB_NEXT">
+<p><dt>Db.DB_NEXT<dd>The current log position is advanced to the next record in the log and that
+record is returned in the <b>data</b> argument.
+The <b>lsn</b> argument is overwritten with the <a href="../../api_java/DbLsn/class.html">DbLsn</a> of the
+record returned.
+<p>
+If the pointer has not been initialized via DB_FIRST, DB_LAST, DB_SET,
+DB_NEXT, or DB_PREV, DbLog.get will return the first record in the log.
+If the last log record has already been returned or the log is empty, the
+DbLog.get method will return DB_NOTFOUND.
+<p>
+If the log was opened with the DB_THREAD flag set, calls to
+DbLog.get with the DB_NEXT flag set will return EINVAL.
+<a name="DB_PREV">
+<p><dt>Db.DB_PREV<dd>The current log position is moved to the previous record in the log and that
+record is returned in the <b>data</b> argument.
+The <b>lsn</b> argument is overwritten with the <a href="../../api_java/DbLsn/class.html">DbLsn</a> of the
+record returned.
+<p>
+If the pointer has not been initialized via DB_FIRST, DB_LAST, DB_SET,
+DB_NEXT, or DB_PREV,
+DbLog.get will return the last record in the log.
+If the first log record has already been returned or the log is empty, the
+DbLog.get method will return DB_NOTFOUND.
+<p>
+If the log was opened with the DB_THREAD flag set, calls to
+DbLog.get with the DB_PREV flag set will return EINVAL.
+<a name="DB_CURRENT">
+<p><dt>Db.DB_CURRENT<dd>Return the log record currently referenced by the log.
+<p>
+If the log pointer has not been initialized via DB_FIRST, DB_LAST, DB_SET,
+DB_NEXT, or DB_PREV, or if the log was opened with the DB_THREAD flag set,
+DbLog.get will return EINVAL.
+<a name="DB_SET">
+<p><dt>Db.DB_SET<dd>Retrieve the record specified by the <b>lsn</b> argument.  If the
+specified <a href="../../api_java/DbLsn/class.html">DbLsn</a> is invalid (e.g., does not appear in the log)
+DbLog.get will return EINVAL.
+</dl>
+<p>
+Otherwise, the DbLog.get
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLog.get method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLog.get
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+atoi(3),
+close(3),
+closedir(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+lseek(3),
+malloc(3),
+memcpy(3),
+memset(3),
+open(3),
+opendir(3),
+read(3),
+readdir(3),
+realloc(3),
+sigfillset(3),
+sigprocmask(3),
+snprintf(3),
+stat(3),
+strchr(3),
+strerror(3),
+strlen(3),
+strncmp(3),
+unlink(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the DbLog.get
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The DB_FIRST flag was specified and no log files were found.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLog/class.html">DbLog</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLog/archive.html">DbLog.archive</a>,
+<a href="../../api_java/DbLog/close.html">DbLog.close</a>,
+<a href="../../api_java/DbLog/compare.html">DbLog.compare</a>,
+<a href="../../api_java/DbLog/file.html">DbLog.file</a>,
+<a href="../../api_java/DbLog/flush.html">DbLog.flush</a>,
+DbLog.get,
+<a href="../../api_java/DbLog/open.html">DbLog.open</a>,
+<a href="../../api_java/DbLog/put.html">DbLog.put</a>,
+<a href="../../api_java/DbLog/db_register.html">DbLog.db_register</a>,
+<a href="../../api_java/DbLog/stat.html">DbLog.stat</a>,
+<a href="../../api_java/DbLog/unlink.html">DbLog.unlink</a>
+and
+<a href="../../api_java/DbLog/db_unregister.html">DbLog.db_unregister</a>.
+</tt>
+</body>
+</html>

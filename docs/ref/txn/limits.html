@@ -1,0 +1,38 @@
+<! "@(#)limits.so	10.15 (Sleepycat) 12/23/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Subsystem</h3>
+<p>
+<h1 align=center>Transaction limits</h1>
+<p>
+The transaction ID space in Berkeley DB is 2^31, or 2 billion entries.
+It is possible that some environments may need to be aware of this
+limitation.
+Consider an application performing 600 transactions a second for 15
+hours a day.
+The transaction ID space will run out in roughly 66 days:
+<p><ul><pre>2^31 / (600 * 15 * 60 * 60) = 66</pre></ul><p>
+<p>
+Doing only 100 transactions a second exhausts the transaction ID space
+in roughly one year.
+<p>
+The transaction ID space is reset each time recovery is run.  If you reach
+the end of your transaction ID space, shut down your applications and
+restart them after running recovery.  The most recently allocated
+transaction ID is the <b>st_last_txnid</b> value in the transaction
+statistics information, and is displayed by the <a href="../../utility/db_stat.html">db_stat</a> utility.
+<p>
+<a href="../../ref/txn/stability.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/txn/config.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

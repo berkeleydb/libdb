@@ -1,0 +1,37 @@
+<! "@(#)stdmode.so	10.8 (Sleepycat) 11/25/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Locking Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Locking Subsystem</h3>
+<p>
+<h1 align=center>Standard lock modes</h1>
+<p>
+The Berkeley DB include files declare two commonly used conflict arrays:
+<dl compact>
+<p><dt>const u_int8_t db_lock_rw_conflicts[ ];<dd>This is a conflict array for a simple scheme using shared and exclusive
+lock modes.
+<p><dt>const u_int8_t db_lock_riw_conflicts[ ];<dd>This is a conflict array that involves various intent lock modes (e.g.,
+intent shared) that are used for multigranularity locking.
+</dl>
+<p>
+Their associated sizes are DB_LOCK_RW_N and DB_LOCK_RIW_N.
+<p>
+In addition, the Berkeley DB include file defines the type
+<b>db_lockmode_t</b>, which is the type of the lock
+modes used with the standard tables above:
+<dl compact>
+<p><dt>DB_LOCK_NG<dd>not granted (always 0)
+<p><dt>DB_LOCK_READ<dd>read (shared)
+<p><dt>DB_LOCK_WRITE<dd>write (exclusive)
+</dl>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<! "@(#)open.so	10.2 (Sleepycat) 10/31/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Environment</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Environment</h3>
+<p>
+<h1 align=center>Opening databases within the environment</h1>
+<p>
+Once the environment has been created, the returned handle should be
+passed as an argument to the <a href="../../api_c/Db/open.html">db_open</a> call.  This causes the
+database being opened to be opened within the environment.  File naming
+and database operations will all be done as specified for the environment,
+e.g., if the <a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a> flag was specified when the environment
+was created or joined, database operations will automatically perform all
+necessary locking operations for the application.
+<p>
+<a href="../../ref/env/create.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/env/naming.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

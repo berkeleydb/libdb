@@ -1,0 +1,84 @@
+<! "@(#)close.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLog.close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLog.close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void close()
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLog.close method closes the log.
+<p>
+In addition, if the <b>dir</b> argument to <a href="../../api_java/DbLog/open.html">DbLog.open</a> was NULL and
+<b>dbenv</b> was not initialized using <a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a>,
+all files created for this shared region will be removed, as if
+the <a href="../../api_java/DbLog/unlink.html">DbLog.unlink</a> method were called.
+<p>
+<p>
+In multi-threaded applications, only a single thread may call the
+DbLog.close method.
+<p>
+The DbLog.close
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLog.close method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLog.close
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+memset(3),
+munmap(3),
+shmctl(3),
+shmdt(3),
+strlen(3),
+unlink(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLog/class.html">DbLog</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLog/archive.html">DbLog.archive</a>,
+DbLog.close,
+<a href="../../api_java/DbLog/compare.html">DbLog.compare</a>,
+<a href="../../api_java/DbLog/file.html">DbLog.file</a>,
+<a href="../../api_java/DbLog/flush.html">DbLog.flush</a>,
+<a href="../../api_java/DbLog/get.html">DbLog.get</a>,
+<a href="../../api_java/DbLog/open.html">DbLog.open</a>,
+<a href="../../api_java/DbLog/put.html">DbLog.put</a>,
+<a href="../../api_java/DbLog/db_register.html">DbLog.db_register</a>,
+<a href="../../api_java/DbLog/stat.html">DbLog.stat</a>,
+<a href="../../api_java/DbLog/unlink.html">DbLog.unlink</a>
+and
+<a href="../../api_java/DbLog/db_unregister.html">DbLog.db_unregister</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<! "@(#)config.so	10.1 (Sleepycat) 11/30/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Memory Pool Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Memory Pool Subsystem</h3>
+<p>
+<h1 align=center>Configuring the memory pool</h1>
+<p>
+There are two parameters for configuring the memory pool.
+<p>
+The most important tuning parameter for almost all applications (including
+Berkeley DB applications), is the size of the pool.  There are two ways to
+specify the pool size.  First, by setting the <a href="../../api_c/DbMpool/open.html#mp_size">mp_size</a> field in
+the DB_ENV structure.  This specifies the pool size for all of the
+applications sharing the Berkeley DB environment.  Second, by setting the
+<a href="../../api_c/DbInfo/info.html#db_cachesize">db_cachesize</a> field in the DB_INFO structure.  The latter
+only specifies a pool size for the specific database.  Note, it is
+meaningless to set the <a href="../../api_c/DbInfo/info.html#db_cachesize">db_cachesize</a> field for a database opened
+inside of a Berkeley DB environment, since the environment pool size will
+override any pool size specified for a single database.  For information
+on tuning the Berkeley DB cache size, see <a href="../../ref/am/cachesize.html">Selecting a cache size</a>.
+<p>
+The second memory pool configuration parameter is the maximum size of
+backing files to map into the process address space instead of copying
+pages through the local cache.
+<p>
+Note, only read-only database files can be mapped into process memory.
+Because of the requirements of Berkeley DB's transactional implementation, log
+records describing database changes must be written to disk before the
+actual database changes.  As mapping read-write database files into
+process memory would permit the underlying operating system to write
+modified database changes at will, it is not supported.
+<p>
+Mapping files into the process address space can result in
+better-than-usual performance, as available virtual memory is normally
+much larger than the local cache, and page faults are faster than page
+copying on many systems.  However, in the presence of limited virtual
+memory it can cause resource starvation, and in the presence of large
+databases, it can result in immense process sizes.
+<p>
+To specify that no files are to be mapped into the process address space,
+specify the <a href="../../api_c/DbEnv/appinit.html#DB_NOMMAP">DB_NOMMAP</a> flag to the <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> or
+<a href="../../api_c/DbMpool/open.html">memp_open</a> interface.  To specify that any individual file should
+not be mapped into the process address space, specify the
+<a href="../../api_c/DbEnv/appinit.html#DB_NOMMAP">DB_NOMMAP</a> flag to the <a href="../../api_c/DbMpool/open.html">memp_open</a> interface.  To limit the
+maximum size of files mapped into the process address space, set the
+<a href="../../api_c/DbMpool/open.html#mp_mmapsize">mp_mmapsize</a> field in the DB_INFO structure.
+<p>
+<a href="../../ref/mp/intro.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+</tt>
+</body>
+</html>

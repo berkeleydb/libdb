@@ -1,0 +1,220 @@
+<! "@(#)open.so	10.12 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbMpool::open</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbMpool::open</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+static int
+DbMpool::open(char *dir,
+    u_int32_t flags, int mode, DbEnv *dbenv, DbMpool **regionp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbMpool::open
+method copies a pointer, to the "memory pool" identified by the <i>directory</i>
+<b>dir</b>, into the memory location referenced by <b>regionp</b>.
+<p>
+If the <b>dir</b> pathname argument is NULL or the DB_MPOOL_PRIVATE flag
+is set, any necessary temporary files are created as described for the
+<a href="../../ref/env/naming.html#DB_TMP_DIR">DB_TMP_DIR</a> value in <a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.  Otherwise, the
+<b>dir</b> pathname argument is interpreted as described in
+<a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.
+<p>
+The <b>flags</b> and <b>mode</b> arguments specify how files will be opened
+and/or created if they do not already exist.
+The flags value is specified by logically <b>OR</b>'ing together one or more of the
+following values:
+<dl compact>
+<a name="DB_CREATE">
+<p><dt>DB_CREATE<dd>Create any underlying files, as necessary.  If the files do not already
+exist and the DB_CREATE flag is not specified, the call will fail.
+<a name="DB_MPOOL_PRIVATE">
+<p><dt>DB_MPOOL_PRIVATE<dd>Create a private MPOOL that is not shared with any other process (although
+it may be shared with other threads).
+<a name="DB_NOMMAP">
+<p><dt>DB_NOMMAP<dd>Always copy files in this memory pool into the local cache instead of
+mapping them into process memory (see the description of the
+<b>mp_mmapsize</b> field of the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> object for further
+information).
+<a name="DB_THREAD">
+<p><dt>DB_THREAD<dd>Cause the m4_reg(DB_MPOOL) handle returned by DbMpool::open to be useable
+by multiple threads within a single address space, i.e., to be
+<i>free-threaded</i>.
+</dl>
+<p>
+All files created by the memory pool subsystem (other than files created by the
+<a href="../../api_cxx/DbMpoolFile/open.html">DbMpoolFile::open</a> method, which are separately specified) are created with mode <b>mode</b> (as described
+in <b>chmod</b>(2)) and modified by the process' umask value at the time
+of creation (see <b>umask</b>(2)))).
+The group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.
+<p>
+The memory pool subsystem is configured
+based on the <b>dbenv</b> argument.  It is expected that applications
+will use a single <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> object as the argument to all of the
+subsystems in the Berkeley DB package.  The fields of the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> object
+used by DbMpool::open are described below.
+References to the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> object are maintained by Berkeley DB, so it
+is necessary that the object and memory it references be valid until
+the object is destroyed.
+Any of the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> fields that are not explicitly set will default
+to appropriate values.
+<p>
+The following fields in the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> object may be initialized, using
+the appropriate set method, before calling DbMpool::open:
+<dl compact>
+<p><dt>void *(*db_errcall)(char *db_errpfx, char *buffer);<dd>
+<dt>FILE *db_errfile;<dd>
+<dt>const char *db_errpfx;<dd>
+<dt>class ostream *db_error_stream;<dd>
+<dt>int db_verbose;<dd>The error fields of the <a href="../../api_cxx/DbEnv/class.html">DbEnv</a> behave as described for
+<a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a>.
+<a name="mp_mmapsize">
+<p><dt>size_t mp_mmapsize;<dd>Files that are opened read-only in the pool (and that satisfy a few other
+criteria) are, by default, mapped into the process address space instead
+of being copied into the local cache.  This can result in better-than-usual
+performance, as available virtual memory is normally much larger than the
+local cache, and page faults are faster than page copying on many systems.
+However, in the presence of limited virtual memory it can cause resource
+starvation, and in the presence of large databases, it can result in immense
+process sizes.  If <b>mp_mmapsize</b> is non-zero, it specifies the maximum
+file size, in bytes, for a file to be mapped into the process address space.
+By default, it is set to 10Mb.
+<a name="mp_size">
+<p><dt>size_t mp_size;<dd>The suggested size of the shared memory buffer pool, i.e., the cache, in
+bytes.  This should be the size of the normal working data set of the
+application, with some small amount of additional memory for unusual
+situations.  (Note, the working set is not the same as the number of
+simultaneously referenced pages, and should be quite a bit larger!) The
+default cache size is 128K bytes, and may not be specified as less than
+20K bytes.
+<p>
+For information on tuning the Berkeley DB cache size, see
+<a href="../../ref/am/cachesize.html">Selecting a cache size</a>.
+</dl>
+<p>
+The DbMpool::open
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Environment Variables</h1>
+<dl compact>
+<p><dt>DB_HOME<dd>If the <b>dbenv</b> argument to DbMpool::open was initialized using
+<a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a> the environment variable <b>DB_HOME</b> may
+be used as the path of the database home for the interpretation of
+the <b>dir</b> argument.
+</dl>
+<p>
+<dl compact>
+<p><dt>TMPDIR<dd>If the <b>dbenv</b> argument to DbMpool::open was NULL or not initialized
+using <a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a> the environment variable <b>TMPDIR</b> may
+be used as the directory in which to create the memory pool, as described in
+DbMpool::open.
+</dl>
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbMpool::open method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbMpool::open
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+DBmemp->pgin(3),
+DBmemp->pgout(3),
+abort(3),
+close(3),
+<a href="../../api_cxx/DbEnv/version.html">DbEnv::version</a>,
+dbenv->db_paniccall(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fstat(3),
+fsync(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+<a href="../../api_cxx/DbLog/compare.html">DbLog::compare</a>,
+<a href="../../api_cxx/DbLog/flush.html">DbLog::flush</a>,
+lseek(3),
+malloc(3),
+memcmp(3),
+memcpy(3),
+<a href="../../api_cxx/DbMpool/close.html">DbMpool::close</a>,
+<a href="../../api_cxx/DbMpool/unlink.html">DbMpool::unlink</a>,
+memset(3),
+mmap(3),
+munmap(3),
+open(3),
+pread(3),
+pstat_getdynamic(3),
+pwrite(3),
+read(3),
+shmat(3),
+shmctl(3),
+shmdt(3),
+sigfillset(3),
+sigprocmask(3),
+stat(3),
+strerror(3),
+strlen(3),
+sysconf(3),
+time(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbMpool::open
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EAGAIN<dd>The shared memory region was locked and (repeatedly) unavailable.
+</dl>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The DB_THREAD flag was specified and spinlocks are not implemented for
+this architecture.
+<p>
+A NULL pathname was specified without the DB_MPOOL_PRIVATE flag.
+<p>
+The specified cache size was impossibly small.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbMpool/class.html">DbMpool</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbMpool/close.html">DbMpool::close</a>,
+DbMpool::open,
+<a href="../../api_cxx/DbMpool/db_register.html">DbMpool::db_register</a>,
+<a href="../../api_cxx/DbMpool/stat.html">DbMpool::stat</a>,
+<a href="../../api_cxx/DbMpool/sync.html">DbMpool::sync</a>,
+<a href="../../api_cxx/DbMpool/trickle.html">DbMpool::trickle</a>
+and
+<a href="../../api_cxx/DbMpool/unlink.html">DbMpool::unlink</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<! "@(#)set_flags.so	10.9 (Sleepycat) 10/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbInfo::set_flags</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbInfo::set_flags</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+void DbInfo::set_flags(u_int32_t);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The following additional flags may be specified for the Btree access method:
+<dl compact>
+<a name="DB_DUP">
+<p><dt>DB_DUP<dd>Permit duplicate data items in the tree, i.e. insertion when the key of
+the key/data pair being inserted already exists in the tree will be
+successful.  The ordering of duplicates in the tree is determined by the
+order of insertion, unless the ordering is otherwise specified by use of
+a cursor or a duplicate comparison function.
+It is an error to specify both DB_DUP and DB_RECNUM.
+<a name="DB_DUPSORT">
+<p><dt>DB_DUPSORT<dd>Sort duplicates within a set of data items.  If the application does not
+specify a comparison function using the <a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a> method,
+a default, lexical comparison will be used.
+<p>
+Specifying that duplicates are to be sorted changes the behavior of the
+<a href="../../api_cxx/Db/put.html">Db::put</a> operation as well as the <a href="../../api_cxx/Dbc/put.html">Dbc::put</a> operation when
+the <a href="../../api_cxx/Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a>, <a href="../../api_cxx/Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a> and <a href="../../api_cxx/Dbc/get.html#DB_CURRENT">DB_CURRENT</a>
+flags are specified.
+<a name="DB_RECNUM">
+<p><dt>DB_RECNUM<dd>
+Support retrieval from btrees using record numbers.
+For more information, see the DB_GET_RECNO flag to the <a href="../../api_cxx/Db/get.html">Db::get</a>
+and <a href="../../api_cxx/Dbc/get.html">Dbc::get</a> methods.
+<p>
+Logical record numbers in btrees are mutable in the face of record
+insertion or deletion.
+See the DB_RENUMBER flag in the Recno access method information for
+further discussion.
+<p>
+Maintaining record counts within a btree introduces a serious point of
+contention, namely the page locations where the record counts are stored.
+In addition, the entire tree must be locked during both insertions and
+deletions, effectively single-threading the tree for those operations.
+Specifying DB_RECNUM can result in serious performance degradation for
+some applications and data sets.
+<p>
+It is an error to specify both DB_DUP and DB_RECNUM.
+</dl>
+<p>
+The following additional flags may be specified for the Hash access method:
+<dl compact>
+<a name="DB_DUP">
+<p><dt>DB_DUP<dd>Permit duplicate data items in the tree, i.e. insertion when the key of
+the key/data pair being inserted already exists in the tree will be
+successful.  The ordering of duplicates in the tree is determined by the
+order of insertion, unless the ordering is otherwise specified by use of
+a cursor or a duplicate comparison function.
+<a name="DB_DUPSORT">
+<p><dt>DB_DUPSORT<dd>Sort duplicates within a set of data items.  If the application does not
+specify a comparison function using the <a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a> method,
+a default, lexical comparison will be used.
+<p>
+Specifying that duplicates are to be sorted changes the behavior of the
+<a href="../../api_cxx/Db/put.html">Db::put</a> operation as well as the <a href="../../api_cxx/Dbc/put.html">Dbc::put</a> operation when
+the <a href="../../api_cxx/Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a>, <a href="../../api_cxx/Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a> and <a href="../../api_cxx/Dbc/get.html#DB_CURRENT">DB_CURRENT</a>
+flags are specified.
+</dl>
+<p>
+The following additional flags may be specified for the Recno access method:
+<dl compact>
+<p><dt>DB_DELIMITER<dd>
+The <b>re_delim</b> value has been set.
+<p><dt>DB_FIXEDLEN<dd>
+The records are fixed-length, not byte delimited.
+The <b>re_len</b> value specifies the length of the record,
+and the <b>re_pad</b> value is used as the pad character.
+<p>
+Any records added to the database that are less than <b>re_len</b>
+bytes long are automatically padded.
+Any attempt to insert records into the database that are greater than
+<b>re_len</b> bytes long will cause the call to fail immediately and
+return an error.
+<p><dt>DB_PAD<dd>
+The <b>re_pad</b> field has been set.
+<p><dt>DB_RENUMBER<dd>
+Specifying the DB_RENUMBER flag causes the logical record numbers to be
+mutable, and change as records are added to and deleted from the database.
+For example, the deletion of record number 4 causes records numbered 5
+and greater to be renumbered downward by 1.
+If a cursor was positioned to record number 4 before the deletion,
+it will reference the new record number 4, if any such record exists,
+after the deletion.
+If a cursor was positioned after record number 4 before the deletion,
+it will be shifted downward 1 logical record,
+continuing to reference the same record as it did before.
+<p>
+Using the <a href="../../api_cxx/Db/put.html">Db::put</a> or <a href="../../api_cxx/Dbc/put.html">Dbc::put</a> interfaces to create
+new records will cause the creation of multiple records if the record
+number is more than one greater than the largest record currently in the
+database.
+For example, creating record 28, when record 25 was previously the last
+record in the database, will create records 26 and 27 as well as 28.
+Attempts to retrieve records that were created in this manner will result
+in an error return of DB_KEYEMPTY.
+<p>
+If a created record is not at the end of the database, all records following
+the new record will be automatically renumbered upward by 1.
+For example, the creation of a new record numbered 8 causes records
+numbered 8 and greater to be renumbered upward by 1.
+If a cursor was positioned to record number 8 or greater before the insertion,
+it will be shifted upward 1 logical record,
+continuing to reference the same record as it did before.
+<p>
+For these reasons,
+concurrent access to a recno database with the DB_RENUMBER flag specified
+may be largely meaningless, although it is supported.
+<p><dt>DB_SNAPSHOT<dd>
+This flag specifies that any specified <b>re_source</b> file be read in its
+entirety when <a href="../../api_cxx/Db/open.html">Db::open</a> is called.
+If this flag is not specified, the <b>re_source</b> file may be read lazily.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbInfo/class.html">DbInfo</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbInfo/set_bt_compare.html">DbInfo::set_bt_compare</a>,
+<a href="../../api_cxx/DbInfo/set_bt_maxkey.html">DbInfo::set_bt_maxkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_minkey.html">DbInfo::set_bt_minkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_prefix.html">DbInfo::set_bt_prefix</a>,
+<a href="../../api_cxx/DbInfo/set_cachesize.html">DbInfo::set_cachesize</a>,
+<a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a>,
+DbInfo::set_flags,
+<a href="../../api_cxx/DbInfo/set_h_ffactor.html">DbInfo::set_h_ffactor</a>,
+<a href="../../api_cxx/DbInfo/set_h_hash.html">DbInfo::set_h_hash</a>,
+<a href="../../api_cxx/DbInfo/set_h_nelem.html">DbInfo::set_h_nelem</a>,
+<a href="../../api_cxx/DbInfo/set_lorder.html">DbInfo::set_lorder</a>,
+<a href="../../api_cxx/DbInfo/set_malloc.html">DbInfo::set_malloc</a>,
+<a href="../../api_cxx/DbInfo/set_pagesize.html">DbInfo::set_pagesize</a>,
+<a href="../../api_cxx/DbInfo/set_re_delim.html">DbInfo::set_re_delim</a>,
+<a href="../../api_cxx/DbInfo/set_re_len.html">DbInfo::set_re_len</a>,
+<a href="../../api_cxx/DbInfo/set_re_pad.html">DbInfo::set_re_pad</a>
+and
+<a href="../../api_cxx/DbInfo/set_re_source.html">DbInfo::set_re_source</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<! "@(#)bt_minkey.so	10.2 (Sleepycat) 10/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Minimum keys per page  (bt_minkey)</h1>
+<p>
+A minimum number of keys to be stored on a page can be specified as part
+of the <a href="../../api_c/Db/open.html">db_open</a> call to open the database, specifically by setting
+the <a href="../../api_c/DbInfo/info.html#bt_minkey">bt_minkey</a> element of the DB_INFO structure.
+<p>
+This number is not an absolute minimum, rather it is a guideline and
+more or less keys may be stored on a page than the value specified.
+What the implementation does is to divide the page size by the value
+specified to determine a maximum key length, and keys which are larger
+than that size are stored in overflow pages instead of in the standard
+Btree leaf pages.
+<p>
+If no value is specified, a value of 2 is used.
+<p>
+<a href="../../ref/am/bt_prefix.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/bt_maxkey.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

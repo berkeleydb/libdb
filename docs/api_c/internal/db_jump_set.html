@@ -1,0 +1,322 @@
+<! "@(#)db_jump_set.so	10.7 (Sleepycat) 10/30/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: db_jump_set</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>db_jump_set</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+db_jump_set(void *func, int which);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The db_jump_set function enables applications to replace underlying
+Berkeley DB library functionality by replacing entries in a function call
+jump table.
+The <b>which</b> argument specifies the entry to be replaced by the
+argument <b>func</b>.
+<p>
+<b>No type checking is done of the <b>func</b> argument, and specifying an
+invalid replacement routine is likely to cause unpredictable results.</b>
+<p>
+The following values of <b>which</b> are supported:
+<dl compact>
+<a name="DB_FUNC_CLOSE">
+<p><dt>DB_FUNC_CLOSE<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>close</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_DIRFREE">
+<p><dt>DB_FUNC_DIRFREE<dd>The Berkeley DB library requires the ability to return any memory allocated as part
+of the routine which reads through a directory and creates a list of files
+that that the directory contains (see DB_FUNC_DIRLIST).
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int dirfree(char **namesp, int cnt);</pre></ul><p>
+<p>
+The <b>namesp</b> and <b>cnt</b> arguments are the same values as were
+returned by the DB_FUNC_DIRLIST function.
+<p>
+The <b>dirfree</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_DIRLIST">
+<p><dt>DB_FUNC_DIRLIST<dd>The Berkeley DB library requires the ability to read through a directory and create
+a list of files that that the directory contains.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int dirlist(const char *dir, char ***namesp, int *cntp);</pre></ul><p>
+<p>
+The <b>dir</b> argument is the name of the directory to be searched.
+The function must return a pointer to an array of nul-terminated file
+names in the memory location referenced by the argument <b>namesp</b>,
+and a count of the number of elements in the array in the memory location
+referenced by <b>cntp</b>.
+<p>
+The <b>dirlist</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_EXISTS">
+<p><dt>DB_FUNC_EXISTS<dd>The Berkeley DB library requires the ability to determine if a file exists,
+and optionally, if it is a file of type directory.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int exists(const char *path, int *isdirp);</pre></ul><p>
+The <b>path</b> argument is the pathname of the file to be checked.
+<p>
+If the <b>isdirp</b> argument is non-NULL, it must be set to non-0 if
+<b>path</b> is a directory, and 0 if <b>path</b> is not a directory.
+<p>
+The <b>exists</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_FREE">
+<p><dt>DB_FUNC_FREE<dd>
+Replace Berkeley DB calls to the ANSI C X3.159-1989 (ANSI C) standard
+<b>free</b> function with <b>func</b>, which must conform to the standard
+interface.
+<a name="DB_FUNC_FSYNC">
+<p><dt>DB_FUNC_FSYNC<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>fsync</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_IOINFO">
+<p><dt>DB_FUNC_IOINFO<dd>The Berkeley DB library requires the ability to determine the size and I/O
+characteristics of a file.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>
+int ioinfo(const char *path, int fd,
+    u_int32_t *mbytesp, u_int32_t *bytesp, u_int32_t *iosizep);</pre></ul><p>
+<p>
+The <b>path</b> argument is the pathname of the file to be checked, and the
+<b>fd</b> argument is an open file descriptor on the file.
+<p>
+If the <b>mbytesp</b> and <b>bytesp</b> arguments are non-NULL, the
+<b>ioinfo</b> function must return in them the size of the file: the
+number of megabytes in the file into the memory location referenced by the
+<b>mbytesp</b> argument, and the number of bytes over and above that number
+of megabytes into the memory location referenced by the <b>bytesp</b>
+argument.
+<p>
+In addition, if the <b>iosizep</b> argument is non-NULL, the <b>ioinfo</b>
+function must return the optimum granularity for I/O operations to the file
+in the memory location referenced by it.
+<p>
+The <b>ioinfo</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_MALLOC">
+<p><dt>DB_FUNC_MALLOC<dd>
+Replace Berkeley DB calls to the ANSI C X3.159-1989 (ANSI C) standard
+<b>malloc</b> function with <b>func</b>, which must conform to the standard
+interface.
+<a name="DB_FUNC_MAP">
+<p><dt>DB_FUNC_MAP<dd>The Berkeley DB library requires the ability to map a file into memory and to
+create shared memory regions (which may or may not be backed by files).
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>
+int map(char *path, int fd, size_t len,
+    int is_region, int is_anonymous, int is_rdonly,
+    void **addr);</pre></ul><p>
+<p>
+The <b>path</b> argument is the name of a file.
+The <b>fd</b> argument is an open file descriptor on that file.
+<p>
+The <b>is_region</b> argument will be zero if the intention is to map
+a file into shared memory.
+In this case, the <b>map</b> function must map the first <b>len</b>
+bytes of the file into memory and return a pointer to the mapped
+location in the memory location referenced by the argument <b>addr</b>.
+In this case, the <b>is_anonymous</b> argument will always be zero.
+The <b>is_rdonly</b> argument will be non-zero if the file is considered
+read-only by the caller.
+<p>
+The <b>is_region</b> argument will be non-zero if the memory is intended
+to be used as a shared memory region for synchronization between Berkeley DB
+threads/processes.
+In this case, the returned memory may be of any kind (e.g., anonymous),
+but must be able to support semaphores.
+If the application has previously specified that regions are to be
+instantiated in anonymous memory (see DB_REGION_ANON below),
+or the region is being joined and is believed to have been allocated
+in anonymous shared memory, the <b>is_anonymous</b> argument will be
+non-zero.
+Additionally, the <b>path</b> and <b>fd</b> arguments may be ignored
+(although future <b>map</b> calls using the same <b>path</b> must
+return the same memory), and the <b>is_rdonly</b> argument will always
+be zero.
+<p>
+By default, on UNIX systems, the Berkeley DB library will use the IEEE Std 1003.1b-1993 (POSIX)
+<b>mmap</b>(2) interface to both map regular files into shared memory
+and create shared memory regions.
+If the application specifies that shared memory regions be instantiated
+in anonymous memory (see DB_REGION_ANON below), the
+<b>shmget</b>(2) shared memory segment interface will be used, where
+available, and the MAP_ANON or MAP_ANONYMOUS options to
+<b>mmap</b>(2) when <b>shmget</b>(2) is not available.
+<p>
+When using <b>shmget 2</b>(), shared memory regions are named, and so
+multiple processes may share them.
+When using the <b>mmap</b> MAP_ANON or MAP_ANONYMOUS options, shared
+memory regions are <b>not</b> named, and so may only be accessed by a
+single process and its threads.
+<p>
+<dl compact>
+<p><dt>HP/UX note:<dd>The <b>shmget</b>(2) interfaces are not used on HP/UX, even though
+they exist, as anonymous memory allocated using <b>shmget</b>(2)
+cannot be used to store semaphores.
+<p><dt>SunOS note:<dd>The <b>shmget</b>(2) interfaces are not used on SunOS, even though
+they apparently exist, as the distributed include files did not allow them
+to be compiled.
+<p><dt>Ultrix note:<dd>The <b>mmap</b>(2) interfaces are not used on Ultrix, even though
+they exist, as they do not work correctly.
+<p><dt>Windows/95 note:<dd>On Windows/95, files that are opened by multiple processes do not share
+data correctly.  To cause Berkeley DB to use a named region of the paging
+file to share memory instead, use:
+<p><ul><pre>db_value_set(1, DB_REGION_NAME);</pre></ul><p>
+<p>
+You do not need to do this if your application can guarantee that only one
+process will be accessing Berkeley DB files.
+</dl>
+<p>
+The <b>map</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_OPEN">
+<p><dt>DB_FUNC_OPEN<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>open</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_READ">
+<p><dt>DB_FUNC_READ<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>read</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_REALLOC">
+<p><dt>DB_FUNC_REALLOC<dd>
+Replace Berkeley DB calls to the ANSI C X3.159-1989 (ANSI C) standard
+<b>realloc</b> function with <b>func</b>, which must conform to the standard
+interface.
+<a name="DB_FUNC_RUNLINK">
+<p><dt>DB_FUNC_RUNLINK<dd>The Berkeley DB library requires the ability to remove shared memory regions from
+the system, whether or not they are backed by regular files.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int runlink(char *path);</pre></ul><p>
+<p>
+The <b>path</b> argument is the path argument specified to the DB_FUNC_MAP
+function when the region was mapped into memory.
+<p>
+The <b>runlink</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_SEEK">
+<p><dt>DB_FUNC_SEEK<dd>The Berkeley DB library requires the ability to specify that a subsequent read from
+or write to a file will occur at a specific location in that file.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>
+int seek(int fd, size_t pgsize, db_pgno_t pageno,
+    u_int32_t relative, int rewind, int whence);</pre></ul><p>
+The <b>fd</b> argument is an open file descriptor on the file.
+The <b>seek</b> function must cause a subsequent read from or write to the
+file to occur at a byte offset specified by the calculation:
+<p><ul><pre>(pgsize * pageno) + relative</pre></ul><p>
+<p>
+If <b>rewind</b> is non-zero, the byte offset is treated as a backwards
+seek, not a forwards one.
+<p>
+The <b>whence</b> argument specifies where in the file the byte offset is
+relative to, as described by the IEEE Std 1003.1b-1993 (POSIX) <b>lseek</b> system call.
+<p>
+The <b>seek</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_SLEEP">
+<p><dt>DB_FUNC_SLEEP<dd>The Berkeley DB library requires the ability to cause a process to suspend itself
+for a period of time, relinquishing control of the processor to any other
+waiting thread of control.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int sleep(u_long seconds, u_long microseconds);</pre></ul><p>
+<p>
+The <b>seconds</b> and <b>microseconds</b> arguments specify the amount
+of time to wait until the suspending thread of control should run again.
+<p>
+The <b>seconds</b> and <b>microseconds</b> arguments may not be normalized
+when the <b>sleep</b> function is called, i.e., the <b>microseconds</b>
+argument may be greater than 1000000.
+<p>
+The <b>sleep</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_UNLINK">
+<p><dt>DB_FUNC_UNLINK<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>unlink</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_UNMAP">
+<p><dt>DB_FUNC_UNMAP<dd>The Berkeley DB library requires the ability to unmap a file or shared memory region
+from memory.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int unmap(void *addr, size_t len);</pre></ul><p>
+<p>
+The <b>addr</b> argument is the argument returned by the DB_FUNC_MAP function
+when the file or region was mapped into memory, and the <b>len</b> argument
+is the same as the <b>len</b> argument specified to the DB_FUNC_MAP function
+when the file or region was mapped into memory.
+<p>
+The <b>unmap</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+<a name="DB_FUNC_WRITE">
+<p><dt>DB_FUNC_WRITE<dd>
+Replace Berkeley DB calls to the IEEE Std 1003.1b-1993 (POSIX) <b>write</b> function
+with <b>func</b>, which must conform to the standard interface.
+<a name="DB_FUNC_YIELD">
+<p><dt>DB_FUNC_YIELD<dd>The Berkeley DB library requires the ability to yield the processor from the current
+thread of control to any other waiting threads of control.
+The <b>func</b> argument must conform to the following interface:
+<p><ul><pre>int yield(void);</pre></ul><p>
+<p>
+The <b>yield</b> function must be able to cause the rescheduling all
+participants in the current Berkeley DB environment, whether threaded or not.
+It may be incorrect to supply a thread <b>yield</b> function if more
+than a single process is operating in the Berkeley DB environment.
+This is because many thread-yield functions will not allow other processes
+to run, and the contested lock may be held by another process, not by
+another thread.
+<p>
+If no <b>yield</b> function is specified, or if the <b>yield</b>
+function returns an error, the function specified by the DB_FUNC_SLEEP
+entry will be used instead or subsequently, i.e., if no <b>yield</b>
+function is specified, or it is possible for the <b>yield</b> function
+to fail, the <b>sleep</b> function <b>must</b> cause the processor
+to reschedule any waiting threads of control for execution.
+<dl compact>
+<p><dt>Solaris note:<dd>Because of bugs in the Solaris C library, the Berkeley DB library uses the
+undocumented <b>_lock_try</b> and <b>_lock_clear</b> function
+calls instead of either the <b>sema_trywait</b>(3T) or
+<b>sema_wait</b>(3T) function calls.
+</dl>
+<p>
+The <b>yield</b> function returns the value of <b>errno</b> on failure
+and 0 on success.
+</dl>
+<p>
+Applications should be careful to replace related functions as a group
+and at the same time.
+Replacing DB_FUNC_MALLOC without replacing DB_FUNC_REALLOC is likely
+to result in unpredictable results.
+<p>
+The db_jump_set
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the db_jump_set function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/internal/db_value_set.html">db_value_set</a>
+</tt>
+</body>
+</html>

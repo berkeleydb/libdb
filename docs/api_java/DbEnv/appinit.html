@@ -1,0 +1,367 @@
+<! "@(#)appinit.so	10.15 (Sleepycat) 11/21/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbEnv.appinit</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbEnv.appinit</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public DbEnv(String homeDir, String db_config, int flags)
+    throws DbException;
+public DbEnv();
+public void appinit(String homeDir, String db_config, int flags)
+    throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbEnv.appinit method provides a simple way to initialize and configure
+the Berkeley DB environment.  It is not necessary that it be called, but it
+provides a structure for creating a consistent environment for processes
+using one or more of the features of Berkeley DB.
+<p>
+The <b>db_home</b> and <b>db_config</b> arguments to DbEnv.appinit
+are described in <a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.
+<p>
+The <b>flags</b> argument specifies the subsystems that are initialized
+and how the environment affects Berkeley DB file naming, among other things.
+The <b>flags</b> value is specified by logically <b>OR</b>'ing together one or more of the
+following values:
+<dl compact>
+<a name="DB_CREATE">
+<p><dt>Db.DB_CREATE<dd>Cause subsystems to create any underlying files, as necessary.
+<a name="DB_INIT_CDB">
+<p><dt>Db.DB_INIT_CDB<dd>Initialize locking for the Berkeley DB Concurrent Access Methods product.  In this mode, Berkeley DB provides
+multiple reader/single writer access.  No other locking should be
+specified (e.g., do not set <a href="../../api_java/DbEnv/appinit.html#DB_INIT_LOCK">Db.DB_INIT_LOCK</a>).  Access method calls
+are largely unchanged when using the <a href="../../api_java/DbEnv/appinit.html#DB_INIT_CDB">Db.DB_INIT_CDB</a> flag, although
+any cursors through which update operations (e.g., <a href="../../api_java/Dbc/put.html">Dbc.put</a>,
+<a href="../../api_java/Dbc/del.html">Dbc.del</a>) will be made, must have the <a href="../../api_java/Dbc/get.html#DB_RMW">Db.DB_RMW</a> value set in
+the flags parameter to the cursor call that creates the cursor.  See
+<a href="../../api_java/Db/cursor.html">Db.cursor</a> for more information.
+<a name="DB_INIT_LOCK">
+<p><dt>Db.DB_INIT_LOCK<dd>Initialize the lock subsystem; see
+<a href="../../api_java/DbLock/class.html">DbLock</a>.
+This subsystem should be used when multiple processes or threads are going
+to be reading and writing a Berkeley DB database, so that they do not interfere
+with each other.  If all threads are accessing the database(s) read-only,
+then locking is unnecessary.  When the DB_INIT_LOCK flag is specified, it
+is usually necessary to run the deadlock detector, as well.  See
+<a href="../../utility/db_deadlock.html">db_deadlock</a> and <a href="../../api_java/DbLockTab/detect.html">DbLockTab.detect</a> for more information.
+<a name="DB_INIT_LOG">
+<p><dt>Db.DB_INIT_LOG<dd>Initialize the log subsystem; see
+<a href="../../api_java/DbLog/class.html">DbLog</a>.
+This subsystem is used when recovery from application or system failure
+is necessary.]
+<a name="DB_INIT_MPOOL">
+<p><dt>Db.DB_INIT_MPOOL<dd>Initialize the mpool subsystem; see
+<a href="../../api_java/DbMpool/class.html">DbMpool</a>.
+This subsystem is used whenever the application is using the Berkeley DB access
+methods for any purpose.]
+<a name="DB_INIT_TXN">
+<p><dt>Db.DB_INIT_TXN<dd>Initialize the transaction subsystem; see
+<a href="../../api_java/DbTxn/class.html">DbTxn</a>.
+This subsystem is used when atomicity of multiple operations and recovery
+are important.  The DB_INIT_TXN flag implies the DB_INIT_LOG flag.
+<a name="DB_MPOOL_PRIVATE">
+<p><dt>Db.DB_MPOOL_PRIVATE<dd>Create a private memory pool; see
+<a href="../../api_java/DbMpool/class.html">DbMpool</a>.
+Ignored unless DB_INIT_MPOOL is also specified.
+<a name="DB_NOMMAP">
+<p><dt>Db.DB_NOMMAP<dd>Do not memory map database files within this environment; see
+<a href="../../api_java/DbMpool/class.html">DbMpool</a>.
+Ignored unless DB_INIT_MPOOL is also specified.
+<a name="DB_RECOVER">
+<p><dt>Db.DB_RECOVER<dd>Run normal recovery on this environment before opening it for normal use.
+If this flag is set, the DB_CREATE flag must also be set since the regions
+will be removed and recreated.
+<p>
+The DbEnv.appinit function returns successfully if DB_RECOVER is
+specified and no log files exist, so it is necessary to ensure all
+necessary log files are present before running recovery.
+For further information, consult <a href="../../utility/db_archive.html">db_archive</a> and <a href="../../utility/db_recover.html">db_recover</a>.
+<a name="DB_RECOVER_FATAL">
+<p><dt>Db.DB_RECOVER_FATAL<dd>Run catastrophic recovery on this environment before opening it for
+normal use.  If this flag is set, the DB_CREATE flag must also be set
+since the regions will be removed and recreated.
+<p>
+The DbEnv.appinit function returns successfully if DB_RECOVER_FATAL
+is specified and no log files exist, so it is necessary to ensure all
+necessary log files are present before running recovery.  For further
+information, consult <a href="../../utility/db_archive.html">db_archive</a> and <a href="../../utility/db_recover.html">db_recover</a>.
+<a name="DB_THREAD">
+<p><dt>Db.DB_THREAD<dd>Ensure that handles returned by the Berkeley DB subsystems are useable by multiple
+threads within a single process, i.e., that the system is
+<i>free-threaded</i>.
+<p>
+Threading is assumed in the Java API, so no special flags are required,
+and Berkeley DB functions will always behave as if the DB_THREAD flag was
+specified.
+<a name="DB_TXN_NOSYNC">
+<p><dt>Db.DB_TXN_NOSYNC<dd>On transaction commit, do not synchronously flush the log; see
+<a href="../../api_java/DbTxn/class.html">DbTxn</a>.
+Ignored unless DB_INIT_TXN is also specified.
+<a name="DB_USE_ENVIRON">
+<p><dt>Db.DB_USE_ENVIRON<dd>The Berkeley DB process' environment may be permitted to specify information to
+be used when naming files; see <a href="../../ref/env/naming.html">Berkeley DB
+File Naming</a>.  As permitting users to specify which files are used can
+create security problems, environment information will be used in file
+naming for all users only if the DB_USE_ENVIRON flag is set.
+<a name="DB_USE_ENVIRON_ROOT">
+<p><dt>Db.DB_USE_ENVIRON_ROOT<dd>The Berkeley DB process' environment may be permitted to specify information
+to be used when naming files; see <a href="../../ref/env/naming.html">Berkeley DB
+File Naming</a>.  As permitting users to specify which files are used can
+create security problems, if the DB_USE_ENVIRON_ROOT flag is set,
+environment information will be used for file naming only for users with
+a user-ID matching that of the superuser (specifically, users for whom
+the <b>getuid</b>(2) system call returns the user-ID 0).
+</dl>
+<p>
+The Berkeley DB environment is configured
+based on the <b>dbenv</b> argument.  It is expected that applications
+will use a single <a href="../../api_java/DbEnv/class.html">DbEnv</a> object as the argument to all of the
+subsystems in the Berkeley DB package.  The fields of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object
+used by DbEnv.appinit are described below.
+Any of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> fields that are not explicitly set will default
+to appropriate values.
+<p>
+The following fields in the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object may be initialized, using
+the appropriate set method, before calling DbEnv.appinit:
+<dl compact>
+<a name="db_paniccall">
+<p><dt>DbPaniccall db_paniccall;<dd>Errors can occur in the Berkeley DB library where the only solution is to shut
+down the application and run recovery.  (For example, if Berkeley DB is unable
+to write log records to disk because there is insufficient disk space.)
+In these cases, the value DB_RUNRECOVERY is returned by the function.  It
+is often simpler, however, to simply shut down the application when such
+errors occur instead of attempting to gracefully return error values up
+the stack.
+<p>
+If <b>db_paniccall</b> is not null and such an error occurs,
+db_paniccall.paniccall() will be called.  This method takes two arguments.
+The <b>dbenv</b> argument is the current environment's <a href="../../api_java/DbEnv/class.html">DbEnv</a>
+object, and the <b>errval</b> argument is the system errno value that
+was returned when the error occurred.
+<a name="db_errcall">
+<p><dt>DbErrcall db_errcall;<dd>When an error occurs in the Berkeley DB library, an <b>errno</b> value is
+returned by the method.  In some cases, however, the <b>errno</b>
+value may be insufficient to completely describe the cause of the error
+especially during initial application debugging.
+<p>
+If <b>db_errcall</b> is not null, db_errcall.errcall() may be called
+with additional error information.  This method takes two arguments.  The
+<b>prefix</b> argument is the current environment's <b>db_errpfx</b>
+field.  The <b>buffer</b> argument is a string with the additional
+information.
+<p>
+This error logging facility does not slow performance or significantly
+increase application size, and may be run during normal operation as
+well as during debugging.
+<a name="db_errfile">
+<p><dt>java.io.OutputStream error_stream;<dd>The <b>error_stream</b> field behaves similarly to the <b>db_errcall</b>
+field
+allowing errors to be
+redirected to a C++ error stream.  It is unwise to use both error_stream
+with nonzero values of either errcall or errfile.
+<a name="db_errpfx">
+<p><dt>String db_errpfx;<dd>A prefix to prepend to error messages.  Because Berkeley DB does not copy the
+memory referenced by the <b>db_errpfx</b> field, applications may modify
+the error message prefix at any time.
+<a name="db_verbose">
+<p><dt>int db_verbose;<dd>Include informational and debugging messages as well as error messages
+in the <b>db_errcall</b> and <b>db_errfile</b> output.
+</dl>
+<p>
+Each of the open functions that DbEnv.appinit may call
+(<a href="../../api_java/DbLockTab/open.html">DbLockTab.open</a>, <a href="../../api_java/DbLog/open.html">DbLog.open</a>, <a href="../../api_java/DbMpool/open.html">DbMpool.open</a> and
+<a href="../../api_java/DbTxnMgr/open.html">DbTxnMgr.open</a>), is called as follows, where the DB_CREATE
+flag is optional:
+<p><ul><pre>XXX::open(null, Db.DB_CREATE, 0660, dbenv);</pre></ul><p>
+<p>
+This call will cause each subsystem to construct pathnames as described
+in <a href="../../ref/env/naming.html">Berkeley DB File Naming</a>.  The subsystem
+has permission to read and write underlying files as necessary, and
+optionally to create files.  (All created files will be created readable
+and writeable by the owner and the group.  The group ownership of created
+files is based on the system and directory defaults, and is not further
+specified by Berkeley DB.)
+<p>
+In addition, the <b>dbenv</b> argument is passed to the open functions
+of any subsystems initialized by DbEnv.appinit.  For this reason the
+fields of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object relevant to the subsystems being
+initialized must themselves be initialized before DbEnv.appinit is
+called.  See the appropriate subsystem documentation for a list of these
+fields and their uses.
+<p>
+The return value from each of these calls is placed in the appropriate
+field of the <a href="../../api_java/DbEnv/class.html">DbEnv</a> object:
+<dl compact>
+<a name="lk_info">
+<dt>DbLockTab lk_info;<dd>The return value of the <a href="../../api_java/DbLockTab/open.html">DbLockTab.open</a> call.
+<a name="lg_info">
+<dt>DbLog lg_info;<dd>The return value of the <a href="../../api_java/DbLog/open.html">DbLog.open</a> call.
+<a name="mp_info">
+<dt>DbMpool mp_info;<dd>The return value of the <a href="../../api_java/DbMpool/open.html">DbMpool.open</a> call.
+<a name="tx_info">
+<dt>DbTxnMgr tx_info;<dd>The return value of the <a href="../../api_java/DbTxnMgr/open.html">DbTxnMgr.open</a> call.
+</dl>
+<p>
+In general, these fields are not directly used by applications; subsystems
+of Berkeley DB that use these fields simply reference them using the <a href="../../api_java/DbEnv/class.html">DbEnv</a>
+object passed to the subsystem.
+<p>
+For example,
+an application using the Berkeley DB hash access method functions to access a
+database will first call <a href="../../api_java/Db/open.html">Db.open</a> passing it the <a href="../../api_java/DbEnv/class.html">DbEnv</a>
+argument initialized by a call to DbEnv.appinit.  Then, all future
+calls to the hash access method functions for that database will
+automatically use the underlying shared memory buffer pool that was
+specified by the <b>mp_info</b> field of that <a href="../../api_java/DbEnv/class.html">DbEnv</a> object.
+<p>
+The single exception to this rule is the <b>tx_info</b> field, which
+applications must explicitly specify to the <a href="../../api_java/DbTxnMgr/begin.html">DbTxnMgr.begin</a>,
+<a href="../../api_java/DbTxnMgr/checkpoint.html">DbTxnMgr.checkpoint</a> and <a href="../../api_java/DbTxnMgr/close.html">DbTxnMgr.close</a> methods.
+<p>
+The <b>error_model</b> field of <a href="../../api_java/DbEnv/class.html">DbEnv</a> allows the user to
+configure the way errors are treated in Berkeley DB, and may be changed at any
+time, including after the call to DbEnv.appinit.  The error model is
+further described in <a href="../../api_java/DbException/class.html">DbException</a>.
+<p>
+The <b>db_prefix</b> field of <a href="../../api_java/DbEnv/class.html">DbEnv</a> allows the user to configure
+the error message prefix, and may be changed at any time, including after
+the call to DbEnv.appinit.
+<p>
+Otherwise, once the Berkeley DB environment has been initialized by a call to
+DbEnv.appinit, no fields should be modified.
+<p>
+<h1>Architecture Notes</h1>
+Due to the constraints of the PA-RISC memory architecture, HP-UX does not
+allow a process to map a file into its address space multiple times.
+For this reason, each Berkeley DB environment may be opened only once by a
+process on HP-UX, i.e., calls to DbEnv.appinit will fail if the
+specified Berkeley DB environment has been opened and not subsequently closed.
+<p>
+On Windows/95, files that are opened by multiple processes do not share
+data correctly.  To cause Berkeley DB to use the paging file to share memory
+among processes, use the <a href="../../api_c/internal/db_value_set.html#DB_REGION_NAME">DB_REGION_NAME</a> flag of the
+<a href="../../api_c/internal/db_value_set.html">db_value_set</a> function.  Obviously, you do not need to do this if
+only a single process will be accessing database files.
+<p>
+The DbEnv.appinit
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbEnv.appinit method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbEnv.appinit
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_java/Db/close.html">Db.close</a>,
+abort(3),
+ctime(3),
+<a href="../../api_java/DbEnv/appexit.html">DbEnv.appexit</a>,
+dbenv->tx_recover(3),
+fclose(3),
+fcntl(3),
+fflush(3),
+fgets(3),
+fopen(3),
+fprintf(3),
+free(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isspace(3),
+<a href="../../api_java/DbLockTab/open.html">DbLockTab.open</a>,
+<a href="../../api_java/DbLockTab/unlink.html">DbLockTab.unlink</a>,
+<a href="../../api_java/DbLog/compare.html">DbLog.compare</a>,
+<a href="../../api_java/DbLog/get.html">DbLog.get</a>,
+<a href="../../api_java/DbLog/open.html">DbLog.open</a>,
+<a href="../../api_java/DbLog/unlink.html">DbLog.unlink</a>,
+malloc(3),
+memcpy(3),
+<a href="../../api_java/DbMpool/open.html">DbMpool.open</a>,
+<a href="../../api_java/DbMpool/unlink.html">DbMpool.unlink</a>,
+memset(3),
+realloc(3),
+stat(3),
+strcat(3),
+strchr(3),
+strcmp(3),
+strcpy(3),
+strlen(3),
+time(3),
+<a href="../../api_java/DbTxnMgr/checkpoint.html">DbTxnMgr.checkpoint</a>,
+<a href="../../api_java/DbTxnMgr/open.html">DbTxnMgr.open</a>,
+<a href="../../api_java/DbTxnMgr/unlink.html">DbTxnMgr.unlink</a>,
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the DbEnv.appinit
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The DB_THREAD flag was specified and spinlocks are not implemented for
+this architecture.
+<p>
+The DB_HOME or TMPDIR environment variables were set but empty.
+<p>
+An incorrectly formatted <b>NAME VALUE</b> entry or line was found.
+</dl>
+<p>
+<dl compact>
+<p><dt>ENOSPC<dd>HP-UX only: a previously created Berkeley DB environment for this process still
+exists.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbEnv/class.html">DbEnv</a>
+<p>
+<h1>See Also</h1>
+DbEnv.appinit,
+<a href="../../api_java/DbEnv/appexit.html">DbEnv.appexit</a>,
+<a href="../../api_java/DbEnv/version.html">DbEnv.version</a>,
+dbenv_get_data_dir,
+dbenv_get_errcall,
+dbenv_get_error_model,
+dbenv_get_error_stream,
+dbenv_get_errpfx,
+dbenv_get_flags,
+dbenv_get_home,
+<a href="../../api_java/DbEnv/get_lg_info.html">DbEnv.get_lg_info</a>,
+dbenv_get_lg_max,
+dbenv_get_lk_conflicts,
+dbenv_get_lk_detect,
+<a href="../../api_java/DbEnv/get_lk_info.html">DbEnv.get_lk_info</a>,
+dbenv_get_lk_modes,
+dbenv_get_log_dir,
+dbenv_get_lorder,
+<a href="../../api_java/DbEnv/get_mp_info.html">DbEnv.get_mp_info</a>,
+dbenv_get_mp_mmapsize,
+dbenv_get_mp_size,
+dbenv_get_tmp_dir,
+<a href="../../api_java/DbEnv/get_tx_info.html">DbEnv.get_tx_info</a>,
+dbenv_get_tx_max,
+dbenv_get_tx_recover
+and
+dbenv_get_verbose.
+</tt>
+</body>
+</html>

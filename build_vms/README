@@ -1,0 +1,23 @@
+# @(#)README	10.1 (Sleepycat) 11/3/98
+
+Readme for Berkeley DB on OpenVMS 3-Nov-1998
+
+The DB libraries and utilities have been built and casually tested on
+OpenVMS 7.1 with the DECC compiler.  The DB testing suite has not been
+ported to OpenVMS, so extensive testing was not done.
+
+DB will not build on OpenVMS 6.x due to the lack of some C RTL functions
+such as mmap().
+
+The included makefile should work with little or no modifications with
+the make program from the DECUS library.  It has only been used to build
+the object library and the utilities (no doc or test routines):
+
+LIBDB.OLB
+DB_ARCHIVE.EXE
+DB_CHECKPOINT.EXE
+DB_DEADLOCK.EXE
+DB_DUMP.EXE
+DB_LOAD.EXE
+DB_RECOVER.EXE
+DB_STAT.EXE

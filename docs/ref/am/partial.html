@@ -1,0 +1,141 @@
+<! "@(#)partial.so	10.4 (Sleepycat) 10/19/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Partial Record Storing and Retrieval</h1>
+<p>
+It is possible to both store and retrieve parts of data items in all Berkeley DB
+access methods.  This is done by specifying the <a href="../../api_c/Dbt/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a>
+flag to the DBT structure passed to the Berkeley DB interface.
+<p>
+The <a href="../../api_c/Dbt/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag is based on the values of two elements
+of the DBT structure, <b>dlen</b> and doff.  The value
+of <b>dlen</b> is the number of bytes of the record in which the
+application is interested.  The value of <b>doff</b> is the offset from
+the beginning of the data item where those bytes start.
+<p>
+For example, if the data item were <b>ABCDEFGHIJKL</b>, a <b>doff</b>
+value of 3 would indicate that the bytes of interest started at
+<b>D</b>, and a <b>dlen</b> value of 4 would indicate that the bytes
+of interest were <b>DEFG</b>.
+<p>
+When retrieving a data item from a database, the <b>dlen</b> bytes
+starting <b>doff</b> bytes from the beginning of the record are returned,
+as if they comprised the entire record.  If any or all of the specified
+bytes do not exist in the record, the retrieval is still successful and
+the existing bytes or nul bytes are returned.
+<p>
+When storing a data item into the database, the <b>dlen</b> bytes
+starting <b>doff</b> bytes from the beginning of the specified key's
+data record are replaced by the data specified by the data and size
+structure elements.  If <b>dlen</b> is smaller than <b>size</b>, the
+record will grow, and if <b>dlen</b> is larger than <b>size</b>, the
+record will shrink. If the specified bytes do not exist, the record will
+be extended using nul bytes as necessary, and the store call will still
+succeed.
+<p>
+The following are various examples of the put case for the
+<a href="../../api_c/Dbt/dbt.html#DB_DBT_PARTIAL">DB_DBT_PARTIAL</a> flag. In all examples, the initial data item is
+20 bytes in length:
+<p>
+<b>ABCDEFGHIJ0123456789</b>
+<ol>
+<p><li>
+<p><ul><pre>
+size = 20
+doff = 0
+dlen = 20
+data = abcdefghijabcdefghij
+<p>
+Result: The 20 bytes at offset 0 are replaced by the 20 bytes of data,
+i.e., the entire record is replaced.
+<p>
+ABCDEFGHIJ0123456789 -> abcdefghijabcdefghij
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 10
+doff = 20
+dlen = 0
+data = abcdefghij
+<p>
+Result: The 0 bytes at offset 20 are replaced by the 10 bytes of data,
+i.e., the record is extended by 10 bytes.
+<p>
+ABCDEFGHIJ0123456789 -> ABCDEFGHIJ0123456789abcdefghij
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 10
+doff = 10
+dlen = 5
+data = abcdefghij
+<p>
+Result: The 5 bytes at offset 10 are replaced by the 10 bytes of data.
+<p>
+ABCDEFGHIJ0123456789 -> ABCDEFGHIJabcdefghij56789
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 10
+doff = 10
+dlen = 0
+data = abcdefghij
+<p>
+Result: The 0 bytes at offset 10 are replaced by the 10 bytes of data,
+i.e., 10 bytes are inserted into the record.
+<p>
+ABCDEFGHIJ0123456789 -> ABCDEFGHIJabcdefghij0123456789
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 10
+doff = 2
+dlen = 15
+data = abcdefghij
+<p>
+Result: The 15 bytes at offset 2 are replaced by the 10 bytes of data.
+<p>
+ABCDEFGHIJ0123456789 -> ABabcdefghij789
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 10
+doff = 0
+dlen = 0
+data = abcdefghij
+<p>
+Result: The 0 bytes at offset 0 are replaced by the 10 bytes of data,
+i.e., the 10 bytes are inserted at the beginning of the record.
+<p>
+ABCDEFGHIJ0123456789 -> abcdefghijABCDEFGHIJ0123456789
+</pre></ul><p>
+<p><li>
+<p><ul><pre>
+size = 0
+doff = 0
+dlen = 10
+data = ""
+<p>
+Result: The 10 bytes at offset 0 are replaced by the 0 bytes of data,
+i.e., the first 10 bytes of the record are discarded.  <p>
+<p>
+ABCDEFGHIJ0123456789 -> 0123456789
+</pre></ul><p>
+</ol>
+<p>
+<a href="../../ref/am/curclose.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/intro.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

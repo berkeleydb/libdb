@@ -1,0 +1,40 @@
+<! "@(#)class.so	10.1 (Sleepycat) 10/26/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbRunRecoveryException</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbRunRecoveryException</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public class DbRunRecoveryException extends DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the DbRunRecoveryException class and
+how it is used by the various Db* classes.
+<p>
+When a fatal error occurs in Berkeley DB, a method will throw a
+DbRunRecoveryException, at which point all subsequent
+database calls will also fail in the same way.  When this occurs,
+recovery should be performed.
+<p>
+<h1>Class</h1>
+DbRunRecoveryException
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbException/class.html">DbException</a>,
+<a href="../../api_java/DbException/get_errno.html">DbException.get_errno</a>
+</tt>
+</body>
+</html>

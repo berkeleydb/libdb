@@ -1,0 +1,36 @@
+<! "@(#)get_errno.so	10.5 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbException.get_errno</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbException.get_errno</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public int get_errno();
+</pre>
+</h3>
+<h1>Description</h1>
+Most methods in the Db classes throw an exception when an error occurs.
+A DbException object contains an informational string and an errno.
+The errno can be obtained using DbException.get_errno.
+Since DbException inherits from the java.Exception, the string
+portion is available using toString().
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbException/class.html">DbException</a>
+<p>
+<h1>See Also</h1>
+DbException.get_errno
+</tt>
+</body>
+</html>

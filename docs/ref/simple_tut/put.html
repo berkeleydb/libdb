@@ -1,0 +1,159 @@
+<! "@(#)put.so	10.10 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Simple Tutorial</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<p>
+<h1 align=center>Adding elements to a database</h1>
+<p>
+The simplest way to add elements to a database is the <a href="../../api_c/Db/put.html">DB->put</a>
+interface.  This interface is accessed through a function pointer
+that is an element of the database handle returned by <a href="../../api_c/Db/open.html">db_open</a>.
+(All Berkeley DB handles contain function pointers you must use to operate on
+the objects to which the handles refer.)
+<p>
+The <a href="../../api_c/Db/put.html">DB->put</a> interface takes five arguments:
+<dl compact>
+<p><dt>db<dd>The database handle returned by <a href="../../api_c/Db/open.html">db_open</a>.
+<p><dt>txnid<dd>A transaction ID.
+In our simple case, we aren't expecting to recover the database after
+application or system crash, so we aren't using transactions, and will
+leave this argument unspecified.
+<p><dt>key<dd>The key item for the key/data pair that we want to add to the database.
+<p><dt>data<dd>The data item for the key/data pair that we want to add to the database.
+<p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/Db/put.html">DB->put</a>
+interface.
+</dl>
+<p>
+Here's what the code to call <a href="../../api_c/Db/put.html">DB->put</a> looks like:
+<p><ul><pre>#include &lt;sys/types.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;db.h&gt;
+<p>
+#define	DATABASE	"access.db"
+<p>
+int
+main()
+{
+	extern int errno;
+	DB *dbp;
+	DBT key, data;
+<p>
+	if ((errno = db_open(DATABASE,
+	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
+		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+		exit (1);
+	}
+<p><a name="startcode"><b>
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	key.data = "fruit";
+	key.size = sizeof("fruit");
+	data.data = "apple";
+	data.size = sizeof("apple");
+<p>
+	switch (errno = dbp->put(dbp, NULL, &key, &data, 0)) {
+	case 0:
+		printf("db: %s: key stored.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: put: %s\n", strerror(errno));
+		exit (1);
+	}</b>
+</pre></ul><p>
+<p>
+The first thing to notice about this new code is that we're clearing
+the structures that we're about to pass as arguments to Berkeley DB functions.
+This is very important, and being careful to do so will result in fewer
+subtle errors in your programs.
+All structures specified to Berkeley DB interfaces should be cleared before
+use, without exception.
+The reason that this is necessary is that future versions of Berkeley DB
+may add additional fields to the structures.
+If applications are careful to clear the structures before use, it
+will be possible for Berkeley DB to change those structures without requiring
+that the applications be rewritten to be aware of the changes.
+<p>
+Notice also that we're storing the trailing nul byte found in the C
+strings <b>"fruit"</b> and <b>"apple"</b> in both the key and data
+items, that is, the trailing nul byte is part of the stored key, and
+therefore has to be specified in order to access the data item.  There is
+no requirement to store the trailing nul byte, it simply makes it easier
+for us to display strings that we've stored using programming languages
+that use nul bytes to terminate strings.
+<p>
+In many databases, it is important not to overwrite already existing
+data.  For example, we might not want to store the key/data pair
+<b>fruit/apple</b> if it already existed, e.g., if someone had
+previously stored the key/data pair <b>fruit/cherry</b> into the
+database.
+<p>
+This is easily accomplished using the following code:
+<p>
+<p><ul><pre>
+#include &lt;sys/types.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;db.h&gt;
+<p>
+#define	DATABASE	"access.db"
+<p>
+int
+main()
+{
+	extern int errno;
+	DB *dbp;
+	DBT key, data;
+<p>
+	if ((errno = db_open(DATABASE,
+	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
+		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+		exit (1);
+	}
+<p>
+<b>
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	key.data = "fruit";
+	key.size = sizeof("fruit");
+	data.data = "apple";
+	data.size = sizeof("apple");
+<p>
+	switch (errno = dbp->put(dbp, NULL, &key, &data, DB_NOOVERWRITE)) {
+	case 0:
+		printf("db: %s: key stored.\n", (char *)key.data);
+		break;
+	case DB_KEYEXIST:
+		printf("%s: key already exists\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: put: %s\n", strerror(errno));
+		exit (1);
+	}
+</b>
+</pre></ul><p>
+<p>
+To accomplish this task, we've specified a flag to the <a href="../../api_c/Db/put.html">DB->put</a> call:
+DB_NOOVERWRITE, which causes the underlying database functions to not
+overwrite any previously existing key/data pair.  (Note that the value
+of the previously existing data doesn't matter for this case.  The only
+issue is if a key/data pair already exists where the key matches the key
+that we are trying to store.)
+<p>
+Specifying DB_NOOVERWRITE opens the possibility of a new error return, 
+DB_KEYEXIST, which means we were unable
+to add the key/data pair to the database because the key already existed
+in the database.
+<p>
+<a href="../../ref/simple_tut/keydata.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/simple_tut/get.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

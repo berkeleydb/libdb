@@ -1,0 +1,91 @@
+<! "@(#)put.so	10.6 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLock::put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLock::put</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbLock::put(DbLockTab *lt);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLock::put method is a simple interface to the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a>
+functionality.
+<p>
+It is equivalent to calling the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a> method with a single element
+<b>list</b> array, for which the <b>op</b> field is DB_LOCK_PUT and the
+<b>lock</b> field is represented by the <a href="../../api_cxx/DbLock/class.html">DbLock</a> object.
+The DbLock::put method returns success and failure as described for
+the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a> method.
+<p>
+If a process dies while holding locks, those locks remain held and are
+<b>never</b> released.  In this case, all processes should exit as
+quickly as possible, so that database recovery can be run.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLock::put method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbLock::put
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+fsync(3),
+getpid(3),
+<a href="../../api_cxx/DbLockTab/detect.html">DbLockTab::detect</a>,
+lseek(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+shmat(3),
+shmdt(3),
+strerror(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbLock::put
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EACCES<dd>An attempt was made to release lock held by another locker.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbLock/class.html">DbLock</a>
+<p>
+<h1>See Also</h1>
+DbLock::put
+</tt>
+</body>
+</html>

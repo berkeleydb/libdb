@@ -1,0 +1,60 @@
+<! "@(#)set_h_hash.so	10.5 (Sleepycat) 10/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbInfo::set_h_hash</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbInfo::set_h_hash</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+typedef u_int32_t (*h_hash_fcn)(const void *, u_int32_t);
+void DbInfo::set_h_hash(h_hash_fcn);
+</pre>
+</h3>
+<h1>Description</h1>
+Set a user defined hash method; if no hash method is specified,
+a default hash method is used.
+Since no hash method performs equally well on all possible data,
+the user may find that the built-in hash method performs poorly with
+a particular data set.
+User specified hash functions must take a pointer to a byte string and
+a length as arguments and return a value of type <b>u_int32_t</b>.
+<p>
+If a hash method is specified, <b>hash_open</b> will attempt to determine
+if the hash method specified is the same as the one with which the database
+was created, and will fail if it detects that it is not.
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbInfo/class.html">DbInfo</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbInfo/set_bt_compare.html">DbInfo::set_bt_compare</a>,
+<a href="../../api_cxx/DbInfo/set_bt_maxkey.html">DbInfo::set_bt_maxkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_minkey.html">DbInfo::set_bt_minkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_prefix.html">DbInfo::set_bt_prefix</a>,
+<a href="../../api_cxx/DbInfo/set_cachesize.html">DbInfo::set_cachesize</a>,
+<a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a>,
+<a href="../../api_cxx/DbInfo/set_flags.html">DbInfo::set_flags</a>,
+<a href="../../api_cxx/DbInfo/set_h_ffactor.html">DbInfo::set_h_ffactor</a>,
+DbInfo::set_h_hash,
+<a href="../../api_cxx/DbInfo/set_h_nelem.html">DbInfo::set_h_nelem</a>,
+<a href="../../api_cxx/DbInfo/set_lorder.html">DbInfo::set_lorder</a>,
+<a href="../../api_cxx/DbInfo/set_malloc.html">DbInfo::set_malloc</a>,
+<a href="../../api_cxx/DbInfo/set_pagesize.html">DbInfo::set_pagesize</a>,
+<a href="../../api_cxx/DbInfo/set_re_delim.html">DbInfo::set_re_delim</a>,
+<a href="../../api_cxx/DbInfo/set_re_len.html">DbInfo::set_re_len</a>,
+<a href="../../api_cxx/DbInfo/set_re_pad.html">DbInfo::set_re_pad</a>
+and
+<a href="../../api_cxx/DbInfo/set_re_source.html">DbInfo::set_re_source</a>.
+</tt>
+</body>
+</html>

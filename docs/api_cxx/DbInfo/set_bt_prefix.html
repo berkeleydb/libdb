@@ -1,0 +1,68 @@
+<! "@(#)set_bt_prefix.so	10.7 (Sleepycat) 12/3/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbInfo::set_bt_prefix</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbInfo::set_bt_prefix</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+typedef size_t (*bt_prefix_fcn)(const DBT *, const DBT *);
+void DbInfo::set_bt_prefix(bt_prefix_fcn);
+</pre>
+</h3>
+<h1>Description</h1>
+Set the Btree prefix comparison function.
+If specified, this method must return the number of bytes of the second key
+argument that are necessary to determine that it is greater than the first
+key argument.
+If the keys are equal, the key length should be returned.
+<p>
+The <b>data</b> and <b>size</b> fields of the <a href="../../api_cxx/Dbt/class.html">Dbt</a> are the only
+fields that may be used for the purposes of this comparison.
+<p>
+This function is used to compress the keys stored on the btree internal
+pages.  The usefulness of this is data dependent, but in some data sets
+can produce significantly reduced tree sizes and search times.
+<p>
+If <b>bt_prefix</b> is not explicitly set, and no key comparison method
+is specified, a default lexical comparison method is used for prefix
+compression.  If <b>bt_prefix</b> is not explicitly set and a key
+comparison method is specified, no prefix compression is done.  It is an
+error to set <b>bt_prefix</b> without also specifying a key comparison
+method.
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbInfo/class.html">DbInfo</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbInfo/set_bt_compare.html">DbInfo::set_bt_compare</a>,
+<a href="../../api_cxx/DbInfo/set_bt_maxkey.html">DbInfo::set_bt_maxkey</a>,
+<a href="../../api_cxx/DbInfo/set_bt_minkey.html">DbInfo::set_bt_minkey</a>,
+DbInfo::set_bt_prefix,
+<a href="../../api_cxx/DbInfo/set_cachesize.html">DbInfo::set_cachesize</a>,
+<a href="../../api_cxx/DbInfo/set_compare.html">DbInfo::set_compare</a>,
+<a href="../../api_cxx/DbInfo/set_flags.html">DbInfo::set_flags</a>,
+<a href="../../api_cxx/DbInfo/set_h_ffactor.html">DbInfo::set_h_ffactor</a>,
+<a href="../../api_cxx/DbInfo/set_h_hash.html">DbInfo::set_h_hash</a>,
+<a href="../../api_cxx/DbInfo/set_h_nelem.html">DbInfo::set_h_nelem</a>,
+<a href="../../api_cxx/DbInfo/set_lorder.html">DbInfo::set_lorder</a>,
+<a href="../../api_cxx/DbInfo/set_malloc.html">DbInfo::set_malloc</a>,
+<a href="../../api_cxx/DbInfo/set_pagesize.html">DbInfo::set_pagesize</a>,
+<a href="../../api_cxx/DbInfo/set_re_delim.html">DbInfo::set_re_delim</a>,
+<a href="../../api_cxx/DbInfo/set_re_len.html">DbInfo::set_re_len</a>,
+<a href="../../api_cxx/DbInfo/set_re_pad.html">DbInfo::set_re_pad</a>
+and
+<a href="../../api_cxx/DbInfo/set_re_source.html">DbInfo::set_re_source</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<! "@(#)put.so	10.11 (Sleepycat) 10/3/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Dbc.put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Dbc.put</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public void put(Dbt key, Dbt data, int flags)
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The Dbc.put method stores key/data pairs into the database.
+<p>
+The <b>flags</b> parameter must be set to one of the following values:
+<dl compact>
+<a name="DB_AFTER">
+<p><dt>Db.DB_AFTER<dd>In the case of the btree and hash access methods,
+insert the data element as a duplicate element of the key referenced
+by the cursor.
+The new element appears immediately after the current cursor position.
+It is an error to specify DB_AFTER if the underlying btree or hash database
+was not created with the DB_DUP flag.
+The <b>key</b> parameter is ignored.
+<p>
+In the case of the recno access method, it is an error to specify DB_AFTER
+if the underlying recno database was not created with the DB_RENUMBER flag.
+If the DB_RENUMBER flag was specified, a new key is created, all records
+after the inserted item are automatically renumbered, and the key of the
+new record is returned in the structure referenced by the parameter
+<b>key</b>.
+The initial value of the <b>key</b> parameter is ignored.
+See <a href="../../api_java/Db/open.html">Db.open</a> for more information.
+<p>
+If the cursor is not yet initialized or a duplicate sort function has been
+specified, the Dbc.put function will return EINVAL.
+<a name="DB_BEFORE">
+<p><dt>Db.DB_BEFORE<dd>In the case of the btree and hash access methods, insert the data element
+as a duplicate element of the key referenced by the cursor.
+The new element appears immediately before the current cursor position.
+It is an error to specify DB_BEFORE if the underlying btree or hash database
+was not created with the DB_DUP flag.
+The <b>key</b> parameter is ignored.
+<p>
+In the case of the recno access method, it is an error to specify DB_BEFORE
+if the underlying recno database was not created with the DB_RENUMBER flag.
+If the DB_RENUMBER flag was specified, a new key is created,
+the current record and all records after it are automatically renumbered,
+and the key of the new record is returned in the structure referenced by
+the parameter <b>key</b>.
+The initial value of the <b>key</b> parameter is ignored.
+See <a href="../../api_java/Db/open.html">Db.open</a> for more information.
+<p>
+If the cursor is not yet initialized or a duplicate sort function has been
+specified, Dbc.put will return EINVAL.
+<a name="DB_CURRENT">
+<p><dt>Db.DB_CURRENT<dd>Overwrite the data of the key/data pair referenced by the cursor with the
+specified data item.
+<p>
+The <b>key</b> parameter is ignored.
+<p>
+If a duplicate sort function has been specified and the data item of the
+current referenced key/data pair does not compare equally to the <b>data</b>
+parameter, Dbc.put will return EINVAL.
+<p>
+If the cursor is not yet initialized,
+Dbc.put will return EINVAL.
+<a name="DB_KEYFIRST">
+<p><dt>Db.DB_KEYFIRST<dd>In the case of the btree and hash access methods, insert the specified
+key/data pair into the database.
+<p>
+If the key already exists in the database,
+and a duplicate sort function has been specified, the inserted data item
+is added in its sorted location.
+If the key already exists in the database,
+and no duplicate sort function has been specified, the inserted data item
+is added as the first of the data items for that key.
+<p>
+The DB_KEYFIRST flag may not be specified to the recno access method.
+<a name="DB_KEYLAST">
+<p><dt>Db.DB_KEYLAST<dd>Insert the specified key/data pair into the database.
+<p>
+If the key already exists in the database,
+and a duplicate sort function has been specified, the inserted data item
+is added in its sorted location.
+If the key already exists in the database,
+and no duplicate sort function has been specified, the inserted data item
+is added as the last of the data items for that key.
+<p>
+The DB_KEYLAST flag may not be specified to the recno access method.
+</dl>
+<p>
+If the cursor record has been deleted,
+Dbc.put will return DB_KEYEMPTY.
+<p>
+Otherwise, the Dbc.put
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+If Dbc.put fails for any reason, the state of the cursor
+will be unchanged.
+If Dbc.put succeeds and an item is inserted into the
+database, the cursor is always positioned to reference the newly
+inserted item.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Dbc.put method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The Dbc.put
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+__account_page(3),
+abort(3),
+dbenv->db_paniccall(3),
+dbp->dup_compare(3),
+fflush(3),
+fprintf(3),
+free(3),
+func(3),
+hcp->dbc->dbp->h_hash(3),
+<a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>,
+<a href="../../api_java/DbLock/put.html">DbLock.put</a>,
+<a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a>,
+<a href="../../api_java/DbLog/put.html">DbLog.put</a>,
+malloc(3),
+memcmp(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_java/DbMpoolFile/get.html">DbMpoolFile.get</a>,
+<a href="../../api_java/DbMpoolFile/put.html">DbMpoolFile.put</a>,
+<a href="../../api_java/DbMpoolFile/set.html">DbMpoolFile.set</a>,
+memset(3),
+realloc(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the Dbc.put
+method may fail and throw an exception
+encapsulating <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EACCES<dd>An attempt was made to modify a read-only database.
+</dl>
+<p>
+<dl compact>
+<p><dt>EAGAIN<dd>A lock was unavailable.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_java/Dbc/class.html">Dbc</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/Dbc/close.html">Dbc.close</a>,
+<a href="../../api_java/Dbc/del.html">Dbc.del</a>,
+<a href="../../api_java/Dbc/get.html">Dbc.get</a>
+and
+Dbc.put.
+</tt>
+</body>
+</html>

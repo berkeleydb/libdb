@@ -1,0 +1,100 @@
+<! "@(#)get.so	10.9 (Sleepycat) 10/4/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLockTab::get</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLockTab::get</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbLockTab::get(u_int32_t locker, u_int32_t flags,
+    const Dbt *obj, const db_lockmode_t lock_mode, DB_LOCK *lock);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLockTab::get method is a simple interface to the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a>
+functionality.
+<p>
+It is equivalent to calling the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a> method with the
+<b>locker</b> and <b>flags</b> arguments, and a single element
+<b>list</b> array, for which the <b>op</b> field is DB_LOCK_GET,
+and the <b>obj</b>, <b>lock_mode</b> and <b>lock</b> fields are
+represented by the arguments of the same name.
+<p>
+The DbLockTab::get method returns success and failure as described for
+the <a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a> method.
+<p>
+The DbLockTab::get
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLockTab::get method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbLockTab::get
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+fsync(3),
+getpid(3),
+<a href="../../api_cxx/DbLockTab/detect.html">DbLockTab::detect</a>,
+lseek(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+pstat_getdynamic(3),
+shmat(3),
+shmdt(3),
+strerror(3),
+sysconf(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbLockTab::get
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbLockTab/class.html">DbLockTab</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbLockTab/close.html">DbLockTab::close</a>,
+<a href="../../api_cxx/DbLockTab/detect.html">DbLockTab::detect</a>,
+DbLockTab::get,
+<a href="../../api_cxx/DbLockTab/id.html">DbLockTab::id</a>,
+<a href="../../api_cxx/DbLockTab/open.html">DbLockTab::open</a>,
+<a href="../../api_cxx/DbLockTab/stat.html">DbLockTab::stat</a>
+<a href="../../api_cxx/DbLockTab/unlink.html">DbLockTab::unlink</a>
+and
+<a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<! "@(#)archive.so	10.11 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLog::archive</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLog::archive</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbLog::archive(char **list[],
+    u_int32_t flags, void *(*db_malloc)(size_t));
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLog::archive method
+creates a NULL-terminated array of log or database file names and copies
+a pointer to them into the user-specified memory location <b>list</b>.
+<p>
+By default, DbLog::archive returns the names of all of the log files
+that are no longer in use (e.g., no longer involved in active transactions),
+and that may safely be archived for catastrophic recovery and then removed
+from the system.
+If there were no file names to return, <b>list</b> will be set to NULL.
+<p>
+Arrays of log file names are created in allocated memory.
+If
+<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
+otherwise, the library function <b>malloc</b>(3)) is used.
+The function <b>db_malloc</b> must match the calling conventions of
+the <b>malloc</b>(3)) library routine.
+Regardless, the caller is responsible for deallocating the returned
+memory.
+To deallocate the returned memory, free each returned memory pointer;
+pointers inside the memory do not need to be individually freed.
+<p>
+The <b>flags</b> argument is specified by logically <b>OR</b>'ing together one or more of
+the following values:
+<dl compact>
+<a name="DB_ARCH_ABS">
+<p><dt>DB_ARCH_ABS<dd>All pathnames are returned as absolute pathnames,
+instead of relative to the database home directory.
+<a name="DB_ARCH_DATA">
+<p><dt>DB_ARCH_DATA<dd>Return the database files that need to be archived in order to recover
+the database from catastrophic failure.  If any of the database files
+have not been accessed during the lifetime of the current log files,
+DbLog::archive will not include them in this list.  It is also
+possible that some of the files referenced in the log have since been
+deleted from the system.
+<a name="DB_ARCH_LOG">
+<p><dt>DB_ARCH_LOG<dd>Return all the log file names regardless of whether or not they are in
+use.
+</dl>
+<p>
+The DB_ARCH_DATA and DB_ARCH_LOG flags are mutually
+exclusive.
+<p>
+See the <a href="../../utility/db_archive.html">db_archive</a> manual page for more information on database
+archival procedures.
+<p>
+The DbLog::archive method is the underlying method used by the <a href="../../utility/db_archive.html">db_archive</a> utility.
+See the <a href="../../utility/db_archive.html">db_archive</a> utility source code for an example of using DbLog::archive
+in a POSIX 1003.1 environment.
+<p>
+The DbLog::archive
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Bugs</h1>
+In a threaded application (i.e., one where the environment was created
+with the DB_THREAD flag specified), calling DbLog::archive will fail,
+returning EINVAL.  To work around this problem, re-open the log explicitly
+without specifying DB_THREAD.  This restriction is expected to be removed
+in a future version of Berkeley DB.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLog::archive method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbLog::archive
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+close(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getcwd(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+<a href="../../api_cxx/DbLog/compare.html">DbLog::compare</a>,
+<a href="../../api_cxx/DbLog/get.html">DbLog::get</a>,
+malloc(3),
+memcpy(3),
+memset(3),
+open(3),
+qsort(3),
+realloc(3),
+sigfillset(3),
+sigprocmask(3),
+snprintf(3),
+stat(3),
+strchr(3),
+strcmp(3),
+strerror(3),
+strlen(3),
+unlink(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the DbLog::archive
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The log was corrupted.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbLog/class.html">DbLog</a>
+<p>
+<h1>See Also</h1>
+DbLog::archive,
+<a href="../../api_cxx/DbLog/close.html">DbLog::close</a>,
+<a href="../../api_cxx/DbLog/compare.html">DbLog::compare</a>,
+<a href="../../api_cxx/DbLog/file.html">DbLog::file</a>,
+<a href="../../api_cxx/DbLog/flush.html">DbLog::flush</a>,
+<a href="../../api_cxx/DbLog/get.html">DbLog::get</a>,
+<a href="../../api_cxx/DbLog/open.html">DbLog::open</a>,
+<a href="../../api_cxx/DbLog/put.html">DbLog::put</a>,
+<a href="../../api_cxx/DbLog/db_register.html">DbLog::db_register</a>,
+<a href="../../api_cxx/DbLog/stat.html">DbLog::stat</a>,
+<a href="../../api_cxx/DbLog/unlink.html">DbLog::unlink</a>
+and
+<a href="../../api_cxx/DbLog/db_unregister.html">DbLog::db_unregister</a>.
+</tt>
+</body>
+</html>

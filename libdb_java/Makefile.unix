@@ -1,0 +1,83 @@
+# @(#)Makefile.unix	10.8 (Sleepycat) 12/3/98
+
+# This path should be changed to point to the top level directory of your
+# java JDK tree (just above bin, include, ...).
+#
+JAVAINSDIR=	/usr/java1.1
+
+DBINSDIR=	..
+DBBUILDDIR=	$(DBINSDIR)/build_unix
+NCLASSPATH=	../java/classes:$(CLASSPATH)
+
+LINK=		gcc
+LINKFLAGS=	-shared -g -o libdb_java.so
+CXX=		gcc
+INCFILES=	-I$(JAVAINSDIR)/include -I$(JAVAINSDIR)/include/solaris \
+		-I$(DBBUILDDIR) -I$(DBINSDIR)/include
+CXXFLAGS=	-c -g $(INCFILES) -fpic -D_REENTRANT
+PERL=		perl
+LIBS=		$(DBBUILDDIR)/libdb.so
+
+JPACKAGE=	com.sleepycat.db.
+
+JCLASSES=	$(JPACKAGE)Db $(JPACKAGE)DbEnv $(JPACKAGE)DbInfo \
+		$(JPACKAGE)DbLock $(JPACKAGE)DbLockTab $(JPACKAGE)DbLog \
+		$(JPACKAGE)DbLsn $(JPACKAGE)DbMpool $(JPACKAGE)DbTxn \
+		$(JPACKAGE)DbTxnMgr $(JPACKAGE)Dbc $(JPACKAGE)Dbt
+
+CPPFILES=	java_Db.cpp java_DbEnv.cpp java_DbInfo.cpp \
+		java_DbLock.cpp java_DbLockTab.cpp java_DbLog.cpp \
+		java_DbLsn.cpp java_DbMpool.cpp java_DbTxn.cpp \
+		java_DbTxnMgr.cpp java_Dbc.cpp java_Dbt.cpp
+
+HFILES=		java_util.h com_sleepycat_db_Db.h com_sleepycat_db_DbEnv.h \
+		com_sleepycat_db_DbInfo.h com_sleepycat_db_DbLock.h \
+		com_sleepycat_db_DbLockTab.h com_sleepycat_db_DbLog.h \
+		com_sleepycat_db_DbLsn.h com_sleepycat_db_DbMpool.h \
+		com_sleepycat_db_DbTxn.h com_sleepycat_db_DbTxnMgr.h \
+		com_sleepycat_db_Dbc.h com_sleepycat_db_Dbt.h
+
+OBJECTS=	java_util.o java_Db.o java_DbEnv.o java_DbInfo.o \
+		java_DbLock.o java_DbLockTab.o java_DbLog.o \
+		java_DbLsn.o java_DbMpool.o java_DbTxn.o \
+		java_DbTxnMgr.o java_Dbc.o java_Dbt.o
+
+all:	java_db.so
+
+rebuild: run_javah check_api java_db.so
+
+java_db.so: $(OBJECTS)
+	$(LINK) $(LINKFLAGS) $(OBJECTS) $(LIBS)
+
+run_javah:
+	javah -classpath "$(NCLASSPATH)" -jni $(JCLASSES)
+
+.SUFFIXES: .o .cpp
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $*.cpp
+
+# This is really an optional step and is not run in the standard
+# distribution because not everyone has perl.  If you have perl,
+# and you are making changes to the .h and .cpp files in this
+# directory (as the maintainers do), you may want to run this
+# after the run_javah step.
+#
+check_api:
+	$(PERL) checkapi.prl com_sleepycat_*.h java_*.cpp
+
+# These dependencies are overkill, but they work.
+#
+java_Db.o:            $(HFILES)
+java_DbEnv.o:         $(HFILES)
+java_DbInfo.o:        $(HFILES)
+java_DbLock.o:        $(HFILES)
+java_DbLockTab.o:     $(HFILES)
+java_DbLog.o:         $(HFILES)
+java_DbLsn.o:         $(HFILES)
+java_DbMpool.o:       $(HFILES)
+java_DbTxn.o:         $(HFILES)
+java_DbTxnMgr.o:      $(HFILES)
+java_Dbc.o:           $(HFILES)
+java_Dbt.o:           $(HFILES)
+java_util.o:          $(HFILES)

@@ -1,0 +1,90 @@
+<! "@(#)stat.so	10.10 (Sleepycat) 10/26/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLog.stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLog.stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public DbLogStat stat()
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLog.stat function creates a statistical structure
+and returns it to the caller.  The log region statistics are
+stored in a DbLogStat object.  The following DbLogStat data
+fields will be filled in:
+<dl compact>
+<dt>public int st_magic;<dd>The magic number that identifies a file as a log file.
+<dt>public int st_version;<dd>The version of the log file type.
+<dt>public int st_refcnt;<dd>The number of references to the region.
+<dt>public int st_regsize;<dd>The size of the region.
+<dt>public int st_mode;<dd>The mode of any created log files.
+<dt>public int st_lg_max;<dd>The maximum size of any individual file comprising the log.
+<dt>public int st_w_mbytes;<dd>The number of megabytes written to this log.
+<dt>public int st_w_bytes;<dd>The number of bytes over and above <b>st_w_mbytes</b> written to this log.
+<dt>public int st_wc_mbytes;<dd>The number of megabytes written to this log since the last checkpoint.
+<dt>public int st_wc_bytes;<dd>The number of bytes over and above <b>st_wc_mbytes</b> written to this log
+since the last checkpoint.
+<dt>public int st_wcount;<dd>The number of times the log has been written to disk.
+<dt>public int st_scount;<dd>The number of times the log has been flushed to disk.
+<dt>public int st_cur_file;<dd>The current log file number.
+<dt>public int st_cur_offset;<dd>The byte offset in the current log file.
+<dt>public int st_region_wait;<dd>The number of times that a thread of control was forced to wait before
+obtaining the region lock.
+<dt>public int st_region_nowait;<dd>The number of times that a thread of control was able to obtain
+the region lock without waiting.
+</dl>
+<p>
+The DbLog.stat
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLog.stat method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLog.stat
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fprintf(3),
+getpid(3),
+malloc(3),
+and
+memset(3).
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLog/class.html">DbLog</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLog/archive.html">DbLog.archive</a>,
+<a href="../../api_java/DbLog/close.html">DbLog.close</a>,
+<a href="../../api_java/DbLog/compare.html">DbLog.compare</a>,
+<a href="../../api_java/DbLog/file.html">DbLog.file</a>,
+<a href="../../api_java/DbLog/flush.html">DbLog.flush</a>,
+<a href="../../api_java/DbLog/get.html">DbLog.get</a>,
+<a href="../../api_java/DbLog/open.html">DbLog.open</a>,
+<a href="../../api_java/DbLog/put.html">DbLog.put</a>,
+<a href="../../api_java/DbLog/db_register.html">DbLog.db_register</a>,
+DbLog.stat,
+<a href="../../api_java/DbLog/unlink.html">DbLog.unlink</a>
+and
+<a href="../../api_java/DbLog/db_unregister.html">DbLog.db_unregister</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<! "@(#)open.so	10.8 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Simple Tutorial</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<p>
+<h1 align=center>Opening a database</h1>
+<p>
+Opening a database is done using the Berkeley DB <a href="../../api_c/Db/open.html">db_open</a> interface.
+<p>
+The <a href="../../api_c/Db/open.html">db_open</a> interface takes seven arguments:
+<dl compact>
+<p><dt>file<dd>The name of the database file to be opened.
+<p><dt>type<dd>The type of database to open.
+This value will be one of the three access methods Berkeley DB supports:
+DB_BTREE, DB_HASH, or DB_RECNO, or the special value DB_UNKNOWN, which
+allows you to open an existing file without knowing its type.
+<p><dt>flags<dd>Various flags that modify the behavior of <a href="../../api_c/Db/open.html">db_open</a>.
+In our simple case, we care only about one of these flags: DB_CREATE.
+This flag behaves similarly to the POSIX 1003.1 flag to the open system
+call, causing Berkeley DB to create the underlying database if it does not
+yet exist.
+<p><dt>mode<dd>The file mode of any underlying files that <a href="../../api_c/Db/open.html">db_open</a> will create.
+The mode behaves similarly to the POSIX 1003.1 mode argument to the open
+system call, and specifies an octal value for read, write and execute
+permission.  Obviously, all we care about is reading and writing!
+<p><dt>dbenv<dd>Additional arguments describing the database environment in which the
+database will be opened.
+This argument isn't applicable now, and so we will leave it unspecified.
+<p><dt>dbinfo<dd>Additional information describing the database file to be opened.
+This argument is used to specify things like the underlying page size
+or a comparison function for B+tree databases.
+We don't need to specify any of these things for our simple example,
+and so we will leave it unspecified.
+<p><dt>dbpp<dd>A location in which to store the database handle that <a href="../../api_c/Db/open.html">db_open</a> will
+return on success.
+</dl>
+<p>
+Here's what the code to call <a href="../../api_c/Db/open.html">db_open</a> looks like:
+<a name="startcode">
+<p><ul><pre><b>#include &lt;sys/types.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;db.h&gt;
+<p>
+#define	DATABASE	"access.db"
+<p>
+int
+main()
+{
+	extern int errno;
+	DB *dbp;
+<p>
+	if ((errno = db_open(DATABASE,
+	    DB_BTREE, DB_CREATE, 0664, NULL, NULL, &dbp)) != 0) {
+		fprintf(stderr, "db: %s: %s\n", DATABASE, strerror(errno));
+		exit (1);
+	}
+</b>
+</pre></ul><p>
+<p>
+As you can see, we're opening a database named <b>access.db</b>.
+The underlying database is a B+tree, and since we've specified DB_CREATE,
+we'll create it if it doesn't already exist.  The mode of any files we
+create is 0664 (i.e., readable and writeable by the owner and the group,
+and readable by everyone else).
+<p>
+If the call to <a href="../../api_c/Db/open.html">db_open</a> is successful, the variable <b>dbp</b>
+will contain a database handle that will be used to access the underlying
+database.
+<p>
+<a href="../../ref/simple_tut/errors.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/simple_tut/put.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

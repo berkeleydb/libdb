@@ -1,0 +1,69 @@
+<! "@(#)build_faq.so	10.1 (Sleepycat) 12/11/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Building the Test Suite: FAQ</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>Building the Test Suite: FAQ</h1>
+<ol>
+<p><li>
+<b>Berkeley DB was configured using --enable-test, but it fails to build.</b>
+<p>
+Unfortunately, there is no single location in which to find the Tcl
+include file (<tcl.h>) or the Tcl library (libtcl.a) on different platforms.
+DB configuration does not do anything special to locate the Tcl
+include file, and adds "-ltcl -lm" to attempt to find the Tcl
+library.
+If your Tcl include file is not in one of the standard places checked
+by your compiler,
+then you will have to add ADDCPPFLAGS and/or ADDLIBS and ADDLDFLAGS to
+your environment and reconfigure.
+For example:
+<p><ul><pre>
+% env ADDCPPFLAGS="-L/usr/local/lib" ../dist/configure --enable-test
+</pre></ul><p>
+See <a href="../build/unix.html">Building for UNIX platforms</a>
+for more information.
+<p>
+You may also need to add additional libraries in order to get the Tcl test
+suite to load.  Linux systems often require linking "libtcl.a" to
+"libtcl#.#.a" or adding "-ldl" to the load line.  Solaris systems often
+require adding "-lsocket" and sometimes "-lnsl -ldl" to the load line.
+These changes are most simply done by editing the Makefile in your build
+directory explicitly.
+<p>
+Alternatively, you can download Tcl from the
+<a href="http://www.scriptics.com">Scriptics Corporation</a> web site.
+build it locally, and simply add "-I../../tcl.7.4" to the CFLAGS line,
+and "-L../../tcl.7.4" to the load line for the dbtest program,
+in your build directory's Makefile.
+(Note, if you download a different version than 7.4, use the version
+number from the one you downloaded!)
+<hr size=1 noshade>
+<p><li>
+<b>Berkeley DB was built using --enable-test, but I get an error message
+about "TCL_LIBRARY" when I run dbtest.</b>
+<p>
+If the Tcl library with which you loaded was not located in the
+"/usr/local/lib" directory, you will need to set the "TCL_LIBRARY"
+environment variable to the library directory below the path where
+it was found, e.g., "../../tcl.7.4/library".
+<hr size=1 noshade>
+<p><li>
+<b>Berkeley DB was built using --enable-test, but it fails to pass the
+test suite.</b>
+<p>
+Check to make sure that TESTDIR is not on a NFS mounted filesystem.  The
+Berkeley DB architecture does not support placing the shared memory regions on
+remote filesystems, e.g., the Network File System (NFS) and the Andrew
+File System (AFS).  For this reason, the shared memory regions (normally
+located in a database home directory) must reside on a local filesystem.
+</ol>
+</tt>
+</body>
+</html>

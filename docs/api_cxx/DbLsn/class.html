@@ -1,0 +1,31 @@
+<! "@(#)class.so	10.4 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLsn</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLsn</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+A DbLsn is a <b>log sequence number</b> that is fully encapsulated.
+The class itself has no methods, other than a default constructor, so
+there is no way for the user to manipulate its data directly.  It is
+initialized and used by methods in
+<a href="../../api_cxx/DbLog/class.html">DbLog</a> and <a href="../../api_cxx/DbMpool/class.html">DbMpool</a>.
+These methods always accept a pointer to a DbLsn.
+</tt>
+</body>
+</html>

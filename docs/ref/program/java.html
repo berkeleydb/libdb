@@ -1,0 +1,73 @@
+<! "@(#)java.jv	10.5 (Sleepycat) 10/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Java Programming Notes</h1>
+<p>
+The Java API closely parallels the Berkeley DB C++ interface, and to a great
+degree, the Berkeley DB C interface.  If you are currently using either of those
+APIs, there will be very little to surprise you in the Java API.  We've
+even taken great care to make the names of classes, constants, methods,
+and even method arguments identical, where possible, across all three
+APIs.
+<p>
+If there are embedded null strings in the <b>db_config</b> argument for
+<a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a> they will be treated as the end of the list of config
+strings, even though you may have allocated a longer array.  Fill in all
+the strings in your array unless you intend to cut it short.  This same
+comment applies to the <b>curslist</b> argument for <a href="../../api_java/Db/join.html">Db.join</a>.
+<p>
+The callback installed for <a href="../../api_java/DbEnv/set_errcall.html">DbEnv.set_errcall</a> will run in the same
+thread as the caller to <a href="../../api_java/DbEnv/set_errcall.html">DbEnv.set_errcall</a>.  Make sure that thread
+remains running until your application exits or <a href="../../api_java/DbEnv/appexit.html">DbEnv.appexit</a> is
+called.
+<p>
+The Berkeley DB package requires that you explicitly call close on each
+individual <a href="../../api_java/Db/class.html">Db</a>, <a href="../../api_java/Dbc/class.html">Dbc</a> that you obtained or any
+<a href="../../api_java/DbLockTab/class.html">DbLockTab</a> or <a href="../../api_java/DbTxnMgr/class.html">DbTxnMgr</a> that you explicitly opened.  Your
+database activity may not be synchronized to disk unless you do so.
+<p>
+The <a href="../../api_java/DbMpool/class.html">DbMpool</a> class has a small subset of the corresponding Berkeley DB
+C++ functionality.  This has been provided to allow you to perform
+certain administrative actions on underlying <a href="../../api_java/DbMpool/class.html">DbMpool</a> opened as a
+consequence of <a href="../../api_java/DbEnv/appinit.html">DbEnv.appinit</a>.  Direct access to other <a href="../../api_java/DbMpool/class.html">DbMpool</a>
+functionality is not appropriate for the Java environment.
+<p>
+The Java runtime <b>DOES NOT</b> automatically close Db* objects on
+finalization, whether they be <a href="../../api_java/Db/class.html">Db</a>, <a href="../../api_java/Dbc/class.html">Dbc</a>, <a href="../../api_java/DbTxn/class.html">DbTxn</a>, etc.
+There are a couple reasons for this.  One is that finalization is
+generally run only when GC occurs and there is no guarantee that this
+occurs at all (even on exit).  Allowing specific Berkeley DB actions to occur
+in ways that cannot be replicated seems wrong.  Secondly, finalization of
+objects may happen in an arbitrary order, so we would have to do a lot of
+extra bookkeeping to make sure everything got closed in the proper order.
+The best word of advice is to always do a close() for any matching open()
+call or equivalent.
+<p>
+Berkeley DB always turns on the DB_THREAD flag since threads are
+expected in Java.
+<p>
+Many methods in the API often have no return type, and throw an exception
+when an severe error arises.  There are some notable methods that do have
+a return value, and can also throw an exception.  <a href="../../api_java/Db/get.html">Db.get</a> and
+<a href="../../api_java/Dbc/get.html">Dbc.get</a> both return 0 when a get succeeds, Db.DB_NOTFOUND
+when the key is not found, and throw an error when there is a severe
+error.  There are others.  This allows the programmer to check for typical
+<i>data driven</i> errors by watching return values without special
+casing exceptions.
+<p>
+<a href="../../ref/program/thread.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/environ.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

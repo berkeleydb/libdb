@@ -1,0 +1,34 @@
+<! "@(#)malloc.so	10.6 (Sleepycat) 10/19/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Non-local memory allocation (db_malloc)</h1>
+<p>
+It is possible in Berkeley DB to specify that returned key/data pairs be
+copied into allocated memory which then becomes the responsibility
+of the application.  (See <a href="../../api_c/Dbt/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> for further information.)
+<p>
+On systems where there may be multiple library versions of malloc (notably
+Windows NT), the Berkeley DB library will allocate memory from a different heap
+than the application will use to free it. To avoid this problem, the
+allocation routine to be used for allocating such key/data items can be
+specified as part of the <a href="../../api_c/Db/open.html">db_open</a> call to open the database,
+specifically by setting the <a href="../../api_c/DbInfo/info.html#db_malloc">db_malloc</a> element of the
+DB_INFO structure.  If no allocation function is specified, the
+underlying C library <b>malloc</b>(3) function is used.
+<p>
+<a href="../../ref/am/compare.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/bt_compare.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

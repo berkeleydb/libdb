@@ -1,0 +1,75 @@
+<! "@(#)products.so	10.3 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Sleepycat Software Berkeley DB Products</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>Sleepycat Software Berkeley DB Products</h1>
+<p>
+Sleepycat Software licenses three different products that use the Berkeley DB
+technology.
+Each product offers a distinct level of database support.
+All three products are included in the single Open Source distribution
+of Berkeley DB from Sleepycat Software.
+Each product adds services, and new interfaces, to the product
+that precedes it in the list.
+As a result,
+developers can download Berkeley DB and build an application that does
+only single-user,
+read-only database access,
+and then add support for more users and transactions later.
+<p>
+Users who distribute Berkeley DB must ensure that they are licensed to
+distribute the Berkeley DB interfaces that they use.  Information on
+licensing is available directly from Sleepycat Software, as described
+in the <a href="../sleepycat/contact.html">Sleepycat Software Contact
+Information</a>.
+<h1>Berkeley DB Access Methods</h1>
+<p>
+The Berkeley DB Access Methods product is an embeddable, high-performance data store.  It
+supports multiple concurrent threads of control to read information
+managed by Berkeley DB.
+When updates are required, only a single process may be using the
+database.
+That process may be multi-threaded, but only one thread of control
+should be allowed to update the database at any time.
+The Berkeley DB Access Methods does no locking, and so provides no
+guarantees of correct behavior if more than one thread of control is
+updating the database at a time.
+<p>
+The Berkeley DB Access Methods is intended for use in
+single-user or read-only applications that can guarantee that no more
+than one thread of control will ever update the database at any time.
+<p>
+This product includes <a href="../api_c/Db/open.html">db_open</a> and its methods, and the methods
+returned by <a href="../api_c/Db/cursor.html">DB->cursor</a>.
+<h1>Berkeley DB Concurrent Access Methods</h1>
+<p>
+The Berkeley DB Concurrent Access Methods product adds multiple-reader, single writer capabilities to
+the Berkeley DB Access Methods product, supporting applications that need concurrent updates
+and do not want to implement their own locking protocols.  The additional
+interfaces in the Berkeley DB Concurrent Access Methods product are <a href="../api_c/DbEnv/appinit.html">db_appinit</a> (using the
+<a href="../api_c/DbEnv/appinit.html#DB_INIT_CDB">DB_INIT_CDB</a> flag), and <a href="../api_c/DbEnv/appexit.html">db_appexit</a>.
+<p>
+Berkeley DB Concurrent Access Methods is intended for applications that require occasional write
+access to a database that is largely used for reading.
+<h1>Berkeley DB Transactional Access Methods</h1>
+<p>
+The Berkeley DB Transactional Access Methods product adds full transactional support and recoverability
+to the Berkeley DB Access Methods product.  This product includes all of the interfaces
+in the Berkeley DB library.
+<p>
+Berkeley DB Transactional Access Methods is intended for applications that require industrial-strength
+database services, including good performance under high-concurrency
+workloads with a mixture of readers and writers, the ability to commit
+or roll back multiple changes to the database at a single instant, and
+the guarantee that even in the event of a catastrophic system or hardware
+failure, any committed database changes will be preserved.
+</tt>
+</body>
+</html>

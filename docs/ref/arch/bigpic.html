@@ -1,0 +1,110 @@
+<! "@(#)bigpic.so	8.6 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Architecture</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Architecture</h3>
+<p>
+<h1 align=center>The big picture</h1>
+<p>
+So far, we've discussed applications that used only the Access Methods
+for fast data storage and retrieval.  Application code that uses
+Berkeley DB in this way might appear as follows:
+<p>
+<p><ul><pre>
+switch (errno = dbp->put(dbp, NULL, &key, &data, 0)) {
+case 0:
+	printf("db: %s: key stored.\n", (char *)key.data);
+	break;
+default:
+	fprintf(stderr, "db: put: %s\n", strerror(errno));
+	exit (1);
+}
+</pre></ul><p>
+<p>
+The underlying Berkeley DB architecture that supports this is:
+<p>
+<p align=center><img src="smallpic.gif">
+<p>
+As you can see from this diagram, the application makes calls into the
+Access Methods, and the Access Methods use the underlying shared memory
+buffer cache to hold recently used file pages in main memory.
+<p>
+The previous chapters in this Guide have described applications that
+use only the Access Methods.  The subsequent chapters will describe how to
+build more complex applications that include full database
+recoverability.  However, writing recoverable applications requires a
+small amount of additional complexity in the application, and quite a bit
+of additional complexity in the Berkeley DB library.
+<p>
+The additional complexity in the application is that calls to the Access
+Methods must be wrapped in transaction begin and end calls, i.e., the
+application must inform Berkeley DB where to begin and end transactions, and
+must be prepared for the possibility that it may not be possible to make
+a specific change to the database at any particular time (e.g., that the
+transaction can abort).
+<p>
+A typical example of transaction protected code might appear as follows:
+<p>
+<p><ul><pre><b>
+retry:	if ((errno = txn_begin(txnp, NULL, &tid)) != 0) {
+		fprintf(stderr, "db: begin: %s\n", strerror(errno));
+		exit (1);
+	}
+<p>
+	switch (errno = dbp->put(dbp, tid, &key, &data, 0)) {
+	case EAGAIN:
+		(void)txn_abort(tid);
+		goto retry;
+	case 0:
+		printf("db: %s: key stored.\n", (char *)key.data);
+		break;
+	default:
+		fprintf(stderr, "db: put: %s\n", strerror(errno));
+		exit (1);
+	}
+<p>
+	if ((errno = txn_commit(tid)) != 0) {
+		fprintf(stderr, "db: commit: %s\n", strerror(errno));
+		exit (1);
+	}
+</b>
+</pre></ul><p>
+<p>
+In this example, the same operation is being done as before, however,
+it is wrapped in transaction calls.  The transaction is started with
+<b>txn_begin</b>, and finished with <b>txn_commit</b>.  If the
+operation fails due to a deadlock, then the transaction is aborted using
+<b>txn_abort</b>, and the operation is retried from the beginning.
+<p>
+There are five major subsystems in Berkeley DB:  the Access Methods, the Memory
+Buffer Pool, Transactions, Locking and Logging.
+<p>
+Here is a complete picture of the Berkeley DB package:
+<p>
+<p align=center><img src="bigpic.gif">
+<p>
+The application makes calls to the Access Methods and to the Transaction
+subsystem.  The Access Methods and Transaction subsystem make calls into
+the Buffer Pool, Locking and Logging regions on behalf of the application.
+<p>
+While each of the underlying subsystems (Lock, Log and Buffer Pool) can
+be called separately (e.g., the Buffer Pool subsystem can be used apart
+from the rest of Berkeley DB by applications simply wanting shared memory buffer
+pool functionality), most applications will either use the Access Methods
+only, or the Access Methods wrapped in calls to the Transaction interfaces
+if they need database recoverability in the face of application or system
+failure.
+<p>
+<a href="../../ref/am/renumber.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/arch/env.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

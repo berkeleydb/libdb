@@ -1,0 +1,34 @@
+<! "@(#)h_hash.so	10.1 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Specifying your own hashing function (h_hash)</h1>
+<p>
+The hash function for the hash table can be specified as part of the
+<a href="../../api_c/Db/open.html">db_open</a> call to open the database, specifically by setting the
+<a href="../../api_c/DbInfo/info.html#h_hash">h_hash</a> element of the DB_INFO structure.  If no
+hash function is specified, a default function will be used.
+<p>
+Since no hash function performs equally well on all possible data,
+it is possible that applications may find that the default hash function
+performs poorly with a particular data set.
+<p>
+Any application-specified hash function must take a pointer to a byte
+string and a length as arguments and return an unsigned, 32-bit hash
+value.
+<p>
+<a href="../../ref/am/h_ffactor.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/h_nelem.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

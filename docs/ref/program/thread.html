@@ -1,0 +1,121 @@
+<! "@(#)thread.so	10.13 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Building multi-threaded applications</h1>
+<p>
+The Berkeley DB library is not itself multi-threaded.
+The library was deliberately architected to not use threads internally
+because of the portability problems that using threads within the library
+would introduce.
+Object handles returned from Berkeley DB library functions are free-threaded,
+i.e., threads may use handles concurrently, by specifying the DB_THREAD
+flag to <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> and the other subsystem open functions.
+Threading is assumed in the Java API, so no special flags are required,
+and Berkeley DB functions will always behave as if the DB_THREAD flag was specified.
+<p>
+Berkeley DB supports multi-threaded applications with the caveat that it loads
+and calls functions that are commonly available in C language environments
+and which may not themselves be thread-safe.
+Other than this usage,
+Berkeley DB has no static data and maintains no local context between calls to
+Berkeley DB functions.
+To ensure that applications can safely use threads in the context of Berkeley DB,
+porters to new operating systems and/or C libraries must confirm that the
+system and C library functions used by the Berkeley DB library are thread-safe.
+<p>
+There are some additional caveats about using threads to access
+the Berkeley DB library:
+<ol>
+<p><li>The DB_THREAD flag must be specified for all subsystems either explicitly
+or via the <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> function.  Threading is assumed in the Java
+API, so no special flags are required, and Berkeley DB functions will always
+behave as if the DB_THREAD flag was specified.
+<p>
+Setting the DB_THREAD flag inconsistently may result in database corruption.
+<p><li>Only a single thread may call the <a href="../../api_c/Db/close.html">DB->close</a> function for a
+returned database or subsystem handle.
+<p><li>When using the non-cursor Berkeley DB calls to retrieve key/data items (e.g.,
+<a href="../../api_c/Db/get.html">DB->get</a>), the memory referenced by the pointer stored into the Dbt
+is only valid until the next call to  using the DB handle
+returned by <a href="../../api_c/Db/open.html">db_open</a>. (This includes any use of the returned
+DB handle, including by another thread of control within the
+process. For this reason, when multiple threads are using the returned
+DB handle concurrently, either the <a href="../../api_c/Dbt/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> or
+<a href="../../api_c/Dbt/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> flag must be specified for any non-cursor
+DBT used for key or data retrieval.) When using the cursor Berkeley DB
+calls to retrieve key/data items (e.g., dbc_get), the memory
+referenced by the pointer into the DBT is only valid until the
+next call to Berkeley DB using the DBC handle returned by
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>.
+<p><li>The DB_CURRENT, DB_NEXT and DB_PREV flags to the <a href="../../api_c/DbLog/get.html">log_get</a> function
+may not be used by a free-threaded handle.  If such calls are necessary,
+a thread should explicitly create a unique DB_LOG handle by calling
+<a href="../../api_c/DbLog/open.html">log_open</a>.
+<p><li>Each database operation (i.e., any call to a function underlying the
+handles returned by <a href="../../api_c/Db/open.html">db_open</a> and <a href="../../api_c/Db/cursor.html">DB->cursor</a> is normally
+performed on behalf of a unique locker.  If, within a single thread of
+control, multiple calls on behalf of the same locker are desired, then
+transactions must be used.  For example, consider the case where a cursor
+scan locates a record, and then based on that record, accesses some other
+item in the database.  If these are done using the default lockers for
+the handle, there is no guarantee that these two operations will not
+conflict.  If the application wishes to guarantee that the operations do
+not conflict, locks must be obtained on behalf of a transaction, instead
+of the default locker id, and a transaction must be specified to the
+<a href="../../api_c/Db/cursor.html">cursor creation</a> and the subsequent
+Berkeley DB calls.
+<p><li>Transactions may not span threads, i.e., each transaction must begin and
+end in the same thread, and each transaction may only be used by a single
+thread.
+<p><li>Spinlocks must have been implemented for the compiler/architecture
+combination.  Attempting to specify the DB_THREAD flag will fail if
+spinlocks are not available.
+<p><li>The Berkeley DB library makes a system call to pause for some number of
+microseconds when it is necessary to wait on a lock.  This may not be
+optimal, especially in a thread-only environment where it will be more
+efficient to explicitly yield the processor to another thread.  It is
+possible to specify a
+<a href="../../api_c/internal/db_jump_set.html">yield function</a>
+on an per-application basis.
+</ol>
+<h1>Compiling Threaded Applications</h1>
+Special compile-time flags are required when compiling threaded applications
+with the UNIX include files on some architectures.
+<p>
+On FreeBSD, if you are compiling a threaded application, you must
+compile with the _THREAD_SAFE flag and link with the libc_r.a
+library:
+<p>
+<p><ul><pre>cc -D_THREAD_SAFE ... -lc_r</pre></ul><p>
+<p>
+On IRIX, if you are compiling a threaded application,
+you must compile with the _SGI_MP_SOURCE flag:
+<p>
+<p><ul><pre>cc -D_SGI_MP_SOURCE ...</pre></ul><p>
+<p>
+On OSF/1, if you are compiling a threaded application,
+you must compile with the _REENTRANT flag:
+<p>
+<p><ul><pre>cc -D_REENTRANT ...</pre></ul><p>
+<p>
+On Solaris, if you are compiling a threaded application, you must compile
+with the _REENTRANT flag and link with the libthread.a library:
+<p>
+<p><ul><pre>cc -D_REENTRANT ... -lthread</pre></ul><p>
+<p>
+<a href="../../ref/program/errorret.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/java.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<! "@(#)function.so	10.9 (Sleepycat) 10/5/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: C Interface by Function</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>C Interface by Function</h1>
+<table border=1 align=center>
+<tr><th>Database Environment Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/DbEnv/appinit.html">db_appinit</a><td>Open a Berkeley DB environment</td></tr></tr>
+<tr><td><a href="../../api_c/DbEnv/appexit.html">db_appexit</a><td>Close a Berkeley DB environment</td></tr></tr>
+<tr><td><a href="../../api_c/DbEnv/version.html">db_version</a><td>Berkeley DB version information</td></tr></tr>
+<tr><th>Database Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/Db/open.html">db_open</a><td>Open a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/close.html">DB->close</a><td>Close a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/cursor.html">DB->cursor</a><td>Open a cursor into a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/del.html">DB->del</a><td>Delete items from a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/fd.html">DB->fd</a><td>Return a file descriptor from a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/get.html">DB->get</a><td>Get items from a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/join.html">DB->join</a><td>Perform a database join on cursors</td></tr></tr>
+<tr><td><a href="../../api_c/Db/put.html">DB->put</a><td>Store items into a database</td></tr></tr>
+<tr><td><a href="../../api_c/Db/stat.html">DB->stat</a><td>Return database statistics</td></tr></tr>
+<tr><td><a href="../../api_c/Db/sync.html">DB->sync</a><td>Flush a database to stable storage</td></tr></tr>
+<tr><th>Database Cursor Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/Dbc/close.html">DBcursor->c_close</a><td>Close a cursor</td></tr></tr>
+<tr><td><a href="../../api_c/Dbc/del.html">DBcursor->c_del</a><td>Delete by cursor</td></tr></tr>
+<tr><td><a href="../../api_c/Dbc/get.html">DBcursor->c_get</a><td>Retrieve by cursor</td></tr></tr>
+<tr><td><a href="../../api_c/Dbc/put.html">DBcursor->c_put</a><td>Store by cursor</td></tr></tr>
+<tr><th>Lock Manager Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/DbLockTab/close.html">lock_close</a><td>Close a lock region</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/detect.html">lock_detect</a><td>Perform deadlock detection</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/get.html">lock_get</a><td>Acquire a lock</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/id.html">lock_id</a><td>Acquire a locker ID</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/open.html">lock_open</a><td>Open a lock region</td></tr></tr>
+<tr><td><a href="../../api_c/DbLock/put.html">lock_put</a><td>Release a lock</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/stat.html">lock_stat</a><td>Return lock region statistics</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/unlink.html">lock_unlink</a><td>Remove a lock region</td></tr></tr>
+<tr><td><a href="../../api_c/DbLockTab/vec.html">lock_vec</a><td>Acquire/release locks</td></tr></tr>
+<tr><th>Log Manager Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/DbLog/archive.html">log_archive</a><td>List log and database files.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/close.html">log_close</a><td>Close a log region.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/compare.html">log_compare</a><td>Compare two DB_LSNs.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/file.html">log_file</a><td>Map DB_LSNs to log file names.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/flush.html">log_flush</a><td>Flush log records.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/get.html">log_get</a><td>Get a log record.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/open.html">log_open</a><td>Open a log region.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/put.html">log_put</a><td>Put a log record.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/db_register.html">log_register</a><td>Register a file name with the log manager.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/stat.html">log_stat</a><td>Return log region statistics.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/unlink.html">log_unlink</a><td>Remove a log region.</td></tr></tr>
+<tr><td><a href="../../api_c/DbLog/db_unregister.html">log_unregister</a><td>Unregister a file name with the log manager.</td></tr></tr>
+<tr><th>Buffer Pool Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/DbMpool/close.html">memp_close</a><td>Close a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/close.html">memp_fclose</a><td>Close a file in a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/get.html">memp_fget</a><td>Get a page from a file in a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/open.html">memp_fopen</a><td>Open a file in a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/put.html">memp_fput</a><td>Return a page from a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/set.html">memp_fset</a><td>Modify meta information for buffer pool page.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpoolFile/sync.html">memp_fsync</a><td>Flush pages from a file in a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/open.html">memp_open</a><td>Open a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/db_register.html">memp_register</a><td>Register input/output functions for a file in a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/stat.html">memp_stat</a><td>Return buffer pool statistics.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/sync.html">memp_sync</a><td>Flush pages from a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/trickle.html">memp_trickle</a><td>Trickle flush pages from a buffer pool.</td></tr></tr>
+<tr><td><a href="../../api_c/DbMpool/unlink.html">memp_unlink</a><td>Remove a buffer pool</td></tr></tr>
+<tr><th>Transaction Manager Functions</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/DbTxn/abort.html">txn_abort</a><td>Abort a transaction</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a><td>Begin a transaction</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/checkpoint.html">txn_checkpoint</a><td>Checkpoint the transaction region</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/close.html">txn_close</a><td>Close a transaction region</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxn/commit.html">txn_commit</a><td>Commit a transaction</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxn/id.html">txn_id</a><td>Return a transaction ID</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/open.html">txn_open</a><td>Open a transaction region</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxn/prepare.html">txn_prepare</a><td>Prepare a transaction for commit</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/stat.html">txn_stat</a><td>Return transaction region statistics</td></tr></tr>
+<tr><td><a href="../../api_c/DbTxnMgr/unlink.html">txn_unlink</a><td>Remove a transaction region</td></tr></tr>
+<tr><th>DB Library Configuration</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/internal/db_jump_set.html">db_jump_set</a><td>Configure DB library functions</td></tr></tr>
+<tr><td><a href="../../api_c/internal/db_value_set.html">db_value_set</a><td>Configure DB library information</td></tr></tr>
+<tr><th>Historic Interfaces</th><th>Description</th></tr>
+<tr><td><a href="../../api_c/historic/dbm.html">dbm</a><td>UNIX Dbm/Ndbm Interfaces</td></tr></tr>
+<tr><td><a href="../../api_c/historic/hsearch.html">hsearch</a><td>UNIX Hsearch Interfaces</td></tr></tr>
+</table>
+</tt>
+</body>
+</html>

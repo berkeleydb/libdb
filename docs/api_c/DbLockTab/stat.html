@@ -1,0 +1,94 @@
+<! "@(#)stat.so	10.9 (Sleepycat) 10/28/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: lock_stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>lock_stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+lock_stat(DB_LOCKTAB *lt,
+    DB_LOCK_STAT **statp, void *(*db_malloc)(size_t));
+</pre>
+</h3>
+<h1>Description</h1>
+The lock_stat function
+creates a statistical structure and copies pointers to it into
+user-specified memory locations.
+<p>
+Statistical structure are created in allocated memory.
+If
+<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
+otherwise, the library function <b>malloc</b>(3)) is used.
+The function <b>db_malloc</b> must match the calling conventions of
+the <b>malloc</b>(3)) library routine.
+Regardless, the caller is responsible for deallocating the returned
+memory.
+To deallocate the returned memory, free each returned memory pointer;
+pointers inside the memory do not need to be individually freed.
+<p>
+The lock region statistics are stored in a structure of type
+DB_LOCK_STAT.  The following DB_LOCK_STAT fields will be filled in:
+<dl compact>
+<dt>u_int32_t st_magic;<dd>The magic number that identifies a file as a lock file.
+<dt>u_int32_t st_version;<dd>The version of the lock file type.
+<dt>u_int32_t st_refcnt;<dd>The number of references to the region.
+<dt>u_int32_t st_regsize;<dd>The size of the region.
+<dt>u_int32_t st_maxlocks;<dd>The maximum number of locks possible.
+<dt>u_int32_t st_nmodes;<dd>The number of lock modes.
+<dt>u_int32_t st_numobjs;<dd>The number of unique objects locked.
+<dt>u_int32_t st_nlockers;<dd>The number of unique lockers.
+<dt>u_int32_t st_nconflicts;<dd>The total number of locks not immediately available due to conflicts.
+<dt>u_int32_t st_nrequests;<dd>The total number of locks requested.
+<dt>u_int32_t st_nreleases;<dd>The total number of locks released.
+<dt>u_int32_t st_ndeadlocks;<dd>The number of deadlocks detected.
+<dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
+obtaining the region lock.
+<dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
+the region lock without waiting.
+</dl>
+<p>
+The lock_stat
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the lock_stat function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The lock_stat
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fprintf(3),
+getpid(3),
+malloc(3),
+and
+memset(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbLockTab/close.html">lock_close</a>,
+<a href="../../api_c/DbLockTab/detect.html">lock_detect</a>,
+<a href="../../api_c/DbLockTab/get.html">lock_get</a>,
+<a href="../../api_c/DbLockTab/id.html">lock_id</a>,
+<a href="../../api_c/DbLockTab/open.html">lock_open</a>,
+<a href="../../api_c/DbLock/put.html">lock_put</a>,
+lock_stat,
+<a href="../../api_c/DbLockTab/unlink.html">lock_unlink</a>
+and
+<a href="../../api_c/DbLockTab/vec.html">lock_vec</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<! "@(#)intro.so	10.1 (Sleepycat) 11/21/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Berkeley DB Concurrent Access Methods Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Berkeley DB Concurrent Access Methods Applications</h3>
+<p>
+<h1 align=center>Building concurrent access method applications</h1>
+<p>
+It is often desirable to have concurrent access to a database where there
+is no need for full recoverability or transaction semantics.  For this
+class of applications, Berkeley DB provides an interface supporting
+multiple-reader/single writer semantics on the database.  This means that,
+at any instant in time, there may be either multiple readers accessing
+data or a single writer modifying data.  The application is entirely
+unaware of which is happening, and Berkeley DB implements the necessary locking
+and blocking to ensure these semantics.
+<p>
+This chapter describes how to create concurrent access applications using
+Berkeley DB.
+<p>
+In order to create concurrent applications, you must first initialize an
+environment by calling <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>.  You must specify the
+<a href="../../api_c/DbEnv/appinit.html#DB_INIT_CDB">DB_INIT_CDB</a> flag to that interface, and you may optionally also
+specify the <a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> flag.  (If your application is doing
+concurrent access via a single multi-threaded process,
+<a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> will not be necessary, however, in the case of
+multiple processes sharing a database, it is.) As concurrent applications
+are <b>not</b> recoverable, you should not specify any of the other
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a> subsystem configuration flags, e.g., you should not
+DB_INIT_LOCK, DB_INIT_LOG, DB_INIT_TXN, DB_RECOVER or DB_RECOVER_FATAL.
+<p>
+The DB_ENV structure returned by <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> must then be
+passed to all of the <a href="../../api_c/Db/open.html">db_open</a> calls made by your application.
+<p>
+The Berkeley DB access method calls used to support concurrent access are
+unchanged from the normal access method calls, with one exception, the
+<a href="../../api_c/Db/cursor.html">DB->cursor</a> interface.  In the Berkeley DB Concurrent Access Methods product, each cursor must
+encapsulate the idea of being used for read-only access or for read-write
+access.  There may only be one read-write cursor active at any one time.
+When your application creates a cursor, if that cursor will ever be used
+for writing, the <a href="../../api_c/Dbc/get.html#DB_RMW">DB_RMW</a> flag must be specified when the cursor
+is created.
+<p>
+Because only a single thread of control may write the database at a time,
+care must be taken to ensure that applications do not inadvertently block
+themselves.  Some common mistakes are:
+<ol>
+<p><li>Leaving a cursor open while issuing a <a href="../../api_c/Db/put.html">DB->put</a> or <a href="../../api_c/Db/del.html">DB->del</a>
+access method call.
+<p><li>Attempting to open a cursor for read-write access while already holding
+a cursor open for read-write access.
+<p><li>Not testing Berkeley DB error return codes (if any cursor operation returns an
+unexpected error, that cursor should be closed).
+</ol>
+<p>
+Note that it is correct operation for two different threads of control
+(actual threads or processes) have multiple read-write cursors open,
+or for one thread to issue a <a href="../../api_c/Db/put.html">DB->put</a> call while another thread
+has a read-write cursor open, and it is only a problem if these things
+are done in a single thread of control.
+<p>
+<a href="../../ref/env/region.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/intro.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<! "@(#)other.so	10.1 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Subsystem</h3>
+<p>
+<h1 align=center>Transactions and non-Berkeley DB applications</h1>
+<p>
+It is possible to use the locking, logging and transaction subsystems
+of Berkeley DB to provide transaction semantics to objects other than those
+described by the Berkeley DB access methods.  In these cases, the application
+will need more explicit customization of the subsystems as well as the
+development of appropriate data-structure-specific recovery functions.
+<p>
+For example, consider an application that provides transaction semantics
+to data stored in plain UNIX files accessed using the read(2) write(2)
+system calls.  The operations for which transaction protection is desired
+are bracketed by calls to <a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a> and <a href="../../api_c/DbTxn/commit.html">txn_commit</a>.
+<p>
+Before data are referenced, the application must make a call to the lock
+manager, <a href="../../api_c/DbLockTab/open.html">lock_open</a>, for a lock of the appropriate type (e.g.,
+read) on the object being locked.  The object might be a page in the file,
+a byte, a range of bytes, or some key.  It is up to the application to
+ensure that appropriate locks are acquired.  Before a write is performed,
+the application should acquire a write lock on the object, by making an
+appropriate call to the lock manager, <a href="../../api_c/DbLockTab/open.html">lock_open</a>.  Then, the
+application should make a call to the log manager, <a href="../../api_c/DbLog/open.html">log_open</a>, to
+record enough information to redo the operation in case of failure after
+commit and to undo the operation in case of abort.  As discussed in the
+<a href="../../api_c/DbLog/open.html">log_open</a> manual page, the application is responsible for providing
+any necessary structure to the log record.  For example, the application
+must understand what part of the log record is an operation code, what
+part identifies the file being modified, what part is redo information,
+and what part is undo information.
+<p>
+After the log message is written, the application may issue the write
+system call.  After all requests are issued, the application may call
+<a href="../../api_c/DbTxn/commit.html">txn_commit</a>.  When <a href="../../api_c/DbTxn/commit.html">txn_commit</a> returns, the caller is
+guaranteed that all necessary log writes have been written to disk.
+<p>
+At any time, the application may call <a href="../../api_c/DbTxn/abort.html">txn_abort</a>, which will result
+in the appropriate calls to the <b>recover</b> function to restore the
+<i>database</i> to a consistent pre-transaction state.  (The recover
+function must be able to either re-apply or undo the update depending on
+the context, for each different type of log record.)
+<p>
+If the application should crash, the recovery process uses the
+<a href="../../api_c/DbLog/open.html">log_open</a> interface to read the log and call the <b>recover</b>
+function to restore the database to a consistent state.
+<p>
+The <a href="../../api_c/DbTxn/prepare.html">txn_prepare</a> function provides the core functionality to
+implement distributed transactions, but it does not manage the
+notification of distributed transaction managers.  The caller is
+responsible for issuing <a href="../../api_c/DbTxn/prepare.html">txn_prepare</a> calls to all sites
+participating in the transaction.  If all responses are positive, the
+caller can issue a <a href="../../api_c/DbTxn/commit.html">txn_commit</a>.  If any of the responses are
+negative, the caller should issue a <a href="../../api_c/DbTxn/abort.html">txn_abort</a>.  In general, the
+<a href="../../api_c/DbTxn/prepare.html">txn_prepare</a> call requires that the transaction log be flushed to
+disk.
+<p>
+<p>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+</tt>
+</body>
+</html>

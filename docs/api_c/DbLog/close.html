@@ -1,0 +1,81 @@
+<! "@(#)close.so	10.8 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: log_close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>log_close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+log_close(DB_LOG *logp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The log_close function closes the log.
+<p>
+In addition, if the <b>dir</b> argument to <a href="../../api_c/DbLog/open.html">log_open</a> was NULL and
+<b>dbenv</b> was not initialized using <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+all files created for this shared region will be removed, as if
+the <a href="../../api_c/DbLog/unlink.html">log_unlink</a> function were called.
+<p>
+<p>
+In multi-threaded applications, only a single thread may call the
+log_close function.
+<p>
+The log_close
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the log_close function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The log_close
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+getpid(3),
+memset(3),
+munmap(3),
+shmctl(3),
+shmdt(3),
+strlen(3),
+unlink(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbLog/archive.html">log_archive</a>,
+log_close,
+<a href="../../api_c/DbLog/compare.html">log_compare</a>,
+<a href="../../api_c/DbLog/file.html">log_file</a>,
+<a href="../../api_c/DbLog/flush.html">log_flush</a>,
+<a href="../../api_c/DbLog/get.html">log_get</a>,
+<a href="../../api_c/DbLog/open.html">log_open</a>,
+<a href="../../api_c/DbLog/put.html">log_put</a>,
+<a href="../../api_c/DbLog/db_register.html">log_register</a>,
+<a href="../../api_c/DbLog/stat.html">log_stat</a>,
+<a href="../../api_c/DbLog/unlink.html">log_unlink</a>
+and
+<a href="../../api_c/DbLog/db_unregister.html">log_unregister</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<! "@(#)db_stat.so	10.10 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: db_stat</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>db_stat</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+db_stat [<b>-clmNt</b>]
+    [<b>-C Acfhlmo</b>] [<b>-d file</b>] [<b>-h home</b>] [<b>-M Ahlm</b>]
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The db_stat utility displays statistics for Berkeley DB environments.
+<p>
+The options are as follows:
+<dl compact>
+<p><dt><b>-C</b><dd>Display internal information about the lock region.
+(The output from this option is often both voluminous and meaningless,
+and is intended only for debugging.)
+<dl compact>
+<p><dt>A<dd>Display all information.
+<dt>c<dd>Display lock conflict matrix.
+<dt>f<dd>Display lock and object free lists.
+<dt>l<dd>Display lockers within hash chains.
+<dt>m<dd>Display region memory information.
+<dt>o<dd>Display objects within hash chains.
+</dl>
+<p><dt><b>-c</b><dd>Display lock region statistics as described in <a href="../api_c/DbLockTab/stat.html">lock_stat</a>.
+<p><dt><b>-d</b><dd>Display database statistics for the specified database, as described
+in <a href="../api_c/Db/open.html">db_open</a>.
+<p><dt><b>-h</b><dd>Specify a home directory for the database.
+<p><dt><b>-l</b><dd>Display log region statistics as described in <a href="../api_c/DbLog/stat.html">log_stat</a>.
+<p><dt><b>-M</b><dd>Display internal information about the shared memory buffer pool.
+(The output from this option is often both voluminous and meaningless,
+and is intended only for debugging.)
+<dl compact>
+<p><dt>A<dd>Display all information.
+<dt>h<dd>Display buffers within hash chains.
+<dt>l<dd>Display buffers within LRU chains.
+<dt>m<dd>Display region memory information.
+</dl>
+<p><dt><b>-m</b><dd>Display shared memory buffer pool statistics as described in
+<a href="../api_c/DbMpool/stat.html">memp_stat</a>.
+<p><dt><b>-N</b><dd>Don't acquire shared region locks while accumulating the statistics.
+This option is intended only for debugging corrupt regions and should not
+be used under any other circumstances.
+<p><dt><b>-t</b><dd>Display transaction region statistics as described in
+<a href="../api_c/DbTxnMgr/stat.html">txn_stat</a>.
+</dl>
+<p>
+Values smaller than 10 million are generally displayed without
+any special notation.
+Values larger than 10 million are normally displayed as <b><number>M</b>.
+<p>
+The db_stat utility attaches to one or more of the Berkeley DB shared memory
+regions.  In order to avoid region corruption, it should always be given
+the chance to detach and exit gracefully.  To cause db_stat to clean up
+after itself and exit, send it an interrupt signal (SIGINT).
+<p>
+The db_stat utility exits 0 on success, and >0 if an error occurs.
+<p>
+<h1>Environment Variables</h1>
+<p>
+<dl compact>
+<p><dt>DB_HOME<dd>
+If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in <a href="../api_c/DbEnv/appinit.html">db_appinit</a>.
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../utility/db_archive.html">db_archive</a>,
+<a href="../utility/db_checkpoint.html">db_checkpoint</a>,
+<a href="../utility/db_deadlock.html">db_deadlock</a>,
+<a href="../utility/db_dump.html">db_dump</a>,
+<a href="../utility/db_load.html">db_load</a>,
+<a href="../utility/db_recover.html">db_recover</a>,
+and
+db_stat.
+</tt>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<! "@(#)logrec.so	10.9 (Sleepycat) 12/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Logical record numbers</h1>
+<p>
+Both the Berkeley DB Btree and Recno <a href="intro.html">access methods</a> can be
+accessed using logical record numbers.
+<p>
+In all cases for the Recno access method, and in some cases with the
+Btree access method, a record number may be specified to reference a
+specific key/data pair.  In the case of Btrees supporting duplicate
+data items, i.e., a single key may have more than one associated data
+item, the logical record refers to a key and all of its data items.
+<p>
+Record numbers are 32-bit unsigned types, which limits the number of
+logical records in a database to 4,294,967,296.
+<p>
+Logical record numbers are 1-based, not 0-based, i.e., the first record
+in the database is record number 1.
+<p>
+Record numbers in Btree databases are always mutable, i.e., as records
+are deleted or inserted, the logical record number for other records in
+the database can change.  The Recno access method can be configured to
+run in either mutable or fixed mode: mutable, where logical record numbers
+change as records are deleted or inserted, and fixed, where record numbers
+never change regardless of the database operation.  (See
+<a href="../../ref/am/renumber.html">Logically renumbering records (DB_RENUMBER)</a>
+for more information.
+<p>
+Configuring Btree databases to support record numbers can severely limit
+the throughput of applications with multiple concurrent threads writing
+the database.
+<p>
+<a href="../../ref/am/select.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/pagesize.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

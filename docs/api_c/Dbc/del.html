@@ -1,0 +1,108 @@
+<! "@(#)del.so	10.11 (Sleepycat) 10/22/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DBcursor->c_del</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DBcursor->c_del</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+DBcursor->c_del(DBC *cursor, u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DBcursor->c_del function deletes the key/data pair currently referenced by
+the cursor.
+<p>
+The <b>flags</b> parameter is currently unused, and must be set to 0.
+<p>
+The cursor position is unchanged after a delete, and subsequent calls to
+cursor functions expecting the cursor to reference an existing key will
+fail.
+<p>
+If the element has already been deleted, DBcursor->c_del will return
+DB_KEYEMPTY.
+<p>
+If the cursor is not yet initialized, the DBcursor->c_del
+function will return EINVAL.
+<p>
+Otherwise, the DBcursor->c_del
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DBcursor->c_del function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The DBcursor->c_del
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+__account_page(3),
+dbenv->db_paniccall(3),
+fflush(3),
+fprintf(3),
+free(3),
+func(3),
+<a href="../../api_c/DbLockTab/get.html">lock_get</a>,
+<a href="../../api_c/DbLock/put.html">lock_put</a>,
+<a href="../../api_c/DbLockTab/vec.html">lock_vec</a>,
+<a href="../../api_c/DbLog/put.html">log_put</a>,
+malloc(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_c/DbMpoolFile/get.html">memp_fget</a>,
+<a href="../../api_c/DbMpoolFile/put.html">memp_fput</a>,
+<a href="../../api_c/DbMpoolFile/set.html">memp_fset</a>,
+memset(3),
+realloc(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the DBcursor->c_del
+function may fail and return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EAGAIN<dd>A lock was unavailable.
+</dl>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbEnv/appexit.html">db_appexit</a>,
+<a href="../../api_c/DbEnv/appinit.html">db_appinit</a>,
+<a href="../../api_c/DbEnv/version.html">db_version</a>,
+<a href="../../api_c/Db/close.html">DB->close</a>,
+<a href="../../api_c/Db/cursor.html">DB->cursor</a>,
+<a href="../../api_c/Db/del.html">DB->del</a>,
+<a href="../../api_c/Db/fd.html">DB->fd</a>,
+<a href="../../api_c/Db/get.html">DB->get</a>,
+<a href="../../api_c/Db/open.html">db_open</a>,
+<a href="../../api_c/Db/put.html">DB->put</a>,
+<a href="../../api_c/Db/stat.html">DB->stat</a>,
+<a href="../../api_c/Db/sync.html">DB->sync</a>,
+<a href="../../api_c/Dbc/close.html">DBcursor->c_close</a>,
+DBcursor->c_del,
+<a href="../../api_c/Dbc/get.html">DBcursor->c_get</a>
+and
+<a href="../../api_c/Dbc/put.html">DBcursor->c_put</a>.
+</tt>
+</body>
+</html>

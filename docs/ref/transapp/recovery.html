@@ -1,0 +1,68 @@
+<! "@(#)recovery.so	10.11 (Sleepycat) 11/8/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Recovery procedures</h1>
+<p>
+The fourth component of the infrastructure, <i>recovery procedures</i>,
+concerns the recoverability of the database.  After any application or
+system failure, there are two possible approaches to database recovery.
+<p>
+If there is no need to retain state across the failure, and all databases
+can be recreated from scratch, the database home directory can simply be
+removed and recreated.
+<p>
+If it is necessary to retain persistent state across failures, then
+recovery (using the <a href="../../utility/db_recover.html">db_recover</a> utility, or the <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER">DB_RECOVER</a>
+or <a href="../../api_c/DbEnv/appinit.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> flags to <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>) must be
+performed on each Berkeley DB application environment, that is, each database
+home directory.
+<p>
+Performing recovery will remove all the shared regions (which may have
+been corrupted by the failure), establish the end of the log by
+identifying the last record written to the log, and then perform
+transaction recovery.  Database applications must not be restarted until
+recovery completes.  During recovery, all changes made by aborted or
+unfinished transactions are undone and all changes made by committed
+transactions are redone, as necessary.  After recovery runs, the
+environment is properly initialized so that applications may be restarted.
+Any time an application crashes or the system fails, recovery processing
+should be performed on any database environments that were active at that
+time.
+<p>
+Additionally, there are two forms of recovery: <i>normal</i> recovery
+and <i>catastrophic</i> recovery.  The Berkeley DB package defines
+catastrophic failure to be failure where either the database or log files
+have been destroyed or corrupted from the point of view of the filesystem.
+For example, catastrophic failure includes the case where the disk drive
+on which either the database or logs are stored has crashed, or when
+filesystem recovery is unable to bring the database and log files to a
+consistent state with respect to the filesystem.
+<p>
+If the failure is non-catastrophic, i.e., the database files and log are
+accessible on a filesystem that has recovered cleanly, the recovery
+process will review the logs and database files to ensure that all
+committed transactions appear and that all uncommitted transactions are
+undone.
+<p>
+If the failure is catastrophic, a snapshot of the database files and the
+archived log files must be restored onto the system.  Then the recovery
+process will review the logs and database files to bring the database to
+a consistent state as of the date of the last archived log file.  Only
+transactions committed before that date will appear in the database.
+<p>
+<a href="../../ref/transapp/archival.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/filesys.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,663 @@
+!define BLANK ""
+r:\db-2.4.0\build.win16\bt_close.obj : r:\db-2.4.0\btree\bt_close.c .AUTODEP&
+END
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_close.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_compare.obj : r:\db-2.4.0\btree\bt_compare.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_compare.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_conv.obj : r:\db-2.4.0\btree\bt_conv.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_conv.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_cursor.obj : r:\db-2.4.0\btree\bt_cursor.c .AUTOD&
+EPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_cursor.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_delete.obj : r:\db-2.4.0\btree\bt_delete.c .AUTOD&
+EPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_delete.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_open.obj : r:\db-2.4.0\btree\bt_open.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_open.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_page.obj : r:\db-2.4.0\btree\bt_page.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_page.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_put.obj : r:\db-2.4.0\btree\bt_put.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_put.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_rec.obj : r:\db-2.4.0\btree\bt_rec.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_rec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_recno.obj : r:\db-2.4.0\btree\bt_recno.c .AUTODEP&
+END
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_recno.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_rsearch.obj : r:\db-2.4.0\btree\bt_rsearch.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_rsearch.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_search.obj : r:\db-2.4.0\btree\bt_search.c .AUTOD&
+EPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_search.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_split.obj : r:\db-2.4.0\btree\bt_split.c .AUTODEP&
+END
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_split.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\bt_stat.obj : r:\db-2.4.0\btree\bt_stat.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\bt_stat.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\btree_auto.obj : r:\db-2.4.0\btree\btree_auto.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\btree\btree_auto.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\strsep.obj : r:\db-2.4.0\clib\strsep.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\clib\strsep.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_appinit.obj : r:\db-2.4.0\common\db_appinit.c .AU&
+TODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_appinit.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4&
+ -e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_apprec.obj : r:\db-2.4.0\common\db_apprec.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_apprec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_byteorder.obj : r:\db-2.4.0\common\db_byteorder.c&
+ .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_byteorder.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -&
+w4 -e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_err.obj : r:\db-2.4.0\common\db_err.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_err.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_log2.obj : r:\db-2.4.0\common\db_log2.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_log2.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_region.obj : r:\db-2.4.0\common\db_region.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_region.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_salloc.obj : r:\db-2.4.0\common\db_salloc.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_salloc.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_shash.obj : r:\db-2.4.0\common\db_shash.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\common\db_shash.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db.obj : r:\db-2.4.0\db\db.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq -o&
+d -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_auto.obj : r:\db-2.4.0\db\db_auto.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_auto.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_conv.obj : r:\db-2.4.0\db\db_conv.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_conv.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_dispatch.obj : r:\db-2.4.0\db\db_dispatch.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_dispatch.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_dup.obj : r:\db-2.4.0\db\db_dup.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_dup.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_overflow.obj : r:\db-2.4.0\db\db_overflow.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_overflow.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_pr.obj : r:\db-2.4.0\db\db_pr.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_pr.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq&
+ -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_rec.obj : r:\db-2.4.0\db\db_rec.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_rec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_ret.obj : r:\db-2.4.0\db\db_ret.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_ret.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db_thread.obj : r:\db-2.4.0\db\db_thread.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\db\db_thread.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\dbm.obj : r:\db-2.4.0\dbm\dbm.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\dbm\dbm.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq &
+-od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash.obj : r:\db-2.4.0\hash\hash.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_auto.obj : r:\db-2.4.0\hash\hash_auto.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_auto.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_conv.obj : r:\db-2.4.0\hash\hash_conv.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_conv.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_debug.obj : r:\db-2.4.0\hash\hash_debug.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_debug.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_dup.obj : r:\db-2.4.0\hash\hash_dup.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_dup.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_func.obj : r:\db-2.4.0\hash\hash_func.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_func.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_page.obj : r:\db-2.4.0\hash\hash_page.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_page.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_rec.obj : r:\db-2.4.0\hash\hash_rec.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_rec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e2&
+5 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hash_stat.obj : r:\db-2.4.0\hash\hash_stat.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hash\hash_stat.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\hsearch.obj : r:\db-2.4.0\hsearch\hsearch.c .AUTODEP&
+END
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\hsearch\hsearch.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\lock.obj : r:\db-2.4.0\lock\lock.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\lock\lock.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\lock_conflict.obj : r:\db-2.4.0\lock\lock_conflict.c&
+ .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\lock\lock_conflict.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w&
+4 -e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\lock_deadlock.obj : r:\db-2.4.0\lock\lock_deadlock.c&
+ .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\lock\lock_deadlock.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w&
+4 -e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\lock_region.obj : r:\db-2.4.0\lock\lock_region.c .AU&
+TODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\lock\lock_region.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\lock_util.obj : r:\db-2.4.0\lock\lock_util.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\lock\lock_util.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e&
+25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log.obj : r:\db-2.4.0\log\log.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq &
+-od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_archive.obj : r:\db-2.4.0\log\log_archive.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_archive.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_auto.obj : r:\db-2.4.0\log\log_auto.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_auto.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_compare.obj : r:\db-2.4.0\log\log_compare.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_compare.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_findckp.obj : r:\db-2.4.0\log\log_findckp.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_findckp.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_get.obj : r:\db-2.4.0\log\log_get.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_get.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_put.obj : r:\db-2.4.0\log\log_put.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_put.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_rec.obj : r:\db-2.4.0\log\log_rec.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_rec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\log_register.obj : r:\db-2.4.0\log\log_register.c .A&
+UTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\log\log_register.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_bh.obj : r:\db-2.4.0\mp\mp_bh.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_bh.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq&
+ -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_fget.obj : r:\db-2.4.0\mp\mp_fget.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_fget.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_fopen.obj : r:\db-2.4.0\mp\mp_fopen.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_fopen.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_fput.obj : r:\db-2.4.0\mp\mp_fput.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_fput.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_fset.obj : r:\db-2.4.0\mp\mp_fset.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_fset.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_open.obj : r:\db-2.4.0\mp\mp_open.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_open.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_pr.obj : r:\db-2.4.0\mp\mp_pr.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_pr.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq&
+ -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_region.obj : r:\db-2.4.0\mp\mp_region.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_region.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mp_sync.obj : r:\db-2.4.0\mp\mp_sync.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mp\mp_sync.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\mutex.obj : r:\db-2.4.0\mutex\mutex.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\mutex\mutex.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_fid.obj : r:\db-2.4.0\os.win16\os_fid.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os.win16\os_fid.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_map.obj : r:\db-2.4.0\os.win16\os_map.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os.win16\os_map.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_seek.obj : r:\db-2.4.0\os.win16\os_seek.c .AUTODE&
+PEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os.win16\os_seek.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 &
+-e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_sleep.obj : r:\db-2.4.0\os.win16\os_sleep.c .AUTO&
+DEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os.win16\os_sleep.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4&
+ -e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_dir.obj : r:\db-2.4.0\os.win32\os_dir.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os.win32\os_dir.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -&
+e25 -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_abs.obj : r:\db-2.4.0\os\os_abs.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_abs.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -z&
+q -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_alloc.obj : r:\db-2.4.0\os\os_alloc.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_alloc.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_config.obj : r:\db-2.4.0\os\os_config.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_config.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_fsync.obj : r:\db-2.4.0\os\os_fsync.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_fsync.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_oflags.obj : r:\db-2.4.0\os\os_oflags.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_oflags.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_open.obj : r:\db-2.4.0\os\os_open.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_open.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_rpath.obj : r:\db-2.4.0\os\os_rpath.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_rpath.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_rw.obj : r:\db-2.4.0\os\os_rw.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_rw.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq&
+ -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_spin.obj : r:\db-2.4.0\os\os_spin.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_spin.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_stat.obj : r:\db-2.4.0\os\os_stat.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_stat.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -&
+zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\os_unlink.obj : r:\db-2.4.0\os\os_unlink.c .AUTODEPE&
+ND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\os\os_unlink.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\txn.obj : r:\db-2.4.0\txn\txn.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\txn\txn.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq &
+-od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\txn_auto.obj : r:\db-2.4.0\txn\txn_auto.c .AUTODEPEN&
+D
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\txn\txn_auto.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25&
+ -zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\txn_rec.obj : r:\db-2.4.0\txn\txn_rec.c .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc ..\txn\txn_rec.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 &
+-zq -od -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\dllmain.obj : r:\db-2.4.0\build.win16\dllmain.c .AUT&
+ODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ *wcc dllmain.c -i=C:\WATCOM\h;C:\WATCOM\h\win;.;..\include -w4 -e25 -zq -od&
+ -d2 -bd -zu -bt=windows -ml
+
+r:\db-2.4.0\build.win16\db.dll : r:\db-2.4.0\build.win16\bt_close.obj r:\db-&
+2.4.0\build.win16\bt_compare.obj r:\db-2.4.0\build.win16\bt_conv.obj r:\db-2&
+.4.0\build.win16\bt_cursor.obj r:\db-2.4.0\build.win16\bt_delete.obj r:\db-2&
+.4.0\build.win16\bt_open.obj r:\db-2.4.0\build.win16\bt_page.obj r:\db-2.4.0&
+\build.win16\bt_put.obj r:\db-2.4.0\build.win16\bt_rec.obj r:\db-2.4.0\build&
+.win16\bt_recno.obj r:\db-2.4.0\build.win16\bt_rsearch.obj r:\db-2.4.0\build&
+.win16\bt_search.obj r:\db-2.4.0\build.win16\bt_split.obj r:\db-2.4.0\build.&
+win16\bt_stat.obj r:\db-2.4.0\build.win16\btree_auto.obj r:\db-2.4.0\build.w&
+in16\strsep.obj r:\db-2.4.0\build.win16\db_appinit.obj r:\db-2.4.0\build.win&
+16\db_apprec.obj r:\db-2.4.0\build.win16\db_byteorder.obj r:\db-2.4.0\build.&
+win16\db_err.obj r:\db-2.4.0\build.win16\db_log2.obj r:\db-2.4.0\build.win16&
+\db_region.obj r:\db-2.4.0\build.win16\db_salloc.obj r:\db-2.4.0\build.win16&
+\db_shash.obj r:\db-2.4.0\build.win16\db.obj r:\db-2.4.0\build.win16\db_auto&
+.obj r:\db-2.4.0\build.win16\db_conv.obj r:\db-2.4.0\build.win16\db_dispatch&
+.obj r:\db-2.4.0\build.win16\db_dup.obj r:\db-2.4.0\build.win16\db_overflow.&
+obj r:\db-2.4.0\build.win16\db_pr.obj r:\db-2.4.0\build.win16\db_rec.obj r:\&
+db-2.4.0\build.win16\db_ret.obj r:\db-2.4.0\build.win16\db_thread.obj r:\db-&
+2.4.0\build.win16\dbm.obj r:\db-2.4.0\build.win16\hash.obj r:\db-2.4.0\build&
+.win16\hash_auto.obj r:\db-2.4.0\build.win16\hash_conv.obj r:\db-2.4.0\build&
+.win16\hash_debug.obj r:\db-2.4.0\build.win16\hash_dup.obj r:\db-2.4.0\build&
+.win16\hash_func.obj r:\db-2.4.0\build.win16\hash_page.obj r:\db-2.4.0\build&
+.win16\hash_rec.obj r:\db-2.4.0\build.win16\hash_stat.obj r:\db-2.4.0\build.&
+win16\hsearch.obj r:\db-2.4.0\build.win16\lock.obj r:\db-2.4.0\build.win16\l&
+ock_conflict.obj r:\db-2.4.0\build.win16\lock_deadlock.obj r:\db-2.4.0\build&
+.win16\lock_region.obj r:\db-2.4.0\build.win16\lock_util.obj r:\db-2.4.0\bui&
+ld.win16\log.obj r:\db-2.4.0\build.win16\log_archive.obj r:\db-2.4.0\build.w&
+in16\log_auto.obj r:\db-2.4.0\build.win16\log_compare.obj r:\db-2.4.0\build.&
+win16\log_findckp.obj r:\db-2.4.0\build.win16\log_get.obj r:\db-2.4.0\build.&
+win16\log_put.obj r:\db-2.4.0\build.win16\log_rec.obj r:\db-2.4.0\build.win1&
+6\log_register.obj r:\db-2.4.0\build.win16\mp_bh.obj r:\db-2.4.0\build.win16&
+\mp_fget.obj r:\db-2.4.0\build.win16\mp_fopen.obj r:\db-2.4.0\build.win16\mp&
+_fput.obj r:\db-2.4.0\build.win16\mp_fset.obj r:\db-2.4.0\build.win16\mp_ope&
+n.obj r:\db-2.4.0\build.win16\mp_pr.obj r:\db-2.4.0\build.win16\mp_region.ob&
+j r:\db-2.4.0\build.win16\mp_sync.obj r:\db-2.4.0\build.win16\mutex.obj r:\d&
+b-2.4.0\build.win16\os_fid.obj r:\db-2.4.0\build.win16\os_map.obj r:\db-2.4.&
+0\build.win16\os_seek.obj r:\db-2.4.0\build.win16\os_sleep.obj r:\db-2.4.0\b&
+uild.win16\os_dir.obj r:\db-2.4.0\build.win16\os_abs.obj r:\db-2.4.0\build.w&
+in16\os_alloc.obj r:\db-2.4.0\build.win16\os_config.obj r:\db-2.4.0\build.wi&
+n16\os_fsync.obj r:\db-2.4.0\build.win16\os_oflags.obj r:\db-2.4.0\build.win&
+16\os_open.obj r:\db-2.4.0\build.win16\os_rpath.obj r:\db-2.4.0\build.win16\&
+os_rw.obj r:\db-2.4.0\build.win16\os_spin.obj r:\db-2.4.0\build.win16\os_sta&
+t.obj r:\db-2.4.0\build.win16\os_unlink.obj r:\db-2.4.0\build.win16\txn.obj &
+r:\db-2.4.0\build.win16\txn_auto.obj r:\db-2.4.0\build.win16\txn_rec.obj r:\&
+db-2.4.0\build.win16\dllmain.obj .AUTODEPEND
+ @r:
+ cd r:\db-2.4.0\build.win16
+ @%write db.lk1 FIL bt_close.obj,bt_compare.obj,bt_conv.obj,bt_cursor.obj,bt&
+_delete.obj,bt_open.obj,bt_page.obj,bt_put.obj,bt_rec.obj,bt_recno.obj,bt_rs&
+earch.obj,bt_search.obj,bt_split.obj,bt_stat.obj,btree_auto.obj,strsep.obj,d&
+b_appinit.obj,db_apprec.obj,db_byteorder.obj,db_err.obj,db_log2.obj,db_regio&
+n.obj,db_salloc.obj,db_shash.obj,db.obj,db_auto.obj,db_conv.obj,db_dispatch.&
+obj,db_dup.obj,db_overflow.obj,db_pr.obj,db_rec.obj,db_ret.obj,db_thread.obj&
+,dbm.obj,hash.obj,hash_auto.obj,hash_conv.obj,hash_debug.obj,hash_dup.obj,ha&
+sh_func.obj,hash_page.obj,hash_rec.obj,hash_stat.obj,hsearch.obj,lock.obj,lo&
+ck_conflict.obj,lock_deadlock.obj,lock_region.obj,lock_util.obj,log.obj,log_&
+archive.obj,log_auto.obj,log_compare.obj,log_findckp.obj,log_get.obj,log_put&
+.obj,log_rec.obj,log_register.obj,mp_bh.obj,mp_fget.obj,mp_fopen.obj,mp_fput&
+.obj,mp_fset.obj,mp_open.obj,mp_pr.obj,mp_region.obj,mp_sync.obj,mutex.obj,o&
+s_fid.obj,os_map.obj,os_seek.obj,os_sleep.obj,os_dir.obj,os_abs.obj,os_alloc&
+.obj,os_config.obj,os_fsync.obj,os_oflags.obj,os_open.obj,os_rpath.obj,os_rw&
+.obj,os_spin.obj,os_stat.obj,os_unlink.obj,txn.obj,txn_auto.obj,txn_rec.obj,&
+dllmain.obj
+ @%append db.lk1 
+!ifneq BLANK ""
+ *wlib -q -n -b db.imp 
+ @%append db.lk1 LIBR db.imp
+!endif
+!ifneq BLANK ""
+ @%append db.lk1 op resource=
+!endif
+ *wlink name db d all SYS windows_dll op inc op m op maxe=25 op q op symf op&
+ one @db.lk1
+!ifneq BLANK ""
+!endif
+ wlib -n -b db.lib +db.dll
+

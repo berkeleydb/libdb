@@ -1,0 +1,98 @@
+<! "@(#)what.so	10.11 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Introduction</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Introduction</h3>
+<p>
+<h1 align=center>What is Berkeley DB?</h1>
+<p>
+Berkeley DB is an embeddable database system that supports keyed access
+to data.
+The software is distributed in source code form, and developers can
+compile and link the source code into a single library for inclusion
+directly in their applications.
+<p>
+Developers may choose to store data in any of several different storage
+structures to satisfy the requirements of a particular application.  In
+database terminology, these storage structures and the code that operates
+on them are called <i>access methods</i>.  The library includes
+support for the following access methods:
+<ul type=disc>
+<li><b>B+tree</b>:
+Stores keys in sorted order, using either a programmer-supplied ordering
+function or a default function that does lexicographical ordering of keys.
+Applications may perform equality or range searches.
+<li><b>Hashing</b>:
+Stores records in a hash table for fast searches based on strict equality.
+Extended Linear Hashing modifies the hash function used by the table as
+new records are inserted, in order to keep buckets underfull in the steady
+state.
+<li><b>Fixed and Variable-Length Records</b>:
+Stores fixed- or variable-length records in sequential order.  Record
+numbers may be immutable or mutable, i.e., permitting new records to be
+inserted between existing records or requiring that new records be added
+only at the end of the database.
+</ul>
+<p>
+Berkeley DB also provides core database services to developers.  These
+services include:
+<ul type=disc>
+<li><b>Page cache management</b>:
+The page cache provides fast access to a cache of database pages, handling
+the I/O associated with the cache to ensure that dirty pages are written
+back to the file system and that new pages are allocated in unused places.
+<li><b>Transactions</b>:
+The transaction system provides recoverability and atomicity for multiple
+database operations. The transaction system uses two-phase locking and
+write-ahead logging protocols to ensure that database operations may be
+undone or redone in the case of application or system failure.
+<li><b>Locking</b>:
+The locking system provides multiple reader or single writer access to
+objects.  The Berkeley DB access methods use the locking system to acquire the
+right to read or write database pages.
+<li><b>Logging</b>:
+The logging system implements the write-ahead log, so that changes to
+database pages are captured in a separate log file.  The log file changes
+are always written to stable storage before the changed data pages,
+guaranteeing that the database state can be restored to either its
+pre-change or post-change state even after a system crash or hard-disk
+failure.
+</ul>
+<p>
+By combining the page cache, transaction, locking, and logging systems,
+Berkeley DB provides the same services found in much larger, complex and more
+expensive, database systems.  Berkeley DB supports multiple simultaneous readers
+and writers and guarantees that all changes are recoverable, even in the
+case of a catastrophic hardware failure during a database update.
+<p>
+Developers may select some or all of the core database services for any
+access method or database.  Therefore, it is possible to choose the
+appropriate storage structure and the right degrees of concurrency and
+recoverability for any application.
+<p>
+In addition, some of the systems (for example, the locking subsystem)
+can be called separately from the Berkeley DB access method.  As a result,
+developers can integrate non-database objects into their transactional
+applications using Berkeley DB.
+<p>
+Berkeley DB includes callable APIs in C, C++ and Java.  Callable APIs for Tcl,
+Python and Perl are separately available.
+<p>
+The Berkeley DB library does not provide user-level interfaces, data entry
+GUI's, SQL support or any of the other standard database interfaces.  What
+it does provide are the programmatic building blocks that allow you to
+easily embed database-style functionality and support into other objects
+or interfaces.
+<p>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/intro/where.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

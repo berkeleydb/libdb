@@ -1,0 +1,30 @@
+<! "@(#)delete.so	10.4 (Sleepycat) 10/20/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Deleting records</h1>
+<p>
+The <a href="../../api_c/Db/del.html">DB->del</a> function is the standard function for retrieving
+records from the database.  In general, the delete function takes a
+key and deletes the data item associated with it from the database.
+<p>
+If the database has been configured to support duplicate records, the
+<a href="../../api_c/Db/del.html">DB->del</a> function will remove <b>all</b> of the duplicate records.
+To remove individual duplicate records, you must use a Berkeley DB cursor
+interface.
+<p>
+<a href="../../ref/am/put.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/sync.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

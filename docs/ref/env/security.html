@@ -1,0 +1,43 @@
+<! "@(#)security.so	10.3 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Environment</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Environment</h3>
+<p>
+<h1 align=center>Security</h1>
+<p>
+There are two important security concerns when writing Berkeley DB applications.
+<p>
+The first is the directory used as the database home environment.  It is
+important that the environment home directory be carefully created to have
+the correct permissions for the system to ensure that databases are not
+accessible to users without the correct permissions.  Berkeley DB never creates
+the database home directory, it must be created before the application is
+run.
+<p>
+The second is the use of environment variables in file naming, i.e.,
+<a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> and <a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a>.  If a Berkeley DB
+application is running with additional permissions, (e.g., UNIX setuid or
+setgid permissions), and either of these variables is set, users could
+potentially cause the application to read and write databases to which
+the user would not normally have access.
+<p>
+By default, Berkeley DB always creates files readable and writeable by the owner
+and the group (i.e., S_IRUSR, S_IWUSR, S_IRGRP and S_IWGRP, or octal mode
+0660 on historic UNIX systems).  The group ownership of created files is
+based on the system and directory defaults, and is not further specified
+by Berkeley DB.
+<p>
+<a href="../../ref/env/naming.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/env/region.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

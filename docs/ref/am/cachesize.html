@@ -1,0 +1,94 @@
+<! "@(#)cachesize.so	10.5 (Sleepycat) 10/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Selecting a cache size</h1>
+<p>
+The size of the cache used for the underlying database can be specified
+as part of the <a href="../../api_c/Db/open.html">db_open</a> call to open the database, specifically by
+setting the <a href="../../api_c/DbInfo/info.html#db_cachesize">db_cachesize</a> element of the DB_INFO structure.
+<p>
+Choosing a cache size is, unfortunately, an art.  Your cache <b>must</b>
+be at least large enough for your working set plus some overlap for
+unexpected situations.
+<p>
+When using the Btree access method, you <b>must</b> have a cache big
+enough for the minimum working set for a single access.  This will include
+a root page, one or more internal pages (depending on the depth of your
+tree), and a leaf page.  If your cache is any smaller than that, each new
+page will force out the least-recently-used page, and you'll end up
+requesting the root page of the tree anew on each database request.
+<p>
+If your keys are of moderate size (a few tens of bytes) and your pages
+are on the order of 4K to 8K, most Btrees will be only three levels
+(e.g., if we assume 20 byte keys with 20 bytes of data associated with
+each key, a 8KB page can hold roughly 400 keys and 200 key/data pairs,
+so a fully populated three level Btree will hold 32 million key/data
+pairs, and a tree with only a 50% page-fill factore will still hold 16
+million key/data pairs).
+We rarely expect trees to exceed five levels, although Berkeley DB will
+support trees up to 255 levels.
+<p>
+Even a small initial increase of the size of the cache over the minimum
+working set gives you a good return, as this allows you to cache more
+internal pages, which are more likely to be accessed in a Btree requests
+than any single leaf page.
+<p>
+Regardless, the rule-of-thumb is that cache is good, and more cache is
+better.  Generally, applications benefit from increasing the cache size
+up to a point, where the performance will stop increasing when the cache
+size increases, or, that the performance will only increase a very little
+bit in response to increasing the cache size.  When this point is reached,
+one of two things have happened: First, either the cache is large enough
+that the application is almost never having to retrieve information from
+disk.  Second, your application is doing truly random accesses, and
+therefore increasing size of the cache doesn't significantly increase the
+odds of finding the next requested information in the cache.  The latter
+is fairly rare -- almost all applications show some form of locality of
+reference!
+<p>
+For example, even if our accesses are truly random within a B+-tree, your
+access pattern will favor internal pages to leaf pages, so your cache
+should be large enough to hold all internal pages.  This will result in
+your requiring at most one I/O per operation to retrieve the appropriate
+leaf page.
+<p>
+Finally, you can use the <a href="../../utility/db_stat.html">db_stat</a> utility to monitor the effectiveness
+of your cache.  The following output is excerpted from the output of that
+utility's <b>-m</b> option:
+<p><ul><pre>
+prompt> db_stat -m
+131072  Cache size (128K).
+4273    Requested pages found in the cache (97%).
+134     Requested pages not found in the cache.
+18      Pages created in the cache.
+116     Pages read into the cache.
+93      Pages written from the cache to the backing file.
+5       Clean pages forced from the cache.
+13      Dirty pages forced from the cache.
+0       Dirty buffers written by trickle-sync thread.
+130     Current clean buffer count.
+4       Current dirty buffer count.
+</pre></ul><p>
+<p>
+The statistics for this cache are that there have been 4,273 requests of
+the cache, and only 116 of those requests required an I/O from disk.  This
+means that the cache is working well, yielding a 97% cache hit rate.  The
+<a href="../../utility/db_stat.html">db_stat</a> utility will present these statistics both for the cache
+as a whole and for each file within the cache separately.
+<p>
+<a href="../../ref/am/pagesize.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/byteorder.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

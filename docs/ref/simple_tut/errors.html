@@ -1,0 +1,37 @@
+<! "@(#)errors.so	10.7 (Sleepycat) 11/1/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Simple Tutorial</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Simple Tutorial</h3>
+<p>
+<h1 align=center>Error returns</h1>
+<p>
+The Berkeley DB interfaces always return a value of 0 on success.  If the
+operation does not succeed for any reason, the return value will be
+non-zero.
+<p>
+If a system error occurred (e.g., we ran out of disk space, or permission
+to access a file was denied to us, or an illegal argument was specified
+to one of the interfaces), Berkeley DB returns an <b>errno</b> value.  All
+of the possible values of <b>errno</b> are greater than 0.
+<p>
+If the operation didn't fail due to a system error, but wasn't successful
+either, Berkeley DB returns a special error value.  For example, if you tried
+to retrieve the data item associated with the key <b>fruit</b>, and
+there was no such key/data pair in the database, Berkeley DB would return
+DB_NOTFOUND, a special error value that means the requested key does not
+appear in the database.
+<p>
+<a href="../../ref/simple_tut/keydata.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/simple_tut/open.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

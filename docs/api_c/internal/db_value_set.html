@@ -1,0 +1,90 @@
+<! "@(#)db_value_set.so	10.8 (Sleepycat) 10/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: db_value_set</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>db_value_set</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+db_value_set(int value, int which);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The db_value_set function enables applications to specify the
+behavior of underlying Berkeley DB library functionality.
+The <b>which</b> argument specifies the information being set by the
+argument <b>value</b>.
+<p>
+The following values of <b>which</b> are supported:
+<dl compact>
+<a name="DB_MUTEXLOCKS">
+<p><dt>DB_MUTEXLOCKS<dd>Setting <b>value</b> to a zero value causes Berkeley DB to grant all
+requested mutual exclusion mutexes without testing for their availability.
+This flag should never be used for any other purpose than debugging.
+<a name="DB_REGION_ANON">
+<p><dt>DB_REGION_ANON<dd>Setting <b>value</b> to a non-zero value specifies that shared memory
+regions are to be created in anonymous memory, and not backed by a regular
+file.
+DB_REGION_NAME differs from DB_REGION_ANON in that the former will fail if
+the shared memory regions cannot be named, that is, if multiple processes
+cannot use them.
+See <a href="../internal/db_jump_set.html#DB_FUNC_MAP">DB_FUNC_MAP</a> for more
+information.
+<a name="DB_REGION_INIT">
+<p><dt>DB_REGION_INIT<dd>In some applications, the expense of page-faulting the shared memory regions
+can affect performance, e.g., when the page-fault occurs while holding a lock,
+other lock requests can convoy and overall throughput may decrease.
+Setting <b>value</b> to a non-zero value specifies that one byte be written
+to each 4K page of the shared memory region when the region is initialized.
+<p>
+In addition, as a byte is written to each page, the underlying virtual
+memory and file systems are forced to instantiate both the necessary
+memory and the necessary disk space.  This is useful in order to avoid
+out-of-disk space failures later on.
+<a name="DB_REGION_NAME">
+<p><dt>DB_REGION_NAME<dd>Setting <b>value</b> to a non-zero value specifies that shared memory
+regions are to be created in anonymous memory, and not backed by a regular
+file.
+DB_REGION_NAME differs from DB_REGION_ANON in that the former will fail if
+the shared memory regions cannot be named, that is, if multiple processes
+cannot use them.
+See <a href="../internal/db_jump_set.html#DB_FUNC_MAP">DB_FUNC_MAP</a> for more
+information.
+<a name="DB_TSL_SPINS">
+<p><dt>DB_TSL_SPINS<dd>Specify the number of times mutexes should spin without blocking.
+<p>
+This value defaults to 1 on uniprocessor systems and to 50 times the number
+of processors on multiprocessor systems.]
+</dl>
+<p>
+The db_value_set
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the db_value_set function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+<p>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/internal/db_jump_set.html">db_jump_set</a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<! "@(#)appsignals.so	10.14 (Sleepycat) 11/25/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Application signal handling</h1>
+<p>
+When applications using Berkeley DB receive signals, it is important that they
+exit gracefully, discarding any Berkeley DB locks that they may hold.  This is
+normally done by setting a flag when a signal arrives, and then checking
+for that flag periodically within the application.  As <b>Berkeley DB is
+not reentrant</b>, the signal handler should not attempt to release locks
+and/or close the database handles itself if there is any question at all
+that Berkeley DB can be reentered.  Reentering Berkeley DB is not guaranteed to work
+correctly and the results are undefined.
+<p>
+If an application exits holding a lock, the situation is no different than
+if the application crashed, and all applications participating in the
+database environment must be shutdown, and then recovery must be
+performed.  If this is not done, the locks that the application held can
+cause unresolvable deadlocks inside the database, and applications may
+then hang.
+<p>
+<a href="../../ref/transapp/throughput.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/errorret.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<! "@(#)do.so	10.13 (Sleepycat) 12/16/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Introduction</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Introduction</h3>
+<p>
+<h1 align=center>What can you do with Berkeley DB?</h1>
+<p>
+Berkeley DB was designed to provide industrial-strength database services to
+application developers, without requiring them to become database experts.
+It is a classic C library style <i>toolkit</i>, providing a broad base
+of functionality to application writers.  Berkeley DB was written by
+programmers, for programmers:  its modular design surfaces simple,
+orthogonal interfaces to core services, and it provides mechanism (for
+example, good thread support) without imposing policy (for example, the
+use of threads is not required).  Just as importantly, Berkeley DB allows
+developers to balance performance against the need for crash recovery and
+concurrent use.  An application can use the storage structure that
+provides the fastest access to its data and can request only the degree
+of logging and locking that it needs.
+<p>
+Berkeley DB is powerful enough to use as the underlying support for large
+network servers and simple enough to use in a fast-prototype for a
+single-user application.  There are many large, complex, multi-threaded
+servers running on fast, multi-processor machines, depending on Berkeley DB
+transaction semantics for recovery after system or application failure.
+<p>
+Most Berkeley DB applications fall into two categories: basic data management
+and data management with recovery.  In basic data management, applications
+use the Berkeley DB access methods to manage their data without concern for
+application or system failure.  The only Berkeley DB interfaces necessary for
+this purpose are the <i>Access Method</i> and <i>Cursor</i>
+interfaces. In data management with recovery, applications add calls to
+the transaction subsystem, in order to ensure complete recoverability in
+the face of application or system failure.
+<p>
+Generally, both of these categories involve linking Berkeley DB into the
+process' address space.  It is also possible to implement client-server
+models using Berkeley DB.  In such cases, application writers use Berkeley DB to
+implement the server as described above, and then select an IPC mechanism
+which the client will use to talk to the server.  (The Berkeley DB distribution
+does not include an IPC mechanism, and it is up to the application writer
+to implement this functionality.)
+<p>
+While Berkeley DB's primary purpose is to provide a complete database
+environment to applications, it is important to realize that Berkeley DB
+includes general-purpose shared memory buffer-pool and general-purpose
+lock manager interfaces, among others.  These interfaces are directly
+useful to application writers that may have no interest in databases.
+<p>
+Additionally, because of the tool-based approach and separate interfaces
+for each subsystem, you can support a complete transaction environment
+for other system operations, e.g., Berkeley DB allows you to wrap transactions
+around the standard UNIX read/write operations!  Further, Berkeley DB was
+designed to interact correctly with the UNIX toolset, a feature no other
+database package offers.  For example, Berkeley DB supports "hot backups"
+(database backups while the database is in use), and you can use the
+standard UNIX tools to do those backups, e.g., <b>dump</b>(1),
+<b>tar</b>(1), <b>cpio</b>(1), <b>pax</b>(1) or even
+<b>cp</b>(1).
+<p>
+Finally, because scripting languages interfaces are available for Berkeley DB
+(notably Python, Tcl and Perl), application writers can build incredibly
+powerful database engines with little effort, (e.g., you can build
+transaction-protected database applications using your favorite scripting
+languages, an increasingly important feature in a world using CGI scripts
+to deliver HTML).
+<p>
+<a href="../../ref/intro/distrib.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/simple_tut/intro.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

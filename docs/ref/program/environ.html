@@ -1,0 +1,36 @@
+<! "@(#)environ.so	10.5 (Sleepycat) 11/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Programmer Notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Programmer Notes</h3>
+<p>
+<h1 align=center>Environmental variables</h1>
+<p>
+The Berkeley DB library uses the following environment variables:
+<p>
+<dl compact>
+<p><dt>DB_HOME<dd>
+If the environment variable DB_HOME is set, it is used as part of
+<a href="../../ref/env/naming.html">File Naming</a>.  Note, either the
+<a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> or <a href="../../api_c/DbEnv/appinit.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a> flags must be
+specified to <a href="../../api_c/DbEnv/appinit.html">db_appinit</a> for the DB_HOME variable to take effect.
+<p><dt>TMPDIR, TEMP, TMP, TempFolder<dd>
+The TMPDIR, TEMP, TMP and TempFolder environmental variables are all
+checked as locations in which to create temporary files.  See
+<a href="../../ref/env/naming.html#DB_TMP_DIR">DB_TMP_DIR</a> in <a href="../../ref/env/naming.html">File Naming</a>
+for more information.
+</dl>
+<p>
+<a href="../../ref/program/java.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/program/version.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

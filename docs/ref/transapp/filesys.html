@@ -1,0 +1,59 @@
+<! "@(#)filesys.so	10.14 (Sleepycat) 11/25/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Recovery and filesystem operations</h1>
+<p>
+Filesystem operations, e.g., moving the database environment to a
+different machine or file creation, deletion or renaming, cannot be
+transaction protected.  For this reason, files cannot be re-created,
+deleted or renamed as part of the recovery process.
+<p>
+If recovery cannot find a database file referenced in the log, it will
+output a warning message that it was unable to locate a file it expected
+to find.  This message is only a warning, as the file may have
+subsequently been deleted as part of normal database operations before
+the failure occurred, and so cannot be known to be a problem.
+<p>
+<b>Note that committed transactions that involved these missing files are
+rolled forward, even though the files were not found.  If the files were
+not intentionally deleted (e.g., they were created after the last database
+snapshot, but were lost during a failure), they must be manually created
+(using <a href="../../api_c/Db/open.html">db_open</a>), and then recovery must be redone.</b>
+<p>
+Generally, it is simplest to perform filesystem operations at the same
+time as making a snapshot of the database.  To perform filesystem
+operations:
+<ol>
+<p><li>Cleanly shutdown database operations.
+<p><li>Rename, create or delete files.
+<p><li>Make a snapshot of the database.
+<p><li>Restart database applications.
+</ol>
+<p>
+To cleanly shutdown database operations, all applications accessing the
+database environment must be shutdown and a transaction checkpoint must
+be taken.  If the applications are not
+implemented such that they can be shutdown gracefully (i.e., closing all
+references to the database environment), recovery must be performed after
+all applications have been killed to ensure that the underlying databases
+are consistent on disk.
+<p>
+<b>Future versions of Berkeley DB are expected to remove the restriction that
+database files must be manually created before recovery is performed.</b>
+<p>
+<a href="../../ref/transapp/recovery.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/throughput.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

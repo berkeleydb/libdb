@@ -1,0 +1,34 @@
+<! "@(#)config.so	10.1 (Sleepycat) 12/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Logging Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Logging Subsystem</h3>
+<p>
+<h1 align=center>Configuring logging</h1>
+<p>
+There is only a single parameter used in configuring logging, the size of
+individual log files.  Setting the <a href="../../api_c/DbLog/open.html#lg_max">lg_max</a> field in the
+DB_ENV structure specifies the individual log file size for all of
+the applications sharing the Berkeley DB environment.
+<p>
+Setting the log file size is largely a matter of convenience, and a
+reflection of the application's preferences in backup media and frequency.
+However, setting the log file size to an unrealistically low size could
+potentially cause problems as it would be possible to run out of log
+sequence numbers, which requires a full archival and application restart
+to reset.  See <a href="../../ref/log/limits.html">Log file limits</a> for
+more information.
+<p>
+<a href="../../ref/log/limits.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/dumpload/utility.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

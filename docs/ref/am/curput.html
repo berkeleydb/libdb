@@ -1,0 +1,41 @@
+<! "@(#)curput.so	10.2 (Sleepycat) 11/8/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Storing records with a cursor</h1>
+<p>
+The <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> function is the standard function for storing
+records into the database, with a cursor.  In general, the cursor put
+function takes a key and inserts the associated data into the database.
+<p>
+There are several flags that you can set to customize retrieval:
+<dl compact>
+<p><dt><a href="../../api_c/Dbc/put.html#DB_AFTER">DB_AFTER</a><dd>Create a new record, immediately after the record currently referenced by
+the cursor.
+<p><dt><a href="../../api_c/Dbc/put.html#DB_BEFORE">DB_BEFORE</a><dd>Create a new record, immediately before the record currently referenced by
+the cursor.
+<p><dt><a href="../../api_c/Dbc/get.html#DB_CURRENT">DB_CURRENT</a><dd>Replace the contents of the record currently referenced by the cursor.
+<p><dt><a href="../../api_c/Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a><dd>Create a new record, as the first of the duplicate records for the supplied
+key.
+<p><dt><a href="../../api_c/Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a><dd>Create a new record, as the last of the duplicate records for the supplied
+key.
+</dl>
+<p>
+In all cases, the cursor is repositioned by a <a href="../../api_c/Dbc/put.html">DBcursor->c_put</a> operation
+to point to the newly inserted key/data pair in the database.
+<p>
+<a href="../../ref/am/curget.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/curdel.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

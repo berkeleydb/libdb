@@ -1,0 +1,131 @@
+<! "@(#)unlink.so	10.7 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbTxnMgr::unlink</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbTxnMgr::unlink</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+static int
+DbTxnMgr::unlink(const char *dir, int force, DbEnv *dbenv);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbTxnMgr::unlink function destroys the transaction region identified by the <i>directory</i>
+<b>dir</b>, removing all files used to implement the transaction region.
+(The directory <b>dir</b> is not removed.)
+<p>
+If there are processes that have called <a href="../../api_cxx/DbTxnMgr/open.html">DbTxnMgr::open</a> without calling <a href="../../api_cxx/DbTxnMgr/close.html">DbTxnMgr::close</a>
+(i.e., there are processes currently using the transaction region), DbTxnMgr::unlink will fail
+without further action, unless the force flag is set, in which case DbTxnMgr::unlink
+will attempt to remove the transaction region files regardless of any processes still using it.
+<p>
+The result of attempting to forcibly destroy the region when a process
+has the region open is unspecified.
+Processes using a shared memory region maintain an open file descriptor
+for it.
+On UNIX systems, the region removal should succeed
+and processes that have already joined the region should continue to
+run in the region without change,
+however processes attempting to join the transaction region will either fail or attempt
+to create a new region.
+On other systems (e.g., Windows/NT), where the <b>unlink</b>(2) system
+call will fail if any process has an open file descriptor for the file, the
+region removal will fail.
+<p>
+In the case of catastrophic or system failure, database recovery must be
+performed (see <a href="../../utility/db_recover.html">db_recover</a>), or the DB_RECOVER and DB_RECOVER_FATAL
+flags to <a href="../../api_cxx/DbEnv/appinit.html">DbEnv::appinit</a> must be specified.
+Alternatively, if recovery is not required because no database state is
+maintained across failures, it is possible to clean up a transaction region by removing
+all of the files in the directory specified to the <a href="../../api_cxx/DbTxnMgr/open.html">DbTxnMgr::open</a> function,
+as no transaction region files are created in any other directory.
+Note, however, that this has the potential to remove files created by
+the other Berkeley DB subsystems in the same database environment.
+<p>
+The DbTxnMgr::unlink
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbTxnMgr::unlink method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbTxnMgr::unlink
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+<a href="../../api_cxx/DbEnv/version.html">DbEnv::version</a>,
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fstat(3),
+fsync(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+lseek(3),
+malloc(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+open(3),
+pstat_getdynamic(3),
+read(3),
+shmat(3),
+shmctl(3),
+shmdt(3),
+sigfillset(3),
+sigprocmask(3),
+stat(3),
+strerror(3),
+strlen(3),
+sysconf(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the DbTxnMgr::unlink
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EBUSY<dd>The shared memory region was in use and the force flag was not set.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbTxnMgr/class.html">DbTxnMgr</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbTxnMgr/begin.html">DbTxnMgr::begin</a>,
+<a href="../../api_cxx/DbTxnMgr/checkpoint.html">DbTxnMgr::checkpoint</a>,
+<a href="../../api_cxx/DbTxnMgr/close.html">DbTxnMgr::close</a>,
+<a href="../../api_cxx/DbTxnMgr/open.html">DbTxnMgr::open</a>,
+<a href="../../api_cxx/DbTxnMgr/stat.html">DbTxnMgr::stat</a>
+and
+DbTxnMgr::unlink.
+</tt>
+</body>
+</html>

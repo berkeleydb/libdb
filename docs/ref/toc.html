@@ -1,0 +1,203 @@
+<! "@(#)toc.so	10.45 (Sleepycat) 12/27/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Reference Table of Contents</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>Reference Table of Contents</h1>
+<ol>
+<a name="intro"><font size=+1><li>Introduction</font>
+    <ol>
+    <li><a href="intro/what.html">What is Berkeley DB?</a>
+    <li><a href="intro/where.html">Where does Berkeley DB run?</a>
+    <li><a href="intro/distrib.html">What does the Berkeley DB distribution include?</a>
+    <li><a href="intro/do.html">What can you do with Berkeley DB?</a>
+    </ol>
+<a name="simple_tut"><font size=+1><li>Getting Started: A Simple Tutorial</font>
+    <ol>
+    <li><a href="simple_tut/intro.html">Introduction</a>
+    <li><a href="simple_tut/keydata.html">Key/data pairs</a>
+    <li><a href="simple_tut/errors.html">Error returns</a>
+    <li><a href="simple_tut/open.html">Opening a database</a>
+    <li><a href="simple_tut/put.html">Adding elements to a database</a>
+    <li><a href="simple_tut/get.html">Retrieving elements from a database</a>
+    <li><a href="simple_tut/del.html">Removing elements from a database</a>
+    <li><a href="simple_tut/close.html">Closing a database</a>
+    </ol>
+<a name="am"><font size=+1><li>Access Method Operations</font>
+    <ol>
+    <li><a href="am/ops.html">Access method operations</a>
+	<ol>
+	<li><a href="am/get.html">Retrieving records</a>
+	<li><a href="am/put.html">Storing records</a>
+	<li><a href="am/delete.html">Deleting records</a>
+	<li><a href="am/sync.html">Flushing the database cache</a>
+	<li><a href="am/stat.html">Database statistics</a>
+	<li><a href="am/close.html">Closing a database</a>
+	</ol>
+    <li><a href="am/cursor.html">Database cursors</a>
+	<ol>
+	    <li><a href="am/curget.html">Retrieving records with a cursor</a>
+	    <li><a href="am/curput.html">Storing records with a cursor</a>
+	    <li><a href="am/curdel.html">Deleting records with a cursor</a>
+	    <li><a href="am/join.html">Logical join</a>
+	    <li><a href="am/curclose.html">Closing a cursor</a>
+	</ol>
+    <li><a href="am/partial.html">Partial Record Storing and Retrieval</a>
+    </ol>
+<a name="amconf"><font size=+1><li>Access Method Configuration</font>
+    <ol>
+    <li><a href="am/intro.html">What are the available access methods?</a>
+    <li><a href="am/select.html">Selecting an access method</a>
+    <li><a href="am/logrec.html">Logical record numbers</a>
+    <li>General access method configuration
+	<ol>
+	<li><a href="am/pagesize.html">Selecting a page size (db_pagesize)</a>
+	<li><a href="am/cachesize.html">Selecting a cache size (db_cachesize)</a>
+	<li><a href="am/byteorder.html">Selecting a byte order (db_lorder)</a>
+	<li><a href="am/compare.html">Sorting duplicate data items (dup_compare)</a>
+	<li><a href="am/malloc.html">Non-local memory allocation (db_malloc)</a>
+	</ol>
+    <li>B+tree access method specific configuration
+	<ol>
+	<li><a href="am/bt_compare.html">Btree comparison function (bt_compare)</a>
+	<li><a href="am/bt_prefix.html">Btree prefix function (bt_prefix)</a>
+	<li><a href="am/bt_minkey.html">Minimum keys per page (bt_minkey)</a>
+	<li><a href="am/bt_maxkey.html">Maximum keys per page (bt_maxkey)</a>
+	<li><a href="am/bt_dup.html">Duplicate data items (DB_DUP)</a>
+	<li><a href="am/bt_recnum.html">Retrieving Btree records by logical record number (DB_RECNUM)</a>
+	</ol>
+    <li>Hash access method specific configuration
+	<ol>
+	<li><a href="am/h_ffactor.html">Page fill factor (h_ffactor)</a>
+	<li><a href="am/h_hash.html">Specifying your own hashing function (h_hash)</a>
+	<li><a href="am/h_nelem.html">Hash table size (h_nelem)</a>
+	<li><a href="am/h_dup.html">Duplicate data items (DB_DUP)</a>
+	</ol>
+    <li>Recno access method specific configuration
+	<ol>
+	<li><a href="am/re_delim.html">Record delimiters (re_delim, DB_DELIMITER)</a>
+	<li><a href="am/re_len.html">Record length (re_len, DB_FIXEDLEN)</a>
+	<li><a href="am/re_pad.html">Record padding byte value (re_pad, DB_PAD)</a>
+	<li><a href="am/re_source.html">Record backing file (re_source, DB_SNAPSHOT)</a>
+	<li><a href="am/renumber.html">Logically renumbering records (DB_RENUMBER)</a>
+	</ol>
+    </ol>
+<a name="arch"><font size=+1><li>Berkeley DB Architecture</font>
+    <ol>
+    <li><a href="arch/bigpic.html">The big picture</a>
+    <li><a href="arch/env.html">Environment</a>
+    <li><a href="arch/subsystem.html">Subsystems</a>
+    <li><a href="arch/utilities.html">Supporting utilities</a>
+    <li>Application architectural issues
+        <ol>
+        <li><a href="arch/progmodel.html">Programming model</a>
+        <li><a href="arch/apis.html">Available APIs</a>
+        <li><a href="arch/script.html">Scripting languages</a>
+        <li><a href="arch/extending.html">Extending Berkeley DB</a>
+	</ol>
+    </ol>
+<a name="env"><font size=+1><li>The Berkeley DB Environment</font>
+    <ol>
+    <li><a href="env/create.html">Creating an environment</a>
+    <li><a href="env/open.html">Opening databases within the environment</a>
+    <li><a href="env/naming.html">File naming</a>
+    <li><a href="env/security.html">Security</a>
+    <li><a href="env/region.html">Shared memory regions</a>
+    </ol>
+<a name="cam"><font size=+1><li>Berkeley DB Concurrent Access Methods Applications</font>
+    <ol>
+    <li><a href="cam/intro.html">Building concurrent access method applications</a>
+    </ol>
+<a name="transapp"><font size=+1><li>Berkeley DB Transactional Access Methods Applications</font>
+    <ol>
+    <li><a href="transapp/intro.html">Introduction</a>
+    <li><a href="transapp/apps.html">Building transaction protected applications</a>
+    <li><a href="transapp/admin.html">Administration</a>
+    <li><a href="transapp/deadlock.html">Deadlock detection</a>
+    <li><a href="transapp/checkpoint.html">Performing checkpoints</a>
+    <li><a href="transapp/archival.html">Archival procedures</a>
+    <li><a href="transapp/recovery.html">Recovery procedures</a>
+    <li><a href="transapp/filesys.html">Recovery and filesystem operations</a>
+    <li><a href="transapp/throughput.html">Transaction throughput</a>
+    </ol>
+<a name="program"><font size=+1><li>Programmer Notes</font>
+    <ol>
+    <li><a href="program/appsignals.html">Application signal handling</a>
+    <li><a href="program/errorret.html">Error returns to applications</a>
+    <li><a href="program/thread.html">Building multi-threaded applications</a>
+    <li><a href="program/java.html">Java programming notes</a>
+    <li><a href="program/environ.html">Environmental variables</a>
+    <li><a href="program/version.html">Library version information</a>
+    <li><a href="program/dbsizes.html">Database limits</a>
+    <li><a href="program/byteorder.html">Byte ordering</a>
+    <li><a href="program/compatible.html">Compatibility with historic interfaces</a>
+    <li><a href="program/convert.html">Integrating version 1.85 applications</a>
+    <li><a href="program/runtime.html">Run-time configuration</a>
+    </ol>
+<a name="txn"><font size=+1><li>The Transaction Subsystem</font>
+    <ol>
+    <li>Berkeley DB and transactions
+    <li>Transaction restrictions
+    <li><a href="txn/stability.html">Cursor stability</a>
+    <li><a href="txn/limits.html">Transaction limits</a>
+    <li><a href="txn/config.html">Configuring transactions</a>
+    <li><a href="txn/other.html">Transactions and non-Berkeley DB applications</a>
+    </ol>
+<a name="mpool"><font size=+1><li>The Memory Pool Subsystem</font>
+    <ol>
+    <li><a href="mp/intro.html">Berkeley DB and the memory pool</a>
+    <li><a href="mp/config.html">Configuring the memory pool</a>
+    </ol>
+<a name="lock"><font size=+1><li>The Locking Subsystem</font>
+    <ol>
+    <li>Berkeley DB and locking
+    <li>Page Locks
+	<ol>
+	<li><a href="lock/stdmode.html">Standard lock modes</a>
+    	<li>Two-phase locking using transactions
+    	<li>Two-phase locking without transactions
+	</ol>
+    <li>Deadlocks and deadlock avoidance
+    <li>Configuring locking
+    <li>Locking and non-Berkeley DB applications
+    </ol>
+<a name="log"><font size=+1><li>The Logging Subsystem</font>
+    <ol>
+    <li><a href="log/intro.html">Berkeley DB and logging</a>
+    <li><a href="log/limits.html">Log file limits</a>
+    <li><a href="log/config.html">Configuring logging</a>
+    </ol>
+<a name="dump"><font size=+1><li>Dumping and Reloading Databases</font>
+    <ol>
+    <li><a href="dumpload/utility.html">The db_dump and db_load utilities</a>
+    <li><a href="dumpload/format.html">Dump output formats</a>
+    <li><a href="dumpload/text.html">Loading text into databases</a>
+    </ol>
+<a name="perl"><font size=+1><li>Perl</font>
+    <ol>
+    <li><a href="perl/intro.html">Using Berkeley DB with Perl</a>
+    </ol>
+<a name="sendmail"><font size=+1><li>Sendmail</font>
+    <ol>
+    <li><a href="sendmail/intro.html">Using Berkeley DB with Sendmail</a>
+    </ol>
+<a name="install"><font size=+1><li>System Installation Notes</font>
+    <ol>
+    <li><a href="install/file.html">File utility /etc/magic information</a>
+    </ol>
+<a name="debug"><font size=+1><li>Debugging Applications</font>
+    <ol>
+    <li><a href="debug/runtime.html">Run-time error information.</a>
+    <li>Displaying and interpreting the log
+    <li>Including operation information in the log
+    </ol>
+</ol>
+</tt>
+</body>
+</html>

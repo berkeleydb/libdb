@@ -1,0 +1,194 @@
+<! "@(#)apps.so	10.14 (Sleepycat) 11/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Transaction Protected Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Transaction Protected Applications</h3>
+<p>
+<h1 align=center>Building transaction protected applications</h1>
+<p>
+Creating transaction protected applications using the Berkeley DB access methods
+is quite easy.  In almost all cases, applications use <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>
+to perform initialization of all of the Berkeley DB subsystems.  As transaction
+support requires all five Berkeley DB subsystems, the <a href="../../api_c/DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>,
+<a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/DbEnv/appinit.html#DB_INIT_LOG">DB_INIT_LOG</a> and <a href="../../api_c/DbEnv/appinit.html#DB_INIT_TXN">DB_INIT_TXN</a> flags
+should be specified.
+<p>
+Once the application has called <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>, it should open the
+databases it will use.  Once the databases are opened, the application
+can make changes to the databases, grouped inside of transaction calls.
+Each set of changes should be surrounded by the appropriate
+<a href="../../api_c/DbTxnMgr/begin.html">txn_begin</a>, <a href="../../api_c/DbTxn/commit.html">txn_commit</a> and <a href="../../api_c/DbTxn/abort.html">txn_abort</a> calls.
+<p>
+The Berkeley DB access methods will make the appropriate calls into the lock,
+log and memory pool subsystems in order to guarantee transaction semantics.
+When the application is ready to exit, all outstanding transactions should have
+been committed or aborted.
+<p>
+Databases accessed by a transaction must not be closed during the
+transaction.  Once all outstanding transactions are finished, all open
+Berkeley DB files should be closed.  When the Berkeley DB database files have been
+closed, the environment should be closed by calling <a href="../../api_c/DbEnv/appexit.html">db_appexit</a>.
+<p>
+It is not necessary to transaction protect read-only transactions, unless
+those transactions require repeatable reads.  However, if there are update
+transactions present in the database, the reading transactions must still
+use locking, and should be prepared to repeat any operation (possibly
+closing and reopening a cursor) which fails with a return value of EAGAIN.
+<p>
+Consider an application suite where multiple processes (or, multiple
+threads of control in a single process, for that matter) are changing the
+values associated with a key in one or more databases.  Specifically, they
+are taking the current value, incrementing it, and then storing it back
+into the database.  There are two reasons that such an application needs
+transactions (other than the obvious requirement of recoverability after
+application or system failure):
+<p>
+The first additional reason for transactions is that the application needs
+atomicity, i.e., since we want to change a value that's currently in the
+database, we have to make sure that once we read it, no other thread of
+control modifies it.  For example, let's say that both thread #1 and
+thread #2 are doing similar operations in the database, where thread #1
+is incrementing records by 3, and thread #2 is incrementing records by 5.
+What we want to happen is to increment the record by a total of 8.  If
+the operations interleave in the right (well, wrong) order, that is not
+what will happen:
+<p>
+<p><ul><pre>
+thread #1  <b>read</b> record: the value is 2
+thread #2  <b>read</b> record: the value is 2
+thread #2  <b>write</b> record + 5 back into the database (new value 7)
+thread #1  <b>write</b> record + 3 back into the database (new value 5)
+</pre></ul><p>
+<p>
+As you can see, instead of incrementing the record by a total of 8, we've
+only incremented it by 3, because thread #1 overwrote thread #2's
+change.  By wrapping the operations in transactions, we ensure that this
+cannot happen.  In a transaction, when the first thread reads the record,
+locks are acquired that will not be released until the transaction
+finishes, guaranteeing that all other readers and writers will block,
+waiting for the first thread's transaction to complete (or to be aborted).
+<p>
+The second additional reason is that when multiple processes or threads
+of control are modifying the database, there is the potential for
+deadlock.  In Berkeley DB, deadlock is signified by an error return from the
+Berkeley DB function of EAGAIN.
+<p>
+Here is an example function that does transaction protected increments
+on database records:
+<p>
+<p><ul><pre>
+int
+increment(dbenv, dbp, key, increment)
+	DB_ENV *dbenv;
+	DB *dbp;
+	DBT *key;
+	int increment;
+{
+	DBT data;
+	DB_TXN *tid;
+	DB_TXNMGR *txnp;
+	char buf[64];
+<p>
+	/* Initialization. */
+	txnp = dbenv->tx_info;
+	memset(&data, 0, sizeof(data));
+<p>
+	/* Abort and retry the modification. */
+	if (0) {
+retry:		if (txn_abort(tid) != 0)
+			err("txn_abort");
+		/* FALLTHROUGH */
+	}
+<p>
+	/* Begin the transaction. */
+	if ((errno = txn_begin(txnp, NULL, &tid)) != 0)
+		err("txn_begin");
+<p>
+	/* Get the key. */
+	switch (errno = dbp->get(dbp, tid, key, &data, 0)) {
+	case EAGAIN:
+		goto retry;
+	case 0:
+		break;
+	case DB_NOTFOUND:
+		if (txn_commit(tid))
+			err("txn_commit");
+		return (0);
+	}
+<p>
+	/* Get the current value, add the increment. */
+	(void)sprintf(buf, "%d", atoi(data.data) + increment);
+	data.data = buf;
+	data.size = strlen(buf) + 1;
+<p>
+	/* Store the new value. */
+	switch (errno = dbp->put(dbp, tid, key, &data, 0)) {
+	case EAGAIN:
+		goto retry;
+	case 0:
+		break;
+	default:
+		(void)txn_abort(tid);
+		err("dbp->put");
+	}
+<p>
+	/* The transaction finished, commit it. */
+	if ((errno = txn_commit(tid)) != 0)
+		err("txn_commit");
+<p>
+	return (0);
+}
+</pre></ul><p>
+<p>
+In applications supporting transactions, note that all Berkeley DB functions
+have an additional possible error return: EAGAIN.  In the above sample
+code, you can see that any time the Berkeley DB function returns EAGAIN, the
+transaction is aborted (<a href="../../api_c/DbTxn/abort.html">txn_abort</a>, which releases all of its
+resources), and then the transaction is retried, from scratch.  There is
+no requirement that the transaction be attempted again, but that is the
+common thing for applications to do.
+<p>
+There is one additional error that transaction protected applications
+need to handle, and which is not shown in the above example.
+<p>
+There exists a class of errors that Berkeley DB considers fatal to an entire
+Berkeley DB environment.  An example of this type of error is a log write
+failure due to the disk being out of free space. The only way to recover
+from these failures is for the application to exit, run recovery of the
+Berkeley DB environment, and re-enter Berkeley DB. (It is not strictly necessary that
+the application exit, although that is the only way to recover system
+resources, e.g., file descriptors and memory, currently allocated by
+Berkeley DB.)
+<p>
+When this type of error is encountered, the error value
+DB_RUNRECOVERY is returned. This error can be returned by any
+Berkeley DB interface. If a fatal error occurs, DB_RUNRECOVERY will be
+returned from all subsequent Berkeley DB calls made by any threads or processes
+participating in the environment.
+<p>
+Optionally, applications may also specify a fatal-error callback function
+by setting the db_paniccall field of the DB_ENV structure before
+initializing the environment with <a href="../../api_c/DbEnv/appinit.html">db_appinit</a>.  This callback
+function will be called with two arguments: a reference to the DB_ENV
+structure associated with the environment, and the <b>errno</b> value
+associated with the underlying error that caused the problem.
+<p>
+Applications can handle such fatal errors in one of two ways: by checking
+for DB_RUNRECOVERY as part of their normal Berkeley DB error return
+checking, similarly to EAGAIN in the above example, or, in applications
+that have no cleanup processing of their own, by simply exiting the
+application when the callback function is called.
+<p>
+<a href="../../ref/transapp/intro.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/transapp/admin.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

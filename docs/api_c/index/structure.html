@@ -1,0 +1,66 @@
+<! "@(#)structure.so	10.9 (Sleepycat) 10/30/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: C Interface by Public Structure Elements</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>C Interface by Public Structure Elements</h1>
+<table border=1 align=center>
+<tr><th>Berkeley DB Key/Data Pairs: DBT Structure</th><th>Description</th></tr>
+<tr><td><a href="../Dbt/dbt.html#data">data</a><td>Byte string value</td></tr></tr>
+<tr><td><a href="../Dbt/dbt.html#dlen">dlen</a><td>Partial record length</td></tr></tr>
+<tr><td><a href="../Dbt/dbt.html#doff">doff</a><td>Partial record offset</td></tr></tr>
+<tr><td><a href="../Dbt/dbt.html#size">size</a><td>The length of DBT:data</td></tr></tr>
+<tr><td><a href="../Dbt/dbt.html#ulen">ulen</a><td>Application buffer length</td></tr></tr>
+<tr><th>Berkeley DB Environment: DB_ENV Structure</th><th>Description</th></tr>
+<tr><td><a href="../DbEnv/appinit.html#db_errcall">db_errcall</a><td>Additional error information</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#db_errfile">db_errfile</a><td>Additional error information</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#db_errpfx">db_errpfx</a><td>Additional error information</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#db_verbose">db_verbose</a><td>Informational and debugging messages</td></tr></tr>
+<tr><td><a href="../DbLog/open.html#lg_max">lg_max</a><td>Maximum single log file size</td></tr></tr>
+<tr><td><a href="../DbLockTab/open.html#lk_conflicts">lk_conflicts</a><td>Lock modes</td></tr></tr>
+<tr><td><a href="../DbLockTab/open.html#lk_detect">lk_detect</a><td>Deadlock detector configuration</td></tr></tr>
+<tr><td><a href="../DbLockTab/open.html#lk_max">lk_max</a><td>Number of locks in the table</td></tr></tr>
+<tr><td><a href="../DbLockTab/open.html#lk_modes">lk_modes</a><td>Lock modes in the table</td></tr></tr>
+<tr><td><a href="../DbMpool/open.html#mp_mmapsize">mp_mmapsize</a><td>Set the maximum mapped file size</td></tr></tr>
+<tr><td><a href="../DbMpool/open.html#mp_size">mp_size</a><td>Size of the memory pool</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#tx_info">tx_info</a><td>Return from <a href="../../api_c/DbTxnMgr/open.html">txn_open</a></td></tr></tr>
+<tr><td><a href="../DbTxnMgr/open.html#tx_max">tx_max</a><td>Maximum simultaneous transactions</td></tr></tr>
+<tr><td><a href="../DbTxnMgr/open.html#tx_recover">tx_recover</a><td>Transaction abort function</td></tr></tr>
+<tr><td><a href="../Db/open.html#type">type</a><td>The type of the underlying access method</td></tr></tr>
+<tr><th>Berkeley DB Access Methods: DB_INFO Structure</th><th>Description</th></tr>
+<tr><td><a href="../DbInfo/info.html#bt_compare">bt_compare</a><td>Btree Access Method: key comparison function</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#bt_minkey">bt_minkey</a><td>Btree Access Method: minimum keys per page </td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#bt_prefix">bt_prefix</a><td>Btree Access Method: prefix comparison function</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#db_cachesize">db_cachesize</a><td>Suggested cache size</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#db_lorder">db_lorder</a><td>Underlying database byte order</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#db_malloc">db_malloc</a><td>Returned memory allocation function</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#db_pagesize">db_pagesize</a><td>Underlying database page size</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#dup_compare">dup_compare</a><td>Duplicate record comparison function</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#h_ffactor">h_ffactor</a><td>Hash Access Method: desired density within the hash table</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#h_hash">h_hash</a><td>Hash Access Method: key hash function</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#h_nelem">h_nelem</a><td>Hash Access Method: estimated table size</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#re_delim">re_delim</a><td>Recno Access Method: variable-length record delimitor</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#re_len">re_len</a><td>Recno Access Method: fixed-length record length</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#re_pad">re_pad</a><td>Recno Access Method: fixed-length record pad byte</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#re_source">re_source</a><td>Recno Access Method: backing source file</td></tr></tr>
+<tr><th>Berkeley DB Locking Subsystem: lockop_t Structure</th><th>Description</th></tr>
+<tr><td><a href="../DbLockTab/vec.html#lock">lock</a><td>Lock reference</td></tr></tr>
+<tr><td><a href="../DbLockTab/vec.html#mode">mode</a><td>Lock mode</td></tr></tr>
+<tr><td><a href="../DbLockTab/vec.html#obj">obj</a><td>Object to be locked</td></tr></tr>
+<tr><td><a href="../DbLockTab/vec.html#op">op</a><td>Lock operation to be performed</td></tr></tr>
+<tr><th>Berkeley DB Shared Memory Buffer Pool: Structures</th><th>Description</th></tr>
+<tr><td><a href="../DbMpoolFile/open.html#clear_len">clear_len</a><td>Bytes to clear during page creation</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#fileid">fileid</a><td>Unique identifier for the file</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#ftype">ftype</a><td>File type</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#lsn_offset">lsn_offset</a><td>Byte offset of the page LSN</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#pgcookie">pgcookie</a><td>Pgin/pgout function cookie</td></tr></tr>
+</table>
+</tt>
+</body>
+</html>

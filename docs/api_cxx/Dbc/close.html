@@ -1,0 +1,95 @@
+<! "@(#)close.so	10.8 (Sleepycat) 10/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Dbc::close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Dbc::close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+Dbc::close(void);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The Dbc::close method discards the cursor.
+<p>
+It is possible for the Dbc::close method to return EAGAIN, signaling that
+any enclosing transaction should be aborted.  If the application is
+already intending to abort the transaction, this error should be ignored,
+and the application should proceed.
+<p>
+Once Dbc::close has been called, regardless of its return, the
+cursor handle may not be used again.
+<p>
+The Dbc::close
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Dbc::close method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The Dbc::close
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+__account_page(3),
+dbc->c_am_close(3),
+dbenv->db_paniccall(3),
+fflush(3),
+fprintf(3),
+free(3),
+func(3),
+<a href="../../api_cxx/DbLockTab/get.html">DbLockTab::get</a>,
+<a href="../../api_cxx/DbLock/put.html">DbLock::put</a>,
+<a href="../../api_cxx/DbLockTab/vec.html">DbLockTab::vec</a>,
+<a href="../../api_cxx/DbLog/put.html">DbLog::put</a>,
+malloc(3),
+memcpy(3),
+memmove(3),
+<a href="../../api_cxx/DbMpoolFile/get.html">DbMpoolFile::get</a>,
+<a href="../../api_cxx/DbMpoolFile/put.html">DbMpoolFile::put</a>,
+<a href="../../api_cxx/DbMpoolFile/set.html">DbMpoolFile::set</a>,
+memset(3),
+realloc(3),
+strerror(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+In addition, the Dbc::close
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<p>
+<dl compact>
+<p><dt>EAGAIN<dd>A lock was unavailable.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/Dbc/class.html">Dbc</a>
+<p>
+<h1>See Also</h1>
+Dbc::close,
+<a href="../../api_cxx/Dbc/del.html">Dbc::del</a>,
+<a href="../../api_cxx/Dbc/get.html">Dbc::get</a>
+and
+<a href="../../api_cxx/Dbc/put.html">Dbc::put</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<! "@(#)close.so	10.9 (Sleepycat) 10/10/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Db::close</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Db::close</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+Db::close(u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The Db::close method flushes any cached database information to disk,
+closes any open cursors, frees any allocated resources, and closes any
+underlying files.
+Since key/data pairs are cached in memory, failing to sync the file with
+the Db::close or <a href="../../api_cxx/Db/sync.html">Db::sync</a> method may result in inconsistent or
+lost information.
+<p>
+The <b>flags</b> parameter must be set to 0 or the following value:
+<dl compact>
+<a name="DB_NOSYNC">
+<p><dt>DB_NOSYNC<dd>Do not flush cached information to disk.
+<p>
+The DB_NOSYNC flag is a dangerous option.
+It should only be set if the application is doing logging (with
+transactions) so that the database is recoverable after a system
+or application crash, or if the database is always generated from
+scratch after any system or application crash.
+<p>
+<b>It is important to understand that flushing cached information to disk
+only minimizes the window of opportunity for corrupted data.</b>
+While unlikely, it is possible for database corruption to happen if a
+system or application crash occurs while writing data to the database.
+To ensure that database corruption never occurs, applications must either:
+use transactions and logging with automatic recovery, use logging and
+application-specific recovery, or edit a copy of the database,
+and, once all applications using the database have successfully called
+Db::close, atomically replace the original database with the
+updated copy.
+</dl>
+<p>
+When multiple threads are using the Berkeley DB handle concurrently, only a single
+thread may call the Db::close method.
+<p>
+Once Db::close has been called, regardless of its return, the
+Berkeley DB handle may not be used again.
+<p>
+The Db::close
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the Db::close method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The Db::close
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>,
+DBcursor->c_close(3),
+dbc->c_am_destroy(3),
+<a href="../../api_c/historic/dbm.html">dbm_close</a>,
+dbp->am_close(3),
+fflush(3),
+fprintf(3),
+free(3),
+<a href="../../api_cxx/DbLog/db_unregister.html">DbLog::db_unregister</a>,
+<a href="../../api_cxx/DbMpool/close.html">DbMpool::close</a>,
+<a href="../../api_cxx/DbMpoolFile/close.html">DbMpoolFile::close</a>,
+<a href="../../api_cxx/DbMpoolFile/sync.html">DbMpoolFile::sync</a>,
+memset(3),
+vfprintf(3),
+and
+vsnprintf(3).
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/Db/class.html">Db</a>
+<p>
+<h1>See Also</h1>
+Db::close,
+<a href="../../api_cxx/Db/cursor.html">Db::cursor</a>,
+<a href="../../api_cxx/Db/del.html">Db::del</a>,
+<a href="../../api_cxx/Db/fd.html">Db::fd</a>,
+<a href="../../api_cxx/Db/get.html">Db::get</a>,
+<a href="../../api_cxx/Db/get_byteswapped.html">Db::get_byteswapped</a>,
+<a href="../../api_cxx/Db/get_type.html">Db::get_type</a>,
+<a href="../../api_cxx/Db/join.html">Db::join</a>,
+<a href="../../api_cxx/Db/open.html">Db::open</a>,
+<a href="../../api_cxx/Db/put.html">Db::put</a>,
+<a href="../../api_cxx/Db/stat.html">Db::stat</a>
+and
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>.
+</tt>
+</body>
+</html>

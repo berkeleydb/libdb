@@ -1,0 +1,54 @@
+<! "@(#)class.so	10.4 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Db</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Db</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the specific details of the Db class,
+which is the center of access activity.
+<p>
+The currently supported file formats are btree, hashed and recno.
+The btree format is a representation of a sorted, balanced tree structure.
+The hashed format is an extensible, dynamic hashing scheme.
+The recno format supports fixed or variable length records (optionally
+retrieved from a flat text file).
+<p>
+Storage and retrieval for the Db access methods are based on
+key/data pairs, using the <a href="../../api_cxx/Dbt/class.html">Dbt</a> class.
+<p>
+<h1>Class</h1>
+Db
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/Db/close.html">Db::close</a>,
+<a href="../../api_cxx/Db/cursor.html">Db::cursor</a>,
+<a href="../../api_cxx/Db/del.html">Db::del</a>,
+<a href="../../api_cxx/Db/fd.html">Db::fd</a>,
+<a href="../../api_cxx/Db/get.html">Db::get</a>,
+<a href="../../api_cxx/Db/get_byteswapped.html">Db::get_byteswapped</a>,
+<a href="../../api_cxx/Db/get_type.html">Db::get_type</a>,
+<a href="../../api_cxx/Db/join.html">Db::join</a>,
+<a href="../../api_cxx/Db/open.html">Db::open</a>,
+<a href="../../api_cxx/Db/put.html">Db::put</a>,
+<a href="../../api_cxx/Db/stat.html">Db::stat</a>
+and
+<a href="../../api_cxx/Db/sync.html">Db::sync</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<! "@(#)flags.so	10.3 (Sleepycat) 10/30/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: C Interface Flags</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1 align=center>C Interface Flags</h1>
+<table border=1 align=center>
+<tr><th>Berkeley DB Environment: db_appinit</th><th>Description</th></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_INIT_LOCK">DB_INIT_LOCK</a><td>Initialize the lock subsystem</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_INIT_LOG">DB_INIT_LOG</a><td>Initialize the log subsystem</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a><td>Initialize the shared memory buffer pool</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_INIT_TXN">DB_INIT_TXN</a><td>Initialized the transaction subsystem</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_MPOOL_PRIVATE">DB_MPOOL_PRIVATE</a><td>Create a private memory pool</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_NOMMAP">DB_NOMMAP</a><td>Do not memory map database files</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_RECOVER">DB_RECOVER</a><td>Run normal recovery</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a><td>Run catastrophic recovery</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><td>Do not synchronously flush the log on commit</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a><td>Use environment variables</td></tr></tr>
+<tr><td><a href="../DbEnv/appinit.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a><td>Use environment variables (root only)</td></tr></tr>
+<tr><th>Berkeley DB Access Methods</th><th>Description</th></tr>
+<tr><td><a href="../Db/put.html#DB_APPEND">DB_APPEND</a><td>Append to the database</td></tr></tr>
+<tr><td><a href="../Db/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_DELIMITER">DB_DELIMITER</a><td>Specify variable-length record delimiter</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_DUP">DB_DUP</a><td>Support duplicate data items</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_DUPSORT">DB_DUPSORT</a><td>Sort duplicate data items</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_FIXEDLEN">DB_FIXEDLEN</a><td>Specify fixed-length records</td></tr></tr>
+<tr><td><a href="../Db/open.html#DB_NOMMAP">DB_NOMMAP</a><td>Do not map the file</td></tr></tr>
+<tr><td><a href="../Db/put.html#DB_NOOVERWRITE">DB_NOOVERWRITE</a><td>Do not overwrite existing items</td></tr></tr>
+<tr><td><a href="../Db/close.html#DB_NOSYNC">DB_NOSYNC</a><td>Do not flush cached information on close</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_PAD">DB_PAD</a><td>Specify fixed-length record pad byte</td></tr></tr>
+<tr><td><a href="../Db/open.html#DB_RDONLY">DB_RDONLY</a><td>Open the file read-only</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_RECNUM">DB_RECNUM</a><td>Support retrieval from btrees using record numbers</td></tr></tr>
+<tr><td><a href="../Db/stat.html#DB_RECORDCOUNT">DB_RECORDCOUNT</a><td>Return a record count</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_RENUMBER">DB_RENUMBER</a><td>Cause logical record numbers to be mutable</td></tr></tr>
+<tr><td><a href="../Db/get.html#DB_SET_RECNO">DB_SET_RECNO</a><td>Retrieve a numbered item</td></tr></tr>
+<tr><td><a href="../DbInfo/info.html#DB_SNAPSHOT">DB_SNAPSHOT</a><td>Snapshot backing source file on startup</td></tr></tr>
+<tr><td><a href="../Db/open.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><td><a href="../Db/open.html#DB_TRUNCATE">DB_TRUNCATE</a><td>Logically truncate the database</td></tr></tr>
+<tr><th>Berkeley DB Access Method (Cursors)</th><th>Description</th></tr>
+<tr><td><a href="../Dbc/put.html#DB_AFTER">DB_AFTER</a><td>Store after the cursor</td></tr></tr>
+<tr><td><a href="../Dbc/put.html#DB_BEFORE">DB_BEFORE</a><td>Store before the cursor</td></tr></tr>
+<tr><td><a href="../Dbc/put.html#DB_CURRENT">DB_CURRENT</a><td>Overwrite the cursor item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_FIRST">DB_FIRST</a><td>Return the first item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_GET_RECNO">DB_GET_RECNO</a><td>Return an item's record number</td></tr></tr>
+<tr><td><a href="../Dbc/put.html#DB_KEYFIRST">DB_KEYFIRST</a><td>Store as the first of duplicates</td></tr></tr>
+<tr><td><a href="../Dbc/put.html#DB_KEYLAST">DB_KEYLAST</a><td>Store as the last of duplicates</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_LAST">DB_LAST</a><td>Return the last item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_NEXT">DB_NEXT</a><td>Return the next item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_PREV">DB_PREV</a><td>Return the previous item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_SET">DB_SET</a><td>Return a specific item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_SET_RANGE">DB_SET_RANGE</a><td>Return the smallest item greater than or equal to item</td></tr></tr>
+<tr><td><a href="../Dbc/get.html#DB_SET_RECNO">DB_SET_RECNO</a><td>Return an item by record number</td></tr></tr>
+<tr><th>Berkeley DB Locking Subsystem</th><th>Description</th></tr>
+<tr><td><a href="../DbLockTab/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbLockTab/detect.html#DB_LOCK_CONFLICT">DB_LOCK_CONFLICT</a><td>Run deadlock detector if a lock conflict has occurred</td></tr></tr>
+<tr><td><a href="../DbLockTab/vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a><td>Do not wait for unavailable lock</td></tr></tr>
+<tr><td><a href="../DbLockTab/open.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><th>Berkeley DB Logging Subsystem</th><th>Description</th></tr>
+<tr><td><a href="../DbLog/archive.html#DB_ARCH_ABS">DB_ARCH_ABS</a><td>Return names as absolute paths</td></tr></tr>
+<tr><td><a href="../DbLog/archive.html#DB_ARCH_DATA">DB_ARCH_DATA</a><td>Return database files to be archived</td></tr></tr>
+<tr><td><a href="../DbLog/archive.html#DB_ARCH_LOG">DB_ARCH_LOG</a><td>Return all log file names</td></tr></tr>
+<tr><td><a href="../DbLog/put.html#DB_CHECKPOINT">DB_CHECKPOINT</a><td>Checkpoint the log</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_CHECKPOINT">DB_CHECKPOINT</a><td>Return last checkpoint</td></tr></tr>
+<tr><td><a href="../DbLog/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbLog/put.html#DB_CURLSN">DB_CURLSN</a><td>Return the LSN of the next record</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_CURRENT">DB_CURRENT</a><td>Return current log record</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_FIRST">DB_FIRST</a><td>Return first log record</td></tr></tr>
+<tr><td><a href="../DbLog/put.html#DB_FLUSH">DB_FLUSH</a><td>Flush the log to disk</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_LAST">DB_LAST</a><td>Return last log record</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_NEXT">DB_NEXT</a><td>Return next log record</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_PREV">DB_PREV</a><td>Return previous log record</td></tr></tr>
+<tr><td><a href="../DbLog/get.html#DB_SET">DB_SET</a><td>Return a specific log record</td></tr></tr>
+<tr><td><a href="../DbLog/open.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><th>Berkeley DB Shared Memory Buffer Pool</th><th>Description</th></tr>
+<tr><td><a href="../DbMpool/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/put.html#DB_MPOOL_CLEAN">DB_MPOOL_CLEAN</a><td>Mark the page clean</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/set.html#DB_MPOOL_CLEAN">DB_MPOOL_CLEAN</a><td>Mark the page clean</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/get.html#DB_MPOOL_CREATE">DB_MPOOL_CREATE</a><td>Create a specific page</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/put.html#DB_MPOOL_DIRTY">DB_MPOOL_DIRTY</a><td>Mark the page dirty</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/set.html#DB_MPOOL_DIRTY">DB_MPOOL_DIRTY</a><td>Mark the page dirty</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/put.html#DB_MPOOL_DISCARD">DB_MPOOL_DISCARD</a><td>Mark the page for early discard</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/set.html#DB_MPOOL_DISCARD">DB_MPOOL_DISCARD</a><td>Mark the page for early discard</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/get.html#DB_MPOOL_LAST">DB_MPOOL_LAST</a><td>Return the last page</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/get.html#DB_MPOOL_NEW">DB_MPOOL_NEW</a><td>Create a new page</td></tr></tr>
+<tr><td><a href="../DbMpool/open.html#DB_MPOOL_PRIVATE">DB_MPOOL_PRIVATE</a><td>Create an unshared memory pool</td></tr></tr>
+<tr><td><a href="../DbMpool/open.html#DB_NOMMAP">DB_NOMMAP</a><td>Do not map any files</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#DB_NOMMAP">DB_NOMMAP</a><td>Do not map the file</td></tr></tr>
+<tr><td><a href="../DbMpoolFile/open.html#DB_RDONLY">DB_RDONLY</a><td>Enable free-threading</td></tr></tr>
+<tr><td><a href="../DbMpool/open.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><th>Berkeley DB Transaction Subsystem</th><th>Description</th></tr>
+<tr><td><a href="../DbTxnMgr/open.html#DB_CREATE">DB_CREATE</a><td>Create underlying files</td></tr></tr>
+<tr><td><a href="../DbTxnMgr/open.html#DB_THREAD">DB_THREAD</a><td>Enable free-threading</td></tr></tr>
+<tr><td><a href="../DbTxnMgr/open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><td>Do not synchronously flush the log on commit</td></tr></tr>
+<tr><th>Berkeley DB System Configuration</th><th>Description</th></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_CLOSE">DB_FUNC_CLOSE</a><td>System file close function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_DIRFREE">DB_FUNC_DIRFREE</a><td>System directory listing free function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_DIRLIST">DB_FUNC_DIRLIST</a><td>System directory listing function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_EXISTS">DB_FUNC_EXISTS</a><td>System file exists function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_FREE">DB_FUNC_FREE</a><td>System memory free function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_FSYNC">DB_FUNC_FSYNC</a><td>System file sync function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_IOINFO">DB_FUNC_IOINFO</a><td>System file I/O information function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_MALLOC">DB_FUNC_MALLOC</a><td>System memory allocation function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_MAP">DB_FUNC_MAP</a><td>System file mapping function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_OPEN">DB_FUNC_OPEN</a><td>System file open function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_READ">DB_FUNC_READ</a><td>System file read function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_REALLOC">DB_FUNC_REALLOC</a><td>System memory reallocation function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_RUNLINK">DB_FUNC_RUNLINK</a><td>System region removal function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_SEEK">DB_FUNC_SEEK</a><td>System file seek function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_SLEEP">DB_FUNC_SLEEP</a><td>System sleep function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_UNLINK">DB_FUNC_UNLINK</a><td>System file unlink function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_UNMAP">DB_FUNC_UNMAP</a><td>System region release function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_WRITE">DB_FUNC_WRITE</a><td>System file write function</td></tr></tr>
+<tr><td><a href="../internal/db_jump_set.html#DB_FUNC_YIELD">DB_FUNC_YIELD</a><td>System processor yield function</td></tr></tr>
+<tr><td><a href="../internal/db_value_set.html#DB_MUTEXLOCKS">DB_MUTEXLOCKS</a><td>Toggle mutex locks on/off</td></tr></tr>
+<tr><td><a href="../internal/db_value_set.html#DB_REGION_ANON">DB_REGION_ANON</a><td>Toggle anonymous memory regions</td></tr></tr>
+<tr><td><a href="../internal/db_value_set.html#DB_REGION_INIT">DB_REGION_INIT</a><td>Initialize regions during creation</td></tr></tr>
+<tr><td><a href="../internal/db_value_set.html#DB_REGION_NAME">DB_REGION_NAME</a><td>Toggle anonymous memory regions</td></tr></tr>
+<tr><td><a href="../internal/db_value_set.html#DB_TSL_SPINS">DB_TSL_SPINS</a><td>Specify mutex lock spin count</td></tr></tr>
+</table>
+</tt>
+</body>
+</html>

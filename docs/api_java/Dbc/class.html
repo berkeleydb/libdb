@@ -1,0 +1,60 @@
+<! "@(#)class.so	10.4 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: Dbc</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>Dbc</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+This manual page describes the specific details of the Dbc class,
+which provides cursor support for the access methods in <a href="../../api_java/Db/class.html">Db</a>.
+<p>
+The Dbc functions are the library interface supporting sequential
+access to the records stored by the access methods of the Berkeley DB library.
+Cursors are created by calling the <a href="../../api_java/Db/cursor.html">Db.cursor</a> method which returns a
+ Dbc object.
+<p>
+Each cursor maintains positioning information within a set of key/data pairs.
+In the presence of transactions, cursors are only valid within the
+context of a single transaction, the one specified during the
+<a href="../../api_java/Db/cursor.html">Db.cursor</a> call.
+All cursor operations will be executed in the context of that transaction.
+Before aborting or committing a transaction, all cursors used within that
+transaction must be closed.
+In the presence of transactions, the application must call <a href="../../api_java/DbTxn/abort.html">DbTxn.abort</a>
+if any of the cursor operations returns that a deadlock (EAGAIN) or system
+failure occurred.
+<p>
+When locking is enabled, page locks are retained between consecutive cursor
+calls.
+For this reason, in the presence of locking, applications should discard
+cursors as soon as they are done with them.
+Calling the <a href="../../api_java/Db/close.html">Db.close</a> method discards any cursors opened in the context
+of a particular <a href="../../api_java/Db/class.html">Db</a> object returned by the <a href="../../api_java/Db/open.html">Db.open</a> call.
+<p>
+<h1>Class</h1>
+Dbc
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/Dbc/close.html">Dbc.close</a>,
+<a href="../../api_java/Dbc/del.html">Dbc.del</a>,
+<a href="../../api_java/Dbc/get.html">Dbc.get</a>
+and
+<a href="../../api_java/Dbc/put.html">Dbc.put</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<! "@(#)intro.so	10.2 (Sleepycat) 12/18/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Memory Pool Subsystem</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Memory Pool Subsystem</h3>
+<p>
+<h1 align=center>Berkeley DB and the memory pool</h1>
+<p>
+The memory pool subsystem is the general-purpose shared memory buffer pool
+used by Berkeley DB.  This module is useful outside of the Berkeley DB package for
+processes that require page-oriented, cached, shared file access.
+<p>
+A memory pool is a shared memory cache shared by any number of processes
+and threads within processes.  The <a href="../../api_c/DbMpool/open.html">memp_open</a> interface opens, and
+optionally creates, a memory pool.  When that pool is no longer in use,
+it should be closed, using the <a href="../../api_c/DbMpool/close.html">memp_close</a> interface.
+<p>
+The <a href="../../api_c/DbMpoolFile/open.html">memp_fopen</a> interface opens an underlying file within the
+memory pool.  When that file is no longer in use, it should be closed,
+using the <a href="../../api_c/DbMpoolFile/close.html">memp_fclose</a> interface.  The <a href="../../api_c/DbMpoolFile/get.html">memp_fget</a> interface
+is used to retrieve pages from files in the pool.  All retrieved pages
+must be subsequently returned using the <a href="../../api_c/DbMpoolFile/put.html">memp_fput</a> interface.  At
+the time that pages are returned, they may be marked <b>dirty</b>, which
+causes them to be written to the backing disk file before being discarded
+from the pool.  If there is insufficient room to bring a new page in the
+pool, a page is selected to be discarded from the pool.  If that page is
+dirty, it is first written to the backing file.  The page is selected
+using a somewhat modified least-recently-used algorithm.  Pages in files
+may also be explicitly marked clean or dirty using the <a href="../../api_c/DbMpoolFile/set.html">memp_fset</a>
+interface.  All dirty pages in the pool from any underlying file may also
+be flushed as a group using the <a href="../../api_c/DbMpoolFile/sync.html">memp_fsync</a> interface.
+<p>
+There are additional interfaces for manipulating the entire memory pool:
+<p>
+It is possible to gradually flush buffers from the pool in order to
+maintain a consistent percentage of clean buffers in the pool using the
+<a href="../../api_c/DbMpool/trickle.html">memp_trickle</a> interface.
+<p>
+The <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/DbMpool/stat.html">memp_stat</a> interface to
+display statistics about the efficiency of the pool.
+<p>
+As some conversion may be necessary when pages are read into, or written
+from, the pool, the <a href="../../api_c/DbMpool/db_register.html">memp_register</a> function allows applications to
+specify automatic input and output processing in these cases.
+<p>
+There is one additional interface that is intended for manipulating the
+memory pool, but which is specific to database systems.  The
+<a href="../../api_c/DbMpool/sync.html">memp_sync</a> interface flushes dirty pages from all files held in
+the pool up to the current database log sequence number.
+<p>
+Finally, the entire pool may be discarded using the <a href="../../api_c/DbMpool/unlink.html">memp_unlink</a>
+interface.
+<p>
+<a href="../../ref/txn/other.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/mp/config.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

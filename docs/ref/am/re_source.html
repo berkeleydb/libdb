@@ -1,0 +1,69 @@
+<! "@(#)re_source.so	10.1 (Sleepycat) 10/26/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB Reference Guide: Access Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h3>Berkeley DB Reference Guide: Access Methods</h3>
+<p>
+<h1 align=center>Record backing file (re_source, DB_SNAPSHOT)</h1>
+<p>
+It is possible to back any Recno database (either fixed or variable length)
+with a flat-text source file.  The reason for this is to provide fast read
+(and potentially write) access to databases that are normally created and
+stored as flat-text files.  The backing source file may be declared as
+part of the <a href="../../api_c/Db/open.html">db_open</a> call to open the database, specifically by
+setting the <a href="../../api_c/DbInfo/info.html#re_source">re_source</a> element of the DB_INFO structure.
+<p>
+The backing source file will be read to initialize the database.  In the
+case of variable length records, the records are assumed to be separated
+by the <a href="../../api_c/DbInfo/info.html#re_delim">re_delim</a> element of the DB_INFO structure.  For
+example, standard UNIX byte stream files can be interpreted as a sequence
+of variable length records separated by ASCII newline characters.
+<p>
+In addition, when cached data would normally be written back to the
+underlying database file (e.g., <a href="../../api_c/Db/close.html">DB->close</a> or <a href="../../api_c/Db/sync.html">DB->sync</a>
+functions are called), the in-memory copy of the database will be written
+back to the backing source file.
+<p>
+By default, the backing source file is read lazily, i.e., records are not
+read from the backing source file until they are requested by the
+application. If multiple processes (not threads) are accessing a recno
+database concurrently and either inserting or deleting records, the
+backing source file must be read in its entirety before more than a single
+process accesses the database, and only that process should specify the
+backing source file as part of the <a href="../../api_c/Db/open.html">db_open</a> call.  This can be
+accomplished by setting the <a href="../../api_c/DbInfo/info.html#DB_SNAPSHOT">DB_SNAPSHOT</a> flag in the
+DB_INFO structure.
+<p>
+Reading and writing the backing source file <b>cannot</b> be
+transactionally protected because it involves filesystem operations that
+are not part of the Berkeley DB transaction methodology. For this reason, if a
+temporary database is used to hold the records, i.e., a NULL was specified
+as the file argument to <a href="../../api_c/Db/open.html">db_open</a>, <b>it is possible to lose
+the contents of the backing source file</b>, e.g., if the system crashes at
+the right instant. If a permanent file is used to hold the database, i.e.,
+a file name was specified as the file argument to <a href="../../api_c/Db/open.html">db_open</a>, normal
+database recovery on that file can be used to prevent information loss,
+although it is still possible that the contents of the backing source file
+itself will be lost if the system crashes.
+<p>
+The backing source file must already exist (but may be zero-length) when
+<a href="../../api_c/Db/open.html">db_open</a> is called. 
+<p>
+For all of the above reasons, the backing source file is generally used to
+specify databases that are read-only for Berkeley DB applications, and that
+are either generated on the fly by software tools, or modified using a
+different mechanism, e.g., a text editor. 
+<p>
+<a href="../../ref/am/re_pad.html"><img src="../../images/prev.gif"></a>
+<a href="../../ref/toc.html"><img src="../../images/toc.gif"></a>
+<a href="../../ref/am/renumber.html"><img src="../../images/next.gif"></a>
+</tt>
+</body>
+</html>

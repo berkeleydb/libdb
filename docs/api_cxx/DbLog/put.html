@@ -1,0 +1,127 @@
+<! "@(#)put.so	10.9 (Sleepycat) 10/2/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLog::put</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLog::put</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbLog::put(DbLsn *lsn, const Dbt *data, u_int32_t flags);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLog::put method appends records to the log.  The <a href="../../api_cxx/DbLsn/class.html">DbLsn</a> of
+the put record is returned in the <b>lsn</b> argument.  The <b>flags</b>
+argument may be set to one of the following values:
+<dl compact>
+<a name="DB_CHECKPOINT">
+<p><dt>DB_CHECKPOINT<dd>The log should write a checkpoint record, recording any information
+necessary to make the log structures recoverable after a crash.
+<a name="DB_CURLSN">
+<p><dt>DB_CURLSN<dd>The <a href="../../api_cxx/DbLsn/class.html">DbLsn</a> of the next record to be put is returned in the
+<b>lsn</b> argument.].
+<a name="DB_FLUSH">
+<p><dt>DB_FLUSH<dd>The log is forced to disk after this record is written, guaranteeing
+that all records with <a href="../../api_cxx/DbLsn/class.html">DbLsn</a> values less than or equal to the
+one being put are on disk before this function returns (this function
+is most often used for a transaction commit, see <a href="../../api_cxx/DbTxn/commit.html">DbTxn::commit</a> for
+more information).
+<p>
+The caller is responsible for providing any necessary structure to
+<b>data</b>.
+(For example, in a write-ahead logging protocol, the application must
+understand what part of <b>data</b> is an operation code, what part
+is redo information, and what part is undo information.
+In addition, most transaction managers will store in <b>data</b> the
+<a href="../../api_cxx/DbLsn/class.html">DbLsn</a> of the previous log record for the same transaction, to
+support chaining back through the transaction's log records during undo.)
+</dl>
+<p>
+The DbLog::put
+method either returns <b>errno</b> or throws an exception that
+encapsulates an <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLog::put method may fail and either
+return DB_RUNRECOVERY or throw an exception encapsulating DB_RUNRECOVERY,
+at which point all subsequent database calls will also fail in the same
+way.  Methods marked as returning <b>errno</b> will, by default, throw
+an exception that encapsulates the error information.  The default error
+behavior can be changed, see <a href="../../api_cxx/DbException/class.html">DbException</a>.
+<p>
+The DbLog::put
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+close(3),
+dbenv->db_paniccall(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+free(3),
+fsync(3),
+getenv(3),
+getpid(3),
+getuid(3),
+isdigit(3),
+lseek(3),
+malloc(3),
+memcpy(3),
+memset(3),
+open(3),
+sigfillset(3),
+sigprocmask(3),
+snprintf(3),
+stat(3),
+strerror(3),
+strlen(3),
+time(3),
+unlink(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the <a href="../../api_cxx/DbLog/flush.html">DbLog::flush</a>
+method may fail and throw an exception
+or return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+The record to be logged is larger than the maximum log record.
+</dl>
+<p>
+<h1>Class</h1>
+<a href="../../api_cxx/DbLog/class.html">DbLog</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_cxx/DbLog/archive.html">DbLog::archive</a>,
+<a href="../../api_cxx/DbLog/close.html">DbLog::close</a>,
+<a href="../../api_cxx/DbLog/compare.html">DbLog::compare</a>,
+<a href="../../api_cxx/DbLog/file.html">DbLog::file</a>,
+<a href="../../api_cxx/DbLog/flush.html">DbLog::flush</a>,
+<a href="../../api_cxx/DbLog/get.html">DbLog::get</a>,
+<a href="../../api_cxx/DbLog/open.html">DbLog::open</a>,
+DbLog::put,
+<a href="../../api_cxx/DbLog/db_register.html">DbLog::db_register</a>,
+<a href="../../api_cxx/DbLog/stat.html">DbLog::stat</a>,
+<a href="../../api_cxx/DbLog/unlink.html">DbLog::unlink</a>
+and
+<a href="../../api_cxx/DbLog/db_unregister.html">DbLog::db_unregister</a>.
+</tt>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<! "@(#)vec.so	10.10 (Sleepycat) 10/5/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: lock_vec</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>lock_vec</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+#include &lt;db.h&gt;
+<p>
+int
+lock_vec(DB_LOCKTAB *lt, u_int32_t locker, u_int32_t flags,
+    DB_LOCKREQ list[], int nlist, DB_LOCKREQ **elistp);
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The lock_vec function atomically obtains and releases one or more locks
+from the lock table.  The lock_vec function is intended to support
+acquisition or trading of multiple locks under one lock table semaphore,
+as is needed for lock coupling or in multigranularity locking for lock
+escalation.
+<p>
+The <b>locker</b> argument specified to lock_vec is an unsigned
+32-bit integer quantity.  It represents the entity requesting or releasing
+the lock.
+<p>
+The <b>flags</b> value must be set to 0 or the following value:
+<dl compact>
+<a name="DB_LOCK_NOWAIT">
+<p><dt>DB_LOCK_NOWAIT<dd>If a lock cannot be granted because the requested lock conflicts with an
+existing lock, return immediately instead of waiting for the lock to
+become available.
+</dl>
+<p>
+The <b>list</b> array provided to lock_vec is typedef'd as
+DB_LOCKREQ.  A DB_LOCKREQ structure has at least the following fields,
+which must be initialized before calling lock_vec:
+<dl compact>
+<a name="op">
+<p><dt>lockop_t op;<dd>The operation to be performed, which must be set to one of the
+following values:
+<dl compact>
+<a name="DB_LOCK_GET">
+<p><dt>DB_LOCK_GET<dd>Get a lock, as defined by the values of <b>locker</b>, <b>obj</b>, and
+<b>mode</b>.
+Upon return from lock_vec, if the <b>lock</b> field is non-NULL,
+a reference to the acquired lock is stored there.
+(This reference is invalidated by any call to lock_vec or
+<a href="../../api_c/DbLock/put.html">lock_put</a> that releases the lock.)
+<a name="DB_LOCK_PUT">
+<p><dt>DB_LOCK_PUT<dd>The lock referenced by the contents of the <b>lock</b> field is released.
+<a name="DB_LOCK_PUT_ALL">
+<p><dt>DB_LOCK_PUT_ALL<dd>All locks held by the <b>locker</b> are released.
+(Any locks acquired as a part of the current call to lock_vec that
+appear after the DB_LOCK_PUT_ALL entry are not considered for
+this operation).
+<a name="DB_LOCK_PUT_OBJ">
+<p><dt>DB_LOCK_PUT_OBJ<dd>All locks held by the <b>locker</b>, on the object <b>obj</b>, with the
+mode specified by <b>lock_mode</b>, are released.  A <b>lock_mode</b>
+of DB_LOCK_NG indicates that all locks on the object should be
+released.  Note that any locks acquired as a part of the current call to
+lock_vec that occur before the DB_LOCK_PUT_OBJ will also
+be released; those acquired afterwards will not be released.
+</dl>
+<a name="obj">
+<p><dt>const DBT obj;<dd>An untyped byte string that specifies the object to be locked or released.
+<a name="mode">
+<a name="mode">
+<p><dt>const lockmode_t mode;<dd>The lock mode, used as an index into <b>lt</b>'s conflict array.
+<a name="lock">
+<p><dt>DB_LOCK lock;<dd>A lock reference.
+</dl>
+<p>
+The <b>nlist</b> argument specifies the number of elements in the
+<b>list</b> array.
+<p>
+If any of the requested locks cannot be acquired, or any of the locks to be
+released cannot be released, the operations before the failing operation are
+guaranteed to have completed successfully, and lock_vec returns a
+non-zero value.  In addition, if <b>elistp</b> is not NULL, it is set to
+point to the DB_LOCKREQ entry that was being processed when the error occurred.
+<p>
+In the case of an error, lock_vec may return one of the following
+values:
+<dl compact>
+<a name="DB_LOCK_DEADLOCK">
+<p><dt>DB_LOCK_DEADLOCK<dd>The specified <b>locker</b> was selected as a victim in order to resolve
+a deadlock.
+<a name="DB_LOCK_NOTHELD">
+<p><dt>DB_LOCK_NOTHELD<dd>The lock cannot be released, as it was not held by the <b>locker</b>.
+<a name="DB_LOCK_NOTGRANTED">
+<p><dt>DB_LOCK_NOTGRANTED<dd>A lock was requested that could not be granted and the <b>flag</b>
+parameter was set to DB_LOCK_NOWAIT.
+In this case, if non-NULL, <b>elistp</b> identifies the request that was
+granted.
+</dl>
+<p>
+Otherwise, the lock_vec
+function returns the value of <b>errno</b> on failure, and 0 on success.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the lock_vec function may fail and return
+DB_RUNRECOVERY, at which point all subsequent database calls will also
+return DB_RUNRECOVERY.
+<p>
+The lock_vec
+function may fail and return <b>errno</b>
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fflush(3),
+fprintf(3),
+fsync(3),
+getpid(3),
+isprint(3),
+<a href="../../api_c/DbLockTab/detect.html">lock_detect</a>,
+lseek(3),
+memcpy(3),
+memset(3),
+mmap(3),
+munmap(3),
+printf(3),
+pstat_getdynamic(3),
+shmat(3),
+shmdt(3),
+strerror(3),
+sysconf(3),
+vfprintf(3),
+vsnprintf(3),
+and
+write(3).
+<p>
+In addition, the lock_vec
+function may fail and return <b>errno</b>
+for the following conditions:
+<dl compact>
+<p><dt>EACCES<dd>An attempt was made to release lock held by another locker.
+</dl>
+<dl compact>
+<p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
+<p>
+</dl>
+<p>
+<h1>See Also</h1>
+<a href="../../api_c/DbLockTab/close.html">lock_close</a>,
+<a href="../../api_c/DbLockTab/detect.html">lock_detect</a>,
+<a href="../../api_c/DbLockTab/get.html">lock_get</a>,
+<a href="../../api_c/DbLockTab/id.html">lock_id</a>,
+<a href="../../api_c/DbLockTab/open.html">lock_open</a>,
+<a href="../../api_c/DbLock/put.html">lock_put</a>,
+<a href="../../api_c/DbLockTab/stat.html">lock_stat</a>,
+<a href="../../api_c/DbLockTab/unlink.html">lock_unlink</a>
+and
+lock_vec.
+</tt>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<! "@(#)id.so	10.7 (Sleepycat) 9/29/98">
+<!Copyright 1997, 1998 by Sleepycat Software, Inc.  All rights reserved.>
+<html>
+<body bgcolor=white>
+<head>
+<title>Berkeley DB: DbLockTab.id</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btr
+ee,hash,hashing,transaction,transactions,locking,logging,access method,access me
+thods,java,C,C++">
+</head>
+<h1>DbLockTab.id</h1>
+<hr size=1 noshade>
+<tt>
+<h3>
+<pre>
+import com.sleepycat.db.*;
+<p>
+public int id()
+	throws DbException;
+</pre>
+</h3>
+<h1>Description</h1>
+<p>
+The DbLockTab.id method
+returns a locker ID, which is guaranteed to be unique in the specified lock
+table.
+<p>
+The Berkeley DB access methods generate a unique locker ID for each file that
+is opened with locking.  During Berkeley DB access method operation, this locker
+ID will be used for all lock calls unless a transaction identifier was
+specified for the call, in which case the transaction ID specified is used
+as the locker ID.
+<p>
+The DbLockTab.id
+method throws an exception that encapsulates an <b>errno</b> on failure.
+<p>
+<h1>Errors</h1>
+If a fatal error occurs in Berkeley DB, the DbLockTab.id method may fail and throw a
+<a href="../../api_java/DbRunRecoveryException/class.html">DbRunRecoveryException</a>, at which point all subsequent database
+calls will also fail in the same way.
+<p>
+The DbLockTab.id
+method may fail and throw an exception
+for any of the errors specified for the following Berkeley DB and C library
+functions:
+abort(3),
+fcntl(3),
+fprintf(3),
+and
+getpid(3).
+<p>
+<h1>Class</h1>
+<a href="../../api_java/DbLockTab/class.html">DbLockTab</a>
+<p>
+<h1>See Also</h1>
+<a href="../../api_java/DbLockTab/close.html">DbLockTab.close</a>,
+<a href="../../api_java/DbLockTab/detect.html">DbLockTab.detect</a>,
+<a href="../../api_java/DbLockTab/get.html">DbLockTab.get</a>,
+DbLockTab.id,
+<a href="../../api_java/DbLockTab/open.html">DbLockTab.open</a>,
+<a href="../../api_java/DbLockTab/stat.html">DbLockTab.stat</a>
+<a href="../../api_java/DbLockTab/unlink.html">DbLockTab.unlink</a>
+and
+<a href="../../api_java/DbLockTab/vec.html">DbLockTab.vec</a>.
+</tt>
+</body>
+</html>
