@@ -1,0 +1,6 @@
+# @(#)README	10.1 (Sleepycat) 4/12/97
+
+DB log dump utility.  Built only when the --enable-debug option
+to configure is specified.  This utility dumps out a DB log in
+human readable form, a record at a time, to assist in recovery
+and transaction abort debugging.

@@ -1,5 +1,15 @@
 /*-
- * Copyright (c) 1990, 1993, 1994
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996, 1997
+ *	Sleepycat Software.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994, 1995, 1996
+ *	Keith Bostic.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -34,149 +44,139 @@
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)bt_close.c	8.7 (Berkeley) 8/17/94";
-#endif /* LIBC_SCCS and not lint */
+#include "config.h"
 
-#include <sys/param.h>
+#ifndef lint
+static const char sccsid[] = "@(#)bt_close.c	10.25 (Sleepycat) 1/6/98";
+#endif /* not lint */
+
+#ifndef NO_SYSTEM_INCLUDES
+#include <sys/types.h>
+#include <sys/mman.h>
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#endif
 
-#include <db.h>
+#include "db_int.h"
+#include "db_page.h"
 #include "btree.h"
 
-static int bt_meta __P((BTREE *));
+static void __bam_upstat __P((DB *dbp));
 
 /*
- * BT_CLOSE -- Close a btree.
+ * __bam_close --
+ *	Close a btree.
  *
- * Parameters:
- *	dbp:	pointer to access method
- *
- * Returns:
- *	RET_ERROR, RET_SUCCESS
+ * PUBLIC: int __bam_close __P((DB *));
  */
 int
-__bt_close(dbp)
+__bam_close(dbp)
 	DB *dbp;
 {
 	BTREE *t;
-	int fd;
+
+	DEBUG_LWRITE(dbp, NULL, "bam_close", NULL, NULL, 0);
 
 	t = dbp->internal;
 
-	/* Toss any page pinned across calls. */
-	if (t->bt_pinned != NULL) {
-		mpool_put(t->bt_mp, t->bt_pinned, 0);
-		t->bt_pinned = NULL;
-	}
+	/* Update tree statistics. */
+	__bam_upstat(dbp);
 
-	/* Sync the tree. */
-	if (__bt_sync(dbp, 0) == RET_ERROR)
-		return (RET_ERROR);
+	/* Free any allocated memory. */
+	if (t->bt_rkey.data)
+		FREE(t->bt_rkey.data, t->bt_rkey.size);
+	if (t->bt_rdata.data)
+		FREE(t->bt_rdata.data, t->bt_rdata.ulen);
+	if (t->bt_sp != t->bt_stack)
+		FREE(t->bt_sp, (t->bt_esp - t->bt_sp) * sizeof(EPG));
 
-	/* Close the memory pool. */
-	if (mpool_close(t->bt_mp) == RET_ERROR)
-		return (RET_ERROR);
+	FREE(t, sizeof(BTREE));
+	dbp->internal = NULL;
 
-	/* Free random memory. */
-	if (t->bt_cursor.key.data != NULL) {
-		free(t->bt_cursor.key.data);
-		t->bt_cursor.key.size = 0;
-		t->bt_cursor.key.data = NULL;
-	}
-	if (t->bt_rkey.data) {
-		free(t->bt_rkey.data);
-		t->bt_rkey.size = 0;
-		t->bt_rkey.data = NULL;
-	}
-	if (t->bt_rdata.data) {
-		free(t->bt_rdata.data);
-		t->bt_rdata.size = 0;
-		t->bt_rdata.data = NULL;
-	}
-
-	fd = t->bt_fd;
-	free(t);
-	free(dbp);
-	return (close(fd) ? RET_ERROR : RET_SUCCESS);
+	return (0);
 }
 
 /*
- * BT_SYNC -- sync the btree to disk.
+ * __bam_sync --
+ *	Sync the btree to disk.
  *
- * Parameters:
- *	dbp:	pointer to access method
- *
- * Returns:
- *	RET_SUCCESS, RET_ERROR.
+ * PUBLIC: int __bam_sync __P((DB *, int));
  */
 int
-__bt_sync(dbp, flags)
-	const DB *dbp;
-	u_int flags;
+__bam_sync(argdbp, flags)
+	DB *argdbp;
+	int flags;
 {
-	BTREE *t;
-	int status;
+	DB *dbp;
+	int ret;
 
-	t = dbp->internal;
+	DEBUG_LWRITE(argdbp, NULL, "bam_sync", NULL, NULL, flags);
 
-	/* Toss any page pinned across calls. */
-	if (t->bt_pinned != NULL) {
-		mpool_put(t->bt_mp, t->bt_pinned, 0);
-		t->bt_pinned = NULL;
-	}
+	/* Check for invalid flags. */
+	if ((ret = __db_syncchk(argdbp, flags)) != 0)
+		return (ret);
 
-	/* Sync doesn't currently take any flags. */
-	if (flags != 0) {
-		errno = EINVAL;
-		return (RET_ERROR);
-	}
+	/* If it wasn't possible to modify the file, we're done. */
+	if (F_ISSET(argdbp, DB_AM_INMEM | DB_AM_RDONLY))
+		return (0);
 
-	if (F_ISSET(t, B_INMEM | B_RDONLY) || !F_ISSET(t, B_MODIFIED))
-		return (RET_SUCCESS);
+	GETHANDLE(argdbp, NULL, &dbp, ret);
 
-	if (F_ISSET(t, B_METADIRTY) && bt_meta(t) == RET_ERROR)
-		return (RET_ERROR);
+	/* Flush any dirty pages from the cache to the backing file. */
+	if ((ret = memp_fsync(dbp->mpf)) == DB_INCOMPLETE)
+		ret = 0;
 
-	if ((status = mpool_sync(t->bt_mp)) == RET_SUCCESS)
-		F_CLR(t, B_MODIFIED);
-
-	return (status);
+	PUTHANDLE(dbp);
+	return (ret);
 }
 
 /*
- * BT_META -- write the tree meta data to disk.
- *
- * Parameters:
- *	t:	tree
- *
- * Returns:
- *	RET_ERROR, RET_SUCCESS
+ * __bam_upstat --
+ *	Update tree statistics.
  */
-static int
-bt_meta(t)
-	BTREE *t;
+static void
+__bam_upstat(dbp)
+	DB *dbp;
 {
-	BTMETA m;
-	void *p;
+	BTREE *t;
+	BTMETA *meta;
+	DB_LOCK metalock;
+	db_pgno_t pgno;
+	int flags, ret;
 
-	if ((p = mpool_get(t->bt_mp, P_META, 0)) == NULL)
-		return (RET_ERROR);
+	/*
+	 * We use a no-op log call to log the update of the statistics onto the
+	 * metadata page.  The Db->close call isn't transaction protected to
+	 * start with, and I'm not sure what undoing a statistics update means,
+	 * anyway.
+	 */
+	if (F_ISSET(dbp, DB_AM_INMEM | DB_AM_RDONLY))
+		return;
 
-	/* Fill in metadata. */
-	m.magic = BTREEMAGIC;
-	m.version = BTREEVERSION;
-	m.psize = t->bt_psize;
-	m.free = t->bt_free;
-	m.nrecs = t->bt_nrecs;
-	m.flags = F_ISSET(t, SAVEMETA);
+	flags = 0;
+	pgno = PGNO_METADATA;
 
-	memmove(p, &m, sizeof(BTMETA));
-	mpool_put(t->bt_mp, p, MPOOL_DIRTY);
-	return (RET_SUCCESS);
+	/* Lock and retrieve the page. */
+	if (__bam_lget(dbp, 0, pgno, DB_LOCK_WRITE, &metalock) != 0)
+		return;
+	if (__bam_pget(dbp, (PAGE **)&meta, &pgno, 0) == 0) {
+		/* Log the change. */
+		if (DB_LOGGING(dbp) &&
+		    (ret = __db_noop_log(dbp->dbenv->lg_info, dbp->txn,
+		    &LSN(meta), 0)) == 0)
+			goto err;
+
+		/* Update the statistics. */
+		t = dbp->internal;
+		__bam_add_mstat(&t->lstat, &meta->stat);
+
+		flags = DB_MPOOL_DIRTY;
+	}
+
+err:	(void)memp_fput(dbp->mpf, (PAGE *)meta, flags);
+	(void)__BT_LPUT(dbp, metalock);
 }
