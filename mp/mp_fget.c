@@ -440,7 +440,6 @@ alloc:		/*
 		c_mp->stat.st_pages--;
 		alloc_bhp = NULL;
 		R_UNLOCK(dbenv, &dbmp->reginfo[n_cache]);
-		MUTEX_LOCK(dbenv, &hp->hash_mutex);
 
 		/*
 		 * We can't use the page we found in the pool if DB_MPOOL_NEW
@@ -455,6 +454,9 @@ alloc:		/*
 			b_incr = 0;
 			goto alloc;
 		}
+
+		/* We can use the page -- get the bucket lock. */
+		MUTEX_LOCK(dbenv, &hp->hash_mutex);
 		break;
 	case SECOND_MISS:
 		/*

@@ -285,6 +285,7 @@ __memp_reset_lru(dbenv, memreg)
 		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh))
 			if (bhp->priority != UINT32_T_MAX &&
 			    bhp->priority > MPOOL_BASE_DECREMENT)
+				bhp->priority -= MPOOL_BASE_DECREMENT;
 		MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
 	}
 }
