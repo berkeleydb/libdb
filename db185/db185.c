@@ -40,8 +40,13 @@ static int	db185_sync __P((const DB185 *, u_int));
 
 /*
  * EXTERN: #define dbopen __db185_open
+ * EXTERN: #ifdef _DB185_INT_H_
  * EXTERN: DB185 *__db185_open
  * EXTERN:     __P((const char *, int, int, DBTYPE, const void *));
+ * EXTERN: #else
+ * EXTERN: DB *__db185_open
+ * EXTERN:     __P((const char *, int, int, DBTYPE, const void *));
+ * EXTERN: #endif
  */
 DB185 *
 __db185_open(file, oflags, mode, type, openinfo)

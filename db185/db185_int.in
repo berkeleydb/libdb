@@ -39,8 +39,8 @@
  * $Id: db185_int.in,v 11.9 2001/04/10 20:43:54 bostic Exp $
  */
 
-#ifndef _DB_185_H_
-#define	_DB_185_H_
+#ifndef _DB185_INT_H_
+#define	_DB185_INT_H_
 
 /* Routine flags. */
 #define	R_CURSOR	1		/* del, put, seq */
