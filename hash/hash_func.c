@@ -1,4 +1,14 @@
 /*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996, 1997, 1998
+ *	Sleepycat Software.  All rights reserved.
+ */
+/*
+ * Copyright (c) 1990, 1993
+ *	Margo Seltzer.  All rights reserved.
+ */
+/*
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -34,163 +44,176 @@
  * SUCH DAMAGE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash_func.c	8.4 (Berkeley) 11/7/95";
-#endif /* LIBC_SCCS and not lint */
+#include "config.h"
 
+#ifndef lint
+static const char sccsid[] = "@(#)hash_func.c	10.8 (Sleepycat) 4/10/98";
+#endif /* not lint */
+
+#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
+#endif
 
-#include <db.h>
+#include "db_int.h"
+#include "db_page.h"
 #include "hash.h"
-#include "page.h"
-#include "extern.h"
-
-static u_int32_t hash1 __P((const void *, size_t));
-static u_int32_t hash2 __P((const void *, size_t));
-static u_int32_t hash3 __P((const void *, size_t));
-static u_int32_t hash4 __P((const void *, size_t));
-
-/* Default hash function. */
-u_int32_t (*__default_hash) __P((const void *, size_t)) = hash4;
 
 /*
- * Assume that we've already split the bucket to which this key hashes,
- * calculate that bucket, and check that in fact we did already split it.
+ * __ham_func2 --
+ *	Phong Vo's linear congruential hash.
  *
- * EJB's original hsearch hash.
+ * PUBLIC: u_int32_t __ham_func2 __P((const void *, u_int32_t));
  */
-#define PRIME1		37
-#define PRIME2		1048583
+#define	DCHARHASH(h, c)	((h) = 0x63c63cd9*(h) + 0x9c39c33d + (c))
 
 u_int32_t
-hash1(key, len)
+__ham_func2(key, len)
 	const void *key;
-	size_t len;
+	u_int32_t len;
 {
+	const u_int8_t *e, *k;
 	u_int32_t h;
-	u_int8_t *k;
+	u_int8_t c;
 
-	h = 0;
-	k = (u_int8_t *)key;
-	/* Convert string to integer */
-	while (len--)
-		h = h * PRIME1 ^ (*k++ - ' ');
-	h %= PRIME2;
-	return (h);
-}
-
-/*
- * Phong Vo's linear congruential hash
- */
-#define dcharhash(h, c)	((h) = 0x63c63cd9*(h) + 0x9c39c33d + (c))
-
-u_int32_t
-hash2(key, len)
-	const void *key;
-	size_t len;
-{
-	u_int32_t h;
-	u_int8_t *e, c, *k;
-
-	k = (u_int8_t *)key;
+	k = key;
 	e = k + len;
 	for (h = 0; k != e;) {
 		c = *k++;
 		if (!c && k > e)
 			break;
-		dcharhash(h, c);
+		DCHARHASH(h, c);
 	}
 	return (h);
 }
 
 /*
- * This is INCREDIBLY ugly, but fast.  We break the string up into 8 byte
- * units.  On the first time through the loop we get the "leftover bytes"
- * (strlen % 8).  On every other iteration, we perform 8 HASHC's so we handle
- * all 8 bytes.  Essentially, this saves us 7 cmp & branch instructions.  If
- * this routine is heavily used enough, it's worth the ugly coding.
+ * __ham_func3 --
+ *	Ozan Yigit's original sdbm hash.
  *
- * Ozan Yigit's original sdbm hash.
+ * Ugly, but fast.  Break the string up into 8 byte units.  On the first time
+ * through the loop get the "leftover bytes" (strlen % 8).  On every other
+ * iteration, perform 8 HASHC's so we handle all 8 bytes.  Essentially, this
+ * saves us 7 cmp & branch instructions.
+ *
+ * PUBLIC: u_int32_t __ham_func3 __P((const void *, u_int32_t));
  */
 u_int32_t
-hash3(key, len)
+__ham_func3(key, len)
 	const void *key;
-	size_t len;
+	u_int32_t len;
 {
+	const u_int8_t *k;
 	u_int32_t n, loop;
-	u_int8_t *k;
 
-#define HASHC   n = *k++ + 65599 * n
+	if (len == 0)
+		return (0);
 
+#define	HASHC	n = *k++ + 65599 * n
 	n = 0;
-	k = (u_int8_t *)key;
-	if (len > 0) {
-		loop = (len + 8 - 1) >> 3;
+	k = key;
 
-		switch (len & (8 - 1)) {
-		case 0:
-			do {	/* All fall throughs */
-				HASHC;
-		case 7:
-				HASHC;
-		case 6:
-				HASHC;
-		case 5:
-				HASHC;
-		case 4:
-				HASHC;
-		case 3:
-				HASHC;
-		case 2:
-				HASHC;
-		case 1:
-				HASHC;
-			} while (--loop);
-		}
-
+	loop = (len + 8 - 1) >> 3;
+	switch (len & (8 - 1)) {
+	case 0:
+		do {
+			HASHC;
+	case 7:
+			HASHC;
+	case 6:
+			HASHC;
+	case 5:
+			HASHC;
+	case 4:
+			HASHC;
+	case 3:
+			HASHC;
+	case 2:
+			HASHC;
+	case 1:
+			HASHC;
+		} while (--loop);
 	}
 	return (n);
 }
 
-/* Chris Torek's hash function. */
+/*
+ * __ham_func4 --
+ *	Chris Torek's hash function.  Although this function performs only
+ *	slightly worse than __ham_func5 on strings, it performs horribly on
+ *	numbers.
+ *
+ * PUBLIC: u_int32_t __ham_func4 __P((const void *, u_int32_t));
+ */
 u_int32_t
-hash4(key, len)
+__ham_func4(key, len)
 	const void *key;
-	size_t len;
+	u_int32_t len;
 {
+	const u_int8_t *k;
 	u_int32_t h, loop;
-	u_int8_t *k;
 
-#define HASH4a   h = (h << 5) - h + *k++;
-#define HASH4b   h = (h << 5) + h + *k++;
-#define HASH4 HASH4b
+	if (len == 0)
+		return (0);
 
+#define	HASH4a	h = (h << 5) - h + *k++;
+#define	HASH4b	h = (h << 5) + h + *k++;
+#define	HASH4	HASH4b
 	h = 0;
-	k = (u_int8_t *)key;
-	if (len > 0) {
-		loop = (len + 8 - 1) >> 3;
+	k = key;
 
-		switch (len & (8 - 1)) {
-		case 0:
-			do {	/* All fall throughs */
-				HASH4;
-		case 7:
-				HASH4;
-		case 6:
-				HASH4;
-		case 5:
-				HASH4;
-		case 4:
-				HASH4;
-		case 3:
-				HASH4;
-		case 2:
-				HASH4;
-		case 1:
-				HASH4;
-			} while (--loop);
-		}
-
+	loop = (len + 8 - 1) >> 3;
+	switch (len & (8 - 1)) {
+	case 0:
+		do {
+			HASH4;
+	case 7:
+			HASH4;
+	case 6:
+			HASH4;
+	case 5:
+			HASH4;
+	case 4:
+			HASH4;
+	case 3:
+			HASH4;
+	case 2:
+			HASH4;
+	case 1:
+			HASH4;
+		} while (--loop);
 	}
 	return (h);
+}
+
+/*
+ * Fowler/Noll/Vo hash
+ *
+ * The basis of the hash algorithm was taken from an idea sent by email to the
+ * IEEE Posix P1003.2 mailing list from Phong Vo (kpv@research.att.com) and
+ * Glenn Fowler (gsf@research.att.com).  Landon Curt Noll (chongo@toad.com)
+ * later improved on their algorithm.
+ *
+ * The magic is in the interesting relationship between the special prime
+ * 16777619 (2^24 + 403) and 2^32 and 2^8.
+ *
+ * This hash produces the fewest collisions of any function that we've seen so
+ * far, and works well on both numbers and strings.
+ *
+ * PUBLIC: u_int32_t __ham_func5 __P((const void *, u_int32_t));
+ */
+u_int32_t
+__ham_func5(key, len)
+	const void *key;
+	u_int32_t len;
+{
+	const u_int8_t *k, *e;
+        u_int32_t h;
+
+	k = key;
+	e = k + len;
+        for (h = 0; k < e; ++k) {
+                h *= 16777619;
+                h ^= *k;
+        }
+        return (h);
 }
