@@ -2216,11 +2216,12 @@ __lock_trade(dbenv, lock, new_locker)
 					dp = (u_int8_t *)dp +		\
 					    sizeof(db_pgno_t);		\
 				} while (0)
-#define COPY_OBJ(dp, obj)	do {					   \
-					memcpy(dp, obj->data, obj->size);  \
-					dp = (u_int8_t *)dp +		   \
-					     ALIGN(obj->size,		   \
-					     sizeof(u_int32_t)); 	   \
+#define COPY_OBJ(dp, obj)	do {					\
+					memcpy(dp,			\
+					    (obj)->data, (obj)->size);  \
+					dp = (u_int8_t *)dp +		\
+					     ALIGN((obj)->size,		\
+					    sizeof(u_int32_t)); 	\
 				} while (0)
 
 #define GET_COUNT(dp, count)	do {					\
@@ -2339,7 +2340,7 @@ not_ilock:
 		for (i = 0; i < nlocks; i = j) {
 			PUT_PCOUNT(dp, obj[i].ulen);
 			PUT_SIZE(dp, obj[i].size);
-			COPY_OBJ(dp, obj);
+			COPY_OBJ(dp, &obj[i]);
 			lock = (DB_LOCK_ILOCK *)obj[i].data;
 			for (j = i + 1; j <= i + obj[i].ulen; j++) {
 				lock = (DB_LOCK_ILOCK *)obj[j].data;
