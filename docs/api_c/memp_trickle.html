@@ -1,5 +1,6 @@
-<!--"@(#)memp_trickle.so	10.18 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: memp_trickle.so,v 10.21 2000/03/01 21:41:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>memp_trickle</h1>
@@ -24,36 +26,25 @@ int
 memp_trickle(DB_ENV *env, int pct, int *nwrotep);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The memp_trickle function ensures that at least <b>pct</b> percent of
+<p>The memp_trickle function ensures that at least <b>pct</b> percent of
 the pages in the shared memory pool are clean by writing dirty pages to
 their backing files.
 If the <b>nwrotep</b> argument is non-NULL, the number of pages that
 were written to reach the correct percentage is returned in the memory
 location it references.
-<p> The purpose of the memp_trickle function is to enable a
-memory pool manager to ensure that a page is always available for reading
-in new information without having to wait for a write.
-<p>
-The memp_trickle
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The purpose of the memp_trickle function is to enable a memory
+pool manager to ensure that a page is always available for reading in new
+information without having to wait for a write.
+<p>The memp_trickle function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the memp_trickle function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the memp_trickle
-function may fail and return a non-zero error
-for the following conditions:
-<dl compact>
+<p>The memp_trickle function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>
-In addition, the memp_trickle function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The memp_trickle function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the memp_trickle function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

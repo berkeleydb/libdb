@@ -1,4 +1,4 @@
-# @(#)README	10.4 (Sleepycat) 9/12/99
+# $Id: README,v 10.5 1999/11/21 23:08:01 bostic Exp $
 
 Berkeley DB log dump utility.  This utility dumps out a DB log in human
 readable form, a record at a time, to assist in recovery and transaction

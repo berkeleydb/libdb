@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test046.tcl	11.16 (Sleepycat) 10/19/99
+#	$Id: test046.tcl,v 11.25 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 46: Overwrite test of small/big key/data with cursor checks.
 proc test046 { method args } {
@@ -33,12 +33,20 @@ proc test046 { method args } {
 	}
 
 	puts "\tTest046: Create $method database."
-	set testfile $testdir/test046.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test046.db
+	} else {
+		set testfile test046.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
-	set oflags "-create -truncate -mode 0644 $args $omethod"
-	set db [eval {berkdb open} $oflags $testfile]
+	set oflags "-create -mode 0644 $args $omethod"
+	set db [eval {berkdb_open} $oflags $testfile.a]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# open curs to db
@@ -212,14 +220,19 @@ proc test046 { method args } {
 	# cursor is on n+1, we'll change i to match
 	set i [incr i -1]
 
+	error_check_good dbc:close [$dbc close] 0
+	error_check_good db:close [$db close] 0
 	if { [is_record_based $method] == 1} {
-		error_check_good dbc:close [$dbc close] 0
-		error_check_good db:close [$db close] 0
-		cleanup $testdir
 		puts "\t\tSkipping the rest of test for method $method."
 		puts "\tTest046 ($method) complete."
 		return
 	} else {
+		# Reopen without printing __db_errs.
+		set db [eval {berkdb_open_noerr} $oflags $testfile.a]
+		error_check_good dbopen [is_valid_db $db] TRUE
+		set dbc [$db cursor]
+		error_check_good cursor [is_valid_cursor $dbc $db] TRUE
+
 		# should fail with EINVAL (deleted cursor)
 		set errorCode NONE
 		error_check_good catch:put:before 1 \
@@ -260,9 +273,8 @@ proc test046 { method args } {
 	puts "\tTest046.d.0: Cleanup, close db, open new db with no dups."
 	error_check_good dbc:close [$dbc close] 0
 	error_check_good db:close [$db close] 0
-	cleanup $testdir
 
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile.d]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set dbc [$db cursor]
 	error_check_good db_cursor [is_substr $dbc $db] 1
@@ -368,7 +380,6 @@ proc test046 { method args } {
 	puts "\tTest046.d.3: Cleanup for next part of test."
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	if { [is_rbtree $method] == 1} {
 		puts "\tSkipping the rest of Test046 for method $method."
@@ -377,7 +388,7 @@ proc test046 { method args } {
 	}
 
 	puts "\tTest046.e.1: Open db with sorted dups."
-	set db [eval {berkdb open} $oflags -dup -dupsort $testfile]
+	set db [eval {berkdb_open_noerr} $oflags -dup -dupsort $testfile.e]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# open curs to db
@@ -424,6 +435,10 @@ proc test046 { method args } {
 		error_check_good db_put:DUP($i) $ret 0
 	}
 
+	puts "\tTest046.e.3: Check duplicate duplicates"
+	set ret [$db put $keym DUPLICATE_00]
+	error_check_good dbput:dupdup [is_substr $ret "DB_KEYEXIST"] 1
+
 	# get dup ordering
 	for {set i 0; set ret [$dbc get -set $keym]} { [llength $ret] != 0} {\
 			set ret [$dbc get -nextdup] } {
@@ -469,8 +484,12 @@ proc test046 { method args } {
 
 	# tested above
 
-	# reset cursor
+	# Reopen database without __db_err, reset cursor
+	error_check_good dbclose [$db close] 0
+	set db [eval {berkdb_open_noerr} $oflags -dup -dupsort $testfile.e]
+	error_check_good dbopen [is_valid_db $db] TRUE
 	error_check_good db_cursor [is_substr [set dbc [$db cursor]] $db] 1
+
 	set ret [$dbc get -set $keym]
 	error_check_bad dbc_get:set [llength $ret] 0
 	set ret2 [$dbc get -current]
@@ -496,7 +515,8 @@ proc test046 { method args } {
 	puts "\t\tTest046.g.1: Insert by key before cursor."
 	set i 0
 
-	set ret [$db put $keym $dup_set($i)]
+	# use "spam" to prevent a duplicate duplicate.
+	set ret [$db put $keym $dup_set($i)spam]
 	error_check_good db_put:before $ret 0
 	# make sure cursor was maintained
 	set ret [$dbc get -current]
@@ -506,7 +526,8 @@ proc test046 { method args } {
 
 	puts "\t\tTest046.g.2: Insert by key after cursor."
 	set i [expr $i + 2]
-	set ret [$db put $keym $dup_set($i)]
+	# use "eggs" to prevent a duplicate duplicate
+	set ret [$db put $keym $dup_set($i)eggs]
 	error_check_good db_put:after $ret 0
 	# make sure cursor was maintained
 	set ret [$dbc get -current]
@@ -536,10 +557,9 @@ proc test046 { method args } {
 	puts "\t\tTest046.h.2: New db (no dupsort)."
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
-	set db [berkdb open \
-	    -create -dup $omethod -mode 0644 -truncate $testfile]
+	set db [berkdb_open \
+	    -create -dup $omethod -mode 0644 -truncate $testfile.h]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set dbc [$db cursor]
 	error_check_good db_cursor [is_substr $dbc $db] 1
@@ -689,7 +709,6 @@ proc test046 { method args } {
 	puts "\tTest046.i: Cleaning up from test."
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
-	cleanup $testdir
 
 	puts "\tTest046 complete."
 }

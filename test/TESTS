@@ -1,4 +1,4 @@
-# @(#)TESTS	11.13 (Sleepycat) 10/29/99
+# $Id: TESTS,v 11.30 2000/05/18 17:44:06 sue Exp $
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Access method tests
@@ -55,9 +55,8 @@ test010		Duplicate test
 
 test011		Duplicate test
 			Small key/data pairs.
-			Test Keyfirst, Keylast, add_before and add_after.
-			To verify duplicates onto overflow pages,
-			    run with small pagesize.
+			Test DB_KEYFIRST, DB_KEYLAST, DB_BEFORE and DB_AFTER.
+			To test off-page duplicates, run with small pagesize.
 
 test012		Large keys/small data
 			Same as test003 except use big keys (source files and
@@ -73,7 +72,6 @@ test014		Exercise partial puts on short data
 
 test015		Partial put test
 			Partial put test where the key does not initially exist.
-
 
 test016		Partial put test
 			Partial put where the datum gets shorter as a result of
@@ -210,6 +208,29 @@ test072		Cursor stability test when dups are moved off-page
 
 test073		Test of cursor stability on duplicate pages.
 
+test074		Test of DB_NEXT_NODUP.
+
+test075		Test of DB->rename().
+		(formerly test of DB_TRUNCATE cached page invalidation [#1487])
+
+test076		Test creation of many small databases in a single environment.
+		[#1528].
+
+test077		Test of DB_GET_RECNO [#1206].
+
+test078		Test of DBC->c_count().
+
+test079		Test of deletes in large trees.  (test006 w/ sm. pagesize).
+
+test080		Test of DB->remove()
+
+test081		Test off-page duplicates and overflow pages together with
+		very large keys (key/data as file contents).
+
+test082		Test of DB_PREV_NODUP (uses test074).
+
+test083		Test of DB->key_range
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Cursor Join.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -228,6 +249,9 @@ dead001         Use two different configurations to test deadlock
 
 dead002         Same test as dead001, but use "detect on every collision"
 		instead of separate deadlock detector.
+
+dead003         Same test as dead002, but explicitly specify oldest or
+		youngest.  Verify the correct lock was aborted/granted.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Lock tests
@@ -285,6 +309,17 @@ recd005		Verify reuse of file ids works on catastrophic recovery.
 
 recd006		Nested transactions.
 
+recd007		File create/delete tests.
+
+recd008		Test deeply nested transactions.
+
+recd009		Verify record numbering across split/reverse splits
+		and recovery.
+
+recd010		Verify duplicates across split/reverse splits
+		and recovery.
+
+recd011		Verify that recovery to a specific timestamp works.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Subdatabase tests
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -327,7 +362,6 @@ subdb007	Tests page size differences between subdbs
 			Close, reopen per subdb
 			Dump file, verify per subdb
 
-
 subdb008	Tests lorder differences between subdbs
 			Open several subdbs, each with a different/random lorder
 			Small keys, small data
@@ -336,6 +370,9 @@ subdb008	Tests lorder differences between subdbs
 			Close, reopen per subdb
 			Dump file, verify per subdb
 
+subdb009	Test DB->rename() method for subdbs
+
+subdb010	Test DB->remove() method for subdbs
 
 subdbtest001 	Tests multiple access methods in one subdb
 			Open several subdbs, each with a different access method
@@ -344,7 +381,6 @@ subdbtest001 	Tests multiple access methods in one subdb
 			Dump file, verify per subdb
 			Close, reopen per subdb
 			Dump file, verify per subdb
-
 
 subdbtest002    Tests multiple access methods in one subdb access by
 		multiple processes
@@ -364,7 +400,6 @@ txn001		Begin, commit, abort testing.
 
 txn002		Verify that  read-only transactions do not write log records.
 
-
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Environment tests
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -379,6 +414,16 @@ env004		Multiple data directories test.
 env005		Test for using subsystems without initializing them correctly.
 
 env006		Smoke test that the utilities all run.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+RPC tests
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+[RPC tests also include running all Access Method tests for all methods
+via an RPC server]
+
+rpc001		Test RPC server timeouts for cursor, txn and env handles.
+
+rpc002		Test unsupported functions 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 Recno backing file tests

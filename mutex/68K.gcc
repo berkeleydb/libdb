@@ -1,5 +1,5 @@
 /*
- * @(#)68K.gcc	11.1 (Sleepycat) 7/25/99
+ * $Id: 68K.gcc,v 11.2 1999/11/21 18:11:47 bostic Exp $
  *
  * For gcc/68K, 0 is clear, 1 is set.
  */

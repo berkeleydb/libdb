@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_internal.c	11.15 (Sleepycat) 10/25/99";
+static const char revid[] = "$Id: tcl_internal.c,v 11.27 2000/05/22 18:36:51 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -47,9 +47,7 @@ static const char sccsid[] = "@(#)tcl_internal.c	11.15 (Sleepycat) 10/25/99";
  * Prototypes for procedures defined later in this file:
  */
 
-#define GLOB_CHAR(c)	((c) == '*' || (c) == '?')
-
-DBTCL_INFO *__db_infohead = NULL;
+#define	GLOB_CHAR(c)	((c) == '*' || (c) == '?')
 
 /*
  * PUBLIC: DBTCL_INFO *_NewInfo __P((Tcl_Interp *,
@@ -70,12 +68,12 @@ _NewInfo(interp, anyp, name, type)
 	DBTCL_INFO *p;
 	int i, ret;
 
-	if ((ret = __os_malloc(sizeof(DBTCL_INFO), NULL, &p)) != 0) {
+	if ((ret = __os_malloc(NULL, sizeof(DBTCL_INFO), NULL, &p)) != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (NULL);
 	}
 
-	if ((ret = __os_strdup(name, &p->i_name)) != 0) {
+	if ((ret = __os_strdup(NULL, name, &p->i_name)) != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		__os_free(p, sizeof(DBTCL_INFO));
 		return (NULL);
@@ -85,27 +83,19 @@ _NewInfo(interp, anyp, name, type)
 	p->i_data = 0;
 	p->i_data2 = 0;
 	p->i_type = type;
-	p->i_next = NULL;
-	p->i_prev = NULL;
 	p->i_parent = NULL;
 	p->i_err = NULL;
+	p->i_errpfx = NULL;
 	p->i_lockobj.data = NULL;
 	for (i = 0; i < MAX_ID; i++)
 		p->i_otherid[i] = 0;
 
-	if (__db_infohead == NULL)
-		__db_infohead = p;
-	else {
-		__db_infohead->i_prev = p;
-		p->i_next = __db_infohead;
-		__db_infohead = p;
-	}
+	LIST_INSERT_HEAD(&__db_infohead, p, entries);
 	return (p);
 }
 
-
 /*
- * PUBLIC: void	*_NameToPtr __P((CONST char *));
+ * PUBLIC: void *_NameToPtr __P((CONST char *));
  */
 void	*
 _NameToPtr(name)
@@ -113,14 +103,15 @@ _NameToPtr(name)
 {
 	DBTCL_INFO *p;
 
-	for (p = __db_infohead; p != NULL; p = p->i_next)
+	for (p = LIST_FIRST(&__db_infohead); p != NULL;
+	    p = LIST_NEXT(p, entries))
 		if (strcmp(name, p->i_name) == 0)
 			return (p->i_anyp);
 	return (NULL);
 }
 
 /*
- * PUBLIC: char	*_PtrToName __P((CONST void *));
+ * PUBLIC: char *_PtrToName __P((CONST void *));
  */
 char	*
 _PtrToName(ptr)
@@ -128,14 +119,15 @@ _PtrToName(ptr)
 {
 	DBTCL_INFO *p;
 
-	for (p = __db_infohead; p != NULL; p = p->i_next)
+	for (p = LIST_FIRST(&__db_infohead); p != NULL;
+	    p = LIST_NEXT(p, entries))
 		if (p->i_anyp == ptr)
 			return (p->i_name);
 	return (NULL);
 }
 
 /*
- * PUBLIC: DBTCL_INFO	*_PtrToInfo __P((CONST void *));
+ * PUBLIC: DBTCL_INFO *_PtrToInfo __P((CONST void *));
  */
 DBTCL_INFO *
 _PtrToInfo(ptr)
@@ -143,14 +135,15 @@ _PtrToInfo(ptr)
 {
 	DBTCL_INFO *p;
 
-	for (p = __db_infohead; p != NULL; p = p->i_next)
+	for (p = LIST_FIRST(&__db_infohead); p != NULL;
+	    p = LIST_NEXT(p, entries))
 		if (p->i_anyp == ptr)
 			return (p);
 	return (NULL);
 }
 
 /*
- * PUBLIC: DBTCL_INFO	*_NameToInfo __P((CONST char *));
+ * PUBLIC: DBTCL_INFO *_NameToInfo __P((CONST char *));
  */
 DBTCL_INFO *
 _NameToInfo(name)
@@ -158,14 +151,15 @@ _NameToInfo(name)
 {
 	DBTCL_INFO *p;
 
-	for (p = __db_infohead; p != NULL; p = p->i_next)
+	for (p = LIST_FIRST(&__db_infohead); p != NULL;
+	    p = LIST_NEXT(p, entries))
 		if (strcmp(name, p->i_name) == 0)
 			return (p);
 	return (NULL);
 }
 
 /*
- * PUBLIC: void 	_SetInfoData __P((DBTCL_INFO *, void *));
+ * PUBLIC: void  _SetInfoData __P((DBTCL_INFO *, void *));
  */
 void
 _SetInfoData(p, data)
@@ -179,7 +173,7 @@ _SetInfoData(p, data)
 }
 
 /*
- * PUBLIC: void 	_DeleteInfo __P((DBTCL_INFO *));
+ * PUBLIC: void  _DeleteInfo __P((DBTCL_INFO *));
  */
 void
 _DeleteInfo(p)
@@ -187,17 +181,15 @@ _DeleteInfo(p)
 {
 	if (p == NULL)
 		return;
-	if (p == __db_infohead) {
-		if ((__db_infohead = p->i_next) != NULL)
-			__db_infohead->i_prev = NULL;
-	} else {
-		if (p->i_prev)
-			p->i_prev->i_next = p->i_next;
-		if (p->i_next)
-			p->i_next->i_prev = p->i_prev;
-	}
+	LIST_REMOVE(p, entries);
 	if (p->i_lockobj.data != NULL)
 		__os_free(p->i_lockobj.data, p->i_lockobj.size);
+	if (p->i_err != NULL) {
+		fclose(p->i_err);
+		p->i_err = NULL;
+	}
+	if (p->i_errpfx != NULL)
+		__os_freestr(p->i_errpfx);
 	__os_freestr(p->i_name);
 	__os_free(p, sizeof(DBTCL_INFO));
 
@@ -205,23 +197,7 @@ _DeleteInfo(p)
 }
 
 /*
- * PUBLIC: void 	_DeleteInfoByPtr __P((void *));
- */
-void
-_DeleteInfoByPtr(ptr)
-	void *ptr;
-{
-	DBTCL_INFO *p;
-
-	for (p = __db_infohead; p != NULL; p = p->i_next)
-		if (p->i_anyp == ptr)
-			break;
-	_DeleteInfo(p);
-	return;
-}
-
-/*
- * PUBLIC: int	_SetListElem __P((Tcl_Interp *,
+ * PUBLIC: int _SetListElem __P((Tcl_Interp *,
  * PUBLIC:    Tcl_Obj *, void *, int, void *, int));
  */
 int
@@ -245,7 +221,7 @@ _SetListElem(interp, list, elem1, e1cnt, elem2, e2cnt)
 }
 
 /*
- * PUBLIC: int	_SetListElemInt __P((Tcl_Interp *, Tcl_Obj *, void *, int));
+ * PUBLIC: int _SetListElemInt __P((Tcl_Interp *, Tcl_Obj *, void *, int));
  */
 int
 _SetListElemInt(interp, list, elem1, elem2)
@@ -267,7 +243,7 @@ _SetListElemInt(interp, list, elem1, elem2)
 }
 
 /*
- * PUBLIC: int	_SetListRecnoElem __P((Tcl_Interp *, Tcl_Obj *,
+ * PUBLIC: int _SetListRecnoElem __P((Tcl_Interp *, Tcl_Obj *,
  * PUBLIC:     db_recno_t, u_char *, int));
  */
 int
@@ -292,7 +268,7 @@ _SetListRecnoElem(interp, list, elem1, elem2, e2size)
 }
 
 /*
- * PUBLIC: int _GetGlobPrefix	__P((char *, char **));
+ * PUBLIC: int _GetGlobPrefix __P((char *, char **));
  */
 int
 _GetGlobPrefix(pattern, prefix)
@@ -305,7 +281,7 @@ _GetGlobPrefix(pattern, prefix)
 	/*
 	 * Duplicate it, we get enough space and most of the work is done.
 	 */
-	if (__os_strdup(pattern, prefix) != 0)
+	if (__os_strdup(NULL, pattern, prefix) != 0)
 		return (1);
 
 	p = *prefix;
@@ -323,7 +299,7 @@ _GetGlobPrefix(pattern, prefix)
 }
 
 /*
- * PUBLIC: int	_ReturnSetup __P((Tcl_Interp *, int, char *));
+ * PUBLIC: int _ReturnSetup __P((Tcl_Interp *, int, char *));
  */
 int
 _ReturnSetup(interp, ret, errmsg)
@@ -349,7 +325,7 @@ _ReturnSetup(interp, ret, errmsg)
 	}
 
 	msg = db_strerror(ret);
-	Tcl_SetResult(interp, msg, TCL_VOLATILE);
+	Tcl_AppendResult(interp, msg, NULL);
 
 	switch (ret) {
 	case DB_NOTFOUND:
@@ -363,7 +339,7 @@ _ReturnSetup(interp, ret, errmsg)
 }
 
 /*
- * PUBLIC: int	_ErrorSetup __P((Tcl_Interp *, int, char *));
+ * PUBLIC: int _ErrorSetup __P((Tcl_Interp *, int, char *));
  */
 int
 _ErrorSetup(interp, ret, errmsg)
@@ -371,15 +347,13 @@ _ErrorSetup(interp, ret, errmsg)
 	int ret;
 	char *errmsg;
 {
-	Tcl_SetResult(interp, errmsg, TCL_VOLATILE);
-	Tcl_AppendResult(interp, ": ", NULL);
 	Tcl_SetErrno(ret);
-	Tcl_AppendResult(interp, Tcl_PosixError(interp), NULL);
+	Tcl_AppendResult(interp, errmsg, ":", Tcl_PosixError(interp), NULL);
 	return (TCL_ERROR);
 }
 
 /*
- * PUBLIC: void	_ErrorFunc __P((CONST char *, char *));
+ * PUBLIC: void _ErrorFunc __P((CONST char *, char *));
  */
 void
 _ErrorFunc(pfx, msg)
@@ -401,21 +375,22 @@ _ErrorFunc(pfx, msg)
 	 * If we cannot allocate enough to put together the prefix
 	 * and message then give them just the message.
 	 */
-	if (__os_malloc(size, NULL, &err) != 0) {
+	if (__os_malloc(NULL, size, NULL, &err) != 0) {
 		Tcl_AddErrorInfo(interp, msg);
+		Tcl_AppendResult(interp, msg, "\n", NULL);
 		return;
 	}
 	snprintf(err, size, "%s: %s", pfx, msg);
 	Tcl_AddErrorInfo(interp, err);
+	Tcl_AppendResult(interp, err, "\n", NULL);
 	__os_free(err, size);
 	return;
 }
 
-
-#define INVALID_LSNMSG "Invalid LSN with %d parts. Should have 2.\n"
+#define	INVALID_LSNMSG "Invalid LSN with %d parts. Should have 2.\n"
 
 /*
- * PUBLIC: int _GetLsn	__P((Tcl_Interp *, Tcl_Obj *, DB_LSN *));
+ * PUBLIC: int _GetLsn __P((Tcl_Interp *, Tcl_Obj *, DB_LSN *));
  */
 int
 _GetLsn(interp, obj, lsn)

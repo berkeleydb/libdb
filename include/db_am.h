@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)db_am.h	11.4 (Sleepycat) 9/19/99
+ * $Id: db_am.h,v 11.13 2000/05/07 14:00:33 bostic Exp $
  */
 #ifndef _DB_AM_H
-#define _DB_AM_H
+#define	_DB_AM_H
 
 #define	DB_MINPAGECACHE	10		/* Min pages access methods cache. */
 
-#define DB_ISBIG	0x01		/* DB recovery operation codes. */
+#define	DB_ISBIG	0x01		/* DB recovery operation codes. */
 #define	DB_ISSUBDB	0x02
 #define	DB_ADD_DUP	0x10
 #define	DB_REM_DUP	0x20
@@ -33,22 +33,22 @@
  * To make the code look prettier, we macro them, but this is sure to
  * confuse the heck out of everyone.
  */
-#define __db_pg_alloc_log	__bam_pg_alloc_log
-#define __db_pg_free_log	__bam_pg_free_log
+#define	__db_pg_alloc_log	__bam_pg_alloc_log
+#define	__db_pg_free_log	__bam_pg_free_log
 
 /*
  * Standard initialization and shutdown macros for all recovery functions.
  *
  * Requires the following local variables:
  *
- *	DB *file_dbp, *mdbp;
+ *	DB *file_dbp;
  *	DB_MPOOLFILE *mpf;
  *	int ret;
  */
 #define	REC_INTRO(func, inc_count) {					\
 	file_dbp = NULL;						\
 	dbc = NULL;							\
-	if ((ret = func(dbtp->data, &argp)) != 0)			\
+	if ((ret = func(dbenv, dbtp->data, &argp)) != 0)		\
 		goto out;						\
 	if ((ret = __db_fileid_to_db(dbenv,				\
 	    &file_dbp, argp->fileid, inc_count)) != 0) {		\
@@ -77,7 +77,7 @@
  * No-op versions of the same macros.
  */
 #define	REC_NOOP_INTRO(func) {						\
-	if ((ret = func(dbtp->data, &argp)) != 0)			\
+	if ((ret = func(dbenv, dbtp->data, &argp)) != 0)		\
 		return (ret);						\
 }
 #define	REC_NOOP_CLOSE							\
@@ -96,16 +96,23 @@
 #endif
 
 /*
+ * Flags to __db_lget
+ */
+#define	LCK_COUPLE	0x01	/* Lock Couple */
+#define	LCK_ALWAYS	0x02	/* Lock even for off page dup cursors */
+#define	LCK_ROLLBACK	0x04	/* Lock even if in rollback */
+
+/*
  * If doing transactions we have to hold the locks associated with a data item
  * from a page for the entire transaction.  However, we don't have to hold the
  * locks associated with walking the tree.  Distinguish between the two so that
  * we don't tie up the internal pages of the tree longer than necessary.
  */
 #define	__LPUT(dbc, lock)						\
-	(F_ISSET((dbc)->dbp->dbenv, DB_ENV_LOCKING) ?			\
+	(lock.off != LOCK_INVALID ?					\
 	    lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
 #define	__TLPUT(dbc, lock)						\
-	(F_ISSET((dbc)->dbp->dbenv, DB_ENV_LOCKING) &&			\
+	(lock.off != LOCK_INVALID &&					\
 	    (dbc)->txn == NULL ? lock_put((dbc)->dbp->dbenv, &(lock)) : 0)
 
 #include "db_auto.h"

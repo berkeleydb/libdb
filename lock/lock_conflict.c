@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)lock_conflict.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: lock_conflict.c,v 11.4 2000/04/29 02:26:24 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,7 +29,7 @@ const u_int8_t db_rw_conflicts[] = {
 };
 
 const u_int8_t db_riw_conflicts[] = {
-	/*		N   	S   	X  	IX  	IS	SIX */
+	/*		N	S	X	IX	IS	SIX */
 	/*   N */	0,	0,	0,	0,	0,	0,
 	/*   S */	0,	0,	1,	1,	0,	1,
 	/*   X */	1,	1,	1,	1,	1,	1,

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)db_int.src	11.6 (Sleepycat) 10/1/99
+ *	$Id: db_int.src,v 11.31 2000/05/18 19:26:07 bostic Exp $
  */
 
 #ifndef _DB_INTERNAL_H_
@@ -16,15 +16,28 @@
 #include "db.h"
 
 #ifndef NO_SYSTEM_INCLUDES
-#ifdef __STDC__
+#if defined(__STDC__) || defined(__cplusplus)
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 #endif
 
+/*
+ * XXX
+ * We need to #undef the following LIST_XXX macros because VxWorks copied
+ * some of them into UnixLib.h -- not all of them though, so we can't use
+ * their versions.
+ */
+#undef LIST_INIT
+#undef LIST_INSERT_HEAD
+#undef LIST_REMOVE
 #include "queue.h"
 #include "shqueue.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*******************************************************
  * General purpose constants and macros.
@@ -50,24 +63,36 @@
 #define	DB_DEF_IOSIZE	(8 * 1024)
 
 /*
- * Aligning items to particular sizes or in pages or memory.  ALIGNP is a
- * separate macro, as we've had to cast the pointer to different integral
- * types on different architectures.
+ * Aligning items to particular sizes or in pages or memory.
  *
- * We cast pointers into unsigned longs when manipulating them because C89
- * guarantees that u_long is the largest available integral type and further,
- * to never generate overflows.  However, neither C89 or C9X  requires that
- * any integer type be large enough to hold a pointer, although C9X created
- * the intptr_t type, which is guaranteed to hold a pointer but may or may
- * not exist.  At some point in the future, we should test for intptr_t and
- * use it where available.
+ * db_align_t --
+ * Largest integral type, used to align structures in memory.  We don't store
+ * floating point types in structures, so integral types should be sufficient
+ * (and we don't have to worry about systems that store floats in other than
+ * power-of-2 numbers of bytes).  Additionally this fixes compiler that rewrite
+ * structure assignments and ANSI C memcpy calls to be in-line instructions
+ * that happen to require alignment.  Note: this alignment isn't sufficient for
+ * mutexes, which depend on things like cache line alignment.  Mutex alignment
+ * is handled separately, in mutex.h.
+ *
+ * db_alignp_t --
+ * Integral type that's the same size as a pointer.  There are places where
+ * DB modifies pointers by discarding the bottom bits to guarantee alignment.
+ * We can't use db_align_t, it may be larger than the pointer, and compilers
+ * get upset about that.  So far we haven't run on any machine where there
+ * isn't an integral type the same size as a pointer -- here's hoping.
  */
-#undef	ALIGNTYPE
-#define	ALIGNTYPE		u_long
-#undef	ALIGNP
-#define	ALIGNP(value, bound)	ALIGN((ALIGNTYPE)value, bound)
+@db_align_t_decl@
+@db_alignp_t_decl@
+
+/* Align an integer to a specific boundary. */
 #undef	ALIGN
-#define	ALIGN(value, bound)	(((value) + (bound) - 1) & ~(((u_int)bound) - 1))
+#define	ALIGN(value, bound) \
+    (((value) + (bound) - 1) & ~(((u_int)bound) - 1))
+
+/* Align a pointer to a specific boundary. */
+#undef	ALIGNP
+#define	ALIGNP(value, bound)	ALIGN((db_alignp_t)value, bound)
 
 /*
  * There are several on-page structures that are declared to have a number of
@@ -83,10 +108,17 @@
  * an array.
  */
 #undef	SSZ
-#define SSZ(name, field)	((int)&(((name *)0)->field))
+#define	SSZ(name, field)	((int)&(((name *)0)->field))
 
 #undef	SSZA
-#define SSZA(name, field)	((int)&(((name *)0)->field[0]))
+#define	SSZA(name, field)	((int)&(((name *)0)->field[0]))
+
+/*
+ * Print an address as a u_long (a u_long is the largest type we can print
+ * portably).  Most 64-bit systems have made longs 64-bits, so this should
+ * work.
+ */
+#define	P_TO_ULONG(p)	((u_long)(db_alignp_t)(p))
 
 /* Structure used to print flag values. */
 typedef struct __fn {
@@ -111,12 +143,6 @@ typedef struct __fn {
 
 /* Unused, or not-used-yet variable.  "Shut that bloody compiler up!" */
 #define	COMPQUIET(n, v)	(n) = (v)
-
-/*
- * Purify and similar run-time tools complain about unitialized reads/writes
- * for structure fields whose only purpose is padding.
- */
-#define	UMRW(v)		(v) = 0
 
 /*******************************************************
  * Files.
@@ -163,6 +189,35 @@ typedef enum {
 	DB_APP_TMP			/* Temporary file. */
 } APPNAME;
 
+/*
+ * CDB_LOCKING	CDB product locking.
+ * LOCKING_ON	Locking has been configured.
+ * LOGGING_ON	Logging has been configured.
+ * MPOOL_ON	Memory pool has been configured.
+ * TXN_ON	Transactions have been configured.
+ */
+#define	CDB_LOCKING(dbenv)	F_ISSET(dbenv, DB_ENV_CDB)
+#define	LOCKING_ON(dbenv)	((dbenv)->lk_handle != NULL)
+#define	LOGGING_ON(dbenv)	((dbenv)->lg_handle != NULL)
+#define	MPOOL_ON(dbenv)		((dbenv)->mp_handle != NULL)
+#define	TXN_ON(dbenv)		((dbenv)->tx_handle != NULL)
+
+/*
+ * STD_LOCKING	Standard locking, that is, locking was configured and CDB
+ *		was not.  We do not do locking in off-page duplicate trees,
+ *		so we check for that in the cursor first.
+ */
+#define	STD_LOCKING(dbc)						\
+	(!F_ISSET(dbc, DBC_OPD) &&					\
+	    !CDB_LOCKING((dbc)->dbp->dbenv) && LOCKING_ON((dbc)->dbp->dbenv))
+
+/*
+ * IS_RECOVERING The system is running recovery.
+ */
+#define	IS_RECOVERING(dbenv)						\
+	(LOGGING_ON(dbenv) &&						\
+	    F_ISSET((DB_LOG *)(dbenv)->lg_handle, DBLOG_RECOVER))
+
 /* Most initialization methods cannot be called after open is called. */
 #define	ENV_ILLEGAL_AFTER_OPEN(dbenv, name)				\
 	if (F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
@@ -176,6 +231,13 @@ typedef enum {
 /*******************************************************
  * Database Access Methods.
  *******************************************************/
+/*
+ * DB_IS_THREADED --
+ *	The database handle is free-threaded (was opened with DB_THREAD).
+ */
+#define	DB_IS_THREADED(dbp)						\
+	((dbp)->mutexp != NULL)
+
 /* Initialization methods are often illegal before/after open is called. */
 #define	DB_ILLEGAL_AFTER_OPEN(dbp, name)				\
 	if (F_ISSET((dbp), DB_OPEN_CALLED))				\
@@ -192,6 +254,25 @@ typedef enum {
 	if ((__ret = __dbh_am_chk(dbp, flags)) != 0)			\
 		return (__ret);						\
 }
+
+/*
+ * Common DBC->internal fields.  Each access method adds additional fields
+ * to this list, but the initial fields are common.
+ */
+#define	__DBC_INTERNAL							\
+	DBC	 *opd;			/* Off-page duplicate cursor. */\
+									\
+	void	 *page;			/* Referenced page. */		\
+	db_pgno_t root;			/* Tree root. */		\
+	db_pgno_t pgno;			/* Referenced page number. */	\
+	db_indx_t indx;			/* Referenced key item index. */\
+									\
+	DB_LOCK		lock;		/* Cursor lock. */		\
+	db_lockmode_t	lock_mode;	/* Lock mode. */
+
+struct __dbc_internal {
+	__DBC_INTERNAL
+};
 
 /*******************************************************
  * Mpool.
@@ -212,19 +293,20 @@ typedef struct __dbpginfo {
  * Log.
  *******************************************************/
 /* Initialize an LSN to 'zero'. */
-#define	ZERO_LSN(LSN) {							\
+#define	ZERO_LSN(LSN) do {						\
 	(LSN).file = 0;							\
 	(LSN).offset = 0;						\
-}
+} while (0)
 
 /* Return 1 if LSN is a 'zero' lsn, otherwise return 0. */
 #define	IS_ZERO_LSN(LSN)	((LSN).file == 0)
 
 /* Test if we need to log a change. */
 #define	DB_LOGGING(dbc)							\
-	(F_ISSET((dbc)->dbp->dbenv, DB_ENV_LOGGING) &&			\
-	    !F_ISSET(dbc, DBC_RECOVER))
+	(LOGGING_ON((dbc)->dbp->dbenv) && !F_ISSET(dbc, DBC_RECOVER))
 
+/* Internal flag for use with internal __log_unregister. */
+#define	DB_LOGONLY	0x01
 /*******************************************************
  * Txn.
  *******************************************************/
@@ -233,9 +315,13 @@ typedef struct __dbpginfo {
 /*******************************************************
  * Global variables.
  *******************************************************/
+#ifdef HAVE_VXWORKS
+#include "semLib.h"
+#endif
+
 /*
- * !!!
- * Initialized in env/env_method.c, don't change this without changing that.
+ * DB global variables.  Done in a single structure to minimize the name-space
+ * pollution.
  */
 typedef struct __db_globals {
 	u_int32_t db_mutexlocks;	/* db_set_mutexlocks */
@@ -243,16 +329,43 @@ typedef struct __db_globals {
 	u_int32_t db_panic;		/* db_set_panic */
 	u_int32_t db_region_init;	/* db_set_region_init */
 	u_int32_t db_tas_spins;		/* db_set_tas_spins */
+#ifdef HAVE_VXWORKS
+	u_int32_t db_global_init;	/* VxWorks: inited */
+	SEM_ID db_global_lock;		/* VxWorks: global semaphore */
+#endif
 					/* XA: list of opened environments. */
 	TAILQ_HEAD(__db_envq, __db_env) db_envq;
 } DB_GLOBALS;
 
+#ifdef DB_INITIALIZE_DB_GLOBALS
+DB_GLOBALS __db_global_values = {
+	1,					/* db_set_mutexlocks */
+	0,					/* db_set_pageyield */
+	1,					/* db_set_panic */
+	0,					/* db_set_region_init */
+	0,					/* db_set_tas_spins */
+#ifdef HAVE_VXWORKS
+	0,					/* db_global_init */
+	NULL,					/* db_global_lock */
+#endif
+						/* XA environment queue */
+	{NULL, &__db_global_values.db_envq.tqh_first}
+};
+#else
 extern	DB_GLOBALS	__db_global_values;
+#endif
 #define	DB_GLOBAL(v)	__db_global_values.v
 
 /* Forward structure declarations. */
 struct __db_reginfo_t;	typedef struct __db_reginfo_t REGINFO;
 struct __mutex_t;	typedef struct __mutex_t MUTEX;
+struct __vrfy_childinfo; typedef struct __vrfy_childinfo VRFY_CHILDINFO;
+struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
+struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
+
+#if defined(__cplusplus)
+}
+#endif
 
 /*******************************************************
  * More general includes.

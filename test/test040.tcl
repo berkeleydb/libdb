@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1998, 1999
+# Copyright (c) 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test040.tcl	11.1 (Sleepycat) 7/25/99
+#	$Id: test040.tcl,v 11.3 2000/02/14 03:00:20 bostic Exp $
 #
 # DB Test 40 {access method}
 # DB_GET_BOTH functionality with off-page duplicates.

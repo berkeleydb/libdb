@@ -1,5 +1,6 @@
-<!--"@(#)env_close.so	10.18 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_close.so,v 10.21 2000/03/01 21:41:29 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;close</h1>
@@ -24,28 +26,22 @@ int
 DBENV-&gt;close(DB_ENV *dbenv, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DBENV-&gt;close function closes the Berkeley DB environment, freeing any
+<p>The DBENV-&gt;close function closes the Berkeley DB environment, freeing any
 allocated resources and closing any underlying subsystems.
-<p>
-Calling DBENV-&gt;close does not imply closing any databases that were
+<p>Calling DBENV-&gt;close does not imply closing any databases that were
 opened in the environment.
-<p>
-The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>
-Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> flag,
+<p>The <b>flags</b> parameter is currently unused, and must be set to 0.
+<p>Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> flag,
 calling DBENV-&gt;close does not release any locks still held by the
 closing process, providing functionality for long-lived locks.
 Processes that wish to have all their locks
 released can do so by issuing the appropriate <a href="../api_c/lock_vec.html">lock_vec</a> call.
-<p>
-Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>
+<p>Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>
 flag, calling DBENV-&gt;close implies calls to <a href="../api_c/memp_fclose.html">memp_fclose</a> for
 any remaining open files in the memory pool that were returned to this
 process by calls to <a href="../api_c/memp_fopen.html">memp_fopen</a>.  It does not imply a call to
 <a href="../api_c/memp_fsync.html">memp_fsync</a> for those files.
-<p>
-Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flag,
+<p>Where the environment was initialized with the <a href="../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flag,
 calling DBENV-&gt;close aborts any uncommitted transactions.
 (Applications are should not depend on this behavior. If the process' has
 already closed a database handle which is necessary to abort an
@@ -53,25 +49,16 @@ uncommitted transaction, the Berkeley DB environment must then require that
 recovery be run before further operations are done, since once a
 transaction exists that cannot be committed or aborted, no future
 checkpoint can ever succeed.)
-<p>
-In multi-threaded applications, only a single thread may call
+<p>In multi-threaded applications, only a single thread may call
 DBENV-&gt;close.
-<p>
-Once DBENV-&gt;close has been called, regardless of its return,
+<p>Once DBENV-&gt;close has been called, regardless of its return,
 the Berkeley DB environment handle may not be accessed again.
-<p>
-The DBENV-&gt;close
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The DBENV-&gt;close function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DBENV-&gt;close function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the DBENV-&gt;close function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The DBENV-&gt;close function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DBENV-&gt;close function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -84,10 +71,7 @@ for errors specified for other Berkeley DB and C library or system functions.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

@@ -1,15 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)env002.tcl	11.2 (Sleepycat) 9/7/99
+#	$Id: env002.tcl,v 11.10 2000/05/22 12:51:36 bostic Exp $
 #
 # Env Test 002
-# Test DB_LOG_DIR and env name resolution
+# Test set_lg_dir and env name resolution
 # With an environment path specified using -home, and then again
 # with it specified by the environment variable DB_HOME:
-# 	1) Make sure that the DB_LOG_DIR config file option is respected
+#	1) Make sure that the set_lg_dir option is respected
 #		a) as a relative pathname.
 #		b) as an absolute pathname.
 #	2) Make sure that the DB_LOG_DIR db_config argument is respected,
@@ -28,7 +28,7 @@ proc env002 { } {
 	global env
 	source ./include.tcl
 
-	puts "Env002: DB_LOG_DIR test."
+	puts "Env002: set_lg_dir test."
 
 	puts "\tEnv002: Running with -home argument to berkdb env."
 	env002_body "-home $testdir"
@@ -51,11 +51,10 @@ proc env002 { } {
 proc env002_body { home_arg } {
 	source ./include.tcl
 
-
 	cleanup $testdir
 	set logdir "logs_in_here"
 
-	exec $MKDIR $testdir/$logdir
+	file mkdir $testdir/$logdir
 
 	# Set up full path to $logdir for when we test absolute paths.
 	set curdir [pwd]
@@ -71,7 +70,7 @@ proc env002_body { home_arg } {
 
 	cleanup $testdir
 
-	exec $MKDIR $fulllogdir
+	file mkdir $fulllogdir
 	env002_make_config $fulllogdir
 
 	# Run the test again
@@ -82,17 +81,17 @@ proc env002_body { home_arg } {
 
 	# Now we try without a config file, but instead with db_config
 	# relative paths
-	exec $MKDIR $testdir/$logdir
+	file mkdir $testdir/$logdir
 	env002_run_test b 1 "relative path, db_config" "$home_arg \
-		-config {{DB_LOG_DIR $logdir} {DB_DATA_DIR .}}" \
+		-log_dir $logdir -data_dir ." \
 		$testdir/$logdir
 
 	cleanup $testdir
 
 	# absolute
-	exec $MKDIR $fulllogdir
+	file mkdir $fulllogdir
 	env002_run_test b 2 "absolute path, db_config" "$home_arg \
-		-config {{DB_LOG_DIR $fulllogdir} {DB_DATA_DIR .}}" \
+		-log_dir $fulllogdir -data_dir ." \
 		$fulllogdir
 
 	cleanup $testdir
@@ -100,25 +99,22 @@ proc env002_body { home_arg } {
 	# Now, set db_config -and- have a # DB_CONFIG file, and make
 	# sure only the latter is honored.
 
-	exec $MKDIR $testdir/$logdir
+	file mkdir $testdir/$logdir
 	env002_make_config $logdir
 
 	# note that we supply a -nonexistent- log dir to db_config
 	env002_run_test c 1 "relative path, both db_config and file" \
-		"$home_arg -config {{DB_LOG_DIR $testdir/bogus} \
-		{DB_DATA_DIR .}}" $testdir/$logdir
+		"$home_arg -log_dir $testdir/bogus \
+		-data_dir ." $testdir/$logdir
 	cleanup $testdir
 
-
-	exec $MKDIR $fulllogdir
+	file mkdir $fulllogdir
 	env002_make_config $fulllogdir
 
 	# note that we supply a -nonexistent- log dir to db_config
 	env002_run_test c 2 "relative path, both db_config and file" \
-		"$home_arg -config {{DB_LOG_DIR $fulllogdir/bogus} \
-		{DB_DATA_DIR .}}" $fulllogdir
-
-
+		"$home_arg -log_dir $fulllogdir/bogus \
+		-data_dir ." $fulllogdir
 }
 
 proc env002_run_test { major minor msg env_args log_path} {
@@ -129,10 +125,10 @@ proc env002_run_test { major minor msg env_args log_path} {
 
 	# Create an environment, with logging, and scribble some
 	# stuff in a [btree] database in it.
-	# puts [concat {berkdb env -create -log -mpool -private} $env_args]
-	set dbenv [eval {berkdb env -create -log -mpool -private} $env_args]
+	# puts [concat {berkdb env -create -log -private} $env_args]
+	set dbenv [eval {berkdb env -create -log -private} $env_args]
 	error_check_good env_open [is_valid_env $dbenv] TRUE
-	set db [berkdb open -env $dbenv -create -btree -mode 0644 $testfile]
+	set db [berkdb_open -env $dbenv -create -btree -mode 0644 $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set key "some_key"
@@ -154,7 +150,7 @@ proc env002_make_config { logdir } {
 	global testdir
 
 	set cid [open $testdir/DB_CONFIG w]
-	puts $cid "DB_DATA_DIR ."
-	puts $cid "DB_LOG_DIR $logdir"
+	puts $cid "set_data_dir ."
+	puts $cid "set_lg_dir $logdir"
 	close $cid
 }

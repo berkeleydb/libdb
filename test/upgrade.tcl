@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)upgrade.tcl	11.5 (Sleepycat) 11/8/99
+#	$Id: upgrade.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
 
 source ./include.tcl
 
@@ -33,6 +33,7 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 	}
 
 	foreach version [glob $upgrade_dir/*] {
+		if { [string first CVS $version] != -1 } { continue }
 		regexp \[^\/\]*$ $version version
 		foreach method [glob $upgrade_dir/$version/*] {
 			regexp \[^\/\]*$ $method method
@@ -49,7 +50,6 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 				catch {exec gunzip -c "$upgrade_dir/$version/$method/$name.tar.gz" >@$tarfd}
 				close $tarfd
 
-
 				set f [open $testdir/$name.tcldump {RDWR CREAT}]
 				close $f
 
@@ -60,29 +60,27 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 				# memory.
 				if { [file exists $testdir/$name-le.db] } {
 					set ret [catch {exec $tclsh_path\
-				    	    << "source $test_path/test.tcl;\
-				    	    _upgrade_test $testdir $version\
+					    << "source $test_path/test.tcl;\
+					    _upgrade_test $testdir $version\
 					    $method\
-				    	    $name le"} message]
+					    $name le"} message]
 					puts $message
 					if { $ret != 0 } {
 						#exit
 					}
 				}
-
 
 				if { [file exists $testdir/$name-be.db] } {
 					set ret [catch {exec $tclsh_path\
-				    	    << "source $test_path/test.tcl;\
-				    	    _upgrade_test $testdir $version\
+					    << "source $test_path/test.tcl;\
+					    _upgrade_test $testdir $version\
 					    $method\
-				    	    $name be"} message]
+					    $name be"} message]
 					puts $message
 					if { $ret != 0 } {
 						#exit
 					}
 				}
-
 
 				set ret [catch {exec $tclsh_path\
 				    << "source $test_path/test.tcl;\
@@ -108,14 +106,13 @@ proc _upgrade_test { temp_dir version method file endianness } {
 
 	puts "Upgrade: $version $method $file $endianness"
 
-	set db [berkdb open -upgrade "$temp_dir/$file-$endianness.db"]
-	error_check_good dbclose [$db close] 0
+	set ret [berkdb upgrade "$temp_dir/$file-$endianness.db"]
+	error_check_good dbupgrade $ret 0
 
 	upgrade_dump "$temp_dir/$file-$endianness.db" "$temp_dir/temp.dump"
 
 	error_check_good "Upgrade diff.$endianness: $version $method $file" \
-	    [catch { exec $CMP "$temp_dir/$file.tcldump" "$temp_dir/temp.dump" } ret] 0
-	error_check_good "Upgrade diff.$endianness: $version $method $file" $ret ""
+	    [filecmp "$temp_dir/$file.tcldump" "$temp_dir/temp.dump"] 0
 }
 
 proc _db_load_test { temp_dir version method file } {
@@ -133,8 +130,7 @@ proc _db_load_test { temp_dir version method file } {
 	upgrade_dump "$temp_dir/upgrade.db" "$temp_dir/temp.dump"
 
 	error_check_good "Upgrade diff.1.1: $version $method $file" \
-	    [catch { exec $CMP "$temp_dir/$file.tcldump" "$temp_dir/temp.dump" } ret] 0
-    error_check_good "Upgrade diff.1.2: $version $method $file" $ret ""
+	    [filecmp "$temp_dir/$file.tcldump" "$temp_dir/temp.dump"] 0
 }
 
 proc gen_upgrade { dir } {
@@ -208,20 +204,6 @@ proc upgrade_dump { database file {stripnulls 0} } {
 
 	set key_list [lsort -command _comp $key_list]
 
-
-	#set key_list [lsort $key_list]
-if { 0 } {
-# XXX
-	puts ""
-	puts ""
-	puts "AFTER"
-	puts ""
-	puts ""
-
-	foreach i $key_list {
-		puts $i
-	}
-}
 	#
 	# Get the data for each key
 	#

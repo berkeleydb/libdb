@@ -1,5 +1,6 @@
-<!--@(#)notxn.so	10.7 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: notxn.so,v 10.10 2000/03/18 21:43:14 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,14 +9,14 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
 <td width="1%"><a href="../../ref/lock/stdmode.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/twopl.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Locking without transactions</h1>
-<p>
-If an application runs with locking specified, but not transactions (e.g.,
+<p>If an application runs with locking specified, but not transactions (e.g.,
 <a href="../../api_c/env_open.html">DBENV-&gt;open</a> is called with <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> or
 <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> specified, but not <a href="../../api_c/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a>), locks are
 normally acquired during each Berkeley DB operation and released before the
@@ -30,10 +31,9 @@ until either the cursor is reset using the <a href="../../api_c/db_get.html#DB_G
 <a href="../../api_c/dbc_put.html#DB_KEYLAST">DB_KEYLAST</a> functionality, in which case a new cursor lock is
 established, or the cursor is closed.  As a result, application designers
 are encouraged to close cursors as soon as possible.
-<p>
-It is important to realize that concurrent applications that use locking
+<p>It is important to realize that concurrent applications that use locking
 must ensure that two concurrent threads do not interfere with each other.
-However, as B+tree and Hash access method page splits can occur at any
+However, as Btree and Hash access method page splits can occur at any
 time, there is virtually no way to guarantee that an application which
 writes the database cannot deadlock.  Applications running without the
 protection of transactions may deadlock, and when they do so, can leave

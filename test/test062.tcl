@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test062.tcl	11.5 (Sleepycat) 10/25/99
+#	$Id: test062.tcl,v 11.11 2000/05/22 12:51:40 bostic Exp $
 #
 # DB Test 62:  Test of partial puts onto duplicate pages.
 #	Insert the first 200 words into the dictionary 200 times each with
@@ -20,7 +20,15 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 	set omethod [convert_method $method]
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 	cleanup $testdir
 
 	puts "Test0$tnum:\
@@ -29,7 +37,7 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -truncate -mode 0644 \
 	    $omethod -dup} $args {$testfile} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
@@ -48,7 +56,7 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 			set pref \
 			    [string index $alphabet [berkdb random_int 0 25]]
 			set datastr $pref:$str
-                        set ret [eval {$db put} \
+			set ret [eval {$db put} \
 			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
 		}
@@ -64,14 +72,14 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 
 	# Do a partial write to extend each datum in
 	# the regular db by the corresponding dictionary word.
- 	for {set ret [$dbc get -first]}  \
-    	    {[llength $ret] != 0} \
-    	    {set ret [$dbc get -next]} {
+	for {set ret [$dbc get -first]}  \
+	    {[llength $ret] != 0} \
+	    {set ret [$dbc get -next]} {
 
 		set k [lindex [lindex $ret 0] 0]
 		set orig_d [lindex [lindex $ret 0] 1]
 		set d [string range $orig_d 2 end]
-	       	set doff [expr [string length $d] + 2]
+		set doff [expr [string length $d] + 2]
 		set dlen 0
 		error_check_good data_and_key_sanity $d $k
 
@@ -85,9 +93,7 @@ proc test062 { method {nentries 200} {ndups 200} {tnum 62} args } {
 		set ret [$dbc get -current]
 		error_check_good partial_put_correct \
 		    [lindex [lindex $ret 0] 1] $orig_d$d
-
-        }
-
+	}
 
 	puts "\tTest0$tnum.c: Double-checking get loop."
 	# Double-check that each datum in the regular db has

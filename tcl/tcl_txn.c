@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_txn.c	11.12 (Sleepycat) 10/25/99";
+static const char revid[] = "$Id: tcl_txn.c,v 11.19 2000/04/21 18:18:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -29,13 +29,13 @@ static int      tcl_TxnCommit __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     DB_TXN *, DBTCL_INFO *));
 
 /*
- * PUBLIC: void	_TxnInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
- *
  * _TxnInfoDelete --
  *	Removes nested txn info structures that are children
- * 	of this txn.
+ *	of this txn.
  *	RECURSIVE:  Transactions can be arbitrarily nested, so we
- * 	must recurse down until we get them all.
+ *	must recurse down until we get them all.
+ *
+ * PUBLIC: void _TxnInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
  */
 void
 _TxnInfoDelete(interp, txnip)
@@ -44,12 +44,12 @@ _TxnInfoDelete(interp, txnip)
 {
 	DBTCL_INFO *nextp, *p;
 
-	for (p = __db_infohead; p != NULL; p = nextp) {
+	for (p = LIST_FIRST(&__db_infohead); p != NULL; p = nextp) {
 		/*
 		 * Check if this info structure "belongs" to this
 		 * txn.  Remove its commands and info structure.
 		 */
-		nextp = p->i_next;
+		nextp = LIST_NEXT(p, entries);
 		 if (p->i_parent == txnip && p->i_type == I_TXN) {
 			_TxnInfoDelete(interp, p);
 			(void)Tcl_DeleteCommand(interp, p->i_name);
@@ -59,10 +59,10 @@ _TxnInfoDelete(interp, txnip)
 }
 
 /*
- * PUBLIC: int	tcl_TxnCheckpoint __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_TxnCheckpoint --
+ *
+ * PUBLIC: int tcl_TxnCheckpoint __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_TxnCheckpoint(interp, objc, objv, envp)
@@ -115,18 +115,16 @@ tcl_TxnCheckpoint(interp, objc, objv, envp)
 		}
 	}
 	_debug_check();
-	ret = txn_checkpoint(envp, (u_int32_t)kb, (u_int32_t)min);
+	ret = txn_checkpoint(envp, (u_int32_t)kb, (u_int32_t)min, 0);
 	result = _ReturnSetup(interp, ret, "txn checkpoint");
 	return (result);
-
 }
 
-
 /*
- * PUBLIC: int	tcl_Txn __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
- *
  * tcl_Txn --
+ *
+ * PUBLIC: int tcl_Txn __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
 tcl_Txn(interp, objc, objv, envp, envip)
@@ -231,15 +229,13 @@ tcl_Txn(interp, objc, objv, envp, envip)
 		Tcl_SetObjResult(interp, res);
 	}
 	return (result);
-
 }
 
-
 /*
- * PUBLIC: int	tcl_TxnStat __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_TxnStat --
+ *
+ * PUBLIC: int tcl_TxnStat __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_TxnStat(interp, objc, objv, envp)
@@ -248,7 +244,7 @@ tcl_TxnStat(interp, objc, objv, envp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB_ENV *envp;			/* Environment pointer */
 {
-#define MAKE_STAT_LSN(s, lsn)						\
+#define	MAKE_STAT_LSN(s, lsn)						\
 do {									\
 	myobjc = 2;							\
 	myobjv[0] = Tcl_NewIntObj((lsn)->file);				\
@@ -305,7 +301,8 @@ do {									\
 	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	for (i = 0, p = sp->st_txnarray; i < sp->st_nactive; i++, p++)
-		for (ip = __db_infohead; ip != NULL; ip = ip->i_next) {
+		for (ip = LIST_FIRST(&__db_infohead); ip != NULL;
+		    ip = LIST_NEXT(ip, entries)) {
 			if (ip->i_type != I_TXN)
 				continue;
 			if (ip->i_type == I_TXN &&
@@ -323,15 +320,13 @@ do {									\
 error:
 	__os_free(sp, sizeof(*sp));
 	return (result);
-
 }
 
 /*
- *
- * PUBLIC: int	txn_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
- *
  * txn_Cmd --
  *	Implements the "txn" widget.
+ *
+ * PUBLIC: int txn_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
 txn_Cmd(clientData, interp, objc, objv)
@@ -429,7 +424,7 @@ txn_Cmd(clientData, interp, objc, objv)
 
 static int
 tcl_TxnCommit(interp, objc, objv, txnp, txnip)
-        Tcl_Interp *interp;             /* Interpreter */
+	Tcl_Interp *interp;             /* Interpreter */
 	int objc;                       /* How many arguments? */
 	Tcl_Obj *CONST objv[];          /* The argument objects */
 	DB_TXN *txnp;			/* Transaction pointer */

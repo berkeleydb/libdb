@@ -1,5 +1,6 @@
-<!--"@(#)dbinfo.so	11.5 (Sleepycat) 10/1/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: dbinfo.so,v 11.8 2000/03/18 21:43:20 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,43 +15,37 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: the DBINFO structure</h1>
-<p>
-The DB_INFO structure has been removed from the Berkeley DB 3.0 release.
+<p>The DB_INFO structure has been removed from the Berkeley DB 3.0 release.
 Accesses to any fields within that structure by the application should be
 replaced with method calls on the DB handle.  The following
 example illustrates this using the historic db_cachesize structure field.
 In the Berkeley DB 2.X releases, applications could set the size of an
 underlying database cache using code similar to the following:
+<p><blockquote><pre>DB_INFO dbinfo;
 <p>
-<blockquote><pre>DB_INFO dbinfo;
 	memset(dbinfo, 0, sizeof(dbinfo));
 	dbinfo.db_cachesize = 1024 * 1024;</pre></blockquote>
-<p>
-in the Berkeley DB 3.X releases, this should be done using the
+<p>in the Berkeley DB 3.X releases, this should be done using the
 <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> method, as follows:
-<p>
-<blockquote><pre>DB *db;
+<p><blockquote><pre>DB *db;
 int ret;
+<p>
 	ret = db-&gt;set_cachesize(db, 0, 1024 * 1024, 0);</pre></blockquote>
-<p>
-The DB_INFO structure is no longer used in any way by the Berkeley DB 3.0
+<p>The DB_INFO structure is no longer used in any way by the Berkeley DB 3.0
 release, and should be removed from the application.
-<p>
-The following table lists the DB_INFO fields previously used by
+<p>The following table lists the DB_INFO fields previously used by
 applications and the methods that should now be used to set
 them.  Because these calls provide configuration for the
 database open, they must precede the call to <a href="../../api_c/db_open.html">DB-&gt;open</a>.
 Calling them after the call to <a href="../../api_c/db_open.html">DB-&gt;open</a> will return an
 error.
-<p>
-<table border=1 align=center>
+<p><table border=1 align=center>
 <tr><th>DB_INFO field</th><th>Berkeley DB 3.X method</th></tr>
 <tr><td>bt_compare</td><td><a href="../../api_c/db_set_bt_compare.html">DB-&gt;set_bt_compare</a></td></tr>
 <tr><td>bt_minkey</td><td><a href="../../api_c/db_set_bt_minkey.html">DB-&gt;set_bt_minkey</a></td></tr>
 <tr><td>bt_prefix</td><td><a href="../../api_c/db_set_bt_prefix.html">DB-&gt;set_bt_prefix</a></td></tr>
 <tr><td>db_cachesize</td><td><a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a>
-<p>
-Note: the <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> function takes additional arguments.
+<p>Note: the <a href="../../api_c/db_set_cachesize.html">DB-&gt;set_cachesize</a> function takes additional arguments.
 Setting both the second argument (the number of GB in the pool) and the
 last argument (the number of memory pools to create) to 0 will result in
 behavior that is backward compatible with previous Berkeley DB releases.</td></tr>
@@ -59,8 +54,7 @@ behavior that is backward compatible with previous Berkeley DB releases.</td></t
 <tr><td>db_pagesize</td><td><a href="../../api_c/db_set_pagesize.html">DB-&gt;set_pagesize</a></td></tr>
 <tr><td>dup_compare</td><td><a href="../../api_c/db_set_dup_compare.html">DB-&gt;set_dup_compare</a></td></tr>
 <tr><td>flags</td><td><a href="../../api_c/db_set_flags.html">DB-&gt;set_flags</a>
-<p>
-Note: the DB_DELIMITER, DB_FIXEDLEN and DB_PAD flags no longer need to be
+<p>Note: the DB_DELIMITER, DB_FIXEDLEN and DB_PAD flags no longer need to be
 set as there are specific methods off the DB handle that set the
 file delimiter, the length of fixed-length records and the fixed-length
 record pad character.  They should simply be discarded from the application.</td></tr>

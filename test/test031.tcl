@@ -1,16 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test031.tcl	11.7 (Sleepycat) 11/8/99
+#	$Id: test031.tcl,v 11.15 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 31 {access method}
 # Use the first 10,000 entries from the dictionary.
 # Insert each with self as key and "ndups" duplicates
-# For the data field, prepend the letters of the alphabet
-# in a random order so that we force the duplicate sorting
-# code to do something.
+# For the data field, prepend random five-char strings (see test032)
+# that we force the duplicate sorting code to do something.
 # By setting ndups large, we can make this an off-page test
 # After all are entered, retrieve all; verify output.
 # Close file, reopen, do retrieve and re-verify.
@@ -26,7 +25,17 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	set omethod [convert_method $method]
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+		set checkdb $testdir/checkdb.db
+	} else {
+		set testfile test0$tnum.db
+		set checkdb checkdb.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -39,13 +48,13 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb open -create -truncate \
+	set db [eval {berkdb_open -create -truncate \
 		-mode 0644} $args {$omethod -dup -dupsort $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
-	set check_db [berkdb \
-	    open -create -truncate -mode 0644 -hash $testdir/checkdb.db]
+	set check_db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {-hash $checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -58,10 +67,12 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open [is_substr $dbc $db] 1
 	while { [gets $did str] != -1 && $count < $nentries } {
+		# Re-initialize random string generator
+		randstring_init $ndups
+
 		set dups ""
 		for { set i 1 } { $i <= $ndups } { incr i } {
-			set pref \
-			    [string index $alphabet [berkdb random_int 0 25]]
+			set pref [randstring]
 			set dups $dups$pref
 			set datastr $pref:$str
 			set ret [eval {$db put} \
@@ -106,27 +117,29 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open(2) [is_substr $dbc $db] 1
 
-	set lastkey ""
+	set lastkey "THIS WILL NEVER BE A KEY VALUE"
+	# no need to delete $lastkey
+	set firsttimethru 1
 	for {set ret [$dbc get -first]} \
 	    {[llength $ret] != 0} \
 	    {set ret [$dbc get -next] } {
 		set k [lindex [lindex $ret 0] 0]
 		set d [lindex [lindex $ret 0] 1]
-		error_check_bad key_check:$k [string length $k] 0
 		error_check_bad data_check:$d [string length $d] 0
 
 		if { [string compare $k $lastkey] != 0 } {
 			# Remove last key from the checkdb
-			if { [string length $lastkey] != 0 } {
+			if { $firsttimethru != 1 } {
 				error_check_good check_db:del:$lastkey \
 				    [eval {$check_db del} $txn {$lastkey}] 0
 			}
+			set firsttimethru 0
 			set lastdup ""
 			set lastkey $k
 			set dups [lindex [lindex [eval {$check_db get} \
 				$txn {$k}] 0] 1]
 			error_check_good check_db:get:$k \
-			    [string length $dups] $ndups
+			    [string length $dups] [expr $ndups * 4]
 		}
 
 		if { [string compare $lastdup $d] > 0 } {
@@ -134,11 +147,11 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum 31} args } {
 		}
 		set lastdup $d
 
-		set pref [string range $d 0 0]
+		set pref [string range $d 0 3]
 		set ndx [string first $pref $dups]
 		error_check_good valid_duplicate [expr $ndx >= 0] 1
 		set a [string range $dups 0 [expr $ndx - 1]]
-		set b [string range $dups [expr $ndx + 1] end]
+		set b [string range $dups [expr $ndx + 4] end]
 		set dups $a$b
 	}
 	# Remove last key from the checkdb

@@ -1,6 +1,7 @@
-<!--"@(#)db_sync.so	11.7 (Sleepycat) 9/17/99"-->
-<!--"@(#)m4.tcl	11.12 (Sleepycat) 11/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_sync.so,v 11.9 1999/12/20 08:52:35 bostic Exp $-->
+<!--$Id: m4.tcl,v 11.17 2000/04/24 17:31:11 sue Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -9,6 +10,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1><i>db</i> <b>sync</b></h1>
@@ -21,13 +23,10 @@
 <h3><pre>db sync
 </pre></h3>
 <h1>Description</h1>
-<p>
-The <i>db</i> <b>sync</b> command function flushes any database cached
+<p>The <i>db</i> <b>sync</b> command function flushes any database cached
 information to disk.
-<p>
-See <i>db</i> <b>close</b> for a discussion of Berkeley DB and cached data. 
-<p>
-The <i>db</i> <b>sync</b> command returns 0 on success, and in the case of error, a Tcl error
+<p>See <i>db</i> <b>close</b> for a discussion of Berkeley DB and cached data. 
+<p>The <i>db</i> <b>sync</b> command returns 0 on success, and in the case of error, a Tcl error
 is thrown.
 </tt>
 <table><tr><td><br></td><td width="1%">

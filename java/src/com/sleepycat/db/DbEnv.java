@@ -1,16 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbEnv.java	11.5 (Sleepycat) 9/30/99
+ *	$Id: DbEnv.java,v 11.16 2000/06/01 14:52:47 dda Exp $
  */
 
 package com.sleepycat.db;
 
 import java.io.OutputStream;
 import java.io.FileNotFoundException;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.Vector;
 
 /**
  *
@@ -28,7 +31,8 @@ public class DbEnv
     //
     public DbEnv(int flags)
     {
-        _init(new DbOutputStreamErrcall(System.err), flags);
+        constructor_flags_ = flags;
+        _init(errstream_, constructor_flags_);
     }
 
     //
@@ -38,25 +42,88 @@ public class DbEnv
     //
     /*package*/ DbEnv(Db db)
     {
-        _init_using_db(new DbOutputStreamErrcall(System.err), db);
+        _init_using_db(errstream_, db);
     }
 
-    protected native void finalize()
-         throws Throwable;
-
-    // close discards any internal memory.
-    // After using close, the DbEnv can no longer be used;
-    // create another one if needed.
     //
-    public native void close(int flags)
-         throws DbException;
+    // When a Db is opened, it is kept in a private list,
+    // so that Db's can be notified when the environment
+    // is closed.
+    //
+    /*package*/ void _add_open_db(Db db)
+    {
+        dblist_.addElement(db);
+    }
+    
+    //
+    // Remove from the private list of open Db's.
+    //
+    /*package*/ void _remove_open_db(Db db)
+    {
+        dblist_.removeElement(db);
+    }
+    
+    //
+    // Iterate all the Db's in the open list, and
+    // notify them that the environment is closing,
+    // so they can clean up.
+    //
+    /*package*/ void _notify_open_dbs()
+    {
+        Enumeration enum = dblist_.elements();
+        while (enum.hasMoreElements()) {
+            Db db = (Db)enum.nextElement();
+            db._notify_dbenv_close();
+        }
+        dblist_.removeAllElements();
+    }
+    
+    // close discards any internal memory.
+    // After using close, the DbEnv can be reopened.
+    //
+    public synchronized void close(int flags)
+        throws DbException
+    {
+        _notify_open_dbs();
+        _close(flags);
+        _init(errstream_, constructor_flags_);
+    }
+
+    // (Internal)
+    private native void _close(int flags)
+        throws DbException;
 
     public native void err(int errcode, String message);
 
     public native void errx(String message);
 
-    public native void open(String db_home, String[] db_config,
-                            int flags, int mode)
+    // overrides Object.finalize
+    protected void finalize()
+        throws Throwable
+    {
+        is_finalized_ = true; 
+        _notify_open_dbs();
+        _finalize();
+    }
+
+    /*package*/ boolean is_finalized()
+    {
+        return is_finalized_;
+    }
+
+    // (Internal)
+    private native void _finalize()
+         throws Throwable;
+
+    // (Internal)
+    private native void _init(DbErrcall errcall, int flags);
+
+    // (Internal)
+    private native void _init_using_db(DbErrcall errcall, Db db);
+
+    /*package*/ native void _notify_db_close();
+
+    public native void open(String db_home, int flags, int mode)
          throws DbException, FileNotFoundException;
 
     // remove removes any files and discards any internal memory.
@@ -64,7 +131,7 @@ public class DbEnv
     // After using close, the DbEnv can no longer be used;
     // create another one if needed.
     //
-    public native void remove(String db_home, String[] db_config, int flags)
+    public native synchronized void remove(String db_home, int flags)
          throws DbException;
 
     ////////////////////////////////////////////////////////////////
@@ -91,20 +158,29 @@ public class DbEnv
 
     // Feedback
     public void set_feedback(DbFeedback feedback)
+         throws DbException
     {
         feedback_ = feedback;
         feedback_changed(feedback);
     }
 
     // (Internal)
-    private native void feedback_changed(DbFeedback feedback);
+    private native void feedback_changed(DbFeedback feedback)
+         throws DbException;
 
     // Generate debugging messages.
     public native void set_verbose(int which, int onoff)
          throws DbException;
 
+    public native void set_data_dir(String data_dir)
+         throws DbException;
+
     // Log buffer size.
     public native void set_lg_bsize(/*u_int32_t*/ int lg_max)
+         throws DbException;
+
+    // Log directory.
+    public native void set_lg_dir(String lg_dir)
          throws DbException;
 
     // Maximum log file size.
@@ -127,29 +203,56 @@ public class DbEnv
     public native void set_mp_mmapsize(/*size_t*/ long mmapsize)
          throws DbException;
 
-    public native void set_mutexlocks(int mutexlocks)
+    public native static void set_mutexlocks(int mutexlocks)
          throws DbException;
 
-    public native void set_pageyield(int pageyield)
+    public native static void set_pageyield(int pageyield)
+         throws DbException;
+
+    public native static void set_panicstate(int panicstate)
          throws DbException;
 
     public void set_recovery_init(DbRecoveryInit recovery_init)
+         throws DbException
     {
         recovery_init_ = recovery_init;
         recovery_init_changed(recovery_init);
     }
 
     // (Internal)
-    private native void recovery_init_changed(DbRecoveryInit recovery_init);
-
-    public native void set_region_init(int region_init)
+    private native void recovery_init_changed(DbRecoveryInit recovery_init)
          throws DbException;
 
-    public native void set_tas_spins(int tas_spins)
+    public native static void set_region_init(int region_init)
+         throws DbException;
+
+    public native void set_server(String host, long cl_timeout,
+                                  long sv_timeout, int flags)
+         throws DbException;
+
+    public native void set_shm_key(long shm_key)
+         throws DbException;
+
+    public native static void set_tas_spins(int tas_spins)
+         throws DbException;
+
+    public native void set_tmp_dir(String tmp_dir)
          throws DbException;
 
     // Maximum number of transactions.
     public native void set_tx_max(/*unsigned*/ int tx_max)
+         throws DbException;
+
+    // Note: only the seconds (not milliseconds) of the timestamp
+    // are used in this API.
+    public void set_tx_timestamp(Date timestamp)
+         throws DbException
+    {
+        _set_tx_timestamp(timestamp.getTime()/1000);
+    }
+
+    // (Internal)
+    private native void _set_tx_timestamp(long seconds)
          throws DbException;
 
     // Versioning information
@@ -196,7 +299,10 @@ public class DbEnv
     public native DbLogStat log_stat()
          throws DbException;
 
-    public native /*u_int32_t fidp*/ int log_register(Db dbp, String name)
+    public native void log_register(Db dbp, String name)
+         throws DbException;
+
+    public native void log_unregister(Db dbp)
          throws DbException;
 
     public native DbMpoolStat memp_stat()
@@ -208,14 +314,12 @@ public class DbEnv
     public native int memp_trickle(int pct)
          throws DbException;
 
-    public native void log_unregister(/*u_int32_t*/ int fid)
-         throws DbException;
-
     public native DbTxn txn_begin(DbTxn pid, int flags)
          throws DbException;
 
-    public native void txn_checkpoint(int kbyte, int min)
+    public native void txn_checkpoint(int kbyte, int min, int flags)
          throws DbException;
+
 
     public native DbTxnStat txn_stat()
          throws DbException;
@@ -224,12 +328,15 @@ public class DbEnv
     //
     // private data
     //
+    private long private_dbobj_ = 0;
     private long private_info_ = 0;
+    private int constructor_flags_ = 0;
+    private Vector dblist_ = new Vector();    // Db's that are open
     private DbFeedback feedback_ = null;
     private DbRecoveryInit recovery_init_ = null;
-
-    private native void _init(DbErrcall errcall, int flags);
-    private native void _init_using_db(DbErrcall errcall, Db db);
+    private boolean is_finalized_ = false;
+    private DbOutputStreamErrcall errstream_ =
+        new DbOutputStreamErrcall(System.err);
 
     static {
         Db.load_db();

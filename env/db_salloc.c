@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_salloc.c	11.4 (Sleepycat) 10/19/99";
+static const char revid[] = "$Id: db_salloc.c,v 11.8 2000/04/07 14:29:18 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -74,27 +74,18 @@ __db_shalloc(p, len, align, retp)
 	size_t *sp;
 	void *rp;
 
-	/*
-	 * We never allocate less than the size of a struct __data, align
-	 * to less than a size_t boundary, or align to something that's not
-	 * a multiple of a size_t.
-	 */
+	/* Never allocate less than the size of a struct __data. */
 	if (len < sizeof(struct __data))
 		len = sizeof(struct __data);
 
 #ifdef DIAGNOSTIC
-        /*
-         * XXX:
-         * Do we want to do this when len has already been tweaked, as above?
-         *
-         * At worst, it costs us an extra alignment-worth of memory; it's
-         * certainly not fatal, because we always base the location of the
-         * guard byte upon the true end of the chunk, not upon the end as
-         * perceived by the caller.
-         */
-        ++len;
+	/* Add room for a guard byte. */
+	++len;
 #endif
-	align = 8;
+
+	/* Never align to less than a db_align_t boundary. */
+	if (align <= sizeof(db_align_t))
+		align = sizeof(db_align_t);
 
 	/* Walk the list, looking for a slot. */
 	for (elp = SH_LIST_FIRST((struct __head *)p, __data);
@@ -109,7 +100,7 @@ __db_shalloc(p, len, align, retp)
 		 */
 		rp = (u_int8_t *)elp + sizeof(size_t) + elp->len;
 		rp = (u_int8_t *)rp - len;
-		rp = (u_int8_t *)((ALIGNTYPE)rp & ~(align - 1));
+		rp = (u_int8_t *)((db_alignp_t)rp & ~(align - 1));
 
 		/*
 		 * Rp may now point before elp->links, in which case the chunk
@@ -120,14 +111,14 @@ __db_shalloc(p, len, align, retp)
 
 		*(void **)retp = rp;
 #ifdef DIAGNOSTIC
-                /*
-                 * At this point, whether or not we still need to split up a
-                 * chunk, retp is the address of the region we are returning,
-                 * and (u_int8_t *)elp + sizeof(size_t) + elp->len gives us
-                 * the address of the first byte after the end of the chunk.
-                 * Make the byte immediately before that the guard byte.
-                 */
-                *((u_int8_t *)elp + sizeof(size_t) + elp->len - 1) = GUARD_BYTE;
+		/*
+		 * At this point, whether or not we still need to split up a
+		 * chunk, retp is the address of the region we are returning,
+		 * and (u_int8_t *)elp + sizeof(size_t) + elp->len gives us
+		 * the address of the first byte after the end of the chunk.
+		 * Make the byte immediately before that the guard byte.
+		 */
+		*((u_int8_t *)elp + sizeof(size_t) + elp->len - 1) = GUARD_BYTE;
 #endif
 
 #define	SHALLOC_FRAGMENT	32
@@ -189,13 +180,13 @@ __db_shalloc_free(regionp, ptr)
 	free_size = newp->len;
 
 #ifdef DIAGNOSTIC
-        /*
-         * The "real size" includes the guard byte;  it's just the last
-         * byte in the chunk, and the caller never knew it existed.
-         *
-         * Check it to make sure it hasn't been stomped.
-         */
-        if (*((u_int8_t *)ptr + free_size - 1) != GUARD_BYTE) {
+	/*
+	 * The "real size" includes the guard byte;  it's just the last
+	 * byte in the chunk, and the caller never knew it existed.
+	 *
+	 * Check it to make sure it hasn't been stomped.
+	 */
+	if (*((u_int8_t *)ptr + free_size - 1) != GUARD_BYTE) {
 		/*
 		 * Eventually, once we push a DB_ENV handle down to these
 		 * routines, we should use the standard output channels.

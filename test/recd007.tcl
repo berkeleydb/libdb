@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd007.tcl	11.16 (Sleepycat) 11/10/99
+#	$Id: recd007.tcl,v 11.26 2000/05/22 12:51:37 bostic Exp $
 #
 # Recovery Test 7.
 # This is a recovery test for create/delete of databases.  We have
@@ -26,7 +26,7 @@ proc recd007 { method {select 0} } {
 	cleanup $testdir
 
 	set testfile recd007.db
-	set flags "-create -log -lock -mpool -txn -home $testdir"
+	set flags "-create -txn -home $testdir"
 
 	puts "\tRecd007.a: creating environment"
 	set env_cmd "berkdb env $flags"
@@ -79,13 +79,15 @@ proc recd007 { method {select 0} } {
 		set msg [lindex $pair 1]
 		file_recover_delete $testdir $env_cmd $omethod \
 		    $opts $testfile $cmd $msg
+		file_recover_rename $testdir $env_cmd $omethod \
+		    $opts $testfile $cmd $msg
 	}
 
 	puts "\tRecd007.q: Verify db_printlog can read logfile"
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 }
 
 # Run a recovery test for a particular operation
@@ -114,19 +116,14 @@ proc file_recover_create { dir env_cmd method opts dbfile cmd msg } {
 
 }
 
-
 proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	global log_log_record_types
 	source ./include.tcl
 
 	# Keep track of the log types we've seen
-	if { $PERL5 != "" && \
-	    $log_log_record_types == 1} {
-		set err \
-		    [catch {exec $PERL5 "$test_path/log.pl" "--read" $dir} ret]
-		error_check_good "Saving log record types" $err 0
+	if { $log_log_record_types == 1} {
+		logtrack_read $dir
 	}
-
 
 	cleanup $dir
 	# Open the environment and set the copy/abort locations
@@ -166,11 +163,11 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 			#
 			set oflags "-create $method -mode 0644 \
 			    -env $env $opts $dbfile sub0"
-			set db [eval {berkdb open} $oflags]
+			set db [eval {berkdb_open} $oflags]
 			error_check_good db_open [is_valid_db $db] TRUE
 			error_check_good db_close [$db close] 0
 			set init_file $dir/$dbfile.init
-			catch { exec $CP $dir/$dbfile $init_file } res
+			catch { file copy -force $dir/$dbfile $init_file } res
 			set oflags "-create $method -mode 0644 \
 			    -env $env $opts $dbfile sub1"
 		}
@@ -187,12 +184,13 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	set ret [eval $env test abort $abort]
 	error_check_good test_abort $ret 0
 
-	set ret [catch {eval {berkdb open} $oflags} db]
-	puts "\t\tCommand executed"
+	puts "\t\tExecuting command"
+	set ret [catch {eval {berkdb_open} $oflags} db]
 
 	# Sync the mpool so any changes to the file that are
 	# in mpool get written to the disk file before the
 	# diff.
+	puts "\t\tSyncing"
 	$env mpool_sync "0 0"
 
 	#
@@ -216,7 +214,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		} else {
 			error_check_good \
 			    diff(init,postcreate):diff($init_file,$dir/$dbfile)\
-		    	    [dbdump_diff $init_file $dir/$dbfile] 0
+			    [dbdump_diff $init_file $dir/$dbfile] 0
 		}
 	} else {
 		#
@@ -231,7 +229,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		error_check_good db_open [file exists $dir/$dbfile] 1
 		set init_file $dir/$dbfile.init
-		catch { exec $CP $dir/$dbfile $init_file } res
+		catch { file copy -force $dir/$dbfile $init_file } res
 	}
 	error_check_good env_close [$env close] 0
 
@@ -267,7 +265,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		#
 		# Need a new copy to get the right LSN into the file.
 		#
-		catch { exec $CP $dir/$dbfile $init_file } res
+		catch { file copy -force $dir/$dbfile $init_file } res
 	}
 
 	#
@@ -280,7 +278,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 	#
 	# Now move the .afterop file to $dbfile.  Run recovery again.
 	#
-	exec $MV $dir/$dbfile.afterop $dir/$dbfile
+	file copy -force $dir/$dbfile.afterop $dir/$dbfile
 	berkdb debug_check
 	puts -nonewline "\t\tAbout to run recovery ... "
 	flush stdout
@@ -340,13 +338,9 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 	source ./include.tcl
 
 	# Keep track of the log types we've seen
-	if { $PERL5 != "" && \
-	    $log_log_record_types == 1} {
-		set err \
-		    [catch {exec $PERL5 "$test_path/log.pl" "--read" $dir} ret]
-		error_check_good "Saving log record types" $err 0
+	if { $log_log_record_types == 1} {
+		logtrack_read $dir
 	}
-
 
 	cleanup $dir
 	# Open the environment and set the copy/abort locations
@@ -385,10 +379,12 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 			#
 			set oflags "-create $method -mode 0644 \
 			    -env $env $opts $dbfile sub0"
-			set db [eval {berkdb open} $oflags]
+			set db [eval {berkdb_open} $oflags]
 			error_check_good db_open [is_valid_db $db] TRUE
-			set ret [$db put $key $data2]
+			set txn [$env txn]
+			set ret [$db put -txn $txn $key $data2]
 			error_check_good db_put $ret 0
+			error_check_good commit [$txn commit] 0
 			error_check_good db_close [$db close] 0
 			set oflags "-create $method -mode 0644 \
 			    -env $env $opts $dbfile sub1"
@@ -411,14 +407,16 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 	# Open our db, add some data, close and copy as our
 	# init file.
 	#
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
-	set ret [$db put $key $data1]
+	set txn [$env txn]
+	set ret [$db put -txn $txn $key $data1]
 	error_check_good db_put $ret 0
+	error_check_good commit [$txn commit] 0
 	error_check_good db_close [$db close] 0
 
 	set init_file $dir/$dbfile.init
-	catch { exec $CP $dir/$dbfile $init_file } res
+	catch { file copy -force $dir/$dbfile $init_file } res
 
 	#
 	# If we don't abort, then we expect success.
@@ -453,7 +451,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 		error_check_good dbremove [file exists $dir/$dbfile] 0
 	}
 	error_check_good env_close [$env close] 0
-	catch { exec $CP $dir/$dbfile $init_file } res
+	catch { file copy -force $dir/$dbfile $init_file } res
 
 	#
 	# Run recovery here.  Should be a no-op.  Verify that
@@ -501,7 +499,224 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 		return
 	}
 	set afterop [lindex $filecopy 0]
-	exec $MV $afterop $dir/$dbfile
+	file rename -force $afterop $dir/$dbfile
+
+	berkdb debug_check
+	puts -nonewline "\t\tAbout to run recovery ... "
+	flush stdout
+
+	set stat [catch {exec ./db_recover -h $dir -c} result]
+	if { $stat == 1 } {
+		error "FAIL: Recovery error: $result."
+		return
+	}
+	puts "complete"
+
+	if { [string first "none" $abort] != -1} {
+		#
+		# Operation was committed, verify it still does
+		# not exist.
+		#
+		error_check_good after_recover2 [file exists $dir/$dbfile] 0
+	} else {
+		#
+		# Operation was aborted, verify it did not change.
+		#
+		error_check_good \
+		    diff(initial,post-recover2):diff($init_file,$dir/$dbfile) \
+		    [dbdump_diff $init_file $dir/$dbfile] 0
+	}
+
+}
+proc file_recover_rename { dir env_cmd method opts dbfile cmd msg } {
+	#
+	# We run this test on each of these scenarios:
+	# 1.  Deleting just a database
+	# 2.  Deleting a database with a subdb
+	# 3.  Deleting a 2nd subdb in a database
+	puts "\t$msg rename with a database"
+	do_file_recover_rename $dir $env_cmd $method $opts $dbfile \
+	    0 $cmd $msg
+	if { [is_queue $method] == 1 } {
+		puts "\tSkipping subdatabase tests for method $method"
+		return
+	}
+	puts "\t$msg rename with a database and subdb"
+	do_file_recover_rename $dir $env_cmd $method $opts $dbfile \
+	    1 $cmd $msg
+	puts "\t$msg rename with a database and 2nd subdb"
+	do_file_recover_rename $dir $env_cmd $method $opts $dbfile \
+	    2 $cmd $msg
+
+}
+proc do_file_recover_rename { dir env_cmd method opts dbfile sub cmd msg } {
+	global log_log_record_types
+	source ./include.tcl
+
+	# Keep track of the log types we've seen
+	if { $log_log_record_types == 1} {
+		logtrack_read $dir
+	}
+
+	cleanup $dir
+	# Open the environment and set the copy/abort locations
+	set env [eval $env_cmd]
+	set copy [lindex $cmd 0]
+	set abort [lindex $cmd 1]
+	error_check_good copy_location [is_valid_delete_loc $copy] 1
+	error_check_good abort_location [is_valid_delete_loc $abort] 1
+
+	if { [is_record_based $method] == 1 } {
+		set key 1
+	} else {
+		set key recd007_key
+	}
+	set data1 recd007_data
+	set data2 NEWrecd007_data2
+
+	#
+	# Depending on what sort of subdb we want, if any, our
+	# args to the open call will be different (and if we
+	# want a 2nd subdb, we create the first here.
+	#
+	switch $sub {
+		0 {
+			set oflags "-create $method -mode 0644 \
+			    -env $env $opts $dbfile"
+		}
+		1 {
+			set oflags "-create $method -mode 0644 \
+			    -env $env $opts $dbfile sub0"
+		}
+		2 {
+			#
+			# If we are aborting here, then we need to
+			# create a first subdb, then create a second
+			#
+			set oflags "-create $method -mode 0644 \
+			    -env $env $opts $dbfile sub0"
+			set db [eval {berkdb_open} $oflags]
+			error_check_good db_open [is_valid_db $db] TRUE
+			set txn [$env txn]
+			set ret [$db put -txn $txn $key $data2]
+			error_check_good db_put $ret 0
+			error_check_good commit [$txn commit] 0
+			error_check_good db_close [$db close] 0
+			set oflags "-create $method -mode 0644 \
+			    -env $env $opts $dbfile sub1"
+		}
+		default {
+			puts "\tBad value $sub for sub"
+			return
+		}
+	}
+
+	#
+	# Set our locations to copy and abort
+	#
+	set ret [eval $env test copy $copy]
+	error_check_good test_copy $ret 0
+	set ret [eval $env test abort $abort]
+	error_check_good test_abort $ret 0
+
+	#
+	# Open our db, add some data, close and copy as our
+	# init file.
+	#
+	set db [eval {berkdb_open} $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set txn [$env txn]
+	set ret [$db put -txn $txn $key $data1]
+	error_check_good db_put $ret 0
+	error_check_good commit [$txn commit] 0
+	error_check_good db_close [$db close] 0
+
+	set init_file $dir/$dbfile.init
+	catch { file copy -force $dir/$dbfile $init_file } res
+
+	#
+	# If we don't abort, then we expect success.
+	# If we abort, we expect no file removed.
+	#
+	set ret [catch { berkdb dbrename -env $env $dbfile $dbfile.new} remret]
+	if {[string first "none" $abort] == -1} {
+		#
+		# Operation was aborted, verify it did not change.
+		#
+		puts "\t\tCommand executed and aborted."
+		error_check_good dbrename $ret 1
+
+		#
+		# Check that the file exists.  Final state.
+		# Compare against initial file.
+		#
+		error_check_good postdbremove1 [file exists $dir/$dbfile] 1
+		error_check_good \
+		    diff(init,postdbremove2):diff($init_file,$dir/$dbfile)\
+		    [dbdump_diff $init_file $dir/$dbfile] 0
+	} else {
+		#
+		# Operation was committed, verify it does
+		# not exist.
+		#
+		puts "\t\tCommand executed and committed."
+		error_check_good dbrerename $ret 0
+		#
+		# Check that the correct file exists.
+		#
+		error_check_good dbrename [file exists $dir/$dbfile] 0
+		error_check_good dbrename [file exists $dir/$dbfile.new] 1
+	}
+	error_check_good env_close [$env close] 0
+	catch { file copy -force $dir/$dbfile $init_file } res
+
+	#
+	# Run recovery here.  Should be a no-op.  Verify that
+	# the file still doesn't exist or change (depending on abort)
+	# when we are done.
+	#
+	berkdb debug_check
+	puts -nonewline "\t\tAbout to run recovery ... "
+	flush stdout
+
+	set stat [catch {exec ./db_recover -h $dir -c} result]
+	if { $stat == 1 } {
+		error "FAIL: Recovery error: $result."
+		return
+	}
+	puts "complete"
+	if { [string first "none" $abort] != -1} {
+		#
+		# Operation was committed, verify it still does
+		# not exist.
+		#
+		error_check_good after_recover1 [file exists $dir/$dbfile] 0
+	} else {
+		#
+		# Operation was aborted, verify it did not change.
+		#
+		error_check_good \
+		    diff(initial,post-recover1):diff($init_file,$dir/$dbfile) \
+		    [dbdump_diff $init_file $dir/$dbfile] 0
+	}
+
+	#
+	# If we didn't make a copy, then we are done.
+	#
+	if {[string first "none" $copy] != -1} {
+		return
+	}
+
+	#
+	# Now move the .afterop file to $dbfile.  Run recovery again.
+	#
+	set filecopy [glob $dir/*.afterop]
+	if { [llength $filecopy] != 1 } {
+		error "FAIL: Could not find 1 copy file.  Got: $filecopy"
+		return
+	}
+	set afterop [lindex $filecopy 0]
+	file rename -force $afterop $dir/$dbfile
 
 	berkdb debug_check
 	puts -nonewline "\t\tAbout to run recovery ... "
@@ -533,7 +748,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg } {
 
 proc is_valid_create_loc { loc } {
 	switch $loc {
-		none 		-
+		none		-
 		preopen		-
 		postopen	-
 		postlogmeta	-
@@ -547,7 +762,7 @@ proc is_valid_create_loc { loc } {
 
 proc is_valid_delete_loc { loc } {
 	switch $loc {
-		none 		-
+		none		-
 		prerename	-
 		postrename	-
 		postremcall
@@ -576,7 +791,7 @@ proc dbdump_diff { initfile dbfile } {
 	set stat [catch {exec ./db_dump -dar -f $dbdump $dbfile} ret]
 	error_check_good dbdump.db $stat 0
 
-	set stat [catch {exec $CMP $dbdump $initdump} ret]
+	set stat [filecmp $dbdump $initdump]
 
 	if {$stat == 0} {
 		return 0

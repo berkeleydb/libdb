@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dbm.tcl	11.5 (Sleepycat) 9/24/99
+#	$Id: dbm.tcl,v 11.11 2000/05/22 12:51:36 bostic Exp $
 #
 # Historic DBM interface test.
 # Use the first 1000 entries from the dictionary.
@@ -29,10 +29,17 @@ proc dbm { { nentries 1000 } } {
 	set flags ""
 	set txn ""
 	set count 0
+	set skippednullkey 0
 
 	puts "\tDBM.a: put/get loop"
 	# Here is the loop where we put and get each key/data pair
 	while { [gets $did str] != -1 && $count < $nentries } {
+		# DBM can't handle zero-length keys
+		if { [string length $str] == 0 } {
+			set skippednullkey 1
+			continue
+		}
+
 		set ret [berkdb store $str $str]
 		error_check_good dbm_store $ret 0
 
@@ -52,16 +59,24 @@ proc dbm { { nentries 1000 } } {
 		set d [berkdb fetch $key]
 		error_check_good dbm_refetch $d $key
 	}
+
+	# If we had to skip a zero-length key, juggle things to cover up
+	# this fact in the dump.
+	if { $skippednullkey == 1 } {
+		puts $oid ""
+		incr nentries 1
+	}
+
 	close $oid
 
 	# Now compare the keys to see if they match the dictionary (or ints)
 	set q q
-	exec $SED $nentries$q $dict > $t3
-	exec $SORT $t3 > $t2
-	exec $SORT $t1 > $t3
+	filehead $nentries $dict $t3
+	filesort $t3 $t2
+	filesort $t1 $t3
 
 	error_check_good DBM:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	puts "\tDBM.c: close, open, and dump file"
 
@@ -75,13 +90,16 @@ proc dbm { { nentries 1000 } } {
 		set d [berkdb fetch $key]
 		error_check_good dbm_refetch $d $key
 	}
+	if { $skippednullkey == 1 } {
+		puts $oid ""
+	}
 	close $oid
 
 	# Now compare the keys to see if they match the dictionary (or ints)
-	exec $SORT $t1 > $t3
+	filesort $t1 $t3
 
 	error_check_good DBM:diff($t2,$t3) \
-	    [catch { exec $CMP $t2 $t3 } res] 0
+	    [filecmp $t2 $t3] 0
 
 	# Now, reopen the file and delete each entry
 	puts "\tDBM.d: sequential scan and delete"
@@ -95,13 +113,16 @@ proc dbm { { nentries 1000 } } {
 		set ret [berkdb delete $key]
 		error_check_good dbm_delete $ret 0
 	}
+	if { $skippednullkey == 1 } {
+		puts $oid ""
+	}
 	close $oid
 
 	# Now compare the keys to see if they match the dictionary (or ints)
-	exec $SORT $t1 > $t3
+	filesort $t1 $t3
 
 	error_check_good DBM:diff($t2,$t3) \
-	    [catch { exec $CMP $t2 $t3 } res] 0
+	    [filecmp $t2 $t3] 0
 
 	error_check_good "dbm_close" [berkdb dbmclose] 0
 }

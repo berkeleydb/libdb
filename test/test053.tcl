@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test053.tcl	11.5 (Sleepycat) 8/17/99
+#	$Id: test053.tcl,v 11.10 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test53: test of the DB_REVSPLITOFF flag in the btree and
 # Btree-w-recnum methods
@@ -25,13 +25,21 @@ proc test053 { method args } {
 	set flags ""
 
 	puts "\tTest053.a: Create $omethod $args database."
-	set testfile $testdir/Test053.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test053.db
+	} else {
+		set testfile test053.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
 	set oflags \
 	    "-create -truncate -revsplitoff -pagesize 1024 $args $omethod"
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set nkeys 8
@@ -67,7 +75,7 @@ proc test053 { method args } {
 
 	puts "\tTest053.c: Check page count."
 	error_check_good page_count:check \
-	    [is_substr [$db stat] "{Btree leaf pges} $npages"] 1
+	    [is_substr [$db stat] "{Leaf pages} $npages"] 1
 
 	puts "\tTest053.d: Delete all but one key per page."
 	for {set i 0} { $i < $npages } {incr i } {
@@ -78,7 +86,7 @@ proc test053 { method args } {
 	}
 	puts "\tTest053.e: Check to make sure all pages are still there."
 	error_check_good page_count:check \
-	    [is_substr [$db stat] "{Btree leaf pges} $npages"] 1
+	    [is_substr [$db stat] "{Leaf pages} $npages"] 1
 
 	set dbc [$db cursor]
 	error_check_good db:cursor [is_substr $dbc $db] 1

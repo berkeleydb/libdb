@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_trickle.c	11.3 (Sleepycat) 9/16/99";
+static const char revid[] = "$Id: mp_trickle.c,v 11.11 2000/04/20 21:14:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,9 +17,18 @@ static const char sccsid[] = "@(#)mp_trickle.c	11.3 (Sleepycat) 9/16/99";
 #include <stdlib.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 static int __memp_trick __P((DB_ENV *, int, int, int *));
 
@@ -37,11 +46,16 @@ memp_trickle(dbenv, pct, nwrotep)
 	u_int32_t i;
 	int ret;
 
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_memp_trickle(dbenv, pct, nwrotep));
+#endif
+
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->mp_handle, DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 
 	if (nwrotep != NULL)
 		*nwrotep = 0;
@@ -49,14 +63,14 @@ memp_trickle(dbenv, pct, nwrotep)
 	if (pct < 1 || pct > 100)
 		return (EINVAL);
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	/* Loop through the caches... */
-	for (ret = 0, i = 0; i < mp->nc_reg; ++i)
+	for (ret = 0, i = 0; i < mp->nreg; ++i)
 		if ((ret = __memp_trick(dbenv, i, pct, nwrotep)) != 0)
 			break;
 
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 	return (ret);
 }
 
@@ -71,14 +85,14 @@ __memp_trick(dbenv, ncache, pct, nwrotep)
 {
 	BH *bhp;
 	DB_MPOOL *dbmp;
-	MCACHE *mc;
+	MPOOL *c_mp;
 	MPOOLFILE *mfp;
 	db_pgno_t pgno;
 	u_long total;
 	int ret, wrote;
 
 	dbmp = dbenv->mp_handle;
-	mc = dbmp->c_reginfo[ncache].primary;
+	c_mp = dbmp->reginfo[ncache].primary;
 
 	/*
 	 * If there are sufficient clean buffers, or no buffers or no dirty
@@ -90,19 +104,19 @@ __memp_trick(dbenv, ncache, pct, nwrotep)
 	 * of pools with more than one buffer size, as a free 512-byte buffer
 	 * isn't the same as a free 8K buffer.
 	 */
-loop:	total = mc->stat.st_page_clean + mc->stat.st_page_dirty;
-	if (total == 0 || mc->stat.st_page_dirty == 0 ||
-	    (mc->stat.st_page_clean * 100) / total >= (u_long)pct)
+loop:	total = c_mp->stat.st_page_clean + c_mp->stat.st_page_dirty;
+	if (total == 0 || c_mp->stat.st_page_dirty == 0 ||
+	    (c_mp->stat.st_page_clean * 100) / total >= (u_long)pct)
 		return (0);
 
 	/* Loop until we write a buffer. */
-	for (bhp = SH_TAILQ_FIRST(&mc->bhq, __bh);
+	for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
 	    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, q, __bh)) {
 		if (bhp->ref != 0 ||
 		    !F_ISSET(bhp, BH_DIRTY) || F_ISSET(bhp, BH_LOCKED))
 			continue;
 
-		mfp = R_ADDR(&dbmp->reginfo, bhp->mf_offset);
+		mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 
 		/*
 		 * We can't write to temporary files -- see the comment in
@@ -126,7 +140,7 @@ loop:	total = mc->stat.st_page_clean + mc->stat.st_page_dirty;
 			return (EPERM);
 		}
 
-		++mc->stat.st_page_trickle;
+		++c_mp->stat.st_page_trickle;
 		if (nwrotep != NULL)
 			++*nwrotep;
 		goto loop;

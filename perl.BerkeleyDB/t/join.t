@@ -118,8 +118,9 @@ sub addData
     rmtree $home if -e $home ;
     ok 6, mkdir($home, 0777) ;
     ok 7, my $env = new BerkeleyDB::Env -Home => $home,
-				     -Flags => DB_CREATE|DB_INIT_TXN|
-					  	DB_INIT_MPOOL ;
+				     -Flags => DB_CREATE|DB_INIT_TXN
+					  	|DB_INIT_MPOOL;
+					  	#|DB_INIT_MPOOL| DB_INIT_LOCK;
     ok 8, my $txn = $env->txn_begin() ;
     ok 9, my $db1 = tie %hash1, 'BerkeleyDB::Hash', 
 				-Filename => $Dfile1,
@@ -128,6 +129,7 @@ sub addData
                                 -Property  => DB_DUP|DB_DUPSORT,
 			       	-Env 	   => $env,
 			    	-Txn	   => $txn  ;
+				;
 
     ok 10, my $db2 = tie %hash2, 'BerkeleyDB::Hash', 
 				-Filename => $Dfile2,

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)qam.src	11.6 (Sleepycat) 10/1/99
+ *	$Id: qam.src,v 11.11 2000/02/17 20:24:10 bostic Exp $
  */
 
 PREFIX	qam
@@ -15,6 +15,7 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
+INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -32,8 +33,8 @@ INCLUDE
  * tell you what record number you got, just that you incremented
  * the record number.  These operations are never undone.
  */
-BEGIN inc
-ARG	fileid		int32_t		lu
+BEGIN inc		76
+ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
 END
 
@@ -41,8 +42,8 @@ END
  * incfirst
  * Used when we increment first_recno.
  */
-BEGIN incfirst
-ARG	fileid		int32_t		lu
+BEGIN incfirst		77
+ARG	fileid		int32_t		ld
 ARG	recno		db_recno_t	lu
 END
 
@@ -50,9 +51,9 @@ END
  * mvptr
  * Used when we change one or both of cur_recno and first_recno.
  */
-BEGIN mvptr
+BEGIN mvptr		78
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		lu
+ARG	fileid		int32_t		ld
 ARG	old_first	db_recno_t	lu
 ARG	new_first	db_recno_t	lu
 ARG	old_cur		db_recno_t	lu
@@ -65,8 +66,8 @@ END
  * Used when we delete a record.
  * recno is the record that is being deleted.
  */
-BEGIN del
-ARG	fileid		int32_t		lu
+BEGIN del		79
+ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
 ARG	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
@@ -79,8 +80,8 @@ END
  * recno is the record being added.
  * data is the record itself.
  */
-BEGIN add
-ARG	fileid		int32_t		lu
+BEGIN add		80
+ARG	fileid		int32_t		ld
 POINTER	lsn		DB_LSN *	lu
 ARG	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu

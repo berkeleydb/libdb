@@ -1,5 +1,6 @@
-<!--"@(#)txn_stat.so	10.22 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: txn_stat.so,v 10.27 2000/05/25 13:47:08 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>txn_stat</h1>
@@ -25,24 +27,20 @@ txn_stat(DB_ENV *env,
     DB_TXN_STAT **statp, void *(*db_malloc)(size_t));
 </pre></h3>
 <h1>Description</h1>
-The txn_stat function
+<p>The txn_stat function
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
-<p>
-Statistical structures are created in allocated memory.
-If
-<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
-otherwise, the library function <b>malloc</b>(3) is used.
-The function <b>db_malloc</b> must match the calling conventions of
-the <b>malloc</b>(3) library routine.
+<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
+is called to allocate the memory, otherwise, the library function
+<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
+the calling conventions of the <b>malloc</b>(3) library routine.
 Regardless, the caller is responsible for deallocating the returned
-memory.
-To deallocate the returned memory, free each returned memory pointer;
-pointers inside the memory do not need to be individually freed.
-<p>
-The transaction region statistics are stored in a structure of type
+memory.  To deallocate returned memory, free the returned memory
+reference, references inside the returned memory do not need to be
+individually freed.
+<p>The transaction region statistics are stored in a structure of type
 DB_TXN_STAT.  The following DB_TXN_STAT fields will be filled in:
-<dl compact>
+<p><dl compact>
 <dt><a href="../api_c/db_lsn.html">DB_LSN</a> st_last_ckp;<dd>The LSN of the last checkpoint.
 <dt><a href="../api_c/db_lsn.html">DB_LSN</a> st_pending_ckp;<dd>The LSN of any checkpoint that is currently in progress.  If
 <b>st_pending_ckp</b> is the same as <b>st_last_ckp</b> there
@@ -64,28 +62,22 @@ the region lock without waiting.
 <dt>DB_TXN_ACTIVE * st_txnarray;<dd>A pointer to an array of <b>st_nactive</b> DB_TXN_ACTIVE structures,
 describing the currently active transactions.  The following fields of
 the DB_TXN_ACTIVE structure will be filled in:
-<dl compact>
+<p><dl compact>
 <p><dt>u_int32_t txnid;<dd>The transaction ID as returned by <a href="../api_c/txn_begin.html">txn_begin</a>.
 <dt>u_int32_t parentid;<dd>The transaction ID of the parent transaction (or 0, if no parent).
 <dt><a href="../api_c/db_lsn.html">DB_LSN</a> lsn;<dd>The log sequence number of the transaction-begin record.
 </dl>
 </dl>
-<p>
-The txn_stat
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The txn_stat function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the txn_stat function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the txn_stat function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The txn_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the txn_stat function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_tx_max.html">DBENV-&gt;set_tx_max</a>,
 <a href="../api_c/env_set_tx_recover.html">DBENV-&gt;set_tx_recover</a>,
+<a href="../api_c/env_set_tx_timestamp.html">DBENV-&gt;set_tx_timestamp</a>,
 <a href="../api_c/txn_abort.html">txn_abort</a>,
 <a href="../api_c/txn_begin.html">txn_begin</a>,
 <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a>,

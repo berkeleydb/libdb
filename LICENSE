@@ -1,5 +1,5 @@
 /*-
- * @(#)LICENSE	11.4 (Sleepycat) 9/12/99
+ * $Id: LICENSE,v 11.6 2000/02/14 02:59:37 bostic Exp $
  */
 
 The following is the license that applies to this copy of the Berkeley DB
@@ -14,7 +14,7 @@ please contact Sleepycat Software at one of the following addresses:
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 /*
- * Copyright (c) 1990-1999
+ * Copyright (c) 1990-2000
  *	Sleepycat Software.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

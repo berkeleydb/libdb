@@ -1,5 +1,6 @@
-<!--"@(#)db_get_byteswapped.so	10.5 (Sleepycat) 3/10/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_get_byteswapped.so,v 10.7 1999/12/20 08:52:27 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>Db.get_byteswapped</h1>
@@ -23,8 +25,7 @@ import com.sleepycat.db.*;
 public boolean get_byteswapped();
 </pre></h3>
 <h1>Description</h1>
-<p>
-The Db.get_byteswapped method returns
+<p>The Db.get_byteswapped method returns
 false
 if the underlying database files were created on an architecture
 of the same byte order as the current one, and
@@ -32,10 +33,8 @@ true
 if they were not (i.e., big-endian on a little-endian machine or
 vice-versa). This field may be used to determine if application
 data needs to be adjusted for this architecture or not.
-<p>
 <h3>Class</h3>
 <a href="../api_java/db_class.html">Db</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/db_close.html">Db.close</a>,
 <a href="../api_java/db_cursor.html">Db.cursor</a>,
@@ -45,6 +44,7 @@ data needs to be adjusted for this architecture or not.
 <a href="../api_java/db_get_byteswapped.html">Db.get_byteswapped</a>,
 <a href="../api_java/db_get_type.html">Db.get_type</a>,
 <a href="../api_java/db_join.html">Db.join</a>,
+<a href="../api_java/db_key_range.html">Db.key_range</a>,
 <a href="../api_java/db_open.html">Db.open</a>,
 <a href="../api_java/db_put.html">Db.put</a>,
 <a href="../api_java/db_remove.html">Db.remove</a>,
@@ -62,9 +62,10 @@ data needs to be adjusted for this architecture or not.
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,
 <a href="../api_java/db_set_re_source.html">Db.set_re_source</a>,
 <a href="../api_java/db_stat.html">Db.stat</a>,
-<a href="../api_java/db_sync.html">Db.sync</a>
+<a href="../api_java/db_sync.html">Db.sync</a>,
+<a href="../api_java/db_upgrade.html">Db.upgrade</a>
 and
-<a href="../api_java/db_upgrade.html">Db.upgrade</a>.
+<a href="../api_java/db_verify.html">Db.verify</a>.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

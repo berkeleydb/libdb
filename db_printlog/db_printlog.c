@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,15 +9,14 @@
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_printlog.c	11.3 (Sleepycat) 8/27/99";
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static const char revid[] =
+    "$Id: db_printlog.c,v 11.15 2000/05/31 15:09:58 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,12 +34,9 @@ static const char sccsid[] = "@(#)db_printlog.c	11.3 (Sleepycat) 8/27/99";
 
 void	db_init __P((char *));
 int	main __P((int, char *[]));
-void	onint __P((int));
-void	siginit __P((void));
 void	usage __P((void));
 
 DB_ENV	*dbenv;
-int	 interrupted;
 const char
 	*progname = "db_printlog";			/* Program name. */
 
@@ -53,19 +49,33 @@ main(argc, argv)
 	extern int optind;
 	DBT data;
 	DB_LSN key;
-	int ch, e_close, exitval, Nflag, ret;
+	int ch, e_close, exitval, ret;
 	char *home;
 
-	e_close = exitval = Nflag = 0;
+	e_close = exitval = 0;
 	home = NULL;
-	while ((ch = getopt(argc, argv, "h:N")) != EOF)
+	while ((ch = getopt(argc, argv, "h:NV")) != EOF)
 		switch (ch) {
 		case 'h':
 			home = optarg;
 			break;
 		case 'N':
-			Nflag = 1;
+			if ((ret = db_env_set_mutexlocks(0)) != 0) {
+				fprintf(stderr,
+				    "%s: db_env_set_mutexlocks: %s\n",
+				    progname, db_strerror(ret));
+				return (1);
+			}
+			if ((ret = db_env_set_panicstate(0)) != 0) {
+				fprintf(stderr,
+				    "%s: db_env_set_panicstate: %s\n",
+				    progname, db_strerror(ret));
+				return (1);
+			}
 			break;
+		case 'V':
+			printf("%s\n", db_version(NULL, NULL, NULL));
+			exit(0);
 		case '?':
 		default:
 			usage();
@@ -77,7 +87,7 @@ main(argc, argv)
 		usage();
 
 	/* Handle possible interruptions. */
-	siginit();
+	__db_util_siginit();
 
 	/*
 	 * Create an environment object and initialize it for error
@@ -86,22 +96,12 @@ main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		goto shutdown;
 	}
+	e_close = 1;
+
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
-
-	/* Optionally turn mutexes and panic checks off. */
-	if (Nflag) {
-		if ((ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
-			dbenv->err(dbenv, ret, "set_mutexlocks");
-			goto shutdown;
-		}
-		if ((ret = dbenv->set_panic(dbenv, 0)) != 0) {
-			dbenv->err(dbenv, ret, "set_panic");
-			goto shutdown;
-		}
-	}
 
 	/*
 	 * An environment is required, but as we may be called to display
@@ -109,14 +109,13 @@ main(argc, argv)
 	 * already exist.  If we create it, we create it private so that
 	 * it automatically goes away when we're done.
 	 */
-	if (dbenv->open(dbenv,
-	    home, NULL, DB_INIT_LOG | DB_USE_ENVIRON, 0) != 0 &&
-	    (ret = dbenv->open(dbenv, home, NULL,
+	if ((ret = dbenv->open(dbenv, home,
+	    DB_INIT_LOG | DB_USE_ENVIRON, 0)) != 0 &&
+	    (ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_LOG | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
 		goto shutdown;
 	}
-	e_close = 1;
 
 	/* Initialize print callbacks. */
 	if ((ret = __bam_init_print(dbenv)) != 0 ||
@@ -131,7 +130,7 @@ main(argc, argv)
 	}
 
 	memset(&data, 0, sizeof(data));
-	while (!interrupted) {
+	while (!__db_util_interrupted()) {
 		if ((ret = log_get(dbenv, &key, &data, DB_NEXT)) != 0) {
 			if (ret == DB_NOTFOUND)
 				break;
@@ -169,49 +168,15 @@ shutdown:	exitval = 1;
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
-	if (interrupted) {
-		(void)signal(interrupted, SIG_DFL);
-		(void)raise(interrupted);
-		/* NOTREACHED */
-	}
+	/* Resend any caught signal. */
+	__db_util_sigresend();
 
 	return (exitval);
-}
-
-/*
- * siginit --
- *	Initialize the set of signals for which we want to clean up.
- *	Generally, we try not to leave the shared regions locked if
- *	we can.
- */
-void
-siginit()
-{
-#ifdef SIGHUP
-	(void)signal(SIGHUP, onint);
-#endif
-	(void)signal(SIGINT, onint);
-#ifdef SIGPIPE
-	(void)signal(SIGPIPE, onint);
-#endif
-	(void)signal(SIGTERM, onint);
-}
-
-/*
- * onint --
- *	Interrupt signal handler.
- */
-void
-onint(signo)
-	int signo;
-{
-	if ((interrupted = signo) == 0)
-		interrupted = SIGINT;
 }
 
 void
 usage()
 {
-	fprintf(stderr, "usage: db_printlog [-N] [-h home]\n");
+	fprintf(stderr, "usage: db_printlog [-NV] [-h home]\n");
 	exit (1);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_lock.c	11.1 (Sleepycat) 7/25/99
+ * $Id: ex_lock.c,v 11.5 2000/02/21 21:53:27 bostic Exp $
  */
 
 #include "db_config.h"
@@ -19,9 +19,9 @@
 
 #include <db.h>
 
-void	db_init(char *, u_int32_t, int);
-int	main(int, char *[]);
-void	usage(void);
+void	db_init __P((char *, u_int32_t, int));
+int	main __P((int, char *[]));
+void	usage __P((void));
 
 DB_ENV	 *dbenv;
 const char
@@ -201,7 +201,7 @@ db_init(home, maxlocks, do_unlink)
 	}
 
 	if (do_unlink) {
-		if ((ret = dbenv->remove(dbenv, home, NULL, DB_FORCE)) != 0) {
+		if ((ret = dbenv->remove(dbenv, home, DB_FORCE)) != 0) {
 			fprintf(stderr, "%s: dbenv->remove: %s\n",
 			    progname, db_strerror(ret));
 			exit (1);
@@ -219,7 +219,7 @@ db_init(home, maxlocks, do_unlink)
 		dbenv->set_lk_max(dbenv, maxlocks);
 
 	if ((ret =
-	    dbenv->open(dbenv, home, NULL, DB_CREATE | DB_INIT_LOCK, 0)) != 0) {
+	    dbenv->open(dbenv, home, DB_CREATE | DB_INIT_LOCK, 0)) != 0) {
 		dbenv->err(dbenv, ret, NULL);
 		(void)dbenv->close(dbenv, 0);
 		exit(1);

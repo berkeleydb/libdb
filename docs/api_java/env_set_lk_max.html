@@ -1,5 +1,6 @@
-<!--"@(#)env_set_lk_max.so	10.13 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_lk_max.so,v 10.18 2000/05/20 16:29:12 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv.set_lk_max</h1>
@@ -24,31 +26,26 @@ public void set_lk_max(int lk_max)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-Set the maximum number of locks to be held or requested in the table.
+<p>Set the maximum number of locks to be held or requested in the table.
 This value is used by <a href="../api_java/env_open.html">DbEnv.open</a> to estimate how much space to
-allocate for various lock-table data structures.
-<p>
-If no value is specified, a default value is used.
-<p>
-The DbEnv.set_lk_max interface may only be used to configure Berkeley DB before
+allocate for various lock-table data structures.  If no value is
+specified, a default value is used.
+<p>The DbEnv.set_lk_max interface may only be used to configure Berkeley DB before
 the <a href="../api_java/env_open.html">DbEnv.open</a> interface is called.
-<p>
-The DbEnv.set_lk_max
-method throws an exception that encapsulates a non-zero error value on
+<p>The DbEnv.set_lk_max method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
+<p>The environment's maximum number of locks may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
+line with the string "set_lk_max", one or more whitespace characters, and the number of locks.
+Configuration in the <b>DB_CONFIG</b> file silently overrules
+configuration done using the DbEnv.set_lk_max method.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
+<p>Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
 </dl>
-<p>
 <h3>Classes</h3>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/lock_class.html">DbLock</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/env_set_lk_conflicts.html">DbEnv.set_lk_conflicts</a>,
 <a href="../api_java/env_set_lk_detect.html">DbEnv.set_lk_detect</a>,

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -36,9 +36,10 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)getcwd.c	11.2 (Sleepycat) 9/9/99";
+static const char revid[] = "$Id: getcwd.c,v 11.6 2000/03/28 21:50:05 ubell Exp $";
 #endif /* not lint */
 
+#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -64,6 +65,7 @@ static const char sccsid[] = "@(#)getcwd.c	11.2 (Sleepycat) 9/9/99";
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#endif
 
 #include "db_int.h"
 
@@ -118,7 +120,8 @@ getcwd(pt, size)
 		}
 		ept = pt + size;
 	} else {
-		if ((ret = __os_malloc(ptsize = 1024 - 4, NULL, &pt)) != 0) {
+		if ((ret =
+		    __os_malloc(NULL, ptsize = 1024 - 4, NULL, &pt)) != 0) {
 			__os_set_errno(ret);
 			return (NULL);
 		}
@@ -132,7 +135,7 @@ getcwd(pt, size)
 	 * Should always be enough (it's 340 levels).  If it's not, allocate
 	 * as necessary.  Special case the first stat, it's ".", not "..".
 	 */
-	if ((ret = __os_malloc(upsize = 1024 - 4, NULL, &up)) != 0)
+	if ((ret = __os_malloc(NULL, upsize = 1024 - 4, NULL, &up)) != 0)
 		goto err;
 	eup = up + 1024;
 	bup = up;
@@ -175,7 +178,7 @@ getcwd(pt, size)
 		 * possible component name, plus a trailing NULL.
 		 */
 		if (bup + 3  + MAXNAMLEN + 1 >= eup) {
-			if (__os_realloc(upsize *= 2, NULL, &up) != 0)
+			if (__os_realloc(NULL, upsize *= 2, NULL, &up) != 0)
 				goto err;
 			bup = up;
 			eup = up + upsize;
@@ -236,7 +239,7 @@ getcwd(pt, size)
 			}
 			off = bpt - pt;
 			len = ept - bpt;
-			if (__os_realloc(ptsize *= 2, NULL, &pt) != 0)
+			if (__os_realloc(NULL, ptsize *= 2, NULL, &pt) != 0)
 				goto err;
 			bpt = pt + off;
 			ept = pt + ptsize;

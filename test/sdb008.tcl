@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb008.tcl	11.6 (Sleepycat) 9/24/99
+#	$Id: sdb008.tcl,v 11.13 2000/05/22 12:51:38 bostic Exp $
 #
 # Sub DB Test 8 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -13,6 +13,7 @@
 # Close file, reopen, do retrieve and re-verify.
 proc subdb008 { method {nentries 10000} args } {
 	source ./include.tcl
+	global rand_init
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
@@ -21,6 +22,8 @@ proc subdb008 { method {nentries 10000} args } {
 		puts "Subdb008: skipping for method $method"
 		return
 	}
+
+	berkdb srand $rand_init
 
 	puts "Subdb008: $method ($args) subdb lorder tests"
 
@@ -53,7 +56,7 @@ proc subdb008 { method {nentries 10000} args } {
 		} else {
 			set order [lindex $lo $i]
 		}
-		set db [eval {berkdb open -create -mode 0644} \
+		set db [eval {berkdb_open -create -mode 0644} \
 		    $args {-lorder $order $omethod $testfile $subdb}]
 		set did [open $dict]
 		set count 0
@@ -64,7 +67,7 @@ proc subdb008 { method {nentries 10000} args } {
 				set gflags "-recno"
 				set key [expr $i * $nentries]
 				set key [expr $key + $count + 1]
-		 		set kvals($key) [pad_data $method $str]
+				set kvals($key) [pad_data $method $str]
 			} else {
 				set key $str
 			}
@@ -85,7 +88,7 @@ proc subdb008 { method {nentries 10000} args } {
 	# to the original.
 	for { set subdb 0 } { $subdb < $nsubdbs } { incr subdb } {
 		puts "\tSubdb008.b: dump file sub$subdb.db"
-		set db [berkdb open -unknown $testfile sub$subdb.db]
+		set db [berkdb_open -unknown $testfile sub$subdb.db]
 		dump_file $db $txn $t1 $checkfunc
 		error_check_good db_close [$db close] 0
 
@@ -97,27 +100,27 @@ proc subdb008 { method {nentries 10000} args } {
 				puts $oid [expr $subdb * $nentries + $i]
 			}
 			close $oid
-			exec $MV $t1 $t3
+			file rename -force $t1 $t3
 		} else {
 			set q q
-			exec $SED $nentries$q $dict > $t3
-			exec $SORT $t3 > $t2
-			exec $SORT $t1 > $t3
+			filehead $nentries $dict $t3
+			filesort $t3 $t2
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb008:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 
 		puts "\tSubdb008.c: sub$subdb.db: close, open, and dump file"
 		# Now, reopen the file and run the last test again.
 		open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
 		    dump_file_direction "-first" "-next" sub$subdb.db
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb008:diff($t2,$t3) \
-		    [catch { exec $CMP $t2 $t3 } res] 0
+		    [filecmp $t2 $t3] 0
 
 		# Now, reopen the file and run the last test again in the
 		# reverse direction.
@@ -127,11 +130,11 @@ proc subdb008 { method {nentries 10000} args } {
 		    dump_file_direction "-last" "-prev" sub$subdb.db
 
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb008:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 	}
 }
 

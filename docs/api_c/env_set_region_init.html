@@ -1,16 +1,18 @@
-<!--"@(#)env_set_region_init.so	10.4 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_region_init.so,v 10.10 2000/05/31 15:10:00 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: DBENV-&gt;set_region_init</title>
+<title>Berkeley DB: db_env_set_region_init</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
-<h1>DBENV-&gt;set_region_init</h1>
+<h1>db_env_set_region_init</h1>
 </td>
 <td width="1%">
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
@@ -21,36 +23,34 @@
 #include &lt;db.h&gt;
 <p>
 int
-DBENV-&gt;set_region_init(DB_ENV *dbenv, int region_init);
+db_env_set_region_init(int region_init);
 </pre></h3>
 <h1>Description</h1>
-<p>
-In some applications, the expense of page-faulting the shared memory
-regions can affect performance, e.g., when the page-fault occurs while
-holding a lock, other lock requests can convoy and overall throughput may
-decrease.  Setting <b>region_init</b> to a
-non-zero
-value specifies that shared regions be read or written, as appropriate,
-when the region is joined by the application.
-<p>
-This forces the underlying virtual memory and file systems to instantiate
-both the necessary memory and the necessary disk space.  This can avoid
+<p>Page-fault shared regions into memory when initially creating or joining
+a Berkeley DB environment.  In some applications, the expense of page-faulting
+the shared memory regions can affect performance, e.g., when the
+page-fault occurs while holding a lock, other lock requests can convoy
+and overall throughput may decrease.  Setting <b>region_init</b> to a
+non-zero value specifies that shared regions be read or written, as
+appropriate, when the region is joined by the application.  This forces
+the underlying virtual memory and file systems to instantiate both the
+necessary memory and the necessary disk space.  This can also avoid
 out-of-disk space failures later on.
-<p>
-The DBENV-&gt;set_region_init interface may only be used to configure Berkeley DB before
-the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
-<p>
-The DBENV-&gt;set_region_init
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The db_env_set_region_init interface affects the entire application, not a single
+database or database environment.
+<p>While the db_env_set_region_init interface may be used to configure Berkeley DB at any time
+during the life of the application, it should normally be called before
+making any calls to the <a href="../api_c/env_create.html">db_env_create</a> or <a href="../api_c/db_create.html">db_create</a> functions.
+<p>The db_env_set_region_init function returns a non-zero error value on failure and 0 on success.
+<p>The environment's initial behavior with respect to shared memory regions may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
+line with the string "set_region_init", one or more whitespace characters, and the string "1".
+Configuration in the <b>DB_CONFIG</b> file silently overrules
+configuration done using the db_env_set_region_init function.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
 </dl>
-<p>
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -63,10 +63,7 @@ Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

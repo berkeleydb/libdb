@@ -1,5 +1,6 @@
-<!--"@(#)test.so	10.14 (Sleepycat) 11/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: test.so,v 10.25 2000/05/10 14:03:43 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,53 +9,36 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_win/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_win/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Running the test suite under Windows</h1>
-<p>
-These notes are for building the test suite on Win32 platforms.  Most of
-the issues with the test suite on Win* are due to the operating systems
-dependencies in the test suite itself, expressed as file names, process
-management or CR/NL issues.
-<p>
-The test suite was originally developed and maintained on UNIX platforms,
-so these dependencies crop up on every release as new tests are added or
-modified for changes to Berkeley DB.  That much said, every release we work hard
-to fix or work around issues that cause failures on Win/NT, but we are
-not yet finished with Win/95.
-<p>
-Please read through all the instructions before you begin to ensure that
-you have everything you need.
-<p>
-First, you need a set of UNIX-like utilities to assist Tcl with various
-operations.  Currently we require: cmp, cp, kill, mkdir, mv, rm, sed,
-sleep, sort and tr.  We have tested using the MKS/NT package, which mostly
-works.  (If you use this package, see MKS/NT notes below).  The GNU
-utilities should work as well, but you may discover different issues.  We
-assume that these tools are in <b>c:/tools</b>, but this can be changed
-by editing the <b>include.tcl</b> file.  Note that a "PERL5" variable
-is referenced by the <b>include.tcl</b> file.  It is not necessary to
-run the test suite, and may be left unset.
-<p>
-Second, you will need to get the Tcl toolkit.  The test suite requires at
-least Tcl 8.1, and that is what we currently test with on our Win*
-platforms.  These notes assume Tcl is installed as <b>d:/tcl</b>, but
-you can change this if you wish.  We have found that we needed to rebuild
-a debug version of Tcl from the sources to get correct behavior.  This is
+<p>To build the test suite on Win32 platforms you will need Tcl, built
+from sources.  You can download a copy of Tcl from the
+<a href="http://www.scriptics.com">Scriptics Corporation</a> web site.
+Before building Tcl, you will need to modify its makefile to make sure
+you are building a debug version, including thread support.  This is
 because the set of DLLs linked into the Tcl executable must match the
 corresponding set of DLLs used by Berkeley DB.
-<p>
-You will also need sufficient main memory and disk.  Disk is not terribly
-demanding, something less than 100 MB should be sufficient.  For memory,
-the more the better -- 32MB is too small, but 64MB should be fine.
+The test suite requires at least Tcl 8.1, but we found we needed to
+make local modifications to that version to make it run correctly, and
+so we recommend you use a newer version.  These notes assume Tcl is
+installed as <b>d:/tcl</b>, but you can change that if you wish.  If
+you run using a different version of Tcl than the one currently being
+used by Sleepycat Software, you will need to change the name of the
+Tcl library used in the build (e.g., tcl83d.lib) to the appropriate
+name.  See Projects-&gt;Settings-&gt;Link in the db_tcl
+subproject.
+<p>You will also need sufficient main memory and disk.  Something around
+100MB of disk will be sufficient.  For memory, 32MB is too small, we
+recommend at least 64MB.
 <h3>Building the software needed by the tests</h3>
-<p>
-To build, perform the following steps.  Note that steps #1, #4 and #5 are
+<p>To build, perform the following steps.  Note that steps #1, #4 and #5 are
 part of the normal build process for building Berkeley DB.
-<ol>
+<p><ol>
 <p><li>Open the <b>build_win32/Berkeley_DB.dsw</b> workspace.
 <p><li>Add the pathname for the Tcl include subdirectory to your
 include path.  To do this, under the "Tools" menu item, select "Options".
@@ -65,86 +49,33 @@ contains <b>tcl.h</b> in your distribution) to the list.
 library path.  To do this, under the "Tools" menu item, select "Options".
 In the dialog, select the "Directories" tab, and choose directories for
 "Library Files".  Add <b>d:/tcl/lib</b> (or whatever directory contains
-<b>tcl80.lib</b> in your distribution) to the list.
-<p><li>Set the active configuration to build_all -- Debug.  To set an
+<b>tcl83d.lib</b> in your distribution) to the list.
+<p><li>Set the active configuration to db_test -- Debug.  To set an
 active configuration, under the "Build" menu item in the IDE, select "Set
-Active Configuration".  Then choose "build_all -- Debug".
-<p><li>Build.  This will build the base Berkeley DB .dll and various tools
-that are needed by the test suite.
-<p><li>Set the active configuration to db_tcl -- Debug.  To set an
-active configuration, under the "Build" menu item in the IDE, select "Set
-Active Configuration".  Then choose "db_tcl -- Debug".
-<p><li>Build.  That should create a
-<b>build_win32/Debug/libdb_tclNNd.dll</b> file, where NN is the
-major/minor numbers of the current release, for example NN would be "30"
-for the Berkeley DB 3.0.1 release.
-<p><li>Copy all the <b>build_win32/Debug/*.exe</b> files to the
-build_win32 directory.  The test suite expects that programs such as
-<b>db_archive.exe</b> will be found in this directory.
+Active Configuration".  Then choose "db_test -- Debug".
+<p><li>Build.  The IDE menu for this is called "build dbkill.exe",
+even though dbkill is just one of the things that is built.
+This step builds the base Berkeley DB .dll, tcl support,
+and various tools that are needed by the test suite.
 </ol>
 <h3>Running the test suite under Windows</h3>
-<p>
-Before running the tests for the first time, you must edit the file
+<p>Before running the tests for the first time, you must edit the file
 <b>include.tcl</b> in your build directory and change the line
 that reads:
-<p>
-<blockquote><pre>set tclsh_path SET_YOUR_TCLSH_PATH</pre></blockquote>
-<p>
-You will want to use the location of the <b>tclsh</b> program.  For
+<p><blockquote><pre>set tclsh_path SET_YOUR_TCLSH_PATH</pre></blockquote>
+<p>You will want to use the location of the <b>tclsh</b> program.  For
 example, if Tcl is installed as <b>d:/tcl</b>, this line should be:
-<p>
-<blockquote><pre>set tclsh_path d:/tcl/bin/tclsh81d.exe</pre></blockquote>
-<p>
-In addition you may need to change the path names of your UNIX-like
-utilities.  These path names are set as lines like:
-<blockquote><pre>set CP c:/tools/cp.exe</pre></blockquote>
-<p>
-Then, in a shell of your choice enter the following commands:
-<p>
-<ol>
+<p><blockquote><pre>set tclsh_path d:/tcl/bin/tclsh83d.exe</pre></blockquote>
+<p>Then, in a shell of your choice enter the following commands:
+<p><ol>
 <p><li>cd build_win32
-<p><li>run <b>d:/tcl/bin/tclsh80.exe</b>, or the equivalent name of
+<p><li>run <b>d:/tcl/bin/tclsh83d.exe</b>, or the equivalent name of
 the Tcl shell for your distribution.
-<p>
-You should get a "%" prompt.
+<p>You should get a "%" prompt.
 <p><li>% source ../test/test.tcl.
-<p>
-You should get a "%" prompt with no errors.
+<p>You should get a "%" prompt with no errors.
 </ol>
-<p>
-You are now ready to run tests in the test suite.
-<h3>Test suite failures</h3>
-<p>
-We will not release Berkeley DB with a FAIL message on Windows/NT, unless we
-are sure it is a problem with the test suite, and not the Berkeley DB code.
-However, there may still be error messages or warnings from various tests.
-<p>
-Known places where the tests typically give error messages:
-<p>
-<blockquote><pre>..../TESTDIR: expected 0, got memp_unlink: Error 0</pre></blockquote>
-<p>
-Often this kind of error occurs when one test has the database or
-environment open at the time an unlink is done.  Removing a file is
-always legal in UNIX, but on Win*, a file cannot generally be removed
-if a process has it open.  We are slowly chasing these problems down.
-<h3>MKS/NT notes</h3>
-<p>
-If you are using MKS/NT, you will find that there are a few tests that do
-not work out of the box, because there are some tests that produce
-input/output data that has long lines (more than 2048 characters).  These
-lines are longer than the MKS default limit.  The "sort"
-command breaks on these long lines.
-<p>
-The "sort" problem can be fixed by changing the maximum record length on
-the command line.  To do this, add a "-z16384" option to the sort command.
-You can change the .tcl script or hack up a replacement for sort.exe that
-calls the real sort.exe with the extra options.  Unfortunately changing
-include.tcl to have the extra option does not work.
-<p>
-The test suite also needs its own "kill" program that accepts the same
-options as the UNIX kill.  We provide the source for a simple kill
-program in <b>build_win32/killfix.cpp</b>.  This should be compiled
-and installed as <b>c:/tools/kill.exe</b>.
+<p>You are now ready to run tests in the test suite.
 <table><tr><td><br></td><td width="1%"><a href="../../ref/build_win/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_win/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

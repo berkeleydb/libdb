@@ -1,5 +1,6 @@
-<!--@(#)intro.so	10.11 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: intro.so,v 10.14 2000/03/18 21:43:14 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,17 +15,14 @@
 </td></tr></table>
 <p>
 <h1 align=center>Berkeley DB and the memory pool</h1>
-<p>
-The memory pool subsystem is the general-purpose shared memory buffer pool
+<p>The memory pool subsystem is the general-purpose shared memory buffer pool
 used by Berkeley DB.  This module is useful outside of the Berkeley DB package for
 processes that require page-oriented, cached, shared file access.
-<p>
-A memory pool is a shared memory cache shared by any number of processes
+<p>A memory pool is a shared memory cache shared by any number of processes
 and threads within processes.  The <a href="../../api_c/env_open.html">DBENV-&gt;open</a> interface opens, and
 optionally creates, a memory pool.  When that pool is no longer in use,
 it should be closed, using the <a href="../../api_c/env_close.html">DBENV-&gt;close</a> interface.
-<p>
-The <a href="../../api_c/memp_fopen.html">memp_fopen</a> interface opens an underlying file within the
+<p>The <a href="../../api_c/memp_fopen.html">memp_fopen</a> interface opens an underlying file within the
 memory pool.  When that file is no longer in use, it should be closed,
 using the <a href="../../api_c/memp_fclose.html">memp_fclose</a> interface.  The <a href="../../api_c/memp_fget.html">memp_fget</a> interface
 is used to retrieve pages from files in the pool.  All retrieved pages
@@ -38,8 +36,7 @@ using a somewhat modified least-recently-used algorithm.  Pages in files
 may also be explicitly marked clean or dirty using the <a href="../../api_c/memp_fset.html">memp_fset</a>
 interface.  All dirty pages in the pool from any underlying file may also
 be flushed as a group using the <a href="../../api_c/memp_fsync.html">memp_fsync</a> interface.
-<p>
-There are additional interfaces for manipulating the entire memory pool:
+<p>There are additional interfaces for manipulating the entire memory pool:
 <ul type=disc>
 <li>It is possible to gradually flush buffers from the pool in order to
 maintain a consistent percentage of clean buffers in the pool using the

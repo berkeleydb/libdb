@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test026.tcl	11.6 (Sleepycat) 11/8/99
+#	$Id: test026.tcl,v 11.11 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 26 {access method}
 # Keyed delete test through cursor.
@@ -24,7 +24,15 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 		with $ndups dups; cursor delete test"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 
 	set pflags ""
 	set gflags ""
@@ -35,14 +43,14 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 
 	puts "Test0$tnum.a: Put loop"
 	cleanup $testdir
-	set db [eval {berkdb open -create -truncate \
+	set db [eval {berkdb_open -create -truncate \
 		-mode 0644} $args {$omethod -dup $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	while { [gets $did str] != -1 && $count < [expr $nentries * $ndups] } {
 		set datastr [ make_data_str $str ]
 		for { set j 1 } { $j <= $ndups} {incr j} {
-         set ret [eval {$db put} \
+	 set ret [eval {$db put} \
 	     $txn $pflags {$str [chop_data $method $j$datastr]}]
 			error_check_good db_put $ret 0
 			incr count
@@ -51,7 +59,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 	close $did
 
 	error_check_good db_close [$db close] 0
-	set db [berkdb open $testfile]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Now we will sequentially traverse the database getting each
@@ -90,7 +98,7 @@ proc test026 { method {nentries 2000} {ndups 5} {tnum 26} args} {
 
 	puts "Test0$tnum.c: Verify empty file"
 	# Double check that file is now empty
-	set db [berkdb open $testfile]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set dbc [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_substr $dbc $db] 1

@@ -12,7 +12,7 @@ BEGIN {
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..6\n";
+print "1..7\n";
 
 my $FA = 0 ;
 
@@ -218,6 +218,51 @@ my $redirect = "xyzt" ;
     my %h ;
     tie %h, 'BerkeleyDB::Btree', 
     		-Filename   => $filename, 
+	        -Flags      => DB_CREATE
+      or die "Cannot open $filename: $!\n" ;
+
+    # Add a key/value pair to the file
+    $h{'Wall'} = 'Larry' ;
+    $h{'Smith'} = 'John' ;
+    $h{'mouse'} = 'mickey' ;
+    $h{'duck'}  = 'donald' ;
+
+    # Delete
+    delete $h{"duck"} ;
+
+    # Cycle through the keys printing them in order.
+    # Note it is not necessary to sort the keys as
+    # the btree will have kept them in order automatically.
+    foreach (keys %h)
+      { print "$_\n" }
+
+    untie %h ;
+    unlink $filename ;
+ }
+
+  #print "[" . docat($redirect) . "]\n" ;
+  ok(3, docat_del($redirect) eq <<'EOM') ;
+Smith
+Wall
+mouse
+EOM
+
+}
+
+{
+my $redirect = "xyzt" ;
+ {
+
+    my $redirectObj = new Redirect $redirect ;
+
+    use strict ;
+    use BerkeleyDB ;
+
+    my $filename = "tree" ;
+    unlink $filename ;
+    my %h ;
+    tie %h, 'BerkeleyDB::Btree', 
+    		-Filename   => $filename, 
 	        -Flags      => DB_CREATE,
 		-Compare    => sub { lc $_[0] cmp lc $_[1] }
       or die "Cannot open $filename: $!\n" ;
@@ -242,7 +287,7 @@ my $redirect = "xyzt" ;
  }
 
   #print "[" . docat($redirect) . "]\n" ;
-  ok(3, docat_del($redirect) eq <<'EOM') ;
+  ok(4, docat_del($redirect) eq <<'EOM') ;
 mouse
 Smith
 Wall
@@ -260,7 +305,7 @@ my $redirect = "xyzt" ;
     use BerkeleyDB ;
 
     my %hash ;
-    my $filename = "/tmp/filt" ;
+    my $filename = "filt.db" ;
     unlink $filename ;
 
     my $db = tie %hash, 'BerkeleyDB::Hash', 
@@ -292,7 +337,7 @@ my $redirect = "xyzt" ;
  }
 
   #print "[" . docat($redirect) . "]\n" ;
-  ok(4, docat_del($redirect) eq <<"EOM") ;
+  ok(5, docat_del($redirect) eq <<"EOM") ;
 abc\x00 -> def\x00
 EOM
 
@@ -307,7 +352,7 @@ my $redirect = "xyzt" ;
     use strict ;
     use BerkeleyDB ;
     my %hash ;
-    my $filename = "/tmp/filt" ;
+    my $filename = "filt.db" ;
     unlink $filename ;
 
 
@@ -336,7 +381,7 @@ my $redirect = "xyzt" ;
 
   my $val = pack("i", 123) ;
   #print "[" . docat($redirect) . "]\n" ;
-  ok(5, docat_del($redirect) eq <<"EOM") ;
+  ok(6, docat_del($redirect) eq <<"EOM") ;
 $val -> def
 EOM
 
@@ -426,7 +471,7 @@ my $redirect = "xyzt" ;
  }
 
   #print "[" . docat($redirect) . "]\n" ;
-  ok(6, docat_del($redirect) eq <<"EOM") ;
+  ok(7, docat_del($redirect) eq <<"EOM") ;
 The array contains 5 entries
 popped black
 shifted white

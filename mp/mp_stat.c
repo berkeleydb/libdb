@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_stat.c	11.4 (Sleepycat) 9/18/99";
+static const char revid[] = "$Id: mp_stat.c,v 11.15 2000/05/17 18:21:27 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,14 +19,23 @@ static const char sccsid[] = "@(#)mp_stat.c	11.4 (Sleepycat) 9/18/99";
 #include <unistd.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_page.h"
 #include "db_shash.h"
 #include "db_am.h"
 #include "mp.h"
 
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
+
 static void __memp_dumpcache
-	        __P((DB_MPOOL *, REGINFO *, size_t *, FILE *, u_int32_t));
+		__P((DB_MPOOL *, REGINFO *, size_t *, FILE *, u_int32_t));
 static void __memp_pbh __P((DB_MPOOL *, BH *, size_t *, FILE *));
 
 /*
@@ -43,13 +52,17 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 	DB_MPOOL *dbmp;
 	DB_MPOOL_FSTAT **tfsp;
 	DB_MPOOL_STAT *sp;
-	MCACHE *mc;
-	MPOOL *mp;
+	MPOOL *c_mp, *mp;
 	MPOOLFILE *mfp;
 	size_t len, nlen;
 	u_int32_t i;
 	int ret;
 	char *name;
+
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_memp_stat(dbenv, gspp, fspp, db_malloc));
+#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->mp_handle, DB_INIT_MPOOL);
@@ -58,11 +71,11 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 	sp = NULL;
 
 	/* Global statistics. */
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 	if (gspp != NULL) {
 		*gspp = NULL;
 
-		if ((ret = __os_calloc(1, sizeof(**gspp), gspp)) != 0)
+		if ((ret = __os_calloc(dbenv, 1, sizeof(**gspp), gspp)) != 0)
 			return (ret);
 		sp = *gspp;
 
@@ -71,45 +84,48 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 		 * a per-cache basis.
 		 */
 		sp->st_hash_longest = 0;
-		sp->st_region_wait = dbmp->reginfo.rp->mutex.mutex_set_wait;
-		sp->st_region_nowait = dbmp->reginfo.rp->mutex.mutex_set_nowait;
-		sp->st_regsize = dbmp->reginfo.rp->size;
+		sp->st_region_wait = dbmp->reginfo[0].rp->mutex.mutex_set_wait;
+		sp->st_region_nowait =
+		    dbmp->reginfo[0].rp->mutex.mutex_set_nowait;
 		sp->st_gbytes = dbenv->mp_gbytes;
 		sp->st_bytes = dbenv->mp_bytes;
+		sp->st_ncache = dbmp->nreg;
+		sp->st_regsize = dbmp->reginfo[0].rp->size;
 
-		R_LOCK(dbenv, &dbmp->reginfo);
+		R_LOCK(dbenv, dbmp->reginfo);
 
 		/* Walk the cache list and accumulate the global information. */
-		for (i = 0; i < mp->nc_reg; ++i) {
-			mc = dbmp->c_reginfo[i].primary;
-			sp->st_cache_hit += mc->stat.st_cache_hit;
-			sp->st_cache_miss += mc->stat.st_cache_miss;
-			sp->st_map += mc->stat.st_map;
-			sp->st_page_create += mc->stat.st_page_create;
-			sp->st_page_in += mc->stat.st_page_in;
-			sp->st_page_out += mc->stat.st_page_out;
-			sp->st_ro_evict += mc->stat.st_ro_evict;
-			sp->st_rw_evict += mc->stat.st_rw_evict;
-			sp->st_hash_buckets += mc->stat.st_hash_buckets;
-			sp->st_hash_searches += mc->stat.st_hash_searches;
-			if (mc->stat.st_hash_longest > sp->st_hash_longest)
-				sp->st_hash_longest = mc->stat.st_hash_longest;
-			sp->st_hash_examined += mc->stat.st_hash_examined;
-			sp->st_page_clean += mc->stat.st_page_clean;
-			sp->st_page_dirty += mc->stat.st_page_dirty;
-			sp->st_page_trickle += mc->stat.st_page_trickle;
-			sp->st_region_wait += mc->stat.st_region_wait;
-			sp->st_region_nowait += mc->stat.st_region_nowait;
+		for (i = 0; i < mp->nreg; ++i) {
+			c_mp = dbmp->reginfo[i].primary;
+			sp->st_cache_hit += c_mp->stat.st_cache_hit;
+			sp->st_cache_miss += c_mp->stat.st_cache_miss;
+			sp->st_map += c_mp->stat.st_map;
+			sp->st_page_create += c_mp->stat.st_page_create;
+			sp->st_page_in += c_mp->stat.st_page_in;
+			sp->st_page_out += c_mp->stat.st_page_out;
+			sp->st_ro_evict += c_mp->stat.st_ro_evict;
+			sp->st_rw_evict += c_mp->stat.st_rw_evict;
+			sp->st_hash_buckets += c_mp->stat.st_hash_buckets;
+			sp->st_hash_searches += c_mp->stat.st_hash_searches;
+			if (c_mp->stat.st_hash_longest > sp->st_hash_longest)
+				sp->st_hash_longest =
+				    c_mp->stat.st_hash_longest;
+			sp->st_hash_examined += c_mp->stat.st_hash_examined;
+			sp->st_page_clean += c_mp->stat.st_page_clean;
+			sp->st_page_dirty += c_mp->stat.st_page_dirty;
+			sp->st_page_trickle += c_mp->stat.st_page_trickle;
+			sp->st_region_wait += c_mp->stat.st_region_wait;
+			sp->st_region_nowait += c_mp->stat.st_region_nowait;
 		}
 
-		R_UNLOCK(dbenv, &dbmp->reginfo);
+		R_UNLOCK(dbenv, dbmp->reginfo);
 	}
 
 	/* Per-file statistics. */
 	if (fspp != NULL) {
 		*fspp = NULL;
 
-		R_LOCK(dbenv, &dbmp->reginfo);
+		R_LOCK(dbenv, dbmp->reginfo);
 
 		/* Count the MPOOLFILE structures. */
 		for (len = 0,
@@ -118,17 +134,17 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 		    ++len, mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile))
 			;
 
-		R_UNLOCK(dbenv, &dbmp->reginfo);
+		R_UNLOCK(dbenv, dbmp->reginfo);
 
 		if (len == 0)
 			return (0);
 
 		/* Allocate space for the pointers. */
 		len = (len + 1) * sizeof(DB_MPOOL_FSTAT *);
-		if ((ret = __os_malloc(len, db_malloc, fspp)) != 0)
+		if ((ret = __os_malloc(dbenv, len, db_malloc, fspp)) != 0)
 			return (ret);
 
-		R_LOCK(dbenv, &dbmp->reginfo);
+		R_LOCK(dbenv, dbmp->reginfo);
 
 		/* Build each individual entry. */
 		for (tfsp = *fspp,
@@ -138,7 +154,8 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 			name = __memp_fns(dbmp, mfp);
 			nlen = strlen(name);
 			len = sizeof(DB_MPOOL_FSTAT) + nlen + 1;
-			if ((ret = __os_malloc(len, db_malloc, tfsp)) != 0)
+			if ((ret =
+			    __os_malloc(dbenv, len, db_malloc, tfsp)) != 0)
 				return (ret);
 			**tfsp = mfp->stat;
 			(*tfsp)->file_name = (char *)
@@ -164,7 +181,7 @@ memp_stat(dbenv, gspp, fspp, db_malloc)
 		}
 		*tfsp = NULL;
 
-		R_UNLOCK(dbenv, &dbmp->reginfo);
+		R_UNLOCK(dbenv, dbmp->reginfo);
 	}
 	return (0);
 }
@@ -219,13 +236,13 @@ __memp_dump_region(dbenv, area, fp)
 			break;
 		}
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 
 	/* Display MPOOL structures. */
 	(void)fprintf(fp, "%s\nPool (region addr 0x%lx)\n",
-	    DB_LINE, (u_long)dbmp->reginfo.addr);
+	    DB_LINE, (u_long)dbmp->reginfo[0].addr);
 
 	/* Display the MPOOLFILE structures. */
 	cnt = 0;
@@ -234,7 +251,7 @@ __memp_dump_region(dbenv, area, fp)
 		(void)fprintf(fp, "File #%d: %s: type %ld, %s\n\t [UID: ",
 		    cnt + 1, __memp_fns(dbmp, mfp), (long)mfp->ftype,
 		    F_ISSET(mfp, MP_CAN_MMAP) ? "mmap" : "read/write");
-		p = R_ADDR(&dbmp->reginfo, mfp->fileid_off);
+		p = R_ADDR(dbmp->reginfo, mfp->fileid_off);
 		for (i = 0; i < DB_FILE_ID_LEN; ++i) {
 			(void)fprintf(fp, "%x", *p++);
 			if (i < DB_FILE_ID_LEN - 1)
@@ -242,7 +259,7 @@ __memp_dump_region(dbenv, area, fp)
 		}
 		(void)fprintf(fp, "]\n");
 		if (cnt < FMAP_ENTRIES)
-			fmap[cnt] = R_OFFSET(&dbmp->reginfo, mfp);
+			fmap[cnt] = R_OFFSET(dbmp->reginfo, mfp);
 	}
 
 	for (dbmfp = TAILQ_FIRST(&dbmp->dbmfq);
@@ -251,23 +268,20 @@ __memp_dump_region(dbenv, area, fp)
 		    cnt + 1, __memp_fn(dbmfp),
 		    F_ISSET(dbmfp, MP_READONLY) ? "readonly" : "read/write");
 		    if (cnt < FMAP_ENTRIES)
-			fmap[cnt] = R_OFFSET(&dbmp->reginfo, mfp);
+			fmap[cnt] = R_OFFSET(dbmp->reginfo, mfp);
 	}
 	if (cnt < FMAP_ENTRIES)
 		fmap[cnt] = INVALID_ROFF;
 	else
 		fmap[FMAP_ENTRIES] = INVALID_ROFF;
 
-	/* Dump each cache. */
-	for (i = 0; i < mp->nc_reg; ++i) {
+	/* Dump the memory pools. */
+	for (i = 0; i < mp->nreg; ++i) {
 		(void)fprintf(fp, "%s\nCache #%d:\n", DB_LINE, i + 1);
-		__memp_dumpcache(dbmp, &dbmp->c_reginfo[i], fmap, fp, flags);
+		__memp_dumpcache(dbmp, &dbmp->reginfo[i], fmap, fp, flags);
 	}
 
-	if (LF_ISSET(MPOOL_DUMP_MEM))
-		__db_shalloc_dump(dbmp->reginfo.addr, fp);
-
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 
 	/* Flush in case we're debugging. */
 	(void)fflush(fp);
@@ -287,18 +301,18 @@ __memp_dumpcache(dbmp, reginfo, fmap, fp, flags)
 {
 	BH *bhp;
 	DB_HASHTAB *dbht;
-	MCACHE *mc;
+	MPOOL *c_mp;
 	int bucket;
 
-	mc = reginfo->primary;
+	c_mp = reginfo->primary;
 
 	/* Display the hash table list of BH's. */
 	if (LF_ISSET(MPOOL_DUMP_HASH)) {
 		(void)fprintf(fp,
 	    "%s\nBH hash table (%lu hash slots)\npageno, file, ref, address\n",
-		    DB_LINE, (u_long)mc->htab_buckets);
-		for (dbht = R_ADDR(reginfo, mc->htab),
-		    bucket = 0; bucket < mc->htab_buckets; ++dbht, ++bucket) {
+		    DB_LINE, (u_long)c_mp->htab_buckets);
+		for (dbht = R_ADDR(reginfo, c_mp->htab),
+		    bucket = 0; bucket < c_mp->htab_buckets; ++dbht, ++bucket) {
 			if (SH_TAILQ_FIRST(dbht, __bh) != NULL)
 				(void)fprintf(fp, "%lu:\n", (u_long)bucket);
 			for (bhp = SH_TAILQ_FIRST(dbht, __bh);
@@ -311,10 +325,14 @@ __memp_dumpcache(dbmp, reginfo, fmap, fp, flags)
 	if (LF_ISSET(MPOOL_DUMP_LRU)) {
 		(void)fprintf(fp, "%s\nBH LRU list\n", DB_LINE);
 		(void)fprintf(fp, "pageno, file, ref, address\n");
-		for (bhp = SH_TAILQ_FIRST(&mc->bhq, __bh);
+		for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
 		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, q, __bh))
 			__memp_pbh(dbmp, bhp, fmap, fp);
 	}
+
+	/* Dump the memory pool. */
+	if (LF_ISSET(MPOOL_DUMP_MEM))
+		__db_shalloc_dump(reginfo->addr, fp);
 }
 
 /*
@@ -346,11 +364,11 @@ __memp_pbh(dbmp, bhp, fmap, fp)
 	if (fmap[i] == INVALID_ROFF)
 		(void)fprintf(fp, "  %4lu, %lu, %2lu, %lu",
 		    (u_long)bhp->pgno, (u_long)bhp->mf_offset,
-		    (u_long)bhp->ref, (u_long)R_OFFSET(&dbmp->reginfo, bhp));
+		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp));
 	else
 		(void)fprintf(fp, "  %4lu,   #%d,  %2lu, %lu",
 		    (u_long)bhp->pgno, i + 1,
-		    (u_long)bhp->ref, (u_long)R_OFFSET(&dbmp->reginfo, bhp));
+		    (u_long)bhp->ref, (u_long)R_OFFSET(dbmp->reginfo, bhp));
 
 	__db_prflags(bhp->flags, fn, fp);
 

@@ -1,4 +1,4 @@
-dnl @(#)options.m4	11.5 (Sleepycat) 10/15/99
+dnl $Id: options.m4,v 11.8 2000/04/30 21:41:26 bostic Exp $
 
 dnl Process user-specified options.
 AC_DEFUN(AM_OPTIONS_SET, [
@@ -11,13 +11,13 @@ AC_MSG_RESULT($db_cv_bigfile)
 
 AC_MSG_CHECKING(if --enable-compat185 option specified)
 AC_ARG_ENABLE(compat185,
-	[  --enable-compat185      Include DB 1.85 compatibility API.],
+	[  --enable-compat185      Build DB 1.85 compatibility API.],
 	[db_cv_compat185="$enable_compat185"], [db_cv_compat185="no"])
 AC_MSG_RESULT($db_cv_compat185)
 
 AC_MSG_CHECKING(if --enable-cxx option specified)
 AC_ARG_ENABLE(cxx,
-	[  --enable-cxx            Provide C++ interfaces.],
+	[  --enable-cxx            Build C++ API.],
 	[db_cv_cxx="$enable_cxx"], [db_cv_cxx="no"])
 AC_MSG_RESULT($db_cv_cxx)
 
@@ -59,15 +59,21 @@ AC_MSG_RESULT($db_cv_dynamic)
 
 AC_MSG_CHECKING(if --enable-java option specified)
 AC_ARG_ENABLE(java,
-	[  --enable-java           Provide Java interfaces.],
+	[  --enable-java           Build Java API.],
 	[db_cv_java="$enable_java"], [db_cv_java="no"])
 AC_MSG_RESULT($db_cv_java)
 
 AC_MSG_CHECKING(if --enable-posixmutexes option specified)
 AC_ARG_ENABLE(posixmutexes,
-	[  --enable-posixmutexes   Use POSIX standard mutexes.],
+	[  --enable-posixmutexes   Force use of POSIX standard mutexes.],
 	[db_cv_posixmutexes="$enable_posixmutexes"], [db_cv_posixmutexes="no"])
 AC_MSG_RESULT($db_cv_posixmutexes)
+
+AC_MSG_CHECKING(if --enable-rpc option specified)
+AC_ARG_ENABLE(rpc,
+	[  --enable-rpc            Build RPC client/server.],
+	[db_cv_rpc="$enable_rpc"], [db_cv_rpc="no"])
+AC_MSG_RESULT($db_cv_rpc)
 
 dnl --enable-shared is an alias for --enable-dynamic. We support it for
 dnl compatibility with other applications, e.g., Tcl.
@@ -82,7 +88,7 @@ fi
 
 AC_MSG_CHECKING(if --enable-tcl option specified)
 AC_ARG_ENABLE(tcl,
-	[  --enable-tcl            Provide Tcl interfaces.],
+	[  --enable-tcl            Build Tcl API.],
 	[db_cv_tcl="$enable_tcl"], [db_cv_tcl="no"])
 AC_MSG_RESULT($db_cv_tcl)
 
@@ -94,8 +100,16 @@ AC_MSG_RESULT($db_cv_test)
 
 AC_MSG_CHECKING(if --enable-uimutexes option specified)
 AC_ARG_ENABLE(uimutexes,
-	[  --enable-uimutexes      Use Unix International mutexes.],
+	[  --enable-uimutexes      Force use of Unix International mutexes.],
 	[db_cv_uimutexes="$enable_uimutexes"], [db_cv_uimutexes="no"])
 AC_MSG_RESULT($db_cv_uimutexes)
 
+AC_MSG_CHECKING([if --with-tcl option specified])
+AC_ARG_WITH(tcl,
+	[  --with-tcl=DIR          Directory location of tclConfig.sh.],
+	with_tclconfig=${withval}, with_tclconfig="no")
+AC_MSG_RESULT($with_tclconfig)
+if test "$with_tclconfig" != "no"; then
+	db_cv_tcl="yes"
+fi
 ])dnl

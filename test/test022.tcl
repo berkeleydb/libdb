@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test022.tcl	11.3 (Sleepycat) 9/10/99
+#	$Id: test022.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
 #
 # Test022: Test of DB->get_byteswapped
 proc test022 { method args } {
@@ -14,16 +14,25 @@ proc test022 { method args } {
 
 	puts "Test022 ($args) $omethod: DB->getbyteswapped()"
 
-	set testfile1 "$testdir/test022a.db"
-	set testfile2 "$testdir/test022b.db"
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile1 "$testdir/test022a.db"
+		set testfile2 "$testdir/test022b.db"
+	} else {
+		set testfile1 "test022a.db"
+		set testfile2 "test022b.db"
+	}
 	cleanup $testdir
 
 	# Create two databases, one in each byte order.
-	set db1 [eval {berkdb open -create \
+	set db1 [eval {berkdb_open -create \
 	    -mode 0644} $omethod $args {-lorder 1234} $testfile1]
 	error_check_good db1_open [is_valid_db $db1] TRUE
 
-	set db2 [eval {berkdb open -create \
+	set db2 [eval {berkdb_open -create \
 	    -mode 0644} $omethod $args {-lorder 4321} $testfile2]
 	error_check_good db2_open [is_valid_db $db2] TRUE
 
@@ -35,7 +44,9 @@ proc test022 { method args } {
 	# and that exactly one of them is 1.
 	error_check_good is_byteswapped_sensible_1 \
 	    [expr ($db1_order == 1 && $db2_order == 0) || \
-	          ($db1_order == 0 && $db2_order == 1)] 1
+		  ($db1_order == 0 && $db2_order == 1)] 1
 
+	error_check_good db1_close [$db1 close] 0
+	error_check_good db2_close [$db2 close] 0
 	puts "\tTest022 complete."
 }

@@ -1,6 +1,9 @@
 /* DO NOT EDIT: automatically built by dist/distrib. */
-#ifndef _lock_ext_h_
-#define _lock_ext_h_
+#ifndef	_lock_ext_h_
+#define	_lock_ext_h_
+#if defined(__cplusplus)
+extern "C" {
+#endif
 int __lock_downgrade __P((DB_ENV *,
     DB_LOCK *, db_lockmode_t, u_int32_t));
 int __lock_addfamilylocker __P((DB_ENV *, u_int32_t, u_int32_t));
@@ -23,4 +26,7 @@ int __lock_locker_cmp __P((u_int32_t, DB_LOCKER *));
 u_int32_t __lock_ohash __P((const DBT *));
 u_int32_t __lock_lhash __P((DB_LOCKOBJ *));
 u_int32_t __lock_locker_hash __P((u_int32_t));
+#if defined(__cplusplus)
+}
+#endif
 #endif /* _lock_ext_h_ */

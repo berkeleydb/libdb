@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)lock_util.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: lock_util.c,v 11.4 2000/04/29 02:26:24 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -76,7 +76,7 @@ __lock_locker_cmp(locker, sh_locker)
  * a good hash, but we want a fast hash more than we want a good one, when
  * we're coming through this code path.
  */
-#define FAST_HASH(P) {			\
+#define	FAST_HASH(P) {			\
 	u_int32_t __h;			\
 	u_int8_t *__cp, *__hp;		\
 	__hp = (u_int8_t *)&__h;	\
@@ -125,7 +125,7 @@ __lock_lhash(lock_obj)
 /*
  * __lock_locker_hash --
  *	Hash function for entering lockers into the locker hash table.
- * 	Since these are simply 32-bit unsigned integers, just return
+ *	Since these are simply 32-bit unsigned integers, just return
  *	the locker value.
  *
  * PUBLIC: u_int32_t __lock_locker_hash __P((u_int32_t));

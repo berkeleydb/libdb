@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)TpcbExample.cpp	11.5 (Sleepycat) 11/3/99
+ * $Id: TpcbExample.cpp,v 11.13 2000/05/17 19:21:39 bostic Exp $
  */
 
 #include "db_config.h"
@@ -50,37 +50,6 @@ static void	  usage(void);
 int verbose;
 char *progname = "TpcbExample";                            // Program name.
 
-#ifdef _WIN32
-/* Simulation of gettimeofday */
-
-struct timeval {
-	long tv_sec;
-	long tv_usec;
-};
-
-struct timezone {
-	int tz_minuteswest;
-	int tz_dsttime;
-};
-
-int gettimeofday(struct timeval *tp, struct timezone *tzp)
-{
-	struct _timeb tb;
-
-	_ftime(&tb);
-	if (tp != 0) {
-		tp->tv_sec = tb.time;
-		tp->tv_usec = tb.millitm * 1000;
-	}
-	if (tzp != 0) {
-		tzp->tz_minuteswest = tb.timezone;
-		tzp->tz_dsttime = tb.dstflag;
-	}
-	return 0;
-}
-
-#endif
-
 class TpcbExample : public DbEnv
 {
 public:
@@ -103,7 +72,7 @@ private:
 
 	// no need for copy and assignment
 	TpcbExample(const TpcbExample &);
-	operator = (const TpcbExample &);
+	void operator = (const TpcbExample &);
 };
 
 //
@@ -115,8 +84,8 @@ private:
 // that you can run many of these processes in parallel to simulate a
 // multiuser test run).
 //
-#define TELLERS_PER_BRANCH      100
-#define ACCOUNTS_PER_TELLER     1000
+#define	TELLERS_PER_BRANCH      100
+#define	ACCOUNTS_PER_TELLER     1000
 #define	HISTORY_PER_BRANCH	2592000
 
 /*
@@ -129,24 +98,24 @@ private:
 #define	ACCOUNTS	 1000000
 #define	BRANCHES	      10
 #define	TELLERS		     100
-#define HISTORY		25920000
+#define	HISTORY		25920000
 #endif
 
 #ifdef	TINY
 #define	ACCOUNTS	    1000
 #define	BRANCHES	      10
 #define	TELLERS		     100
-#define HISTORY		   10000
+#define	HISTORY		   10000
 #endif
 
 #if !defined(VALID_SCALING) && !defined(TINY)
 #define	ACCOUNTS	  100000
 #define	BRANCHES	      10
 #define	TELLERS		     100
-#define HISTORY		  259200
+#define	HISTORY		  259200
 #endif
 
-#define HISTORY_LEN	    100
+#define	HISTORY_LEN	    100
 #define	RECLEN		    100
 #define	BEGID		1000000
 
@@ -252,7 +221,6 @@ main(int argc, char *argv[])
 		     << (long)tellers << " Tellers "
 		     << (long)history << " History\n";
 
-
 	try {
 		// Initialize the database environment.
 		// Must be done in within a try block, unless you
@@ -311,7 +279,7 @@ TpcbExample::TpcbExample(const char *home, int cachesize,
 	local_flags = flags | DB_CREATE | DB_INIT_MPOOL;
 	if (!initializing)
 		local_flags |= DB_INIT_TXN | DB_INIT_LOCK | DB_INIT_LOG;
-	open(home, NULL, local_flags, 0);
+	open(home, local_flags, 0);
 }
 
 //
@@ -508,8 +476,8 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 {
 	Db *adb, *bdb, *hdb, *tdb;
 	double gtps, itps;
-	int failed, ifailed, ret, txns, gus, ius;
-	struct timeval starttime, curtime, lasttime;
+	int failed, ifailed, ret, txns;
+	time_t starttime, curtime, lasttime;
 #ifndef _WIN32
 	pid_t pid;
 
@@ -542,31 +510,19 @@ TpcbExample::run(int n, int accounts, int branches, int tellers)
 		errExit(err, "Open of history file failed");
 
 	txns = failed = ifailed = 0;
-	(void)gettimeofday(&starttime, NULL);
+	starttime = time(NULL);
 	lasttime = starttime;
-	while (n-- >= 0) {
+	while (n-- > 0) {
 		txns++;
 		ret = txn(adb, bdb, tdb, hdb, accounts, branches, tellers);
 		if (ret != 0) {
 			failed++;
 			ifailed++;
 		}
-		if (n % 1000 == 0) {
-			(void)gettimeofday(&curtime, NULL);
-			gus = curtime.tv_usec >= starttime.tv_usec ?
-				curtime.tv_usec - starttime.tv_usec +
-				1000000 * (curtime.tv_sec - starttime.tv_sec) :
-				1000000 + curtime.tv_usec - starttime.tv_usec +
-				1000000 * (curtime.tv_sec - starttime.tv_sec - 1);
-			ius = curtime.tv_usec >= lasttime.tv_usec ?
-				curtime.tv_usec - lasttime.tv_usec +
-				1000000 * (curtime.tv_sec - lasttime.tv_sec) :
-				1000000 + curtime.tv_usec - lasttime.tv_usec +
-				1000000 * (curtime.tv_sec - lasttime.tv_sec - 1);
-			gtps = (double)(txns - failed) /
-				((double)gus / 1000000);
-			itps = (double)(1000 - ifailed) /
-				((double)ius / 1000000);
+		if (n % 5000 == 0) {
+			curtime = time(NULL);
+			gtps = (double)(txns - failed) / (curtime - starttime);
+			itps = (double)(5000 - ifailed) / (curtime - lasttime);
 
 			// We use printf because it provides much simpler
 			// formatting than iostreams.

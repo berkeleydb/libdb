@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb007.tcl	11.6 (Sleepycat) 9/24/99
+#	$Id: sdb007.tcl,v 11.11 2000/04/21 18:36:23 krinsky Exp $
 #
 # Sub DB Test 7 {access method}
 # Use the first 10,000 entries from the dictionary spread across each subdb.
@@ -53,7 +53,7 @@ proc subdb007 { method {nentries 10000} args } {
 	# to the original.
 	for { set subdb 0 } { $subdb < $nsubdbs } { incr subdb } {
 		puts "\tSubdb007.b: dump file sub$subdb.db"
-		set db [berkdb open -unknown $testfile sub$subdb.db]
+		set db [berkdb_open -unknown $testfile sub$subdb.db]
 		dump_file $db $txn $t1 $checkfunc
 		error_check_good db_close [$db close] 0
 
@@ -65,32 +65,29 @@ proc subdb007 { method {nentries 10000} args } {
 				puts $oid [expr $subdb * $newent + $i]
 			}
 			close $oid
-			exec $MV $t1 $t3
+			file rename -force $t1 $t3
 		} else {
-			set q q
-			set p p
-			# Sed uses 1-based line numbers
 			set beg [expr $subdb * $newent]
 			incr beg
 			set end [expr $beg + $newent - 1]
-			exec $SED -n $beg,$end$p $dict > $t3
-			exec $SORT $t3 > $t2
-			exec $SORT $t1 > $t3
+			filehead $end $dict $t3 $beg
+			filesort $t3 $t2
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb007:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 
 		puts "\tSubdb007.c: sub$subdb.db: close, open, and dump file"
 		# Now, reopen the file and run the last test again.
 		open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
 		    dump_file_direction "-first" "-next" sub$subdb.db
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb007:diff($t2,$t3) \
-		    [catch { exec $CMP $t2 $t3 } res] 0
+		    [filecmp $t2 $t3] 0
 
 		# Now, reopen the file and run the last test again in the
 		# reverse direction.
@@ -100,11 +97,11 @@ proc subdb007 { method {nentries 10000} args } {
 		    dump_file_direction "-last" "-prev" sub$subdb.db
 
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb007:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 	}
 }
 

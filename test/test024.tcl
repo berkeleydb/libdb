@@ -1,14 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test024.tcl	11.5 (Sleepycat) 9/15/99
+#	$Id: test024.tcl,v 11.13 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 24 {method nentries}
 # Test the Btree and Record number get-by-number functionality.
 proc test024 { method {nentries 10000} args} {
 	source ./include.tcl
+	global rand_init
 
 	set do_renumber [is_rrecno $method]
 	set args [convert_args $method $args]
@@ -16,13 +17,23 @@ proc test024 { method {nentries 10000} args} {
 
 	puts "Test024: $method ($args)"
 
-   	if { [string compare $omethod "-hash"] == 0 } {
+	if { [string compare $omethod "-hash"] == 0 } {
 		puts "Test024 skipping for method HASH"
 		return
 	}
 
+	berkdb srand $rand_init
+
 	# Create the database and open the dictionary
-	set testfile $testdir/test024.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test024.db
+	} else {
+		set testfile test024.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -45,11 +56,11 @@ proc test024 { method {nentries 10000} args} {
 	set sorted_keys [lsort $keys]
 	# Create the database
 	if { [string compare $omethod "-btree"] == 0 } {
-		set db [eval {berkdb open -create -truncate \
+		set db [eval {berkdb_open -create -truncate \
 			-mode 0644 -recnum} $args {$omethod $testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	} else  {
-		set db [eval {berkdb open -create -truncate \
+		set db [eval {berkdb_open -create -truncate \
 			-mode 0644} $args {$omethod $testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	}
@@ -107,11 +118,11 @@ proc test024 { method {nentries 10000} args} {
 	error_check_good db_close [$db close] 0
 
 	error_check_good Test024.c:diff($t1,$t2) \
-	    [catch { exec $CMP $t1 $t2 } res] 0
+	    [filecmp $t1 $t2] 0
 
 	# Now, reopen the file and run the last test again.
 	puts "\tTest024.d: close, open, and dump file"
-	set db [berkdb open -rdonly $testfile]
+	set db [eval {berkdb_open -rdonly} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set oid [open $t2 w]
 	for { set k 1 } { $k <= $count } { incr k } {
@@ -123,16 +134,16 @@ proc test024 { method {nentries 10000} args} {
 	close $oid
 	error_check_good db_close [$db close] 0
 	error_check_good Test024.d:diff($t1,$t2) \
-	    [catch { exec $CMP $t1 $t2 } res] 0
+	    [filecmp $t1 $t2] 0
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest024.e: close, open, and dump file in reverse direction"
-	set db [berkdb open -rdonly $testfile]
+	set db [eval {berkdb_open -rdonly} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	# Put sorted keys in file
 	set rsorted ""
 	foreach k $sorted_keys {
-		set rsorted [concat $k $rsorted]
+		set rsorted [linsert $rsorted 0 $k]
 	}
 	set oid [open $t1 w]
 	foreach k $rsorted {
@@ -150,11 +161,11 @@ proc test024 { method {nentries 10000} args} {
 	close $oid
 	error_check_good db_close [$db close] 0
 	error_check_good Test024.e:diff($t1,$t2) \
-   	    [catch { exec $CMP $t1 $t2 } res] 0
+	    [filecmp $t1 $t2] 0
 
 	# Now try deleting elements and making sure they work
 	puts "\tTest024.f: delete test"
-	set db [berkdb open $testfile]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	while { $count > 0 } {
 		set kndx [berkdb random_int 1 $count]

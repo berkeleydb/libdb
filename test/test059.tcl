@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test059.tcl	11.6 (Sleepycat) 8/17/99
+#	$Id: test059.tcl,v 11.11 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test059:
 # Make sure that we handle retrieves of zero-length data items correctly.
@@ -20,7 +20,15 @@ proc test059 { method args } {
 	puts "Test059: $method 0-length partial data retrieval"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test059.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test059.db
+	} else {
+		set testfile test059.db
+	}
 	cleanup $testdir
 
 	set pflags ""
@@ -34,7 +42,7 @@ proc test059 { method args } {
 
 	puts "\tTest059.a: Populate a database"
 	set oflags "-create -truncate -mode 0644 $omethod $args $testfile"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_good db_create [is_substr $db db] 1
 
 	# Put ten keys in the database
@@ -68,7 +76,6 @@ proc test059 { method args } {
 	error_check_good db_cget_first [string length $data] 0
 
 	puts "\tTest059.b: db cget NEXT with 0 partial length retrieve"
-	#set ret [$curs get 0 $DB_NEXT DB_DBT_PARTIAL 0 0]
 	set ret [$curs get -next -partial {0 0}]
 	set data [lindex [lindex $ret 0] 1]
 	set key [lindex [lindex $ret 0] 0]
@@ -76,7 +83,6 @@ proc test059 { method args } {
 	error_check_good db_cget_next [string length $data] 0
 
 	puts "\tTest059.c: db cget LAST with 0 partial length retrieve"
-	#set ret [$curs get 0 $DB_LAST DB_DBT_PARTIAL  0 0]
 	set ret [$curs get -last -partial {0 0}]
 	set data [lindex [lindex $ret 0] 1]
 	set key [lindex [lindex $ret 0] 0]

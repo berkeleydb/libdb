@@ -1,7 +1,7 @@
 /*
  * writetest --
  *
- * @(#)writetest.txt	10.2 (Sleepycat) 10/27/98
+ * $Id: writetest.txt,v 10.3 1999/11/19 17:21:06 bostic Exp $
  */
 #include <sys/types.h>
 

@@ -1,27 +1,30 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_fid.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: os_fid.c,v 11.6 2000/05/25 18:28:48 dda Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
+
+#define	SERIAL_INIT	0
+static u_int32_t fid_serial = SERIAL_INIT;
 
 /*
  * __os_fileid --
  *	Return a unique identifier for a file.
  */
 int
-__os_fileid(dbenv, fname, timestamp, fidp)
+__os_fileid(dbenv, fname, unique_okay, fidp)
 	DB_ENV *dbenv;
 	const char *fname;
-	int timestamp;
+	int unique_okay;
 	u_int8_t *fidp;
 {
 	size_t i;
@@ -44,11 +47,30 @@ __os_fileid(dbenv, fname, timestamp, fidp)
 	/* Clear the buffer. */
 	memset(fidp, 0, DB_FILE_ID_LEN);
 
+	/* 
+	 * Initialize/increment the serial number we use to help avoid
+	 * fileid collisions.  Note that we don't bother with locking;
+	 * it's unpleasant to do from down in here, and if we race on
+	 * this no real harm will be done, since the finished fileid
+	 * has so many other components.
+	 * 
+	 * We increment by 100000 on each call as a simple way of
+	 * randomizing;  simply incrementing seems potentially less useful
+	 * if pids are also simply incremented, since this is process-local
+	 * and we may be one of a set of processes starting up.  100000
+	 * pushes us out of pid space on most platforms, and has few 
+	 * interesting properties in base 2.
+	 */
+	if (fid_serial == SERIAL_INIT)
+		fid_serial = (u_int32_t)getpid();
+	else
+		fid_serial += 100000;
+
 	/*
 	 * First we open the file, because we're not given a handle to it.
 	 * If we can't open it, we're in trouble.
 	 */
-	if ((ret = __os_open(fname, DB_OSO_RDONLY, _S_IREAD, &fh)) != 0)
+	if ((ret = __os_open(dbenv, fname, DB_OSO_RDONLY, _S_IREAD, &fh)) != 0)
 		return (ret);
 
 	/* File open, get its info */
@@ -85,22 +107,39 @@ __os_fileid(dbenv, fname, timestamp, fidp)
 	 * get the same 32-bit values if we truncate any returned 64-bit value
 	 * to a 32-bit value.
 	 */
-	memcpy(fidp, &fi.nFileIndexLow, sizeof(u_int32_t));
-	fidp += sizeof(u_int32_t);
-	memcpy(fidp, &fi.nFileIndexHigh, sizeof(u_int32_t));
-	fidp += sizeof(u_int32_t);
-	memcpy(fidp, &fi.dwVolumeSerialNumber, sizeof(u_int32_t));
-	fidp += sizeof(u_int32_t);
-
-	if (timestamp) {
+	tmp = (u_int32_t)fi.nFileIndexLow;
+	for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+		*fidp++ = *p++;
+	tmp = (u_int32_t)fi.nFileIndexHigh;
+	for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+		*fidp++ = *p++;
+	if (unique_okay) {
 		/*
-		 * We want the number of seconds, not the high-order 0 bits,
-		 * so convert the returned time_t to a (potentially) smaller
-		 * fixed-size type.
+		 * Use the system time to try to get a unique value
+		 * within this process.  A millisecond counter
+		 * overflows 32 bits in about 49 days.  So we use 8
+		 * bytes, and don't bother with the volume ID, which
+		 * is not very useful for our purposes.
 		 */
-		tmp = (u_int32_t)time(NULL);
+		SYSTEMTIME st;
+
+		GetSystemTime(&st);
+		tmp = (st.wYear - 1900) * 12 + (st.wMonth - 1);
+		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+			*fidp++ = *p++;
+		tmp = ((((st.wDay - 1) * 24 + st.wHour) * 60 +
+			st.wMinute) * 60 + st.wSecond) * 1000 +
+			st.wMilliseconds;
+		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
+			*fidp++ = *p++;
+		for (p = (u_int8_t *)&fid_serial, i = sizeof(u_int32_t); 
+		    i > 0; --i)
+			*fidp++ = *p++;
+	} else {
+		tmp = (u_int32_t)fi.dwVolumeSerialNumber;
 		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 			*fidp++ = *p++;
 	}
+
 	return (0);
 }

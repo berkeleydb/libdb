@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test043.tcl	11.7 (Sleepycat) 8/19/99
+#	$Id: test043.tcl,v 11.11 2000/04/21 18:36:26 krinsky Exp $
 #
 # DB Test 43 {method nentries}
 # Test the Record number implicit creation and renumbering options.
@@ -22,11 +22,19 @@ proc test043 { method {nentries 10000} args} {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test043.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test043.db
+	} else {
+		set testfile test043.db
+	}
 	cleanup $testdir
 
 	# Create the database
-	set db [eval {berkdb open -create -truncate -mode 0644} $args \
+	set db [eval {berkdb_open -create -truncate -mode 0644} $args \
 		{$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

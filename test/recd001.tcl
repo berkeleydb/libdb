@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd001.tcl	11.11 (Sleepycat) 11/10/99
+#	$Id: recd001.tcl,v 11.17 2000/05/22 12:51:37 bostic Exp $
 #
 # Recovery Test 1.
 # These are the most basic recovery tests.  We do individual recovery
@@ -41,7 +41,7 @@ proc recd001 { method {select 0} } {
 	set testfile recd001.db
 	set testfile2 recd001-2.db
 
-	set flags "-create -log -lock -mpool -txn -home $testdir"
+	set flags "-create -txn -home $testdir"
 
 	puts "\tRecd001.a.0: creating environment"
 	set env_cmd "berkdb env $flags"
@@ -52,13 +52,13 @@ proc recd001 { method {select 0} } {
 	# cannot specify db truncate in txn protected env!!!
 	set oflags "-create $omethod -mode 0644 \
 	    -env $dbenv $opts $testfile"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
 	set oflags "-create $omethod -mode 0644 \
-            -env $dbenv $opts $testfile2"
-	set db [eval {berkdb open} $oflags]
+	    -env $dbenv $opts $testfile2"
+	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
@@ -68,21 +68,21 @@ proc recd001 { method {select 0} } {
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 
 	# List of recovery tests: {CMD MSG} pairs.
 	set rlist {
 	{ {DB put -txn TXNID $key $data}	"Recd001.b: put"}
-	{ {DB del -txn TXNID $key} 		"Recd001.c: delete"}
-	{ {DB put -txn TXNID $bigkey $data} 	"Recd001.d: big key put"}
+	{ {DB del -txn TXNID $key}		"Recd001.c: delete"}
+	{ {DB put -txn TXNID $bigkey $data}	"Recd001.d: big key put"}
 	{ {DB del -txn TXNID $bigkey}		"Recd001.e: big key delete"}
-	{ {DB put -txn TXNID $key $bigdata} 	"Recd001.f: big data put"}
+	{ {DB put -txn TXNID $key $bigdata}	"Recd001.f: big data put"}
 	{ {DB del -txn TXNID $key}		"Recd001.g: big data delete"}
 	{ {DB put -txn TXNID $key $data}	"Recd001.h: put (change state)"}
-	{ {DB put -txn TXNID $key $newdata} 	"Recd001.i: overwrite"}
+	{ {DB put -txn TXNID $key $newdata}	"Recd001.i: overwrite"}
 	{ {DB put -txn TXNID -partial {$off $len} $key $partial_grow}
 	  "Recd001.j: partial put growing"}
-	{ {DB put -txn TXNID $key $newdata} 	"Recd001.k: overwrite (fix)"}
+	{ {DB put -txn TXNID $key $newdata}	"Recd001.k: overwrite (fix)"}
 	{ {DB put -txn TXNID -partial {$off $len} $key $partial_shrink}
 	  "Recd001.l: partial put shrinking"}
 	{ {DB put -append -txn TXNID $data}	"Recd001.m: put -append"}
@@ -152,5 +152,5 @@ proc recd001 { method {select 0} } {
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 }

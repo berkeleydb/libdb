@@ -1,5 +1,6 @@
-<!--"@(#)cxx_index.so	10.45 (Sleepycat) 9/16/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: cxx_index.so,v 10.54.2.3 2000/07/30 18:27:00 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -9,7 +10,7 @@
 </head>
 <body bgcolor=white>
 <h1 align=center>C++ Interface by Class</h1>
-<table border=1 align=center>
+<p><table border=1 align=center>
 <tr><th>Class</th><th>Method</th><th>Description</th></tr>
 <tr><td><a href="../api_cxx/dbenv_class.html">DbEnv</a></td><td><br></td><td>Berkeley DB Environment Class</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_close.html">DbEnv::close</a></td><td>Close an environment</td></tr>
@@ -18,22 +19,32 @@
 <tr><td><br></td><td><a href="../api_cxx/env_open.html">DbEnv::open</a></td><td>Open an environment</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_remove.html">DbEnv::remove</a></td><td>Remove an environment</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a></td><td>Set the environment cache size</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_data_dir.html">DbEnv::set_data_dir</a></td><td>Set the environment data directory</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_errcall.html">DbEnv::set_errcall</a></td><td>Set error message callback</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_errfile.html">DbEnv::set_errfile</a></td><td>Set error message FILE *</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a></td><td>Set error message output stream</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a></td><td>Set error message prefix</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_feedback.html">DbEnv::set_feedback</a></td><td>Set feedback callback</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_lg_bsize.html">DbEnv::set_lg_bsize</a></td><td>Set log buffer size</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_lg_dir.html">DbEnv::set_lg_dir</a></td><td>Set the environment logging directory</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_lg_max.html">DbEnv::set_lg_max</a></td><td>Set log file size</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a></td><td>Set lock conflicts matrix</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a></td><td>Set automatic deadlock detection</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_lk_max.html">DbEnv::set_lk_max</a></td><td>Set maximum number of locks</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a></td><td>Set maximum mapped-in database file size</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_mutexlocks.html">DbEnv::set_mutexlocks</a></td><td>Turn off mutual exclusion locking</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_pageyield.html">DbEnv::set_pageyield</a></td><td>Yield the processor on each page access</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a></td><td>Set panic callback</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_panicstate.html">DbEnv::set_panicstate</a></td><td>Reset panic state</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_rec_init.html">DbEnv::set_recovery_init</a></td><td>Set recovery initialization callback</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_region_init.html">DbEnv::set_region_init</a></td><td>Fault in shared regions on initial access</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_server.html">DbEnv::set_server</a></td><td>Establish server connection</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_shm_key.html">DbEnv::set_shm_key</a></td><td>Set system memory shared segment ID</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_tas_spins.html">DbEnv::set_tas_spins</a></td><td>Set the number of test-and-set spins</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_tmp_dir.html">DbEnv::set_tmp_dir</a></td><td>Set the environment temporary file directory</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_tx_max.html">DbEnv::set_tx_max</a></td><td>Set maximum number of transactions</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_tx_recover.html">DbEnv::set_tx_recover</a></td><td>Set transaction abort recover function</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/env_set_tx_timestamp.html">DbEnv::set_tx_timestamp</a></td><td>Set recovery timestamp</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a></td><td>Set verbose messages</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/env_strerror.html">DbEnv::strerror</a></td><td>Error strings</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/lock_detect.html">DbEnv::lock_detect</a></td><td>Perform deadlock detection</td></tr>
@@ -69,9 +80,11 @@
 <tr><td><br></td><td><a href="../api_cxx/db_get_byteswapped.html">Db::get_byteswapped</a></td><td>Return if the underlying database is in host order</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_get_type.html">Db::get_type</a></td><td>Return the database type</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_join.html">Db::join</a></td><td>Perform a database join on cursors</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/db_key_range.html">Db::key_range</a></td><td>Return estimate of key location</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_open.html">Db::open</a></td><td>Open a database</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_put.html">Db::put</a></td><td>Store items into a database</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_remove.html">Db::remove</a></td><td>Remove a database</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/db_rename.html">Db::rename</a></td><td>Rename a database</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_set_bt_compare.html">Db::set_bt_compare</a></td><td>Specify a Btree comparison function</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_set_bt_minkey.html">Db::set_bt_minkey</a></td><td>Set the minimum number of keys per Btree page</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_set_bt_prefix.html">Db::set_bt_prefix</a></td><td>Specify a Btree prefix comparison function</td></tr>
@@ -97,8 +110,10 @@
 <tr><td><br></td><td><a href="../api_cxx/db_stat.html">Db::stat</a></td><td>Return database statistics</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_sync.html">Db::sync</a></td><td>Flush a database to stable storage</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/db_upgrade.html">Db::upgrade</a></td><td>Upgrade a database</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/db_verify.html">Db::verify</a></td><td>Verify/upgrade a database</td></tr>
 <tr><td><a href="../api_cxx/dbc_class.html">Dbc</a></td><td><br></td><td>Berkeley DB Cursor Class</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/dbc_close.html">Dbc::close</a></td><td>Close a cursor</td></tr>
+<tr><td><br></td><td><a href="../api_cxx/dbc_count.html">Dbc::count</a></td><td>Return count of duplicates</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/dbc_del.html">Dbc::del</a></td><td>Delete by cursor</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/dbc_dup.html">Dbc::dup</a></td><td>Duplicate a cursor</td></tr>
 <tr><td><br></td><td><a href="../api_cxx/dbc_get.html">Dbc::get</a></td><td>Retrieve by cursor</td></tr>

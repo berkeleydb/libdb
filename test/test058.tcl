@@ -1,13 +1,22 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test058.tcl	11.8 (Sleepycat) 10/16/99
+#	$Id: test058.tcl,v 11.13 2000/04/21 18:36:26 krinsky Exp $
 #
 proc test058 { method args } {
 	source ./include.tcl
 
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test058 skipping for env $env"
+		return
+	}
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -19,13 +28,13 @@ proc test058 { method args } {
 
 	# environment
 	cleanup $testdir
-	set eflags "-create -lock -log -mpool -txn -home $testdir"
+	set eflags "-create -txn -home $testdir"
 	set env [eval {berkdb env} $eflags]
 	error_check_good env [is_valid_env $env] TRUE
 
 	# db open
 	set flags "-create -mode 0644 -dup -env $env $args"
-	set db [eval {berkdb open} $flags $omethod "test058.db"]
+	set db [eval {berkdb_open} $flags $omethod "test058.db"]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set tn ""

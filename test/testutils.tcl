@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)testutils.tcl	11.28 (Sleepycat) 10/28/99
+#	$Id: testutils.tcl,v 11.65 2000/06/06 18:06:32 krinsky Exp $
 #
 # Test system utilities
 #
@@ -14,12 +14,16 @@ proc timestamp {{opt ""}} {
 
 	if {[string compare $opt "-r"] == 0} {
 		clock seconds
-	} else  {
+	} elseif {[string compare $opt "-t"] == 0} {
+		# -t gives us the current time in the format expected by
+		# db_recover -t.
+		return [clock format [clock seconds] -format "%y%m%d%H%M.%S"]
+	} else {
 		set now [clock seconds]
 
 		if {[catch {set start $__timestamp_start}] != 0} {
 			set __timestamp_start $now
-  		}
+		}
 		set start $__timestamp_start
 
 		set elapsed [expr $now - $start]
@@ -219,7 +223,7 @@ proc dump_binkey_file_direction { db txn outfile checkfunc begin cont } {
 	}
 	close $outf
 	error_check_good curs_close [$c close] 0
-	exec $RM $d1
+	fileremove $d1
 }
 
 proc dump_bin_file_direction { db txn outfile checkfunc begin cont } {
@@ -234,7 +238,7 @@ proc dump_bin_file_direction { db txn outfile checkfunc begin cont } {
 
 	for {set d [$c get $begin] } \
 	    { [llength $d] != 0 } {set d [$c get $cont] } {
-     	set k [lindex [lindex $d 0] 0]
+		set k [lindex [lindex $d 0] 0]
 		set data [lindex [lindex $d 0] 1]
 		set ofid [open $d1 w]
 		fconfigure $ofid -translation binary
@@ -246,7 +250,7 @@ proc dump_bin_file_direction { db txn outfile checkfunc begin cont } {
 	}
 	close $outf
 	error_check_good curs_close [$c close] 0
-	exec $RM -f $d1
+	fileremove -f $d1
 }
 
 proc make_data_str { key } {
@@ -310,7 +314,7 @@ proc debug { {stop 0} } {
 
 # Check if each key appears exactly [llength dlist] times in the file with
 # the duplicate tags matching those that appear in dlist.
-proc dup_check { db txn tmpfile dlist } {
+proc dup_check { db txn tmpfile dlist {extra 0}} {
 	source ./include.tcl
 
 	set outf [open $tmpfile w]
@@ -335,9 +339,32 @@ proc dup_check { db txn tmpfile dlist } {
 				error "FAIL: \tKey \
 				    $key, expected dup id $e, got $id"
 			}
-			error_check_good dupget $d $key
-			error_check_good dupget $id $did
+			error_check_good dupget.data $d $key
+			error_check_good dupget.id $id $did
 			set lastkey $key
+		}
+		#
+		# Some tests add an extra dup (like overflow entries)
+		# Check id if it exists.
+		if { $extra != 0} {
+			set okey $key
+			set rec [$c get "-next"]
+			if { [string length $rec] != 0 } {
+				set key [lindex [lindex $rec 0] 0]
+				#
+				# If this key has no extras, go back for
+				# next iteration.
+				if { [string compare $key $lastkey] != 0 } {
+					set key $okey
+					set rec [$c get "-prev"]
+				} else {
+					set fulldata [lindex [lindex $rec 0] 1]
+					set id [id_of $fulldata]
+					set d [data_of $fulldata]
+					error_check_bad dupget.data1 $d $key
+					error_check_good dupget.id1 $id $extra
+				}
+			}
 		}
 		if { $done != 1 } {
 			puts $outf $key
@@ -394,8 +421,17 @@ proc partial_put { method db txn gflags key data n_replace n_add } {
 	# Beginning change
 	set s [string range $data 0 [ expr $n_replace - 1 ] ]
 	set repl [ replicate [string toupper $s] $n_add ]
-	set newstr [chop_data $method $repl[string range $data $n_replace end]]
 
+	# This is gross, but necessary:  if this is a fixed-length
+	# method, and the chopped length of $repl is zero,
+	# it's because the original string was zero-length and our data item
+	# is all nulls.  Set repl to something non-NULL.
+	if { [is_fixed_length $method] && \
+	    [string length [chop_data $method $repl]] == 0 } {
+		set repl [replicate "." $n_add]
+	}
+
+	set newstr [chop_data $method $repl[string range $data $n_replace end]]
 	set ret [eval {$db put} $txn {-partial [list 0 $n_replace] \
 	    $key [chop_data $method $repl]}]
 	error_check_good put $ret 0
@@ -405,14 +441,22 @@ proc partial_put { method db txn gflags key data n_replace n_add } {
 
 	# End Change
 	set len [string length $newstr]
+	set spl [expr $len - $n_replace]
+	# Handle case where $n_replace > $len
+	if { $spl < 0 } {
+		set spl 0
+	}
+
 	set s [string range $newstr [ expr $len - $n_replace ] end ]
+	# Handle zero-length keys
+	if { [string length $s] == 0 } { set s "A" }
+
 	set repl [ replicate [string toupper $s] $n_add ]
 	set newstr [chop_data $method \
-	    [string range $newstr 0 [expr $len - $n_replace - 1 ] ]$repl]
+	    [string range $newstr 0 [expr $spl - 1 ] ]$repl]
 
 	set ret [eval {$db put} $txn \
-	    {-partial [list [expr $len - $n_replace] $n_replace] \
-	    $key [chop_data $method $repl]}]
+	    {-partial [list $spl $n_replace] $key [chop_data $method $repl]}]
 	error_check_good put $ret 0
 
 	set ret [eval {$db get} $gflags $txn {$key}]
@@ -452,11 +496,71 @@ proc isqrt { l } {
 	return [string range $s 0 $ndx]
 }
 
-proc watch_procs { l {delay 30} {max 3600} } {
+# If we run watch_procs multiple times without an intervening
+# testdir cleanup, it's possible that old sentinel files will confuse
+# us.  Make sure they're wiped out before we spawn any other processes.
+proc sentinel_init { } {
+	source ./include.tcl
+
+	set filelist {}
+	set ret [catch {glob $testdir/begin.*} result]
+	if { $ret == 0 } { 
+		set filelist $result
+	}
+
+	set ret [catch {glob $testdir/end.*} result]
+	if { $ret == 0 } {
+		set filelist [concat $filelist $result]
+	}
+
+	foreach f $filelist {
+		fileremove $f
+	}
+}
+
+proc watch_procs { {delay 30} {max 3600} } {
 	source ./include.tcl
 
 	set elapsed 0
 	while { 1 } {
+
+		tclsleep $delay
+		incr elapsed $delay
+
+		# Find the list of processes withoutstanding sentinel
+		# files (i.e. a begin.pid and no end.pid).
+		set beginlist {}
+		set endlist {}
+		set ret [catch {glob $testdir/begin.*} result]
+		if { $ret == 0 } {
+			set beginlist $result
+		}
+		set ret [catch {glob $testdir/end.*} result]
+		if { $ret == 0 } {
+			set endlist $result
+		}
+
+		set bpids {}
+		catch {unset epids}
+		foreach begfile $beginlist {
+			lappend bpids [string range $begfile \
+			    [string length $testdir/begin.] end]
+		}
+		foreach endfile $endlist {
+			set epids([string range $endfile \
+			    [string length $testdir/end.] end]) 1
+		}
+
+		# The set of processes that we still want to watch, $l,
+		# is the set of pids that have begun but not ended
+		# according to their sentinel files.
+		set l {}
+		foreach p $bpids {
+			if { [info exists epids($p)] == 0 } {
+				lappend l $p
+			}
+		}
+
 		set rlist {}
 		foreach i $l {
 			set r [ catch { exec $KILL -0 $i } result ]
@@ -469,8 +573,7 @@ proc watch_procs { l {delay 30} {max 3600} } {
 		} else {
 			puts "[timestamp] processes running: $rlist"
 		}
-		exec $SLEEP $delay
-		incr elapsed $delay
+
 		if { $elapsed > $max } {
 			# We have exceeded the limit; kill processes
 			# and report an error
@@ -556,20 +659,35 @@ proc pick_op { min max n } {
 	}
 }
 
-# random_data: Generate a string of random characters.  Use average
-# to pick a length between 1 and 2 * avg.  If the unique flag is 1,
-# then make sure that the string is unique in the array "where"
-proc random_data { avg unique where } {
+# random_data: Generate a string of random characters.
+# If recno is 0 - Use average to pick a length between 1 and 2 * avg.
+# If recno is non-0, generate a number between 1 and 2 ^ (avg * 2),
+#   that will fit into a 32-bit integer.
+# If the unique flag is 1, then make sure that the string is unique
+# in the array "where".
+proc random_data { avg unique where {recno 0} } {
 	upvar #0 $where arr
 	global debug_on
 	set min 1
 	set max [expr $avg+$avg-1]
-
+	if { $recno  } {
+		#
+		# Tcl seems to have problems with values > 30.
+		#
+		if { $max > 30 } {
+			set max 30
+		}
+		set maxnum [expr int(pow(2, $max))]
+	}
 	while {1} {
 		set len [berkdb random_int $min $max]
 		set s ""
-		for {set i 0} {$i < $len} {incr i} {
-			append s [int_to_char [berkdb random_int 0 25]]
+		if {$recno} {
+			set s [berkdb random_int 1 $maxnum]
+		} else {
+			for {set i 0} {$i < $len} {incr i} {
+				append s [int_to_char [berkdb random_int 0 25]]
+			}
 		}
 
 		if { $unique == 0 || [info exists arr($s)] == 0 } {
@@ -693,7 +811,8 @@ proc changedup { k olddata newdata } {
 	set a_keys($k) [lreplace $a_keys($k) $n $n $newdata]
 }
 
-proc adddup { k olddata newdata where } {
+# Insert a dup into the a_keys array with DB_KEYFIRST.
+proc adddup { k olddata newdata } {
 	global l_keys
 	global a_keys
 	global nkeys
@@ -705,16 +824,8 @@ proc adddup { k olddata newdata where } {
 		set a_keys($k) { $newdata }
 	}
 
-	switch $where {
-		case $DB_KEYFIRST { set ndx 0 }
-		case $DB_KEYLAST { set ndx [llength $d] }
-		case $DB_KEYBEFORE { set ndx [lsearch $d $newdata] }
-		case $DB_KEYAFTER { set ndx [expr [lsearch $d $newdata] + 1]}
-		default { set ndx -1 }
-	}
-	if { $ndx == -1 } {
-		set ndx 0
-	}
+	set ndx 0
+
 	set d [linsert d $ndx $newdata]
 	set a_keys($k) $d
 }
@@ -849,7 +960,7 @@ proc esetup { dir } {
 
 	set ret [berkdb envremove -home $dir]
 
-	exec $RM -rf $dir/file0 $dir/file1 $dir/file2 $dir/file3
+	fileremove -f $dir/file0 $dir/file1 $dir/file2 $dir/file3
 	set mp [memp $dir 0644 -create -cachesize { 0 10240 }]
 	set lp [lock_open "" -create 0644]
 	error_check_good memp_close [$mp close] 0
@@ -865,9 +976,9 @@ proc cleanup { dir } {
 
 	if { $gen_upgrade == 1 } {
 		if { $upgrade_be == 1 } {
-			set version_dir "3.0be"
+			set version_dir "3.1be"
 		} else {
-			set version_dir "3.0le"
+			set version_dir "3.1le"
 		}
 
 		catch {exec \
@@ -876,9 +987,10 @@ proc cleanup { dir } {
 		    "mv $dir/*.db $upgrade_dir/$version_dir/$upgrade_method"}
 	}
 
+#	check_handles
 	set ret [catch { glob $dir/* } result]
 	if { $ret == 0 } {
-		eval exec $RM -rf $result
+		eval fileremove -f $result
 	}
 }
 
@@ -926,7 +1038,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	global recd_op
 	source ./include.tcl
 
-#	puts "$encodedop $dir $env_cmd $dbfile $cmd $msg"
+#	puts "op_recover: $encodedop $dir $env_cmd $dbfile $cmd $msg"
 
 	set init_file $dir/t1
 	set afterop_file $dir/t2
@@ -948,13 +1060,11 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 
 	# Keep track of the log types we've seen
 	if { $log_log_record_types == 1} {
-		set err \
-		    [catch {exec $PERL5 "$test_path/log.pl" "--read" $dir} ret]
-		error_check_good "Saving log record types" $err 0
+		logtrack_read $dir
 	}
 
 	# Save the initial file and open the environment and the file
-	catch { exec $CP $dir/$dbfile $dir/$dbfile.init } res
+	catch { file copy -force $dir/$dbfile $dir/$dbfile.init } res
 	set env [eval $env_cmd]
 	set db [berkdb open -env $env $dbfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -988,16 +1098,6 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	set i [lsearch $exec_cmd DB]
 	if { $i != -1 } {
 		set exec_cmd [lreplace $exec_cmd $i $i $db]
-	} else {
-		set exec_cmd $exec_cmd
-	}
-
-	# for nesttest we need an env, but that should
-	# be only one with ENV in cmd
-	#
-	set i [lsearch $exec_cmd ENV]
-	if { $i != -1 } {
-		set exec_cmd [lreplace $exec_cmd $i $i $env]
 	} else {
 		set exec_cmd $exec_cmd
 	}
@@ -1044,9 +1144,9 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	# Sync the file so that we can capture a snapshot to test
 	# recovery.
 	#
- 	error_check_good sync:$db [$db sync] 0
+	error_check_good sync:$db [$db sync] 0
 
-	catch { exec $CP $dir/$dbfile $dir/$dbfile.afterop } res
+	catch { file copy -force $dir/$dbfile $dir/$dbfile.afterop } res
 
 	#set tflags "-txn $t"
 	open_and_dump_file $dir/$dbfile.afterop NULL $tflags \
@@ -1075,7 +1175,8 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	error_check_good sync:$db [$db sync] 0
 	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
 	    dump_file_direction "-first" "-next"
-	catch { exec $CP $dir/$dbfile $dir/$dbfile.final } res
+
+	catch { file copy -force $dir/$dbfile $dir/$dbfile.final } res
 
 	# If this is an abort or prepare-abort, it should match the
 	#   original file.
@@ -1088,19 +1189,17 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	#   we care about are the results of a prepare followed by a
 	#   recovery, which we test later.
 	if { $op == "commit" || $op2 == "commit" } {
-		exec $SORT $afterop_file > $afterop_file.sort
-		exec $SORT $final_file > $final_file.sort
+		filesort $afterop_file $afterop_file.sort
+		filesort $final_file $final_file.sort
 		error_check_good \
 		    diff(post-$op,pre-commit):diff($afterop_file,$final_file) \
-		    [catch { exec \
-		    $CMP $afterop_file.sort $final_file.sort } res] 0
+		    [filecmp $afterop_file.sort $final_file.sort] 0
 	} elseif { $op == "abort" || $op2 == "abort" } {
-		exec $SORT $init_file > $init_file.sort
-		exec $SORT $final_file > $final_file.sort
+		filesort $init_file $init_file.sort
+		filesort $final_file $final_file.sort
 		error_check_good \
 		    diff(initial,post-$op):diff($init_file,$final_file) \
-		    [catch { exec \
-		    $CMP $init_file.sort $final_file.sort } res] 0
+		    [filecmp $init_file.sort $final_file.sort] 0
 	} else {
 		# Make sure this really is a prepare-only
 		error_check_good assert:prepare-only $encodedop "prepare"
@@ -1137,28 +1236,26 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
 	    dump_file_direction "-first" "-next"
 	if { $op == "commit" || $op2 == "commit" } {
-		exec $SORT $afterop_file > $afterop_file.sort
-		exec $SORT $final_file > $final_file.sort
+		filesort $afterop_file $afterop_file.sort
+		filesort $final_file $final_file.sort
 		error_check_good \
 		    diff(post-$op,pre-commit):diff($afterop_file,$final_file) \
-		    [catch { exec \
-		    $CMP $afterop_file.sort $final_file.sort } res] 0
+		    [filecmp $afterop_file.sort $final_file.sort] 0
 	} else {
-		exec $SORT $init_file > $init_file.sort
-		exec $SORT $final_file > $final_file.sort
+		filesort $init_file $init_file.sort
+		filesort $final_file $final_file.sort
 		error_check_good \
 		    diff(initial,post-$op):diff($init_file,$final_file) \
-		    [catch { exec \
-		    $CMP $init_file.sort $final_file.sort } res] 0
+		    [filecmp $init_file.sort $final_file.sort] 0
 	}
 
 	# Now close the environment, substitute a file that will need
 	# recovery and try running recovery again.
 	reset_env $env
 	if { $op == "commit" || $op2 == "commit" } {
-	    catch { exec $CP $dir/$dbfile.init $dir/$dbfile } res
+	    catch { file copy -force $dir/$dbfile.init $dir/$dbfile } res
 	} else {
-		catch { exec $CP $dir/$dbfile.afterop $dir/$dbfile } res
+		catch { file copy -force $dir/$dbfile.afterop $dir/$dbfile } res
 	}
 
 	berkdb debug_check
@@ -1166,7 +1263,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	    "\t\tAbout to run recovery on pre-operation database ... "
 	flush stdout
 
-	set stat [catch {exec ./db_recover -h $dir} result]
+	set stat [catch {exec ./db_recover -h $dir -c} result]
 	if { $stat == 1 } {
 		error "FAIL: Recovery error: $result."
 	}
@@ -1177,19 +1274,17 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 	open_and_dump_file $dir/$dbfile NULL $tflags $final_file nop \
 	    dump_file_direction "-first" "-next"
 	if { $op == "commit" || $op2 == "commit" } {
-		exec $SORT $final_file > $final_file.sort
-		exec $SORT $afterop_file > $afterop_file.sort
+		filesort $final_file $final_file.sort
+		filesort $afterop_file $afterop_file.sort
 		error_check_good \
 		    diff(post-$op,recovered):diff($afterop_file,$final_file) \
-		    [catch { exec \
-		    $CMP $afterop_file.sort $final_file.sort } res] 0
+		    [filecmp $afterop_file.sort $final_file.sort] 0
 	} else {
-		exec $SORT $init_file > $init_file.sort
-		exec $SORT $final_file > $final_file.sort
+		filesort $init_file $init_file.sort
+		filesort $final_file $final_file.sort
 		error_check_good \
 		    diff(initial,post-$op):diff($init_file,$final_file) \
-		    [catch { exec \
-		    $CMP $init_file.sort $final_file.sort } res] 0
+		    [filecmp $init_file.sort $final_file.sort] 0
 	}
 
 	# This should just close the environment, not blow it away.
@@ -1260,22 +1355,6 @@ proc reset_env { env } {
 	error_check_good env_close [$env close] 0
 }
 
-proc check_ret { db l txn ret } {
-	source ./include.tcl
-
-	if { $ret == -1 } {
-		if { $txn != 0 } {
-			puts "Aborting $txn"
-			return [$txn abort]
-		} else {
-			puts "Unlocking all for [$db locker]"
-			return [$l vec [$db locker] 0 "0 0 $DB_LOCK_PUT_ALL"]
-		}
-	} else {
-		return $ret
-	}
-}
-
 # This routine will let us obtain a ring of deadlocks.
 # Each locker will get a lock on obj_id, then sleep, and
 # then try to lock (obj_id + 1) % num.
@@ -1286,8 +1365,6 @@ proc check_ret { db l txn ret } {
 proc ring { myenv locker_id obj_id num } {
 	source ./include.tcl
 
-	#set myenv [berkdb env -lock -create -home $testdir -mode 0644]
-	#error_check_good env_open:lock [is_substr $myenv "env"] 1
 	if {[catch {$myenv lock_get write $locker_id $obj_id} lock1] != 0} {
 		puts $errorInfo
 		return ERROR
@@ -1295,7 +1372,7 @@ proc ring { myenv locker_id obj_id num } {
 		error_check_good lockget:$obj_id [is_substr $lock1 $myenv] 1
 	}
 
-	exec $SLEEP 4
+	tclsleep 30
 	set nextobj [expr ($obj_id + 1) % $num]
 	set ret 1
 	if {[catch {$myenv lock_get write $locker_id $nextobj} lock2] != 0} {
@@ -1330,8 +1407,6 @@ proc clump { myenv locker_id obj_id num } {
 	source ./include.tcl
 
 	set obj_id 10
-	#set myenv [berkdb env -create -home $testdir -lock -mode 0644]
-	#error_check_good lock_env:open [is_substr $myenv "env"] 1
 	if {[catch {$myenv lock_get read $locker_id $obj_id} lock1] != 0} {
 		puts $errorInfo
 		return ERROR
@@ -1340,7 +1415,7 @@ proc clump { myenv locker_id obj_id num } {
 		    [is_valid_lock $lock1 $myenv] TRUE
 	}
 
-	exec $SLEEP 4
+	tclsleep 30
 	set ret 1
 	if {[catch {$myenv lock_get write $locker_id $obj_id} lock2] != 0} {
 		if {[string match "*DEADLOCK*" $lock2] == 1} {
@@ -1486,7 +1561,7 @@ proc send_cmd { fd cmd {sleep 2}} {
 	puts $fd "flush stdout"
 	flush $fd
 	berkdb debug_check
-	exec $SLEEP $sleep
+	tclsleep $sleep
 
 	set r [rcv_result $fd]
 	return $r
@@ -1521,8 +1596,9 @@ proc send_timed_cmd { fd rcv_too cmd } {
 # Which routine you call does not depend on the length of the data you're
 # using, but on whether you're doing a put or a get. When we do a put, we
 # have to make sure the data isn't longer than the size of a record because
-# otherwise we'll get an error. When we do a get, we want to check that db
-# padded everything correctly.
+# otherwise we'll get an error (use chop_data). When we do a get, we want to
+# check that db padded everything correctly (use pad_data on the value against
+# which we are comparing).
 #
 # We don't want to just use the pad_data routine for both purposes, because
 # we want to be able to test whether or not db is padding correctly. For
@@ -1600,4 +1676,484 @@ proc binary_compare { data1 data2 } {
 	} else {
 		return 0
 	}
+}
+
+proc convert_method { method } {
+	switch -- $method {
+		-btree -
+		-dbtree -
+		-ddbtree -
+		-rbtree -
+		BTREE -
+		DB_BTREE -
+		DB_RBTREE -
+		RBTREE -
+		bt -
+		btree -
+		db_btree -
+		db_rbtree -
+		rbt -
+		rbtree { return "-btree" }
+
+		-dhash -
+		-hash -
+		DB_HASH -
+		HASH -
+		db_hash -
+		h -
+		hash { return "-hash" }
+
+		-queue -
+		DB_QUEUE -
+		QUEUE -
+		db_queue -
+		q -
+		qam -
+		queue { return "-queue" }
+
+		-frecno -
+		-recno -
+		-rrecno -
+		DB_FRECNO -
+		DB_RECNO -
+		DB_RRECNO -
+		FRECNO -
+		RECNO -
+		RRECNO -
+		db_frecno -
+		db_recno -
+		db_rrecno -
+		frec -
+		frecno -
+		rec -
+		recno -
+		rrec -
+		rrecno { return "-recno" }
+
+		default { error "FAIL:[timestamp] $method: unknown method" }
+	}
+}
+
+# If recno-with-renumbering or btree-with-renumbering is specified, then
+# fix the arguments to specify the DB_RENUMBER/DB_RECNUM option for the
+# -flags argument.
+proc convert_args { method {largs ""} } {
+	global fixed_len
+	global fixed_pad
+	global gen_upgrade
+	global upgrade_be
+	source ./include.tcl
+
+	if { [string first - $largs] == -1 &&\
+	    [string compare $largs ""] != 0 } {
+		set errstring "args must contain a hyphen; does this test\
+		    have no numeric args?"
+		puts "FAIL:[timestamp] $errstring"
+		return -code return
+	}
+
+	if { $gen_upgrade == 1 && $upgrade_be == 1 } {
+		append largs " -lorder 4321 "
+	}
+
+	if { [is_rrecno $method] == 1 } {
+		append largs " -renumber "
+	} elseif { [is_rbtree $method] == 1 } {
+		append largs " -recnum "
+	} elseif { [is_dbtree $method] == 1 } {
+		append largs " -dup "
+	} elseif { [is_ddbtree $method] == 1 } {
+		append largs " -dup "
+		append largs " -dupsort "
+	} elseif { [is_dhash $method] == 1 } {
+		append largs " -dup "
+	}
+
+	if {[is_fixed_length $method] == 1} {
+		append largs " -len $fixed_len -pad $fixed_pad "
+	}
+	return $largs
+}
+
+proc is_btree { method } {
+	set names { -btree BTREE DB_BTREE bt btree }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_dbtree { method } {
+	set names { -dbtree }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_ddbtree { method } {
+	set names { -ddbtree }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_rbtree { method } {
+	set names { -rbtree rbtree RBTREE db_rbtree DB_RBTREE rbt }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_recno { method } {
+	set names { -recno DB_RECNO RECNO db_recno rec recno}
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_rrecno { method } {
+	set names { -rrecno rrecno RRECNO db_rrecno DB_RRECNO rrec }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_frecno { method } {
+	set names { -frecno frecno frec FRECNO db_frecno DB_FRECNO}
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_hash { method } {
+	set names { -hash DB_HASH HASH db_hash h hash }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_dhash { method } {
+	set names { -dhash }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_queue { method } {
+	set names { -queue DB_QUEUE QUEUE db_queue q queue qam }
+	if { [lsearch $names $method] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_record_based { method } {
+	if { [is_recno $method] || [is_frecno $method] ||
+	    [is_rrecno $method] || [is_queue $method] } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc is_fixed_length { method } {
+	if { [is_queue $method] || [is_frecno $method] } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+# Sort lines in file $in and write results to file $out.
+# This is a more portable alternative to execing the sort command,
+# which has assorted issues on NT [#1576].
+# The addition of a "-n" argument will sort numerically.
+proc filesort { in out { arg "" } } {
+	set i [open $in r]
+
+	set ilines {}
+	while { [gets $i line] >= 0 } {
+		lappend ilines $line
+	}
+
+	if { [string compare $arg "-n"] == 0 } {
+		set olines [lsort -integer $ilines]
+	} else {
+		set olines [lsort $ilines]
+	}
+
+	close $i
+
+	set o [open $out w]
+	foreach line $olines {
+		puts $o $line
+	}
+
+	close $o
+}
+
+# Print lines up to the nth line of infile out to outfile, inclusive.
+# The optional beg argument tells us where to start.
+proc filehead { n infile outfile { beg 0 } } {
+	set in [open $infile r]
+	set out [open $outfile w]
+
+	# Sed uses 1-based line numbers, and so we do too.
+	for { set i 1 } { $i < $beg } { incr i } {
+		if { [gets $in junk] < 0 } {
+			break
+		}
+	}
+
+	for { } { $i <= $n } { incr i } {
+		if { [gets $in line] < 0 } {
+			break
+		}
+		puts $out $line
+	}
+
+	close $in
+	close $out
+}
+
+# Remove file (this replaces $RM).
+# Usage: fileremove filenames =~ rm;  fileremove -f filenames =~ rm -rf.
+proc fileremove { args } {
+	set forceflag ""
+	foreach a $args {
+		if { [string first - $a] == 0 } {
+			# It's a flag.  Better be f.
+			if { [string first f $a] != 1 } {
+				return -code error "bad flag to fileremove"
+			} else {
+				set forceflag "-force"
+			}
+		} else {
+			eval {file delete $forceflag $a}
+		}
+	}
+}
+
+proc findfail { args } {
+	foreach a $args {
+		if { [file exists $a] == 0 } {
+			continue
+		}
+		set f [open $a r]
+		while { [gets $f line] >= 0 } {
+			if { [string first FAIL $line] == 0 } {
+				close $f
+				return 1
+			}
+		}
+		close $f
+	}
+	return 0
+}
+
+# Sleep for s seconds.
+proc tclsleep { s } {
+	after [expr $s * 1000]
+}
+
+# Compare two files, a la diff.  Returns 1 if non-identical, 0 if identical.
+proc filecmp { file_a file_b } {
+	set fda [open $file_a r]
+	set fdb [open $file_b r]
+
+	set nra 0
+	set nrb 0
+
+	# The gets can't be in the while condition because we'll
+	# get short-circuit evaluated.
+	while { $nra >= 0 && $nrb >= 0 } {
+		set nra [gets $fda aline]
+		set nrb [gets $fdb bline]
+
+		if { $nra != $nrb || [string compare $aline $bline] != 0} {
+			close $fda
+			close $fdb
+			return 1
+		}
+	}
+
+	close $fda
+	close $fdb
+	return 0
+}
+
+# Verify all .db files in the specified directory.
+proc verify_dir { {directory "./TESTDIR"} { pref "" } } {
+	if { [catch {glob $directory/*.db} dbs] != 0 } {
+		# No files matched
+		return
+	}
+	if { [file exists /dev/stderr] == 1 } {
+		set errfilearg "-errfile /dev/stderr "
+	} else {
+		set errfilearg ""
+	}
+	set errpfxarg {-errpfx "FAIL: verify" }
+	set errarg $errfilearg$errpfxarg
+	foreach db $dbs {
+		if { [catch {eval {berkdb dbverify} $errarg $db} res] != 0 } {
+			puts $res
+			puts "FAIL:[timestamp] Verification of $db failed."
+		} else {
+			error_check_good verify:$db $res 0
+			puts "${pref}Verification of $db succeeded."
+		}
+	}
+}
+
+# Generate randomly ordered, guaranteed-unique four-character strings that can
+# be used to differentiate duplicates without creating duplicate duplicates.
+# (test031 & test032) randstring_init is required before the first call to
+# randstring and initializes things for up to $i distinct strings;  randstring
+# gets the next string.
+proc randstring_init { i } {
+	global rs_int_list alphabet
+
+	# Fail if we can't generate sufficient unique strings.
+	if { $i > [expr 26 * 26 * 26 * 26] } {
+		set errstring\
+		    "Duplicate set too large for random string generator"
+		puts "FAIL:[timestamp] $errstring"
+		return -code return $errstring
+	}
+
+	set rs_int_list {}
+
+	# generate alphabet array
+	for { set j 0 } { $j < 26 } { incr j } {
+		set a($j) [string index $alphabet $j]
+	}
+
+	# Generate a list with $i elements, { aaaa, aaab, ... aaaz, aaba ...}
+	for { set d1 0 ; set j 0 } { $d1 < 26 && $j < $i } { incr d1 } {
+		for { set d2 0 } { $d2 < 26 && $j < $i } { incr d2 } {
+			for { set d3 0 } { $d3 < 26 && $j < $i } { incr d3 } {
+				for { set d4 0 } { $d4 < 26 && $j < $i } \
+				    { incr d4 } {
+					lappend rs_int_list \
+						$a($d1)$a($d2)$a($d3)$a($d4)
+					incr j
+				}
+			}
+		}
+	}
+
+	# Randomize the list.
+	set rs_int_list [randomize_list $rs_int_list]
+}
+
+# Randomize a list.  Returns a randomly-reordered copy of l.
+proc randomize_list { l } {
+	set i [llength $l]
+
+	for { set j 0 } { $j < $i } { incr j } {
+		# Pick a random element from $j to the end
+		set k [berkdb random_int $j [expr $i - 1]]
+
+		# Swap it with element $j
+		set t1 [lindex $l $j]
+		set t2 [lindex $l $k]
+
+		set l [lreplace $l $j $j $t2]
+		set l [lreplace $l $k $k $t1]
+	}
+
+	return $l
+}
+
+proc randstring {} {
+	global rs_int_list
+
+	if { [info exists rs_int_list] == 0 || [llength $rs_int_list] == 0 } {
+		set errstring "randstring uninitialized or used too often"
+		puts "FAIL:[timestamp] $errstring"
+		return -code return $errstring
+	}
+
+	set item [lindex $rs_int_list 0]
+	set rs_int_list [lreplace $rs_int_list 0 0]
+
+	return $item
+}
+
+# Takes a variable-length arg list, and returns a list containing the list of
+# the non-hyphenated-flag arguments, followed by a list of each alphanumeric
+# flag it finds.
+proc extractflags { args } {
+	set inflags 1
+	set flags {}
+	while { $inflags == 1 } {
+		set curarg [lindex $args 0]
+		if { [string first "-" $curarg] == 0 } {
+			set i 1
+			while {[string length [set f \
+			    [string index $curarg $i]]] > 0 } {
+				incr i
+				if { [string compare $f "-"] == 0 } {
+					set inflags 0
+					break
+				} else {
+					lappend flags $f
+				}
+			}
+			set args [lrange $args 1 end]
+		} else {
+			set inflags 0
+		}
+	}
+	return [list $args $flags]
+}
+
+# Wrapper for berkdb open, used throughout the test suite so that we can
+# set an errfile/errpfx as appropriate.
+proc berkdb_open { args } {
+	set errargs {}
+	if { [file exists /dev/stderr] == 1 } {
+		append errargs " -errfile /dev/stderr "
+		append errargs " -errpfx \\F\\A\\I\\L "
+	}
+
+	eval {berkdb open} $errargs $args
+}
+
+# Version without errpfx/errfile, used when we're expecting a failure.
+proc berkdb_open_noerr { args } {
+	eval {berkdb open} $args
+}
+
+proc check_handles { {outf stdout} } {
+	global ohandles
+
+	set handles [berkdb handles]
+	if {[llength $handles] != [llength $ohandles]} {
+		puts $outf "WARNING: Open handles during cleanup: $handles"
+	}
+	set ohandles $handles
+}
+
+proc open_handles { } {
+	return [llength [berkdb handles]]
 }

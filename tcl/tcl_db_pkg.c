@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_db_pkg.c	11.24 (Sleepycat) 10/9/99";
+static const char revid[] = "$Id: tcl_db_pkg.c,v 11.64.2.1 2000/06/30 02:52:24 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -34,7 +34,11 @@ static int	bdb_EnvOpen __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
 static int	bdb_DbOpen __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     DBTCL_INFO *, DB **));
 static int	bdb_DbRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int	bdb_DbRename __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int	bdb_DbUpgrade __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int	bdb_DbVerify __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 static int	bdb_Version __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int	bdb_Handles __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 
 /*
  * Db_tcl_Init --
@@ -67,6 +71,7 @@ Db_tcl_Init(interp)
 	    TCL_LINK_INT);
 	Tcl_LinkVar(interp, "__debug_test", (char *)&__debug_test,
 	    TCL_LINK_INT);
+	LIST_INIT(&__db_infohead);
 	return (TCL_OK);
 }
 
@@ -92,9 +97,13 @@ berkdb_Cmd(notused, interp, objc, objv)
 {
 	static char *berkdbcmds[] = {
 		"dbremove",
+		"dbrename",
+		"dbverify",
 		"env",
 		"envremove",
+		"handles",
 		"open",
+		"upgrade",
 		"version",
 		/* All below are compatibility functions */
 		"hcreate",	"hsearch",	"hdestroy",
@@ -111,9 +120,13 @@ berkdb_Cmd(notused, interp, objc, objv)
 	 */
 	enum berkdbcmds {
 		BDB_DBREMOVE,
+		BDB_DBRENAME,
+		BDB_DBVERIFY,
 		BDB_ENV,
 		BDB_ENVREMOVE,
+		BDB_HANDLES,
 		BDB_OPEN,
+		BDB_UPGRADE,
 		BDB_VERSION,
 		BDB_HCREATEX,	BDB_HSEARCHX,	BDB_HDESTROYX,
 		BDB_DBMINITX,	BDB_FETCHX,	BDB_STOREX,
@@ -157,6 +170,9 @@ berkdb_Cmd(notused, interp, objc, objv)
 		_debug_check();
 		result = bdb_Version(interp, objc, objv);
 		break;
+	case BDB_HANDLES:
+		result = bdb_Handles(interp, objc, objv);
+		break;
 	case BDB_ENV:
 		snprintf(newname, sizeof(newname), "env%d", env_id);
 		ip = _NewInfo(interp, NULL, newname, I_ENV);
@@ -181,6 +197,15 @@ berkdb_Cmd(notused, interp, objc, objv)
 		break;
 	case BDB_DBREMOVE:
 		result = bdb_DbRemove(interp, objc, objv);
+		break;
+	case BDB_DBRENAME:
+		result = bdb_DbRename(interp, objc, objv);
+		break;
+	case BDB_UPGRADE:
+		result = bdb_DbUpgrade(interp, objc, objv);
+		break;
+	case BDB_DBVERIFY:
+		result = bdb_DbVerify(interp, objc, objv);
 		break;
 	case BDB_ENVREMOVE:
 		result = tcl_EnvRemove(interp, objc, objv, NULL, NULL);
@@ -285,9 +310,11 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	static char *envopen[] = {
 		"-cachesize",
 		"-cdb",
-		"-config",
+		"-client_timeout",
 		"-create",
+		"-data_dir",
 		"-errfile",
+		"-errpfx",
 		"-home",
 		"-lock",
 		"-lock_conflict",
@@ -295,29 +322,41 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		"-lock_max",
 		"-log",
 		"-log_buffer",
+		"-log_dir",
 		"-log_max",
 		"-mmapsize",
 		"-mode",
-		"-mpool",
 		"-nommap",
 		"-private",
 		"-recover",
 		"-recover_fatal",
 		"-region_init",
+		"-server",
+		"-server_timeout",
+		"-shm_key",
 		"-system_mem",
+		"-tmp_dir",
 		"-txn",
 		"-txn_max",
+		"-txn_timestamp",
 		"-use_environ",
 		"-use_environ_root",
 		"-verbose",
 		NULL
 	};
+	/*
+	 * !!!
+	 * These have to be in the same order as the above,
+	 * which is close to but not quite alphabetical.
+	 */
 	enum envopen {
 		ENV_CACHESIZE,
 		ENV_CDB,
-		ENV_CONFIG,
+		ENV_CLIENT_TO,
 		ENV_CREATE,
+		ENV_DATA_DIR,
 		ENV_ERRFILE,
+		ENV_ERRPFX,
 		ENV_HOME,
 		ENV_LOCK,
 		ENV_CONFLICT,
@@ -325,42 +364,49 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		ENV_LOCK_MAX,
 		ENV_LOG,
 		ENV_LOG_BUFFER,
+		ENV_LOG_DIR,
 		ENV_LOG_MAX,
 		ENV_MMAPSIZE,
 		ENV_MODE,
-		ENV_MPOOL,
 		ENV_NOMMAP,
 		ENV_PRIVATE,
 		ENV_RECOVER,
 		ENV_RECOVER_FATAL,
 		ENV_REGION_INIT,
+		ENV_SERVER,
+		ENV_SERVER_TO,
+		ENV_SHM_KEY,
 		ENV_SYSTEM_MEM,
+		ENV_TMP_DIR,
 		ENV_TXN,
 		ENV_TXN_MAX,
+		ENV_TXN_TIME,
 		ENV_USE_ENVIRON,
 		ENV_USE_ENVIRON_ROOT,
 		ENV_VERBOSE
 	};
 	Tcl_Obj **myobjv, **myobjv1;
+	time_t time;
 	u_int32_t detect, gbytes, bytes, ncaches, open_flags, size;
 	u_int8_t *conflicts;
 	int i, intarg, itmp, j, logbufset, logmaxset;
-	int mode, myargc, myobjc, nmodes, optindex, result, ret, temp;
-	char *arg, **config, *home;
+	int mode, myobjc, nmodes, optindex, result, ret, temp;
+	long client_to, server_to, shm;
+	char *arg, *home, *server;
 
 	result = TCL_OK;
 	mode = 0;
-	config = NULL;
 	home = NULL;
 	/*
-	 * XXX should be:
-	 * open_flags = DB_THREAD;
-	 *
-	 * But DB_THREAD does not work with log_get -next, -prev.
-	 * So for now we only set DB_THREAD if -log is NOT specified.
 	 * XXX
+	 * If/when our Tcl interface becomes thread-safe, we should enable
+	 * DB_THREAD here.  Note that DB_THREAD currently does not work
+	 * with log_get -next, -prev;  if we wish to enable DB_THREAD,
+	 * those must either be made thread-safe first or we must come up with
+	 * a workaround.  (We used to specify DB_THREAD if and only if
+	 * logging was not configured.)
 	 */
-	open_flags = 0;
+	open_flags = DB_INIT_MPOOL;
 	logmaxset = logbufset = 0;
 
 	if (objc <= 2) {
@@ -369,15 +415,74 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	}
 
 	/*
-	 * Create the environment handle before parsing the args
-	 * since we'll be modifying the environment as we parse.
+	 * Server code must go before the call to db_env_create.
 	 */
-	ret = db_env_create(env, 0);
-	if (ret)
-		return (_ReturnSetup(interp, ret, "db_env_create"));
+	server = NULL;
+	server_to = client_to = 0;
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i++], envopen, "option",
+		    TCL_EXACT, &optindex) != TCL_OK) {
+			Tcl_ResetResult(interp);
+			continue;
+		}
+		switch ((enum envopen)optindex) {
+		case ENV_SERVER:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-server hostname");
+				result = TCL_ERROR;
+				break;
+			}
+			server = Tcl_GetStringFromObj(objv[i++], NULL);
+			break;
+		case ENV_SERVER_TO:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-server_to secs");
+				result = TCL_ERROR;
+				break;
+			}
+			result = Tcl_GetLongFromObj(interp, objv[i++],
+			    &server_to);
+			break;
+		case ENV_CLIENT_TO:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-client_to secs");
+				result = TCL_ERROR;
+				break;
+			}
+			result = Tcl_GetLongFromObj(interp, objv[i++],
+			    &client_to);
+			break;
+		default:
+			break;
+		}
+	}
+	if (server != NULL) {
+		ret = db_env_create(env, DB_CLIENT);
+		if (ret)
+			return (_ReturnSetup(interp, ret, "db_env_create"));
+		(*env)->set_errpfx((*env), ip->i_name);
+		(*env)->set_errcall((*env), _ErrorFunc);
+		if ((ret = (*env)->set_server((*env), server,
+		    client_to, server_to, 0)) != 0) {
+			result = TCL_ERROR;
+			goto error;
+		}
+	} else {
+		/*
+		 * Create the environment handle before parsing the args
+		 * since we'll be modifying the environment as we parse.
+		 */
+		ret = db_env_create(env, 0);
+		if (ret)
+			return (_ReturnSetup(interp, ret, "db_env_create"));
+		(*env)->set_errpfx((*env), ip->i_name);
+		(*env)->set_errcall((*env), _ErrorFunc);
+	}
 
-	(*env)->set_errpfx((*env), ip->i_name);
-	(*env)->set_errcall((*env), _ErrorFunc);
 	/*
 	 * Get the command name index from the object based on the bdbcmds
 	 * defined above.
@@ -391,6 +496,14 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		}
 		i++;
 		switch ((enum envopen)optindex) {
+		case ENV_SERVER:
+		case ENV_SERVER_TO:
+		case ENV_CLIENT_TO:
+			/*
+			 * Already handled these, skip them and their arg.
+			 */
+			i++;
+			break;
 		case ENV_CDB:
 			open_flags |= DB_INIT_CDB;
 			break;
@@ -400,10 +513,9 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 		case ENV_LOG:
 			open_flags |= DB_INIT_LOG;
 			break;
-		case ENV_MPOOL:
-			open_flags |= DB_INIT_MPOOL;
-			break;
 		case ENV_TXN:
+			open_flags |= DB_INIT_LOCK;
+			open_flags |= DB_INIT_LOG;
 			open_flags |= DB_INIT_TXN;
 			/* Make sure we have an arg to check against! */
 			if (i < objc) {
@@ -413,18 +525,6 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 					i++;
 				}
 			}
-			break;
-		case ENV_CONFIG:
-			if (i >= objc) {
-				Tcl_WrongNumArgs(interp, 2, objv,
-				    "?-config {config list}?");
-				result = TCL_ERROR;
-				break;
-			}
-			arg = Tcl_GetStringFromObj(objv[i], NULL);
-			result = Tcl_SplitList(interp, arg, &myargc, &config);
-			if (result == TCL_OK)
-				i++;
 			break;
 		case ENV_CREATE:
 			open_flags |= DB_CREATE;
@@ -473,7 +573,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			open_flags |= DB_USE_ENVIRON_ROOT;
 			break;
 		case ENV_USE_ENVIRON:
-			open_flags |= DB_USE_ENVIRON_ROOT;
+			open_flags |= DB_USE_ENVIRON;
 			break;
 		case ENV_VERBOSE:
 			result = Tcl_ListObjGetElements(interp, objv[i],
@@ -493,7 +593,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 			break;
 		case ENV_REGION_INIT:
 			_debug_check();
-			ret = (*env)->set_region_init(*env, 1);
+			ret = db_env_set_region_init(1);
 			result = _ReturnSetup(interp, ret, "region_init");
 			break;
 		case ENV_CACHESIZE:
@@ -540,6 +640,20 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				ret = (*env)->set_mp_mmapsize(*env,
 				    (size_t)intarg);
 				result = _ReturnSetup(interp, ret, "mmapsize");
+			}
+			break;
+		case ENV_SHM_KEY:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-shm_key key?");
+				result = TCL_ERROR;
+				break;
+			}
+			result = Tcl_GetLongFromObj(interp, objv[i++], &shm);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*env)->set_shm_key(*env, shm);
+				result = _ReturnSetup(interp, ret, "shm_key");
 			}
 			break;
 		case ENV_LOG_MAX:
@@ -616,7 +730,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				break;
 			}
 			size = sizeof(u_int8_t) * nmodes*nmodes;
-			ret = __os_malloc(size, NULL, &conflicts);
+			ret = __os_malloc(*env, size, NULL, &conflicts);
 			if (ret != 0) {
 				result = TCL_ERROR;
 				break;
@@ -692,6 +806,21 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				result = _ReturnSetup(interp, ret, "txn_max");
 			}
 			break;
+		case ENV_TXN_TIME:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-txn_timestamp time?");
+				result = TCL_ERROR;
+				break;
+			}
+			result = Tcl_GetLongFromObj(interp, objv[i++], &time);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*env)->set_tx_timestamp(*env, &time);
+				result = _ReturnSetup(interp, ret,
+				    "txn_timestamp");
+			}
+			break;
 		case ENV_ERRFILE:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -700,11 +829,76 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 				break;
 			}
 			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			/*
+			 * If the user already set one, close it.
+			 */
+			if (ip->i_err != NULL)
+				fclose(ip->i_err);
 			ip->i_err = fopen(arg, "a");
 			if (ip->i_err != NULL) {
 				_debug_check();
 				(*env)->set_errfile(*env, ip->i_err);
 			}
+			break;
+		case ENV_ERRPFX:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-errpfx prefix");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			/*
+			 * If the user already set one, free it.
+			 */
+			if (ip->i_errpfx != NULL)
+				__os_freestr(ip->i_errpfx);
+			if ((ret =
+			    __os_strdup(*env, arg, &ip->i_errpfx)) != 0) {
+				result = _ReturnSetup(interp, ret,
+				    "__os_strdup");
+				break;
+			}
+			if (ip->i_errpfx != NULL) {
+				_debug_check();
+				(*env)->set_errpfx(*env, ip->i_errpfx);
+			}
+			break;
+		case ENV_DATA_DIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-data_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			_debug_check();
+			ret = (*env)->set_data_dir(*env, arg);
+			result = _ReturnSetup(interp, ret, "set_data_dir");
+			break;
+		case ENV_LOG_DIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-log_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			_debug_check();
+			ret = (*env)->set_lg_dir(*env, arg);
+			result = _ReturnSetup(interp, ret, "set_lg_dir");
+			break;
+		case ENV_TMP_DIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-tmp_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			_debug_check();
+			ret = (*env)->set_tmp_dir(*env, arg);
+			result = _ReturnSetup(interp, ret, "set_tmp_dir");
 			break;
 		}
 		/*
@@ -731,14 +925,7 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 
 	if (result != TCL_OK)
 		goto error;
-	/*
-	 * XXX
-	 * When the open_flags are correctly set to DB_THREAD all
-	 * the time above, this whole if-statement can go away.
-	 * XXX
-	 */
-	if ((open_flags & DB_INIT_LOG) == 0)
-		open_flags |= DB_THREAD;
+
 	/*
 	 * When we get here, we have already parsed all of our args
 	 * and made all our calls to set up the environment.  Everything
@@ -747,22 +934,20 @@ bdb_EnvOpen(interp, objc, objv, ip, env)
 	 * Now open the environment.
 	 */
 	_debug_check();
-	ret = (*env)->open(*env, home, config, open_flags, mode);
+	ret = (*env)->open(*env, home, open_flags, mode);
 	result = _ReturnSetup(interp, ret, "env open");
 
 error:
-	if (config != NULL)
-		Tcl_Free ((char *)config);
-
 	if (result == TCL_ERROR) {
-		if (ip->i_err)
+		if (ip->i_err) {
 			fclose(ip->i_err);
+			ip->i_err = NULL;
+		}
 		(void)(*env)->close(*env, 0);
 		*env = NULL;
 	}
 	return (result);
 }
-
 
 /*
  * bdb_DbOpen --
@@ -800,6 +985,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		"-dupsort",
 		"-env",
 		"-errfile",
+		"-errpfx",
 		"-excl",
 		"-ffactor",
 		"-hash",
@@ -821,7 +1007,6 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		"-source",
 		"-truncate",
 		"-unknown",
-		"-upgrade",
 		"--",
 		NULL
 	};
@@ -834,6 +1019,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		TCL_DB_DUPSORT,
 		TCL_DB_ENV,
 		TCL_DB_ERRFILE,
+		TCL_DB_ERRPFX,
 		TCL_DB_EXCL,
 		TCL_DB_FFACTOR,
 		TCL_DB_HASH,
@@ -855,33 +1041,29 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		TCL_DB_SOURCE,
 		TCL_DB_TRUNCATE,
 		TCL_DB_UNKNOWN,
-		TCL_DB_UPGRADE,
 		TCL_DB_ENDARG
 	};
 
-	DBTCL_INFO *envip;
+	DBTCL_INFO *envip, *errip;
 	DBTYPE type;
 	DB_ENV *envp;
 	Tcl_Obj **myobjv;
 	u_int32_t gbytes, bytes, ncaches, open_flags;
 	int endarg, i, intarg, itmp, j, mode, myobjc;
-	int optindex, result, ret, set_err, set_flag, subdblen, upgrade;
+	int optindex, result, ret, set_err, set_flag, set_pfx, subdblen;
 	u_char *subdbtmp;
 	char *arg, *db, *subdb;
 
 	type = DB_UNKNOWN;
-	endarg = mode = set_err = set_flag = 0;
+	endarg = mode = set_err = set_flag = set_pfx = 0;
 	result = TCL_OK;
 	subdbtmp = NULL;
 	db = subdb = NULL;
-	upgrade = 0;
 
 	/*
 	 * XXX
-	 * This should be DB_THREAD, but we cannot set that if DB_THREAD
-	 * is not set in the env, which is should be but may not be if
-	 * -log was used.
-	 * open_flags = DB_THREAD;
+	 * If/when our Tcl interface becomes thread-safe, we should enable
+	 * DB_THREAD here.  See comment in bdb_EnvOpen().
 	 */
 	open_flags = 0;
 	envp = NULL;
@@ -918,14 +1100,6 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		}
 		break;
 	}
-	/*
-	 * XXX
-	 * This entire if-statement should go away when DB_THREAD and
-	 * -log stuff all works.
-	 * XXX
-	 */
-	if (envp && (envp->flags & DB_ENV_THREAD))
-		open_flags |= DB_THREAD;
 
 	/*
 	 * Create the db handle before parsing the args
@@ -951,6 +1125,14 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 	}
 	envip = _PtrToInfo(envp); /* XXX */
 	ip->i_parent = envip; /* XXX */
+	/*
+	 * If we are using an env, we keep track of err info in the env's ip.
+	 * Otherwise use the DB's ip.
+	 */
+	if (envip)
+		errip = envip;
+	else
+		errip = ip;
 	/*
 	 * Get the option name index from the object based on the args
 	 * defined above.
@@ -1010,9 +1192,6 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 				goto error;
 			}
 			type = DB_QUEUE;
-			break;
-		case TCL_DB_UPGRADE:
-			upgrade = 1;
 			break;
 		case TCL_DB_UNKNOWN:
 			if (type != DB_UNKNOWN) {
@@ -1246,22 +1425,40 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			}
 			arg = Tcl_GetStringFromObj(objv[i++], NULL);
 			/*
-			 * Only set the errfile if not in an env, or if
-			 * our env doesn't have one yet.  Open it in the
-			 * "context" of the env, so that any other DB opens
-			 * in this env will also see it.
-			 *
-			 * XXX this is only relevant while DB err stuff is
-			 * really env error stuff.  Once that changes the
-			 * code below should set ip->i_err.
+			 * If the user already set one, close it.
 			 */
-			if (envip && envip->i_err == NULL) {
-				envip->i_err = fopen(arg, "a");
-				if (envip->i_err != NULL) {
-					_debug_check();
-					(*dbp)->set_errfile(*dbp, envip->i_err);
-				}
+			if (errip->i_err != NULL)
+				fclose(errip->i_err);
+			errip->i_err = fopen(arg, "a");
+			if (errip->i_err != NULL) {
+				_debug_check();
+				(*dbp)->set_errfile(*dbp, errip->i_err);
 				set_err = 1;
+			}
+			break;
+		case TCL_DB_ERRPFX:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-errpfx prefix");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			/*
+			 * If the user already set one, free it.
+			 */
+			if (errip->i_errpfx != NULL)
+				__os_freestr(errip->i_errpfx);
+			if ((ret = __os_strdup((*dbp)->dbenv,
+			    arg, &errip->i_errpfx)) != 0) {
+				result = _ReturnSetup(interp, ret,
+				    "__os_strdup");
+				break;
+			}
+			if (errip->i_errpfx != NULL) {
+				_debug_check();
+				(*dbp)->set_errpfx(*dbp, errip->i_errpfx);
+				set_pfx = 1;
 			}
 			break;
 		case TCL_DB_ENDARG:
@@ -1296,8 +1493,8 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		if (i != objc) {
 			subdbtmp =
 			    Tcl_GetByteArrayFromObj(objv[i++], &subdblen);
-			if ((ret = __os_malloc(subdblen + 1, NULL, &subdb))
-			    != 0) {
+			if ((ret = __os_malloc(envp,
+			   subdblen + 1, NULL, &subdb)) != 0) {
 				Tcl_SetResult(interp, db_strerror(ret),
 				    TCL_STATIC);
 				return (0);
@@ -1311,6 +1508,11 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		result = _ReturnSetup(interp, ret, "set_flags");
 		if (result == TCL_ERROR)
 			goto error;
+		/*
+		 * If we are successful, clear the result so that the
+		 * return from set_flags isn't part of the result.
+		 */
+		Tcl_ResetResult(interp);
 	}
 
 	/*
@@ -1319,10 +1521,6 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 	 * no errors, if we get here.
 	 */
 	_debug_check();
-
-	/* Optionally upgrade the database. */
-	if (upgrade && (ret = (*dbp)->upgrade(*dbp, db, 0)) != 0)
-		return (_ReturnSetup(interp, ret, "db_upgrade"));
 
 	/* Open the database. */
 	ret = (*dbp)->open(*dbp, db, subdb, type, open_flags, mode);
@@ -1343,9 +1541,13 @@ error:
 		 * if (ip->i_err)
 		 *	fclose(ip->i_err);
 		 */
-		if (set_err && envip && envip->i_err) {
-			fclose(envip->i_err);
-			envip->i_err = NULL;
+		if (set_err && errip && errip->i_err != NULL) {
+			fclose(errip->i_err);
+			errip->i_err = NULL;
+		}
+		if (set_pfx && errip && errip->i_errpfx != NULL) {
+			__os_freestr(errip->i_errpfx);
+			errip->i_errpfx = NULL;
 		}
 		(void)(*dbp)->close(*dbp, 0);
 		*dbp = NULL;
@@ -1384,7 +1586,7 @@ bdb_DbRemove(interp, objc, objv)
 	endarg = 0;
 
 	if (objc < 2) {
-		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename ?subdb?");
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename ?database?");
 		return (TCL_ERROR);
 	}
 
@@ -1415,6 +1617,7 @@ bdb_DbRemove(interp, objc, objv)
 				    TCL_STATIC);
 				return (TCL_ERROR);
 			}
+			break;
 		case TCL_DBREM_ENDARG:
 			endarg = 1;
 			break;
@@ -1444,9 +1647,8 @@ bdb_DbRemove(interp, objc, objv)
 		if (i != objc) {
 			subdbtmp =
 			    Tcl_GetByteArrayFromObj(objv[i++], &subdblen);
-			if ((ret =
-			    __os_malloc(subdblen + 1, NULL, &subdb)) != 0) {
-				Tcl_SetResult(interp,
+			if ((ret = __os_malloc(envp, subdblen + 1,
+			    NULL, &subdb)) != 0) { Tcl_SetResult(interp,
 				    db_strerror(ret), TCL_STATIC);
 				return (0);
 			}
@@ -1454,7 +1656,7 @@ bdb_DbRemove(interp, objc, objv)
 			subdb[subdblen] = '\0';
 		}
 	} else {
-		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename ?subdb?");
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename ?database?");
 		result = TCL_ERROR;
 		goto error;
 	}
@@ -1473,6 +1675,292 @@ error:
 	if (subdb)
 		__os_free(subdb, subdblen + 1);
 	if (result == TCL_ERROR && dbp)
+		(void)dbp->close(dbp, 0);
+	return (result);
+}
+
+/*
+ * bdb_DbRename --
+ *	Implements the DB->rename command.
+ */
+static int
+bdb_DbRename(interp, objc, objv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+{
+	static char *bdbmv[] = {
+		"-env",	"--",	NULL
+	};
+	enum bdbmv {
+		TCL_DBMV_ENV,
+		TCL_DBMV_ENDARG
+	};
+	DB_ENV *envp;
+	DB *dbp;
+	int endarg, i, newlen, optindex, result, ret, subdblen;
+	u_char *subdbtmp;
+	char *arg, *db, *newname, *subdb;
+
+	envp = NULL;
+	dbp = NULL;
+	result = TCL_OK;
+	subdbtmp = NULL;
+	db = newname = subdb = NULL;
+	endarg = 0;
+
+	if (objc < 2) {
+		Tcl_WrongNumArgs(interp,
+			3, objv, "?args? filename ?database? ?newname?");
+		return (TCL_ERROR);
+	}
+
+	/*
+	 * We must first parse for the environment flag, since that
+	 * is needed for db_create.  Then create the db handle.
+	 */
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i], bdbmv,
+		    "option", TCL_EXACT, &optindex) != TCL_OK) {
+			arg = Tcl_GetStringFromObj(objv[i], NULL);
+			if (arg[0] == '-') {
+				result = IS_HELP(objv[i]);
+				goto error;
+			} else
+				Tcl_ResetResult(interp);
+			break;
+		}
+		i++;
+		switch ((enum bdbmv)optindex) {
+		case TCL_DBMV_ENV:
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			envp = NAME_TO_ENV(arg);
+			if (envp == NULL) {
+				Tcl_SetResult(interp,
+				    "db rename: illegal environment",
+				    TCL_STATIC);
+				return (TCL_ERROR);
+			}
+			break;
+		case TCL_DBMV_ENDARG:
+			endarg = 1;
+			break;
+		}
+		/*
+		 * If, at any time, parsing the args we get an error,
+		 * bail out and return.
+		 */
+		if (result != TCL_OK)
+			goto error;
+		if (endarg)
+			break;
+	}
+	if (result != TCL_OK)
+		goto error;
+	/*
+	 * Any args we have left, (better be 2 or 3 left) are
+	 * file names. If there is 2, a file name, if 3 a file and db name.
+	 */
+	if ((i != (objc - 2)) || (i != (objc - 3))) {
+		/*
+		 * Dbs must be NULL terminated file names, but subdbs can
+		 * be anything.  Use Strings for the db name and byte
+		 * arrays for the subdb.
+		 */
+		db = Tcl_GetStringFromObj(objv[i++], NULL);
+		if (i == objc - 2) {
+			subdbtmp =
+			    Tcl_GetByteArrayFromObj(objv[i++], &subdblen);
+			if ((ret = __os_malloc(envp, subdblen + 1,
+			    NULL, &subdb)) != 0) {
+				Tcl_SetResult(interp,
+				    db_strerror(ret), TCL_STATIC);
+				return (0);
+			}
+			memcpy(subdb, subdbtmp, subdblen);
+			subdb[subdblen] = '\0';
+		}
+		subdbtmp =
+		    Tcl_GetByteArrayFromObj(objv[i++], &newlen);
+		if ((ret = __os_malloc(envp, newlen + 1,
+		    NULL, &newname)) != 0) {
+			Tcl_SetResult(interp,
+			    db_strerror(ret), TCL_STATIC);
+			return (0);
+		}
+		memcpy(newname, subdbtmp, newlen);
+		newname[newlen] = '\0';
+	} else {
+		Tcl_WrongNumArgs(interp, 3, objv, "?args? filename ?database? ?newname?");
+		result = TCL_ERROR;
+		goto error;
+	}
+	ret = db_create(&dbp, envp, 0);
+	if (ret) {
+		result = _ReturnSetup(interp, ret, "db_create");
+		goto error;
+	}
+	/*
+	 * No matter what, we NULL out dbp after this call.
+	 */
+	ret = dbp->rename(dbp, db, subdb, newname, 0);
+	result = _ReturnSetup(interp, ret, "db rename");
+	dbp = NULL;
+error:
+	if (subdb)
+		__os_free(subdb, subdblen + 1);
+	if (newname)
+		__os_free(newname, newlen + 1);
+	if (result == TCL_ERROR && dbp)
+		(void)dbp->close(dbp, 0);
+	return (result);
+}
+
+/*
+ * bdb_DbVerify --
+ *	Implements the DB->verify command.
+ */
+static int
+bdb_DbVerify(interp, objc, objv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+{
+	static char *bdbverify[] = {
+		"-env",	"-errfile", "-errpfx", "--", NULL
+	};
+	enum bdbvrfy {
+		TCL_DBVRFY_ENV,
+		TCL_DBVRFY_ERRFILE,
+		TCL_DBVRFY_ERRPFX,
+		TCL_DBVRFY_ENDARG
+	};
+	DB_ENV *envp;
+	DB *dbp;
+	FILE *errf;
+	int endarg, i, optindex, result, ret, flags;
+	char *arg, *db, *errpfx;
+
+	envp = NULL;
+	dbp = NULL;
+	result = TCL_OK;
+	db = errpfx = NULL;
+	errf = NULL;
+	flags = endarg = 0;
+
+	if (objc < 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename");
+		return (TCL_ERROR);
+	}
+
+	/*
+	 * We must first parse for the environment flag, since that
+	 * is needed for db_create.  Then create the db handle.
+	 */
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i], bdbverify,
+		    "option", TCL_EXACT, &optindex) != TCL_OK) {
+			arg = Tcl_GetStringFromObj(objv[i], NULL);
+			if (arg[0] == '-') {
+				result = IS_HELP(objv[i]);
+				goto error;
+			} else
+				Tcl_ResetResult(interp);
+			break;
+		}
+		i++;
+		switch ((enum bdbvrfy)optindex) {
+		case TCL_DBVRFY_ENV:
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			envp = NAME_TO_ENV(arg);
+			if (envp == NULL) {
+				Tcl_SetResult(interp,
+				    "db verify: illegal environment",
+				    TCL_STATIC);
+				result = TCL_ERROR;
+				break;
+			}
+			break;
+		case TCL_DBVRFY_ERRFILE:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-errfile file");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			/*
+			 * If the user already set one, close it.
+			 */
+			if (errf != NULL)
+				fclose(errf);
+			errf = fopen(arg, "a");
+			break;
+		case TCL_DBVRFY_ERRPFX:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-errpfx prefix");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			/*
+			 * If the user already set one, free it.
+			 */
+			if (errpfx != NULL)
+				__os_freestr(errpfx);
+			if ((ret = __os_strdup(NULL, arg, &errpfx)) != 0) {
+				result = _ReturnSetup(interp, ret,
+				    "__os_strdup");
+				break;
+			}
+			break;
+		case TCL_DBVRFY_ENDARG:
+			endarg = 1;
+			break;
+		}
+		/*
+		 * If, at any time, parsing the args we get an error,
+		 * bail out and return.
+		 */
+		if (result != TCL_OK)
+			goto error;
+		if (endarg)
+			break;
+	}
+	if (result != TCL_OK)
+		goto error;
+	/*
+	 * The remaining arg is the db filename.
+	 */
+	if (i == (objc - 1))
+		db = Tcl_GetStringFromObj(objv[i++], NULL);
+	else {
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename");
+		result = TCL_ERROR;
+		goto error;
+	}
+	ret = db_create(&dbp, envp, 0);
+	if (ret) {
+		result = _ReturnSetup(interp, ret, "db_create");
+		goto error;
+	}
+
+	if (errf != NULL)
+		dbp->set_errfile(dbp, errf);
+	if (errpfx != NULL)
+		dbp->set_errpfx(dbp, errpfx);
+
+	ret = dbp->verify(dbp, db, NULL, NULL, flags);
+	result = _ReturnSetup(interp, ret, "db verify");
+error:
+	if (errf != NULL)
+		fclose(errf);
+	if (errpfx != NULL)
+		__os_freestr(errpfx);
+	if (dbp)
 		(void)dbp->close(dbp, 0);
 	return (result);
 }
@@ -1549,5 +2037,137 @@ bdb_Version(interp, objc, objv)
 	}
 	Tcl_SetObjResult(interp, res);
 error:
+	return (result);
+}
+
+/*
+ * bdb_Handles --
+ *	Implements the handles command.
+ */
+static int
+bdb_Handles(interp, objc, objv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+{
+	DBTCL_INFO *p;
+	Tcl_Obj *res, *handle;
+
+	/*
+	 * No args.  Error if we have some
+	 */
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "");
+		return (TCL_ERROR);
+	}
+	res = Tcl_NewListObj(0, NULL);
+
+	for (p = LIST_FIRST(&__db_infohead); p != NULL;
+	    p = LIST_NEXT(p, entries)) {
+		handle = Tcl_NewStringObj(p->i_name, strlen(p->i_name));
+		if (Tcl_ListObjAppendElement(interp, res, handle) != TCL_OK)
+			return (TCL_ERROR);
+	}
+	Tcl_SetObjResult(interp, res);
+	return (TCL_OK);
+}
+
+/*
+ * bdb_DbUpgrade --
+ *	Implements the DB->upgrade command.
+ */
+static int
+bdb_DbUpgrade(interp, objc, objv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+{
+	static char *bdbupg[] = {
+		"-dupsort", "-env", "--", NULL
+	};
+	enum bdbupg {
+		TCL_DBUPG_DUPSORT,
+		TCL_DBUPG_ENV,
+		TCL_DBUPG_ENDARG
+	};
+	DB_ENV *envp;
+	DB *dbp;
+	int endarg, i, optindex, result, ret, flags;
+	char *arg, *db;
+
+	envp = NULL;
+	dbp = NULL;
+	result = TCL_OK;
+	db = NULL;
+	flags = endarg = 0;
+
+	if (objc < 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename");
+		return (TCL_ERROR);
+	}
+
+	i = 2;
+	while (i < objc) {
+		if (Tcl_GetIndexFromObj(interp, objv[i], bdbupg,
+		    "option", TCL_EXACT, &optindex) != TCL_OK) {
+			arg = Tcl_GetStringFromObj(objv[i], NULL);
+			if (arg[0] == '-') {
+				result = IS_HELP(objv[i]);
+				goto error;
+			} else
+				Tcl_ResetResult(interp);
+			break;
+		}
+		i++;
+		switch ((enum bdbupg)optindex) {
+		case TCL_DBUPG_DUPSORT:
+			flags |= DB_DUPSORT;
+			break;
+		case TCL_DBUPG_ENV:
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			envp = NAME_TO_ENV(arg);
+			if (envp == NULL) {
+				Tcl_SetResult(interp,
+				    "db upgrade: illegal environment",
+				    TCL_STATIC);
+				return (TCL_ERROR);
+			}
+			break;
+		case TCL_DBUPG_ENDARG:
+			endarg = 1;
+			break;
+		}
+		/*
+		 * If, at any time, parsing the args we get an error,
+		 * bail out and return.
+		 */
+		if (result != TCL_OK)
+			goto error;
+		if (endarg)
+			break;
+	}
+	if (result != TCL_OK)
+		goto error;
+	/*
+	 * The remaining arg is the db filename.
+	 */
+	if (i == (objc - 1))
+		db = Tcl_GetStringFromObj(objv[i++], NULL);
+	else {
+		Tcl_WrongNumArgs(interp, 2, objv, "?args? filename");
+		result = TCL_ERROR;
+		goto error;
+	}
+	ret = db_create(&dbp, envp, 0);
+	if (ret) {
+		result = _ReturnSetup(interp, ret, "db_create");
+		goto error;
+	}
+
+	ret = dbp->upgrade(dbp, db, flags);
+	result = _ReturnSetup(interp, ret, "db upgrade");
+error:
+	if (dbp)
+		(void)dbp->close(dbp, 0);
 	return (result);
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)lock001.tcl	11.6 (Sleepycat) 8/17/99
+#	$Id: lock001.tcl,v 11.10 2000/05/22 12:51:37 bostic Exp $
 #
 # Test driver for lock tests.
 #						General	Multi	Random
@@ -19,7 +19,7 @@
 # -wait <wait interval after getting locks>	N	N	Y
 # -conflicts <conflict matrix; a list of lists>	Y	Y	Y
 proc lock_usage {} {
-   	puts stderr "randomlock\n\t-dir <dir>\n\t-iterations <iterations>"
+	puts stderr "randomlock\n\t-dir <dir>\n\t-iterations <iterations>"
 	puts stderr "\t-conflicts <conflict matrix>"
 	puts stderr "\t-ldegree <locks per iteration>\n\t-maxlocks <n>"
 	puts stderr "\t-objs <objects>\n\t-procs <nprocs>\n\t-reads <%reads>"
@@ -56,6 +56,7 @@ proc locktest { args } {
 			-s.* { incr i; set seeds [lindex $args $i] }
 			-w.* { incr i; set wait [lindex $args $i] }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				lock_usage
 				return
 			}

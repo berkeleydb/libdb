@@ -45,7 +45,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Release/libdb30s.lib"
+# ADD LIB32 /nologo /out:"Release/libdb31s.lib"
 
 !ELSEIF  "$(CFG)" == "DB_Static - Win32 Debug"
 
@@ -66,7 +66,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
-# ADD LIB32 /nologo /out:"Debug/libdb30sd.lib"
+# ADD LIB32 /nologo /out:"Debug/libdb31sd.lib"
 
 !ENDIF 
 
@@ -140,6 +140,10 @@ SOURCE=..\btree\bt_upgrade.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\btree\bt_verify.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\btree\btree_auto.c
 # End Source File
 # Begin Source File
@@ -197,6 +201,10 @@ SOURCE=..\db\db_auto.c
 # Begin Source File
 
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_cam.c
 # End Source File
 # Begin Source File
 
@@ -276,7 +284,19 @@ SOURCE=..\env\db_shash.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\db\db_upgrade.c
+SOURCE=..\db\db_upg.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_upg_opd.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_vrfy.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_vrfyutil.c
 # End Source File
 # Begin Source File
 
@@ -345,6 +365,10 @@ SOURCE=..\hash\hash_stat.c
 # Begin Source File
 
 SOURCE=..\hash\hash_upgrade.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hash\hash_verify.c
 # End Source File
 # Begin Source File
 
@@ -520,7 +544,7 @@ SOURCE=..\os\os_region.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_rename.c
+SOURCE=..\os_win32\os_rename.c
 # End Source File
 # Begin Source File
 
@@ -592,6 +616,18 @@ SOURCE=..\qam\qam_stat.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\qam\qam_upgrade.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_verify.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\clib\strcasecmp.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\txn\txn.c
 # End Source File
 # Begin Source File
@@ -605,6 +641,14 @@ SOURCE=..\txn\txn_rec.c
 # Begin Source File
 
 SOURCE=..\txn\txn_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\util_log.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\util_sig.c
 # End Source File
 # Begin Source File
 

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,16 +9,15 @@
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_dump.c	11.12 (Sleepycat) 11/10/99";
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static const char revid[] =
+    "$Id: db_dump.c,v 11.31 2000/05/31 15:09:58 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,19 +32,15 @@ static const char sccsid[] = "@(#)db_dump.c	11.12 (Sleepycat) 11/10/99";
 #include "lock.h"
 
 void	 configure __P((char *));
-int	 db_init __P((char *, int));
+int	 db_init __P((char *));
 int	 dump __P((DB *, int, int));
 int	 dump_sub __P((DB *, char *, int, int));
 int	 is_sub __P((DB *, int *));
 int	 main __P((int, char *[]));
-void	 onint __P((int));
-int	 pheader __P((DB *, char *, int, int));
 int	 show_subs __P((DB *));
-void	 siginit __P((void));
 void	 usage __P((void));
 
 DB_ENV	*dbenv;
-int	 interrupted;
 const char
 	*progname = "db_dump";				/* Program name. */
 
@@ -58,14 +53,15 @@ main(argc, argv)
 	extern int optind;
 	DB *dbp;
 	int ch, d_close;
-	int e_close, exitval, lflag, Nflag, pflag, ret, subs, keyflag;
+	int e_close, exitval;
+	int lflag, pflag, ret, rflag, Rflag, subs, keyflag;
 	char *dopt, *home, *subname;
 
 	dbp = NULL;
-	d_close = e_close = exitval = lflag = Nflag = pflag = 0;
+	d_close = e_close = exitval = lflag = pflag = rflag = Rflag = 0;
 	keyflag = 0;
 	dopt = home = subname = NULL;
-	while ((ch = getopt(argc, argv, "d:f:h:klNps:")) != EOF)
+	while ((ch = getopt(argc, argv, "d:f:h:klNprRs:V")) != EOF)
 		switch (ch) {
 		case 'd':
 			dopt = optarg;
@@ -87,7 +83,18 @@ main(argc, argv)
 			lflag = 1;
 			break;
 		case 'N':
-			Nflag = 1;
+			if ((ret = db_env_set_mutexlocks(0)) != 0) {
+				fprintf(stderr,
+				    "%s: db_env_set_mutexlocks: %s\n",
+				    progname, db_strerror(ret));
+				return (1);
+			}
+			if ((ret = db_env_set_panicstate(0)) != 0) {
+				fprintf(stderr,
+				    "%s: db_env_set_panicstate: %s\n",
+				    progname, db_strerror(ret));
+				return (1);
+			}
 			break;
 		case 'p':
 			pflag = 1;
@@ -95,6 +102,16 @@ main(argc, argv)
 		case 's':
 			subname = optarg;
 			break;
+		case 'R':
+			Rflag = 1;
+			/* DB_AGGRESSIVE requires DB_SALVAGE */
+			/* FALLTHROUGH */
+		case 'r':
+			rflag = 1;
+			break;
+		case 'V':
+			printf("%s\n", db_version(NULL, NULL, NULL));
+			exit(0);
 		case '?':
 		default:
 			usage();
@@ -118,8 +135,22 @@ main(argc, argv)
 		exit (1);
 	}
 
+	if (keyflag && rflag) {
+		fprintf(stderr, "%s: %s",
+		    "the -k and -r or -R options may not both be specified\n",
+		    progname);
+		exit(1);
+	}
+
+	if (subname != NULL && rflag) {
+		fprintf(stderr, "%s: %s",
+		    "the -s and -r or R options may not both be specified\n",
+		    progname);
+		exit(1);
+	}
+
 	/* Handle possible interruptions. */
-	siginit();
+	__db_util_siginit();
 
 	/*
 	 * Create an environment object and initialize it for error
@@ -128,14 +159,15 @@ main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		goto err;
 	}
 	e_close = 1;
+
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 
 	/* Initialize the environment. */
-	if (db_init(home, Nflag) != 0)
+	if (db_init(home) != 0)
 		goto err;
 
 	/* Create the DB object and open the file. */
@@ -144,6 +176,19 @@ main(argc, argv)
 		goto err;
 	}
 	d_close = 1;
+
+	/*
+	 * If we're salvaging, don't do an open;  it might not be safe.
+	 * Dispatch now into the salvager.
+	 */
+	if (rflag) {
+		if ((ret = dbp->verify(dbp, argv[0], NULL, stdout,
+		    DB_SALVAGE | (Rflag ? DB_AGGRESSIVE : 0))) != 0)
+			goto err;
+		exitval = 0;
+		goto done;
+	}
+
 	if ((ret = dbp->open(dbp,
 	    argv[0], subname, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
 		dbp->err(dbp, ret, "open: %s", argv[0]);
@@ -160,7 +205,7 @@ main(argc, argv)
 			goto err;
 		if (subs == 0) {
 			dbp->errx(dbp,
-			    "%s: does not contain subdatabases", argv[0]);
+			    "%s: does not contain multiple databases", argv[0]);
 			goto err;
 		}
 		if (show_subs(dbp))
@@ -173,15 +218,16 @@ main(argc, argv)
 			if (dump_sub(dbp, argv[0], pflag, keyflag))
 				goto err;
 		} else
-			if (pheader(dbp, NULL, pflag, keyflag)
-			    || dump(dbp, pflag, keyflag))
+			if (__db_prheader(dbp, NULL, pflag, keyflag, stdout,
+			    __db_verify_callback, NULL, 0) ||
+			    dump(dbp, pflag, keyflag))
 				goto err;
 	}
 
 	if (0) {
 err:		exitval = 1;
 	}
-	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
+done:	if (d_close && (ret = dbp->close(dbp, 0)) != 0) {
 		exitval = 1;
 		dbp->err(dbp, ret, "close");
 	}
@@ -191,11 +237,8 @@ err:		exitval = 1;
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
-	if (interrupted) {
-		(void)signal(interrupted, SIG_DFL);
-		(void)raise(interrupted);
-		/* NOTREACHED */
-	}
+	/* Resend any caught signal. */
+	__db_util_sigresend();
 
 	return (exitval);
 }
@@ -205,24 +248,11 @@ err:		exitval = 1;
  *	Initialize the environment.
  */
 int
-db_init(home, Nflag)
+db_init(home)
 	char *home;
-	int Nflag;
 {
 	u_int32_t flags;
 	int ret;
-
-	/* Optionally turn mutexes off. */
-	if (Nflag) {
-		if ((ret = dbenv->set_mutexlocks(dbenv, 0)) != 0) {
-			dbenv->err(dbenv, ret, "set_mutexlocks");
-			return (1);
-		}
-		if ((ret = dbenv->set_panic(dbenv, 0)) != 0) {
-			dbenv->err(dbenv, ret, "set_panic");
-			return (1);
-		}
-	}
 
 	/*
 	 * Try and use the shared memory pool region when dumping a database,
@@ -230,7 +260,7 @@ db_init(home, Nflag)
 	 * cache hasn't been flushed.
 	 */
 	flags = DB_USE_ENVIRON | DB_INIT_MPOOL;
-	if (dbenv->open(dbenv, home, NULL, flags, 0) == 0)
+	if (dbenv->open(dbenv, home, flags, 0) == 0)
 		return (0);
 
 	/*
@@ -244,100 +274,12 @@ db_init(home, Nflag)
 	 * no files are actually created.
 	 */
 	LF_SET(DB_CREATE | DB_PRIVATE);
-	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) == 0)
+	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
 		return (0);
 
 	/* An environment is required. */
 	dbenv->err(dbenv, ret, "open");
 	return (1);
-}
-
-/*
- * pheader --
- *	Write out the header information.
- */
-int
-pheader(dbp, subname, pflag, keyflag)
-	DB *dbp;
-	char *subname;
-	int pflag;
-	int keyflag;
-{
-	DB_BTREE_STAT *btsp;
-	DB_HASH_STAT *hsp;
-	DB_QUEUE_STAT *qsp;
-	int ret;
-
-	printf("VERSION=2\n");
-	printf("format=%s\n", pflag ? "print" : "bytevalue");
-	if (subname != NULL)
-		printf("subdatabase=%s\n", subname);
-	switch (dbp->type) {
-	case DB_BTREE:
-		printf("type=btree\n");
-		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
-			return (1);
-		}
-		if (F_ISSET(dbp, BTM_RECNUM))
-			printf("recnum=1\n");
-		if (btsp->bt_maxkey != 0)
-			printf("bt_maxkey=%lu\n", (u_long)btsp->bt_maxkey);
-		if (btsp->bt_minkey != 0 && btsp->bt_minkey != DEFMINKEYPAGE)
-			printf("bt_minkey=%lu\n", (u_long)btsp->bt_minkey);
-		break;
-	case DB_HASH:
-		printf("type=hash\n");
-		if ((ret = dbp->stat(dbp, &hsp, NULL, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
-			return (1);
-		}
-		if (hsp->hash_ffactor != 0)
-			printf("h_ffactor=%lu\n", (u_long)hsp->hash_ffactor);
-		if (hsp->hash_nelem != 0 || hsp->hash_nrecs != 0)
-			printf("h_nelem=%lu\n",
-			    hsp->hash_nelem > hsp->hash_nrecs ?
-			    (u_long)hsp->hash_nelem : (u_long)hsp->hash_nrecs);
-		break;
-	case DB_QUEUE:
-		printf("type=queue\n");
-		if ((ret = dbp->stat(dbp, &qsp, NULL, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
-			return (1);
-		}
-		printf("re_len=%lu\n", (u_long)qsp->qs_re_len);
-		if (qsp->qs_re_pad != 0 && qsp->qs_re_pad != ' ')
-			printf("re_pad=%#x\n", qsp->qs_re_pad);
-		break;
-	case DB_RECNO:
-		printf("type=recno\n");
-		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
-			dbp->err(dbp, ret, "DB->stat");
-			return (1);
-		}
-		if (F_ISSET(dbp, BTM_RENUMBER))
-			printf("renumber=1\n");
-		if (F_ISSET(dbp, BTM_FIXEDLEN))
-			printf("re_len=%lu\n", (u_long)btsp->bt_re_len);
-		if (btsp->bt_re_pad != 0 && btsp->bt_re_pad != ' ')
-			printf("re_pad=%#x\n", btsp->bt_re_pad);
-		break;
-	case DB_UNKNOWN:
-		abort();			/* Impossible. */
-		/* NOTREACHED */
-	}
-
-	if (F_ISSET(dbp, DB_AM_DUP))
-		printf("duplicates=1\n");
-
-	if (!F_ISSET(dbp, DB_AM_PGDEF))
-		printf("db_pagesize=%lu\n", (u_long)dbp->pgsize);
-
-	if (keyflag)
-		printf("keys=1\n");
-
-	printf("HEADER=END\n");
-	return (0);
 }
 
 /*
@@ -358,24 +300,24 @@ is_sub(dbp, yesno)
 	case DB_RECNO:
 		if ((ret = dbp->stat(dbp, &btsp, NULL, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
-			break;
+			return (ret);
 		}
 		*yesno = btsp->bt_metaflags & BTM_SUBDB ? 1 : 0;
 		break;
 	case DB_HASH:
 		if ((ret = dbp->stat(dbp, &hsp, NULL, 0)) != 0) {
 			dbp->err(dbp, ret, "DB->stat");
-			break;
+			return (ret);
 		}
 		*yesno = hsp->hash_metaflags & DB_HASH_SUBDB ? 1 : 0;
 		break;
 	case DB_QUEUE:
-		return (0);
+		break;
 	default:
-		abort();
-		/* NOTREACHED */
+		dbp->errx(dbp, "unknown database type");
+		return (1);
 	}
-	return (ret);
+	return (0);
 }
 
 /*
@@ -425,8 +367,9 @@ dump_sub(parent_dbp, parent_name, pflag, keyflag)
 			dbp->err(dbp, ret,
 			    "DB->open: %s:%s", parent_name, subdb);
 		if (ret == 0 &&
-		    (pheader(dbp, subdb, pflag, keyflag) ||
-		    dump(dbp, pflag, keyflag)))
+		    (__db_prheader(dbp, subdb, pflag, keyflag, stdout,
+		    __db_verify_callback, NULL, 0) ||
+		     dump(dbp, pflag, keyflag)))
 			ret = 1;
 		(void)dbp->close(dbp, 0);
 		free(subdb);
@@ -470,7 +413,8 @@ show_subs(dbp)
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	while ((ret = dbcp->c_get(dbcp, &key, &data, DB_NEXT)) == 0) {
-		if ((ret = __db_prdbt(&key, 1, NULL, stdout, 0)) != 0) {
+		if ((ret = __db_prdbt(&key, 1, NULL, stdout,
+		    __db_verify_callback, 0, NULL)) != 0) {
 			dbp->errx(dbp, NULL);
 			return (1);
 		}
@@ -514,9 +458,11 @@ dump(dbp, pflag, keyflag)
 	is_recno = (dbp->type == DB_RECNO || dbp->type == DB_QUEUE);
 	keyflag = is_recno ? keyflag : 1;
 	while ((ret = dbcp->c_get(dbcp, &key, &data, DB_NEXT)) == 0)
-		if ((keyflag && (ret =
-		    __db_prdbt(&key, pflag, " ", stdout, is_recno)) != 0) ||
-		    (ret = __db_prdbt(&data, pflag, " ", stdout, 0)) != 0) {
+		if ((keyflag && (ret = __db_prdbt(&key,
+		    pflag, " ", stdout, __db_verify_callback,
+		    is_recno, NULL)) != 0) || (ret =
+		    __db_prdbt(&data, pflag, " ", stdout,
+			__db_verify_callback, 0, NULL)) != 0) {
 			dbp->errx(dbp, NULL);
 			return (1);
 		}
@@ -530,39 +476,8 @@ dump(dbp, pflag, keyflag)
 		return (1);
 	}
 
-	printf("DATA=END\n");
+	(void)__db_prfooter(stdout, __db_verify_callback);
 	return (0);
-}
-
-/*
- * siginit --
- *	Initialize the set of signals for which we want to clean up.
- *	Generally, we try not to leave the shared regions locked if
- *	we can.
- */
-void
-siginit()
-{
-#ifdef SIGHUP
-	(void)signal(SIGHUP, onint);
-#endif
-	(void)signal(SIGINT, onint);
-#ifdef SIGPIPE
-	(void)signal(SIGPIPE, onint);
-#endif
-	(void)signal(SIGTERM, onint);
-}
-
-/*
- * onint --
- *	Interrupt signal handler.
- */
-void
-onint(signo)
-	int signo;
-{
-	if ((interrupted = signo) == 0)
-		interrupted = SIGINT;
 }
 
 /*
@@ -572,7 +487,7 @@ onint(signo)
 void
 usage()
 {
-	(void)fprintf(stderr,
-"usage: db_dump [-klNp] [-d ahr] [-f file] [-h home] [-s subdb] db_file\n");
+	(void)fprintf(stderr, "usage: %s\n",
+"db_dump [-klNprRV] [-d ahr] [-f output] [-h home] [-s database] db_file\n");
 	exit(1);
 }

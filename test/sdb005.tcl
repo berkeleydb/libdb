@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb005.tcl	11.7 (Sleepycat) 8/19/99
+#	$Id: sdb005.tcl,v 11.11 2000/04/24 04:50:30 krinsky Exp $
 #
 # Test cursor operations between subdbs.
 #
@@ -34,7 +34,7 @@ proc subdb005 {method {nentries 100} args } {
 	#
 	puts "\tSubdb005.a: Cursor ops - first/prev and last/next"
 	for {set i 0} {$i < $numdb} {incr i} {
-		set db [berkdb open -unknown $testfile sub$i.db]
+		set db [berkdb_open -unknown $testfile sub$i.db]
 		error_check_good dbopen [is_valid_db $db] TRUE
 		set db_handle($i) $db
 		# Used in 005.c test
@@ -88,10 +88,11 @@ proc subdb005 {method {nentries 100} args } {
 	# every subdbname is there and that nothing else is there.
 	#
 	puts "\tSubdb005.c: Check DB is read-only"
-	error_check_bad dbopen [catch {berkdb open -unknown $testfile} ret] 0
+	error_check_bad dbopen [catch \
+	     {berkdb_open_noerr -unknown $testfile} ret] 0
 
 	puts "\tSubdb005.d: Check contents of DB for subdb names only"
-	set db [berkdb open -unknown -rdonly $testfile]
+	set db [berkdb_open -unknown -rdonly $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set subdblist [$db get -glob *]
 	foreach kd $subdblist {

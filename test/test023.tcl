@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test023.tcl	11.7 (Sleepycat) 8/19/99
+#	$Id: test023.tcl,v 11.11 2000/04/21 18:36:25 krinsky Exp $
 #
 # Duplicate delete test.
 # Add a key with duplicates (first time on-page, second time off-page)
@@ -26,10 +26,18 @@ proc test023 { method args } {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test023.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test023.db
+	} else {
+		set testfile test023.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
-	set db [eval {berkdb open \
+	set db [eval {berkdb_open \
 	    -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

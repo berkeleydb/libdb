@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)env004.tcl	11.7 (Sleepycat) 9/10/99
+#	$Id: env004.tcl,v 11.13 2000/04/21 18:36:21 krinsky Exp $
 #
 # Env Test 4
 # Test multiple data directories.  Do a bunch of different opens
@@ -18,18 +18,18 @@ proc env004 { } {
 	puts "Env004: Multiple data directory test."
 
 	cleanup $testdir
-	exec $MKDIR $testdir/data1
-	exec $MKDIR $testdir/data2
-	exec $MKDIR $testdir/data3
+	file mkdir $testdir/data1
+	file mkdir $testdir/data2
+	file mkdir $testdir/data3
 
 	puts "\tEnv004.a: Multiple data directories in DB_CONFIG file"
 
 	# Create a config file
 	set cid [open $testdir/DB_CONFIG w]
-	puts $cid "DB_DATA_DIR ."
-	puts $cid "DB_DATA_DIR data1"
-	puts $cid "DB_DATA_DIR data2"
-	puts $cid "DB_DATA_DIR data3"
+	puts $cid "set_data_dir ."
+	puts $cid "set_data_dir data1"
+	puts $cid "set_data_dir data2"
+	puts $cid "set_data_dir data3"
 	close $cid
 
 	# Now get pathnames
@@ -38,21 +38,21 @@ proc env004 { } {
 	set fulldir [pwd]
 	cd $curdir
 
-	set e [berkdb env -create -mpool -private -home $testdir]
+	set e [berkdb env -create -private -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE
 	ddir_test $fulldir $method $e $args
 	error_check_good env_close [$e close] 0
 
 	puts "\tEnv004.b: Multiple data directories in berkdb env call."
 	cleanup $testdir
-	exec $MKDIR $testdir/data1
-	exec $MKDIR $testdir/data2
-	exec $MKDIR $testdir/data3
+	file mkdir $testdir/data1
+	file mkdir $testdir/data2
+	file mkdir $testdir/data3
 
 	# Now call dbenv with config specified
-	set e [berkdb env -create -mpool -private -config {{DB_DATA_DIR .} \
-	    {DB_DATA_DIR data1} {DB_DATA_DIR data2} {DB_DATA_DIR data3}} \
-       -home $testdir]
+	set e [berkdb env -create -private \
+	    -data_dir . -data_dir data1 -data_dir data2 \
+	    -data_dir data3 -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE
 	ddir_test $fulldir $method $e $args
 	error_check_good env_close [$e close] 0
@@ -67,15 +67,15 @@ proc ddir_test { fulldir method e args } {
 	set omethod [convert_method $method]
 
 	# Now create one file in each directory
-	set db1 [eval {berkdb open -create \
+	set db1 [eval {berkdb_open -create \
 	    -truncate -mode 0644 $omethod -env $e} $args {data1/datafile1.db}]
 	error_check_good dbopen1 [is_valid_db $db1] TRUE
 
-	set db2 [eval {berkdb open -create \
+	set db2 [eval {berkdb_open -create \
 	    -truncate -mode 0644 $omethod -env $e} $args {data2/datafile2.db}]
 	error_check_good dbopen2 [is_valid_db $db2] TRUE
 
-	set db3 [eval {berkdb open -create \
+	set db3 [eval {berkdb_open -create \
 	    -truncate -mode 0644 $omethod -env $e} $args {data3/datafile3.db}]
 	error_check_good dbopen3 [is_valid_db $db3] TRUE
 
@@ -87,13 +87,13 @@ proc ddir_test { fulldir method e args } {
 	# Now, reopen the files without complete pathnames and make
 	# sure that we find them.
 
-	set db1 [berkdb open -env $e $fulldir/data1/datafile1.db]
+	set db1 [berkdb_open -env $e $fulldir/data1/datafile1.db]
 	error_check_good dbopen1 [is_valid_db $db1] TRUE
 
-	set db2 [berkdb open -env $e $fulldir/data2/datafile2.db]
+	set db2 [berkdb_open -env $e $fulldir/data2/datafile2.db]
 	error_check_good dbopen2 [is_valid_db $db2] TRUE
 
-	set db3 [berkdb open -env $e $fulldir/data3/datafile3.db]
+	set db3 [berkdb_open -env $e $fulldir/data3/datafile3.db]
 	error_check_good dbopen3 [is_valid_db $db3] TRUE
 
 	# Finally close all the files

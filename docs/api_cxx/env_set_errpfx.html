@@ -1,5 +1,6 @@
-<!--"@(#)env_set_errpfx.so	10.10 (Sleepycat) 7/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_errpfx.so,v 10.12 1999/12/20 08:52:29 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv::set_errpfx</h1>
@@ -23,21 +25,16 @@
 void DbEnv::set_errpfx(const char *errpfx);
 </pre></h3>
 <h1>Description</h1>
-<p>
-Set the prefix string that appears before error messages issued by Berkeley DB.
-<p>
-The DbEnv::set_errpfx method does not copy the memory referenced by the
+<p>Set the prefix string that appears before error messages issued by Berkeley DB.
+<p>The DbEnv::set_errpfx method does not copy the memory referenced by the
 <b>errpfx</b> argument, rather, it maintains a reference to it.  This
 allows applications to modify the error message prefix at any time,
 without repeatedly calling DbEnv::set_errpfx, but means that the
 memory must be maintained until the handle is closed.
-<p>
-The DbEnv::set_errpfx interface may be used to configure Berkeley DB at any time
+<p>The DbEnv::set_errpfx interface may be used to configure Berkeley DB at any time
 during the life of the application.
-<p>
 <h3>Class</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_close.html">DbEnv::close</a>,
 <a href="../api_cxx/env_open.html">DbEnv::open</a>,
@@ -51,7 +48,6 @@ during the life of the application.
 <a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>,
 <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
 <a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
-<a href="../api_cxx/env_set_region_init.html">DbEnv::set_region_init</a>
 and
 <a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>.
 </tt>

@@ -1,5 +1,6 @@
-<!--"@(#)txn_commit.so	10.16 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: txn_commit.so,v 10.20.2.1 2000/07/12 13:14:50 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbTxn::commit</h1>
@@ -24,73 +26,55 @@ int
 DbTxn::commit(u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbTxn::commit method ends the transaction.
-<p>
-In the case of nested transactions, if the transaction is a parent
+<p>The DbTxn::commit method ends the transaction.
+<p>In the case of nested transactions, if the transaction is a parent
 transaction with unresolved (neither committed or aborted) child
-transactions, the child transactions are aborted and the commit of the
-parent will succeed.
-<p>
-In the case of nested transactions, if the transaction is a child
+transactions, the child transactions are committed and the commit of
+the parent will succeed.
+<p>In the case of nested transactions, if the transaction is a child
 transaction, its locks are not released, but are acquired by its parent.
 While the commit of the child transaction will succeed, the actual
 resolution of the child transaction is postponed until the parent
 transaction is committed or aborted, i.e., if its parent transaction
 commits, it will be committed, and if its parent transaction aborts, it
 will be aborted.
-<p>
-If <a href="../api_cxx/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> is not specified, a commit log record is written
+<p>If <a href="../api_cxx/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> is not specified, a commit log record is written
 and flushed to disk, as are all previously written log records.
-<p>
-The <b>flags</b> parameter must be set to 0 or one of the following
+<p>The <b>flags</b> parameter must be set to 0 or one of the following
 values:
-<dl compact>
+<p><dl compact>
 <p><dt><a name="DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><dd>Do not synchronously flush the log.  This means the transaction will
 exhibit the ACI (atomicity, consistency and isolation) properties, but
 not D (durability), i.e., database integrity will be maintained but it is
 possible that this transaction may be undone during recovery instead of
 being redone.
-<p>
-This behavior may be set for an entire Berkeley DB environment as part of the
+<p>This behavior may be set for an entire Berkeley DB environment as part of the
 <a href="../api_cxx/env_open.html">DbEnv::open</a> interface.
 <p><dt><a name="DB_TXN_SYNC">DB_TXN_SYNC</a><dd>Synchronously flush the log.  This means the transaction will exhibit
 all of the ACID (atomicity, consistency and isolation and durability)
 properties.
-<p>
-This behavior is the default for Berkeley DB environments unless the
+<p>This behavior is the default for Berkeley DB environments unless the
 <a href="../api_cxx/env_open.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag was specified to the <a href="../api_cxx/env_open.html">DbEnv::open</a>
 or <a href="../api_cxx/txn_begin.html">DbEnv::txn_begin</a> interfaces.
 </dl>
-<p>
-The DbTxn::commit
-method either returns a non-zero error value or throws an exception that
+<p>The DbTxn::commit method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbTxn::commit method will fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the DbTxn::commit
-method may fail and throw an exception
-or return a non-zero error
-for the following conditions:
-<dl compact>
+<p>The DbTxn::commit method may fail and throw an exception or return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>The transaction was already aborted.
 </dl>
-<p>
-In addition, the DbTxn::commit method may fail and
-throw an exception or return a non-zero error
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<p>The DbTxn::commit method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbTxn::commit method may fail and either
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h3>Classes</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/txn_class.html">DbTxn</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_tx_max.html">DbEnv::set_tx_max</a>,
 <a href="../api_cxx/env_set_tx_recover.html">DbEnv::set_tx_recover</a>,
+<a href="../api_cxx/env_set_tx_timestamp.html">DbEnv::set_tx_timestamp</a>,
 <a href="../api_cxx/txn_abort.html">DbTxn::abort</a>,
 <a href="../api_cxx/txn_begin.html">DbEnv::txn_begin</a>,
 <a href="../api_cxx/txn_checkpoint.html">DbEnv::txn_checkpoint</a>,

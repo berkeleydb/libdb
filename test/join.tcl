@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)join.tcl	11.8 (Sleepycat) 10/19/99
+#	$Id: join.tcl,v 11.16 2000/05/22 12:51:36 bostic Exp $
 #
 # We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 # everything else does as well.  We'll create test databases called
@@ -16,30 +16,47 @@
 # Join test.
 proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 	global testdir
+	global rand_init
 	source ./include.tcl
 
 	cleanup $testdir
+	berkdb srand $rand_init
 
 	# Use one environment for all database opens so we don't
 	# need oodles of regions.
-	set env [berkdb env -create -home $testdir -mpool]
+	set env [berkdb env -create -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
-	# NB: these flags are internal only, ok
-	foreach m "DB_HASH DB_BTREE DB_BOTH" {
-		foreach dopt {" -dup -dupsort" " -dup"} {
-			set opt [concat "-env" $env $dopt]
+	# With the new offpage duplicate code, we don't support
+	# duplicate duplicates in sorted dup sets.  Thus, if with_dup_dups
+	# is greater than one, run only with "-dup".
+	if { $with_dup_dups > 1 } {
+		set doptarray {"-dup"}
+	} else {
+		set doptarray {"-dup -dupsort" "-dup" RANDOMMIX RANDOMMIX }
+	}
 
-			puts "Join test: ($m$dopt) psize $psize,\
+	# NB: these flags are internal only, ok
+	foreach m "DB_BTREE DB_HASH DB_BOTH" {
+		# run with two different random mixes.
+		foreach dopt $doptarray {
+			set opt [list "-env" $env $dopt]
+
+			puts "Join test: ($m $dopt) psize $psize,\
 			    $with_dup_dups dup\
 			    dups, flags $flags."
-			build_all $m $psize $opt $with_dup_dups
+
+			build_all $m $psize $opt oa $with_dup_dups
+
+			# null.db is db_built fifth but is referenced by
+			# zero;  set up the option array appropriately.
+			set oa(0) $oa(5)
 
 			# Build the primary
 			puts "\tBuilding the primary database $m"
 			set oflags "-create -truncate -mode 0644 -env $env\
-		  	    [conv $m [berkdb random_int 1 2]]"
-			set db [eval {berkdb open} $oflags primary.db]
+			    [conv $m [berkdb random_int 1 2]]"
+			set db [eval {berkdb_open} $oflags primary.db]
 			error_check_good dbopen [is_valid_db $db] TRUE
 			for { set i 0 } { $i < 1000 } { incr i } {
 				set key [format "%04d" $i]
@@ -49,93 +66,93 @@ proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 			error_check_good "primary close" [$db close] 0
 			set did [open $dict]
 			gets $did str
-			do_join primary.db "1 0" $str $opt $flags\
+			do_join primary.db "1 0" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "2 0" $str $opt $flags\
+			do_join primary.db "2 0" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "3 0" $str $opt $flags\
+			do_join primary.db "3 0" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "4 0" $str $opt $flags\
+			do_join primary.db "4 0" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "1" $str $opt $flags $with_dup_dups
+			do_join primary.db "1" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "2" $str $opt $flags $with_dup_dups
+			do_join primary.db "2" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "3" $str $opt $flags $with_dup_dups
+			do_join primary.db "3" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "4" $str $opt $flags $with_dup_dups
+			do_join primary.db "4" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "1 2" $str $opt $flags\
+			do_join primary.db "1 2" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "1 2 3" $str $opt $flags\
+			do_join primary.db "1 2 3" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "1 2 3 4" $str $opt $flags\
+			do_join primary.db "1 2 3 4" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "2 1" $str $opt $flags\
+			do_join primary.db "2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "3 2 1" $str $opt $flags\
+			do_join primary.db "3 2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "4 3 2 1" $str $opt $flags\
+			do_join primary.db "4 3 2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "1 3" $str $opt $flags $with_dup_dups
+			do_join primary.db "1 3" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "3 1" $str $opt $flags $with_dup_dups
+			do_join primary.db "3 1" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "1 4" $str $opt $flags $with_dup_dups
+			do_join primary.db "1 4" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "4 1" $str $opt $flags $with_dup_dups
+			do_join primary.db "4 1" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "2 3" $str $opt $flags $with_dup_dups
+			do_join primary.db "2 3" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "3 2" $str $opt $flags $with_dup_dups
+			do_join primary.db "3 2" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "2 4" $str $opt $flags $with_dup_dups
+			do_join primary.db "2 4" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "4 2" $str $opt $flags $with_dup_dups
+			do_join primary.db "4 2" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "3 4" $str $opt $flags $with_dup_dups
+			do_join primary.db "3 4" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "4 3" $str $opt $flags $with_dup_dups
+			do_join primary.db "4 3" $str oa $flags $with_dup_dups
 			gets $did str
-			do_join primary.db "2 3 4" $str $opt $flags\
+			do_join primary.db "2 3 4" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "3 4 1" $str $opt $flags\
+			do_join primary.db "3 4 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "4 2 1" $str $opt $flags\
+			do_join primary.db "4 2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "0 2 1" $str $opt $flags\
+			do_join primary.db "0 2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "3 2 0" $str $opt $flags\
+			do_join primary.db "3 2 0" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "4 3 2 1" $str $opt $flags\
+			do_join primary.db "4 3 2 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "4 3 0 1" $str $opt $flags\
+			do_join primary.db "4 3 0 1" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "3 3 3" $str $opt $flags\
+			do_join primary.db "3 3 3" $str oa $flags\
 			    $with_dup_dups
 			gets $did str
-			do_join primary.db "2 2 3 3" $str $opt $flags\
+			do_join primary.db "2 2 3 3" $str oa $flags\
 			    $with_dup_dups
 			gets $did str2
 			gets $did str
-			do_join primary.db "1 2" $str $opt $flags\
+			do_join primary.db "1 2" $str oa $flags\
 			    $with_dup_dups "3" $str2
 
 			# You really don't want to run this section
@@ -144,31 +161,31 @@ proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 				gets $did str2
 				gets $did str
 				do_join primary.db "1 2 3" $str\
-				    $opt $flags $with_dup_dups "3 3 1" $str2
+				    oa $flags $with_dup_dups "3 3 1" $str2
 				gets $did str2
 				gets $did str
 				do_join primary.db "4 0 2" $str\
-				    $opt $flags $with_dup_dups "4 3 3" $str2
+				    oa $flags $with_dup_dups "4 3 3" $str2
 				gets $did str2
 				gets $did str
 				do_join primary.db "3 2 1" $str\
-				    $opt $flags $with_dup_dups "0 2" $str2
+				    oa $flags $with_dup_dups "0 2" $str2
 				gets $did str2
 				gets $did str
 				do_join primary.db "2 2 3 3" $str\
-				    $opt $flags $with_dup_dups "1 4 4" $str2
+				    oa $flags $with_dup_dups "1 4 4" $str2
 				gets $did str2
 				gets $did str
 				do_join primary.db "2 2 3 3" $str\
-				    $opt $flags $with_dup_dups "0 0 4 4" $str2
+				    oa $flags $with_dup_dups "0 0 4 4" $str2
 				gets $did str2
 				gets $did str
 				do_join primary.db "2 2 3 3" $str2\
-				    $opt $flags $with_dup_dups "2 4 4" $str
+				    oa $flags $with_dup_dups "2 4 4" $str
 				gets $did str2
 				gets $did str
 				do_join primary.db "2 2 3 3" $str2\
-				    $opt $flags $with_dup_dups "0 0 4 4" $str
+				    oa $flags $with_dup_dups "0 0 4 4" $str
 			}
 			close $did
 		}
@@ -177,18 +194,18 @@ proc jointest { {psize 8192} {with_dup_dups 0} {flags 0} } {
 	error_check_good env_close [$env close] 0
 }
 
-proc build_all { method psize opt with_dup_dups {nentries 100} } {
+proc build_all { method psize opt oaname with_dup_dups {nentries 100} } {
 	global testdir
 	db_build join1.db $nentries 50 1 [conv $method 1]\
-	    $psize $opt $with_dup_dups
+	    $psize $opt $oaname $with_dup_dups
 	db_build join2.db $nentries 25 2 [conv $method 2]\
-	    $psize $opt $with_dup_dups
+	    $psize $opt $oaname $with_dup_dups
 	db_build join3.db $nentries 16 3 [conv $method 3]\
-	    $psize $opt $with_dup_dups
+	    $psize $opt $oaname $with_dup_dups
 	db_build join4.db $nentries 12 4 [conv $method 4]\
-	    $psize $opt $with_dup_dups
+	    $psize $opt $oaname $with_dup_dups
 	db_build null.db $nentries 0 5 [conv $method 5]\
-	    $psize $opt $with_dup_dups
+	    $psize $opt $oaname $with_dup_dups
 }
 
 proc conv { m i } {
@@ -207,13 +224,37 @@ proc conv { m i } {
 	}
 }
 
-proc db_build { name nkeys ndups dup_interval method psize opt with_dup_dups } {
+proc random_opts { } {
+	set j [berkdb random_int 0 1]
+	if { $j == 0 } {
+		return " -dup"
+	} else {
+		return " -dup -dupsort"
+	}
+}
+
+proc db_build { name nkeys ndups dup_interval method psize lopt oaname \
+    with_dup_dups } {
 	source ./include.tcl
+
+	# Get array of arg names (from two levels up the call stack)
+	upvar 2 $oaname oa
+
+	# Search for "RANDOMMIX" in $opt, and if present, replace
+	# with " -dup" or " -dup -dupsort" at random.
+	set i [lsearch $lopt RANDOMMIX]
+	if { $i != -1 } {
+		set lopt [lreplace $lopt $i $i [random_opts]]
+	}
+
+	# Save off db_open arguments for this database.
+	set opt [eval concat $lopt]
+	set oa($dup_interval) $opt
 
 	# Create the database and open the dictionary
 	set oflags "-create -truncate -mode 0644 $method\
-	    $opt -pagesize $psize $name"
-	set db [eval {berkdb open} $oflags]
+	    -pagesize $psize"
+	set db [eval {berkdb_open} $oflags $opt $name]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	set count 0
@@ -270,9 +311,11 @@ proc db_build { name nkeys ndups dup_interval method psize opt with_dup_dups } {
 	error_check_good close:$name [$db close] 0
 }
 
-proc do_join { primary dbs key opt flags with_dup_dups {dbs2 ""} {key2 ""} } {
+proc do_join { primary dbs key oanm flags with_dup_dups {dbs2 ""} {key2 ""} } {
 	global testdir
 	source ./include.tcl
+
+	upvar $oanm oa
 
 	puts -nonewline "\tJoining: $dbs on $key"
 	if { $dbs2 == "" } {
@@ -282,7 +325,7 @@ proc do_join { primary dbs key opt flags with_dup_dups {dbs2 ""} {key2 ""} } {
 	}
 
 	# Open all the databases
-	set p [berkdb open -unknown $testdir/$primary]
+	set p [berkdb_open -unknown $testdir/$primary]
 	error_check_good "primary open" [is_valid_db $p] TRUE
 
 	set dblist ""
@@ -291,7 +334,8 @@ proc do_join { primary dbs key opt flags with_dup_dups {dbs2 ""} {key2 ""} } {
 	set ndx [llength $dbs]
 
 	foreach i [concat $dbs $dbs2] {
-		set db [eval {berkdb open -unknown} $opt [n_to_name $i]]
+		set opt $oa($i)
+		set db [eval {berkdb_open -unknown} $opt [n_to_name $i]]
 		error_check_good "[n_to_name $i] open" [is_valid_db $db] TRUE
 		set curs [$db cursor]
 		error_check_good "$db cursor" \
@@ -355,7 +399,7 @@ proc do_join { primary dbs key opt flags with_dup_dups {dbs2 ""} {key2 ""} } {
 	}
 
 	set ndups 0
-	if { $flags == "-join_item"} {
+	if { $flags == " -join_item"} {
 		set l 1
 	} else {
 		set flags ""

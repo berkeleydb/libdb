@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)rsrc002.tcl	11.1 (Sleepycat) 9/9/99
+#	$Id: rsrc002.tcl,v 11.7 2000/05/22 12:51:37 bostic Exp $
 #
 # Recno backing file test #2: test of set_re_delim.
-# 	Specify a backing file with colon-delimited records,
+#	Specify a backing file with colon-delimited records,
 #	and make sure they are correctly interpreted.
 proc rsrc002 { } {
 	source ./include.tcl
@@ -27,9 +27,6 @@ proc rsrc002 { } {
 		close $oid1
 		close $oid2
 
-		sanitize_textfile $testdir/rsrc.txt
-		sanitize_textfile $testdir/check.txt
-
 		if { $testfile == "" } {
 			puts "Rsrc002: Testing with in-memory database."
 		} else {
@@ -37,7 +34,7 @@ proc rsrc002 { } {
 		}
 
 		puts "\tRsrc002.a: Read file, verify correctness."
-		set db [eval {berkdb open -create -mode 0644 -delim 58 \
+		set db [eval {berkdb_open -create -mode 0644 -delim 58 \
 		    -recno -source $testdir/rsrc.txt} $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -63,7 +60,6 @@ proc rsrc002 { } {
 
 		error_check_good \
 		    Rsrc002:diff($testdir/rsrc.txt,$testdir/check.txt) \
-		    [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res] 0
+		    [filecmp $testdir/rsrc.txt $testdir/check.txt] 0
 	}
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)db_185.h	11.2 (Sleepycat) 9/9/99
+ * $Id: db_185.h,v 11.4 2000/02/14 02:59:54 bostic Exp $
  */
 
 #ifndef _DB_185_H_
@@ -166,12 +166,8 @@ typedef struct {
 #if defined(__cplusplus)
 extern "C" {
 #endif
-#ifdef DB_LIBRARY_COMPATIBILITY_API
 #define	dbopen	__db185_open
 DB *__db185_open __P((const char *, int, int, DBTYPE, const void *));
-#else
-DB *dbopen __P((const char *, int, int, DBTYPE, const void *));
-#endif
 
 #if defined(__cplusplus)
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test036.tcl	11.6 (Sleepycat) 9/24/99
+#	$Id: test036.tcl,v 11.12 2000/04/21 18:36:25 krinsky Exp $
 #
 # DB Test 36 {access method}
 # Put nentries key/data pairs (from the dictionary) using a cursor
@@ -22,13 +22,21 @@ proc test036 { method {nentries 10000} args } {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test036.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test036.db
+	} else {
+		set testfile test036.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -100,12 +108,12 @@ proc test036 { method {nentries 10000} args } {
 			puts $oid $i
 		}
 		close $oid
-		exec $MV $t1 $t3
+		file rename -force $t1 $t3
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 	}
 
 }

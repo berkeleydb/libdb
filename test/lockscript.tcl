@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)lockscript.tcl	11.5 (Sleepycat) 10/28/99
+#	$Id: lockscript.tcl,v 11.11 2000/03/24 19:53:39 krinsky Exp $
 #
 # Random lock tester.
 # Usage: lockscript dir numiters numobjs sleepint degree readratio
@@ -21,7 +21,7 @@ set usage "lockscript dir numiters numobjs sleepint degree readratio"
 
 # Verify usage
 if { $argc != 6 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -38,12 +38,11 @@ set locker [pid]
 global rand_init
 berkdb srand $rand_init
 
-
 puts -nonewline "Beginning execution for $locker: $numiters $numobjs "
 puts "$sleepint $degree $readratio"
 flush stdout
 
-set e [berkdb env -create -lock -mpool -home $dir]
+set e [berkdb env -create -lock -home $dir]
 error_check_good env_open [is_substr $e env] 1
 
 for { set iter 0 } { $iter < $numiters } { incr iter } {
@@ -72,7 +71,7 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 		}
 	}
 	# Pick sleep interval
-	exec $SLEEP [berkdb random_int 1 $sleepint]
+	tclsleep [berkdb random_int 1 $sleepint]
 
 	# Now release locks
 	puts "[timestamp] $locker released locks"

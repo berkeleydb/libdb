@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log.c	11.8 (Sleepycat) 9/20/99";
+static const char revid[] = "$Id: log.c,v 11.26.2.1 2000/07/03 17:02:59 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,11 +19,20 @@ static const char sccsid[] = "@(#)log.c	11.8 (Sleepycat) 9/20/99";
 #include <unistd.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "log.h"
 #include "db_dispatch.h"
 #include "txn.h"
 #include "txn_auto.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 static int __log_init __P((DB_ENV *, DB_LOG *));
 static int __log_recover __P((DB_LOG *));
@@ -41,10 +50,15 @@ __log_open(dbenv)
 	DB_LOG *dblp;
 	LOG *lp;
 	int ret;
+	u_int8_t *readbufp;
+
+	readbufp = NULL;
 
 	/* Create/initialize the DB_LOG structure. */
-	if ((ret = __os_calloc(1, sizeof(DB_LOG), &dblp)) != 0)
+	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_LOG), &dblp)) != 0)
 		return (ret);
+	if ((ret = __os_calloc(dbenv, 1, dbenv->lg_bsize, &readbufp)) != 0)
+		goto err;
 	ZERO_LSN(dblp->c_lsn);
 	dblp->dbenv = dbenv;
 
@@ -57,10 +71,12 @@ __log_open(dbenv)
 	    dbenv, &dblp->reginfo, LG_BASE_REGION_SIZE + dbenv->lg_bsize)) != 0)
 		goto err;
 
+	dblp->readbufp = readbufp;
+
 	/* If we created the region, initialize it. */
-	if (F_ISSET(&dblp->reginfo, REGION_CREATE))
-		if ((ret = __log_init(dbenv, dblp)) != 0)
-			goto err;
+	if (F_ISSET(&dblp->reginfo, REGION_CREATE) &&
+	    (ret = __log_init(dbenv, dblp)) != 0)
+		goto err;
 
 	/* Set the local addresses. */
 	lp = dblp->reginfo.primary =
@@ -82,6 +98,9 @@ __log_open(dbenv)
 			goto detach;
 	}
 
+	dblp->r_file = 0;
+	dblp->r_off = 0;
+	dblp->r_size = 0;
 	dbenv->lg_handle = dblp;
 	return (0);
 
@@ -92,6 +111,9 @@ err:	if (dblp->reginfo.addr != NULL) {
 
 detach:		(void)__db_r_detach(dbenv, &dblp->reginfo, 0);
 	}
+
+	if (readbufp != NULL)
+		__os_free(readbufp, dbenv->lg_bsize);
 	__os_free(dblp, sizeof(*dblp));
 	return (ret);
 }
@@ -111,7 +133,7 @@ __log_init(dbenv, dblp)
 
 	if ((ret = __db_shalloc(dblp->reginfo.addr,
 	    sizeof(*region), 0, &dblp->reginfo.primary)) != 0)
-		return (ret);
+		goto mem_err;
 	dblp->reginfo.rp->primary =
 	    R_OFFSET(&dblp->reginfo, dblp->reginfo.primary);
 	region = dblp->reginfo.primary;
@@ -129,8 +151,10 @@ __log_init(dbenv, dblp)
 
 	/* Initialize the buffer. */
 	if ((ret =
-	    __db_shalloc(dblp->reginfo.addr, dbenv->lg_bsize, 0, &p)) != 0)
+	    __db_shalloc(dblp->reginfo.addr, dbenv->lg_bsize, 0, &p)) != 0) {
+mem_err:	__db_err(dbenv, "Unable to allocate memory for the log buffer");
 		return (ret);
+	}
 	region->buffer_size = dbenv->lg_bsize;
 	region->buffer_off = R_OFFSET(&dblp->reginfo, p);
 
@@ -173,8 +197,8 @@ __log_recover(dblp)
 
 	/*
 	 * We have the last useful log file and we've loaded any persistent
-	 * information.  Pretend that the log is larger than it can possibly
-	 * be, and read the last file, looking for the last checkpoint and
+	 * information.  Set the end point of the log past the end of the last
+	 * file. Read the last file, looking for the last checkpoint and
 	 * the log's end.
 	 */
 	lp->lsn.file = cnt + 1;
@@ -219,8 +243,8 @@ __log_recover(dblp)
 	 * It's possible that we didn't find a checkpoint because there wasn't
 	 * one in the last log file.  Start searching.
 	 */
-	while (!found_checkpoint && cnt > 1) {
-		lsn.file = --cnt;
+	if (!found_checkpoint && cnt > 1) {
+		lsn.file = cnt;
 		lsn.offset = 0;
 
 		/* Set the cursor.  Shouldn't fail, leave error messages on. */
@@ -232,13 +256,14 @@ __log_recover(dblp)
 		 * this can fail if there are no checkpoints in any log file,
 		 * so turn error messages off.
 		 */
-		while (__log_get(dblp, &lsn, &dbt, DB_NEXT, 1) == 0) {
+		while (__log_get(dblp, &lsn, &dbt, DB_PREV, 1) == 0) {
 			if (dbt.size < sizeof(u_int32_t))
 				continue;
 			memcpy(&chk, dbt.data, sizeof(u_int32_t));
 			if (chk == DB_txn_ckp) {
 				lp->chkpt_lsn = lsn;
 				found_checkpoint = 1;
+				break;
 			}
 		}
 	}
@@ -279,6 +304,7 @@ __log_find(dblp, find_first, valp)
 	const char *dir;
 	char **names, *p, *q;
 
+	/* Return a value of 0 as the log file number on failure. */
 	*valp = 0;
 
 	/* Find the directory name. */
@@ -292,7 +318,7 @@ __log_find(dblp, find_first, valp)
 	}
 
 	/* Get the list of file names. */
-	ret = __os_dirlist(dir, &names, &fcnt);
+	ret = __os_dirlist(dblp->dbenv, dir, &names, &fcnt);
 
 	/*
 	 * !!!
@@ -302,16 +328,15 @@ __log_find(dblp, find_first, valp)
 	 */
 	if (q != NULL)
 		*q = 'a';
-	__os_freestr(p);
 
 	if (ret != 0) {
 		__db_err(dblp->dbenv, "%s: %s", dir, db_strerror(ret));
+		__os_freestr(p);
 		return (ret);
 	}
 
 	/*
-	 * Search for a valid log file name, return a value of 0 on
-	 * failure.
+	 * Search for a valid log file name.
 	 *
 	 * XXX
 	 * Assumes that atoi(3) returns a 32-bit number.
@@ -334,8 +359,8 @@ __log_find(dblp, find_first, valp)
 
 	*valp = logval;
 
-	/* Discard the list. */
 	__os_dirfree(names, fcnt);
+	__os_freestr(p);
 
 	return (0);
 }
@@ -355,7 +380,7 @@ __log_valid(dblp, number, set_persist)
 	DB_FH fh;
 	LOG *region;
 	LOGP persist;
-	ssize_t nw;
+	size_t nw;
 	int ret;
 	char *fname;
 
@@ -367,8 +392,11 @@ __log_valid(dblp, number, set_persist)
 	}
 
 	/* Try to read the header. */
-	if ((ret = __os_seek(&fh, 0, 0, sizeof(HDR), 0, DB_OS_SEEK_SET)) != 0 ||
-	    (ret = __os_read(&fh, &persist, sizeof(LOGP), &nw)) != 0 ||
+	if ((ret =
+	    __os_seek(dblp->dbenv,
+	    &fh, 0, 0, sizeof(HDR), 0, DB_OS_SEEK_SET)) != 0 ||
+	    (ret =
+	    __os_read(dblp->dbenv, &fh, &persist, sizeof(LOGP), &nw)) != 0 ||
 	    nw != sizeof(LOGP)) {
 		if (ret == 0)
 			ret = EIO;
@@ -414,7 +442,7 @@ err:	__os_freestr(fname);
 
 /*
  * __log_close --
- *	Internal version of log_close: only called from db_appinit.
+ *	Internal version of log_close: only called from dbenv_refresh.
  *
  * PUBLIC: int __log_close __P((DB_ENV *));
  */
@@ -429,6 +457,7 @@ __log_close(dbenv)
 	dblp = dbenv->lg_handle;
 
 	/* We may have opened files as part of XA; if so, close them. */
+	F_SET(dblp, DBLOG_RECOVER);
 	__log_close_files(dbenv);
 
 	/* Discard the per-thread lock. */
@@ -450,8 +479,12 @@ __log_close(dbenv)
 	if (dblp->dbentry != NULL)
 		__os_free(dblp->dbentry,
 		    (dblp->dbentry_cnt * sizeof(DB_ENTRY)));
+	if (dblp->readbufp != NULL)
+		__os_free(dblp->readbufp, dbenv->lg_bsize);
 
 	__os_free(dblp, sizeof(*dblp));
+
+	dbenv->lg_handle = NULL;
 	return (ret);
 }
 
@@ -470,6 +503,11 @@ log_stat(dbenv, statp, db_malloc)
 	LOG *region;
 	int ret;
 
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_log_stat(dbenv, statp, db_malloc));
+#endif
+
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
 
@@ -478,7 +516,8 @@ log_stat(dbenv, statp, db_malloc)
 	dblp = dbenv->lg_handle;
 	region = dblp->reginfo.primary;
 
-	if ((ret = __os_malloc(sizeof(DB_LOG_STAT), db_malloc, &stats)) != 0)
+	if ((ret = __os_malloc(dbenv,
+	    sizeof(DB_LOG_STAT), db_malloc, &stats)) != 0)
 		return (ret);
 
 	/* Copy out the global statistics. */

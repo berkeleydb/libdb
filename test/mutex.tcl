@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mutex.tcl	11.7 (Sleepycat) 10/28/99
+#	$Id: mutex.tcl,v 11.16 2000/05/24 14:58:10 krinsky Exp $
 #
 # Exercise mutex functionality.
 # Options are:
@@ -40,6 +40,7 @@ proc mutex { args } {
 			-p.* { incr i; set procs [lindex $args $i] }
 			-w.* { incr i; set wait [lindex $args $i] }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				mutex_usage
 				return
 			}
@@ -47,7 +48,7 @@ proc mutex { args } {
 	}
 
 	if { [file exists $testdir/$dir] != 1 } {
-		exec $MKDIR $testdir/$dir
+		file mkdir $testdir/$dir
 	} elseif { [file isdirectory $testdir/$dir ] != 1 } {
 		error "$testdir/$dir is not a directory"
 	}
@@ -70,11 +71,11 @@ proc mutex001 { dir nlocks } {
 
 	# Test open w/out create; should fail
 	error_check_bad \
-	    evn_open [catch {berkdb env -mpool -lock -home $dir} env] 0
+	    env_open [catch {berkdb env -lock -home $dir} env] 0
 
 	# Now open for real
-	set env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
-	error_check_good evn_open [is_valid_env $env] TRUE
+	set env [berkdb env -create -mode 0644 -lock -home $dir]
+	error_check_good env_open [is_valid_env $env] TRUE
 
 	set m [$env mutex 0644 $nlocks]
 	error_check_good mutex_init [is_valid_mutex $m $env] TRUE
@@ -87,7 +88,7 @@ proc mutex001 { dir nlocks } {
 		set r [$m setval $i $i]
 		error_check_good mutex_setval $r 0
 	}
-	exec $SLEEP 5
+	tclsleep 5
 	for { set i 0 } { $i < $nlocks } { incr i } {
 		set r [$m getval $i]
 		error_check_good mutex_getval $r $i
@@ -114,15 +115,15 @@ proc mutex002 { dir nlocks } {
 	flush $f1
 
 	# Open the environment and the mutex locally
-	set local_env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
-	error_check_good evn_open [is_valid_env $local_env] TRUE
+	set local_env [berkdb env -create -mode 0644 -lock -home $dir]
+	error_check_good env_open [is_valid_env $local_env] TRUE
 
 	set local_mutex [$local_env mutex 0644 $nlocks]
 	error_check_good \
 	    mutex_init [is_valid_mutex $local_mutex $local_env] TRUE
 
 	# Open the environment and the mutex remotely
-	set remote_env [send_cmd $f1 "berkdb env -mpool -lock -home $dir"]
+	set remote_env [send_cmd $f1 "berkdb env -lock -home $dir"]
 	error_check_good remote:env_open [is_valid_env $remote_env] TRUE
 
 	set remote_mutex [send_cmd $f1 "$remote_env mutex 0644 $nlocks"]
@@ -144,7 +145,7 @@ proc mutex002 { dir nlocks } {
 	send_timed_cmd $f1 1 "set ret \[$remote_mutex getval 1\]"
 
 	# Now sleep before resetting and releasing lock
-	exec $SLEEP 5
+	tclsleep 5
 	set newv [expr [pid] - 1]
 	set r [$local_mutex setval 1 $newv]
 	error_check_good mutex_setval $r 0
@@ -195,8 +196,8 @@ proc mutex003 { dir iter nmutex procs mdegree wait } {
 	cleanup $dir
 
 	# Now open the region we'll use for multiprocess testing.
-	set env [berkdb env -create -mode 0644 -mpool -lock -home $dir]
-	error_check_good evn_open [is_valid_env $env] TRUE
+	set env [berkdb env -create -mode 0644 -lock -home $dir]
+	error_check_good env_open [is_valid_env $env] TRUE
 
 	set mutex [$env mutex 0644 $nmutex]
 	error_check_good mutex_init [is_valid_mutex $mutex $env] TRUE
@@ -209,15 +210,16 @@ proc mutex003 { dir iter nmutex procs mdegree wait } {
 		puts "$tclsh_path\
 		    $test_path/mutexscript.tcl $dir\
 		    $iter $nmutex $wait $mdegree > $testdir/$i.mutexout &"
-		set p [exec $tclsh_path\
-		    $test_path/mutexscript.tcl $dir\
-		    $iter $nmutex $wait $mdegree > "$testdir/$i.mutexout" &]
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    mutexscript.tcl $testdir/$i.mutexout $dir\
+		    $iter $nmutex $wait $mdegree &]
 		lappend proclist $p
 	}
 	puts "Mutex003: $procs independent processes now running"
-	watch_procs $proclist
+	watch_procs
+	error_check_good env_close [$env close] 0
 	# Remove output files
 	for { set i 0 } {$i < $procs} {incr i} {
-		exec $RM -f $dir/$i.mutexout
+		fileremove -f $dir/$i.mutexout
 	}
 }

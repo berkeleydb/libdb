@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test001.tcl	11.6 (Sleepycat) 9/24/99
+#	$Id: test001.tcl,v 11.13 2000/04/21 18:36:23 krinsky Exp $
 #
 # DB Test 1 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -19,13 +19,24 @@ proc test001 { method {nentries 10000} args } {
 	puts "Test001: $method ($args) $nentries equal key/data pairs"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test001.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test001.db
+		set env NULL
+	} else {
+		set testfile test001.db
+		incr eindex
+		set env [lindex $args $eindex]
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -50,6 +61,7 @@ proc test001 { method {nentries 10000} args } {
 			set kvals($key) [pad_data $method $str]
 		} else {
 			set key $str
+			set str [reverse $str]
 		}
 		set ret [eval \
 		    {$db put} $txn $pflags {$key [chop_data $method $str]}]
@@ -58,6 +70,16 @@ proc test001 { method {nentries 10000} args } {
 		set ret [eval {$db get} $gflags {$key}]
 		error_check_good \
 		    get $ret [list [list $key [pad_data $method $str]]]
+
+		# Test DB_GET_BOTH for success
+		set ret [$db get -get_both $key [pad_data $method $str]]
+		error_check_good \
+		    getboth $ret [list [list $key [pad_data $method $str]]]
+
+		# Test DB_GET_BOTH for failure
+		set ret [$db get -get_both $key [pad_data $method BAD$str]]
+		error_check_good getbothBAD [llength $ret] 0
+
 		incr count
 	}
 	close $did
@@ -76,43 +98,43 @@ proc test001 { method {nentries 10000} args } {
 		close $oid
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t2
+		filehead $nentries $dict $t2
 	}
-	exec $SORT $t2 > $t3
-	exec $MV $t3 $t2
-	exec $SORT $t1 > $t3
+	filesort $t2 $t3
+	file rename -force $t3 $t2
+	filesort $t1 $t3
 
 	error_check_good Test001:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	puts "\tTest001.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
 	    dump_file_direction "-first" "-next"
 	if { [string compare $omethod "-recno"] != 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good Test001:diff($t2,$t3) \
-	    [catch { exec $CMP $t2 $t3 } res] 0
+	    [filecmp $t2 $t3] 0
 
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest001.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
 	    dump_file_direction "-last" "-prev"
 
 	if { [string compare $omethod "-recno"] != 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good Test001:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 }
 
 # Check function for test001; keys and data are identical
 proc test001.check { key data } {
-	error_check_good "key/data mismatch" $data $key
+	error_check_good "key/data mismatch" $data [reverse $key]
 }
 
 proc test001_recno.check { key data } {

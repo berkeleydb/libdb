@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_ret.c	11.1 (Sleepycat) 7/24/99";
+static const char revid[] = "$Id: db_ret.c,v 11.11 2000/04/06 18:21:45 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,8 +57,8 @@ __db_ret(dbp, h, indx, dbt, memp, memsize)
 		len = LEN_HKEYDATA(h, dbp->pgsize, indx);
 		data = HKEYDATA_DATA(hk);
 		break;
-	case P_DUPLICATE:
 	case P_LBTREE:
+	case P_LDUP:
 	case P_LRECNO:
 		bk = GET_BKEYDATA(h, indx);
 		if (B_TYPE(bk->type) == B_OVERFLOW) {
@@ -73,8 +73,7 @@ __db_ret(dbp, h, indx, dbt, memp, memsize)
 		return (__db_pgfmt(dbp, h->pgno));
 	}
 
-	return (__db_retcopy(F_ISSET(dbt,
-	    DB_DBT_INTERNAL) ? NULL : dbp, dbt, data, len, memp, memsize));
+	return (__db_retcopy(dbp, dbt, data, len, memp, memsize));
 }
 
 /*
@@ -93,7 +92,10 @@ __db_retcopy(dbp, dbt, data, len, memp, memsize)
 	void **memp;
 	u_int32_t *memsize;
 {
+	DB_ENV *dbenv;
 	int ret;
+
+	dbenv = dbp == NULL ? NULL : dbp->dbenv;
 
 	/* If returning a partial record, reset the length. */
 	if (F_ISSET(dbt, DB_DBT_PARTIAL)) {
@@ -130,11 +132,11 @@ __db_retcopy(dbp, dbt, data, len, memp, memsize)
 	 * memory pointer is allowed to be NULL.
 	 */
 	if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_malloc(len,
+		if ((ret = __os_malloc(dbenv, len,
 		    dbp == NULL ? NULL : dbp->db_malloc, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_realloc(len,
+		if ((ret = __os_realloc(dbenv, len,
 		    dbp == NULL ? NULL : dbp->db_realloc, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_USERMEM)) {
@@ -144,7 +146,7 @@ __db_retcopy(dbp, dbt, data, len, memp, memsize)
 		return (EINVAL);
 	} else {
 		if (len != 0 && (*memsize == 0 || *memsize < len)) {
-			if ((ret = __os_realloc(len, NULL, memp)) != 0) {
+			if ((ret = __os_realloc(dbenv, len, NULL, memp)) != 0) {
 				*memsize = 0;
 				return (ret);
 			}

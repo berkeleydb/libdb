@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dead001.tcl	11.5 (Sleepycat) 9/21/99
+#	$Id: dead001.tcl,v 11.13 2000/05/30 19:14:25 krinsky Exp $
 #
 # Deadlock Test 1.
 # We create various deadlock scenarios for different numbers of lockers
@@ -27,19 +27,22 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 	foreach t $tests {
 		set pidlist ""
 		foreach n $procs {
+
+			sentinel_init 
+
 			# Fire off the tests
 			puts "\tDead001: $n procs of test $t"
 			for { set i 0 } { $i < $n } { incr i } {
-				puts "$tclsh_path\
-				    $test_path/ddscript.tcl $testdir \
-				    $t $i $i $n >& $testdir/dead001.log.$i"
+				puts "$tclsh_path $test_path/wrap.tcl \
+				    $testdir/dead001.log.$i \
+				    ddscript.tcl $testdir $t $i $i $n"
 				set p [exec $tclsh_path \
-				        $test_path/ddscript.tcl $testdir \
-					$t $i $i $n \
-				    > $testdir/dead001.log.$i &]
+					$test_path/wrap.tcl \
+					ddscript.tcl $testdir/dead001.log.$i \
+					$testdir $t $i $i $n &]
 				lappend pidlist $p
 			}
-			watch_procs $pidlist 5
+			watch_procs 5
 
 			# Now check output
 			set dead 0
@@ -62,10 +65,9 @@ proc dead001 { { procs "2 4 10" } {tests "ring clump" } } {
 	}
 
 	exec $KILL $dpid
-	exec $RM -f $testdir/dd.out
+	fileremove -f $testdir/dd.out
 	# Remove log files
 	for { set i 0 } { $i < $n } { incr i } {
-		exec $RM -f $testdir/dead001.log.$i
+		fileremove -f $testdir/dead001.log.$i
 	}
 }
-

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbMpoolStat.java	11.1 (Sleepycat) 7/25/99
+ *	$Id: DbMpoolStat.java,v 11.3 2000/02/14 02:59:56 bostic Exp $
  */
 
 package com.sleepycat.db;

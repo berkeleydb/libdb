@@ -1,18 +1,11 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mdbscript.tcl	11.16 (Sleepycat) 10/25/99
+#	$Id: mdbscript.tcl,v 11.22 2000/04/21 18:36:21 krinsky Exp $
 #
 # Process script for the multi-process db tester.
-# Usage: mdbscript dir file nentries iter procid procs seed
-# dir: DBHOME directory
-# file: db file on which to operate
-# nentries: number of entries taken from dictionary
-# iter: number of operations to run
-# procid: this processes' id number
-# procs: total number of processes running
 
 source ./include.tcl
 source $test_path/test.tcl
@@ -22,6 +15,7 @@ global dbenv
 global klock
 global l_keys
 global procid
+global alphabet
 
 # In Tcl, when there are multiple catch handlers, *all* handlers
 # are called, so we have to resort to this hack.
@@ -30,12 +24,20 @@ global exception_handled
 
 set exception_handled 0
 
-set datastr abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
+set datastr $alphabet$alphabet
+
+# Usage: mdbscript dir file nentries iter procid procs seed
+# dir: DBHOME directory
+# file: db file on which to operate
+# nentries: number of entries taken from dictionary
+# iter: number of operations to run
+# procid: this processes' id number
+# procs: total number of processes running
 set usage "mdbscript method dir file nentries iter procid procs"
 
 # Verify usage
 if { $argc != 7 } {
-	puts stderr $usage
+	puts "FAIL:[timestamp] test042: Usage: $usage"
 	exit
 }
 
@@ -61,7 +63,11 @@ if { [is_record_based $method] == 1 } {
 
 # Initialize seed
 global rand_init
-berkdb srand $rand_init
+
+# We want repeatable results, but we also want each instance of mdbscript
+# to do something different.  So we add the procid to the fixed seed.
+# (Note that this is a serial number given by the caller, not a pid.)
+berkdb srand [expr $rand_init + $procid]
 
 puts "Beginning execution for [pid] $method"
 puts "$dir db_home"
@@ -70,23 +76,22 @@ puts "$nentries data elements"
 puts "$iter iterations"
 puts "$procid process id"
 puts "$procs processes"
-puts "$seed seed"
 
 set klock NOLOCK
 flush stdout
 
-set dbenv [berkdb env -create -cdb -mpool -home $dir]
-#set dbenv [berkdb env -create -cdb -mpool -log -home $dir]
+set dbenv [berkdb env -create -cdb -home $dir]
+#set dbenv [berkdb env -create -cdb -log -home $dir]
 error_check_good dbenv [is_valid_env $dbenv] TRUE
 
-set db [berkdb open -env $dbenv -create -mode 0644 $omethod $file]
+set db [berkdb_open -env $dbenv -create -mode 0644 $omethod $file]
 error_check_good dbopen [is_valid_db $db] TRUE
 
 # Init globals (no data)
 set nkeys [db_init $db 0]
 puts "Initial number of keys: $nkeys"
 error_check_good db_init $nkeys $nentries
-exec $SLEEP 5
+tclsleep 5
 
 proc get_lock { k } {
 	global dbenv
@@ -163,7 +168,6 @@ for { set i 0 } { $i < $iter } { incr i } {
 			} else  {
 				set key [lindex $l_keys $k]
 			}
-
 
 			set data $datastr:$procid
 			set ret [eval {$db put} \

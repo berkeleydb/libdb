@@ -1,5 +1,6 @@
-<!--"@(#)memp_fget.so	10.16 (Sleepycat) 9/22/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: memp_fget.so,v 10.20.2.2 2000/07/01 15:25:51 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>memp_fget</h1>
@@ -25,21 +27,17 @@ memp_fget(DB_MPOOLFILE *mpf,
     db_pgno_t *pgnoaddr, u_int32_t flags, void **pagep);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The memp_fget function copies a pointer to the page with the page
+<p>The memp_fget function copies a pointer to the page with the page
 number specified by <b>pgnoaddr</b>, from the source file in the
 DB_MPOOLFILE, into the memory location referenced by <b>pagep</b>.
 If the page does not exist or cannot be retrieved, memp_fget will
 fail.
-<p>
-<b>Page numbers begin at 0, i.e., the first page in the file is
-page number 0, not page number 1.</b>
-<p>
-The returned page is <b>size_t</b> type aligned.
-<p>
-The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
+<p><b>Page numbers begin at 0, i.e., the first page in the file is page number
+0, not page number 1.</b>
+<p>The returned page is <b>size_t</b> type aligned.
+<p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
-<dl compact>
+<p><dl compact>
 <p><dt><a name="DB_MPOOL_CREATE">DB_MPOOL_CREATE</a><dd>If the specified page does not exist, create it.  In this case,
 <a href="memp_register.html#pgin">the pgin function</a>,
 if specified, is called.
@@ -50,48 +48,35 @@ referenced by <b>pgnoaddr</b>.  In this case,
 <a href="memp_register.html#pgin">the pgin function</a>,
 if specified, is <b>not</b> called.
 </dl>
-<p>
-The DB_MPOOL_CREATE, DB_MPOOL_LAST and DB_MPOOL_NEW flags are mutually
-exclusive.
-<p>
-Created pages have all their bytes set to 0, unless otherwise specified
+<p>The DB_MPOOL_CREATE, DB_MPOOL_LAST and
+DB_MPOOL_NEW flags are mutually exclusive.
+<p>Created pages have all their bytes set to 0, unless otherwise specified
 when the file was opened.
-<p>
-All pages returned by memp_fget will be retained (i.e.
-<i>pinned</i> in the pool until a subsequent call to <a href="../api_c/memp_fput.html">memp_fput</a>.
-<p>
-The memp_fget
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>All pages returned by memp_fget will be retained (i.e.
+<i>pinned</i>), in the pool until a subsequent call to
+<a href="../api_c/memp_fput.html">memp_fput</a>.
+<p>The memp_fget function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the memp_fget function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the memp_fget
-function may fail and return a non-zero error
-for the following conditions:
-<dl compact>
-<p><dt>EAGAIN<dd>The page reference count has overflowed.
-(This should never happen unless there's a bug in the application.)
+<p>The memp_fget function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
+<p><dt>EAGAIN<dd>The page reference count has overflowed.  (This should never happen unless
+there's a bug in the application.)
 </dl>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-The DB_MPOOL_NEW flag was set and the source file was not opened for writing.
-<p>
-The requested page does not exist and DB_MPOOL_CREATE was not set.
-<p>
-More than one of DB_MPOOL_CREATE, DB_MPOOL_LAST and DB_MPOOL_NEW was set.
+<p>The DB_MPOOL_NEW flag was set and the source file was not opened for writing.
+<p>More than one of DB_MPOOL_CREATE, DB_MPOOL_LAST and DB_MPOOL_NEW was set.
 </dl>
-<dl compact>
+<p><dl compact>
+<p><dt>EIO<dd>The requested page does not exist and DB_MPOOL_CREATE was not set.
+</dl>
+<p><dl compact>
 <p><dt>ENOMEM<dd>The cache is full and no more pages will fit in the pool.
 </dl>
-<p>
-In addition, the memp_fget function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The memp_fget function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the memp_fget function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

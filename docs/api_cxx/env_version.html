@@ -1,5 +1,6 @@
-<!--"@(#)env_version.so	10.11 (Sleepycat) 3/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_version.so,v 10.13 1999/12/20 08:52:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv::version</h1>
@@ -24,19 +26,14 @@ static char *
 DbEnv::version(int *major, int *minor, int *patch);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbEnv::version method returns a pointer to a string containing
-Berkeley DB version information.
-If <b>major</b> is non-NULL, the major version of the Berkeley DB release
-is stored in the memory it references.
-If <b>minor</b> is non-NULL, the minor version of the Berkeley DB release
-is stored in the memory it references.
-If <b>patch</b> is non-NULL, the patch version of the Berkeley DB release
-is stored in the memory it references.
-<p>
+<p>The DbEnv::version method returns a pointer to a string containing Berkeley DB
+version information.  If <b>major</b> is non-NULL, the major version
+of the Berkeley DB release is stored in the memory it references.  If
+<b>minor</b> is non-NULL, the minor version of the Berkeley DB release is
+stored in the memory it references.  If <b>patch</b> is non-NULL, the
+patch version of the Berkeley DB release is stored in the memory it references.
 <h3>Class</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_close.html">DbEnv::close</a>,
 <a href="../api_cxx/env_open.html">DbEnv::open</a>,
@@ -50,7 +47,6 @@ is stored in the memory it references.
 <a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>,
 <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
 <a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
-<a href="../api_cxx/env_set_region_init.html">DbEnv::set_region_init</a>
 and
 <a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>.
 </tt>

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)EnvExample.java	11.2 (Sleepycat) 10/5/99
+ * $Id: EnvExample.java,v 11.6 2000/04/01 15:52:15 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -32,7 +32,7 @@ public class EnvExample
         // Your application goes here.
     }
 
-    private static void db_setup(String home, String config[],
+    private static void db_setup(String home, String data_dir,
                                   OutputStream errs)
          throws DbException, FileNotFoundException
     {
@@ -61,7 +61,8 @@ public class EnvExample
         // open is declared to throw a FileNotFoundException, which normally
         // shouldn't occur with the DB_CREATE option.
         //
-        dbenv.open(DATABASE_HOME, config,
+	dbenv.set_data_dir(data_dir);
+        dbenv.open(DATABASE_HOME,
                    Db.DB_CREATE | Db.DB_INIT_LOCK | Db.DB_INIT_MPOOL, 0);
 
         try {
@@ -80,7 +81,7 @@ public class EnvExample
         }
     }
 
-    private static void db_teardown(String home, String config[],
+    private static void db_teardown(String home, String data_dir,
                                     OutputStream errs)
          throws DbException, FileNotFoundException
     {
@@ -90,13 +91,12 @@ public class EnvExample
 
         dbenv.set_error_stream(errs);
         dbenv.set_errpfx(progname);
-        dbenv.remove(home, config, 0);
+	dbenv.set_data_dir(data_dir);
+        dbenv.remove(home, 0);
     }
 
     public static void main(String[] args)
     {
-	System.out.println("beginning env example");
-
         //
         // All of the shared database files live in /tmp/database,
         // but data files live in /database.
@@ -106,13 +106,13 @@ public class EnvExample
         // necessary in Java.
         //
         String home = DATABASE_HOME;
-        String config[] = new String[1];
-
-        config[0] = "DB_DATA_DIR /database/files";
+        String config = "/database/files";
 
         try {
+            System.out.println("Setup env");
             db_setup(home, config, System.err);
 
+            System.out.println("Teardown env");
             db_teardown(home, config, System.err);
         }
         catch (DbException dbe) {
@@ -124,7 +124,6 @@ public class EnvExample
                                ": unexpected open environment error  " + fnfe);
             System.exit (1);
         }
-	System.out.println("completed env example");
     }
 
 }

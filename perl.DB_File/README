@@ -1,13 +1,21 @@
                                      DB_File
 
-                                  Version 1.71
+                                  Version 1.73
 
-                               7th September 1999  
+                                 25th April 2000
 
- 	Copyright (c) 1995-1999 Paul Marquess. All rights reserved. This
+ 	Copyright (c) 1995-2000 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
 	it under the same terms as Perl itself.
 
+
+IMPORTANT NOTICE 
+================
+
+If are using the locking technique described in older versions of
+DB_File, please read the section called "Locking: The Trouble with fd"
+in DB_File.pm immediately. The locking method has been found to be
+unsafe. You risk corrupting your data if you continue to use it.
 
 DESCRIPTION
 -----------
@@ -61,7 +69,9 @@ be relatively straightforward.
 
 Step 1 : If you are running either Solaris 2.5 or HP-UX 10 and want
          to use Berkeley DB version 2, read either the Solaris Notes or
-         HP-UX Notes sections below.
+         HP-UX Notes sections below. 
+         If you are running Linux please read the Linux Notes section
+         before proceeding.
 
 Step 2 : Edit the file config.in to suit you local installation. 
          Instructions are given in the file.
@@ -152,7 +162,7 @@ Solution: Setting the LIB & INCLUDE variables in config.in to point to the
           problem is to either delete or temporarily rename the copies
           of db.h and libdb.a that you don't want DB_File to use.
 
-Incompatable versions of db.h and libdb
+Incompatible versions of db.h and libdb
 ---------------------------------------
 
 BerkeleyDB seems to have built correctly, but you get an error like this
@@ -177,7 +187,22 @@ Solution: Setting the LIB & INCLUDE variables in config.in to point to the
           problem. If that doesn't work the easiest way to fix the
           problem is to either delete or temporarily rename the copies
           of db.h and libdb.a that you don't want BerkeleyDB to use.
+          If you are running Linux, please read the Linux Notes section below.
 
+
+Linux Notes
+-----------
+
+Newer versions of Linux (e.g. RedHat 6) ship with a C library that has
+a version of Berkeley DB linked into it. This makes it very difficult to
+build DB_File with anything other than the version of Berkeley DB that
+shipped with your Linux release. If you do try to use a different
+version of Berkeley DB you will probably get the error described in the
+"Incompatible versions of db.h and libdb" section of this file.
+
+As yet I haven't found a satisfactory way around this problem. If you
+do know a workaround to this problem which doesn't involve replacing
+the built in version of Berkeley DB I would like to hear from you.
 
 Solaris Notes
 -------------
@@ -237,8 +262,8 @@ How to report a problem with DB_File.
 To help me help you, I need of the following information:
 
  1. The version of Perl and the operating system name and version you
-    are running. The output from running "perl -V" will tell me all I need to
-    know.
+    are running. The complete output from running "perl -V" will tell 
+    me all I need to know.
     If your perl does not understand the "-V" option is is too old. DB_File
     needs Perl version 5.004 or better.
     
@@ -255,7 +280,7 @@ To help me help you, I need of the following information:
  3. The version of Berkeley DB you have installed.
     If you are using a version older than 1.85, think about upgrading. One
     point to note if you are considering upgrading Berkeley DB - the
-    file formats for 1.85, 1.86 and 2.0 are all different.
+    file formats for 1.85, 1.86, 2.0 & 3.0 are all different.
 
  4. If you are having problems building DB_File, send me a complete log
     of what happened.

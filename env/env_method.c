@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)env_method.c	11.5 (Sleepycat) 9/16/99";
+static const char revid[] = "$Id: env_method.c,v 11.24 2000/05/31 15:10:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,6 +17,17 @@ static const char sccsid[] = "@(#)env_method.c	11.5 (Sleepycat) 9/16/99";
 #include <errno.h>
 #include <string.h>
 #endif
+
+#ifdef HAVE_RPC
+#include "db_server.h"
+#endif
+
+/*
+ * This is the file that initializes the global array.  Do it this way because
+ * people keep changing one without changing the other.  Having declaration and
+ * initialization in one file will hopefully fix that.
+ */
+#define	DB_INITIALIZE_DB_GLOBALS	1
 
 #include "db_int.h"
 #include "db_shash.h"
@@ -27,29 +38,24 @@ static const char sccsid[] = "@(#)env_method.c	11.5 (Sleepycat) 9/16/99";
 #include "mp.h"
 #include "txn.h"
 
-DB_GLOBALS __db_global_values = {
-	1,					/* db_set_mutexlocks */
-	0,					/* db_set_pageyield */
-	1,					/* db_set_panic */
-	0,					/* db_set_region_init */
-	0,					/* db_set_tas_spins */
-						/* XA environment queue */
-        {NULL, &__db_global_values.db_envq.tqh_first}
-};
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 static void __dbenv_err __P((const DB_ENV *, int, const char *, ...));
 static void __dbenv_errx __P((const DB_ENV *, const char *, ...));
+static int  __dbenv_set_data_dir __P((DB_ENV *, const char *));
 static void __dbenv_set_errcall __P((DB_ENV *, void (*)(const char *, char *)));
 static void __dbenv_set_errfile __P((DB_ENV *, FILE *));
 static void __dbenv_set_errpfx __P((DB_ENV *, const char *));
-static void __dbenv_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
-static int  __dbenv_set_mutexlocks __P((DB_ENV *, int));
-static int  __dbenv_set_pageyield __P((DB_ENV *, int));
-static int  __dbenv_set_panic __P((DB_ENV *, int));
-static void __dbenv_set_paniccall __P((DB_ENV *, void (*)(DB_ENV *, int)));
+static int  __dbenv_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
+static int  __dbenv_set_paniccall __P((DB_ENV *, void (*)(DB_ENV *, int)));
 static int  __dbenv_set_recovery_init __P((DB_ENV *, int (*)(DB_ENV *)));
-static int  __dbenv_set_region_init __P((DB_ENV *, int));
-static int  __dbenv_set_tas_spins __P((DB_ENV *, u_int32_t));
+static int  __dbenv_set_server_noclnt
+    __P((DB_ENV *, char *, long, long, u_int32_t));
+static int  __dbenv_set_shm_key __P((DB_ENV *, long));
+static int  __dbenv_set_tmp_dir __P((DB_ENV *, const char *));
 static int  __dbenv_set_verbose __P((DB_ENV *, u_int32_t, int));
 
 /*
@@ -69,13 +75,19 @@ db_env_create(dbenvpp, flags)
 	 * We can't call the flags-checking routines, we don't have an
 	 * environment yet.
 	 */
-	if (flags != 0)
+	if (flags != 0 && flags != DB_CLIENT)
 		return (EINVAL);
 
-	if ((ret = __os_calloc(1, sizeof(*dbenv), &dbenv)) != 0)
+	if ((ret = __os_calloc(NULL, 1, sizeof(*dbenv), &dbenv)) != 0)
 		return (ret);
 
-	if ((ret = __dbenv_init(dbenv)) != 0) {
+#ifdef HAVE_RPC
+	if (LF_ISSET(DB_CLIENT))
+		F_SET(dbenv, DB_ENV_RPCCLIENT);
+#endif
+	ret = __dbenv_init(dbenv);
+
+	if (ret != 0) {
 		__os_free(dbenv, sizeof(*dbenv));
 		return (ret);
 	}
@@ -94,29 +106,50 @@ int
 __dbenv_init(dbenv)
 	DB_ENV *dbenv;
 {
-	dbenv->close = __dbenv_close;
+	/*
+	 * Set up methods that are the same in both normal and RPC
+	 */
 	dbenv->err = __dbenv_err;
 	dbenv->errx = __dbenv_errx;
-	dbenv->open = __dbenv_open;
-	dbenv->remove = __dbenv_remove;
 	dbenv->set_errcall = __dbenv_set_errcall;
 	dbenv->set_errfile = __dbenv_set_errfile;
 	dbenv->set_errpfx = __dbenv_set_errpfx;
-	dbenv->set_feedback = __dbenv_set_feedback;
-	dbenv->set_mutexlocks = __dbenv_set_mutexlocks;
-	dbenv->set_pageyield = __dbenv_set_pageyield;
-	dbenv->set_panic = __dbenv_set_panic;
-	dbenv->set_paniccall = __dbenv_set_paniccall;
-	dbenv->set_recovery_init = __dbenv_set_recovery_init;
-	dbenv->set_region_init = __dbenv_set_region_init;
-	dbenv->set_tas_spins = __dbenv_set_tas_spins;
-	dbenv->set_verbose = __dbenv_set_verbose;
+
+#ifdef	HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
+		dbenv->close = __dbcl_env_close;
+		dbenv->open = __dbcl_env_open;
+		dbenv->remove = __dbcl_env_remove;
+		dbenv->set_data_dir = __dbcl_set_data_dir;
+		dbenv->set_feedback = __dbcl_env_set_feedback;
+		dbenv->set_paniccall = __dbcl_env_paniccall;
+		dbenv->set_recovery_init = __dbcl_set_recovery_init;
+		dbenv->set_server = __dbcl_envserver;
+		dbenv->set_shm_key = __dbcl_set_shm_key;
+		dbenv->set_tmp_dir = __dbcl_set_tmp_dir;
+		dbenv->set_verbose = __dbcl_set_verbose;
+	} else {
+#endif
+		dbenv->close = __dbenv_close;
+		dbenv->open = __dbenv_open;
+		dbenv->remove = __dbenv_remove;
+		dbenv->set_data_dir = __dbenv_set_data_dir;
+		dbenv->set_feedback = __dbenv_set_feedback;
+		dbenv->set_paniccall = __dbenv_set_paniccall;
+		dbenv->set_recovery_init = __dbenv_set_recovery_init;
+		dbenv->set_server = __dbenv_set_server_noclnt;
+		dbenv->set_shm_key = __dbenv_set_shm_key;
+		dbenv->set_tmp_dir = __dbenv_set_tmp_dir;
+		dbenv->set_verbose = __dbenv_set_verbose;
+#ifdef	HAVE_RPC
+	}
+#endif
+	dbenv->shm_key = INVALID_REGION_SEGID;
 
 	__log_dbenv_create(dbenv);		/* Subsystem specific. */
 	__lock_dbenv_create(dbenv);
 	__memp_dbenv_create(dbenv);
 	__txn_dbenv_create(dbenv);
-	__os_dbenv_create(dbenv);
 
 	return (0);
 }
@@ -174,6 +207,30 @@ __dbenv_errx(dbenv, fmt, va_alist)
 	va_end(ap);
 }
 
+static int
+__dbenv_set_data_dir(dbenv, dir)
+	DB_ENV *dbenv;
+	const char *dir;
+{
+	int ret;
+
+#define	DATA_INIT_CNT	20			/* Start with 20 data slots. */
+	if (dbenv->db_data_dir == NULL) {
+		if ((ret = __os_calloc(dbenv, DATA_INIT_CNT,
+		    sizeof(char **), &dbenv->db_data_dir)) != 0)
+			return (ret);
+		dbenv->data_cnt = DATA_INIT_CNT;
+	} else if (dbenv->data_next == dbenv->data_cnt - 1) {
+		dbenv->data_cnt *= 2;
+		if ((ret = __os_realloc(dbenv,
+		    dbenv->data_cnt * sizeof(char **),
+		    NULL, &dbenv->db_data_dir)) != 0)
+			return (ret);
+	}
+	return (__os_strdup(dbenv,
+	    dir, &dbenv->db_data_dir[dbenv->data_next++]));
+}
+
 static void
 __dbenv_set_errcall(dbenv, errcall)
 	DB_ENV *dbenv;
@@ -198,53 +255,22 @@ __dbenv_set_errpfx(dbenv, errpfx)
 	dbenv->db_errpfx = errpfx;
 }
 
-static void
+static int
 __dbenv_set_feedback(dbenv, feedback)
 	DB_ENV *dbenv;
 	void (*feedback) __P((DB_ENV *, int, int));
 {
 	dbenv->db_feedback = feedback;
-}
-
-static int
-__dbenv_set_mutexlocks(dbenv, onoff)
-	DB_ENV *dbenv;
-	int onoff;
-{
-	COMPQUIET(dbenv, NULL);
-
-	DB_GLOBAL(db_mutexlocks) = onoff;
 	return (0);
 }
 
 static int
-__dbenv_set_pageyield(dbenv, onoff)
-	DB_ENV *dbenv;
-	int onoff;
-{
-	COMPQUIET(dbenv, NULL);
-
-	DB_GLOBAL(db_pageyield) = onoff;
-	return (0);
-}
-
-static int					/* !!!: Undocumented. */
-__dbenv_set_panic(dbenv, onoff)
-	DB_ENV *dbenv;
-	int onoff;
-{
-	COMPQUIET(dbenv, NULL);
-
-	DB_GLOBAL(db_panic) = onoff;
-	return (0);
-}
-
-static void
 __dbenv_set_paniccall(dbenv, paniccall)
 	DB_ENV *dbenv;
 	void (*paniccall) __P((DB_ENV *, int));
 {
 	dbenv->db_paniccall = paniccall;
+	return (0);
 }
 
 static int
@@ -260,25 +286,24 @@ __dbenv_set_recovery_init(dbenv, recovery_init)
 }
 
 static int
-__dbenv_set_region_init(dbenv, onoff)
+__dbenv_set_shm_key(dbenv, shm_key)
 	DB_ENV *dbenv;
-	int onoff;
+	long shm_key;			/* !!!: really a key_t. */
 {
-	COMPQUIET(dbenv, NULL);
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_shm_key");
 
-	DB_GLOBAL(db_region_init) = onoff;
+	dbenv->shm_key = shm_key;
 	return (0);
 }
 
 static int
-__dbenv_set_tas_spins(dbenv, tas_spins)
+__dbenv_set_tmp_dir(dbenv, dir)
 	DB_ENV *dbenv;
-	u_int32_t tas_spins;
+	const char *dir;
 {
-	COMPQUIET(dbenv, NULL);
-
-	DB_GLOBAL(db_tas_spins) = tas_spins;
-	return (0);
+	if (dbenv->db_tmp_dir != NULL)
+		__os_freestr(dbenv->db_tmp_dir);
+	return (__os_strdup(dbenv, dir, &dbenv->db_tmp_dir));
 }
 
 static int
@@ -369,4 +394,20 @@ __db_env_config(dbenv, subsystem)
     "%s interface called with environment not configured for that subsystem",
 	    name);
 	return (EINVAL);
+}
+
+static int
+__dbenv_set_server_noclnt(dbenv, host, tsec, ssec, flags)
+	DB_ENV *dbenv;
+	char *host;
+	long tsec, ssec;
+	u_int32_t flags;
+{
+	COMPQUIET(host, NULL);
+	COMPQUIET(tsec, 0);
+	COMPQUIET(ssec, 0);
+	COMPQUIET(flags, 0);
+
+	__db_err(dbenv, "set_server method meaningless in non-RPC enviroment");
+	return(__db_eopnotsup(dbenv));
 }

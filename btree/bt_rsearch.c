@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_rsearch.c	11.8 (Sleepycat) 10/21/99";
+static const char revid[] = "$Id: bt_rsearch.c,v 11.21 2000/03/28 21:50:04 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -50,6 +50,8 @@ static const char sccsid[] = "@(#)bt_rsearch.c	11.8 (Sleepycat) 10/21/99";
 #include "db_int.h"
 #include "db_page.h"
 #include "btree.h"
+#include "db_shash.h"
+#include "lock.h"
 
 /*
  * __bam_rsearch --
@@ -70,14 +72,14 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	DB_LOCK lock;
 	PAGE *h;
 	RINTERNAL *ri;
-	db_indx_t indx, top;
+	db_indx_t adjust, deloffset, indx, top;
 	db_lockmode_t lock_mode;
 	db_pgno_t pg;
-	db_recno_t i, recno, total;
+	db_recno_t recno, t_recno, total;
 	int ret, stack;
 
 	dbp = dbc->dbp;
-	cp = dbc->internal;
+	cp = (BTREE_CURSOR *)dbc->internal;
 
 	BT_STK_CLR(cp);
 
@@ -96,7 +98,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	 *
 	 * Retrieve the root page.
 	 */
-	pg = ((BTREE *)dbp->bt_internal)->bt_root;
+	pg = cp->root;
 	stack = LF_ISSET(S_STACK);
 	lock_mode = stack ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
@@ -178,37 +180,40 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	for (total = 0;;) {
 		switch (TYPE(h)) {
 		case P_LBTREE:
+		case P_LDUP:
 			recno -= total;
-
 			/*
-			 * There may be logically deleted records on the page,
-			 * walk the page correcting for them.  The record may
-			 * not exist if there are enough deleted records in the
-			 * page.
+			 * There may be logically deleted records on the page.
+			 * If there are enough, the record may not exist.
 			 */
-			if (recno <= (db_recno_t)NUM_ENT(h) / P_INDX)
-				for (i = recno - 1;; --i) {
-					if (B_DISSET(GET_BKEYDATA(h,
-					    i * P_INDX + O_INDX)->type))
-						++recno;
-					if (i == 0)
-						break;
+			if (TYPE(h) == P_LBTREE) {
+				adjust = P_INDX;
+				deloffset = O_INDX;
+			} else {
+				adjust = O_INDX;
+				deloffset = 0;
+			}
+			for (t_recno = 0, indx = 0;; indx += adjust) {
+				if (indx >= NUM_ENT(h)) {
+					*exactp = 0;
+					if (!LF_ISSET(S_PAST_EOF) ||
+					    recno > t_recno + 1) {
+						ret = DB_NOTFOUND;
+						goto err;
+					}
 				}
-			if (recno > (db_recno_t)NUM_ENT(h) / P_INDX) {
-				*exactp = 0;
-				if (!LF_ISSET(S_PAST_EOF) || recno >
-				    (db_recno_t)(NUM_ENT(h) / P_INDX + 1)) {
-					ret = DB_NOTFOUND;
-					goto err;
-				}
-
+				if (!B_DISSET(
+				    GET_BKEYDATA(h, indx + deloffset)->type) &&
+				    ++t_recno == recno)
+					break;
 			}
 
 			/* Correct from 1-based to 0-based for a page offset. */
-			--recno;
-			BT_STK_ENTER(cp,
-			    h, recno * P_INDX, lock, lock_mode, ret);
-			return (ret);
+			BT_STK_ENTER(dbp->dbenv,
+			    cp, h, indx, lock, lock_mode, ret);
+			if (ret != 0)
+				goto err;
+			return (0);
 		case P_IBTREE:
 			for (indx = 0, top = NUM_ENT(h);;) {
 				bi = GET_BINTERNAL(h, indx);
@@ -223,8 +228,11 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			/* Correct from 1-based to 0-based for a page offset. */
 			--recno;
-			BT_STK_ENTER(cp, h, recno, lock, lock_mode, ret);
-			return (ret);
+			BT_STK_ENTER(dbp->dbenv,
+			    cp, h, recno, lock, lock_mode, ret);
+			if (ret != 0)
+				goto err;
+			return (0);
 		case P_IRECNO:
 			for (indx = 0, top = NUM_ENT(h);;) {
 				ri = GET_RINTERNAL(h, indx);
@@ -242,10 +250,14 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 		if (stack) {
 			/* Return if this is the lowest page wanted. */
 			if (LF_ISSET(S_PARENT) && stop == h->level) {
-				BT_STK_ENTER(cp, h, indx, lock, lock_mode, ret);
-				return (ret);
+				BT_STK_ENTER(dbp->dbenv,
+				    cp, h, indx, lock, lock_mode, ret);
+				if (ret != 0)
+					goto err;
+				return (0);
 			}
-			BT_STK_PUSH(cp, h, indx, lock, lock_mode, ret);
+			BT_STK_PUSH(dbp->dbenv,
+			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 
@@ -268,8 +280,8 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			lock_mode = stack &&
 			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
-			if ((ret =
-			    __db_lget(dbc, 1, pg, lock_mode, 0, &lock)) != 0) {
+			if ((ret = __db_lget(dbc,
+			    LCK_COUPLE, pg, lock_mode, 0, &lock)) != 0) {
 				/*
 				 * If we fail, discard the lock we held.  This
 				 * is OK because this only happens when we are
@@ -309,8 +321,8 @@ __bam_adjust(dbc, adjust)
 	int ret;
 
 	dbp = dbc->dbp;
-	cp = dbc->internal;
-	root_pgno = ((BTREE *)dbp->bt_internal)->bt_root;
+	cp = (BTREE_CURSOR *)dbc->internal;
+	root_pgno = cp->root;
 
 	/* Update the record counts for the tree. */
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
@@ -319,8 +331,8 @@ __bam_adjust(dbc, adjust)
 			if (DB_LOGGING(dbc) &&
 			    (ret = __bam_cadjust_log(dbp->dbenv,
 			    dbc->txn, &LSN(h), 0, dbp->log_fileid,
-			    PGNO(h), &LSN(h), (u_int32_t)epg->indx,
-			    adjust, 1)) != 0)
+			    PGNO(h), &LSN(h), (u_int32_t)epg->indx, adjust,
+			    PGNO(h) == root_pgno ? CAD_UPDATEROOT : 0)) != 0)
 				return (ret);
 
 			if (TYPE(h) == P_IBTREE)
@@ -357,7 +369,7 @@ __bam_nrecs(dbc, rep)
 
 	dbp = dbc->dbp;
 
-	pgno = ((BTREE *)dbp->bt_internal)->bt_root;
+	pgno = dbc->internal->root;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		return (ret);
 	if ((ret = memp_fget(dbp->mpf, &pgno, 0, &h)) != 0)
@@ -392,6 +404,12 @@ __bam_total(h)
 		/* Check for logically deleted records. */
 		for (indx = 0; indx < top; indx += P_INDX)
 			if (!B_DISSET(GET_BKEYDATA(h, indx + O_INDX)->type))
+				++nrecs;
+		break;
+	case P_LDUP:
+		/* Check for logically deleted records. */
+		for (indx = 0; indx < top; indx += O_INDX)
+			if (!B_DISSET(GET_BKEYDATA(h, indx)->type))
 				++nrecs;
 		break;
 	case P_IBTREE:

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test004.tcl	11.5 (Sleepycat) 9/24/99
+#	$Id: test004.tcl,v 11.14 2000/05/22 12:51:38 bostic Exp $
 #
 # DB Test 4 {access method}
 # Check that cursor operations work.  Create a database.
@@ -16,7 +16,7 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	set tnum Test00$reopen
+	set tnum test00$reopen
 
 	puts -nonewline "$tnum:\
 	    $method ($args) $nentries delete small key; medium data pairs"
@@ -27,12 +27,21 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test004.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test004.db
+	} else {
+		set testfile test004.db
+	}
+	# Create the database and open the dictionary
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -42,7 +51,7 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	set txn ""
 	set count 0
 
-   if { [is_record_based $method] == 1 } {
+	if { [is_record_based $method] == 1 } {
 		append gflags " -recno"
 	}
 
@@ -74,7 +83,7 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	if { $reopen == 5 } {
 		error_check_good db_close [$db close] 0
 
-		set db [eval {berkdb open} {$testfile}]
+		set db [eval {berkdb_open} $args {$testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	}
 	puts "\tTest00$reopen.b: get/delete loop"
@@ -107,17 +116,16 @@ proc test004 { method {nentries 10000} {reopen 4} {build_only 0} args} {
 	error_check_good curs_close [$c close] 0
 
 	# Now compare the keys to see if they match the dictionary
-   	if { [is_record_based $method] == 1 } {
+	if { [is_record_based $method] == 1 } {
 		error_check_good test00$reopen:keys_deleted $count $nentries
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 		error_check_good Test00$reopen:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 	}
 
 	error_check_good db_close [$db close] 0
 }
-

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test010.tcl	11.5 (Sleepycat) 9/24/99
+#	$Id: test010.tcl,v 11.13 2000/05/16 19:46:19 krinsky Exp $
 #
 # DB Test 10 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -28,15 +28,23 @@ proc test010 { method {nentries 10000} {ndups 5} {tnum 10} args } {
 	puts "Test0$tnum: $method ($args) $nentries small dup key/data pairs"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 
 	cleanup $testdir
 
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -61,16 +69,16 @@ proc test010 { method {nentries 10000} {ndups 5} {tnum 10} args } {
 		for {set ret [$dbc get "-set" $str]} \
 		    {[llength $ret] != 0} \
 		    {set ret [$dbc get "-next"] } {
+			if {[llength $ret] == 0} {
+				break
+			}
 			set k [lindex [lindex $ret 0] 0]
 			if { [string compare $k $str] != 0 } {
 				break
 			}
 			set datastr [lindex [lindex $ret 0] 1]
 			set d [data_of $datastr]
-			if {[string length $d] == 0} {
-				break
-			}
-			error_check_good "Test0$tnum:put" $d $str
+			error_check_good "Test0$tnum:get" $d $str
 			set id [ id_of $datastr ]
 			error_check_good "Test0$tnum:dup#" $id $x
 			incr x
@@ -92,24 +100,24 @@ proc test010 { method {nentries 10000} {ndups 5} {tnum 10} args } {
 
 	# Now compare the keys to see if they match the dictionary entries
 	set q q
-	exec $SED $nentries$q $dict > $t3
-	exec $SORT $t3 > $t2
-	exec $SORT $t1 > $t3
+	filehead $nentries $dict $t3
+	filesort $t3 $t2
+	filesort $t1 $t3
 
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	error_check_good db_close [$db close] 0
-	set db [berkdb open $testfile]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\tTest0$tnum.b: Checking file for correct duplicates after close"
 	dup_check $db $txn $t1 $dlist
 
 	# Now compare the keys to see if they match the dictionary entries
-	exec $SORT $t1 > $t3
+	filesort $t1 $t3
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	error_check_good db_close [$db close] 0
 }

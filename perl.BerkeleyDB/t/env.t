@@ -79,7 +79,7 @@ umask(0);
     eval ' $env = new BerkeleyDB::Env( -Bad => 2, -Home => "/tmp", -Stupid => 3) ; ' ;
     ok 8, $@ =~ /unknown key value\(s\) (Bad |Stupid ){2}/  ;
 
-    eval ' $env = new BerkeleyDB::Env( -Config => {"fred" => ""} ) ; ' ;
+    eval ' $env = new BerkeleyDB::Env (-Config => {"fred" => " "} ) ; ' ;
     ok 9, !$env ;
     ok 10, $BerkeleyDB::Error =~ /^illegal name-value pair/ ;
 }

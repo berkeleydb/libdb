@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)lock002.tcl	11.5 (Sleepycat) 8/17/99
+#	$Id: lock002.tcl,v 11.9 2000/03/24 19:53:39 krinsky Exp $
 #
 # Exercise basic multi-process aspects of lock.
 proc lock002 { {maxlocks 1000} {conflicts {0 0 0 0 0 1 0 1 1} } } {
@@ -32,7 +32,7 @@ proc mlock_open { maxl nmodes conflicts } {
 
 	# Open/Create region here.  Then close it and try to open from
 	# other test process.
-	set env_cmd [concat "berkdb env -create -mode 0644 -mpool \
+	set env_cmd [concat "berkdb env -create -mode 0644 \
 	    -lock -lock_max $maxl -lock_conflict" \
 	    [list [list $nmodes $conflicts]] "-home $testdir"]
 	set local_env [eval $env_cmd]
@@ -61,7 +61,7 @@ proc mlock_open { maxl nmodes conflicts } {
 	error_check_good remote:lock_close $ret 0
 
 	# Try opening for create.  Will succeed because region exists.
-	set env_cmd [concat "berkdb env -create -mode 0644 -mpool \
+	set env_cmd [concat "berkdb env -create -mode 0644 \
 	    -lock -lock_max $maxl -lock_conflict" \
 	    [list [list $nmodes $conflicts]] "-home $testdir"]
 	set local_env [eval $env_cmd]
@@ -82,7 +82,7 @@ proc mlock_wait { } {
 	puts "Lock002.b multi-process get/put wait test"
 
 	# Open region locally
-	set env_cmd "berkdb env -lock -mpool -home $testdir"
+	set env_cmd "berkdb env -lock -home $testdir"
 	set local_env [eval $env_cmd]
 	error_check_good env_open [is_valid_env $local_env] TRUE
 
@@ -109,7 +109,7 @@ proc mlock_wait { } {
 	    "set lock \[$remote_env lock_get write $locker object1\]"]
 
 	# Now sleep before releasing lock
-	exec $SLEEP 5
+	tclsleep 5
 	set result [$local_lock put]
 	error_check_good lock_put $result 0
 
@@ -126,7 +126,7 @@ proc mlock_wait { } {
 	# lock while we try to get a write lock on it
 	set start [timestamp -r]
 
-	set ret [send_cmd $f1 "exec $SLEEP 5"]
+	set ret [send_cmd $f1 "tclsleep 5"]
 
 	set ret [send_cmd $f1 "$remote_lock put"]
 

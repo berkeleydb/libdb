@@ -1,5 +1,6 @@
-<!--@(#)intro.so	10.10 (Sleepycat) 11/15/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: intro.so,v 10.13 2000/03/18 21:43:11 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,18 +15,16 @@
 </td></tr></table>
 <p>
 <h1 align=center>Introduction</h1>
-<p>
-As Berkeley DB is an embedded library, debugging applications that use Berkeley DB
+<p>As Berkeley DB is an embedded library, debugging applications that use Berkeley DB
 can be tricky.  When a problem arises, it is not always readily apparent
 whether the problem is in the application, in the database library, or is
 a result of an unexpected interaction between the two.  This chapter is
 intended to assist you in debugging applications and in reporting bugs to
 us in a manner such that we can provide you with the correct answer or fix as
 quickly as possible.
-<p>
-When you encounter a problem, there are a few general actions you can
+<p>When you encounter a problem, there are a few general actions you can
 take:
-<dl compact>
+<p><dl compact>
 <p><dt>Review the Berkeley DB error output<dd>If an error output mechanism has been configured in the Berkeley DB
 environment, additional run-time error messages are made available to the
 applications.  If you are not using an environment, it is well

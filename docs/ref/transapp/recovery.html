@@ -1,5 +1,6 @@
-<!--@(#)recovery.so	10.20 (Sleepycat) 11/11/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: recovery.so,v 10.24 2000/03/18 21:43:18 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,95 +9,67 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Protected Applications</dl></h3></td>
 <td width="1%"><a href="../../ref/transapp/archival.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/filesys.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Recovery procedures</h1>
-<p>
-The fourth component of the infrastructure, recovery procedures,
-concerns the recoverability of the database.  After any application or
-system failure, there are two possible approaches to database recovery.
-<p>
-<ol>
-<p><li>There is no need for recoverability, and all databases can be recreated
-from scratch, therefore the database home directory can simply be removed
-and recreated.
-<p><li>It is necessary to recover information after system or application failure.
-Recovery (using the <a href="../../utility/db_recover.html">db_recover</a> utility, or the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a>
-or <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> flags to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>) must be performed
-on each Berkeley DB application environment, that is, each database home directory.
+<p>The fourth component of the infrastructure, recovery procedures, concerns
+the recoverability of the database.  After any application or system
+failure, there are two possible approaches to database recovery:
+<p><ol>
+<p><li>There is no need for recoverability and all databases can be recreated
+from scratch.  While these applications may still need transaction
+protection for other reasons, recovery will usually consist of removing
+the Berkeley DB environment home directory and all files it contains, and then
+restarting the application.
+<p><li>It is necessary to recover information after system or application
+failure.  In this case, recovery processing must be performed on any
+database environments that were active at the time of the failure.
+Recovery processing involves running the <a href="../../utility/db_recover.html">db_recover</a> utility or
+calling the <a href="../../api_c/env_open.html">DBENV-&gt;open</a> function with the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> or
+<a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> flags, for each Berkeley DB environment.
+<p>During recovery processing, all database changes made by aborted or
+unfinished transactions are undone and all database changes made by
+committed transactions are redone, as necessary.  Database applications
+must not be restarted until recovery completes.  After recovery finishes,
+the environment is properly initialized so that applications may be
+restarted.
 </ol>
-<p>
-Performing recovery will remove all the shared regions (which may have
-been corrupted by the failure), establish the end of the log by
-identifying the last record written to the log, and then perform
-transaction recovery.  Database applications must not be restarted until
-recovery completes.  During recovery, all changes made by aborted or
-unfinished transactions are undone and all changes made by committed
-transactions are redone, as necessary.  After recovery runs, the
-environment is properly initialized so that applications may be restarted.
-Any time an application crashes or the system fails, recovery processing
-should be performed on any database environments that were active at that
-time.
-<p>
-Additionally, there are two forms of recovery: 
-<ol>
+<p>If recovery is to be performed, there are two possible types of recovery
+processing:
+<p><ol>
 <p><li><i>catastrophic</i> recovery.  The Berkeley DB package defines catastrophic
 failure to be failure where either the database or log files have been
 destroyed or corrupted.  For example, catastrophic failure includes the
 case where the disk drive on which either the database or logs are stored
 has been physically destroyed, or when the system's normal filesystem
 recovery on startup is unable to bring the database and log files to a
-consistent state.
-<p>
-If the failure is catastrophic, a snapshot of the database files and the
-archived log files must be restored onto the system.  Then the recovery
-process will review the logs and database files to bring the database to
-a consistent state as of the time of the last archived log file.  Only
-transactions committed before that date will appear in the database.
+consistent state.  This is often difficult to detect, and perhaps the most
+common sign of the need for catastrophic recovery is when the normal
+recovery procedures fail.
+<p>If the failure is catastrophic, the most recent snapshot of the database
+files and any archived log files must be restored onto the system.  If
+any log files since the last snapshot are available, they should be placed
+into the Berkeley DB environment directory where recovery will be performed.
+Then run the <a href="../../utility/db_recover.html">db_recover</a> utility, specifying its <b>-c</b> option,
+or call the <a href="../../api_c/env_open.html">DBENV-&gt;open</a> function specifying the <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
+flag.  The catastrophic recovery process will review the logs and database
+files to bring the environment's database to a consistent state as of the
+time of the last uncorrupted log file that is found.  It is important to
+realize that only transactions committed before that date will appear in
+the databases.
 <p><li><i>normal</i> or <i>non-catastrophic</i> recovery.  If the failure
-is non-catastrophic, i.e., the database files and log are accessible on
-a filesystem that has recovered cleanly, the recovery process will review
-the logs and database files to ensure that all committed transactions
-appear and that all uncommitted transactions are undone.
+is non-catastrophic and the database files and log are both accessible on
+a filesystem that has recovered cleanly, run the <a href="../../utility/db_recover.html">db_recover</a>
+utility without the <b>-c</b> option or call the <a href="../../api_c/env_open.html">DBENV-&gt;open</a> function
+specifying the <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> flag.  The normal recovery process will
+review the logs and database files to ensure that all changes associated
+with committed transactions appear in the databases and that all
+uncommitted transactions do not.
 </ol>
-<h3>Recovery process</h3>
-<p>
-The recovery process works as follows:
-<p>
-First, find the last checkpoint that completed.  Since the system may
-have crashed while writing a checkpoint, this implies finding the
-second-to-last checkpoint in the log files.  Read forward from this
-checkpoint, opening any database files for which modifications are found
-in the log.
-<p>
-Then, read backward from the end of the log.  For each commit record
-encountered, record its transaction ID.  For every other data update
-record, find the transaction ID of the record.  If that transaction ID
-appears in the list of committed transactions, do nothing; if it does not
-appear in the committed list, then call the appropriate recovery routine
-to undo the operation.
-<p>
-In the case of catastrophic recovery, this roll-backward pass continues
-through all the present log files.  In the case of normal recovery, this
-pass continues until we find a checkpoint written before the second-to-last
-checkpoint described above.
-<p>
-When the roll-backward pass is complete, the roll-forward pass begins at
-the point where the roll-backward pass ended.  Each record is read and if
-its transaction id is in the committed list, then the appropriate recovery
-routine is called to redo the operation if necessary.
-<p>
-In a distributed transaction environment, there may be transactions that
-are prepared, but not yet committed.  If these transactions are XA
-transactions, then they are rolled forward to their current state, and an
-active transaction corresponding to it is entered in the transaction table
-so that the XA transaction manager may call either transaction abort or
-commit, depending on the outcome of the overall transaction.  If the
-transaction is not an XA transaction, then it is aborted like any other
-transactions would be.
 <table><tr><td><br></td><td width="1%"><a href="../../ref/transapp/archival.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/transapp/filesys.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

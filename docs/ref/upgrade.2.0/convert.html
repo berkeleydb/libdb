@@ -1,5 +1,6 @@
-<!--@(#)convert.so	11.3 (Sleepycat) 11/10/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: convert.so,v 11.6 2000/03/18 21:43:19 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,17 +15,14 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 2.0: converting applications</h1>
-<p>
-Mapping the Berkeley DB 1.85 functionality into Berkeley DB version 2 is almost always
+<p>Mapping the Berkeley DB 1.85 functionality into Berkeley DB version 2 is almost always
 simple.  The manual page <a href="../../api_c/db_open.html">DB-&gt;open</a> replaces the Berkeley DB 1.85 manual
 pages <b>dbopen</b>(3), <b>btree</b>(3), <b>hash</b>(3) and
 <b>recno</b>(3).  You should be able to convert each 1.85 function
 call into a Berkeley DB version 2 function call using just the <a href="../../api_c/db_open.html">DB-&gt;open</a>
 documentation.
-<p>
-Some guidelines and things to watch out for:
-<p>
-<ol>
+<p>Some guidelines and things to watch out for:
+<p><ol>
 <p><li>Most access method functions have exactly the same semantics as in Berkeley DB
 1.85, although the arguments to the functions have changed in some cases.
 To get your code to compile, the most common change is to add the
@@ -45,8 +43,7 @@ for more information.
 version 2.  The semantics are approximately the same, but cursors require
 the creation of an extra object (the DBC object), which is then used to
 access the database.
-<p>
-Specifically, the partial key match and range search functionality of the
+<p>Specifically, the partial key match and range search functionality of the
 R_CURSOR flag in DB-&gt;seq has been replaced by the
 <a href="../../api_c/dbc_get.html#DB_SET_RANGE">DB_SET_RANGE</a> flag in <a href="../../api_c/dbc_get.html">DBcursor-&gt;c_get</a>.
 <p><li>In version 2 of the Berkeley DB library, additions or deletions into Recno
@@ -66,8 +63,7 @@ we encourage restructuring your application to avoid repeated opens and
 closes, you can probably recover most of the lost performance by simply
 using a persistent environment across invocations.
 </ol>
-<p>
-While simply converting Berkeley DB 1.85 function calls to Berkeley DB version 2
+<p>While simply converting Berkeley DB 1.85 function calls to Berkeley DB version 2
 function calls will work, we recommend that you eventually reconsider your
 application's interface to the Berkeley DB database library in light of the
 additional functionality supplied by Berkeley DB version 2, as it is likely to

@@ -1,5 +1,6 @@
-<!--"@(#)db_stat.so	10.19 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_stat.so,v 10.27 2000/04/03 20:10:39 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>db_stat</h1>
@@ -17,19 +19,17 @@
 </td></tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_stat [<b>-celmNt</b>]
-    [<b>-C Acfhlmo</b>] [<b>-d file [<b>-s file</b>]</b>] [<b>-h home</b>] [<b>-M Ahlm</b>]
-</pre></h3>
+<h3><pre>db_stat [<b>-celmNtV</b>]
+    [<b>-C Acfhlmo</b>] [<b>-d file [<b>-s database</b>]</b>] [<b>-h home</b>] [<b>-M Ahlm</b>]</pre></h3>
 <h1>Description</h1>
-<p>
-The <a href="../utility/db_stat.html">db_stat</a> utility displays statistics for Berkeley DB environments.
-<p>
-The options are as follows:
-<dl compact>
-<p><dt><b>-C</b><dd>Display internal information about the lock region.
-(The output from this option is often both voluminous and meaningless,
-and is intended only for debugging.)
-<dl compact>
+<a name="3"><!--meow--></a>
+<p>The db_stat utility displays statistics for Berkeley DB environments.
+<p>The options are as follows:
+<p><dl compact>
+<p><dt><b>-C</b><dd>Display internal information about the lock region.  (The output from this
+option is often both voluminous and meaningless, and is intended only for
+debugging.)
+<p><dl compact>
 <p><dt>A<dd>Display all information.
 <dt>c<dd>Display lock conflict matrix.
 <dt>f<dd>Display lock and object free lists.
@@ -38,17 +38,19 @@ and is intended only for debugging.)
 <dt>o<dd>Display objects within hash chains.
 </dl>
 <p><dt><b>-c</b><dd>Display lock region statistics as described in <a href="../api_c/lock_stat.html">lock_stat</a>.
-<p><dt><b>-d</b><dd>Display database statistics for the specified database, as described in
-<a href="../api_c/db_stat.html">DB-&gt;stat</a>.  If the database contains subdatabases, the statistics
-are for the database or subdatabase specified, and not for the database
-as a whole.
+<p><dt><b>-d</b><dd>Display database statistics for the specified file, as described in
+<a href="../api_c/db_stat.html">DB-&gt;stat</a>.
+<p>If the database contains multiple databases and the <b>-s</b> flag is
+not specified, the statistics are for the internal database that describes
+the other databases the file contains, and not for the file as a whole.
 <p><dt><b>-e</b><dd>Display current environment statistics.
-<p><dt><b>-h</b><dd>Specify a home directory for the database.
+<p><dt><b>-h</b><dd>Specify a home directory for the database environment; by
+default, the current working directory is used.
 <p><dt><b>-l</b><dd>Display log region statistics as described in <a href="../api_c/log_stat.html">log_stat</a>.
-<p><dt><b>-M</b><dd>Display internal information about the shared memory buffer pool.
-(The output from this option is often both voluminous and meaningless,
-and is intended only for debugging.)
-<dl compact>
+<p><dt><b>-M</b><dd>Display internal information about the shared memory buffer pool.  (The
+output from this option is often both voluminous and meaningless, and is
+intended only for debugging.)
+<p><dl compact>
 <p><dt>A<dd>Display all information.
 <dt>h<dd>Display buffers within hash chains.
 <dt>l<dd>Display buffers within LRU chains.
@@ -56,47 +58,47 @@ and is intended only for debugging.)
 </dl>
 <p><dt><b>-m</b><dd>Display shared memory buffer pool statistics as described in
 <a href="../api_c/memp_stat.html">memp_stat</a>.
-<p><dt><b>-N</b><dd>Do not acquire shared region locks while running.  Other problems such
-as potentially fatal errors in Berkeley DB will be ignored as well.  This option
+<p><dt><b>-N</b><dd>Do not acquire shared region locks while running.  Other problems such as
+potentially fatal errors in Berkeley DB will be ignored as well.  This option
 is intended only for debugging errors and should not be used under any
 other circumstances.
-<p><dt><b>-s</b><dd>Display database statistics for the specified subdatabase of the
-database specified with the <b>-d</b> flag.
-<p><dt><b>-t</b><dd>Display transaction region statistics as described in
-<a href="../api_c/txn_stat.html">txn_stat</a>.
+<p><dt><b>-s</b><dd>Display statistics for the specified database contained in the file
+specified with the <b>-d</b> flag.
+<p><dt><b>-t</b><dd>Display transaction region statistics as described in <a href="../api_c/txn_stat.html">txn_stat</a>.
+<p><dt><b>-V</b><dd>Write the version number to the standard output and exit.
 </dl>
-<p>
-Only one set of statistics is displayed for each run, and the last option
+<p>Only one set of statistics is displayed for each run, and the last option
 specifying a set of statistics takes precedence.
-<p>
-Values smaller than 10 million are generally displayed without any special
+<p>Values smaller than 10 million are generally displayed without any special
 notation.  Values larger than 10 million are normally displayed as
 <b>&lt;number&gt;M</b>.
-<p>
-The <a href="../utility/db_stat.html">db_stat</a> utility attaches to one or more of the Berkeley DB shared memory
-regions.  In order to avoid region corruption, it should always be given
-the chance to detach and exit gracefully.  To cause <a href="../utility/db_stat.html">db_stat</a> to clean up
-after itself and exit, send it an interrupt signal (SIGINT).
-<p>
-The <a href="../utility/db_stat.html">db_stat</a> utility exits 0 on success, and &gt;0 if an error occurs.
-<p>
+<p>The db_stat utility may be used with a Berkeley DB environment (as described for the
+<b>-h</b> option, the environment variable <b>DB_HOME</b>, or,
+because the utility was run in a directory containing a Berkeley DB
+environment).  In order to avoid environment corruption when using a Berkeley DB
+environment, db_stat should always be given the chance to detach from
+the environment and exit gracefully.  To cause db_stat to release all
+environment resources and exit cleanly, send it an interrupt signal
+(SIGINT).
+<p>The db_stat utility exits 0 on success, and &gt;0 if an error occurs.
 <h1>Environment Variables</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DBENV-&gt;open</a>.
 </dl>
-<p>
 <h1>See Also</h1>
+<a href="../utility/berkeley_db_svc.html">berkeley_db_svc</a>,
 <a href="../utility/db_archive.html">db_archive</a>,
 <a href="../utility/db_checkpoint.html">db_checkpoint</a>,
 <a href="../utility/db_deadlock.html">db_deadlock</a>,
 <a href="../utility/db_dump.html">db_dump</a>,
 <a href="../utility/db_load.html">db_load</a>,
 <a href="../utility/db_recover.html">db_recover</a>,
+db_stat,
+<a href="../utility/db_upgrade.html">db_upgrade</a>,
 and
-<a href="../utility/db_stat.html">db_stat</a>.
+<a href="../utility/db_verify.html">db_verify</a>.
 </tt>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,5 +1,6 @@
-<!--"@(#)java.jv	11.3 (Sleepycat) 10/3/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: java.jv,v 11.6 2000/03/18 21:43:20 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,21 +15,17 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: additional Java changes</h1>
-<p>
-There are several additional types of exceptions thrown in the Berkeley DB 3.0
+<p>There are several additional types of exceptions thrown in the Berkeley DB 3.0
 Java API.
-<p>
-DbMemoryException and DbDeadlockException can be caught independently of
+<p>DbMemoryException and DbDeadlockException can be caught independently of
 DbException if you want to do special handling for these kinds of errors.
 Since they are subclassed from DbException, a try block that catches
 DbException will catch these also, so code is not required to change.
 The catch clause for these new exceptions should appear before the catch
 clause for DbException.
-<p>
-You will need to add a catch clause for java.io.FileNotFoundException,
+<p>You will need to add a catch clause for java.io.FileNotFoundException,
 since that can be thrown by the <a href="../../api_java/db_open.html">Db.open</a> and <a href="../../api_java/env_open.html">DbEnv.open</a> methods.
-<p>
-There are a number of smaller changes to the API that bring the C, C++
+<p>There are a number of smaller changes to the API that bring the C, C++
 and Java APIs much closer in terms of functionality and usage.  Please
 refer to the pages for upgrading C applications for further details.
 <table><tr><td><br></td><td width="1%"><a href="../../ref/upgrade.3.0/cxx.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/upgrade.3.0/disk.html"><img src="../../images/next.gif" alt="Next"></a>

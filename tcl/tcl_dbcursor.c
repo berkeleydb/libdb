@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_dbcursor.c	11.12 (Sleepycat) 10/9/99";
+static const char revid[] = "$Id: tcl_dbcursor.c,v 11.22 2000/04/21 18:18:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -30,7 +30,7 @@ static int	tcl_DbcGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
 static int	tcl_DbcPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
 
 /*
- * PUBLIC: int	dbc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
+ * PUBLIC: int dbc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  *
  * dbc_cmd --
  *	Implements the cursor command.
@@ -57,20 +57,20 @@ dbc_Cmd(clientData, interp, objc, objv)
 		DBCGET,
 		DBCPUT
 	};
-	DBC *dbcp;
+	DBC *dbc;
 	DBTCL_INFO *dbip;
 	int cmdindex, result, ret;
 
 	Tcl_ResetResult(interp);
-	dbcp = (DBC *)clientData;
-	dbip = _PtrToInfo((void *)dbcp);
+	dbc = (DBC *)clientData;
+	dbip = _PtrToInfo((void *)dbc);
 	result = TCL_OK;
 
 	if (objc <= 1) {
 		Tcl_WrongNumArgs(interp, 1, objv, "command cmdargs");
 		return (TCL_ERROR);
 	}
-	if (dbcp == NULL) {
+	if (dbc == NULL) {
 		Tcl_SetResult(interp, "NULL dbc pointer", TCL_STATIC);
 		return (TCL_ERROR);
 	}
@@ -96,7 +96,7 @@ dbc_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = dbcp->c_close(dbcp);
+		ret = dbc->c_close(dbc);
 		result = _ReturnSetup(interp, ret, "dbc close");
 		if (result == TCL_OK) {
 			(void) Tcl_DeleteCommand(interp, dbip->i_name);
@@ -112,41 +112,42 @@ dbc_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		ret = dbcp->c_del(dbcp, 0);
+		ret = dbc->c_del(dbc, 0);
 		result = _ReturnSetup(interp, ret, "dbc delete");
 		break;
 	case DBCDUP:
-		result = tcl_DbcDup(interp, objc, objv, dbcp);
+		result = tcl_DbcDup(interp, objc, objv, dbc);
 		break;
 	case DBCGET:
-		result = tcl_DbcGet(interp, objc, objv, dbcp);
+		result = tcl_DbcGet(interp, objc, objv, dbc);
 		break;
 	case DBCPUT:
-		result = tcl_DbcPut(interp, objc, objv, dbcp);
+		result = tcl_DbcPut(interp, objc, objv, dbc);
 		break;
 	}
 	return (result);
 }
 
-
 /*
  * tcl_DbcPut --
  */
 static int
-tcl_DbcPut(interp, objc, objv, dbcp)
+tcl_DbcPut(interp, objc, objv, dbc)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DBC *dbcp;			/* Cursor pointer */
+	DBC *dbc;			/* Cursor pointer */
 {
-	static char *dbcputopts[] = {
+	static char *dbcutopts[] = {
 		"-after",	"-before",	"-current",
-		"-keyfirst",	"-keylast",	"-partial",
+		"-keyfirst",	"-keylast",	"-nodupdata",
+		"-partial",
 		NULL
 	};
-	enum dbcputopts {
-		DBCPUT_AFTER, 	DBCPUT_BEFORE,	DBCPUT_CURRENT,
-		DBCPUT_KEYFIRST,DBCPUT_KEYLAST,	DBCPUT_PART
+	enum dbcutopts {
+		DBCPUT_AFTER,	DBCPUT_BEFORE,	DBCPUT_CURRENT,
+		DBCPUT_KEYFIRST,DBCPUT_KEYLAST,	DBCPUT_NODUPDATA,
+		DBCPUT_PART
 	};
 	DB *thisdbp;
 	DBT key, data;
@@ -160,7 +161,7 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 	result = TCL_OK;
 	flag = 0;
 
-        if (objc < 2) {
+	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? ?key?");
 		return (TCL_ERROR);
 	}
@@ -174,9 +175,9 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 	 */
 	i = 2;
 	while (i < (objc - 1)) {
-		if (Tcl_GetIndexFromObj(interp, objv[i], dbcputopts, "option",
+		if (Tcl_GetIndexFromObj(interp, objv[i], dbcutopts, "option",
 		    TCL_EXACT, &optindex) != TCL_OK) {
-                        /*
+			/*
 			 * Reset the result so we don't get
 			 * an errant error message if there is another error.
 			 */
@@ -188,7 +189,7 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 			break;
 		}
 		i++;
-		switch ((enum dbcputopts)optindex) {
+		switch ((enum dbcutopts)optindex) {
 		case DBCPUT_AFTER:
 			FLAG_CHECK(flag);
 			flag = DB_AFTER;
@@ -208,6 +209,10 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 		case DBCPUT_KEYLAST:
 			FLAG_CHECK(flag);
 			flag = DB_KEYLAST;
+			break;
+		case DBCPUT_NODUPDATA:
+			FLAG_CHECK(flag);
+			flag = DB_NODUPDATA;
 			break;
 		case DBCPUT_PART:
 			if (i > (objc - 2)) {
@@ -252,7 +257,7 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 	 * We need to determine if we are a recno database or not.  If we are,
 	 * then key.data is a recno, not a string.
 	 */
-	dbcip = _PtrToInfo(dbcp);
+	dbcip = _PtrToInfo(dbc);
 	if (dbcip == NULL)
 		type = DB_UNKNOWN;
 	else {
@@ -310,7 +315,7 @@ tcl_DbcPut(interp, objc, objv, dbcp)
 	data.data = Tcl_GetByteArrayFromObj(objv[objc-1], &itmp);
 	data.size = itmp;
 	_debug_check();
-	ret = dbcp->c_put(dbcp, &key, &data, flag);
+	ret = dbc->c_put(dbc, &key, &data, flag);
 	result = _ReturnSetup(interp, ret, "dbc put");
 	if (ret == 0 && (flag == DB_AFTER || flag == DB_BEFORE)
 	    && type == DB_RECNO) {
@@ -325,11 +330,11 @@ out:
  * tcl_dbc_get --
  */
 static int
-tcl_DbcGet(interp, objc, objv, dbcp)
+tcl_DbcGet(interp, objc, objv, dbc)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DBC *dbcp;			/* Cursor pointer */
+	DBC *dbc;			/* Cursor pointer */
 {
 	static char *dbcgetopts[] = {
 		"-consume",
@@ -341,8 +346,10 @@ tcl_DbcGet(interp, objc, objv, dbcp)
 		"-last",
 		"-next",
 		"-nextdup",
+		"-nextnodup",
 		"-partial",
 		"-prev",
+		"-prevnodup",
 		"-rmw",
 		"-set",
 		"-set_range",
@@ -359,8 +366,10 @@ tcl_DbcGet(interp, objc, objv, dbcp)
 		DBCGET_LAST,
 		DBCGET_NEXT,
 		DBCGET_NEXTDUP,
+		DBCGET_NEXTNODUP,
 		DBCGET_PART,
 		DBCGET_PREV,
+		DBCGET_PREVNODUP,
 		DBCGET_RMW,
 		DBCGET_SET,
 		DBCGET_SETRANGE,
@@ -432,6 +441,14 @@ tcl_DbcGet(interp, objc, objv, dbcp)
 		case DBCGET_PREV:
 			FLAG_CHECK2(flag, DB_RMW);
 			flag |= DB_PREV;
+			break;
+		case DBCGET_PREVNODUP:
+			FLAG_CHECK2(flag, DB_RMW);
+			flag |= DB_PREV_NODUP;
+			break;
+		case DBCGET_NEXTNODUP:
+			FLAG_CHECK2(flag, DB_RMW);
+			flag |= DB_NEXT_NODUP;
 			break;
 		case DBCGET_NEXTDUP:
 			FLAG_CHECK2(flag, DB_RMW);
@@ -506,7 +523,7 @@ tcl_DbcGet(interp, objc, objv, dbcp)
 	 * or not.  If we are, then key.data is a recno, not
 	 * a string.
 	 */
-	dbcip = _PtrToInfo(dbcp);
+	dbcip = _PtrToInfo(dbc);
 	if (dbcip == NULL)
 		type = DB_UNKNOWN;
 	else {
@@ -582,7 +599,7 @@ tcl_DbcGet(interp, objc, objv, dbcp)
 	}
 
 	_debug_check();
-	ret = dbcp->c_get(dbcp, &key, &data, flag);
+	ret = dbc->c_get(dbc, &key, &data, flag);
 	result = _ReturnSetup(interp, ret, "dbc get");
 	if (result == TCL_ERROR)
 		goto out;
@@ -618,11 +635,11 @@ out:
  * tcl_DbcDup --
  */
 static int
-tcl_DbcDup(interp, objc, objv, dbcp)
+tcl_DbcDup(interp, objc, objv, dbc)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DBC *dbcp;			/* Cursor pointer */
+	DBC *dbc;			/* Cursor pointer */
 {
 	static char *dbcdupopts[] = {
 		"-position",
@@ -684,7 +701,7 @@ tcl_DbcDup(interp, objc, objv, dbcp)
 	 * or not.  If we are, then key.data is a recno, not
 	 * a string.
 	 */
-	dbcip = _PtrToInfo(dbcp);
+	dbcip = _PtrToInfo(dbc);
 	if (dbcip == NULL) {
 		Tcl_SetResult(interp, "Cursor without info structure",
 		    TCL_STATIC);
@@ -709,7 +726,7 @@ tcl_DbcDup(interp, objc, objv, dbcp)
 	    "%s.c%d", dbip->i_name, dbip->i_dbdbcid);
 	newdbcip = _NewInfo(interp, NULL, newname, I_DBC);
 	if (newdbcip != NULL) {
-		ret = dbcp->c_dup(dbcp, &newdbc, flag);
+		ret = dbc->c_dup(dbc, &newdbc, flag);
 		if (ret == 0) {
 			dbip->i_dbdbcid++;
 			newdbcip->i_parent = dbip;

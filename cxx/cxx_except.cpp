@@ -1,19 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_except.cpp	11.2 (Sleepycat) 9/10/99";
+static const char revid[] = "$Id: cxx_except.cpp,v 11.6 2000/06/06 17:54:44 dda Exp $";
 #endif /* not lint */
+
+#include <string.h>
 
 #include "db_cxx.h"
 #include "cxx_int.h"
-#include <string.h>
 
 // tmpString is used to create strings on the stack
 //
@@ -81,7 +82,7 @@ DbException::~DbException()
 DbException::DbException(int err)
 :	err_(err)
 {
-	what_ = dupString(strerror(err));
+	what_ = dupString(db_strerror(err));
 }
 
 DbException::DbException(const char *description)
@@ -93,13 +94,13 @@ DbException::DbException(const char *description)
 DbException::DbException(const char *prefix, int err)
 :	err_(err)
 {
-	what_ = dupString(tmpString(prefix, ": ", strerror(err)));
+	what_ = dupString(tmpString(prefix, ": ", db_strerror(err)));
 }
 
 DbException::DbException(const char *prefix1, const char *prefix2, int err)
 :	err_(err)
 {
-	what_ = dupString(tmpString(prefix1, ": ", prefix2, ": ", strerror(err)));
+	what_ = dupString(tmpString(prefix1, ": ", prefix2, ": ", db_strerror(err)));
 }
 
 DbException::DbException(const DbException &that)

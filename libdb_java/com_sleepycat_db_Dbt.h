@@ -25,27 +25,19 @@ JNIEXPORT jbyteArray JNICALL Java_com_sleepycat_db_Dbt_get_1data
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    get_dlen
- * Signature: ()I
+ * Method:    internal_set_data
+ * Signature: ([B)V
  */
-JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1dlen
-  (JNIEnv *, jobject);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_internal_1set_1data
+  (JNIEnv *, jobject, jbyteArray);
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    get_doff
- * Signature: ()I
+ * Method:    set_offset
+ * Signature: (I)V
  */
-JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1doff
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_sleepycat_db_Dbt
- * Method:    get_flags
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1flags
-  (JNIEnv *, jobject);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1offset
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_Dbt
@@ -53,14 +45,6 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1flags
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1offset
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_sleepycat_db_Dbt
- * Method:    get_recno_key_data
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1recno_1key_1data
   (JNIEnv *, jobject);
 
 /*
@@ -73,6 +57,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1size
 
 /*
  * Class:     com_sleepycat_db_Dbt
+ * Method:    set_size
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1size
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Dbt
  * Method:    get_ulen
  * Signature: ()I
  */
@@ -81,19 +73,19 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1ulen
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    init
- * Signature: ()V
+ * Method:    set_ulen
+ * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_init
-  (JNIEnv *, jobject);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1ulen
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    internal_set_data
- * Signature: ([B)V
+ * Method:    get_dlen
+ * Signature: ()I
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_internal_1set_1data
-  (JNIEnv *, jobject, jbyteArray);
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1dlen
+  (JNIEnv *, jobject);
 
 /*
  * Class:     com_sleepycat_db_Dbt
@@ -105,6 +97,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1dlen
 
 /*
  * Class:     com_sleepycat_db_Dbt
+ * Method:    get_doff
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1doff
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Dbt
  * Method:    set_doff
  * Signature: (I)V
  */
@@ -113,18 +113,18 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1doff
 
 /*
  * Class:     com_sleepycat_db_Dbt
+ * Method:    get_flags
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1flags
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_sleepycat_db_Dbt
  * Method:    set_flags
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1flags
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:     com_sleepycat_db_Dbt
- * Method:    set_offset
- * Signature: (I)V
- */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1offset
   (JNIEnv *, jobject, jint);
 
 /*
@@ -137,19 +137,19 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1recno_1key_1data
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    set_size
- * Signature: (I)V
+ * Method:    get_recno_key_data
+ * Signature: ()I
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1size
-  (JNIEnv *, jobject, jint);
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbt_get_1recno_1key_1data
+  (JNIEnv *, jobject);
 
 /*
  * Class:     com_sleepycat_db_Dbt
- * Method:    set_ulen
- * Signature: (I)V
+ * Method:    init
+ * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_set_1ulen
-  (JNIEnv *, jobject, jint);
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbt_init
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

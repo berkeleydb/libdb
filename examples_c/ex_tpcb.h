@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_tpcb.h	11.1 (Sleepycat) 7/25/99
+ * $Id: ex_tpcb.h,v 11.4 2000/05/17 19:21:02 bostic Exp $
  */
 
 #ifndef _TPCB_H_
-#define _TPCB_H_
+#define	_TPCB_H_
 
 typedef enum { ACCOUNT, BRANCH, TELLER } FTYPE;
 
@@ -18,8 +18,8 @@ typedef enum { ACCOUNT, BRANCH, TELLER } FTYPE;
 #define	ACCOUNTS 1000000
 #define	BRANCHES 10
 #define	TELLERS 1000
-#define HISTORY	1000000
-#define HISTORY_LEN 100
+#define	HISTORY	1000000
+#define	HISTORY_LEN 100
 #define	RECLEN 100
 #define	BEGID	1000000
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test048.tcl	11.3 (Sleepycat) 8/17/99
+#	$Id: test048.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
 #
 # Test048: Cursor stability across btree splits.
 proc test048 { method args } {
@@ -21,18 +21,26 @@ proc test048 { method args } {
 
 	puts "\tTest$tstn: Test of cursor stability across btree splits."
 
-	set key 	"key"
+	set key	"key"
 	set data	"data"
 	set txn ""
 	set flags ""
 
 	puts "\tTest$tstn.a: Create $method database."
-	set testfile $testdir/test$tstn.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tstn.db
+	} else {
+		set testfile test0$tstn.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
 	set oflags "-create -truncate -mode 0644 $args $method"
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set nkeys 5
@@ -74,7 +82,7 @@ proc test048 { method args } {
 
 	puts "\tTest$tstn.e: Make sure split happened."
 	error_check_bad stat:check-split [is_substr [$db stat] \
-					"{{Btree internal pages} 0}"] 1
+					"{{Internal pages} 0}"] 1
 
 	puts "\tTest$tstn.f: Check to see that cursors maintained reference."
 	for {set i 0} { $i < $nkeys } {incr i} {
@@ -83,7 +91,7 @@ proc test048 { method args } {
 		set ret2 [$dbc_set($i) get -set $key_set($i)]
 		error_check_bad dbc$i:get:set [llength $ret2] 0
 		error_check_good dbc$i:get(match) $ret $ret2
-  	}
+	}
 
 	puts "\tTest$tstn.g: Delete added keys to force reverse split."
 	for {set i $nkeys} { $i < $mkeys } { incr i } {
@@ -98,7 +106,7 @@ proc test048 { method args } {
 
 	puts "\tTest$tstn.h: Verify reverse split."
 	error_check_good stat:check-reverse_split [is_substr [$db stat] \
-					"{{Btree internal pages} 0}"] 1
+					"{{Internal pages} 0}"] 1
 
 	puts "\tTest$tstn.i: Verify cursor reference."
 	for {set i 0} { $i < $nkeys } {incr i} {
@@ -107,7 +115,7 @@ proc test048 { method args } {
 		set ret2 [$dbc_set($i) get -set $key_set($i)]
 		error_check_bad dbc$i:get:set [llength $ret2] 0
 		error_check_good dbc$i:get(match) $ret $ret2
-  	}
+	}
 
 	puts "\tTest$tstn.j: Cleanup."
 	# close cursors

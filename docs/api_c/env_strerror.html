@@ -1,5 +1,6 @@
-<!--"@(#)env_strerror.so	8.1 (Sleepycat) 3/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_strerror.so,v 8.3.2.1 2000/07/30 18:03:14 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>db_strerror</h1>
@@ -24,8 +26,7 @@ char *
 db_strerror(int error);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The db_strerror function returns an error message string corresponding
+<p>The db_strerror function returns an error message string corresponding
 to the error number <b>error</b>.  This interface is a superset of the
 ANSI C X3.159-1989 (ANSI C) <b>strerror</b>(3) interface.  If the error number
 <b>error</b> is greater than or equal to 0, then the string returned by
@@ -34,7 +35,6 @@ number is less than 0, an error string appropriate to the corresponding
 Berkeley DB library error is returned. See
 <a href="../ref/program/errorret.html">Error returns to applications</a>
 for more information.
-<p>
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -47,10 +47,7 @@ for more information.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

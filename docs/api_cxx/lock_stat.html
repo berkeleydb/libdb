@@ -1,5 +1,6 @@
-<!--"@(#)lock_stat.so	10.21 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: lock_stat.so,v 10.29 2000/05/25 13:47:07 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv::lock_stat</h1>
@@ -20,36 +22,36 @@
 <h3><pre>
 #include &lt;db_cxx.h&gt;
 <p>
+extern "C" {
+	typedef void *(*db_malloc_fcn_type)(size_t);
+};
 int
-DbEnv::lock_stat(DB_LOCK_STAT **statp, void *(*db_malloc)(size_t));
+DbEnv::lock_stat(DB_LOCK_STAT **statp, db_malloc_fcn_type db_malloc);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbEnv::lock_stat method
+<p>The DbEnv::lock_stat method
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
-<p>
-Statistical structures are created in allocated memory.
-If
-<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
-otherwise, the library function <b>malloc</b>(3) is used.
-The function <b>db_malloc</b> must match the calling conventions of
-the <b>malloc</b>(3) library routine.
+<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
+is called to allocate the memory, otherwise, the library function
+<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
+the calling conventions of the <b>malloc</b>(3) library routine.
 Regardless, the caller is responsible for deallocating the returned
-memory.
-To deallocate the returned memory, free each returned memory pointer;
-pointers inside the memory do not need to be individually freed.
-<p>
-The lock region statistics are stored in a structure of type
+memory.  To deallocate returned memory, free the returned memory
+reference, references inside the returned memory do not need to be
+individually freed.
+<p>The lock region statistics are stored in a structure of type
 DB_LOCK_STAT.  The following DB_LOCK_STAT fields will be filled in:
-<dl compact>
-<dt>u_int32_t st_lockid;<dd>The last allocated lock ID.
+<p><dl compact>
+<dt>u_int32_t st_lastid;<dd>The last allocated lock ID.
 <dt>u_int32_t st_nmodes;<dd>The number of lock modes.
 <dt>u_int32_t st_maxlocks;<dd>The maximum number of locks possible.
 <dt>u_int32_t st_nlockers;<dd>The number of current lockers.
 <dt>u_int32_t st_maxnlockers;<dd>The maximum number of lockers at any one time.
 <dt>u_int32_t st_nrequests;<dd>The total number of locks requested.
 <dt>u_int32_t st_nreleases;<dd>The total number of locks released.
+<dt>u_int32_t st_nnowaits;<dd>The total number of lock requests that failed because
+<a href="../api_cxx/lock_vec.html#DB_LOCK_NOWAIT">DB_LOCK_NOWAIT</a> was set.
 <dt>u_int32_t st_nconflicts;<dd>The total number of locks not immediately available due to conflicts.
 <dt>u_int32_t st_ndeadlocks;<dd>The number of deadlocks detected.
 <dt>u_int32_t st_regsize;<dd>The size of the region.
@@ -58,24 +60,16 @@ obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-<p>
-The DbEnv::lock_stat
-method either returns a non-zero error value or throws an exception that
+<p>The DbEnv::lock_stat method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbEnv::lock_stat method will fail and either
+<p>The DbEnv::lock_stat method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv::lock_stat method may fail and either
 return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the DbEnv::lock_stat method may fail and
-throw an exception or return a non-zero error
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h3>Classes</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lk_conflicts.html">DbEnv::set_lk_conflicts</a>,
 <a href="../api_cxx/env_set_lk_detect.html">DbEnv::set_lk_detect</a>,

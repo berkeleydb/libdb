@@ -6,6 +6,7 @@ Changes
 config.in
 dbinfo
 hints/dynixptx.pl
+hints/sco.pl
 MANIFEST
 README
 typemap

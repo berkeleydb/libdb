@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdbscript.tcl	11.3 (Sleepycat) 9/21/99
+#	$Id: sdbscript.tcl,v 11.7 2000/04/21 18:36:23 krinsky Exp $
 #
 # Usage: subdbscript testfile subdbnumber factor
 # testfile: name of DB itself
@@ -19,7 +19,7 @@ set usage "subdbscript testfile subdbnumber factor"
 
 # Verify usage
 if { $argc != 3 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -28,7 +28,7 @@ set testfile [lindex $argv 0]
 set n [ lindex $argv 1 ]
 set factor [ lindex $argv 2 ]
 
-set db [berkdb open -unknown $testfile sub$n.db]
+set db [berkdb_open -unknown $testfile sub$n.db]
 error_check_good db_open [is_valid_db $db] TRUE
 
 set dbc [$db cursor]

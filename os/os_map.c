@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_map.c	11.10 (Sleepycat) 10/31/99";
+static const char revid[] = "$Id: os_map.c,v 11.24.2.1 2000/07/05 13:57:56 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,10 +27,15 @@ static const char sccsid[] = "@(#)os_map.c	11.10 (Sleepycat) 10/31/99";
 #endif
 
 #include "db_int.h"
+#include "db_page.h"
+#include "db_ext.h"
 #include "os_jump.h"
 
 #ifdef HAVE_MMAP
 static int __os_map __P((DB_ENV *, char *, DB_FH *, size_t, int, int, void **));
+#endif
+#ifndef HAVE_SHMGET
+static int __db_nosystemmem __P((DB_ENV *));
 #endif
 
 /*
@@ -45,9 +50,6 @@ __os_r_sysattach(dbenv, infop, rp)
 	REGINFO *infop;
 	REGION *rp;
 {
-	DB_FH fh;
-	int ret;
-
 	if (F_ISSET(dbenv, DB_ENV_SYSTEM_MEM)) {
 		/*
 		 * If the region is in system memory on UNIX, we use shmget(2).
@@ -60,37 +62,93 @@ __os_r_sysattach(dbenv, infop, rp)
 		 * it's an error.
 		 */
 #if defined(MUTEX_NO_SHMGET_LOCKS)
-		__db_err(dbenv, "%s",
-    "architecture does not support locks inside system (shmget(2)) memory");
-		__db_err(dbenv, "%s",
-    "application must specify DB_PRIVATE or not specify DB_SYSTEM_MEM");
-			return (EINVAL);
+		__db_err(dbenv,
+	    "architecture does not support locks inside system shared memory");
+		return (EINVAL);
 #endif
 #if defined(HAVE_SHMGET)
-		if (F_ISSET(infop, REGION_CREATE) &&
-		   (rp->segid = shmget(0, rp->size, IPC_PRIVATE | 0600)) == -1)
-			return (__os_get_errno());
+		{
+		key_t segid;
+		int id, ret;
 
-		if ((infop->addr = shmat(rp->segid, NULL, 0)) == (void *)-1) {
+		/*
+		 * We could potentially create based on REGION_CREATE_OK, but
+		 * that's dangerous -- we might get crammed in sideways if
+		 * some of the expected regions exist but others do not.  Also,
+		 * if the requested size differs from an existing region's
+		 * actual size, then all sorts of nasty things can happen.
+		 * Basing create solely on REGION_CREATE is much safer -- a
+		 * recovery will get us straightened out.
+		 */
+		if (F_ISSET(infop, REGION_CREATE)) {
+			/*
+			 * The application must give us a base System V IPC key
+			 * value.  Adjust that value based on the regions ID,
+			 * and correct so the user's original value appears in
+			 * the ipcs output.
+			 */
+			if (dbenv->shm_key == INVALID_REGION_SEGID) {
+				__db_err(dbenv,
+			    "no base system shared memory ID specified");
+				return (EINVAL);
+			}
+			segid = (key_t)(dbenv->shm_key + (infop->id - 1));
+
+			/*
+			 * If map to an existing region, assume the application
+			 * crashed and we're restarting.  Delete the old region
+			 * and re-try.  If that fails, return an error, the
+			 * application will have to select a different segment
+			 * ID or clean up some other way.
+			 */
+			if ((id = shmget(segid, 0, 0)) != -1) {
+				(void)shmctl(id, IPC_RMID, NULL);
+				if ((id = shmget(segid, 0, 0)) != -1) {
+					__db_err(dbenv,
+		"shmget: key: %ld: shared system memory region already exists",
+					    (long)segid);
+					return (EAGAIN);
+				}
+			}
+			if ((id =
+			    shmget(segid, rp->size, IPC_CREAT | 0600)) == -1) {
+				ret = __os_get_errno();
+				__db_err(dbenv,
+	"shmget: key: %ld: unable to create shared system memory region: %s",
+				    (long)segid, strerror(ret));
+				return (ret);
+			}
+			rp->segid = id;
+		} else
+			id = rp->segid;
+
+		if ((infop->addr = shmat(id, NULL, 0)) == (void *)-1) {
 			infop->addr = NULL;
-			return (__os_get_errno());
+			ret = __os_get_errno();
+			__db_err(dbenv,
+	"shmat: id %d: unable to attach to shared system memory region: %s",
+			    id, strerror(ret));
+			return (ret);
 		}
 
 		return (0);
+		}
 #else
-		__db_err(dbenv,
-    "architecture lacks shmget(2), environments in system memory not possible");
-			return (__db_eopnotsup(dbenv));
+		return (__db_nosystemmem(dbenv));
 #endif
 	}
 
 #ifdef HAVE_MMAP
+	{
+	DB_FH fh;
+	int ret;
+
 	/*
 	 * Try to open/create the file.  We DO NOT need to ensure that multiple
 	 * threads/processes attempting to simultaneously create the region are
 	 * properly ordered, our caller has already taken care of that.
 	 */
-	if ((ret = __os_open(infop->name,
+	if ((ret = __os_open(dbenv, infop->name,
 	    F_ISSET(infop, REGION_CREATE_OK) ? DB_OSO_CREATE: 0,
 	    infop->mode, &fh)) != 0)
 		__db_err(dbenv, "%s: %s", infop->name, db_strerror(ret));
@@ -103,7 +161,8 @@ __os_r_sysattach(dbenv, infop, rp)
 	 * point, *badly* merged VM/buffer cache systems.
 	 */
 	if (ret == 0 && F_ISSET(infop, REGION_CREATE))
-		ret = __os_finit(&fh, rp->size, DB_GLOBAL(db_region_init));
+		ret = __os_finit(dbenv,
+		    &fh, rp->size, DB_GLOBAL(db_region_init));
 
 	/* Map the file in. */
 	if (ret == 0)
@@ -113,7 +172,10 @@ __os_r_sysattach(dbenv, infop, rp)
 	 (void)__os_closehandle(&fh);
 
 	return (ret);
+	}
 #else
+	COMPQUIET(infop, NULL);
+	COMPQUIET(rp, NULL);
 	__db_err(dbenv,
 	    "architecture lacks mmap(2), shared environments not possible");
 	return (__db_eopnotsup(dbenv));
@@ -133,12 +195,13 @@ __os_r_sysdetach(dbenv, infop, destroy)
 	int destroy;
 {
 	REGION *rp;
-	int segid;
 
 	rp = infop->rp;
 
 	if (F_ISSET(dbenv, DB_ENV_SYSTEM_MEM)) {
 #ifdef HAVE_SHMGET
+		int ret, segid;
+
 		/*
 		 * We may be about to remove the memory referenced by rp,
 		 * save the segment ID, and (optionally) wipe the original.
@@ -147,16 +210,23 @@ __os_r_sysdetach(dbenv, infop, destroy)
 		if (destroy)
 			rp->segid = INVALID_REGION_SEGID;
 
-		if (shmdt(infop->addr) != 0)
-			return (__os_get_errno());
+		if (shmdt(infop->addr) != 0) {
+			ret = __os_get_errno();
+			__db_err(dbenv, "shmdt: %s", strerror(ret));
+			return (ret);
+		}
 
-		if (destroy)
-			if (shmctl(segid, IPC_RMID, NULL) != 0)
-				return (__os_get_errno());
+		if (destroy && shmctl(segid, IPC_RMID,
+		    NULL) != 0 && (ret = __os_get_errno()) != EINVAL) {
+			__db_err(dbenv,
+	    "shmctl: id %ld: unable to delete system shared memory region: %s",
+			    segid, strerror(ret));
+			return (ret);
+		}
 
 		return (0);
 #else
-		return (EINVAL);
+		return (__db_nosystemmem(dbenv));
 #endif
 	}
 
@@ -165,13 +235,20 @@ __os_r_sysdetach(dbenv, infop, destroy)
 	if (F_ISSET(dbenv, DB_ENV_LOCKDOWN))
 		(void)munlock(infop->addr, rp->size);
 #endif
-	if (munmap(infop->addr, rp->size) != 0)
+	if (munmap(infop->addr, rp->size) != 0) {
+		int ret;
+
+		ret = __os_get_errno();
+		__db_err(dbenv, "munmap: %s", strerror(ret));
+		return (ret);
+	}
+
+	if (destroy && __os_unlink(dbenv, infop->name) != 0)
 		return (__os_get_errno());
 
-	if (destroy && __os_unlink(infop->name) != 0)
-		return (__os_get_errno());
 	return (0);
 #else
+	COMPQUIET(destroy, 0);
 	return (EINVAL);
 #endif
 }
@@ -196,6 +273,11 @@ __os_mapfile(dbenv, path, fhp, len, is_rdonly, addrp)
 	return (__os_map(dbenv, path, fhp, len, 0, is_rdonly, addrp));
 #else
 	COMPQUIET(dbenv, NULL);
+	COMPQUIET(path, NULL);
+	COMPQUIET(fhp, NULL);
+	COMPQUIET(is_rdonly, 0);
+	COMPQUIET(len, 0);
+	COMPQUIET(addrp, NULL);
 	return (EINVAL);
 #endif
 }
@@ -246,7 +328,7 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 	void **addrp;
 {
 	void *p;
-	int flags, prot;
+	int flags, prot, ret;
 
 	/* If the user replaced the map call, call through their interface. */
 	if (__db_jump.j_map != NULL)
@@ -298,7 +380,7 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 	 * responsibility for on-disk and in-memory synchronization.
 	 */
 #ifdef VMS
-	if (__os_fsync(fhp) == -1)
+	if (__os_fsync(dbenv, fhp) == -1)
 		return(__os_get_errno());
 #endif
 
@@ -307,8 +389,11 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 #define	MAP_FAILED	-1
 #endif
 	if ((p = mmap(NULL,
-	    len, prot, flags, fhp->fd, (off_t)0)) == (void *)MAP_FAILED)
-		return (__os_get_errno());
+	    len, prot, flags, fhp->fd, (off_t)0)) == (void *)MAP_FAILED) {
+		ret = __os_get_errno();
+		__db_err(dbenv, "mmap: %s", strerror(ret));
+		return (ret);
+	}
 
 #ifdef HAVE_MLOCK
 	/*
@@ -321,8 +406,10 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 	 * the call isn't conditional.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_LOCKDOWN) && mlock(p, len) != 0) {
+		ret = __os_get_errno();
 		(void)munmap(p, len);
-		return (__os_get_errno());
+		__db_err(dbenv, "mlock: %s", strerror(ret));
+		return (ret);
 	}
 #else
 	COMPQUIET(dbenv, NULL);
@@ -330,5 +417,20 @@ __os_map(dbenv, path, fhp, len, is_region, is_rdonly, addrp)
 
 	*addrp = p;
 	return (0);
+}
+#endif
+
+#ifndef HAVE_SHMGET
+/*
+ * __db_nosystemmem --
+ *	No system memory environments error message.
+ */
+static int
+__db_nosystemmem(dbenv)
+	DB_ENV *dbenv;
+{
+	__db_err(dbenv,
+	    "architecture doesn't support environments in system memory");
+	return (__db_eopnotsup(dbenv));
 }
 #endif

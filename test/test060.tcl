@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test060.tcl	11.1 (Sleepycat) 8/19/99
+#	$Id: test060.tcl,v 11.5 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test060: Test of the DB_EXCL flag to DB->open.
 #     1) Attempt to open and create a nonexistent database; verify success.
@@ -18,13 +18,21 @@ proc test060 { method args } {
 	puts "Test060: $method ($args) Test of the DB_EXCL flag to DB->open"
 
 	# Set the database location and make sure the db doesn't exist yet
-	set testfile $testdir/test060.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test060.db
+	} else {
+		set testfile test060.db
+	}
 	cleanup $testdir
 
 	# Create the database and check success
 	puts "\tTest060.a: open and close non-existent file with DB_EXCL"
-	set db [eval {berkdb \
-	    open -create  -excl -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create  -excl -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen:excl [is_valid_db $db] TRUE
 
 	# Close it and check success
@@ -34,8 +42,8 @@ proc test060 { method args } {
 	puts "\tTest060.b: open it again with DB_EXCL and make sure it fails"
 	set errorCode NONE
 	error_check_good open:excl:catch [catch { \
-	    set db [eval {berkdb \
-	    open -create  -excl -mode 0644} $args {$omethod $testfile}]
+	    set db [eval {berkdb_open_noerr \
+	     -create  -excl -mode 0644} $args {$omethod $testfile}]
 	    } ret ] 1
 
 	error_check_good dbopen:excl [is_substr $errorCode EEXIST] 1

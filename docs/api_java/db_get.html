@@ -1,5 +1,6 @@
-<!--"@(#)db_get.so	10.23 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_get.so,v 10.29 2000/04/13 05:15:54 krinsky Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>Db.get</h1>
@@ -24,104 +26,77 @@ public int get(DbTxn txnid, Dbt key, Dbt data, int flags)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-The Db.get method retrieves key/data pairs from the database.  The
+<p>The Db.get method retrieves key/data pairs from the database.  The
 byte array
 and length of the data associated with the specified <b>key</b> are
 returned in the structure referenced by <b>data</b>.
-<p>
-In the presence of duplicate key values, Db.get will return the
+<p>In the presence of duplicate key values, Db.get will return the
 first data item for the designated key.  Duplicates are sorted by insert
 order except where this order has been overridden by cursor operations.
 <b>Retrieval of duplicates requires the use of cursor operations.</b>
 See <a href="../api_java/dbc_get.html">Dbc.get</a> for details.
-<p>
-If the file is being accessed under transaction protection,
-the <b>txnid</b> parameter is a transaction ID returned from
+<p>If the file is being accessed under transaction protection, the
+<b>txnid</b> parameter is a transaction ID returned from
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>, otherwise, NULL.
-<p>
-The <b>flags</b> parameter must be set to 0 or one of the following
+<p>The <b>flags</b> parameter must be set to 0 or one of the following
 values:
-<dl compact>
-<p><dt>Db.<a name="DB_GET_BOTH">DB_GET_BOTH</a><dd>Retrieve the key/data pair only if both the key and data match the
+<p><dl compact>
+<p><dt><a name="Db.DB_GET_BOTH">Db.DB_GET_BOTH</a><dd>Retrieve the key/data pair only if both the key and data match the
 arguments.
-<p><dt>Db.<a name="DB_SET_RECNO">DB_SET_RECNO</a><dd>Retrieve the specified numbered key/data pair from a database.
+<p><dt><a name="Db.DB_SET_RECNO">Db.DB_SET_RECNO</a><dd>Retrieve the specified numbered key/data pair from a database.
 Upon return, both the <b>key</b> and <b>data</b> items will have been
 filled in, not just the data item as is done for all other uses of the
 Db.get method.
-<p>
-The <b>data</b> field of the specified <b>key</b>
+<p>The <b>data</b> field of the specified <b>key</b>
 must be a byte array large enough to hold a logical record
 number (i.e., an int).
 This record number determines the record to be retrieved.
-<p>
-For Db.DB_SET_RECNO to be specified, the underlying database must be
+<p>For Db.DB_SET_RECNO to be specified, the underlying database must be
 of type Btree and it must have been created with the DB_RECNUM flag.
 </dl>
-<p>
-In addition, the following value may be set by bitwise inclusively <b>OR</b>'ing it into the
+<p>In addition, the following flag may be set by bitwise inclusively <b>OR</b>'ing it into the
 <b>flags</b> parameter:
-<dl compact>
-<p><dt>Db.<a name="DB_RMW">DB_RMW</a><dd>Acquire write locks instead of read locks when doing the retrieval.
+<p><dl compact>
+<p><dt><a name="Db.DB_RMW">Db.DB_RMW</a><dd>Acquire write locks instead of read locks when doing the retrieval.
 Setting this flag may decrease the likelihood of deadlock during a
 read-modify-write cycle by immediately acquiring the write lock during
 the read part of the cycle so that another thread of control acquiring
 a read lock for the same item, in its own read-modify-write cycle, will
 not result in deadlock.
-<p>
-As the Db.get interface will not hold locks across
+<p>As the Db.get interface will not hold locks across
 Berkeley DB interface calls in non-transactional environments, the
 <a href="../api_java/dbc_get.html#DB_RMW">Db.DB_RMW</a> flag to the Db.get call is only meaningful in
 the presence of transactions.
 </dl>
-<p>
-If the database is a Queue or Recno database and the requested key exists,
+<p>If the database is a Queue or Recno database and the requested key exists,
 but was never explicitly created by the application or was later deleted,
 the Db.get method returns <a href="../ref/program/errorret.html#DB_KEYEMPTY">Db.DB_KEYEMPTY</a>.
-<p>
-Otherwise, if the requested key is not in the database, the
+<p>Otherwise, if the requested key is not in the database, the
 Db.get function returns <a href="../ref/program/errorret.html#DB_NOTFOUND">Db.DB_NOTFOUND</a>.
-<p>
-Otherwise, the Db.get
-method throws an exception that encapsulates a non-zero error value on
+<p>Otherwise, the Db.get method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the Db.get method will fail and throw a
-<a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, at which point all subsequent database
-calls will fail in the same way.
-<p>
-In addition, if the operation was selected to resolve a deadlock, the
-Db.get method will fail and
-throw a <a href="../api_java/deadlock_class.html">DbDeadlockException</a> exception.
-<p>
-In addition, if the requested item could not be returned due to
-insufficient memory, the Db.get method will fail and
-throw a <a href="../api_java/mem_class.html">DbMemoryException</a> exception.
-<p>
-In addition, the Db.get
-method may fail and throw an exception
-encapsulating a non-zero error
-for the following conditions:
-<p>
-<dl compact>
+<p>The Db.get method may fail and throw an exception encapsulating a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-The <a href="../api_java/env_open.html#DB_THREAD">Db.DB_THREAD</a> flag was specified to the <a href="../api_java/env_open.html">DbEnv.open</a> or
-<a href="../api_java/db_open.html">Db.open</a> methods and none of the <a href="../api_java/dbt_class.html#DB_DBT_MALLOC">Db.DB_DBT_MALLOC</a>,
+<p>A record number of 0 was specified.
+<p>The <a href="../api_java/env_open.html#DB_THREAD">Db.DB_THREAD</a> flag was specified to the 
+<a href="../api_java/db_open.html">Db.open</a> method and none of the <a href="../api_java/dbt_class.html#DB_DBT_MALLOC">Db.DB_DBT_MALLOC</a>,
 <a href="../api_java/dbt_class.html#DB_DBT_REALLOC">Db.DB_DBT_REALLOC</a> or <a href="../api_java/dbt_class.html#DB_DBT_USERMEM">Db.DB_DBT_USERMEM</a> flags were set in the
 <a href="../api_java/dbt_class.html">Dbt</a>.
-<p>
-In addition, the Db.get method may fail and
-throw an exception
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
-A record number of 0 was specified.
 </dl>
-<p>
+<p>If the operation was selected to resolve a deadlock, the
+Db.get method will fail and
+throw a <a href="../api_java/deadlock_class.html">DbDeadlockException</a> exception.
+<p>If the requested item could not be returned due to insufficient memory,
+the Db.get method will fail and
+throw a <a href="../api_java/mem_class.html">DbMemoryException</a> exception.
+<p>The Db.get method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the Db.get method may fail and throw
+a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
+will fail in the same way.
 <h3>Class</h3>
 <a href="../api_java/db_class.html">Db</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/db_close.html">Db.close</a>,
 <a href="../api_java/db_cursor.html">Db.cursor</a>,
@@ -131,6 +106,7 @@ A record number of 0 was specified.
 <a href="../api_java/db_get_byteswapped.html">Db.get_byteswapped</a>,
 <a href="../api_java/db_get_type.html">Db.get_type</a>,
 <a href="../api_java/db_join.html">Db.join</a>,
+<a href="../api_java/db_key_range.html">Db.key_range</a>,
 <a href="../api_java/db_open.html">Db.open</a>,
 <a href="../api_java/db_put.html">Db.put</a>,
 <a href="../api_java/db_remove.html">Db.remove</a>,
@@ -148,9 +124,10 @@ A record number of 0 was specified.
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,
 <a href="../api_java/db_set_re_source.html">Db.set_re_source</a>,
 <a href="../api_java/db_stat.html">Db.stat</a>,
-<a href="../api_java/db_sync.html">Db.sync</a>
+<a href="../api_java/db_sync.html">Db.sync</a>,
+<a href="../api_java/db_upgrade.html">Db.upgrade</a>
 and
-<a href="../api_java/db_upgrade.html">Db.upgrade</a>.
+<a href="../api_java/db_verify.html">Db.verify</a>.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

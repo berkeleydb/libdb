@@ -1,5 +1,6 @@
-<!--"@(#)xa.so	11.4 (Sleepycat) 10/1/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: xa.so,v 11.7 2000/03/18 21:43:21 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,17 +15,14 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: db_xa_open</h1>
-<p>
-The following change applies only to applications using Berkeley DB as an XA
+<p>The following change applies only to applications using Berkeley DB as an XA
 Resource Manager.  If your application is not using Berkeley DB in this way,
 you can ignore this change.
-<p>
-The db_xa_open function has been replaced with the <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a>
+<p>The db_xa_open function has been replaced with the <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a>
 flag to the <a href="../../api_c/db_create.html">db_create</a> function.  All calls to db_xa_open should
 be replaced with calls to <a href="../../api_c/db_create.html">db_create</a> with the <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a>
 flag set, followed by a call to the <a href="../../api_c/db_open.html">DB-&gt;open</a> function.
-<p>
-A similar change has been made for the C++ API, where the
+<p>A similar change has been made for the C++ API, where the
 <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a> flag should be specified to the Db constructor. All
 calls to the Db::xa_open method should be replaced with the
 <a href="../../api_c/db_create.html#DB_XA_CREATE">DB_XA_CREATE</a> flag to the Db constructor, followed by a call to

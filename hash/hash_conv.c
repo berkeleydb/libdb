@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)hash_conv.c	11.1 (Sleepycat) 7/24/99";
+static const char revid[] = "$Id: hash_conv.c,v 11.5 2000/03/31 00:30:32 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,10 +24,11 @@ static const char sccsid[] = "@(#)hash_conv.c	11.1 (Sleepycat) 7/24/99";
  *	Convert host-specific page layout from the host-independent format
  *	stored on disk.
  *
- * PUBLIC: int __ham_pgin __P((db_pgno_t, void *, DBT *));
+ * PUBLIC: int __ham_pgin __P((DB_ENV *, db_pgno_t, void *, DBT *));
  */
 int
-__ham_pgin(pg, pp, cookie)
+__ham_pgin(dbenv, pg, pp, cookie)
+	DB_ENV *dbenv;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -43,7 +44,7 @@ __ham_pgin(pg, pp, cookie)
 	 * to be created.  If the type field isn't set it's one of them,
 	 * initialize the rest of the page and return.
 	 */
-	if (h->type == 0) {
+	if (h->type != P_HASHMETA && h->pgno == PGNO_INVALID) {
 		P_INIT(pp, pginfo->db_pagesize,
 		    pg, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
 		return (0);
@@ -52,8 +53,8 @@ __ham_pgin(pg, pp, cookie)
 	if (!pginfo->needswap)
 		return (0);
 
-	return (h->type == P_HASHMETA ?
-	    __ham_mswap(pp) : __db_byteswap(pg, pp, pginfo->db_pagesize, 1));
+	return (h->type == P_HASHMETA ?  __ham_mswap(pp) :
+	    __db_byteswap(dbenv, pg, pp, pginfo->db_pagesize, 1));
 }
 
 /*
@@ -61,10 +62,11 @@ __ham_pgin(pg, pp, cookie)
  *	Convert host-specific page layout to the host-independent format
  *	stored on disk.
  *
- * PUBLIC: int __ham_pgout __P((db_pgno_t, void *, DBT *));
+ * PUBLIC: int __ham_pgout __P((DB_ENV *, db_pgno_t, void *, DBT *));
  */
 int
-__ham_pgout(pg, pp, cookie)
+__ham_pgout(dbenv, pg, pp, cookie)
+	DB_ENV *dbenv;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -77,8 +79,8 @@ __ham_pgout(pg, pp, cookie)
 		return (0);
 
 	h = pp;
-	return (h->type == P_HASHMETA ?
-	    __ham_mswap(pp) : __db_byteswap(pg, pp, pginfo->db_pagesize, 0));
+	return (h->type == P_HASHMETA ?  __ham_mswap(pp) :
+	     __db_byteswap(dbenv, pg, pp, pginfo->db_pagesize, 0));
 }
 
 /*

@@ -655,14 +655,13 @@ umask(0) ;
     $hh{'Wall'} = 'Larry' ;
     $hh{'Wall'} = 'Stone' ; # Note the duplicate key
     $hh{'Wall'} = 'Brick' ; # Note the duplicate key
-    $hh{'Wall'} = 'Brick' ; # Note the duplicate key and value
     $hh{'Smith'} = 'John' ;
     $hh{'mouse'} = 'mickey' ;
     
     # first work in scalar context
     ok 192, scalar $YY->get_dup('Unknown') == 0 ;
     ok 193, scalar $YY->get_dup('Smith') == 1 ;
-    ok 194, scalar $YY->get_dup('Wall') == 4 ;
+    ok 194, scalar $YY->get_dup('Wall') == 3 ;
     
     # now in list context
     my @unknown = $YY->get_dup('Unknown') ;
@@ -675,7 +674,7 @@ umask(0) ;
         my @wall = $YY->get_dup('Wall') ;
         my %wall ;
         @wall{@wall} = @wall ;
-        ok 197, (@wall == 4 && $wall{'Larry'} 
+        ok 197, (@wall == 3 && $wall{'Larry'} 
 			&& $wall{'Stone'} && $wall{'Brick'});
     }
     
@@ -688,7 +687,7 @@ umask(0) ;
     
     my %wall = $YY->get_dup('Wall', 1) ;
     ok 200, keys %wall == 3 && $wall{'Larry'} == 1 && $wall{'Stone'} == 1 
-    		&& $wall{'Brick'} == 2 ;
+    		&& $wall{'Brick'} == 1 ;
     
     undef $YY ;
     untie %hh ;

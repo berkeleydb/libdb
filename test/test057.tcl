@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test057.tcl	11.10 (Sleepycat) 10/16/99
+#	$Id: test057.tcl,v 11.16 2000/05/22 12:51:40 bostic Exp $
 #
 # Test057:
 # Check if we handle the case where we delete a key with the cursor on it
@@ -18,7 +18,7 @@ proc test057 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args "-create -truncate -mode 0644 -dup"
+	append args " -create -truncate -mode 0644 -dup "
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Test057: skipping for method $method"
 		return
@@ -26,13 +26,21 @@ proc test057 { method args } {
 	puts "Test057: $method delete and replace in presence of cursor."
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test057.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test057.db
+	} else {
+		set testfile test057.db
+	}
 	cleanup $testdir
 
 	set flags ""
 	set txn ""
 
-	set db [eval {berkdb open} $args {$omethod $testfile}]
+	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good dbopen:dup [is_valid_db $db] TRUE
 
 	set curs [eval {$db cursor} $txn]
@@ -137,8 +145,8 @@ proc test057 { method args } {
 		    [$curs get -current] \
 		    [list [list [] []]]
 	} else {
- 	   	# btree only, recno is skipped this test
- 	   	set ret [$curs2 put $pflags new_datum$key_set(3)]
+		# btree only, recno is skipped this test
+		set ret [$curs2 put $pflags new_datum$key_set(3)]
 		error_check_good curs_replace $ret 0
 	}
 

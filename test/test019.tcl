@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test019.tcl	11.8 (Sleepycat) 10/25/99
+#	$Id: test019.tcl,v 11.13 2000/05/16 19:46:19 krinsky Exp $
 #
 # Test019 { access_method nentries }
 # Test the partial get functionality.
@@ -17,11 +17,19 @@ proc test019 { method {nentries 10000} args } {
 	puts "Test019: $method ($args) $nentries partial get test"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test019.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test019.db
+	} else {
+		set testfile test019.db
+	}
 	cleanup $testdir
 
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	berkdb srand $rand_init
@@ -84,8 +92,12 @@ proc test019 { method {nentries 10000} args } {
 		set k [lindex [lindex $ret 0] 0]
 		set d [lindex [lindex $ret 0] 1]
 		error_check_good dbget_key $k $key
+		# If $d contains some of the padding, we want to get rid of it.
+		set firstnull [string first "\0" $d]
+		if { $firstnull == -1 } { set firstnull [string length $d] }
 		error_check_good dbget_data \
-		    $d [string range $data $beg [expr $beg + $len - 1]]
+		    [string range $d 0 [expr $firstnull - 1]] \
+		    [string range $data $beg [expr $beg + $len - 1]]
 	}
 	error_check_good db_close [$db close] 0
 	close $did

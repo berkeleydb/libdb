@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test052.tcl	11.4 (Sleepycat) 8/17/99
+#	$Id: test052.tcl,v 11.8 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test52
 # Renumbering recno test.
@@ -27,12 +27,20 @@ proc test052 { method args } {
 	set flags ""
 
 	puts "\tTest052: Create $method database."
-	set testfile $testdir/Test052.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test052.db
+	} else {
+		set testfile test052.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
 	set oflags "-create -truncate -mode 0644 $args $omethod"
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# open curs to db

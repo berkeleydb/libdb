@@ -1,20 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_lock.cpp	11.3 (Sleepycat) 9/30/99";
+static const char revid[] = "$Id: cxx_lock.cpp,v 11.8 2000/05/17 01:17:53 dda Exp $";
 #endif /* not lint */
+
+#include <errno.h>
+#include <string.h>
 
 #include "db_cxx.h"
 #include "cxx_int.h"
-#include <errno.h>
-#include <string.h>
 
 int DbEnv::lock_detect(u_int32_t flags, u_int32_t atype, int *aborted)
 {
@@ -22,7 +23,7 @@ int DbEnv::lock_detect(u_int32_t flags, u_int32_t atype, int *aborted)
 	int err;
 
 	if ((err = ::lock_detect(env, flags, atype, aborted)) != 0) {
-		DB_ERROR("DbEnv::lock_detect", err, this);
+		DB_ERROR("DbEnv::lock_detect", err, error_policy());
 		return err;
 	}
 	return err;
@@ -36,7 +37,7 @@ int DbEnv::lock_get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
 
 	if ((err = ::lock_get(env, locker, flags, obj,
 			      lock_mode, &lock->lock_)) != 0) {
-		DB_ERROR("DbEnv::lock_get", err, this);
+		DB_ERROR("DbEnv::lock_get", err, error_policy());
 		return err;
 	}
 	return err;
@@ -48,18 +49,19 @@ int DbEnv::lock_id(u_int32_t *idp)
 	int err;
 
 	if ((err = ::lock_id(env, idp)) != 0) {
-		DB_ERROR("DbEnv::lock_id", err, this);
+		DB_ERROR("DbEnv::lock_id", err, error_policy());
 	}
 	return err;
 }
 
-int DbEnv::lock_stat(DB_LOCK_STAT **statp, void *(*db_malloc)(size_t))
+int DbEnv::lock_stat(DB_LOCK_STAT **statp,
+		     db_malloc_fcn_type db_malloc_fcn)
 {
 	DB_ENV *env = unwrap(this);
 	int err;
 
-	if ((err = ::lock_stat(env, statp, db_malloc)) != 0) {
-		DB_ERROR("DbEnv::lock_stat", err, this);
+	if ((err = ::lock_stat(env, statp, db_malloc_fcn)) != 0) {
+		DB_ERROR("DbEnv::lock_stat", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -74,7 +76,7 @@ int DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
 
 	if ((err = ::lock_vec(env, locker, flags, list,
 			      nlist, elist_returned)) != 0) {
-		DB_ERROR("DbEnv::lock_vec", err, this);
+		DB_ERROR("DbEnv::lock_vec", err, error_policy());
 		return err;
 	}
 	return err;
@@ -117,7 +119,7 @@ int DbLock::put(DbEnv *env)
 
 	int err;
 	if ((err = lock_put(envp, &lock_)) != 0) {
-		DB_ERROR("DbLock::put", err, env);
+		DB_ERROR("DbLock::put", err, env->error_policy());
 	}
 	return err;
 }

@@ -1,6 +1,6 @@
-; @(#)libdb.def	11.8 (Sleepycat) 9/30/99
+; $Id: libdb.def,v 11.17 2000/06/01 16:48:25 bostic Exp $
 
-DESCRIPTION	'Berkeley DB 3.0 Library'
+DESCRIPTION	'Berkeley DB 3.1 Library'
 EXPORTS
 	lock_get				@1
 	lock_id					@2
@@ -39,6 +39,29 @@ EXPORTS
 	db_env_create				@35
 	db_strerror				@36
 	db_xa_switch				@37
+	db_env_set_func_close			@38
+	db_env_set_func_dirfree			@39
+	db_env_set_func_dirlist			@40
+	db_env_set_func_exists			@41
+	db_env_set_func_free			@42
+	db_env_set_func_fsync			@43
+	db_env_set_func_ioinfo			@44
+	db_env_set_func_malloc			@45
+	db_env_set_func_map			@46
+	db_env_set_func_open			@47
+	db_env_set_func_read			@48
+	db_env_set_func_realloc			@49
+	db_env_set_func_rename			@50
+	db_env_set_func_sleep			@51
+	db_env_set_func_unlink			@52
+	db_env_set_func_unmap			@53
+	db_env_set_func_write			@54
+	db_env_set_func_yield			@55
+	db_env_set_mutexlocks			@56
+	db_env_set_pageyield			@57
+	db_env_set_panicstate			@58
+	db_env_set_region_init			@59
+	db_env_set_tas_spins			@60
 ; these are only for testing
 	__db_loadme				@201
 	__ham_func2				@202
@@ -116,3 +139,12 @@ EXPORTS
 	__qam_pgin_out				@428
 	__db_pgin				@429
 	__db_pgout				@430
+	__db_getulong				@431
+	__db_util_sigresend			@432
+	__db_util_siginit			@433
+	__db_util_interrupted			@434
+	__db_util_logset			@435
+	__db_prheader				@436
+	__db_prfooter				@437
+	__db_verify_callback			@438
+	__db_verify_internal			@439

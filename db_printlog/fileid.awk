@@ -1,4 +1,4 @@
-# @(#)fileid.awk	10.1 (Sleepycat) 4/11/99
+# $Id: fileid.awk,v 10.2.2.1 2000/07/11 14:17:29 bostic Exp $
 #
 # Take a comma-separated list of file numbers and spit out all the
 # log records that affect those file numbers.
@@ -11,7 +11,7 @@
 			FILEID = substr(FILEID, ndx + 1, length(FILEID) - ndx);
 			nfiles++
 		}
-		pgno[nfiles] = FILEID;
+		files[nfiles] = FILEID;
 	}
 }
 /^\[/{

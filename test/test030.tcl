@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test030.tcl	11.6 (Sleepycat) 11/8/99
+#	$Id: test030.tcl,v 11.12 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 30: Test DB_NEXT_DUP Functionality.
 proc test030 { method {nentries 10000} args } {
@@ -23,21 +23,31 @@ proc test030 { method {nentries 10000} args } {
 	berkdb srand $rand_init
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test030.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test030.db
+		set cntfile $testdir/cntfile.db
+	} else {
+		set testfile test030.db
+		set cntfile cntfile.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
 
-        set db [eval {berkdb open -create -truncate \
-        	-mode 0644 -dup} $args {$omethod $testfile}]
+	set db [eval {berkdb_open -create -truncate \
+		-mode 0644 -dup} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Use a second DB to keep track of how many duplicates
 	# we enter per key
 
-	set cntdb [berkdb open -create -truncate \
-		-mode 0644 -btree $testdir/cntfile.db]
+	set cntdb [eval {berkdb_open -create -truncate \
+		-mode 0644} $args {-btree $cntfile}]
 	error_check_good dbopen:cntfile [is_valid_db $db] TRUE
 
 	set pflags ""
@@ -72,17 +82,20 @@ proc test030 { method {nentries 10000} args } {
 		    {[llength $ret] != 0} \
 		    {set ret [$dbc get -nextdup] } {
 			incr x
+
+			if { [llength $ret] == 0 } {
+				break
+			}
+
 			set k [lindex [lindex $ret 0] 0]
 			if { [string compare $k $str] != 0 } {
 				break
 			}
+
 			set datastr [lindex [lindex $ret 0] 1]
 			set d [data_of $datastr]
-
-			if {[string length $d] == 0} {
-				break
-			}
 			error_check_good Test030:put $d $str
+
 			set id [ id_of $datastr ]
 			error_check_good Test030:dup# $id $x
 		}
@@ -94,7 +107,10 @@ proc test030 { method {nentries 10000} args } {
 	# Verify on sequential pass of entire file
 	puts "\tTest030.b: sequential check"
 
-	set lastkey ""
+	# We can't just set lastkey to a null string, since that might
+	# be a key now!
+	set lastkey "THIS STRING WILL NEVER BE A KEY"
+
 	for {set ret [$dbc get -first]} \
 	    {[llength $ret] != 0} \
 	    {set ret [$dbc get -next] } {
@@ -143,7 +159,6 @@ proc test030 { method {nentries 10000} args } {
 	    {[llength $ret] != 0} \
 	    {set ret [$cnt_dbc get -next] } {
 		set k [lindex [lindex $ret 0] 0]
-		error_check_bad cnt_seq:key [string length $k] 0
 
 		set howmany [lindex [lindex $ret 0] 1]
 		error_check_bad cnt_seq:data [string length $howmany] 0
@@ -155,7 +170,6 @@ proc test030 { method {nentries 10000} args } {
 			incr i
 
 			set k [lindex [lindex $ret 0] 0]
-			error_check_bad keyed_loop:key [string length $k] 0
 
 			set datastr [lindex [lindex $ret 0] 1]
 			set d [data_of $datastr]

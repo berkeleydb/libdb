@@ -1,5 +1,6 @@
-<!--@(#)curput.so	10.8 (Sleepycat) 10/3/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: curput.so,v 10.11 2000/03/18 21:43:07 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,20 +9,19 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
 <td width="1%"><a href="../../ref/am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Storing records with a cursor</h1>
-<p>
-The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> function is the standard interface for storing records into
+<p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> function is the standard interface for storing records into
 the database with a cursor.  In general, <a href="../../api_c/dbc_put.html">DBcursor-&gt;c_put</a> takes a key and
 inserts the associated data into the database, at a location controlled
 by a specified flag.
-<p>
-There are several flags that you can set to customize storage:
-<dl compact>
+<p>There are several flags that you can set to customize storage:
+<p><dl compact>
 <p><dt><a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a><dd>Create a new record, immediately after the record currently referenced by
 the cursor.
 <p><dt><a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a><dd>Create a new record, immediately before the record currently referenced by

@@ -17,9 +17,9 @@ my $db_dump_path = "$build_dir/db_dump";
 # ./3.0le and ./3.0be and pack them up into a directory hierarchy in
 # ./3.0.
 #
-# Note that this requires ./3.0le, ./3.0be, ./3.0, and 
+# Note that this requires ./3.0le, ./3.0be, ./3.0, and
 # $build_dir to all be on the same filesystem;  it makes use of the link()
-# system call to put together the collection of files it generates. 
+# system call to put together the collection of files it generates.
 
 use strict;
 
@@ -33,7 +33,6 @@ my $packtmp = $pwd . "/$version/packtmp";
 
 $| = 1;
 
-
 opendir( DIR, $version . "le" ) || die;
 while( $subdir = readdir( DIR ) )
 {
@@ -45,7 +44,7 @@ while( $subdir = readdir( DIR ) )
 			if( $file !~ m{^\.\.?$} )
 			{
 				print "[" . localtime() . "] " . "$subdir $file", "\n";
-				
+
 				eval
 				{
 					system( "mkdir", "-p", "$version/$subdir" );
@@ -53,18 +52,17 @@ while( $subdir = readdir( DIR ) )
 					$file =~ m{(.*)\.};
 					$archive_name = "$1";
 					$archive_name =~ s{Test}{test};
-                                        link( $version . "le/$subdir/$file", 
+                                        link( $version . "le/$subdir/$file",
                                             $packtmp . "/$archive_name-le.db") or die;
-                                        link( $version . "be/$subdir/$file", 
+                                        link( $version . "be/$subdir/$file",
                                             $packtmp . "/$archive_name-be.db") or die;
                                         link( db_dump( "$pwd/$version" . "le/$subdir/$file" ),
                                             $packtmp . "/$archive_name.dump") or die;
                                         link( tcl_dump( "$pwd/$version" . "le/$subdir/$file" ),
                                             $packtmp . "/$archive_name.tcldump") or die;
-		
-                        
-                                        chdir $packtmp or die;       
-                                        system( "tar", "-zcf", 
+
+                                        chdir $packtmp or die;
+                                        system( "tar", "-zcf",
                                             "$pwd/$version/$subdir/$archive_name.tar.gz",
                                             "." );
                                         chdir $pwd or die;

@@ -1,5 +1,6 @@
-<!--@(#)malloc.so	10.16 (Sleepycat) 10/3/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: malloc.so,v 10.19 2000/03/18 21:43:09 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,12 +15,10 @@
 </td></tr></table>
 <p>
 <h1 align=center>Non-local memory allocation</h1>
-<p>
-Berkeley DB can allocate memory for returned key/data pairs which then becomes
+<p>Berkeley DB can allocate memory for returned key/data pairs which then becomes
 the responsibility of the application.  See <a href="../../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a> or
 <a href="../../api_c/dbt.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a> for further information.
-<p>
-On systems where there may be multiple library versions of malloc (notably
+<p>On systems where there may be multiple library versions of malloc (notably
 Windows NT), the Berkeley DB library could allocate memory from a different heap
 than the application will use to free it. To avoid this problem, the
 allocation routine to be used for allocating such key/data items can be

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)log.tcl	11.11 (Sleepycat) 10/25/99
+#	$Id: log.tcl,v 11.15 2000/03/24 19:53:39 krinsky Exp $
 #
 # Options are:
 # -dir <directory in which to store memp>
@@ -29,6 +29,7 @@ proc logtest { args } {
 			-m.* { incr i; set maxfile [lindex $args $i] }
 			-s.* { set dostat 1 }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				log_usage
 				return
 			}
@@ -320,7 +321,7 @@ proc log004 { dir } {
 	puts "Log004.b: Delete all log files under 100."
 	set ret [catch { glob $dir/log.00000000* } result]
 	if { $ret == 0 } {
-		eval exec $RM -rf $result
+		eval fileremove -f $result
 	}
 
 	# Now open the log and get the first record and try a prev
@@ -346,7 +347,7 @@ proc log_cleanup { dir } {
 	set files [glob -nocomplain $dir/log.*]
 	if { [llength $files] != 0} {
 		foreach f $files {
-			exec $RM -f $f
+			fileremove -f $f
 		}
 	}
 }

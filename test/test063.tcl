@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test063.tcl	11.3 (Sleepycat) 9/9/99
+#	$Id: test063.tcl,v 11.10 2000/05/22 12:51:40 bostic Exp $
 #
 # DB Test 63:  Test that the DB_RDONLY flag is respected.
 #	Attempt to both DB->put and DBC->c_put into a database
-# 	that has been opened DB_RDONLY, and check for failure.
+#	that has been opened DB_RDONLY, and check for failure.
 proc test063 { method args } {
 	global errorCode
 	source ./include.tcl
@@ -16,7 +16,15 @@ proc test063 { method args } {
 	set omethod [convert_method $method]
 	set tnum 63
 
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 	cleanup $testdir
 
 	set key "key"
@@ -36,7 +44,7 @@ proc test063 { method args } {
 
 	# Create a test database.
 	puts "\tTest0$tnum.a: Creating test database."
-	set db [eval {berkdb open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open_noerr -create -truncate -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_create [is_valid_db $db] TRUE
 
@@ -50,13 +58,17 @@ proc test063 { method args } {
 
 	error_check_good db_close [$db close] 0
 
-	# Confirm that database is writable
-	error_check_good writable [file writable $testfile] 1
+	if { $eindex == -1 } {
+		# Confirm that database is writable.  If we are
+		# using an env (that may be remote on a server)
+		# we cannot do this check.
+		error_check_good writable [file writable $testfile] 1
+	}
 
 	puts "\tTest0$tnum.b: Re-opening DB_RDONLY and attempting to put."
 
 	# Now open it read-only and make sure we can get but not put.
-	set db [eval {berkdb open -rdonly} $args {$testfile}]
+	set db [eval {berkdb_open_noerr -rdonly} $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set dbt [eval {$db get} $gflags $key]
@@ -111,7 +123,7 @@ proc test063 { method args } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good db_close [$db close] 0
 
-	set db [eval {berkdb open} $omethod $args $testfile]
+	set db [eval {berkdb_open} $omethod $args $testfile]
 	error_check_good db_reopen [is_valid_db $db] TRUE
 
 	set dbc [$db cursor]

@@ -1,23 +1,25 @@
-<!--"@(#)toc.so	10.104 (Sleepycat) 11/15/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: toc.so,v 10.143 2000/05/31 18:53:27 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
-<title>Berkeley DB: Reference Table of Contents</title>
+<title>Berkeley DB: Reference Guide Table of Contents</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
-<h1 align=center>Reference Table of Contents</h1>
+<h1 align=center>Reference Guide Table of Contents</h1>
 <ol>
-<font size="+1"><li><a name="intro">Introduction</a></font>
+<font size="+1"><li>Introduction</font>
     <ol>
     <li><a href="intro/what.html">What is Berkeley DB?</a>
+    <li><a href="intro/products.html">Sleepycat Software Berkeley DB Products</a>
     <li><a href="intro/where.html">Where does Berkeley DB run?</a>
     <li><a href="intro/distrib.html">What does the Berkeley DB distribution include?</a>
     <li><a href="intro/do.html">What can you do with Berkeley DB?</a>
     </ol>
-<font size="+1"><li><a name="simple_tut">Getting Started: A Simple Tutorial</a></font>
+<font size="+1"><li>Getting Started: A Simple Tutorial</font>
     <ol>
     <li><a href="simple_tut/intro.html">Introduction</a>
     <li><a href="simple_tut/keydata.html">Key/data pairs</a>
@@ -29,10 +31,11 @@
     <li><a href="simple_tut/del.html">Removing elements from a database</a>
     <li><a href="simple_tut/close.html">Closing a database</a>
     </ol>
-<font size="+1"><li><a name="am">Access Method Operations</a></font>
+<font size="+1"><li>Access Method Operations</font>
     <ol>
     <li><a href="am/ops.html">Access method operations</a>
     <li><a href="am/open.html">Opening a database</a>
+    <li><a href="am/opensub.html">Opening multiple databases in a single file</a>
     <li><a href="am/upgrade.html">Upgrading databases</a>
     <li><a href="am/get.html">Retrieving records</a>
     <li><a href="am/put.html">Storing records</a>
@@ -47,12 +50,14 @@
 	    <li><a href="am/curdel.html">Deleting records with a cursor</a>
 	    <li><a href="am/curdup.html">Duplicating a cursor</a>
 	    <li><a href="am/join.html">Logical join</a>
+	    <li><a href="am/count.html">Data item count</a>
 	    <li><a href="am/curclose.html">Closing a cursor</a>
 	</ol>
     <li><a href="am/partial.html">Partial record storage and retrieval</a>
+    <li><a href="am/verify.html">Database verification and salvage</a>
     <li><a href="am/error.html">Error support</a>
     </ol>
-<font size="+1"><li><a name="amconf">Access Method Configuration</a></font>
+<font size="+1"><li>Access Method Configuration</font>
     <ol>
     <li><a href="am_conf/intro.html">What are the available access methods?</a>
     <li><a href="am_conf/select.html">Selecting an access method</a>
@@ -65,12 +70,12 @@
 	<li><a href="am_conf/dup.html">Duplicate data items</a>
 	<li><a href="am_conf/malloc.html">Non-local memory allocation</a>
 	</ol>
-    <li>B+tree access method specific configuration
+    <li>Btree access method specific configuration
 	<ol>
-	<li><a href="am_conf/bt_compare.html">B+tree comparison</a>
-	<li><a href="am_conf/bt_prefix.html">B+tree prefix comparison</a>
+	<li><a href="am_conf/bt_compare.html">Btree comparison</a>
+	<li><a href="am_conf/bt_prefix.html">Btree prefix comparison</a>
 	<li><a href="am_conf/bt_minkey.html">Minimum keys per page</a>
-	<li><a href="am_conf/bt_recnum.html">Retrieving B+tree records by logical record number</a>
+	<li><a href="am_conf/bt_recnum.html">Retrieving Btree records by logical record number</a>
 	</ol>
     <li>Hash access method specific configuration
 	<ol>
@@ -80,12 +85,12 @@
 	</ol>
     <li>Queue and Recno access method specific configuration
 	<ol>
-	<li><a href="am_conf/recno.html">Managing Record-based databases</a>
+	<li><a href="am_conf/recno.html">Managing record-based databases</a>
 	<li><a href="am_conf/re_source.html">Flat-text backing files</a>
 	<li><a href="am_conf/renumber.html">Logically renumbering records</a>
 	</ol>
     </ol>
-<font size="+1"><li><a name="arch">Berkeley DB Architecture</a></font>
+<font size="+1"><li>Berkeley DB Architecture</font>
     <ol>
     <li><a href="arch/bigpic.html">The big picture</a>
     <li><a href="arch/progmodel.html">Programming model</a>
@@ -93,7 +98,7 @@
     <li><a href="arch/script.html">Scripting languages</a>
     <li><a href="arch/utilities.html">Supporting utilities</a>
     </ol>
-<font size="+1"><li><a name="env">The Berkeley DB Environment</a></font>
+<font size="+1"><li>The Berkeley DB Environment</font>
     <ol>
     <li><a href="env/intro.html">Introduction</a>
     <li><a href="env/create.html">Creating an environment</a>
@@ -104,44 +109,49 @@
     <li><a href="env/open.html">Opening databases within the environment</a>
     <li><a href="env/error.html">Error support</a>
     </ol>
-<font size="+1"><li><a name="cam">Berkeley DB Concurrent Data Store Applications</a></font>
+<font size="+1"><li>Berkeley DB Concurrent Data Store Applications</font>
     <ol>
     <li><a href="cam/intro.html">Building Berkeley DB Concurrent Data Store applications</a>
     </ol>
-<font size="+1"><li><a name="transapp">Berkeley DB Transactional Data Store Applications</a></font>
+<font size="+1"><li>Berkeley DB Transactional Data Store Applications</font>
     <ol>
+    <li><a href="transapp/term.html">Terminology</a>
     <li><a href="transapp/intro.html">Introduction</a>
-    <li><a href="transapp/apps.html">Building transaction protected applications</a>
+    <li><a href="transapp/app.html">Building transaction protected applications</a>
+    <li><a href="transapp/routine.html">Building transaction protected routines</a>
     <li><a href="transapp/admin.html">Administration</a>
     <li><a href="transapp/deadlock.html">Deadlock detection</a>
     <li><a href="transapp/checkpoint.html">Performing checkpoints</a>
     <li><a href="transapp/archival.html">Archival procedures</a>
     <li><a href="transapp/recovery.html">Recovery procedures</a>
     <li><a href="transapp/filesys.html">Recovery and filesystem operations</a>
-    <li><a href="transapp/reclimit.html">Berkeley DB Recoverability</a>
+    <li><a href="transapp/recimp.html">Recovery implementation</a>
+    <li><a href="transapp/reclimit.html">Berkeley DB recoverability</a>
     <li><a href="transapp/throughput.html">Transaction throughput</a>
     </ol>
-<font size="+1"><li><a name="xa">XA Resource Manager</a></font>
+<font size="+1"><li>XA Resource Manager</font>
     <ol>
     <li><a href="xa/intro.html">Introduction</a>
     <li><a href="xa/config.html">Configuring Berkeley DB with The Tuxedo System</a>
     <li><a href="xa/faq.html">Frequently Asked Questions</a>
     </ol>
-<font size="+1"><li><a name="program">Programmer Notes</a></font>
+<font size="+1"><li>Programmer Notes</font>
     <ol>
     <li><a href="program/appsignals.html">Application signal handling</a>
     <li><a href="program/errorret.html">Error returns to applications</a>
     <li><a href="program/environ.html">Environmental variables</a>
     <li><a href="program/mt.html">Building multi-threaded applications</a>
     <li><a href="program/namespace.html">Name spaces</a>
+    <li><a href="program/copy.html">Copying databases</a>
     <li><a href="program/version.html">Library version information</a>
     <li><a href="program/dbsizes.html">Database limits</a>
     <li><a href="program/byteorder.html">Byte ordering</a>
     <li><a href="program/diskspace.html">Disk space requirements</a>
     <li><a href="program/compatible.html">Compatibility with historic interfaces</a>
+    <li><a href="program/extending.html">Application-specific logging and recovery</a>
     <li><a href="program/runtime.html">Run-time configuration</a>
     </ol>
-<font size="+1"><li><a name="lock">The Locking Subsystem</a></font>
+<font size="+1"><li>The Locking Subsystem</font>
     <ol>
     <li><a href="lock/intro.html">Berkeley DB and locking</a>
     <li><a href="lock/page.html">Page locks</a>
@@ -156,18 +166,18 @@
     <li><a href="lock/config.html">Configuring locking</a>
     <li><a href="lock/nondb.html">Locking and non-Berkeley DB applications</a>
     </ol>
-<font size="+1"><li><a name="log">The Logging Subsystem</a></font>
+<font size="+1"><li>The Logging Subsystem</font>
     <ol>
     <li><a href="log/intro.html">Berkeley DB and logging</a>
     <li><a href="log/limits.html">Log file limits</a>
     <li><a href="log/config.html">Configuring logging</a>
     </ol>
-<font size="+1"><li><a name="mpool">The Memory Pool Subsystem</a></font>
+<font size="+1"><li>The Memory Pool Subsystem</font>
     <ol>
     <li><a href="mp/intro.html">Berkeley DB and the memory pool</a>
     <li><a href="mp/config.html">Configuring the memory pool</a>
     </ol>
-<font size="+1"><li><a name="txn">The Transaction Subsystem</a></font>
+<font size="+1"><li>The Transaction Subsystem</font>
     <ol>
     <li><a href="txn/intro.html">Berkeley DB and transactions</a>
     <li><a href="txn/nested.html">Nested transactions</a>
@@ -176,38 +186,44 @@
     <li><a href="txn/config.html">Configuring transactions</a>
     <li><a href="txn/other.html">Transactions and non-Berkeley DB applications</a>
     </ol>
-<font size="+1"><li><a name="java">Java API</a></font>
+<font size="+1"><li>RPC Client/Server</font>
+    <ol>
+    <li><a href="rpc/intro.html">Introduction</a>
+    <li><a href="rpc/client.html">Client program</a>
+    <li><a href="rpc/server.html">Server program</a>
+    </ol>
+<font size="+1"><li>Java API</font>
     <ol>
     <li><a href="java/conf.html">Configuration</a>
     <li><a href="java/compat.html">Compatibility</a>
     <li><a href="java/program.html">Programming notes</a>
     </ol>
-<font size="+1"><li><a name="perl">Perl API</a></font>
+<font size="+1"><li>Perl API</font>
     <ol>
     <li><a href="perl/intro.html">Using Berkeley DB with Perl</a>
     </ol>
-<font size="+1"><li><a name="tcl">Tcl API</a></font>
+<font size="+1"><li>Tcl API</font>
     <ol>
     <li><a href="tcl/intro.html">Loading Berkeley DB with Tcl</a>
     <li><a href="tcl/using.html">Using Berkeley DB with Tcl</a>
-    <li><a href="tcl/program.html">Tcl API Programming Notes</a>
+    <li><a href="tcl/program.html">Tcl API programming notes</a>
     <li><a href="tcl/error.html">Tcl error handling</a>
     </ol>
-<font size="+1"><li><a name="sendmail">Sendmail</a></font>
+<font size="+1"><li>Sendmail</font>
     <ol>
     <li><a href="sendmail/intro.html">Using Berkeley DB with Sendmail</a>
     </ol>
-<font size="+1"><li><a name="dump">Dumping and Reloading Databases</a></font>
+<font size="+1"><li>Dumping and Reloading Databases</font>
     <ol>
     <li><a href="dumpload/utility.html">The db_dump and db_load utilities</a>
     <li><a href="dumpload/format.html">Dump output formats</a>
     <li><a href="dumpload/text.html">Loading text into databases</a>
     </ol>
-<font size="+1"><li><a name="install">System Installation Notes</a></font>
+<font size="+1"><li>System Installation Notes</font>
     <ol>
     <li><a href="install/file.html">File utility /etc/magic information</a>
     </ol>
-<font size="+1"><li><a name="debug">Debugging Applications</a></font>
+<font size="+1"><li>Debugging Applications</font>
     <ol>
     <li><a href="debug/intro.html">Introduction</a>
     <li><a href="debug/compile.html">Compile-time configuration</a>
@@ -215,7 +231,7 @@
     <li><a href="debug/printlog.html">Reviewing Berkeley DB log files</a>
     <li><a href="debug/common.html">Common errors</a>
     </ol>
-<font size="+1"><li><a name="build">Building Berkeley DB for UNIX systems</a></font>
+<font size="+1"><li>Building Berkeley DB for UNIX systems</font>
     <ol>
     <li><a href="build_unix/intro.html">Building for UNIX</a>
     <li><a href="build_unix/conf.html">Configuring Berkeley DB</a>
@@ -223,8 +239,8 @@
     <li><a href="build_unix/install.html">Installing Berkeley DB</a>
     <li><a href="build_unix/shlib.html">Dynamic shared libraries</a>
     <li><a href="build_unix/test.html">Running the test suite under UNIX</a>
-    <li><a href="build_unix/notes.html">Architecture independent notes</a>
-    <li>Architecture specific notes
+    <li><a href="build_unix/notes.html">Architecture independent FAQ</a>
+    <li>Architecture specific FAQs
 	<ol>
 	<li><a href="build_unix/aix.html">AIX</a>
 	<li><a href="build_unix/freebsd.html">FreeBSD</a>
@@ -238,14 +254,20 @@
 	<li><a href="build_unix/ultrix.html">Ultrix</a>
 	</ol>
     </ol>
-<font size="+1"><li><a name="build_win">Building Berkeley DB for Win32 platforms</a></font>
+<font size="+1"><li>Building Berkeley DB for Win32 platforms</font>
     <ol>
-    <li><a href="build_win/intro.html">Building for Win32 platforms</a>
+    <li><a href="build_win/intro.html">Building for Win32</a>
     <li><a href="build_win/test.html">Running the test suite under Windows</a>
-    <li><a href="build_win/notes.html">Windows Notes</a>
-    <li><a href="build_win/faq.html">Frequently Asked Questions</a>
+    <li><a href="build_win/notes.html">Windows notes</a>
+    <li><a href="build_win/faq.html">Windows FAQ</a>
     </ol>
-<font size="+1"><li><a name="upgrade">Upgrading Berkeley DB Applications</a></font>
+<font size="+1"><li>Building Berkeley DB for VxWorks systems</font>
+    <ol>
+    <li><a href="build_vxworks/intro.html">Building for VxWorks</a>
+    <li><a href="build_vxworks/notes.html">VxWorks notes</a>
+    <li><a href="build_vxworks/faq.html">VxWorks FAQ</a>
+    </ol>
+<font size="+1"><li>Upgrading Berkeley DB Applications</font>
     <ol>
     <li>Upgrading Berkeley DB 1.XX applications to Berkeley DB 2.0
 	<ol>
@@ -254,7 +276,7 @@
 	<li><a href="upgrade.2.0/convert.html">Release 2.0: converting applications</a>
 	<li><a href="upgrade.2.0/disk.html">Release 2.0: on-disk database format</a>
 	</ol>
-<li>Upgrading Berkeley DB 2.X.X applications to Berkeley DB 3.0
+    <li>Upgrading Berkeley DB 2.X.X applications to Berkeley DB 3.0
 	<ol>
 	<li><a href="upgrade.3.0/intro.html">Release 3.0: introduction</a>
 	<li><a href="upgrade.3.0/envopen.html">Release 3.0: environment open/close/unlink</a>
@@ -265,12 +287,17 @@
 	<li><a href="upgrade.3.0/db.html">Release 3.0: the DB structure</a>
 	<li><a href="upgrade.3.0/dbinfo.html">Release 3.0: the DBINFO structure</a>
 	<li><a href="upgrade.3.0/join.html">Release 3.0: DB-&gt;join</a>
-	<li><a href="upgrade.3.0/close.html">Release 3.0: DB-&gt;close</a>
+	<li><a href="upgrade.3.0/stat.html">Release 3.0: DB-&gt;stat</a>
+	<li><a href="upgrade.3.0/close.html">Release 3.0: DB-&gt;sync and DB-&gt;close</a>
 	<li><a href="upgrade.3.0/lock_put.html">Release 3.0: lock_put</a>
 	<li><a href="upgrade.3.0/lock_detect.html">Release 3.0: lock_detect</a>
+	<li><a href="upgrade.3.0/lock_stat.html">Release 3.0: lock_stat</a>
 	<li><a href="upgrade.3.0/log_register.html">Release 3.0: log_register</a>
+	<li><a href="upgrade.3.0/log_stat.html">Release 3.0: log_stat</a>
+	<li><a href="upgrade.3.0/memp_stat.html">Release 3.0: memp_stat</a>
 	<li><a href="upgrade.3.0/txn_begin.html">Release 3.0: txn_begin</a>
 	<li><a href="upgrade.3.0/txn_commit.html">Release 3.0: txn_commit</a>
+	<li><a href="upgrade.3.0/txn_stat.html">Release 3.0: txn_stat</a>
 	<li><a href="upgrade.3.0/rmw.html">Release 3.0: DB_RMW</a>
 	<li><a href="upgrade.3.0/lock_notheld.html">Release 3.0: DB_LOCK_NOTHELD</a>
 	<li><a href="upgrade.3.0/eagain.html">Release 3.0: EAGAIN</a>
@@ -283,18 +310,38 @@
 	<li><a href="upgrade.3.0/java.html">Release 3.0: additional Java changes</a>
 	<li><a href="upgrade.3.0/disk.html">Release 3.0: on-disk database format</a>
 	</ol>
+    <li>Upgrading Berkeley DB 3.0 applications to Berkeley DB 3.1
+	<ol>
+	<li><a href="upgrade.3.1/intro.html">Release 3.1: introduction</a>
+	<li><a href="upgrade.3.1/config.html">Release 3.1: DBENV-&gt;open, DBENV-&gt;remove</a>
+	<li><a href="upgrade.3.1/set_tx_recover.html">Release 3.1: DBENV-&gt;set_tx_recover</a>
+	<li><a href="upgrade.3.1/set_feedback.html">Release 3.1: DBENV-&gt;set_feedback, DB-&gt;set_feedback</a>
+	<li><a href="upgrade.3.1/set_paniccall.html">Release 3.1: DBENV-&gt;set_paniccall, DB-&gt;set_paniccall</a>
+	<li><a href="upgrade.3.1/put.html">Release 3.1: DB-&gt;put</a>
+	<li><a href="upgrade.3.1/dup.html">Release 3.1: identical duplicate data items</a>
+	<li><a href="upgrade.3.1/btstat.html">Release 3.1: DB-&gt;stat</a>
+	<li><a href="upgrade.3.1/sysmem.html">Release 3.1: DB_SYSTEM_MEM</a>
+	<li><a href="upgrade.3.1/log_register.html">Release 3.1: log_register</a>
+	<li><a href="upgrade.3.1/memp_register.html">Release 3.1: memp_register</a>
+	<li><a href="upgrade.3.1/txn_check.html">Release 3.1: txn_checkpoint</a>
+	<li><a href="upgrade.3.1/env.html">Release 3.1: environment configuration</a>
+	<li><a href="upgrade.3.1/tcl.html">Release 3.1: Tcl API</a>
+	<li><a href="upgrade.3.1/tmp.html">Release 3.1: DB_TMP_DIR</a>
+	<li><a href="upgrade.3.1/logalloc.html">Release 3.1: log file pre-allocation</a>
+	<li><a href="upgrade.3.1/disk.html">Release 3.1: on-disk database format</a>
+	</ol>
     </ol>
-<font size="+1"><li><a name="test">Test Suite</a></font>
+<font size="+1"><li>Test Suite</font>
     <ol>
     <li><a href="test/run.html">Running the test suite</a>
     </ol>
-<font size="+1"><li><a name="distrib">Distribution</a></font>
+<font size="+1"><li>Distribution</font>
     <ol>
-    <li><a href="distrib/layout.html">Source Code Layout</a>
+    <li><a href="distrib/layout.html">Source code layout</a>
     </ol>
-<font size="+1"><li><a name="refs">Additional References</a></font>
+<font size="+1"><li>Additional References</font>
     <ol>
-    <li><a href="refs/refs.html">Additional References</a>
+    <li><a href="refs/refs.html">Additional references</a>
     </ol>
 </ol>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

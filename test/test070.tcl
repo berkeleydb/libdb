@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test070.tcl	11.2 (Sleepycat) 9/30/99
+#	$Id: test070.tcl,v 11.10 2000/05/24 14:58:10 krinsky Exp $
 #
 # DB Test 70: Test of DB_CONSUME.
 # Fork off six processes, four consumers and two producers.
@@ -15,6 +15,15 @@ proc test070 { method {nconsumers 4} {nproducers 2}\
 	source ./include.tcl
 	global alphabet
 
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test070 skipping for env $env"
+		return
+	}
 	set omethod [convert_method $method]
 	set args [convert_args $method $args]
 
@@ -33,11 +42,11 @@ proc test070 { method {nconsumers 4} {nproducers 2}\
 	set testfile test0$tnum.db
 
 	# Create environment
-	set dbenv [eval {berkdb env -create -mpool -lock -home} $testdir]
+	set dbenv [eval {berkdb env -create -lock -home} $testdir]
 	error_check_good dbenv_create [is_valid_env $dbenv] TRUE
 
 	# Create database
-	# set db [eval {berkdb open -create -truncate -mode 0644 -queue}\
+	# set db [eval {berkdb_open -create -truncate -mode 0644 -queue}\
 	#	$args $testfile]
 	# error_check_good db_open [is_valid_db $db] TRUE
 
@@ -55,20 +64,22 @@ proc test070 { method {nconsumers 4} {nproducers 2}\
 	# Fork consumer processes (we want them to be hungry)
 	for { set ndx 0 } { $ndx < $nconsumers } { incr ndx } {
 		set output $consumerlog$ndx
-		set p [exec $tclsh_path $test_path/conscript.tcl \
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    conscript.tcl $testdir/conscript.log.consumer$ndx \
 		    $testdir $testfile CONSUME $nperconsumer $output $tnum \
 		    $args &]
 		lappend pidlist $p
 	}
 	for { set ndx 0 } { $ndx < $nproducers } { incr ndx } {
-		set p [exec $tclsh_path $test_path/conscript.tcl \
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    conscript.tcl $testdir/conscript.log.producer$ndx \
 		    $testdir $testfile PRODUCE $nperproducer "" $tnum \
 		    $args &]
 		lappend pidlist $p
 	}
 
 	# Wait for all children.
-	watch_procs $pidlist 10
+	watch_procs 10
 
 	# Verify: slurp all record numbers into list, sort, and make
 	# sure each appears exactly once.

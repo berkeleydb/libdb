@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb002.tcl	11.9 (Sleepycat) 9/24/99
+#	$Id: sdb002.tcl,v 11.18 2000/05/22 12:51:37 bostic Exp $
 #
 # Sub DB Test 2 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -23,8 +23,7 @@ proc subdb002 { method {nentries 10000} args } {
 	set testfile $testdir/subdb002.db
 	subdb002_body $method $omethod $nentries $largs $testfile NULL
 	cleanup $testdir
-	set env [berkdb env -create -mode 0644 \
-	    -mpool -lock -txn -log -home $testdir]
+	set env [berkdb env -create -mode 0644 -txn -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 	puts "Subdb002: $method ($largs) basic subdb tests in an environment"
 
@@ -33,7 +32,6 @@ proc subdb002 { method {nentries 10000} args } {
 	set testfile subdb002.db
 	subdb002_body $method $omethod $nentries $largs $testfile $env
 	error_check_good env_close [$env close] 0
-	cleanup $testdir
 }
 
 proc subdb002_body { method omethod nentries largs testfile env } {
@@ -44,11 +42,18 @@ proc subdb002_body { method omethod nentries largs testfile env } {
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
+
+	if { [is_queue $omethod] == 1 } {
+		set sdb002_open berkdb_open_noerr
+	} else {
+		set sdb002_open berkdb_open
+	}
+
 	if { $env == "NULL" } {
-		set ret [catch {eval {berkdb open -create -mode 0644} $largs \
+		set ret [catch {eval {$sdb002_open -create -mode 0644} $largs \
 		    {$omethod $testfile $subdb}} db]
 	} else {
-		set ret [catch {eval {berkdb open -create -mode 0644} $largs \
+		set ret [catch {eval {$sdb002_open -create -mode 0644} $largs \
 		    {-env $env $omethod $testfile $subdb}} db]
 	}
 
@@ -84,7 +89,7 @@ proc subdb002_body { method omethod nentries largs testfile env } {
 			global kvals
 
 			set key [expr $count + 1]
-		 	set kvals($key) [pad_data $method $str]
+			set kvals($key) [pad_data $method $str]
 		} else {
 			set key $str
 		}
@@ -111,27 +116,27 @@ proc subdb002_body { method omethod nentries largs testfile env } {
 			puts $oid $i
 		}
 		close $oid
-		exec $MV $t1 $t3
+		file rename -force $t1 $t3
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 	}
 
 	error_check_good Subdb002:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	puts "\tSubdb002.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
 	open_and_dump_subfile $testfile $env $txn $t1 $checkfunc \
 	    dump_file_direction "-first" "-next" $subdb
 	if { [is_record_based $method] != 1 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good Subdb002:diff($t2,$t3) \
-	    [catch { exec $CMP $t2 $t3 } res] 0
+	    [filecmp $t2 $t3] 0
 
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
@@ -140,11 +145,11 @@ proc subdb002_body { method omethod nentries largs testfile env } {
 	    dump_file_direction "-last" "-prev" $subdb
 
 	if { [is_record_based $method] != 1 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good Subdb002:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 }
 
 # Check function for Subdb002; keys and data are identical

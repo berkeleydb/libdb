@@ -48,9 +48,42 @@ Revision history for Perl extension BerkeleyDB.
 	  same - this seems to be a common problem on Linux.
 	* MLDBM support added.  
 	* Support for the new join cursor added.
-	* Builds withe Berkeley DB 3.x
+	* Builds with Berkeley DB 3.x
    	* Updated dbinfo for Berkeley DB 3.x file formats.
 	* Deprecated the TxnMgr class. As with Berkeley DB version 3,
 	  txn_begin etc are now accessed via the environment object.
 	
-	
+0.08  28nd November 1999
+	* More documentation updates
+	* Changed reference to files in /tmp in examples.t
+	* Fixed a typo in softCrash that caused problems when building
+	  with a thread-enabled Perl.
+	* BerkeleyDB::Error wasn't initialised properly.
+	* ANSI-ified all the static C functions in BerkeleyDB.xs
+	* Added support for the following DB 3.x features:
+	    + The Queue database type
+	    + db_remove
+	    + subdatabases 
+	    + db_stat for Hash & Queue
+
+0.09  29th November 1999
+        * the queue.t & subdb.t test harnesses were outputting a few
+          spurious warnings. This has been fixed.
+
+0.10  8th December 1999
+	* The DESTROY method was missing for BerkeleyDB::Env. This resulted in
+	  a memory leak. Fixed.
+	* If opening an environment or database failed, there was a small 
+	  memory leak. This has been fixed. 
+	* A thread-enabled Perl it could core when a database was closed. 
+	  Problem traced to the strdup function.
+
+0.11  4th June 2000
+	* When built with Berkeley Db 3.x there can ba a clash with the close
+	  macro.
+	* Typo in the definition of DB_WRITECURSOR
+	* The flags parameter wasn't getting sent to db_cursor
+	* Plugged small mempory leak in db_cursor (DESTROY wasn't freeing
+	  memory)
+	* Can be built with Berkeley DB 3.1
+   

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_env.c	11.3 (Sleepycat) 9/21/99
+ * $Id: ex_env.c,v 11.13 2000/05/22 15:17:03 sue Exp $
  */
 
 #include "db_config.h"
@@ -21,50 +21,67 @@
 
 #ifdef macintosh
 #define	DATABASE_HOME	":database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR :database"
+#define	CONFIG_DATA_DIR	":database"
 #else
 #ifdef _WIN32
 #define	DATABASE_HOME	"\\tmp\\database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR \\database\\files"
+#define	CONFIG_DATA_DIR	"\\database\\files"
+#else
+#ifdef HAVE_VXWORKS
+#define	DATABASE_HOME	"/vxtmp/vxtmp/database"
+#define	CONFIG_DATA_DIR	"/vxtmp/vxtmp/database/files"
 #else
 #define	DATABASE_HOME	"/tmp/database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR /database/files"
+#define	CONFIG_DATA_DIR	"/database/files"
+#endif
 #endif
 #endif
 
-void db_setup(char *, char *[], FILE *);
-void db_teardown(char *, char *[], FILE *);
-int  main(void);
-
-const char
-	*progname = "ex_env";			/* Program name. */
+int	db_setup __P((char *, char *, FILE *, char *));
+int	db_teardown __P((char *, char *, FILE *, char *));
+#ifdef HAVE_VXWORKS
+int	ex_env __P((void));
+#define	ERROR_RETURN	ERROR
+#else
+int	main __P((void));
+#define	ERROR_RETURN	1
+#endif
 
 /*
  * An example of a program creating/configuring a Berkeley DB environment.
  */
 int
+#ifdef HAVE_VXWORKS
+ex_env()
+#else
 main()
+#endif
 {
-	char *config[2], *home;
+	int ret;
+	char *data_dir, *home;
+	char *progname = "ex_env";		/* Program name. */
 
 	/*
 	 * All of the shared database files live in DATABASE_HOME, but
 	 * data files will live in CONFIG_DATA_DIR.
 	 */
 	home = DATABASE_HOME;
-	config[0] = CONFIG_DATA_DIR;
-	config[1] = NULL;
+	data_dir = CONFIG_DATA_DIR;
 
-	db_setup(home, config, stderr);
+	printf("Setup env\n");
+	if ((ret = db_setup(home, data_dir, stderr, progname)) != 0)
+		return (ret);
 
-	db_teardown(home, config, stderr);
+	printf("Teardown env\n");
+	if ((ret = db_teardown(home, data_dir, stderr, progname)) != 0)
+		return (ret);
 
 	return (0);
 }
 
-void
-db_setup(home, config, errfp)
-	char *home, *config[];
+int
+db_setup(home, data_dir, errfp, progname)
+	char *home, *data_dir, *progname;
 	FILE *errfp;
 {
 	DB_ENV *dbenv;
@@ -76,7 +93,7 @@ db_setup(home, config, errfp)
 	 */
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 	dbenv->set_errfile(dbenv, errfp);
 	dbenv->set_errpfx(dbenv, progname);
@@ -88,7 +105,7 @@ db_setup(home, config, errfp)
 	if ((ret = dbenv->set_cachesize(dbenv, 0, 64 * 1024, 0)) != 0) {
 		dbenv->err(dbenv, ret, "set_cachesize");
 		dbenv->close(dbenv, 0);
-		exit (1);
+		return (ERROR_RETURN);
 	}
 
 	/*
@@ -96,11 +113,12 @@ db_setup(home, config, errfp)
 	 * we need concurrency control and a shared buffer pool, but
 	 * not logging or transactions.
 	 */
-	if ((ret = dbenv->open(dbenv, home, config,
+	(void)dbenv->set_data_dir(dbenv, data_dir);
+	if ((ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL, 0)) != 0) {
 		dbenv->err(dbenv, ret, "environment open: %s", home);
 		dbenv->close(dbenv, 0);
-		exit (1);
+		return (ERROR_RETURN);
 	}
 
 	/* Do something interesting... */
@@ -108,13 +126,14 @@ db_setup(home, config, errfp)
 	/* Close the handle. */
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr, "DBENV->close: %s\n", db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
+	return (0);
 }
 
-void
-db_teardown(home, config, errfp)
-	char *home, *config[];
+int
+db_teardown(home, data_dir, errfp, progname)
+	char *home, *data_dir, *progname;
 	FILE *errfp;
 {
 	DB_ENV *dbenv;
@@ -123,13 +142,15 @@ db_teardown(home, config, errfp)
 	/* Remove the shared database regions. */
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 	dbenv->set_errfile(dbenv, errfp);
 	dbenv->set_errpfx(dbenv, progname);
 
-	if ((ret = dbenv->remove(dbenv, home, config, 0)) != 0) {
+	(void)dbenv->set_data_dir(dbenv, data_dir);
+	if ((ret = dbenv->remove(dbenv, home, 0)) != 0) {
 		fprintf(stderr, "DBENV->remove: %s\n", db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
+	return (0);
 }

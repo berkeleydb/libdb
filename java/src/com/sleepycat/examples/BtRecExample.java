@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)BtRecExample.java	11.2 (Sleepycat) 9/10/99
+ * $Id: BtRecExample.java,v 11.6 2000/02/19 20:58:02 bostic Exp $
  */
 
 package com.sleepycat.examples;
@@ -148,7 +148,7 @@ public class BtRecExample
 
         statp = (DbBtreeStat)dbp.stat(0);
         System.out.println(progname + ": database contains " +
-                          statp.bt_nrecs + " records");
+                          statp.bt_ndata + " records");
     }
 
     void show(String msg, RecnoStringDbt key, RecnoStringDbt data)
@@ -249,7 +249,6 @@ public class BtRecExample
             return b.toString();
     }
 
-
     private Dbc dbcp;
     private Db dbp;
 
@@ -347,4 +346,3 @@ public class BtRecExample
         byte arr[];
     }
 }
-

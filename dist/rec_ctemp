@@ -3,14 +3,14 @@
  *	Recovery function for FUNC.
  *
  * PUBLIC: int __PREF_FUNC_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__PREF_FUNC_recover(dbenv, dbtp, lsnp, redo, info)
+__PREF_FUNC_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__PREF_FUNC_args *argp;
@@ -24,7 +24,7 @@ __PREF_FUNC_recover(dbenv, dbtp, lsnp, redo, info)
 	REC_INTRO(__PREF_FUNC_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (redo) {
+		if (DB_REDO(op)) {
 			if ((ret = memp_fget(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
@@ -44,10 +44,10 @@ __PREF_FUNC_recover(dbenv, dbtp, lsnp, redo, info)
 	 *
 	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
 	 */
-	if (cmp_p == 0 && redo) {
+	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		modified = 1;
-	} else if (cmp_n == 0 && !redo) {
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
 		/* Need to undo update described. */
 		modified = 1;
 	}

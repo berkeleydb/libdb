@@ -1,15 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)env003.tcl	11.2 (Sleepycat) 9/7/99
+#	$Id: env003.tcl,v 11.11 2000/05/22 12:51:36 bostic Exp $
 #
 # Env Test 003
 # Test DB_TMP_DIR and env name resolution
 # With an environment path specified using -home, and then again
 # with it specified by the environment variable DB_HOME:
-# 	1) Make sure that the DB_TMP_DIR config file option is respected
+#	1) Make sure that the DB_TMP_DIR config file option is respected
 #		a) as a relative pathname.
 #		b) as an absolute pathname.
 #	2) Make sure that the DB_TMP_DIR db_config argument is respected,
@@ -53,7 +53,7 @@ proc env003_body { home_arg } {
 	cleanup $testdir
 	set tmpdir "tmpfiles_in_here"
 
-	exec $MKDIR $testdir/$tmpdir
+	file mkdir $testdir/$tmpdir
 
 	# Set up full path to $tmpdir for when we test absolute paths.
 	set curdir [pwd]
@@ -83,14 +83,14 @@ proc env003_body { home_arg } {
 	# Now we try without a config file, but instead with db_config
 	# relative paths
 	env003_run_test b 1 "relative path, db_config" "$home_arg \
-		-config {{DB_TMP_DIR $tmpdir} {DB_DATA_DIR .}}" \
+		-tmp_dir $tmpdir -data_dir ." \
 		$testdir/$tmpdir
 
 	cleanup $testdir
 
 	# absolute
 	env003_run_test b 2 "absolute path, db_config" "$home_arg \
-		-config {{DB_TMP_DIR $fulltmpdir} {DB_DATA_DIR .}}" \
+		-tmp_dir $fulltmpdir -data_dir ." \
 		$fulltmpdir
 
 	cleanup $testdir
@@ -101,27 +101,25 @@ proc env003_body { home_arg } {
 	# Make a temp directory that actually does exist to supply
 	# as a bogus argument--the test checks for -nonexistent- temp
 	# dirs., as success is harder to detect.
-	exec $MKDIR $testdir/bogus
+	file mkdir $testdir/bogus
 	env003_make_config $tmpdir
 
 	# note that we supply an -existent- tmp dir to db_config as
 	# a red herring
 	env003_run_test c 1 "relative path, both db_config and file" \
-		"$home_arg -config {{DB_TMP_DIR $testdir/bogus} \
-		{DB_DATA_DIR .}}" $testdir/$tmpdir
+		"$home_arg -tmp_dir $testdir/bogus -data_dir ." \
+		$testdir/$tmpdir
 	cleanup $testdir
 
-	exec $MKDIR $fulltmpdir
-	exec $MKDIR $fulltmpdir/bogus
+	file mkdir $fulltmpdir
+	file mkdir $fulltmpdir/bogus
 	env003_make_config $fulltmpdir/nonexistent
 
 	# note that we supply an -existent- tmp dir to db_config as
 	# a red herring
 	env003_run_test c 2 "relative path, both db_config and file" \
-		"$home_arg -config {{DB_TMP_DIR $fulltmpdir/bogus} \
-		{DB_DATA_DIR .}}" $fulltmpdir
-
-
+		"$home_arg -tmp_dir $fulltmpdir/bogus -data_dir ." \
+		$fulltmpdir
 }
 
 proc env003_run_test { major minor msg env_args tmp_path} {
@@ -131,12 +129,12 @@ proc env003_run_test { major minor msg env_args tmp_path} {
 
 	puts "\t\tEnv003.$major.$minor: $msg"
 
-	# Create an environment abd small-cached in-memory database to
+	# Create an environment and small-cached in-memory database to
 	# use.
-	set dbenv [eval {berkdb env -create -mpool -private} $env_args \
+	set dbenv [eval {berkdb env -create -home $testdir} $env_args \
 	    {-cachesize {0 40960 1}}]
 	error_check_good env_open [is_valid_env $dbenv] TRUE
-	set db [berkdb open -env $dbenv -create -btree]
+	set db [berkdb_open_noerr -env $dbenv -create -btree]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	# Fill the database with more than its cache can fit.
@@ -167,14 +165,13 @@ proc env003_run_test { major minor msg env_args tmp_path} {
 
 	error_check_good db_close [$db close] 0
 	error_check_good env_close [$dbenv close] 0
-
 }
 
 proc env003_make_config { tmpdir } {
 	global testdir
 
 	set cid [open $testdir/DB_CONFIG w]
-	puts $cid "DB_DATA_DIR ."
-	puts $cid "DB_TMP_DIR $tmpdir"
+	puts $cid "set_data_dir ."
+	puts $cid "set_tmp_dir $tmpdir"
 	close $cid
 }

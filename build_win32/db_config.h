@@ -1,5 +1,5 @@
 /*
- * @(#)db_config.h	11.12 (Sleepycat) 11/9/99
+ * $Id: db_config.h,v 11.17 2000/05/09 19:08:06 bostic Exp $
  */
 
 /* Define to empty if the keyword does not work.  */
@@ -44,14 +44,14 @@
 #endif
 #endif
 
-/* Define if you want a version with run-time diagnostic checking. */
-/* #undef DIAGNOSTIC */
-
 /* Define if you want a version that logs read operations. */
 /* #undef DEBUG_ROP */
 
 /* Define if you want a version that logs write operations. */
 /* #undef DEBUG_WOP */
+
+/* Define if you want a version with run-time diagnostic checking. */
+/* #undef DIAGNOSTIC */
 
 /* Define if fcntl/F_SETFD denies child access to file descriptors. */
 /* #undef HAVE_FCNTL_F_SETFD */
@@ -62,8 +62,10 @@
 /* Mutex possibilities. */
 /* #undef HAVE_MUTEX_68K_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_AIX_CHECK_LOCK */
+/* #undef HAVE_MUTEX_ALPHA_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_HPPA_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_HPPA_MSEM_INIT */
+/* #undef HAVE_MUTEX_IA64_GCC_ASSEMBLY */
 /* #undef HAVE_MUTEX_MACOS */
 /* #undef HAVE_MUTEX_MSEM_INIT */
 /* #undef HAVE_MUTEX_PTHREADS */
@@ -78,12 +80,13 @@
 /* #undef HAVE_MUTEX_UI_THREADS */
 /* #undef HAVE_MUTEX_UTS_CC_ASSEMBLY */
 /* #undef HAVE_MUTEX_VMS */
+/* #undef HAVE_MUTEX_VXWORKS */
 /* #undef HAVE_MUTEX_WIN16 */
 #define HAVE_MUTEX_WIN32 1
 /* #undef HAVE_MUTEX_X86_GCC_ASSEMBLY */
 
-/* Define if you have the sigfillset function.  */
-/* #undef HAVE_SIGFILLSET */
+/* Define if building RPC client/server. */
+/* #undef HAVE_RPC */
 
 /* Define if your sprintf returns a pointer, not a length. */
 /* #undef SPRINTF_RET_CHARPNT */
@@ -115,8 +118,14 @@ extern int getopt(int, char * const *, const char *);
 /* Define if you have the memmove function.  */
 #define HAVE_MEMMOVE 1
 
+/* Define if you have the mlock function.  */
+/* #undef HAVE_MLOCK */
+
 /* Define if you have the mmap function.  */
 /* #undef HAVE_MMAP */
+
+/* Define if you have the munlock function.  */
+/* #undef HAVE_MUNLOCK */
 
 /* Define if you have the munmap function.  */
 /* #undef HAVE_MUNMAP */
@@ -126,6 +135,9 @@ extern int getopt(int, char * const *, const char *);
 
 /* Define if you have the pstat_getdynamic function.  */
 /* #undef HAVE_PSTAT_GETDYNAMIC */
+
+/* Define if you have the pwrite function.  */
+/* #undef HAVE_PWRITE */
 
 /* Define if you have the qsort function.  */
 #define HAVE_QSORT 1
@@ -145,8 +157,14 @@ extern int getopt(int, char * const *, const char *);
 /* Define if you have the snprintf function.  */
 #define HAVE_SNPRINTF 1
 
+/* Define if you have the strcasecmp function.  */
+/* #undef HAVE_STRCASECMP */
+
 /* Define if you have the strerror function.  */
 #define HAVE_STRERROR 1
+
+/* Define if you have the strtoul function.  */
+#define HAVE_STRTOUL 1
 
 /* Define if you have the sysconf function.  */
 /* #undef HAVE_SYSCONF */
@@ -209,9 +227,6 @@ extern int getopt(int, char * const *, const char *);
 
 #define	WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-#include "queue.h"
-#include "shqueue.h"
 
 #define	fsync(fd)	_commit(fd);
 

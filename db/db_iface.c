@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_iface.c	11.2 (Sleepycat) 8/14/99";
+static const char revid[] = "$Id: db_iface.c,v 11.27 2000/05/17 19:18:08 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -22,7 +22,7 @@ static const char sccsid[] = "@(#)db_iface.c	11.2 (Sleepycat) 8/14/99";
 #include "db_am.h"
 #include "btree.h"
 
-static int __db_keyempty __P((const DB_ENV *));
+static int __db_curinval __P((const DB_ENV *));
 static int __db_rdonly __P((const DB_ENV *, const char *));
 static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
 
@@ -41,12 +41,11 @@ __db_cursorchk(dbp, flags, isrdonly)
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case 0:
-	case DB_DUPCURSOR:
 		break;
 	case DB_WRITECURSOR:
 		if (isrdonly)
 			return (__db_rdonly(dbp->dbenv, "DB->cursor"));
-		if (!F_ISSET(dbp->dbenv, DB_ENV_CDB))
+		if (!CDB_LOCKING(dbp->dbenv))
 			return (__db_ferr(dbp->dbenv, "DB->cursor", 0));
 		break;
 	case DB_WRITELOCK:
@@ -58,6 +57,33 @@ __db_cursorchk(dbp, flags, isrdonly)
 	}
 
 	return (0);
+}
+
+/*
+ * __db_ccountchk --
+ *	Common cursor count argument checking routine.
+ *
+ * PUBLIC: int __db_ccountchk __P((const DB *, u_int32_t, int));
+ */
+int
+__db_ccountchk(dbp, flags, isvalid)
+	const DB *dbp;
+	u_int32_t flags;
+	int isvalid;
+{
+	/* Check for invalid function flags. */
+	switch (flags) {
+	case 0:
+		break;
+	default:
+		return (__db_ferr(dbp->dbenv, "DBcursor->c_count", 0));
+	}
+
+	/*
+	 * The cursor must be initialized, return EINVAL for an invalid cursor,
+	 * otherwise 0.
+	 */
+	return (isvalid ? 0 : __db_curinval(dbp->dbenv));
 }
 
 /*
@@ -85,10 +111,10 @@ __db_cdelchk(dbp, flags, isrdonly, isvalid)
 	}
 
 	/*
-	 * The cursor must be initialized, return -1 for an invalid cursor,
+	 * The cursor must be initialized, return EINVAL for an invalid cursor,
 	 * otherwise 0.
 	 */
-	return (isvalid ? 0 : EINVAL);
+	return (isvalid ? 0 : __db_curinval(dbp->dbenv));
 }
 
 /*
@@ -104,13 +130,20 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	u_int32_t flags;
 	int isvalid;
 {
-	int key_einval, key_flags, ret;
+	int key_einval, ret;
 
-	key_einval = key_flags = 0;
+	key_einval = 0;
 
-	/* Check for read-modify-write validity. */
+	/*
+	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
+	 * with CDB cursors since if you're going to write the cursor, you
+	 * had to create it with DB_WRITECURSOR.  Regardless, we check for
+	 * LOCKING_ON and not STD_LOCKING, as we don't want to disallow it.
+	 * If this changes, confirm that DB does not itself set the DB_RMW
+	 * flag in a path where CDB may have been configured.
+	 */
 	if (LF_ISSET(DB_RMW)) {
-		if (!F_ISSET(dbp->dbenv, DB_ENV_LOCKING)) {
+		if (!LOCKING_ON(dbp->dbenv)) {
 			__db_err(dbp->dbenv,
 			    "the DB_RMW flag requires locking");
 			return (EINVAL);
@@ -120,25 +153,26 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 
 	/* Check for invalid function flags. */
 	switch (flags) {
-	case DB_NEXT_DUP:
-		if (dbp->type == DB_RECNO || dbp->type == DB_QUEUE)
+	case DB_CONSUME:
+		if (dbp->type != DB_QUEUE)
 			goto err;
-		/* FALLTHROUGH */
+		break;
 	case DB_CURRENT:
 	case DB_FIRST:
 	case DB_LAST:
 	case DB_NEXT:
+	case DB_NEXT_DUP:
+	case DB_NEXT_NODUP:
 	case DB_PREV:
-		key_flags = 1;
+	case DB_PREV_NODUP:
 		break;
-	case DB_GET_BOTH:
-		if (dbp->type == DB_RECNO || dbp->type == DB_QUEUE)
+	case DB_GET_BOTHC:
+		if (dbp->type == DB_QUEUE)
 			goto err;
 		/* FALLTHROUGH */
-	case DB_SET_RANGE:
-		key_einval = key_flags = 1;
-		break;
+	case DB_GET_BOTH:
 	case DB_SET:
+	case DB_SET_RANGE:
 		key_einval = 1;
 		break;
 	case DB_GET_RECNO:
@@ -148,12 +182,8 @@ __db_cgetchk(dbp, key, data, flags, isvalid)
 	case DB_SET_RECNO:
 		if (!F_ISSET(dbp, DB_BT_RECNUM))
 			goto err;
-		key_einval = key_flags = 1;
+		key_einval = 1;
 		break;
-	case DB_CONSUME:
-		if (dbp->type == DB_QUEUE)
-			break;
-		/* FALL THROUGH */
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 	}
@@ -164,16 +194,14 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);
 
-	/* Check for missing keys. */
-	if (key_einval && (key->data == NULL || key->size == 0))
-		return (__db_keyempty(dbp->dbenv));
-
 	/*
 	 * The cursor must be initialized for DB_CURRENT or DB_NEXT_DUP,
-	 * return -1 for an invalid cursor, otherwise 0.
+	 * return EINVAL for an invalid cursor, otherwise 0.
 	 */
-	return (isvalid ||
-	    (flags != DB_CURRENT && flags != DB_NEXT_DUP) ? 0 : EINVAL);
+	if (isvalid || (flags != DB_CURRENT && flags != DB_NEXT_DUP))
+		return (0);
+
+	return(__db_curinval(dbp->dbenv));
 }
 
 /*
@@ -203,14 +231,24 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 	switch (flags) {
 	case DB_AFTER:
 	case DB_BEFORE:
-		if (dbp->type == DB_QUEUE)
+		switch (dbp->type) {
+		case DB_BTREE:
+		case DB_HASH:		/* Only with unsorted duplicates. */
+			if (!F_ISSET(dbp, DB_AM_DUP))
+				goto err;
+			if (dbp->dup_compare != NULL)
+				goto err;
+			break;
+		case DB_QUEUE:		/* Not permitted. */
 			goto err;
-		if (dbp->dup_compare != NULL)
+		case DB_RECNO:		/* Only with mutable record numbers. */
+			if (!F_ISSET(dbp, DB_RE_RENUMBER))
+				goto err;
+			key_flags = 1;
+			break;
+		default:
 			goto err;
-		if (dbp->type == DB_RECNO && !F_ISSET(dbp, DB_RE_RENUMBER))
-			goto err;
-		if (dbp->type != DB_RECNO && !F_ISSET(dbp, DB_AM_DUP))
-			goto err;
+		}
 		break;
 	case DB_CURRENT:
 		/*
@@ -219,11 +257,13 @@ __db_cputchk(dbp, key, data, flags, isrdonly, isvalid)
 		 * for the comparison.
 		 */
 		break;
+	case DB_NODUPDATA:
+		if (!F_ISSET(dbp, DB_AM_DUPSORT))
+			goto err;
+		/* FALLTHROUGH */
 	case DB_KEYFIRST:
 	case DB_KEYLAST:
-		if (dbp->type == DB_QUEUE)
-			goto err;
-		if (dbp->type == DB_RECNO)
+		if (dbp->type == DB_QUEUE || dbp->type == DB_RECNO)
 			goto err;
 		key_einval = key_flags = 1;
 		break;
@@ -237,16 +277,15 @@ err:		return (__db_ferr(dbp->dbenv, "DBcursor->c_put", 0));
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);
 
-	/* Check for missing keys. */
-	if (key_einval && (key->data == NULL || key->size == 0))
-		return (__db_keyempty(dbp->dbenv));
-
 	/*
 	 * The cursor must be initialized for anything other than DB_KEYFIRST
-	 * and DB_KEYLAST, return -1 for an invalid cursor, otherwise 0.
+	 * and DB_KEYLAST, return EINVAL for an invalid cursor, otherwise 0.
 	 */
-	return (isvalid ||
-	    flags == DB_KEYFIRST || flags == DB_KEYLAST ? 0 : EINVAL);
+	if (isvalid || flags == DB_KEYFIRST ||
+	    flags == DB_KEYLAST || flags == DB_NODUPDATA)
+		return (0);
+
+	return (__db_curinval(dbp->dbenv));
 }
 
 /*
@@ -285,6 +324,8 @@ __db_delchk(dbp, key, flags, isrdonly)
 	u_int32_t flags;
 	int isrdonly;
 {
+	COMPQUIET(key, NULL);
+
 	/* Check for changes to a read-only tree. */
 	if (isrdonly)
 		return (__db_rdonly(dbp->dbenv, "delete"));
@@ -296,10 +337,6 @@ __db_delchk(dbp, key, flags, isrdonly)
 	default:
 		return (__db_ferr(dbp->dbenv, "DB->del", 0));
 	}
-
-	/* Check for missing keys. */
-	if (key->data == NULL || key->size == 0)
-		return (__db_keyempty(dbp->dbenv));
 
 	return (0);
 }
@@ -319,9 +356,16 @@ __db_getchk(dbp, key, data, flags)
 {
 	int ret;
 
-	/* Check for read-modify-write validity. */
+	/*
+	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
+	 * with CDB cursors since if you're going to write the cursor, you
+	 * had to create it with DB_WRITECURSOR.  Regardless, we check for
+	 * LOCKING_ON and not STD_LOCKING, as we don't want to disallow it.
+	 * If this changes, confirm that DB does not itself set the DB_RMW
+	 * flag in a path where CDB may have been configured.
+	 */
 	if (LF_ISSET(DB_RMW)) {
-		if (!F_ISSET(dbp->dbenv, DB_ENV_LOCKING)) {
+		if (!LOCKING_ON(dbp->dbenv)) {
 			__db_err(dbp->dbenv,
 			    "the DB_RMW flag requires locking");
 			return (EINVAL);
@@ -348,10 +392,6 @@ err:		return (__db_ferr(dbp->dbenv, "DB->get", 0));
 	if ((ret = __dbt_ferr(dbp, "data", data, 1)) != 0)
 		return (ret);
 
-	/* Check for missing keys. */
-	if (key->data == NULL || key->size == 0)
-		return (__db_keyempty(dbp->dbenv));
-
 	return (0);
 }
 
@@ -366,8 +406,63 @@ __db_joinchk(dbp, flags)
 	const DB *dbp;
 	u_int32_t flags;
 {
-	if (flags != 0)
+	switch (flags) {
+	case 0:
+	case DB_JOIN_NOSORT:
+		break;
+	default:
 		return (__db_ferr(dbp->dbenv, "DB->join", 0));
+	}
+
+	return (0);
+}
+
+/*
+ * __db_joingetchk --
+ *	Common join_get argument checking routine.
+ *
+ * PUBLIC: int __db_joingetchk __P((const DB *, DBT *, u_int32_t));
+ */
+int
+__db_joingetchk(dbp, key, flags)
+	const DB *dbp;
+	DBT *key;
+	u_int32_t flags;
+{
+
+	if (LF_ISSET(DB_RMW)) {
+		if (!LOCKING_ON(dbp->dbenv)) {
+			__db_err(dbp->dbenv,
+			    "the DB_RMW flag requires locking");
+			return (EINVAL);
+		}
+		LF_CLR(DB_RMW);
+	}
+
+	switch (flags) {
+	case 0:
+	case DB_JOIN_ITEM:
+		break;
+	default:
+		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
+	}
+
+	/*
+	 * A partial get of the key of a join cursor don't make much sense;
+	 * the entire key is necessary to query the primary database
+	 * and find the datum, and so regardless of the size of the key
+	 * it would not be a performance improvement.  Since it would require
+	 * special handling, we simply disallow it.
+	 *
+	 * A partial get of the data, however, potentially makes sense (if
+	 * all possible data are a predictable large structure, for instance)
+	 * and causes us no headaches, so we permit it.
+	 */
+	if (F_ISSET(key, DB_DBT_PARTIAL)) {
+		__db_err(dbp->dbenv,
+		    "DB_DBT_PARTIAL may not be set on key during join_get");
+		return (EINVAL);
+	}
 
 	return (0);
 }
@@ -387,7 +482,9 @@ __db_putchk(dbp, key, data, flags, isrdonly, isdup)
 	u_int32_t flags;
 	int isrdonly, isdup;
 {
-	int ret;
+	int key_einval, key_flags, ret;
+
+	key_einval = key_flags = 0;
 
 	/* Check for changes to a read-only tree. */
 	if (isrdonly)
@@ -397,30 +494,54 @@ __db_putchk(dbp, key, data, flags, isrdonly, isdup)
 	switch (flags) {
 	case 0:
 	case DB_NOOVERWRITE:
+		key_einval = key_flags = 1;
 		break;
 	case DB_APPEND:
 		if (dbp->type != DB_RECNO && dbp->type != DB_QUEUE)
 			goto err;
+		key_flags = 1;
 		break;
+	case DB_NODUPDATA:
+		if (F_ISSET(dbp, DB_AM_DUPSORT))
+			break;
+		/* FALLTHROUGH */
 	default:
 err:		return (__db_ferr(dbp->dbenv, "DB->put", 0));
 	}
 
 	/* Check for invalid key/data flags. */
-	if ((ret = __dbt_ferr(dbp, "key", key, 0)) != 0)
+	if (key_flags && (ret = __dbt_ferr(dbp, "key", key, 0)) != 0)
 		return (ret);
 	if ((ret = __dbt_ferr(dbp, "data", data, 0)) != 0)
 		return (ret);
-
-	/* Check for missing keys. */
-	if (key->data == NULL || key->size == 0)
-		return (__db_keyempty(dbp->dbenv));
 
 	/* Check for partial puts in the presence of duplicates. */
 	if (isdup && F_ISSET(data, DB_DBT_PARTIAL)) {
 		__db_err(dbp->dbenv,
 "a partial put in the presence of duplicates requires a cursor operation");
 		return (EINVAL);
+	}
+
+	return (0);
+}
+
+/*
+ * __db_removechk --
+ *	DB->remove flag check.
+ *
+ * PUBLIC: int __db_removechk __P((const DB *, u_int32_t));
+ */
+int
+__db_removechk(dbp, flags)
+	const DB *dbp;
+	u_int32_t flags;
+{
+	/* Check for invalid function flags. */
+	switch (flags) {
+	case 0:
+		break;
+	default:
+		return (__db_ferr(dbp->dbenv, "DB->remove", 0));
 	}
 
 	return (0);
@@ -440,6 +561,7 @@ __db_statchk(dbp, flags)
 	/* Check for invalid function flags. */
 	switch (flags) {
 	case 0:
+	case DB_CACHED_COUNTS:
 		break;
 	case DB_RECORDCOUNT:
 		if (dbp->type == DB_RECNO)
@@ -500,7 +622,7 @@ __dbt_ferr(dbp, name, dbt, check_thread)
 	 * database, without having to clear flags.
 	 */
 	if ((ret = __db_fchk(dbenv, name, dbt->flags,
-	    DB_DBT_MALLOC |
+	    DB_DBT_MALLOC | DB_DBT_DUPOK |
 	    DB_DBT_REALLOC | DB_DBT_USERMEM | DB_DBT_PARTIAL)) != 0)
 		return (ret);
 	switch (F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM)) {
@@ -513,42 +635,14 @@ __dbt_ferr(dbp, name, dbt, check_thread)
 		return (__db_ferr(dbenv, name, 1));
 	}
 
-	if (check_thread && F_ISSET(dbenv, DB_ENV_THREAD) &&
+	if (check_thread && DB_IS_THREADED(dbp) &&
 	    !F_ISSET(dbt, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM)) {
-		__db_err(dbenv, "missing flag thread flag for %s DBT", name);
+		__db_err(dbenv,
+		    "DB_THREAD mandates memory allocation flag on DBT %s",
+		    name);
 		return (EINVAL);
 	}
 	return (0);
-}
-
-/*
- * __db_eopnotsup --
- *	Common operation not supported message.
- *
- * PUBLIC: int __db_eopnotsup __P((const DB_ENV *));
- */
-int
-__db_eopnotsup(dbenv)
-	const DB_ENV *dbenv;
-{
-	__db_err(dbenv, "operation not supported");
-#ifdef EOPNOTSUPP
-	return (EOPNOTSUPP);
-#else
-	return (EINVAL);
-#endif
-}
-
-/*
- * __db_keyempty --
- *	Common missing or empty key value message.
- */
-static int
-__db_keyempty(dbenv)
-	const DB_ENV *dbenv;
-{
-	__db_err(dbenv, "missing or empty key value specified");
-	return (EINVAL);
 }
 
 /*
@@ -565,23 +659,14 @@ __db_rdonly(dbenv, name)
 }
 
 /*
- * __db_removechk --
- *	DB->remove flag check.
- *
- * PUBLIC: int __db_removechk __P((const DB *, u_int32_t));
+ * __db_curinval
+ *	Report that a cursor is in an invalid state.
  */
-int
-__db_removechk(dbp, flags)
-	const DB *dbp;
-	u_int32_t flags;
+static int
+__db_curinval(dbenv)
+	const DB_ENV *dbenv;
 {
-	/* Check for invalid function flags. */
-	switch (flags) {
-	case 0:
-		break;
-	default:
-		return (__db_ferr(dbp->dbenv, "DB->remove", 0));
-	}
-
-	return (0);
+	__db_err(dbenv,
+	    "Cursor position must be set before performing this operation");
+	return (EINVAL);
 }

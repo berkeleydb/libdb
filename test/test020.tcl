@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test020.tcl	11.5 (Sleepycat) 9/24/99
+#	$Id: test020.tcl,v 11.10 2000/04/21 18:36:24 krinsky Exp $
 #
 # DB Test 20 {access method}
 # Test in-memory databases.
@@ -19,8 +19,8 @@ proc test020 { method {nentries 10000} args } {
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -68,16 +68,16 @@ proc test020 { method {nentries 10000} args } {
 			puts $oid $i
 		}
 		close $oid
-		exec $MV $t1 $t3
+		file rename -force $t1 $t3
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 	}
 
 	error_check_good Test020:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 }
 
 # Check function for test020; keys and data are identical

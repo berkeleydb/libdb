@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test025.tcl	11.4 (Sleepycat) 8/17/99
+#	$Id: test025.tcl,v 11.9 2000/04/21 18:36:25 krinsky Exp $
 #
 # DB Test 25 {method nentries}
 # Test the DB_APPEND flag.
@@ -25,12 +25,23 @@ proc test025 { method {nentries 10000} args} {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test025.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test025.db
+		set env NULL
+	} else {
+		set testfile test025.db
+		incr eindex
+		set env [lindex $args $eindex]
+	}
 	set t1 $testdir/t1
 
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
@@ -63,13 +74,13 @@ proc test025 { method {nentries 10000} args} {
 
 	puts "\tTest025.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
 	    dump_file_direction -first -next
 
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
-	puts "\tTest001.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
+	puts "\tTest025.d: close, open, and dump file in reverse direction"
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
 		dump_file_direction -last -prev
 }
 

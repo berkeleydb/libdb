@@ -1,6 +1,4 @@
 /*
- * @(#)parisc.gcc	11.1 (Sleepycat) 7/25/99
- *
  * Copyright (c) 1996-1997, The University of Utah and the Computer Systems
  * Laboratory at the University of Utah (CSL).  All rights reserved.
  *
@@ -18,6 +16,8 @@
  *
  * CSL requests users of this software to return to csl-dist@cs.utah.edu any
  * improvements that they make and grant CSL redistribution rights.
+ *
+ * $Id: parisc.gcc,v 11.2 1999/11/21 18:11:47 bostic Exp $
  */
 
 /*

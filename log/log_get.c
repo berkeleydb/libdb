@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_get.c	11.4 (Sleepycat) 9/16/99";
+static const char revid[] = "$Id: log_get.c,v 11.22 2000/05/02 20:35:29 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,10 +18,19 @@ static const char sccsid[] = "@(#)log_get.c	11.4 (Sleepycat) 9/16/99";
 #include <unistd.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_page.h"
 #include "log.h"
 #include "hash.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 /*
  * log_get --
@@ -35,7 +44,13 @@ log_get(dbenv, alsn, dbt, flags)
 	u_int32_t flags;
 {
 	DB_LOG *dblp;
+	DB_LSN saved_lsn;
 	int ret;
+
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_log_get(dbenv, alsn, dbt, flags));
+#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->lg_handle, DB_INIT_LOG);
@@ -62,8 +77,9 @@ log_get(dbenv, alsn, dbt, flags)
 	 * This assumes that applications don't ever request the log header
 	 * records by LSN, but that seems reasonable to me.
 	 */
-	ret = __log_get(dblp, alsn, dbt, flags, 0);
-	if (ret == 0 && alsn->offset == 0) {
+	saved_lsn = *alsn;
+	if ((ret = __log_get(dblp,
+	    alsn, dbt, flags, 0)) == 0 && alsn->offset == 0) {
 		switch (flags) {
 		case DB_FIRST:
 			flags = DB_NEXT;
@@ -72,8 +88,14 @@ log_get(dbenv, alsn, dbt, flags)
 			flags = DB_PREV;
 			break;
 		}
+		if (F_ISSET(dbt, DB_DBT_MALLOC)) {
+			__os_free(dbt->data, dbt->size);
+			dbt->data = NULL;
+		}
 		ret = __log_get(dblp, alsn, dbt, flags, 0);
 	}
+	if (ret != 0)
+		*alsn = saved_lsn;
 
 	R_UNLOCK(dbenv, &dblp->reginfo);
 
@@ -94,25 +116,29 @@ __log_get(dblp, alsn, dbt, flags, silent)
 	u_int32_t flags;
 	int silent;
 {
+	DB_ENV *dbenv;
 	DB_LSN nlsn;
 	HDR hdr;
 	LOG *lp;
 	size_t len;
-	ssize_t nr;
+	size_t nr;
 	int cnt, ret;
 	char *np, *tbuf;
 	const char *fail;
-	void *shortp;
+	void *shortp, *readp;
+	u_int32_t offset;
 	u_int8_t *p;
 
 	lp = dblp->reginfo.primary;
 	fail = np = tbuf = NULL;
+	dbenv = dblp->dbenv;
 
 	nlsn = dblp->c_lsn;
 	switch (flags) {
 	case DB_CHECKPOINT:
 		nlsn = lp->chkpt_lsn;
 		if (IS_ZERO_LSN(nlsn)) {
+			/* No db_err. The caller may expect this. */
 			ret = ENOENT;
 			goto err2;
 		}
@@ -178,8 +204,9 @@ next_file:	++nlsn.file;
 
 	/* If we've switched files, discard the current file handle. */
 	if (dblp->c_lsn.file != nlsn.file &&
-	    F_ISSET(&dblp->c_fh, DB_FH_VALID))
+	    F_ISSET(&dblp->c_fh, DB_FH_VALID)) {
 		(void)__os_closehandle(&dblp->c_fh);
+	}
 
 	/* If the entire record is in the in-memory buffer, copy it out. */
 	if (nlsn.file == lp->lsn.file && nlsn.offset >= lp->w_off) {
@@ -191,9 +218,11 @@ next_file:	++nlsn.file;
 		len = hdr.len - sizeof(HDR);
 		if ((ret = __db_retcopy(NULL, dbt, p + sizeof(HDR),
 		    len, &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-			goto err1;
+			goto alloc_err;
 		goto cksum;
 	}
+
+	shortp = NULL;
 
 	/* Acquire a file descriptor. */
 	if (!F_ISSET(&dblp->c_fh, DB_FH_VALID)) {
@@ -206,33 +235,58 @@ next_file:	++nlsn.file;
 		np = NULL;
 	}
 
+	/* See if we've already read this */
+	if (nlsn.file == dblp->r_file && nlsn.offset > dblp->r_off
+	     && nlsn.offset + sizeof(HDR) < dblp->r_off + dblp->r_size)
+		goto got_header;
+
 	/*
 	 * Seek to the header offset and read the header.  Because the file
 	 * may be pre-allocated, we have to make sure that we're not reading
 	 * past the information in the start of the in-memory buffer.
 	 */
-	if ((ret = __os_seek(
-	    &dblp->c_fh, 0, 0, nlsn.offset, 0, DB_OS_SEEK_SET)) != 0) {
+
+	readp = &hdr;
+	offset = nlsn.offset;
+	if (nlsn.file == lp->lsn.file && offset + sizeof(HDR) > lp->w_off)
+		nr = lp->w_off - offset;
+	else if (dblp->readbufp == NULL)
+		nr = sizeof(HDR);
+	else  {
+		nr = lp->buffer_size;
+		readp = dblp->readbufp;
+		dblp->r_file = nlsn.file;
+		/* Going backwards.  Put the current in the middle. */
+		if (flags == DB_PREV || flags == DB_LAST) {
+			if (offset <= lp->buffer_size/2)
+				offset = 0;
+			else
+				offset = offset - lp->buffer_size/2;
+		}
+		if (nlsn.file == lp->lsn.file && offset + nr > lp->lsn.offset)
+			nr = lp->lsn.offset - offset;
+		dblp->r_off = offset;
+	}
+
+	if ((ret = __os_seek(dblp->dbenv,
+	    &dblp->c_fh, 0, 0, offset, 0, DB_OS_SEEK_SET)) != 0) {
 		fail = "seek";
 		goto err1;
 	}
-	if (nlsn.file == lp->lsn.file && nlsn.offset + sizeof(HDR) > lp->w_off)
-		nr = lp->w_off - nlsn.offset;
-	else
-		nr = sizeof(HDR);
-	if ((ret = __os_read(&dblp->c_fh, &hdr, nr, &nr)) != 0) {
+	if ((ret = __os_read(dblp->dbenv, &dblp->c_fh, readp, nr, &nr)) != 0) {
 		fail = "read";
 		goto err1;
 	}
-	if (nr == sizeof(HDR))
-		shortp = NULL;
-	else {
+	if (nr < sizeof(HDR)) {
 		/* If read returns EOF, try the next file. */
 		if (nr == 0) {
 			if (flags != DB_NEXT || nlsn.file == lp->lsn.file)
 				goto corrupt;
 			goto next_file;
 		}
+
+		if (dblp->readbufp != NULL)
+			memcpy((u_int8_t *) &hdr, readp, nr);
 
 		/*
 		 * If read returns a short count the rest of the record has
@@ -243,7 +297,17 @@ next_file:	++nlsn.file;
 
 		/* Get the rest of the header from the in-memory buffer. */
 		memcpy((u_int8_t *)&hdr + nr, dblp->bufp, sizeof(HDR) - nr);
+
+		if (hdr.len == 0)
+			goto next_file;
+
 		shortp = dblp->bufp + (sizeof(HDR) - nr);
+	}
+
+	else if (dblp->readbufp != NULL) {
+		dblp->r_size = nr;
+got_header:	memcpy((u_int8_t *)&hdr,
+		    dblp->readbufp + (nlsn.offset - dblp->r_off), sizeof(HDR));
 	}
 
 	/*
@@ -265,8 +329,22 @@ next_file:	++nlsn.file;
 			goto corrupt;
 		if ((ret = __db_retcopy(NULL, dbt, shortp, len,
 		    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-			goto err1;
+			goto alloc_err;
 		goto cksum;
+	}
+
+	if (dblp->readbufp != NULL) {
+		if (nlsn.offset + hdr.len < dblp->r_off + dblp->r_size) {
+			if ((ret = __db_retcopy(NULL, dbt, dblp->readbufp +
+			     (nlsn.offset - dblp->r_off) + sizeof(HDR),
+			     len, &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
+				goto alloc_err;
+			goto cksum;
+		} else if ((ret = __os_seek(dblp->dbenv, &dblp->c_fh, 0,
+		    0, nlsn.offset + sizeof(HDR), 0, DB_OS_SEEK_SET)) != 0) {
+			fail = "seek";
+			goto err1;
+		}
 	}
 
 	/*
@@ -276,7 +354,7 @@ next_file:	++nlsn.file;
 	 * We're calling malloc(3) with a region locked.  This isn't
 	 * a good idea.
 	 */
-	if ((ret = __os_malloc(len, NULL, &tbuf)) != 0)
+	if ((ret = __os_malloc(dbenv, len, NULL, &tbuf)) != 0)
 		goto err1;
 
 	/*
@@ -294,13 +372,13 @@ next_file:	++nlsn.file;
 		nr = lp->w_off - (nlsn.offset + sizeof(HDR));
 	else
 		nr = len;
-	if ((ret = __os_read(&dblp->c_fh, tbuf, nr, &nr)) != 0) {
+	if ((ret = __os_read(dblp->dbenv, &dblp->c_fh, tbuf, nr, &nr)) != 0) {
 		fail = "read";
 		goto err1;
 	}
 	if (len - nr > lp->buffer_size)
 		goto corrupt;
-	if (nr != (ssize_t)len) {
+	if (nr != len) {
 		if (lp->b_off < len - nr)
 			goto corrupt;
 
@@ -311,13 +389,13 @@ next_file:	++nlsn.file;
 	/* Copy the record into the user's DBT. */
 	if ((ret = __db_retcopy(NULL, dbt, tbuf, len,
 	    &dblp->c_dbt.data, &dblp->c_dbt.ulen)) != 0)
-		goto err1;
+		goto alloc_err;
 	__os_free(tbuf, 0);
 	tbuf = NULL;
 
 cksum:	if (hdr.cksum != __ham_func4(dbt->data, dbt->size)) {
 		if (!silent)
-			__db_err(dblp->dbenv, "log_get: checksum mismatch");
+			__db_err(dbenv, "log_get: checksum mismatch");
 		goto corrupt;
 	}
 
@@ -338,11 +416,18 @@ corrupt:/*
 
 err1:	if (!silent) {
 		if (fail == NULL)
-			__db_err(dblp->dbenv, "log_get: %s", db_strerror(ret));
+			__db_err(dbenv, "log_get: %s", db_strerror(ret));
 		else
-			__db_err(dblp->dbenv,
+			__db_err(dbenv,
 			    "log_get: %s: %s", fail, db_strerror(ret));
 	}
+
+	if (0) {
+alloc_err:	if (!silent)
+			__db_err(dbenv,
+			    "Allocation failed: %lu", (u_long)len);
+	}
+
 err2:	if (np != NULL)
 		__os_freestr(np);
 	if (tbuf != NULL)

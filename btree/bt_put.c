@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_put.c	11.20 (Sleepycat) 10/28/99";
+static const char revid[] = "$Id: bt_put.c,v 11.36.2.2 2000/07/13 18:56:34 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -57,41 +57,39 @@ static const char sccsid[] = "@(#)bt_put.c	11.20 (Sleepycat) 10/28/99";
 #include "db_page.h"
 #include "btree.h"
 
-static int __bam_ndup __P((DBC *, PAGE *, u_int32_t));
-static int __bam_ovput __P((DBC *, PAGE *, u_int32_t, DBT *));
+static int __bam_dup_convert __P((DBC *, PAGE *, u_int32_t));
+static int __bam_ovput
+	       __P((DBC *, u_int32_t, db_pgno_t, PAGE *, u_int32_t, DBT *));
 
 /*
  * __bam_iitem --
  *	Insert an item into the tree.
  *
- * PUBLIC: int __bam_iitem __P((DBC *,
- * PUBLIC:    PAGE **, db_indx_t *, DBT *, DBT *, u_int32_t, u_int32_t));
+ * PUBLIC: int __bam_iitem __P((DBC *, DBT *, DBT *, u_int32_t, u_int32_t));
  */
 int
-__bam_iitem(dbc, hp, indxp, key, data, op, flags)
+__bam_iitem(dbc, key, data, op, flags)
 	DBC *dbc;
-	PAGE **hp;
-	db_indx_t *indxp;
 	DBT *key, *data;
 	u_int32_t op, flags;
 {
-	BKEYDATA *bk;
+	BKEYDATA *bk, bk_tmp;
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	DBT tdbt;
+	DBT bk_hdr, tdbt;
 	PAGE *h;
 	db_indx_t indx;
-	db_pgno_t pgno;
 	u_int32_t data_size, have_bytes, need_bytes, needed;
-	int bigkey, bigdata, dupadjust, padrec, replace, ret, was_deleted;
+	int cmp, bigkey, bigdata, dupadjust, padrec, replace, ret, was_deleted;
 
 	COMPQUIET(bk, NULL);
 
 	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
-	h = *hp;
-	indx = *indxp;
+	h = cp->page;
+	indx = cp->indx;
 	dupadjust = replace = was_deleted = 0;
 
 	/*
@@ -99,8 +97,10 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	 * anything other simple overwrite.
 	 */
 	if (F_ISSET(dbp, DB_RE_FIXEDLEN) &&
-	    F_ISSET(data, DB_DBT_PARTIAL) && data->dlen != data->size)
-		return (EINVAL);
+	    F_ISSET(data, DB_DBT_PARTIAL) && data->dlen != data->size) {
+		data_size = data->size;
+		goto len_err;
+	}
 
 	/*
 	 * Figure out how much space the data will take, including if it's a
@@ -114,8 +114,12 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	    __bam_partsize(op, data, h, indx) : data->size;
 	padrec = 0;
 	if (F_ISSET(dbp, DB_RE_FIXEDLEN)) {
-		if (data_size > t->re_len)
+		if (data_size > t->re_len) {
+len_err:		__db_err(dbp->dbenv,
+			    "Length improper for fixed length record %lu",
+			    (u_long)data_size);
 			return (EINVAL);
+		}
 		if (data_size < t->re_len) {
 			padrec = 1;
 			data_size = t->re_len;
@@ -125,12 +129,6 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	/*
 	 * Handle partial puts or short fixed-length records: build the
 	 * real record.
-	 *
-	 * XXX
-	 * I'd much rather wait until after we figure out if we need to do
-	 * a split or not, but there are currently too many places that need
-	 * the real record before we get there.  Revisit this decision after
-	 * we move off-page duplicates into their own Btree.
 	 */
 	if (padrec || F_ISSET(data, DB_DBT_PARTIAL)) {
 		tdbt = *data;
@@ -147,91 +145,16 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	 * screwing up the duplicate sort order.  We have to do this after
 	 * we build the real record so that we're comparing the real items.
 	 */
-	if (op == DB_CURRENT && dbp->dup_compare != NULL &&
-	    __bam_cmp(dbp, data, h,
-	    indx + (TYPE(h) == P_LBTREE ? O_INDX : 0), dbp->dup_compare) != 0)
-		return (EINVAL);
-
-	/*
-	 * If it's a page of duplicates, call the common code to do the work.
-	 *
-	 * !!!
-	 * Here's where hp and indxp are important.  The duplicate code may
-	 * decide to rework/rearrange the pages and indices we're using, so
-	 * the caller must understand that the page stack may change.
-	 */
-	if (TYPE(h) == P_DUPLICATE) {
-		/* If appending a new entry adjust the index for the item. */
-		if (op == DB_AFTER || op == DB_CURRENT)
-			++*indxp;
-
-		/*
-		 * Put the new/replacement item onto the page.
-		 *
-		 * !!!
-		 * *hp and *indxp may be changed after the return.
-		 */
-		if ((ret = __db_dput(dbc, data, hp, indxp)) != 0)
+	if (op == DB_CURRENT && dbp->dup_compare != NULL) {
+		if ((ret = __bam_cmp(dbp, data, h,
+		     indx + (TYPE(h) == P_LBTREE ? O_INDX : 0),
+		     dbp->dup_compare, &cmp)) != 0)
 			return (ret);
-
-		/*
-		 * XXX
-		 * If this is CURRENT, we do an append followed by a delete,
-		 * because the underlying duplicate code doesn't support the
-		 * replace operation.  The tricky part is to make sure we
-		 * delete the proper row.  The append may have caused the row
-		 * to move, in which case, the cursor will be updated to point
-		 * at it.  This code ASSUMES that the cursor passed in is
-		 * pointing at the current record.
-		 */
-		cp = dbc->internal;
-		if (op == DB_CURRENT) {
-			/*
-			 * The append may have allocated a new page, in which
-			 * case it discarded the page we held -- re-acquire
-			 * that page.
-			 */
-			if (PGNO(*hp) != cp->dpgno) {
-				if ((ret = memp_fget(
-				    dbp->mpf, &cp->dpgno, 0,  &h)) != 0)
-					return (ret);
-			} else
-				h = *hp;
-
-			/* Delete the original item. */
-			if ((ret = __db_drem(dbc, &h, cp->dindx)) != 0)
-				return (ret);
-
-			/*
-			 * Clear the deleted flag on any cursors referencing
-			 * the item.
-			 */
-			(void)__bam_ca_delete(dbp, cp->dpgno, cp->dindx, 0);
-
-			/*
-			 * If the insert and delete are on different pages, we
-			 * have to adjust cursors on both pages.
-			 */
-			if (PGNO(*hp) != cp->dpgno) {
-				indx = cp->dindx;
-				pgno = cp->dpgno;
-				__bam_ca_di(dbp, PGNO(*hp), *indxp, 1);
-				__bam_ca_repl(dbp,
-				    pgno, indx, PGNO(*hp), *indxp);
-				__bam_ca_di(dbp, pgno, indx + 1, -1);
-
-				if ((ret = memp_fput(
-				    dbp->mpf, h, DB_MPOOL_DIRTY)) != 0)
-					return (ret);
-			}
-		} else {
-			h = *hp;
-			indx = *indxp;
-			__bam_ca_di(dbp, PGNO(h), indx, 1);
-			cp->dindx = indx;
-			cp->dpgno = PGNO(h);
+		if (cmp != 0) {
+			__db_err(dbp->dbenv,
+			    "Current data differs from put data");
+			return (EINVAL);
 		}
-		goto done;
 	}
 
 	/*
@@ -239,11 +162,11 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	 * them on overflow pages.
 	 */
 	needed = 0;
-	bigdata = data_size > t->bt_ovflsize;
+	bigdata = data_size > cp->ovflsize;
 	switch (op) {
 	case DB_KEYFIRST:
 		/* We're adding a new key and data pair. */
-		bigkey = key->size > t->bt_ovflsize;
+		bigkey = key->size > cp->ovflsize;
 		if (bigkey)
 			needed += BOVERFLOW_PSIZE;
 		else
@@ -258,7 +181,13 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	case DB_CURRENT:
 		/*
 		 * We're either overwriting the data item of a key/data pair
-		 * or we're adding the data item only, i.e. a new duplicate.
+		 * or we're creating a new on-page duplicate and only adding
+		 * a data item.
+		 *
+		 * !!!
+		 * We're not currently correcting for space reclaimed from
+		 * already deleted items, but I don't think it's worth the
+		 * complexity.
 		 */
 		bigkey = 0;
 		if (op == DB_CURRENT) {
@@ -282,7 +211,7 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 			needed += need_bytes - have_bytes;
 		break;
 	default:
-		return (EINVAL);
+		return (__db_unknown_flag(dbp->dbenv, "__bam_iitem", op));
 	}
 
 	/*
@@ -309,50 +238,53 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 	switch (op) {
 	case DB_KEYFIRST:		/* 1. Insert a new key/data pair. */
 		if (bigkey) {
-			if ((ret = __bam_ovput(dbc, h, indx, key)) != 0)
+			if ((ret = __bam_ovput(dbc,
+			    B_OVERFLOW, PGNO_INVALID, h, indx, key)) != 0)
 				return (ret);
 		} else
 			if ((ret = __db_pitem(dbc, h, indx,
 			    BKEYDATA_SIZE(key->size), NULL, key)) != 0)
 				return (ret);
 
-		__bam_ca_di(dbp, PGNO(h), indx, 1);
+		if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
+			return (ret);
 		++indx;
 		break;
 	case DB_AFTER:			/* 2. Append a new data item. */
 		if (TYPE(h) == P_LBTREE) {
-			/*
-			 * Adjust the cursor and copy in the key for the
-			 * duplicate.
-			 */
+			/* Copy the key for the duplicate and adjust cursors. */
 			if ((ret =
 			    __bam_adjindx(dbc, h, indx + P_INDX, indx, 1)) != 0)
+				return (ret);
+			if ((ret =
+			    __bam_ca_di(dbc, PGNO(h), indx + P_INDX, 1)) != 0)
 				return (ret);
 
 			indx += 3;
 			dupadjust = 1;
 
-			*indxp += 2;
+			cp->indx += 2;
 		} else {
 			++indx;
-			__bam_ca_di(dbp, PGNO(h), indx, 1);
+			if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
+				return (ret);
 
-			*indxp += 1;
+			cp->indx += 1;
 		}
 		break;
 	case DB_BEFORE:			/* 3. Insert a new data item. */
 		if (TYPE(h) == P_LBTREE) {
-			/*
-			 * Adjust the cursor and copy in the key for the
-			 * duplicate.
-			 */
+			/* Copy the key for the duplicate and adjust cursors. */
 			if ((ret = __bam_adjindx(dbc, h, indx, indx, 1)) != 0)
+				return (ret);
+			if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
 				return (ret);
 
 			++indx;
 			dupadjust = 1;
 		} else
-			__bam_ca_di(dbp, PGNO(h), indx, 1);
+			if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
+				return (ret);
 		break;
 	case DB_CURRENT:
 		if (TYPE(h) == P_LBTREE) {
@@ -372,8 +304,11 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 		/*
 		 * 4. Delete and re-add the data item.
 		 *
-		 * If we're dealing with offpage items, we have to delete and
-		 * then re-add the item.
+		 * If we're changing the type of the on-page structure, or we
+		 * are referencing offpage items, we have to delete and then
+		 * re-add the item.  We do not do any cursor adjustments here
+		 * because we're going to immediately re-add the item into the
+		 * same slot.
 		 */
 		if (bigdata || B_TYPE(bk->type) != B_KEYDATA) {
 			if ((ret = __bam_ditem(dbc, h, indx)) != 0)
@@ -385,24 +320,22 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 		replace = 1;
 		break;
 	default:
-		return (EINVAL);
+		return (__db_unknown_flag(dbp->dbenv, "__bam_iitem", op));
 	}
 
 	/* Add the data. */
 	if (bigdata) {
-		if ((ret = __bam_ovput(dbc, h, indx, data)) != 0)
+		if ((ret = __bam_ovput(dbc,
+		    B_OVERFLOW, PGNO_INVALID, h, indx, data)) != 0)
 			return (ret);
 	} else {
-		BKEYDATA __bk;
-		DBT __hdr;
-
 		if (LF_ISSET(BI_DELETED)) {
-			B_TSET(__bk.type, B_KEYDATA, 1);
-			__bk.len = data->size;
-			__hdr.data = &__bk;
-			__hdr.size = SSZA(BKEYDATA, data);
+			B_TSET(bk_tmp.type, B_KEYDATA, 1);
+			bk_tmp.len = data->size;
+			bk_hdr.data = &bk_tmp;
+			bk_hdr.size = SSZA(BKEYDATA, data);
 			ret = __db_pitem(dbc, h, indx,
-			    BKEYDATA_SIZE(data->size), &__hdr, data);
+			    BKEYDATA_SIZE(data->size), &bk_hdr, data);
 		} else if (replace)
 			ret = __bam_ritem(dbc, h, indx, data);
 		else
@@ -422,38 +355,34 @@ __bam_iitem(dbc, hp, indxp, key, data, op, flags)
 		(void)__bam_ca_delete(dbp, PGNO(h),
 		    TYPE(h) == P_LBTREE ? indx - O_INDX : indx, 0);
 	else {
-		__bam_ca_di(dbp, PGNO(h), indx, 1);
-		((BTREE_CURSOR *)dbc->internal)->indx =
-		    TYPE(h) == P_LBTREE ? indx - O_INDX : indx;
+		if ((ret = __bam_ca_di(dbc, PGNO(h), indx, 1)) != 0)
+			return (ret);
+		cp->indx = TYPE(h) == P_LBTREE ? indx - O_INDX : indx;
 	}
 
 	/*
-	 * If we've changed the record count, update the tree.  Record counts
-	 * need to be updated in Recno databases and in Btree databases where
-	 * we are supporting records.  In both cases, adjust the count if the
-	 * operation wasn't performed on the current record or when the record
-	 * was previously deleted.
+	 * If we've changed the record count, update the tree.  There's no
+	 * need to adjust the count if the operation not performed on the
+	 * current record or when the current record was previously deleted.
 	 */
-	if ((op != DB_CURRENT || was_deleted) &&
-	    (F_ISSET(dbp, DB_BT_RECNUM) || dbp->type == DB_RECNO))
+	if (F_ISSET(cp, C_RECNUM) && (op != DB_CURRENT || was_deleted))
 		if ((ret = __bam_adjust(dbc, 1)) != 0)
 			return (ret);
 
 	/*
 	 * If a Btree leaf page is at least 50% full and we may have added or
 	 * modified a duplicate data item, see if the set of duplicates takes
-	 * up at least 25% of the space on the page.  If it does, move it off
-	 * int its own page.
+	 * up at least 25% of the space on the page.  If it does, move it onto
+	 * its own page.
 	 */
 	if (dupadjust && P_FREESPACE(h) <= dbp->pgsize / 2) {
-		--indx;
-		if ((ret = __bam_ndup(dbc, h, indx)) != 0)
+		if ((ret = __bam_dup_convert(dbc, h, indx - O_INDX)) != 0)
 			return (ret);
 	}
 
 	/* If we've modified a recno file, set the flag. */
-done:	if (dbp->type == DB_RECNO)
-		F_SET(t, RECNO_MODIFIED);
+	if (dbc->dbtype == DB_RECNO)
+		t->re_modified = 1;
 
 	return (ret);
 }
@@ -525,6 +454,7 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	BKEYDATA *bk, tbk;
 	BOVERFLOW *bo;
 	BTREE *t;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT copy;
 	u_int32_t len, tlen;
@@ -534,12 +464,13 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	COMPQUIET(bo, NULL);
 
 	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *) dbc->internal;
 	t = dbp->bt_internal;
 
 	/* We use the record data return memory, it's only a short-term use. */
 	if (dbc->rdata.ulen < nbytes) {
-		 if ((ret =
-		     __os_realloc(nbytes, NULL, &dbc->rdata.data)) != 0) {
+		if ((ret = __os_realloc(dbp->dbenv,
+		    nbytes, NULL, &dbc->rdata.data)) != 0) {
 			dbc->rdata.ulen = 0;
 			dbc->rdata.data = NULL;
 			return (ret);
@@ -638,47 +569,6 @@ user_copy:
 	dbc->rdata.doff = 0;
 	dbc->rdata.flags = 0;
 	*dbt = dbc->rdata;
-	return (0);
-}
-
-/*
- * OVPUT --
- *	Copy an overflow item onto a page.
- */
-#undef	OVPUT
-#define	OVPUT(h, indx, bo) do {						\
-	DBT __hdr;							\
-	memset(&__hdr, 0, sizeof(__hdr));				\
-	__hdr.data = &bo;						\
-	__hdr.size = BOVERFLOW_SIZE;					\
-	if ((ret = __db_pitem(dbc,					\
-	    h, indx, BOVERFLOW_SIZE, &__hdr, NULL)) != 0)		\
-		return (ret);						\
-} while (0)
-
-/*
- * __bam_ovput --
- *	Build an overflow item and put it on the page.
- */
-static int
-__bam_ovput(dbc, h, indx, item)
-	DBC *dbc;
-	PAGE *h;
-	u_int32_t indx;
-	DBT *item;
-{
-	BOVERFLOW bo;
-	int ret;
-
-	UMRW(bo.unused1);
-	B_TSET(bo.type, B_OVERFLOW, 0);
-	UMRW(bo.unused2);
-	if ((ret = __db_poff(dbc, item, &bo.pgno)) != 0)
-		return (ret);
-	bo.tlen = item->size;
-
-	OVPUT(h, indx, bo);
-
 	return (0);
 }
 
@@ -788,25 +678,26 @@ __bam_ritem(dbc, h, indx, data)
 }
 
 /*
- * __bam_ndup --
+ * __bam_dup_convert --
  *	Check to see if the duplicate set at indx should have its own page.
  *	If it should, create it.
  */
 static int
-__bam_ndup(dbc, h, indx)
+__bam_dup_convert(dbc, h, indx)
 	DBC *dbc;
 	PAGE *h;
 	u_int32_t indx;
 {
+	BTREE_CURSOR *cp;
 	BKEYDATA *bk;
-	BOVERFLOW bo;
 	DB *dbp;
 	DBT hdr;
-	PAGE *cp;
-	db_indx_t cnt, cpindx, first, sz;
+	PAGE *dp;
+	db_indx_t cnt, cpindx, dindx, first, sz;
 	int ret;
 
 	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *) dbc->internal;
 
 	/*
 	 * Count the duplicate records and calculate how much room they're
@@ -829,23 +720,27 @@ __bam_ndup(dbc, h, indx)
 	 * We have to do these checks when the user is replacing the cursor's
 	 * data item -- if the application replaces a duplicate item with a
 	 * larger data item, it can increase the amount of space used by the
-	 * duplicates, requiring this check.  But that means it may not be a
-	 * duplicate after all.
+	 * duplicates, requiring this check.  But that means we may have done
+	 * this check when it wasn't a duplicate item after all.
 	 */
 	if (cnt == 1)
 		return (0);
 
 	/*
 	 * If this set of duplicates is using more than 25% of the page, move
-	 * them off.  The choice of 25% is a WAG, but it has to be small enough
-	 * that we can always split regardless of the presence of duplicates.
+	 * them off.  The choice of 25% is a WAG, but the value must be small
+	 * enough that we can always split a page without putting duplicates
+	 * on two different pages.
 	 */
 	if (sz < dbp->pgsize / 4)
 		return (0);
 
 	/* Get a new page. */
-	if ((ret = __db_new(dbc, P_DUPLICATE, &cp)) != 0)
+	if ((ret = __db_new(dbc,
+	    dbp->dup_compare == NULL ? P_LRECNO : P_LDUP, &dp)) != 0)
 		return (ret);
+	P_INIT(dp, dbp->pgsize, dp->pgno,
+	    PGNO_INVALID, PGNO_INVALID, LEAFLEVEL, TYPE(dp));
 
 	/*
 	 * Move this set of duplicates off the page.  First points to the first
@@ -853,44 +748,98 @@ __bam_ndup(dbc, h, indx)
 	 * we're dealing with.
 	 */
 	memset(&hdr, 0, sizeof(hdr));
-	for (indx = first + O_INDX, cpindx = 0;; ++cpindx) {
-		/* Copy the entry to the new page. */
-		bk = GET_BKEYDATA(h, indx);
+	dindx = first;
+	indx = first;
+	cpindx = 0;
+	do {
+		/* Move cursors referencing the old entry to the new entry. */
+		if ((ret = __bam_ca_dup(dbc, first,
+		    PGNO(h), indx, PGNO(dp), cpindx)) != 0)
+			goto err;
+
+		/*
+		 * Copy the entry to the new page.  If the off-duplicate page
+		 * is a Btree page, deleted entries move normally.  If it's a
+		 * Recno page, deleted entries are discarded.
+		 */
+		bk = GET_BKEYDATA(h, dindx + 1);
 		hdr.data = bk;
 		hdr.size = B_TYPE(bk->type) == B_KEYDATA ?
 		    BKEYDATA_SIZE(bk->len) : BOVERFLOW_SIZE;
-		if ((ret =
-		    __db_pitem(dbc, cp, cpindx, hdr.size, &hdr, NULL)) != 0)
-			goto err;
-
-		/* Move cursors referencing the old entry to the new entry. */
-		__bam_ca_dup(dbp,
-		    PGNO(h), first, indx - O_INDX, PGNO(cp), cpindx);
+		if (dbp->dup_compare != NULL || !B_DISSET(bk->type)) {
+			if ((ret = __db_pitem(
+			    dbc, dp, cpindx, hdr.size, &hdr, NULL)) != 0)
+				goto err;
+			++cpindx;
+		}
+		/* Delete all but the last reference to the key. */
+		if (cnt != 1) {
+			if ((ret = __bam_adjindx(dbc,
+			    h, dindx, first + 1, 0)) != 0)
+				goto err;
+		} else
+			dindx++;
 
 		/* Delete the data item. */
-		if ((ret = __db_ditem(dbc, h, indx, hdr.size)) != 0)
+		if ((ret = __db_ditem(dbc, h, dindx, hdr.size)) != 0)
 			goto err;
-
-		__bam_ca_di(dbp, PGNO(h), indx, -1);
-
-		/* Delete all but the first reference to the key. */
-		if (--cnt == 0)
-			break;
-		if ((ret = __bam_adjindx(dbc, h, indx, first, 0)) != 0)
-			goto err;
-	}
+		indx += P_INDX;
+	} while (--cnt);
 
 	/* Put in a new data item that points to the duplicates page. */
-	UMRW(bo.unused1);
-	B_TSET(bo.type, B_DUPLICATE, 0);
-	UMRW(bo.unused2);
-	bo.pgno = cp->pgno;
-	bo.tlen = 0;
+	if ((ret = __bam_ovput(dbc,
+	     B_DUPLICATE, dp->pgno, h, first + 1, NULL)) != 0)
+		goto err;
 
-	OVPUT(h, indx, bo);
+	/* Adjust cursors for all the above movments. */
+	if ((ret = __bam_ca_di(dbc,
+	    PGNO(h), first + P_INDX, first + P_INDX - indx)) != 0)
+		goto err;
 
-	return (memp_fput(dbp->mpf, cp, DB_MPOOL_DIRTY));
+	return (memp_fput(dbp->mpf, dp, DB_MPOOL_DIRTY));
 
-err:	(void)__db_free(dbc, cp);
+err:	(void)__db_free(dbc, dp);
 	return (ret);
+}
+
+/*
+ * __bam_ovput --
+ *	Build an item for an off-page duplicates page or overflow page and
+ *	insert it on the page.
+ */
+static int
+__bam_ovput(dbc, type, pgno, h, indx, item)
+	DBC *dbc;
+	u_int32_t type, indx;
+	db_pgno_t pgno;
+	PAGE *h;
+	DBT *item;
+{
+	BOVERFLOW bo;
+	DBT hdr;
+	int ret;
+
+	UMRW(bo.unused1);
+	B_TSET(bo.type, type, 0);
+	UMRW(bo.unused2);
+
+	/*
+	 * If we're creating an overflow item, do so and acquire the page
+	 * number for it.  If we're creating an off-page duplicates tree,
+	 * we are giving the page number as an argument.
+	 */
+	if (type == B_OVERFLOW) {
+		if ((ret = __db_poff(dbc, item, &bo.pgno)) != 0)
+			return (ret);
+		bo.tlen = item->size;
+	} else {
+		bo.pgno = pgno;
+		bo.tlen = 0;
+	}
+
+	/* Store the new record on the page. */
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.data = &bo;
+	hdr.size = BOVERFLOW_SIZE;
+	return (__db_pitem(dbc, h, indx, BOVERFLOW_SIZE, &hdr, NULL));
 }

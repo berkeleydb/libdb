@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_spin.c	11.2 (Sleepycat) 11/3/99";
+static const char revid[] = "$Id: os_spin.c,v 11.5 2000/03/30 01:46:42 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -96,13 +96,14 @@ __os_spin()
  * __os_yield --
  *	Yield the processor.
  *
- * PUBLIC: void __os_yield __P((u_long));
+ * PUBLIC: void __os_yield __P((DB_ENV*, u_long));
  */
 void
-__os_yield(usecs)
+__os_yield(dbenv, usecs)
+	DB_ENV *dbenv;
 	u_long usecs;
 {
 	if (__db_jump.j_yield != NULL && __db_jump.j_yield() == 0)
 		return;
-	__os_sleep(0, usecs);
+	__os_sleep(dbenv, 0, usecs);
 }

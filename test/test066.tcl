@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test066.tcl	11.2 (Sleepycat) 10/16/99
+#	$Id: test066.tcl,v 11.6 2000/04/21 18:36:27 krinsky Exp $
 #
 # DB Test 66: Make sure a cursor put to DB_CURRENT acts as an overwrite in
 # a database with duplicates
@@ -22,13 +22,22 @@ proc test066 { method args } {
 
 	source ./include.tcl
 
-	set testfile $testdir/test066.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test066.db
+	} else {
+		set testfile test066.db
+	}
 	cleanup $testdir
 
 	set key "test"
 	set data "olddata"
 
-	set db [eval {berkdb open -create -mode 0644 -dup} $omethod $args]
+	set db [eval {berkdb_open -create -mode 0644 -dup} $omethod $args \
+	    $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set ret [eval {$db put} $key [chop_data $method $data]]

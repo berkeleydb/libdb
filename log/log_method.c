@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_method.c	11.3 (Sleepycat) 8/11/99";
+static const char revid[] = "$Id: log_method.c,v 11.13 2000/04/20 18:54:29 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,11 +19,21 @@ static const char sccsid[] = "@(#)log_method.c	11.3 (Sleepycat) 8/11/99";
 #include <unistd.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "log.h"
 
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
+
 static int __log_set_lg_max __P((DB_ENV *, u_int32_t));
 static int __log_set_lg_bsize __P((DB_ENV *, u_int32_t));
+static int __log_set_lg_dir __P((DB_ENV *, const char *));
 
 /*
  * __log_dbenv_create --
@@ -40,6 +50,19 @@ __log_dbenv_create(dbenv)
 
 	dbenv->lg_max = LG_MAX_DEFAULT;
 	dbenv->set_lg_max = __log_set_lg_max;
+
+	dbenv->set_lg_dir = __log_set_lg_dir;
+#ifdef	HAVE_RPC
+	/*
+	 * If we have a client, overwrite what we just setup to
+	 * point to client functions.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
+		dbenv->set_lg_bsize = __dbcl_set_lg_bsize;
+		dbenv->set_lg_max = __dbcl_set_lg_max;
+		dbenv->set_lg_dir = __dbcl_set_lg_dir;
+	}
+#endif
 }
 
 /*
@@ -82,4 +105,18 @@ __log_set_lg_max(dbenv, lg_max)
 
 	dbenv->lg_max = lg_max;
 	return (0);
+}
+
+/*
+ * __log_set_lg_dir --
+ *	Set the log file directory.
+ */
+static int
+__log_set_lg_dir(dbenv, dir)
+	DB_ENV *dbenv;
+	const char *dir;
+{
+	if (dbenv->db_log_dir != NULL)
+		__os_freestr(dbenv->db_log_dir);
+	return (__os_strdup(dbenv, dir, &dbenv->db_log_dir));
 }

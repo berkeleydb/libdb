@@ -1,5 +1,6 @@
-<!--"@(#)mem_class.so	10.1 (Sleepycat) 7/13/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: mem_class.so,v 10.3 1999/12/20 08:52:33 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbMemoryException</h1>
@@ -23,20 +25,15 @@ import com.sleepycat.db.*;
 public class DbMemoryException extends DbException { ... }
 </pre></h3>
 <h1>Description</h1>
-<p>
-This manual page describes the DbMemoryException class and
+<p>This manual page describes the DbMemoryException class and
 how it is used by the various Db* classes.
-<p>
-A DbMemoryException is thrown when there is insufficient memory
+<p>A DbMemoryException is thrown when there is insufficient memory
 to complete an operation.
-<p>
-This may or may not be recoverable.  An example of where it would be
+<p>This may or may not be recoverable.  An example of where it would be
 recoverable is during a <a href="../api_java/db_get.html">Db.get</a> or <a href="../api_java/dbc_get.html">Dbc.get</a> operation
 with the <a href="../api_java/dbt_class.html">Dbt</a> flags set to <a href="../api_java/dbt_class.html#DB_DBT_USERMEM">Db.DB_DBT_USERMEM</a>.
-<p>
 <h3>Class</h3>
 <a href="../api_java/except_class.html">DbException</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/get_errno.html">DbException.get_errno</a>,
 <a href="../api_java/deadlock_class.html">DbDeadlockException</a>,

@@ -1,4 +1,4 @@
-# @(#)README	11.1 (Sleepycat) 7/25/99
+# $Id: README,v 11.2 1999/11/21 18:12:48 bostic Exp $
 
 Note: this only applies to locking using test-and-set and fcntl calls,
 pthreads were added after this was written.

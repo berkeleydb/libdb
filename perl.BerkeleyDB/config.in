@@ -1,15 +1,16 @@
 # Filename:	config.in
 #
 # written by Paul Marquess <Paul.Marquess@btinternet.com>
-# SCCS: %I%, %G%
 
 # 1. Where is the file db.h?
 #
-#    Change the path below to point to the directory where dh.h is
+#    Change the path below to point to the directory where db.h is
 #    installed on your system.
 
 #INCLUDE	= /usr/local/include
-INCLUDE	= /usr/local/BerkeleyDB/include
+#INCLUDE	= /usr/local/BerkeleyDB/include
+#INCLUDE	= ./libraries/3.0.55
+INCLUDE	= ./libraries/3.1.8
 
 # 2. Where is libdb?
 #
@@ -17,7 +18,9 @@ INCLUDE	= /usr/local/BerkeleyDB/include
 #    installed on your system.
 
 #LIB	= /usr/local/lib
-LIB	= /usr/local/BerkeleyDB/lib
+#LIB	= /usr/local/BerkeleyDB/lib
+#LIB	= ./libraries/3.0.55
+LIB	= ./libraries/3.1.8
 
 # 3. Is the library called libdb?
 #
@@ -39,6 +42,6 @@ LIB	= /usr/local/BerkeleyDB/lib
 #    below (by removing the leading #) and edit the line to use the name
 #    you have picked.
 
-#DBNAME = -ldb-2.6.4 
+#DBNAME = -ldb-3.0
 
 # end of file config.in

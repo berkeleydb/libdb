@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb004.tcl	11.7 (Sleepycat) 8/19/99
+#	$Id: sdb004.tcl,v 11.13 2000/05/22 12:51:38 bostic Exp $
 #
 # SubDB Test 4 {access method}
 # Create 1 db with many large subdbs.  Use the contents as subdb names.
@@ -60,7 +60,7 @@ proc subdb004 { method args} {
 			puts $oid $f
 		}
 		close $oid
-		exec $SORT $t2.tmp > $t2
+		filesort $t2.tmp $t2
 	}
 	puts "\tSubdb004.a: Set/Check each subdb"
 	foreach f $file_list {
@@ -76,7 +76,7 @@ proc subdb004 { method args} {
 		set data [read $fid]
 		set subdb $data
 		close $fid
-		set db [eval {berkdb open -create -mode 0644} \
+		set db [eval {berkdb_open -create -mode 0644} \
 		    $args {$omethod $testfile $subdb}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 		set ret [eval \
@@ -97,7 +97,7 @@ proc subdb004 { method args} {
 		close $fid
 
 		error_check_good Subdb004:diff($f,$t4) \
-		    [catch { exec $CMP $f $t4 } res] 0
+		    [filecmp $f $t4] 0
 
 		incr count
 
@@ -114,7 +114,7 @@ proc subdb004 { method args} {
 	# as the data in that subdb and that the filename is the key.
 	#
 	puts "\tSubdb004.b: Compare subdb names with key/data"
-	set db [berkdb open -rdonly $testfile]
+	set db [berkdb_open -rdonly $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set c [eval {$db cursor} $txn]
 	error_check_good db_cursor [is_valid_cursor $c $db] TRUE
@@ -122,7 +122,7 @@ proc subdb004 { method args} {
 	for {set d [$c get -first] } { [llength $d] != 0 } \
 	    {set d [$c get -next] } {
 		set subdbname [lindex [lindex $d 0] 0]
-		set subdb [berkdb open $testfile $subdbname]
+		set subdb [berkdb_open $testfile $subdbname]
 		error_check_good dbopen [is_valid_db $db] TRUE
 
 		# Output the subdb name
@@ -137,7 +137,7 @@ proc subdb004 { method args} {
 		error_check_good db_cursor [is_valid_cursor $subc $subdb] TRUE
 		set d [$subc get -first]
 		error_check_good dbc_get [expr [llength $d] != 0] 1
-     		set key [lindex [lindex $d 0] 0]
+		set key [lindex [lindex $d 0] 0]
 		set data [lindex [lindex $d 0] 1]
 
 		set ofid [open $t1 w]
@@ -149,7 +149,7 @@ proc subdb004 { method args} {
 		$checkfunc $key $t3
 
 		error_check_good Subdb004:diff($t3,$t1) \
-		    [catch { exec $CMP $t3 $t1 } res] 0
+		    [filecmp $t3 $t1] 0
 		error_check_good curs_close [$subc close] 0
 		error_check_good db_close [$subdb close] 0
 	}
@@ -157,7 +157,7 @@ proc subdb004 { method args} {
 	error_check_good db_close [$db close] 0
 
 	if { [is_record_based $method] != 1 } {
-		exec $RM $t2.tmp
+		fileremove $t2.tmp
 	}
 }
 
@@ -166,7 +166,7 @@ proc subdb004.check { binfile tmpfile } {
 	source ./include.tcl
 
 	error_check_good Subdb004:datamismatch($binfile,$tmpfile) \
-	    [catch { exec $CMP $binfile $tmpfile } res] 0
+	    [filecmp $binfile $tmpfile] 0
 }
 proc subdb004_recno.check { binfile tmpfile } {
 	global names
@@ -175,5 +175,5 @@ proc subdb004_recno.check { binfile tmpfile } {
 	set fname $names($binfile)
 	error_check_good key"$binfile"_exists [info exists names($binfile)] 1
 	error_check_good Subdb004:datamismatch($fname,$tmpfile) \
-	    [catch { exec $CMP $fname $tmpfile } res] 0
+	    [filecmp $fname $tmpfile] 0
 }

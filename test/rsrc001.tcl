@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)rsrc001.tcl	11.7 (Sleepycat) 9/8/99
+#	$Id: rsrc001.tcl,v 11.12 2000/04/25 15:02:31 dda Exp $
 #
 # Recno backing file test.
 # Try different patterns of adding records and making sure that the
@@ -31,9 +31,6 @@ proc rsrc001 { } {
 		close $oid1
 		close $oid2
 
-		sanitize_textfile $testdir/rsrc.txt
-		sanitize_textfile $testdir/check.txt
-
 		if { $testfile == "" } {
 			puts "Rsrc001: Testing with in-memory database."
 		} else {
@@ -42,7 +39,7 @@ proc rsrc001 { } {
 
 		puts -nonewline "\tRsrc001.a: Read file, rewrite last record;"
 		puts " write it out and diff"
-		set db [eval {berkdb open -create -mode 0644\
+		set db [eval {berkdb_open -create -mode 0644\
 		    -recno -source $testdir/rsrc.txt} $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -64,6 +61,7 @@ proc rsrc001 { } {
 			set laststr $str
 		}
 		close $oid
+		set data [sanitize_record $data]
 		error_check_good getlast $data $laststr
 
 		set ret [eval {$db put} $txn {$key $data}]
@@ -74,8 +72,7 @@ proc rsrc001 { } {
 		error_check_good db_sync [$db sync] 0
 		error_check_good \
 		    Rsrc001:diff($testdir/rsrc.txt,$testdir/check.txt) \
-		    [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res] 0
+		    [filecmp $testdir/rsrc.txt $testdir/check.txt] 0
 
 		puts -nonewline "\tRsrc001.b: "
 		puts "Append some records in tree and verify in file."
@@ -90,9 +87,7 @@ proc rsrc001 { } {
 		error_check_good db_sync [$db sync] 0
 		error_check_good db_sync [$db sync] 0
 		close $oid
-		sanitize_textfile $testdir/check.txt
-		set ret [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res]
+		set ret [filecmp $testdir/rsrc.txt $testdir/check.txt]
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
@@ -109,9 +104,7 @@ proc rsrc001 { } {
 		error_check_good db_sync [$db sync] 0
 		error_check_good db_sync [$db sync] 0
 		close $oid
-		sanitize_textfile $testdir/check.txt
-		set ret [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res]
+		set ret [filecmp $testdir/rsrc.txt $testdir/check.txt]
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
@@ -130,15 +123,13 @@ proc rsrc001 { } {
 		error_check_good db_sync [$db sync] 0
 		error_check_good db_sync [$db sync] 0
 		close $oid
-		sanitize_textfile $testdir/check.txt
-		set ret [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res]
+		set ret [filecmp $testdir/rsrc.txt $testdir/check.txt]
 		error_check_good \
 		    Rsrc001:diff($testdir/{rsrc.txt,check.txt}) $ret 0
 
 		puts "\tRsrc001.e: Verify proper syncing of changes on close."
 		error_check_good Rsrc001:db_close [$db close] 0
-		set db [eval {berkdb open -create -mode 0644 -recno \
+		set db [eval {berkdb_open -create -mode 0644 -recno \
 		    -source $testdir/rsrc.txt} $testfile]
 		set oid [open $testdir/check.txt a]
 		for {set i 1} {$i < 10} {incr i} {
@@ -151,20 +142,20 @@ proc rsrc001 { } {
 		}
 		error_check_good Rsrc001:db_close [$db close] 0
 		close $oid
-		sanitize_textfile $testdir/check.txt
-		set ret [catch { exec $CMP $testdir/rsrc.txt \
-		    $testdir/check.txt } res]
+		set ret [filecmp $testdir/rsrc.txt $testdir/check.txt]
 		error_check_good Rsrc001:diff($testdir/{rsrc,check}.txt) $ret 0
 	}
 }
 
-# convert CR/LF to just LF.
-# Needed on Windows when a file is created as text but read as binary.
-proc sanitize_textfile { filename } {
+# Strip CRs from a record.
+# Needed on Windows when a file is created as text (with CR/LF)
+# but read as binary (where CR is read as a separate character)
+proc sanitize_record { rec } {
 	source ./include.tcl
 
-	if { $is_windows_test == 1 } {
-		catch { exec $TR -d '\015' <$filename > $testdir/nonl.tmp } res
-		catch { exec $MV $testdir/nonl.tmp $filename } res
+	if { $is_windows_test != 1 } {
+		return $rec
 	}
+	regsub -all \15 $rec "" data
+	return $data
 }

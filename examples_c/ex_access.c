@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_access.c	11.1 (Sleepycat) 7/25/99
+ * $Id: ex_access.c,v 11.7 2000/05/22 15:17:03 sue Exp $
  */
 
 #include "db_config.h"
@@ -19,14 +19,20 @@
 
 #include <db.h>
 
+#ifdef HAVE_VXWORKS
+#include "stdio.h"
+#define	DATABASE	"/vxtmp/vxtmp/access.db"
+#define	ERROR_RETURN	ERROR
+#else
 #define	DATABASE	"access.db"
+#define	ERROR_RETURN	1
+int	main __P((int, char *[]));
+void	usage __P((char *));
+#endif
 
-int	main(int, char *[]);
-void	usage(void);
+int	ex_access __P((void));
 
-const char
-	*progname = "ex_access";			/* Program name. */
-
+#ifndef HAVE_VXWORKS
 int
 main(argc, argv)
 	int argc;
@@ -34,21 +40,39 @@ main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind;
-	DB *dbp;
-	DBC *dbcp;
-	DBT key, data;
-	u_int32_t len;
-	int ch, ret;
-	char *p, *t, buf[1024], rbuf[1024];
+	int ch;
 
 	while ((ch = getopt(argc, argv, "")) != EOF)
 		switch (ch) {
 		case '?':
 		default:
-			usage();
+			usage(argv[0]);
 		}
 	argc -= optind;
 	argv += optind;
+
+	return (ex_access());
+}
+
+void
+usage(progname)
+	char *progname;
+{
+	(void)fprintf(stderr, "usage: %s\n", progname);
+	exit(1);
+}
+#endif
+
+int
+ex_access()
+{
+	DB *dbp;
+	DBC *dbcp;
+	DBT key, data;
+	u_int32_t len;
+	int ret;
+	char *p, *t, buf[1024], rbuf[1024];
+	const char *progname = "ex_access";		/* Program name. */
 
 	/* Remove the previous database. */
 	(void)unlink(DATABASE);
@@ -57,7 +81,7 @@ main(argc, argv)
 	if ((ret = db_create(&dbp, NULL, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 	dbp->set_errfile(dbp, stderr);
 	dbp->set_errpfx(dbp, progname);
@@ -137,18 +161,11 @@ main(argc, argv)
 	if ((ret = dbp->close(dbp, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: DB->close: %s\n", progname, db_strerror(ret));
-		return (1);
+		return (ERROR_RETURN);
 	}
 	return (0);
 
 err2:	(void)dbcp->c_close(dbcp);
 err1:	(void)dbp->close(dbp, 0);
-	return (1);
-}
-
-void
-usage()
-{
-	(void)fprintf(stderr, "usage: %s\n", progname);
-	exit(1);
+	return (ERROR_RETURN);
 }

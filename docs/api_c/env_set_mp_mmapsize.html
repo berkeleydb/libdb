@@ -1,5 +1,6 @@
-<!--"@(#)env_set_mp_mmapsize.so	10.13 (Sleepycat) 11/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_mp_mmapsize.so,v 10.18 2000/05/20 16:29:12 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_mp_mmapsize</h1>
@@ -24,8 +26,7 @@ int
 DBENV-&gt;set_mp_mmapsize(DB_ENV *dbenv, size_t mp_mmapsize);
 </pre></h3>
 <h1>Description</h1>
-<p>
-Files that are opened read-only in the pool (and that satisfy a few other
+<p>Files that are opened read-only in the pool (and that satisfy a few other
 criteria) are, by default, mapped into the process address space instead
 of being copied into the local cache.  This can result in better-than-usual
 performance, as available virtual memory is normally much larger than the
@@ -33,24 +34,21 @@ local cache, and page faults are faster than page copying on many systems.
 However, in the presence of limited virtual memory it can cause resource
 starvation, and in the presence of large databases, it can result in immense
 process sizes.
-<p>
-Set the maximum file size, in bytes, for a file to be mapped into the
+<p>Set the maximum file size, in bytes, for a file to be mapped into the
 process address space.  If no value is specified, it defaults to 10MB.
-<p>
-The DBENV-&gt;set_mp_mmapsize interface may only be used to configure Berkeley DB before
+<p>The DBENV-&gt;set_mp_mmapsize interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
-<p>
-The DBENV-&gt;set_mp_mmapsize
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The DBENV-&gt;set_mp_mmapsize function returns a non-zero error value on failure and 0 on success.
+<p>The environment's maximum mapped file size may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
+line with the string "set_mp_mmapsize", one or more whitespace characters, and the size in bytes.
+Configuration in the <b>DB_CONFIG</b> file silently overrules
+configuration done using the DBENV-&gt;set_mp_mmapsize function.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
+<p>Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
 </dl>
-<p>
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

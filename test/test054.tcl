@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test054.tcl	11.8 (Sleepycat) 10/19/99
+#	$Id: test054.tcl,v 11.14 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test054:
 #
@@ -34,22 +34,31 @@ proc test054 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args "-create -truncate -mode 0644"
-	puts "Test054: $method interspersed cursor and normal operations"
+	append args " -create -truncate -mode 0644"
+	puts "Test054 ($method $args):\
+	    interspersed cursor and normal operations"
 	if { [is_record_based $method] == 1 } {
 		puts "Test054 skipping for method $method"
 		return
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test054.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test054.db
+	} else {
+		set testfile test054.db
+	}
 	cleanup $testdir
 
 	set flags ""
 	set txn ""
 
 	puts "\tTest054.a: No Duplicate Tests"
-	set db [eval {berkdb open} $args {$omethod $testfile}]
+	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:nodup [is_valid_db $db] TRUE
 
 	set curs [eval {$db cursor} $txn]
@@ -185,7 +194,7 @@ proc test054 { method args } {
 
 	puts "\tTest054.b: Duplicate Tests"
 	append args " -dup"
-	set db [eval {berkdb open} $args {$omethod $testfile}]
+	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:dup [is_valid_db $db] TRUE
 
 	set curs [eval {$db cursor} $txn]

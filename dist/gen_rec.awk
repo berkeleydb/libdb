@@ -2,10 +2,10 @@
 #
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)gen_rec.awk	11.10 (Sleepycat) 11/12/99
+# $Id: gen_rec.awk,v 11.22 2000/05/22 20:56:15 bostic Exp $
 #
 
 # This awk script generates all the log, print, and read routines for the DB
@@ -40,8 +40,9 @@ BEGIN {
 	    print "\theader_file\t-- the C #include file being created"
 	    print "\ttemplate_file\t-- the template file being created"
 	    print "\ttemplate_dir\t-- the directory to find the source template"
-	    error = 1; exit
+	    exit
 	}
+	FS="[\t ][\t ]*"
 	CFILE=source_file
 	NAME=subsystem
 	HFILE=header_file
@@ -52,14 +53,14 @@ BEGIN {
 	prefix = $2
 	num_funcs = 0;
 
-	# Start C file.
+	# Start .c file.
 	printf("/* Do not edit: automatically built by gen_rec.awk. */\n") \
 	    > CFILE
 
-	# Write C include file.
+	# Start .h file, make the entire file conditional.
 	printf("/* Do not edit: automatically built by gen_rec.awk. */\n\n") \
 	    > HFILE
-	printf("#ifndef %s_AUTO_H\n#define %s_AUTO_H\n", prefix, prefix) \
+	printf("#ifndef\t%s_AUTO_H\n#define\t%s_AUTO_H\n", prefix, prefix) \
 	    >> HFILE;
 
 	# Write recovery template file headers
@@ -73,8 +74,6 @@ BEGIN {
 	printf("#include \"db_page.h\"\n") >> TFILE
 	printf("#include \"%s.h\"\n", prefix) >> TFILE
 	printf("#include \"log.h\"\n\n") >> TFILE
-
-	printf("#include <errno.h>\n") >> CFILE;
 }
 /^[ 	]*INCLUDE/ {
 	if ($3 == "")
@@ -82,20 +81,24 @@ BEGIN {
 	else
 		printf("%s %s\n", $2, $3) >> CFILE
 }
-/^[ 	]*BEGIN/ {
+/^[ 	]*(BEGIN|DEPRECATED)/ {
 	if (in_begin) {
 		print "Invalid format: missing END statement"
-		error = 1; exit
+		exit
 	}
 	in_begin = 1;
-
-	structs++;
-	nvars=0;
-	funcname=sprintf("%s_%s", prefix, $2);
-	thisfunc = $2;
-	funcs[num_funcs] = funcname;
-	num_funcs++;
 	is_dbt = 0;
+	is_deprecated = ($1 == "DEPRECATED");
+	nvars = 0;
+
+	thisfunc = $2;
+	funcname = sprintf("%s_%s", prefix, $2);
+
+	rectype = $3;
+
+	funcs[num_funcs] = funcname;
+	funcs_dep[num_funcs] = is_deprecated;
+	++num_funcs;
 }
 /^[ 	]*(ARG|DBT|POINTER)/ {
 	vars[nvars] = $2;
@@ -121,15 +124,13 @@ BEGIN {
 /^[ 	]*END/ {
 	if (!in_begin) {
 		print "Invalid format: missing BEGIN statement"
-		next;
+		exit;
 	}
 
-	# Make the entire H file conditional
-	# Define the record type in the H file
-	printf("\n#define\tDB_%s\t(DB_%s_BEGIN + %d)\n\n", \
-	    funcname, prefix, structs) >> HFILE
+	# Declare the record type.
+	printf("\n#define\tDB_%s\t%d\n", funcname, rectype) >> HFILE
 
-	# structure declarations
+	# Structure declaration.
 	printf("typedef struct _%s_args {\n", funcname) >> HFILE
 
 	# Here are the required fields for every structure
@@ -141,12 +142,65 @@ BEGIN {
 		t = types[i];
 		if (modes[i] == "POINTER") {
 			ndx = index(t, "*");
-			t = substr(types[i], 0, ndx - 1);
+			t = substr(types[i], 0, ndx - 2);
 		}
 		printf("\t%s\t%s;\n", t, vars[i]) >> HFILE
 	}
 	printf("} __%s_args;\n\n", funcname) >> HFILE
 
+	# Output the log, print and read functions.
+	if (!is_deprecated)
+		log_function();
+	print_function();
+	read_function();
+
+	# Recovery template
+	cmd = sprintf("sed -e s/PREF/%s/ -e s/FUNC/%s/ < %s/rec_ctemp >> %s",
+	    prefix, thisfunc, TDIR, TFILE)
+	system(cmd);
+
+	# Done writing stuff, reset and continue.
+	in_begin = 0;
+}
+
+END {
+	# Print initialization routine; function prototype
+	printf("int __%s_init_print __P((DB_ENV *));\n", prefix) >> HFILE;
+
+	# Create the routine to call db_add_recovery(print_fn, id)
+	printf("int\n__%s_init_print(dbenv)\n", prefix) >> CFILE;
+	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
+	for (i = 0; i < num_funcs; i++) {
+		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
+		printf("\t    __%s_print, DB_%s)) != 0)\n", \
+		    funcs[i], funcs[i]) >> CFILE;
+		printf("\t\treturn (ret);\n") >> CFILE;
+	}
+	printf("\treturn (0);\n}\n\n") >> CFILE;
+
+	# Recover initialization routine
+	printf("int __%s_init_recover __P((DB_ENV *));\n", prefix) >> HFILE;
+
+	# Create the routine to call db_add_recovery(func, id)
+	printf("int\n__%s_init_recover(dbenv)\n", prefix) >> CFILE;
+	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
+	for (i = 0; i < num_funcs; i++) {
+		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
+		if (funcs_dep[i] == 1)
+			printf("\t    __deprecated_recover, DB_%s)) != 0)\n", \
+			    funcs[i]) >> CFILE;
+		else
+			printf("\t    __%s_recover, DB_%s)) != 0)\n", \
+			    funcs[i], funcs[i]) >> CFILE;
+		printf("\t\treturn (ret);\n") >> CFILE;
+	}
+	printf("\treturn (0);\n}\n\n") >> CFILE;
+
+	# End the conditional for the HFILE
+	printf("#endif\n") >> HFILE;
+}
+
+function log_function() {
 	# Write the log function; function prototype
 	printf("int __%s_log __P((", funcname) >> HFILE;
 	printf("DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t") >> HFILE;
@@ -197,7 +251,7 @@ BEGIN {
 	printf("\tif (txnid != NULL &&\n") >> CFILE;
 	printf("\t    TAILQ_FIRST(&txnid->kids) != NULL &&") >> CFILE;
 	printf(" __txn_activekids(txnid) != 0)\n") >> CFILE;
-	printf("\t\treturn (EPERM);\n") >> CFILE;
+	printf("\t\treturn (__db_child_active_err(dbenv));\n") >> CFILE;
 	printf("\trectype = DB_%s;\n", funcname) >> CFILE;
 	printf("\ttxn_num = txnid == NULL ? 0 : txnid->txnid;\n") >> CFILE;
 	printf("\tif (txnid == NULL) {\n") >> CFILE;
@@ -212,7 +266,8 @@ BEGIN {
 		printf("\n\t    + %s", sizes[i]) >> CFILE;
 	printf(";\n\tif ((ret = ") >> CFILE;
 	printf(\
-	    "__os_malloc(logrec.size, NULL, &logrec.data)) != 0)\n") >> CFILE;
+	    "__os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)\n")\
+	    >> CFILE;
 	printf("\t\treturn (ret);\n\n") >> CFILE;
 
 	# Copy args into buffer
@@ -275,17 +330,21 @@ BEGIN {
 	# Free and return
 	printf("\t__os_free(logrec.data, logrec.size);\n") >> CFILE;
 	printf("\treturn (ret);\n}\n\n") >> CFILE;
+}
 
+function print_function() {
 	# Write the print function; function prototype
 	printf("int __%s_print", funcname) >> HFILE;
-	printf(" __P((DB_ENV *, DBT *, DB_LSN *, int, void *));\n") >> HFILE;
+	printf(" __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));\n") \
+	    >> HFILE;
 
 	# Function declaration
-	printf("int\n__%s_print(notused1, ", funcname) >> CFILE;
+	printf("int\n__%s_print(dbenv, ", funcname) >> CFILE;
 	printf("dbtp, lsnp, notused2, notused3)\n") >> CFILE;
-	printf("\tDB_ENV *notused1;\n\tDBT *dbtp;\n") >> CFILE;
+	printf("\tDB_ENV *dbenv;\n") >> CFILE;
+	printf("\tDBT *dbtp;\n") >> CFILE;
 	printf("\tDB_LSN *lsnp;\n") >> CFILE;
-	printf("\tint notused2;\n\tvoid *notused3;\n{\n") >> CFILE;
+	printf("\tdb_recops notused2;\n\tvoid *notused3;\n{\n") >> CFILE;
 
 	# Locals
 	printf("\t__%s_args *argp;\n", funcname) >> CFILE;
@@ -293,11 +352,10 @@ BEGIN {
 
 	# Get rid of complaints about unused parameters.
 	printf("\ti = 0;\n\tch = 0;\n") >> CFILE;
-	printf("\tnotused1 = NULL;\n") >> CFILE;
 	printf("\tnotused2 = 0;\n\tnotused3 = NULL;\n\n") >> CFILE;
 
 	# Call read routine to initialize structure
-	printf("\tif ((ret = __%s_read(dbtp->data, &argp)) != 0)\n", \
+	printf("\tif ((ret = __%s_read(dbenv, dbtp->data, &argp)) != 0)\n", \
 	    funcname) >> CFILE;
 	printf("\t\treturn (ret);\n") >> CFILE;
 
@@ -349,15 +407,18 @@ BEGIN {
 	printf("\t__os_free(argp, 0);\n") >> CFILE;
 	printf("\treturn (0);\n") >> CFILE;
 	printf("}\n\n") >> CFILE;
+}
 
+function read_function() {
 	# Write the read function; function prototype
-	printf("int __%s_read __P((void *, ", funcname) >> HFILE;
+	printf("int __%s_read __P((DB_ENV *, void *, ", funcname) >> HFILE;
 	printf("__%s_args **));\n", funcname) >> HFILE;
 
 	# Function declaration
-	printf("int\n__%s_read(recbuf, argpp)\n", funcname) >> CFILE;
+	printf("int\n__%s_read(dbenv, recbuf, argpp)\n", funcname) >> CFILE;
 
 	# Now print the parameters
+	printf("\tDB_ENV *dbenv;\n") >> CFILE;
 	printf("\tvoid *recbuf;\n") >> CFILE;
 	printf("\t__%s_args **argpp;\n", funcname) >> CFILE;
 
@@ -366,7 +427,7 @@ BEGIN {
 	printf("\tu_int8_t *bp;\n") >> CFILE;
 	printf("\tint ret;\n") >> CFILE;
 
-	printf("\n\tret = __os_malloc(sizeof(") >> CFILE;
+	printf("\n\tret = __os_malloc(dbenv, sizeof(") >> CFILE;
 	printf("__%s_args) +\n\t    sizeof(DB_TXN), NULL, &argp);\n", \
 	    funcname) >> CFILE;
 	printf("\tif (ret != 0)\n\t\treturn (ret);\n") >> CFILE;
@@ -409,49 +470,4 @@ BEGIN {
 	# Free and return
 	printf("\t*argpp = argp;\n") >> CFILE;
 	printf("\treturn (0);\n}\n\n") >> CFILE;
-
-	# Recovery template
-	cmd = sprintf("sed -e s/PREF/%s/ -e s/FUNC/%s/ < %s/rec_ctemp >> %s",
-	    prefix, thisfunc, TDIR, TFILE)
-	system(cmd);
-
-	# Done writing stuff, reset and continue.
-	in_begin = 0;
-}
-END {
-	if (error)
-		exit
-
-	# Print initialization routine; function prototype
-	printf("int __%s_init_print __P((DB_ENV *));\n", prefix) >> HFILE;
-
-	# Create the routine to call db_add_recovery(print_fn, id)
-	printf("int\n__%s_init_print(dbenv)\n", prefix) >> CFILE;
-	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
-	for (i = 0; i < num_funcs; i++) {
-		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
-		printf("\t    __%s_print, DB_%s)) != 0)\n", \
-		    funcs[i], funcs[i]) >> CFILE;
-		printf("\t\treturn (ret);\n") >> CFILE;
-	}
-	printf("\treturn (0);\n}\n\n") >> CFILE;
-
-	# Recover initialization routine
-	printf("/*\n * PUBLIC: ") >> CFILE;
-	printf("int __%s_init_recover __P((DB_ENV *));\n", prefix) >> CFILE;
-	printf(" */\n") >> CFILE;
-
-	# Create the routine to call db_add_recovery(func, id)
-	printf("int\n__%s_init_recover(dbenv)\n", prefix) >> CFILE;
-	printf("\tDB_ENV *dbenv;\n{\n\tint ret;\n\n") >> CFILE;
-	for (i = 0; i < num_funcs; i++) {
-		printf("\tif ((ret = __db_add_recovery(dbenv,\n") >> CFILE;
-		printf("\t    __%s_recover, DB_%s)) != 0)\n", \
-		    funcs[i], funcs[i]) >> CFILE;
-		printf("\t\treturn (ret);\n") >> CFILE;
-	}
-	printf("\treturn (0);\n}\n\n") >> CFILE;
-
-	# End the conditional for the HFILE
-	printf("#endif\n") >> HFILE;
 }

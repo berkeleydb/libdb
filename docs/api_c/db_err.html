@@ -1,5 +1,6 @@
-<!--"@(#)db_err.so	10.9 (Sleepycat) 4/5/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_err.so,v 10.11 1999/12/20 08:52:27 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;err</h1>
@@ -33,16 +35,12 @@ void
 DB-&gt;errx(DB *db, const char *fmt, ...);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DBENV-&gt;err, DBENV-&gt;errx,  DB-&gt;err and
+<p>The DBENV-&gt;err, DBENV-&gt;errx,  DB-&gt;err and
 DB-&gt;errx functions provide error messaging functionality for
 applications written using the Berkeley DB library.
-<p>
-The DBENV-&gt;err function constructs an error message consisting of the
+<p>The DBENV-&gt;err function constructs an error message consisting of the
 following elements:
-<p>
-<blockquote>
-<dl compact>
+<p><blockquote><p><dl compact>
 <p><dt>An optional prefix string<dd>If no error callback function has been set using the
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a> function, any prefix string specified using the
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a> function, followed by two separating characters: a colon
@@ -55,27 +53,21 @@ output.
 <b>error</b> value, as returned by the <a href="../api_c/env_strerror.html">db_strerror</a> function.
 </dl>
 </blockquote>
-<p>
-This constructed error message is then handled as follows:
-<blockquote>
-<p>
-If an error callback function has been set (see <a href="../api_c/db_set_errcall.html">DB-&gt;set_errcall</a>
+<p>This constructed error message is then handled as follows:
+<p><blockquote>
+<p>If an error callback function has been set (see <a href="../api_c/db_set_errcall.html">DB-&gt;set_errcall</a>
 and <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>), that function is called with two
 arguments: any prefix string specified (see <a href="../api_c/db_set_errpfx.html">DB-&gt;set_errpfx</a> and
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>), and the error message.
-<p>
-If a C library FILE * has been set (see <a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a> and
+<p>If a C library FILE * has been set (see <a href="../api_c/db_set_errfile.html">DB-&gt;set_errfile</a> and
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>), the error message is written to that output
 stream.
-<p>
-If none of these output options has been configured, the error message
-is written to stderr, the standard error output stream.
-</blockquote>
-<p>
-The DBENV-&gt;errx and DB-&gt;errx functions perform identically to the
+<p>If none of these output options has been configured, the error message
+is written to stderr, the standard error output stream.</blockquote>
+<p>The DBENV-&gt;errx and DB-&gt;errx functions perform identically to the
 DBENV-&gt;err and DB-&gt;err functions except that they do not append
-the final separator characters and standard error string to the error message.
-<p>
+the final separator characters and standard error string to the error
+message.
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -88,10 +80,7 @@ the final separator characters and standard error string to the error message.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test029.tcl	11.8 (Sleepycat) 8/19/99
+#	$Id: test029.tcl,v 11.12 2000/04/21 18:36:25 krinsky Exp $
 #
 # DB Test 29 {method nentries}
 # Test the Btree and Record number renumbering.
@@ -26,7 +26,15 @@ proc test029 { method {nentries 10000} args} {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test029.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test029.db
+	} else {
+		set testfile test029.db
+	}
 	cleanup $testdir
 
 	# Read the first nentries dictionary elements and reverse them.
@@ -53,11 +61,11 @@ proc test029 { method {nentries 10000} args} {
 
 	# Create the database
 	if { [string compare $omethod "-btree"] == 0 } {
-		set db [eval {berkdb open -create -truncate \
+		set db [eval {berkdb_open -create -truncate \
 			-mode 0644 -recnum} $args {$omethod $testfile}]
 	   error_check_good dbopen [is_valid_db $db] TRUE
 	} else {
-		set db [eval {berkdb open -create -truncate \
+		set db [eval {berkdb_open -create -truncate \
 			-mode 0644} $args {$omethod $testfile}]
 	   error_check_good dbopen [is_valid_db $db] TRUE
 	}

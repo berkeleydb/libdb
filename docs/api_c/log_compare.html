@@ -1,5 +1,6 @@
-<!--"@(#)log_compare.so	10.10 (Sleepycat) 2/15/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: log_compare.so,v 10.12 1999/12/20 08:52:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>log_compare</h1>
@@ -24,12 +26,10 @@ int
 log_compare(const DB_LSN *lsn0, const DB_LSN *lsn1);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The log_compare function allows the caller to compare two
+<p>The log_compare function allows the caller to compare two
 DB_LSN structures,
 returning 0 if they are equal, 1 if <b>lsn0</b> is greater than
 <b>lsn1</b>, and -1 if <b>lsn0</b> is less than <b>lsn1</b>.
-<p>
 <h1>See Also</h1>
 <a href="../api_c/env_set_lg_bsize.html">DBENV-&gt;set_lg_bsize</a>,
 <a href="../api_c/env_set_lg_max.html">DBENV-&gt;set_lg_max</a>,

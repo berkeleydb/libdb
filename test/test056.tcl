@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test056.tcl	11.7 (Sleepycat) 10/16/99
+#	$Id: test056.tcl,v 11.12 2000/05/10 13:36:25 sue Exp $
 #
 # Test056
 # Check if deleting a key when a cursor is on a duplicate of that key works.
@@ -14,7 +14,7 @@ proc test056 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	append args "-create -truncate -mode 0644 -dup"
+	append args " -create -truncate -mode 0644 -dup "
 	if { [is_record_based $method] == 1 || [is_rbtree $method] } {
 		puts "Test056: skipping for method $method"
 		return
@@ -22,13 +22,21 @@ proc test056 { method args } {
 	puts "Test056: $method delete of key in presence of cursor"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test056.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test056.db
+	} else {
+		set testfile test056.db
+	}
 	cleanup $testdir
 
 	set flags ""
 	set txn  ""
 
-	set db [eval {berkdb open} $args {$omethod $testfile}]
+	set db [eval {berkdb_open} $args {$omethod $testfile}]
 	error_check_good db_open:dup [is_valid_db $db] TRUE
 
 	set curs [eval {$db cursor} $txn]

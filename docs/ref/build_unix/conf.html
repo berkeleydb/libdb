@@ -1,5 +1,6 @@
-<!--@(#)conf.so	10.16 (Sleepycat) 11/8/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: conf.so,v 10.26 2000/05/24 13:39:00 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,19 +9,21 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for UNIX systems</dl></h3></td>
 <td width="1%"><a href="../../ref/build_unix/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/flags.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Configuring Berkeley DB</h1>
-<p>
-There are many options that you can specify when configuring Berkeley DB, only
-a few of which are Berkeley DB specific.  To see a complete list of the options,
-specify the --help flag to the configure program.
-<p>
-The Berkeley DB specific options are as follows:
-<dl compact>
+<p>There are several options that you can specify when configuring Berkeley DB.
+While only the Berkeley DB specific ones are described here, most of the
+standard GNU autoconf options are available and supported.  To see a
+complete list of the options, specify the --help flag to the configure
+program.
+<p>The Berkeley DB specific options are as follows:
+<p><dl compact>
+<a name="4"><!--meow--></a>
 <p><dt><a name="--disable-bigfile">--disable-bigfile</a><dd>Some systems, notably versions of AIX, HP/UX and Solaris, require special
 compile-time options in order to create files larger than 2^32 bytes.
 These options are automatically enabled when Berkeley DB is compiled.  For this
@@ -29,9 +32,11 @@ on earlier versions of the system, as the library and system calls
 necessary for large files are not available.  To disable building with
 these compile-time options, enter --disable-bigfile as an argument to
 configure.
-<p><dt><a name="--enable-compat185">--enable-compat185</a><dd>To compile or load Berkeley DB 1.85 applications against the DB 2.0 library,
-enter --enable-compat185 as an argument to configure.  This will include
-Berkeley DB 1.85 API compatibility code in the library.
+<a name="5"><!--meow--></a>
+<p><dt><a name="--enable-compat185">--enable-compat185</a><dd>To compile or load Berkeley DB 1.85 applications against this release of the
+Berkeley DB library, enter --enable-compat185 as an argument to configure.
+This will include Berkeley DB 1.85 API compatibility code in the library.
+<a name="6"><!--meow--></a>
 <p><dt><a name="--enable-cxx">--enable-cxx</a><dd>To build the Berkeley DB C++ API, enter --enable-cxx as an argument to
 configure.
 <p><dt><a name="--enable-debug">--enable-debug</a><dd>To build Berkeley DB with <b>-g</b> as a compiler flag and with <b>DEBUG</b>
@@ -55,28 +60,30 @@ as an argument to configure.  This will cause a number of special checks
 to be performed when Berkeley DB is running.  This flag should not be defined
 when configuring to build production binaries, as you will lose a
 significant amount of performance.
-<p><dt><a name="--enable-dump185">--enable-dump185</a><dd>To convert Berkeley DB 1.85 (or earlier) databases to Berkeley DB 2.0 databases,
+<a name="7"><!--meow--></a>
+<p><dt><a name="--enable-dump185">--enable-dump185</a><dd>To convert Berkeley DB 1.85 (or earlier) databases to this release of Berkeley DB,
 enter --enable-dump185 as an argument to configure.  This will build the
 <a href="../../utility/db_dump.html">db_dump185</a> utility which can dump Berkeley DB 1.85 and 1.86 databases
-in a format readable by the Berkeley DB 2.0 <a href="../../utility/db_load.html">db_load</a> utility.
-<p>
-The system libraries with which you are loading the <a href="../../utility/db_dump.html">db_dump185</a>
+in a format readable by the Berkeley DB <a href="../../utility/db_load.html">db_load</a> utility.
+<p>The system libraries with which you are loading the <a href="../../utility/db_dump.html">db_dump185</a>
 utility must already contain the Berkeley DB 1.85 library routines for this to
 work, as the Berkeley DB distribution does not include them.  If you are using
 a non-standard library for the Berkeley DB 1.85 library routines, you will have
 to change the Makefile that the configuration step creates to load the
 <a href="../../utility/db_dump.html">db_dump185</a> utility with that library.
+<a name="8"><!--meow--></a>;
+<a name="9"><!--meow--></a>;
 <p><dt><a name="--enable-dynamic">--enable-dynamic</a><dd>To build a dynamic shared library version of Berkeley DB, instead of the default
 static library, specify --enable-dynamic.  Dynamic libraries are built
 using <a href="http://www.gnu.org/software/libtool/libtool.html">the
 GNU Project's Libtool</a> distribution, which supports shared library builds
 on many, although not all, systems.
-<p>
-Berkeley DB can be configured to build either a static or a dynamic library.
+<p>Berkeley DB can be configured to build either a static or a dynamic library.
 You should not attempt to build both library types in the same directory,
 as they have incompatible object file formats.  To build both static and
 dynamic libraries, create two separate build directories, and configure
 and build them separately.
+<a name="10"><!--meow--></a>
 <p><dt><a name="--enable-java">--enable-java</a><dd>To build the Berkeley DB Java API, enter --enable-java as an argument to
 configure. To build Java, you must also configure the option
 --enable-dynamic.  Before configuring, you must set your PATH environment
@@ -94,10 +101,17 @@ pthread_condattr_setpshared and pthread_mutexattr_setpshared interfaces.
 In addition, this configuration option requires that Berkeley DB be linked with
 the -lpthread library.  On systems where POSIX mutexes are the preferred
 mutex support (e.g., HP-UX), they will be selected automatically.
+<a name="11"><!--meow--></a>
+<p><dt><a name="--enable-rpc">--enable-rpc</a><dd>To build the Berkeley DB RPC client code and server utility, enter --enable-rpc
+as an argument to configure.  The --enable-rpc option requires that RPC
+libraries already be installed on your system.
 <p><dt><a name="--enable-shared">--enable-shared</a><dd>The --enable-shared configure argument is an alias for --enable-dynamic.
-<p><dt><a name="--enable-tcl">--enable-tcl</a><dd>To build the Berkeley DB Tcl API, enter --enable-tcl as an argument to configure.
-The --enable-tcl option requires that Tcl/Tk 8.1 or later already be
-installed on your system.
+<a name="12"><!--meow--></a>
+<p><dt><a name="--enable-tcl">--enable-tcl</a><dd>To build the Berkeley DB Tcl API, enter --enable-tcl as an argument to
+configure.  The --enable-tcl option requires that Tcl 8.1 or later already
+be installed on your system.  See the --with-tcl option for information
+on specifying a non-standard location for the Tcl installation.
+<a name="13"><!--meow--></a>
 <p><dt><a name="--enable-test">--enable-test</a><dd>To build the Berkeley DB test suite, enter --enable-test as an argument to
 configure.  To run the Berkeley DB test suite, you must also configure the
 options --enable-dynamic and --enable-tcl.
@@ -106,6 +120,9 @@ underlying mutex support, enter --enable-uimutexes as an argument to
 configure.  This configuration option requires that Berkeley DB be linked with
 the -lthread library.  On systems where UI mutexes are the preferred mutex
 support, (e.g., SCO's UnixWare 2), they will be selected automatically.
+<p><dt><a name="--with-tcl=DIR">--with-tcl=DIR</a><dd>To specify a non-standard installation for Tcl, enter --with-tcl and, as
+its argument, the directory in which the Tcl tclConfig.sh file may be
+found.  The --with-tcl option implies the --enable-tcl option.
 </dl>
 <table><tr><td><br></td><td width="1%"><a href="../../ref/build_unix/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/flags.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test068.tcl	11.5 (Sleepycat) 10/19/99
+#	$Id: test068.tcl,v 11.10 2000/05/16 19:46:20 krinsky Exp $
 #
 # DB Test 68: Test of DB_BEFORE and DB_AFTER and partial puts.
 # Make sure DB_BEFORE and DB_AFTER work properly with partial puts,
@@ -19,7 +19,15 @@ proc test068 { method args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 
 	puts "Test0$tnum:\
 	    $method ($args) Test of DB_BEFORE/DB_AFTER and partial puts."
@@ -52,13 +60,13 @@ proc test068 { method args } {
 
 	foreach dupopt $dupoptlist {
 		cleanup $testdir
-		set db [eval {berkdb open -create -truncate -mode 0644 \
+		set db [eval {berkdb_open_noerr -create -truncate -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE
 
 		puts "\tTest0$tnum.b ($dupopt): DB initialization: put loop."
 		foreach word $wordlist {
-			error_check_good db_put [eval {$db put} $word $word] 0
+			error_check_good db_put [$db put $word $word] 0
 		}
 
 		puts "\tTest0$tnum.c ($dupopt): get loop."
@@ -67,7 +75,7 @@ proc test068 { method args } {
 			# inserted, and also that the Nth word is the
 			# Nth one we pull out of the database using a cursor.
 
-			set dbt [eval {$db get} $word]
+			set dbt [$db get $word]
 			error_check_good get_key [list [list $word $word]] $dbt
 		}
 

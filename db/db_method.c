@@ -1,21 +1,29 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_method.c	11.8 (Sleepycat) 9/22/99";
+static const char revid[] = "$Id: db_method.c,v 11.30 2000/04/24 17:28:28 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
+#ifdef HAVE_RPC
+#include <rpc/rpc.h>
+#endif
+
 #include <errno.h>
 #include <string.h>
+#endif
+
+#ifdef HAVE_RPC
+#include "db_server.h"
 #endif
 
 #include "db_int.h"
@@ -27,22 +35,29 @@ static const char sccsid[] = "@(#)db_method.c	11.8 (Sleepycat) 9/22/99";
 #include "xa.h"
 #include "xa_ext.h"
 
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
+
 static int  __db_get_byteswapped __P((DB *));
 static DBTYPE
 	    __db_get_type __P((DB *));
 static int  __db_init __P((DB *, u_int32_t));
+static int  __db_key_range
+		__P((DB *, DB_TXN *, DBT *, DB_KEY_RANGE *, u_int32_t));
 static int  __db_set_cachesize __P((DB *, u_int32_t, u_int32_t, int));
 static int  __db_set_dup_compare __P((DB *, int (*)(const DBT *, const DBT *)));
 static void __db_set_errcall __P((DB *, void (*)(const char *, char *)));
 static void __db_set_errfile __P((DB *, FILE *));
-static void __db_set_feedback __P((DB *, void (*)(DB *, int, int)));
+static int  __db_set_feedback __P((DB *, void (*)(DB *, int, int)));
 static int  __db_set_flags __P((DB *, u_int32_t));
 static int  __db_set_lorder __P((DB *, int));
 static int  __db_set_malloc __P((DB *, void *(*)(size_t)));
 static int  __db_set_pagesize __P((DB *, u_int32_t));
 static int  __db_set_realloc __P((DB *, void *(*)(void *, size_t)));
 static void __db_set_errpfx __P((DB *, const char *));
-static void __db_set_paniccall __P((DB *, void (*)(DB_ENV *, int)));
+static int  __db_set_paniccall __P((DB *, void (*)(DB_ENV *, int)));
 static void __dbh_err __P((DB *, int, const char *, ...));
 static void __dbh_errx __P((DB *, const char *, ...));
 
@@ -83,9 +98,15 @@ db_create(dbpp, dbenv, flags)
 	}
 
 	/* Allocate the DB. */
-	if ((ret = __os_calloc(1, sizeof(*dbp), &dbp)) != 0)
+	if ((ret = __os_calloc(dbenv, 1, sizeof(*dbp), &dbp)) != 0)
 		return (ret);
-	if ((ret = __db_init(dbp, flags)) != 0) {
+#ifdef HAVE_RPC
+	if (dbenv != NULL && dbenv->cl_handle != NULL)
+		ret = __dbcl_init(dbp, dbenv, flags);
+	else
+#endif
+		ret = __db_init(dbp, flags);
+	if (ret != 0) {
 		__os_free(dbp, sizeof(*dbp));
 		return (ret);
 	}
@@ -96,8 +117,11 @@ db_create(dbpp, dbenv, flags)
 			__os_free(dbp, sizeof(*dbp));
 			return (ret);
 		}
+		dbenv->dblocal_ref = 0;
 		F_SET(dbenv, DB_ENV_DBLOCAL);
 	}
+	if (F_ISSET(dbenv, DB_ENV_DBLOCAL))
+		++dbenv->dblocal_ref;
 
 	dbp->dbenv = dbenv;
 
@@ -116,12 +140,11 @@ __db_init(dbp, flags)
 {
 	int ret;
 
-	dbp->pgsize = DB_DEF_IOSIZE;
-
 	dbp->log_fileid = DB_LOGFILEID_INVALID;
 
 	TAILQ_INIT(&dbp->free_queue);
 	TAILQ_INIT(&dbp->active_queue);
+	TAILQ_INIT(&dbp->join_queue);
 
 	FLD_SET(dbp->am_ok,
 	    DB_OK_BTREE | DB_OK_HASH | DB_OK_QUEUE | DB_OK_RECNO);
@@ -136,9 +159,11 @@ __db_init(dbp, flags)
 	dbp->get_byteswapped = __db_get_byteswapped;
 	dbp->get_type = __db_get_type;
 	dbp->join = __db_join;
+	dbp->key_range = __db_key_range;
 	dbp->open = __db_open;
 	dbp->put = __db_put;
 	dbp->remove = __db_remove;
+	dbp->rename = __db_rename;
 	dbp->set_cachesize = __db_set_cachesize;
 	dbp->set_dup_compare = __db_set_dup_compare;
 	dbp->set_errcall = __db_set_errcall;
@@ -154,6 +179,7 @@ __db_init(dbp, flags)
 	dbp->stat = NULL;		/* !!! Must be set by access method. */
 	dbp->sync = __db_sync;
 	dbp->upgrade = __db_upgrade;
+	dbp->verify = __db_verify;
 					/* Access method specific. */
 	if ((ret = __bam_db_create(dbp)) != 0)
 		return (ret);
@@ -168,8 +194,6 @@ __db_init(dbp, flags)
 	 */
 	if (LF_ISSET(DB_XA_CREATE) && (ret = __db_xa_create(dbp)) != 0)
 		return (ret);
-
-	F_SET(dbp, DB_AM_PGDEF);
 
 	return (0);
 }
@@ -283,6 +307,29 @@ __db_get_type(dbp)
 }
 
 /*
+ * __db_key_range --
+ *	Return proportion of keys above and below given key.
+ */
+static int
+__db_key_range(dbp, txn, key, kr, flags)
+	DB *dbp;
+	DB_TXN *txn;
+	DBT *key;
+	DB_KEY_RANGE *kr;
+	u_int32_t flags;
+{
+	COMPQUIET(txn, NULL);
+	COMPQUIET(key, NULL);
+	COMPQUIET(kr, NULL);
+	COMPQUIET(flags, 0);
+
+	DB_ILLEGAL_BEFORE_OPEN(dbp, "key_range");
+	DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE);
+
+	return (EINVAL);
+}
+
+/*
  * __db_set_cachesize --
  *	Set underlying cache size.
  */
@@ -340,12 +387,13 @@ __db_set_errpfx(dbp, errpfx)
 	dbp->dbenv->set_errpfx(dbp->dbenv, errpfx);
 }
 
-static void
+static int
 __db_set_feedback(dbp, feedback)
 	DB *dbp;
 	void (*feedback) __P((DB *, int, int));
 {
 	dbp->db_feedback = feedback;
+	return (0);
 }
 
 static int
@@ -438,8 +486,6 @@ __db_set_pagesize(dbp, db_pagesize)
 	 * Should we be checking for a page size that's not a multiple of 512,
 	 * so that we never try and write less than a disk sector?
 	 */
-
-	F_CLR(dbp, DB_AM_PGDEF);
 	dbp->pgsize = db_pagesize;
 
 	return (0);
@@ -456,10 +502,100 @@ __db_set_realloc(dbp, func)
 	return (0);
 }
 
-static void
+static int
 __db_set_paniccall(dbp, paniccall)
 	DB *dbp;
 	void (*paniccall) __P((DB_ENV *, int));
 {
-	dbp->dbenv->set_paniccall(dbp->dbenv, paniccall);
+	return (dbp->dbenv->set_paniccall(dbp->dbenv, paniccall));
 }
+
+#ifdef HAVE_RPC
+/*
+ * __dbcl_init --
+ *	Initialize a DB structure on the server.
+ *
+ * PUBLIC: #ifdef HAVE_RPC
+ * PUBLIC: int __dbcl_init __P((DB *, DB_ENV *, u_int32_t));
+ * PUBLIC: #endif
+ */
+int
+__dbcl_init(dbp, dbenv, flags)
+	DB *dbp;
+	DB_ENV *dbenv;
+	u_int32_t flags;
+{
+	CLIENT *cl;
+	__db_create_reply *replyp;
+	__db_create_msg req;
+	int ret;
+
+	TAILQ_INIT(&dbp->free_queue);
+	TAILQ_INIT(&dbp->active_queue);
+
+	dbp->close = __dbcl_db_close;
+	dbp->cursor = __dbcl_db_cursor;
+	dbp->del = __dbcl_db_del;
+	dbp->err = __dbh_err;
+	dbp->errx = __dbh_errx;
+	dbp->fd = __dbcl_db_fd;
+	dbp->get = __dbcl_db_get;
+	dbp->get_byteswapped = __dbcl_db_swapped;
+	dbp->get_type = __db_get_type;
+	dbp->join = __dbcl_db_join;
+	dbp->key_range = __dbcl_db_key_range;
+	dbp->open = __dbcl_db_open;
+	dbp->put = __dbcl_db_put;
+	dbp->remove = __dbcl_db_remove;
+	dbp->rename = __dbcl_db_rename;
+	dbp->set_cachesize = __dbcl_db_cachesize;
+	dbp->set_dup_compare = NULL;
+	dbp->set_errcall = __db_set_errcall;
+	dbp->set_errfile = __db_set_errfile;
+	dbp->set_errpfx = __db_set_errpfx;
+	dbp->set_feedback = __dbcl_db_feedback;
+	dbp->set_flags = __dbcl_db_flags;
+	dbp->set_lorder = __dbcl_db_lorder;
+	dbp->set_malloc = __dbcl_db_malloc;
+	dbp->set_pagesize = __dbcl_db_pagesize;
+	dbp->set_paniccall = __dbcl_db_panic;
+	dbp->set_realloc = __dbcl_db_realloc;
+	dbp->stat = __dbcl_db_stat;
+	dbp->sync = __dbcl_db_sync;
+	dbp->upgrade = __dbcl_db_upgrade;
+
+	/*
+	 * Set all the method specific functions to client funcs as well.
+	 */
+	dbp->set_bt_compare = __dbcl_db_bt_compare;
+	dbp->set_bt_maxkey = __dbcl_db_bt_maxkey;
+	dbp->set_bt_minkey = __dbcl_db_bt_minkey;
+	dbp->set_bt_prefix = __dbcl_db_bt_prefix;
+	dbp->set_h_ffactor = __dbcl_db_h_ffactor;
+	dbp->set_h_hash = __dbcl_db_h_hash;
+	dbp->set_h_nelem = __dbcl_db_h_nelem;
+	dbp->set_re_delim = __dbcl_db_re_delim;
+	dbp->set_re_len = __dbcl_db_re_len;
+	dbp->set_re_pad = __dbcl_db_re_pad;
+	dbp->set_re_source = __dbcl_db_re_source;
+
+	cl = (CLIENT *)dbenv->cl_handle;
+	req.flags = flags;
+	req.envpcl_id = dbenv->cl_id;
+
+	/*
+	 * CALL THE SERVER
+	 */
+	replyp = __db_db_create_1(&req, cl);
+	if (replyp == NULL) {
+		__db_err(dbenv, clnt_sperror(cl, "Berkeley DB"));
+		return (DB_NOSERVER);
+	}
+
+	if ((ret = replyp->status) != 0)
+		return (ret);
+
+	dbp->cl_id = replyp->dbpcl_id;
+	return (0);
+}
+#endif

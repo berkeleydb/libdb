@@ -1,14 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd004.tcl	11.8 (Sleepycat) 11/10/99
+#	$Id: recd004.tcl,v 11.14 2000/04/21 18:36:22 krinsky Exp $
 #
 # Recovery Test #4.
 # Verify that we work correctly when big keys get elevated.
 proc recd004 { method {select 0} } {
 	source ./include.tcl
+	global rand_init
 
 	set opts [convert_args $method ""]
 	set omethod [convert_method $method]
@@ -19,10 +20,12 @@ proc recd004 { method {select 0} } {
 	}
 	puts "Recd004: $method big-key on internal page recovery tests"
 
+	berkdb srand $rand_init
+
 	cleanup $testdir
 	set testfile recd004.db
 	set testfile2 recd004-2.db
-	set eflags "-create -log -lock -mpool -txn -home $testdir"
+	set eflags "-create -txn -home $testdir"
 	puts "\tRecd004.a: creating environment"
 	set env_cmd "berkdb env $eflags"
 	set dbenv [eval $env_cmd]
@@ -32,13 +35,13 @@ proc recd004 { method {select 0} } {
 	# elevate quickly
 	set oflags "-create -mode 0644 \
 	    $omethod -env $dbenv $opts -pagesize 512 $testfile"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	set oflags "-create -mode 0644 \
 	    $omethod -env $dbenv $opts -pagesize 512 $testfile2"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
@@ -77,5 +80,5 @@ proc recd004 { method {select 0} } {
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 }

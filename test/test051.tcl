@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test051.tcl	11.3 (Sleepycat) 8/17/99
+#	$Id: test051.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
 #
 # Test51:
 #	Test of the fixed recno method.
@@ -12,7 +12,7 @@
 #		2. Partial puts for existent record -- replaces at beg, mid, and
 #			end of record, as well as full replace
 #
-proc test051 { method args } {
+proc test051 { method { args "" } } {
 	global fixed_len
 	global errorInfo
 	global errorCode
@@ -28,7 +28,15 @@ proc test051 { method args } {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/Test051.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test051.db
+	} else {
+		set testfile test051.db
+	}
 	cleanup $testdir
 	set oflags "-create -truncate -mode 0644 $args"
 
@@ -39,7 +47,8 @@ proc test051 { method args } {
 		puts "\t\tTest051.a: Test flag $f"
 		error_check_good dbopen:flagtest:catch \
 		    [catch {set db \
-		    [eval {berkdb open} $oflags $f $omethod $testfile]} ret] 1
+		    [eval {berkdb_open_noerr} $oflags $f $omethod \
+		    $testfile]} ret] 1
 		error_check_good \
 		    dbopen:flagtest:$f [is_substr $errorCode EINVAL] 1
 		set errorCode NONE
@@ -47,13 +56,14 @@ proc test051 { method args } {
 	set f "-renumber"
 	puts "\t\tTest051.a: Test $f"
 	if { [is_frecno $method] == 1 } {
-		set db [eval {berkdb open} $oflags $f $omethod $testfile]
+		set db [eval {berkdb_open} $oflags $f $omethod $testfile]
 		error_check_good dbopen:flagtest:$f [is_valid_db $db] TRUE
 		$db close
 	} else {
 		error_check_good \
 		    dbopen:flagtest:catch [catch {set db [eval \
-			{berkdb open} $oflags $f $omethod $testfile]} ret] 1
+			{berkdb_open_noerr} $oflags $f \
+			$omethod $testfile]} ret] 1
 		error_check_good \
 		    dbopen:flagtest:$f [is_substr $errorCode EINVAL] 1
 	}
@@ -67,7 +77,7 @@ proc test051 { method args } {
 	set data ""
 	set test_char "a"
 
-	set db [eval {berkdb open} $oflags $omethod $testfile]
+	set db [eval {berkdb_open_noerr} $oflags $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\tTest051.b: Partial puts with dlen != size."
@@ -79,8 +89,17 @@ proc test051 { method args } {
 			set data [repeat $test_char [expr $dlen + 1]]
 			error_check_good catch:put 1 [catch {$db \
 			    put -partial [list $doff $dlen] $key $data} ret]
-			error_check_good "dbput:partial: dlen < size" \
-			   [is_substr $errorInfo "invalid argument"] 1
+			#
+			# We don't get back the server error string just
+			# the result.
+			#
+			if { $eindex == -1 } {
+				error_check_good "dbput:partial: dlen < size" \
+				    [is_substr $errorInfo "Length improper"] 1
+			} else {
+				error_check_good "dbput:partial: dlen < size" \
+				    [is_substr $errorCode "EINVAL"] 1
+			}
 
 			# dlen > size
 			puts "\t\tTest051.e: dlen: $dlen, doff: $doff, \
@@ -88,8 +107,13 @@ proc test051 { method args } {
 			set data [repeat $test_char [expr $dlen - 1]]
 			error_check_good catch:put 1 [catch {$db \
 			    put -partial [list $doff $dlen] $key $data} ret]
-			error_check_good "dbput:partial: dlen > size" \
-			    [is_substr $errorInfo "invalid argument"] 1
+			if { $eindex == -1 } {
+				error_check_good "dbput:partial: dlen > size" \
+				    [is_substr $errorInfo "Length improper"] 1
+			} else {
+				error_check_good "dbput:partial: dlen < size" \
+				    [is_substr $errorCode "EINVAL"] 1
+			}
 		}
 	}
 
@@ -98,11 +122,12 @@ proc test051 { method args } {
 	# Partial puts for existent record -- replaces at beg, mid, and
 	# end of record, as well as full replace
 	puts "\tTest051.f: Partial puts within existent record."
-	set db [eval {berkdb open} $oflags $omethod $testfile]
+	set db [eval {berkdb_open} $oflags $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\t\tTest051.f: First try a put and then a full replace."
 	set data [repeat "a" $fixed_len]
+
 	set ret [$db put 1 $data]
 	error_check_good dbput $ret 0
 	error_check_good dbget $data [lindex [lindex [$db get -recno 1] 0] 1]

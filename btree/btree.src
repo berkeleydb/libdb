@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)btree.src	10.12 (Sleepycat) 10/1/99
+ *	$Id: btree.src,v 10.21.2.1 2000/07/13 18:56:35 bostic Exp $
  */
 
 PREFIX	bam
@@ -15,6 +15,7 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
+INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -30,13 +31,24 @@ INCLUDE
  * BTREE-pg_alloc: used to record allocating a new page.
  *
  * meta_lsn:	the meta-data page's original lsn.
+ * alloc_lsn:	the meta-data page's original allocation lsn.
  * page_lsn:	the allocated page's original lsn.
  * pgno:	the page allocated.
  * next:	the next page on the free list.
  */
-BEGIN pg_alloc
-ARG	fileid		int32_t		lu
+DEPRECATED pg_alloc1	51
+ARG	fileid		int32_t		ld
 POINTER	meta_lsn	DB_LSN *	lu
+POINTER	page_lsn	DB_LSN *	lu
+ARG	pgno		db_pgno_t	lu
+ARG	ptype		u_int32_t	lu
+ARG	next		db_pgno_t	lu
+END
+
+BEGIN pg_alloc		60
+ARG	fileid		int32_t		ld
+POINTER	meta_lsn	DB_LSN *	lu
+POINTER	alloc_lsn	DB_LSN *	lu
 POINTER	page_lsn	DB_LSN *	lu
 ARG	pgno		db_pgno_t	lu
 ARG	ptype		u_int32_t	lu
@@ -48,13 +60,23 @@ END
  *
  * pgno:	the page being freed.
  * meta_lsn:	the meta-data page's original lsn.
+ * alloc_lsn:	the meta-data page's original allocation lsn.
  * header:	the header from the free'd page.
  * next:	the previous next pointer on the metadata page.
  */
-BEGIN pg_free
-ARG	fileid		int32_t		lu
+DEPRECATED pg_free1	52
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
+DBT	header		DBT		s
+ARG	next		db_pgno_t	lu
+END
+
+BEGIN pg_free		61
+ARG	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+POINTER	meta_lsn	DB_LSN *	lu
+POINTER	alloc_lsn	DB_LSN *	lu
 DBT	header		DBT		s
 ARG	next		db_pgno_t	lu
 END
@@ -71,8 +93,8 @@ END
  * nlsn:	the next page's original LSN (or 0 if no next page).
  * pg:		the split page's contents before the split.
  */
-BEGIN split
-ARG	fileid		int32_t		lu
+DEPRECATED split1	53
+ARG	fileid		int32_t		ld
 ARG	left		db_pgno_t	lu
 POINTER	llsn		DB_LSN *	lu
 ARG	right		db_pgno_t	lu
@@ -84,6 +106,35 @@ DBT	pg		DBT		s
 END
 
 /*
+ * BTREE-split: used to log a page split.
+ *
+ * left:	the page number for the low-order contents.
+ * llsn:	the left page's original LSN.
+ * right:	the page number for the high-order contents.
+ * rlsn:	the right page's original LSN.
+ * indx:	the number of entries that went to the left page.
+ * npgno:	the next page number
+ * npgno:	the next page number
+ * nlsn:	the next page's original LSN (or 0 if no next page).
+ * root_pgno:	the root page number
+ * pg:		the split page's contents before the split.
+ * opflags:	SPL_NRECS: if splitting a tree that maintains a record count.
+ */
+BEGIN split		62
+ARG	fileid		int32_t		ld
+ARG	left		db_pgno_t	lu
+POINTER	llsn		DB_LSN *	lu
+ARG	right		db_pgno_t	lu
+POINTER	rlsn		DB_LSN *	lu
+ARG	indx		u_int32_t	lu
+ARG	npgno		db_pgno_t	lu
+POINTER	nlsn		DB_LSN *	lu
+ARG	root_pgno	db_pgno_t	lu
+DBT	pg		DBT		s
+ARG	opflags		u_int32_t	lu
+END
+
+/*
  * BTREE-rsplit: used to log a reverse-split
  *
  * pgno:	the page number of the page copied over the root.
@@ -92,10 +143,30 @@ END
  * rootent:	last entry on the root page.
  * rootlsn:	the root page's original lsn.
  */
-BEGIN rsplit
-ARG	fileid		int32_t		lu
+DEPRECATED rsplit1	54
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 DBT	pgdbt		DBT		s
+ARG	nrec		db_pgno_t	lu
+DBT	rootent		DBT		s
+POINTER rootlsn		DB_LSN *	lu
+END
+
+/*
+ * BTREE-rsplit: used to log a reverse-split
+ *
+ * pgno:	the page number of the page copied over the root.
+ * pgdbt:	the page being copied on the root page.
+ * root_pgno:	the root page number.
+ * nrec:	the tree's record count.
+ * rootent:	last entry on the root page.
+ * rootlsn:	the root page's original lsn.
+ */
+BEGIN rsplit		63
+ARG	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+DBT	pgdbt		DBT		s
+ARG	root_pgno	db_pgno_t	lu
 ARG	nrec		db_pgno_t	lu
 DBT	rootent		DBT		s
 POINTER rootlsn		DB_LSN *	lu
@@ -110,8 +181,8 @@ END
  * indx_copy:	the index to copy if inserting.
  * is_insert:	0 if a delete, 1 if an insert.
  */
-BEGIN adj
-ARG	fileid		int32_t		lu
+BEGIN adj		55
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -126,15 +197,15 @@ END
  * lsn:		the page's original lsn.
  * indx:	the index to be adjusted.
  * adjust:	the signed adjustment.
- * total:	if the total tree entries count should be adjusted
+ * opflags:	CAD_UPDATEROOT: if root page count was adjusted.
  */
-BEGIN cadjust
-ARG	fileid		int32_t		lu
+BEGIN cadjust		56
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
 ARG	adjust		int32_t		ld
-ARG	total		int32_t		ld
+ARG	opflags		u_int32_t	lu
 END
 
 /*
@@ -144,8 +215,8 @@ END
  * lsn:		the page's original lsn.
  * indx:	the index to be deleted.
  */
-BEGIN cdel
-ARG	fileid		int32_t		lu
+BEGIN cdel		57
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -160,8 +231,8 @@ END
  * new:		the replacement data.
  * duplicate:	the prefix of the replacement that matches the original.
  */
-BEGIN repl
-ARG	fileid		int32_t		lu
+BEGIN repl		58
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	lsn		DB_LSN *	lu
 ARG	indx		u_int32_t	lu
@@ -175,9 +246,35 @@ END
 /*
  * BTREE-root: log the assignment of a root btree page.
  */
-BEGIN root
-ARG	fileid		int32_t		lu
+BEGIN root		59
+ARG	fileid		int32_t		ld
 ARG	meta_pgno	db_pgno_t	lu
 ARG	root_pgno	db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
+END
+
+/*
+ * BTREE-curadj: undo cursor adjustments on abort txn.
+ *     Should only be processed during DB_TXN_ABORT.
+ * NOTE: the first_indx field gets used to hold
+ * 	signed index adjustment in one case.
+ *	care should be taken if its size is changed.
+ */
+BEGIN curadj		64
+/* Fileid of db effected. */
+ARG	fileid		int32_t		ld
+/* Which adjustment. */
+ARG	mode		db_ca_mode	ld
+/* Page entry is from. */
+ARG	from_pgno	db_pgno_t	lu
+/* Page entry  went to. */
+ARG	to_pgno		db_pgno_t	lu
+/* Left page of root split. */
+ARG	left_pgno	db_pgno_t	lu
+/* First index of dup set. Also used as adjustment. */
+ARG	first_indx	u_int32_t	lu
+/* Index entry is from. */
+ARG	from_indx	u_int32_t	lu
+/* Index where entry went. */
+ARG	to_indx		u_int32_t	lu
 END

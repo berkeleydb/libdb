@@ -1,5 +1,6 @@
-<!--"@(#)env_set_lg_bsize.so	10.5 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_lg_bsize.so,v 10.10 2000/05/20 16:29:11 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv::set_lg_bsize</h1>
@@ -20,38 +22,33 @@
 <h3><pre>
 #include &lt;db_cxx.h&gt;
 <p>
-int DbEnv::set_lg_bsize(u_int32_t lg_bsize);
+int
+DbEnv::set_lg_bsize(u_int32_t lg_bsize);
 </pre></h3>
 <h1>Description</h1>
-<p>
-Set the size of the in-memory log buffer, in bytes.
-<p>
-Log information is stored in-memory until the storage space fills up
+<p>Set the size of the in-memory log buffer, in bytes.  By default, or if
+the value is set to 0, a size of 32K is used.
+<p>Log information is stored in-memory until the storage space fills up
 or transaction commit forces the information to be flushed to stable
 storage.  In the presence of long-running transactions or transactions
 producing large amounts of data, larger buffer sizes can increase
 throughput.
-<p>
-By default, or if the value is set to 0, a size of 32K is used.
-<p>
-The DbEnv::set_lg_bsize interface may only be used to configure Berkeley DB before
+<p>The DbEnv::set_lg_bsize interface may only be used to configure Berkeley DB before
 the <a href="../api_cxx/env_open.html">DbEnv::open</a> interface is called.
-<p>
-The DbEnv::set_lg_bsize
-method either returns a non-zero error value or throws an exception that
+<p>The DbEnv::set_lg_bsize method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>
+<p>The environment's log buffer size may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
+line with the string "set_lg_bsize", one or more whitespace characters, and the size in bytes.
+Configuration in the <b>DB_CONFIG</b> file silently overrules
+configuration done using the DbEnv::set_lg_bsize method.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called.
+<p>Called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called.
 </dl>
-<p>
 <h3>Class</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_set_lg_bsize.html">DbEnv::set_lg_bsize</a>,
 <a href="../api_cxx/env_set_lg_max.html">DbEnv::set_lg_max</a>,

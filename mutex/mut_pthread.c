@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mut_pthread.c	11.15 (Sleepycat) 11/9/99";
+static const char revid[] = "$Id: mut_pthread.c,v 11.20 2000/05/02 22:15:07 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -37,6 +37,7 @@ static const char sccsid[] = "@(#)mut_pthread.c	11.15 (Sleepycat) 11/9/99";
 #define	pthread_mutex_lock	_lwp_mutex_lock
 #define	pthread_mutex_trylock	_lwp_mutex_trylock
 #define	pthread_mutex_unlock	_lwp_mutex_unlock
+#define	pthread_self		_lwp_self
 #endif
 #ifdef HAVE_MUTEX_UI_THREADS
 #define	pthread_cond_signal	cond_signal
@@ -44,6 +45,7 @@ static const char sccsid[] = "@(#)mut_pthread.c	11.15 (Sleepycat) 11/9/99";
 #define	pthread_mutex_lock	mutex_lock
 #define	pthread_mutex_trylock	mutex_trylock
 #define	pthread_mutex_unlock	mutex_unlock
+#define	pthread_self		thr_self
 #endif
 
 /*
@@ -113,32 +115,32 @@ __db_pthread_mutex_init(dbenv, mutexp, flags)
 	}}
 #endif
 #ifdef HAVE_MUTEX_SOLARIS_LWP
+	/*
+	 * XXX
+	 * Gcc complains about missing braces in the static initializations of
+	 * lwp_cond_t and lwp_mutex_t structures because the structures contain
+	 * sub-structures/unions and the Solaris include file that defines the
+	 * initialization values doesn't have surrounding braces.  There's not
+	 * much we can do.
+	 */
 	if (F_ISSET(mutexp, MUTEX_THREAD)) {
 		static lwp_mutex_t mi = DEFAULTMUTEX;
 
-		/*
-		 * !!!
-		 * Gcc attempts to use special Sparc instructions to do a fast
-		 * copy of the structures, but the structures aren't
-		 * necessarily appropriately aligned for the Sparc instructions
-		 * to work.  We don't use memcpy instead of structure assignment
-		 * because gcc figures that one out and drops core anyway.
-		 */
-		__ua_memcpy(&mutexp->mutex, &mi, sizeof(mi));
+		mutexp->mutex = mi;
 	} else {
 		static lwp_mutex_t mi = SHAREDMUTEX;
 
-		__ua_memcpy(&mutexp->mutex, &mi, sizeof(mi));
+		mutexp->mutex = mi;
 	}
 	if (LF_ISSET(MUTEX_SELF_BLOCK)) {
 		if (F_ISSET(mutexp, MUTEX_THREAD)) {
 			static lwp_cond_t ci = DEFAULTCV;
 
-			__ua_memcpy(&mutexp->cond, &ci, sizeof(ci));
+			mutexp->cond = ci;
 		} else {
 			static lwp_cond_t ci = SHAREDCV;
 
-			__ua_memcpy(&mutexp->cond, &ci, sizeof(ci));
+			mutexp->cond = ci;
 		}
 		F_SET(mutexp, MUTEX_SELF_BLOCK);
 	}

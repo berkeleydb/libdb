@@ -1,13 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)env005.tcl	11.2 (Sleepycat) 9/20/99
+#	$Id: env005.tcl,v 11.7 2000/05/06 19:09:48 bostic Exp $
 #
 # Env Test 5
 # Test that using subsystems without initializing them correctly
-# returns an error.
+# returns an error.  Cannot test mpool, because it is assumed
+# in the Tcl code.
 proc env005 { } {
 	source ./include.tcl
 
@@ -18,7 +19,7 @@ proc env005 { } {
 
 	set e [berkdb env -create -home $testdir]
 	error_check_good dbenv [is_valid_env $e] TRUE
-	set db [berkdb open -create -btree $testdir/env005.db]
+	set db [berkdb_open -create -btree $testdir/env005.db]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set rlist {
@@ -33,14 +34,10 @@ proc env005 { } {
 	{ "log_put record"		"Env005.c4"}
 	{ "log_register $db xxx"	"Env005.c5"}
 	{ "log_stat"			"Env005.c6"}
-	{ "log_unregister 1"		"Env005.c7"}
-	{ "mpool -pagesize 512 -create"	"Env005.d0"}
-	{ "mpool_stat"			"Env005.d1"}
-	{ "mpool_sync {1 1}"		"Env005.d2"}
-	{ "mpool_trickle 50"		"Env005.d3"}
-	{ "txn"				"Env005.e0"}
-	{ "txn_checkpoint"		"Env005.e1"}
-	{ "txn_stat"			"Env005.e2"}
+	{ "log_unregister $db"		"Env005.c7"}
+	{ "txn"				"Env005.d0"}
+	{ "txn_checkpoint"		"Env005.d1"}
+	{ "txn_stat"			"Env005.d2"}
 	}
 
 	foreach pair $rlist {

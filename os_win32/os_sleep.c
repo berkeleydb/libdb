@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_sleep.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: os_sleep.c,v 11.4 2000/03/30 01:46:43 ubell Exp $";
 #endif /* not lint */
 
 #include "db_int.h"
@@ -19,9 +19,12 @@ static const char sccsid[] = "@(#)os_sleep.c	11.1 (Sleepycat) 7/25/99";
  *	Yield the processor for a period of time.
  */
 int
-__os_sleep(secs, usecs)
+__os_sleep(dbenv, secs, usecs)
+	DB_ENV *dbenv;
 	u_long secs, usecs;		/* Seconds and microseconds. */
 {
+	COMPQUIET(dbenv, NULL);
+
 	/* Don't require that the values be normalized. */
 	for (; usecs >= 1000000; ++secs, usecs -= 1000000)
 		;

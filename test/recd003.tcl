@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd003.tcl	11.8 (Sleepycat) 11/10/99
+#	$Id: recd003.tcl,v 11.14 2000/04/21 18:36:22 krinsky Exp $
 #
 # Recovery Test 3.
 # Test all the duplicate log messages and recovery operations.  We make
@@ -11,6 +11,7 @@
 # but no fix necessary and redo but no fix necessary.
 proc recd003 { method {select 0} } {
 	source ./include.tcl
+	global rand_init
 
 	set omethod [convert_method $method]
 
@@ -20,11 +21,13 @@ proc recd003 { method {select 0} } {
 	}
 	puts "Recd003: $method duplicate recovery tests"
 
+	berkdb srand $rand_init
+
 	cleanup $testdir
 	# See comment in recd001.tcl for why there are two database files...
 	set testfile recd003.db
 	set testfile2 recd003-2.db
-	set eflags "-create -log -lock -mpool -txn -home $testdir"
+	set eflags "-create -txn -home $testdir"
 
 	puts "\tRecd003.a: creating environment"
 	set env_cmd "berkdb env $eflags"
@@ -33,12 +36,12 @@ proc recd003 { method {select 0} } {
 
 	# Create the databases.
 	set oflags "-create -mode 0644 $omethod -dup -env $dbenv $testfile"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	set oflags "-create -mode 0644 $omethod -dup -env $dbenv $testfile2"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
@@ -100,5 +103,5 @@ proc recd003 { method {select 0} } {
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 }

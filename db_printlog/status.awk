@@ -1,4 +1,4 @@
-# @(#)status.awk	10.1 (Sleepycat) 11/1/98
+# $Id: status.awk,v 10.2 1999/11/21 18:01:43 bostic Exp $
 #
 # Read through db_printlog output and list all the transactions encountered
 # and whether they commited or aborted.

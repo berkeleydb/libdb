@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)AccessExample.java	11.1 (Sleepycat) 7/25/99
+ * $Id: AccessExample.java,v 11.4 2000/02/14 02:59:57 bostic Exp $
  */
 
 package com.sleepycat.examples;
@@ -26,7 +26,7 @@ class AccessExample
 
     private static void usage()
     {
-        System.err.println("usage: AccessExample [-h home]\n");
+        System.err.println("usage: AccessExample\n");
         System.exit(1);
     }
 

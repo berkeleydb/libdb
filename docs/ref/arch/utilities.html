@@ -1,5 +1,6 @@
-<!--@(#)utilities.so	10.19 (Sleepycat) 11/11/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: utilities.so,v 10.23 2000/05/23 20:57:50 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,16 +9,18 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Architecture</dl></h3></td>
 <td width="1%"><a href="../../ref/arch/script.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Supporting utilities</h1>
-<p>
-There are several stand-alone utilities that provide supporting
+<p>There are several stand-alone utilities that provide supporting
 functionality for the Berkeley DB environment:
-<dl compact>
+<p><dl compact>
+<p><dt><a href="../../utility/berkeley_db_svc.html">berkeley_db_svc</a><dd>The <a href="../../utility/berkeley_db_svc.html">berkeley_db_svc</a> utility is the Berkeley DB RPC server, providing
+standard server functionality for client. applications.
 <p><dt><a href="../../utility/db_archive.html">db_archive</a><dd>The <a href="../../utility/db_archive.html">db_archive</a> utility supports database backup, archival and log
 file administration.  It facilitates log reclamation and the creation of
 database snapshots.  Generally, some form of log archival must be done if
@@ -40,11 +43,14 @@ in a human-readable and parseable format.
 <p><dt><a href="../../utility/db_recover.html">db_recover</a><dd>The <a href="../../utility/db_recover.html">db_recover</a> utility runs after an unexpected Berkeley DB or system
 failure to restore the database to a consistent state.  Generally, some
 form of database recovery must be done if databases are being modified.
-<p><dt><a href="../../utility/db_stat.html">db_stat</a><dd>The <a href="../../utility/db_stat.html">db_stat</a> utility displays statistics for databases and database
+<p><dt><a href="../../utility/db_stat.html">db_stat</a>  <dd>The <a href="../../utility/db_stat.html">db_stat</a> utility displays statistics for databases and database
 environments.
+<p><dt><a href="../../utility/db_upgrade.html">db_upgrade</a><dd>The <a href="../../utility/db_upgrade.html">db_upgrade</a> utility provides a command-line interface for
+upgrading underlying database formats.
+<p><dt><a href="../../utility/db_verify.html">db_verify</a><dd>The <a href="../../utility/db_verify.html">db_verify</a> utility provides a command-line interface for
+verifying the database format.
 </dl>
-<p>
-All of the functionality implemented for these utilities is also available
+<p>All of the functionality implemented for these utilities is also available
 as part of the standard Berkeley DB API.  This means that threaded applications
 can easily create a thread that calls the same Berkeley DB functions as do the
 utilities.  This often simplifies an application environment by removing

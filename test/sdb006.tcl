@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb006.tcl	11.6 (Sleepycat) 9/21/99
+#	$Id: sdb006.tcl,v 11.10 2000/04/21 18:36:23 krinsky Exp $
 #
 # We'll test 2-way, 3-way, and 4-way joins and figure that if those work,
 # everything else does as well.  We'll create test databases called
@@ -16,24 +16,19 @@
 # We should test this on all btrees, all hash, and a combination thereof
 proc subdb006 {method {nentries 100} args } {
 	source ./include.tcl
+	global rand_init
 
 	# NB: these flags are internal only, ok
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	if { [is_queue $method] == 1 } {
-		puts "Subdb006: skipping for method $method"
+	if { [is_record_based $method] == 1 || [is_rbtree $method] } {
+		puts "\tSubdb006 skipping for method $method."
 		return
 	}
 
-	if { [is_record_based $method] == 1 } {
-		puts "\tSubdb006 skipping for method RECNO"
-		return
-	}
-	if { [string first "-recnum" $args] != -1 } {
-		puts "\tSubdb006 skipping for method $method and RECORD NUMBERS"
-		return
-	}
+	berkdb srand $rand_init
+
 	foreach opt {" -dup" " -dupsort"} {
 		append args $opt
 
@@ -59,7 +54,7 @@ proc subdb006 {method {nentries 100} args } {
 		puts "Subdb006: Building the primary database $method"
 		set oflags "-create -mode 0644 [conv $omethod \
 		    [berkdb random_int 1 2]]"
-		set db [eval {berkdb open} $oflags $testfile primary.db]
+		set db [eval {berkdb_open} $oflags $testfile primary.db]
 		error_check_good dbopen [is_valid_db $db] TRUE
 		for { set i 0 } { $i < 1000 } { incr i } {
 			set key [format "%04d" $i]

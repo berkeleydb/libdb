@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_alloc.c	11.6 (Sleepycat) 11/9/99";
+static const char revid[] = "$Id: os_alloc.c,v 11.15.2.1 2000/06/09 14:11:33 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -47,10 +47,11 @@ static void __os_guard __P((void));
  * __os_strdup --
  *	The strdup(3) function for DB.
  *
- * PUBLIC: int __os_strdup __P((const char *, void *));
+ * PUBLIC: int __os_strdup __P((DB_ENV *, const char *, void *));
  */
 int
-__os_strdup(str, storep)
+__os_strdup(dbenv, str, storep)
+	DB_ENV *dbenv;
 	const char *str;
 	void *storep;
 {
@@ -61,7 +62,7 @@ __os_strdup(str, storep)
 	*(void **)storep = NULL;
 
 	size = strlen(str) + 1;
-	if ((ret = __os_malloc(size, NULL, &p)) != 0)
+	if ((ret = __os_malloc(dbenv, size, NULL, &p)) != 0)
 		return (ret);
 
 	memcpy(p, str, size);
@@ -74,10 +75,11 @@ __os_strdup(str, storep)
  * __os_calloc --
  *	The calloc(3) function for DB.
  *
- * PUBLIC: int __os_calloc __P((size_t, size_t, void *));
+ * PUBLIC: int __os_calloc __P((DB_ENV *, size_t, size_t, void *));
  */
 int
-__os_calloc(num, size, storep)
+__os_calloc(dbenv, num, size, storep)
+	DB_ENV *dbenv;
 	size_t num, size;
 	void *storep;
 {
@@ -85,7 +87,7 @@ __os_calloc(num, size, storep)
 	int ret;
 
 	size *= num;
-	if ((ret = __os_malloc(size, NULL, &p)) != 0)
+	if ((ret = __os_malloc(dbenv, size, NULL, &p)) != 0)
 		return (ret);
 
 	memset(p, 0, size);
@@ -98,13 +100,15 @@ __os_calloc(num, size, storep)
  * __os_malloc --
  *	The malloc(3) function for DB.
  *
- * PUBLIC: int __os_malloc __P((size_t, void *(*)(size_t), void *));
+ * PUBLIC: int __os_malloc __P((DB_ENV *, size_t, void *(*)(size_t), void *));
  */
 int
-__os_malloc(size, db_malloc, storep)
+__os_malloc(dbenv, size, db_malloc, storep)
+	DB_ENV *dbenv;
 	size_t size;
 	void *(*db_malloc) __P((size_t)), *storep;
 {
+	int ret;
 	void *p;
 
 	*(void **)storep = NULL;
@@ -114,7 +118,7 @@ __os_malloc(size, db_malloc, storep)
 		++size;
 #ifdef DIAGNOSTIC
 	else
-        	++size;				/* Add room for a guard byte. */
+		++size;				/* Add room for a guard byte. */
 #endif
 
 	/* Some C libraries don't correctly set errno when malloc(3) fails. */
@@ -126,9 +130,14 @@ __os_malloc(size, db_malloc, storep)
 	else
 		p = malloc(size);
 	if (p == NULL) {
-		if (__os_get_errno() == 0)
+		ret = __os_get_errno();
+		if (ret == 0) {
 			__os_set_errno(ENOMEM);
-		return (__os_get_errno());
+			ret = ENOMEM;
+		}
+		__db_err(dbenv,
+		    "malloc: %s: %lu", strerror(ret), (u_long)size);
+		return (ret);
 	}
 
 #ifdef DIAGNOSTIC
@@ -154,27 +163,30 @@ __os_malloc(size, db_malloc, storep)
  * __os_realloc --
  *	The realloc(3) function for DB.
  *
- * PUBLIC: int __os_realloc __P((size_t, void *(*)(void *, size_t), void *));
+ * PUBLIC: int __os_realloc __P((DB_ENV *,
+ * PUBLIC:     size_t, void *(*)(void *, size_t), void *));
  */
 int
-__os_realloc(size, db_realloc, storep)
+__os_realloc(dbenv, size, db_realloc, storep)
+	DB_ENV *dbenv;
 	size_t size;
 	void *(*db_realloc) __P((void *, size_t)), *storep;
 {
+	int ret;
 	void *p, *ptr;
 
 	ptr = *(void **)storep;
 
 	/* If we haven't yet allocated anything yet, simply call malloc. */
 	if (ptr == NULL && db_realloc == NULL)
-		return (__os_malloc(size, NULL, storep));
+		return (__os_malloc(dbenv, size, NULL, storep));
 
 	/* Never allocate 0 bytes -- some C libraries don't like it. */
 	if (size == 0)
 		++size;
 #ifdef DIAGNOSTIC
 	else
-        	++size;				/* Add room for a guard byte. */
+		++size;				/* Add room for a guard byte. */
 #endif
 
 	/*
@@ -186,18 +198,21 @@ __os_realloc(size, db_realloc, storep)
 	__os_set_errno(0);
 	if (db_realloc != NULL)
 		p = db_realloc(ptr, size);
-	if (__db_jump.j_realloc != NULL)
+	else if (__db_jump.j_realloc != NULL)
 		p = __db_jump.j_realloc(ptr, size);
 	else
 		p = realloc(ptr, size);
 	if (p == NULL) {
-		if (__os_get_errno() == 0)
+		if ((ret = __os_get_errno()) == 0) {
+			ret = ENOMEM;
 			__os_set_errno(ENOMEM);
-		return (__os_get_errno());
+		}
+		__db_err(dbenv,
+		    "realloc: %s: %lu", strerror(ret), (u_long)size);
+		return (ret);
 	}
-
 #ifdef DIAGNOSTIC
-        ((u_int8_t *)p)[size - 1] = CLEAR_BYTE;	/* Initialize guard byte. */
+	((u_int8_t *)p)[size - 1] = CLEAR_BYTE;	/* Initialize guard byte. */
 #endif
 
 	*(void **)storep = p;
@@ -254,14 +269,14 @@ __os_freestr(ptr)
 
 	size = strlen(ptr) + 1;
 
-        /*
-         * Check that the guard byte (one past the end of the memory) is
-         * still CLEAR_BYTE.
-         */
-        if (((u_int8_t *)ptr)[size] != CLEAR_BYTE)
-                 __os_guard();
+	/*
+	 * Check that the guard byte (one past the end of the memory) is
+	 * still CLEAR_BYTE.
+	 */
+	if (((u_int8_t *)ptr)[size] != CLEAR_BYTE)
+		 __os_guard();
 
-        /* Clear memory. */
+	/* Clear memory. */
 	memset(ptr, CLEAR_BYTE, size);
 #endif
 
@@ -290,7 +305,7 @@ __os_guard()
 #endif
 
 /*
- * __ua_copy --
+ * __ua_memcpy --
  *	Copy memory to memory without relying on any kind of alignment.
  *
  *	There are places in DB that we have unaligned data, for example,
@@ -307,12 +322,14 @@ __os_guard()
  *		p = (struct a *)func_argument;
  *		memcpy(&local, p->x, sizeof(local));
  *
- *	some compilers optimize to use instructions that require alignment.
- *	It's a compiler bug, but it's a pretty common one.
+ *	compilers optimize to use inline instructions requiring alignment,
+ *	and records in the log don't have any particular alignment.  (This
+ *	isn't a compiler bug, because it's a structure they're allowed to
+ *	assume alignment.)
  *
  *	Casting the memcpy arguments to (u_int8_t *) appears to work most
  *	of the time, but we've seen examples where it wasn't sufficient
- *	and there's nothing in ANSI C that requires it.
+ *	and there's nothing in ANSI C that requires that work.
  *
  * PUBLIC: void *__ua_memcpy __P((void *, const void *, size_t));
  */
@@ -322,5 +339,5 @@ __ua_memcpy(dst, src, len)
 	const void *src;
 	size_t len;
 {
-	return (memcpy(dst, src, len));
+	return ((void *)memcpy(dst, src, len));
 }

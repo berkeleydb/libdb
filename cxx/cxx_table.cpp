@@ -1,24 +1,26 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_table.cpp	11.6 (Sleepycat) 11/2/99";
+static const char revid[] = "$Id: cxx_table.cpp,v 11.26 2000/06/06 17:54:44 dda Exp $";
 #endif /* not lint */
 
-#include "db_cxx.h"
-#include "cxx_int.h"
 #include <errno.h>
 #include <string.h>
 
-extern "C" {
+#include "db_cxx.h"
+#include "cxx_int.h"
+
+#include "db_int.h"
+#include "db_page.h"
+#include "db_ext.h"
 #include "common_ext.h"
-};
 
 ////////////////////////////////////////////////////////////////////////
 //                                                                    //
@@ -26,48 +28,179 @@ extern "C" {
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
+// A truism for the Db object is that there is always a valid
+// DB handle for as long as the Db object is live.  That means
+// that when the underlying handle is invalidated, during
+// Db::close() and Db::remove(), a new one is obtained immediately.
+// This strategy is necessary to correctly allow reopen, and have
+// a valid handle available for other set calls, e.g.:
+//
+//    Db db(NULL, 0);
+//    db.open(...);
+//    db.close(...);
+//    db.set_errpfx(...);
+//    db.open(...);
+//
+// An odd side effect is that even if the user does a final close,
+// we'll still have a DB handle that we must close in the destructor.
+// Getting and Freeing of the handle correspond to internal calls of
+// Db::initialize() and Db::cleanup().  There's also interaction
+// with DbEnv:: constructors.
+
 Db::Db(DbEnv *env, u_int32_t flags)
 :	imp_(0)
 ,	env_(env)
+,	construct_error_(0)
+,	construct_flags_(flags)
 {
-	DB_ENV *c_env = unwrap(env);
-	DB *c_db;
-	int ret;
-
-	if ((ret = db_create(&c_db, c_env, flags)) != 0) {
-		DB_ERROR("Db::Db", ret, this);
-		return;
-	}
-	imp_ = wrap(c_db);
-	c_db->cj_internal = this;
-	(void)get_env(flags & DB_CXX_NO_EXCEPTIONS);
+	have_private_env_ = (env_ == 0);
+	initialize();
 }
 
-Db::Db()
-:	imp_(0)
-,	env_(0)
-{
-	// private constructor only used internally
-}
-
+// Note: we don't check for error codes in this destructor,
+// since we can't return an error and throwing an exception
+// in a destructor is unexpected.  If the user is curious
+// about errors on an open database, they will call close()
+// directly.
+//
 Db::~Db()
+{
+	DB *db;
+
+	db = unwrap(this);
+	cleanup();
+
+	// If the user owns the environment, we don't
+	// automatically close, because the environment
+	// may have already be explicitly closed by the user.
+	//
+	if (have_private_env_)
+		(void)db->close(db, 0);
+}
+
+// private method to reinitialize during constructor or at the
+// end of close.  initialize must create a backing DB object,
+// and if that creates a new DB_ENV, it must be tied to a new DbEnv.
+// If there is an error, construct_error_ is set; this is examined
+// during open.
+//
+int Db::initialize()
+{
+	u_int32_t cxx_flags;
+	DB *db;
+	int err;
+	DB_ENV *cenv = unwrap(env_);
+
+	cxx_flags = construct_flags_ & DB_CXX_NO_EXCEPTIONS;
+
+	// Create a new underlying DB object.
+	// We rely on the fact that if a NULL DB_ENV* is given,
+	// one is allocated by DB.
+	//
+	if ((err = db_create(&db, cenv,
+			     construct_flags_ & ~cxx_flags)) != 0) {
+		construct_error_ = err;
+		return err;
+	}
+
+	// Associate the DB with this object
+	imp_ = wrap(db);
+	db->cj_internal = this;
+
+	// Create a new DbEnv from a DB_ENV* if it was created locally.
+	// It is deleted in Db::close().
+	//
+	if (have_private_env_)
+		env_ = new DbEnv(db->dbenv, cxx_flags);
+
+	return 0;
+}
+
+// private method to cleanup after destructor or during close.
+// If the environment was created by this Db object, we optionally
+// delete it, or return it so the caller can delete it after
+// last use.
+//
+void Db::cleanup()
 {
 	DB *db = unwrap(this);
 
-	db->cj_internal = 0;
-	imp_ = 0;                   // extra safety
+	if (db != NULL) {
+		// extra safety
+		db->cj_internal = 0;
+		imp_ = 0;
+
+		// we must dispose of the DbEnv object if
+		// we created it.  This will be the case
+		// if a NULL DbEnv was passed into the constructor.
+		// The underlying DB_ENV object will be inaccessible
+		// after the close, so we must clean it up now.
+		//
+		if (have_private_env_) {
+			env_->cleanup();
+			delete env_;
+			env_ = 0;
+		}
+	}
+	construct_error_ = 0;
+}
+
+// Return a tristate value corresponding to whether we should
+// throw exceptions on errors:
+//   ON_ERROR_RETURN
+//   ON_ERROR_THROW
+//   ON_ERROR_UNKNOWN
+//
+int Db::error_policy()
+{
+	if (env_ != NULL)
+		return env_->error_policy();
+	else {
+		// If the env_ is null, that means that the user
+		// did not attach an environment, so the correct error
+		// policy can be deduced from constructor flags
+		// for this Db.
+		//
+		if ((construct_flags_ & DB_CXX_NO_EXCEPTIONS) != 0) {
+			return ON_ERROR_RETURN;
+		}
+		else {
+			return ON_ERROR_THROW;
+		}
+	}
 }
 
 int Db::close(u_int32_t flags)
 {
 	DB *db = unwrap(this);
 	int err;
+	int init_err;
 
-	if ((err = db->close(db, flags)) != 0) {
-		DB_ERROR("Db::close", err, this);
-		return err;
+	// after a DB->close (no matter if success or failure),
+	// the underlying DB object must not be accessed,
+	// so we clean up in advance.
+	//
+	cleanup();
+
+	// It's safe to throw an error after the close,
+	// since our error mechanism does not peer into
+	// the DB* structures.
+	//
+	if ((err = db->close(db, flags)) != 0)
+		DB_ERROR("Db::close", err, error_policy());
+
+	// Now we must reinitialize to bring the object to the same
+	// state as just after construction.  This is needed so that
+	// fields in the Db can be initialized and it can be reopened.
+	//
+	if ((init_err = initialize()) != 0) {
+		if (err != 0) {
+			err = init_err;
+			DB_ERROR("Db::close", err, error_policy());
+		}
 	}
-	return 0;
+
+	return err;
 }
 
 int Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags)
@@ -77,7 +210,7 @@ int Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags)
 	int err;
 
 	if ((err = db->cursor(db, unwrap(txnid), &dbc, flags)) != 0) {
-		DB_ERROR("Db::cursor", err, this);
+		DB_ERROR("Db::cursor", err, error_policy());
 		return err;
 	}
 
@@ -96,7 +229,7 @@ int Db::del(DbTxn *txnid, Dbt *key, u_int32_t flags)
 		// thrown as an error
 		//
 		if (err != DB_NOTFOUND) {
-			DB_ERROR("Db::del", err, this);
+			DB_ERROR("Db::del", err, error_policy());
 			return err;
 		}
 	}
@@ -129,53 +262,62 @@ int Db::fd(int *fdp)
 	int err;
 
 	if ((err = db->fd(db, fdp)) != 0) {
-		DB_ERROR("Db::fd", err, this);
+		DB_ERROR("Db::fd", err, error_policy());
 		return err;
 	}
 	return 0;
 }
 
+// This is a 'glue' function declared as extern "C" so it will
+// be compatible with picky compilers that do not allow mixing
+// of function pointers to 'C' functions with function pointers
+// to C++ functions.
+//
+extern "C"
+void _db_feedback_intercept_c(DB *db, int opcode, int pct)
+{
+	Db::_feedback_intercept(db, opcode, pct);
+}
+
 //static
-void Db::feedback_intercept(DB *db, int opcode, int pct)
+void Db::_feedback_intercept(DB *db, int opcode, int pct)
 {
 	if (db == 0) {
-		DB_ERROR("Db::feedback_callback", EINVAL, (Db*)0);
+		DB_ERROR("Db::feedback_callback", EINVAL, ON_ERROR_UNKNOWN);
 		return;
 	}
 	Db *cxxdb = (Db *)db->cj_internal;
 	if (cxxdb == 0) {
-		DB_ERROR("Db::feedback_callback", EINVAL, cxxdb);
+		DB_ERROR("Db::feedback_callback", EINVAL, ON_ERROR_UNKNOWN);
 		return;
 	}
 	if (cxxdb->feedback_callback_ == 0) {
-		DB_ERROR("Db::feedback_callback", EINVAL, cxxdb);
+		DB_ERROR("Db::feedback_callback", EINVAL, cxxdb->error_policy());
 		return;
 	}
 	(*cxxdb->feedback_callback_)(cxxdb, opcode, pct);
 }
 
-void Db::set_feedback(void (*arg)(Db *, int, int))
+int Db::set_feedback(void (*arg)(Db *, int, int))
 {
 	DB *db = unwrap(this);
 
 	feedback_callback_ = arg;
 
-	(*(db->set_feedback))(db, feedback_intercept);
+	return (*(db->set_feedback))(db, _db_feedback_intercept_c);
 }
-
 
 int Db::get(DbTxn *txnid, Dbt *key, Dbt *value, u_int32_t flags)
 {
-
 	DB *db = unwrap(this);
 	int err;
 
 	if ((err = db->get(db, unwrap(txnid), key, value, flags)) != 0) {
-		// DB_NOTFOUND is a "normal" return, so should not be
-		// thrown as an error
+		// DB_NOTFOUND and DB_KEYEMPTY are "normal" returns,
+		// so should not be thrown as an error
 		//
-		if (err != DB_NOTFOUND) {
-			DB_ERROR("Db::get", err, this);
+		if (err != DB_NOTFOUND && err != DB_KEYEMPTY) {
+			DB_ERROR("Db::get", err, error_policy());
 			return err;
 		}
 	}
@@ -207,22 +349,41 @@ int Db::join(Dbc **curslist, Dbc **cursorp, u_int32_t flags)
 	int err;
 
 	if ((err = db->join(db, list, &dbc, flags)) != 0) {
-		DB_ERROR("Db::join_cursor", err, this);
+		DB_ERROR("Db::join_cursor", err, error_policy());
 		return err;
 	}
 	*cursorp = (Dbc*)dbc;
 	return 0;
 }
 
-int Db::open(const char *name, const char *subname,
+int Db::key_range(DbTxn *txnid, Dbt *key,
+		  DB_KEY_RANGE *results, u_int32_t flags)
+{
+	DB *db = unwrap(this);
+	int err;
+
+	if ((err = db->key_range(db, unwrap(txnid), key,
+				 results, flags)) != 0) {
+		DB_ERROR("Db::key_range", err, error_policy());
+		return err;
+	}
+	return 0;
+}
+
+// If an error occurred during the constructor, report it now.
+// Otherwise, call the underlying DB->open method.
+//
+int Db::open(const char *file, const char *database,
 	     DBTYPE type, u_int32_t flags, int mode)
 {
 	int err;
 	DB *db = unwrap(this);
 
-	if ((err = db->open(db, name, subname, type, flags, mode)) != 0) {
-		DB_ERROR("Db::open", err, this);
-	}
+	if ((err = construct_error_) != 0)
+		DB_ERROR("Db::open", construct_error_, error_policy());
+	else if ((err = db->open(db, file, database, type, flags, mode)) != 0)
+		DB_ERROR("Db::open", err, error_policy());
+
 	return err;
 }
 
@@ -237,40 +398,88 @@ int Db::put(DbTxn *txnid, Dbt *key, Dbt *value, u_int32_t flags)
 		// thrown as an error
 		//
 		if (err != DB_KEYEXIST) {
-			DB_ERROR("Db::put", err, this);
+			DB_ERROR("Db::put", err, error_policy());
 			return err;
 		}
 	}
 	return err;
 }
 
-int Db::remove(const char *name, const char *subname, u_int32_t flags)
+int Db::rename(const char *file, const char *database,
+	       const char *newname, u_int32_t flags)
 {
-	int err;
+	int err = 0;
 	DB *db = unwrap(this);
 
 	if (!db) {
-		DB_ERROR("Db::remove", EINVAL, this);
+		DB_ERROR("Db::rename", EINVAL, error_policy());
 		return EINVAL;
 	}
-	if ((err = db->remove(db, name, subname, flags)) != 0) {
-		DB_ERROR("Db::remove", err, this);
+
+	// after a DB->rename (no matter if success or failure),
+	// the underlying DB object must not be accessed,
+	// so we clean up in advance.
+	//
+	cleanup();
+
+	if ((err = db->rename(db, file, database, newname, flags)) != 0) {
+		DB_ERROR("Db::rename", err, error_policy());
 		return err;
 	}
 	return 0;
 }
 
-int Db::stat(void *sp, void *(*db_malloc)(size_t), u_int32_t flags)
+int Db::remove(const char *file, const char *database, u_int32_t flags)
+{
+	int err = 0;
+	DB *db = unwrap(this);
+	int init_err;
+
+	if (!db) {
+		DB_ERROR("Db::remove", EINVAL, error_policy());
+		return EINVAL;
+	}
+
+	// after a DB->remove (no matter if success or failure),
+	// the underlying DB object must not be accessed,
+	// so we clean up in advance.
+	//
+	cleanup();
+
+	if ((err = db->remove(db, file, database, flags)) != 0)
+		DB_ERROR("Db::remove", err, error_policy());
+
+	// XXX: currently db->remove() does not invalidate the handle.
+	// This will be changed soon, and when that happens,
+	// this must be removed.
+	else if ((err = db->close(db, 0)) != 0)
+		DB_ERROR("Db::remove", err, error_policy());
+
+	// Now we must reinitialize to bring the object to the same
+	// state as just after construction.  This is needed so that
+	// fields in the Db can be initialized and it can be reopened.
+	//
+	if ((init_err = initialize()) != 0) {
+		if (err != 0) {
+			err = init_err;
+			DB_ERROR("Db::remove", err, error_policy());
+		}
+	}
+
+	return err;
+}
+
+int Db::stat(void *sp, db_malloc_fcn_type db_malloc_fcn, u_int32_t flags)
 {
 	int err;
 	DB *db = unwrap(this);
 
 	if (!db) {
-		DB_ERROR("Db::stat", EINVAL, this);
+		DB_ERROR("Db::stat", EINVAL, error_policy());
 		return EINVAL;
 	}
-	if ((err = db->stat(db, sp, db_malloc, flags)) != 0) {
-		DB_ERROR("Db::stat", err, this);
+	if ((err = db->stat(db, sp, db_malloc_fcn, flags)) != 0) {
+		DB_ERROR("Db::stat", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -282,11 +491,11 @@ int Db::sync(u_int32_t flags)
 	DB *db = unwrap(this);
 
 	if (!db) {
-		DB_ERROR("Db::sync", EINVAL, this);
+		DB_ERROR("Db::sync", EINVAL, error_policy());
 		return EINVAL;
 	}
 	if ((err = db->sync(db, flags)) != 0) {
-		DB_ERROR("Db::sync", err, this);
+		DB_ERROR("Db::sync", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -298,11 +507,56 @@ int Db::upgrade(const char *name, u_int32_t flags)
 	DB *db = unwrap(this);
 
 	if (!db) {
-		DB_ERROR("Db::upgrade", EINVAL, this);
+		DB_ERROR("Db::upgrade", EINVAL, error_policy());
 		return EINVAL;
 	}
 	if ((err = db->upgrade(db, name, flags)) != 0) {
-		DB_ERROR("Db::upgrade", err, this);
+		DB_ERROR("Db::upgrade", err, error_policy());
+		return err;
+	}
+	return 0;
+}
+
+static int _verify_callback_cxx(void *handle, const void *str_arg)
+{
+	char *str;
+	ostream *out;
+
+	str = (char *)str_arg;
+	out = (ostream *)handle;
+
+	(*out) << str;
+	if (out->fail())
+		return (EIO);
+
+	return 0;
+}
+
+// This is a 'glue' function declared as extern "C" so it will
+// be compatible with picky compilers that do not allow mixing
+// of function pointers to 'C' functions with function pointers
+// to C++ functions.
+//
+extern "C"
+int _verify_callback_c(void *handle, const void *str_arg)
+{
+	return _verify_callback_cxx(handle, str_arg);
+}
+
+
+int Db::verify(const char *name, const char *subdb,
+	       ostream *ostr, u_int32_t flags)
+{
+	int err;
+	DB *db = unwrap(this);
+
+	if (!db) {
+		DB_ERROR("Db::verify", EINVAL, error_policy());
+		return EINVAL;
+	}
+	if ((err = __db_verify_internal(db, name, subdb, ostr,
+					_verify_callback_c, flags)) != 0) {
+		DB_ERROR("Db::verify", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -314,44 +568,44 @@ int Db::upgrade(const char *name, u_int32_t flags)
 // Note this macro expects that input _argspec is an argument
 // list element (e.g. "char *arg") defined in terms of "arg".
 //
-#define DB_DB_ACCESS(_name, _argspec)                          \
+#define	DB_DB_ACCESS(_name, _argspec)                          \
 \
 int Db::set_##_name(_argspec)                                  \
 {                                                              \
 	int ret;                                               \
 	DB *db = unwrap(this);                                 \
-                                                               \
+							       \
 	if ((ret = (*(db->set_##_name))(db, arg)) != 0) {      \
-		DB_ERROR("Db::set_" # _name, ret, this);       \
+		DB_ERROR("Db::set_" # _name, ret, error_policy()); \
 	}                                                      \
 	return ret;                                            \
 }
 
-#define DB_DB_ACCESS_NORET(_name, _argspec)                    \
-                                                               \
+#define	DB_DB_ACCESS_NORET(_name, _argspec)                    \
+							       \
 void Db::set_##_name(_argspec)                                 \
 {                                                              \
 	DB *db = unwrap(this);                                 \
-                                                               \
+							       \
 	(*(db->set_##_name))(db, arg);                         \
 	return;                                                \
 }
 
-DB_DB_ACCESS(bt_compare, int (*arg)(const DBT *, const DBT *))
+DB_DB_ACCESS(bt_compare, bt_compare_fcn_type arg)
 DB_DB_ACCESS(bt_maxkey, u_int32_t arg)
 DB_DB_ACCESS(bt_minkey, u_int32_t arg)
-DB_DB_ACCESS(bt_prefix, size_t (*arg)(const DBT *, const DBT *))
-DB_DB_ACCESS(dup_compare, int (*arg)(const DBT *, const DBT *))
-DB_DB_ACCESS_NORET(errcall, void (*arg)(const char *, char *))
+DB_DB_ACCESS(bt_prefix, bt_prefix_fcn_type arg)
+DB_DB_ACCESS(dup_compare, dup_compare_fcn_type arg)
 DB_DB_ACCESS_NORET(errfile, FILE *arg)
 DB_DB_ACCESS_NORET(errpfx, const char *arg)
 DB_DB_ACCESS(flags, u_int32_t arg)
 DB_DB_ACCESS(h_ffactor, u_int32_t arg)
-DB_DB_ACCESS(h_hash, u_int32_t (*arg)(const void *, u_int32_t))
+DB_DB_ACCESS(h_hash, h_hash_fcn_type arg)
 DB_DB_ACCESS(h_nelem, u_int32_t arg)
 DB_DB_ACCESS(lorder, int arg)
-DB_DB_ACCESS(malloc, void *(*arg)(size_t))
+DB_DB_ACCESS(malloc, db_malloc_fcn_type arg)
 DB_DB_ACCESS(pagesize, u_int32_t arg)
+DB_DB_ACCESS(realloc, db_realloc_fcn_type arg)
 DB_DB_ACCESS(re_delim, int arg)
 DB_DB_ACCESS(re_len, u_int32_t arg)
 DB_DB_ACCESS(re_pad, int arg)
@@ -360,44 +614,30 @@ DB_DB_ACCESS(re_source, char *arg)
 // Here are the set methods that don't fit the above mold.
 //
 
+void Db::set_errcall(void (*arg)(const char *, char *))
+{
+	env_->set_errcall(arg);
+}
+
 int Db::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache)
 {
 	int ret;
 	DB *db = unwrap(this);
 
 	if ((ret = (*(db->set_cachesize))(db, gbytes, bytes, ncache)) != 0) {
-		DB_ERROR("Db::set_cachesize", ret, this);
+		DB_ERROR("Db::set_cachesize", ret, error_policy());
 	}
 	return ret;
 }
 
-void Db::set_paniccall(void (*callback)(DbEnv *, int))
+int Db::set_paniccall(void (*callback)(DbEnv *, int))
 {
-	get_env(0)->set_paniccall(callback);
+	return env_->set_paniccall(callback);
 }
 
-void Db::set_error_stream(class ostream *error_stream)
+void Db::set_error_stream(ostream *error_stream)
 {
-	get_env(0)->set_error_stream(error_stream);
-}
-
-DbEnv *Db::get_env(u_int32_t flags)
-{
-	if (env_ == 0) {
-		DB *db = unwrap(this);
-
-		DB_ENV *dbenv = db->dbenv;
-
-		// This 'cannot' happen, since the dbenv is set when
-		// the DB object is created.
-		//
-		if (dbenv == 0) {
-			DB_ERROR("Db::get_env (internal): no environment", 0, this);
-			return 0;
-		}
-		env_ = new DbEnv(dbenv, flags);
-	}
-	return env_;
+	env_->set_error_stream(error_stream);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -418,7 +658,19 @@ int Dbc::close()
 	int err;
 
 	if ((err = cursor->c_close(cursor)) != 0) {
-		DB_ERROR("Db::close", err, (DbEnv*)0);
+		DB_ERROR("Db::close", err, ON_ERROR_UNKNOWN);
+		return err;
+	}
+	return 0;
+}
+
+int Dbc::count(db_recno_t *countp, u_int32_t flags_arg)
+{
+	DBC *cursor = this;
+	int err;
+
+	if ((err = cursor->c_count(cursor, countp, flags_arg)) != 0) {
+		DB_ERROR("Db::count", err, ON_ERROR_UNKNOWN);
 		return err;
 	}
 	return 0;
@@ -435,7 +687,7 @@ int Dbc::del(u_int32_t flags_arg)
 		// thrown as an error
 		//
 		if (err != DB_KEYEMPTY) {
-			DB_ERROR("Db::del", err, (Db*)0);
+			DB_ERROR("Db::del", err, ON_ERROR_UNKNOWN);
 			return err;
 		}
 	}
@@ -445,11 +697,11 @@ int Dbc::del(u_int32_t flags_arg)
 int Dbc::dup(Dbc** cursorp, u_int32_t flags_arg)
 {
 	DBC *cursor = this;
-	DBC *new_cursor = NULL;
+	DBC *new_cursor = 0;
 	int err;
 
 	if ((err = cursor->c_dup(cursor, &new_cursor, flags_arg)) != 0) {
-		DB_ERROR("Db::dup", err, (Db*)0);
+		DB_ERROR("Db::dup", err, ON_ERROR_UNKNOWN);
 		return err;
 	}
 
@@ -465,11 +717,11 @@ int Dbc::get(Dbt* key, Dbt *data, u_int32_t flags_arg)
 
 	if ((err = cursor->c_get(cursor, key, data, flags_arg)) != 0) {
 
-		// DB_NOTFOUND is a "normal" return, so should not be
-		// thrown as an error
+		// DB_NOTFOUND and DB_KEYEMPTY are "normal" returns,
+		// so should not be thrown as an error
 		//
-		if (err != DB_NOTFOUND) {
-			DB_ERROR("Db::get", err, (Db*)0);
+		if (err != DB_NOTFOUND && err != DB_KEYEMPTY) {
+			DB_ERROR("Db::get", err, ON_ERROR_UNKNOWN);
 			return err;
 		}
 	}
@@ -487,7 +739,7 @@ int Dbc::put(Dbt* key, Dbt *data, u_int32_t flags_arg)
 		// thrown as an error
 		//
 		if (err != DB_KEYEXIST) {
-			DB_ERROR("Db::put", err, (Db*)0);
+			DB_ERROR("Db::put", err, ON_ERROR_UNKNOWN);
 			return err;
 		}
 	}

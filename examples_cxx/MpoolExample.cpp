@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)MpoolExample.cpp	11.3 (Sleepycat) 9/10/99
+ * $Id: MpoolExample.cpp,v 11.8 2000/03/19 18:34:58 dda Exp $
  */
 
 #include "db_config.h"
@@ -44,7 +44,7 @@ private:
 
 	// no need for copy and assignment
 	MpoolExample(const MpoolExample &);
-	operator = (const MpoolExample &);
+	void operator = (const MpoolExample &);
 };
 
 int main(int argc, char *argv[])
@@ -156,9 +156,8 @@ void MpoolExample::initdb(const char *home, int cachesize)
 	set_errpfx("MpoolExample");
 	set_cachesize(0, cachesize, 0);
 
-	open(home, NULL, DB_CREATE | DB_INIT_MPOOL, 0);
+	open(home, DB_CREATE | DB_INIT_MPOOL, 0);
 }
-
 
 //
 // run --

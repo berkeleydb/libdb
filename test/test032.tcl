@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test032.tcl	11.5 (Sleepycat) 10/25/99
+#	$Id: test032.tcl,v 11.14 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 32 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -16,17 +16,26 @@
 # first by retrieving each dup in the file explicitly.  Then
 # test the failure case.
 proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
-	global alphabet
-	global rand_init
+	global alphabet rand_init
 	source ./include.tcl
-
-	berkdb srand $rand_init
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	berkdb srand $rand_init
+
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+		set checkdb $testdir/checkdb.db
+	} else {
+		set testfile test0$tnum.db
+		set checkdb checkdb.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -39,13 +48,13 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 		puts "Test0$tnum skipping for method $omethod"
 		return
 	}
-	set db [eval {berkdb open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -truncate -mode 0644 \
 	    $omethod -dup -dupsort} $args {$testfile} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
-	set check_db [berkdb \
-	    open -create -truncate -mode 0644 -hash $testdir/checkdb.db]
+	set check_db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {-hash $checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -58,17 +67,19 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open [is_substr $dbc $db] 1
 	while { [gets $did str] != -1 && $count < $nentries } {
+		# Re-initialize random string generator
+		randstring_init $ndups
+
 		set dups ""
 		for { set i 1 } { $i <= $ndups } { incr i } {
-			set pref \
-			    [string index $alphabet [berkdb random_int 0 25]]
+			set pref [randstring]
 			set dups $dups$pref
 			set datastr $pref:$str
-                        set ret [eval {$db put} \
+			set ret [eval {$db put} \
 			    $txn $pflags {$str [chop_data $method $datastr]}]
 			error_check_good put $ret 0
 		}
-                set ret [eval {$check_db put} \
+		set ret [eval {$check_db put} \
 		    $txn $pflags {$str [chop_data $method $dups]}]
 		error_check_good checkdb_put $ret 0
 
@@ -103,44 +114,43 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	# Now we will get each key from the DB and compare the results
 	# to the original.
 	puts "\tTest0$tnum.b: Checking file for correct duplicates (no cursor)"
-        set check_c [eval {$check_db cursor} $txn]
-        error_check_good check_c_open(2) \
+	set check_c [eval {$check_db cursor} $txn]
+	error_check_good check_c_open(2) \
 	    [is_substr $check_c $check_db] 1
 
-	for {set ndx 0} {$ndx < $ndups} {incr ndx} {
+	for {set ndx 0} {$ndx < [expr 4 * $ndups]} {incr ndx 4} {
 		for {set ret [$check_c get -first]} \
 		    {[llength $ret] != 0} \
 		    {set ret [$check_c get -next] } {
 			set k [lindex [lindex $ret 0] 0]
 			set d [lindex [lindex $ret 0] 1]
-			error_check_bad key_check:$k [string length $k] 0
 			error_check_bad data_check:$d [string length $d] 0
 
-			set pref [string range $d $ndx $ndx]
+			set pref [string range $d $ndx [expr $ndx + 3]]
 			set data $pref:$k
-                        set ret [eval {$db get} $txn {-get_both $k $data}]
+			set ret [eval {$db get} $txn {-get_both $k $data}]
 			error_check_good \
 			    get_both_data:$k $ret [list [list $k $data]]
 		}
 	}
 
+	$db sync
 	# Now repeat the above test using cursor ops
 	puts "\tTest0$tnum.c: Checking file for correct duplicates (cursor)"
 	set dbc [eval {$db cursor} $txn]
 	error_check_good cursor_open [is_substr $dbc $db] 1
 
-	for {set ndx 0} {$ndx < $ndups} {incr ndx} {
+	for {set ndx 0} {$ndx < [expr 4 * $ndups]} {incr ndx 4} {
 		for {set ret [$check_c get -first]} \
-      		    {[llength $ret] != 0} \
+		    {[llength $ret] != 0} \
 		    {set ret [$check_c get -next] } {
 			set k [lindex [lindex $ret 0] 0]
 			set d [lindex [lindex $ret 0] 1]
-			error_check_bad key_check:$k [string length $k] 0
 			error_check_bad data_check:$d [string length $d] 0
 
-			set pref [string range $d $ndx $ndx]
+			set pref [string range $d $ndx [expr $ndx + 3]]
 			set data $pref:$k
-                        set ret [eval {$dbc get} {-get_both $k $data}]
+			set ret [eval {$dbc get} {-get_both $k $data}]
 			error_check_good \
 			    get_both_key:$k $ret [list [list $k $data]]
 		}
@@ -153,7 +163,6 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	    {set ret [$check_c get -next] } {
 		set k [lindex [lindex $ret 0] 0]
 		set d [lindex [lindex $ret 0] 1]
-		error_check_bad key_check:$k [string length $k] 0
 		error_check_bad data_check:$d [string length $d] 0
 
 		set data XXX$k
@@ -168,7 +177,6 @@ proc test032 { method {nentries 10000} {ndups 5} {tnum 32} args } {
 	    {set ret [$check_c get -next] } {
 		set k [lindex [lindex $ret 0] 0]
 		set d [lindex [lindex $ret 0] 1]
-		error_check_bad key_check:$k [string length $k] 0
 		error_check_bad data_check:$d [string length $d] 0
 
 		set data XXX$k

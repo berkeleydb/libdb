@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb001.tcl	11.8 (Sleepycat) 8/17/99
+#	$Id: sdb001.tcl,v 11.11 2000/04/21 18:36:22 krinsky Exp $
 #
 # Sub DB Test 1 {access method}
 # Test non-subdb and subdb operations
@@ -27,7 +27,7 @@ proc subdb001 { method args } {
 	# open/add with a subdb.  Should fail.
 	#
 	puts "\tSubdb001.a.0: Create db, add data, close, try subdb"
-	set db [eval {berkdb open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open -create -truncate -mode 0644} \
 	    $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -61,22 +61,21 @@ proc subdb001 { method args } {
 	}
 	close $did
 	error_check_good db_close [$db close] 0
-	set ret [catch {eval {berkdb open -create -mode 0644} $args \
-	    {$method $testfile $subdb}} db]
+	set ret [catch {eval {berkdb_open_noerr -create -mode 0644} $args \
+	    {$omethod $testfile $subdb}} db]
 	error_check_bad dbopen $ret 0
-
 	#
 	# Create a db with no subdbs.  Add no data.  Close.  Try to
 	# open/add with a subdb.  Should fail.
 	#
 	cleanup $testdir
 	puts "\tSubdb001.a.1: Create db, close, try subdb"
-	set db [eval {berkdb open -create -truncate -mode 0644} $args \
+	set db [eval {berkdb_open -create -truncate -mode 0644} $args \
 	    {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
-	set ret [catch {eval {berkdb open -create -mode 0644} $args \
+	set ret [catch {eval {berkdb_open_noerr -create -mode 0644} $args \
 	    {$omethod $testfile $subdb}} db]
 	error_check_bad dbopen $ret 0
 
@@ -95,11 +94,11 @@ proc subdb001 { method args } {
 	set testfile1 -subdb001.db
 	set subdb -subdb
 	puts "\tSubdb001.b.0: Create db and subdb with -name, no --"
-	set ret [catch {eval {berkdb open -create -mode 0644} $args \
+	set ret [catch {eval {berkdb_open -create -mode 0644} $args \
 	    {$omethod $testfile1 $subdb}} db]
 	error_check_bad dbopen $ret 0
 	puts "\tSubdb001.b.1: Create db and subdb with -name, with --"
-	set db [eval {berkdb open -create -mode 0644} $args \
+	set db [eval {berkdb_open -create -mode 0644} $args \
 	    {$omethod -- $testfile1 $subdb}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
@@ -114,11 +113,11 @@ proc subdb001 { method args } {
 	cleanup $testdir
 	set testfile $testdir/subdb001.db
 	set subdb subdb
-	set ret [catch {eval {berkdb open -create -excl -mode 0644} $args \
+	set ret [catch {eval {berkdb_open -create -excl -mode 0644} $args \
 	    {$omethod $testfile $subdb}} db]
 	error_check_good dbopen [is_valid_db $db] TRUE
-	set ret [catch {eval {berkdb open -create -excl -mode 0644} $args \
-	    {$omethod $testfile $subdb}} db1]
+	set ret [catch {eval {berkdb_open_noerr -create -excl -mode 0644} \
+	    $args {$omethod $testfile $subdb}} db1]
 	error_check_bad dbopen $ret 0
 	error_check_good db_close [$db close] 0
 

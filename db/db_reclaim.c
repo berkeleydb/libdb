@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_reclaim.c	11.2 (Sleepycat) 9/10/99";
+static const char revid[] = "$Id: db_reclaim.c,v 11.5 2000/04/07 14:26:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -74,7 +74,7 @@ err:		if (did_put == 0)
  * __db_traverse_big
  *	Traverse a chain of overflow pages and call the callback routine
  * on each one.  The calling convention for the callback is:
- * 	callback(dbp, page, cookie, did_put),
+ *	callback(dbp, page, cookie, did_put),
  * where did_put is a return value indicating if the page in question has
  * already been returned to the mpool.
  *

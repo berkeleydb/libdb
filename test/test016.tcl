@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test016.tcl	11.9 (Sleepycat) 10/25/99
+#	$Id: test016.tcl,v 11.16 2000/05/22 12:51:38 bostic Exp $
 #
 # DB Test 16 {access method}
 # Partial put test where partial puts make the record smaller.
@@ -34,13 +34,24 @@ proc test016 { method {nentries 10000} args } {
 	puts "Test016: $method ($args) $nentries partial put shorten"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test016.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test016.db
+		set env NULL
+	} else {
+		set testfile test016.db
+		incr eindex
+		set env [lindex $args $eindex]
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set pflags ""
@@ -54,7 +65,7 @@ proc test016 { method {nentries 10000} args } {
 
 	# Here is the loop where we put and get each key/data pair
 
-   	puts "\tTest016.a: put/get loop"
+	puts "\tTest016.a: put/get loop"
 	set did [open $dict]
 	while { [gets $did str] != -1 && $count < $nentries } {
 		if { [is_record_based $method] == 1 } {
@@ -115,38 +126,38 @@ proc test016 { method {nentries 10000} args } {
 			puts $oid $i
 		}
 		close $oid
-		exec $MV $t1 $t3
+		file rename -force $t1 $t3
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 	}
 
 	error_check_good Test016:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	# Now, reopen the file and run the last test again.
 	puts "\tTest016.d: close, open, and dump file"
-	open_and_dump_file $testfile NULL $txn $t1 test016.check \
+	open_and_dump_file $testfile $env $txn $t1 test016.check \
 	    dump_file_direction "-first" "-next"
 
 	if { [ is_record_based $method ] == 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 	error_check_good Test016:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest016.e: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile NULL $txn $t1 test016.check \
+	open_and_dump_file $testfile $env $txn $t1 test016.check \
 	    dump_file_direction "-last" "-prev"
 
 	if { [ is_record_based $method ] == 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 	error_check_good Test016:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 }
 
 # Check function for test016; data should be whatever is set in dvals

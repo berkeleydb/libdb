@@ -25,14 +25,6 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_commit
 
 /*
  * Class:     com_sleepycat_db_DbTxn
- * Method:    finalize
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_finalize
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_sleepycat_db_DbTxn
  * Method:    id
  * Signature: ()I
  */
@@ -45,6 +37,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_DbTxn_id
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_prepare
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_sleepycat_db_DbTxn
+ * Method:    finalize
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_DbTxn_finalize
   (JNIEnv *, jobject);
 
 #ifdef __cplusplus

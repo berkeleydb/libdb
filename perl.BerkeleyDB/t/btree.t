@@ -469,14 +469,13 @@ umask(0) ;
     $hh{'Wall'} = 'Larry' ;
     $hh{'Wall'} = 'Stone' ; # Note the duplicate key
     $hh{'Wall'} = 'Brick' ; # Note the duplicate key
-    $hh{'Wall'} = 'Brick' ; # Note the duplicate key and value
     $hh{'Smith'} = 'John' ;
     $hh{'mouse'} = 'mickey' ;
     
     # first work in scalar context
     ok 98, scalar $YY->get_dup('Unknown') == 0 ;
     ok 99, scalar $YY->get_dup('Smith') == 1 ;
-    ok 100, scalar $YY->get_dup('Wall') == 4 ;
+    ok 100, scalar $YY->get_dup('Wall') == 3 ;
     
     # now in list context
     my @unknown = $YY->get_dup('Unknown') ;
@@ -489,7 +488,7 @@ umask(0) ;
     my @wall = $YY->get_dup('Wall') ;
     my %wall ;
     @wall{@wall} = @wall ;
-    ok 103, (@wall == 4 && $wall{'Larry'} && $wall{'Stone'} && $wall{'Brick'});
+    ok 103, (@wall == 3 && $wall{'Larry'} && $wall{'Stone'} && $wall{'Brick'});
     }
     
     # hash
@@ -501,7 +500,7 @@ umask(0) ;
     
     my %wall = $YY->get_dup('Wall', 1) ;
     ok 106, keys %wall == 3 && $wall{'Larry'} == 1 && $wall{'Stone'} == 1 
-    		&& $wall{'Brick'} == 2 ;
+    		&& $wall{'Brick'} == 1 ;
     
     undef $YY ;
     untie %hh ;
@@ -782,6 +781,7 @@ umask(0) ;
     # db_stat
 
     my $lex = new LexFile $Dfile ;
+    my $recs = ($BerkeleyDB::db_version >= 3.1 ? "bt_ndata" : "bt_nrecs") ;
     my %hash ;
     my ($k, $v) ;
     ok 199, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
@@ -791,7 +791,7 @@ umask(0) ;
 					;
 
     my $ref = $db->db_stat() ; 
-    ok 200, $ref->{'bt_nrecs'} == 0;
+    ok 200, $ref->{$recs} == 0;
     ok 201, $ref->{'bt_minkey'} == 3;
     ok 202, $ref->{'bt_pagesize'} == 2 ** 12;
 
@@ -809,7 +809,7 @@ umask(0) ;
     ok 203, $ret == 0 ;
 
     $ref = $db->db_stat() ; 
-    ok 204, $ref->{'bt_nrecs'} == 3;
+    ok 204, $ref->{$recs} == 3;
 }
 
 {

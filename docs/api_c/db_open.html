@@ -1,5 +1,6 @@
-<!--"@(#)db_open.so	10.46 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_open.so,v 10.59 2000/04/18 22:51:44 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DB-&gt;open</h1>
@@ -21,61 +23,51 @@
 #include &lt;db.h&gt;
 <p>
 int
-DB-&gt;open(DB *db, const char *name,
-    const char *subname, DBTYPE type, u_int32_t flags, int mode);
+DB-&gt;open(DB *db, const char *file,
+    const char *database, DBTYPE type, u_int32_t flags, int mode);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The currently supported Berkeley DB file formats (or <i>access methods</i>)
-are B+tree, Hash, Queue and Recno.  The Btree format is a representation
+<p>The currently supported Berkeley DB file formats (or <i>access methods</i>)
+are Btree, Hash, Queue and Recno.  The Btree format is a representation
 of a sorted, balanced tree structure.  The Hash format is an extensible,
 dynamic hashing scheme.  The Queue format supports fast access to
 fixed-length records accessed by sequentially or logical record number.
 The Recno format supports fixed- or variable-length records, accessed
 sequentially or by logical record number, and optionally retrieved from
 a flat text file.
-<p>
-Storage and retrieval for the Berkeley DB access methods are based on key/data
+<p>Storage and retrieval for the Berkeley DB access methods are based on key/data
 pairs, see <a href="../api_c/dbt.html">DBT</a> for more information.
-<p>
-The DB-&gt;open interface opens the database represented by
-<b>name</b> for both reading and writing.  The argument <b>name</b> is
-used as the name of a single physical file on disk that will be used to
-back the database.
-<p>
-Files never intended to be shared or preserved on disk may be created by
-setting the <b>name</b> parameter to NULL.
-<p>
-The <b>subname</b> argument allows applications to have subdatabases,
-i.e., multiple databases inside of a single physical file.  This is useful
-when the logical databases are both numerous and reasonably small, in
-order to avoid creating a large number of underlying files.  It is an
-error to attempt to open a subdatabase in a database file that was not
-initially created using a subdatabase name.  See the
-<a href="../ref/am/open.html">Opening a database</a> section of the Reference
-Guide for more information.
-<p>
-The <b>type</b> argument is of type DBTYPE
+<p>The DB-&gt;open interface opens the database represented by the
+<b>file</b> and <b>database</b> arguments for both reading and writing.
+The <b>file</b> argument is used as the name of a physical file on disk
+that will be used to back the database.  The <b>database</b> argument is
+optional and allows applications to have multiple logical databases in a
+single physical file.  While no <b>database</b> argument needs to be
+specified, it is an error to attempt to open a second database in a
+<b>file</b> that was not initially created using a <b>database</b> name.
+In-memory databases never intended to be shared or preserved on disk may
+be created by setting both the <b>file</b> and <b>database</b> arguments
+to NULL.
+<p>The <b>type</b> argument is of type DBTYPE
 and must be set to one of DB_BTREE, DB_HASH,
-DB_QUEUE, DB_RECNO or DB_UNKNOWN.  If
-<b>type</b> is DB_UNKNOWN, the database must already exist and
-DB-&gt;open will automatically determine its type.  The
-<a href="../api_c/db_get_type.html">DB-&gt;get_type</a> function may be used to determine the underlying type of
+DB_QUEUE, DB_RECNO or DB_UNKNOWN, except
+that databases of type DB_QUEUE are restricted to one per
+<b>file</b>.  If <b>type</b> is DB_UNKNOWN, the database must
+already exist and DB-&gt;open will automatically determine its type.
+The <a href="../api_c/db_get_type.html">DB-&gt;get_type</a> function may be used to determine the underlying type of
 databases opened using DB_UNKNOWN.
-<p>
-The <b>flags</b> and <b>mode</b> arguments specify how files will be opened
+<p>The <b>flags</b> and <b>mode</b> arguments specify how files will be opened
 and/or created if they do not already exist.
-The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
+<p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
-<dl compact>
+<p><dl compact>
 <p><dt><a name="DB_CREATE">DB_CREATE</a><dd>Create any underlying files, as necessary.  If the files do not already
 exist and the DB_CREATE flag is not specified, the call will fail.
-<p><dt><a name="DB_EXCL">DB_EXCL</a><dd>Return an error if the database already exists.  Underlying filesystem
+<p><dt><a name="DB_EXCL">DB_EXCL</a><dd>Return an error if the file already exists.  Underlying filesystem
 primitives are used to implement this flag.  For this reason it is only
-applicable to the physical database file and cannot be used to test if a
-subdatabase already exists.
-<p>
-The DB_EXCL flag is only meaningful when specified with the
+applicable to the physical file and cannot be used to test if a database
+in a file already exists.
+<p>The DB_EXCL flag is only meaningful when specified with the
 DB_CREATE flag.
 <p><dt><a name="DB_NOMMAP">DB_NOMMAP</a><dd>Do not map this database into process memory (see the description of the
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a> function for further information).
@@ -85,83 +77,59 @@ files.
 <p><dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the DB handle returned by DB-&gt;open to be
 <i>free-threaded</i>, that is, useable by multiple threads within a
 single address space.
-<p>
-If the DB handle is opened within a threaded environment, it is
-not necessary to specify the <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag, the DB handle
-will always be free-threaded.  For this reason, DB handles opened
-in threaded environments must be treated as if they are free-threaded
-(e.g., <a href="../api_c/dbt.html#DB_DBT_MALLOC">DB_DBT_MALLOC</a>, <a href="../api_c/dbt.html#DB_DBT_REALLOC">DB_DBT_REALLOC</a> or
-<a href="../api_c/dbt.html#DB_DBT_USERMEM">DB_DBT_USERMEM</a> must be specified in <a href="../api_c/dbt.html">DBT</a>s used to retrieve
-key/data items), regardless of whether <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> was specified to
-DB-&gt;open.
-<p><dt><a name="DB_TRUNCATE">DB_TRUNCATE</a><dd>Physically truncate the underlying database file, discarding all previous
-subdatabases or databases.  Underlying filesystem primitives are used to
+<p><dt><a name="DB_TRUNCATE">DB_TRUNCATE</a><dd>Physically truncate the underlying file, discarding all previous databases
+it might have held.  Underlying filesystem primitives are used to
 implement this flag.  For this reason it is only applicable to the
-physical database file and cannot be used to discard subdatabases.
-<p>
-The DB_TRUNCATE flag cannot be transaction protected, and it is
+physical file and cannot be used to discard databases within a file.
+<p>The DB_TRUNCATE flag cannot be transaction protected, and it is
 an error to specify it in a transaction protected environment.
 </dl>
-<p>
-On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by the access methods
+<p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by the access methods
 are created with mode <b>mode</b> (as described in <b>chmod</b>(2)) and
 modified by the process' umask value at the time of creation (see
 <b>umask</b>(2)).  The group ownership of created files is based on
 the system and directory defaults, and is not further specified by Berkeley DB.
 If <b>mode</b> is 0, files are created readable and writeable by both
 owner and group.  On Windows systems, the mode argument is ignored.
-<p>
-Calling DB-&gt;open is a reasonably expensive operation, and
+<p>Calling DB-&gt;open is a reasonably expensive operation, and
 maintaining a set of open databases will normally be preferable to
 repeatedly open and closing the database for each new query.
-<p>
-The DB-&gt;open
-function returns a non-zero error value on failure and 0 on success.
+<p>The DB-&gt;open function returns a non-zero error value on failure and 0 on success.
 <h1>Environment Variables</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>DB_HOME<dd>If the <b>dbenv</b> argument to <a href="../api_c/db_create.html">db_create</a> was initialized using
 <a href="../api_c/env_open.html">DBENV-&gt;open</a> the environment variable <b>DB_HOME</b> may be used
-as the path of the database home for the interpretation of the <b>dir</b>.
-Specifically, DB-&gt;open is affected by the configuration string value of
-DB_DATA_DIR.
+as the path of the database environment home.  Specifically, DB-&gt;open
+is affected by the configuration value DB_DATA_DIR.
 </dl>
-<p>
-<dl compact>
-<p><dt>TMPDIR<dd>If the <b>name</b> and <b>dbenv</b> arguments to DB-&gt;open are
+<p><dl compact>
+<p><dt>TMPDIR<dd>If the <b>file</b> and <b>dbenv</b> arguments to DB-&gt;open are
 NULL, the environment variable <b>TMPDIR</b> may be used as a
 directory in which to create a temporary backing file.
 </dl>
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DB-&gt;open function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the DB-&gt;open
-function may fail and return a non-zero error
-for the following conditions:
-<p>
-<dl compact>
-<p><dt>DB_OLD_VERSION<dd>The database cannot be opened without being first upgraded.
+<p>The DB-&gt;open function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
+<p><dt><a name="DB_OLD_VERSION">DB_OLD_VERSION</a><dd>The database cannot be opened without being first upgraded.
 <p><dt>EEXIST<dd>DB_CREATE and DB_EXCL were specified and the file exists.
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified (e.g., unknown database
 type, page size, hash function, pad byte, byte order) or a flag value
-or parameter that is incompatible with the <b>name</b> database.
+or parameter that is incompatible with the specified database.
 <p>
 The DB_THREAD flag was specified and spinlocks are not implemented for
 this architecture.
-<p>
-A <b>re_source</b> file was specified with either the <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a>
+<p>The <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag was specified to DB-&gt;open, but was not
+specified to the <a href="../api_c/env_open.html">DBENV-&gt;open</a> call for the environment in which the
+DB handle was created.
+<p>A <b>re_source</b> file was specified with either the <a href="../api_c/env_open.html#DB_THREAD">DB_THREAD</a>
 flag or the provided database environment supports transaction
 processing.
 <p><dt>ENOENT<dd>A non-existent <b>re_source</b> file was specified.
 </dl>
-<p>
-In addition, the DB-&gt;open function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The DB-&gt;open function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the DB-&gt;open function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/db_create.html">db_create</a>,
 <a href="../api_c/db_close.html">DB-&gt;close</a>,
@@ -173,6 +141,7 @@ for errors specified for other Berkeley DB and C library or system functions.
 <a href="../api_c/db_get_byteswapped.html">DB-&gt;get_byteswapped</a>,
 <a href="../api_c/db_get_type.html">DB-&gt;get_type</a>,
 <a href="../api_c/db_join.html">DB-&gt;join</a>,
+<a href="../api_c/db_key_range.html">DB-&gt;key_range</a>,
 <a href="../api_c/db_open.html">DB-&gt;open</a>,
 <a href="../api_c/db_put.html">DB-&gt;put</a>,
 <a href="../api_c/db_remove.html">DB-&gt;remove</a>,
@@ -198,9 +167,10 @@ for errors specified for other Berkeley DB and C library or system functions.
 <a href="../api_c/db_set_re_pad.html">DB-&gt;set_re_pad</a>,
 <a href="../api_c/db_set_re_source.html">DB-&gt;set_re_source</a>,
 <a href="../api_c/db_stat.html">DB-&gt;stat</a>,
-<a href="../api_c/db_sync.html">DB-&gt;sync</a>
+<a href="../api_c/db_sync.html">DB-&gt;sync</a>,
+<a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a>
 and
-<a href="../api_c/db_upgrade.html">DB-&gt;upgrade</a>.
+<a href="../api_c/db_verify.html">DB-&gt;verify</a>.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_c/c_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

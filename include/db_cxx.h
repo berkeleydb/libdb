@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)db_cxx.h	11.9 (Sleepycat) 9/30/99
+ * $Id: db_cxx.h,v 11.33 2000/06/01 14:52:46 dda Exp $
  */
 
 #ifndef _DB_CXX_H_
-#define _DB_CXX_H_
+#define	_DB_CXX_H_
 //
 // C++ assumptions:
 //
@@ -43,7 +43,6 @@
 // DB_FOO struct (as some of the classes already have).
 //
 
-
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 //
@@ -73,7 +72,6 @@ class DbImp;
 class DbEnvImp;
 class DbMpoolFileImp;
 class DbTxnImp;
-
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -113,11 +111,10 @@ class DbTxnImp;
 // members in the private section of a class.  Keeping them in the
 // private section also emphasizes that they are off limits to user code.
 //
-#define DEFINE_DB_CLASS(name) \
+#define	DEFINE_DB_CLASS(name) \
 	public: class name##Imp* imp() { return imp_; } \
 	public: const class name##Imp* constimp() const { return imp_; } \
 	private: class name##Imp* imp_
-
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -141,6 +138,30 @@ class DbTxnImp;
 #pragma warning(disable: 4201 4514)
 
 #endif
+
+// Some interfaces can be customized by allowing users
+// to define callback functions.  For performance and
+// logistical reasons, some callbacks require you do
+// declare the functions in C, or in an extern "C" block.
+//
+extern "C" {
+	typedef void * (*db_malloc_fcn_type)
+		(size_t);
+	typedef void * (*db_realloc_fcn_type)
+		(void *, size_t);
+	typedef int (*bt_compare_fcn_type)
+		(const DBT *, const DBT *);
+	typedef size_t (*bt_prefix_fcn_type)
+		(const DBT *, const DBT *);
+	typedef int (*dup_compare_fcn_type)
+		(const DBT *, const DBT *);
+	typedef u_int32_t (*h_hash_fcn_type)
+		(const void *bytes, u_int32_t length);
+	typedef int (*pgin_fcn_type)(DB_ENV *dbenv,
+		 db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
+	typedef int (*pgout_fcn_type)(DB_ENV *dbenv,
+		 db_pgno_t pgno, void *pgaddr, DBT *pgcookie);
+};
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -174,7 +195,6 @@ private:
 	char *what_;
 	int err_;                   // errno
 };
-
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -213,7 +233,6 @@ class _exported DbLsn : protected DB_LSN
 {
 	friend class DbEnv;          // friendship needed to cast to base class
 };
-
 
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -259,7 +278,6 @@ private:
 	DEFINE_DB_CLASS(DbMpoolFile);
 };
 
-
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 //
@@ -295,7 +313,6 @@ private:
 	DEFINE_DB_CLASS(DbTxn);
 };
 
-
 //
 // Berkeley DB environment class.  Provides functions for opening databases.
 // User of this library can use this class as a starting point for
@@ -308,6 +325,8 @@ private:
 class _exported DbEnv
 {
 	friend class Db;
+	friend class DbLock;
+	friend class DbMpoolFile;
 
 public:
 
@@ -325,46 +344,34 @@ public:
 	int close(u_int32_t);
 	void err(int, const char *, ...);
 	void errx(const char *, ...);
-	int open(const char *, char * const *, u_int32_t, int);
-	int remove(const char *, char * const *, u_int32_t);
+	int open(const char *, u_int32_t, int);
+	int remove(const char *, u_int32_t);
 	int set_cachesize(u_int32_t, u_int32_t, int);
+	int set_data_dir(const char *);
 	void set_errcall(void (*)(const char *, char *));
 	void set_errfile(FILE *);
 	void set_errpfx(const char *);
-	void set_feedback(void (*)(DbEnv *, int, int));
-	void set_recovery_init(int (*)(DbEnv *));
-	int set_func_close(int (*)(int));
-	int set_func_dirfree(void (*)(char **, int));
-	int set_func_dirlist(int (*)(const char *, char ***, int *));
-	int set_func_exists(int (*)(const char *, int *));
-	int set_func_free(void (*)(void *));
-	int set_func_fsync(int (*)(int));
-	int set_func_ioinfo(
-	    int (*)(const char *, int, u_int32_t *, u_int32_t *, u_int32_t *));
-	int set_func_malloc(void *(*)(size_t));
-	int set_func_map(int (*)(char *, size_t, int, int, void **));
-	int set_func_open(int (*)(const char *, int, ...));
-	int set_func_read(ssize_t (*)(int, void *, size_t));
-	int set_func_realloc(void *(*)(void *, size_t));
-	int set_func_seek(int (*)(int, size_t, db_pgno_t, u_int32_t, int, int));
-	int set_func_sleep(int (*)(u_long, u_long));
-	int set_func_unlink(int (*)(const char *));
-	int set_func_unmap(int (*)(void *, size_t));
-	int set_func_write(ssize_t (*)(int, const void *, size_t));
-	int set_func_yield(int (*)(void));
+	int set_feedback(void (*)(DbEnv *, int, int));
+	int set_recovery_init(int (*)(DbEnv *));
 	int set_lg_bsize(u_int32_t);
+	int set_lg_dir(const char *);
 	int set_lg_max(u_int32_t);
 	int set_lk_conflicts(u_int8_t *, int);
 	int set_lk_detect(u_int32_t);
 	int set_lk_max(u_int32_t);
 	int set_mp_mmapsize(size_t);
-	int set_mutexlocks(int);
-	int set_pageyield(int);
-	void set_paniccall(void (*)(DbEnv *, int));
-	int set_region_init(int);
-	int set_tas_spins(u_int32_t);
+	static int set_mutexlocks(int);
+	static int set_pageyield(int);
+	int set_paniccall(void (*)(DbEnv *, int));
+	static int set_panicstate(int);
+	static int set_region_init(int);
+	int set_server(char *, long, long, u_int32_t);
+	int set_shm_key(long);
+	int set_tmp_dir(const char *);
+	static int set_tas_spins(u_int32_t);
 	int set_tx_max(u_int32_t);
-	int set_tx_recover(int (*)(DbEnv *, Dbt *, DbLsn *, int, void *));
+	int set_tx_recover(int (*)(DbEnv *, Dbt *, DbLsn *, db_recops, void *));
+	int set_tx_timestamp(time_t *);
 	int set_verbose(u_int32_t which, int onoff);
 
 	// Version information.  A static method so it can be obtained anytime.
@@ -386,10 +393,8 @@ public:
 	void set_error_stream(ostream *);
 
 	// used internally
-	static int runtime_error(const char *caller, int err, DbEnv *env,
-				 int in_destructor = 0, int force_throw = 0);
-	static int runtime_error(const char *caller, int err, Db *db,
-				 int in_destructor = 0, int force_throw = 0);
+	static void runtime_error(const char *caller, int err,
+				  int error_policy);
 
 	// Lock functions
 	//
@@ -397,49 +402,55 @@ public:
 	int lock_get(u_int32_t locker, u_int32_t flags, const Dbt *obj,
 		     db_lockmode_t lock_mode, DbLock *lock);
 	int lock_id(u_int32_t *idp);
-	int lock_stat(DB_LOCK_STAT **statp, void *(*db_malloc)(size_t));
+	int lock_stat(DB_LOCK_STAT **statp, db_malloc_fcn_type db_malloc_fcn);
 	int lock_vec(u_int32_t locker, u_int32_t flags, DB_LOCKREQ list[],
 		     int nlist, DB_LOCKREQ **elistp);
 
-
 	// Log functions
 	//
-	int log_archive(char **list[], u_int32_t flags, void *(*db_malloc)(size_t));
+	int log_archive(char **list[], u_int32_t flags, db_malloc_fcn_type db_malloc_fcn);
 	static int log_compare(const DbLsn *lsn0, const DbLsn *lsn1);
 	int log_file(DbLsn *lsn, char *namep, size_t len);
 	int log_flush(const DbLsn *lsn);
 	int log_get(DbLsn *lsn, Dbt *data, u_int32_t flags);
 	int log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);
 
-	int log_register(Db *dbp, const char *name, int32_t *fidp);
-	int log_stat(DB_LOG_STAT **spp, void *(*db_malloc)(size_t));
-	int log_unregister(int32_t fid);
+	int log_register(Db *dbp, const char *name);
+	int log_stat(DB_LOG_STAT **spp, db_malloc_fcn_type db_malloc_fcn);
+	int log_unregister(Db *dbp);
 
 	// Mpool functions
 	//
 	int memp_register(int ftype,
-		  int (*pgin)(db_pgno_t pgno, void *pgaddr, DBT *pgcookie),
-		  int (*pgout)(db_pgno_t pgno, void *pgaddr, DBT *pgcookie));
+			  pgin_fcn_type pgin_fcn,
+			  pgout_fcn_type pgout_fcn);
 
 	int memp_stat(DB_MPOOL_STAT **gsp, DB_MPOOL_FSTAT ***fsp,
-		      void *(*db_malloc)(size_t));
+		      db_malloc_fcn_type db_malloc_fcn);
 	int memp_sync(DbLsn *lsn);
 	int memp_trickle(int pct, int *nwrotep);
 
 	// Transaction functions
 	//
 	int txn_begin(DbTxn *pid, DbTxn **tid, u_int32_t flags);
-	int txn_checkpoint(u_int32_t kbyte, u_int32_t min);
-	int txn_stat(DB_TXN_STAT **statp, void *(*db_malloc)(size_t));
+	int txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags);
+	int txn_stat(DB_TXN_STAT **statp, db_malloc_fcn_type db_malloc_fcn);
+
+	// These are public only because they need to be called
+	// via C functions.  They should never be called by users
+	// of this class.
+	//
+	static void _stream_error_function(const char *, char *);
+	static int _tx_recover_intercept(DB_ENV *env, DBT *dbt, DB_LSN *lsn,
+					db_recops op, void *info);
+	static void _paniccall_intercept(DB_ENV *env, int errval);
+	static int _recovery_init_intercept(DB_ENV *env);
+	static void _feedback_intercept(DB_ENV *env, int opcode, int pct);
 
 private:
-	static void stream_error_function(const char *, char *);
-	static int tx_recover_intercept(DB_ENV *env, DBT *dbt, DB_LSN *lsn,
-					int redo, void *info);
-	static void paniccall_intercept(DB_ENV *env, int errval);
-	static int recovery_init_intercept(DB_ENV *env);
-	static void feedback_intercept(DB_ENV *env, int opcode, int pct);
-
+	void cleanup();
+	int initialize(DB_ENV *env);
+	int error_policy();
 	// Used internally
 	DbEnv(DB_ENV *, u_int32_t flags);
 
@@ -449,14 +460,15 @@ private:
 
 	DEFINE_DB_CLASS(DbEnv);
 
-	// We can add our own data to this class if needed.
-	//
-	int no_exceptions_;
-	int (*tx_recover_callback_)(DbEnv *, Dbt *, DbLsn *, int, void *);
+	// instance data
+	int construct_error_;
+	u_int32_t construct_flags_;
+	int (*tx_recover_callback_)(DbEnv *, Dbt *, DbLsn *, db_recops, void *);
 	int (*recovery_init_callback_)(DbEnv *);
 	void (*paniccall_callback_)(DbEnv *, int);
 	void (*feedback_callback_)(DbEnv *, int, int);
 
+	// class data
 	static ostream *error_stream_;
 };
 
@@ -489,43 +501,49 @@ public:
 	int get_byteswapped() const;
 	DBTYPE get_type() const;
 	int join(Dbc **curslist, Dbc **dbcp, u_int32_t flags);
+	int key_range(DbTxn *, Dbt *, DB_KEY_RANGE *, u_int32_t);
 	int open(const char *, const char *subname, DBTYPE, u_int32_t, int);
 	int put(DbTxn *, Dbt *, Dbt *, u_int32_t);
 	int remove(const char *, const char *, u_int32_t);
-	int set_bt_compare(int (*)(const DBT *, const DBT *));
+	int rename(const char *, const char *, const char *, u_int32_t);
+	int set_bt_compare(bt_compare_fcn_type);
 	int set_bt_maxkey(u_int32_t);
 	int set_bt_minkey(u_int32_t);
-	int set_bt_prefix(size_t (*)(const DBT *, const DBT *));
+	int set_bt_prefix(bt_prefix_fcn_type);
 	int set_cachesize(u_int32_t, u_int32_t, int);
-	int set_dup_compare(int (*)(const DBT *, const DBT *));
+	int set_dup_compare(dup_compare_fcn_type);
 	void set_errcall(void (*)(const char *, char *));
 	void set_errfile(FILE *);
 	void set_errpfx(const char *);
-	void set_feedback(void (*)(Db *, int, int));
+	int set_feedback(void (*)(Db *, int, int));
 	int set_flags(u_int32_t);
 	int set_h_ffactor(u_int32_t);
-	int set_h_hash(u_int32_t (*)(const void *, u_int32_t));
+	int set_h_hash(h_hash_fcn_type);
 	int set_h_nelem(u_int32_t);
 	int set_lorder(int);
-	int set_malloc(void *(*)(size_t));
+	int set_malloc(db_malloc_fcn_type);
 	int set_pagesize(u_int32_t);
-	void set_paniccall(void (*)(DbEnv *, int));
+	int set_paniccall(void (*)(DbEnv *, int));
+	int set_realloc(db_realloc_fcn_type);
 	int set_re_delim(int);
 	int set_re_len(u_int32_t);
 	int set_re_pad(int);
 	int set_re_source(char *);
-	int stat(void *sp, void *(*db_malloc)(size_t), u_int32_t flags);
+	int stat(void *sp, db_malloc_fcn_type db_malloc_fcn, u_int32_t flags);
 	int sync(u_int32_t flags);
 	int upgrade(const char *name, u_int32_t flags);
+	int verify(const char *, const char *, ostream *, u_int32_t);
 
 	// This additional method is available for C++
 	//
 	void set_error_stream(ostream *);
 
+	// This is public only because it needs to be called
+	// via C functions.  It should never be called by users
+	// of this class.
+	//
+	static void _feedback_intercept(DB *db, int opcode, int pct);
 private:
-	static void feedback_intercept(DB *db, int opcode, int pct);
-
-	Db();                       // only used internally to support open
 
 	// no copying
 	Db(const Db &);
@@ -533,9 +551,15 @@ private:
 
 	DEFINE_DB_CLASS(Db);
 
-	DbEnv* get_env(u_int32_t flags);
+	void cleanup();
+	int initialize();
+	int error_policy();
 
+	// instance data
 	DbEnv *env_;
+	int construct_error_;
+	int have_private_env_;
+	u_int32_t construct_flags_;
 	void (*feedback_callback_)(Db *, int, int);
 };
 
@@ -592,6 +616,7 @@ class _exported Dbc : protected DBC
 
 public:
 	int close();
+	int count(db_recno_t *countp, u_int32_t flags);
 	int del(u_int32_t flags);
 	int dup(Dbc** cursorp, u_int32_t flags);
 	int get(Dbt* key, Dbt *data, u_int32_t flags);

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)AccessExample.cpp	11.2 (Sleepycat) 9/10/99
+ * $Id: AccessExample.cpp,v 11.6 2000/02/14 02:59:51 bostic Exp $
  */
 
 #include "db_config.h"
@@ -35,21 +35,15 @@ private:
 
 	// no need for copy and assignment
 	AccessExample(const AccessExample &);
-	operator = (const AccessExample &);
+	void operator = (const AccessExample &);
 };
 
 static void usage();          // forward
 
 int main(int argc, char *argv[])
 {
-	const char *home = 0;
-	for (int i = 1; i < argc; ++i) {
-		if (strcmp(argv[i], "-h") == 0) {
-			home = argv[++i];
-		}
-		else {
-			usage();
-		}
+	if (argc > 1) {
+		usage();
 	}
 
 	// Use a try block just to report any errors.
@@ -70,7 +64,7 @@ int main(int argc, char *argv[])
 
 static void usage()
 {
-	cerr << "usage: AccessExample [-h home]\n";
+	cerr << "usage: AccessExample\n";
 	exit(1);
 }
 

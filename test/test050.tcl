@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test050.tcl	11.8 (Sleepycat) 8/17/99
+#	$Id: test050.tcl,v 11.14 2000/05/22 12:51:40 bostic Exp $
 #
 # Test050: Overwrite test of small/big key/data with cursor checks for RECNO
 proc test050 { method args } {
@@ -30,12 +30,20 @@ proc test050 { method args } {
 	set flags ""
 
 	puts "\tTest$tstn: Create $method database."
-	set testfile $testdir/test$tstn.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tstn.db
+	} else {
+		set testfile test0$tstn.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
 	set oflags "-create -truncate -mode 0644 $args $omethod"
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open_noerr} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# open curs to db
@@ -140,7 +148,7 @@ proc test050 { method args } {
 	#  1. small by small
 	#	2. small by big
 	#	3. big by small
-	# 	4. big by big
+	#	4. big by big
 	#
 	set i 0
 	# Do all overwrites for key and cursor

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -39,7 +39,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)hash.src	10.14 (Sleepycat) 10/1/99
+ *	$Id: hash.src,v 10.20 2000/02/17 20:24:09 bostic Exp $
  */
 
 /*
@@ -83,6 +83,7 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
+INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -106,9 +107,9 @@ INCLUDE
  *  key - the key being inserted
  *  data - the data being inserted
  */
-BEGIN insdel
+BEGIN insdel		21
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		lu
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 ARG	ndx		u_int32_t	lu
 POINTER	pagelsn		DB_LSN *	lu
@@ -126,9 +127,9 @@ END
  *	this should be PGNO_INVALID.  For deletes, it may exist.
  * pagelsn is the old lsn on the page.
  */
-BEGIN newpage
+BEGIN newpage		22
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		lu
+ARG	fileid		int32_t		ld
 ARG	prev_pgno	db_pgno_t	lu
 POINTER	prevlsn		DB_LSN *	lu
 ARG	new_pgno	db_pgno_t	lu
@@ -138,29 +139,33 @@ POINTER	nextlsn		DB_LSN *	lu
 END
 
 /*
- * THIS IS A DEPRECATED LOG MESSAGE.  IT IS BEING SUPERCEDED
- * BY metagroup WHICH ALLOCATES A GROUP OF NEW PAGES.
+ * DEPRECATED in 3.0.
+ * Superceded by metagroup which allocates a group of new pages.
  *
- * Splitting requires two types of log messages.  The first
- * logs the meta-data of the split.  The second logs the
- * data on the original page.  To redo the split, we have
- * to visit the new page (pages) and add the items back
- * on the page if they are not yet there.
+ * Splitting requires two types of log messages.  The first logs the
+ * meta-data of the split.
+ *
  * For the meta-data split
  * 	bucket: max_bucket in table before split
  *	ovflpoint: overflow point before split.
  *	spares: spares[ovflpoint] before split.
  */
-BEGIN splitmeta
-ARG	fileid		int32_t		lu
+DEPRECATED splitmeta	23
+ARG	fileid		int32_t		ld
 ARG	bucket		u_int32_t	lu
 ARG	ovflpoint	u_int32_t	lu
 ARG	spares		u_int32_t	lu
 POINTER	metalsn		DB_LSN *	lu
 END
 
-BEGIN splitdata
-ARG	fileid		int32_t		lu
+/*
+ * Splitting requires two types of log messages.  The second logs the
+ * data on the original page.  To redo the split, we have to visit the
+ * new page (pages) and add the items back on the page if they are not
+ * yet there.
+ */
+BEGIN splitdata		24
+ARG	fileid		int32_t		ld
 ARG	opcode		u_int32_t	lu
 ARG	pgno		db_pgno_t	lu
 DBT	pageimage	DBT		s
@@ -179,8 +184,8 @@ END
  *  newitem - DBT of the new item.
  *  makedup - this was a replacement that made an item a duplicate.
  */
-BEGIN replace
-ARG	fileid		int32_t		lu
+BEGIN replace		25
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 ARG	ndx		u_int32_t	lu
 POINTER	pagelsn		DB_LSN *	lu
@@ -191,7 +196,7 @@ ARG	makedup		u_int32_t	lu
 END
 
 /*
- * DEPRECATED IN 3.0
+ * DEPRECATED in 3.0.
  * Hash now uses the btree allocation and deletion page routines.
  *
  * HASH-newpgno: is used to record getting/deleting a new page number.
@@ -202,9 +207,9 @@ END
  * old_type was the type of a page being deallocated.
  * old_pgno was the next page number before the deallocation.
  */
-BEGIN newpgno
+DEPRECATED newpgno	26
 ARG	opcode		u_int32_t	lu
-ARG	fileid		int32_t		lu
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 ARG	free_pgno	db_pgno_t	lu
 ARG	old_type	u_int32_t	lu
@@ -215,7 +220,7 @@ POINTER metalsn		DB_LSN *	lu
 END
 
 /*
- * DEPRECATED in 3.0
+ * DEPRECATED in 3.0.
  * Since we now pre-allocate the contiguous chunk of pages for a doubling,
  * there is no big benefit to pre-allocating a few extra pages.  It used
  * to be that the file was only physically as large as the current bucket,
@@ -227,8 +232,8 @@ END
  *
  * ovfl: initialize a set of overflow pages.
  */
-BEGIN ovfl
-ARG	fileid		int32_t		lu
+DEPRECATED ovfl		27
+ARG	fileid		int32_t		ld
 ARG	start_pgno	db_pgno_t	lu
 ARG	npages		u_int32_t	lu
 ARG	free_pgno	db_pgno_t	lu
@@ -246,8 +251,8 @@ END
  * nnext_pgno: page after next_pgno (may need to change its prev)
  * nnextlsn: the LSN of nnext_pgno.
  */
-BEGIN copypage
-ARG	fileid		int32_t		lu
+BEGIN copypage		28
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	pagelsn		DB_LSN *	lu
 ARG	next_pgno	db_pgno_t	lu
@@ -268,8 +273,8 @@ END
  * metalsn:	Lsn of the meta-data page.
  * pagelsn:	Lsn of the maximum page allocated.
  */
-BEGIN metagroup
-ARG	fileid		int32_t		lu
+BEGIN metagroup		29
+ARG	fileid		int32_t		ld
 ARG	bucket		u_int32_t	lu
 ARG	pgno		db_pgno_t	lu
 POINTER	metalsn		DB_LSN *	lu
@@ -288,8 +293,8 @@ END
  * start_pgno: starting page number
  * num: number of allocated pages
  */
-BEGIN groupalloc
-ARG	fileid		int32_t		lu
+DEPRECATED groupalloc1	30
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 POINTER	metalsn		DB_LSN *	lu
 POINTER	mmetalsn	DB_LSN *	lu
@@ -297,3 +302,11 @@ ARG	start_pgno	db_pgno_t	lu
 ARG	num		u_int32_t	lu
 END
 
+BEGIN groupalloc	31
+ARG	fileid		int32_t		ld
+POINTER	meta_lsn	DB_LSN *	lu
+POINTER	alloc_lsn	DB_LSN *	lu
+ARG	start_pgno	db_pgno_t	lu
+ARG	num		u_int32_t	lu
+ARG	free		db_pgno_t	lu
+END

@@ -1,5 +1,5 @@
 /*
- * @(#)sparc.gcc	11.4 (Sleepycat) 9/14/99
+ * $Id: sparc.gcc,v 11.5 1999/11/21 18:11:47 bostic Exp $
  *
  * The ldstub instruction takes the location specified by its first argument
  * (a register containing a memory address) and loads its contents into its

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mpoolscript.tcl	11.5 (Sleepycat) 10/25/99
+#	$Id: mpoolscript.tcl,v 11.12 2000/05/05 15:23:47 sue Exp $
 #
 # Random multiple process mpool tester.
 # Usage: mpoolscript dir id numiters numfiles numpages sleepint
@@ -15,7 +15,7 @@
 #		how many files to use.
 # numpages: Number of pages per file.
 # sleepint: Maximum sleep interval.
-# flags: db_appinit flags
+# flags: Flags for env open
 
 source ./include.tcl
 source $test_path/test.tcl
@@ -26,7 +26,7 @@ set usage \
 
 # Verify usage
 if { $argc != 8 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	puts $argc
 	exit
 }
@@ -45,6 +45,9 @@ set flags [ lindex $argv 7]
 global rand_init
 berkdb srand $rand_init
 
+# Give time for all processes to start up.
+tclsleep 10
+
 puts -nonewline "Beginning execution for $id: $maxprocs $dir $numiters"
 puts " $pgsizes $numpages $sleepint"
 flush stdout
@@ -58,8 +61,8 @@ foreach i $pgsizes {
 }
 
 set cache [list 0 [expr $maxprocs * ([lindex $pgsizes 0] + $max)] 1]
-set env_cmd {berkdb env -mpool -lock -cachesize $cache -home $dir}
-set e [eval $env_cmd]
+set env_cmd {berkdb env -lock -cachesize $cache -home $dir}
+set e [eval $env_cmd $flags]
 error_check_good env_open [is_valid_env $e] TRUE
 
 # Now open files
@@ -128,7 +131,7 @@ for { set iter 0 } { $iter < $numiters } { incr iter } {
 			error_check_good lock_put:$fnum:$p [$lock put] 0
 		}
 	}
-	exec $SLEEP [berkdb random_int 1 $sleepint]
+	tclsleep [berkdb random_int 1 $sleepint]
 }
 
 # Now verify your master page, release its pin, then verify everyone else's

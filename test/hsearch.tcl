@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)hsearch.tcl	11.4 (Sleepycat) 10/24/99
+#	$Id: hsearch.tcl,v 11.6 2000/02/14 03:00:13 bostic Exp $
 #
 # Historic Hsearch interface test.
 # Use the first 1000 entries from the dictionary.

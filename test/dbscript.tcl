@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)dbscript.tcl	11.5 (Sleepycat) 10/25/99
+#	$Id: dbscript.tcl,v 11.10 2000/04/21 18:36:21 krinsky Exp $
 #
 # Random db tester.
 # Usage: dbscript file numops min_del max_add key_avg data_avgdups
@@ -28,7 +28,7 @@ set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errp
 
 # Verify usage
 if { $argc != 9 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -62,8 +62,14 @@ puts "$errpct % Errors"
 
 flush stdout
 
-set db [berkdb open $file]
-error_check_good dbopen [is_substr $db db] 1
+set db [berkdb_open $file]
+set cerr [catch {error_check_good dbopen [is_substr $db db] 1} cret]
+if {$cerr != 0} {
+	puts $cret
+	return
+}
+set method [$db get_type]
+set record_based [is_record_based $method]
 
 # Initialize globals including data
 global nkeys
@@ -81,8 +87,16 @@ set txn ""
 set curslist {}
 for { set i 0 } { $i < $ncurs } { incr i } {
 	set dbc [$db cursor]
-	error_check_good dbopen [is_substr $dbc $db.c] 1
-	error_check_bad cursor_create $dbc NULL
+	set cerr [catch {error_check_good dbopen [is_substr $dbc $db.c] 1} cret]
+	if {$cerr != 0} {
+		puts $cret
+		return
+	}
+	set cerr [catch {error_check_bad cursor_create $dbc NULL} cret]
+	if {$cerr != 0} {
+		puts $cret
+		return
+	}
 	lappend curslist $dbc
 
 }
@@ -114,18 +128,30 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 		add00 {
 			incr adds
 
-			set k [random_data $key_avg 1 a_keys ]
+			set k [random_data $key_avg 1 a_keys $record_based]
 			set data [random_data $data_avg 0 0]
-			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
-			error_check_good put $ret 0
-			newpair $k $data
+			set data [chop_data $method $data]
+			set ret [eval {$db put} $txn $pflags \
+			    {-nooverwrite $k $data}]
+			set cerr [catch {error_check_good put $ret 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
+			newpair $k [pad_data $method $data]
 		}
 		add01 {
 			incr bad_adds
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
-			error_check_good put $ret 0
+			set data [chop_data $method $data]
+			set ret [eval {$db put} $txn $pflags \
+			    {-nooverwrite $k $data}]
+			set cerr [catch {error_check_good put $ret 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
 			# Error case so no change to data state
 		}
 		add10 {
@@ -134,10 +160,13 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			set dbc [lindex $dbcinfo 0]
 			if { [berkdb random_int 1 2] == 1 } {
 				# Add a new key
-				set k [random_data $key_avg 1 a_keys ]
+				set k [random_data $key_avg 1 a_keys \
+				    $record_based]
 				set data [random_data $data_avg 0 0]
-				set ret [eval {$dbc put} $txn {-keyfirst $k $data}]
-				newpair $k $data
+				set data [chop_data $method $data]
+				set ret [eval {$dbc put} $txn \
+				    {-keyfirst $k $data}]
+				newpair $k [pad_data $method $data]
 			} else {
 				# Add a new duplicate
 				set dbc [lindex $dbcinfo 0]
@@ -145,6 +174,7 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 				set data [random_data $data_avg 0 0]
 
 				set op [pick_cursput]
+				set data [chop_data $method $data]
 				set ret [eval {$dbc put} $txn {$op $k $data}]
 				adddup $k [lindex $dbcinfo 2] $data
 			}
@@ -158,15 +188,22 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			incr puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
+			set data [chop_data $method $data]
 			set ret [eval {$db put} $txn {$k $data}]
-			changepair $k $data
+			changepair $k [pad_data $method $data]
 		}
 		put01 {
 			incr bad_puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
-			set ret [eval {$db put} $txn $pflags {-nooverwrite $k $data}]
-			error_check_good put $ret 0
+			set data [chop_data $method $data]
+			set ret [eval {$db put} $txn $pflags \
+			    {-nooverwrite $k $data}]
+			set cerr [catch {error_check_good put $ret 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
 			# Error case so no change to data state
 		}
 		put10 {
@@ -175,6 +212,7 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			set dbc [lindex $dbcinfo 0]
 			set k [lindex $dbcinfo 1]
 			set data [random_data $data_avg 0 0]
+			set data [chop_data $method $data]
 
 			set ret [eval {$dbc put} $txn {-current $data}]
 			changedup $k [lindex $dbcinfo 2] $data
@@ -183,25 +221,32 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			incr bad_puts
 			set k [random_key]
 			set data [random_data $data_avg 0 0]
+			set data [chop_data $method $data]
 			set dbc [$db cursor]
 			set ret [eval {$dbc put} $txn {-current $data}]
-			error_check_good curs_close [$dbc close] 0
+			set cerr [catch {error_check_good curs_close \
+			    [$dbc close] 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
 			# Error case so no change to data state
 		}
 		get00 {
 			incr gets
 			set k [random_key]
 			set val [eval {$db get} $txn {$k}]
-			if { [lindex [lindex $val 0] 1] == $a_keys($k) } {
+			set data [pad_data $method [lindex [lindex $val 0] 1]]
+			if { $data == $a_keys($k) } {
 				set ret 0
 			} else {
-				set ret "Error got |$val| expected |$a_keys($k)|"
+				set ret "FAIL: Error got |$data| expected |$a_keys($k)|"
 			}
 			# Get command requires no state change
 		}
 		get01 {
 			incr bad_gets
-			set k [random_data $key_avg 1 a_keys ]
+			set k [random_data $key_avg 1 a_keys $record_based]
 			set ret [eval {$db get} $txn {$k}]
 			# Error case so no change to data state
 		}
@@ -225,7 +270,12 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 				set dir -prev
 			}
 			set ret [eval {$dbc get} $txn {-next $k}]
-			error_check_good curs_close [$dbc close] 0
+			set cerr [catch {error_check_good curs_close \
+			    [$dbc close] 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
 			# Error and get case so no change to data state
 		}
 		del00 {
@@ -236,7 +286,7 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 		}
 		del01 {
 			incr bad_dels
-			set k [random_data $key_avg 1 a_keys ]
+			set k [random_data $key_avg 1 a_keys $record_based]
 			set ret [eval {$db del} $txn {$k}]
 			# Error case so no change to data state
 		}
@@ -251,16 +301,30 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 			incr bad_dels
 			set c [$db cursor]
 			set ret [eval {$c del} $txn]
-			error_check_good curs_close [$c close] 0
+			set cerr [catch {error_check_good curs_close \
+			    [$c close] 0} cret]
+			if {$cerr != 0} {
+				puts $cret
+				return
+			}
 			# Error case so no change to data state
 		}
 	}
 	if { $err == 1 } {
 		# Verify failure.
-		error_check_good $op$dups$err:$k [is_substr Error $ret] 1
+		set cerr [catch {error_check_good $op$dups$err:$k \
+		    [is_substr Error $ret] 1} cret]
+		if {$cerr != 0} {
+			puts $cret
+			return
+		}
 	} else {
 		# Verify success
-		error_check_good $op$dups$err:$k $ret 0
+		set cerr [catch {error_check_good $op$dups$err:$k $ret 0} cret]
+		if {$cerr != 0} {
+			puts $cret
+			return
+		}
 	}
 
 	flush stdout
@@ -269,11 +333,19 @@ for { set iter 0 } { $iter < $numops } { incr iter } {
 # Close cursors and file
 foreach i $curslist {
 	set r [$i close]
-	error_check_good cursor_close:$i $r 0
+	set cerr [catch {error_check_good cursor_close:$i $r 0} cret]
+	if {$cerr != 0} {
+		puts $cret
+		return
+	}
 }
 
 set r [$db close]
-error_check_good db_close:$db $r 0
+set cerr [catch {error_check_good db_close:$db $r 0} cret]
+if {$cerr != 0} {
+	puts $cret
+	return
+}
 
 puts "[timestamp] [pid] Complete"
 puts "Successful ops: $adds adds $gets gets $puts puts $dels dels"

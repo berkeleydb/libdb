@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)LockExample.java	11.1 (Sleepycat) 7/25/99
+ * $Id: LockExample.java,v 11.4 2000/03/19 14:44:55 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -30,14 +30,14 @@ class LockExample extends DbEnv
     {
         super(0);
         if (do_unlink) {
-            remove(home, null, Db.DB_FORCE);
+            remove(home, Db.DB_FORCE);
         }
         else {
             set_error_stream(System.err);
             set_errpfx("LockExample");
             if (maxlocks != 0)
                 set_lk_max(maxlocks);
-            open(home, null, Db.DB_CREATE|Db.DB_INIT_LOCK, 0);
+            open(home, Db.DB_CREATE|Db.DB_INIT_LOCK, 0);
         }
     }
 

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)txn.src	11.3 (Sleepycat) 8/29/99
+ *	$Id: txn.src,v 11.8 2000/03/08 03:06:50 margo Exp $
  */
 
 PREFIX	txn
@@ -15,6 +15,7 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
+INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -26,10 +27,26 @@ INCLUDE #include "txn.h"
 INCLUDE
 
 /*
- * This is the standard log operation for commit.
+ * DEPRECATED in 3.1 to add timestamps.
  */
-BEGIN	regop
+DEPRECATED old_regop		6
 ARG	opcode		u_int32_t	lu
+END
+
+/*
+ * This is the standard log operation for commit.
+ * Note that we are using an int32_t for the timestamp.  This means that
+ * in 2039 we will need to deprecate this log record and create one that
+ * either changes the Epoch or has a 64-bit offset.
+ */
+BEGIN regop		10
+ARG	opcode		u_int32_t	lu
+ARG	timestamp	int32_t		ld
+END
+
+DEPRECATED old_ckp		7
+POINTER	ckp_lsn		DB_LSN *	lu
+POINTER	last_ckp	DB_LSN *	lu
 END
 
 /*
@@ -43,17 +60,20 @@ END
  *	the checkpoint is relevant.
  * last_ckp:
  *	The previous checkpoint.
+ * timestamp:
+ *	See comment in commit about timestamps.
  */
-BEGIN	ckp
+BEGIN ckp		11
 POINTER	ckp_lsn		DB_LSN *	lu
 POINTER	last_ckp	DB_LSN *	lu
+ARG	timestamp	int32_t		ld
 END
 
 /*
  * This is the standard log operation for prepare (since right now
  * we only use prepare in an XA environment).
  */
-BEGIN	xa_regop
+BEGIN xa_regop		8
 ARG	opcode		u_int32_t	lu
 DBT	xid		DBT		s
 ARG	formatID	int32_t		ld
@@ -64,7 +84,7 @@ END
 /*
  * This is the log operation for a child commit.
  */
-BEGIN	child
+BEGIN child		9
 ARG	opcode		u_int32_t	lu
 ARG	parent		u_int32_t	lx
 END

@@ -1,5 +1,6 @@
-<!--"@(#)txn_stat.so	10.22 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: txn_stat.so,v 10.27 2000/05/25 13:47:08 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv.txn_stat</h1>
@@ -24,11 +26,21 @@ public DbTxnStat txn_stat()
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-The DbEnv.txn_stat method
+<p>The DbEnv.txn_stat method
 creates a DbTxnStat object encapsulating a statistical structure.
 The transaction region statistics are stored in a DbTxnStat object.
 The following data fields are available from the DbTxnStat object:
-<dl compact>
+<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
+is called to allocate the memory, otherwise, the library function
+<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
+the calling conventions of the <b>malloc</b>(3) library routine.
+Regardless, the caller is responsible for deallocating the returned
+memory.  To deallocate returned memory, free the returned memory
+reference, references inside the returned memory do not need to be
+individually freed.
+<p>The transaction region statistics are stored in a structure of type
+DB_TXN_STAT.  The following DB_TXN_STAT fields will be filled in:
+<p><dl compact>
 <dt>public <a href="../api_java/lsn_class.html">DbLsn</a> st_last_ckp;<dd>The LSN of the last checkpoint.
 <dt>public <a href="../api_java/lsn_class.html">DbLsn</a> st_pending_ckp;<dd>The LSN of any checkpoint that is currently in progress.  If
 <b>st_pending_ckp</b> is the same as <b>st_last_ckp</b> there
@@ -50,30 +62,23 @@ the region lock without waiting.
 <dt>public Active st_txnarray[];<dd>The array of active transactions.  Each element of the array is an object
 of type DbTxnStat.Active, a top level inner class, that has the following
 fields:
-<dl compact>
+<p><dl compact>
 <p><dt>public int txnid;<dd>The Transaction ID.
 <dt>public DbLsn lsn;<dd>The Lsn of the begin record.
 </dl>
 </dl>
-<p>
-The DbEnv.txn_stat
-method throws an exception that encapsulates a non-zero error value on
+<p>The DbEnv.txn_stat method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbEnv.txn_stat method will fail and throw a
-<a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, at which point all subsequent database
-calls will fail in the same way.
-<p>
-In addition, the DbEnv.txn_stat method may fail and
-throw an exception
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<p>The DbEnv.txn_stat method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv.txn_stat method may fail and throw
+a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
+will fail in the same way.
 <h3>Classes</h3>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
+<a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a>,
 <a href="../api_java/txn_abort.html">DbTxn.abort</a>,
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
 <a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,

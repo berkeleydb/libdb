@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test061.tcl	11.2 (Sleepycat) 8/30/99
+#	$Id: test061.tcl,v 11.8 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test061: Test of transaction abort and commit for in-memory databases.
 #	a) Put + abort: verify absence of data
@@ -17,6 +17,15 @@ proc test061 { method args } {
 	global errorCode
 	source ./include.tcl
 
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test061 skipping for env $env"
+		return
+	}
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -39,13 +48,13 @@ proc test061 { method args } {
 	cleanup $testdir
 
 	# create environment
-	set eflags "-create -lock -log -mpool -txn -home $testdir"
+	set eflags "-create -txn -home $testdir"
 	set dbenv [eval {berkdb env} $eflags]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 	# db open -- no file specified, in-memory database
 	set flags "-create $args $omethod"
-	set db [eval {berkdb open -env} $dbenv $flags]
+	set db [eval {berkdb_open -env} $dbenv $flags]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Here we go with the six test cases.  Since we need to verify
@@ -75,7 +84,6 @@ proc test061 { method args } {
 	set ret [eval {$db get} $gflags {$key}]
 	error_check_good get $ret {}
 
-
 	puts "\tTest061.b: put/commit"
 
 	# txn_begin
@@ -96,8 +104,6 @@ proc test061 { method args } {
 	# check again for existence
 	set ret [eval {$db get} $gflags {$key}]
 	error_check_good get $ret [list [list $key [pad_data $method $data]]]
-
-
 
 	puts "\tTest061.c: overwrite/abort"
 
@@ -194,6 +200,9 @@ proc test061 { method args } {
 	# Now run db_recover and ensure that it runs cleanly.
 	puts "\tTest061.g: Running db_recover -h"
 	set ret [catch {exec ./db_recover -h $testdir} res]
+	if { $ret != 0 } {
+		puts "FAIL: db_recover outputted $res"
+	}
 	error_check_good db_recover $ret 0
 
 	puts "\tTest061.h: Running db_recover -c -h"

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test021.tcl	11.4 (Sleepycat) 8/17/99
+#	$Id: test021.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 21 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -20,13 +20,21 @@ proc test021 { method {nentries 10000} args } {
 	puts "Test021: $method ($args) $nentries equal key/data pairs"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test021.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test021.db
+	} else {
+		set testfile test021.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -65,8 +73,8 @@ proc test021 { method {nentries 10000} args } {
 	# records after it.
 	error_check_good db_close [$db close] 0
 
-   	puts "\tTest021.b: test ranges"
-	set db [berkdb open -rdonly $omethod $testfile ]
+	puts "\tTest021.b: test ranges"
+	set db [eval {berkdb_open -rdonly} $args $omethod $testfile ]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Open a cursor

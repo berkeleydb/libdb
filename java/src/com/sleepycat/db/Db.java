@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)Db.java	11.8 (Sleepycat) 11/4/99
+ *	$Id: Db.java,v 11.23.2.1 2000/07/18 15:27:44 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -34,6 +34,7 @@ public class Db
     // Note: DB_CXX_NO_EXCEPTIONS will have no effect in Java.
     //
     public static final int DB_CXX_NO_EXCEPTIONS; // C++: return error values
+    public static final int DB_CLIENT;    // Open for a client environment.
 
     // Flags understood by Db()
     //
@@ -64,7 +65,6 @@ public class Db
     public static final int DB_TRUNCATE; // Discard existing DB.
     public static final int DB_UPGRADE;  // Upgrade if necessary.
 
-
     //
     // DB (user visible) error return codes.
     //
@@ -74,9 +74,13 @@ public class Db
     public static final int DB_KEYEXIST = -30997;   // The key/data pair already exists.
     public static final int DB_LOCK_DEADLOCK = -30996; // Locker killed to resolve deadlock.
     public static final int DB_LOCK_NOTGRANTED = -30995; // Lock unavailable, no-wait set.
-    public static final int DB_NOTFOUND = -30994;   // Key/data pair not found (EOF).
-    public static final int DB_OLD_VERSION = -30993;   // Out-of-date version.
-    public static final int DB_RUNRECOVERY = -30992;   // Panic return.
+    public static final int DB_NOSERVER = -30994;   // Server panic return.
+    public static final int DB_NOSERVER_HOME = -30993;   // Bad home sent to server.
+    public static final int DB_NOSERVER_ID = -30992;   // Bad ID sent to server.
+    public static final int DB_NOTFOUND = -30991;      // Key/data pair not found (EOF).
+    public static final int DB_OLD_VERSION = -30990;   // Out-of-date version.
+    public static final int DB_RUNRECOVERY = -30989;   // Panic return.
+    public static final int DB_VERIFY_BAD = -30988;    // Verify failed; bad format.
 
     //
     // Flags used by DbEnv.open and DbEnv.remove.
@@ -113,7 +117,7 @@ public class Db
     public static final int DB_LOCK_YOUNGEST;
 
     //
-    // Values for DbInfo flags
+    // Flags understood by only Db.set_flags.
     //
     public static final int DB_DUP;        // Btree, Hash: duplicate keys.
     public static final int DB_DUPSORT;    // Btree, Hash: duplicate keys.
@@ -121,6 +125,19 @@ public class Db
     public static final int DB_RENUMBER;   // Recno: renumber on insert/delete.
     public static final int DB_REVSPLITOFF;// Btree: turn off reverse splits.
     public static final int DB_SNAPSHOT;   // Recno: snapshot the input.
+
+    //
+    // Flags understood by only Db.join
+    //
+    public static final int DB_JOIN_NOSORT;// Don't try to optimize join.
+
+    //
+    // Flags understood by only Db.verify
+    //
+    public static final int DB_NOORDERCHK;  // Skip order check; subdb w/ user func
+    public static final int DB_ORDERCHKONLY;// Only perform an order check on subdb
+    public static final int DB_SALVAGE;     // Salvage what looks like data.
+    public static final int DB_AGGRESSIVE;  // Salvage anything which might be data.
 
     // Collectively, these constants are known by the name
     // "db_lockmode_t" in the documentation.
@@ -183,10 +200,12 @@ public class Db
     public static final int DB_NEXT;       // Dbc.get(), DbLog.get()
     public static final int DB_NEXT_DUP;   // Dbc.get()
     public static final int DB_NEXT_NODUP; // Dbc.get()
+    public static final int DB_NODUPDATA;  // Don't permit duplicated data
     public static final int DB_NOOVERWRITE;// Db.put()
     public static final int DB_NOSYNC;     // Db.close()
     public static final int DB_POSITION;   // Dbc.dup()
     public static final int DB_PREV;       // Dbc.get(), DbLog.get()
+    public static final int DB_PREV_NODUP; // Dbc.get()
     public static final int DB_RECORDCOUNT;// Db.stat()
     public static final int DB_SET;        // Dbc.get(), DbLog.get()
     public static final int DB_SET_RANGE;  // Dbc.get()
@@ -211,33 +230,78 @@ public class Db
     // Return in user's memory.
     public static final int DB_DBT_USERMEM;
 
-
-
     // Note: the env can be null
     //
     public Db(DbEnv env, int flags)
-         throws DbException
+        throws DbException
     {
-        dbenv_ = env;
-        _init(env, flags);
-        if (env == null) {
+        constructor_env_ = env;
+        constructor_flags_ = flags;
+        reconstruct();
+    }
+
+    // reconstruct: called by Db.Db constructor and Db.close.
+    // call the underlying constructor and set up dbenv_
+    // to point to the associated environment (or create
+    // a new one if need be.  This is called by close() because
+    // we want to allow 'reopen' like:
+    //    db.open(...);
+    //    db.close(...);
+    //    db.set_errpfx(...);
+    //    db.open(...);
+    //    db.close(...);
+    //
+    // i.e. after a close, caller should be able to do anything
+    // to the Db object that we would normally allow just after
+    // constructor.
+    //
+    private void reconstruct()
+        throws DbException
+    {
+        _init(constructor_env_, constructor_flags_);
+        if (constructor_env_ == null) {
             dbenv_ = new DbEnv(this);
+        }
+        else {
+            dbenv_ = constructor_env_;
         }
     }
 
+    //
+    // Our parent DbEnv is notifying us that the environment is closing.
+    //
+    /*package*/ void _notify_dbenv_close()
+    {
+        dbenv_ = null;
+        _notify_internal();
+    }
+    
     private native void _init(DbEnv env, int flags)
          throws DbException;
+
+    private native void _notify_internal();
 
     // methods
     //
 
-    public native void close(int flags)
+    public synchronized void close(int flags)
+        throws DbException
+    {
+        dbenv_._remove_open_db(this);
+        _close(flags);
+        if (constructor_env_ == null) {
+            dbenv_._notify_db_close();
+        }
+        reconstruct();
+    }
+
+    public native void _close(int flags)
          throws DbException;
 
     public native Dbc cursor(DbTxn txnid, int flags)
          throws DbException;
 
-    public native void del(DbTxn txnid, Dbt key, int flags)
+    public native int del(DbTxn txnid, Dbt key, int flags)
          throws DbException;
 
     public native void err(int errcode, String message);
@@ -246,6 +310,16 @@ public class Db
 
     public native int fd()
          throws DbException;
+
+    // overrides Object.finalize
+    protected void finalize()
+        throws Throwable
+    {
+        _finalize(dbenv_.is_finalized() ? 1 : 0);
+    }
+
+    protected native void _finalize(int flags)
+        throws Throwable;
 
     // returns: 0, DB_NOTFOUND, or throws error
     public native int get(DbTxn txnid, Dbt key, Dbt data, int flags)
@@ -258,16 +332,36 @@ public class Db
     public native Dbc join(Dbc curslist[], int flags)
          throws DbException;
 
-    public native void open(String name,  String subname,
+    public native void key_range(DbTxn txn, Dbt key,
+                                 DbKeyRange range, int flags)
+         throws DbException;
+
+    public synchronized void open(String file, String database,
+                     /*DBTYPE*/ int type,
+                     int flags, int mode)
+         throws DbException, FileNotFoundException
+    {
+        _open(file, database, type, flags, mode);
+        dbenv_._add_open_db(this);
+    }
+        
+    // (Internal)
+    public native void _open(String file, String database,
                             /*DBTYPE*/ int type,
                             int flags, int mode)
          throws DbException, FileNotFoundException;
+        
 
     // returns: 0, DB_KEYEXIST, or throws error
     public native int put(DbTxn txnid, Dbt key, Dbt data, int flags)
          throws DbException;
 
-    public native void remove(String name, String subname, int flags)
+    public synchronized native void rename(String file, String database,
+                                           String newname, int flags)
+         throws DbException;
+
+    public synchronized native void remove(String file, String database,
+                                           int flags)
          throws DbException;
 
     // Note: this callback is not implemented
@@ -295,7 +389,11 @@ public class Db
     // public native void set_dup_compare(DbDupCompare dup_compare);
 
     // Error message callback.
-    public native void set_errcall(DbErrcall errcall);
+    public void set_errcall(DbErrcall errcall)
+    {
+        if (dbenv_ != null)
+            dbenv_.set_errcall(errcall);
+    }
 
     // Error stream.
     public void set_error_stream(OutputStream s)
@@ -305,17 +403,24 @@ public class Db
     }
 
     // Error message prefix.
-    public native void set_errpfx(String errpfx);
+    public void set_errpfx(String errpfx)
+    {
+        if (dbenv_ != null)
+            dbenv_.set_errpfx(errpfx);
+    }
+    
 
     // Feedback
     public void set_feedback(DbFeedback feedback)
+        throws DbException
     {
         feedback_ = feedback;
         feedback_changed(feedback);
     }
 
     // (Internal)
-    private native void feedback_changed(DbFeedback feedback);
+    private native void feedback_changed(DbFeedback feedback)
+        throws DbException;
 
     // Flags.
     public native void set_flags(/*u_int32_t*/ int flags);
@@ -358,17 +463,27 @@ public class Db
     public native void upgrade(String name, int flags)
          throws DbException;
 
-    protected native void finalize()
-         throws Throwable;
+    public native void verify(String name, String subdb,
+                              OutputStream outstr, int flags)
+         throws DbException;
 
     ////////////////////////////////////////////////////////////////
     //
     // private data
     //
+    private long private_dbobj_ = 0;
     private long private_info_ = 0;
     private DbEnv dbenv_ = null;
+    private DbEnv constructor_env_ = null;
+    private int constructor_flags_ = 0;
     private DbFeedback feedback_ = null;
 
+    ////////////////////////////////////////////////////////////////
+    //
+    // static methods and data that implement
+    // loading the native library and doing any
+    // extra sanity checks on startup.
+    //
     private static boolean already_loaded_ = false;
 
     public static void load_db()
@@ -385,14 +500,18 @@ public class Db
         else {
             String os = System.getProperty("os.name");
             if (os != null && os.startsWith("Windows")) {
-                // called libdb_java30.dll on Win/*
+                // library name is "libdb_java30.dll" (for example) on Win/*
                 System.loadLibrary("libdb_java" +
                                    DbConstants.DB_VERSION_MAJOR +
                                    DbConstants.DB_VERSION_MINOR);
             }
             else {
-                // called libdb_java.so on UNIX
-                System.loadLibrary("db_java");
+                // library name is "libdb_java-3.0.so" (for example) on UNIX
+                // Note: "db_java" isn't good enough;
+                // some Unixes require us to use the explicit SONAME.
+                System.loadLibrary("db_java-" +
+                                   DbConstants.DB_VERSION_MAJOR + "." +
+                                   DbConstants.DB_VERSION_MINOR);
             }
         }
 
@@ -416,6 +535,7 @@ public class Db
         // changing constants.
         //
         DB_CXX_NO_EXCEPTIONS = DbConstants.DB_CXX_NO_EXCEPTIONS;
+        DB_CLIENT = DbConstants.DB_CLIENT;
         DB_XA_CREATE = DbConstants.DB_XA_CREATE;
 
         DB_CREATE = DbConstants.DB_CREATE;
@@ -441,9 +561,13 @@ public class Db
         check_constant(DB_KEYEXIST, DbConstants.DB_KEYEXIST);
         check_constant(DB_LOCK_DEADLOCK, DbConstants.DB_LOCK_DEADLOCK);
         check_constant(DB_LOCK_NOTGRANTED, DbConstants.DB_LOCK_NOTGRANTED);
+        check_constant(DB_NOSERVER, DbConstants.DB_NOSERVER);
+        check_constant(DB_NOSERVER_HOME, DbConstants.DB_NOSERVER_HOME);
+        check_constant(DB_NOSERVER_ID, DbConstants.DB_NOSERVER_ID);
         check_constant(DB_NOTFOUND, DbConstants.DB_NOTFOUND);
         check_constant(DB_OLD_VERSION, DbConstants.DB_OLD_VERSION);
         check_constant(DB_RUNRECOVERY, DbConstants.DB_RUNRECOVERY);
+        check_constant(DB_VERIFY_BAD, DbConstants.DB_VERIFY_BAD);
 
         DB_FORCE = DbConstants.DB_FORCE;
         DB_INIT_CDB = DbConstants.DB_INIT_CDB;
@@ -476,6 +600,13 @@ public class Db
         DB_REVSPLITOFF = DbConstants.DB_REVSPLITOFF;
         DB_SNAPSHOT = DbConstants.DB_SNAPSHOT;
 
+        DB_JOIN_NOSORT = DbConstants.DB_JOIN_NOSORT;
+
+        DB_NOORDERCHK = DbConstants.DB_NOORDERCHK;
+        DB_ORDERCHKONLY = DbConstants.DB_ORDERCHKONLY;
+        DB_SALVAGE = DbConstants.DB_SALVAGE;
+        DB_AGGRESSIVE = DbConstants.DB_AGGRESSIVE;
+
         DB_LOCK_NOWAIT = DbConstants.DB_LOCK_NOWAIT;
         DB_LOCK_CONFLICT = DbConstants.DB_LOCK_CONFLICT;
 
@@ -503,10 +634,12 @@ public class Db
         DB_NEXT = DbConstants.DB_NEXT;
         DB_NEXT_DUP = DbConstants.DB_NEXT_DUP;
         DB_NEXT_NODUP = DbConstants.DB_NEXT_NODUP;
+        DB_NODUPDATA = DbConstants.DB_NODUPDATA;
         DB_NOOVERWRITE = DbConstants.DB_NOOVERWRITE;
         DB_NOSYNC = DbConstants.DB_NOSYNC;
         DB_POSITION = DbConstants.DB_POSITION;
         DB_PREV = DbConstants.DB_PREV;
+        DB_PREV_NODUP = DbConstants.DB_PREV_NODUP;
         DB_RECORDCOUNT = DbConstants.DB_RECORDCOUNT;
         DB_SET = DbConstants.DB_SET;
         DB_SET_RANGE = DbConstants.DB_SET_RANGE;

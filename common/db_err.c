@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_err.c	11.10 (Sleepycat) 11/8/99";
+static const char revid[] = "$Id: db_err.c,v 11.27.2.1 2000/07/16 18:59:49 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,12 +18,6 @@ static const char sccsid[] = "@(#)db_err.c	11.10 (Sleepycat) 11/8/99";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #endif
 
 #include "db_int.h"
@@ -129,6 +123,24 @@ __db_pgfmt(dbp, pgno)
 	return (__db_panic(dbp->dbenv, EINVAL));
 }
 
+/*
+ * __db_eopnotsup --
+ *	Common operation not supported message.
+ *
+ * PUBLIC: int __db_eopnotsup __P((const DB_ENV *));
+ */
+int
+__db_eopnotsup(dbenv)
+	const DB_ENV *dbenv;
+{
+	__db_err(dbenv, "operation not supported");
+#ifdef EOPNOTSUPP
+	return (EOPNOTSUPP);
+#else
+	return (EINVAL);
+#endif
+}
+
 #ifdef DIAGNOSTIC
 /*
  * __db_assert --
@@ -180,6 +192,13 @@ __db_panic(dbenv, errval)
 	DB_ENV *dbenv;
 	int errval;
 {
+	/*
+	 * Drop core if we're running with DIAGNOSTIC defined.  Do so before
+	 * we set the panic bits, it's easier to run diagnostic tools on the
+	 * tree then.
+	 */
+	DB_ASSERT(0);
+
 	if (dbenv != NULL) {
 		((REGENV *)((REGINFO *)dbenv->reginfo)->addr)->panic = 1;
 
@@ -231,12 +250,20 @@ db_strerror(error)
 		    ("DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock");
 	case DB_LOCK_NOTGRANTED:
 		return ("DB_LOCK_NOTGRANTED: Lock not granted");
+	case DB_NOSERVER:
+		return ("DB_NOSERVER: Fatal error, no server");
+	case DB_NOSERVER_HOME:
+		return ("DB_NOSERVER_HOME: Home unrecognized at server");
+	case DB_NOSERVER_ID:
+		return ("DB_NOSERVER_ID: Identifier unrecognized at server");
 	case DB_NOTFOUND:
 		return ("DB_NOTFOUND: No matching key/data pair found");
 	case DB_OLD_VERSION:
 		return ("DB_OLDVERSION: Database requires a version upgrade");
 	case DB_RUNRECOVERY:
 		return ("DB_RUNRECOVERY: Fatal error, run database recovery");
+	case DB_VERIFY_BAD:
+		return ("DB_VERIFY_BAD: Database verification failed");
 	default: {
 		/*
 		 * !!!
@@ -275,6 +302,33 @@ __db_err(dbenv, fmt, va_alist)
 {
 	va_list ap;
 
+/*
+	XXX
+	Log the message.
+
+	It would be nice to automatically log the error into the log files
+	if the application is configured for logging.  The problem is that
+	if we currently hold the log region mutex, we will self-deadlock.
+	Leave all the structure in place, but turned off.  I'd like to fix
+	this in the future by detecting if we have the log region already
+	locked (e.g., a flag in the environment handle), or perhaps even
+	have a finer granularity so that the only calls to __db_err we
+	can't log are those made while we have the current log buffer
+	locked, or perhaps have a separate buffer into which we log error
+	messages.
+
+#ifdef __STDC__
+	va_start(ap, fmt);
+#else
+	va_start(ap);
+#endif
+	__db_real_log(dbenv, NULL, "db_err", 0, fmt, ap);
+
+	va_end(ap);
+#endif
+*/
+
+	/* Tell the application. */
 #ifdef __STDC__
 	va_start(ap, fmt);
 #else
@@ -299,15 +353,21 @@ __db_real_err(dbenv, error, error_set, stderr_default, fmt, ap)
 	const char *fmt;
 	va_list ap;
 {
+	/* Call the user's callback function, if specified. */
 	if (dbenv != NULL && dbenv->db_errcall != NULL)
 		__db_errcall(dbenv, error, error_set, fmt, ap);
 
+	/* Write to the user's file descriptor, if specified. */
 	if (dbenv != NULL && dbenv->db_errfile != NULL)
 		__db_errfile(dbenv, error, error_set, fmt, ap);
 
+	/*
+	 * If we have a default and we didn't do either of the above, write
+	 * to the default.
+	 */
 	if (stderr_default && (dbenv == NULL ||
 	    (dbenv->db_errcall == NULL && dbenv->db_errfile == NULL)))
-		__db_errfile(NULL, error, error_set, fmt, ap);
+		__db_errfile(dbenv, error, error_set, fmt, ap);
 }
 
 /*
@@ -322,7 +382,7 @@ __db_errcall(dbenv, error, error_set, fmt, ap)
 	va_list ap;
 {
 	char *p;
-	char __errbuf[2048];	/* XXX: END OF THE STACK DON'T TRUST SPRINTF. */
+	char __errbuf[2048];	/* !!!: END OF THE STACK DON'T TRUST SPRINTF. */
 
 	p = __errbuf;
 	if (fmt != NULL) {
@@ -372,32 +432,67 @@ __db_errfile(dbenv, error, error_set, fmt, ap)
  *	Write information into the DB log.
  *
  * PUBLIC: #ifdef __STDC__
- * PUBLIC: int __db_logmsg __P((DB_ENV *,
+ * PUBLIC: void __db_logmsg __P((const DB_ENV *,
  * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, ...));
  * PUBLIC: #else
- * PUBLIC: int __db_logmsg();
+ * PUBLIC: void __db_logmsg();
  * PUBLIC: #endif
  */
-int
+void
 #ifdef __STDC__
-__db_logmsg(DB_ENV *dbenv,
+__db_logmsg(const DB_ENV *dbenv,
     DB_TXN *txnid, const char *opname, u_int32_t flags, const char *fmt, ...)
 #else
 __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
-	DB_ENV *dbenv;
+	const DB_ENV *dbenv;
 	DB_TXN *txnid;
 	const char *opname, *fmt;
 	u_int32_t flags;
 	va_dcl
 #endif
 {
+	va_list ap;
+
+#ifdef __STDC__
+	va_start(ap, fmt);
+#else
+	va_start(ap);
+#endif
+	__db_real_log(dbenv, txnid, opname, flags, fmt, ap);
+
+	va_end(ap);
+}
+
+/*
+ * __db_real_log --
+ *	Write information into the DB log.
+ *
+ * PUBLIC: #ifdef __STDC__
+ * PUBLIC: void __db_real_log __P((const DB_ENV *,
+ * PUBLIC:     DB_TXN *, const char *, u_int32_t, const char *, va_list ap));
+ * PUBLIC: #else
+ * PUBLIC: void __db_real_log();
+ * PUBLIC: #endif
+ */
+void
+#ifdef __STDC__
+__db_real_log(const DB_ENV *dbenv, DB_TXN *txnid,
+    const char *opname, u_int32_t flags, const char *fmt, va_list ap)
+#else
+__db_real_log(dbenv, txnid, opname, flags, fmt, ap)
+	const DB_ENV *dbenv;
+	DB_TXN *txnid;
+	const char *opname, *fmt;
+	u_int32_t flags;
+	va_list ap;
+#endif
+{
 	DBT opdbt, msgdbt;
 	DB_LSN lsn;
-	va_list ap;
-	char __logbuf[2048];	/* XXX: END OF THE STACK DON'T TRUST SPRINTF. */
+	char __logbuf[2048];	/* !!!: END OF THE STACK DON'T TRUST SPRINTF. */
 
-	if (!F_ISSET(dbenv, DB_ENV_LOGGING))
-		return (0);
+	if (!LOGGING_ON(dbenv))
+		return;
 
 	memset(&opdbt, 0, sizeof(opdbt));
 	opdbt.data = (void *)opname;
@@ -405,14 +500,58 @@ __db_logmsg(dbenv, txnid, opname, flags, fmt, va_alist)
 
 	memset(&msgdbt, 0, sizeof(msgdbt));
 	msgdbt.data = __logbuf;
-#ifdef __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	msgdbt.size = vsnprintf(__logbuf, sizeof(__logbuf), fmt, ap);
-	va_end(ap);
 
-	return (__db_debug_log(dbenv,
-	    txnid, &lsn, flags, &opdbt, -1, &msgdbt, NULL, 0));
+	/*
+	 * XXX
+	 * Explicitly discard the const.  Otherwise, we have to const DB_ENV
+	 * references throughout the logging subsystem.
+	 */
+	__db_debug_log(
+	    (DB_ENV *)dbenv, txnid, &lsn, flags, &opdbt, -1, &msgdbt, NULL, 0);
+}
+
+/*
+ * __db_unknown_flag -- report internal error
+ *
+ * PUBLIC: int __db_unknown_flag __P((DB_ENV *, char *, u_int32_t));
+ */
+int
+__db_unknown_flag(dbenv, routine, flag)
+	DB_ENV *dbenv;
+	char *routine;
+	u_int32_t flag;
+{
+	__db_err(dbenv, "%s: Unknown flag: 0x%x", routine, flag);
+	DB_ASSERT(0);
+	return (EINVAL);
+}
+
+/*
+ * __db_unknown_type -- report internal error
+ *
+ * PUBLIC: int __db_unknown_type __P((DB_ENV *, char *, u_int32_t));
+ */
+int
+__db_unknown_type(dbenv, routine, type)
+	DB_ENV *dbenv;
+	char *routine;
+	u_int32_t type;
+{
+	__db_err(dbenv, "%s: Unknown db type: 0x%x", routine, type);
+	DB_ASSERT(0);
+	return (EINVAL);
+}
+
+/*
+ * __db_child_active_err -- cannot do an update with active child
+ *
+ * PUBLIC: int __db_child_active_err __P((DB_ENV *));
+ */
+int
+__db_child_active_err(dbenv)
+	DB_ENV *dbenv;
+{
+	__db_err(dbenv, "Child transaction is active");
+	return (EPERM);
 }

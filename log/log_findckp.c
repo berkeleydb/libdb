@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)log_findckp.c	11.1 (Sleepycat) 7/24/99";
+static const char revid[] = "$Id: log_findckp.c,v 11.4 2000/03/28 21:50:13 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -83,7 +83,7 @@ __log_findckp(dbenv, lsnp)
 
 		if ((ret = log_get(dbenv, &next_lsn, &data, DB_SET)) != 0)
 			return (ret);
-		if ((ret = __txn_ckp_read(data.data, &ckp_args)) != 0) {
+		if ((ret = __txn_ckp_read(dbenv, data.data, &ckp_args)) != 0) {
 			if (F_ISSET(dbenv, DB_ENV_THREAD))
 				__os_free(data.data, data.size);
 			return (ret);

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -36,7 +36,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)txn_rec.c	11.2 (Sleepycat) 9/9/99";
+static const char revid[] = "$Id: txn_rec.c,v 11.8 2000/03/28 21:50:20 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -52,35 +52,37 @@ static const char sccsid[] = "@(#)txn_rec.c	11.2 (Sleepycat) 9/9/99";
 
 /*
  * PUBLIC: int __txn_regop_recover
- * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  *
- * These records are only ever written for commits.
+ * These records are only ever written for commits.  Normally, we redo any
+ * committed transaction, however if we are doing recovery to a timestamp, then
+ * we may treat transactions that commited after the timestamp as aborted.
  */
 int
-__txn_regop_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_regop_args *argp;
 	int ret;
 
 #ifdef DEBUG_RECOVER
-	(void)__txn_regop_print(dbenv, dbtp, lsnp, redo, info);
+	(void)__txn_regop_print(dbenv, dbtp, lsnp, op, info);
 #endif
-	COMPQUIET(redo, 0);
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(op, 0);
 
-	if ((ret = __txn_regop_read(dbtp->data, &argp)) != 0)
+	if ((ret = __txn_regop_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	if (argp->opcode != TXN_COMMIT)
 		ret = EINVAL;
-	else
+	else if (dbenv->tx_timestamp == 0 ||
+	    argp->timestamp <= (int32_t)dbenv->tx_timestamp)
 		if (__db_txnlist_find(info, argp->txnid->txnid) == DB_NOTFOUND)
-			ret = __db_txnlist_add(info, argp->txnid->txnid);
+			ret = __db_txnlist_add(dbenv, info, argp->txnid->txnid);
 
 	if (ret == 0)
 		*lsnp = argp->prev_lsn;
@@ -91,28 +93,28 @@ __txn_regop_recover(dbenv, dbtp, lsnp, redo, info)
 
 /*
  * PUBLIC: int __txn_xa_regop_recover
- * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  *
  * These records are only ever written for prepares.
  */
 int
-__txn_xa_regop_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_xa_regop_args *argp;
 	int ret;
 
 #ifdef DEBUG_RECOVER
-	(void)__txn_xa_regop_print(dbenv, dbtp, lsnp, redo, info);
+	(void)__txn_xa_regop_print(dbenv, dbtp, lsnp, op, info);
 #endif
-	COMPQUIET(redo, 0);
+	COMPQUIET(op, 0);
 	COMPQUIET(dbenv, NULL);
 
-	if ((ret = __txn_xa_regop_read(dbtp->data, &argp)) != 0)
+	if ((ret = __txn_xa_regop_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	if (argp->opcode != TXN_PREPARE)
@@ -129,25 +131,26 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, redo, info)
 }
 
 /*
- * PUBLIC: int __txn_ckp_recover __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC: int __txn_ckp_recover
+ * PUBLIC: __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_ckp_args *argp;
 	int ret;
 
 #ifdef DEBUG_RECOVER
-	__txn_ckp_print(dbenv, dbtp, lsnp, redo, info);
+	__txn_ckp_print(dbenv, dbtp, lsnp, op, info);
 #endif
 	COMPQUIET(dbenv, NULL);
 
-	if ((ret = __txn_ckp_read(dbtp->data, &argp)) != 0)
+	if ((ret = __txn_ckp_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	/*
@@ -158,7 +161,7 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
 	 */
 	if (argp->ckp_lsn.file == lsnp->file &&
 	    argp->ckp_lsn.offset == lsnp->offset)
-		__db_txnlist_gen(info, redo ? -1 : 1);
+		__db_txnlist_gen(info, DB_REDO(op) ? -1 : 1);
 
 	*lsnp = argp->last_ckp;
 	__os_free(argp, 0);
@@ -170,26 +173,26 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
  *	Recover a commit record for a child transaction.
  *
  * PUBLIC: int __txn_child_recover
- * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:    __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_child_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_child_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_child_args *argp;
 	int ret;
 
 #ifdef DEBUG_RECOVER
-	(void)__txn_child_print(dbenv, dbtp, lsnp, redo, info);
+	(void)__txn_child_print(dbenv, dbtp, lsnp, op, info);
 #endif
-	COMPQUIET(redo, 0);
+	COMPQUIET(op, 0);
 	COMPQUIET(dbenv, NULL);
 
-	if ((ret = __txn_child_read(dbtp->data, &argp)) != 0)
+	if ((ret = __txn_child_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	/*
@@ -202,7 +205,7 @@ __txn_child_recover(dbenv, dbtp, lsnp, redo, info)
 	else
 		if (__db_txnlist_find(info, argp->parent) == 0 &&
 		    __db_txnlist_find(info, argp->txnid->txnid) == DB_NOTFOUND)
-			ret = __db_txnlist_add(info, argp->txnid->txnid);
+			ret = __db_txnlist_add(dbenv, info, argp->txnid->txnid);
 
 	if (ret == 0)
 		*lsnp = argp->prev_lsn;

@@ -1,4 +1,4 @@
-# @(#)Design	11.1 (Sleepycat) 7/25/99
+# $Id: Design,v 11.3 2000/02/19 20:58:03 bostic Exp $
 
 Synchronization in the Locking Subsystem
 
@@ -42,7 +42,6 @@ Locker ID #2 holds a lock on Object #1 (L2) and is waiting on a lock for
 Object #2 (L7).
 
 Locker ID #3 is waiting for a lock on Object #2 (L6).
-
 
 	OBJECT                   -----------------------
 	HASH                     |                     |
@@ -210,7 +209,6 @@ Release a lock:
 	Exit lock_put_internal
 
 	Release Object bucket mutex
-
 
 Release all the Locks on a specific Object (lock_vec, DB_PUT_ALL_OBJ):
 

@@ -1,5 +1,6 @@
-<!--"@(#)memp_stat.so	10.21 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: memp_stat.so,v 10.28 2000/05/25 13:47:08 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>memp_stat</h1>
@@ -25,31 +27,27 @@ memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
     DB_MPOOL_FSTAT *(*fsp)[], void *(*db_malloc)(size_t));
 </pre></h3>
 <h1>Description</h1>
-<p>
-The memp_stat function method creates statistical structures and copies
+<p>The memp_stat function method creates statistical structures and copies
 pointers to them into user-specified memory locations.  The statistics
 include the number of files participating in the pool, the active pages
 in the pool, and information as to how effective the cache has been.
-<p>
-Statistical structures are created in allocated memory.
-If
-<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
-otherwise, the library function <b>malloc</b>(3) is used.
-The function <b>db_malloc</b> must match the calling conventions of
-the <b>malloc</b>(3) library routine.
+<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
+is called to allocate the memory, otherwise, the library function
+<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
+the calling conventions of the <b>malloc</b>(3) library routine.
 Regardless, the caller is responsible for deallocating the returned
-memory.
-To deallocate the returned memory, free each returned memory pointer;
-pointers inside the memory do not need to be individually freed.
-<p>
-If <b>gsp</b> is non-NULL, the global statistics for the memory pool
+memory.  To deallocate returned memory, free the returned memory
+reference, references inside the returned memory do not need to be
+individually freed.
+<p>If <b>gsp</b> is non-NULL, the global statistics for the memory pool
 <b>mp</b> are copied into the memory location it references.  The
 global statistics are stored in a structure of type DB_MPOOL_STAT.
-<p>
-The following DB_MPOOL_STAT fields will be filled in:
-<dl compact>
-<dt>u_int32_t st_regsize;<dd>The size of the region.
-<dt>size_t st_cachesize;<dd>Cache size in bytes.
+<p>The following DB_MPOOL_STAT fields will be filled in:
+<p><dl compact>
+<dt>size_t st_gbytes;<dd>Gigabytes of cache (total cache size is st_gbytes + st_bytes)
+<dt>size_t st_bytes;<dd>Bytes of cache (total cache size is st_gbytes + st_bytes)
+<dt>u_int32_t st_ncache;<dd>Number of caches.
+<dt>u_int32_t st_regsize;<dd>Individual cache size.
 <dt>u_int32_t st_cache_hit;<dd>Requested pages found in the cache.
 <dt>u_int32_t st_cache_miss;<dd>Requested pages not found in the cache.
 <dt>u_int32_t st_map;<dd>Requested pages mapped into the process' address space (there is no
@@ -72,15 +70,14 @@ obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-If <b>fsp</b> is non-NULL, a pointer to a NULL-terminated variable
+<p>If <b>fsp</b> is non-NULL, a pointer to a NULL-terminated variable
 length array of statistics for individual files, in the memory pool <b>mp</b>,
 is copied into the memory location it references.  If no individual files
 currently exist in the memory pool, <b>fsp</b> will be set to NULL.
-<p>
-The per-file statistics are stored in structures of type DB_MPOOL_FSTAT.
+<p>The per-file statistics are stored in structures of type DB_MPOOL_FSTAT.
 The following DB_MPOOL_FSTAT fields will be filled in for each file in
 the pool, i.e., each element of the array:
-<dl compact>
+<p><dl compact>
 <dt>char *file_name;<dd>The name of the file.
 <dt>size_t st_pagesize;<dd>Page size in bytes.
 <dt>u_int32_t st_cache_hit;<dd>Requested pages found in the cache.
@@ -90,26 +87,16 @@ the pool, i.e., each element of the array:
 <dt>u_int32_t st_page_in;<dd>Pages read into the cache.
 <dt>u_int32_t st_page_out;<dd>Pages written from the cache to the backing file.
 </dl>
-<p>
-The memp_stat
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The memp_stat function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the memp_stat function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the memp_stat
-function may fail and return a non-zero error
-for the following conditions:
-<dl compact>
+<p>The memp_stat function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>
-In addition, the memp_stat function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The memp_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the memp_stat function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

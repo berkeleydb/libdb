@@ -1,12 +1,12 @@
 /*
  
- BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2
+ BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2 & 3
  
  written by Paul Marquess <Paul.Marquess@btinternet.com>
 
  All comments/suggestions/problems are welcome
  
-     Copyright (c) 1997-1999 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2000 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -51,6 +51,14 @@ extern "C" {
 
 #include <db.h>
 
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 0)
+#  define IS_DB_3_0
+#endif
+
+#if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
+#  define AT_LEAST_DB_3_1
+#endif
+
 /* need to define DEFSV & SAVE_DEFSV for older version of Perl */
 #ifndef DEFSV
 #define DEFSV GvSV(defgv)
@@ -66,6 +74,10 @@ extern "C" {
 #    define aTHX
 #    define aTHX_
 #endif
+
+#ifndef dTHR
+#    define dTHR
+#endif
  
 #ifndef newSVpvn
 #    define newSVpvn(a,b)       newSVpv(a,b)
@@ -78,7 +90,7 @@ extern "C" {
 #define DBM_FILTERING
 #define STRICT_CLOSE
 /* #define ALLOW_RECNO_OFFSET */
-/* #define TRACE  */
+/* #define TRACE */
  
 #if DB_VERSION_MAJOR == 2 && ! defined(DB_LOCK_DEADLOCK)
 #  define DB_LOCK_DEADLOCK	EAGAIN
@@ -227,6 +239,8 @@ typedef BerkeleyDB_type * 	BerkeleyDB__Btree ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Btree__Raw ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Recno ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Recno__Raw ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Queue ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Queue__Raw ;
 typedef BerkeleyDB_Cursor_type   	BerkeleyDB__Cursor_type ;
 typedef BerkeleyDB_Cursor_type * 	BerkeleyDB__Cursor ;
 typedef BerkeleyDB_Cursor_type * 	BerkeleyDB__Cursor__Raw ;
@@ -248,6 +262,9 @@ typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
 typedef int			DualType ;
+
+static void
+hash_delete(char * hash, IV key);
 
 #ifdef TRACE
 #  define Trace(x)	printf x 
@@ -279,7 +296,7 @@ typedef int			DualType ;
             SV * save_defsv ;                                   \
             /* printf("filtering %s\n", name) ;*/               \
             if (db->filtering)                                  \
-                softCrash("recursion detected in %s", name) ;       \
+                softCrash("recursion detected in %s", name) ;   \
             db->filtering = TRUE ;                              \
             save_defsv = newSVsv(DEFSV) ;                       \
             sv_setsv(DEFSV, arg) ;                              \
@@ -299,8 +316,6 @@ typedef int			DualType ;
 
 #define ZMALLOC(to, typ) ((to = (typ *)safemalloc(sizeof(typ))), \
 				Zero(to,1,typ))
-
-#define STRDUP(from) (from ? strcpy((char *)safemalloc(strlen(from)),from) : NULL)
 
 #define DBT_clear(x)	Zero(&x, 1, DBT) ;
 
@@ -343,7 +358,7 @@ typedef int			DualType ;
 
 #define setDUALerrno(var, err)					\
 		sv_setnv(var, (double)err) ;			\
-		sv_setpv(var, db_strerror(err)) ;		\
+		sv_setpv(var, ((err) ? db_strerror(err) : "")) ;\
 		SvNOK_on(var);
 
 #define OutputValue(arg, name)                                  \
@@ -417,6 +432,21 @@ static BerkeleyDB	CurrentDB ;
 static DBTKEY	empty ;
 static char	ErrBuff[1000] ;
 
+static char *  
+my_strdup(const char *s)
+{     
+    if (s == NULL)
+        return NULL ;
+
+    {
+        MEM_SIZE l = strlen(s);
+        char *s1 = (char *)safemalloc(l);
+    
+        Copy(s, s1, (MEM_SIZE)l, char);
+        return s1;
+    }
+}
+
 #if DB_VERSION_MAJOR == 2
 static char *
 db_strerror(int err)
@@ -466,8 +496,9 @@ my_db_strerror(int err)
 }
 
 static void
-close_everything()
+close_everything(void)
 {
+    dTHR;
     Trace(("close_everything\n")) ;
     /* Abort All Transactions */
     {
@@ -501,7 +532,7 @@ close_everything()
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_cursors dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_cursors \n")) ;
 	while ( he = hv_iternext(hv) ) {
 	    db = * (BerkeleyDB__Cursor*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Cursor [%d] in [%d] Active [%d]\n", db->cursor, db, db->active));
@@ -524,7 +555,7 @@ close_everything()
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_dbs dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_dbs\n" )) ;
 	while ( he = hv_iternext(hv) ) {
 	    db = * (BerkeleyDB*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Database [%d] in [%d] Active [%d]\n", db->dbp, db, db->active));
@@ -547,7 +578,7 @@ close_everything()
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_envs dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_envs\n")) ;
 	while ( he = hv_iternext(hv) ) {
 	    env = * (BerkeleyDB__Env*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Environment [%d] in [%d] Active [%d]\n", env->Env, env, env->active));
@@ -555,7 +586,7 @@ close_everything()
 #if DB_VERSION_MAJOR == 2
                 db_appexit(env->Env) ;
 #else	      
-	        env->Env->close(env->Env, 0) ;
+	        (env->Env->close)(env->Env, 0) ;
 #endif	      
 		++ closed ;
 	    }
@@ -570,7 +601,39 @@ close_everything()
 }
 
 static void
-softCrash(pTHX_ const char *pat, ...)
+destroyDB(BerkeleyDB db)
+{
+    dTHR;
+    if (! PL_dirty && db->active) {
+      	-- db->open_cursors ;
+	((db->dbp)->close)(db->dbp, 0) ;
+    }
+    if (db->hash)
+       	  SvREFCNT_dec(db->hash) ;
+    if (db->compare)
+       	  SvREFCNT_dec(db->compare) ;
+    if (db->dup_compare)
+       	  SvREFCNT_dec(db->dup_compare) ;
+    if (db->prefix)
+       	  SvREFCNT_dec(db->prefix) ;
+#ifdef DBM_FILTERING
+    if (db->filter_fetch_key)
+          SvREFCNT_dec(db->filter_fetch_key) ;
+    if (db->filter_store_key)
+          SvREFCNT_dec(db->filter_store_key) ;
+    if (db->filter_fetch_value)
+          SvREFCNT_dec(db->filter_fetch_value) ;
+    if (db->filter_store_value)
+          SvREFCNT_dec(db->filter_store_value) ;
+#endif
+    hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+    if (db->filename)
+             Safefree(db->filename) ;
+    Safefree(db) ;
+}
+
+static void
+softCrash(const char *pat, ...)
 {
     char buffer1 [500] ;
     char buffer2 [500] ;
@@ -596,8 +659,7 @@ softCrash(pTHX_ const char *pat, ...)
 
 
 static I32
-GetArrayLength(db)
-BerkeleyDB db ;
+GetArrayLength(BerkeleyDB db)
 {
     DBT		key ;
     DBT		value ;
@@ -629,9 +691,7 @@ BerkeleyDB db ;
 #define GetRecnoKey(db, value)  _GetRecnoKey(db, value)
 
 static db_recno_t
-_GetRecnoKey(db, value)
-BerkeleyDB  db ;
-I32      value ;
+_GetRecnoKey(BerkeleyDB db, I32 value)
 {
     Trace(("GetRecnoKey start value = %d\n", value)) ;
     if (db->recno_or_queue && value < 0) {
@@ -659,9 +719,7 @@ I32      value ;
 #define GetRecnoKey(db, value) _GetRecnoKey(db, value)
 		
 static db_recno_t
-_GetRecnoKey(db, value)
-BerkeleyDB  db ;
-I32      value ;
+_GetRecnoKey(BerkeleyDB db, I32 value)
 {
     if (value + RECNO_BASE < 1)
 	softCrash("key value %d < base (%d)", (value), RECNO_BASE?0:1) ;
@@ -677,8 +735,7 @@ I32      value ;
 #endif /* 0 */
 
 static SV *
-GetInternalObject(sv)
-SV * sv ;
+GetInternalObject(SV * sv)
 {
     SV * info = (SV*) NULL ;
     SV * s ;
@@ -711,9 +768,7 @@ SV * sv ;
 }
 
 static int
-btree_compare(key1, key2)
-const DBT * key1 ;
-const DBT * key2 ;
+btree_compare( const DBT * key1, const DBT * key2 )
 {
     dSP ;
     void * data1, * data2 ;
@@ -760,17 +815,14 @@ const DBT * key2 ;
 }
 
 static int
-dup_compare(key1, key2)
-const DBT * key1 ;
-const DBT * key2 ;
+dup_compare( const DBT * key1, const DBT * key2 )
 {
     dSP ;
     void * data1, * data2 ;
     int retval ;
     int count ;
     
-    Trace(("In dup_compare [%*s] [%*s]\n", 
-    		key1->size, (char*)key1->data, key2->size, (char*)key2->data)) ;
+    Trace(("In dup_compare \n")) ;
     if (!CurrentDB)
 	softCrash("Internal Error - No CurrentDB in dup_compare") ;
     if (CurrentDB->dup_compare == NULL)
@@ -816,9 +868,7 @@ const DBT * key2 ;
 }
 
 static size_t
-btree_prefix(key1, key2)
-const DBT * key1 ;
-const DBT * key2 ;
+btree_prefix( const DBT * key1, const DBT * key2 )
 {
     dSP ;
     void * data1, * data2 ;
@@ -865,9 +915,7 @@ const DBT * key2 ;
 }
 
 static u_int32_t
-hash_cb(data, size)
-const void * data ;
-size_t size ;
+hash_cb(const void * data, size_t size)
 {
     dSP ;
     int retval ;
@@ -903,9 +951,7 @@ size_t size ;
 }
 
 static void
-db_errcall_cb(db_errpfx, buffer)
-const char *db_errpfx; 
-char *buffer ;
+db_errcall_cb(const char * db_errpfx, char * buffer)
 {
 #if 0
 
@@ -924,7 +970,7 @@ char *buffer ;
 
 #endif
 
-    SV * sv = perl_get_sv(ERR_BUFF, GV_ADD|GV_ADDMULTI) ;
+    SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
     if (sv) {
         if (db_errpfx)
 	    sv_setpvf(sv, "%s: %s", db_errpfx, buffer) ;
@@ -934,9 +980,7 @@ char *buffer ;
 }
 
 static SV *
-readHash(hash, key)
-HV * hash ;
-char * key ;
+readHash(HV * hash, char * key)
 {
     SV **       svp;
     svp = hv_fetch(hash, key, strlen(key), FALSE);
@@ -946,19 +990,14 @@ char * key ;
 }
 
 static void
-hash_delete(hash, key)
-char * hash;
-IV key;
+hash_delete(char * hash, IV key)
 {
     HV * hv = perl_get_hv(hash, TRUE);
     (void) hv_delete(hv, (char*)&key, sizeof(key), G_DISCARD);
 }
 
 static void
-hash_store_iv(hash, key, value)
-char * hash;
-IV key;
-IV value ;
+hash_store_iv(char * hash, IV key, IV value)
 {
     HV * hv = perl_get_hv(hash, TRUE);
     SV ** ret = hv_store(hv, (char*)&key, sizeof(key), newSViv(value), 0);
@@ -966,26 +1005,24 @@ IV value ;
 }
 
 static void
-hv_store_iv(hash, key, value)
-HV * hash;
-char * key;
-IV value ;
+hv_store_iv(HV * hash, char * key, IV value)
 {
     hv_store(hash, key, strlen(key), newSViv(value), 0);
 }
 
 static BerkeleyDB
-my_db_open(db, ref, ref_dbenv, dbenv, file, subname, type, flags, mode, info)
-BerkeleyDB	db ;
-SV * 		ref;
-SV *		ref_dbenv ;
-BerkeleyDB__Env	dbenv ;
-const char *	file;
-const char *	subname;
-DBTYPE		type;
-int		flags;
-int		mode;
-DB_INFO * 	info ;
+my_db_open(
+		BerkeleyDB	db ,
+		SV * 		ref,
+		SV *		ref_dbenv ,
+		BerkeleyDB__Env	dbenv ,
+		const char *	file,
+		const char *	subname,
+		DBTYPE		type,
+		int		flags,
+		int		mode,
+		DB_INFO * 	info
+	)
 {
     DB_ENV *	env    = NULL ;
     BerkeleyDB 	RETVAL = NULL ;
@@ -1138,10 +1175,14 @@ DB_INFO * 	info ;
 	Trace(("db_opened\n"));
 	RETVAL = db ;
 	RETVAL->dbp  = dbp ;
+#if DB_VERSION_MAJOR == 2
     	RETVAL->type = dbp->type ;
-    	RETVAL->recno_or_queue = (dbp->type == DB_RECNO || 
-	                          dbp->type == DB_QUEUE) ;
-	RETVAL->filename = STRDUP(file) ;
+#else /* DB_VERSION_MAJOR > 2 */
+    	RETVAL->type = dbp->get_type(dbp) ;
+#endif /* DB_VERSION_MAJOR > 2 */
+    	RETVAL->recno_or_queue = (RETVAL->type == DB_RECNO || 
+	                          RETVAL->type == DB_QUEUE) ;
+	RETVAL->filename = my_strdup(file) ;
 	RETVAL->Status = Status ;
 	RETVAL->active = TRUE ;
 	hash_store_iv("BerkeleyDB::Term::Db", (IV)RETVAL, 1) ;
@@ -1153,6 +1194,10 @@ DB_INFO * 	info ;
 	}
     }
     else { 
+#if DB_VERSION_MAJOR > 2
+	(dbp->close)(dbp, 0) ;
+#endif
+	destroyDB(db) ;
         Trace(("db open returned %s\n", my_db_strerror(Status))) ;
     }
 
@@ -1160,9 +1205,7 @@ DB_INFO * 	info ;
 }
 
 static double
-constant(name, arg)
-char *name;
-int arg;
+constant(char * name, int arg)
 {
     errno = 0;
     switch (*name) {
@@ -1622,11 +1665,7 @@ int arg;
 	    goto not_there;
 #endif
 	if (strEQ(name, "DB_QUEUE"))
-#if DB_VERSION_MAJOR > 2
 	    return DB_QUEUE;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_RDONLY"))
 #ifdef DB_RDONLY
 	    return DB_RDONLY;
@@ -1863,9 +1902,9 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_WRIRECURSOR"))
-#ifdef DB_WRIRECURSOR
-	    return DB_WRIRECURSOR;
+	if (strEQ(name, "DB_WRITECURSOR"))
+#ifdef DB_WRITECURSOR
+	    return DB_WRITECURSOR;
 #else
 	    goto not_there;
 #endif
@@ -2009,6 +2048,40 @@ db_value_set(value, which)
 	int which
         NOT_IMPLEMENTED_YET
 
+
+DualType
+_db_remove(ref)
+	SV * 		ref
+	CODE:
+	{    
+#if DB_VERSION_MAJOR == 2 
+	    softCrash("BerkeleyDB::db_remove needs Berkeley DB 3.x or better") ;
+#else
+	    HV *		hash ;
+    	    DB *		dbp ;
+	    SV * 		sv ;
+	    const char *	db ;
+	    const char *	subdb 	= NULL ;
+	    BerkeleyDB__Env	env 	= NULL ;
+    	    DB_ENV *		dbenv   = NULL ;
+	    u_int32_t		flags	= 0 ;
+
+	    hash = (HV*) SvRV(ref) ;
+	    SetValue_pv(db,    "Filename", char *) ;
+	    SetValue_pv(subdb, "Subname", char *) ;
+	    SetValue_iv(flags, "Flags") ;
+	    SetValue_ov(env, "Env", BerkeleyDB__Env) ;
+    	    if (env) 
+		dbenv = env->Env ;
+            RETVAL = db_create(&dbp, dbenv, 0) ;
+	    if (RETVAL == 0) {
+	        RETVAL = dbp->remove(dbp, db, subdb, flags) ;
+	    }
+#endif	    
+	}    
+	OUTPUT:
+	    RETVAL
+
 MODULE = BerkeleyDB::Env		PACKAGE = BerkeleyDB::Env PREFIX = env_
 
 
@@ -2112,12 +2185,17 @@ _db_appinit(self, ref)
 	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
 	    env->set_errcall(env, db_errcall_cb) ;
 	    RETVAL->active = TRUE ;
+#ifdef IS_DB_3_0
 	    status = env->open(env, home, config, flags, mode) ;
+#else /* > 3.0 */
+	    status = env->open(env, home, flags, mode) ;
+#endif 
 	    Trace(("ENV->open returned %s\n", my_db_strerror(status))) ;
 	  }
 	  if (status == 0) 
 	      hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
 	  else {
+	      (env->close)(env, 0) ;
               if (RETVAL->ErrHandle)
                   SvREFCNT_dec(RETVAL->ErrHandle) ;
               if (RETVAL->ErrPrefix)
@@ -2139,6 +2217,7 @@ _txn_begin(env, pid=NULL, flags=0)
 	{
 	    DB_TXN *txn ;
 	    DB_TXN *p_id = NULL ;
+	    Trace(("txn_begin pid %d, flags %d\n", pid, flags)) ;
 #if DB_VERSION_MAJOR == 2 
 	    if (env->Env->tx_info == NULL)
 		softCrash("Transaction Manager not enabled") ;
@@ -2169,8 +2248,12 @@ _txn_begin(env, pid=NULL, flags=0)
 
 #if DB_VERSION_MAJOR == 2 
 #  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env->tx_info, k, m)
-#else
-#  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m)
+#else /* DB 3.0 or better */
+#  ifdef AT_LEAST_DB_3_1
+#    define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m, 0)
+#  else
+#    define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m)
+#  endif
 #endif
 DualType
 env_txn_checkpoint(env, kbyte, min)
@@ -2286,7 +2369,7 @@ db_appexit(env)
 #if DB_VERSION_MAJOR == 2
 	    RETVAL = db_appexit(env->Env) ;
 #else
-	    RETVAL = env->Env->close(env->Env, 0) ;
+	    RETVAL = (env->Env->close)(env->Env, 0) ;
 #endif
 	    env->active = FALSE ;
 	    hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
@@ -2305,7 +2388,7 @@ _DESTROY(env)
 #if DB_VERSION_MAJOR == 2
               db_appexit(env->Env) ;
 #else	      
-	      env->Env->close(env->Env, 0) ;
+	      (env->Env->close)(env->Env, 0) ;
 #endif	      
           if (env->ErrHandle)
               SvREFCNT_dec(env->ErrHandle) ;
@@ -2332,6 +2415,50 @@ _TxnMgr(env)
 	OUTPUT:
 	    RETVAL
 
+int
+set_data_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_data_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_data_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_lg_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_lg_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_lg_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_tmp_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_tmp_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_tmp_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
 
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 
@@ -2419,7 +2546,12 @@ db_stat(db, flags=0)
 		hv_store_iv(RETVAL, "hash_magic", stat->hash_magic) ;
 		hv_store_iv(RETVAL, "hash_version", stat->hash_version);
 		hv_store_iv(RETVAL, "hash_pagesize", stat->hash_pagesize);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "hash_nkeys", stat->hash_nkeys);
+		hv_store_iv(RETVAL, "hash_ndata", stat->hash_ndata);
+#else
 		hv_store_iv(RETVAL, "hash_nrecs", stat->hash_nrecs);
+#endif
 		hv_store_iv(RETVAL, "hash_nelem", stat->hash_nelem);
 		hv_store_iv(RETVAL, "hash_ffactor", stat->hash_ffactor);
 		hv_store_iv(RETVAL, "hash_buckets", stat->hash_buckets);
@@ -2572,7 +2704,12 @@ db_stat(db, flags=0)
 		hv_store_iv(RETVAL, "bt_re_pad", stat->bt_re_pad);
 		hv_store_iv(RETVAL, "bt_pagesize", stat->bt_pagesize);
 		hv_store_iv(RETVAL, "bt_levels", stat->bt_levels);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "bt_nkeys", stat->bt_nkeys);
+		hv_store_iv(RETVAL, "bt_ndata", stat->bt_ndata);
+#else
 		hv_store_iv(RETVAL, "bt_nrecs", stat->bt_nrecs);
+#endif
 		hv_store_iv(RETVAL, "bt_int_pg", stat->bt_int_pg);
 		hv_store_iv(RETVAL, "bt_leaf_pg", stat->bt_leaf_pg);
 		hv_store_iv(RETVAL, "bt_dup_pg", stat->bt_dup_pg);
@@ -2659,6 +2796,98 @@ _db_open_recno(self, ref)
 	    RETVAL
 
 
+MODULE = BerkeleyDB::Queue	PACKAGE = BerkeleyDB::Queue	PREFIX = recno_
+
+BerkeleyDB::Queue::Raw
+_db_open_queue(self, ref)
+	char *		self
+	SV * 		ref
+	CODE:
+	{
+	    HV *		hash ;
+	    SV * 		sv ;
+	    DB_INFO 		info ;
+	    BerkeleyDB__Env	dbenv = NULL;
+	    SV *		ref_dbenv = NULL;
+	    const char *	file = NULL ;
+	    const char *	subname = NULL ;
+	    int			flags = 0 ;
+	    int			mode = 0 ;
+    	    BerkeleyDB 		db ;
+	
+	    hash = (HV*) SvRV(ref) ;
+	    SetValue_pv(file, "Fname", char*) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
+	    ref_dbenv = sv ;
+	    SetValue_iv(flags, "Flags") ;
+	    SetValue_iv(mode, "Mode") ;
+
+       	    Zero(&info, 1, DB_INFO) ;
+	    SetValue_iv(info.db_cachesize, "Cachesize") ;
+	    SetValue_iv(info.db_lorder, "Lorder") ;
+	    SetValue_iv(info.db_pagesize, "Pagesize") ;
+	    SetValue_iv(info.bt_minkey, "Minkey") ;
+
+	    SetValue_iv(info.flags, "Property") ;
+	    if ((sv = readHash(hash, "Len")) && sv != &PL_sv_undef) {
+		info.re_len = SvIV(sv) ; ;
+		flagSet_DB2(info.flags, DB_PAD) ;
+	    }
+	    if ((sv = readHash(hash, "Pad")) && sv != &PL_sv_undef) {
+		info.re_pad = (u_int32_t)SvPOK(sv) ? *SvPV(sv,PL_na) : SvIV(sv) ; ;
+		flagSet_DB2(info.flags, DB_PAD) ;
+	    }
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+#ifdef ALLOW_RECNO_OFFSET
+	    SetValue_iv(db->array_base, "ArrayBase") ;
+	    db->array_base = (db->array_base == 0 ? 1 : 0) ;
+#endif /* ALLOW_RECNO_OFFSET */
+	    
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_QUEUE, flags, mode, &info) ;
+	}
+	OUTPUT:
+	    RETVAL
+
+HV *
+db_stat(db, flags=0)
+	BerkeleyDB::Common	db
+	int			flags
+	HV *			RETVAL = NULL ;
+	INIT:
+	  ckActive_Database(db->active) ;
+	CODE:
+	{
+#if DB_VERSION_MAJOR == 2 
+	    softCrash("$db->db_stat for a Queue needs Berkeley DB 3.x or better") ;
+#else
+	    DB_QUEUE_STAT *	stat ;
+	    db->Status = ((db->dbp)->stat)(db->dbp, &stat, safemalloc, flags) ;
+	    if (db->Status == 0) {
+	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
+		hv_store_iv(RETVAL, "qs_magic", stat->qs_magic) ;
+		hv_store_iv(RETVAL, "qs_version", stat->qs_version);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "qs_nkeys", stat->qs_nkeys);
+		hv_store_iv(RETVAL, "qs_ndata", stat->qs_ndata);
+#else
+		hv_store_iv(RETVAL, "qs_nrecs", stat->qs_nrecs);
+#endif
+		hv_store_iv(RETVAL, "qs_pages", stat->qs_pages);
+		hv_store_iv(RETVAL, "qs_pagesize", stat->qs_pagesize);
+		hv_store_iv(RETVAL, "qs_pgfree", stat->qs_pgfree);
+		hv_store_iv(RETVAL, "qs_re_len", stat->qs_re_len);
+		hv_store_iv(RETVAL, "qs_re_pad", stat->qs_re_pad);
+		hv_store_iv(RETVAL, "qs_start", stat->qs_start);
+		hv_store_iv(RETVAL, "qs_first_recno", stat->qs_first_recno);
+		hv_store_iv(RETVAL, "qs_cur_recno", stat->qs_cur_recno);
+		safefree(stat) ;
+	    }
+#endif	    
+	}
+	OUTPUT:
+	    RETVAL
+
+
 MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common	PREFIX = dab_
 
 
@@ -2694,31 +2923,7 @@ dab__DESTROY(db)
 	CODE:
 	  CurrentDB = db ;
 	  Trace(("In BerkeleyDB::Common::_DESTROY db %d dirty=%d\n", db, PL_dirty)) ;
-      	  if (! PL_dirty && db->active) {
-	      	-- db->open_cursors ;
-		((db->dbp)->close)(db->dbp, 0) ;
-	  }
-      	  if (db->hash)
-        	  SvREFCNT_dec(db->hash) ;
-      	  if (db->compare)
-        	  SvREFCNT_dec(db->compare) ;
-      	  if (db->dup_compare)
-        	  SvREFCNT_dec(db->dup_compare) ;
-      	  if (db->prefix)
-        	  SvREFCNT_dec(db->prefix) ;
-#ifdef DBM_FILTERING
-          if (db->filter_fetch_key)
-              SvREFCNT_dec(db->filter_fetch_key) ;
-          if (db->filter_store_key)
-              SvREFCNT_dec(db->filter_store_key) ;
-          if (db->filter_fetch_value)
-              SvREFCNT_dec(db->filter_fetch_value) ;
-          if (db->filter_store_value)
-              SvREFCNT_dec(db->filter_store_value) ;
-#endif
-	  hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
-          Safefree(db->filename) ;
-          Safefree(db) ;
+	  destroyDB(db) ;
 	  Trace(("End of BerkeleyDB::Common::DESTROY \n")) ;
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -2745,7 +2950,7 @@ _db_cursor(db, flags=0)
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
               RETVAL->recno_or_queue    = db->recno_or_queue ;
-              RETVAL->filename    = STRDUP(db->filename) ;
+              RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;
               RETVAL->prefix  = db->prefix ;
@@ -2809,7 +3014,7 @@ _db_join(db, cursors, flags=0)
 	      RETVAL->cursor  = join_cursor ;
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
-              RETVAL->filename    = STRDUP(db->filename) ;
+              RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;
               RETVAL->prefix  = db->prefix ;
@@ -2889,20 +3094,20 @@ status(db)
 
 #ifdef DBM_FILTERING
 
-#define setFilter(type)					\
+#define setFilter(ftype)				\
 	{						\
-	    if (db->type)				\
-	        RETVAL = sv_mortalcopy(db->type) ;	\
+	    if (db->ftype)				\
+	        RETVAL = sv_mortalcopy(db->ftype) ;	\
 	    ST(0) = RETVAL ;				\
-	    if (db->type && (code == &PL_sv_undef)) {	\
-                SvREFCNT_dec(db->type) ;		\
-	        db->type = NULL ;			\
+	    if (db->ftype && (code == &PL_sv_undef)) {	\
+                SvREFCNT_dec(db->ftype) ;		\
+	        db->ftype = NULL ;			\
 	    }						\
 	    else if (code) {				\
-	        if (db->type)				\
-	            sv_setsv(db->type, code) ;		\
+	        if (db->ftype)				\
+	            sv_setsv(db->ftype, code) ;		\
 	        else					\
-	            db->type = newSVsv(code) ;		\
+	            db->ftype = newSVsv(code) ;		\
 	    }	    					\
 	}
 
@@ -3093,6 +3298,7 @@ _DESTROY(db)
     	      ((db->cursor)->c_close)(db->cursor) ;
 	  if (db->parent_db->open_cursors)
 	      -- db->parent_db->open_cursors ;
+          Safefree(db->filename) ;
           Safefree(db) ;
 	  Trace(("End of BerkeleyDB::Cursor::_DESTROY\n")) ;
 
@@ -3217,7 +3423,11 @@ txn_close(txnp)
 #if DB_VERSION_MAJOR == 2 
 #  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env->tx_info, k, m)
 #else
-#  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m)
+#  ifdef AT_LEAST_DB_3_1
+#    define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m, 0)
+#  else
+#    define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m)
+#  endif
 #endif
 DualType
 xx_txn_checkpoint(txnp, kbyte, min)
@@ -3415,6 +3625,7 @@ MODULE = BerkeleyDB        PACKAGE = BerkeleyDB
 
 BOOT:
   {
+    SV * sv_err = perl_get_sv(ERR_BUFF, GV_ADD|GV_ADDMULTI) ;
     SV * version_sv = perl_get_sv("BerkeleyDB::db_version", GV_ADD|GV_ADDMULTI) ;
     SV * ver_sv = perl_get_sv("BerkeleyDB::db_ver", GV_ADD|GV_ADDMULTI) ;
     int Major, Minor, Patch ;
@@ -3433,6 +3644,7 @@ BOOT:
     }
     sv_setpvf(version_sv, "%d.%d", Major, Minor) ;
     sv_setpvf(ver_sv, "%d.%03d%03d", Major, Minor, Patch) ;
+    sv_setpv(sv_err, "");
 
     DBT_clear(empty) ;
     empty.data  = &zero ;

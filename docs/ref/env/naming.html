@@ -1,5 +1,6 @@
-<!--@(#)naming.so	10.27 (Sleepycat) 11/10/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: naming.so,v 10.35 2000/05/20 16:33:19 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,210 +9,136 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
 <td width="1%"><a href="../../ref/env/create.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/security.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>File naming</h1>
-<p>
-The most important task of the environment is to structure file naming
+<p>The most important task of the environment is to structure file naming
 within Berkeley DB.
-<p>
-Each of the locking, logging, memory pool and transaction subsystems of
+<p>Each of the locking, logging, memory pool and transaction subsystems of
 Berkeley DB require shared memory regions, backed by the filesystem.  Further,
 cooperating applications (or multiple invocations of the same application)
 must agree on the location of the shared memory regions and other files
 used by the Berkeley DB subsystems, the log files used by the logging subsystem,
-and, of course, the data files.
-<p>
-Although it is possible to specify full pathnames to all Berkeley DB
-functions, this is cumbersome and requires that applications be
-recompiled when database files are moved.  The <a href="../../api_c/env_open.html">DBENV-&gt;open</a> function makes
-it possible to place database files in a single directory, or in multiple
-directories, grouped by their function within the database.
-<p>
-Applications are normally expected to specify a single directory home for
+and, of course, the data files.  Although it is possible to specify full
+pathnames to all Berkeley DB functions, this is cumbersome and requires
+that applications be recompiled when database files are moved.
+<p>Applications are normally expected to specify a single directory home for
 their database.  This can be done easily in the call to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>
 by specifying a value for the <b>db_home</b> argument.  There are more
 complex configurations where it may be desirable to override
 <b>db_home</b> or provide supplementary path information.
-<p>
-The following describes the possible ways in which file naming information
+<h3>Specifying file naming to Berkeley DB</h3>
+<p>The following describes the possible ways in which file naming information
 may be specified to the Berkeley DB library.  The specific circumstances and
 order in which these ways are applied are described in a subsequent
 paragraph.
-<dl compact>
+<p><dl compact>
 <p><dt><b><a name="db_home">db_home</a></b><dd>If the <b>db_home</b> argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a> is non-NULL, its
 value may be used as the database home, and files named relative to its
 path.
-<p><dt><a name="DB_HOME">DB_HOME</a><dd>If the DB_HOME environment variable is set when <a href="../../api_c/env_open.html">DBENV-&gt;open</a>
-is called, its value may be used as the database home, and files named
+<p><dt><a name="DB_HOME">DB_HOME</a><dd>If the DB_HOME environment variable is set when <a href="../../api_c/env_open.html">DBENV-&gt;open</a> is
+called, its value may be used as the database home, and files named
 relative to its path.
-<p>
-The DB_HOME environment variable is intended to permit users and system
-administrators to override application and installation defaults, e.g.,
-<blockquote><pre>env DB_HOME=/database/my_home application</pre></blockquote>
-<p>
-Application writers are encouraged to support the <b>-h</b> option
+<p>The DB_HOME environment variable is intended to permit users and system
+administrators to override application and installation defaults, e.g.:
+<p><blockquote><pre>env DB_HOME=/database/my_home application</pre></blockquote>
+<p>Application writers are encouraged to support the <b>-h</b> option
 found in the supporting Berkeley DB utilities to let users specify a database
 home.
-<p><dt><b><a name="db_config">db_config</a></b><dd>The <b>db_config</b> argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a> may be used to
-specify an array of character strings of the format <b>NAME VALUE</b>,
-that specify file name information for the Berkeley DB process' environment.
-<p>
-The characters delimiting the two parts of the entry may be one or more
-whitespace characters, and trailing whitespace characters are discarded.
-Each entry must specify both the NAME and the VALUE of the pair.
-All entries with unrecognized NAME values will be ignored.
-The <b>db_config</b> array must be NULL terminated.
-<p>
-The <b>db_config</b> argument is intended to permit applications to
-customize file location for a database.  For example, an application
-writer can place data files and log files in different directories, or
-instantiate a new log directory each time the application runs.
-<p><dt><a name="DB_CONFIG">DB_CONFIG</a><dd>The same information specified to the <b>db_config</b> argument to
-<a href="../../api_c/env_open.html">DBENV-&gt;open</a> may be specified using a configuration file.  If a
-database home directory has been specified (either by the application
-specifying a non-NULL <b>db_home</b> argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>,
-or by the application setting the DB_USE_ENVIRON or DB_USE_ENVIRON_ROOT
-flags and the DB_HOME environment variable being set), any file named
-<b>DB_CONFIG</b> in the database home directory will be read for lines
-of the format <b>NAME VALUE</b>.
-<p>
-The characters delimiting the two parts of the entry may be one or more
+<p><dt>DB_ENV methods<dd>There are three DB_ENV methods that affect file naming.  The
+<a href="../../api_c/env_set_data_dir.html">DBENV-&gt;set_data_dir</a> function specifies a directory to search for database
+files.  The <a href="../../api_c/env_set_lg_dir.html">DBENV-&gt;set_lg_dir</a> function specifies a directory in which to
+create logging files.  The <a href="../../api_c/env_set_tmp_dir.html">DBENV-&gt;set_tmp_dir</a> function specifies a
+directory in which to create backing temporary files.  These methods are
+intended to permit applications to customize file location for a database.
+For example, an application writer can place data files and log files in
+different directories, or instantiate a new log directory each time the
+application runs.
+<p><dt><a name="DB_CONFIG">DB_CONFIG</a><dd>The same information specified to the above DB_ENV methods may also
+be specified using a configuration file.  If an environment home directory
+has been specified (either by the application specifying a non-NULL
+<b>db_home</b> argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>, or by the application
+setting the DB_USE_ENVIRON or DB_USE_ENVIRON_ROOT flags and the DB_HOME
+environment variable being set), any file named <b>DB_CONFIG</b> in the
+database home directory will be read for lines of the format <b>NAME
+VALUE</b>.
+<p>The characters delimiting the two parts of the entry may be one or more
 whitespace characters, and trailing whitespace characters are discarded.
 All empty lines or lines whose first character is a whitespace or hash
 (<b>#</b>) character will be ignored.  Each line must specify both
-the NAME and the VALUE of the pair.  All lines with unrecognized NAME
-values will be ignored.
-<p>
-The DB_CONFIG configuration file is intended to permit systems to
-customize file location for a database independent of applications using
-that database.  For example, a database administrator can move the
+the NAME and the VALUE of the pair.  The specific NAME VALUE pairs are
+documented in the manual <a href="../../api_c/env_set_data_dir.html">DBENV-&gt;set_data_dir</a>,
+<a href="../../api_c/env_set_lg_dir.html">DBENV-&gt;set_lg_dir</a> and <a href="../../api_c/env_set_tmp_dir.html">DBENV-&gt;set_tmp_dir</a> pages.
+<p>The DB_CONFIG configuration file is intended to permit systems to
+customize file location for an environment independent of applications
+using that database.  For example, a database administrator can move the
 database log and data files to a different location without application
 recompilation.
 </dl>
-<p>
-The following NAMEs in the <b>db_config</b> argument and the DB_CONFIG
-file are currently supported by Berkeley DB:
-<dl compact>
-<p><dt><a name="DB_DATA_DIR">DB_DATA_DIR</a><dd>The path of a directory to be used as the location of the access method
-data files.  Paths specified to the <a href="../../api_c/db_open.html">DB-&gt;open</a> function will be
-relative to this path.
-<p>
-The DB_DATA_DIR paths are additive, and specifying more than one will
-result in each specified directory being searched for database data files.
-If multiple paths are specified, created data files will always be created
-in the first directory specified.
-<p><dt><a name="DB_LOG_DIR">DB_LOG_DIR</a><dd>The path of a directory to be used as the location of logging files,
-e.g., files created by the Log Manager subsystem will be relative to this
-directory.
-<p>
-For the greatest degree of recoverability from system or application
-failure, DB_DATA_DIR and DB_LOG_DIR should specify directories that
-are located on separate physical devices.
-<p><dt><a name="DB_TMP_DIR">DB_TMP_DIR</a><dd>The path of a directory to be used as the location of temporary files.
-The files created to back in-memory access method databases will be
-created relative to this path.  These temporary files can be quite large,
-depending on the size of the database.
-<p>
-If DB_TMP_DIR is not specified, the following environment variables are
-checked in order: <b>TMPDIR</b>, <b>TEMP</b>, <b>TMP</b> and
-<b>TempFolder</b>.  If one of them is set, temporary files are created
-relative to the directory it specifies.
-<p>
-If DB_TMP_DIR is not specified and none of the above environment variables
-are set, the first possible one of the following directories is used:
-<b>/var/tmp</b>, <b>/usr/tmp</b>, <b>/temp</b>, <b>/tmp</b>,
-<b>C:/temp</b> and <b>C:/tmp</b>.
-</dl>
-<p>
-The following describes the specific circumstances and order in which the
+<h3>File name resolution in Berkeley DB</h3>
+<p>The following describes the specific circumstances and order in which the
 different ways of specifying file naming information are applied.  Berkeley DB
 file name processing proceeds sequentially through the following steps:
-<dl compact>
+<p><dl compact>
 <p><dt>absolute pathnames<dd>If the file name specified to a Berkeley DB function is an absolute pathname,
 that file name is used without modification by Berkeley DB.
-<p>
-On UNIX systems, an absolute pathname is defined as any pathname that
+<p>On UNIX systems, an absolute pathname is defined as any pathname that
 begins with a leading slash (<b>/</b>).
-<p>
-On Windows systems, an absolute pathname is any pathname that begins with
+<p>On Windows systems, an absolute pathname is any pathname that begins with
 a leading slash or leading backslash (<b>\</b>), or any
 pathname beginning with a single alphabetic character, a colon and a
 leading slash or backslash, e.g., <b>C:/tmp</b>.
-<p><dt>DB_CONFIG<dd>If a relevant configuration string (e.g., DB_DATA_DIR), is specified in
-the DB_CONFIG configuration file, the VALUE from the <b>NAME VALUE</b>
-pair is prepended to the current file name.  If the resulting file name
-begins with a leading slash, the file name is used without further
-modification by Berkeley DB.
-<p><dt><b>db_config</b><dd>If a relevant configuration string (e.g., DB_DATA_DIR), is specified in
-the <b>db_config</b> argument and is not specified in the DB_CONFIG file,
-the VALUE from the <b>NAME VALUE</b> pair is prepended to the current
-file name.  If the resulting file name begins with a leading slash, the
-file name is used without further modification by Berkeley DB.
+<p><dt>DB_ENV methods, DB_CONFIG<dd>If a relevant configuration string (e.g., set_data_dir), is specified
+either by calling a DB_ENV method or as a line in the DB_CONFIG
+configuration file, the VALUE from the <b>NAME VALUE</b> pair is
+prepended to the current file name.  If the resulting file name is an
+absolute pathname, the file name is used without further modification by
+Berkeley DB.
 <p><dt><b>db_home</b><dd>If the application specified a non-NULL <b>db_home</b> argument to
 <a href="../../api_c/env_open.html">DBENV-&gt;open</a> its value is prepended to the current file name.  If
-the resulting file name begins with a leading slash, the file name is used
+the resulting file name is an absolute pathname, the file name is used
 without further modification by Berkeley DB.
 <p><dt>DB_HOME<dd>If the <b>db_home</b> argument is null, the DB_HOME environment variable
 was set and the application has set the appropriate DB_USE_ENVIRON or
 DB_USE_ENVIRON_ROOT environment variable, its value is prepended to the
-current file name.  If the resulting file name begins with a leading
-slash, the file name is used without further modification by Berkeley DB.
+current file name.  If the resulting file name is an absolute pathname,
+the file name is used without further modification by Berkeley DB.
 <p><dt>(nothing)<dd>Finally, all file names are interpreted relative to the current working
 directory of the process.
 </dl>
-<p>
-The common model for a Berkeley DB environment is one where only the DB_HOME
+<p>The common model for a Berkeley DB environment is one where only the DB_HOME
 environment variable, or the <b>db_home</b> argument, is specified.  In
 this case, all data file names are relative to that directory, and all
 files created by the Berkeley DB subsystems will be created in that directory.
-<p>
-The more complex model for a transaction environment might be one where
+<p>The more complex model for a transaction environment might be one where
 a database home is specified, using either the DB_HOME environment
 variable or the <b>db_home</b> argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a>, and then
-DB_DATA_DIR and DB_LOG_DIR are set to the relative path names of
-directories underneath the home directory using the <b>db_config</b>
-argument to <a href="../../api_c/env_open.html">DBENV-&gt;open</a> or the DB_CONFIG file.
+the data directory and logging directory are set to the relative path
+names of directories underneath the environment home.
 <h3>Examples</h3>
 Store all files in the directory <b>/a/database</b>:
-<blockquote><pre>
-DBENV-&gt;open(DBENV, "/a/database", NULL, ...);
-</pre></blockquote>
+<p><blockquote><pre>DBENV-&gt;open(DBENV, "/a/database", ...);</pre></blockquote>
 Create temporary backing files in <b>/b/temporary</b>, and all other files
 in <b>/a/database</b>:
-<blockquote><pre>
-char *config = {
-    "DB_TMP_DIR /b/temporary",
-    NULL
-};
-DBENV-&gt;open(DBENV, "/a/database", config, ...);
-</pre></blockquote>
+<p><blockquote><pre>DBENV-&gt;set_tmp_dir(DBENV, "/b/temporary");
+DBENV-&gt;open(DBENV, "/a/database", ...);</pre></blockquote>
 Store data files in <b>/a/database/datadir</b>, log files in
 <b>/a/database/logdir</b>, and all other files in the directory
 <b>/a/database</b>:
-<blockquote><pre>
-char *config = {
-    "DB_DATA_DIR datadir",
-    "DB_LOG_DIR logdir",
-    NULL
-};
-DBENV-&gt;open(DBENV, "/a/database", config, ...);
-</pre></blockquote>
-Store data files in <b>/a/database/data1</b> and <b>/b/data2</b>,
-and all other files in the directory <b>/a/database</b>.
-Any data files that are created will be created in <b>/b/data2</b>,
-because it is the first DB_DATA_DIR directory specified:
-<blockquote><pre>
-char *config = {
-    "DB_DATA_DIR /b/data2",
-    "DB_DATA_DIR data1",
-    NULL
-};
-DBENV-&gt;open(DBENV, "/a/database", config, ...);
-</pre></blockquote>
+<p><blockquote><pre>DBENV-&gt;set_lg_dir("logdir");
+DBENV-&gt;set_data_dir("datadir");
+DBENV-&gt;open(DBENV, "/a/database", ...);</pre></blockquote>
+<p>Store data files in <b>/a/database/data1</b> and <b>/b/data2</b>, and
+all other files in the directory <b>/a/database</b>.  Any data files
+that are created will be created in <b>/b/data2</b>, because it is the
+first DB_DATA_DIR directory specified:
+<p><blockquote><pre>DBENV-&gt;set_data_dir(DBENV, "/b/data2");
+DBENV-&gt;set_data_dir(DBENV, "data1");
+DBENV-&gt;open(DBENV, "/a/database", ...);</pre></blockquote>
 <table><tr><td><br></td><td width="1%"><a href="../../ref/env/create.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/env/security.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>

@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test064.tcl	11.1 (Sleepycat) 9/8/99
+#	$Id: test064.tcl,v 11.7 2000/05/22 12:51:40 bostic Exp $
 #
 # DB Test 64: Test of DB->get_type
 #	Create a database of type specified by method.
 #	Make sure DB->get_type returns the right thing with both a
-# 		normal and DB_UNKNOWN open.
+#		normal and DB_UNKNOWN open.
 proc test064 { method args } {
 	source ./include.tcl
 
@@ -16,14 +16,22 @@ proc test064 { method args } {
 	set omethod [convert_method $method]
 	set tnum 64
 
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 	cleanup $testdir
 
 	puts "Test0$tnum: $method ($args) DB->get_type test."
 
 	# Create a test database.
 	puts "\tTest0$tnum.a: Creating test database of type $method."
-	set db [eval {berkdb open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open -create -truncate -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_create [is_valid_db $db] TRUE
 
@@ -31,7 +39,7 @@ proc test064 { method args } {
 
 	puts "\tTest0$tnum.b: get_type after method specifier."
 
-	set db [eval {berkdb open} $omethod $args {$testfile}]
+	set db [eval {berkdb_open} $omethod $args {$testfile}]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set type [$db get_type]
@@ -41,7 +49,7 @@ proc test064 { method args } {
 
 	puts "\tTest0$tnum.c: get_type after DB_UNKNOWN."
 
-	set db [eval {berkdb open $testfile}]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set type [$db get_type]

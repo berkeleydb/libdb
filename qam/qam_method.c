@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)qam_method.c	11.1 (Sleepycat) 8/19/99";
+static const char revid[] = "$Id: qam_method.c,v 11.4 2000/03/28 21:50:18 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -33,7 +33,7 @@ __qam_db_create(dbp)
 	int ret;
 
 	/* Allocate and initialize the private queue structure. */
-	if ((ret = __os_calloc(1, sizeof(QUEUE), &t)) != 0)
+	if ((ret = __os_calloc(dbp->dbenv, 1, sizeof(QUEUE), &t)) != 0)
 		return (ret);
 	dbp->q_internal = t;
 

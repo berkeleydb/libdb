@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999
+ * Copyright (c) 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)xa_db.c	11.4 (Sleepycat) 9/15/99";
+static const char revid[] = "$Id: xa_db.c,v 11.8 2000/03/28 21:50:21 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -18,6 +18,7 @@ static const char sccsid[] = "@(#)xa_db.c	11.4 (Sleepycat) 9/15/99";
 #include "db_int.h"
 #include "xa.h"
 #include "xa_ext.h"
+#include "txn.h"
 
 static int __xa_close __P((DB *, u_int32_t));
 static int __xa_cursor __P((DB *, DB_TXN *, DBC **, u_int32_t));
@@ -50,7 +51,7 @@ __db_xa_create(dbp)
 	 * Interpose XA routines in front of any method that takes a TXN
 	 * ID as an argument.
 	 */
-	if ((ret = __os_calloc(1, sizeof(XA_METHODS), &xam)) != 0)
+	if ((ret = __os_calloc(dbp->dbenv, 1, sizeof(XA_METHODS), &xam)) != 0)
 		return (ret);
 
 	dbp->xa_internal = xam;
@@ -78,6 +79,8 @@ __xa_cursor(dbp, txn, dbcp, flags)
 	DB_TXN *t;
 
 	t = txn != NULL && txn == dbp->open_txn ? txn : dbp->dbenv->xa_txn;
+	if (t->txnid == TXN_INVALID)
+		t = NULL;
 
 	return (((XA_METHODS *)dbp->xa_internal)->cursor (dbp, t, dbcp, flags));
 }
@@ -92,6 +95,8 @@ __xa_del(dbp, txn, key, flags)
 	DB_TXN *t;
 
 	t = txn != NULL && txn == dbp->open_txn ? txn : dbp->dbenv->xa_txn;
+	if (t->txnid == TXN_INVALID)
+		t = NULL;
 
 	return (((XA_METHODS *)dbp->xa_internal)->del(dbp, t, key, flags));
 }
@@ -121,6 +126,8 @@ __xa_get(dbp, txn, key, data, flags)
 	DB_TXN *t;
 
 	t = txn != NULL && txn == dbp->open_txn ? txn : dbp->dbenv->xa_txn;
+	if (t->txnid == TXN_INVALID)
+		t = NULL;
 
 	return (((XA_METHODS *)dbp->xa_internal)->get
 	    (dbp, t, key, data, flags));
@@ -136,6 +143,8 @@ __xa_put(dbp, txn, key, data, flags)
 	DB_TXN *t;
 
 	t = txn != NULL && txn == dbp->open_txn ? txn : dbp->dbenv->xa_txn;
+	if (t->txnid == TXN_INVALID)
+		t = NULL;
 
 	return (((XA_METHODS *)dbp->xa_internal)->put
 	    (dbp, t, key, data, flags));

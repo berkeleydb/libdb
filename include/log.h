@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)log.h	11.5 (Sleepycat) 9/18/99
+ * $Id: log.h,v 11.13.2.2 2000/07/08 17:36:36 bostic Exp $
  */
 
 #ifndef _LOG_H_
@@ -37,7 +37,7 @@ struct __log_persist;	typedef struct __log_persist LOGP;
  * The per-process table that maps log file-id's to DB structures.
  */
 typedef	struct __db_entry {
-	DB	 *dbp;			/* Associated DB structure. */
+	TAILQ_HEAD(dblist, __db) dblist; /* Associated DB structures. */
 	u_int32_t refcount;		/* Reference counted. */
 	u_int32_t count;		/* Number of ops on a deleted db. */
 	int	  deleted;		/* File was not found during open. */
@@ -60,7 +60,7 @@ struct __db_log {
 
 	DB_ENTRY *dbentry;		/* Recovery file-id mapping. */
 #define	DB_GROW_SIZE	64
-	u_int32_t dbentry_cnt;		/* Entries.  Grows by DB_GROW_SIZE. */
+	int32_t dbentry_cnt;		/* Entries.  Grows by DB_GROW_SIZE. */
 
 /*
  * These fields are always accessed while the region lock is held, so they do
@@ -74,10 +74,15 @@ struct __db_log {
 	DB_LSN	  c_lsn;		/* Cursor: current LSN. */
 	DBT	  c_dbt;		/* Cursor: return DBT structure. */
 	DB_FH	  c_fh;			/* Cursor: file handle. */
+	FILE	  *c_fp;		/* Cursor: file pointer. */
 	u_int32_t c_off;		/* Cursor: previous record offset. */
 	u_int32_t c_len;		/* Cursor: current record length. */
+	u_int32_t r_file;		/* Cursor: current read file */
+	u_int32_t r_off;		/* Cursor: offset of read buffer. */
+	u_int32_t r_size;		/* Cursor: size of data in read buf. */
 
 	u_int8_t *bufp;			/* Region buffer. */
+	u_int8_t *readbufp;		/* Read buffer. */
 
 /* These fields are not protected. */
 	DB_ENV	 *dbenv;		/* Reference to error information. */
@@ -87,18 +92,17 @@ struct __db_log {
  * These fields are used by XA; since XA forbids threaded execution, these
  * do not have to be protected.
  */
-	void 	*xa_info;		/* Committed transaction list that
+	void	*xa_info;		/* Committed transaction list that
 					 * has to be carried between calls
 					 * to xa_recover. */
 	DB_LSN	xa_lsn;			/* Position of an XA recovery scan. */
 	DB_LSN	xa_first;		/* LSN to which we need to roll back
 					   for this XA recovery scan. */
 
-	/*
-	 * !!!
-	 * Currently used to hold:
-	 *	DBC_RECOVER	(a DBC flag)
-	 */
+#define	DBLOG_RECOVER		0x01	/* We are in recovery. */
+#define	DBLOG_FORCE_OPEN	0x02	/* Force the db open even
+					 * if it appears to be deleted.
+					 */
 	u_int32_t flags;
 };
 
@@ -172,11 +176,13 @@ struct __fname {
 	SH_TAILQ_ENTRY q;		/* File name queue. */
 
 	u_int16_t ref;			/* Reference count. */
+	u_int16_t locked;		/* Table is locked. */
 
 	int32_t id;			/* Logging file id. */
 	DBTYPE	  s_type;		/* Saved DB type. */
 
 	roff_t	  name_off;		/* Name offset. */
+	db_pgno_t meta_pgno;		/* Page number of the meta page. */
 	u_int8_t  ufid[DB_FILE_ID_LEN];	/* Unique file id. */
 };
 
@@ -184,6 +190,16 @@ struct __fname {
 #define	LOG_CHECKPOINT	1		/* Checkpoint: file name/id dump. */
 #define	LOG_CLOSE	2		/* File close. */
 #define	LOG_OPEN	3		/* File open. */
+
+#define	CHECK_LSN(redo, cmp, lsn, prev)					\
+	DB_ASSERT(!DB_REDO(redo) || (cmp) >= 0);			\
+	if (DB_REDO(redo) && (cmp) < 0) {				\
+		__db_err(dbenv,						\
+	"Log sequence error: page LSN %lu:%lu; previous LSN %lu %lu",	\
+		    (u_long)(lsn)->file, (u_long)(lsn)->offset,		\
+		    (u_long)(prev)->file, (u_long)(prev)->offset);	\
+		goto out;						\
+	}
 
 #include "log_auto.h"
 #include "log_ext.h"

@@ -1,5 +1,6 @@
-<!--@(#)h_hash.so	10.8 (Sleepycat) 10/3/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: h_hash.so,v 10.11 2000/03/18 21:43:08 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,28 +9,26 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
 <td width="1%"><a href="../../ref/am_conf/h_ffactor.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am_conf/h_nelem.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Specifying a database hash</h1>
-<p>
-The database hash determines in which bucket a particular key will reside.
+<p>The database hash determines in which bucket a particular key will reside.
 The goal of hashing keys is to distribute keys equally across the database
 pages, therefore it is important that the hash function work well with
 the specified keys so that the resulting bucket usage is relatively
 uniform.  A hash function that does not work well can effectively turn
 into a sequential list.
-<p>
-No hash performs equally well on all possible data sets.  It is possible
+<p>No hash performs equally well on all possible data sets.  It is possible
 that applications may find that the default hash function performs poorly
 with a particular set of keys.  The distribution resulting from the hash
 function can be checked using <a href="../../utility/db_stat.html">db_stat</a> utility.  By comparing the
 number of hash buckets and the number of keys, one can decide if the entries
 are hashing in a distributed manner.
-<p>
-The hash function for the hash table can be specified by calling the
+<p>The hash function for the hash table can be specified by calling the
 <a href="../../api_c/db_set_h_hash.html">DB-&gt;set_h_hash</a> function.  If no hash function is specified, a default
 function will be used.  Any application-specified hash function must
 take a pointer to a byte string and its length as arguments and return

@@ -1,16 +1,19 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)recd002.tcl	11.9 (Sleepycat) 11/10/99
+#	$Id: recd002.tcl,v 11.16 2000/05/22 12:51:37 bostic Exp $
 #
 # Recovery Test #2.  Verify that splits can be recovered.
 proc recd002 { method {select 0} args} {
 	source ./include.tcl
+	global rand_init
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+
+	berkdb srand $rand_init
 
 	# Queues don't do splits, so we don't really need the small page
 	# size and the small page size is smaller than the record, so it's
@@ -26,7 +29,7 @@ proc recd002 { method {select 0} args} {
 	set testfile recd002.db
 	set testfile2 recd002-2.db
 	set eflags \
-	    "-create -log -lock -mpool -txn -lock_max 2000 -home $testdir"
+	    "-create -txn -lock_max 2000 -home $testdir"
 
 	puts "\tRecd002.a: creating environment"
 	set env_cmd "berkdb env $eflags"
@@ -37,13 +40,13 @@ proc recd002 { method {select 0} args} {
 	# happen fairly quickly.
 	set oflags "-create $args $omethod -mode 0644 -env $dbenv\
 	    -pagesize $pagesize $testfile"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	set oflags "-create $args $omethod -mode 0644 -env $dbenv\
-            -pagesize $pagesize $testfile2"
-	set db [eval {berkdb open} $oflags]
+	    -pagesize $pagesize $testfile2"
+	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
@@ -83,5 +86,5 @@ proc recd002 { method {select 0} args} {
 	set tmpfile $testdir/printlog.out
 	set stat [catch {exec ./db_printlog -h $testdir > $tmpfile} ret]
 	error_check_good db_printlog $stat 0
-	exec $RM $tmpfile
+	fileremove $tmpfile
 }

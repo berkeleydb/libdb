@@ -44,12 +44,17 @@ WriteMakefile(
 	DEFINE		=> "$OS2",
 	#'macro'		=> { INSTALLDIRS => 'perl' },
         'dist'          => {COMPRESS=>'gzip', SUFFIX=>'gz'},    
+	($] >= 5.005
+	    ? (ABSTRACT_FROM	=> 'BerkeleyDB.pod',
+	       AUTHOR  	=> 'Paul Marquess <Paul.Marquess@btinternet.com>')
+	    : ()
+	),
 	);
 
 
 sub MY::postamble {
 	'
-$(NAME).pod:	$(NAME).pod.P t/examples.t.T mkpod
+$(NAME).pod:	$(NAME).pod.P t/examples.t.T t/examples3.t.T mkpod
 	perl ./mkpod
 
 $(NAME).xs:	typemap

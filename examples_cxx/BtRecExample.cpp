@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)BtRecExample.cpp	11.2 (Sleepycat) 9/10/99
+ * $Id: BtRecExample.cpp,v 11.6 2000/02/19 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -44,7 +44,6 @@ private:
 	Db *dbp;
 	Dbc *dbcp;
 };
-
 
 BtRecExample::BtRecExample(FILE *fp)
 {
@@ -110,14 +109,13 @@ void BtRecExample::stats()
 
 	dbp->stat(&statp, NULL, 0);
 	cout << progname << ": database contains "
-	     << (u_long)statp->bt_nrecs << " records\n";
+	     << (u_long)statp->bt_ndata << " records\n";
 
 	// Note: must use free, not delete.
 	// This struct is allocated by C.
 	//
 	free(statp);
 }
-
 
 void BtRecExample::run()
 {

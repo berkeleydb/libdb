@@ -1,5 +1,6 @@
-<!--"@(#)db_set_h_nelem.so	10.12 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_set_h_nelem.so,v 10.15 2000/05/01 21:57:43 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>Db.set_h_nelem</h1>
@@ -24,31 +26,21 @@ public void set_h_nelem(int h_nelem)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-Set an estimate of the final size of the hash table.
-<p>
-If not set or set too low, hash tables will still expand gracefully
+<p>Set an estimate of the final size of the hash table.
+<p>If not set or set too low, hash tables will still expand gracefully
 as keys are entered, although a slight performance degradation may be
 noticed.
-<p>
-The Db.set_h_nelem interface may only be used to configure Berkeley DB before
+<p>The Db.set_h_nelem interface may only be used to configure Berkeley DB before
 the <a href="../api_java/db_open.html">Db.open</a> interface is called.
-<p>
-The Db.set_h_nelem
-method throws an exception that encapsulates a non-zero error value on
+<p>The Db.set_h_nelem method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_java/db_open.html">Db.open</a> was called.
+<p>Called after <a href="../api_java/db_open.html">Db.open</a> was called.
 </dl>
-<p>
 <h3>Class</h3>
 <a href="../api_java/db_class.html">Db</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/db_close.html">Db.close</a>,
 <a href="../api_java/db_cursor.html">Db.cursor</a>,
@@ -58,6 +50,7 @@ Called after <a href="../api_java/db_open.html">Db.open</a> was called.
 <a href="../api_java/db_get_byteswapped.html">Db.get_byteswapped</a>,
 <a href="../api_java/db_get_type.html">Db.get_type</a>,
 <a href="../api_java/db_join.html">Db.join</a>,
+<a href="../api_java/db_key_range.html">Db.key_range</a>,
 <a href="../api_java/db_open.html">Db.open</a>,
 <a href="../api_java/db_put.html">Db.put</a>,
 <a href="../api_java/db_remove.html">Db.remove</a>,
@@ -75,9 +68,10 @@ Called after <a href="../api_java/db_open.html">Db.open</a> was called.
 <a href="../api_java/db_set_re_pad.html">Db.set_re_pad</a>,
 <a href="../api_java/db_set_re_source.html">Db.set_re_source</a>,
 <a href="../api_java/db_stat.html">Db.stat</a>,
-<a href="../api_java/db_sync.html">Db.sync</a>
+<a href="../api_java/db_sync.html">Db.sync</a>,
+<a href="../api_java/db_upgrade.html">Db.upgrade</a>
 and
-<a href="../api_java/db_upgrade.html">Db.upgrade</a>.
+<a href="../api_java/db_verify.html">Db.verify</a>.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_java/java_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test065.tcl	11.2 (Sleepycat) 9/9/99
+#	$Id: test065.tcl,v 11.7 2000/05/22 12:51:40 bostic Exp $
 #
 # DB Test 65: Test of DB->stat(DB_RECORDCOUNT)
 proc test065 { method args } {
@@ -15,18 +15,28 @@ proc test065 { method args } {
 	set omethod [convert_method $method]
 	set tnum 65
 
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 	cleanup $testdir
 
 	puts "Test0$tnum: $method ($args) DB->stat(DB_RECORDCOUNT) test."
 
 	puts "\tTest0$tnum.a: Create database and check it while empty."
 
-	set db [eval {berkdb open -create -truncate -mode 0644} \
+	set db [eval {berkdb_open_noerr -create -truncate -mode 0644} \
 	    $omethod $args $testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	set ret [catch {eval $db stat -recordcount} res]
+
+	error_check_good db_close [$db close] 0
 
 	if { ([is_record_based $method] && ![is_queue $method]) \
 	    || [is_rbtree $method] } {
@@ -40,7 +50,9 @@ proc test065 { method args } {
 
 	# If we've got this far, we're on an access method for
 	# which DB_RECORDCOUNT makes sense.  Thus, we no longer
-	# catch EINVALs.
+	# catch EINVALs, and no longer care about __db_errs.
+	set db [eval {berkdb_open -create -mode 0644} $omethod $args $testfile]
+
 	puts "\tTest0$tnum.b: put 10000 keys."
 
 	if { [is_record_based $method] } {

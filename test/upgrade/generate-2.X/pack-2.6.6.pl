@@ -27,12 +27,12 @@ while( $subdir = readdir( DIR ) )
 			if( $file !~ m{^\.\.?$} )
 			{
 				print "[" . localtime() . "] " . "$subdir $file", "\n";
-				
+
 				eval
 				{
-                                        my $data;        
+                                        my $data;
                                         my $archive;
-                                        	
+
 					system( "mkdir", "-p", "$version/$subdir" );
 					$file =~ m{(.*)\.};
 					$archive_name = "$1";
@@ -92,7 +92,7 @@ sub tcl_dump
         my $up_dump_args = "";
 
         if ($file =~ /test012/) {
-               $up_dump_args .= "1"; 
+               $up_dump_args .= "1";
         }
 
 	unlink( "temp.dump" );

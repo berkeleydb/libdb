@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_compare.c	11.2 (Sleepycat) 9/9/99";
+static const char revid[] = "$Id: bt_compare.c,v 11.10 2000/02/14 02:59:37 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -59,21 +59,21 @@ static const char sccsid[] = "@(#)bt_compare.c	11.2 (Sleepycat) 9/9/99";
  *	Compare a key to a given record.
  *
  * PUBLIC: int __bam_cmp __P((DB *, const DBT *,
- * PUBLIC:    PAGE *, u_int32_t, int (*)(const DBT *, const DBT *)));
+ * PUBLIC:    PAGE *, u_int32_t, int (*)(const DBT *, const DBT *), int *));
  */
 int
-__bam_cmp(dbp, dbt, h, indx, func)
+__bam_cmp(dbp, dbt, h, indx, func, cmpp)
 	DB *dbp;
 	const DBT *dbt;
 	PAGE *h;
 	u_int32_t indx;
 	int (*func)__P((const DBT *, const DBT *));
+	int *cmpp;
 {
 	BINTERNAL *bi;
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
 	DBT pg_dbt;
-	int ret;
 
 	/*
 	 * Returns:
@@ -88,25 +88,43 @@ __bam_cmp(dbp, dbt, h, indx, func)
 	 * We don't clear it because we go through this path a lot and it's
 	 * expensive.
 	 */
-	if (TYPE(h) == P_LBTREE || TYPE(h) == P_DUPLICATE) {
+	switch (TYPE(h)) {
+	case P_LBTREE:
+	case P_LDUP:
+	case P_LRECNO:
 		bk = GET_BKEYDATA(h, indx);
 		if (B_TYPE(bk->type) == B_OVERFLOW)
 			bo = (BOVERFLOW *)bk;
 		else {
 			pg_dbt.data = bk->data;
 			pg_dbt.size = bk->len;
-			return (func(dbt, &pg_dbt));
+			pg_dbt.app_private = NULL;
+			*cmpp = func(dbt, &pg_dbt);
+			return (0);
 		}
-	} else {
+		break;
+	case P_IBTREE:
 		/*
 		 * The following code guarantees that the left-most key on an
-		 * internal page at any level of the btree is less than any
-		 * user specified key.  This saves us from having to update the
-		 * leftmost key on an internal page when the user inserts a new
-		 * key in the tree smaller than anything we've seen before.
+		 * internal page at any place in the tree sorts less than any
+		 * user-specified key.  The reason is that if we have reached
+		 * this internal page, we know the user key must sort greater
+		 * than the key we're storing for this page in any internal
+		 * pages at levels above us in the tree.  It then follows that
+		 * any user-specified key cannot sort less than the first page
+		 * which we reference, and so there's no reason to call the
+		 * comparison routine.  While this may save us a comparison
+		 * routine call or two, the real reason for this is because
+		 * we don't maintain a copy of the smallest key in the tree,
+		 * so that we don't have to update all the levels of the tree
+		 * should the application store a new smallest key.  And, so,
+		 * we may not have a key to compare, which makes doing the
+		 * comparison difficult and error prone.
 		 */
-		if (indx == 0 && h->prev_pgno == PGNO_INVALID)
-			return (1);
+		if (indx == 0) {
+			*cmpp = 1;
+			return (0);
+		}
 
 		bi = GET_BINTERNAL(h, indx);
 		if (B_TYPE(bi->type) == B_OVERFLOW)
@@ -114,20 +132,20 @@ __bam_cmp(dbp, dbt, h, indx, func)
 		else {
 			pg_dbt.data = bi->data;
 			pg_dbt.size = bi->len;
-			return (func(dbt, &pg_dbt));
+			pg_dbt.app_private = NULL;
+			*cmpp = func(dbt, &pg_dbt);
+			return (0);
 		}
+		break;
+	default:
+		return (__db_pgfmt(dbp, PGNO(h)));
 	}
 
 	/*
 	 * Overflow.
-	 *
-	 * XXX
-	 * We ignore __db_moff() errors, because we have no way of returning
-	 * them.
 	 */
-	(void)__db_moff(dbp,
-	    dbt, bo->pgno, bo->tlen, func == __bam_defcmp ? NULL : func, &ret);
-	return (ret);
+	return (__db_moff(dbp, dbt,
+	    bo->pgno, bo->tlen, func == __bam_defcmp ? NULL : func, cmpp));
 }
 
 /*

@@ -1,5 +1,6 @@
-<!--"@(#)db_cursor.so	10.19 (Sleepycat) 9/22/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_cursor.so,v 10.24 2000/03/17 01:53:57 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>Db::cursor</h1>
@@ -24,56 +26,39 @@ int
 Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The Db::cursor method
+<p>The Db::cursor method
 creates a cursor and copies a pointer to it into the memory referenced
 by <b>cursorp</b>.
-<p>
-A cursor is a structure used to provide sequential access through a database.
+<p>A cursor is a structure used to provide sequential access through a database.
 This interface and its associated functions replaces the functionality
 provided by the <b>seq</b> function in previous releases of Berkeley DB.
-<p>
-If the file is being accessed under transaction protection,
-the <b>txnid</b> parameter is a transaction ID returned from
+<p>If the file is being accessed under transaction protection, the
+<b>txnid</b> parameter is a transaction ID returned from
 <a href="../api_cxx/txn_begin.html">DbEnv::txn_begin</a>, otherwise, NULL.
-If transaction protection is enabled, cursors must be opened and closed
+<p>If transaction protection is enabled, cursors must be opened and closed
 within the context of a transaction, and the <b>txnid</b> parameter
 specifies the transaction context in which the cursor may be used.
-<p>
-The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
+<p>The <b>flags</b> value must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values.
-<dl compact>
-<p><dt>DB_WRITECURSOR<dd>Specify that the cursor will be used to update the database.  This
+<p><dl compact>
+<p><dt><a name="DB_WRITECURSOR">DB_WRITECURSOR</a><dd>Specify that the cursor will be used to update the database.  This
 flag should <b>only</b> be set when the <a href="../api_cxx/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a> flag
 was specified to <a href="../api_cxx/env_open.html">DbEnv::open</a>.
 </dl>
-<p>
-The Db::cursor
-method either returns a non-zero error value or throws an exception that
+<p>The Db::cursor method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the Db::cursor method will fail and either
-return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the Db::cursor
-method may fail and throw an exception
-or return a non-zero error
-for the following conditions:
-<p>
-<dl compact>
+<p>The Db::cursor method may fail and throw an exception or return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>
-In addition, the Db::cursor method may fail and
-throw an exception or return a non-zero error
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<p>The Db::cursor method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the Db::cursor method may fail and either
+return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h3>Class</h3>
 <a href="../api_cxx/db_class.html">Db</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/db_close.html">Db::close</a>,
 <a href="../api_cxx/db_cursor.html">Db::cursor</a>,
@@ -84,6 +69,7 @@ for errors specified for other Berkeley DB and C library or system methods.
 <a href="../api_cxx/db_get_byteswapped.html">Db::get_byteswapped</a>,
 <a href="../api_cxx/db_get_type.html">Db::get_type</a>,
 <a href="../api_cxx/db_join.html">Db::join</a>,
+<a href="../api_cxx/db_key_range.html">Db::key_range</a>,
 <a href="../api_cxx/db_open.html">Db::open</a>,
 <a href="../api_cxx/db_put.html">Db::put</a>,
 <a href="../api_cxx/db_remove.html">Db::remove</a>,
@@ -109,9 +95,10 @@ for errors specified for other Berkeley DB and C library or system methods.
 <a href="../api_cxx/db_set_re_pad.html">Db::set_re_pad</a>,
 <a href="../api_cxx/db_set_re_source.html">Db::set_re_source</a>,
 <a href="../api_cxx/db_stat.html">Db::stat</a>,
-<a href="../api_cxx/db_sync.html">Db::sync</a>
+<a href="../api_cxx/db_sync.html">Db::sync</a>,
+<a href="../api_cxx/db_upgrade.html">Db::upgrade</a>
 and
-<a href="../api_cxx/db_upgrade.html">Db::upgrade</a>.
+<a href="../api_cxx/db_verify.html">Db::verify</a>.
 </tt>
 <table><tr><td><br></td><td width="1%">
 <a href="../api_cxx/cxx_index.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)LockExample.cpp	11.2 (Sleepycat) 9/10/99
+ * $Id: LockExample.cpp,v 11.7 2000/03/19 14:47:44 dda Exp $
  */
 
 #include "db_config.h"
@@ -38,7 +38,7 @@ private:
 
 	// no need for copy and assignment
 	LockExample(const LockExample &);
-	operator = (const LockExample &);
+	void operator = (const LockExample &);
 };
 
 static void usage();          // forward
@@ -99,7 +99,7 @@ LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 	int ret;
 
 	if (do_unlink) {
-		if ((ret = remove(home, NULL, DB_FORCE)) != 0) {
+		if ((ret = remove(home, DB_FORCE)) != 0) {
 			cerr << progname << ": DbEnv::remove: "
 			     << strerror(errno) << "\n";
 			exit (1);
@@ -110,10 +110,9 @@ LockExample::LockExample(const char *home, u_int32_t maxlocks, int do_unlink)
 		set_errpfx("LockExample");
 		if (maxlocks != 0)
 			set_lk_max(maxlocks);
-		open(home, NULL, DB_CREATE | DB_INIT_LOCK, 0);
+		open(home, DB_CREATE | DB_INIT_LOCK, 0);
 	}
 }
-
 
 void LockExample::run()
 {

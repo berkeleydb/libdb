@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test045.tcl	11.7 (Sleepycat) 10/25/99
+#	$Id: test045.tcl,v 11.15 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 45 Run the random db tester on the specified access method.
 # Options are:
@@ -18,25 +18,38 @@
 proc test045 { method {nops 10000} args } {
 	source ./include.tcl
 
-	set args [convert_args $method $args]
-	set omethod [convert_method $method]
-
-	if { [is_record_based $method] == 1 } {
-		puts "Test045: skipping for method $method"
+	if { [is_frecno $method] == 1 } {
+		puts "\tSkipping Test045 for method $method."
 		return
 	}
+
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test045 skipping for env $env"
+		return
+	}
+	set args [convert_args $method $args]
+	set omethod [convert_method $method]
 
 	puts "Test045: Random tester on $method for $nops operations"
 
 	# Set initial parameters
-	set adds 100000
+	set adds [expr $nops * 10]
 	set cursors 5
 	set dataavg 40
-	set delete 10000
+	set delete $nops
 	set dups 0
 	set errpct 0
 	set init 0
-	set keyavg 25
+	if { [is_record_based $method] == 1 } {
+		set keyavg 10
+	} else {
+		set keyavg 25
+	}
 
 	# Process arguments
 	set oargs ""
@@ -50,7 +63,7 @@ proc test045 { method {nops 10000} args } {
 			-errpct	 { incr i; set errpct [lindex $args $i] }
 			-init	 { incr i; set init [lindex $args $i] }
 			-keyavg	 { incr i; set keyavg [lindex $args $i] }
-			default	 { append oargs [lindex $args $i] }
+			default	 { lappend oargs [lindex $args $i] }
 		}
 	}
 
@@ -61,8 +74,8 @@ proc test045 { method {nops 10000} args } {
 
 	# Run the script with 3 times the number of initial elements to
 	# set it up.
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644 $omethod} $oargs {$f}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644 $omethod} $oargs {$f}]
 	error_check_good dbopen:$f [is_valid_db $db] TRUE
 
 	set r [$db close]
@@ -79,6 +92,9 @@ proc test045 { method {nops 10000} args } {
 		    1 $init $n $keyavg $dataavg $dups 0 -1 \
 		    > $testdir/test045.init
 	}
+	# Check for test failure
+	set e [findfail $testdir/test045.init]
+	error_check_good "FAIL: error message(s) in init file" $e 0
 
 	puts "\tTest045.b: Now firing off berkdb rand dbscript, running: "
 	# Now the database is initialized, run a test
@@ -91,4 +107,9 @@ proc test045 { method {nops 10000} args } {
 	    $nops $cursors $delete $adds $keyavg \
 	    $dataavg $dups $errpct \
 	    > $testdir/test045.log
+
+	# Check for test failure
+	set e [findfail $testdir/test045.log]
+	error_check_good "FAIL: error message(s) in log file" $e 0
+
 }

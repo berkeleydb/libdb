@@ -1,5 +1,6 @@
-<!--@(#)common.so	10.6 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: common.so,v 10.9 2000/03/18 21:43:11 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,16 +9,16 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Debugging Applications</dl></h3></td>
 <td width="1%"><a href="../../ref/debug/printlog.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/build_unix/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Common errors</h1>
-<p>
-This page outlines some of the most common problems that people encounter
+<p>This page outlines some of the most common problems that people encounter
 and some suggested courses of action.
-<dl compact>
+<p><dl compact>
 <p><dt><b>Symptom:</b><dd>Core dumps or garbage returns from random Berkeley DB operations.
 <p><dt>Possible Cause:<dd>Failure to zero out DBT structure before issuing request.
 <p><dt>Fix:<dd>Before using a <a href="../../api_c/dbt.html">DBT</a>, you must initialize all its elements
@@ -58,9 +59,8 @@ for the <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADL
 updates should take place in a transaction or you might leave the database
 in an inconsistent state.  Reads may take place outside the context of a
 transaction under certain conditions.
-<p>
-Whenever you get a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return, you should:
-<ol>
+<p>Whenever you get a <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a> return, you should:
+<p><ol>
 <p><li>If you are running in a transaction, abort the transaction, first closing
 any cursors opened in the transaction.
 <p><li>If you are not running in a transaction, simply close the cursor that got

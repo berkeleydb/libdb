@@ -1,20 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 1999
+ * Copyright (c) 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_join.c	11.6 (Sleepycat) 10/19/99";
+static const char revid[] = "$Id: db_join.c,v 11.27 2000/05/22 19:17:33 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #endif
 
@@ -25,10 +26,17 @@ static const char sccsid[] = "@(#)db_join.c	11.6 (Sleepycat) 10/19/99";
 #include "btree.h"
 
 static int __db_join_close __P((DBC *));
+static int __db_join_cmp __P((const void *, const void *));
 static int __db_join_del __P((DBC *, u_int32_t));
 static int __db_join_get __P((DBC *, DBT *, DBT *, u_int32_t));
-static int __db_join_getnext __P((DBC *, DBT *, DBT *, DBT *, u_int32_t));
+static int __db_join_getnext __P((DBC *, DBT *, DBT *, u_int32_t));
 static int __db_join_put __P((DBC *, DBT *, DBT *, u_int32_t));
+
+/*
+ * Check to see if the Nth secondary cursor of join cursor jc is pointing
+ * to a sorted duplicate set.
+ */
+#define	SORTED_SET(jc, n)   ((jc)->j_curslist[(n)]->dbp->dup_compare != NULL)
 
 /*
  * This is the duplicate-assisted join functionality.  Right now we're
@@ -37,11 +45,14 @@ static int __db_join_put __P((DBC *, DBT *, DBT *, u_int32_t));
  * It should be easier to get it working this way, and I believe that
  * changing it should be fairly straightforward.
  *
- * XXX
- * Right now we do not maintain the number of duplicates so we do
- * not optimize the join.  If the caller does, then best performance
- * will be achieved by putting the cursor with the smallest cardinality
- * first.
+ * We optimize the join by sorting cursors from smallest to largest
+ * cardinality.  In most cases, this is indeed optimal.  However, if
+ * a cursor with large cardinality has very few data in common with the
+ * first cursor, it is possible that the join will be made faster by
+ * putting it earlier in the cursor list.  Since we have no way to detect
+ * cases like this, we simply provide a flag, DB_JOIN_NOSORT, which retains
+ * the sort order specified by the caller, who may know more about the
+ * structure of the data.
  *
  * The first cursor moves sequentially through the duplicate set while
  * the others search explicitly for the duplicate in question.
@@ -70,9 +81,11 @@ __db_join(primary, curslist, dbcp, flags)
 	DBC **curslist, **dbcp;
 	u_int32_t flags;
 {
+	DB_ENV *dbenv;
 	DBC *dbc;
 	JOIN_CURSOR *jc;
-	int i, ret, nslots;
+	int ret;
+	u_int32_t i, ncurs, nslots;
 
 	COMPQUIET(nslots, 0);
 
@@ -86,14 +99,16 @@ __db_join(primary, curslist, dbcp, flags)
 
 	dbc = NULL;
 	jc = NULL;
+	dbenv = primary->dbenv;
 
-	if ((ret = __os_calloc(1, sizeof(DBC), &dbc)) != 0)
+	if ((ret = __os_calloc(dbenv, 1, sizeof(DBC), &dbc)) != 0)
 		goto err;
 
-	if ((ret = __os_calloc(1, sizeof(JOIN_CURSOR), &jc)) != 0)
+	if ((ret = __os_calloc(dbenv,
+	    1, sizeof(JOIN_CURSOR), &jc)) != 0)
 		goto err;
 
-	if ((ret = __os_malloc(256, NULL, &jc->j_key.data)) != 0)
+	if ((ret = __os_malloc(dbenv, 256, NULL, &jc->j_key.data)) != 0)
 		goto err;
 	jc->j_key.ulen = 256;
 	F_SET(&jc->j_key, DB_DBT_USERMEM);
@@ -107,7 +122,8 @@ __db_join(primary, curslist, dbcp, flags)
 	 * the number of cursors involved in the join, because the
 	 * list is NULL-terminated.
 	 */
-	nslots = jc->j_curslist - curslist + 1;
+	ncurs = jc->j_curslist - curslist;
+	nslots = ncurs + 1;
 
 	/*
 	 * !!! -- A note on the various lists hanging off jc.
@@ -154,16 +170,16 @@ __db_join(primary, curslist, dbcp, flags)
 	jc->j_fdupcurs = NULL;
 	jc->j_exhausted = NULL;
 
-	if ((ret = __os_calloc(nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
 	    &jc->j_curslist)) != 0)
 		goto err;
-	if ((ret = __os_calloc(nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
 	    &jc->j_workcurs)) != 0)
 		goto err;
-	if ((ret = __os_calloc(nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
 	    &jc->j_fdupcurs)) != 0)
 		goto err;
-	if ((ret = __os_calloc(nslots, sizeof(u_int8_t),
+	if ((ret = __os_calloc(dbenv, nslots, sizeof(u_int8_t),
 	    &jc->j_exhausted)) != 0)
 		goto err;
 	for (i = 0; curslist[i] != NULL; i++) {
@@ -172,6 +188,14 @@ __db_join(primary, curslist, dbcp, flags)
 		jc->j_fdupcurs[i] = NULL;
 		jc->j_exhausted[i] = 0;
 	}
+	jc->j_ncurs = ncurs;
+
+	/*
+	 * If DB_JOIN_NOSORT is not set, optimize secondary cursors by
+	 * sorting in order of increasing cardinality.
+	 */
+	if (!LF_ISSET(DB_JOIN_NOSORT))
+		qsort(jc->j_curslist, ncurs, sizeof(DBC *), __db_join_cmp);
 
 	/*
 	 * We never need to reset the 0th cursor, so there's no
@@ -184,8 +208,6 @@ __db_join(primary, curslist, dbcp, flags)
 	 * because this is the last thing that can fail.  Modifier of this
 	 * function beware!
 	 */
-	if ((ret = __os_malloc(sizeof(DBC), NULL, jc->j_workcurs)) != 0)
-		goto err;
 	if ((ret = jc->j_curslist[0]->c_dup(jc->j_curslist[0], jc->j_workcurs,
 	    DB_POSITIONI)) != 0)
 		goto err;
@@ -194,11 +216,15 @@ __db_join(primary, curslist, dbcp, flags)
 	dbc->c_del = __db_join_del;
 	dbc->c_get = __db_join_get;
 	dbc->c_put = __db_join_put;
-	dbc->internal = jc;
+	dbc->internal = (DBC_INTERNAL *) jc;
 	dbc->dbp = primary;
 	jc->j_primary = primary;
 
 	*dbcp = dbc;
+
+	MUTEX_THREAD_LOCK(primary->mutexp);
+	TAILQ_INSERT_TAIL(&primary->join_queue, dbc, links);
+	MUTEX_THREAD_UNLOCK(primary->mutexp);
 
 	return (0);
 
@@ -248,53 +274,63 @@ __db_join_del(dbc, flags)
 }
 
 static int
-__db_join_get(dbc, key, data, flags)
+__db_join_get(dbc, key_arg, data_arg, flags)
 	DBC *dbc;
-	DBT *key, *data;
+	DBT *key_arg, *data_arg;
 	u_int32_t flags;
 {
-	DBT currkey;
+	DBT *key_n, key_n_mem;
 	DB *dbp;
 	DBC *cp;
 	JOIN_CURSOR *jc;
-	int ret, i, j;
-	u_int32_t operation;
+	int ret;
+	u_int32_t i, j, operation;
 
 	dbp = dbc->dbp;
-	memset(&currkey, 0, sizeof(currkey));
+	jc = (JOIN_CURSOR *)dbc->internal;
 
 	PANIC_CHECK(dbp->dbenv);
 
 	operation = LF_ISSET(DB_OPFLAGS_MASK);
-	if (operation != 0 && operation != DB_JOIN_ITEM)
-		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
 
-	LF_CLR(DB_OPFLAGS_MASK);
-	if ((ret =
-	    __db_fchk(dbp->dbenv, "DBcursor->c_get", flags, DB_RMW)) != 0)
+	if ((ret = __db_joingetchk(dbp, key_arg, flags)) != 0)
 		return (ret);
 
 	/*
-	 * Partial gets on join cursors don't make much sense, and the
-	 * DBT_PARTIAL flag is liable to produce some rather strange
-	 * results given the weird way the DBTs are used ("key" is used as
-	 * the datum in all the secondary cursors), so we simply
-	 * disallow it.
+	 * Since we are fetching the key as a datum in the secondary indices,
+	 * we must be careful of caller-specified DB_DBT_* memory
+	 * management flags.  If necessary, use a stack-allocated DBT;
+	 * we'll appropriately copy and/or allocate the data later.
 	 */
-	if (F_ISSET(key, DB_DBT_PARTIAL) || F_ISSET(data, DB_DBT_PARTIAL))
-		return (EINVAL);
+	if (F_ISSET(key_arg, DB_DBT_USERMEM) ||
+	    F_ISSET(key_arg, DB_DBT_MALLOC)) {
+		/* We just use the default buffer;  no need to go malloc. */
+		key_n = &key_n_mem;
+		memset(key_n, 0, sizeof(DBT));
+	} else {
+		/*
+		 * Either DB_DBT_REALLOC or the default buffer will work
+		 * fine if we have to reuse it, as we do.
+		 */
+		key_n = key_arg;
+	}
 
-	jc = (JOIN_CURSOR *)dbc->internal;
+	/*
+	 * If our last attempt to do a get on the primary key failed,
+	 * short-circuit the join and try again with the same key.
+	 */
+	if (F_ISSET(jc, JOIN_RETRY))
+		goto samekey;
+	F_CLR(jc, JOIN_RETRY);
 
-retry:
-	ret = jc->j_workcurs[0]->c_get(jc->j_workcurs[0],
-	    &jc->j_key, key, jc->j_exhausted[0] ? DB_NEXT_DUP : DB_CURRENT);
+retry:	ret = jc->j_workcurs[0]->c_get(jc->j_workcurs[0],
+	    &jc->j_key, key_n, jc->j_exhausted[0] ? DB_NEXT_DUP : DB_CURRENT);
 
 	if (ret == ENOMEM) {
 		jc->j_key.ulen <<= 1;
-		if ((ret =
-		    __os_realloc(jc->j_key.ulen, NULL, &jc->j_key.data)) != 0)
-			goto err;
+		if ((ret = __os_realloc(dbp->dbenv,
+		    jc->j_key.ulen, NULL, &jc->j_key.data)) != 0)
+			goto mem_err;
 		goto retry;
 	}
 
@@ -307,15 +343,18 @@ retry:
 		goto err;
 
 	/*
-	 * Copy key into currkey;  this is the current duplicate data
-	 * value that we're interested in, which we will use for comparison
-	 * purposes with c_gets on all the other secondary cursors.
+	 * If jc->j_exhausted[0] == 1, we've just advanced the first cursor,
+	 * and we're going to want to advance all the cursors that point to
+	 * the first member of a duplicate duplicate set (j_fdupcurs[1..N]).
+	 * Close all the cursors in j_fdupcurs;  we'll reopen them the
+	 * first time through the upcoming loop.
 	 */
-
-	if ((ret = __os_realloc(key->size, NULL, &currkey.data)) != 0)
-		goto err;
-	memcpy(currkey.data, key->data, key->size);
-	currkey.size = key->size;
+	for (i = 1; i < jc->j_ncurs; i++) {
+		if (jc->j_fdupcurs[i] != NULL &&
+		    (ret = jc->j_fdupcurs[i]->c_close(jc->j_fdupcurs[i])) != 0)
+			goto err;
+		jc->j_fdupcurs[i] = NULL;
+	}
 
 	/*
 	 * If jc->j_curslist[1] == NULL, we have only one cursor in the join.
@@ -332,17 +371,18 @@ retry:
 		jc->j_exhausted[0] = 0;
 
 	/* We have the first element; now look for it in the other cursors. */
-	for (i = 1; jc->j_curslist[i] != NULL; i++) {
+	for (i = 1; i < jc->j_ncurs; i++) {
+		DB_ASSERT(jc->j_curslist[i] != NULL);
 		if (jc->j_workcurs[i] == NULL)
 			/* If this is NULL, we need to dup curslist into it. */
 			if ((ret = jc->j_curslist[i]->c_dup(
 			    jc->j_curslist[i], jc->j_workcurs + i,
 			    DB_POSITIONI)) != 0)
 				goto err;
-retry2:
-		cp = jc->j_workcurs[i];
 
-		if ((ret = __db_join_getnext(cp, &jc->j_key, key, &currkey,
+retry2:		cp = jc->j_workcurs[i];
+
+		if ((ret = __db_join_getnext(cp, &jc->j_key, key_n,
 			    jc->j_exhausted[i])) == DB_NOTFOUND) {
 			/*
 			 * jc->j_workcurs[i] has no more of the datum we're
@@ -391,10 +431,8 @@ retry2:
 					if ((ret = jc->j_workcurs[j]->c_close(
 					    jc->j_workcurs[j])) != 0)
 						goto err;
-					if ((jc->j_workcurs[0]->dbp->dup_compare
-					    == NULL) ||
-					    (jc->j_workcurs[j]->dbp->dup_compare
-					    == NULL) ||
+					if (!SORTED_SET(jc, 0) ||
+					    !SORTED_SET(jc, j) ||
 					    jc->j_fdupcurs[j] == NULL)
 						/*
 						 * Unsafe conditions;
@@ -425,25 +463,28 @@ retry2:
 				if ((ret = jc->j_workcurs[j]->c_close(
 				    jc->j_workcurs[j])) != 0)
 					goto err;
-				if (jc->j_fdupcurs[j] != NULL) {
-					if ((ret = jc->j_fdupcurs[j]->c_dup(
-					    jc->j_fdupcurs[j],
-					    &jc->j_workcurs[j],
-					    DB_POSITIONI)) != 0)
-						goto err;
-					jc->j_exhausted[j] = 0;
-				} else
+				jc->j_exhausted[j] = 0;
+				if (jc->j_fdupcurs[j] != NULL &&
+				    (ret = jc->j_fdupcurs[j]->c_dup(
+				    jc->j_fdupcurs[j], &jc->j_workcurs[j],
+				    DB_POSITIONI)) != 0)
+					goto err;
+				else
 					jc->j_workcurs[j] = NULL;
 			}
 			goto retry2;
-		        /* NOTREACHED */
+			/* NOTREACHED */
 		}
 
 		if (ret == ENOMEM) {
 			jc->j_key.ulen <<= 1;
-			if ((ret = __os_realloc(jc->j_key.ulen,
-			    NULL, &jc->j_key.data)) != 0)
+			if ((ret = __os_realloc(dbp->dbenv, jc->j_key.ulen,
+			    NULL, &jc->j_key.data)) != 0) {
+mem_err:			__db_err(dbp->dbenv,
+				    "Allocation failed for join key, len = %lu",
+				    (u_long)jc->j_key.ulen);
 				goto err;
+			}
 			goto retry2;
 		}
 
@@ -460,89 +501,138 @@ retry2:
 		 * get a DB_NOTFOUND and move on to the next datum in
 		 * the outermost cursor.
 		 */
-		if (jc->j_curslist[i + 1] != NULL)
+		if (i + 1 != jc->j_ncurs)
 			jc->j_exhausted[i] = 0;
 		else
 			jc->j_exhausted[i] = 1;
 
-
 		/*
-		 * If jc->j_fdupcurs[i] is NULL, this is the first
-		 * time we've gotten this far since the original
-		 * __db_join.  If jc->j_exhausted[0] == 1, it's the
-		 * first time we're here since advancing cursor 0.  In
-		 * either case, we have a new datum of interest, and
-		 * we set jc->j_fdupcurs[i], which stores the first
-		 * duplicate duplicate of the current datum.
+		 * If jc->j_fdupcurs[i] is NULL and the ith cursor's dups are
+		 * sorted, then we're here for the first time since advancing
+		 * cursor 0, and we have a new datum of interest.
+		 * jc->j_workcurs[i] points to the beginning of a set of
+		 * duplicate duplicates;  store this into jc->j_fdupcurs[i].
 		 */
-		if (jc->j_exhausted[0] == 1 || jc->j_fdupcurs[i] == NULL) {
-			if (jc->j_fdupcurs[i] != NULL)
-				if ((ret = jc->j_fdupcurs[i]->c_close(
-				    jc->j_fdupcurs[i])) != 0)
-					goto err;
-			if ((ret = cp->c_dup(cp, &jc->j_fdupcurs[i],
-			    DB_POSITIONI)) != 0)
-				goto err;
-		}
+		if (SORTED_SET(jc, i) && jc->j_fdupcurs[i] == NULL && (ret =
+		    cp->c_dup(cp, &jc->j_fdupcurs[i], DB_POSITIONI)) != 0)
+			goto err;
 
 	}
 
-err:
-	/*
-	 * We're done with this;  free it now, before
-	 * both error and regular returns.
-	 */
-	if (currkey.data != NULL)
-		__os_free(currkey.data, 0);
-
-	if (ret != 0)
+err:	if (ret != 0)
 		return (ret);
+
+	if (0) {
+samekey:	/*
+		 * Get the key we tried and failed to return last time;
+		 * it should be the current datum of all the secondary cursors.
+		 */
+		if ((ret = jc->j_workcurs[0]->c_get(jc->j_workcurs[0],
+		    &jc->j_key, key_n, DB_CURRENT)) != 0)
+			return (ret);
+		F_CLR(jc, JOIN_RETRY);
+	}
+
 	/*
-	 * ret == 0;  we have a key to return.  If DB_JOIN_ITEM is
+	 * ret == 0;  we have a key to return.
+	 *
+	 * If DB_DBT_USERMEM or DB_DBT_MALLOC is set, we need to
+	 * copy it back into the dbt we were given for the key;
+	 * call __db_retcopy.
+	 *
+	 * Otherwise, assert that we do not in fact need to copy anything
+	 * and simply proceed.
+	 */
+	if (F_ISSET(key_arg, DB_DBT_USERMEM) ||
+	    F_ISSET(key_arg, DB_DBT_MALLOC)) {
+		/*
+		 * We need to copy the key back into our original
+		 * datum.  Do so.
+		 */
+		if ((ret = __db_retcopy(dbp,
+		    key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
+			/*
+			 * The retcopy failed, most commonly because we
+			 * have a user buffer for the key which is too small.
+			 * Set things up to retry next time, and return.
+			 */
+			F_SET(jc, JOIN_RETRY);
+			return (ret);
+		}
+	} else
+		DB_ASSERT(key_n == key_arg);
+
+	/*
+	 * If DB_JOIN_ITEM is
 	 * set, we return it;  otherwise we do the lookup in the
 	 * primary and then return.
+	 *
+	 * Note that we use key_arg here;  it is safe (and appropriate)
+	 * to do so.
 	 */
-
 	if (operation == DB_JOIN_ITEM)
 		return (0);
-	else
-		return ((jc->j_primary->get)(jc->j_primary,
-		    jc->j_curslist[0]->txn, key, data, 0));
+
+	if ((ret = jc->j_primary->get(jc->j_primary,
+	    jc->j_curslist[0]->txn, key_arg, data_arg, 0)) != 0)
+		/*
+		 * The get on the primary failed, most commonly because we're
+		 * using a user buffer that's not big enough.  Flag our
+		 * failure so we can return the same key next time.
+		 */
+		F_SET(jc, JOIN_RETRY);
+
+	return (ret);
 }
 
 static int
 __db_join_close(dbc)
 	DBC *dbc;
 {
+	DB *dbp;
 	JOIN_CURSOR *jc;
-	int i, ret, t_ret;
-
-	PANIC_CHECK(dbc->dbp->dbenv);
+	int ret, t_ret;
+	u_int32_t i;
 
 	jc = (JOIN_CURSOR *)dbc->internal;
+	dbp = dbc->dbp;
 	ret = t_ret = 0;
 
+	/*
+	 * Remove from active list of join cursors.  Note that this
+	 * must happen before any action that can fail and return, or else
+	 * __db_close may loop indefinitely.
+	 */
+	MUTEX_THREAD_LOCK(dbp->mutexp);
+	TAILQ_REMOVE(&dbp->join_queue, dbc, links);
+	MUTEX_THREAD_UNLOCK(dbp->mutexp);
+
+	PANIC_CHECK(dbc->dbp->dbenv);
 
 	/*
 	 * Close any open scratch cursors.  In each case, there may
 	 * not be as many outstanding as there are cursors in
-	 * curslist, but the first NULL we hit will be after the last
-	 * of whatever's there.  If one of them fails, there's no
-	 * reason not to close everything else; we'll just return the
-	 * error code of the last one to fail.  There's not much the
-	 * caller can do anyway, since this cursor only exists hanging
-	 * off a db-internal data structure that they shouldn't be
+	 * curslist, but we want to close whatever's there.
+	 *
+	 * If any close fails, there's no reason not to close everything else;
+	 * we'll just return the error code of the last one to fail.  There's
+	 * not much the caller can do anyway, since these cursors only exist
+	 * hanging off a db-internal data structure that they shouldn't be
 	 * mucking with.
 	 */
-	for (i = 0; jc->j_workcurs[i] != NULL; i++)
-		if((t_ret = jc->j_workcurs[i]->c_close(jc->j_workcurs[i])) != 0)
+	for (i = 0; i < jc->j_ncurs; i++) {
+		if (jc->j_workcurs[i] != NULL && (t_ret =
+		    jc->j_workcurs[i]->c_close(jc->j_workcurs[i])) != 0)
 			ret = t_ret;
-	for (i = 0; jc->j_fdupcurs[i] != NULL; i++)
-		if((t_ret = jc->j_fdupcurs[i]->c_close(jc->j_fdupcurs[i])) != 0)
+		if (jc->j_fdupcurs[i] != NULL && (t_ret =
+		    jc->j_fdupcurs[i]->c_close(jc->j_fdupcurs[i])) != 0)
 			ret = t_ret;
+	}
 
 	__os_free(jc->j_exhausted, 0);
 	__os_free(jc->j_curslist, 0);
+	__os_free(jc->j_workcurs, 0);
+	__os_free(jc->j_fdupcurs, 0);
 	__os_free(jc->j_key.data, jc->j_key.ulen);
 	__os_free(jc, sizeof(JOIN_CURSOR));
 	__os_free(dbc, sizeof(DBC));
@@ -550,30 +640,30 @@ __db_join_close(dbc)
 	return (ret);
 }
 
-
 /*
- * __db_join_getnext--
- * 	This function replaces the DBC_CONTINUE and DBC_KEYSET
- * 	functionality inside the various cursor get routines.
+ * __db_join_getnext --
+ *	This function replaces the DBC_CONTINUE and DBC_KEYSET
+ *	functionality inside the various cursor get routines.
  *
- * 	If exhausted == 0, we're not done with the current datum;
- * 	return it if it matches "matching", otherwise search
- * 	using DBC_CONTINUE (which is faster than iteratively doing
- * 	DB_NEXT_DUP) forward until we find one that does.
+ *	If exhausted == 0, we're not done with the current datum;
+ *	return it if it matches "matching", otherwise search
+ *	using DB_GET_BOTHC (which is faster than iteratively doing
+ *	DB_NEXT_DUP) forward until we find one that does.
  *
- * 	If exhausted == 1, we are done with the current datum, so just
- * 	leap forward to searching NEXT_DUPs.
+ *	If exhausted == 1, we are done with the current datum, so just
+ *	leap forward to searching NEXT_DUPs.
  *
- * 	If no matching datum exists, returns DB_NOTFOUND, else 0.
+ *	If no matching datum exists, returns DB_NOTFOUND, else 0.
  */
 static int
-__db_join_getnext(dbc, key, data, matching, exhausted)
+__db_join_getnext(dbc, key, data, exhausted)
 	DBC *dbc;
-	DBT *key, *data, *matching;
+	DBT *key, *data;
 	u_int32_t exhausted;
 {
 	int ret, cmp;
 	DB *dbp;
+	DBT ldata;
 	int (*func) __P((const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
@@ -582,28 +672,34 @@ __db_join_getnext(dbc, key, data, matching, exhausted)
 
 	switch (exhausted) {
 	case 0:
-		if ((ret = dbc->c_get(dbc, key, data, DB_CURRENT)) != 0)
+		memset(&ldata, 0, sizeof(DBT));
+		/* We don't want to step on data->data;  malloc. */
+		F_SET(&ldata, DB_DBT_MALLOC);
+		if ((ret = dbc->c_get(dbc, key, &ldata, DB_CURRENT)) != 0)
 			break;
-		cmp = func(matching, data);
-		if (cmp == 0)
+		cmp = func(data, &ldata);
+		if (cmp == 0) {
+			/*
+			 * We have to return the real data value.  Copy
+			 * it into data, then free the buffer we malloc'ed
+			 * above.
+			 */
+			if ((ret = __db_retcopy(dbp, data, ldata.data,
+			    ldata.size, &data->data, &data->size)) != 0)
+				return (ret);
+			__os_free(ldata.data, 0);
 			return (0);
+		}
 
 		/*
 		 * Didn't match--we want to fall through and search future
-		 * dups.  But we've just stepped on the value of data,
-		 * so we copy matching back into it.
-		 *
-		 * We don't have to copy the data itself, because
-		 * the ensuing c_get call will take care of things for us.
+		 * dups.  We just forget about ldata and free
+		 * its buffer--data contains the value we're searching for.
 		 */
-		data->data = matching->data;
-		data->size = matching->size;
-
+		__os_free(ldata.data, 0);
 		/* FALLTHROUGH */
 	case 1:
-		F_SET(dbc, DBC_CONTINUE);
-		ret = dbc->c_get(dbc, key, data, DB_GET_BOTH);
-		F_CLR(dbc, DBC_CONTINUE);
+		ret = dbc->c_get(dbc, key, data, DB_GET_BOTHC);
 		break;
 	default:
 		ret = EINVAL;
@@ -611,4 +707,29 @@ __db_join_getnext(dbc, key, data, matching, exhausted)
 	}
 
 	return (ret);
+}
+
+/*
+ * __db_join_cmp --
+ *	Comparison function for sorting DBCs in cardinality order.
+ */
+
+static int
+__db_join_cmp(a, b)
+	const void *a, *b;
+{
+	DBC *dbca, *dbcb;
+	db_recno_t counta, countb;
+
+	/* In case c_count fails, pretend cursors are equal. */
+	counta = countb = 0;
+
+	dbca = *((DBC * const *)a);
+	dbcb = *((DBC * const *)b);
+
+	if (dbca->c_count(dbca, &counta, 0) != 0 ||
+	    dbcb->c_count(dbcb, &countb, 0) != 0)
+		return (0);
+
+	return (counta - countb);
 }

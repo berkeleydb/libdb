@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)hash_func.c	11.2 (Sleepycat) 9/9/99";
+static const char revid[] = "$Id: hash_func.c,v 11.5 2000/03/28 14:56:51 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -203,13 +203,13 @@ __ham_func5(key, len)
 	u_int32_t len;
 {
 	const u_int8_t *k, *e;
-        u_int32_t h;
+	u_int32_t h;
 
 	k = key;
 	e = k + len;
-        for (h = 0; k < e; ++k) {
-                h *= 16777619;
-                h ^= *k;
-        }
-        return (h);
+	for (h = 0; k < e; ++k) {
+		h *= 16777619;
+		h ^= *k;
+	}
+	return (h);
 }

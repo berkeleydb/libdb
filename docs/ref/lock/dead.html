@@ -1,5 +1,6 @@
-<!--@(#)dead.so	10.10 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: dead.so,v 10.13 2000/03/18 21:43:14 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,14 +9,14 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
 <td width="1%"><a href="../../ref/lock/cam_conv.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/lock/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Deadlocks and deadlock avoidance</h1>
-<p>
-Practically any application that uses locking may deadlock.
+<p>Practically any application that uses locking may deadlock.
 In nearly all cases, in order to recover from a deadlock, transactions
 must be used, so that an operation that deadlocks mid-way through can
 be undone, leaving the database in a consistent state.
@@ -28,8 +29,7 @@ product is used; this product guarantees deadlock-free operation at the
 expense of reduced concurrency.
 Since deadlocks cannot  be prevented, Berkeley DB provides the ability to detect
 deadlocks and recover from them gracefully.
-<p>
-Deadlocks occur when two or more threads of control are blocked waiting
+<p>Deadlocks occur when two or more threads of control are blocked waiting
 on each other's forward progress.  Consider two transactions, each of
 which wants to modify items A and B.  Assume that transaction 1 modifies
 first A and then B, but transaction 2 modifies B then A.  Now, assume
@@ -40,8 +40,7 @@ to obtain its writelock on A, because transaction 1 already holds a
 writelock on it.  This is a deadlock. Transaction 1 cannot make forward
 progress until Transaction 2 releases its lock on B, but Transaction 2
 cannot make forward progress until Transaction 1 releases its lock on A.
-<p>
-The <a href="../../api_c/lock_detect.html">lock_detect</a> function runs an instance of the Berkeley DB deadlock
+<p>The <a href="../../api_c/lock_detect.html">lock_detect</a> function runs an instance of the Berkeley DB deadlock
 detector.  The <a href="../../utility/db_deadlock.html">db_deadlock</a> utility performs deadlock detection by
 calling <a href="../../api_c/lock_detect.html">lock_detect</a> at regular intervals.  When a deadlock exists
 in the system, all of the threads of control involved in the deadlock are,
@@ -53,15 +52,13 @@ that the <a href="../../api_c/lock_get.html">lock_get</a> (or <a href="../../api
 was requested will receive an error return of <a href="../../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>.
 In the access methods, this error return is propagated back through the
 Berkeley DB interface as DB_LOCK_DEADLOCK.
-<p>
-When an application receives an DB_LOCK_DEADLOCK, the correct action is
+<p>When an application receives an DB_LOCK_DEADLOCK, the correct action is
 to abort the current transaction, and optionally retry it.  Transaction
 support is necessary for recovery from deadlocks.  When a deadlock occurs,
 the database may be left in an inconsistent or corrupted state, and any
 database changes already accomplished must be undone before the
 application can proceed further.
-<p>
-The deadlock detector identifies deadlocks by looking for a cycle in what
+<p>The deadlock detector identifies deadlocks by looking for a cycle in what
 is commonly referred to as its "waits-for" graph.  More precisely, the
 deadlock detector reads through the lock table, and finds each object
 currently locked.  Each object has a list of transactions or operations
@@ -75,8 +72,7 @@ has been examined, the partial orderings are topologically sorted (see
 tsort).  If this topological sort reveals any cycles, then the lockers
 forming the cycle are involved in a deadlock.  One of the lockers is
 selected for abortion.
-<p>
-It is possible that aborting a single transaction involved in a deadlock
+<p>It is possible that aborting a single transaction involved in a deadlock
 is not enough to allow other transactions to make forward progress.
 In this case, the deadlock detector will be called repeatedly.
 Unfortunately, at the time a transaction is selected for abortion,

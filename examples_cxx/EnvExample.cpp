@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)EnvExample.cpp	11.3 (Sleepycat) 9/20/99
+ * $Id: EnvExample.cpp,v 11.10 2000/04/01 15:52:15 dda Exp $
  */
 
 #include "db_config.h"
@@ -25,19 +25,19 @@
 
 #ifdef macintosh
 #define	DATABASE_HOME	":database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR :database"
+#define	CONFIG_DATA_DIR	":database"
 #else
 #ifdef _WIN32
 #define	DATABASE_HOME	"\\tmp\\database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR \\database\\files"
+#define	CONFIG_DATA_DIR	"\\database\\files"
 #else
 #define	DATABASE_HOME	"/tmp/database"
-#define	CONFIG_DATA_DIR	"DB_DATA_DIR /database/files"
+#define	CONFIG_DATA_DIR	"/database/files"
 #endif
 #endif
 
-void	db_setup(char *, char *[], ostream&);
-void	db_teardown(char *, char *[], ostream&);
+void	db_setup(char *, char *, ostream&);
+void	db_teardown(char *, char *, ostream&);
 
 char *progname = "EnvExample";			/* Program name. */
 
@@ -54,19 +54,20 @@ main(int, char **)
 	// and check error returns from all methods.
 	//
 	try {
-		char *config[2], *home;
+		char *data_dir, *home;
 
 		//
 		// All of the shared database files live in /home/database,
 		// but data files live in /database.
 		//
 		home = DATABASE_HOME;
-		config[0] = "DB_DATA_DIR /database/files";
-		config[1] = NULL;
+		data_dir = CONFIG_DATA_DIR;
 
-		db_setup(DATABASE_HOME, config, cerr);
+		cout << "Setup env\n";
+		db_setup(DATABASE_HOME, data_dir, cerr);
 
-		db_teardown(DATABASE_HOME, config, cerr);
+		cout << "Teardown env\n";
+		db_teardown(DATABASE_HOME, data_dir, cerr);
 		return 0;
 	}
 	catch (DbException &dbe) {
@@ -77,7 +78,7 @@ main(int, char **)
 
 // Note that any of the db calls can throw DbException
 void
-db_setup(char *home, char *config[], ostream& err_stream)
+db_setup(char *home, char *data_dir, ostream& err_stream)
 {
 	DbEnv *dbenv = new DbEnv(0);
 
@@ -97,7 +98,8 @@ db_setup(char *home, char *config[], ostream& err_stream)
 	// we need concurrency control and a shared buffer pool, but
 	// not logging or transactions.
 	//
-	dbenv->open(DATABASE_HOME, config,
+	(void)dbenv->set_data_dir(data_dir);
+	dbenv->open(DATABASE_HOME,
 		    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL, 0);
 
 	// Do something interesting...
@@ -107,7 +109,7 @@ db_setup(char *home, char *config[], ostream& err_stream)
 }
 
 void
-db_teardown(char *home, char *config[], ostream& err_stream)
+db_teardown(char *home, char *data_dir, ostream& err_stream)
 {
 	// Remove the shared database regions.
 	DbEnv *dbenv = new DbEnv(0);
@@ -115,7 +117,7 @@ db_teardown(char *home, char *config[], ostream& err_stream)
 	dbenv->set_error_stream(&err_stream);
 	dbenv->set_errpfx(progname);
 
-	dbenv->remove(home, config, 0);
+	(void)dbenv->set_data_dir(data_dir);
+	dbenv->remove(home, 0);
 	delete dbenv;
 }
-

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbLsn.java	11.1 (Sleepycat) 7/25/99
+ *	$Id: DbLsn.java,v 11.4 2000/05/25 04:18:13 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -32,7 +32,7 @@ public class DbLsn
 
     // private data
     //
-    private long private_info_ = 0;
+    private long private_dbobj_ = 0;
 
     static {
         Db.load_db();

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test047.tcl	11.4 (Sleepycat) 8/19/99
+#	$Id: test047.tcl,v 11.9 2000/05/22 12:51:39 bostic Exp $
 #
 # DB Test 47: test of the SET_RANGE interface to DB->c_get.
 proc test047 { method args } {
@@ -20,18 +20,26 @@ proc test047 { method args } {
 
 	puts "\tTest$tstn: Test of SET_RANGE interface to DB->c_get ($method)."
 
-	set key 	"key"
+	set key	"key"
 	set data	"data"
 	set txn ""
 	set flags ""
 
 	puts "\tTest$tstn.a: Create $method database."
-	set testfile $testdir/test$tstn.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tstn.db
+	} else {
+		set testfile test0$tstn.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
 	set oflags "-create -truncate -mode 0644 -dup $args $method"
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# open curs to db
@@ -83,7 +91,7 @@ proc test047 { method args } {
 	cleanup $testdir
 
 	# open db
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen2 [is_valid_db $db] TRUE
 
 	set nkeys 10
@@ -128,7 +136,7 @@ proc test047 { method args } {
 	error_check_good db_close [$db close] 0
 	cleanup $testdir
 
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set dbc [$db cursor]
 	error_check_good db_cursor [is_substr $dbc $db] 1

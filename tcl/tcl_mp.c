@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_mp.c	11.11 (Sleepycat) 10/9/99";
+static const char revid[] = "$Id: tcl_mp.c,v 11.18 2000/05/17 19:40:01 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -37,11 +37,11 @@ static int      tcl_PgIsset __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
     void *, DBTCL_INFO *));
 
 /*
- * PUBLIC: void	_MpInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
- *
  * _MpInfoDelete --
  *	Removes "sub" mp page info structures that are children
- * 	of this mp.
+ *	of this mp.
+ *
+ * PUBLIC: void _MpInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
  */
 void
 _MpInfoDelete(interp, mpip)
@@ -50,12 +50,12 @@ _MpInfoDelete(interp, mpip)
 {
 	DBTCL_INFO *nextp, *p;
 
-	for (p = __db_infohead; p != NULL; p = nextp) {
+	for (p = LIST_FIRST(&__db_infohead); p != NULL; p = nextp) {
 		/*
 		 * Check if this info structure "belongs" to this
 		 * mp.  Remove its commands and info structure.
 		 */
-		nextp = p->i_next;
+		nextp = LIST_NEXT(p, entries);
 		 if (p->i_parent == mpip && p->i_type == I_PG) {
 			(void)Tcl_DeleteCommand(interp, p->i_name);
 			_DeleteInfo(p);
@@ -63,12 +63,10 @@ _MpInfoDelete(interp, mpip)
 	}
 }
 
-
 /*
- * PUBLIC: int	tcl_MpSync __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_MpSync --
+ *
+ * PUBLIC: int tcl_MpSync __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_MpSync(interp, objc, objv, envp)
@@ -98,15 +96,13 @@ tcl_MpSync(interp, objc, objv, envp)
 	ret = memp_sync(envp, &lsn);
 	result = _ReturnSetup(interp, ret, "memp sync");
 	return (result);
-
 }
 
-
 /*
- * PUBLIC: int	tcl_MpTrickle __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_MpTrickle --
+ *
+ * PUBLIC: int tcl_MpTrickle __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_MpTrickle(interp, objc, objv, envp)
@@ -127,7 +123,7 @@ tcl_MpTrickle(interp, objc, objv, envp)
 	 * No flags, must be 3 args.
 	 */
 	if (objc != 3) {
-		Tcl_WrongNumArgs(interp, 2, objv, "lsn");
+		Tcl_WrongNumArgs(interp, 2, objv, "percent");
 		return (TCL_ERROR);
 	}
 
@@ -147,12 +143,11 @@ tcl_MpTrickle(interp, objc, objv, envp)
 
 }
 
-
 /*
- * PUBLIC: int	tcl_Mp __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
- *
  * tcl_Mp --
+ *
+ * PUBLIC: int tcl_Mp __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
 tcl_Mp(interp, objc, objv, envp, envip)
@@ -297,10 +292,9 @@ error:
 }
 
 /*
- * PUBLIC: int	tcl_MpStat __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_MpStat --
+ *
+ * PUBLIC: int tcl_MpStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_MpStat(interp, objc, objv, envp)
@@ -343,6 +337,7 @@ tcl_MpStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Cache size (bytes)", sp->st_bytes);
 	MAKE_STAT_LIST("Cache hits", sp->st_cache_hit);
 	MAKE_STAT_LIST("Cache misses", sp->st_cache_miss);
+	MAKE_STAT_LIST("Number of caches", sp->st_ncache);
 	MAKE_STAT_LIST("Pages mapped into address space", sp->st_map);
 	MAKE_STAT_LIST("Pages created", sp->st_page_create);
 	MAKE_STAT_LIST("Pages read in", sp->st_page_in);
@@ -393,7 +388,6 @@ error:
 	for (; fsp != NULL && *fsp != NULL; fsp++)
 		__os_free(*fsp, sizeof(**fsp));
 	return (result);
-
 }
 
 /*
@@ -770,7 +764,6 @@ tcl_PgInit(interp, objc, objv, page, pgip)
 	res = Tcl_NewIntObj(0);
 	Tcl_SetObjResult(interp, res);
 	return (result);
-
 }
 
 static int

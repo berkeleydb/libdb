@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdbtest001.tcl	11.7 (Sleepycat) 9/24/99
+#	$Id: sdbtest001.tcl,v 11.12 2000/04/21 18:36:23 krinsky Exp $
 #
 # Sub DB All-Method Test 1
 # Make several subdb's of different access methods all in one DB.
@@ -67,7 +67,7 @@ proc subdbtest001 { {nentries 10000} } {
 			}
 
 			puts "\tSubdbtest001.b: dump file sub$subdb.db"
-			set db [berkdb open -unknown $testfile sub$subdb.db]
+			set db [berkdb_open -unknown $testfile sub$subdb.db]
 			dump_file $db $txn $t1 $checkfunc
 			error_check_good db_close [$db close] 0
 
@@ -79,32 +79,30 @@ proc subdbtest001 { {nentries 10000} } {
 					puts $oid [expr $subdb * $newent + $i]
 				}
 				close $oid
-				exec $MV $t1 $t3
+				file rename -force $t1 $t3
 			} else {
-				set q q
-				set p p
-				# Sed uses 1-based line numbers
+				# filehead uses 1-based line numbers
 				set beg [expr $subdb * $newent]
 				incr beg
 				set end [expr $beg + $newent - 1]
-				exec $SED -n $beg,$end$p $dict > $t3
-				exec $SORT $t3 > $t2
-				exec $SORT $t1 > $t3
+				filehead $end $dict $t3 $beg
+				filesort $t3 $t2
+				filesort $t1 $t3
 			}
 
 			error_check_good Subdbtest001:diff($t3,$t2) \
-			    [catch { exec $CMP $t3 $t2 } res] 0
+			    [filecmp $t3 $t2] 0
 
 			puts "\tSubdbtest001.c: sub$subdb.db: close, open, and dump file"
 			# Now, reopen the file and run the last test again.
 			open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
 			    dump_file_direction "-first" "-next" sub$subdb.db
 			if { [string compare $method "-recno"] != 0 } {
-				exec $SORT $t1 > $t3
+				filesort $t1 $t3
 			}
 
 			error_check_good Subdbtest001:diff($t2,$t3) \
-			    [catch { exec $CMP $t2 $t3 } res] 0
+			    [filecmp $t2 $t3] 0
 
 			# Now, reopen the file and run the last test again in the
 			# reverse direction.
@@ -113,11 +111,11 @@ proc subdbtest001 { {nentries 10000} } {
 			    dump_file_direction "-last" "-prev" sub$subdb.db
 
 			if { [string compare $method "-recno"] != 0 } {
-				exec $SORT $t1 > $t3
+				filesort $t1 $t3
 			}
 
 			error_check_good Subdbtest001:diff($t3,$t2) \
-			    [catch { exec $CMP $t3 $t2 } res] 0
+			    [filecmp $t3 $t2] 0
 		}
 	}
 }

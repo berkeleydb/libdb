@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test028.tcl	11.6 (Sleepycat) 8/19/99
+#	$Id: test028.tcl,v 11.10 2000/04/21 18:36:25 krinsky Exp $
 #
 # Put after cursor delete test.
 proc test028 { method args } {
@@ -30,11 +30,19 @@ proc test028 { method args } {
 	}
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test028.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test028.db
+	} else {
+		set testfile test028.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set ndups 20

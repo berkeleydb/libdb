@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)env001.tcl	11.13 (Sleepycat) 10/6/99
+#	$Id: env001.tcl,v 11.17 2000/05/05 19:25:22 sue Exp $
 #
 # Test of env remove interface.
 proc env001 { } {
@@ -65,6 +65,7 @@ proc env001 { } {
 		error_check_good env:$testdir [is_substr $env "env"] 1
 		set stat [catch {berkdb envremove -home $testdir} ret]
 		error_check_good env:remove $stat 1
+		error_check_good env:close [$env close] 0
 	}
 
 	puts \
@@ -76,6 +77,8 @@ proc env001 { } {
 		error_check_good env:$testdir [is_substr $env "env"] 1
 		set stat [catch {berkdb envremove -force -home $testdir} ret]
 		error_check_good env:remove(force) $ret 0
+		# Close the env handle though.
+		catch {$env close} ret
 	}
 
 	puts "\t\tEnv001.e.3: Env is open by 2 procs, remove no force."
@@ -93,6 +96,7 @@ proc env001 { } {
 	error_check_good env:close [$env close] 0
 	catch {berkdb envremove -home $testdir} ret
 	error_check_good envremove:2procs:noforce [is_substr $errorCode EBUSY] 1
+	#
 	# even though it failed, $env is no longer valid, so remove it in
 	# the remote process
 	set remote_close [send_cmd $f1 "$remote_env close"]
@@ -118,6 +122,10 @@ proc env001 { } {
 
 		catch {berkdb envremove -force -home $testdir} ret
 		error_check_good envremove:2procs:force $ret 0
+		#
+		# We still need to close our handle.
+		#
+		catch {$env close} ret
 
 		# Close down remote process
 		set err [catch { close $f1 } result]
@@ -127,7 +135,7 @@ proc env001 { } {
 	# Try opening in a different dir
 	puts "\tEnv001.f: Try opening env in another directory."
 	if { [file exists $testdir/NEWDIR] != 1 } {
-		exec $MKDIR $testdir/NEWDIR
+		file mkdir $testdir/NEWDIR
 	}
 	set eflags "-create -home $testdir/NEWDIR -mode 0644"
 	set env [eval {berkdb env} $eflags]

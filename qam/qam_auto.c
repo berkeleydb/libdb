@@ -1,11 +1,11 @@
 /* Do not edit: automatically built by gen_rec.awk. */
-#include <errno.h>
 #include "db_config.h"
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <errno.h>
 #include <string.h>
 #endif
 
@@ -33,7 +33,7 @@ int __qam_inc_log(dbenv, txnid, ret_lsnp, flags,
 
 	if (txnid != NULL &&
 	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (EPERM);
+		return (__db_child_active_err(dbenv));
 	rectype = DB_qam_inc;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -44,7 +44,7 @@ int __qam_inc_log(dbenv, txnid, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(fileid)
 	    + sizeof(*lsn);
-	if ((ret = __os_malloc(logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -70,11 +70,11 @@ int __qam_inc_log(dbenv, txnid, ret_lsnp, flags,
 }
 
 int
-__qam_inc_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_ENV *notused1;
+__qam_inc_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int notused2;
+	db_recops notused2;
 	void *notused3;
 {
 	__qam_inc_args *argp;
@@ -84,11 +84,10 @@ __qam_inc_print(notused1, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused1 = NULL;
 	notused2 = 0;
 	notused3 = NULL;
 
-	if ((ret = __qam_inc_read(dbtp->data, &argp)) != 0)
+	if ((ret = __qam_inc_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	printf("[%lu][%lu]qam_inc: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
@@ -97,7 +96,7 @@ __qam_inc_print(notused1, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %lu\n", (u_long)argp->fileid);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\tlsn: [%lu][%lu]\n",
 	    (u_long)argp->lsn.file, (u_long)argp->lsn.offset);
 	printf("\n");
@@ -106,7 +105,8 @@ __qam_inc_print(notused1, dbtp, lsnp, notused2, notused3)
 }
 
 int
-__qam_inc_read(recbuf, argpp)
+__qam_inc_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
 	void *recbuf;
 	__qam_inc_args **argpp;
 {
@@ -114,7 +114,7 @@ __qam_inc_read(recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	ret = __os_malloc(sizeof(__qam_inc_args) +
+	ret = __os_malloc(dbenv, sizeof(__qam_inc_args) +
 	    sizeof(DB_TXN), NULL, &argp);
 	if (ret != 0)
 		return (ret);
@@ -151,7 +151,7 @@ int __qam_incfirst_log(dbenv, txnid, ret_lsnp, flags,
 
 	if (txnid != NULL &&
 	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (EPERM);
+		return (__db_child_active_err(dbenv));
 	rectype = DB_qam_incfirst;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -162,7 +162,7 @@ int __qam_incfirst_log(dbenv, txnid, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(fileid)
 	    + sizeof(recno);
-	if ((ret = __os_malloc(logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -185,11 +185,11 @@ int __qam_incfirst_log(dbenv, txnid, ret_lsnp, flags,
 }
 
 int
-__qam_incfirst_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_ENV *notused1;
+__qam_incfirst_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int notused2;
+	db_recops notused2;
 	void *notused3;
 {
 	__qam_incfirst_args *argp;
@@ -199,11 +199,10 @@ __qam_incfirst_print(notused1, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused1 = NULL;
 	notused2 = 0;
 	notused3 = NULL;
 
-	if ((ret = __qam_incfirst_read(dbtp->data, &argp)) != 0)
+	if ((ret = __qam_incfirst_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	printf("[%lu][%lu]qam_incfirst: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
@@ -212,7 +211,7 @@ __qam_incfirst_print(notused1, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %lu\n", (u_long)argp->fileid);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\trecno: %lu\n", (u_long)argp->recno);
 	printf("\n");
 	__os_free(argp, 0);
@@ -220,7 +219,8 @@ __qam_incfirst_print(notused1, dbtp, lsnp, notused2, notused3)
 }
 
 int
-__qam_incfirst_read(recbuf, argpp)
+__qam_incfirst_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
 	void *recbuf;
 	__qam_incfirst_args **argpp;
 {
@@ -228,7 +228,7 @@ __qam_incfirst_read(recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	ret = __os_malloc(sizeof(__qam_incfirst_args) +
+	ret = __os_malloc(dbenv, sizeof(__qam_incfirst_args) +
 	    sizeof(DB_TXN), NULL, &argp);
 	if (ret != 0)
 		return (ret);
@@ -271,7 +271,7 @@ int __qam_mvptr_log(dbenv, txnid, ret_lsnp, flags,
 
 	if (txnid != NULL &&
 	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (EPERM);
+		return (__db_child_active_err(dbenv));
 	rectype = DB_qam_mvptr;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -287,7 +287,7 @@ int __qam_mvptr_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(old_cur)
 	    + sizeof(new_cur)
 	    + sizeof(*metalsn);
-	if ((ret = __os_malloc(logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -323,11 +323,11 @@ int __qam_mvptr_log(dbenv, txnid, ret_lsnp, flags,
 }
 
 int
-__qam_mvptr_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_ENV *notused1;
+__qam_mvptr_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int notused2;
+	db_recops notused2;
 	void *notused3;
 {
 	__qam_mvptr_args *argp;
@@ -337,11 +337,10 @@ __qam_mvptr_print(notused1, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused1 = NULL;
 	notused2 = 0;
 	notused3 = NULL;
 
-	if ((ret = __qam_mvptr_read(dbtp->data, &argp)) != 0)
+	if ((ret = __qam_mvptr_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	printf("[%lu][%lu]qam_mvptr: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
@@ -351,7 +350,7 @@ __qam_mvptr_print(notused1, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
 	printf("\topcode: %lu\n", (u_long)argp->opcode);
-	printf("\tfileid: %lu\n", (u_long)argp->fileid);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\told_first: %lu\n", (u_long)argp->old_first);
 	printf("\tnew_first: %lu\n", (u_long)argp->new_first);
 	printf("\told_cur: %lu\n", (u_long)argp->old_cur);
@@ -364,7 +363,8 @@ __qam_mvptr_print(notused1, dbtp, lsnp, notused2, notused3)
 }
 
 int
-__qam_mvptr_read(recbuf, argpp)
+__qam_mvptr_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
 	void *recbuf;
 	__qam_mvptr_args **argpp;
 {
@@ -372,7 +372,7 @@ __qam_mvptr_read(recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	ret = __os_malloc(sizeof(__qam_mvptr_args) +
+	ret = __os_malloc(dbenv, sizeof(__qam_mvptr_args) +
 	    sizeof(DB_TXN), NULL, &argp);
 	if (ret != 0)
 		return (ret);
@@ -422,7 +422,7 @@ int __qam_del_log(dbenv, txnid, ret_lsnp, flags,
 
 	if (txnid != NULL &&
 	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (EPERM);
+		return (__db_child_active_err(dbenv));
 	rectype = DB_qam_del;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -436,7 +436,7 @@ int __qam_del_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(pgno)
 	    + sizeof(indx)
 	    + sizeof(recno);
-	if ((ret = __os_malloc(logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -468,11 +468,11 @@ int __qam_del_log(dbenv, txnid, ret_lsnp, flags,
 }
 
 int
-__qam_del_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_ENV *notused1;
+__qam_del_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int notused2;
+	db_recops notused2;
 	void *notused3;
 {
 	__qam_del_args *argp;
@@ -482,11 +482,10 @@ __qam_del_print(notused1, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused1 = NULL;
 	notused2 = 0;
 	notused3 = NULL;
 
-	if ((ret = __qam_del_read(dbtp->data, &argp)) != 0)
+	if ((ret = __qam_del_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	printf("[%lu][%lu]qam_del: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
@@ -495,7 +494,7 @@ __qam_del_print(notused1, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %lu\n", (u_long)argp->fileid);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\tlsn: [%lu][%lu]\n",
 	    (u_long)argp->lsn.file, (u_long)argp->lsn.offset);
 	printf("\tpgno: %lu\n", (u_long)argp->pgno);
@@ -507,7 +506,8 @@ __qam_del_print(notused1, dbtp, lsnp, notused2, notused3)
 }
 
 int
-__qam_del_read(recbuf, argpp)
+__qam_del_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
 	void *recbuf;
 	__qam_del_args **argpp;
 {
@@ -515,7 +515,7 @@ __qam_del_read(recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	ret = __os_malloc(sizeof(__qam_del_args) +
+	ret = __os_malloc(dbenv, sizeof(__qam_del_args) +
 	    sizeof(DB_TXN), NULL, &argp);
 	if (ret != 0)
 		return (ret);
@@ -566,7 +566,7 @@ int __qam_add_log(dbenv, txnid, ret_lsnp, flags,
 
 	if (txnid != NULL &&
 	    TAILQ_FIRST(&txnid->kids) != NULL && __txn_activekids(txnid) != 0)
-		return (EPERM);
+		return (__db_child_active_err(dbenv));
 	rectype = DB_qam_add;
 	txn_num = txnid == NULL ? 0 : txnid->txnid;
 	if (txnid == NULL) {
@@ -583,7 +583,7 @@ int __qam_add_log(dbenv, txnid, ret_lsnp, flags,
 	    + sizeof(u_int32_t) + (data == NULL ? 0 : data->size)
 	    + sizeof(vflag)
 	    + sizeof(u_int32_t) + (olddata == NULL ? 0 : olddata->size);
-	if ((ret = __os_malloc(logrec.size, NULL, &logrec.data)) != 0)
+	if ((ret = __os_malloc(dbenv, logrec.size, NULL, &logrec.data)) != 0)
 		return (ret);
 
 	bp = logrec.data;
@@ -637,11 +637,11 @@ int __qam_add_log(dbenv, txnid, ret_lsnp, flags,
 }
 
 int
-__qam_add_print(notused1, dbtp, lsnp, notused2, notused3)
-	DB_ENV *notused1;
+__qam_add_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int notused2;
+	db_recops notused2;
 	void *notused3;
 {
 	__qam_add_args *argp;
@@ -651,11 +651,10 @@ __qam_add_print(notused1, dbtp, lsnp, notused2, notused3)
 
 	i = 0;
 	ch = 0;
-	notused1 = NULL;
 	notused2 = 0;
 	notused3 = NULL;
 
-	if ((ret = __qam_add_read(dbtp->data, &argp)) != 0)
+	if ((ret = __qam_add_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
 	printf("[%lu][%lu]qam_add: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file,
@@ -664,7 +663,7 @@ __qam_add_print(notused1, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->txnid->txnid,
 	    (u_long)argp->prev_lsn.file,
 	    (u_long)argp->prev_lsn.offset);
-	printf("\tfileid: %lu\n", (u_long)argp->fileid);
+	printf("\tfileid: %ld\n", (long)argp->fileid);
 	printf("\tlsn: [%lu][%lu]\n",
 	    (u_long)argp->lsn.file, (u_long)argp->lsn.offset);
 	printf("\tpgno: %lu\n", (u_long)argp->pgno);
@@ -695,7 +694,8 @@ __qam_add_print(notused1, dbtp, lsnp, notused2, notused3)
 }
 
 int
-__qam_add_read(recbuf, argpp)
+__qam_add_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
 	void *recbuf;
 	__qam_add_args **argpp;
 {
@@ -703,7 +703,7 @@ __qam_add_read(recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	ret = __os_malloc(sizeof(__qam_add_args) +
+	ret = __os_malloc(dbenv, sizeof(__qam_add_args) +
 	    sizeof(DB_TXN), NULL, &argp);
 	if (ret != 0)
 		return (ret);
@@ -765,9 +765,6 @@ __qam_init_print(dbenv)
 	return (0);
 }
 
-/*
- * PUBLIC: int __qam_init_recover __P((DB_ENV *));
- */
 int
 __qam_init_recover(dbenv)
 	DB_ENV *dbenv;

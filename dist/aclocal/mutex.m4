@@ -1,4 +1,4 @@
-dnl @(#)mutex.m4	11.9 (Sleepycat) 10/15/99
+dnl $Id: mutex.m4,v 11.16 2000/04/29 19:03:49 bostic Exp $
 
 dnl Figure out mutexes for this compiler/architecture.
 AC_DEFUN(AM_DEFINE_MUTEXES, [
@@ -62,7 +62,7 @@ main(){
 	int type = USYNC_PROCESS;
 	exit (
 	mutex_init(&mutex, type, NULL) ||
-	cond_init(&cond, type, NULL) || 
+	cond_init(&cond, type, NULL) ||
 	mutex_lock(&mutex) ||
 	mutex_unlock(&mutex));
 }], [db_cv_mutex="UI/threads/library"])
@@ -78,7 +78,7 @@ main(){
 	int type = USYNC_PROCESS;
 	exit (
 	mutex_init(&mutex, type, NULL) ||
-	cond_init(&cond, type, NULL) || 
+	cond_init(&cond, type, NULL) ||
 	mutex_lock(&mutex) ||
 	mutex_unlock(&mutex));
 }], [db_cv_mutex="UI/threads"])
@@ -155,7 +155,7 @@ main(){
 }], [db_cv_mutex="HP/msem_init"])
 fi
 
-dnl msemaphore: OSF/1
+dnl msemaphore: AIX, OSF/1
 if test "$db_cv_mutex" = no; then
 AC_TRY_RUN([
 #include <sys/types.h>
@@ -212,6 +212,10 @@ AC_TRY_LINK([#include <synch.h>],
 fi
 
 dnl _lock_try/_lock_clear: Solaris
+dnl On Solaris systems without Pthread or UI mutex interfaces, DB uses the
+dnl undocumented _lock_try _lock_clear function calls instead of either the
+dnl sema_trywait(3T) or sema_wait(3T) function calls.  This is because of
+dnl problems in those interfaces in some releases of the Solaris C library.
 if test "$db_cv_mutex" = no; then
 AC_TRY_LINK([#include <sys/machlock.h>],
 [typedef lock_t tsl_t;
@@ -223,12 +227,14 @@ fi
 dnl _check_lock/_clear_lock: AIX
 if test "$db_cv_mutex" = no; then
 AC_TRY_LINK([#include <sys/atomic_op.h>],
-[int x; _check_lock(x,0,1); _clear_lock(x,0);],
+[int x; _check_lock(&x,0,1); _clear_lock(&x,0);],
 [db_cv_mutex="AIX/_check_lock"])
 fi
 
 dnl Alpha/gcc: OSF/1
-if test "$db_cv_mutex" = no; then
+dnl The alpha/gcc code doesn't work as far as I know.  There are
+dnl two versions, both have problems.  See Support Request #1583.
+if test "$db_cv_mutex" = DOESNT_WORK; then
 AC_TRY_RUN([main(){
 #if defined(__alpha)
 #if defined(__GNUC__)
@@ -289,6 +295,18 @@ AC_TRY_RUN([main(){
 }], [db_cv_mutex="x86/gcc-assembly"])
 fi
 
+dnl ia86/gcc: Linux
+if test "$db_cv_mutex" = no; then
+AC_TRY_RUN([main(){
+#if defined(__ia64)
+#if defined(__GNUC__)
+	exit(0);
+#endif
+#endif
+	exit(1);
+}], [db_cv_mutex="ia64/gcc-assembly"])
+fi
+
 dnl: uts/cc: UTS
 if test "$db_cv_mutex" = no; then
 AC_TRY_RUN([main(){
@@ -319,6 +337,8 @@ HP/msem_init)		ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_HPPA_MSEM_INIT);;
 HPPA/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_HPPA_GCC_ASSEMBLY);;
+ia64/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_IA64_GCC_ASSEMBLY);;
 POSIX/pthreads)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_PTHREADS);;
 POSIX/pthreads/library)	LIBS="-lpthread $LIBS"

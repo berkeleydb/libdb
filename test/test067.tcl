@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test067.tcl	11.5 (Sleepycat) 10/16/99
+#	$Id: test067.tcl,v 11.11 2000/04/21 18:36:27 krinsky Exp $
 #
 # DB Test 67: Test of DB_CURRENT partial puts on almost-empty duplicate pages.
 # This test was written to address the following issue, #2 in the list of
@@ -29,7 +29,15 @@ proc test067 { method {ndups 1000} {tnum 67} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 
 	puts "Test0$tnum:\
 	    $method ($args) Partial puts on near-empty duplicate pages."
@@ -40,7 +48,7 @@ proc test067 { method {ndups 1000} {tnum 67} args } {
 
 	foreach dupopt { "-dup" "-dup -dupsort" } {
 		cleanup $testdir
-		set db [eval {berkdb open -create -truncate -mode 0644 \
+		set db [eval {berkdb_open -create -truncate -mode 0644 \
 		    $omethod} $args $dupopt {$testfile}]
 		error_check_good db_open [is_valid_db $db] TRUE
 

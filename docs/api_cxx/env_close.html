@@ -1,5 +1,6 @@
-<!--"@(#)env_close.so	10.18 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_close.so,v 10.21 2000/03/01 21:41:29 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv::close</h1>
@@ -23,28 +25,22 @@
 DbEnv::close(u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbEnv::close method closes the Berkeley DB environment, freeing any
+<p>The DbEnv::close method closes the Berkeley DB environment, freeing any
 allocated resources and closing any underlying subsystems.
-<p>
-Calling DbEnv::close does not imply closing any databases that were
+<p>Calling DbEnv::close does not imply closing any databases that were
 opened in the environment.
-<p>
-The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>
-Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> flag,
+<p>The <b>flags</b> parameter is currently unused, and must be set to 0.
+<p>Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> flag,
 calling DbEnv::close does not release any locks still held by the
 closing process, providing functionality for long-lived locks.
 Processes that wish to have all their locks
 released can do so by issuing the appropriate <a href="../api_cxx/lock_vec.html">DbEnv::lock_vec</a> call.
-<p>
-Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>
+<p>Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>
 flag, calling DbEnv::close implies calls to <a href="../api_cxx/memp_fclose.html">DbMpoolFile::close</a> for
 any remaining open files in the memory pool that were returned to this
 process by calls to <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a>.  It does not imply a call to
 <a href="../api_cxx/memp_fsync.html">DbMpoolFile::sync</a> for those files.
-<p>
-Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flag,
+<p>Where the environment was initialized with the <a href="../api_cxx/env_open.html#DB_INIT_TXN">DB_INIT_TXN</a> flag,
 calling DbEnv::close aborts any uncommitted transactions.
 (Applications are should not depend on this behavior. If the process' has
 already closed a database handle which is necessary to abort an
@@ -52,30 +48,20 @@ uncommitted transaction, the Berkeley DB environment must then require that
 recovery be run before further operations are done, since once a
 transaction exists that cannot be committed or aborted, no future
 checkpoint can ever succeed.)
-<p>
-In multi-threaded applications, only a single thread may call
+<p>In multi-threaded applications, only a single thread may call
 DbEnv::close.
-<p>
-Once DbEnv::close has been called, regardless of its return,
+<p>Once DbEnv::close has been called, regardless of its return,
 the Berkeley DB environment handle may not be accessed again.
-<p>
-The DbEnv::close
-method either returns a non-zero error value or throws an exception that
+<p>The DbEnv::close method either returns a non-zero error value or throws an exception that
 encapsulates a non-zero error value on failure, and returns 0 on success.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbEnv::close method will fail and either
+<p>The DbEnv::close method may fail and throw an exception or return a non-zero error for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv::close method may fail and either
 return <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> or throw an exception encapsulating
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the DbEnv::close method may fail and
-throw an exception or return a non-zero error
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h3>Class</h3>
 <a href="../api_cxx/dbenv_class.html">DbEnv</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_cxx/env_close.html">DbEnv::close</a>,
 <a href="../api_cxx/env_open.html">DbEnv::open</a>,
@@ -89,7 +75,6 @@ for errors specified for other Berkeley DB and C library or system methods.
 <a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>,
 <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>,
 <a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a>,
-<a href="../api_cxx/env_set_region_init.html">DbEnv::set_region_init</a>
 and
 <a href="../api_cxx/env_set_verbose.html">DbEnv::set_verbose</a>.
 </tt>

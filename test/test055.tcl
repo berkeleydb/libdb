@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test055.tcl	11.6 (Sleepycat) 8/17/99
+#	$Id: test055.tcl,v 11.10 2000/04/21 18:36:26 krinsky Exp $
 #
 # Test055:
 # This test checks basic cursor operations.
@@ -21,14 +21,22 @@ proc test055 { method args } {
 	puts "Test055: $method interspersed cursor and normal operations"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test055.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test055.db
+	} else {
+		set testfile test055.db
+	}
 	cleanup $testdir
 
 	set flags ""
 	set txn ""
 
 	puts "\tTest055.a: No duplicates"
-	set db [eval {berkdb open -create -truncate -mode 0644 $omethod } \
+	set db [eval {berkdb_open -create -truncate -mode 0644 $omethod } \
 	    $args {$testfile}]
 	error_check_good db_open:nodup [is_valid_db $db] TRUE
 

@@ -1,19 +1,19 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)mpool.tcl	11.14 (Sleepycat) 10/25/99
+#	$Id: mpool.tcl,v 11.31 2000/05/24 14:58:10 krinsky Exp $
 #
 # Options are:
-# -cachesize <bytes>
+# -cachesize {gbytes bytes ncache}
 # -nfiles <files>
 # -iterations <iterations>
 # -pagesize <page size in bytes>
 # -dir <directory in which to store memp>
 # -stat
 proc memp_usage {} {
-	puts "memp -cachesize <gbytes bytes>"
+	puts "memp -cachesize {gbytes bytes ncache}"
 	puts "\t-nfiles <files>"
 	puts "\t-iterations <iterations>"
 	puts "\t-pagesize <page size in bytes>"
@@ -24,16 +24,18 @@ proc memp_usage {} {
 
 proc mpool { args } {
 	source ./include.tcl
+	global errorCode
 
 	puts "mpool {$args} running"
-        # Set defaults
-	set cachearg ""
+	# Set defaults
+	set cachearg " -cachesize {0 200000 3}"
 	set nfiles 5
 	set iterations 500
 	set pagesize "512 1024 2048 4096 8192"
 	set npages 100
 	set procs 4
 	set seeds ""
+	set shm_key 1
 	set dostat 0
 	set flags ""
 	for { set i 0 } { $i < [llength $args] } {incr i} {
@@ -52,8 +54,14 @@ proc mpool { args } {
 					set flags -private
 				} elseif { [string \
 				    compare [lindex $args $i] system] == 0 } {
-					set flags -system_mem
+					#
+					# We need to use a shm id.  Use one
+					# that is the same each time so that
+					# we do not grow segments infinitely.
+					set flags "-system_mem -shm_key $shm_key"
 				} else {
+					puts -nonewline \
+					    "FAIL:[timestamp] Usage: "
 					memp_usage
 					return
 				}
@@ -65,6 +73,7 @@ proc mpool { args } {
 			-se.* { incr i; set seeds [lindex $args $i] }
 			-st.* { set dostat 1 }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				memp_usage
 				return
 			}
@@ -75,27 +84,48 @@ proc mpool { args } {
 	cleanup $testdir
 
 	# Open the memp with region init specified
-	set env [eval {berkdb env -create -mode 0644 -mpool}\
-	    $cachearg {-region_init -home $testdir} $flags]
-	error_check_good evn_open [is_substr $env env] 1
+	set ret [catch {eval {berkdb env -create -mode 0644}\
+	    $cachearg {-region_init -home $testdir} $flags} res]
+	if { $ret == 0 } {
+		set env $res
+	} else {
+		# If the env open failed, it may be because we're on a platform
+		# such as HP-UX 10 that won't support mutexes in shmget memory.
+		# Verify that the return value was EINVAL and bail
+		# gracefully.
+		error_check_good is_shm_test [is_substr $flags -system_mem] 1
+		error_check_good returned_einval [is_substr $errorCode EINVAL] 1
+		puts "Warning:\
+		     platform does not support mutexes in shmget memory."
+		puts "Skipping shared memory mpool test."
+		return
+	}
+	error_check_good env_open [is_substr $env env] 1
 
 	reset_env $env
 	cleanup $testdir
 
 	# Now open without region init
-	set env [eval {berkdb env -create -mode 0644 -mpool}\
+	set env [eval {berkdb env -create -mode 0644}\
 	    $cachearg {-home $testdir} $flags]
 	error_check_good evn_open [is_substr $env env] 1
 
 	memp001 $env \
 	    $testdir $nfiles $iterations [lindex $pagesize 0] $dostat $flags
 	reset_env $env
+	set ret [berkdb envremove -home $testdir]
+	error_check_good env_remove $ret 0
 	cleanup $testdir
 
 	memp002 $testdir \
 	    $procs $pagesize $iterations $npages $seeds $dostat $flags
+	set ret [berkdb envremove -home $testdir]
+	error_check_good env_remove $ret 0
+	cleanup $testdir
 
-	memp003 $flags $iterations
+	memp003 $testdir $iterations $flags
+	set ret [berkdb envremove -home $testdir]
+	error_check_good env_remove $ret 0
 
 	cleanup $testdir
 }
@@ -152,7 +182,7 @@ proc memp001 {env dir n iter psize dostat flags} {
 	# Close N memp files
 	for {set i 1} {$i <= $n} {incr i} {
 		error_check_good memp_close:$mpools($i) [$mpools($i) close] 0
-		exec $RM -rf $dir/data_file.$i
+		fileremove -f $dir/data_file.$i
 	}
 }
 
@@ -223,9 +253,9 @@ proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 	cleanup $dir
 
 	for { set i 0 } { $i < [llength $psizes] } { incr i } {
-		exec $RM -rf $dir/file$i
+		fileremove -f $dir/file$i
 	}
-	set e [berkdb env -create -lock -mpool -home $dir]
+	set e [eval {berkdb env -create -lock -home $dir} $flags]
 	error_check_good dbenv [is_valid_widget $e env] TRUE
 
 	set pidlist {}
@@ -240,21 +270,20 @@ proc memp002 { dir procs psizes iterations npages seeds dostat flags } {
 		    $test_path/mpoolscript.tcl $dir $i $procs \
 		    $iter $psizes $npages 3 $flags > \
 		    $dir/memp002.$i.out &"
-		set p [exec $tclsh_path \
-		    $test_path/mpoolscript.tcl $dir $i $procs \
-		    $iter $psizes $npages 3 $flags > \
-		    $dir/memp002.$i.out &]
-		    lappend pidlist $p
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    mpoolscript.tcl $dir/memp002.$i.out $dir $i $procs \
+		    $iter $psizes $npages 3 $flags &]
+		lappend pidlist $p
 	}
 	puts "Memp002: $procs independent processes now running"
-	watch_procs $pidlist
+	watch_procs
 
 	reset_env $e
 }
 
 # Test reader-only/writer process combinations; we use the access methods
 # for testing.
-proc memp003 { flags {nentries 10000} } {
+proc memp003 { dir {nentries 10000} flags } {
 	global alphabet
 	source ./include.tcl
 
@@ -266,24 +295,24 @@ proc memp003 { flags {nentries 10000} } {
 		return
 	}
 
-	cleanup $testdir
+	cleanup $dir
 	set psize 1024
 	set testfile mpool.db
-	set t1 $testdir/t1
+	set t1 $dir/t1
 
 	# Create an environment that the two processes can share
 	set c [list 0 [expr $psize * 10] 3]
-	set dbenv [berkdb env -create -lock -mpool -home $testdir -cachesize $c]
+	set dbenv [eval {berkdb env \
+	    -create -lock -home $dir -cachesize $c} $flags]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 	# First open and create the file.
 
-	set db [berkdb open -env $dbenv -create -truncate \
+	set db [berkdb_open -env $dbenv -create -truncate \
 	    -mode 0644 -pagesize $psize -btree $testfile]
 	error_check_good dbopen/RW [is_valid_db $db] TRUE
 
 	set did [open $dict]
-	set flags ""
 	set txn ""
 	set count 0
 
@@ -293,10 +322,10 @@ proc memp003 { flags {nentries 10000} } {
 	while { [gets $did str] != -1 && $count < $nentries } {
 		lappend keys $str
 
-		set ret [eval {$db put} $txn $flags {$str $str}]
+		set ret [eval {$db put} $txn {$str $str}]
 		error_check_good put $ret 0
 
-		set ret [eval {$db get} $txn $flags {$str}]
+		set ret [eval {$db get} $txn {$str}]
 		error_check_good get $ret [list [list $str $str]]
 
 		incr count
@@ -305,7 +334,7 @@ proc memp003 { flags {nentries 10000} } {
 	error_check_good close [$db close] 0
 
 	# Now open the file for read-only
-	set db [berkdb open -env $dbenv -rdonly $testfile]
+	set db [berkdb_open -env $dbenv -rdonly $testfile]
 	error_check_good dbopen/RO [is_substr $db db] 1
 
 	puts "\tMemp003.b: verify a few keys"
@@ -320,7 +349,7 @@ proc memp003 { flags {nentries 10000} } {
 		}
 		lappend testset $key
 
-		set ret [eval {$db get} $txn $flags {$key}]
+		set ret [eval {$db get} $txn {$key}]
 		error_check_good get/RO $ret [list [list $key $key]]
 	}
 
@@ -333,10 +362,10 @@ proc memp003 { flags {nentries 10000} } {
 
 	set c [concat "{" [list 0 [expr $psize * 10] 3] "}" ]
 	set remote_env [send_cmd $f1 \
-	    "berkdb env -create -lock -mpool -home $testdir -cachesize $c"]
+	    "berkdb env -create -lock -home $dir -cachesize $c $flags"]
 	error_check_good remote_dbenv [is_valid_env $remote_env] TRUE
 
-	set remote_db [send_cmd $f1 "berkdb open -env $remote_env $testfile"]
+	set remote_db [send_cmd $f1 "berkdb_open -env $remote_env $testfile"]
 	error_check_good remote_dbopen [is_valid_db $remote_db] TRUE
 
 	foreach k $testset {
@@ -351,7 +380,7 @@ proc memp003 { flags {nentries 10000} } {
 
 	puts "\tMemp003.d: verify changes in local process"
 	foreach k $testset {
-		set ret [eval {$db get} $txn $flags {$key}]
+		set ret [eval {$db get} $txn {$key}]
 		error_check_good get_verify/RO $ret [list [list $key $key$key]]
 	}
 

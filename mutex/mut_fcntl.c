@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mut_fcntl.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: mut_fcntl.c,v 11.4 2000/03/30 01:46:40 ubell Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -80,7 +80,7 @@ __db_fcntl_mutex_lock(mutexp, fhp)
 		 */
 		for (ms = 1; mutexp->pid != 0;) {
 			waited = 1;
-			__os_yield(ms * USEC_PER_MS);
+			__os_yield(NULL, ms * USEC_PER_MS);
 			if ((ms <<= 1) > MS_PER_SEC)
 				ms = MS_PER_SEC;
 		}

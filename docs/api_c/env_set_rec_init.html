@@ -1,5 +1,6 @@
-<!--"@(#)env_set_rec_init.so	10.5 (Sleepycat) 11/7/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_rec_init.so,v 10.9 2000/05/01 21:57:44 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DBENV-&gt;set_recovery_init</h1>
@@ -25,35 +27,25 @@ DBENV-&gt;set_recovery_init(DB_ENV *,
     int (*db_recovery_init_fcn)(DB_ENV *));
 </pre></h3>
 <h1>Description</h1>
-<p>
-Applications installing application-specific recovery functions need
+<p>Applications installing application-specific recovery functions need
 to be called before Berkeley DB performs recovery so they may add their recovery
 functions to Berkeley DB's.
-<p>
-The DBENV-&gt;set_recovery_init function supports this functionality.  The
+<p>The DBENV-&gt;set_recovery_init function supports this functionality.  The
 <b>db_recovery_init_fcn</b> function must be declared with one
 argument, a reference to the enclosing Berkeley DB environment.  This
 function will be called after the <a href="../api_c/env_open.html">DBENV-&gt;open</a> has been called,
 but before recovery is started.
-<p>
-If the <b>db_recovery_init_fcn</b> function returns a non-zero value,
+<p>If the <b>db_recovery_init_fcn</b> function returns a non-zero value,
 no recovery will be performed and <a href="../api_c/env_open.html">DBENV-&gt;open</a> will return the same
 value to its caller.
-<p>
-The DBENV-&gt;set_recovery_init interface may only be used to configure Berkeley DB before
+<p>The DBENV-&gt;set_recovery_init interface may only be used to configure Berkeley DB before
 the <a href="../api_c/env_open.html">DBENV-&gt;open</a> interface is called.
-<p>
-The DBENV-&gt;set_recovery_init
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The DBENV-&gt;set_recovery_init function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
+<p>Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
 </dl>
-<p>
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -66,10 +58,7 @@ Called after <a href="../api_c/env_open.html">DBENV-&gt;open</a> was called.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

@@ -1,13 +1,22 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test037.tcl	11.4 (Sleepycat) 8/19/99
+#	$Id: test037.tcl,v 11.10 2000/04/21 18:36:25 krinsky Exp $
 #
 # Test037: RMW functionality.
 proc test037 { method {nentries 100} args } {
 	source ./include.tcl
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test037 skipping for env $env"
+		return
+	}
 
 	puts "Test037: RMW $method"
 
@@ -19,11 +28,11 @@ proc test037 { method {nentries 100} args } {
 	set testfile test037.db
 
 	set local_env \
-	    [berkdb env -create -mode 0644 -txn -lock -mpool -home $testdir]
+	    [berkdb env -create -mode 0644 -txn -home $testdir]
 	error_check_good dbenv [is_valid_env $local_env] TRUE
 
-	set db [eval {berkdb \
-	    open -env $local_env -create -mode 0644 $omethod} $args {$testfile}]
+	set db [eval {berkdb_open \
+	     -env $local_env -create -mode 0644 $omethod} $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -64,7 +73,7 @@ proc test037 { method {nentries 100} args } {
 	puts "\tTest037.b: Setting up environments"
 
 	# Open local environment
-	set env_cmd [concat berkdb env -create -txn -lock -mpool -home $testdir]
+	set env_cmd [concat berkdb env -create -txn -home $testdir]
 	set local_env [eval $env_cmd]
 	error_check_good dbenv [is_valid_widget $local_env env] TRUE
 
@@ -92,10 +101,10 @@ proc test037 { method {nentries 100} args } {
 	set did [open $dict]
 	set rkey 0
 
-	set db [berkdb open -env $local_env $testfile]
+	set db [berkdb_open -env $local_env $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set rdb [send_cmd $f1 \
-	    "berkdb open -env $remote_env -mode 0644 $testfile"]
+	    "berkdb_open -env $remote_env -mode 0644 $testfile"]
 	error_check_good remote:dbopen [is_valid_widget $rdb db] TRUE
 
 	puts "\tTest037.d: Testing without RMW"
@@ -117,7 +126,7 @@ proc test037 { method {nentries 100} args } {
 	error_check_good remote_send $r 0
 
 	# Now sleep before releasing local record lock
-	exec $SLEEP 5
+	tclsleep 5
 	error_check_good local_commit [$local_txn commit] 0
 
 	# Now get the remote result
@@ -157,7 +166,7 @@ proc test037 { method {nentries 100} args } {
 	error_check_good remote_send $r 0
 
 	# Now sleep before releasing local record lock
-	exec $SLEEP 5
+	tclsleep 5
 	error_check_good local_commit [$local_txn commit] 0
 
 	# Now get the remote result

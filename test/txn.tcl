@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)txn.tcl	11.3 (Sleepycat) 8/17/99
+#	$Id: txn.tcl,v 11.8 2000/02/14 03:00:22 bostic Exp $
 #
 # Options are:
 # -dir <directory in which to store memp>
@@ -31,6 +31,7 @@ proc txntest { args } {
 			-m.* { incr i; set max [lindex $args $i] }
 			-s.* { set dostat 1 }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				txn_usage
 				return
 			}
@@ -56,13 +57,24 @@ proc txn001 { dir max ntxns flags} {
 	cleanup $dir
 
 	set env [eval {berkdb \
-	    env -create -mode 0644 -mpool -txn -txn_max $max -home $dir} $flags]
+	    env -create -mode 0644 -txn -txn_max $max -home $dir} $flags]
 	error_check_good evn_open [is_valid_env $env] TRUE
+	txn001_suba $ntxns $env
+	txn001_subb $ntxns $env
+	txn001_subc $ntxns $env
+	# Close and unlink the file
+	error_check_good env_close:$env [$env close] 0
+
+	cleanup $testdir
+}
+
+proc txn001_suba { ntxns env } {
+	source ./include.tcl
 
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
 	set tid_list {}
-	puts "Txn001.a: Beginning/Committing Transactions"
+	puts "Txn001.a: Beginning/Committing $ntxns Transactions in $env"
 	for { set i 0 } { $i < $ntxns } { incr i } {
 		set txn [$env txn]
 		error_check_good txn_begin [is_valid_txn $txn $env] TRUE
@@ -79,9 +91,12 @@ proc txn001 { dir max ntxns flags} {
 	foreach t $txn_list {
 		error_check_good txn_commit:$t [$t commit] 0
 	}
+}
 
+proc txn001_subb { ntxns env } {
 	# We will create a bunch of transactions and abort them.
 	set txn_list {}
+	set tid_list {}
 	puts "Txn001.b: Beginning/Aborting Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
 		set txn [$env txn]
@@ -99,9 +114,12 @@ proc txn001 { dir max ntxns flags} {
 	foreach t $txn_list {
 		error_check_good txn_abort:$t [$t abort] 0
 	}
+}
 
+proc txn001_subc { ntxns env } {
 	# We will create a bunch of transactions and commit them.
 	set txn_list {}
+	set tid_list {}
 	puts "Txn001.c: Beginning/Prepare/Committing Transactions"
 	for { set i 0 } { $i < $ntxns } { incr i } {
 		set txn [$env txn]
@@ -125,10 +143,6 @@ proc txn001 { dir max ntxns flags} {
 		error_check_good txn_commit:$t [$t commit] 0
 	}
 
-	# Close and unlink the file
-	error_check_good env_close:$env [$env close] 0
-
-	cleanup $testdir
 }
 
 # Verify that read-only transactions do not create any log records
@@ -139,7 +153,7 @@ proc txn002 { dir max ntxns } {
 
 	cleanup $dir
 	set env [berkdb \
-	    env -create -mode 0644 -txn -log -txn_max $max -home $dir]
+	    env -create -mode 0644 -txn -txn_max $max -home $dir]
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	# We will create a bunch of transactions and commit them.

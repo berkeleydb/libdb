@@ -1,5 +1,6 @@
-<!--"@(#)env_set_tx_max.so	10.15 (Sleepycat) 11/11/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_set_tx_max.so,v 10.21 2000/05/20 16:29:12 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv.set_tx_max</h1>
@@ -24,33 +26,32 @@ public void set_tx_max(int tx_max)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-Set the maximum number of simultaneous transactions that are supported
-by the environment.  This bounds the size of backing files.  When there
-are more than the specified number of concurrent transactions, calls to
-<a href="../api_java/txn_begin.html">DbEnv.txn_begin</a> will fail (until some active transactions complete).
-If no value is specified, a default value of 20 is used.
-<p>
-The DbEnv.set_tx_max interface may only be used to configure Berkeley DB before
+<p>Set the maximum number of active transactions that are supported by the
+environment.  This value bounds the size of backing shared memory regions.
+Note that child transactions must be counted as active until their
+ultimate parent commits or aborts.
+<p>When there are more than the specified number of concurrent transactions,
+calls to <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a> will fail (until some active transactions
+complete).  If no value is specified, a default value of 20 is used.
+<p>The DbEnv.set_tx_max interface may only be used to configure Berkeley DB before
 the <a href="../api_java/env_open.html">DbEnv.open</a> interface is called.
-<p>
-The DbEnv.set_tx_max
-method throws an exception that encapsulates a non-zero error value on
+<p>The DbEnv.set_tx_max method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
+<p>The environment's maximum number of active transactions may also be set using the environment's
+<b>DB_CONFIG</b> file.  The syntax of the entry in that file is a single
+line with the string "set_tx_max", one or more whitespace characters, and the number of transactions.
+Configuration in the <b>DB_CONFIG</b> file silently overrules
+configuration done using the DbEnv.set_tx_max method.
 <h1>Errors</h1>
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
-<p>
-Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
+<p>Called after <a href="../api_java/env_open.html">DbEnv.open</a> was called.
 </dl>
-<p>
 <h3>Classes</h3>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
+<a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a>,
 <a href="../api_java/txn_abort.html">DbTxn.abort</a>,
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
 <a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,

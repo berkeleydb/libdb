@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)os_open.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: os_open.c,v 11.6.2.1 2000/06/29 16:43:53 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -31,7 +31,8 @@ int __os_win32_errno __P((void));
  *	Open a file descriptor.
  */
 int
-__os_open(name, flags, mode, fhp)
+__os_open(dbenv, name, flags, mode, fhp)
+	DB_ENV *dbenv;
 	const char *name;
 	u_int32_t flags;
 	int mode;
@@ -41,7 +42,7 @@ __os_open(name, flags, mode, fhp)
 	HANDLE wh;
 	u_int32_t log_size;
 	int access, attr, oflags, share, createflag;
-	int ret, try;
+	int ret, nrepeat;
 
 	/*
 	 * The "public" interface to the __os_open routine passes around POSIX
@@ -73,7 +74,7 @@ __os_open(name, flags, mode, fhp)
 		if (LF_ISSET(DB_OSO_TRUNC))
 			oflags |= O_TRUNC;
 
-		return (__os_openhandle(name, oflags, mode, fhp));
+		return (__os_openhandle(dbenv, name, oflags, mode, fhp));
 	}
 
 	log_size = fhp->log_size;			/* XXX: Gag. */
@@ -133,7 +134,7 @@ __os_open(name, flags, mode, fhp)
 	if (LF_ISSET(DB_OSO_TEMP))
 		attr |= FILE_FLAG_DELETE_ON_CLOSE;
 
-	for (try = 1; try < 4; ++try) {
+	for (nrepeat = 1; nrepeat < 4; ++nrepeat) {
 		ret = 0;
 		__os_set_errno(0);
 		wh = CreateFile(name, access, share, NULL, createflag, attr, 0);
@@ -146,7 +147,7 @@ __os_open(name, flags, mode, fhp)
 			 */
 			ret = __os_win32_errno();
 			if (ret == ENFILE || ret == EMFILE || ret == ENOSPC) {
-				(void)__os_sleep(try * 2, 0);
+				(void)__os_sleep(dbenv, nrepeat * 2, 0);
 				continue;
 			}
 			goto err;
@@ -159,12 +160,15 @@ __os_open(name, flags, mode, fhp)
 	 * the MFT metadata on each write, extend the file to its maximum size.
 	 * Windows will allocate all the data blocks and store them in the MFT
 	 * (inode) area.  In addition, flush the MFT area to disk.
+	 * This strategy only works for Win/NT; Win/9X does not
+	 * guarantee that the logs will be zero filled.
 	 */
-	if (LF_ISSET(DB_OSO_LOG) && log_size != 0) {
+	if (LF_ISSET(DB_OSO_LOG) && log_size != 0 &&
+	    __os_is_winnt()) {
 		if (SetFilePointer(wh,
 		    log_size - 1, NULL, FILE_BEGIN) == (DWORD)-1)
 			goto err;
-		if (WriteFile(wh, "\xdb", 1, &bytesWritten, NULL) == 0)
+		if (WriteFile(wh, "\x00", 1, &bytesWritten, NULL) == 0)
 			goto err;
 		if (bytesWritten != 1)
 			goto err;

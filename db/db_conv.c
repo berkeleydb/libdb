@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -40,7 +40,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)db_conv.c	11.4 (Sleepycat) 11/10/99";
+static const char revid[] = "$Id: db_conv.c,v 11.10 2000/06/06 04:06:01 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -62,10 +62,11 @@ static const char sccsid[] = "@(#)db_conv.c	11.4 (Sleepycat) 11/10/99";
  * __db_pgin --
  *	Primary page-swap routine.
  *
- * PUBLIC: int __db_pgin __P((db_pgno_t, void *, DBT *));
+ * PUBLIC: int __db_pgin __P((DB_ENV *, db_pgno_t, void *, DBT *));
  */
 int
-__db_pgin(pg, pp, cookie)
+__db_pgin(dbenv, pg, pp, cookie)
+	DB_ENV *dbenv;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -78,32 +79,33 @@ __db_pgin(pg, pp, cookie)
 	case P_HASH:
 	case P_HASHMETA:
 	case P_INVALID:
-		return (__ham_pgin(pg, pp, cookie));
+		return (__ham_pgin(dbenv, pg, pp, cookie));
 	case P_BTREEMETA:
 	case P_IBTREE:
 	case P_IRECNO:
 	case P_LBTREE:
+	case P_LDUP:
 	case P_LRECNO:
-	case P_DUPLICATE:
 	case P_OVERFLOW:
-		return (__bam_pgin(pg, pp, cookie));
+		return (__bam_pgin(dbenv, pg, pp, cookie));
 	case P_QAMMETA:
 	case P_QAMDATA:
-		return (__qam_pgin_out(pg, pp, cookie));
+		return (__qam_pgin_out(dbenv, pg, pp, cookie));
 	default:
 		break;
 	}
-	return (EINVAL);
+	return (__db_unknown_type(dbenv, "__db_pgin", ((PAGE *)pp)->type));
 }
 
 /*
  * __db_pgout --
  *	Primary page-swap routine.
  *
- * PUBLIC: int __db_pgout __P((db_pgno_t, void *, DBT *));
+ * PUBLIC: int __db_pgout __P((DB_ENV *, db_pgno_t, void *, DBT *));
  */
 int
-__db_pgout(pg, pp, cookie)
+__db_pgout(dbenv, pg, pp, cookie)
+	DB_ENV *dbenv;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -116,22 +118,22 @@ __db_pgout(pg, pp, cookie)
 	case P_HASH:
 	case P_HASHMETA:
 	case P_INVALID:
-		return (__ham_pgout(pg, pp, cookie));
+		return (__ham_pgout(dbenv, pg, pp, cookie));
 	case P_BTREEMETA:
 	case P_IBTREE:
 	case P_IRECNO:
 	case P_LBTREE:
+	case P_LDUP:
 	case P_LRECNO:
-	case P_DUPLICATE:
 	case P_OVERFLOW:
-		return (__bam_pgout(pg, pp, cookie));
+		return (__bam_pgout(dbenv, pg, pp, cookie));
 	case P_QAMMETA:
 	case P_QAMDATA:
-		return (__qam_pgin_out(pg, pp, cookie));
+		return (__qam_pgin_out(dbenv, pg, pp, cookie));
 	default:
 		break;
 	}
-	return (EINVAL);
+	return (__db_unknown_type(dbenv, "__db_pgout", ((PAGE *)pp)->type));
 }
 
 /*
@@ -157,6 +159,10 @@ __db_metaswap(pg)
 	SWAP32(p);	/* pagesize */
 	p += 4;		/* unused, page type, unused, unused */
 	SWAP32(p);	/* free */
+	SWAP32(p);	/* alloc_lsn part 1 */
+	SWAP32(p);	/* alloc_lsn part 2 */
+	SWAP32(p);	/* cached key count */
+	SWAP32(p);	/* cached record count */
 	SWAP32(p);	/* flags */
 }
 
@@ -164,10 +170,11 @@ __db_metaswap(pg)
  * __db_byteswap --
  *	Byteswap a page.
  *
- * PUBLIC: int __db_byteswap __P((db_pgno_t, PAGE *, size_t, int));
+ * PUBLIC: int __db_byteswap __P((DB_ENV *, db_pgno_t, PAGE *, size_t, int));
  */
 int
-__db_byteswap(pg, h, pagesize, pgin)
+__db_byteswap(dbenv, pg, h, pagesize, pgin)
+	DB_ENV *dbenv;
 	db_pgno_t pg;
 	PAGE *h;
 	size_t pagesize;
@@ -243,8 +250,8 @@ __db_byteswap(pg, h, pagesize, pgin)
 				M_16_SWAP(h->inp[i]);
 		break;
 	case P_LBTREE:
+	case P_LDUP:
 	case P_LRECNO:
-	case P_DUPLICATE:
 		for (i = 0; i < NUM_ENT(h); i++) {
 			if (pgin)
 				M_16_SWAP(h->inp[i]);
@@ -325,7 +332,7 @@ __db_byteswap(pg, h, pagesize, pgin)
 		/* Nothing to do. */
 		break;
 	default:
-		return (EINVAL);
+		return (__db_unknown_type(dbenv, "__db_byteswap", h->type));
 	}
 
 	if (!pgin) {

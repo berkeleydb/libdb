@@ -1,5 +1,6 @@
-<!--"@(#)db.so	11.5 (Sleepycat) 10/1/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db.so,v 11.8 2000/03/18 21:43:20 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,28 +15,24 @@
 </td></tr></table>
 <p>
 <h1 align=center>Release 3.0: the DB structure</h1>
-<p>
-The DB structure is now opaque for applications in the Berkeley DB 3.0
+<p>The DB structure is now opaque for applications in the Berkeley DB 3.0
 release.  Accesses to any fields within that structure by the application
 should be replaced with method calls.  The following example illustrates
 this using the historic type structure field.  In the Berkeley DB 2.X releases,
 applications could find the type of an underlying database using code
 similar to the following:
-<p>
-<blockquote><pre>DB *db;
+<p><blockquote><pre>DB *db;
 DB_TYPE type;
+<p>
 	type = db-&gt;type;</pre></blockquote>
-<p>
-in the Berkeley DB 3.X releases, this should be done using the
+<p>in the Berkeley DB 3.X releases, this should be done using the
 <a href="../../api_c/db_get_type.html">DB-&gt;get_type</a> method, as follows:
+<p><blockquote><pre>DB *db;
 <p>
-<blockquote><pre>DB *db;
 	type = db-&gt;get_type(db);</pre></blockquote>
-<p>
-The following table lists the DB fields previously used by
+<p>The following table lists the DB fields previously used by
 applications and the methods that should now be used to get or set them.
-<p>
-<table border=1 align=center>
+<p><table border=1 align=center>
 <tr><th>DB field</th><th>Berkeley DB 3.X method</th></tr>
 <tr><td>byteswapped</td><td><a href="../../api_c/db_get_byteswapped.html">DB-&gt;get_byteswapped</a></td></tr>
 <tr><td>db_errcall</td><td><a href="../../api_c/db_set_errcall.html">DB-&gt;set_errcall</a></td></tr>

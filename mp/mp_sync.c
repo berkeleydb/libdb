@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_sync.c	11.10 (Sleepycat) 10/29/99";
+static const char revid[] = "$Id: mp_sync.c,v 11.23 2000/04/29 19:07:12 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -17,9 +17,18 @@ static const char sccsid[] = "@(#)mp_sync.c	11.10 (Sleepycat) 10/29/99";
 #include <stdlib.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 static int __bhcmp __P((const void *, const void *));
 static int __memp_fsync __P((DB_MPOOLFILE *));
@@ -37,19 +46,23 @@ memp_sync(dbenv, lsnp)
 	BH *bhp, **bharray;
 	DB_MPOOL *dbmp;
 	DB_LSN tlsn;
-	MCACHE *mc;
-	MPOOL *mp;
+	MPOOL *c_mp, *mp;
 	MPOOLFILE *mfp;
 	u_int32_t ar_cnt, i, ndirty;
 	int ret, retry_done, retry_need, wrote;
+
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_memp_sync(dbenv, lsnp));
+#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->mp_handle, DB_INIT_MPOOL);
 
 	dbmp = dbenv->mp_handle;
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 
-	if (!F_ISSET(dbenv, DB_ENV_LOGGING)) {
+	if (!LOGGING_ON(dbenv)) {
 		__db_err(dbenv, "memp_sync: requires logging");
 		return (EINVAL);
 	}
@@ -86,7 +99,7 @@ memp_sync(dbenv, lsnp)
 	 * we've already handled or are currently handling, then we return a
 	 * result based on the count for the larger LSN.
 	 */
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 	if (!IS_ZERO_LSN(*lsnp) &&
 	    !F_ISSET(mp, MP_LSN_RETRY) && log_compare(lsnp, &mp->lsn) <= 0) {
 		if (mp->lsn_cnt == 0) {
@@ -95,7 +108,7 @@ memp_sync(dbenv, lsnp)
 		} else
 			ret = DB_INCOMPLETE;
 
-		R_UNLOCK(dbenv, &dbmp->reginfo);
+		R_UNLOCK(dbenv, dbmp->reginfo);
 		MUTEX_UNLOCK(&mp->sync_mutex);
 		return (ret);
 	}
@@ -159,17 +172,16 @@ retry:	retry_need = 0;
 	 * Keep a count of the total number of buffers we need to write in
 	 * MPOOL->lsn_cnt, and for each file, in MPOOLFILE->lsn_count.
 	 */
-	for (ar_cnt = 0, i = 0; i < mp->nc_reg; ++i) {
-		mc = dbmp->c_reginfo[i].primary;
-
-		for (bhp = SH_TAILQ_FIRST(&mc->bhq, __bh);
+	for (ar_cnt = 0, i = 0; i < mp->nreg; ++i) {
+		c_mp = dbmp->reginfo[i].primary;
+		for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
 		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, q, __bh)) {
 			if (F_ISSET(bhp, BH_DIRTY) || bhp->ref != 0) {
 				F_SET(bhp, BH_WRITE);
 
 				++mp->lsn_cnt;
 
-				mfp = R_ADDR(&dbmp->reginfo, bhp->mf_offset);
+				mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 				++mfp->lsn_cnt;
 
 				/*
@@ -206,7 +218,7 @@ retry:	retry_need = 0;
 		goto done;
 	}
 
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 
 	/*
 	 * Sort the buffers we're going to write immediately.
@@ -218,7 +230,7 @@ retry:	retry_need = 0;
 	if (ar_cnt > 1)
 		qsort(bharray, ar_cnt, sizeof(BH *), __bhcmp);
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	/* Walk the array, writing buffers. */
 	for (i = 0; i < ar_cnt; ++i) {
@@ -235,7 +247,7 @@ retry:	retry_need = 0;
 		}
 
 		/* Write the buffer. */
-		mfp = R_ADDR(&dbmp->reginfo, bharray[i]->mf_offset);
+		mfp = R_ADDR(dbmp->reginfo, bharray[i]->mf_offset);
 		ret = __memp_bhwrite(dbmp, mfp, bharray[i], NULL, &wrote);
 
 		/* Release the buffer. */
@@ -297,7 +309,7 @@ retry:	retry_need = 0;
 		}
 	}
 
-done:	R_UNLOCK(dbenv, &dbmp->reginfo);
+done:	R_UNLOCK(dbenv, dbmp->reginfo);
 	MUTEX_UNLOCK(&mp->sync_mutex);
 
 	__os_free(bharray, ndirty * sizeof(BH *));
@@ -320,6 +332,11 @@ memp_fsync(dbmfp)
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
 
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_memp_fsync(dbmfp));
+#endif
+
 	PANIC_CHECK(dbenv);
 
 	/*
@@ -330,9 +347,9 @@ memp_fsync(dbmfp)
 	if (F_ISSET(dbmfp, MP_READONLY))
 		return (0);
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 	is_tmp = F_ISSET(dbmfp->mfp, MP_TEMP);
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 	if (is_tmp)
 		return (0);
 
@@ -379,17 +396,16 @@ __memp_fsync(dbmfp)
 	BH *bhp, **bharray;
 	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	MCACHE *mc;
-	MPOOL *mp;
+	MPOOL *c_mp, *mp;
 	size_t mf_offset;
 	u_int32_t ar_cnt, i, ndirty;
 	int incomplete, ret, retry_done, retry_need, wrote;
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	/*
 	 * Allocate room for a list of buffers, and decide how many buffers
@@ -413,11 +429,10 @@ retry:	retry_need = 0;
 	 * so that processes can't make new buffers dirty, causing us to never
 	 * finish.
 	 */
-	mf_offset = R_OFFSET(&dbmp->reginfo, dbmfp->mfp);
-	for (ar_cnt = 0, incomplete = 0, i = 0; i < mp->nc_reg; ++i) {
-		mc = dbmp->c_reginfo[i].primary;
-
-		for (bhp = SH_TAILQ_FIRST(&mc->bhq, __bh);
+	mf_offset = R_OFFSET(dbmp->reginfo, dbmfp->mfp);
+	for (ar_cnt = 0, incomplete = 0, i = 0; i < mp->nreg; ++i) {
+		c_mp = dbmp->reginfo[i].primary;
+		for (bhp = SH_TAILQ_FIRST(&c_mp->bhq, __bh);
 		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, q, __bh)) {
 			if (!F_ISSET(bhp, BH_DIRTY) ||
 			    bhp->mf_offset != mf_offset)
@@ -455,13 +470,13 @@ retry:	retry_need = 0;
 		goto done;
 	}
 
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 
 	/* Sort the buffers we're going to write. */
 	if (ar_cnt > 1)
 		qsort(bharray, ar_cnt, sizeof(BH *), __bhcmp);
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	/* Walk the array, writing buffers. */
 	for (i = 0; i < ar_cnt;) {
@@ -516,7 +531,7 @@ retry:	retry_need = 0;
 		}
 	}
 
-done:	R_UNLOCK(dbenv, &dbmp->reginfo);
+done:	R_UNLOCK(dbenv, dbmp->reginfo);
 
 	__os_free(bharray, ndirty * sizeof(BH *));
 
@@ -529,7 +544,8 @@ done:	R_UNLOCK(dbenv, &dbmp->reginfo);
 	 * issues.
 	 */
 	if (ret == 0)
-		ret = incomplete ? DB_INCOMPLETE : __os_fsync(&dbmfp->fh);
+		ret = incomplete ?
+		    DB_INCOMPLETE : __os_fsync(dbenv, &dbmfp->fh);
 
 	return (ret);
 }
@@ -545,13 +561,12 @@ __memp_sballoc(dbenv, bharrayp, ndirtyp)
 	u_int32_t *ndirtyp;
 {
 	DB_MPOOL *dbmp;
-	MCACHE *mc;
-	MPOOL *mp;
+	MPOOL *c_mp, *mp;
 	u_int32_t i, nclean, ndirty, maxpin;
 	int ret;
 
 	dbmp = dbenv->mp_handle;
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
 
 	/*
 	 * We don't want to hold the region lock while we write the buffers,
@@ -563,12 +578,12 @@ __memp_sballoc(dbenv, bharrayp, ndirtyp)
 	 * Make a point of not holding the region lock across the library
 	 * allocation call.
 	 */
-	for (nclean = ndirty = 0, i = 0; i < mp->nc_reg; ++i) {
-		mc = dbmp->c_reginfo[i].primary;
-		ndirty += mc->stat.st_page_dirty;
-		nclean += mc->stat.st_page_clean;
+	for (nclean = ndirty = 0, i = 0; i < mp->nreg; ++i) {
+		c_mp = dbmp->reginfo[i].primary;
+		ndirty += c_mp->stat.st_page_dirty;
+		nclean += c_mp->stat.st_page_clean;
 	}
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 	if (ndirty == 0) {
 		*ndirtyp = 0;
 		return (0);
@@ -592,12 +607,13 @@ __memp_sballoc(dbenv, bharrayp, ndirtyp)
 	ndirty += ndirty / 2 + 10;
 	if (ndirty > maxpin)
 		ndirty = maxpin;
-	if ((ret = __os_malloc(ndirty * sizeof(BH *), NULL, bharrayp)) != 0)
+	if ((ret =
+	    __os_malloc(dbenv, ndirty * sizeof(BH *), NULL, bharrayp)) != 0)
 		return (ret);
 
 	*ndirtyp = ndirty;
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	return (0);
 }

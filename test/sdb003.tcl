@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdb003.tcl	11.10 (Sleepycat) 9/24/99
+#	$Id: sdb003.tcl,v 11.16 2000/05/22 12:51:37 bostic Exp $
 #
 # Sub DB Test 3 {access method}
 # Use the first 10,000 entries from the dictionary as subdbnames.
@@ -47,7 +47,7 @@ proc subdb003 { method {nentries 1000} args } {
 	set fdid [open $dict]
 	while { [gets $fdid str] != -1 && $fcount < $nentries } {
 		set subdb $str
-		set db [eval {berkdb open -create -mode 0644} \
+		set db [eval {berkdb_open -create -mode 0644} \
 		    $args {$omethod $testfile $subdb}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -58,7 +58,7 @@ proc subdb003 { method {nentries 1000} args } {
 				global kvals
 
 				set key [expr $count + 1]
-		 		set kvals($key) [pad_data $method $str]
+				set kvals($key) [pad_data $method $str]
 			} else {
 				set key $str
 			}
@@ -83,26 +83,26 @@ proc subdb003 { method {nentries 1000} args } {
 				puts $oid $i
 			}
 			close $oid
-			exec $MV $t1 $t3
+			file rename -force $t1 $t3
 		} else {
 			set q q
-			exec $SED $ndataent$q $dict > $t3
-			exec $SORT $t3 > $t2
-			exec $SORT $t1 > $t3
+			filehead $ndataent $dict $t3
+			filesort $t3 $t2
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb003:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 
 		# Now, reopen the file and run the last test again.
 		open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
-	    	dump_file_direction "-first" "-next" $subdb
+		dump_file_direction "-first" "-next" $subdb
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb003:diff($t2,$t3) \
-		    [catch { exec $CMP $t2 $t3 } res] 0
+		    [filecmp $t2 $t3] 0
 
 		# Now, reopen the file and run the last test again in the
 		# reverse direction.
@@ -110,11 +110,11 @@ proc subdb003 { method {nentries 1000} args } {
 		    dump_file_direction "-last" "-prev" $subdb
 
 		if { [is_record_based $method] != 1 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdb003:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 		if { [expr $fcount % 100] == 0 } {
 			puts -nonewline "$fcount "
 			flush stdout

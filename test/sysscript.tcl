@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sysscript.tcl	11.5 (Sleepycat) 10/28/99
+#	$Id: sysscript.tcl,v 11.12 2000/05/22 12:51:38 bostic Exp $
 #
 # System integration test script.
 # This script runs a single process that tests the full functionality of
@@ -38,7 +38,7 @@ set usage "sysscript dir nfiles key_avg data_avg method"
 
 # Verify usage
 if { $argc != 5 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -64,49 +64,82 @@ puts "$data_avg average data length"
 flush stdout
 
 # Create local environment
-set dbenv [berkdb env -mpool -lock -log -txn -home $dir]
-error_check_good $mypid:dbenv [is_substr $dbenv env] 1
+set dbenv [berkdb env -txn -home $dir]
+set err [catch {error_check_good $mypid:dbenv [is_substr $dbenv env] 1} ret]
+if {$err != 0} {
+	puts $ret
+	return
+}
 
 # Now open the files
 for { set i 0 } { $i < $nfiles } { incr i } {
 	set file test044.$i.db
 	set db($i) [berkdb open -env $dbenv $method $file]
-	error_check_bad $mypid:dbopen $db($i) NULL
-	error_check_bad $mypid:dbopen [is_substr $db($i) error] 1
+	set err [catch {error_check_bad $mypid:dbopen $db($i) NULL} ret]
+	if {$err != 0} {
+		puts $ret
+		return
+	}
+	set err [catch {error_check_bad $mypid:dbopen [is_substr $db($i) \
+	    error] 1} ret]
+	if {$err != 0} {
+		puts $ret
+		return
+	}
 }
 
+set record_based [is_record_based $method]
 while { 1 } {
 	# Decide if we're going to create a big key or a small key
 	# We give small keys a 70% chance.
 	if { [berkdb random_int 1 10] < 8 } {
-		set k [random_data 5 0 0 ]
+		set k [random_data 5 0 0 $record_based]
 	} else {
-		set k [random_data $key_avg 0 0 ]
+		set k [random_data $key_avg 0 0 $record_based]
 	}
-	set data [random_data $data_avg 0 0]
+	set data [chop_data $method [random_data $data_avg 0 0]]
 
-        set txn [$dbenv txn]
-        error_check_good $mypid:txn_begin [is_substr $txn $dbenv.txn] 1
+	set txn [$dbenv txn]
+	set err [catch {error_check_good $mypid:txn_begin [is_substr $txn \
+	    $dbenv.txn] 1} ret]
+	if {$err != 0} {
+		puts $ret
+		return
+	}
 
 	# Open cursors
 	for { set f 0 } {$f < $nfiles} {incr f} {
 		set cursors($f) [$db($f) cursor -txn $txn]
-		error_check_good $mypid:cursor_open \
-		    [is_substr $cursors($f) $db($f)] 1
+		set err [catch {error_check_good $mypid:cursor_open \
+		    [is_substr $cursors($f) $db($f)] 1} ret]
+		if {$err != 0} {
+			puts $ret
+			return
+		}
 	}
 	set aborted 0
 
 	# Check to see if key is already in database
 	set found 0
 	for { set i 0 } { $i < $nfiles } { incr i } {
-                set r [$db($i) get -txn $txn $k]
+		set r [$db($i) get -txn $txn $k]
 		set r [$db($i) get -txn $txn $k]
 		if { $r == "-1" } {
 			for {set f 0 } {$f < $nfiles} {incr f} {
-				error_check_good $mypid:cursor_close \
-				    [$cursors($f) close] 0
+				set err [catch {error_check_good \
+				    $mypid:cursor_close \
+				    [$cursors($f) close] 0} ret]
+				if {$err != 0} {
+					puts $ret
+					return
+				}
 			}
-			error_check_good $mypid:txn_abort [$txn abort] 0
+			set err [catch {error_check_good $mypid:txn_abort \
+			    [$txn abort] 0} ret]
+			if {$err != 0} {
+				puts $ret
+				return
+			}
 			set aborted 1
 			set found 2
 			break
@@ -127,18 +160,27 @@ while { 1 } {
 		for { set i 0 } { $i < $repl } {incr i} {
 			set f [berkdb random_int 0 [expr $nfiles - 1]]
 			lappend fset $f
-			set data $f:$data
+			set data [chop_data $method $f:$data]
 		}
 
 		foreach i $fset {
 			set r [$db($i) put -txn $txn $k $data]
 			if {$r == "-1"} {
 				for {set f 0 } {$f < $nfiles} {incr f} {
-					error_check_good $mypid:cursor_close \
-					    [$cursors($f) close] 0
+					set err [catch {error_check_good \
+					    $mypid:cursor_close \
+					    [$cursors($f) close] 0} ret]
+					if {$err != 0} {
+						puts $ret
+						return
+					}
 				}
-				error_check_good $mypid:txn_abort \
-				    [$txn abort] 0
+				set err [catch {error_check_good \
+				    $mypid:txn_abort [$txn abort] 0} ret]
+				if {$err != 0} {
+					puts $ret
+					return
+				}
 				set aborted 1
 				break
 			}
@@ -160,21 +202,44 @@ while { 1 } {
 			}
 			if {[llength $full] == 0} {
 				for {set f 0 } {$f < $nfiles} {incr f} {
-					error_check_good $mypid:cursor_close \
-					    [$cursors($f) close] 0
+					set err [catch {error_check_good \
+					    $mypid:cursor_close \
+					    [$cursors($f) close] 0} ret]
+					if {$err != 0} {
+						puts $ret
+						return
+					}
 				}
-				error_check_good $mypid:txn_abort \
-				    [$txn abort] 0
+				set err [catch {error_check_good \
+				    $mypid:txn_abort [$txn abort] 0} ret]
+				if {$err != 0} {
+					puts $ret
+					return
+				}
 				set aborted 1
 				break
 			}
-			error_check_bad $mypid:curs_get($k,$data,$fnum,$flag) \
-			    [string length $full] 0
+			set err [catch {error_check_bad \
+			    $mypid:curs_get($k,$data,$fnum,$flag) \
+			    [string length $full] 0} ret]
+			if {$err != 0} {
+				puts $ret
+				return
+			}
 			set key [lindex [lindex $full 0] 0]
-			set rec [lindex [lindex $full 0] 1]
-			error_check_good $mypid:dbget_$fnum:key $key $k
-			error_check_good \
-			    $mypid:dbget_$fnum:data($k) $rec $data
+			set rec [pad_data $method [lindex [lindex $full 0] 1]]
+			set err [catch {error_check_good \
+			    $mypid:dbget_$fnum:key $key $k} ret]
+			if {$err != 0} {
+				puts $ret
+				return
+			}
+			set err [catch {error_check_good \
+			    $mypid:dbget_$fnum:data($k) $rec $data} ret]
+			if {$err != 0} {
+				puts $ret
+				return
+			}
 			set f [lreplace $f $fnum $fnum 1]
 			incr ndx
 			set r [string range $r $ndx end]
@@ -183,17 +248,30 @@ while { 1 } {
 	}
 	if { $aborted == 0 } {
 		for {set f 0 } {$f < $nfiles} {incr f} {
-			error_check_good $mypid:cursor_close \
-			    [$cursors($f) close] 0
+			set err [catch {error_check_good $mypid:cursor_close \
+			    [$cursors($f) close] 0} ret]
+			if {$err != 0} {
+				puts $ret
+				return
+			}
 		}
-		error_check_good $mypid:commit [$txn commit] 0
+		set err [catch {error_check_good $mypid:commit [$txn commit] \
+		    0} ret]
+		if {$err != 0} {
+			puts $ret
+			return
+		}
 	}
 }
 
 # Close files
 for { set i 0 } { $i < $nfiles} { incr i } {
 	set r [$db($i) close]
-	error_check_good $mypid:db_close:$i $r 0
+	set err [catch {error_check_good $mypid:db_close:$i $r 0} ret]
+	if {$err != 0} {
+		puts $ret
+		return
+	}
 }
 
 # Close tm and environment

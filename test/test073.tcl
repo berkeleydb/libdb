@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test073.tcl	11.3 (Sleepycat) 10/28/99
+#	$Id: test073.tcl,v 11.13 2000/05/22 12:51:40 bostic Exp $
 #
 # DB Test 73: Test of cursor stability on duplicate pages.
 # Does the following:
@@ -28,7 +28,15 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	set args [convert_args $method $args]
 
 	cleanup $testdir
-	set testfile ./TESTDIR/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+	} else {
+		set testfile test0$tnum.db
+	}
 
 	set key "the key"
 
@@ -39,11 +47,11 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 		puts "Skipping for method $method."
 		return
 	} else {
-		puts "\n    Test of cursor stability on duplicate pages."
+		puts "cursor stability on duplicate pages."
 	}
 
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $omethod $args $testfile]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $omethod $args $testfile]
 	error_check_good "db open" [is_valid_db $db] TRUE
 
 	# Number of outstanding keys.
@@ -114,8 +122,7 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 		verify_t73 is_long dbc $keys $key
 	}
 
-
-	puts "\tTest0$tnum.d: Cursor put (DB_AFTER) first to last;\n\t   \
+	puts "\tTest0$tnum.d: Cursor put (DB_AFTER) first to last;\
 	    $keys new dups, short data"
 	# We want to add a datum after each key from 0 to the current
 	# value of $keys, which we thus need to save.
@@ -141,7 +148,7 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 		verify_t73 is_long dbc $keys $key
 	}
 
-	puts "\tTest0$tnum.e: Cursor put (DB_BEFORE) last to first;\n\t   \
+	puts "\tTest0$tnum.e: Cursor put (DB_BEFORE) last to first;\
 	    $keys new dups, short data"
 
 	for { set i [expr $keys - 1] } { $i >= 0 } { incr i -1 } {
@@ -188,7 +195,6 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 		verify_t73 is_long dbc $keys $key
 	}
 
-
 	# Close cursors.
 	puts "\tTest0$tnum.g: Closing cursors."
 	for { set i 0 } { $i < $keys } { incr i } {
@@ -196,7 +202,6 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum 73} args } {
 	}
 	error_check_good "db close" [$db close] 0
 }
-
 
 proc makedatum_t73 { num is_long } {
 	global alphabet
@@ -220,7 +225,6 @@ proc makedatum_t73 { num is_long } {
 	return $i$a
 }
 
-
 proc verify_t73 { is_long_array curs_array numkeys key } {
 	upvar $is_long_array is_long
 	upvar $curs_array dbc
@@ -234,7 +238,7 @@ proc verify_t73 { is_long_array curs_array numkeys key } {
 		set k [lindex [lindex $dbt 0] 0]
 		set d [lindex [lindex $dbt 0] 1]
 
-	    	error_check_good\
+		error_check_good\
 		    "cursor $j key correctness (with $numkeys total items)"\
 		    $k $key
 		error_check_good\

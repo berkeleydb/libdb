@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_env.c	11.19 (Sleepycat) 10/9/99";
+static const char revid[] = "$Id: tcl_env.c,v 11.28 2000/05/10 20:12:18 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,7 @@ static const char sccsid[] = "@(#)tcl_env.c	11.19 (Sleepycat) 10/9/99";
 static void	_EnvInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 
 /*
- * PUBLIC: int	env_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
+ * PUBLIC: int env_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  *
  * env_Cmd --
  *	Implements the "env" command.
@@ -257,7 +257,7 @@ env_Cmd(clientData, interp, objc, objv)
 }
 
 /*
- * PUBLIC: int	tcl_EnvRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
+ * PUBLIC: int tcl_EnvRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
  * PUBLIC:      DB_ENV *, DBTCL_INFO *));
  *
  * tcl_EnvRemove --
@@ -271,23 +271,36 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	static char *envremopts[] = {
-		"-config",	"-force",	"-home",
-		"-use_environ",	"-use_environ_root",
+		"-data_dir",
+		"-force",
+		"-home",
+		"-log_dir",
+		"-server",
+		"-tmp_dir",
+		"-use_environ",
+		"-use_environ_root",
 		NULL
 	};
 	enum envremopts {
-		ENVREM_CONFIG,	ENVREM_FORCE,	ENVREM_HOME,
-		ENVREM_USE_ENVIRON, ENVREM_USE_ENVIRON_ROOT
+		ENVREM_DATADIR,
+		ENVREM_FORCE,
+		ENVREM_HOME,
+		ENVREM_LOGDIR,
+		ENVREM_SERVER,
+		ENVREM_TMPDIR,
+		ENVREM_USE_ENVIRON,
+		ENVREM_USE_ENVIRON_ROOT
 	};
 	DB_ENV *e;
-	u_int32_t flag, forceflag;
-	int i, myargc, optindex, result, ret;
-	char *arg, **config, *home;
+	u_int32_t cflag, flag, forceflag;
+	int i, optindex, result, ret;
+	char *datadir, *home, *logdir, *server, *tmpdir;
 
 	result = TCL_OK;
-	flag = forceflag = 0;
-	config = NULL;
+	cflag = flag = forceflag = 0;
 	home = NULL;
+	datadir = logdir = tmpdir = NULL;
+	server = NULL;
 
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?args?");
@@ -303,18 +316,6 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 		}
 		i++;
 		switch ((enum envremopts)optindex) {
-		case ENVREM_CONFIG:
-			if (i >= objc) {
-				Tcl_WrongNumArgs(interp, 2, objv,
-					"?-config {config list}?");
-				result = TCL_ERROR;
-				break;
-			}
-			arg = Tcl_GetStringFromObj(objv[i], NULL);
-			result = Tcl_SplitList(interp, arg, &myargc, &config);
-			if (result == TCL_OK)
-				i++;
-			break;
 		case ENVREM_FORCE:
 			forceflag |= DB_FORCE;
 			break;
@@ -328,11 +329,49 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 			}
 			home = Tcl_GetStringFromObj(objv[i++], NULL);
 			break;
+		case ENVREM_SERVER:
+			/* Make sure we have an arg to check against! */
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-server name?");
+				result = TCL_ERROR;
+				break;
+			}
+			server = Tcl_GetStringFromObj(objv[i++], NULL);
+			cflag = DB_CLIENT;
+			break;
 		case ENVREM_USE_ENVIRON:
 			flag |= DB_USE_ENVIRON;
 			break;
 		case ENVREM_USE_ENVIRON_ROOT:
 			flag |= DB_USE_ENVIRON_ROOT;
+			break;
+		case ENVREM_DATADIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-data_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			datadir = Tcl_GetStringFromObj(objv[i++], NULL);
+			break;
+		case ENVREM_LOGDIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-log_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			logdir = Tcl_GetStringFromObj(objv[i++], NULL);
+			break;
+		case ENVREM_TMPDIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-tmp_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			tmpdir = Tcl_GetStringFromObj(objv[i++], NULL);
 			break;
 		}
 		/*
@@ -348,9 +387,36 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 	 * one of the user.  Don't bother with the info stuff.
 	 */
 	if (envp == NULL) {
-		if ((ret = db_env_create(&e, 0)) != 0) {
+		if ((ret = db_env_create(&e, cflag)) != 0) {
 			result = _ReturnSetup(interp, ret, "db_env_create");
 			goto error;
+		}
+		if (server != NULL) {
+			ret = e->set_server(e, server, 0, 0, 0);
+			result = _ReturnSetup(interp, ret, "set_server");
+			if (result != TCL_OK)
+				goto error;
+		}
+		if (datadir != NULL) {
+			_debug_check();
+			ret = e->set_data_dir(e, datadir);
+			result = _ReturnSetup(interp, ret, "set_data_dir");
+			if (result != TCL_OK)
+				goto error;
+		}
+		if (logdir != NULL) {
+			_debug_check();
+			ret = e->set_lg_dir(e, logdir);
+			result = _ReturnSetup(interp, ret, "set_log_dir");
+			if (result != TCL_OK)
+				goto error;
+		}
+		if (tmpdir != NULL) {
+			_debug_check();
+			ret = e->set_tmp_dir(e, tmpdir);
+			result = _ReturnSetup(interp, ret, "set_tmp_dir");
+			if (result != TCL_OK)
+				goto error;
 		}
 	} else {
 		/*
@@ -369,15 +435,9 @@ tcl_EnvRemove(interp, objc, objv, envp, envip)
 	 * the environment.
 	 */
 	_debug_check();
-	ret = e->remove(e, home, config, flag);
+	ret = e->remove(e, home, flag);
 	result = _ReturnSetup(interp, ret, "env remove");
-	if (config != NULL)
-		Tcl_Free((char *)config);
-	return (result);
-
 error:
-	if (config != NULL)
-		Tcl_Free((char *)config);
 	return (result);
 }
 
@@ -396,7 +456,7 @@ _EnvInfoDelete(interp, envip)
 	 * 3.  Put any locks.
 	 * 4.  Close the error file.
 	 */
-	for (p = __db_infohead; p != NULL; p = nextp) {
+	for (p = LIST_FIRST(&__db_infohead); p != NULL; p = nextp) {
 		/*
 		 * Check if this info structure "belongs" to this
 		 * env.  If so, remove its commands and info structure.
@@ -417,20 +477,18 @@ _EnvInfoDelete(interp, envip)
 				    TCL_STATIC);
 				break;
 			}
-			nextp = p->i_next;
+			nextp = LIST_NEXT(p, entries);
 			(void)Tcl_DeleteCommand(interp, p->i_name);
 			_DeleteInfo(p);
 		} else
-			nextp = p->i_next;
+			nextp = LIST_NEXT(p, entries);
 	}
 	(void) Tcl_DeleteCommand(interp, envip->i_name);
-	if (envip->i_err)
-		fclose(envip->i_err);
 	_DeleteInfo(envip);
 }
 
 /*
- * PUBLIC: int	tcl_EnvVerbose __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *,
+ * PUBLIC: int tcl_EnvVerbose __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *,
  * PUBLIC:    Tcl_Obj *));
  *
  * tcl_EnvVerbose --
@@ -506,8 +564,7 @@ tcl_EnvVerbose(interp, envp, which, onoff)
 
 #if	CONFIG_TEST
 /*
- * PUBLIC: int	tcl_EnvTest __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
- * PUBLIC:      DB_ENV *));
+ * PUBLIC: int tcl_EnvTest __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  *
  * tcl_EnvTest --
  */

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db185.c	11.2 (Sleepycat) 8/8/99";
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static const char revid[] =
+    "$Id: db185.c,v 11.9 2000/03/29 20:50:46 ubell Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -24,8 +24,6 @@ static const char sccsid[] = "@(#)db185.c	11.2 (Sleepycat) 8/8/99";
 #endif
 
 #include "db_int.h"
-
-#define	DB_LIBRARY_COMPATIBILITY_API
 #include "db185_int.h"
 
 static int  db185_close __P((DB185 *));
@@ -50,7 +48,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 	DB *dbp;
 	DB185 *db185p;
 	DB_FH fh;
-	ssize_t nw;
+	size_t nw;
 	int ret;
 
 	dbp = NULL;
@@ -59,7 +57,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 	if ((ret = db_create(&dbp, NULL, 0)) != 0)
 		goto err;
 
-	if ((ret = __os_calloc(1, sizeof(DB185), &db185p)) != 0)
+	if ((ret = __os_calloc(NULL, 1, sizeof(DB185), &db185p)) != 0)
 		goto err;
 
 	/*
@@ -145,7 +143,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 		 */
 		if (file != NULL) {
 			if (oflags & O_CREAT && __os_exists(file, NULL) != 0)
-				if (__os_openhandle(file,
+				if (__os_openhandle(NULL, file,
 				    oflags, mode, &fh) == 0)
 					(void)__os_closehandle(&fh);
 			(void)dbp->set_re_source(dbp, file);
@@ -164,7 +162,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 #define	BFMSG	"DB: DB 1.85's recno bfname field is not supported.\n"
 			if (ri->bfname != NULL) {
 				db185_openstderr(&fh);
-				(void)__os_write(&fh,
+				(void)__os_write(NULL, &fh,
 				    BFMSG, sizeof(BFMSG) - 1, &nw);
 				goto einval;
 			}
@@ -497,7 +495,7 @@ db185_sync(db185p, flags)
 {
 	DB *dbp;
 	DB_FH fh;
-	ssize_t nw;
+	size_t nw;
 	int ret;
 
 	dbp = (DB *)db185p->internal;
@@ -512,7 +510,7 @@ db185_sync(db185p, flags)
 		 */
 #define	RSMSG	"DB: DB 1.85's R_RECNOSYNC sync flag is not supported.\n"
 		db185_openstderr(&fh);
-		(void)__os_write(&fh, RSMSG, sizeof(RSMSG) - 1, &nw);
+		(void)__os_write(NULL, &fh, RSMSG, sizeof(RSMSG) - 1, &nw);
 		goto einval;
 	default:
 		goto einval;
@@ -532,10 +530,7 @@ static void
 db185_openstderr(fhp)
 	DB_FH *fhp;
 {
-	/*
-	 * XXX
-	 * Dummy up the results of an __os_openhandle() on stderr.
-	 */
+	/* Dummy up the results of an __os_openhandle() on stderr. */
 	memset(fhp, 0, sizeof(*fhp));
 	F_SET(fhp, DB_FH_VALID);
 

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_compat.c	11.11 (Sleepycat) 10/1/99";
+static const char revid[] = "$Id: tcl_compat.c,v 11.17 2000/05/22 18:36:50 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -20,7 +20,7 @@ static const char sccsid[] = "@(#)tcl_compat.c	11.11 (Sleepycat) 10/1/99";
 #include <tcl.h>
 #endif
 
-#define DB_DBM_HSEARCH 1
+#define	DB_DBM_HSEARCH 1
 
 #include "db.h"
 #include "tcl_db.h"
@@ -28,13 +28,13 @@ static const char sccsid[] = "@(#)tcl_compat.c	11.11 (Sleepycat) 10/1/99";
 /*
  * Prototypes for procedures defined later in this file:
  */
-static int mutex_Cmd	__P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
+static int mutex_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 
 /*
  * bdb_HCommand --
  *	Implements h* functions.
  *
- * PUBLIC: int	bdb_HCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+ * PUBLIC: int bdb_HCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
 bdb_HCommand(interp, objc, objv)
@@ -155,7 +155,7 @@ bdb_HCommand(interp, objc, objv)
  *	Opens an ndbm database.
  *
  * PUBLIC: #if DB_DBM_HSEARCH != 0
- * PUBLIC: int	bdb_NdbmOpen __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBM **));
+ * PUBLIC: int bdb_NdbmOpen __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBM **));
  * PUBLIC: #endif
  */
 int
@@ -296,7 +296,7 @@ error:
  *	Implements "dbm" commands.
  *
  * PUBLIC: #if DB_DBM_HSEARCH != 0
- * PUBLIC: int	bdb_DbmCommand
+ * PUBLIC: int bdb_DbmCommand
  * PUBLIC:     __P((Tcl_Interp *, int, Tcl_Obj * CONST*, int, DBM *));
  * PUBLIC: #endif
  */
@@ -405,7 +405,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (data.dptr == NULL ||
-		    (ret = __os_malloc(data.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, data.dsize + 1, NULL, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, data.dptr, data.dsize);
@@ -492,7 +492,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (key.dptr == NULL ||
-		    (ret = __os_malloc(key.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, key.dsize + 1, NULL, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, key.dptr, key.dsize);
@@ -526,7 +526,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
 			return (TCL_ERROR);
 		}
 		if (data.dptr == NULL ||
-		    (ret = __os_malloc(data.dsize + 1, NULL, &t)) != 0)
+		    (ret = __os_malloc(NULL, data.dsize + 1, NULL, &t)) != 0)
 			Tcl_SetResult(interp, "-1", TCL_STATIC);
 		else {
 			memcpy(t, data.dptr, data.dsize);
@@ -543,7 +543,7 @@ bdb_DbmCommand(interp, objc, objv, flag, dbm)
  * ndbm_Cmd --
  *	Implements the "ndbm" widget.
  *
- * PUBLIC: int	ndbm_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
+ * PUBLIC: int ndbm_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
 ndbm_Cmd(clientData, interp, objc, objv)
@@ -615,7 +615,7 @@ ndbm_Cmd(clientData, interp, objc, objv)
 		_debug_check();
 		dbm_close(dbp);
 		(void)Tcl_DeleteCommand(interp, dbip->i_name);
-		_DeleteInfoByPtr(dbp);
+		_DeleteInfo(dbip);
 		res = Tcl_NewIntObj(0);
 		break;
 	case NDBDELETE:
@@ -706,7 +706,7 @@ ndbm_Cmd(clientData, interp, objc, objv)
  * bdb_RandCommand --
  *	Implements rand* functions.
  *
- * PUBLIC: int	bdb_RandCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+ * PUBLIC: int bdb_RandCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
 bdb_RandCommand(interp, objc, objv)
@@ -763,7 +763,7 @@ bdb_RandCommand(interp, objc, objv)
 		result = Tcl_GetIntFromObj(interp, objv[3], &hi);
 		if (result == TCL_OK) {
 #ifndef RAND_MAX
-#define RAND_MAX	0x7fffffff
+#define	RAND_MAX	0x7fffffff
 #endif
 			t = rand();
 			if (t > RAND_MAX) {
@@ -810,7 +810,7 @@ bdb_RandCommand(interp, objc, objv)
  * tcl_Mutex --
  *	Opens an env mutex.
  *
- * PUBLIC: int	tcl_Mutex __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *,
+ * PUBLIC: int tcl_Mutex __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *,
  * PUBLIC:    DBTCL_INFO *));
  */
 int
@@ -853,7 +853,7 @@ tcl_Mutex(interp, objc, objv, envp, envip)
 	}
 	/*
 	 * Set up mutex.
- 	 */
+	 */
 	/*
 	 * Map in the region.
 	 *
@@ -863,7 +863,7 @@ tcl_Mutex(interp, objc, objv, envp, envip)
 	 * aligned.
 	 */
 	_debug_check();
-	if (__os_calloc(1, sizeof(_MUTEX_DATA), &md) != 0)
+	if (__os_calloc(NULL, 1, sizeof(_MUTEX_DATA), &md) != 0)
 		goto posixout;
 	md->env = envp;
 	md->n_mutex = nitems;
@@ -914,7 +914,6 @@ posixout:
 	}
 	return (result);
 }
-
 
 /*
  * mutex_Cmd --

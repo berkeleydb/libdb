@@ -1,5 +1,6 @@
-<!--@(#)ops.so	10.12 (Sleepycat) 11/11/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: ops.so,v 10.15 2000/03/18 21:43:08 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,12 +15,11 @@
 </td></tr></table>
 <p>
 <h1 align=center>Access method operations</h1>
-<p>
-Once a database handle has been created using <a href="../../api_c/db_create.html">db_create</a>, there
+<p>Once a database handle has been created using <a href="../../api_c/db_create.html">db_create</a>, there
 are several standard access method operations.  Each of these operations
 is performed using a method that is referenced from the returned handle.
 The operations are as follows:
-<dl compact>
+<p><dl compact>
 <p><dt><a href="../../api_c/db_close.html">DB-&gt;close</a><dd>Close the database
 <dt><a href="../../api_c/db_cursor.html">DB-&gt;cursor</a><dd>Open a cursor into the database
 <dt><a href="../../api_c/db_del.html">DB-&gt;del</a><dd>Delete a record

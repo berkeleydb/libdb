@@ -17,6 +17,14 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbc_close
 
 /*
  * Class:     com_sleepycat_db_Dbc
+ * Method:    count
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_count
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Dbc
  * Method:    del
  * Signature: (I)I
  */
@@ -33,14 +41,6 @@ JNIEXPORT jobject JNICALL Java_com_sleepycat_db_Dbc_dup
 
 /*
  * Class:     com_sleepycat_db_Dbc
- * Method:    finalize
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbc_finalize
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_sleepycat_db_Dbc
  * Method:    get
  * Signature: (Lcom/sleepycat/db/Dbt;Lcom/sleepycat/db/Dbt;I)I
  */
@@ -54,6 +54,14 @@ JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_get
  */
 JNIEXPORT jint JNICALL Java_com_sleepycat_db_Dbc_put
   (JNIEnv *, jobject, jobject, jobject, jint);
+
+/*
+ * Class:     com_sleepycat_db_Dbc
+ * Method:    finalize
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_sleepycat_db_Dbc_finalize
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

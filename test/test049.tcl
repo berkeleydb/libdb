@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test049.tcl	11.9 (Sleepycat) 8/19/99
+#	$Id: test049.tcl,v 11.14 2000/05/22 12:51:40 bostic Exp $
 #
 # Test 049: Test of each cursor routine with unitialized cursors
 proc test049 { method args } {
@@ -19,7 +19,7 @@ proc test049 { method args } {
 
 	puts "\tTest$tstn: Test of cursor routines with unitialized cursors."
 
-	set key 	"key"
+	set key	"key"
 	set data	"data"
 	set txn ""
 	set flags ""
@@ -30,7 +30,15 @@ proc test049 { method args } {
 	}
 
 	puts "\tTest$tstn.a: Create $method database."
-	set testfile $testdir/test$tstn.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tstn.db
+	} else {
+		set testfile test0$tstn.db
+	}
 	set t1 $testdir/t1
 	cleanup $testdir
 
@@ -38,7 +46,7 @@ proc test049 { method args } {
 	if { [is_record_based $method] == 0 && [is_rbtree $method] != 1 } {
 		append oflags " -dup"
 	}
-	set db [eval {berkdb open} $oflags $testfile]
+	set db [eval {berkdb_open_noerr} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set dbc_u [$db cursor]
@@ -94,7 +102,7 @@ proc test049 { method args } {
 			puts "\t\t...Skipping dbc->put($flag) for $method."
 				continue
 			  } else {
-			 	# keyfirst/last should succeed
+				# keyfirst/last should succeed
 		puts "\t\t...dbc->put($flag)...should succeed for $method"
 				error_check_good dbcput:$flag \
 				    [$dbc_u put -$flag $key$i data0] 0
@@ -143,7 +151,7 @@ proc test049 { method args } {
 	error_check_good dbc_del [is_substr $errorCode EINVAL] 1
 
 	# cleanup
- 	error_check_good dbc_close [$dbc_u close] 0
+	error_check_good dbc_close [$dbc_u close] 0
 	error_check_good db_close [$db close] 0
 	cleanup $testdir
 

@@ -1,5 +1,6 @@
-<!--"@(#)log_file.so	10.15 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: log_file.so,v 10.18 2000/03/01 21:41:29 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbEnv.log_file</h1>
@@ -24,13 +26,15 @@ public String log_file(DbLsn lsn)
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbEnv.log_file method maps
+<p>The DbEnv.log_file method maps
 <a href="../api_java/lsn_class.html">DbLsn</a> objects
 to file names,
 returning the name of the file containing the record named by <b>lsn</b>.
-<p>
-This mapping of
+<p>The <b>len</b> argument is the length of the <b>namep</b> buffer in bytes.
+If <b>namep</b> is too short to hold the file name, DbEnv.log_file will
+return ENOMEM.
+(Log file names are normally quite short, on the order of 10 characters.)
+<p>This mapping of
 <a href="../api_java/lsn_class.html">DbLsn</a> objects
 to files is needed for database administration.  For example, a
 transaction manager typically records the earliest
@@ -39,31 +43,19 @@ needed for restart, and the database administrator may want to archive
 log files to tape when they contain only
 <a href="../api_java/lsn_class.html">DbLsn</a>
 entries before the earliest one needed for restart.
-<p>
-The DbEnv.log_file
-method throws an exception that encapsulates a non-zero error value on
+<p>The DbEnv.log_file method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbEnv.log_file method will fail and throw a
-<a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, at which point all subsequent database
-calls will fail in the same way.
-<p>
-In addition, the DbEnv.log_file
-method may fail and throw an exception
-encapsulating a non-zero error
-for the following conditions:
-<dl compact>
+<p>The DbEnv.log_file method may fail and throw an exception encapsulating a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>ENOMEM<dd>The supplied buffer was too small to hold the log file name.
 </dl>
-<p>
-In addition, the DbEnv.log_file method may fail and
-throw an exception
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<p>The DbEnv.log_file method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbEnv.log_file method may fail and throw
+a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
+will fail in the same way.
 <h3>Class</h3>
 <a href="../api_java/dbenv_class.html">DbEnv</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/env_set_lg_bsize.html">DbEnv.set_lg_bsize</a>,
 <a href="../api_java/env_set_lg_max.html">DbEnv.set_lg_max</a>,

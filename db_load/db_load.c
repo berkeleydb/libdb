@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_load.c	11.6 (Sleepycat) 11/10/99";
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static const char revid[] =
+    "$Id: db_load.c,v 11.24 2000/05/17 19:18:44 bostic Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -19,7 +19,6 @@ static const char sccsid[] = "@(#)db_load.c	11.6 (Sleepycat) 11/10/99";
 
 #include <errno.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,12 +38,9 @@ int	dbt_rdump __P((DBT *));
 int	dbt_rprint __P((DBT *));
 int	dbt_rrecno __P((DBT *));
 int	digitize __P((int, int *));
-int	linetorn __P((char *, db_recno_t *));
 int	load __P((char *, DBTYPE, char **, int, u_int32_t));
 int	main __P((int, char *[]));
-void	onint __P((int));
 int	rheader __P((DB *, DBTYPE *, char **, int *, int*));
-void	siginit __P((void));
 void	usage __P((void));
 
 int	endodata;			/* Reached the end of a database. */
@@ -54,7 +50,6 @@ u_long	lineno;				/* Input file line number. */
 int	version = 1;			/* Input version. */
 
 DB_ENV	*dbenv;
-int	 interrupted;
 const char
 	*progname = "db_load";		/* Program name. */
 
@@ -67,12 +62,12 @@ main(argc, argv)
 	extern int optind;
 	DBTYPE dbtype;
 	u_int32_t db_nooverwrite;
-	int ch, e_close, exitval, no_header, ret;
+	int ch, exitval, no_header, ret;
 	char **clist, **clp, *home;
 
 	home = NULL;
 	db_nooverwrite = 0;
-	e_close = exitval = no_header = 0;
+	exitval = no_header = 0;
 	dbtype = DB_UNKNOWN;
 
 	/* Allocate enough room for configuration arguments. */
@@ -81,7 +76,7 @@ main(argc, argv)
 		exit(1);
 	}
 
-	while ((ch = getopt(argc, argv, "c:f:h:nTt:")) != EOF)
+	while ((ch = getopt(argc, argv, "c:f:h:nTt:V")) != EOF)
 		switch (ch) {
 		case 'c':
 			*clp++ = optarg;
@@ -121,6 +116,9 @@ main(argc, argv)
 			}
 			usage();
 			/* NOTREACHED */
+		case 'V':
+			printf("%s\n", db_version(NULL, NULL, NULL));
+			exit(0);
 		case '?':
 		default:
 			usage();
@@ -133,7 +131,7 @@ main(argc, argv)
 		usage();
 
 	/* Handle possible interruptions. */
-	siginit();
+	__db_util_siginit();
 
 	/*
 	 * Create an environment object initialized for error reporting, and
@@ -142,7 +140,7 @@ main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit(1);
+		goto shutdown;
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
@@ -163,11 +161,8 @@ shutdown:	exitval = 1;
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
-	if (interrupted) {
-		(void)signal(interrupted, SIG_DFL);
-		(void)raise(interrupted);
-		/* NOTREACHED */
-	}
+	/* Resend any caught signal. */
+	__db_util_sigresend();
 
 	/* Return 0 on success, 1 if keys existed already, and 2 on failure. */
 	return (exitval == 0 ? (existed == 0 ? 0 : 1) : 2);
@@ -304,7 +299,7 @@ key_data:	if ((readp->data =
 	}
 
 	/* Get each key/data pair and add them to the database. */
-	for (recno = 1; !interrupted; ++recno) {
+	for (recno = 1; !__db_util_interrupted(); ++recno) {
 		if (!keyflag)
 			if (checkprint) {
 				if (dbt_rprint(&data))
@@ -355,7 +350,8 @@ fmt:					dbenv->errx(dbenv,
 			    name,
 			    !keyflag ? recno : recno * 2 - 1);
 
-			(void)__db_prdbt(&key, checkprint, 0, stderr, 0);
+			(void)__db_prdbt(&key, checkprint, 0, stderr,
+			    __db_verify_callback, 0, NULL);
 			break;
 		default:
 			dbenv->err(dbenv, ret, NULL);
@@ -398,7 +394,7 @@ db_init(home)
 	/* We may be loading into a live environment.  Try and join. */
 	flags = DB_USE_ENVIRON |
 	    DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN;
-	if (dbenv->open(dbenv, home, NULL, flags, 0) == 0)
+	if (dbenv->open(dbenv, home, flags, 0) == 0)
 		return (0);
 
 	/*
@@ -415,7 +411,7 @@ db_init(home)
 	 */
 	LF_CLR(DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_TXN);
 	LF_SET(DB_CREATE | DB_PRIVATE);
-	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) == 0)
+	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
 		return (0);
 
 	/* An environment is required. */
@@ -480,7 +476,8 @@ configure(dbp, clp, subdbp, keysp)
 		savech = *value;
 		*value++ = '\0';
 
-		if (strcmp(name, "subdatabase") == 0) {
+		if (strcmp(name, "database") == 0 ||
+		    strcmp(name, "subdatabase") == 0) {
 			if ((*subdbp = strdup(value)) == NULL) {
 				dbp->err(dbp, ENOMEM, NULL);
 				return (1);
@@ -506,6 +503,7 @@ configure(dbp, clp, subdbp, keysp)
 		NUMBER(name, value, "db_lorder", set_lorder);
 		NUMBER(name, value, "db_pagesize", set_pagesize);
 		FLAG(name, value, "duplicates", DB_DUP);
+		FLAG(name, value, "dupsort", DB_DUPSORT);
 		NUMBER(name, value, "h_ffactor", set_h_ffactor);
 		NUMBER(name, value, "h_nelem", set_h_nelem);
 		NUMBER(name, value, "re_len", set_re_len);
@@ -610,7 +608,8 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 			dbp->errx(dbp, "line %lu: unknown type", lineno);
 			return (1);
 		}
-		if (strcmp(name, "subdatabase") == 0) {
+		if (strcmp(name, "database") == 0 ||
+		    strcmp(name, "subdatabase") == 0) {
 			if ((*subdbp = strdup(value)) == NULL) {
 				dbp->err(dbp, ENOMEM, NULL);
 				return (1);
@@ -636,6 +635,7 @@ rheader(dbp, dbtypep, subdbp, checkprintp, keysp)
 		NUMBER(name, value, "db_lorder", set_lorder);
 		NUMBER(name, value, "db_pagesize", set_pagesize);
 		FLAG(name, value, "duplicates", DB_DUP);
+		FLAG(name, value, "dupsort", DB_DUPSORT);
 		NUMBER(name, value, "h_ffactor", set_h_ffactor);
 		NUMBER(name, value, "h_nelem", set_h_nelem);
 		NUMBER(name, value, "re_len", set_re_len);
@@ -822,28 +822,14 @@ dbt_rrecno(dbtp)
 		return (0);
 	}
 
-	if (buf[0] != ' ' || linetorn(buf + 1, (db_recno_t *)dbtp->data)) {
+	if (buf[0] != ' ' || __db_getulong(NULL,
+	    progname, buf + 1, 0, 0, (u_long *)dbtp->data)) {
 		badend();
 		return (1);
 	}
 
 	dbtp->size = sizeof(db_recno_t);
 	return (0);
-}
-
-/*
- * linetorn --
- * 	Given a character string representing a recno in ASCII text,
- * 	return the db_recno_t.
- */
-int
-linetorn(buf, recno)
-	char *buf;
-	db_recno_t *recno;
-{
-	errno = 0;
-	*recno = strtoul(buf, NULL, 0);
-	return (errno ? 1 : 0);
 }
 
 /*
@@ -901,37 +887,6 @@ badend()
 }
 
 /*
- * siginit --
- *	Initialize the set of signals for which we want to clean up.
- *	Generally, we try not to leave the shared regions locked if
- *	we can.
- */
-void
-siginit()
-{
-#ifdef SIGHUP
-	(void)signal(SIGHUP, onint);
-#endif
-	(void)signal(SIGINT, onint);
-#ifdef SIGPIPE
-	(void)signal(SIGPIPE, onint);
-#endif
-	(void)signal(SIGTERM, onint);
-}
-
-/*
- * onint --
- *	Interrupt signal handler.
- */
-void
-onint(signo)
-	int signo;
-{
-	if ((interrupted = signo) == 0)
-		interrupted = SIGINT;
-}
-
-/*
  * usage --
  *	Display the usage message.
  */
@@ -939,7 +894,7 @@ void
 usage()
 {
 	(void)fprintf(stderr, "%s\n\t%s\n",
-	    "usage: db_load [-nT]",
+	    "usage: db_load [-nTV]",
     "[-c name=value] [-f file] [-h home] [-t btree | hash | recno] db_file");
 	exit(1);
 }

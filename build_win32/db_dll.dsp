@@ -52,7 +52,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb30.dll"
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb31.dll"
 
 !ELSEIF  "$(CFG)" == "DB_DLL - Win32 Debug"
 
@@ -79,7 +79,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb30d.dll" /fixed:no
+# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb31d.dll" /fixed:no
 
 !ENDIF 
 
@@ -153,6 +153,10 @@ SOURCE=..\btree\bt_upgrade.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\btree\bt_verify.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\btree\btree_auto.c
 # End Source File
 # Begin Source File
@@ -210,6 +214,10 @@ SOURCE=..\db\db_auto.c
 # Begin Source File
 
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_cam.c
 # End Source File
 # Begin Source File
 
@@ -289,7 +297,19 @@ SOURCE=..\env\db_shash.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\db\db_upgrade.c
+SOURCE=..\db\db_upg.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_upg_opd.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_vrfy.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\db_vrfyutil.c
 # End Source File
 # Begin Source File
 
@@ -362,6 +382,10 @@ SOURCE=..\hash\hash_stat.c
 # Begin Source File
 
 SOURCE=..\hash\hash_upgrade.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\hash\hash_verify.c
 # End Source File
 # Begin Source File
 
@@ -545,7 +569,7 @@ SOURCE=..\os\os_region.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_rename.c
+SOURCE=..\os_win32\os_rename.c
 # End Source File
 # Begin Source File
 
@@ -617,6 +641,18 @@ SOURCE=..\qam\qam_stat.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\qam\qam_upgrade.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\qam\qam_verify.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\clib\strcasecmp.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\txn\txn.c
 # End Source File
 # Begin Source File
@@ -630,6 +666,14 @@ SOURCE=..\txn\txn_rec.c
 # Begin Source File
 
 SOURCE=..\txn\txn_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\util_log.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\util_sig.c
 # End Source File
 # Begin Source File
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)update.tcl	11.3 (Sleepycat) 9/10/99
+#	$Id: update.tcl,v 11.6 2000/03/24 19:53:43 krinsky Exp $
 source ./include.tcl
 global update_dir
 set update_dir "$test_path/update_test"
@@ -55,8 +55,7 @@ proc _update { source_dir temp_dir \
 		    "Update dump: $version $method $file $message" $ret 0
 
 		error_check_good "Update diff.1.1: $version $method $file" \
-		    [catch { exec $CMP \
-		    "$temp_dir/$file.dump" "$temp_dir/update.dump" } ret] 0
+		    [filecmp "$temp_dir/$file.dump" "$temp_dir/update.dump"] 0
 		error_check_good \
 		    "Update diff.1.2: $version $method $file" $ret ""
 	}
@@ -83,8 +82,8 @@ proc _update { source_dir temp_dir \
 
 			error_check_good \
 			    "Update diff.2: $version $method $file" \
-			    [catch { exec $CMP "$temp_dir/$file.dump" \
-			    "$temp_dir/update.dump" } ret] 0
+			    [filecmp "$temp_dir/$file.dump" \
+			    "$temp_dir/update.dump"] 0
 			error_check_good \
 			    "Update diff.2: $version $method $file" $ret ""
 		}

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)env_region.c	11.7 (Sleepycat) 11/12/99";
+static const char revid[] = "$Id: env_region.c,v 11.17.2.1 2000/07/05 13:43:13 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -42,7 +42,7 @@ __db_e_attach(dbenv)
 	REGINFO *infop;
 	REGION *rp, tregion;
 	size_t size;
-	ssize_t nrw;
+	size_t nrw;
 	u_int32_t mbytes, bytes;
 	int retry_cnt, ret, segid;
 	char buf[sizeof(DB_REGION_FMT) + 20];
@@ -80,7 +80,7 @@ __db_e_attach(dbenv)
 loop:	renv = NULL;
 
 	/* Set up the DB_ENV's REG_INFO structure. */
-	if ((ret = __os_calloc(1, sizeof(REGINFO), &infop)) != 0)
+	if ((ret = __os_calloc(dbenv, 1, sizeof(REGINFO), &infop)) != 0)
 		return (ret);
 	infop->id = REG_ID_ENV;
 	infop->mode = dbenv->db_mode;
@@ -116,7 +116,8 @@ loop:	renv = NULL;
 	 * errno return value -- I sure hope they're right.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_CREATE)) {
-		if ((ret = __os_open(infop->name, DB_OSO_CREATE | DB_OSO_EXCL,
+		if ((ret = __os_open(dbenv,
+		    infop->name, DB_OSO_CREATE | DB_OSO_EXCL,
 		    dbenv->db_mode, dbenv->lockfhp)) == 0)
 			goto creation;
 		if (ret != EEXIST) {
@@ -130,8 +131,8 @@ loop:	renv = NULL;
 	 * If we couldn't create the file, try and open it.  (If that fails,
 	 * we're done.)
 	 */
-	if ((ret =
-	    __os_open(infop->name, 0, dbenv->db_mode, dbenv->lockfhp)) != 0)
+	if ((ret = __os_open(dbenv,
+		infop->name, 0, dbenv->db_mode, dbenv->lockfhp)) != 0)
 		goto err;
 
 	/*
@@ -163,7 +164,7 @@ loop:	renv = NULL;
 	 * stupid and gross, and I've probably spent six months of my life,
 	 * now, trying to make different versions of it work.)
 	 */
-	if ((ret = __os_ioinfo(infop->name,
+	if ((ret = __os_ioinfo(dbenv, infop->name,
 	    dbenv->lockfhp, &mbytes, &bytes, NULL)) != 0) {
 		__db_err(dbenv, "%s: %s", infop->name, db_strerror(ret));
 		goto err;
@@ -177,20 +178,19 @@ loop:	renv = NULL;
 	size = mbytes * MEGABYTE + bytes;
 
 	/*
-	 * If the size is 0 or less than the size of a REGENV_REF structure,
-	 * the region (or, possibly, the REGENV_REF structure) has not been
-	 * fully written.  Wait awhile and try again.
+	 * If the size is less than the size of a REGENV_REF structure, the
+	 * region (or, possibly, the REGENV_REF structure) has not yet been
+	 * completely written.  Wait awhile and try again.
 	 *
 	 * Otherwise, if the size is the size of a REGENV_REF structure,
 	 * read it into memory and use it as a reference to the real region.
 	 */
-	segid = INVALID_REGION_SEGID;
 	if (size <= sizeof(ref)) {
 		if (size != sizeof(ref))
 			goto retry;
 
-		if ((ret = __os_read(dbenv->lockfhp, &ref,
-		    sizeof(ref), &nrw)) != 0 || nrw < (ssize_t)sizeof(ref)) {
+		if ((ret = __os_read(dbenv, dbenv->lockfhp, &ref,
+		    sizeof(ref), &nrw)) != 0 || nrw < (size_t)sizeof(ref)) {
 			if (ret == 0)
 				ret = EIO;
 			__db_err(dbenv,
@@ -202,7 +202,14 @@ loop:	renv = NULL;
 		segid = ref.segid;
 
 		F_SET(dbenv, DB_ENV_SYSTEM_MEM);
-	}
+	} else if (F_ISSET(dbenv, DB_ENV_SYSTEM_MEM)) {
+		ret = EINVAL;
+		__db_err(dbenv,
+		    "%s: existing environment not created in system memory: %s",
+		    infop->name, db_strerror(ret));
+		goto err;
+	} else
+		segid = INVALID_REGION_SEGID;
 
 	/*
 	 * If not doing thread locking, we need to save the file handle for
@@ -269,13 +276,10 @@ loop:	renv = NULL;
 	 * Get a reference to the underlying REGION information for this
 	 * environment.
 	 */
-	if ((ret = __db_des_get(dbenv, infop, infop, &rp)) != 0)
-		goto err_unlock;
-	if (rp == NULL) {
-		__db_err(dbenv,
-		    "%s: unable to find environment REGION", infop->name);
-		ret = EINVAL;
-		goto err_unlock;
+	if ((ret = __db_des_get(dbenv,
+	    infop, infop, &rp)) != 0 || rp == NULL) {
+		MUTEX_UNLOCK(&renv->mutex);
+		goto find_err;
 	}
 	infop->rp = rp;
 
@@ -390,8 +394,13 @@ creation:
 	 * structure, which is backwards from the normal procedure.  Update
 	 * the REGION structure.
 	 */
-	if ((ret = __db_des_get(dbenv, infop, infop, &rp)) != 0)
+	if ((ret = __db_des_get(dbenv, infop, infop, &rp)) != 0) {
+find_err:	__db_err(dbenv,
+		    "%s: unable to find environment", infop->name);
+		if (ret == 0)
+			ret = EINVAL;
 		goto err;
+	}
 	infop->rp = rp;
 	rp->size = tregion.size;
 	rp->segid = tregion.segid;
@@ -412,7 +421,7 @@ creation:
 	if (tregion.segid != INVALID_REGION_SEGID) {
 		ref.size = tregion.size;
 		ref.segid = tregion.segid;
-		if ((ret = __os_write(dbenv->lockfhp,
+		if ((ret = __os_write(dbenv, dbenv->lockfhp,
 		    &ref, sizeof(ref), &nrw)) != 0 || nrw != sizeof(ref)) {
 			__db_err(dbenv,
 			    "%s: unable to write out public environment ID: %s",
@@ -475,7 +484,7 @@ retry:	/* Close any open file handle. */
 			__db_err(dbenv, "unable to join the environment");
 			ret = EAGAIN;
 		} else {
-			__os_sleep(retry_cnt * 3, 0);
+			__os_sleep(dbenv, retry_cnt * 3, 0);
 			goto loop;
 		}
 	}
@@ -636,10 +645,23 @@ restart:	for (rp = SH_LIST_FIRST(&renv->regionq, __db_region);
 
 			reginfo.id = rp->id;
 			reginfo.flags = REGION_CREATE_OK;
-			if (__db_r_attach(dbenv, &reginfo, 0) == 0) {
-				R_UNLOCK(dbenv, &reginfo);
-				(void)__db_r_detach(dbenv, &reginfo, 1);
+			if ((ret = __db_r_attach(dbenv, &reginfo, 0)) != 0) {
+				__db_err(dbenv,
+				    "region %s attach: %s", db_strerror(ret));
+				continue;
 			}
+			R_UNLOCK(dbenv, &reginfo);
+			if ((ret = __db_r_detach(dbenv, &reginfo, 1)) != 0) {
+				__db_err(dbenv,
+				    "region detach: %s", db_strerror(ret));
+				continue;
+			}
+			/*
+			 * If we have an error, we continue so we eventually
+			 * reach the end of the list.  If we succeed, restart
+			 * the list because it was relinked when we destroyed
+			 * the entry.
+			 */
 			goto restart;
 		}
 
@@ -704,7 +726,7 @@ __db_e_remfile(dbenv)
 	}
 
 	/* Get the list of file names. */
-	ret = __os_dirlist(dir, &names, &fcnt);
+	ret = __os_dirlist(dbenv, dir, &names, &fcnt);
 
 	/* Restore the path, and free it. */
 	*p = saved_byte;
@@ -735,7 +757,7 @@ __db_e_remfile(dbenv)
 
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, names[cnt], 0, NULL, &path) == 0) {
-			(void)__os_unlink(path);
+			(void)__os_unlink(dbenv, path);
 			__os_freestr(path);
 		}
 	}
@@ -743,7 +765,7 @@ __db_e_remfile(dbenv)
 	if (lastrm != -1)
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, names[lastrm], 0, NULL, &path) == 0) {
-			(void)__os_unlink(path);
+			(void)__os_unlink(dbenv, path);
 			__os_freestr(path);
 		}
 	__os_dirfree(names, fcnt);
@@ -756,7 +778,7 @@ __db_e_remfile(dbenv)
 	for (names = (char **)old_region_names; *names != NULL; ++names)
 		if (__db_appname(dbenv,
 		    DB_APP_NONE, NULL, *names, 0, NULL, &path) == 0) {
-			(void)__os_unlink(path);
+			(void)__os_unlink(dbenv, path);
 			__os_freestr(path);
 		}
 
@@ -976,7 +998,8 @@ __db_des_get(dbenv, env_infop, infop, rpp)
 
 	/*
 	 * If we didn't find a region, or we found one needing initialization,
-	 * and we can't create the region, fail.
+	 * and we can't create the region, fail.  The caller generates
+	 * an error message.
 	 */
 	if (!F_ISSET(infop, REGION_CREATE_OK) &&
 	    (rp == NULL || F_ISSET(rp, REG_DEAD)))

@@ -78,6 +78,12 @@ Package=<4>
     Project_Dep_Name db_stat
     End Project Dependency
     Begin Project Dependency
+    Project_Dep_Name db_upgrade
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name db_verify
+    End Project Dependency
+    Begin Project Dependency
     Project_Dep_Name DB_Static
     End Project Dependency
     Begin Project Dependency
@@ -241,6 +247,54 @@ Package=<4>
 ###############################################################################
 
 Project: "db_tcl"=.\db_tcl.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "db_test"=.\db_test.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name db_buildall
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name db_tcl
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "db_upgrade"=.\db_upgrade.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name DB_DLL
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "db_verify"=.\db_verify.dsp - Package Owner=<4>
 
 Package=<5>
 {{{

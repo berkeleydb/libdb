@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)crdel.src	11.4 (Sleepycat) 9/10/99
+ *	$Id: crdel.src,v 11.11 2000/05/10 16:59:28 ubell Exp $
  */
 
 PREFIX	crdel
@@ -15,6 +15,7 @@ INCLUDE #ifndef NO_SYSTEM_INCLUDES
 INCLUDE #include <sys/types.h>
 INCLUDE
 INCLUDE #include <ctype.h>
+INCLUDE #include <errno.h>
 INCLUDE #include <string.h>
 INCLUDE #endif
 INCLUDE
@@ -32,7 +33,7 @@ INCLUDE
  * subname: sub database name
  * mode: file system mode
  */
-BEGIN fileopen
+BEGIN fileopen		141
 DBT	name		DBT		s
 ARG	mode		u_int32_t	o
 END
@@ -45,8 +46,8 @@ END
  * page: the actual meta-data page
  * lsn: lsn of the page.
  */
-BEGIN metasub
-ARG	fileid		u_int32_t	lu
+BEGIN metasub		142
+ARG	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	d
 DBT	page		DBT		s
 POINTER	lsn		DB_LSN *	lu
@@ -55,12 +56,13 @@ END
 /*
  * Metapage: log the creation of a meta data page for a new file.
  *
+ * fileid: identifies the file being acted upon.
  * name: file containing the page.
  * pgno: page number on which to write this meta-data page
  * page: the actual meta-data page
  */
-BEGIN metapage
-ARG	fileid		u_int32_t	lu
+BEGIN metapage		143
+ARG	fileid		int32_t		ld
 DBT	name		DBT		s
 ARG	pgno		db_pgno_t	d
 DBT	page		DBT		s
@@ -73,6 +75,29 @@ END
  *
  * name: name of the file being removed (relative to DBHOME).
  */
-BEGIN delete
+DEPRECATED old_delete		144
 DBT	name		DBT	s
+END
+
+/*
+ * Rename: rename a file
+ *   We do not need this for subdatabases
+ *
+ * name: name of the file being removed (relative to DBHOME).
+ */
+BEGIN rename		145
+ARG	fileid		int32_t 	ld
+DBT	name		DBT		s
+DBT	newname		DBT		s
+END
+/*
+ * Delete: remove a file.
+ * Note that we don't need a special log record for subdatabase
+ * removes, because we use normal btree operations to remove them.
+ *
+ * name: name of the file being removed (relative to DBHOME).
+ */
+BEGIN delete		146
+ARG	fileid		int32_t 	ld
+DBT	name		DBT		s
 END

@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)txn_region.c	11.4 (Sleepycat) 9/20/99";
+static const char revid[] = "$Id: txn_region.c,v 11.20 2000/05/17 19:06:34 sue Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,15 +28,25 @@ static const char sccsid[] = "@(#)txn_region.c	11.4 (Sleepycat) 9/20/99";
 #include <string.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_page.h"
 #include "txn.h"
 #include "db_am.h"
 
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
+
 static int __txn_init __P((DB_ENV *, DB_TXNMGR *));
 static int __txn_set_tx_max __P((DB_ENV *, u_int32_t));
-static int __txn_set_tx_recover
-	       __P((DB_ENV *, int (*)(DB_ENV *, DBT *, DB_LSN *, int, void *)));
+static int __txn_set_tx_recover __P((DB_ENV *,
+	       int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *)));
+static int __txn_set_tx_timestamp __P((DB_ENV *, time_t *));
 
 /*
  * __txn_dbenv_create --
@@ -52,6 +62,19 @@ __txn_dbenv_create(dbenv)
 
 	dbenv->set_tx_max = __txn_set_tx_max;
 	dbenv->set_tx_recover = __txn_set_tx_recover;
+	dbenv->set_tx_timestamp = __txn_set_tx_timestamp;
+
+#ifdef HAVE_RPC
+	/*
+	 * If we have a client, overwrite what we just setup to point to
+	 * client functions.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
+		dbenv->set_tx_max = __dbcl_set_tx_max;
+		dbenv->set_tx_recover = __dbcl_set_tx_recover;
+		dbenv->set_tx_timestamp = __dbcl_set_tx_timestamp;
+	}
+#endif
 }
 
 /*
@@ -76,9 +99,24 @@ __txn_set_tx_max(dbenv, tx_max)
 static int
 __txn_set_tx_recover(dbenv, tx_recover)
 	DB_ENV *dbenv;
-	int (*tx_recover) __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+	int (*tx_recover) __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 {
 	dbenv->tx_recover = tx_recover;
+	return (0);
+}
+
+/*
+ * __txn_set_tx_timestamp --
+ *	Set the transaction recovery timestamp.
+ */
+static int
+__txn_set_tx_timestamp(dbenv, timestamp)
+	DB_ENV *dbenv;
+	time_t *timestamp;
+{
+	ENV_ILLEGAL_AFTER_OPEN(dbenv, "set_tx_timestamp");
+
+	dbenv->tx_timestamp = *timestamp;
 	return (0);
 }
 
@@ -96,7 +134,7 @@ __txn_open(dbenv)
 	int ret;
 
 	/* Create/initialize the transaction manager structure. */
-	if ((ret = __os_calloc(1, sizeof(DB_TXNMGR), &tmgrp)) != 0)
+	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_TXNMGR), &tmgrp)) != 0)
 		return (ret);
 	TAILQ_INIT(&tmgrp->txn_chain);
 	tmgrp->dbenv = dbenv;
@@ -160,8 +198,11 @@ __txn_init(dbenv, tmgrp)
 	int ret;
 
 	if ((ret = __db_shalloc(tmgrp->reginfo.addr,
-	    sizeof(DB_TXNREGION), 0, &tmgrp->reginfo.primary)) != 0)
+	    sizeof(DB_TXNREGION), 0, &tmgrp->reginfo.primary)) != 0) {
+		__db_err(dbenv,
+		    "Unable to allocate memory for the transaction region");
 		return (ret);
+	}
 	tmgrp->reginfo.rp->primary =
 	    R_OFFSET(&tmgrp->reginfo, tmgrp->reginfo.primary);
 	region = tmgrp->reginfo.primary;
@@ -230,7 +271,7 @@ __txn_close(dbenv)
 		}
 
 	/* Flush the log. */
-	if (F_ISSET(dbenv, DB_ENV_LOGGING) &&
+	if (LOGGING_ON(dbenv) &&
 	    (t_ret = log_flush(dbenv, NULL)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -243,6 +284,8 @@ __txn_close(dbenv)
 		ret = t_ret;
 
 	__os_free(tmgrp, sizeof(*tmgrp));
+
+	dbenv->tx_handle = NULL;
 	return (ret);
 }
 
@@ -259,6 +302,11 @@ txn_stat(dbenv, statp, db_malloc)
 	size_t nbytes;
 	u_int32_t nactive, ndx;
 	int ret, slop;
+
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_txn_stat(dbenv, statp, db_malloc));
+#endif
 
 	PANIC_CHECK(dbenv);
 	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, DB_INIT_TXN);
@@ -278,7 +326,7 @@ retry:	R_LOCK(dbenv, &mgr->reginfo);
 	 * are created while we have the region unlocked.
 	 */
 	nbytes = sizeof(DB_TXN_STAT) + sizeof(DB_TXN_ACTIVE) * (nactive + slop);
-	if ((ret = __os_malloc(nbytes, db_malloc, &stats)) != 0)
+	if ((ret = __os_malloc(dbenv, nbytes, db_malloc, &stats)) != 0)
 		return (ret);
 
 	R_LOCK(dbenv, &mgr->reginfo);

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -43,7 +43,7 @@
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)bt_open.c	11.13 (Sleepycat) 10/21/99";
+static const char revid[] = "$Id: bt_open.c,v 11.37 2000/05/23 18:08:05 krinsky Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -60,19 +60,21 @@ static const char sccsid[] = "@(#)bt_open.c	11.13 (Sleepycat) 10/21/99";
 #include "btree.h"
 #include "db_shash.h"
 #include "lock.h"
+#include "log.h"
 #include "mp.h"
 
 /*
  * __bam_open --
  *	Open a btree.
  *
- * PUBLIC: int __bam_open __P((DB *, const char *, db_pgno_t));
+ * PUBLIC: int __bam_open __P((DB *, const char *, db_pgno_t, u_int32_t));
  */
 int
-__bam_open(dbp, name, base_pgno)
+__bam_open(dbp, name, base_pgno, flags)
 	DB *dbp;
 	const char *name;
 	db_pgno_t base_pgno;
+	u_int32_t flags;
 {
 	BTREE *t;
 
@@ -80,6 +82,7 @@ __bam_open(dbp, name, base_pgno)
 
 	/* Initialize the remaining fields/methods of the DB. */
 	dbp->del = __bam_delete;
+	dbp->key_range = __bam_key_range;
 	dbp->stat = __bam_stat;
 
 	/*
@@ -93,46 +96,8 @@ __bam_open(dbp, name, base_pgno)
 		return (EINVAL);
 	}
 
-	/* Set the overflow page size. */
-	__bam_setovflsize(dbp);
-
 	/* Start up the tree. */
-	return (__bam_read_root(dbp, name, base_pgno));
-}
-
-/*
- * __bam_setovflsize --
- *
- * PUBLIC: void __bam_setovflsize __P((DB *));
- */
-void
-__bam_setovflsize(dbp)
-	DB *dbp;
-{
-	BTREE *t;
-
-	t = dbp->bt_internal;
-
-	/*
-	 * !!!
-	 * Correction for recno, which doesn't know anything about minimum
-	 * keys per page.
-	 */
-	if (t->bt_minkey == 0)
-		t->bt_minkey = DEFMINKEYPAGE;
-
-	/*
-	 * The btree data structure requires that at least two key/data pairs
-	 * can fit on a page, but other than that there's no fixed requirement.
-	 * Translate the minimum number of items into the bytes a key/data pair
-	 * can use before being placed on an overflow page.  We calculate for
-	 * the worst possible alignment by assuming every item requires the
-	 * maximum alignment for padding.
-	 *
-	 * Recno uses the btree bt_ovflsize value -- it's close enough.
-	 */
-	t->bt_ovflsize = (dbp->pgsize - P_OVERHEAD) / (t->bt_minkey * P_INDX)
-	    - (BKEYDATA_PSIZE(0) + ALIGN(1, 4));
+	return (__bam_read_root(dbp, name, base_pgno, flags));
 }
 
 /*
@@ -161,11 +126,12 @@ __bam_metachk(dbp, name, btm)
 		M_32_SWAP(vers);
 	switch (vers) {
 	case 6:
+	case 7:
 		__db_err(dbenv,
 		    "%s: btree version %lu requires a version upgrade",
 		    name, (u_long)vers);
 		return (DB_OLD_VERSION);
-	case 7:
+	case 8:
 		break;
 	default:
 		__db_err(dbenv,
@@ -252,14 +218,25 @@ __bam_metachk(dbp, name, btm)
 	else
 		if (F_ISSET(dbp, DB_AM_SUBDB)) {
 			__db_err(dbenv,
-		    "%s: subdatabase specified but not supported in database",
+	    "%s: multiple databases specified but not supported by file",
+			    name);
+			return (EINVAL);
+		}
+
+	if (F_ISSET(&btm->dbmeta, BTM_DUPSORT)) {
+		if (dbp->dup_compare == NULL)
+			dbp->dup_compare = __bam_defcmp;
+		F_SET(dbp, DB_AM_DUPSORT);
+	} else
+		if (dbp->dup_compare != NULL) {
+			__db_err(dbenv,
+		"%s: duplicate sort specified but not supported in database",
 			    name);
 			return (EINVAL);
 		}
 
 	/* Set the page size. */
 	dbp->pgsize = btm->dbmeta.pagesize;
-	F_CLR(dbp, DB_AM_PGDEF);
 
 	/* Copy the file's ID. */
 	memcpy(dbp->fileid, btm->dbmeta.uid, DB_FILE_ID_LEN);
@@ -280,13 +257,14 @@ wrong_type:
  * __bam_read_root --
  *	Check (and optionally create) a tree.
  *
- * PUBLIC: int __bam_read_root __P((DB *, const char *, db_pgno_t));
+ * PUBLIC: int __bam_read_root __P((DB *, const char *, db_pgno_t, u_int32_t));
  */
 int
-__bam_read_root(dbp, name, base_pgno)
+__bam_read_root(dbp, name, base_pgno, flags)
 	DB *dbp;
 	const char *name;
 	db_pgno_t base_pgno;
+	u_int32_t flags;
 {
 	BTMETA *meta;
 	BTREE *t;
@@ -294,22 +272,28 @@ __bam_read_root(dbp, name, base_pgno)
 	DB_LSN orig_lsn;
 	DB_LOCK metalock;
 	PAGE *root;
-	int ret, t_ret;
+	int locked, ret, t_ret;
 
 	ret = 0;
 	t = dbp->bt_internal;
 	meta = NULL;
 	root = NULL;
+	locked = 0;
 
-	metalock.off = LOCK_INVALID;
-
-	/* Get a cursor. */
-	if ((ret = dbp->cursor(dbp, dbp->open_txn, &dbc, 0)) != 0)
+	/* 
+	 * Get a cursor.  If DB_CREATE is specified, we may be creating
+	 * the root page, and to do that safely in CDB we need a write
+	 * cursor.  In STD_LOCKING mode, we'll synchronize using the 
+	 * meta page lock instead.
+	 */
+	if ((ret = dbp->cursor(dbp, dbp->open_txn,
+	    &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbp->dbenv) ? 
+	    DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
 	/* Get, and optionally create the metadata page. */
 	if ((ret =
-	    __db_lget(dbc, 0, base_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+	    __db_lget(dbc, 0, base_pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
 	if ((ret = memp_fget(
 	    dbp->mpf, &base_pgno, DB_MPOOL_CREATE, (PAGE **)&meta)) != 0)
@@ -320,7 +304,7 @@ __bam_read_root(dbp, name, base_pgno)
 	 * Correct any fields that may not be right.  Note, all of the
 	 * local flags were set by DB->open.
 	 */
-	if (meta->dbmeta.magic != 0) {
+again:	if (meta->dbmeta.magic != 0) {
 		t->bt_maxkey = meta->maxkey;
 		t->bt_minkey = meta->minkey;
 		t->re_pad = meta->re_pad;
@@ -329,15 +313,45 @@ __bam_read_root(dbp, name, base_pgno)
 		t->bt_meta = base_pgno;
 		t->bt_root = meta->root;
 
-		(void)memp_fput(dbp->mpf, (PAGE *)meta, 0);
+		(void)memp_fput(dbp->mpf, meta, 0);
 		meta = NULL;
 		goto done;
+	}
+
+	/* In recovery if it's not there it will be created elsewhere.*/
+	if (IS_RECOVERING(dbp->dbenv))
+		goto done;
+
+	/* If we're doing CDB; we now have to get the write lock. */
+	if (CDB_LOCKING(dbp->dbenv)) {
+		/* 
+		 * We'd better have DB_CREATE set if we're actually doing 
+		 * the create. 
+		 */
+		DB_ASSERT(LF_ISSET(DB_CREATE));
+	    	if ((ret = lock_get(dbp->dbenv, dbc->locker, DB_LOCK_UPGRADE,
+	    	    &dbc->lock_dbt, DB_LOCK_WRITE, &dbc->mylock)) != 0)
+			goto err;
+	}
+
+	/*
+	 * If we are doing locking, relase the read lock and get a write lock.
+	 * We want to avoid deadlock.
+	 */
+	if (locked == 0 && STD_LOCKING(dbc)) {
+		if ((ret = __LPUT(dbc, metalock)) != 0)
+			goto err;
+		if ((ret = __db_lget(dbc,
+		     0, base_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+			goto err;
+		locked = 1;
+		goto again;
 	}
 
 	/* Initialize the tree structure metadata information. */
 	orig_lsn = meta->dbmeta.lsn;
 	memset(meta, 0, sizeof(BTMETA));
-	ZERO_LSN(meta->dbmeta.lsn);
+	meta->dbmeta.lsn = orig_lsn;
 	meta->dbmeta.pgno = base_pgno;
 	meta->dbmeta.magic = DB_BTREEMAGIC;
 	meta->dbmeta.version = DB_BTREEVERSION;
@@ -354,6 +368,8 @@ __bam_read_root(dbp, name, base_pgno)
 		F_SET(&meta->dbmeta, BTM_RENUMBER);
 	if (F_ISSET(dbp, DB_AM_SUBDB))
 		F_SET(&meta->dbmeta, BTM_SUBDB);
+	if (dbp->dup_compare != NULL)
+		F_SET(&meta->dbmeta, BTM_DUPSORT);
 	if (dbp->type == DB_RECNO)
 		F_SET(&meta->dbmeta, BTM_RECNO);
 	memcpy(meta->dbmeta.uid, dbp->fileid, DB_FILE_ID_LEN);
@@ -391,7 +407,7 @@ __bam_read_root(dbp, name, base_pgno)
 	t->bt_root = root->pgno;
 
 	/* Release the metadata and root pages. */
-	if ((ret = memp_fput(dbp->mpf, (PAGE *)meta, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = memp_fput(dbp->mpf, meta, DB_MPOOL_DIRTY)) != 0)
 		goto err;
 	meta = NULL;
 	if ((ret = memp_fput(dbp->mpf, root, DB_MPOOL_DIRTY)) != 0)
@@ -405,12 +421,14 @@ __bam_read_root(dbp, name, base_pgno)
 	 * It's not useful to return not-yet-flushed here -- convert it to
 	 * an error.
 	 */
-	if ((ret = memp_fsync(dbp->mpf)) == DB_INCOMPLETE)
+	if ((ret = memp_fsync(dbp->mpf)) == DB_INCOMPLETE) {
+		__db_err(dbp->dbenv, "Metapage flush failed");
 		ret = EINVAL;
+	}
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTSYNC, ret, name);
 
 done:	/*
-	 * XXX
+	 * !!!
 	 * We already did an insert and so the last-page-inserted has been
 	 * set.  I'm not sure where the *right* place to clear this value
 	 * is, it's not intuitively obvious that it belongs here.
@@ -421,17 +439,16 @@ err:
 DB_TEST_RECOVERY_LABEL
 	/* Put any remaining pages back. */
 	if (meta != NULL)
-		if ((t_ret = memp_fput(dbp->mpf, (PAGE *)meta, 0)) != 0 &&
+		if ((t_ret = memp_fput(dbp->mpf, meta, 0)) != 0 &&
 		    ret == 0)
 			ret = t_ret;
 	if (root != NULL)
-		if ((t_ret = memp_fput(dbp->mpf, (PAGE *)root, 0)) != 0 &&
+		if ((t_ret = memp_fput(dbp->mpf, root, 0)) != 0 &&
 		    ret == 0)
 			ret = t_ret;
 
 	/* We can release the metapage lock when we are done. */
-	if (metalock.off != LOCK_INVALID)
-		(void)__LPUT(dbc, metalock);
+	(void)__LPUT(dbc, metalock);
 
 	if ((t_ret = dbc->c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;

@@ -1,19 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)cxx_log.cpp	11.2 (Sleepycat) 9/10/99";
+static const char revid[] = "$Id: cxx_log.cpp,v 11.8 2000/05/17 01:17:53 dda Exp $";
 #endif /* not lint */
+
+#include <errno.h>
 
 #include "db_cxx.h"
 #include "cxx_int.h"
-#include <errno.h>
 
 ////////////////////////////////////////////////////////////////////////
 //                                                                    //
@@ -21,13 +22,14 @@ static const char sccsid[] = "@(#)cxx_log.cpp	11.2 (Sleepycat) 9/10/99";
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-int DbEnv::log_archive(char **list[], u_int32_t flags, void *(*db_malloc)(size_t))
+int DbEnv::log_archive(char **list[], u_int32_t flags,
+		       db_malloc_fcn_type db_malloc_fcn)
 {
 	int err;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_archive(env, list, flags, db_malloc)) != 0) {
-		DB_ERROR("DbEnv::log_archive", err, this);
+	if ((err = ::log_archive(env, list, flags, db_malloc_fcn)) != 0) {
+		DB_ERROR("DbEnv::log_archive", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -44,7 +46,7 @@ int DbEnv::log_file(DbLsn *lsn, char *namep, size_t len)
 	DB_ENV *env = unwrap(this);
 
 	if ((err = ::log_file(env, lsn, namep, len)) != 0) {
-		DB_ERROR("DbEnv::log_file", err, this);
+		DB_ERROR("DbEnv::log_file", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -56,7 +58,7 @@ int DbEnv::log_flush(const DbLsn *lsn)
 	DB_ENV *env = unwrap(this);
 
 	if ((err = ::log_flush(env, lsn)) != 0) {
-		DB_ERROR("DbEnv::log_flush", err, this);
+		DB_ERROR("DbEnv::log_flush", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -68,7 +70,7 @@ int DbEnv::log_get(DbLsn *lsn, Dbt *data, u_int32_t flags)
 	DB_ENV *env = unwrap(this);
 
 	if ((err = ::log_get(env, lsn, data, flags)) != 0) {
-		DB_ERROR("DbEnv::log_get", err, this);
+		DB_ERROR("DbEnv::log_get", err, error_policy());
 		return err;
 	}
 	return 0;
@@ -80,43 +82,43 @@ int DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags)
 	DB_ENV *env = unwrap(this);
 
 	if ((err = ::log_put(env, lsn, data, flags)) != 0) {
-		DB_ERROR("DbEnv::log_put", err, this);
+		DB_ERROR("DbEnv::log_put", err, error_policy());
 		return err;
 	}
 	return 0;
 }
 
-int DbEnv::log_register(Db *dbp, const char *name, int32_t *fidp)
+int DbEnv::log_register(Db *dbp, const char *name)
 {
 	int err = 0;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_register(env, unwrap(dbp), name, fidp)) != 0) {
-		DB_ERROR("DbEnv::log_register", err, this);
+	if ((err = ::log_register(env, unwrap(dbp), name)) != 0) {
+		DB_ERROR("DbEnv::log_register", err, error_policy());
 		return err;
 	}
 	return 0;
 }
 
-int DbEnv::log_stat(DB_LOG_STAT **spp, void *(*db_malloc)(size_t))
+int DbEnv::log_stat(DB_LOG_STAT **spp, db_malloc_fcn_type db_malloc_fcn)
 {
 	int err = 0;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_stat(env, spp, db_malloc)) != 0) {
-		DB_ERROR("DbEnv::log_stat", err, this);
+	if ((err = ::log_stat(env, spp, db_malloc_fcn)) != 0) {
+		DB_ERROR("DbEnv::log_stat", err, error_policy());
 		return err;
 	}
 	return 0;
 }
 
-int DbEnv::log_unregister(int32_t fid)
+int DbEnv::log_unregister(Db *dbp)
 {
 	int err;
 	DB_ENV *env = unwrap(this);
 
-	if ((err = ::log_unregister(env, fid)) != 0) {
-		DB_ERROR("DbEnv::log_unregister", err, this);
+	if ((err = ::log_unregister(env, unwrap(dbp))) != 0) {
+		DB_ERROR("DbEnv::log_unregister", err, error_policy());
 		return err;
 	}
 	return 0;

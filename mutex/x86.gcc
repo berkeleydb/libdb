@@ -1,5 +1,5 @@
 /*
- * @(#)x86.gcc	11.1 (Sleepycat) 7/25/99
+ * $Id: x86.gcc,v 11.2 1999/11/21 18:11:47 bostic Exp $
  *
  * For gcc/x86, 0 is clear, 1 is set.
  */

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -9,9 +9,9 @@
 
 #ifndef lint
 static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_recover.c	11.1 (Sleepycat) 7/24/99";
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static const char revid[] =
+    "$Id: db_recover.c,v 11.12 2000/04/27 21:31:36 ubell Exp $";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,22 +28,22 @@ static const char sccsid[] = "@(#)db_recover.c	11.1 (Sleepycat) 7/24/99";
 #endif
 #endif
 
-#include <signal.h>
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #endif
 
 #include "db_int.h"
+#include "common_ext.h"
 #include "txn.h"
 
 void	 db_init __P((char *, int));
 int	 main __P((int, char *[]));
-void	 onint __P((int));
-void	 siginit __P((void));
+void	 read_timestamp __P((char *, time_t *));
 void	 usage __P((void));
 
 DB_ENV	*dbenv;
-int	 interrupted;
 const char
 	*progname = "db_recover";			/* Program name. */
 
@@ -55,14 +55,15 @@ main(argc, argv)
 	extern char *optarg;
 	extern int optind;
 	DB_TXNREGION *region;
-	time_t now;
+	time_t now, timestamp;
 	u_int32_t flags;
 	int ch, exitval, fatal_recover, ret, verbose;
 	char *home;
 
 	home = NULL;
+	timestamp = 0;
 	exitval = fatal_recover = verbose = 0;
-	while ((ch = getopt(argc, argv, "ch:v")) != EOF)
+	while ((ch = getopt(argc, argv, "ch:t:Vv")) != EOF)
 		switch (ch) {
 		case 'c':
 			fatal_recover = 1;
@@ -70,6 +71,12 @@ main(argc, argv)
 		case 'h':
 			home = optarg;
 			break;
+		case 't':
+			read_timestamp(optarg, &timestamp);
+			break;
+		case 'V':
+			printf("%s\n", db_version(NULL, NULL, NULL));
+			exit(0);
 		case 'v':
 			verbose = 1;
 			break;
@@ -84,7 +91,7 @@ main(argc, argv)
 		usage();
 
 	/* Handle possible interruptions. */
-	siginit();
+	__db_util_siginit();
 
 	/*
 	 * Create an environment object and initialize it for error
@@ -101,6 +108,11 @@ main(argc, argv)
 		(void)dbenv->set_verbose(dbenv, DB_VERB_RECOVERY, 1);
 		(void)dbenv->set_verbose(dbenv, DB_VERB_CHKPOINT, 1);
 	}
+	if (timestamp &&
+	    (ret = dbenv->set_tx_timestamp(dbenv, &timestamp)) != 0) {
+		dbenv->err(dbenv, ret, "DBENV->set_timestamp");
+		goto shutdown;
+	}
 
 	/*
 	 * Initialize the environment -- we don't actually do anything
@@ -115,9 +127,9 @@ main(argc, argv)
 	flags = 0;
 	LF_SET(DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON);
-	LF_SET(fatal_recover ?  DB_RECOVER_FATAL : DB_RECOVER);
-	if ((ret = dbenv->open(dbenv, home, NULL, flags, 0)) != 0) {
-		dbenv->err(dbenv, ret, "open");
+	LF_SET(fatal_recover ? DB_RECOVER_FATAL : DB_RECOVER);
+	if ((ret = dbenv->open(dbenv, home, flags, 0)) != 0) {
+		dbenv->err(dbenv, ret, "DBENV->open");
 		goto shutdown;
 	}
 
@@ -131,16 +143,6 @@ main(argc, argv)
 		    (u_long)region->last_ckp.offset);
 	}
 
-	/*
-	 * We need to ensure that log records written on behalf of the
-	 * recovery are flushed (the log region will disappear as soon
-	 * as we close, because we opened it DB_PRIVATE.
-	 */
-	if ((ret = log_flush(dbenv, NULL)) != 0) {
-		dbenv->err(dbenv, ret, "log_flush");
-		goto shutdown;
-	}
-
 	if (0) {
 shutdown:	exitval = 1;
 	}
@@ -152,49 +154,117 @@ shutdown:	exitval = 1;
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 	}
 
-	if (interrupted) {
-		(void)signal(interrupted, SIG_DFL);
-		(void)raise(interrupted);
-		/* NOTREACHED */
-	}
+	/* Resend any caught signal. */
+	__db_util_sigresend();
 
 	return (exitval);
 }
 
-/*
- * siginit --
- *	Initialize the set of signals for which we want to clean up.
- *	Generally, we try not to leave the shared regions locked if
- *	we can.
- */
-void
-siginit()
-{
-#ifdef SIGHUP
-	(void)signal(SIGHUP, onint);
-#endif
-	(void)signal(SIGINT, onint);
-#ifdef SIGPIPE
-	(void)signal(SIGPIPE, onint);
-#endif
-	(void)signal(SIGTERM, onint);
-}
+#define	ATOI2(ar)	((ar)[0] - '0') * 10 + ((ar)[1] - '0'); (ar) += 2;
 
 /*
- * onint --
- *	Interrupt signal handler.
+ * read_timestamp --
+ *	Convert a time argument to Epoch seconds.
+ *
+ * Copyright (c) 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 void
-onint(signo)
-	int signo;
+read_timestamp(arg, timep)
+	char *arg;
+	time_t *timep;
 {
-	if ((interrupted = signo) == 0)
-		interrupted = SIGINT;
+	struct tm *t;
+	time_t now;
+	int yearset;
+	char *p;
+					/* Start with the current time. */
+	(void)time(&now);
+	if ((t = localtime(&now)) == NULL) {
+		fprintf(stderr,
+		    "%s: localtime: %s\n", progname, strerror(errno));
+		exit (1);
+	}
+					/* [[CC]YY]MMDDhhmm[.SS] */
+	if ((p = strchr(arg, '.')) == NULL)
+		t->tm_sec = 0;		/* Seconds defaults to 0. */
+	else {
+		if (strlen(p + 1) != 2)
+			goto terr;
+		*p++ = '\0';
+		t->tm_sec = ATOI2(p);
+	}
+
+	yearset = 0;
+	switch(strlen(arg)) {
+	case 12:			/* CCYYMMDDhhmm */
+		t->tm_year = ATOI2(arg);
+		t->tm_year *= 100;
+		yearset = 1;
+		/* FALLTHOUGH */
+	case 10:			/* YYMMDDhhmm */
+		if (yearset) {
+			yearset = ATOI2(arg);
+			t->tm_year += yearset;
+		} else {
+			yearset = ATOI2(arg);
+			if (yearset < 69)
+				t->tm_year = yearset + 2000;
+			else
+				t->tm_year = yearset + 1900;
+		}
+		t->tm_year -= 1900;	/* Convert to UNIX time. */
+		/* FALLTHROUGH */
+	case 8:				/* MMDDhhmm */
+		t->tm_mon = ATOI2(arg);
+		--t->tm_mon;		/* Convert from 01-12 to 00-11 */
+		t->tm_mday = ATOI2(arg);
+		t->tm_hour = ATOI2(arg);
+		t->tm_min = ATOI2(arg);
+		break;
+	default:
+		goto terr;
+	}
+
+	t->tm_isdst = -1;		/* Figure out DST. */
+
+	*timep = mktime(t);
+	if (*timep == -1) {
+terr:		fprintf(stderr,
+	"%s: out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]",
+		    progname);
+		exit (1);
+	}
 }
 
 void
 usage()
 {
-	(void)fprintf(stderr, "usage: db_recover [-cv] [-h home]\n");
+	(void)fprintf(stderr,
+	    "usage: db_recover [-cVv] [-h home] [-t [[CC]YY]MMDDhhmm[.SS]]\n");
 	exit(1);
 }

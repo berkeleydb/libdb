@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)ddscript.tcl	11.3 (Sleepycat) 9/21/99
+#	$Id: ddscript.tcl,v 11.7 2000/05/08 19:26:37 sue Exp $
 #
 # Deadlock detector script tester.
 # Usage: ddscript dir test lockerid objid numprocs
@@ -21,7 +21,7 @@ set usage "ddscript dir test lockerid objid numprocs"
 
 # Verify usage
 if { $argc != 5 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -37,5 +37,7 @@ error_check_bad lock_open $myenv NULL
 error_check_good lock_open [is_substr $myenv "env"] 1
 
 puts [eval $tnum $myenv $lockerid $objid $numprocs]
+
+error_check_good envclose [$myenv close] 0
 
 exit

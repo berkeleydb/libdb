@@ -1,23 +1,23 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)tcl_db.h	11.1 (Sleepycat) 7/25/99
+ * $Id: tcl_db.h,v 11.6 2000/05/07 14:00:35 bostic Exp $
  */
 
-#define MSG_SIZE 100		/* Message size */
+#define	MSG_SIZE 100		/* Message size */
 
 enum INFOTYPE {
     I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_NDBM, I_MUTEX };
 
-#define MAX_OTHER	2	/* Maximum number of sub-info we need to know */
-#define MAX_ID		8	/* Maximum number of sub-id's we need */
-#define MAX_SPARE	2
+#define	MAX_OTHER	2	/* Maximum number of sub-info we need to know */
+#define	MAX_ID		8	/* Maximum number of sub-id's we need */
+#define	MAX_SPARE	2
 
-#define DBTCL_DBM	1
-#define DBTCL_NDBM	2
+#define	DBTCL_DBM	1
+#define	DBTCL_NDBM	2
 
 #include "db_int.h"		/* For mutex stuff */
 
@@ -78,8 +78,7 @@ typedef struct _mutex_data {
  * info list, then perhaps it is time to revisit this decision.
  */
 typedef struct dbtcl_info {
-	struct dbtcl_info *i_next;
-	struct dbtcl_info *i_prev;
+	LIST_ENTRY(dbtcl_info) entries;
 	Tcl_Interp *i_interp;
 	char *i_name;
 	enum INFOTYPE i_type;
@@ -107,51 +106,52 @@ typedef struct dbtcl_info {
 	} und2;
 	DBT i_lockobj;
 	FILE *i_err;
+	char *i_errpfx;
 	struct dbtcl_info *i_parent;
 	struct dbtcl_info *i_spare[MAX_SPARE];
 	int	i_otherid[MAX_ID];
 	int	i_spareid[MAX_SPARE];
 } DBTCL_INFO;
 
-extern DBTCL_INFO *__db_infohead;
 extern int __debug_on, __debug_print, __debug_stop, __debug_test;
+LIST_HEAD(infohead, dbtcl_info) __db_infohead;
 
-#define i_anyp un.anyp
-#define i_pagep un.anyp
-#define i_envp un.envp
-#define i_dbp un.dbp
-#define i_dbcp un.dbcp
-#define i_txnp un.txnp
-#define i_mp un.mp
-#define i_lock un.lock
-#define i_mutex un.mutex
+#define	i_anyp un.anyp
+#define	i_pagep un.anyp
+#define	i_envp un.envp
+#define	i_dbp un.dbp
+#define	i_dbcp un.dbcp
+#define	i_txnp un.txnp
+#define	i_mp un.mp
+#define	i_lock un.lock
+#define	i_mutex un.mutex
 #if 0
-#define i_ndbm un.ndbmp
+#define	i_ndbm un.ndbmp
 #endif
 
-#define i_data und.anydata
-#define i_pgno und.pgno
-#define i_locker und.lockid
-#define i_data2 und2.anydata
-#define i_pgsz und2.pagesz
+#define	i_data und.anydata
+#define	i_pgno und.pgno
+#define	i_locker und.lockid
+#define	i_data2 und2.anydata
+#define	i_pgsz und2.pagesz
 
-#define i_envtxnid i_otherid[0]
-#define i_envmpid i_otherid[1]
-#define i_envlockid i_otherid[2]
-#define i_envmutexid i_otherid[3]
+#define	i_envtxnid i_otherid[0]
+#define	i_envmpid i_otherid[1]
+#define	i_envlockid i_otherid[2]
+#define	i_envmutexid i_otherid[3]
 
-#define i_mppgid  i_otherid[0]
+#define	i_mppgid  i_otherid[0]
 
-#define i_dbdbcid i_otherid[0]
+#define	i_dbdbcid i_otherid[0]
 
-#define NAME_TO_ENV(name) (DB_ENV *)_NameToPtr((name))
-#define NAME_TO_DB(name) (DB *)_NameToPtr((name))
-#define NAME_TO_DBC(name) (DBC *)_NameToPtr((name))
-#define NAME_TO_TXN(name) (DB_TXN *)_NameToPtr((name))
-#define NAME_TO_MP(name) (DB_MPOOLFILE *)_NameToPtr((name))
-#define NAME_TO_LOCK(name) (DB_LOCK *)_NameToPtr((name))
-#define NAME_TO_MUTEX(name) (_MUTEX_DATA *)_NameToPtr((name))
-#define NAME_TO_NDBM(name) (DBM *)_NameToPtr((name))	/* Compat */
+#define	NAME_TO_ENV(name) (DB_ENV *)_NameToPtr((name))
+#define	NAME_TO_DB(name) (DB *)_NameToPtr((name))
+#define	NAME_TO_DBC(name) (DBC *)_NameToPtr((name))
+#define	NAME_TO_TXN(name) (DB_TXN *)_NameToPtr((name))
+#define	NAME_TO_MP(name) (DB_MPOOLFILE *)_NameToPtr((name))
+#define	NAME_TO_LOCK(name) (DB_LOCK *)_NameToPtr((name))
+#define	NAME_TO_MUTEX(name) (_MUTEX_DATA *)_NameToPtr((name))
+#define	NAME_TO_NDBM(name) (DBM *)_NameToPtr((name))	/* Compat */
 
 /*
  * MAKE_STAT_LIST appends a {name value} pair to a result list
@@ -161,7 +161,7 @@ extern int __debug_on, __debug_print, __debug_stop, __debug_test;
  * typically go before the "free" function to free the stat structure
  * returned by DB.
  */
-#define MAKE_STAT_LIST(s,v) 					\
+#define	MAKE_STAT_LIST(s,v)					\
 do {								\
 	result = _SetListElemInt(interp, res, (s), (v));	\
 	if (result != TCL_OK)					\
@@ -176,7 +176,7 @@ do {								\
  * typically go before the "free" function to free the stat structure
  * returned by DB.
  */
-#define MAKE_STAT_STRLIST(s,s1)					\
+#define	MAKE_STAT_STRLIST(s,s1)					\
 do {								\
 	result = _SetListElem(interp, res, (s), strlen(s),      \
 	    (s1), strlen(s1));					\
@@ -188,7 +188,7 @@ do {								\
  * FLAG_CHECK checks that the given flag is not set yet.
  * If it is, it sets up an error message.
  */
-#define FLAG_CHECK(flag)					\
+#define	FLAG_CHECK(flag)					\
 do {								\
 	if ((flag) != 0) {					\
 		Tcl_SetResult(interp,				\
@@ -204,7 +204,7 @@ do {								\
  * only set to the given allowed value.
  * If it is, it sets up an error message.
  */
-#define FLAG_CHECK2(flag,val)					\
+#define	FLAG_CHECK2(flag,val)					\
 do {								\
 	if ((flag) != 0 && (flag) != (val)) {			\
 		Tcl_SetResult(interp,				\

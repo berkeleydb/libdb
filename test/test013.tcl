@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test013.tcl	11.10 (Sleepycat) 9/24/99
+#	$Id: test013.tcl,v 11.17 2000/05/22 12:51:38 bostic Exp $
 #
 # DB Test 13 {access method}
 #
@@ -20,20 +20,31 @@ proc test013 { method {nentries 10000} args } {
 
 	source ./include.tcl
 
- 	set args [convert_args $method $args]
+	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
 	puts "Test013: $method ($args) $nentries equal key/data pairs, put test"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test013.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test013.db
+		set env NULL
+	} else {
+		set testfile test013.db
+		incr eindex
+		set env [lindex $args $eindex]
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
 
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $args {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $args {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -129,41 +140,41 @@ proc test013 { method {nentries 10000} args } {
 			puts $oid $i
 		}
 		close $oid
-		exec $MV $t1 $t3
+		file rename -force $t1 $t3
 	} else {
 		set q q
-		exec $SED $nentries$q $dict > $t3
-		exec $SORT $t3 > $t2
-		exec $SORT $t1 > $t3
+		filehead $nentries $dict $t3
+		filesort $t3 $t2
+		filesort $t1 $t3
 	}
 
 	error_check_good \
-	    Test013:diff($t3,$t2) [catch { exec $CMP $t3 $t2 } res] 0
+	    Test013:diff($t3,$t2) [filecmp $t3 $t2] 0
 
 	puts "\tTest013.e: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
 	    dump_file_direction "-first" "-next"
 
 	if { [is_record_based $method] == 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good \
-	    Test013:diff($t3,$t2) [catch { exec $CMP $t3 $t2 } res] 0
+	    Test013:diff($t3,$t2) [filecmp $t3 $t2] 0
 
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest013.f: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile NULL $txn $t1 $checkfunc \
-   	    dump_file_direction "-last" "-prev"
+	open_and_dump_file $testfile $env $txn $t1 $checkfunc \
+	    dump_file_direction "-last" "-prev"
 
 	if { [is_record_based $method] == 0 } {
-		exec $SORT $t1 > $t3
+		filesort $t1 $t3
 	}
 
 	error_check_good \
-	    Test013:diff($t3,$t2) [catch { exec $CMP $t3 $t2 } res] 0
+	    Test013:diff($t3,$t2) [filecmp $t3 $t2] 0
 }
 
 # Check function for test013; keys and data are identical

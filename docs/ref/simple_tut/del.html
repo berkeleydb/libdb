@@ -1,5 +1,6 @@
-<!--@(#)del.so	10.16 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: del.so,v 10.20 2000/03/18 21:43:17 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,15 +15,13 @@
 </td></tr></table>
 <p>
 <h1 align=center>Removing elements from a database</h1>
-<p>
-The simplest way to remove elements from a database is the <a href="../../api_c/db_del.html">DB-&gt;del</a>
+<p>The simplest way to remove elements from a database is the <a href="../../api_c/db_del.html">DB-&gt;del</a>
 interface.
-<p>
-The <a href="../../api_c/db_del.html">DB-&gt;del</a> interface takes four of the same five arguments that
+<p>The <a href="../../api_c/db_del.html">DB-&gt;del</a> interface takes four of the same five arguments that
 the <a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/db_put.html">DB-&gt;put</a> interfaces take.  The difference
 is that there is no need to specify a data item, as the delete operation
 is only interested in the key that you want to remove.
-<dl compact>
+<p><dl compact>
 <p><dt>db<dd>The database handle returned by <a href="../../api_c/db_create.html">db_create</a>.
 <p><dt>txnid<dd>A transaction ID.
 In our simple case, we aren't expecting to recover the database after
@@ -34,9 +33,8 @@ database.
 interface.  There are currently no available flags for this interface,
 so the flags argument should always be set to 0.
 </dl>
-<p>
-Here's what the code to call <a href="../../api_c/db_del.html">DB-&gt;del</a> looks like:
-<blockquote><pre>#include &lt;sys/types.h&gt;
+<p>Here's what the code to call <a href="../../api_c/db_del.html">DB-&gt;del</a> looks like:
+<p><blockquote><pre>#include &lt;sys/types.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;db.h&gt;
 <p>
@@ -80,16 +78,14 @@ main()
 		dbp-&gt;err(dbp, ret, "DB-&gt;get");
 		goto err;
 	}
-<p><b>
-	if ((ret = dbp-&gt;del(dbp, NULL, &key, 0)) == 0)
+<p><b>	if ((ret = dbp-&gt;del(dbp, NULL, &key, 0)) == 0)
 		printf("db: %s: key was deleted.\n", (char *)key.data);
 	else {
 		dbp-&gt;err(dbp, ret, "DB-&gt;del");
 		goto err;
 	}
 </b></pre></blockquote>
-<p>
-After the <a href="../../api_c/db_del.html">DB-&gt;del</a> call returns, the entry referenced by the key
+<p>After the <a href="../../api_c/db_del.html">DB-&gt;del</a> call returns, the entry referenced by the key
 fruit has been removed from the database.
 <table><tr><td><br></td><td width="1%"><a href="../../ref/simple_tut/get.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/simple_tut/close.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>

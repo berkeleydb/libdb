@@ -1,6 +1,6 @@
 =head1 NAME
 
-BerkeleyDB - Perl extension for Berkeley DB version 2
+BerkeleyDB - Perl extension for Berkeley DB version 2 or 3
 
 =head1 SYNOPSIS
 
@@ -17,7 +17,12 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $db  = tie %hash, 'BerkeleyDB::Recno', [OPTIONS] ;
   $db  = new BerkeleyDB::Recno [OPTIONS] ;
 
+  $db  = tie %hash, 'BerkeleyDB::Queue', [OPTIONS] ;
+  $db  = new BerkeleyDB::Queue [OPTIONS] ;
+
   $db  = new BerkeleyDB::Unknown [OPTIONS] ;
+
+  $status = BerkeleyDB::db_remove [OPTIONS]
 
   $hash{$key} = $value ;
   $value = $hash{$key} ;
@@ -32,8 +37,8 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $status = $db->db_close() ;
   $hash_ref = $db->db_stat() ;
   $type = $db->type() ;
-  $type = $db->status() ;
-  $type = $db->byteswapped() ;
+  $status = $db->status() ;
+  $boolean = $db->byteswapped() ;
 
   ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
@@ -79,14 +84,15 @@ B<NOTE: This document is still under construction. Expect it to be
 incomplete in places.>
 
 This Perl module provides an interface to most of the functionality
-available in Berkeley DB version 2. In general it is safe to assume
+available in Berkeley DB versions 2 and 3. In general it is safe to assume
 that the interface provided here to be identical to the Berkeley DB
 interface. The main changes have been to make the Berkeley DB API work
-in a Perl way.
+in a Perl way. Note that if you are using Berkeley DB 2.x, the new
+features available in Berkeley DB 3.x are not available via this module.
 
 The reader is expected to be familiar with the Berkeley DB
 documentation. Where the interface provided here is identical to the
-Berkeley DB library and the
+Berkeley DB library and the... TODO
 
 The B<db_appinit>, B<db_cursor>, B<db_open> and B<db_txn> man pages are
 particularly relevant.
@@ -97,9 +103,10 @@ classes.
 =head1 ENV CLASS
 
 The B<BerkeleyDB::Env> class provides an interface to the Berkeley DB
-function B<db_appinit>. Its purpose is to initialise a number of
-sub-systems that can then be used in a consistent way in all the databases
-you make use of the environment.
+function B<db_appinit> in Berkeley DB 2.x or B<db_env_create> and
+B<DBENV-E<gt>open> in Berkeley DB 3.x. Its purpose is to initialise a
+number of sub-systems that can then be used in a consistent way in all
+the databases you make use of the environment.
 
 If you don't intend using transactions, locking or logging, then you
 shouldn't need to make use of B<BerkeleyDB::Env>.
@@ -231,7 +238,7 @@ B<DB_USE_ENVIRON_ROOT>
 
 =item -Verbose
 
-Add extra dubugging information to the messages sent to B<-ErrFile>.
+Add extra debugging information to the messages sent to B<-ErrFile>.
 
 =back
 
@@ -251,7 +258,8 @@ error prefix string to be changed dynamically.
 Constructor for creating a B<TxnMgr> object.
 See L<"TRANSACTIONS"> for more details of using transactions.
 
-This method is deprecated. 
+This method is deprecated. Access the transaction methods using the B<txn_>
+methods below from the environment object directly.
 
 =item $env->txn_begin()
 
@@ -307,6 +315,11 @@ though, the keys are stored in lexical order.
 
 TODO.
 
+
+=item B<BerkeleyDB::Queue>
+
+TODO.
+
 =item B<BerkeleyDB::Unknown>
 
 This isn't a database format at all. It is used when you want to open an
@@ -321,11 +334,15 @@ the next sections.
 
 =head1 BerkeleyDB::Hash
 
-The equivalent of B<db_open> with type B<DB_HASH>. Two forms of
-constructor are supported:
+Equivalent to calling B<db_open> with type B<DB_HASH> in Berkeley DB 2.x and
+calling B<db_create> followed by B<DB-E<gt>open> with type B<DB_HASH> in
+Berkeley DB 3.x. 
+
+Two forms of constructor are supported:
 
     $db = new BerkeleyDB::Hash
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -344,6 +361,7 @@ and this
 
     [$db =] tie %hash, 'BerkeleyDB::Hash', 
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -433,6 +451,7 @@ Used in conjunction with the B<DB_DUPOSRT> flag.
 
     tie %h, "BerkeleyDB::Hash", 
         -Filename   => $filename, 
+	-Property   => DB_DUP|DB_DUPSORT,
     	-DupCompare => \&compare,
 	...
 
@@ -465,22 +484,67 @@ Do the same as the previous example but not using tie.
 
 ## simpleHash2
 
-=head2 Changing the hash
-
 =head2 Duplicate keys
 
-invert the fruit/colour hash
+The code below is a variation on the examples above. This time the hash has
+been inverted. The key this time is colour and the value is the fruit name.
+The B<DB_DUP> flag has been specified to allow duplicates.
+
+##dupHash
+
+here is the output:
+
+    orange -> orange
+    yellow -> banana
+    red -> apple
+    red -> tomato
+    green -> banana
+    green -> apple
 
 =head2 Sorting Duplicate Keys
 
+In the previous example, when there were duplicate keys, the values are
+sorted in the order they are stored in. The code below is
+identical to the previous example except the B<DB_DUPSORT> flag is
+specified.
+
+##dupSortHash
+
+Notice that in the output below the duplicate values are sorted.
+
+    orange -> orange
+    yellow -> banana
+    red -> apple
+    red -> tomato
+    green -> apple
+    green -> banana
+
+=head2 Custom Sorting Duplicate Keys
+
+Another variation 
+
+TODO
+
+=head2 Changing the hash
+
+TODO
+
+=head2 Using db_stat
+
+TODO
+
 =head1 BerkeleyDB::Btree
 
-The equivalent of B<db_open> with type B<DB_BTREE>. Two forms of
-constructor are supported:
+Equivalent to calling B<db_open> with type B<DB_BTREE> in Berkeley DB 2.x and
+calling B<db_create> followed by B<DB-E<gt>open> with type B<DB_BTREE> in
+Berkeley DB 3.x. 
+
+Two forms of constructor are supported:
 
 
     $db = new BerkeleyDB::Btree
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -499,6 +563,7 @@ and this
 
     [$db =] tie %hash, 'BerkeleyDB::Btree', 
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -538,6 +603,8 @@ Enables the sorting of duplicate keys in the database. Ignored if
 B<DB_DUP> isn't also specified.
 
 =item Minkey
+
+TODO
 
 =item Compare
 
@@ -597,25 +664,28 @@ L<"Changing the sort order"> for an example.
 
 See L<COMMON DATABASE METHODS>.
 
-Apart from the standard Methods, B<BerkeleyDB::Btree> supports one
-extra method:
+B<BerkeleyDB::Btree> only supports the standard database methods.
+See L<COMMON DATABASE METHODS>.
 
-=over 8
+=head2 A Simple Btree Example
 
-=item $ref = $db->db_stat()
+The code below is a simple example of using a btree database.
 
-Returns a reference to an associative array containing information about
-the database.
+## btreeSimple
 
-=back
+Here is the output from the code above. The keys have been sorted using
+Berkeley DB's default sorting algorithm.
 
-=head2 A Btree Example
+    Smith
+    Wall
+    mouse
+
 
 =head2 Changing the sort order
 
-This script shows how to override the default sorting algorithm that
-BerkeleyDB::Btree uses. Instead of using the normal lexical ordering,
-a case insensitive compare function will be used.
+It is possible to supply your own sorting algorithm if the one that Berkeley
+DB used isn't suitable. The code below is identical to the previous example
+except for the case insensitive compare function.
 
 ## btreeSortOrder
 
@@ -644,13 +714,19 @@ database.
 
 =head2 Using db_stat
 
+TODO
+
 =head1 BerkeleyDB::Recno
 
-The equivalent of B<db_open> with type B<DB_RECNO>. Two forms of
-constructor are supported:
+Equivalent to calling B<db_open> with type B<DB_RECNO> in Berkeley DB 2.x and
+calling B<db_create> followed by B<DB-E<gt>open> with type B<DB_RECNO> in
+Berkeley DB 3.x. 
+
+Two forms of constructor are supported:
 
     $db = new BerkeleyDB::Recno
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -669,6 +745,7 @@ and this
 
     [$db =] tie @arry, 'BerkeleyDB::Recno', 
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -700,15 +777,60 @@ Here is the output from the script:
     The last element is green
     The 2nd last element is yellow
 
+=head1 BerkeleyDB::Queue
+
+Equivalent to calling B<db_create> followed by B<DB-E<gt>open> with
+type B<DB_QUEUE> in Berkeley DB 3.x. This database format isn't available if
+you use Berkeley DB 2.x.
+
+Two forms of constructor are supported:
+
+    $db = new BerkeleyDB::Queue
+                [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
+                [ -Flags         => flags,]
+                [ -Property      => flags,]
+                [ -Mode          => number,]
+                [ -Cachesize     => number,]
+                [ -Lorder        => number,]
+                [ -Pagesize      => number,]
+                [ -Env           => $env,]
+                [ -Txn           => $txn,]
+                # BerkeleyDB::Queue specific
+                [ -Len             => number,]
+                [ -Pad             => byte,]
+
+and this
+
+    [$db =] tie @arry, 'BerkeleyDB::Queue', 
+                [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
+                [ -Flags         => flags,]
+                [ -Property      => flags,]
+                [ -Mode          => number,]
+                [ -Cachesize     => number,]
+                [ -Lorder        => number,]
+                [ -Pagesize      => number,]
+                [ -Env           => $env,]
+                [ -Txn           => $txn,]
+                # BerkeleyDB::Queue specific
+                [ -Len             => number,]
+                [ -Pad             => byte,]
+
+
 =head1 BerkeleyDB::Unknown
 
 This class is used to open an existing database. 
 
-The equivalent of B<db_open> with type B<DB_UNKNOWN>. The constructor
-takes looks like this:
+Equivalent to calling B<db_open> with type B<DB_UNKNOWN> in Berkeley DB 2.x and
+calling B<db_create> followed by B<DB-E<gt>open> with type B<DB_UNKNOWN> in
+Berkeley DB 3.x. 
+
+The constructor looks like this:
 
     $db = new BerkeleyDB::Unknown
                 [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
                 [ -Flags         => flags,]
                 [ -Property      => flags,]
                 [ -Mode          => number,]
@@ -732,6 +854,11 @@ options defined below. All are optional.
 
 The database filename. If no filename is specified, a temporary file will
 be created and removed once the program terminates.
+
+=item -Subname
+
+Specifies the name of the sub-database to open.
+This option is only valid if you are using Berkeley DB 3.x.
 
 =item -Flags
 
@@ -896,6 +1023,20 @@ database and B<DB_RECNO> for a B<BerkeleyDB::Recno> database. This method
 is typically used when a database has been opened with
 B<BerkeleyDB::Unknown>.
 
+=item $ref = $db->db_stat()
+
+Returns a reference to an associative array containing information about
+the database. The keys of the associative array correspond directly to the
+names of the fields defined in the Berkeley DB documentation. For example,
+in the DB documentation, the field B<bt_version> stores the version of the
+Btree database. Assuming you called B<db_stat> on a Btree database the
+equivalent field would be accessed as follows:
+
+    $version = $ref->{'bt_version'} ;
+
+If you are using Berkeley DB 3.x, this method will work will all database
+formats. When DB 2.x is used, it only works with B<BerkeleyDB::Btree>.
+
 =head2 $status = $db->status()
 
 Returns the status of the last C<$db> method called.
@@ -1015,8 +1156,8 @@ must take B<one> of the following values:
 When used with a Btree or Hash database, a duplicate of the key referenced
 by the current cursor position will be created and the contents of
 B<$value> will be associated with it - B<$key> is ignored.
-The new key/value pair will be stored 
-immediately after the current cursor position. 
+The new key/value pair will be stored immediately after the current
+cursor position.
 Obviously the database has to have been opened with B<DB_DUP>.
 
 When used with a Recno ... TODO
@@ -1074,6 +1215,8 @@ Returns the status of the last cursor method as a dual type.
 
 =head2 Cursor Examples
 
+TODO
+
 Iterating from first to last, then in reverse.
 
 examples of each of the flags.
@@ -1081,6 +1224,12 @@ examples of each of the flags.
 =head1 JOIN
 
 Join support for BerkeleyDB is in progress. Watch this space.
+
+TODO
+
+=head1 TRANSACTIONS
+
+TODO.
 
 =head1 DBM Filters
 
@@ -1184,10 +1333,6 @@ This time only two filters have been used -- we only need to manipulate
 the contents of the key, so it wasn't necessary to install any value
 filters.
 
-=head1 TRANSACTIONS
-
-TODO.
-
 =head1 Using BerkeleyDB with MLDBM
 
 Both BerkeleyDB::Hash and BerkeleyDB::Btree can be used with the MLDBM
@@ -1204,11 +1349,11 @@ BerkeleyDB::Btree with BerkeleyDB::Hash.
     my %o ;
      
     unlink $filename ;
-    tie %o, MLDBM, -Filename => $filename,
-                   -Flags    => DB_CREATE
+    tie %o, 'MLDBM', -Filename => $filename,
+                     -Flags    => DB_CREATE
                     or die "Cannot open database '$filename: $!\n";
  
-See the MLDNM documentation for information on how to use the module
+See the MLDBM documentation for information on how to use the module
 and for details of its limitations.
 
 =head1 EXAMPLES
@@ -1219,7 +1364,14 @@ TODO.
 
 =head2 Sharing Databases With C Applications
 
-TODO
+There is no technical reason why a Berkeley DB database cannot be
+shared by both a Perl and a C application.
+
+The vast majority of problems that are reported in this area boil down
+to the fact that C strings are NULL terminated, whilst Perl strings
+are not. See L<An Example -- the NULL termination problem.> in the DBM
+FILTERS section for a generic way to work around this problem.
+
 
 =head2 The untie Gotcha
 
@@ -1227,13 +1379,18 @@ TODO
 
 =head1 COMMON QUESTIONS
 
-This section answers some of the questions that have arisen
+This section attempts to answer some of the more common questions that
+I get asked.
 
-TODO
 
 =head2 Relationship with DB_File
 
-TODO
+Before Berkeley DB 2.x was written there was only one Perl module that
+interfaced to Berkeley DB. That module is called B<DB_File>. Although
+B<DB_File> can be build with Berkeley DB 1.x, 2.x or 3.x, it only provides
+an interface to the functionality available in Berkeley DB 1.x. That
+means that it doesn't support transactions, locking or any of the other
+new features available in DB 2.x or 3.x.
 
 =head2 How do I store Perl data structures with BerkeleyDB?
 
@@ -1253,7 +1410,7 @@ The official web site for Berkeley DB is F<http://www.sleepycat.com>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997-1999 Paul Marquess. All rights reserved. This program
+Copyright (c) 1997-2000 Paul Marquess. All rights reserved. This program
 is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.
 
@@ -1262,7 +1419,7 @@ makes use of, namely Berkeley DB, is not. Berkeley DB has its own
 copyright and its own license. Please take the time to read it.
 
 Here are are few words taken from the Berkeley DB FAQ (at
-http://www.sleepycat.com) regarding the license:
+F<http://www.sleepycat.com>) regarding the license:
 
     Do I have to license DB to use it in Perl scripts?
 

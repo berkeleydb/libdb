@@ -2,7 +2,7 @@
 <HTML>
 <HEAD>
    <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
-   <META NAME="GENERATOR" CONTENT="Mozilla/4.08 [en] (X11; I; FreeBSD 2.2.8-19990120-SNAP i386) [Netscape]">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.08 [en] (X11; I; FreeBSD 3.3-RELEASE i386) [Netscape]">
 </HEAD>
 <BODY>
 
@@ -20,7 +20,7 @@ and some are higher level functions that are useful to provide the user.
 [-mode
 <I>mode</I>] [-errfile <I>filename</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-dup] [-dupsort] [-recnum] [-renumber] [-revsplitoff]
-[-snapshot] [-upgrade]</B>
+[-snapshot]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-ffactor <I>density</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-nelem <I>size</I>]</B>
 <BR><B>&nbsp;&nbsp;&nbsp; [-lorder <I>order</I>]</B>
@@ -116,10 +116,6 @@ splitting of pages on deletion</LI>
 <B>-snapshot </B>selects the DB_SNAPSHOT flag to support database snapshots</LI>
 
 <LI>
-<B>-upgrade </B>selects upgrading databases using the <A HREF="../../docs/api_c/db_upgrade.html">DB->upgrade</A>
-method</LI>
-
-<LI>
 <B>-ffactor</B> sets the hash table key density to the given <B><I>density
 </I></B>using
 the <A HREF="../../docs/api_c/db_set_h_ffactor.html">DB->set_h_ffactor</A>
@@ -128,7 +124,8 @@ method</LI>
 <LI>
 <B>-nelem </B>sets the hash table size estimate to the given <B><I>size
 </I></B>using
-the <A HREF="../../docs/api_c/db_set_h_nelem.html">DB->set_h_nelem</A> method</LI>
+the <A HREF="../../docs/api_c/db_set_h_nelem.html">DB->set_h_nelem</A>
+method</LI>
 
 <LI>
 <B>-lorder </B>sets the byte order for integers stored in the database
@@ -170,7 +167,8 @@ method</LI>
 
 <LI>
 <B>-pagesize </B>sets the size of the database page to <B><I>pagesize </I></B>using
-the <A HREF="../../docs/api_c/db_set_pagesize.html">DB->set_pagesize</A> method</LI>
+the <A HREF="../../docs/api_c/db_set_pagesize.html">DB->set_pagesize</A>
+method</LI>
 
 <LI>
 <B><I>filename</I></B> indicates the name of the database</LI>
@@ -179,3 +177,85 @@ the <A HREF="../../docs/api_c/db_set_pagesize.html">DB->set_pagesize</A> method<
 <B><I>subdbname</I></B> indicate the name of the sub-database</LI>
 </UL>
 
+<HR WIDTH="100%">
+<BR><B>&nbsp;berkdb upgrade [-dupsort] [-env <I>env</I>] [--] [<I>filename</I>]</B>
+<P>This command will invoke the <A HREF="../../docs/api_c/db_upgrade.html">DB->upgrade</A>
+function.&nbsp; If the command is given the <B>-env</B> option, then we
+will accordingly upgrade the database filename within the context of that
+environment. The <B>-dupsort</B> option selects the DB_DUPSORT&nbsp;flag
+for upgrading. The use of --<B> </B>terminates the list of options, thus
+allowing filenames beginning with a dash.
+<P>
+<HR WIDTH="100%"><B>> berkdb verify [-env <I>env</I>] [--] [<I>filename</I>]</B>
+<P>This command will invoke the <A HREF="../../docs/api_c/db_verify.html">DB->verify</A>
+function.&nbsp; If the command is given the <B>-env</B> option, then we
+will accordingly verify the database filename within the context of that
+environment.&nbsp; The use of --<B> </B>terminates the list of options,
+thus allowing filenames beginning with a dash.
+<P>
+<HR WIDTH="100%"><B>> <I>db</I> join [-nosort] <I>db0.c0 db1.c0</I> ...</B>
+<P>This command will invoke the <A HREF="../../docs/api_c/db_join.html">db_join</A>
+function.&nbsp; After it successfully joins a database, we bind it to a
+new Tcl command of the form <B><I>dbN.cX, </I></B>where X is an integer
+starting at 0 (e.g. <B>db2.c0, db3.c0, </B>etc).&nbsp; We use the <I>Tcl_CreateObjCommand()&nbsp;</I>
+to create the top level database function.&nbsp; It is through this cursor
+handle that the user can access the joined data items.
+<P>The options are:
+<UL>
+<LI>
+<B>-nosort -</B> This flag causes DB not to sort the cursors based on the
+number of data items they reference.&nbsp; It results in the DB_JOIN_NOSORT
+flag being set.</LI>
+</UL>
+
+<HR WIDTH="100%"><B>> <I>db</I> get_join [-nosort] {db key} {db key} ...</B>
+<P>This command performs a join operation on the keys specified and returns
+a list of the joined {key data} pairs.
+<P>The options are:
+<UL>
+<LI>
+<B>-nosort</B> This flag causes DB not to sort the cursors based on the
+number of data items they reference.&nbsp; It results in the DB_JOIN_NOSORT
+flag being set.</LI>
+</UL>
+
+<HR WIDTH="100%"><B>> <I>db</I> keyrange [-txn <I>id</I>] key</B>
+<P>This command returns the range for the given <B>key</B>.&nbsp; It returns
+a list of 3 double elements of the form {<B><I>less equal greater</I></B>}
+where <B><I>less</I></B> is the percentage of keys less than the given
+key, <B><I>equal</I></B> is the percentage equal to the given key and <B><I>greater</I></B>
+is the percentage greater than the given key.&nbsp; If the -txn option
+is specified it performs this operation under transaction protection.
+<BR>
+
+<HR WIDTH="100%"><B>> <I>db</I> put</B>
+<P>The <B>undocumented</B> options are:
+<UL>
+<LI>
+<B>-nodupdata</B> This flag causes DB not to insert the key/data pair if
+it already exists, that is, both the key and data items are already in
+the database. The -nodupdata flag may only be specified if the underlying
+database has been configured to support sorted duplicates.</LI>
+</UL>
+
+<HR WIDTH="100%"><B>> <I>db</I> stat</B>
+<P>The <B>undocumented</B> options are:
+<UL>
+<LI>
+<B>-cachedcounts</B>
+This flag causes DB to return the cached key/record counts, similar to
+the DB_CACHED_COUNTS flags to DB->stat.
+</UL>
+
+<HR WIDTH="100%"><B>> <I>dbc</I> put</B>
+<P>The <B>undocumented</B> options are:
+<UL>
+<LI>
+<B>-nodupdata</B> This flag causes DB not to insert the key/data pair if
+it already exists, that is, both the key and data items are already in
+the database. The -nodupdata flag may only be specified if the underlying
+database has been configured to support sorted duplicates.</LI>
+</UL>
+
+</BODY>
+</HTML>

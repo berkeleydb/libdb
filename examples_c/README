@@ -1,4 +1,4 @@
-# @(#)README	11.1 (Sleepycat) 7/25/99
+# $Id: README,v 11.2 1999/11/22 13:44:36 bostic Exp $
 
 ex_access.c	Using just the DB access methods.
 

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_mpool.c	11.1 (Sleepycat) 7/25/99
+ * $Id: ex_mpool.c,v 11.11 2000/05/22 15:17:03 sue Exp $
  */
 
 #include "db_config.h"
@@ -32,16 +32,21 @@
 
 #include <db.h>
 
+int	init __P((char *, int, int, char *));
+int	run __P((int, int, int, int, char *));
+int	run_mpool __P((int, int, int, int, char *));
+#ifdef HAVE_VXWORKS
+int	ex_mpool __P((void));
+#define	MPOOL	"/vxtmp/vxtmp/mpool"			/* File. */
+#define	ERROR_RETURN	ERROR
+#else
+int	main __P((int, char *[]));
+void	usage __P((char *));
 #define	MPOOL	"mpool"					/* File. */
+#define	ERROR_RETURN	1
+#endif
 
-void	init(char *, int, int);
-int	main(int, char *[]);
-void	run(int, int, int, int);
-void	usage(void);
-
-const char
-	*progname = "ex_mpool";				/* Program name. */
-
+#ifndef HAVE_VXWORKS
 int
 main(argc, argv)
 	int argc;
@@ -50,41 +55,80 @@ main(argc, argv)
 	extern char *optarg;
 	extern int optind;
 	int cachesize, ch, hits, npages, pagesize;
+	char *progname;
 
 	cachesize = 20 * 1024;
 	hits = 1000;
 	npages = 50;
 	pagesize = 1024;
+	progname = argv[0];
 	while ((ch = getopt(argc, argv, "c:h:n:p:")) != EOF)
 		switch (ch) {
 		case 'c':
 			if ((cachesize = atoi(optarg)) < 20 * 1024)
-				usage();
+				usage(progname);
 			break;
 		case 'h':
 			if ((hits = atoi(optarg)) <= 0)
-				usage();
+				usage(progname);
 			break;
 		case 'n':
 			if ((npages = atoi(optarg)) <= 0)
-				usage();
+				usage(progname);
 			break;
 		case 'p':
 			if ((pagesize = atoi(optarg)) <= 0)
-				usage();
+				usage(progname);
 			break;
 		case '?':
 		default:
-			usage();
+			usage(progname);
 		}
 	argc -= optind;
 	argv += optind;
 
+	return (run_mpool(pagesize, cachesize, hits, npages, progname));
+}
+
+void
+usage(progname)
+	char *progname;
+{
+	(void)fprintf(stderr,
+	    "usage: %s [-c cachesize] [-h hits] [-n npages] [-p pagesize]\n",
+	    progname);
+	exit(1);
+}
+#else
+int
+ex_mpool()
+{
+	char *progname = "ex_mpool";			/* Program name. */
+	int cachesize, ch, hits, npages, pagesize;
+
+	cachesize = 20 * 1024;
+	hits = 1000;
+	npages = 50;
+	pagesize = 1024;
+
+	return (run_mpool(pagesize, cachesize, hits, npages, progname));
+}
+#endif
+
+int
+run_mpool(pagesize, cachesize, hits, npages, progname)
+	int pagesize, cachesize, hits, npages;
+	char *progname;
+{
+	int ret;
+
 	/* Initialize the file. */
-	init(MPOOL, pagesize, npages);
+	if ((ret = init(MPOOL, pagesize, npages, progname)) != 0)
+		return (ret);
 
 	/* Get the pages. */
-	run(hits, cachesize, pagesize, npages);
+	if ((ret = run(hits, cachesize, pagesize, npages, progname)) != 0)
+		return (ret);
 
 	return (0);
 }
@@ -93,9 +137,9 @@ main(argc, argv)
  * init --
  *	Create a backing file.
  */
-void
-init(file, pagesize, npages)
-	char *file;
+int
+init(file, pagesize, npages, progname)
+	char *file, *progname;
 	int pagesize, npages;
 {
 	int cnt, flags, fd;
@@ -105,18 +149,18 @@ init(file, pagesize, npages)
 	 * Create a file with the right number of pages, and store a page
 	 * number on each page.
 	 */
-        flags = O_CREAT | O_RDWR | O_TRUNC;
-#ifdef WIN32
-        flags |= O_BINARY;
+	flags = O_CREAT | O_RDWR | O_TRUNC;
+#ifdef _WIN32
+	flags |= O_BINARY;
 #endif
 	if ((fd = open(file, flags, 0666)) < 0) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, file, strerror(errno));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 	if ((p = (char *)malloc(pagesize)) == NULL) {
 		fprintf(stderr, "%s: %s\n", progname, strerror(ENOMEM));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 
 	/* The pages are numbered from 0. */
@@ -125,19 +169,23 @@ init(file, pagesize, npages)
 		if (write(fd, p, pagesize) != pagesize) {
 			fprintf(stderr,
 			    "%s: %s: %s\n", progname, file, strerror(errno));
-			exit (1);
+			return (ERROR_RETURN);
 		}
 	}
+
+	(void)close(fd);
 	free(p);
+	return (0);
 }
 
 /*
  * run --
  *	Get a set of pages.
  */
-void
-run(hits, cachesize, pagesize, npages)
+int
+run(hits, cachesize, pagesize, npages, progname)
 	int hits, cachesize, pagesize, npages;
+	char *progname;
 {
 	DB_ENV *dbenv;
 	DB_MPOOLFILE *dbmfp;
@@ -155,7 +203,7 @@ run(hits, cachesize, pagesize, npages)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
@@ -168,7 +216,7 @@ run(hits, cachesize, pagesize, npages)
 
 	/* Open the environment. */
 	if ((ret = dbenv->open(
-	    dbenv, NULL, NULL, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
+	    dbenv, NULL, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
 		goto err1;
 	}
@@ -215,20 +263,11 @@ run(hits, cachesize, pagesize, npages)
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		exit (1);
+		return (ERROR_RETURN);
 	}
-	return;
+	return (0);
 
 err2:	(void)memp_fclose(dbmfp);
 err1:	(void)dbenv->close(dbenv, 0);
-	exit (1);
-}
-
-void
-usage()
-{
-	(void)fprintf(stderr,
-	    "usage: %s [-c cachesize] [-h hits] [-n npages] [-p pagesize]\n",
-	    progname);
-	exit(1);
+	return (ERROR_RETURN);
 }

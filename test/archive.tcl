@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)archive.tcl	11.4 (Sleepycat) 8/17/99
+#	$Id: archive.tcl,v 11.11 2000/04/27 19:56:00 krinsky Exp $
 #
 # Options are:
 # -checkrec <checkpoint frequency"
@@ -17,12 +17,16 @@ proc archive_usage {} {
 proc archive_command { args } {
 	source ./include.tcl
 
-	if { $is_windows_test != 1 } {
-		eval exec ./db_archive $args
-	} else {
-		# On Windows, convert all filenames to use forward slashes
-		eval exec ./db_archive $args | $TR \\\\ /
+	# Catch a list of files output by db_archive.
+	catch { eval exec ./db_archive $args } output
+
+	if { $is_windows_test == 1 || 1 } {
+		# On Windows, convert all filenames to use forward slashes.
+		regsub -all {[\\]} $output / output
 	}
+
+	# Output the [possibly-transformed] list.
+	return $output
 }
 proc archive { args } {
 	global alphabet
@@ -40,6 +44,7 @@ proc archive { args } {
 			-m.* { incr i; set maxfile [lindex $args $i] }
 			-s.* { set dostat 1 }
 			default {
+				puts -nonewline "FAIL:[timestamp] Usage: "
 				archive_usage
 				return
 			}
@@ -52,8 +57,8 @@ proc archive { args } {
 	cleanup $testdir
 
 	# Now run the various functionality tests
-	set eflags "-create -mpool -lock -log -txn \
-	    -home $testdir -log_buffer $maxbsize -log_max $maxfile"
+	set eflags "-create -txn -home $testdir \
+	    -log_buffer $maxbsize -log_max $maxfile"
 	set dbenv [eval {berkdb env} $eflags]
 	error_check_bad dbenv $dbenv NULL
 	error_check_good dbenv [is_substr $dbenv env] 1
@@ -94,8 +99,8 @@ proc archive { args } {
 	lappend lsnlist [lindex $l1 0]
 
 	set txnlist [list $t1 $t2 $t3]
-	set db1 [eval {berkdb open} "-create -mode 0644 -hash -env $dbenv ar1"]
-	set db2 [eval {berkdb open} "-create -mode 0644 -btree -env $dbenv ar2"]
+	set db1 [eval {berkdb_open} "-create -mode 0644 -hash -env $dbenv ar1"]
+	set db2 [eval {berkdb_open} "-create -mode 0644 -btree -env $dbenv ar2"]
 	set dbcount 3
 	set dblist [list $db1 $db2]
 
@@ -187,7 +192,7 @@ proc archive { args } {
 			} else {
 				set type "-btree"
 			}
-			set db [eval {berkdb open} \
+			set db [eval {berkdb_open} \
 			    "-create -mode 0644 $type -env $dbenv ar$dbcount"]
 			error_check_bad db_open:$dbcount $db NULL
 			error_check_good db_open:$dbcount [is_substr $db db] 1

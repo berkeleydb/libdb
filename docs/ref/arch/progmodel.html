@@ -1,5 +1,6 @@
-<!--@(#)progmodel.so	10.22 (Sleepycat) 11/11/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: progmodel.so,v 10.25 2000/03/18 21:43:09 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,22 +15,19 @@
 </td></tr></table>
 <p>
 <h1 align=center>Programming model</h1>
-<p>
-The Berkeley DB distribution is a database library, where the library is linked
+<p>The Berkeley DB distribution is a database library, where the library is linked
 into the address space of the code which uses it.  The code using Berkeley DB
 may be an application or it may be a server providing functionality to a
 number of clients via some form of inter-process or remote-process
 communication (IPC/RPC).
-<p>
-In the application model, one or more applications link the Berkeley DB library
+<p>In the application model, one or more applications link the Berkeley DB library
 directly into their address spaces.  There may be many threads of control
 in this model, as Berkeley DB supports locking for both multiple processes and
 for multiple threads within a process.  This model provides significantly
 faster access to the database functionality, but implies trust among all
 threads of control sharing the database environment as they will have the
 ability to read, write and potentially corrupt each other's data.
-<p>
-In the client-server model, developers write a database server application
+<p>In the client-server model, developers write a database server application
 that accepts requests via some form of IPC and issues calls to the Berkeley DB
 interfaces based on those requests.  In this model, the database server
 is the only application linking the Berkeley DB library into its address space.

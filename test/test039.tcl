@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test039.tcl	11.5 (Sleepycat) 10/25/99
+#	$Id: test039.tcl,v 11.10 2000/05/16 19:46:20 krinsky Exp $
 #
 # DB Test 39 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -26,7 +26,17 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 	set omethod [convert_method $method]
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+		set checkdb $testdir/checkdb.db
+	} else {
+		set testfile test0$tnum.db
+		set checkdb checkdb.db
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -39,13 +49,13 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 		return
 	}
 
-	set db [eval {berkdb open -create -truncate -mode 0644 \
+	set db [eval {berkdb_open -create -truncate -mode 0644 \
 		$omethod -dup} $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 
 	set check_db \
-	    [berkdb open -create -truncate -mode 0644 -hash $testdir/checkdb.db]
+	    [berkdb_open -create -truncate -mode 0644 -hash $checkdb]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""
@@ -126,7 +136,6 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum 39} args } {
 		    {set ret [$check_c get -next] } {
 			set k [lindex [lindex $ret 0] 0]
 			set d [lindex [lindex $ret 0] 1]
-			error_check_bad key_check:$k [string length $k] 0
 			error_check_bad data_check:$d [string length $d] 0
 
 			set nn [expr $ndx * 3]

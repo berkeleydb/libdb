@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdbtest002.tcl	11.8 (Sleepycat) 10/19/99
+#	$Id: sdbtest002.tcl,v 11.18 2000/05/24 14:58:10 krinsky Exp $
 #
 # Sub DB All-Method Test 2
 # Make several subdb's of different access methods all in one DB.
@@ -28,7 +28,6 @@ proc subdbtest002 { {nentries 10000} } {
 	set txn ""
 	set count 0
 
-
 	# Set up various methods to rotate through
 	set methods \
 	    [list "-rbtree" "-recno" "-btree" "-btree" "-recno" "-rbtree"]
@@ -47,7 +46,7 @@ proc subdbtest002 { {nentries 10000} } {
 	# XXX We need dict sorted to figure out what was deleted
 	# since things are stored sorted in the btree.
 	#
-	exec $SORT $dict > $t4
+	filesort $dict $t4
 	set dictorig $dict
 	set dict $t4
 
@@ -61,12 +60,12 @@ proc subdbtest002 { {nentries 10000} } {
 		puts "$tclsh_path\
 		    $test_path/sdbscript.tcl $testfile \
 		    $subdb $nsubdbs >& $testdir/subdb002.log.$subdb"
-		set p [exec $tclsh_path \
-		    $test_path/sdbscript.tcl $testfile $subdb \
-		    $nsubdbs > $testdir/subdb002.log.$subdb &]
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    sdbscript.tcl \
+		    $testdir/subdb002.log.$subdb $testfile $subdb $nsubdbs &]
 		lappend pidlist $p
 	}
-	watch_procs $pidlist 5
+	watch_procs 5
 
 	for { set subdb 0 } { $subdb < $nsubdbs } { incr subdb } {
 		set method [lindex $methods $subdb]
@@ -78,7 +77,7 @@ proc subdbtest002 { {nentries 10000} } {
 		}
 
 		puts "\tSubdbtest002.b: dump file sub$subdb.db"
-		set db [berkdb open -unknown $testfile sub$subdb.db]
+		set db [berkdb_open -unknown $testfile sub$subdb.db]
 		error_check_good db_open [is_valid_db $db] TRUE
 		dump_file $db $txn $t1 $checkfunc
 		error_check_good db_close [$db close] 0
@@ -86,7 +85,7 @@ proc subdbtest002 { {nentries 10000} } {
 		# This is just so that t2 is there and empty
 		# since we are only appending below.
 		#
-		exec $CP /dev/null $t2
+		exec > $t2
 
 		# Now compare the keys to see if they match the dictionary (or ints)
 		if { [is_record_based $method] == 1 } {
@@ -98,34 +97,41 @@ proc subdbtest002 { {nentries 10000} } {
 				}
 			}
 			close $oid
-			exec $MV $t1 $t3
+			file rename -force $t1 $t3
 		} else {
-			set p p
+			set oid [open $t4 r]
+			for {set i 1} {[gets $oid line] >= 0} {incr i} {
+				set farr($i) $line
+			}
+			close $oid
+
+			set oid [open $t2 w]
 			for {set i 1} {$i <= $newent} {incr i} {
 				# Sed uses 1-based line numbers
 				set x [expr $i - $subdb]
 				if { [expr $x % $nsubdbs] != 0 } {
 					set beg [expr $subdb * $newent]
 					set beg [expr $beg + $i]
-					exec $SED -n $beg$p $t4 >> $t2
+					puts $oid $farr($beg)
 				}
 			}
-			exec $SORT $t1 > $t3
+			close $oid
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdbtest002:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 
 		puts "\tSubdbtest002.c: sub$subdb.db: close, open, and dump file"
 		# Now, reopen the file and run the last test again.
 		open_and_dump_subfile $testfile NULL $txn $t1 $checkfunc \
 		    dump_file_direction "-first" "-next" sub$subdb.db
 		if { [string compare $method "-recno"] != 0 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdbtest002:diff($t2,$t3) \
-		    [catch { exec $CMP $t2 $t3 } res] 0
+		    [filecmp $t2 $t3] 0
 
 		# Now, reopen the file and run the last test again in the
 		# reverse direction.
@@ -134,11 +140,11 @@ proc subdbtest002 { {nentries 10000} } {
 		    dump_file_direction "-last" "-prev" sub$subdb.db
 
 		if { [string compare $method "-recno"] != 0 } {
-			exec $SORT $t1 > $t3
+			filesort $t1 $t3
 		}
 
 		error_check_good Subdbtest002:diff($t3,$t2) \
-		    [catch { exec $CMP $t3 $t2 } res] 0
+		    [filecmp $t3 $t2] 0
 	}
 	set dict $dictorig
 	return

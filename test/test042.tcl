@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test042.tcl	11.14 (Sleepycat) 9/20/99
+#	$Id: test042.tcl,v 11.23 2000/05/24 14:58:10 krinsky Exp $
 #
 # DB Test 42 {access method}
 #
@@ -23,6 +23,15 @@ proc test042 { method {nentries 1000} args } {
 	global datastr
 	source ./include.tcl
 
+	#
+	# If we are using an env, then skip this test.  It needs its own.
+	set eindex [lsearch -exact $args "-env"]
+	if { $eindex != -1 } {
+		incr eindex
+		set env [lindex $args $eindex]
+		puts "Test042 skipping for env $env"
+		return
+	}
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -32,7 +41,6 @@ proc test042 { method {nentries 1000} args } {
 	set do_exit 0
 	set iter 10000
 	set procs 5
-	set seeds {}
 
 	# Process arguments
 	set oargs ""
@@ -41,7 +49,6 @@ proc test042 { method {nentries 1000} args } {
 			-dir	{ incr i; set testdir [lindex $args $i] }
 			-iter	{ incr i; set iter [lindex $args $i] }
 			-procs	{ incr i; set procs [lindex $args $i] }
-			-seeds	{ incr i; set seeds [lindex $args $i] }
 			-exit	{ set do_exit 1 }
 			default { append oargs " " [lindex $args $i] }
 		}
@@ -55,10 +62,10 @@ proc test042 { method {nentries 1000} args } {
 
 	cleanup $testdir
 
-	set env [berkdb env -create -cdb -mpool -home $testdir]
+	set env [berkdb env -create -cdb -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
-	set db [eval {berkdb open -env $env -create -truncate \
+	set db [eval {berkdb_open -env $env -create -truncate \
 	    -mode 0644 $omethod} $oargs {$testfile}]
 	error_check_good dbopen [is_valid_widget $db db] TRUE
 
@@ -92,7 +99,7 @@ proc test042 { method {nentries 1000} args } {
 	set ret [berkdb envremove -home $testdir]
 	error_check_good env_remove $ret 0
 
-	set env [berkdb env -create -mpool -cdb -home $testdir]
+	set env [berkdb env -create -cdb -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
 	if { $do_exit == 1 } {
@@ -105,31 +112,23 @@ proc test042 { method {nentries 1000} args } {
 	set pidlist {}
 
 	for { set i 0 } {$i < $procs} {incr i} {
-		set s -1
-		if { [llength $seeds] == $procs } {
-			set s [lindex $seeds $i]
-		}
-		puts "exec $tclsh_path $test_path/mdbscript.tcl \
-		    $method $testdir \
-		    $testfile $nentries $iter $i $procs $s > \
-		    $testdir/test042.$i.log &"
-		set p [exec $tclsh_path $test_path/mdbscript.tcl $method \
-		    $testdir $testfile $nentries $iter $i $procs $s \
-		    >& $testdir/test042.$i.log &]
+		puts "exec $tclsh_path $test_path/wrap.tcl \
+		    mdbscript.tcl $testdir/test042.$i.log \
+		    $method $testdir $testfile $nentries $iter $i $procs &"
+		set p [exec $tclsh_path $test_path/wrap.tcl \
+		    mdbscript.tcl $testdir/test042.$i.log $method \
+		    $testdir $testfile $nentries $iter $i $procs &]
 		lappend pidlist $p
 	}
 	puts "Test042: $procs independent processes now running"
-	watch_procs $pidlist
+	watch_procs
 
 	# Check for test failure
-	set e [catch {eval \
-	    exec [concat $GREP FAIL [glob $testdir/test042.*.log]]} res]
-	error_check_bad "FAIL: error message(s) in log files" $e 0
+	set e [eval findfail [glob $testdir/test042.*.log]]
+	error_check_good "FAIL: error message(s) in log files" $e 0
 
 	# Test is done, blow away lock and mpool region
 	reset_env $env
-
-	cleanup $testdir
 }
 
 # If we are renumbering, then each time we delete an item, the number of

@@ -1,5 +1,6 @@
-<!--"@(#)db_lsn.so	10.5 (Sleepycat) 3/10/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: db_lsn.so,v 10.7 1999/12/20 08:52:27 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DB_LSN</h1>
@@ -21,8 +23,7 @@
 #include &lt;db.h&gt;
 </pre></h3>
 <h1>Description</h1>
-<p>
-A <a href="../api_c/db_lsn.html">DB_LSN</a> is a <b>log sequence number</b>, which indicates a
+<p>A <a href="../api_c/db_lsn.html">DB_LSN</a> is a <b>log sequence number</b>, which indicates a
 unique position in the log.  The <a href="../api_c/db_lsn.html">DB_LSN</a> structure is completely
 opaque, and no application should ever need to look inside.
 <a href="../api_c/db_lsn.html">DB_LSN</a> structures are used by the logging and memory pool

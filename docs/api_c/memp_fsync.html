@@ -1,5 +1,6 @@
-<!--"@(#)memp_fsync.so	10.16 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: memp_fsync.so,v 10.20 2000/03/01 21:41:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>memp_fsync</h1>
@@ -24,27 +26,18 @@ int
 memp_fsync(DB_MPOOLFILE *mpf);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The memp_fsync function writes all pages associated with the
-DB_MPOOLFILE structure, that were marked as modified using
-<a href="../api_c/memp_fput.html">memp_fput</a> or <a href="../api_c/memp_fset.html">memp_fset</a>, back to the source file.
-If any of the modified pages are also <i>pinned</i> (i.e., currently
-referenced by this or another process) memp_fsync will ignore them.
-<p>
-The memp_fsync
-function returns a non-zero error value on failure, 0 on success,
-and returns DB_INCOMPLETE if there were pages which were modified but
-which memp_fsync was unable to write.
-<p>
+<p>The memp_fsync function writes all pages associated with the
+DB_MPOOLFILE, that were marked as modified using <a href="../api_c/memp_fput.html">memp_fput</a>
+or <a href="../api_c/memp_fset.html">memp_fset</a>, back to the source file.  If any of the modified
+pages are also <i>pinned</i> (i.e., currently referenced by this or
+another process) memp_fsync will ignore them.
+<p>The memp_fsync function returns a non-zero error value on failure, 0 on success, and returns <a href="../api_c/memp_fsync.html#DB_INCOMPLETE">DB_INCOMPLETE</a> if there were pages which were modified
+but which memp_fsync was unable to write.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the memp_fsync function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the memp_fsync function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The memp_fsync function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the memp_fsync function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

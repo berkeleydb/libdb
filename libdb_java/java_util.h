@@ -1,34 +1,34 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)java_util.h	11.4 (Sleepycat) 8/26/99
+ * $Id: java_util.h,v 11.13 2000/06/01 14:13:58 dda Exp $
  */
 
 #ifndef _JAVA_UTIL_H_
-#define _JAVA_UTIL_H_
+#define	_JAVA_UTIL_H_
 
 #ifdef _MSC_VER
 
-// These are level 4 warnings that are explicitly disabled.
-// With Visual C++, by default you do not see above level 3 unless
-// you use /W4.  But we like to compile with the highest level
-// warnings to catch other errors.
-//
-// 4201: nameless struct/union
-//       triggered by standard include file <winnt.h>
-//
-// 4244: '=' : convert from '__int64' to 'unsigned int', possible loss of data
-//       results from making size_t data members correspond to jlongs
-//
-// 4514: unreferenced inline function has been removed
-//       jni.h defines methods that are not called
-//
-// 4127: conditional expression is constant
-//       occurs because of arg in JAVADB_RW_ACCESS_STRING macro
-//
+/* These are level 4 warnings that are explicitly disabled.
+ * With Visual C++, by default you do not see above level 3 unless
+ * you use /W4.  But we like to compile with the highest level
+ * warnings to catch other errors.
+ *
+ * 4201: nameless struct/union
+ *       triggered by standard include file <winnt.h>
+ *
+ * 4244: '=' : convert from '__int64' to 'unsigned int', possible loss of data
+ *       results from making size_t data members correspond to jlongs
+ *
+ * 4514: unreferenced inline function has been removed
+ *       jni.h defines methods that are not called
+ *
+ * 4127: conditional expression is constant
+ *       occurs because of arg in JAVADB_RW_ACCESS_STRING macro
+ */
 #pragma warning(disable: 4244 4201 4514 4127)
 
 #endif
@@ -38,11 +38,11 @@
 #include "java_info.h"
 #include "java_locked.h"
 #include <jni.h>
-#include <string.h>             // needed for memset
+#include <string.h>             /* needed for memset */
 
-#define DB_PACKAGE_NAME "com/sleepycat/db/"
+#define	DB_PACKAGE_NAME "com/sleepycat/db/"
 
-/* Union to convert longs to pointers (see {get,set}_private_info).
+/* Union to convert longs to pointers (see {get,set}_private_dbobj).
  */
 typedef union {
     jlong java_long;
@@ -55,27 +55,70 @@ typedef union {
  *
  */
 
-#define NOT_IMPLEMENTED(str) \
+#define	NOT_IMPLEMENTED(str) \
 	report_exception(jnienv, str /*concatenate*/ ": not implemented", 0)
 
-/* Get the private data from a Db* object as a (64 bit) java long.
+/* Get, delete a global reference.
+ * Making this operation a function call allows for
+ * easier tracking for debugging.  Global references
+ * are mostly grabbed at 'open' and 'close' points,
+ * so there shouldn't be a big performance hit.
+ *
+ * Macro-izing this makes it easier to add debugging code
+ * to track unreleased references.
  */
-jlong get_private_long_info(JNIEnv *jnienv, const char *classname,
-			    jobject obj);
+#ifdef DBJAVA_DEBUG
+#include <unistd.h>
+static void wrdebug(const char *str)
+{
+	write(2, str, strlen(str));
+	write(2, "\n", 1);
+}
 
-/* Get the private data from a Db* object.
+static jobject debug_new_global_ref(JNIEnv *jnienv, jobject obj, const char *s)
+{
+	wrdebug(s);
+	return (*jnienv)->NewGlobalRef(jnienv, obj);
+}
+
+static void debug_delete_global_ref(JNIEnv *jnienv, jobject obj, const char *s)
+{
+	wrdebug(s);
+	(*jnienv)->DeleteGlobalRef(jnienv, obj);
+}
+
+#define	NEW_GLOBAL_REF(jnienv, obj)  \
+	debug_new_global_ref(jnienv, obj, "+Ref: " #obj)
+#define	DELETE_GLOBAL_REF(jnienv, obj) \
+	debug_delete_global_ref(jnienv, obj, "-Ref: " #obj)
+#else
+#define	NEW_GLOBAL_REF(jnienv, obj)     (*jnienv)->NewGlobalRef(jnienv, obj)
+#define	DELETE_GLOBAL_REF(jnienv, obj)  (*jnienv)->DeleteGlobalRef(jnienv, obj)
+#define	wrdebug(x)
+#endif
+
+/* Get the private data from a Db* object that points back to a C DB_* object.
+ * The private data is stored in the object as a Java long (64 bits),
+ * which is long enough to store a pointer on current architectures.
+ */
+void *get_private_dbobj(JNIEnv *jnienv, const char *classname,
+		       jobject obj);
+
+/* Set the private data in a Db* object that points back to a C DB_* object.
+ * The private data is stored in the object as a Java long (64 bits),
+ * which is long enough to store a pointer on current architectures.
+ */
+void set_private_dbobj(JNIEnv *jnienv, const char *classname,
+		      jobject obj, void *value);
+
+/* Get the private data in a Db/DbEnv object that holds additional 'side data'.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
 void *get_private_info(JNIEnv *jnienv, const char *classname,
 		       jobject obj);
 
-/* Set the private data in a Db* object as a (64 bit) java long.
- */
-void set_private_long_info(JNIEnv *jnienv, const char *classname,
-			   jobject obj, jlong value);
-
-/* Set the private data in a Db* object.
+/* Set the private data in a Db/DbEnv object that holds additional 'side data'.
  * The private data is stored in the object as a Java long (64 bits),
  * which is long enough to store a pointer on current architectures.
  */
@@ -120,7 +163,7 @@ static const int EXCEPTION_FILE_NOT_FOUND = 0x0001;
 /* Report an exception back to the java side.
  */
 void report_exception(JNIEnv *jnienv, const char *text, int err,
-		      unsigned long expect_mask = 0);
+		      unsigned long expect_mask);
 
 /* If the object is null, report an exception and return false (0),
  * otherwise return true (1).
@@ -130,7 +173,7 @@ int verify_non_null(JNIEnv *jnienv, void *obj);
 /* If the error code is non-zero, report an exception and return false (0),
  * otherwise return true (1).
  */
-int verify_return(JNIEnv *jnienv, int err, unsigned long expect_mask = 0);
+int verify_return(JNIEnv *jnienv, int err, unsigned long expect_mask);
 
 /* Create an object of the given class, calling its default constructor.
  */
@@ -156,14 +199,15 @@ void *java_alloc_memory(size_t n);
 void java_free_memory(void *p);
 void *java_realloc_memory(void *p, size_t n);
 
-
 /* Convert a java object to the various C pointers they represent.
  */
 DB             *get_DB            (JNIEnv *jnienv, jobject obj);
 DB_BTREE_STAT  *get_DB_BTREE_STAT (JNIEnv *jnienv, jobject obj);
 DBC            *get_DBC           (JNIEnv *jnienv, jobject obj);
 DB_ENV         *get_DB_ENV        (JNIEnv *jnienv, jobject obj);
+DB_ENV_JAVAINFO *get_DB_ENV_JAVAINFO (JNIEnv *jnienv, jobject obj);
 DB_HASH_STAT   *get_DB_HASH_STAT  (JNIEnv *jnienv, jobject obj);
+DB_JAVAINFO    *get_DB_JAVAINFO   (JNIEnv *jnienv, jobject obj);
 DB_LOCK        *get_DB_LOCK       (JNIEnv *jnienv, jobject obj);
 DB_LOG_STAT    *get_DB_LOG_STAT   (JNIEnv *jnienv, jobject obj);
 DB_LSN         *get_DB_LSN        (JNIEnv *jnienv, jobject obj);
@@ -172,7 +216,8 @@ DB_MPOOL_STAT  *get_DB_MPOOL_STAT (JNIEnv *jnienv, jobject obj);
 DB_QUEUE_STAT  *get_DB_QUEUE_STAT (JNIEnv *jnienv, jobject obj);
 DB_TXN         *get_DB_TXN        (JNIEnv *jnienv, jobject obj);
 DB_TXN_STAT    *get_DB_TXN_STAT   (JNIEnv *jnienv, jobject obj);
-DBT_javainfo   *get_DBT           (JNIEnv *jnienv, jobject obj);
+DBT            *get_DBT           (JNIEnv *jnienv, jobject obj);
+DBT_JAVAINFO   *get_DBT_JAVAINFO  (JNIEnv *jnienv, jobject obj);
 
 /* Convert a C object to the various java pointers they represent.
  */
@@ -187,142 +232,109 @@ jobject get_DbQueueStat  (JNIEnv *jnienv, DB_QUEUE_STAT *dbobj);
 jobject get_DbTxn        (JNIEnv *jnienv, DB_TXN *dbobj);
 jobject get_DbTxnStat    (JNIEnv *jnienv, DB_TXN_STAT *dbobj);
 
-// The java names of DB classes
-const char * const name_DB                 = "Db";
-const char * const name_DB_BTREE_STAT      = "DbBtreeStat";
-const char * const name_DBC                = "Dbc";
-const char * const name_DB_DEADLOCK_EX     = "DbDeadlockException";
-const char * const name_DB_ENV             = "DbEnv";
-const char * const name_DB_EXCEPTION       = "DbException";
-const char * const name_DB_HASH_STAT       = "DbHashStat";
-const char * const name_DB_LOCK            = "DbLock";
-const char * const name_DB_LOCK_STAT       = "DbLockStat";
-const char * const name_DB_LOG_STAT        = "DbLogStat";
-const char * const name_DB_LSN             = "DbLsn";
-const char * const name_DB_MEMORY_EX       = "DbMemoryException";
-const char * const name_DB_MPOOL_FSTAT     = "DbMpoolFStat";
-const char * const name_DB_MPOOL_STAT      = "DbMpoolStat";
-const char * const name_DB_QUEUE_STAT      = "DbQueueStat";
-const char * const name_DB_RUNRECOVERY_EX  = "DbRunRecoveryException";
-const char * const name_DBT                = "Dbt";
-const char * const name_DB_TXN             = "DbTxn";
-const char * const name_DB_TXN_STAT        = "DbTxnStat";
-const char * const name_DB_TXN_STAT_ACTIVE = "DbTxnStat$Active";
-const char * const name_DbEnvFeedback      = "DbEnvFeedback";
-const char * const name_DbErrcall          = "DbErrcall";
-const char * const name_DbFeedback         = "DbFeedback";
-const char * const name_DbRecoveryInit     = "DbRecoveryInit";
+/* The java names of DB classes */
+extern const char * const name_DB;
+extern const char * const name_DB_BTREE_STAT;
+extern const char * const name_DBC;
+extern const char * const name_DB_DEADLOCK_EX;
+extern const char * const name_DB_ENV;
+extern const char * const name_DB_EXCEPTION;
+extern const char * const name_DB_HASH_STAT;
+extern const char * const name_DB_LOCK;
+extern const char * const name_DB_LOCK_STAT;
+extern const char * const name_DB_LOG_STAT;
+extern const char * const name_DB_LSN;
+extern const char * const name_DB_MEMORY_EX;
+extern const char * const name_DB_MPOOL_FSTAT;
+extern const char * const name_DB_MPOOL_STAT;
+extern const char * const name_DB_QUEUE_STAT;
+extern const char * const name_DB_RUNRECOVERY_EX;
+extern const char * const name_DBT;
+extern const char * const name_DB_TXN;
+extern const char * const name_DB_TXN_STAT;
+extern const char * const name_DB_TXN_STAT_ACTIVE;
+extern const char * const name_DbEnvFeedback;
+extern const char * const name_DbErrcall;
+extern const char * const name_DbFeedback;
+extern const char * const name_DbRecoveryInit;
 
-const char * const string_signature    = "Ljava/lang/String;";
+extern const char * const string_signature;
 
-
-#define JAVADB_RO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
-extern "C" JNIEXPORT j_fieldtype JNICALL                                    \
+#define	JAVADB_RO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
+JNIEXPORT j_fieldtype JNICALL                                               \
   Java_com_sleepycat_db_##j_class##_get_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis)                                           \
 {                                                                           \
 	c_type *db_this = get_##c_type(jnienv, jthis);                      \
-				                                            \
+									    \
 	if (verify_non_null(jnienv, db_this)) {                             \
 		return db_this->c_field;                                    \
 	}                                                                   \
 	return 0;                                                           \
 }
 
-#define JAVADB_WO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
-extern "C" JNIEXPORT void JNICALL                                           \
+#define	JAVADB_WO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
+JNIEXPORT void JNICALL                                                      \
   Java_com_sleepycat_db_##j_class##_set_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis, j_fieldtype value)                        \
 {                                                                           \
 	c_type *db_this = get_##c_type(jnienv, jthis);                      \
-								            \
+									    \
 	if (verify_non_null(jnienv, db_this)) {                             \
 		db_this->c_field = value;                                   \
 	}                                                                   \
 }
 
-// This is a variant of the JAVADB_WO_ACCESS macro to define a simple set_
-// method using a C "method" call.
-//
-#define JAVADB_WO_ACCESS_METHOD(j_class, j_fieldtype,                       \
-			        j_field, c_type, c_field)		    \
-extern "C" JNIEXPORT void JNICALL                                           \
+/* This is a variant of the JAVADB_WO_ACCESS macro to define a simple set_
+ * method using a C "method" call.
+ */
+#define	JAVADB_WO_ACCESS_METHOD(j_class, j_fieldtype,                       \
+				j_field, c_type, c_field)		    \
+JNIEXPORT void JNICALL                                                      \
   Java_com_sleepycat_db_##j_class##_set_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis, j_fieldtype value)                        \
 {                                                                           \
 	c_type *db_this = get_##c_type(jnienv, jthis);                      \
-								            \
+									    \
 	if (verify_non_null(jnienv, db_this)) {                             \
 		db_this->set_##c_field(db_this, value);                     \
 	}                                                                   \
 }
 
-#define JAVADB_RW_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
+#define	JAVADB_RW_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
 	JAVADB_RO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)    \
 	JAVADB_WO_ACCESS(j_class, j_fieldtype, j_field, c_type, c_field)
 
-#define JAVADB_RO_ACCESS_STRING(j_class, j_field, c_type, c_field, dealloc) \
-extern "C" JNIEXPORT jstring JNICALL                                        \
-  Java_com_sleepycat_db_##j_class##_get_1##j_field                          \
-  (JNIEnv *jnienv, jobject jthis)                                           \
-{                                                                           \
-	c_type *db_this = get_##c_type(jnienv, jthis);                      \
-							                    \
-	if (verify_non_null(jnienv, db_this)) {                             \
-		return get_java_string(jnienv, db_this->c_field);           \
-	}                                                                   \
-	return 0;                                                           \
-}
-
-#define JAVADB_WO_ACCESS_STRING(j_class, j_field, c_type, c_field, dealloc) \
-extern "C" JNIEXPORT void JNICALL                                           \
+#define	JAVADB_WO_ACCESS_STRING(j_class, j_field, c_type, c_field)          \
+JNIEXPORT void JNICALL                                                      \
   Java_com_sleepycat_db_##j_class##_set_1##j_field                          \
   (JNIEnv *jnienv, jobject jthis, jstring value)                            \
 {                                                                           \
 	c_type *db_this = get_##c_type(jnienv, jthis);                      \
-							                    \
+									    \
 	if (verify_non_null(jnienv, db_this)) {                             \
-		if (dealloc && db_this->c_field)                            \
-			delete (char*)db_this->c_field;                     \
-		if (value)                                                  \
-			db_this->c_field =                                  \
-			  dup_string(jnienv->GetStringUTFChars(value, NULL)); \
-		else                                                        \
-			db_this->c_field = 0;                               \
+		db_this->set_##c_field(db_this,                             \
+			  (*jnienv)->GetStringUTFChars(jnienv, value, NULL)); \
 	}                                                                   \
 }
 
-#define JAVADB_RW_ACCESS_STRING(j_class, j_field, c_type, c_field, dealloc) \
-	JAVADB_RO_ACCESS_STRING(j_class, j_field, c_type, c_field, dealloc) \
-	JAVADB_WO_ACCESS_STRING(j_class, j_field, c_type, c_field, dealloc)
+#define JAVADB_API_BEGIN(db, jthis) \
+	if ((db) != NULL) \
+	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
+	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = (jthis)
 
+#define JAVADB_API_END(db) \
+	if ((db) != NULL) \
+	  ((DB_JAVAINFO*)(db)->cj_internal)->jdbref_ = \
+	  ((DB_ENV_JAVAINFO*)((db)->dbenv->cj_internal))->jdbref_ = 0
 
-// Replacements for C++ new and delete.
-// Our experience with Sparc/gcc shared libraries is that new/delete
-// does not work correctly, so we use malloc.
-// Obviously, these macros are quite limited and do not accept
-// constructor args.  But our use of new/delete is also quite
-// limited in this library.
-//
-#undef NEW
-#undef NEW_ARRAY
-#undef DELETE
-#undef DELETE_ARRAY
+#define JAVADB_ENV_API_BEGIN(dbenv, jthis) \
+	if ((dbenv) != NULL) \
+	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = (jthis)
 
-#ifdef unix
-//
-// currently NEW zeros (to prevent common bugs), NEW_ARRAY does not,
-// since it is almost always used for string creation.
-//
-#define NEW(type)		((type*)memset(malloc(sizeof(type)), 0, sizeof(type)))
-#define NEW_ARRAY(type,n)	((type*)malloc(sizeof(type)*n))
-#define DELETE(p)		(free(p))
-#define DELETE_ARRAY(p)		(free(p))
-#else
-#define NEW(type)		new type
-#define NEW_ARRAY(type,n)	new type[n]
-#define DELETE(p)		delete p
-#define DELETE_ARRAY(p)		delete [] p
-#endif
+#define JAVADB_ENV_API_END(dbenv) \
+	if ((dbenv) != NULL) \
+	  ((DB_ENV_JAVAINFO*)((dbenv)->cj_internal))->jenvref_ = 0
+
 
 #endif /* !_JAVA_UTIL_H_ */

@@ -1,6 +1,9 @@
 /* DO NOT EDIT: automatically built by dist/distrib. */
-#ifndef _clib_ext_h_
-#define _clib_ext_h_
+#ifndef	_clib_ext_h_
+#define	_clib_ext_h_
+#if defined(__cplusplus)
+extern "C" {
+#endif
 #ifndef HAVE_GETCWD
 char *getcwd __P((char *, size_t));
 #endif
@@ -26,10 +29,14 @@ int snprintf __P((char *, size_t, const char *, ...));
 int snprintf();
 #endif
 #endif
+int strcasecmp __P((const char *, const char *));
 #ifndef HAVE_STRERROR
 char *strerror __P((int));
 #endif
 #ifndef HAVE_VSNPRINTF
 int vsnprintf();
+#endif
+#if defined(__cplusplus)
+}
 #endif
 #endif /* _clib_ext_h_ */

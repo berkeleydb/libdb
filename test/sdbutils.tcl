@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)sdbutils.tcl	11.5 (Sleepycat) 8/29/99
+#	$Id: sdbutils.tcl,v 11.9 2000/05/22 12:51:38 bostic Exp $
 #
 proc build_all_subdb { dbname methods psize dups {nentries 100} {dbargs ""}} {
 	set nsubdbs [llength $dups]
@@ -30,7 +30,7 @@ proc subdb_build { name nkeys ndups dup_interval method psize subdb dbargs} {
 	# Create the database and open the dictionary
 	set oflags "-create -mode 0644 $omethod \
 	    -pagesize $psize $dbargs $name $subdb"
-	set db [eval {berkdb open} $oflags]
+	set db [eval {berkdb_open} $oflags]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set did [open $dict]
 	set count 0
@@ -90,14 +90,14 @@ proc do_join_subdb { db primary subdbs key } {
 	puts "\tJoining: $subdbs on $key"
 
 	# Open all the databases
-	set p [berkdb open -unknown $db $primary]
+	set p [berkdb_open -unknown $db $primary]
 	error_check_good "primary open" [is_valid_db $p] TRUE
 
 	set dblist ""
 	set curslist ""
 
 	foreach i $subdbs {
-		set jdb [berkdb open -unknown $db sub$i.db]
+		set jdb [berkdb_open -unknown $db sub$i.db]
 		error_check_good "sub$i.db open" [is_valid_db $jdb] TRUE
 
 		lappend jlist [list $jdb $key]
@@ -163,7 +163,7 @@ proc do_join_subdb { db primary subdbs key } {
 }
 
 proc n_to_subname { n } {
-        if { $n == 0 } {
+	if { $n == 0 } {
 		return null.db;
 	} else {
 		return sub$n.db;

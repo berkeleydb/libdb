@@ -1,4 +1,4 @@
-; @(#)libdb_tcl.def	11.1 (Sleepycat) 7/24/99
+; $Id: libdb_tcl.def,v 11.2 1999/11/21 23:10:00 bostic Exp $
 
 DESCRIPTION     'Berkeley DB TCL interface Library'
 EXPORTS

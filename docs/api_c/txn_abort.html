@@ -1,5 +1,6 @@
-<!--"@(#)txn_abort.so	10.18 (Sleepycat) 10/20/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: txn_abort.so,v 10.21 2000/03/01 21:41:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>txn_abort</h1>
@@ -24,41 +26,29 @@ int
 txn_abort(DB_TXN *tid);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The txn_abort function causes an abnormal termination of the transaction.
-<p>
-The log is played backwards and any necessary recovery operations are
+<p>The txn_abort function causes an abnormal termination of the transaction.
+<p>The log is played backwards and any necessary recovery operations are
 initiated through the <b>recover</b> function specified to
-<a href="../api_c/env_open.html">DBENV-&gt;open</a>.  After the log processing is completed,
-all locks held by the transaction are released.  As is
-the case for <a href="../api_c/txn_commit.html">txn_commit</a>, applications that require strict
-two-phase locking should not explicitly release any locks.
-<p>
-In the case of nested transactions, aborting the parent transaction causes
+<a href="../api_c/env_open.html">DBENV-&gt;open</a>.  After the log processing is completed, all locks held
+by the transaction are released.  As is the case for <a href="../api_c/txn_commit.html">txn_commit</a>,
+applications that require strict two-phase locking should not explicitly
+release any locks.
+<p>In the case of nested transactions, aborting the parent transaction causes
 all children of that transaction to be aborted.
-<p>
-The txn_abort
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The txn_abort function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the txn_abort function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the txn_abort
-function may fail and return a non-zero error
-for the following conditions:
-<dl compact>
+<p>The txn_abort function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>The transaction was already aborted.
 </dl>
-<p>
-In addition, the txn_abort function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The txn_abort function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the txn_abort function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_tx_max.html">DBENV-&gt;set_tx_max</a>,
 <a href="../api_c/env_set_tx_recover.html">DBENV-&gt;set_tx_recover</a>,
+<a href="../api_c/env_set_tx_timestamp.html">DBENV-&gt;set_tx_timestamp</a>,
 <a href="../api_c/txn_abort.html">txn_abort</a>,
 <a href="../api_c/txn_begin.html">txn_begin</a>,
 <a href="../api_c/txn_checkpoint.html">txn_checkpoint</a>,

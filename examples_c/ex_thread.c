@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)ex_thread.c	11.4 (Sleepycat) 8/23/99
+ * $Id: ex_thread.c,v 11.9 2000/05/31 15:10:04 bostic Exp $
  */
 
 #include "db_config.h"
@@ -37,19 +37,19 @@
  * NB: This application is written using POSIX 1003.1b-1993 pthreads
  * interfaces, which may not be portable to your system.
  */
-extern int sched_yield(void);			/* Pthread yield function. */
+extern int sched_yield __P((void));		/* Pthread yield function. */
 
-DB_ENV *db_init(char *);
-void   *deadlock(void *);
-void	fatal(char *, int, int);
-int	main(int, char *[]);
-int	reader(int);
-void	stats(void);
-void   *trickle(void *);
-void   *tstart(void *);
-void	usage(void);
-void	word(void);
-int	writer(int);
+DB_ENV *db_init __P((char *));
+void   *deadlock __P((void *));
+void	fatal __P((char *, int, int));
+int	main __P((int, char *[]));
+int	reader __P((int));
+void	stats __P((void));
+void   *trickle __P((void *));
+void   *tstart __P((void *));
+void	usage __P((void));
+void	word __P((void));
+int	writer __P((int));
 
 struct _statistics {
 	int aborted;				/* Write. */
@@ -422,6 +422,11 @@ db_init(home)
 	DB_ENV *dbenv;
 	int ret;
 
+	if (punish) {
+		(void)db_env_set_pageyield(1);
+		(void)db_env_set_func_yield(sched_yield);
+	}
+
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
@@ -430,13 +435,9 @@ db_init(home)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 	(void)dbenv->set_cachesize(dbenv, 0, 100 * 1024, 0);
-	if (punish) {
-		(void)dbenv->set_pageyield(dbenv, 1);
-		(void)dbenv->set_func_yield(dbenv, sched_yield);
-	}
 	(void)dbenv->set_lg_max(dbenv, 200000);
 
-	if ((ret = dbenv->open(dbenv, home, NULL,
+	if ((ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0)) != 0) {
 		dbenv->err(dbenv, ret, NULL);

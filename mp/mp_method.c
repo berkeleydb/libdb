@@ -1,22 +1,31 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_method.c	11.2 (Sleepycat) 10/6/99";
+static const char revid[] = "$Id: mp_method.c,v 11.10 2000/04/04 20:12:04 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 static int __memp_set_cachesize __P((DB_ENV *, u_int32_t, u_int32_t, int));
 static int __memp_set_mp_mmapsize __P((DB_ENV *, size_t));
@@ -43,6 +52,18 @@ __memp_dbenv_create(dbenv)
 
 	dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
 	dbenv->set_cachesize = __memp_set_cachesize;
+
+#ifdef	HAVE_RPC
+	/*
+	 * If we have a client, overwrite what we just setup to
+	 * point to client functions.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT)) {
+		dbenv->set_cachesize = __dbcl_env_cachesize;
+		dbenv->set_mp_mmapsize = __dbcl_set_mp_mmapsize;
+	}
+#endif
+
 }
 
 /*

@@ -1,5 +1,6 @@
-<!--@(#)sync.so	10.11 (Sleepycat) 10/3/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: sync.so,v 10.14 2000/03/18 21:43:08 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,20 +9,18 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
 <td width="1%"><a href="../../ref/am/delete.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/am/stat.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>Flushing the database cache</h1>
-<p>
-The <a href="../../api_c/db_sync.html">DB-&gt;sync</a> function is the standard interface for flushing all modified
+<p>The <a href="../../api_c/db_sync.html">DB-&gt;sync</a> function is the standard interface for flushing all modified
 records from the database cache to disk.
-<p>
-<b>It is important to understand that flushing cached information
+<p><b>It is important to understand that flushing cached information
 to disk only minimizes the window of opportunity for corrupted data.</b>
-<p>
-While unlikely, it is possible for database corruption to happen if a
+<p>While unlikely, it is possible for database corruption to happen if a
 system or application crash occurs while writing data to the database. To
 ensure that database corruption never occurs, applications must either:
 <ul type=disc>

@@ -1,4 +1,4 @@
-dnl @(#)types.m4	11.2 (Sleepycat) 10/5/99
+dnl $Id: types.m4,v 11.4 1999/12/04 19:18:28 bostic Exp $
 
 dnl Check for the standard shorthand types.
 AC_DEFUN(AM_SHORTHAND_TYPES, [dnl
@@ -116,4 +116,24 @@ fi
 if test "$db_cv_int32" != yes; then
 	int32_decl="typedef $db_cv_int32 int32_t;"
 fi
+
+dnl Figure out largest integral type.
+AC_SUBST(db_align_t_decl)
+AC_CACHE_CHECK([for largest integral type], db_cv_align_t, [dnl
+AC_TRY_COMPILE([#include <sys/types.h>], long long foo;,
+	[db_cv_align_t="unsigned long long"], [db_cv_align_t="unsigned long"])])
+db_align_t_decl="typedef $db_cv_align_t db_align_t;"
+
+dnl Figure out integral type the same size as a pointer.
+AC_SUBST(db_alignp_t_decl)
+AC_CACHE_CHECK([for integral type equal to pointer size], db_cv_alignp_t, [dnl
+db_cv_alignp_t=$db_cv_align_t
+AC_TRY_RUN([main(){exit(sizeof(unsigned int) != sizeof(char *));}],
+	[db_cv_alignp_t="unsigned int"])
+AC_TRY_RUN([main(){exit(sizeof(unsigned long) != sizeof(char *));}],
+	[db_cv_alignp_t="unsigned long"])
+AC_TRY_RUN([main(){exit(sizeof(unsigned long long) != sizeof(char *));}],
+	[db_cv_alignp_t="unsigned long long"])])
+db_alignp_t_decl="typedef $db_cv_alignp_t db_alignp_t;"
+
 ])dnl

@@ -1,20 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
-#include "db_config.h"
-
 #ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1996, 1997, 1998, 1999\n\
-	Sleepycat Software Inc.  All rights reserved.\n";
-static const char sccsid[] = "@(#)db_dump185.c	11.1 (Sleepycat) 7/24/99";
+static char copyright[] =
+    "Copyright (c) 1996-2000\nSleepycat Software Inc.  All rights reserved.\n";
+static char revid[] =
+    "$Id: db_dump185.c,v 11.5 2000/05/17 19:18:04 bostic Exp $";
 #endif
 
-#ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
 
 #include <ctype.h>
@@ -23,9 +20,8 @@ static const char sccsid[] = "@(#)db_dump185.c	11.1 (Sleepycat) 7/24/99";
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#endif
 
-#include "db_185.h"
+#include <db.h>
 
 /* Hash Table Information */
 typedef struct hashhdr185 {		/* Disk resident portion */
@@ -48,7 +44,7 @@ typedef struct hashhdr185 {		/* Disk resident portion */
 	int		nkeys;		/* Number of keys in hash table */
 } HASHHDR185;
 typedef struct htab185	 {		/* Memory resident data structure */
-	HASHHDR185 	hdr;		/* Header */
+	HASHHDR185	hdr;		/* Header */
 } HTAB185;
 
 /* Hash Table Information */
@@ -67,12 +63,12 @@ typedef struct hashhdr186 {	/* Disk resident portion */
 	int32_t	nkeys;		/* Number of keys in hash table */
 	int32_t	hdrpages;	/* Size of table header */
 	int32_t	h_charkey;	/* value of hash(CHARKEY) */
-#define NCACHED	32		/* number of bit maps and spare points */
+#define	NCACHED	32		/* number of bit maps and spare points */
 	int32_t	spares[NCACHED];/* spare pages for overflow */
 	u_int16_t	bitmaps[NCACHED];	/* address of overflow page bitmaps */
 } HASHHDR186;
 typedef struct htab186	 {		/* Memory resident data structure */
-	HASHHDR186 	hdr;		/* Header */
+	HASHHDR186	hdr;		/* Header */
 } HTAB186;
 
 typedef struct _epgno {
@@ -125,9 +121,9 @@ typedef struct _btree {
 	EPGNO	  bt_last;		/* last insert */
 
 					/* B: key comparison function */
-	int	(*bt_cmp) __P((const DBT *, const DBT *));
+	int	(*bt_cmp) __P((DBT *, DBT *));
 					/* B: prefix comparison function */
-	size_t	(*bt_pfx) __P((const DBT *, const DBT *));
+	size_t	(*bt_pfx) __P((DBT *, DBT *));
 					/* R: recno input function */
 	int	(*bt_irec) __P((struct _btree *, u_int32_t));
 

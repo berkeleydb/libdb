@@ -1,0 +1,39 @@
+#!/bin/sh -
+#	$Id: s_tags,v 1.3 1999/12/11 22:12:49 bostic Exp $
+#
+# Build tags files.
+
+f=tags
+echo "Building $f"
+rm -f $f
+
+files="../include/*.h \
+	../include/*.src \
+	../btree/*.[ch] \
+	../clib/*.[ch] \
+	../common/*.[ch] \
+	../db/*.[ch] \
+	../db185/*.[ch] \
+	../dbm/*.[ch] \
+	../env/*.[ch] \
+	../hash/*.[ch] \
+	../hsearch/*.[ch] \
+	../lock/*.[ch] \
+	../log/*.[ch] \
+	../mp/*.[ch] \
+	../mutex/*.[ch] \
+	../os/*.[ch] \
+	../qam/*.[ch] \
+	../rpc_client/*.[ch] \
+	../rpc_server/*.[ch] \
+	../tcl/*.[ch] \
+	../txn/*.[ch] \
+	../xa/*.[ch]"
+
+if ctags -dw $files 2>/dev/null; then
+	:
+else
+	ctags $files 2>/dev/null
+fi
+
+chmod 444 $f

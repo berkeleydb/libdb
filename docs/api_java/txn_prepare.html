@@ -1,5 +1,6 @@
-<!--"@(#)txn_prepare.so	10.13 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: txn_prepare.so,v 10.16 2000/03/01 21:41:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>DbTxn.prepare</h1>
@@ -24,10 +26,8 @@ public void prepare()
 	throws DbException;
 </pre></h3>
 <h1>Description</h1>
-<p>
-The DbTxn.prepare method initiates the beginning of a two-phase commit.
-<p>
-In a distributed transaction environment, Berkeley DB can be used as a local
+<p>The DbTxn.prepare method initiates the beginning of a two-phase commit.
+<p>In a distributed transaction environment, Berkeley DB can be used as a local
 transaction manager.  In this case, the distributed transaction manager
 must send <i>prepare</i> messages to each local manager.  The local
 manager must then issue a DbTxn.prepare and await its successful
@@ -35,25 +35,18 @@ return before responding to the distributed transaction manager.  Only
 after the distributed transaction manager receives successful responses
 from all of its <i>prepare</i> messages should it issue any
 <i>commit</i> messages.
-<p>
-The DbTxn.prepare
-method throws an exception that encapsulates a non-zero error value on
+<p>The DbTxn.prepare method throws an exception that encapsulates a non-zero error value on
 failure.
-<p>
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the DbTxn.prepare method will fail and throw a
-<a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, at which point all subsequent database
-calls will fail in the same way.
-<p>
-In addition, the DbTxn.prepare method may fail and
-throw an exception
-for errors specified for other Berkeley DB and C library or system methods.
-<p>
+<p>The DbTxn.prepare method may fail and throw an exception for errors specified for other Berkeley DB and C library or system methods.
+If a catastrophic error has occurred, the DbTxn.prepare method may fail and throw
+a <a href="../api_java/runrec_class.html">DbRunRecoveryException</a>, in which case all subsequent Berkeley DB calls
+will fail in the same way.
 <h3>Classes</h3>
 <a href="../api_java/dbenv_class.html">DbEnv</a>, <a href="../api_java/txn_class.html">DbTxn</a>
-<p>
 <h1>See Also</h1>
 <a href="../api_java/env_set_tx_max.html">DbEnv.set_tx_max</a>,
+<a href="../api_java/env_set_tx_timestamp.html">DbEnv.set_tx_timestamp</a>,
 <a href="../api_java/txn_abort.html">DbTxn.abort</a>,
 <a href="../api_java/txn_begin.html">DbEnv.txn_begin</a>,
 <a href="../api_java/txn_checkpoint.html">DbEnv.txn_checkpoint</a>,

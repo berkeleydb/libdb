@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)DbHashStat.java	11.3 (Sleepycat) 8/19/99
+ *	$Id: DbHashStat.java,v 11.6 2000/05/04 02:54:55 dda Exp $
  */
 
 package com.sleepycat.db;
@@ -18,10 +18,11 @@ public class DbHashStat
     public int hash_magic;		// Magic number.
     public int hash_version;		// Version number.
     public int hash_metaflags;		// Metadata flags.
+    public int hash_nkeys;		// Number of unique keys.
+    public int hash_ndata;		// Number of data items.
     public int hash_pagesize;		// Page size.
     public int hash_nelem;		// Original nelem specified.
     public int hash_ffactor;		// Fill factor specified at create.
-    public int hash_nrecs;		// Number of records.
     public int hash_buckets;		// Number of hash buckets.
     public int hash_free;		// Pages on the free list.
     public int hash_bfree;		// Bytes free on bucket pages.

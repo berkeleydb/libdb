@@ -1,5 +1,6 @@
-<!--@(#)compile.so	10.5 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: compile.so,v 10.9 2000/03/22 22:02:13 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,23 +15,20 @@
 </td></tr></table>
 <p>
 <h1 align=center>Compile-time configuration</h1>
-<p>
-There are two compile-time configuration options that assist in debugging
+<p>There are two compile-time configuration options that assist in debugging
 Berkeley DB and Berkeley DB applications.
-<dl compact>
-<p><dt>--enable-debug<dd>If you want to build Berkeley DB with <b>-g</b> as the C and C++
-compiler flag and with DEBUG #defined during compilation, enter
---enable-debug as an argument to configure. This will create Berkeley DB
-with debugging symbols, as well as load various routines that can be
-called from a debugger to display pages, cursor queues and so forth.
-<p><dt>--enable-diagnostic<dd>If you want to build Berkeley DB with debugging run-time sanity checks
-and with DIAGNOSTIC #defined during compilation, enter --enable-diagnostic
-as an argument to configure. This will cause a number of special checks
-to be performed when Berkeley DB is running. This flag should not be
-defined when configuring to build production binaries, as it degrades
-performance.
-<p>
-In addition, when compiling Berkeley DB for use in run-time memory consistency
+<p><dl compact>
+<p><dt>--enable-debug<dd>If you want to build Berkeley DB with <b>-g</b> as the C and C++ compiler
+flag and with DEBUG #defined during compilation, enter --enable-debug as
+an argument to configure. This will create Berkeley DB with debugging symbols,
+as well as load various routines that can be called from a debugger to
+display pages, cursor queues and so forth.
+<p><dt>--enable-diagnostic<dd>If you want to build Berkeley DB with debugging run-time sanity checks and with
+DIAGNOSTIC #defined during compilation, enter --enable-diagnostic as an
+argument to configure. This will cause a number of special checks to be
+performed when Berkeley DB is running. This flag should not be defined when
+configuring to build production binaries, as it degrades performance.
+<p>In addition, when compiling Berkeley DB for use in run-time memory consistency
 checkers, in particular, programs that look for reads and writes of
 uninitialized memory, use --enable-diagnostic as an argument to configure.
 This guarantees that Berkeley DB will completely initialize allocated pages

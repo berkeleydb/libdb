@@ -1,5 +1,6 @@
-<!--@(#)what.so	10.16 (Sleepycat) 10/1/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: what.so,v 10.21 2000/03/22 22:02:14 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -10,24 +11,21 @@
 <body bgcolor=white>
 <table><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
-<td width="1%"><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/where.html"><img src="../../images/next.gif" alt="Next"></a>
+<td width="1%"><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/products.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h1 align=center>What is Berkeley DB?</h1>
-<p>
-Berkeley DB is an embedded database system that supports keyed access
-to data.
+<p>Berkeley DB is an embedded database system that supports keyed access to data.
 The software is distributed in source code form, and developers can
 compile and link the source code into a single library for inclusion
 directly in their applications.
-<p>
-Developers may choose to store data in any of several different storage
+<p>Developers may choose to store data in any of several different storage
 structures to satisfy the requirements of a particular application.  In
 database terminology, these storage structures and the code that operates
 on them are called <i>access methods</i>.  The library includes
 support for the following access methods:
 <ul type=disc>
-<li><b>B+tree</b>:
+<li><b>Btree</b>:
 Stores keys in sorted order, using either a programmer-supplied ordering
 function or a default function that does lexicographical ordering of keys.
 Applications may perform equality or range searches.
@@ -43,8 +41,8 @@ numbers may be immutable, requiring that new records be added only at
 the end of the database, or mutable, permitting new records to be inserted
 between existing records.
 </ul>
-Berkeley DB also provides core database services to developers.  These
-services include:
+<p>Berkeley DB also provides core database services to developers.  These services
+include:
 <ul type=disc>
 <li><b>Page cache management</b>:
 The page cache provides fast access to a cache of database pages, handling
@@ -67,31 +65,27 @@ guaranteeing that the database state can be restored to either its
 pre-change or post-change state even after a system crash or hard-disk
 failure.
 </ul>
-By combining the page cache, transaction, locking, and logging systems,
+<p>By combining the page cache, transaction, locking, and logging systems,
 Berkeley DB provides the same services found in much larger, more complex and
 more expensive database systems.  Berkeley DB supports multiple simultaneous
 readers and writers and guarantees that all changes are recoverable, even
 in the case of a catastrophic hardware failure during a database update.
-<p>
-Developers may select some or all of the core database services for any
+<p>Developers may select some or all of the core database services for any
 access method or database.  Therefore, it is possible to choose the
 appropriate storage structure and the right degrees of concurrency and
 recoverability for any application.
-<p>
-In addition, some of the systems (for example, the locking subsystem)
+<p>In addition, some of the systems (for example, the locking subsystem)
 can be called separately from the Berkeley DB access method.  As a result,
 developers can integrate non-database objects into their transactional
 applications using Berkeley DB.
-<p>
-Berkeley DB includes callable APIs in C, C++, Java, Tcl and Perl.  Other APIs
+<p>Berkeley DB includes callable APIs in C, C++, Java, Tcl and Perl.  Other APIs
 are separately available.
-<p>
-The Berkeley DB library does not provide end-user interfaces, data entry GUI's,
+<p>The Berkeley DB library does not provide end-user interfaces, data entry GUI's,
 SQL or ODBC support or other standard database interfaces.  What it does
 provide are the programmatic building blocks that allow you to easily
 embed database-style functionality and support into other objects or
 interfaces.
-<table><tr><td><br></td><td width="1%"><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/where.html"><img src="../../images/next.gif" alt="Next"></a>
+<table><tr><td><br></td><td width="1%"><a href="../../ref/toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../../ref/intro/products.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p><font size=1><a href="http://www.sleepycat.com">Copyright Sleepycat Software</a></font>
 </body>

@@ -1,5 +1,6 @@
-<!--"@(#)env_create.so	10.5 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: env_create.so,v 10.11 2000/03/17 01:53:59 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>db_env_create</h1>
@@ -24,25 +26,25 @@ int
 db_env_create(DB_ENV **dbenvp, u_int32_t flags);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The db_env_create function creates a DB_ENV structure which is the handle
+<p>The db_env_create function creates a DB_ENV structure which is the handle
 for a Berkeley DB environment.  A pointer to this structure is returned in the
 memory referenced by <b>dbenvp</b>.
-<p>
-The <b>flags</b> parameter is currently unused, and must be set to 0.
-<p>
-The db_env_create
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The <b>flags</b> parameter must be set to 0 or the following value:
+<p><dl compact>
+<p><dt><a name="DB_CLIENT">DB_CLIENT</a><dd>Create a client environment to connect to a server.
+<p>The DB_CLIENT flag indicates to the system that this environment
+is remote on a server.  The use of this flag causes the environment
+methods to use functions that call a server instead of local functions.
+Prior to making any environment or database method calls, the application
+must call the <a href="../api_c/env_set_server.html">DBENV-&gt;set_server</a> function to establish the
+connection to the server.
+</dl>
+<p>The db_env_create function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the db_env_create function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the db_env_create function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The db_env_create function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the db_env_create function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_close.html">DBENV-&gt;close</a>,
 <a href="../api_c/env_create.html">db_env_create</a>,
@@ -55,10 +57,7 @@ for errors specified for other Berkeley DB and C library or system functions.
 <a href="../api_c/env_set_errcall.html">DBENV-&gt;set_errcall</a>,
 <a href="../api_c/env_set_errfile.html">DBENV-&gt;set_errfile</a>,
 <a href="../api_c/env_set_errpfx.html">DBENV-&gt;set_errpfx</a>,
-<a href="../api_c/env_set_mutexlocks.html">DBENV-&gt;set_mutexlocks</a>,
-<a href="../api_c/env_set_pageyield.html">DBENV-&gt;set_pageyield</a>,
 <a href="../api_c/env_set_paniccall.html">DBENV-&gt;set_paniccall</a>,
-<a href="../api_c/env_set_region_init.html">DBENV-&gt;set_region_init</a>
 and
 <a href="../api_c/env_set_verbose.html">DBENV-&gt;set_verbose</a>.
 </tt>

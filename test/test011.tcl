@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 1997, 1998, 1999
+# Copyright (c) 1996, 1997, 1998, 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)test011.tcl	11.10 (Sleepycat) 9/24/99
+#	$Id: test011.tcl,v 11.19 2000/05/16 19:46:19 krinsky Exp $
 #
 # DB Test 11 {access method}
 # Use the first 10,000 entries from the dictionary.
@@ -15,12 +15,13 @@
 # a very tiny page size.
 proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	global dlist
+	global rand_init
 	source ./include.tcl
 
 	set dlist ""
 
 	if { [is_rbtree $method] == 1 } {
-		puts "Test011 skipping for method $method"
+		puts "Test0$tnum skipping for method $method"
 		return
 	}
 	if { [is_record_based $method] == 1 } {
@@ -37,14 +38,27 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	berkdb srand $rand_init
+
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $args "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+		set env NULL
+	} else {
+		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $args $eindex]
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir
 
-	set db [eval {berkdb open -create -truncate \
+	set db [eval {berkdb_open -create -truncate \
 	    -mode 0644} [concat $args "-dup"] {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
@@ -69,7 +83,7 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	while { [gets $did str] != -1 && $count < $nentries } {
 		for { set i 1 } { $i <= $ndups } { incr i 2 } {
 			set datastr $i:$str
-			set ret [eval {$db put} $txn $pflags $str $datastr]
+			set ret [eval {$db put} $txn $pflags {$str $datastr}]
 			error_check_good put $ret 0
 		}
 
@@ -78,6 +92,9 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 		for {set ret [$dbc get "-set" $str ]} \
 		    {[llength $ret] != 0} \
 		    {set ret [$dbc get "-next"] } {
+			if {[llength $ret] == 0} {
+				break
+			}
 			set k [lindex [lindex $ret 0] 0]
 			if { [string compare $k $str] != 0 } {
 				break
@@ -85,15 +102,12 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 			set datastr [lindex [lindex $ret 0] 1]
 			set d [data_of $datastr]
 
-			if {[string length $d] == 0} {
-				break
-			}
 			error_check_good Test0$tnum:put $d $str
 			set id [ id_of $datastr ]
 			error_check_good Test0$tnum:dup# $id $x
 			incr x 2
 		}
-		error_check_good Test011:numdups $x $maxodd
+		error_check_good Test0$tnum:numdups $x $maxodd
 		incr count
 	}
 	error_check_good curs_close [$dbc close] 0
@@ -107,16 +121,16 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 
 	# Now compare the keys to see if they match the dictionary entries
 	set q q
-	exec $SED $nentries$q $dict > $t3
-	exec $SORT $t3 > $t2
-	exec $SORT $t1 > $t3
+	filehead $nentries $dict $t3
+	filesort $t3 $t2
+	filesort $t1 $t3
 
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	error_check_good db_close [$db close] 0
 
-	set db [berkdb open $testfile]
+	set db [eval {berkdb_open} $args $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\tTest0$tnum.c: \
@@ -124,9 +138,9 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum 11} args } {
 	dup_check $db $txn $t1 $dlist
 
 	# Now compare the keys to see if they match the dictionary entries
-	exec $SORT $t1 > $t3
+	filesort $t1 $t3
 	error_check_good Test0$tnum:diff($t3,$t2) \
-	    [catch { exec $CMP $t3 $t2 } res] 0
+	    [filecmp $t3 $t2] 0
 
 	puts "\tTest0$tnum.d: Testing key_first functionality"
 	add_dup $db $txn $nentries "-keyfirst" 0 0
@@ -191,7 +205,18 @@ proc test011_recno { method {nentries 10000} {tnum 11} largs } {
 	    $method ($largs) $nentries test cursor insert functionality"
 
 	# Create the database and open the dictionary
-	set testfile $testdir/test0$tnum.db
+	set eindex [lsearch -exact $largs "-env"]
+	#
+	# If we are using an env, then testfile should just be the db name.
+	# Otherwise it is the test directory and the name.
+	if { $eindex == -1 } {
+		set testfile $testdir/test0$tnum.db
+		set env NULL
+	} else {
+		set testfile test0$tnum.db
+		incr eindex
+		set env [lindex $largs $eindex]
+	}
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
@@ -200,8 +225,8 @@ proc test011_recno { method {nentries 10000} {tnum 11} largs } {
 	if {$renum == 1} {
 		append largs " -renumber"
 	}
-	set db [eval {berkdb \
-	    open -create -truncate -mode 0644} $largs {$omethod $testfile}]
+	set db [eval {berkdb_open \
+	     -create -truncate -mode 0644} $largs {$omethod $testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -298,23 +323,23 @@ proc test011_recno { method {nentries 10000} {tnum 11} largs } {
 	puts "\tTest0$tnum.b: dump file"
 	dump_file $db $txn $t1 test011_check
 	error_check_good Test0$tnum:diff($t2,$t1) \
-	    [catch { exec $CMP $t2 $t1 } res] 0
+	    [filecmp $t2 $t1] 0
 
 	error_check_good db_close [$db close] 0
 
 	puts "\tTest0$tnum.c: close, open, and dump file"
-	open_and_dump_file $testfile NULL $txn $t1 test011_check \
+	open_and_dump_file $testfile $env $txn $t1 test011_check \
 	    dump_file_direction "-first" "-next"
 	error_check_good Test0$tnum:diff($t2,$t1) \
-	    [catch { exec $CMP $t2 $t1 } res] 0
+	    [filecmp $t2 $t1] 0
 
 	puts "\tTest0$tnum.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile NULL $txn $t1 test011_check \
+	open_and_dump_file $testfile $env $txn $t1 test011_check \
 	    dump_file_direction "-last" "-prev"
 
-	exec $SORT -n $t1 > $t3
+	filesort $t1 $t3 -n
 	error_check_good Test0$tnum:diff($t2,$t3) \
-	    [catch { exec $CMP $t2 $t3 } res] 0
+	    [filecmp $t2 $t3] 0
 }
 
 proc test011_check { key data } {

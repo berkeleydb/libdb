@@ -1,4 +1,4 @@
-@(#)Design	11.1 (Sleepycat) 7/25/99
+$Id: Design,v 11.2 1999/11/21 23:08:27 bostic Exp $
 
 There are three ways we do locking in the mpool code:
 

@@ -1,5 +1,6 @@
-<!--"@(#)memp_fclose.so	10.16 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: memp_fclose.so,v 10.19 2000/03/01 21:41:30 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>memp_fclose</h1>
@@ -24,27 +26,18 @@ int
 memp_fclose(DB_MPOOLFILE *mpf);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The memp_fclose function closes the source file indicated by the
+<p>The memp_fclose function closes the source file indicated by the
 DB_MPOOLFILE structure.  Calling memp_fclose does not imply
 a call to <a href="../api_c/memp_fsync.html">memp_fsync</a>, i.e. no pages are written to the source
 file as as a result of calling memp_fclose.
-<p>
-In addition, if the <b>file</b> argument to <a href="../api_c/memp_fopen.html">memp_fopen</a> was NULL,
+<p>In addition, if the <b>file</b> argument to <a href="../api_c/memp_fopen.html">memp_fopen</a> was NULL,
 any underlying files created for this DB_MPOOLFILE will be removed.
-<p>
-The memp_fclose
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The memp_fclose function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the memp_fclose function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the memp_fclose function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The memp_fclose function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the memp_fclose function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_mp_mmapsize.html">DBENV-&gt;set_mp_mmapsize</a>,
 <a href="../api_c/memp_fclose.html">memp_fclose</a>,

@@ -12,32 +12,32 @@
 #include "log.h"
 
 /*
- * __txn_regop_recover --
- *	Recovery function for regop.
+ * __txn_old_regop_recover --
+ *	Recovery function for old_regop.
  *
- * PUBLIC: int __txn_regop_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC: int __txn_old_regop_recover
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_regop_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_old_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
-	__txn_regop_args *argp;
+	__txn_old_regop_args *argp;
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
-	REC_PRINT(__txn_regop_print);
-	REC_INTRO(__txn_regop_read);
+	REC_PRINT(__txn_old_regop_print);
+	REC_INTRO(__txn_old_regop_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (redo) {
+		if (DB_REDO(op)) {
 			if ((ret = memp_fget(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
@@ -57,10 +57,132 @@ __txn_regop_recover(dbenv, dbtp, lsnp, redo, info)
 	 *
 	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
 	 */
-	if (cmp_p == 0 && redo) {
+	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		modified = 1;
-	} else if (cmp_n == 0 && !redo) {
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
+		/* Need to undo update described. */
+		modified = 1;
+	}
+	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+		goto out;
+
+	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
+}
+/*
+ * __txn_regop_recover --
+ *	Recovery function for regop.
+ *
+ * PUBLIC: int __txn_regop_recover
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__txn_regop_recover(dbenv, dbtp, lsnp, op, info)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__txn_regop_args *argp;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	int cmp_n, cmp_p, modified, ret;
+
+	REC_PRINT(__txn_regop_print);
+	REC_INTRO(__txn_regop_read);
+
+	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+		if (DB_REDO(op)) {
+			if ((ret = memp_fget(mpf,
+			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
+				goto out;
+		} else {
+			*lsnp = argp->prev_lsn;
+			ret = 0;
+			goto out;
+		}
+
+	modified = 0;
+	cmp_n = log_compare(lsnp, &LSN(pagep));
+
+	/*
+	 * Use this when there is something like "pagelsn" in the argp
+	 * structure.  Sometimes, you might need to compare meta-data
+	 * lsn's instead.
+	 *
+	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
+	 */
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Need to redo update described. */
+		modified = 1;
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
+		/* Need to undo update described. */
+		modified = 1;
+	}
+	if (ret = memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
+		goto out;
+
+	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
+}
+/*
+ * __txn_old_ckp_recover --
+ *	Recovery function for old_ckp.
+ *
+ * PUBLIC: int __txn_old_ckp_recover
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__txn_old_ckp_recover(dbenv, dbtp, lsnp, op, info)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__txn_old_ckp_args *argp;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	int cmp_n, cmp_p, modified, ret;
+
+	REC_PRINT(__txn_old_ckp_print);
+	REC_INTRO(__txn_old_ckp_read);
+
+	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
+		if (DB_REDO(op)) {
+			if ((ret = memp_fget(mpf,
+			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
+				goto out;
+		} else {
+			*lsnp = argp->prev_lsn;
+			ret = 0;
+			goto out;
+		}
+
+	modified = 0;
+	cmp_n = log_compare(lsnp, &LSN(pagep));
+
+	/*
+	 * Use this when there is something like "pagelsn" in the argp
+	 * structure.  Sometimes, you might need to compare meta-data
+	 * lsn's instead.
+	 *
+	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
+	 */
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Need to redo update described. */
+		modified = 1;
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
 		/* Need to undo update described. */
 		modified = 1;
 	}
@@ -77,14 +199,14 @@ out:	REC_CLOSE;
  *	Recovery function for ckp.
  *
  * PUBLIC: int __txn_ckp_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_ckp_args *argp;
@@ -98,7 +220,7 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
 	REC_INTRO(__txn_ckp_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (redo) {
+		if (DB_REDO(op)) {
 			if ((ret = memp_fget(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
@@ -118,10 +240,10 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, redo, info)
 	 *
 	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
 	 */
-	if (cmp_p == 0 && redo) {
+	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		modified = 1;
-	} else if (cmp_n == 0 && !redo) {
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
 		/* Need to undo update described. */
 		modified = 1;
 	}
@@ -138,14 +260,14 @@ out:	REC_CLOSE;
  *	Recovery function for xa_regop.
  *
  * PUBLIC: int __txn_xa_regop_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_xa_regop_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_xa_regop_args *argp;
@@ -159,7 +281,7 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, redo, info)
 	REC_INTRO(__txn_xa_regop_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (redo) {
+		if (DB_REDO(op)) {
 			if ((ret = memp_fget(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
@@ -179,10 +301,10 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, redo, info)
 	 *
 	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
 	 */
-	if (cmp_p == 0 && redo) {
+	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		modified = 1;
-	} else if (cmp_n == 0 && !redo) {
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
 		/* Need to undo update described. */
 		modified = 1;
 	}
@@ -199,14 +321,14 @@ out:	REC_CLOSE;
  *	Recovery function for child.
  *
  * PUBLIC: int __txn_child_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, int, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_child_recover(dbenv, dbtp, lsnp, redo, info)
+__txn_child_recover(dbenv, dbtp, lsnp, op, info)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
-	int redo;
+	db_recops op;
 	void *info;
 {
 	__txn_child_args *argp;
@@ -220,7 +342,7 @@ __txn_child_recover(dbenv, dbtp, lsnp, redo, info)
 	REC_INTRO(__txn_child_read);
 
 	if ((ret = memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (redo) {
+		if (DB_REDO(op)) {
 			if ((ret = memp_fget(mpf,
 			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
@@ -240,10 +362,10 @@ __txn_child_recover(dbenv, dbtp, lsnp, redo, info)
 	 *
 	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
 	 */
-	if (cmp_p == 0 && redo) {
+	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		modified = 1;
-	} else if (cmp_n == 0 && !redo) {
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
 		/* Need to undo update described. */
 		modified = 1;
 	}

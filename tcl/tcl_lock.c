@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999
+ * Copyright (c) 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)tcl_lock.c	11.12 (Sleepycat) 10/9/99";
+static const char revid[] = "$Id: tcl_lock.c,v 11.18 2000/04/21 18:18:58 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -43,10 +43,10 @@ enum lkmode {
 };
 
 /*
- * PUBLIC: int	tcl_LockDetect __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_LockDetect --
+ *
+ * PUBLIC: int tcl_LockDetect __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_LockDetect(interp, objc, objv, envp)
@@ -111,10 +111,10 @@ tcl_LockDetect(interp, objc, objv, envp)
 }
 
 /*
- * PUBLIC: int	tcl_LockGet __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_LockGet --
+ *
+ * PUBLIC: int tcl_LockGet __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_LockGet(interp, objc, objv, envp)
@@ -196,15 +196,13 @@ tcl_LockGet(interp, objc, objv, envp)
 		Tcl_SetObjResult(interp, res);
 	}
 	return (result);
-
 }
 
-
 /*
- * PUBLIC: int	tcl_LockStat __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_LockStat --
+ *
+ * PUBLIC: int tcl_LockStat __P((Tcl_Interp *, int,
+ * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_LockStat(interp, objc, objv, envp)
@@ -252,7 +250,6 @@ tcl_LockStat(interp, objc, objv, envp)
 error:
 	__os_free(sp, sizeof(*sp));
 	return (result);
-
 }
 
 /*
@@ -322,10 +319,9 @@ lock_Cmd(clientData, interp, objc, objv)
 }
 
 /*
- * PUBLIC: int	tcl_LockVec __P((Tcl_Interp *, int,
- * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
- *
  * tcl_LockVec --
+ *
+ * PUBLIC: int tcl_LockVec __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
 tcl_LockVec(interp, objc, objv, envp)
@@ -568,9 +564,9 @@ _LockPutInfo(interp, op, lock, lockid, objp)
 	DBTCL_INFO *p, *nextp;
 	int found;
 
-	for (p = __db_infohead; p != NULL; p = nextp) {
+	for (p = LIST_FIRST(&__db_infohead); p != NULL; p = nextp) {
 		found = 0;
-		nextp = p->i_next;
+		nextp = LIST_NEXT(p, entries);
 		if ((op == DB_LOCK_PUT && (p->i_lock == lock)) ||
 		    (op == DB_LOCK_PUT_ALL && p->i_locker == lockid) ||
 		    (op == DB_LOCK_PUT_OBJ && p->i_lockobj.data &&
@@ -583,7 +579,6 @@ _LockPutInfo(interp, op, lock, lockid, objp)
 		}
 	}
 }
-
 
 static int
 _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
@@ -613,7 +608,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 		    TCL_STATIC);
 		return (TCL_ERROR);
 	}
-	ret = __os_malloc(sizeof(DB_LOCK), NULL, &lock);
+	ret = __os_malloc(envp, sizeof(DB_LOCK), NULL, &lock);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
@@ -630,7 +625,7 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	 * Success.  Set up return.  Set up new info
 	 * and command widget for this lock.
 	 */
-	ret = __os_malloc(objp->size, NULL, &ip->i_lockobj.data);
+	ret = __os_malloc(envp, objp->size, NULL, &ip->i_lockobj.data);
 	if (ret != 0) {
 		Tcl_SetResult(interp, "Could not duplicate obj",
 		    TCL_STATIC);

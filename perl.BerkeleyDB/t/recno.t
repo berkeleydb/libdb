@@ -626,6 +626,7 @@ umask(0) ;
     # db_stat
 
     my $lex = new LexFile $Dfile ;
+    my $recs = ($BerkeleyDB::db_version >= 3.1 ? "bt_ndata" : "bt_nrecs") ;
     my @array ;
     my ($k, $v) ;
     ok 177, my $db = new BerkeleyDB::Recno -Filename 	=> $Dfile, 
@@ -634,7 +635,7 @@ umask(0) ;
 					;
 
     my $ref = $db->db_stat() ; 
-    ok 178, $ref->{'bt_nrecs'} == 0;
+    ok 178, $ref->{$recs} == 0;
     ok 179, $ref->{'bt_pagesize'} == 4 * 1024;
 
     # create some data
@@ -652,7 +653,7 @@ umask(0) ;
     ok 180, $ret == 0 ;
 
     $ref = $db->db_stat() ; 
-    ok 181, $ref->{'bt_nrecs'} == 3;
+    ok 181, $ref->{$recs} == 3;
 }
 
 {

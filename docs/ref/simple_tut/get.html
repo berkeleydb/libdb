@@ -1,5 +1,6 @@
-<!--@(#)get.so	10.19 (Sleepycat) 11/10/99-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: get.so,v 10.22 2000/03/18 21:43:17 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -14,14 +15,11 @@
 </td></tr></table>
 <p>
 <h1 align=center>Retrieving elements from a database</h1>
-<p>
-The simplest way to retrieve elements from a database is the
+<p>The simplest way to retrieve elements from a database is the
 <a href="../../api_c/db_get.html">DB-&gt;get</a> interface.
-<p>
-The <a href="../../api_c/db_get.html">DB-&gt;get</a> interface takes the same five arguments that the
+<p>The <a href="../../api_c/db_get.html">DB-&gt;get</a> interface takes the same five arguments that the
 <a href="../../api_c/db_put.html">DB-&gt;put</a> interface takes:
-<p>
-<dl compact>
+<p><dl compact>
 <p><dt>db<dd>The database handle returned by <a href="../../api_c/db_create.html">db_create</a>.
 <p><dt>txnid<dd>A transaction ID.  In our simple case, we aren't expecting to recover
 the database after application or system crash, so we aren't using
@@ -33,9 +31,8 @@ database.
 <p><dt>flags<dd>Optional flags modifying the underlying behavior of the <a href="../../api_c/db_get.html">DB-&gt;get</a>
 interface.
 </dl>
-<p>
-Here's what the code to call <a href="../../api_c/db_get.html">DB-&gt;get</a> looks like:
-<blockquote><pre>#include &lt;sys/types.h&gt;
+<p>Here's what the code to call <a href="../../api_c/db_get.html">DB-&gt;get</a> looks like:
+<p><blockquote><pre>#include &lt;sys/types.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;db.h&gt;
 <p>
@@ -71,8 +68,7 @@ main()
 		dbp-&gt;err(dbp, ret, "DB-&gt;put");
 		goto err;
 	}
-<p><b>
-	if ((ret = dbp-&gt;get(dbp, NULL, &key, &data, 0)) == 0)
+<p><b>	if ((ret = dbp-&gt;get(dbp, NULL, &key, &data, 0)) == 0)
 		printf("db: %s: key retrieved: data was %s.\n",
 		    (char *)key.data, (char *)data.data);
 	else {
@@ -80,17 +76,15 @@ main()
 		goto err;
 	}
 </b></pre></blockquote>
-<p>
-Normally, it is not necessary to clear the <a href="../../api_c/dbt.html">DBT</a> structures passed
+<p>Normally, it is not necessary to clear the <a href="../../api_c/dbt.html">DBT</a> structures passed
 to the Berkeley DB functions between calls.  This is not necessarily true, when
 some of the less commonly used flags for those structures are specified,
 and the <a href="../../api_c/dbt.html">DBT</a> manual page should be consulted for details in those
 cases.
-<p>
-It is possible, of course, to distinguish between system errors and the
+<p>It is possible, of course, to distinguish between system errors and the
 key/data pair simply not existing in the database.  There are three
 possible returns from <a href="../../api_c/db_get.html">DB-&gt;get</a>:
-<ol>
+<p><ol>
 <p><li>The call might be successful and the key found, in which case the return
 value will be 0.
 <li>The call might be successful, but the key not found, in which

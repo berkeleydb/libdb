@@ -1,5 +1,6 @@
-<!--"@(#)lock_put.so	10.18 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: lock_put.so,v 10.21 2000/03/01 21:41:29 bostic Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>lock_put</h1>
@@ -24,28 +26,17 @@ int
 lock_put(DB_ENV *env, DB_LOCK *lock);
 </pre></h3>
 <h1>Description</h1>
-<p>
-The lock_put function releases <b>lock</b> from the lock table.
-<p>
-The lock_put
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The lock_put function releases <b>lock</b> from the lock table.
+<p>The lock_put function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the lock_put function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the lock_put
-function may fail and return a non-zero error
-for the following conditions:
-<dl compact>
+<p>The lock_put function may fail and return a non-zero error for the following conditions:
+<p><dl compact>
 <p><dt>EINVAL<dd>An invalid flag value or parameter was specified.
 </dl>
-<p>
-In addition, the lock_put function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The lock_put function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the lock_put function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lk_conflicts.html">DBENV-&gt;set_lk_conflicts</a>,
 <a href="../api_c/env_set_lk_detect.html">DBENV-&gt;set_lk_detect</a>,

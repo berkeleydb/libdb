@@ -1,10 +1,4 @@
 
-  * add the examples from the pod into the test harness.
-
-  * add support for the join functionality.
-
-  * use '~' magic to store the inner data.
-
   * Proper documentation.
 
   * address or document the "close all cursors if you encounter an error"
@@ -12,27 +6,19 @@
   * Change the $BerkeleyDB::Error to store the info in the db object,
     if possible.
 
-  * do we need a close method? Is one needed for env, db, cursor etc?
-    Interaction with untie?
-
-    Should the close methods fail if there are still any children open,
-    e.g. if a database has one or more cursors open should the database
-    close fail?
-
-    Alternatively should the clode method arrange it so that all
-    children get closed?
-
-    If not document the fact that the destruction of the database
-    object will close the database.
-
   * $BerkeleyDB::db_version is documented. &db_version isn't.
 
   * migrate perl code into the .xs file where necessary
 
   * convert as many of the DB examples files to BerkeleyDB format.
 
+  * add a method to the DB object to allow access to the environment (if there
+    actually is one).
+
 
 Possibles
+
+  * use '~' magic to store the inner data.
 
   * for the get stuff zap the value to undef if it doesn't find the
     key. This may be more intuitive for those folks who are used with
@@ -51,13 +37,17 @@ Possibles
 Environment Verbose
 Env->open mode
 DB cache size extra parameter
-DB->open subdatabases
+DB->open subdatabases	Done
 An empty environment causes DB->open to fail
-where is __db.001 coming from?
-Change db_strerror for 0 to ""?
-Queue
-db_stat for Hash & Queue
+where is __db.001 coming from? db_remove seems to create it. Bug in 3.0.55
+Change db_strerror for 0 to ""? Done
+Queue	Done
+db_stat for Hash & Queue	Done
 No TxnMgr
+DB->remove
+ENV->remove
+ENV->set_verbose
+upgrade
 
     $env = BerkeleyDB::Env::Create
     $env = create BerkeleyDB::Env

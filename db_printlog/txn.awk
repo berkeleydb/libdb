@@ -1,4 +1,4 @@
-# @(#)txn.awk	10.1 (Sleepycat) 11/1/98
+# $Id: txn.awk,v 10.2 1999/11/21 18:01:43 bostic Exp $
 #
 # Print out all the records for a comma-separated list of transaction ids.
 {

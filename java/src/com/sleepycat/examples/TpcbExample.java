@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 1998, 1999
+ * Copyright (c) 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  *
- *	@(#)TpcbExample.java	11.3 (Sleepycat) 9/10/99
+ * $Id: TpcbExample.java,v 11.9 2000/04/01 15:52:15 dda Exp $
  */
 
 package com.sleepycat.examples;
@@ -89,7 +89,7 @@ class TpcbExample extends DbEnv
             local_flags |= Db.DB_INIT_TXN | Db.DB_INIT_LOCK |
                            Db.DB_INIT_LOG | Db.DB_INIT_MPOOL;
 
-        open(home, null, local_flags, 0);        // may throw DbException
+        open(home, local_flags, 0);        // may throw DbException
     }
 
     //
@@ -341,7 +341,6 @@ class TpcbExample extends DbEnv
         Db tdb = null;
         double gtps, itps;
         int failed, ifailed, ret, txns;
-        long gus, ius;
         long starttime, curtime, lasttime;
 
         //
@@ -368,21 +367,19 @@ class TpcbExample extends DbEnv
         txns = failed = ifailed = 0;
         starttime = (new Date()).getTime();
         lasttime = starttime;
-        while (n-- >= 0) {
+        while (n-- > 0) {
             txns++;
             ret = txn(adb, bdb, tdb, hdb, accounts, branches, tellers);
             if (ret != 0) {
                 failed++;
                 ifailed++;
             }
-            if (n % 1000 == 0) {
+            if (n % 5000 == 0) {
                 curtime = (new Date()).getTime();
-                gus = (curtime - starttime) * 1000;
-                ius = (curtime - lasttime) * 1000;
                 gtps = (double)(txns - failed) /
-                    ((double)gus / 1000000);
-                itps = (double)(1000 - ifailed) /
-                    ((double)ius / 1000000);
+		    ((curtime - starttime) / 1000.0);
+                itps = (double)(5000 - ifailed) /
+		    ((curtime - lasttime) / 1000.0);
                 System.out.print(String.valueOf(txns) + " txns " +
                                  String.valueOf(failed) + " failed ");
                 System.out.println(showRounded(gtps, 2) + " TPS (gross) " +
@@ -539,7 +536,6 @@ class TpcbExample extends DbEnv
         System.err.println(err.toString());
         System.exit(1);
     }
-
 
     public static void main(String argv[])
     {

@@ -1,5 +1,5 @@
 /*
- *	@(#)acconfig.h	11.16 (Sleepycat) 11/9/99
+ * $Id: acconfig.h,v 11.25 2000/05/16 15:40:44 bostic Exp $
  */
 
 /* Define if you are building a version for running the test suite. */
@@ -20,7 +20,7 @@
 /* Define if fcntl/F_SETFD denies child access to file descriptors. */
 #undef HAVE_FCNTL_F_SETFD
 
-/* Define if building big-file environment (e.g., Solaris, HP/UX). */
+/* Define if building big-file environment (e.g., AIX, HP/UX, Solaris). */
 #undef HAVE_FILE_OFFSET_BITS
 
 /* Mutex possibilities. */
@@ -29,6 +29,7 @@
 #undef HAVE_MUTEX_ALPHA_GCC_ASSEMBLY
 #undef HAVE_MUTEX_HPPA_GCC_ASSEMBLY
 #undef HAVE_MUTEX_HPPA_MSEM_INIT
+#undef HAVE_MUTEX_IA64_GCC_ASSEMBLY
 #undef HAVE_MUTEX_MACOS
 #undef HAVE_MUTEX_MSEM_INIT
 #undef HAVE_MUTEX_PTHREADS
@@ -43,12 +44,13 @@
 #undef HAVE_MUTEX_UI_THREADS
 #undef HAVE_MUTEX_UTS_CC_ASSEMBLY
 #undef HAVE_MUTEX_VMS
+#undef HAVE_MUTEX_VXWORKS
 #undef HAVE_MUTEX_WIN16
 #undef HAVE_MUTEX_WIN32
 #undef HAVE_MUTEX_X86_GCC_ASSEMBLY
 
-/* Define if you have the sigfillset function.  */
-#undef HAVE_SIGFILLSET
+/* Define if building RPC client/server. */
+#undef HAVE_RPC
 
 /* Define if your sprintf returns a pointer, not a length. */
 #undef SPRINTF_RET_CHARPNT
@@ -85,12 +87,15 @@
 #ifndef	HAVE_RAISE
 #define	raise		__db_Craise
 #endif
-#ifndef HAVE_SNPRINTF
+#ifndef	HAVE_SNPRINTF
 #define	snprintf	__db_Csnprintf
+#endif
+#ifndef	HAVE_STRCASECMP
+#define	strcasecmp	__db_Cstrcasecmp
 #endif
 #ifndef	HAVE_STRERROR
 #define	strerror	__db_Cstrerror
 #endif
-#ifndef HAVE_VSNPRINTF
+#ifndef	HAVE_VSNPRINTF
 #define	vsnprintf	__db_Cvsnprintf
 #endif

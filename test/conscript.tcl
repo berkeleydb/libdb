@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999
+# Copyright (c) 1999, 2000
 #	Sleepycat Software.  All rights reserved.
 #
-#	@(#)conscript.tcl	11.2 (Sleepycat) 9/30/99
+#	$Id: conscript.tcl,v 11.8 2000/05/08 19:29:31 sue Exp $
 #
 # Script for DB_CONSUME test (test070.tcl).
 # Usage: conscript dir file runtype nitems outputfile tnum args
@@ -79,7 +79,7 @@ source $test_path/test.tcl
 
 # Verify usage
 if { $argc < 6 } {
-	puts stderr $usage
+	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
@@ -99,11 +99,11 @@ set args [lindex [lrange $argv 6 end] 0]
 set mydata "consumer data"
 
 # Open env
-set dbenv [berkdb env -home $dir -mpool -lock]
+set dbenv [berkdb env -home $dir -lock]
 error_check_good db_env_create [is_valid_env $dbenv] TRUE
 
 # Figure out db opening command.
-set db_cmd [concat {berkdb open -create -mode 0644 -queue -env}\
+set db_cmd [concat {berkdb_open -create -mode 0644 -queue -env}\
 	$dbenv $args $file]
 
 # Invoke consumescript_produce or consumescript_consume based on $runtype
@@ -116,5 +116,5 @@ if { $runtype == "PRODUCE" } {
 } else {
 	error_check_good bad_args $runtype "either PRODUCE or CONSUME"
 }
-
+error_check_good env_close [$dbenv close] 0
 exit

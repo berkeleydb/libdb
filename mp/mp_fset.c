@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 1997, 1998, 1999
+ * Copyright (c) 1996, 1997, 1998, 1999, 2000
  *	Sleepycat Software.  All rights reserved.
  */
 #include "db_config.h"
 
 #ifndef lint
-static const char sccsid[] = "@(#)mp_fset.c	11.1 (Sleepycat) 7/25/99";
+static const char revid[] = "$Id: mp_fset.c,v 11.9 2000/04/20 21:14:19 bostic Exp $";
 #endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -16,9 +16,18 @@ static const char sccsid[] = "@(#)mp_fset.c	11.1 (Sleepycat) 7/25/99";
 #include <errno.h>
 #endif
 
+#ifdef  HAVE_RPC
+#include "db_server.h"
+#endif
+
 #include "db_int.h"
 #include "db_shash.h"
 #include "mp.h"
+
+#ifdef HAVE_RPC
+#include "gen_client_ext.h"
+#include "rpc_client_ext.h"
+#endif
 
 /*
  * memp_fset --
@@ -33,13 +42,17 @@ memp_fset(dbmfp, pgaddr, flags)
 	BH *bhp;
 	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	MCACHE *mc;
-	MPOOL *mp;
+	MPOOL *c_mp, *mp;
 	int ret;
 
 	dbmp = dbmfp->dbmp;
 	dbenv = dbmp->dbenv;
-	mp = dbmp->reginfo.primary;
+	mp = dbmp->reginfo[0].primary;
+
+#ifdef HAVE_RPC
+	if (F_ISSET(dbenv, DB_ENV_RPCCLIENT))
+		return (__dbcl_memp_fset(dbmfp, pgaddr, flags));
+#endif
 
 	PANIC_CHECK(dbenv);
 
@@ -64,23 +77,23 @@ memp_fset(dbmfp, pgaddr, flags)
 	bhp = (BH *)((u_int8_t *)pgaddr - SSZA(BH, buf));
 
 	/* Convert the buffer header to a cache. */
-	mc = BH_TO_CACHE(dbmp, bhp);
+	c_mp = BH_TO_CACHE(dbmp, bhp);
 
-	R_LOCK(dbenv, &dbmp->reginfo);
+	R_LOCK(dbenv, dbmp->reginfo);
 
 	if (LF_ISSET(DB_MPOOL_CLEAN) && F_ISSET(bhp, BH_DIRTY)) {
-		++mc->stat.st_page_clean;
-		--mc->stat.st_page_dirty;
+		++c_mp->stat.st_page_clean;
+		--c_mp->stat.st_page_dirty;
 		F_CLR(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DIRTY) && !F_ISSET(bhp, BH_DIRTY)) {
-		--mc->stat.st_page_clean;
-		++mc->stat.st_page_dirty;
+		--c_mp->stat.st_page_clean;
+		++c_mp->stat.st_page_dirty;
 		F_SET(bhp, BH_DIRTY);
 	}
 	if (LF_ISSET(DB_MPOOL_DISCARD))
 		F_SET(bhp, BH_DISCARD);
 
-	R_UNLOCK(dbenv, &dbmp->reginfo);
+	R_UNLOCK(dbenv, dbmp->reginfo);
 	return (0);
 }

@@ -1,5 +1,6 @@
-<!--"@(#)log_stat.so	10.18 (Sleepycat) 9/6/99"-->
-<!--Copyright 1997, 1998, 1999 by Sleepycat Software, Inc.-->
+ 
+<!--$Id: log_stat.so,v 10.23 2000/05/25 13:47:08 dda Exp $-->
+<!--Copyright 1997, 1998, 1999, 2000 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <html>
 <head>
@@ -8,6 +9,7 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
+<a name="2"><!--meow--></a>
 <table><tr valign=top>
 <td>
 <h1>log_stat</h1>
@@ -25,25 +27,20 @@ log_stat(DB_ENV *env,
     DB_LOG_STAT **spp, void *(*db_malloc)(size_t));
 </pre></h3>
 <h1>Description</h1>
-<p>
-The log_stat function
+<p>The log_stat function
 creates a statistical structure and copies a pointer to it into a
 user-specified memory location.
-<p>
-Statistical structures are created in allocated memory.
-If
-<b>db_malloc</b> is non-NULL, it is called to allocate the memory,
-otherwise, the library function <b>malloc</b>(3) is used.
-The function <b>db_malloc</b> must match the calling conventions of
-the <b>malloc</b>(3) library routine.
+<p>Statistical structures are created in allocated memory.  If <b>db_malloc</b> is non-NULL, it
+is called to allocate the memory, otherwise, the library function
+<b>malloc</b>(3) is used.  The function <b>db_malloc</b> must match
+the calling conventions of the <b>malloc</b>(3) library routine.
 Regardless, the caller is responsible for deallocating the returned
-memory.
-To deallocate the returned memory, free each returned memory pointer;
-pointers inside the memory do not need to be individually freed.
-<p>
-The log region statistics are stored in a structure of type DB_LOG_STAT.
+memory.  To deallocate returned memory, free the returned memory
+reference, references inside the returned memory do not need to be
+individually freed.
+<p>The log region statistics are stored in a structure of type DB_LOG_STAT.
 The following DB_LOG_STAT fields will be filled in:
-<dl compact>
+<p><dl compact>
 <dt>u_int32_t st_magic;<dd>The magic number that identifies a file as a log file.
 <dt>u_int32_t st_version;<dd>The version of the log file type.
 <dt>u_int32_t st_regsize;<dd>The size of the region.
@@ -66,19 +63,12 @@ obtaining the region lock.
 <dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain
 the region lock without waiting.
 </dl>
-<p>
-The log_stat
-function returns a non-zero error value on failure and 0 on success.
-<p>
+<p>The log_stat function returns a non-zero error value on failure and 0 on success.
 <h1>Errors</h1>
-If a fatal error occurs in Berkeley DB, the log_stat function will fail and return
-<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, at which point all subsequent database calls will
-fail in the same way.
-<p>
-In addition, the log_stat function may fail and
-return a non-zero error
-for errors specified for other Berkeley DB and C library or system functions.
-<p>
+<p>The log_stat function may fail and return a non-zero error for errors specified for other Berkeley DB and C library or system functions.
+If a catastrophic error has occurred, the log_stat function may fail and return
+<a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a>, in which case all subsequent Berkeley DB calls will fail
+in the same way.
 <h1>See Also</h1>
 <a href="../api_c/env_set_lg_bsize.html">DBENV-&gt;set_lg_bsize</a>,
 <a href="../api_c/env_set_lg_max.html">DBENV-&gt;set_lg_max</a>,
