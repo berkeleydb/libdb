@@ -33,89 +33,78 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)hash.h	8.3 (Berkeley) 5/31/94
+ *	@(#)hash.h	8.4 (Berkeley) 11/2/95
  */
+
+#include <sys/queue.h>
+
+#include <mpool.h>
+#include "compat.h"
 
 /* Operations */
 typedef enum {
 	HASH_GET, HASH_PUT, HASH_PUTNEW, HASH_DELETE, HASH_FIRST, HASH_NEXT
 } ACTION;
 
-/* Buffer Management structures */
-typedef struct _bufhead BUFHEAD;
+/* cursor structure */
+typedef struct cursor_t {
+	TAILQ_ENTRY(cursor_t) queue;
+	int (*get)	__P((const DB *, struct cursor_t *, DBT *, DBT *, \
+			     u_int32_t));
+	int (*delete) __P((const DB *, struct cursor_t *, u_int32_t));
+	pgno_t	bucket;
+	pgno_t	pgno;
+	indx_t	ndx;
+	indx_t	pgndx;
+	u_int16_t *pagep;
+	void *internal;
+} CURSOR;
 
-struct _bufhead {
-	BUFHEAD		*prev;		/* LRU links */
-	BUFHEAD		*next;		/* LRU links */
-	BUFHEAD		*ovfl;		/* Overflow page buffer header */
-	u_int32_t	 addr;		/* Address of this page */
-	char		*page;		/* Actual page data */
-	char	 	flags;
-#define	BUF_MOD		0x0001
-#define BUF_DISK	0x0002
-#define	BUF_BUCKET	0x0004
-#define	BUF_PIN		0x0008
-};
 
 #define IS_BUCKET(X)	((X) & BUF_BUCKET)
-
-typedef BUFHEAD **SEGMENT;
+#define IS_VALID(X)     (!((X) & BUF_INVALID))
 
 /* Hash Table Information */
-typedef struct hashhdr {		/* Disk resident portion */
-	int		magic;		/* Magic NO for hash tables */
-	int		version;	/* Version ID */
-	u_int32_t	lorder;		/* Byte Order */
-	int		bsize;		/* Bucket/Page Size */
-	int		bshift;		/* Bucket shift */
-	int		dsize;		/* Directory Size */
-	int		ssize;		/* Segment Size */
-	int		sshift;		/* Segment shift */
-	int		ovfl_point;	/* Where overflow pages are being 
-					 * allocated */
-	int		last_freed;	/* Last overflow page freed */
-	int		max_bucket;	/* ID of Maximum bucket in use */
-	int		high_mask;	/* Mask to modulo into entire table */
-	int		low_mask;	/* Mask to modulo into lower half of 
-					 * table */
-	int		ffactor;	/* Fill factor */
-	int		nkeys;		/* Number of keys in hash table */
-	int		hdrpages;	/* Size of table header */
-	int		h_charkey;	/* value of hash(CHARKEY) */
-#define NCACHED	32			/* number of bit maps and spare 
-					 * points */
-	int		spares[NCACHED];/* spare pages for overflow */
-	u_int16_t	bitmaps[NCACHED];	/* address of overflow page 
-						 * bitmaps */
+typedef struct hashhdr {	/* Disk resident portion */
+	int32_t	magic;		/* Magic NO for hash tables */
+	int32_t	version;	/* Version ID */
+	int32_t	lorder;		/* Byte Order */
+	int32_t	bsize;		/* Bucket/Page Size */
+	int32_t	bshift;		/* Bucket shift */
+	int32_t	ovfl_point;	/* Where overflow pages are being allocated */
+	int32_t	last_freed;	/* Last overflow page freed */
+	int32_t	max_bucket;	/* ID of Maximum bucket in use */
+	int32_t	high_mask;	/* Mask to modulo into entire table */
+	int32_t	low_mask;	/* Mask to modulo into lower half of table */
+	int32_t	ffactor;	/* Fill factor */
+	int32_t	nkeys;		/* Number of keys in hash table */
+	int32_t	hdrpages;	/* Size of table header */
+	int32_t	h_charkey;	/* value of hash(CHARKEY) */
+#define NCACHED	32		/* number of bit maps and spare points */
+	int32_t	spares[NCACHED];/* spare pages for overflow */
+	u_int16_t	bitmaps[NCACHED];	/* address of overflow page bitmaps */
 } HASHHDR;
 
-typedef struct htab	 {		/* Memory resident data structure */
-	HASHHDR 	hdr;		/* Header */
-	int		nsegs;		/* Number of allocated segments */
-	int		exsegs;		/* Number of extra allocated 
-					 * segments */
-	u_int32_t			/* Hash function */
-	    (*hash)__P((const void *, size_t));
-	int		flags;		/* Flag values */
-	int		fp;		/* File pointer */
-	char		*tmp_buf;	/* Temporary Buffer for BIG data */
-	char		*tmp_key;	/* Temporary Buffer for BIG keys */
-	BUFHEAD 	*cpage;		/* Current page */
-	int		cbucket;	/* Current bucket */
-	int		cndx;		/* Index of next item on cpage */
-	int		errno;		/* Error Number -- for DBM 
-					 * compatability */
-	int		new_file;	/* Indicates if fd is backing store 
-					 * or no */
-	int		save_file;	/* Indicates whether we need to flush 
-					 * file at
-					 * exit */
-	u_int32_t	*mapp[NCACHED];	/* Pointers to page maps */
-	int		nmaps;		/* Initial number of bitmaps */
-	int		nbufs;		/* Number of buffers left to 
-					 * allocate */
-	BUFHEAD 	bufhead;	/* Header of buffer lru list */
-	SEGMENT 	*dir;		/* Hash Bucket directory */
+typedef struct htab {		/* Memory resident data structure */
+	TAILQ_HEAD(_cursor_queue, cursor_t) curs_queue;
+	HASHHDR hdr;		/* Header */
+	u_int32_t (*hash) __P((const void *, size_t)); /* Hash Function */
+	int32_t	flags;		/* Flag values */
+	int32_t	fp;		/* File pointer */
+	char *fname;        	/* File path */
+	char *bigdata_buf;	/* Temporary Buffer for BIG data */
+	int32_t bigdata_len;	/* Length of bigdata_buf */
+	char *bigkey_buf;	/* Temporary Buffer for BIG keys */
+	int32_t bigkey_len;	/* Length of bigkey_buf */
+	u_int16_t  *split_buf;	/* Temporary buffer for splits */
+	CURSOR	*seq_cursor;	/* Cursor used for hash_seq */
+	int32_t	errno;		/* Error Number -- for DBM compatability */
+	int32_t	new_file;	/* Indicates if fd is backing store or no */
+	int32_t	save_file;	/* Indicates whether we need to flush file at
+				 * exit */
+	u_int32_t *mapp[NCACHED];/* Pointers to page maps */
+	int32_t	nmaps;		/* Initial number of bitmaps */
+	MPOOL	*mp;		/* mpool for buffer management */
 } HTAB;
 
 /*
@@ -124,7 +113,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 #define	MAX_BSIZE		65536		/* 2^16 */
 #define MIN_BUFFERS		6
 #define MINHDRSIZE		512
-#define DEF_BUFSIZE		65536		/* 64 K */
+#define DEF_CACHESIZE	65536
 #define DEF_BUCKET_SIZE		4096
 #define DEF_BUCKET_SHIFT	12		/* log2(BUCKET) */
 #define DEF_SEGSIZE		256
@@ -136,16 +125,16 @@ typedef struct htab	 {		/* Memory resident data structure */
 #define CHARKEY			"%$sniglet^&"
 #define NUMKEY			1038583
 #define BYTE_SHIFT		3
-#define INT_TO_BYTE		2
-#define INT_BYTE_SHIFT		5
+#define INT32_T_TO_BYTE		2
+#define INT32_T_BYTE_SHIFT		5
 #define ALL_SET			((u_int32_t)0xFFFFFFFF)
 #define ALL_CLEAR		0
 
-#define PTROF(X)	((BUFHEAD *)((ptrdiff_t)(X)&~0x3))
-#define ISMOD(X)	((u_int32_t)(ptrdiff_t)(X)&0x1)
-#define DOMOD(X)	((X) = (char *)((ptrdiff_t)(X)|0x1))
-#define ISDISK(X)	((u_int32_t)(ptrdiff_t)(X)&0x2)
-#define DODISK(X)	((X) = (char *)((ptrdiff_t)(X)|0x2))
+#define PTROF(X)	((BUFHEAD *)((ptr_t)(X)&~0x3))
+#define ISMOD(X)	((ptr_t)(X)&0x1)
+#define DOMOD(X)	((X) = (int8_t *)((ptr_t)(X)|0x1))
+#define ISDISK(X)	((ptr_t)(X)&0x2)
+#define DODISK(X)	((X) = (int8_t *)((ptr_t)(X)|0x2))
 
 #define BITS_PER_MAP	32
 
@@ -170,124 +159,56 @@ typedef struct htab	 {		/* Memory resident data structure */
 #define	OADDR_OF(S,O)	((u_int32_t)((u_int32_t)(S) << SPLITSHIFT) + (O))
 
 #define BUCKET_TO_PAGE(B) \
-	(B) + hashp->HDRPAGES + ((B) ? hashp->SPARES[__log2((B)+1)-1] : 0)
+	((B) + hashp->hdr.hdrpages + ((B) \
+	    ? hashp->hdr.spares[__log2((B)+1)-1] : 0))
 #define OADDR_TO_PAGE(B) 	\
-	BUCKET_TO_PAGE ( (1 << SPLITNUM((B))) -1 ) + OPAGENUM((B));
+	(BUCKET_TO_PAGE ( (1 << SPLITNUM((B))) -1 ) + OPAGENUM((B)))
+
+#define POW2(N)  (1 << (N))
 
 /*
- * page.h contains a detailed description of the page format.
- *
- * Normally, keys and data are accessed from offset tables in the top of
- * each page which point to the beginning of the key and data.  There are
- * four flag values which may be stored in these offset tables which indicate
- * the following:
- *
- *
- * OVFLPAGE	Rather than a key data pair, this pair contains
- *		the address of an overflow page.  The format of
- *		the pair is:
- *		    OVERFLOW_PAGE_NUMBER OVFLPAGE
- *
- * PARTIAL_KEY	This must be the first key/data pair on a page
- *		and implies that page contains only a partial key.
- *		That is, the key is too big to fit on a single page
- *		so it starts on this page and continues on the next.
- *		The format of the page is:
- *		    KEY_OFF PARTIAL_KEY OVFL_PAGENO OVFLPAGE
- *		
- *		    KEY_OFF -- offset of the beginning of the key
- *		    PARTIAL_KEY -- 1
- *		    OVFL_PAGENO - page number of the next overflow page
- *		    OVFLPAGE -- 0
- *
- * FULL_KEY	This must be the first key/data pair on the page.  It
- *		is used in two cases.
- *
- *		Case 1:
- *		    There is a complete key on the page but no data
- *		    (because it wouldn't fit).  The next page contains
- *		    the data.
- *
- *		    Page format it:
- *		    KEY_OFF FULL_KEY OVFL_PAGENO OVFL_PAGE
- *
- *		    KEY_OFF -- offset of the beginning of the key
- *		    FULL_KEY -- 2
- *		    OVFL_PAGENO - page number of the next overflow page
- *		    OVFLPAGE -- 0
- *
- *		Case 2:
- *		    This page contains no key, but part of a large
- *		    data field, which is continued on the next page.
- *
- *		    Page format it:
- *		    DATA_OFF FULL_KEY OVFL_PAGENO OVFL_PAGE
- *
- *		    KEY_OFF -- offset of the beginning of the data on
- *				this page
- *		    FULL_KEY -- 2
- *		    OVFL_PAGENO - page number of the next overflow page
- *		    OVFLPAGE -- 0
- *
- * FULL_KEY_DATA 
- *		This must be the first key/data pair on the page.
- *		There are two cases:
- *
- *		Case 1:
- *		    This page contains a key and the beginning of the
- *		    data field, but the data field is continued on the
- *		    next page.
- *
- *		    Page format is:
- *		    KEY_OFF FULL_KEY_DATA OVFL_PAGENO DATA_OFF
- *
- *		    KEY_OFF -- offset of the beginning of the key
- *		    FULL_KEY_DATA -- 3
- *		    OVFL_PAGENO - page number of the next overflow page
- *		    DATA_OFF -- offset of the beginning of the data
- *
- *		Case 2:
- *		    This page contains the last page of a big data pair.
- *		    There is no key, only the  tail end of the data
- *		    on this page.
- *
- *		    Page format is:
- *		    DATA_OFF FULL_KEY_DATA <OVFL_PAGENO> <OVFLPAGE>
- *
- *		    DATA_OFF -- offset of the beginning of the data on
- *				this page
- *		    FULL_KEY_DATA -- 3
- *		    OVFL_PAGENO - page number of the next overflow page
- *		    OVFLPAGE -- 0
- *
- *		    OVFL_PAGENO and OVFLPAGE are optional (they are
- *		    not present if there is no next page).
+ * There is no portable way to figure out the maximum value of a file
+ * offset, so we put it here.
  */
+#ifdef	OFF_T_MAX
+#define	DB_OFF_T_MAX	OFF_T_MAX
+#else
+#ifdef	LONG_MAX
+#define	DB_OFF_T_MAX	LONG_MAX
+#else
+#define	DB_OFF_T_MAX	0xffffffff
+#endif
+#endif
 
-#define OVFLPAGE	0
-#define PARTIAL_KEY	1
-#define FULL_KEY	2
-#define FULL_KEY_DATA	3
-#define	REAL_KEY	4
+#define MAX_PAGES(H) (DB_OFF_T_MAX / (H)->hdr.bsize)
 
-/* Short hands for accessing structure */
-#define BSIZE		hdr.bsize
-#define BSHIFT		hdr.bshift
-#define DSIZE		hdr.dsize
-#define SGSIZE		hdr.ssize
-#define SSHIFT		hdr.sshift
-#define LORDER		hdr.lorder
-#define OVFL_POINT	hdr.ovfl_point
-#define	LAST_FREED	hdr.last_freed
-#define MAX_BUCKET	hdr.max_bucket
-#define FFACTOR		hdr.ffactor
-#define HIGH_MASK	hdr.high_mask
-#define LOW_MASK	hdr.low_mask
-#define NKEYS		hdr.nkeys
-#define HDRPAGES	hdr.hdrpages
-#define SPARES		hdr.spares
-#define BITMAPS		hdr.bitmaps
-#define VERSION		hdr.version
-#define MAGIC		hdr.magic
-#define NEXT_FREE	hdr.next_free
-#define H_CHARKEY	hdr.h_charkey
+/* Shorthands for accessing structure */
+#define METADATA_PGNO 0
+#define SPLIT_PGNO 0xFFFF
+
+typedef struct item_info {
+	pgno_t 		pgno;
+	pgno_t		bucket;
+	indx_t		ndx;
+	indx_t		pgndx;
+	u_int8_t	status;
+	int32_t		seek_size;
+	pgno_t		seek_found_page;
+	indx_t		key_off;
+	indx_t		data_off;
+	u_int8_t	caused_expand;
+} ITEM_INFO;
+
+
+#define	ITEM_ERROR	0
+#define	ITEM_OK		1
+#define	ITEM_NO_MORE	2
+
+#define	ITEM_GET_FIRST	0
+#define	ITEM_GET_NEXT	1
+#define	ITEM_GET_RESET	2
+#define	ITEM_GET_DONE	3
+#define	ITEM_GET_N	4
+
+#define	UNKNOWN		0xffffffff		/* for num_items */
+#define	NO_EXPAND	0xfffffffe 

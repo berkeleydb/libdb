@@ -140,7 +140,7 @@ typedef struct {
 } BTREEINFO;
 
 #define	HASHMAGIC	0x061561
-#define	HASHVERSION	2
+#define	HASHVERSION	3
 
 /* Structure used to pass parameters to the hashing routines. */
 typedef struct {

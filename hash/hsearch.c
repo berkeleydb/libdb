@@ -35,7 +35,7 @@
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hsearch.c	8.4 (Berkeley) 7/21/94";
+static char sccsid[] = "@(#)hsearch.c	8.5 (Berkeley) 9/21/94";
 #endif /* LIBC_SCCS and not lint */
 
 #include <sys/types.h>
@@ -62,7 +62,7 @@ hcreate(nel)
 	info.hash = NULL;
 	info.lorder = 0;
 	dbp = (DB *)__hash_open(NULL, O_CREAT | O_RDWR, 0600, &info, 0);
-	return ((int)dbp);
+	return (dbp != NULL);
 }
 
 extern ENTRY *

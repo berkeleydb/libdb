@@ -35,7 +35,7 @@
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)hash.c	8.9 (Berkeley) 6/16/94";
+static char sccsid[] = "@(#)hash.c	8.12 (Berkeley) 11/7/95";
 #endif /* LIBC_SCCS and not lint */
 
 #include <sys/param.h>
@@ -56,27 +56,27 @@ static char sccsid[] = "@(#)hash.c	8.9 (Berkeley) 6/16/94";
 #include "page.h"
 #include "extern.h"
 
-static int   alloc_segs __P((HTAB *, int));
-static int   flush_meta __P((HTAB *));
-static int   hash_access __P((HTAB *, ACTION, DBT *, DBT *));
-static int   hash_close __P((DB *));
-static int   hash_delete __P((const DB *, const DBT *, u_int32_t));
-static int   hash_fd __P((const DB *));
-static int   hash_get __P((const DB *, const DBT *, DBT *, u_int32_t));
-static int   hash_put __P((const DB *, DBT *, const DBT *, u_int32_t));
-static void *hash_realloc __P((SEGMENT **, int, int));
-static int   hash_seq __P((const DB *, DBT *, DBT *, u_int32_t));
-static int   hash_sync __P((const DB *, u_int32_t));
-static int   hdestroy __P((HTAB *));
+static int32_t flush_meta __P((HTAB *));
+static int32_t hash_access __P((HTAB *, ACTION, DBT *, DBT *));
+static int32_t hash_close __P((DB *));
+static int32_t hash_delete __P((const DB *, const DBT *, u_int32_t));
+static int32_t hash_fd __P((const DB *));
+static int32_t hash_get __P((const DB *, const DBT *, DBT *, u_int32_t));
+static int32_t hash_put __P((const DB *, DBT *, const DBT *, u_int32_t));
+static int32_t hash_seq __P((const DB *, DBT *, DBT *, u_int32_t));
+static int32_t hash_sync __P((const DB *, u_int32_t));
+static int32_t hdestroy __P((HTAB *));
+static int32_t cursor_get __P((const DB *, CURSOR *, DBT *, DBT *, \
+	u_int32_t));
+static int32_t cursor_delete __P((const DB *, CURSOR *, u_int32_t));
 static HTAB *init_hash __P((HTAB *, const char *, HASHINFO *));
-static int   init_htab __P((HTAB *, int));
+static int32_t init_htab __P((HTAB *, int32_t));
 #if BYTE_ORDER == LITTLE_ENDIAN
-static void  swap_header __P((HTAB *));
-static void  swap_header_copy __P((HASHHDR *, HASHHDR *));
+static void swap_header __P((HTAB *));
+static void swap_header_copy __P((HASHHDR *, HASHHDR *));
 #endif
-
-/* Fast arithmetic, relying on powers of 2, */
-#define MOD(x, y)		((x) & ((y) - 1))
+static u_int32_t hget_header __P((HTAB *, u_int32_t));
+static void hput_header __P((HTAB *));
 
 #define RETURN_ERROR(ERR, LOC)	{ save_errno = ERR; goto LOC; }
 
@@ -86,7 +86,8 @@ static void  swap_header_copy __P((HASHHDR *, HASHHDR *));
 #define	ABNORMAL (1)
 
 #ifdef HASH_STATISTICS
-int hash_accesses, hash_collisions, hash_expansions, hash_overflows;
+u_int32_t hash_accesses, hash_collisions, hash_expansions, hash_overflows,
+	hash_bigpages;
 #endif
 
 /************************** INTERFACE ROUTINES ***************************/
@@ -95,23 +96,33 @@ int hash_accesses, hash_collisions, hash_expansions, hash_overflows;
 extern DB *
 __hash_open(file, flags, mode, info, dflags)
 	const char *file;
-	int flags, mode, dflags;
+	int32_t flags, mode, dflags;
 	const HASHINFO *info;	/* Special directives for create */
 {
-	HTAB *hashp;
 	struct stat statbuf;
 	DB *dbp;
-	int bpages, hdrsize, new_table, nsegs, save_errno;
+	DBT mpool_key;
+	HTAB *hashp;
+	int32_t bpages, csize, new_table, save_errno, specified_file;
 
 	if ((flags & O_ACCMODE) == O_WRONLY) {
 		errno = EINVAL;
 		return (NULL);
 	}
-
 	if (!(hashp = (HTAB *)calloc(1, sizeof(HTAB))))
 		return (NULL);
 	hashp->fp = -1;
 
+	/* set this now, before file goes away... */
+	specified_file = (file != NULL);
+	if (!file) {
+		file = tmpnam(NULL);
+		/* store the file name so that we can unlink it later */
+		hashp->fname = (char *)file;
+#ifdef DEBUG
+		fprintf(stderr, "Using file name %s.\n", file);
+#endif
+	}
 	/*
 	 * Even if user wants write only, we need to be able to read
 	 * the actual file, so we need to open it read/write. But, the
@@ -119,12 +130,13 @@ __hash_open(file, flags, mode, info, dflags)
 	 * we can check accesses.
 	 */
 	hashp->flags = flags;
+	hashp->save_file = specified_file && (hashp->flags & O_RDWR);
 
 	new_table = 0;
 	if (!file || (flags & O_TRUNC) ||
 	    (stat(file, &statbuf) && (errno == ENOENT))) {
 		if (errno == ENOENT)
-			errno = 0; /* Just in case someone looks at errno */
+			errno = 0;	/* In case someone looks at errno. */
 		new_table = 1;
 	}
 	if (file) {
@@ -132,6 +144,8 @@ __hash_open(file, flags, mode, info, dflags)
 			RETURN_ERROR(errno, error0);
 		(void)fcntl(hashp->fp, F_SETFD, 1);
 	}
+
+	/* Process arguments to set up hash table header. */
 	if (new_table) {
 		if (!(hashp = init_hash(hashp, file, (HASHINFO *)info)))
 			RETURN_ERROR(errno, error1);
@@ -142,61 +156,73 @@ __hash_open(file, flags, mode, info, dflags)
 		else
 			hashp->hash = __default_hash;
 
-		hdrsize = read(hashp->fp, &hashp->hdr, sizeof(HASHHDR));
-#if BYTE_ORDER == LITTLE_ENDIAN
-		swap_header(hashp);
-#endif
-		if (hdrsize == -1)
-			RETURN_ERROR(errno, error1);
-		if (hdrsize != sizeof(HASHHDR))
+		/* copy metadata from page into header */
+		if (hget_header(hashp,
+		    (info && info->bsize ? info->bsize : DEF_BUCKET_SIZE)) !=
+		    sizeof(HASHHDR))
 			RETURN_ERROR(EFTYPE, error1);
+
 		/* Verify file type, versions and hash function */
-		if (hashp->MAGIC != HASHMAGIC)
+		if (hashp->hdr.magic != HASHMAGIC)
 			RETURN_ERROR(EFTYPE, error1);
 #define	OLDHASHVERSION	1
-		if (hashp->VERSION != HASHVERSION &&
-		    hashp->VERSION != OLDHASHVERSION)
+		if (hashp->hdr.version != HASHVERSION &&
+		    hashp->hdr.version != OLDHASHVERSION)
 			RETURN_ERROR(EFTYPE, error1);
-		if (hashp->hash(CHARKEY, sizeof(CHARKEY)) != hashp->H_CHARKEY)
+		if (hashp->hash(CHARKEY, sizeof(CHARKEY))
+		    != hashp->hdr.h_charkey)
 			RETURN_ERROR(EFTYPE, error1);
 		/*
 		 * Figure out how many segments we need.  Max_Bucket is the
 		 * maximum bucket number, so the number of buckets is
 		 * max_bucket + 1.
 		 */
-		nsegs = (hashp->MAX_BUCKET + 1 + hashp->SGSIZE - 1) /
-			 hashp->SGSIZE;
-		hashp->nsegs = 0;
-		if (alloc_segs(hashp, nsegs))
-			/*
-			 * If alloc_segs fails, table will have been destroyed
-			 * and errno will have been set.
-			 */
-			return (NULL);
+
 		/* Read in bitmaps */
-		bpages = (hashp->SPARES[hashp->OVFL_POINT] +
-		    (hashp->BSIZE << BYTE_SHIFT) - 1) >>
-		    (hashp->BSHIFT + BYTE_SHIFT);
+		bpages = (hashp->hdr.spares[hashp->hdr.ovfl_point] +
+		    (hashp->hdr.bsize << BYTE_SHIFT) - 1) >>
+		    (hashp->hdr.bshift + BYTE_SHIFT);
 
 		hashp->nmaps = bpages;
 		(void)memset(&hashp->mapp[0], 0, bpages * sizeof(u_int32_t *));
 	}
 
-	/* Initialize Buffer Manager */
+	/* start up mpool */
+	mpool_key.data = (u_int8_t *)file;
+	mpool_key.size = strlen(file);
+
 	if (info && info->cachesize)
-		__buf_init(hashp, info->cachesize);
+		csize = info->cachesize / hashp->hdr.bsize;
 	else
-		__buf_init(hashp, DEF_BUFSIZE);
+		csize = DEF_CACHESIZE / hashp->hdr.bsize;
+	hashp->mp = mpool_open(&mpool_key, hashp->fp, hashp->hdr.bsize, csize);
+
+	if (!hashp->mp)
+		RETURN_ERROR(errno, error1);
+	mpool_filter(hashp->mp, __pgin_routine, __pgout_routine, hashp);
+
+	/*
+	 * For a new table, set up the bitmaps.
+	 */
+	if (new_table &&
+	   init_htab(hashp, info && info->nelem ? info->nelem : 1))
+		goto error2;
+
+	/* initialize the cursor queue */
+	TAILQ_INIT(&hashp->curs_queue);
+	hashp->seq_cursor = NULL;
+
+
+	/* get a chunk of memory for our split buffer */
+	hashp->split_buf = (PAGE16 *)malloc(hashp->hdr.bsize);
+	if (!hashp->split_buf)
+		goto error2;
 
 	hashp->new_file = new_table;
-	hashp->save_file = file && (hashp->flags & O_RDWR);
-	hashp->cbucket = -1;
-	if (!(dbp = (DB *)malloc(sizeof(DB)))) {
-		save_errno = errno;
-		hdestroy(hashp);
-		errno = save_errno;
-		return (NULL);
-	}
+
+	if (!(dbp = (DB *)malloc(sizeof(DB))))
+		goto error2;
+
 	dbp->internal = hashp;
 	dbp->close = hash_close;
 	dbp->del = hash_delete;
@@ -209,27 +235,30 @@ __hash_open(file, flags, mode, info, dflags)
 
 #ifdef DEBUG
 	(void)fprintf(stderr,
-"%s\n%s%x\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
+	    "%s\n%s%lx\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
 	    "init_htab:",
-	    "TABLE POINTER   ", hashp,
-	    "BUCKET SIZE     ", hashp->BSIZE,
-	    "BUCKET SHIFT    ", hashp->BSHIFT,
-	    "DIRECTORY SIZE  ", hashp->DSIZE,
-	    "SEGMENT SIZE    ", hashp->SGSIZE,
-	    "SEGMENT SHIFT   ", hashp->SSHIFT,
-	    "FILL FACTOR     ", hashp->FFACTOR,
-	    "MAX BUCKET      ", hashp->MAX_BUCKET,
-	    "OVFL POINT	     ", hashp->OVFL_POINT,
-	    "LAST FREED      ", hashp->LAST_FREED,
-	    "HIGH MASK       ", hashp->HIGH_MASK,
-	    "LOW  MASK       ", hashp->LOW_MASK,
-	    "NSEGS           ", hashp->nsegs,
-	    "NKEYS           ", hashp->NKEYS);
+	    "TABLE POINTER   ", (void *)hashp,
+	    "BUCKET SIZE     ", hashp->hdr.bsize,
+	    "BUCKET SHIFT    ", hashp->hdr.bshift,
+	    "FILL FACTOR     ", hashp->hdr.ffactor,
+	    "MAX BUCKET      ", hashp->hdr.max_bucket,
+	    "OVFL POINT      ", hashp->hdr.ovfl_point,
+	    "LAST FREED      ", hashp->hdr.last_freed,
+	    "HIGH MASK       ", hashp->hdr.high_mask,
+	    "LOW  MASK       ", hashp->hdr.low_mask,
+	    "NKEYS           ", hashp->hdr.nkeys);
 #endif
 #ifdef HASH_STATISTICS
 	hash_overflows = hash_accesses = hash_collisions = hash_expansions = 0;
+	hash_bigpages = 0;
 #endif
 	return (dbp);
+
+error2:
+	save_errno = errno;
+	hdestroy(hashp);
+	errno = save_errno;
+	return (NULL);
 
 error1:
 	if (hashp != NULL)
@@ -241,12 +270,12 @@ error0:
 	return (NULL);
 }
 
-static int
+static int32_t
 hash_close(dbp)
 	DB *dbp;
 {
 	HTAB *hashp;
-	int retval;
+	int32_t retval;
 
 	if (!dbp)
 		return (ERROR);
@@ -257,7 +286,7 @@ hash_close(dbp)
 	return (retval);
 }
 
-static int
+static int32_t
 hash_fd(dbp)
 	const DB *dbp;
 {
@@ -282,104 +311,161 @@ init_hash(hashp, file, info)
 	HASHINFO *info;
 {
 	struct stat statbuf;
-	int nelem;
+	int32_t nelem;
 
 	nelem = 1;
-	hashp->NKEYS = 0;
-	hashp->LORDER = BYTE_ORDER;
-	hashp->BSIZE = DEF_BUCKET_SIZE;
-	hashp->BSHIFT = DEF_BUCKET_SHIFT;
-	hashp->SGSIZE = DEF_SEGSIZE;
-	hashp->SSHIFT = DEF_SEGSIZE_SHIFT;
-	hashp->DSIZE = DEF_DIRSIZE;
-	hashp->FFACTOR = DEF_FFACTOR;
+	hashp->hdr.nkeys = 0;
+	hashp->hdr.lorder = BYTE_ORDER;
+	hashp->hdr.bsize = DEF_BUCKET_SIZE;
+	hashp->hdr.bshift = DEF_BUCKET_SHIFT;
+	hashp->hdr.ffactor = DEF_FFACTOR;
 	hashp->hash = __default_hash;
-	memset(hashp->SPARES, 0, sizeof(hashp->SPARES));
-	memset(hashp->BITMAPS, 0, sizeof (hashp->BITMAPS));
+	memset(hashp->hdr.spares, 0, sizeof(hashp->hdr.spares));
+	memset(hashp->hdr.bitmaps, 0, sizeof(hashp->hdr.bitmaps));
 
 	/* Fix bucket size to be optimal for file system */
 	if (file != NULL) {
 		if (stat(file, &statbuf))
 			return (NULL);
-		hashp->BSIZE = statbuf.st_blksize;
-		hashp->BSHIFT = __log2(hashp->BSIZE);
+		hashp->hdr.bsize = statbuf.st_blksize;
+		hashp->hdr.bshift = __log2(hashp->hdr.bsize);
 	}
-
 	if (info) {
 		if (info->bsize) {
 			/* Round pagesize up to power of 2 */
-			hashp->BSHIFT = __log2(info->bsize);
-			hashp->BSIZE = 1 << hashp->BSHIFT;
-			if (hashp->BSIZE > MAX_BSIZE) {
+			hashp->hdr.bshift = __log2(info->bsize);
+			hashp->hdr.bsize = 1 << hashp->hdr.bshift;
+			if (hashp->hdr.bsize > MAX_BSIZE) {
 				errno = EINVAL;
 				return (NULL);
 			}
 		}
 		if (info->ffactor)
-			hashp->FFACTOR = info->ffactor;
+			hashp->hdr.ffactor = info->ffactor;
 		if (info->hash)
 			hashp->hash = info->hash;
-		if (info->nelem)
-			nelem = info->nelem;
 		if (info->lorder) {
-			if (info->lorder != BIG_ENDIAN &&
-			    info->lorder != LITTLE_ENDIAN) {
+			if ((info->lorder != BIG_ENDIAN) &&
+			    (info->lorder != LITTLE_ENDIAN)) {
 				errno = EINVAL;
 				return (NULL);
 			}
-			hashp->LORDER = info->lorder;
+			hashp->hdr.lorder = info->lorder;
 		}
 	}
-	/* init_htab should destroy the table and set errno if it fails */
-	if (init_htab(hashp, nelem))
-		return (NULL);
-	else
-		return (hashp);
+	return (hashp);
 }
+
 /*
- * This calls alloc_segs which may run out of memory.  Alloc_segs will destroy
- * the table and set errno, so we just pass the error information along.
- *
  * Returns 0 on No Error
  */
-static int
+static int32_t
 init_htab(hashp, nelem)
 	HTAB *hashp;
-	int nelem;
+	int32_t nelem;
 {
-	register int nbuckets, nsegs;
-	int l2;
+	int32_t l2, nbuckets;
+	pgno_t i;
 
 	/*
 	 * Divide number of elements by the fill factor and determine a
 	 * desired number of buckets.  Allocate space for the next greater
 	 * power of two number of buckets.
 	 */
-	nelem = (nelem - 1) / hashp->FFACTOR + 1;
+	nelem = (nelem - 1) / hashp->hdr.ffactor + 1;
 
 	l2 = __log2(MAX(nelem, 2));
 	nbuckets = 1 << l2;
 
-	hashp->SPARES[l2] = l2 + 1;
-	hashp->SPARES[l2 + 1] = l2 + 1;
-	hashp->OVFL_POINT = l2;
-	hashp->LAST_FREED = 2;
+	hashp->hdr.spares[l2] = l2 + 1;
+	hashp->hdr.spares[l2 + 1] = l2 + 1;
+	hashp->hdr.ovfl_point = l2;
+	hashp->hdr.last_freed = 2;
+
+	hashp->hdr.max_bucket = hashp->hdr.low_mask = nbuckets - 1;
+	hashp->hdr.high_mask = (nbuckets << 1) - 1;
+
+	/*
+	 * The number of header pages is the size of the header divided by
+	 * the amount of freespace on header pages (the page size - the
+	 * size of 1 integer where the length of the header info on that
+	 * page is stored) plus another page if it didn't divide evenly.
+	 */
+	hashp->hdr.hdrpages =
+	    (sizeof(HASHHDR) / (hashp->hdr.bsize - HEADER_OVERHEAD)) +
+	    (((sizeof(HASHHDR) % (hashp->hdr.bsize - HEADER_OVERHEAD)) == 0)
+	    ? 0 : 1);
+
+	/* Create pages for these buckets */
+	/*
+	for (i = 0; i <= hashp->hdr.max_bucket; i++) {
+		if (__new_page(hashp, (u_int32_t)i, A_BUCKET) != 0)
+			return (-1);
+	}
+	*/
 
 	/* First bitmap page is at: splitpoint l2 page offset 1 */
 	if (__ibitmap(hashp, OADDR_OF(l2, 1), l2 + 1, 0))
 		return (-1);
 
-	hashp->MAX_BUCKET = hashp->LOW_MASK = nbuckets - 1;
-	hashp->HIGH_MASK = (nbuckets << 1) - 1;
-	hashp->HDRPAGES = ((MAX(sizeof(HASHHDR), MINHDRSIZE) - 1) >>
-	    hashp->BSHIFT) + 1;
+	return (0);
+}
 
-	nsegs = (nbuckets - 1) / hashp->SGSIZE + 1;
-	nsegs = 1 << __log2(nsegs);
+/*
+ * Functions to get/put hash header.  We access the file directly.
+ */
+u_int32_t
+hget_header(hashp, page_size)
+	HTAB *hashp;
+	u_int32_t page_size;
+{
+	u_int32_t num_copied, i;
+	u_int8_t *hdr_dest;
 
-	if (nsegs > hashp->DSIZE)
-		hashp->DSIZE = nsegs;
-	return (alloc_segs(hashp, nsegs));
+	num_copied = 0;
+	i = 0;
+
+	hdr_dest = (u_int8_t *)&hashp->hdr;
+
+	/* 
+	 * XXX
+	 * This should not be printing to stderr on a "normal" error case.
+	 */
+	lseek(hashp->fp, 0, SEEK_SET);
+	num_copied = read(hashp->fp, hdr_dest, sizeof(HASHHDR));
+	if (num_copied != sizeof(HASHHDR)) {
+		fprintf(stderr, "hash: could not retrieve header");
+		return (0);
+	}
+#if BYTE_ORDER == LITTLE_ENDIAN
+	swap_header(hashp);
+#endif
+	return (num_copied);
+}
+
+void
+hput_header(hashp)
+	HTAB *hashp;
+{
+	HASHHDR *whdrp;
+#if BYTE_ORDER == LITTLE_ENDIAN
+	HASHHDR whdr;
+#endif
+	u_int32_t num_copied, i;
+
+	num_copied = i = 0;
+
+	whdrp = &hashp->hdr;
+#if BYTE_ORDER == LITTLE_ENDIAN
+	whdrp = &whdr;
+	swap_header_copy(&hashp->hdr, whdrp);
+#endif
+
+	lseek(hashp->fp, 0, SEEK_SET);
+	num_copied = write(hashp->fp, whdrp, sizeof(HASHHDR));
+	if (num_copied != sizeof(HASHHDR))
+		(void)fprintf(stderr, "hash: could not write hash header");
+	return;
 }
 
 /********************** DESTROY/CLOSE ROUTINES ************************/
@@ -388,51 +474,67 @@ init_htab(hashp, nelem)
  * Flushes any changes to the file if necessary and destroys the hashp
  * structure, freeing all allocated space.
  */
-static int
+static int32_t
 hdestroy(hashp)
 	HTAB *hashp;
 {
-	int i, save_errno;
+	int32_t save_errno;
 
 	save_errno = 0;
 
 #ifdef HASH_STATISTICS
+	{ int i;
 	(void)fprintf(stderr, "hdestroy: accesses %ld collisions %ld\n",
 	    hash_accesses, hash_collisions);
-	(void)fprintf(stderr, "hdestroy: expansions %ld\n",
-	    hash_expansions);
-	(void)fprintf(stderr, "hdestroy: overflows %ld\n",
-	    hash_overflows);
-	(void)fprintf(stderr, "keys %ld maxp %d segmentcount %d\n",
-	    hashp->NKEYS, hashp->MAX_BUCKET, hashp->nsegs);
+	(void)fprintf(stderr,
+	    "hdestroy: expansions %ld\n", hash_expansions);
+	(void)fprintf(stderr,
+	    "hdestroy: overflows %ld\n", hash_overflows);
+	(void)fprintf(stderr,
+	    "hdestroy: big key/data pages %ld\n", hash_bigpages);
+	(void)fprintf(stderr,
+	    "keys %ld maxp %d\n", hashp->hdr.nkeys, hashp->hdr.max_bucket);
 
 	for (i = 0; i < NCACHED; i++)
 		(void)fprintf(stderr,
-		    "spares[%d] = %d\n", i, hashp->SPARES[i]);
-#endif
-	/*
-	 * Call on buffer manager to free buffers, and if required,
-	 * write them to disk.
-	 */
-	if (__buf_free(hashp, 1, hashp->save_file))
-		save_errno = errno;
-	if (hashp->dir) {
-		free(*hashp->dir);	/* Free initial segments */
-		/* Free extra segments */
-		while (hashp->exsegs--)
-			free(hashp->dir[--hashp->nsegs]);
-		free(hashp->dir);
+		    "spares[%d] = %d\n", i, hashp->hdr.spares[i]);
 	}
+#endif
+
 	if (flush_meta(hashp) && !save_errno)
 		save_errno = errno;
-	/* Free Bigmaps */
-	for (i = 0; i < hashp->nmaps; i++)
-		if (hashp->mapp[i])
-			free(hashp->mapp[i]);
+
+	/* Free the split page, big key buf and big data buf */
+	if (hashp->split_buf)
+		free(hashp->split_buf);
+	if (hashp->bigdata_buf)
+		free(hashp->bigdata_buf);
+	if (hashp->bigkey_buf)
+		free(hashp->bigkey_buf);
+
+	/* shut down mpool */
+	mpool_sync(hashp->mp);
+	mpool_close(hashp->mp);
 
 	if (hashp->fp != -1)
 		(void)close(hashp->fp);
 
+	/* 
+	 * *** This may cause problems if hashp->fname is set in any case
+	 * other than the case that we are generating a temporary file name.
+	 * Note that the new version of mpool should support temporary
+	 * files within mpool itself.
+	 */
+	if (hashp->fname && !hashp->save_file) {
+#ifdef DEBUG
+		fprintf(stderr, "Unlinking file %s.\n", hashp->fname);
+#endif
+		/* we need to chmod the file to allow it to be deleted... */
+		chmod(hashp->fname, 0700);
+		unlink(hashp->fname);
+		/* destroy the temporary name */
+		tmpnam(NULL);
+	}
 	free(hashp);
 
 	if (save_errno) {
@@ -441,6 +543,7 @@ hdestroy(hashp)
 	}
 	return (SUCCESS);
 }
+
 /*
  * Write modified pages to disk
  *
@@ -448,28 +551,20 @@ hdestroy(hashp)
  *	 0 == OK
  *	-1 ERROR
  */
-static int
+static int32_t
 hash_sync(dbp, flags)
 	const DB *dbp;
 	u_int32_t flags;
 {
 	HTAB *hashp;
 
-	if (flags != 0) {
-		errno = EINVAL;
-		return (ERROR);
-	}
-
-	if (!dbp)
-		return (ERROR);
-
 	hashp = (HTAB *)dbp->internal;
-	if (!hashp->save_file)
-		return (0);
-	if (__buf_free(hashp, 0, 1) || flush_meta(hashp))
-		return (ERROR);
-	hashp->new_file = 0;
-	return (0);
+
+	/*
+	 * XXX
+	 * Check success/failure conditions.
+	 */
+	return (flush_meta(hashp) || mpool_sync(hashp->mp));
 }
 
 /*
@@ -477,42 +572,28 @@ hash_sync(dbp, flags)
  *	 0 == OK
  *	-1 indicates that errno should be set
  */
-static int
+static int32_t
 flush_meta(hashp)
 	HTAB *hashp;
 {
-	HASHHDR *whdrp;
-#if BYTE_ORDER == LITTLE_ENDIAN
-	HASHHDR whdr;
-#endif
-	int fp, i, wsize;
+	int32_t i;
 
 	if (!hashp->save_file)
 		return (0);
-	hashp->MAGIC = HASHMAGIC;
-	hashp->VERSION = HASHVERSION;
-	hashp->H_CHARKEY = hashp->hash(CHARKEY, sizeof(CHARKEY));
+	hashp->hdr.magic = HASHMAGIC;
+	hashp->hdr.version = HASHVERSION;
+	hashp->hdr.h_charkey = hashp->hash(CHARKEY, sizeof(CHARKEY));
 
-	fp = hashp->fp;
-	whdrp = &hashp->hdr;
-#if BYTE_ORDER == LITTLE_ENDIAN
-	whdrp = &whdr;
-	swap_header_copy(&hashp->hdr, whdrp);
-#endif
-	if ((lseek(fp, (off_t)0, SEEK_SET) == -1) ||
-	    ((wsize = write(fp, whdrp, sizeof(HASHHDR))) == -1))
-		return (-1);
-	else
-		if (wsize != sizeof(HASHHDR)) {
-			errno = EFTYPE;
-			hashp->errno = errno;
-			return (-1);
-		}
+	/* write out metadata */
+	hput_header(hashp);
+
 	for (i = 0; i < NCACHED; i++)
-		if (hashp->mapp[i])
-			if (__put_page(hashp, (char *)hashp->mapp[i],
-				hashp->BITMAPS[i], 0, 1))
+		if (hashp->mapp[i]) {
+			if (__put_page(hashp,
+			    (PAGE16 *)hashp->mapp[i], A_BITMAP, 1))
 				return (-1);
+			hashp->mapp[i] = NULL;
+		}
 	return (0);
 }
 
@@ -525,7 +606,10 @@ flush_meta(hashp)
  *	 1 to indicate an external ERROR (i.e. key not found, etc)
  *	-1 to indicate an internal ERROR (i.e. out of memory, etc)
  */
-static int
+
+/* *** make sure this is true! */
+
+static int32_t
 hash_get(dbp, key, data, flag)
 	const DB *dbp;
 	const DBT *key;
@@ -542,7 +626,7 @@ hash_get(dbp, key, data, flag)
 	return (hash_access(hashp, HASH_GET, (DBT *)key, data));
 }
 
-static int
+static int32_t
 hash_put(dbp, key, data, flag)
 	const DB *dbp;
 	DBT *key;
@@ -561,10 +645,10 @@ hash_put(dbp, key, data, flag)
 		return (ERROR);
 	}
 	return (hash_access(hashp, flag == R_NOOVERWRITE ?
-	    HASH_PUTNEW : HASH_PUT, (DBT *)key, (DBT *)data));
+		HASH_PUTNEW : HASH_PUT, (DBT *)key, (DBT *)data));
 }
 
-static int
+static int32_t
 hash_delete(dbp, key, flag)
 	const DB *dbp;
 	const DBT *key;
@@ -573,7 +657,7 @@ hash_delete(dbp, key, flag)
 	HTAB *hashp;
 
 	hashp = (HTAB *)dbp->internal;
-	if (flag && flag != R_CURSOR) {
+	if (flag) {
 		hashp->errno = errno = EINVAL;
 		return (ERROR);
 	}
@@ -581,222 +665,265 @@ hash_delete(dbp, key, flag)
 		hashp->errno = errno = EPERM;
 		return (ERROR);
 	}
+
 	return (hash_access(hashp, HASH_DELETE, (DBT *)key, NULL));
 }
 
 /*
  * Assume that hashp has been set in wrapper routine.
  */
-static int
+static int32_t
 hash_access(hashp, action, key, val)
 	HTAB *hashp;
 	ACTION action;
 	DBT *key, *val;
 {
-	register BUFHEAD *rbufp;
-	BUFHEAD *bufp, *save_bufp;
-	register u_int16_t *bp;
-	register int n, ndx, off, size;
-	register char *kp;
-	u_int16_t pageno;
+	DBT page_key, page_val;
+	CURSOR cursor;
+	ITEM_INFO item_info;
+	u_int32_t bucket;
+	u_int32_t num_items;
 
 #ifdef HASH_STATISTICS
 	hash_accesses++;
 #endif
 
-	off = hashp->BSIZE;
-	size = key->size;
-	kp = (char *)key->data;
-	rbufp = __get_buf(hashp, __call_hash(hashp, kp, size), NULL, 0);
-	if (!rbufp)
-		return (ERROR);
-	save_bufp = rbufp;
+	num_items = 0;
 
-	/* Pin the bucket chain */
-	rbufp->flags |= BUF_PIN;
-	for (bp = (u_int16_t *)rbufp->page, n = *bp++, ndx = 1; ndx < n;)
-		if (bp[1] >= REAL_KEY) {
-			/* Real key/data pair */
-			if (size == off - *bp &&
-			    memcmp(kp, rbufp->page + *bp, size) == 0)
+	/* 
+	 * Set up item_info so that we're looking for space to add an item
+	 * as we cycle through the pages looking for the key.
+	 */
+	if (action == HASH_PUT || action == HASH_PUTNEW) {
+		if (ISBIG(key->size + val->size, hashp))
+			item_info.seek_size = PAIR_OVERHEAD;
+		else
+			item_info.seek_size = key->size + val->size;
+	} else
+		item_info.seek_size = 0;
+	item_info.seek_found_page = 0;
+
+	bucket = __call_hash(hashp, (int8_t *)key->data, key->size);
+
+	cursor.pagep = NULL;
+	__get_item_reset(hashp, &cursor);
+
+	cursor.bucket = bucket;
+	while (1) {
+		__get_item_next(hashp, &cursor, &page_key, &page_val, &item_info);
+		if (item_info.status == ITEM_ERROR)
+			return (ABNORMAL);
+		if (item_info.status == ITEM_NO_MORE)
+			break;
+		num_items++;
+		if (item_info.key_off == BIGPAIR) {
+			/*
+			 * !!!
+			 * 0 is a valid index.
+			 */
+			if (__find_bigpair(hashp, &cursor, (int8_t *)key->data,
+			    key->size) > 0)
 				goto found;
-			off = bp[1];
+		} else if (key->size == page_key.size &&
+		    !memcmp(key->data, page_key.data, key->size))
+			goto found;
+	}
 #ifdef HASH_STATISTICS
-			hash_collisions++;
+	hash_collisions++;
 #endif
-			bp += 2;
-			ndx += 2;
-		} else if (bp[1] == OVFLPAGE) {
-			rbufp = __get_buf(hashp, *bp, rbufp, 0);
-			if (!rbufp) {
-				save_bufp->flags &= ~BUF_PIN;
-				return (ERROR);
-			}
-			/* FOR LOOP INIT */
-			bp = (u_int16_t *)rbufp->page;
-			n = *bp++;
-			ndx = 1;
-			off = hashp->BSIZE;
-		} else if (bp[1] < REAL_KEY) {
-			if ((ndx =
-			    __find_bigpair(hashp, rbufp, ndx, kp, size)) > 0)
-				goto found;
-			if (ndx == -2) {
-				bufp = rbufp;
-				if (!(pageno =
-				    __find_last_page(hashp, &bufp))) {
-					ndx = 0;
-					rbufp = bufp;
-					break;	/* FOR */
-				}
-				rbufp = __get_buf(hashp, pageno, bufp, 0);
-				if (!rbufp) {
-					save_bufp->flags &= ~BUF_PIN;
-					return (ERROR);
-				}
-				/* FOR LOOP INIT */
-				bp = (u_int16_t *)rbufp->page;
-				n = *bp++;
-				ndx = 1;
-				off = hashp->BSIZE;
-			} else {
-				save_bufp->flags &= ~BUF_PIN;
-				return (ERROR);
-			}
-		}
+	__get_item_done(hashp, &cursor);
+
+	/*
+	 * At this point, item_info will list either the last page in
+	 * the chain, or the last page in the chain plus a pgno for where
+	 * to find the first page in the chain with space for the
+	 * item we wish to add.
+	 */
 
 	/* Not found */
 	switch (action) {
 	case HASH_PUT:
 	case HASH_PUTNEW:
-		if (__addel(hashp, rbufp, key, val)) {
-			save_bufp->flags &= ~BUF_PIN;
+		if (__addel(hashp, &item_info, key, val, num_items, 0))
 			return (ERROR);
-		} else {
-			save_bufp->flags &= ~BUF_PIN;
-			return (SUCCESS);
-		}
+		break;
 	case HASH_GET:
 	case HASH_DELETE:
 	default:
-		save_bufp->flags &= ~BUF_PIN;
 		return (ABNORMAL);
 	}
 
-found:
+	if (item_info.caused_expand)
+		__expand_table(hashp);
+	return (SUCCESS);
+
+found:	__get_item_done(hashp, &cursor);
+
 	switch (action) {
 	case HASH_PUTNEW:
-		save_bufp->flags &= ~BUF_PIN;
+		/* mpool_put(hashp->mp, pagep, 0); */
 		return (ABNORMAL);
 	case HASH_GET:
-		bp = (u_int16_t *)rbufp->page;
-		if (bp[ndx + 1] < REAL_KEY) {
-			if (__big_return(hashp, rbufp, ndx, val, 0))
+		if (item_info.key_off == BIGPAIR) {
+			if (__big_return(hashp, &item_info, val, 0))
 				return (ERROR);
 		} else {
-			val->data = (u_char *)rbufp->page + (int)bp[ndx + 1];
-			val->size = bp[ndx] - bp[ndx + 1];
+			val->data = page_val.data;
+			val->size = page_val.size;
 		}
+		/* *** data may not be available! */
 		break;
 	case HASH_PUT:
-		if ((__delpair(hashp, rbufp, ndx)) ||
-		    (__addel(hashp, rbufp, key, val))) {
-			save_bufp->flags &= ~BUF_PIN;
+		if (__delpair(hashp, &cursor, &item_info) ||
+		    __addel(hashp, &item_info, key, val, UNKNOWN, 0))
 			return (ERROR);
-		}
+		__get_item_done(hashp, &cursor);
+		if (item_info.caused_expand)
+			__expand_table(hashp);
 		break;
 	case HASH_DELETE:
-		if (__delpair(hashp, rbufp, ndx))
+		if (__delpair(hashp, &cursor, &item_info))
 			return (ERROR);
 		break;
 	default:
 		abort();
 	}
-	save_bufp->flags &= ~BUF_PIN;
 	return (SUCCESS);
 }
 
-static int
-hash_seq(dbp, key, data, flag)
+/* ****************** CURSORS ********************************** */
+CURSOR *
+__cursor_creat(dbp)
 	const DB *dbp;
-	DBT *key, *data;
-	u_int32_t flag;
 {
-	register u_int32_t bucket;
-	register BUFHEAD *bufp;
+	CURSOR *new_curs;
 	HTAB *hashp;
-	u_int16_t *bp, ndx;
+
+	new_curs = (CURSOR *)malloc(sizeof(struct cursor_t));
+	if (!new_curs)
+		return NULL;
+	new_curs->internal =
+	    (struct item_info *)malloc(sizeof(struct item_info));
+	if (!new_curs->internal) {
+		free(new_curs);
+		return NULL;
+	}
+	new_curs->get = cursor_get;
+	new_curs->delete = cursor_delete;
+
+	new_curs->bucket = 0;
+	new_curs->pgno = INVALID_PGNO;
+	new_curs->ndx = 0;
+	new_curs->pgndx = 0;
+	new_curs->pagep = NULL;
+
+	/* place onto queue of cursors */
+	hashp = (HTAB *)dbp->internal;
+	TAILQ_INSERT_TAIL(&hashp->curs_queue, new_curs, queue);
+
+	return new_curs;
+}
+
+int32_t
+cursor_get(dbp, cursorp, key, val, flags)
+	const DB *dbp;
+	CURSOR *cursorp;
+	DBT *key, *val;
+	u_int32_t flags;
+{
+	HTAB *hashp;
+	ITEM_INFO item_info;
 
 	hashp = (HTAB *)dbp->internal;
-	if (flag && flag != R_FIRST && flag != R_NEXT) {
+
+	if (flags && flags != R_FIRST && flags != R_NEXT) {
 		hashp->errno = errno = EINVAL;
 		return (ERROR);
 	}
 #ifdef HASH_STATISTICS
 	hash_accesses++;
 #endif
-	if ((hashp->cbucket < 0) || (flag == R_FIRST)) {
-		hashp->cbucket = 0;
-		hashp->cndx = 1;
-		hashp->cpage = NULL;
-	}
 
-	for (bp = NULL; !bp || !bp[0]; ) {
-		if (!(bufp = hashp->cpage)) {
-			for (bucket = hashp->cbucket;
-			    bucket <= hashp->MAX_BUCKET;
-			    bucket++, hashp->cndx = 1) {
-				bufp = __get_buf(hashp, bucket, NULL, 0);
-				if (!bufp)
-					return (ERROR);
-				hashp->cpage = bufp;
-				bp = (u_int16_t *)bufp->page;
-				if (bp[0])
-					break;
-			}
-			hashp->cbucket = bucket;
-			if (hashp->cbucket > hashp->MAX_BUCKET) {
-				hashp->cbucket = -1;
+	item_info.seek_size = 0;
+
+	if (flags == R_FIRST)
+		__get_item_first(hashp, cursorp, key, val, &item_info);
+	else
+		__get_item_next(hashp, cursorp, key, val, &item_info);
+
+	/*
+	 * This needs to be changed around.  As is, get_item_next advances
+	 * the pointers on the page but this function actually advances
+	 * bucket pointers.  This works, since the only other place we 
+	 * use get_item_next is in hash_access which only deals with one
+	 * bucket at a time.  However, there is the problem that certain other
+	 * functions (such as find_bigpair and delpair) depend on the
+	 * pgndx member of the cursor.  Right now, they are using pngdx - 1
+	 * since indices refer to the __next__ item that is to be fetched
+	 * from the page.  This is ugly, as you may have noticed, whoever
+	 * you are.  The best solution would be to depend on item_infos to
+	 * deal with _current_ information, and have the cursors only
+	 * deal with _next_ information.  In that scheme, get_item_next
+	 * would also advance buckets.  Version 3...
+	 */
+
+
+	/*
+	 * Must always enter this loop to do error handling and
+	 * check for big key/data pair.
+	 */
+	while (1) {
+		if (item_info.status == ITEM_OK) {
+			if (item_info.key_off == BIGPAIR &&
+			    __big_keydata(hashp, cursorp->pagep, key, val,
+			    item_info.pgndx))
 				return (ABNORMAL);
-			}
-		} else
-			bp = (u_int16_t *)hashp->cpage->page;
 
-#ifdef DEBUG
-		assert(bp);
-		assert(bufp);
-#endif
-		while (bp[hashp->cndx + 1] == OVFLPAGE) {
-			bufp = hashp->cpage =
-			    __get_buf(hashp, bp[hashp->cndx], bufp, 0);
-			if (!bufp)
-				return (ERROR);
-			bp = (u_int16_t *)(bufp->page);
-			hashp->cndx = 1;
-		}
-		if (!bp[0]) {
-			hashp->cpage = NULL;
-			++hashp->cbucket;
-		}
+			break;
+		} else if (item_info.status != ITEM_NO_MORE)
+			return (ABNORMAL);
+
+		__put_page(hashp, cursorp->pagep, A_RAW, 0);
+		cursorp->ndx = cursorp->pgndx = 0;
+		cursorp->bucket++;
+		cursorp->pgno = INVALID_PGNO;
+		cursorp->pagep = NULL;
+		if (cursorp->bucket > hashp->hdr.max_bucket)
+			return (ABNORMAL);
+		__get_item_next(hashp, cursorp, key, val, &item_info);
 	}
-	ndx = hashp->cndx;
-	if (bp[ndx + 1] < REAL_KEY) {
-		if (__big_keydata(hashp, bufp, key, data, 1))
-			return (ERROR);
-	} else {
-		key->data = (u_char *)hashp->cpage->page + bp[ndx];
-		key->size = (ndx > 1 ? bp[ndx - 1] : hashp->BSIZE) - bp[ndx];
-		data->data = (u_char *)hashp->cpage->page + bp[ndx + 1];
-		data->size = bp[ndx] - bp[ndx + 1];
-		ndx += 2;
-		if (ndx > bp[0]) {
-			hashp->cpage = NULL;
-			hashp->cbucket++;
-			hashp->cndx = 1;
-		} else
-			hashp->cndx = ndx;
-	}
-	return (SUCCESS);
+
+	__get_item_done(hashp, cursorp);
+	return (0);
+}
+
+int32_t
+cursor_delete(dbp, cursor, flags)
+	const DB *dbp;
+	CURSOR *cursor;
+	u_int32_t flags;
+{
+	return (0);
+}
+
+static int32_t
+hash_seq(dbp, key, val, flag)
+	const DB *dbp;
+	DBT *key, *val;
+	u_int32_t flag;
+{
+	HTAB *hashp;
+
+	/*
+	 * Seq just uses the default cursor to go sequecing through the
+	 * database.  Note that the default cursor is the first in the list. 
+	 */
+
+	hashp = (HTAB *)dbp->internal;
+	if (!hashp->seq_cursor)
+		hashp->seq_cursor = __cursor_creat(dbp);
+
+	return (hashp->seq_cursor->get(dbp, hashp->seq_cursor, key, val, flag));
 }
 
 /********************************* UTILITIES ************************/
@@ -806,125 +933,59 @@ hash_seq(dbp, key, data, flag)
  *	 0 ==> OK
  *	-1 ==> Error
  */
-extern int
+int32_t
 __expand_table(hashp)
 	HTAB *hashp;
 {
 	u_int32_t old_bucket, new_bucket;
-	int dirsize, new_segnum, spare_ndx;
+	int32_t spare_ndx;
 
 #ifdef HASH_STATISTICS
 	hash_expansions++;
 #endif
-	new_bucket = ++hashp->MAX_BUCKET;
-	old_bucket = (hashp->MAX_BUCKET & hashp->LOW_MASK);
+	new_bucket = ++hashp->hdr.max_bucket;
+	old_bucket = (hashp->hdr.max_bucket & hashp->hdr.low_mask);
 
-	new_segnum = new_bucket >> hashp->SSHIFT;
+	/* Get a page for this new bucket */
+	if (__new_page(hashp, new_bucket, A_BUCKET) != 0)
+		return (-1);
 
-	/* Check if we need a new segment */
-	if (new_segnum >= hashp->nsegs) {
-		/* Check if we need to expand directory */
-		if (new_segnum >= hashp->DSIZE) {
-			/* Reallocate directory */
-			dirsize = hashp->DSIZE * sizeof(SEGMENT *);
-			if (!hash_realloc(&hashp->dir, dirsize, dirsize << 1))
-				return (-1);
-			hashp->DSIZE = dirsize << 1;
-		}
-		if ((hashp->dir[new_segnum] =
-		    (SEGMENT)calloc(hashp->SGSIZE, sizeof(SEGMENT))) == NULL)
-			return (-1);
-		hashp->exsegs++;
-		hashp->nsegs++;
-	}
 	/*
-	 * If the split point is increasing (MAX_BUCKET's log base 2
-	 * * increases), we need to copy the current contents of the spare
+	 * If the split point is increasing (hdr.max_bucket's log base 2
+	 * increases), we need to copy the current contents of the spare
 	 * split bucket to the next bucket.
 	 */
-	spare_ndx = __log2(hashp->MAX_BUCKET + 1);
-	if (spare_ndx > hashp->OVFL_POINT) {
-		hashp->SPARES[spare_ndx] = hashp->SPARES[hashp->OVFL_POINT];
-		hashp->OVFL_POINT = spare_ndx;
+	spare_ndx = __log2(hashp->hdr.max_bucket + 1);
+	if (spare_ndx > hashp->hdr.ovfl_point) {
+		hashp->hdr.spares[spare_ndx] = hashp->hdr.spares[hashp->hdr.ovfl_point];
+		hashp->hdr.ovfl_point = spare_ndx;
 	}
-
-	if (new_bucket > hashp->HIGH_MASK) {
+	if (new_bucket > hashp->hdr.high_mask) {
 		/* Starting a new doubling */
-		hashp->LOW_MASK = hashp->HIGH_MASK;
-		hashp->HIGH_MASK = new_bucket | hashp->LOW_MASK;
+		hashp->hdr.low_mask = hashp->hdr.high_mask;
+		hashp->hdr.high_mask = new_bucket | hashp->hdr.low_mask;
+	}
+	if (BUCKET_TO_PAGE(new_bucket) > MAX_PAGES(hashp)) {
+		fprintf(stderr, "hash: Cannot allocate new bucket.  Pages exhausted.\n");
+		return (-1);
 	}
 	/* Relocate records to the new bucket */
 	return (__split_page(hashp, old_bucket, new_bucket));
 }
 
-/*
- * If realloc guarantees that the pointer is not destroyed if the realloc
- * fails, then this routine can go away.
- */
-static void *
-hash_realloc(p_ptr, oldsize, newsize)
-	SEGMENT **p_ptr;
-	int oldsize, newsize;
-{
-	register void *p;
-
-	if (p = malloc(newsize)) {
-		memmove(p, *p_ptr, oldsize);
-		memset((char *)p + oldsize, 0, newsize - oldsize);
-		free(*p_ptr);
-		*p_ptr = p;
-	}
-	return (p);
-}
-
-extern u_int32_t
+u_int32_t
 __call_hash(hashp, k, len)
 	HTAB *hashp;
-	char *k;
-	int len;
+	int8_t *k;
+	int32_t len;
 {
-	int n, bucket;
+	int32_t n, bucket;
 
 	n = hashp->hash(k, len);
-	bucket = n & hashp->HIGH_MASK;
-	if (bucket > hashp->MAX_BUCKET)
-		bucket = bucket & hashp->LOW_MASK;
+	bucket = n & hashp->hdr.high_mask;
+	if (bucket > hashp->hdr.max_bucket)
+		bucket = bucket & hashp->hdr.low_mask;
 	return (bucket);
-}
-
-/*
- * Allocate segment table.  On error, destroy the table and set errno.
- *
- * Returns 0 on success
- */
-static int
-alloc_segs(hashp, nsegs)
-	HTAB *hashp;
-	int nsegs;
-{
-	register int i;
-	register SEGMENT store;
-
-	int save_errno;
-
-	if ((hashp->dir =
-	    (SEGMENT *)calloc(hashp->DSIZE, sizeof(SEGMENT *))) == NULL) {
-		save_errno = errno;
-		(void)hdestroy(hashp);
-		errno = save_errno;
-		return (-1);
-	}
-	/* Allocate segments */
-	if ((store =
-	    (SEGMENT)calloc(nsegs << hashp->SSHIFT, sizeof(SEGMENT))) == NULL) {
-		save_errno = errno;
-		(void)hdestroy(hashp);
-		errno = save_errno;
-		return (-1);
-	}
-	for (i = 0; i < nsegs; i++, hashp->nsegs++)
-		hashp->dir[i] = &store[i << hashp->SSHIFT];
-	return (0);
 }
 
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -935,16 +996,13 @@ static void
 swap_header_copy(srcp, destp)
 	HASHHDR *srcp, *destp;
 {
-	int i;
+	int32_t i;
 
 	P_32_COPY(srcp->magic, destp->magic);
 	P_32_COPY(srcp->version, destp->version);
 	P_32_COPY(srcp->lorder, destp->lorder);
 	P_32_COPY(srcp->bsize, destp->bsize);
 	P_32_COPY(srcp->bshift, destp->bshift);
-	P_32_COPY(srcp->dsize, destp->dsize);
-	P_32_COPY(srcp->ssize, destp->ssize);
-	P_32_COPY(srcp->sshift, destp->sshift);
 	P_32_COPY(srcp->ovfl_point, destp->ovfl_point);
 	P_32_COPY(srcp->last_freed, destp->last_freed);
 	P_32_COPY(srcp->max_bucket, destp->max_bucket);
@@ -965,7 +1023,7 @@ swap_header(hashp)
 	HTAB *hashp;
 {
 	HASHHDR *hdrp;
-	int i;
+	int32_t i;
 
 	hdrp = &hashp->hdr;
 
@@ -974,9 +1032,6 @@ swap_header(hashp)
 	M_32_SWAP(hdrp->lorder);
 	M_32_SWAP(hdrp->bsize);
 	M_32_SWAP(hdrp->bshift);
-	M_32_SWAP(hdrp->dsize);
-	M_32_SWAP(hdrp->ssize);
-	M_32_SWAP(hdrp->sshift);
 	M_32_SWAP(hdrp->ovfl_point);
 	M_32_SWAP(hdrp->last_freed);
 	M_32_SWAP(hdrp->max_bucket);
@@ -991,4 +1046,4 @@ swap_header(hashp)
 		M_16_SWAP(hdrp->bitmaps[i]);
 	}
 }
-#endif
+#endif /* BYTE_ORDER == LITTLE_ENDIAN */

@@ -15,7 +15,8 @@ MISC=	memmove.o snprintf.o
 
 ${LIBDB}: ${OBJ1} ${OBJ2} ${OBJ3} ${OBJ4} ${OBJ5} ${MISC}
 	rm -f $@
-	ar cq $@ ${OBJ1} ${OBJ2} ${OBJ3} ${OBJ4} ${OBJ5} ${MISC}
+	ar cq $@ \
+	    `lorder ${OBJ1} ${OBJ2} ${OBJ3} ${OBJ4} ${OBJ5} ${MISC} | tsort`
 	ranlib $@
 
 clean:

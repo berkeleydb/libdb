@@ -35,16 +35,12 @@
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "@(#)ndbm.c	8.4 (Berkeley) 7/21/94";
+static char sccsid[] = "@(#)dbm.c	8.6 (Berkeley) 11/7/95";
 #endif /* LIBC_SCCS and not lint */
-
-/*
- * This package provides a dbm compatible interface to the new hashing
- * package described in db(3).
- */
 
 #include <sys/param.h>
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -52,11 +48,107 @@ static char sccsid[] = "@(#)ndbm.c	8.4 (Berkeley) 7/21/94";
 #include "hash.h"
 
 /*
+ *
+ * This package provides dbm and ndbm compatible interfaces to DB.
+ * First are the DBM routines, which call the NDBM routines, and
+ * the NDBM routines, which call the DB routines.
+ */
+static DBM *__cur_db;
+
+static void no_open_db __P((void));
+
+int
+dbminit(file)
+	char *file;
+{
+	if (__cur_db != NULL)
+		(void)dbm_close(__cur_db);
+	if ((__cur_db = dbm_open(file, O_RDWR, 0)) != NULL)
+		return (0);
+	if ((__cur_db = dbm_open(file, O_RDONLY, 0)) != NULL)
+		return (0);
+	return (-1);
+}
+
+datum
+fetch(key)
+	datum key;
+{
+	datum item;
+
+	if (__cur_db == NULL) {
+		no_open_db();
+		item.dptr = 0;
+		return (item);
+	}
+	return (dbm_fetch(__cur_db, key));
+}
+
+datum
+firstkey()
+{
+	datum item;
+
+	if (__cur_db == NULL) {
+		no_open_db();
+		item.dptr = 0;
+		return (item);
+	}
+	return (dbm_firstkey(__cur_db));
+}
+
+datum
+nextkey(key)
+	datum key;
+{
+	datum item;
+
+	if (__cur_db == NULL) {
+		no_open_db();
+		item.dptr = 0;
+		return (item);
+	}
+	return (dbm_nextkey(__cur_db));
+}
+
+int
+delete(key)
+	datum key;
+{
+	if (__cur_db == NULL) {
+		no_open_db();
+		return (-1);
+	}
+	if (dbm_rdonly(__cur_db))
+		return (-1);
+	return (dbm_delete(__cur_db, key));
+}
+
+int
+store(key, dat)
+	datum key, dat;
+{
+	if (__cur_db == NULL) {
+		no_open_db();
+		return (-1);
+	}
+	if (dbm_rdonly(__cur_db))
+		return (-1);
+	return (dbm_store(__cur_db, key, dat, DBM_REPLACE));
+}
+
+static void
+no_open_db()
+{
+	(void)fprintf(stderr, "dbm: no open database.\n");
+}
+
+/*
  * Returns:
  * 	*DBM on success
  *	 NULL on failure
  */
-extern DBM *
+DBM *
 dbm_open(file, flags, mode)
 	const char *file;
 	int flags, mode;
@@ -75,7 +167,11 @@ dbm_open(file, flags, mode)
 	return ((DBM *)__hash_open(path, flags, mode, &info, 0));
 }
 
-extern void
+/*
+ * Returns:
+ *	Nothing.
+ */
+void
 dbm_close(db)
 	DBM *db;
 {
@@ -87,7 +183,7 @@ dbm_close(db)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_fetch(db, key)
 	DBM *db;
 	datum key;
@@ -108,7 +204,7 @@ dbm_fetch(db, key)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_firstkey(db)
 	DBM *db;
 {
@@ -126,7 +222,7 @@ dbm_firstkey(db)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_nextkey(db)
 	DBM *db;
 {
@@ -138,12 +234,13 @@ dbm_nextkey(db)
 		retkey.dptr = NULL;
 	return (retkey);
 }
+
 /*
  * Returns:
  *	 0 on success
  *	<0 failure
  */
-extern int
+int
 dbm_delete(db, key)
 	DBM *db;
 	datum key;
@@ -163,7 +260,7 @@ dbm_delete(db, key)
  *	<0 failure
  *	 1 if DBM_INSERT and entry exists
  */
-extern int
+int
 dbm_store(db, key, content, flags)
 	DBM *db;
 	datum key, content;
@@ -173,7 +270,7 @@ dbm_store(db, key, content, flags)
 	    (flags == DBM_INSERT) ? R_NOOVERWRITE : 0));
 }
 
-extern int
+int
 dbm_error(db)
 	DBM *db;
 {
@@ -183,7 +280,7 @@ dbm_error(db)
 	return (hp->errno);
 }
 
-extern int
+int
 dbm_clearerr(db)
 	DBM *db;
 {
@@ -194,7 +291,7 @@ dbm_clearerr(db)
 	return (0);
 }
 
-extern int
+int
 dbm_dirfno(db)
 	DBM *db;
 {
