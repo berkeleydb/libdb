@@ -25,7 +25,6 @@ typedef struct {
 } HS;
 
 static void __memp_bad_buffer __P((DB_MPOOL_HASH *));
-static void __memp_reset_lru __P((DB_ENV *, REGINFO *, MPOOL *));
 
 /*
  * __memp_alloc --
@@ -50,8 +49,9 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
 	size_t freed_space;
-	u_int32_t buckets, buffers, high_priority, max_na, priority;
-	int aggressive, ret;
+	u_int32_t buckets, buffers, high_priority, priority, put_counter;
+	u_int32_t total_buckets;
+	int aggressive, giveup, ret;
 	void *p;
 
 	dbenv = dbmp->dbenv;
@@ -59,16 +59,11 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 	dbht = R_ADDR(memreg, c_mp->htab);
 	hp_end = &dbht[c_mp->htab_buckets];
 
-	buckets = buffers = 0;
-	aggressive = 0;
+	buckets = buffers = put_counter = total_buckets = 0;
+	aggressive = giveup = 0;
+	hp_tmp = NULL;
 
 	c_mp->stat.st_alloc++;
-
-	/*
-	 * Get aggressive if we've tried to flush the number of pages as are
-	 * in the system without finding space.
-	 */
-	max_na = 5 * c_mp->htab_buckets;
 
 	/*
 	 * If we're allocating a buffer, and the one we're discarding is the
@@ -81,19 +76,10 @@ __memp_alloc(dbmp, memreg, mfp, len, offsetp, retp)
 		len = (sizeof(BH) - sizeof(u_int8_t)) + mfp->stat.st_pagesize;
 
 	R_LOCK(dbenv, memreg);
-
-	/*
-	 * On every buffer allocation we update the buffer generation number
-	 * and check for wraparound.
-	 */
-	if (++c_mp->lru_count == UINT32_T_MAX)
-		__memp_reset_lru(dbenv, memreg, c_mp);
-
 	/*
 	 * Anything newer than 1/10th of the buffer pool is ignored during
 	 * allocation (unless allocation starts failing).
 	 */
-	DB_ASSERT(c_mp->lru_count > c_mp->stat.st_pages / 10);
 	high_priority = c_mp->lru_count - c_mp->stat.st_pages / 10;
 
 	/*
@@ -120,10 +106,11 @@ found:		if (offsetp != NULL)
 		 * We're not holding the region locked here, these statistics
 		 * can't be trusted.
 		 */
-		if (buckets != 0) {
-			if (buckets > c_mp->stat.st_alloc_max_buckets)
-				c_mp->stat.st_alloc_max_buckets = buckets;
-			c_mp->stat.st_alloc_buckets += buckets;
+		total_buckets += buckets;
+		if (total_buckets != 0) {
+			if (total_buckets > c_mp->stat.st_alloc_max_buckets)
+				c_mp->stat.st_alloc_max_buckets = total_buckets;
+			c_mp->stat.st_alloc_buckets += total_buckets;
 		}
 		if (buffers != 0) {
 			if (buffers > c_mp->stat.st_alloc_max_pages)
@@ -131,6 +118,12 @@ found:		if (offsetp != NULL)
 			c_mp->stat.st_alloc_pages += buffers;
 		}
 		return (0);
+	} else if (giveup || c_mp->stat.st_pages == 0) {
+		R_UNLOCK(dbenv, memreg);
+
+		__db_err(dbenv,
+		    "unable to allocate space from the buffer cache");
+		return (ret);
 	}
 
 	/*
@@ -138,26 +131,24 @@ found:		if (offsetp != NULL)
 	 * we need.  Reset our free-space counter.
 	 */
 	freed_space = 0;
+	total_buckets += buckets;
+	buckets = 0;
 
 	/*
 	 * Walk the hash buckets and find the next two with potentially useful
 	 * buffers.  Free the buffer with the lowest priority from the buckets'
 	 * chains.
 	 */
-	for (hp_tmp = NULL;;) {
+	for (;;) {
+		/* All pages have been freed, make one last try */
+		if (c_mp->stat.st_pages == 0)
+			goto alloc;
+
 		/* Check for wrap around. */
 		hp = &dbht[c_mp->last_checked++];
 		if (hp >= hp_end) {
 			c_mp->last_checked = 0;
-
-			/*
-			 * If we've gone through all of the hash buckets, try
-			 * an allocation.  If the cache is small, the old page
-			 * size is small, and the new page size is large, we
-			 * might have freed enough memory (but not 3 times the
-			 * memory).
-			 */
-			goto alloc;
+			hp = &dbht[c_mp->last_checked++];
 		}
 
 		/*
@@ -172,39 +163,59 @@ found:		if (offsetp != NULL)
 		/*
 		 * The failure mode is when there are too many buffers we can't
 		 * write or there's not enough memory in the system.  We don't
-		 * have a metric for deciding if allocation has no possible way
-		 * to succeed, so we don't ever fail, we assume memory will be
-		 * available if we wait long enough.
+		 * have a way to know that allocation has no way to succeed.
+		 * We fail if there were no pages returned to the cache after
+		 * we've been trying for a relatively long time.
 		 *
-		 * Get aggressive if we've tried to flush 5 times the number of
-		 * hash buckets as are in the system -- it's possible we have
-		 * been repeatedly trying to flush the same buffers, although
-		 * it's unlikely.  Aggressive means:
+		 * Get aggressive if we've tried to flush the number of hash
+		 * buckets as are in the system and have not found any more
+		 * space.  Aggressive means:
 		 *
 		 * a: set a flag to attempt to flush high priority buffers as
 		 *    well as other buffers.
 		 * b: sync the mpool to force out queue extent pages.  While we
 		 *    might not have enough space for what we want and flushing
 		 *    is expensive, why not?
-		 * c: sleep for a second -- hopefully someone else will run and
-		 *    free up some memory.  Try to allocate memory too, in case
-		 *    the other thread returns its memory to the region.
-		 * d: look at a buffer in every hash bucket rather than choose
+		 * c: look at a buffer in every hash bucket rather than choose
 		 *    the more preferable of two.
+		 * d: start to think about giving up.
+		 *
+		 * If we get here twice, sleep for a second, hopefully someone
+		 * else will run and free up some memory.
+		 *
+		 * Always try to allocate memory too, in case some other thread
+		 * returns its memory to the region.
 		 *
 		 * !!!
 		 * This test ignores pathological cases like no buffers in the
 		 * system -- that shouldn't be possible.
 		 */
-		if ((++buckets % max_na) == 0) {
-			aggressive = 1;
-
+		if ((++buckets % c_mp->htab_buckets) == 0) {
+			if (freed_space > 0)
+				goto alloc;
 			R_UNLOCK(dbenv, memreg);
 
-			(void)__memp_sync_int(
-			    dbenv, NULL, 0, DB_SYNC_ALLOC, NULL);
+			switch (++aggressive) {
+			case 1:
+				break;
+			case 2:
+				put_counter = c_mp->put_counter;
+				/* FALLTHROUGH */
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+				(void)__memp_sync_int(
+				    dbenv, NULL, 0, DB_SYNC_ALLOC, NULL);
 
-			(void)__os_sleep(dbenv, 1, 0);
+				(void)__os_sleep(dbenv, 1, 0);
+				break;
+			default:
+				aggressive = 1;
+				if (put_counter == c_mp->put_counter)
+					giveup = 1;
+				break;
+			}
 
 			R_LOCK(dbenv, memreg);
 			goto alloc;
@@ -277,7 +288,8 @@ found:		if (offsetp != NULL)
 		 * thread may have acquired this buffer and incremented the ref
 		 * count after we wrote it, in which case we can't have it.
 		 *
-		 * If there's a write error, avoid selecting this buffer again
+		 * If there's a write error and we're having problems finding
+		 * something to allocate, avoid selecting this buffer again
 		 * by making it the bucket's least-desirable buffer.
 		 */
 		if (ret != 0 || bhp->ref != 0) {
@@ -301,6 +313,8 @@ found:		if (offsetp != NULL)
 
 		freed_space += __db_shsizeof(bhp);
 		__memp_bhfree(dbmp, hp, bhp, 1);
+		if (aggressive > 1)
+			aggressive = 1;
 
 		/*
 		 * Unlock this hash bucket and re-acquire the region lock. If
@@ -360,54 +374,6 @@ __memp_bad_buffer(hp)
 
 	/* Reset the hash bucket's priority. */
 	hp->hash_priority = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)->priority;
-}
-
-/*
- * __memp_reset_lru --
- *	Reset the cache LRU counter.
- */
-static void
-__memp_reset_lru(dbenv, memreg, c_mp)
-	DB_ENV *dbenv;
-	REGINFO *memreg;
-	MPOOL *c_mp;
-{
-	BH *bhp;
-	DB_MPOOL_HASH *hp;
-	int bucket;
-
-	/*
-	 * Update the counter so all future allocations will start at the
-	 * bottom.
-	 */
-	c_mp->lru_count -= MPOOL_BASE_DECREMENT;
-
-	/* Release the region lock. */
-	R_UNLOCK(dbenv, memreg);
-
-	/* Adjust the priority of every buffer in the system. */
-	for (hp = R_ADDR(memreg, c_mp->htab),
-	    bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {
-		/*
-		 * Skip empty buckets.
-		 *
-		 * We can check for empty buckets before locking as we
-		 * only care if the pointer is zero or non-zero.
-		 */
-		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
-			continue;
-
-		MUTEX_LOCK(dbenv, &hp->hash_mutex);
-		for (bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh);
-		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh))
-			if (bhp->priority != UINT32_T_MAX &&
-			    bhp->priority > MPOOL_BASE_DECREMENT)
-				bhp->priority -= MPOOL_BASE_DECREMENT;
-		MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
-	}
-
-	/* Reacquire the region lock. */
-	R_LOCK(dbenv, memreg);
 }
 
 #ifdef DIAGNOSTIC

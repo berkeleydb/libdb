@@ -149,6 +149,13 @@ struct __mpool {
 	 * region lock).
 	 */
 	DB_MPOOL_STAT stat;		/* Per-cache mpool statistics. */
+ 
+	 /*
+	  * We track page puts so that we can decide when allocation is never
+	  * going to succeed.  We don't lock the field, all we care about is
+	  * if it changes.
+	  */
+	 u_int32_t  put_counter;                /* Count of page put calls. */
 };
 
 struct __db_mpool_hash {

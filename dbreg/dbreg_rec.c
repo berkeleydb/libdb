@@ -174,19 +174,20 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 			 * Typically, closes should match an open which means
 			 * that if this is a close, there should be a valid
 			 * entry in the dbentry table when we get here,
-			 * however there is an exception.  If this is an
+			 * however there are exceptions.  1. If this is an
 			 * OPENFILES pass, then we may have started from
 			 * a log file other than the first, and the
 			 * corresponding open appears in an earlier file.
-			 * We can ignore that case, but all others are errors.
+			 * 2. If we are undoing an open on an abort or
+			 * recovery, it's possible that we failed after
+			 * the log record, but before we actually entered
+			 * a handle here.
 			 */
 			dbe = &dblp->dbentry[argp->fileid];
 			if (dbe->dbp == NULL && !dbe->deleted) {
 				/* No valid entry here. */
-				if ((argp->opcode != LOG_CLOSE &&
-				    argp->opcode != LOG_RCLOSE) ||
-				    (op != DB_TXN_OPENFILES &&
-				    op !=DB_TXN_POPENFILES)) {
+				if (DB_REDO(op) ||
+				    argp->opcode == LOG_CHECKPOINT) {
 					__db_err(dbenv,
 					    "Improper file close at %lu/%lu",
 					    (u_long)lsnp->file,

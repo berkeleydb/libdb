@@ -19,6 +19,8 @@ static const char revid[] = "$Id: mp_fput.c,v 11.36 2002/08/09 19:04:11 bostic E
 #include "dbinc/db_shash.h"
 #include "dbinc/mp.h"
 
+static void __memp_reset_lru __P((DB_ENV *, REGINFO *));
+
 /*
  * __memp_fput --
  *	Mpool file put function.
@@ -198,5 +200,56 @@ __memp_fput(dbmfp, pgaddr, flags)
 
 	MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
 
+	/*
+	 * On every buffer put we update the buffer generation number and check
+	 * for wraparound.
+	 */
+	if (++c_mp->lru_count == UINT32_T_MAX)
+		__memp_reset_lru(dbenv, dbmp->reginfo);
+
 	return (0);
+}
+
+/*
+ * __memp_reset_lru --
+ *	Reset the cache LRU counter.
+ */
+static void
+__memp_reset_lru(dbenv, memreg)
+	DB_ENV *dbenv;
+	REGINFO *memreg;
+{
+	BH *bhp;
+	DB_MPOOL_HASH *hp;
+	MPOOL *c_mp;
+	int bucket;
+
+	c_mp = memreg->primary;
+
+	/*
+	 * Update the counter so all future allocations will start at the
+	 * bottom.
+	 */
+	c_mp->lru_count -= MPOOL_BASE_DECREMENT;
+
+	/* Adjust the priority of every buffer in the system. */
+	for (hp = R_ADDR(memreg, c_mp->htab),
+	    bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {
+		/*
+		 * Skip empty buckets.
+		 *
+		 * We can check for empty buckets before locking as we
+		 * only care if the pointer is zero or non-zero.
+		 */
+		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
+			continue;
+
+		MUTEX_LOCK(dbenv, &hp->hash_mutex);
+		for (bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh);
+		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh))
+			if (bhp->priority != UINT32_T_MAX &&
+			    bhp->priority > MPOOL_BASE_DECREMENT)
+				bhp->priority -= MPOOL_BASE_DECREMENT;
+		MUTEX_UNLOCK(dbenv, &hp->hash_mutex);
+	}
 }

@@ -232,12 +232,9 @@ __db_apprec(dbenv, max_lsn, flags)
 	 * we'll still need to do a vtruncate based on information we haven't
 	 * yet collected.
 	 */
-	if (ret == DB_NOTFOUND) {
+	if (ret == DB_NOTFOUND) 
 		ret = 0;
-		if (max_lsn == NULL)
-			goto done;
-	}
-	if (ret != 0)
+	else if (ret != 0)
 		goto err;
 
 	hi_txn = txnid;
@@ -331,7 +328,7 @@ __db_apprec(dbenv, max_lsn, flags)
 
 	/* Find a low txnid. */
 	ret = 0;
-	do {
+	if (hi_txn != 0) do {
 		/* txnid is after rectype, which is a u_int32. */
 		memcpy(&txnid,
 		    (u_int8_t *)data.data + sizeof(u_int32_t), sizeof(txnid));
@@ -344,11 +341,8 @@ __db_apprec(dbenv, max_lsn, flags)
 	 * There are no transactions and we're not recovering to an LSN (see
 	 * above), so there is nothing to do.
 	 */
-	if (ret == DB_NOTFOUND) {
+	if (ret == DB_NOTFOUND) 
 		ret = 0;
-		if (max_lsn == NULL)
-			goto done;
-	}
 
 	/* Reset to the first lsn. */
 	if (ret != 0 || (ret = logc->get(logc, &first_lsn, &data, DB_SET)) != 0)
@@ -367,6 +361,10 @@ __db_apprec(dbenv, max_lsn, flags)
 	    txninfo, &data, &first_lsn, &last_lsn, nfiles, 1)) != 0)
 		goto err;
 
+	/* If there were no transactions, then we can bail out early. */
+	if (hi_txn == 0 && max_lsn == NULL)
+		goto done;
+		
 	/*
 	 * Pass #2.
 	 *
@@ -483,6 +481,7 @@ __db_apprec(dbenv, max_lsn, flags)
 	if ((ret = __dbreg_close_files(dbenv)) != 0)
 		goto err;
 
+done:
 	if (max_lsn != NULL) {
 		region->last_ckp = ((DB_TXNHEAD *)txninfo)->ckplsn;
 
@@ -538,7 +537,8 @@ __db_apprec(dbenv, max_lsn, flags)
 		__db_err(dbenv, "Recovery complete at %.24s", ctime(&now));
 		__db_err(dbenv, "%s %lx %s [%lu][%lu]",
 		    "Maximum transaction ID",
-		    ((DB_TXNHEAD *)txninfo)->maxid,
+		    txninfo == NULL ? TXN_MINIMUM :
+			((DB_TXNHEAD *)txninfo)->maxid,
 		    "Recovery checkpoint",
 		    (u_long)region->last_ckp.file,
 		    (u_long)region->last_ckp.offset);
@@ -550,7 +550,6 @@ msgerr:		__db_err(dbenv,
 		    (u_long)lsn.file, (u_long)lsn.offset, pass);
 	}
 
-done:
 err:	if (lockid != DB_LOCK_INVALIDID) {
 		if ((t_ret = __rep_unlockpages(dbenv, lockid)) != 0 && ret == 0)
 			ret = t_ret;
