@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2003
+# Copyright (c) 2001-2004
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: si002.tcl,v 1.9 2003/01/08 05:53:25 bostic Exp $
+# $Id: si002.tcl,v 1.14 2004/10/27 20:40:25 carol Exp $
 #
 # TEST	si002
 # TEST	Basic cursor-based secondary index put/delete test
@@ -37,7 +37,7 @@ proc si002 { methods {nentries 200} {tnum "002"} args } {
 	set argses [convert_argses $methods $args]
 	set omethods [convert_methods $methods]
 
-	puts "Si$tnum ($pmethod/$methods) $nentries equal key/data pairs"
+	puts "si$tnum \{\[ list $pmethod $methods \]\} $nentries"
 	env_cleanup $testdir
 
 	set pname "primary$tnum.db"

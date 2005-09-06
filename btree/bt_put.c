@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2003
+ * Copyright (c) 1996-2004
  *	Sleepycat Software.  All rights reserved.
  */
 /*
@@ -38,13 +38,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $Id: bt_put.c,v 11.80 2004/10/29 17:33:25 ubell Exp $
  */
 
 #include "db_config.h"
-
-#ifndef lint
-static const char revid[] = "$Id: bt_put.c,v 11.78 2003/10/31 15:07:40 bostic Exp $";
-#endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
@@ -702,7 +700,7 @@ __bam_dup_convert(dbc, h, indx)
 
 	/* Sum up all the data items. */
 	for (cnt = 0, first = indx;
-	    inp[first] == inp[indx] && indx < NUM_ENT(h);
+	    indx < NUM_ENT(h) && inp[first] == inp[indx];
 	    ++cnt, indx += P_INDX) {
 		bk = GET_BKEYDATA(dbp, h, indx + O_INDX);
 		sz += B_TYPE(bk->type) == B_KEYDATA ?

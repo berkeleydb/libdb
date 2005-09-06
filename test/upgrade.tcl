@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2003
+# Copyright (c) 1999-2004
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: upgrade.tcl,v 11.32 2003/10/02 15:09:36 sandstro Exp $
+# $Id: upgrade.tcl,v 11.37 2004/10/27 20:29:29 carol Exp $
 
 source ./include.tcl
 
@@ -267,12 +267,17 @@ proc _log_test { temp_dir release method file } {
 		set ret [catch {exec $util_path/db_printlog -h $temp_dir \
 		    -P $passwd > $temp_dir/logs.prlog} message]
 		if { $ret == 1 } {
-			puts "db_printlog failed: $message"
+			# If the failure is because of a historic
+			# log version, that's okay.
+			if { $current_logvers <= $saved_logvers } {
+				puts "db_printlog failed: $message"
+		 	}	
 		}
 	}
+
 	if { $current_logvers > $saved_logvers } {
-		error_check_good unreadable_log_version \
-		    [is_substr $message "unreadable log version"] 1
+		error_check_good historic_log_version \
+		    [is_substr $message "historic log version"] 1
 	} else {
 		error_check_good db_printlog:$message $ret 0
 		# Compare logs.prlog and $file.prlog (should match)
@@ -371,7 +376,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 				set gen_chksum 1
 				foreach upgrade_be { 0 1 } {
 					set upgrade_name $test
-					if { $test == "test001" } { 
+					if { $test == "test001" } {
 						if { [catch {exec $tclsh_path \
 						    << "source $test_path/test.tcl;\
 						    global gen_upgrade;\
@@ -381,7 +386,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 						    global encrypt gen_chksum;\
 						    set encrypt $encrypt;\
 						    set gen_upgrade 1;\
-						    set gen_chksum 1;\	
+						    set gen_chksum 1;\
 						    set upgrade_be $upgrade_be;\
 						    set upgrade_method \
 						    $upgrade_method;\
@@ -399,7 +404,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 				}
 				set gen_chksum 0
 			}
-			# Save encrypted db's only of native endianness. 
+			# Save encrypted db's only of native endianness.
 			# Encrypted files are not portable across endianness.
 			if { $save_crypto == 1 } {
 				set upgrade_be [big_endian]
@@ -520,7 +525,7 @@ proc save_upgrade_files { dir } {
 			set upgrade_name c-$upgrade_name
 			set dumpflag " -P $passwd "
 		}
-		# Checksummed files are identified by the prefix "s-". 
+		# Checksummed files are identified by the prefix "s-".
 		if { $gen_chksum == 1 } {
 			set upgrade_name s-$upgrade_name
 		}
@@ -613,7 +618,7 @@ proc upgrade_dump { database file {stripnulls 0} } {
 	if { $encrypt == 1 } {
 		set encargs " -encryptany $passwd "
 	}
-	set db [eval {berkdb open} $encargs $database]
+	set db [eval {berkdb open} -rdonly $encargs $database]
 	set dbc [$db cursor]
 
 	set f [open $file w+]

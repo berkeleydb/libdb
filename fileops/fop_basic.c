@@ -1,15 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2003
+ * Copyright (c) 2001-2004
  *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: fop_basic.c,v 1.32 2004/11/15 20:04:50 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef lint
-static const char revid[] = "$Id: fop_basic.c,v 1.30 2003/07/24 01:26:22 margo Exp $";
-#endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <string.h>
@@ -246,6 +244,7 @@ __fop_rename(dbenv, txn, oldname, newname, fid, appname, flags)
 	int ret;
 	char *n, *o;
 
+	o = n = NULL;
 	if ((ret = __db_appname(dbenv, appname, oldname, 0, NULL, &o)) != 0)
 		goto err;
 	if ((ret = __db_appname(dbenv, appname, newname, 0, NULL, &n)) != 0)
@@ -268,9 +267,9 @@ __fop_rename(dbenv, txn, oldname, newname, fid, appname, flags)
 
 	ret = __memp_nameop(dbenv, fid, newname, o, n);
 
-err:	if (o != oldname)
+err:	if (o != NULL)
 		__os_free(dbenv, o);
-	if (n != newname)
+	if (n != NULL)
 		__os_free(dbenv, n);
 	return (ret);
 }

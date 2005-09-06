@@ -1,17 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2003
+ * Copyright (c) 2000-2004
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_vrfy.c,v 1.127 2003/07/16 22:25:34 ubell Exp $
+ * $Id: db_vrfy.c,v 1.138 2004/10/11 18:47:50 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef lint
-static const char revid[] = "$Id: db_vrfy.c,v 1.127 2003/07/16 22:25:34 ubell Exp $";
-#endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
@@ -49,7 +45,9 @@ static int   __db_salvage_subdbs __P((DB *, VRFY_DBINFO *, void *,
 		int(*)(void *, const void *), u_int32_t, int *));
 static int   __db_salvage_unknowns __P((DB *, VRFY_DBINFO *, void *,
 		int (*)(void *, const void *), u_int32_t));
-static int   __db_verify_arg __P((DB *, const char *, u_int32_t));
+static int   __db_verify __P((DB *, const char *, const char *,
+		void *, int (*)(void *, const void *), u_int32_t));
+static int   __db_verify_arg __P((DB *, const char *, void *, u_int32_t));
 static int   __db_vrfy_freelist
 		__P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t));
 static int   __db_vrfy_invalid
@@ -63,6 +61,10 @@ static int   __db_vrfy_structure
 		__P((DB *, VRFY_DBINFO *, const char *, db_pgno_t, u_int32_t));
 static int   __db_vrfy_walkpages __P((DB *, VRFY_DBINFO *,
 		void *, int (*)(void *, const void *), u_int32_t));
+
+#define	VERIFY_FLAGS							\
+    (DB_AGGRESSIVE |							\
+     DB_NOORDERCHK | DB_ORDERCHKONLY | DB_PRINTABLE | DB_SALVAGE | DB_UNREF)
 
 /*
  * __db_verify_pp --
@@ -101,15 +103,25 @@ __db_verify_internal(dbp, fname, dname, handle, callback, flags)
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
-	int ret;
+	int ret, t_ret;
 
 	dbenv = dbp->dbenv;
 
 	PANIC_CHECK(dbenv);
 	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->verify");
 
-	if ((ret = __db_verify_arg(dbp, dname, flags)) != 0)
-		return (ret);
+#ifdef HAVE_FTRUNCATE
+	/*
+	 * If we're using ftruncate to abort page-allocation functions, there
+	 * should never be unreferenced pages.  Always check for unreferenced
+	 * pages on those systems.
+	 */
+	if (!LF_ISSET(DB_SALVAGE))
+		LF_SET(DB_UNREF);
+#endif
+
+	if ((ret = __db_verify_arg(dbp, dname, handle, flags)) != 0)
+		goto err;
 
 	/*
 	 * Forbid working in an environment that uses transactions or
@@ -120,10 +132,17 @@ __db_verify_internal(dbp, fname, dname, handle, callback, flags)
 	if (TXN_ON(dbenv) || LOCKING_ON(dbenv) || LOGGING_ON(dbenv)) {
 		__db_err(dbenv,
     "DB->verify may not be used with transactions, logging, or locking");
-		return (EINVAL);
+		ret = EINVAL;
+		goto err;
 	}
 
-	return (__db_verify(dbp, fname, dname, handle, callback, flags));
+	ret = __db_verify(dbp, fname, dname, handle, callback, flags);
+
+	/* Db.verify is a DB handle destructor. */
+err:	if ((t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
+		ret = t_ret;
+
+	return (ret);
 }
 
 /*
@@ -131,9 +150,10 @@ __db_verify_internal(dbp, fname, dname, handle, callback, flags)
  *	Check DB->verify arguments.
  */
 static int
-__db_verify_arg(dbp, dname, flags)
+__db_verify_arg(dbp, dname, handle, flags)
 	DB *dbp;
 	const char *dname;
+	void *handle;
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
@@ -141,28 +161,36 @@ __db_verify_arg(dbp, dname, flags)
 
 	dbenv = dbp->dbenv;
 
-#undef	OKFLAGS
-#define	OKFLAGS (DB_AGGRESSIVE | DB_NOORDERCHK | DB_ORDERCHKONLY | \
-    DB_PRINTABLE | DB_SALVAGE)
-	if ((ret = __db_fchk(dbenv, "DB->verify", flags, OKFLAGS)) != 0)
+	if ((ret = __db_fchk(dbenv, "DB->verify", flags, VERIFY_FLAGS)) != 0)
 		return (ret);
 
 	/*
 	 * DB_SALVAGE is mutually exclusive with the other flags except
-	 * DB_AGGRESSIVE and DB_PRINTABLE.
+	 * DB_AGGRESSIVE, DB_PRINTABLE.
+	 *
+	 * DB_AGGRESSIVE and DB_PRINTABLE are only meaningful when salvaging.
+	 *
+	 * DB_SALVAGE requires an output stream.
 	 */
-	if (LF_ISSET(DB_SALVAGE) &&
-	    (flags & ~DB_AGGRESSIVE & ~DB_PRINTABLE) != DB_SALVAGE)
-		return (__db_ferr(dbenv, "__db_verify", 1));
+	if (LF_ISSET(DB_SALVAGE)) {
+		if (LF_ISSET(~(DB_AGGRESSIVE | DB_PRINTABLE | DB_SALVAGE)))
+			return (__db_ferr(dbenv, "DB->verify", 1));
+		if (handle == NULL) {
+			__db_err(dbenv,
+			    "DB_SALVAGE requires a an output handle");
+			return (EINVAL);
+		}
+	} else
+		if (LF_ISSET(DB_AGGRESSIVE | DB_PRINTABLE))
+			return (__db_ferr(dbenv, "DB->verify", 1));
 
-	/* DB_AGGRESSIVE and DB_PRINTABLE are only meaningful when salvaging. */
-	if ((LF_ISSET(DB_AGGRESSIVE) || LF_ISSET(DB_PRINTABLE)) &&
-	    !LF_ISSET(DB_SALVAGE))
-		return (__db_ferr(dbenv, "__db_verify", 1));
-
-	if (LF_ISSET(DB_ORDERCHKONLY) && flags != DB_ORDERCHKONLY)
-		return (__db_ferr(dbenv, "__db_verify", 1));
-
+	/* 
+	 * DB_ORDERCHKONLY is mutually exclusive with DB_SALVAGE and
+	 * DB_NOORDERCHK, and requires a database name.
+	 */
+	if ((ret = __db_fcchk(dbenv, "DB->verify", flags,
+	    DB_ORDERCHKONLY, DB_SALVAGE | DB_NOORDERCHK)) != 0)
+		return (ret);
 	if (LF_ISSET(DB_ORDERCHKONLY) && dname == NULL) {
 		__db_err(dbenv, "DB_ORDERCHKONLY requires a database name");
 		return (EINVAL);
@@ -183,11 +211,8 @@ __db_verify_arg(dbp, dname, flags)
  *
  *	flags may be 0, DB_NOORDERCHK, DB_ORDERCHKONLY, or DB_SALVAGE
  *	(and optionally DB_AGGRESSIVE).
- *
- * PUBLIC: int __db_verify __P((DB *, const char *,
- * PUBLIC:     const char *, void *, int (*)(void *, const void *), u_int32_t));
  */
-int
+static int
 __db_verify(dbp, name, subdb, handle, callback, flags)
 	DB *dbp;
 	const char *name, *subdb;
@@ -249,7 +274,7 @@ __db_verify(dbp, name, subdb, handle, callback, flags)
 	 * safe to open the database normally and then use the page swapping
 	 * code, which makes life easier.
 	 */
-	if ((ret = __os_open(dbenv, real_name, DB_OSO_RDONLY, 0444, &fhp)) != 0)
+	if ((ret = __os_open(dbenv, real_name, DB_OSO_RDONLY, 0, &fhp)) != 0)
 		goto err;
 
 	/* Verify the metadata page 0; set pagesize and type. */
@@ -340,7 +365,7 @@ __db_verify(dbp, name, subdb, handle, callback, flags)
 	    __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
-		else if (ret != 0)
+		else
 			goto err;
 	}
 
@@ -350,7 +375,7 @@ __db_verify(dbp, name, subdb, handle, callback, flags)
 		    __db_vrfy_structure(dbp, vdp, name, 0, flags)) != 0) {
 			if (ret == DB_VERIFY_BAD)
 				isbad = 1;
-			else if (ret != 0)
+			else
 				goto err;
 		}
 
@@ -367,14 +392,7 @@ __db_verify(dbp, name, subdb, handle, callback, flags)
 		__db_salvage_destroy(vdp);
 	}
 
-	if (0) {
-		/* Don't try to strerror() DB_VERIFY_FATAL;  it's private. */
-err:		if (ret == DB_VERIFY_FATAL)
-			ret = DB_VERIFY_BAD;
-		__db_err(dbenv, "%s: %s", name, db_strerror(ret));
-	}
-
-	if (LF_ISSET(DB_SALVAGE) &&
+err:	if (LF_ISSET(DB_SALVAGE) &&
 	    (has == 0 || F_ISSET(vdp, SALVAGE_PRINTFOOTER)))
 		(void)__db_prfooter(handle, callback);
 
@@ -385,16 +403,27 @@ done:	if (!LF_ISSET(DB_SALVAGE) && dbp->db_feedback != NULL)
 	if (fhp != NULL &&
 	    (t_ret = __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
 		ret = t_ret;
-	if (dbp != NULL && (t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
-		ret = t_ret;
 	if (vdp != NULL &&
 	    (t_ret = __db_vrfy_dbinfo_destroy(dbenv, vdp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (real_name != NULL)
 		__os_free(dbenv, real_name);
 
-	if ((ret == 0 && isbad == 1) || ret == DB_VERIFY_FATAL)
+	/*
+	 * DB_VERIFY_FATAL is a private error, translate to a public one.
+	 *
+	 * If we didn't find a page, it's probably a page number was corrupted.
+	 * Return the standard corruption error.
+	 *
+	 * Otherwise, if we found corruption along the way, set the return.
+	 */
+	if (ret == DB_VERIFY_FATAL ||
+	    ret == DB_PAGE_NOTFOUND || (ret == 0 && isbad == 1))
 		ret = DB_VERIFY_BAD;
+
+	/* Make sure there's a public complaint if we found corruption. */
+	if (ret != 0)
+		__db_err(dbenv, "%s: %s", name, db_strerror(ret));
 
 	return (ret);
 }
@@ -604,13 +633,8 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 
 	dbenv = dbp->dbenv;
 	mpf = dbp->mpf;
+	h = NULL;
 	ret = isbad = t_ret = 0;
-
-#define	OKFLAGS (DB_AGGRESSIVE | DB_NOORDERCHK | DB_ORDERCHKONLY | \
-    DB_PRINTABLE | DB_SALVAGE)
-	if ((ret = __db_fchk(dbenv,
-	    "__db_vrfy_walkpages", flags, OKFLAGS)) != 0)
-		return (ret);
 
 	for (i = 0; i <= vdp->last_pgno; i++) {
 		/*
@@ -630,8 +654,7 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 				ret = t_ret;
 			if (LF_ISSET(DB_SALVAGE))
 				continue;
-			else
-				return (ret);
+			return (ret);
 		}
 
 		if (LF_ISSET(DB_SALVAGE)) {
@@ -763,7 +786,7 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 	}
 
 	if (0) {
-err:		if ((t_ret = __memp_fput(mpf, h, 0)) != 0)
+err:		if (h != NULL && (t_ret = __memp_fput(mpf, h, 0)) != 0)
 			return (ret == 0 ? t_ret : ret);
 	}
 
@@ -797,13 +820,6 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 	pip = NULL;
 	dbenv = dbp->dbenv;
 	pgset = vdp->pgset;
-
-	if ((ret = __db_fchk(dbenv, "DB->verify", flags, OKFLAGS)) != 0)
-		return (ret);
-	if (LF_ISSET(DB_SALVAGE)) {
-		__db_err(dbenv, "__db_vrfy_structure called with DB_SALVAGE");
-		return (EINVAL);
-	}
 
 	/*
 	 * Providing feedback here is tricky;  in most situations,
@@ -918,7 +934,7 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 				    (u_long)pip->refcount, (u_long)p));
 				isbad = 1;
 			}
-		} else if (p == 0) {
+		} else if (p == 0 && LF_ISSET(DB_UNREF)) {
 			EPRINT((dbenv,
 			    "Page %lu: unreferenced page", (u_long)i));
 			isbad = 1;
@@ -1831,9 +1847,9 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 			 */
 			if ((ret = __db_safe_goff(dbp,
 			    vdp, pgno, &key, &ovflbuf, flags)) != 0 ||
-			    (ret = __db_prdbt(&key,
+			    (ret = __db_vrfy_prdbt(&key,
 			    0, " ", handle, callback, 0, vdp)) != 0 ||
-			    (ret = __db_prdbt(&unkdbt,
+			    (ret = __db_vrfy_prdbt(&unkdbt,
 			    0, " ", handle, callback, 0, vdp)) != 0)
 				err_ret = ret;
 			break;
@@ -1936,7 +1952,7 @@ __db_vrfy_inpitem(dbp, h, pgno, i, is_btree, flags, himarkp, offsetp)
 		 * Check alignment;  if it's unaligned, it's unsafe to
 		 * manipulate this item.
 		 */
-		if (offset != ALIGN(offset, sizeof(u_int32_t))) {
+		if (offset != DB_ALIGN(offset, sizeof(u_int32_t))) {
 			EPRINT((dbenv,
 			    "Page %lu: unaligned offset %lu at page index %lu",
 			    (u_long)pgno, (u_long)offset, (u_long)i));
@@ -2307,7 +2323,8 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			err_ret = DB_VERIFY_BAD;
 			continue;
 		}
-		memcpy(&meta_pgno, bkdata->data, sizeof(db_pgno_t));
+		memcpy(&meta_pgno,
+		    (db_pgno_t *)bkdata->data, sizeof(db_pgno_t));
 
 		/*
 		 * Subdatabase meta pgnos are stored in network byte

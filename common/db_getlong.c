@@ -1,15 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2003
+ * Copyright (c) 1996-2004
  *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: db_getlong.c,v 11.22 2004/10/28 14:43:26 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef lint
-static const char revid[] = "$Id: db_getlong.c,v 11.20 2003/01/08 04:07:46 bostic Exp $";
-#endif /* not lint */
 
 #ifndef NO_SYSTEM_INCLUDES
 #include <sys/types.h>
@@ -95,11 +93,6 @@ __db_getulong(dbenv, progname, p, min, max, storep)
 	char *p;
 	u_long min, max, *storep;
 {
-#if !defined(HAVE_STRTOUL)
-	COMPQUIET(min, 0);
-
-	return (__db_getlong(dbenv, progname, p, 0, max, (long *)storep));
-#else
 	u_long val;
 	char *end;
 
@@ -150,5 +143,4 @@ __db_getulong(dbenv, progname, p, min, max, storep)
 	}
 	*storep = val;
 	return (0);
-#endif	/* !defined(HAVE_STRTOUL) */
 }

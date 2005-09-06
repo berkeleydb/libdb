@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2003
+# Copyright (c) 2001-2004
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: si001.tcl,v 1.13 2003/09/04 23:41:15 bostic Exp $
+# $Id: si001.tcl,v 1.18 2004/10/27 20:40:25 carol Exp $
 #
 # TEST	si001
 # TEST	Basic secondary index put/delete test
@@ -37,7 +37,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 	set argses [convert_argses $methods $args]
 	set omethods [convert_methods $methods]
 
-	puts "Si$tnum ($pmethod/$methods) $nentries equal key/data pairs"
+	puts "si$tnum \{\[ list $pmethod $methods \]\} $nentries" 
 	env_cleanup $testdir
 
 	set pname "primary$tnum.db"
@@ -139,8 +139,16 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 
 	close $did
 
-	puts "\tSi$tnum.f: Truncate primary"
+	puts "\tSi$tnum.f: Truncate primary, check secondaries are empty."
 	error_check_good truncate [$pdb truncate] $left
+	foreach sdb $sdbs {
+		set scursor [$sdb cursor]
+		error_check_good db_cursor [is_substr $scursor $sdb] 1
+		set ret [$scursor get -first]
+		error_check_good sec_empty [string length $ret] 0
+		error_check_good cursor_close [$scursor close] 0
+	}
+
 
 	puts "\tSi$tnum.g: Closing/disassociating primary first"
 	error_check_good primary_close [$pdb close] 0

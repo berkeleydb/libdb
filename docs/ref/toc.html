@@ -1,14 +1,14 @@
-<!--$Id: toc.html,v 10.255 2003/11/27 18:25:56 bostic Exp $-->
+<!--$Id: toc.html,v 10.271 2004/10/18 20:10:41 bostic Exp $-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide (Version: 4.2.52)</title>
+<title>Berkeley DB Reference Guide (Version: 4.3.29)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
-<meta name="keywords" content="embedded,database,programmatic,toolkit,b+tree,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 
 <center>
-<h2><b>Berkeley DB Reference Guide, Version 4.2.52</b></h2>
+<h2><b>Berkeley DB Reference Guide, Version 4.3.29</b></h2>
 </center>
 
 <ol>
@@ -23,18 +23,6 @@
     <li><a href="intro/distrib.html">What does the Berkeley DB distribution include?</a>
     <li><a href="intro/where.html">Where does Berkeley DB run?</a>
     <li><a href="intro/products.html">Sleepycat Software's Berkeley DB products</a>
-    </ol>
-<font size="+1"><li><a name="simple_tut">A Simple Access Method Tutorial</a></font>
-    <ol>
-    <li><a href="simple_tut/intro.html">Introduction</a>
-    <li><a href="simple_tut/keydata.html">Key/data pairs</a>
-    <li><a href="simple_tut/handles.html">Object handles</a>
-    <li><a href="simple_tut/errors.html">Error returns</a>
-    <li><a href="simple_tut/open.html">Opening a database</a>
-    <li><a href="simple_tut/put.html">Adding elements to a database</a>
-    <li><a href="simple_tut/get.html">Retrieving elements from a database</a>
-    <li><a href="simple_tut/del.html">Removing elements from a database</a>
-    <li><a href="simple_tut/close.html">Closing a database</a>
     </ol>
 <font size="+1"><li><a name="am_conf">Access Method Configuration</a></font>
     <ol>
@@ -111,61 +99,6 @@
     <li><a href="am_misc/tune.html">Access method tuning</a>
     <li><a href="am_misc/faq.html">Access method FAQ</a>
     </ol>
-<font size="+1"><li><a name="bdb_tut">Java Collections for Berkeley DB</a></font>
-    <ol>
-    <li><a href="bdb_tut/intro.html">Introduction</a>
-    <li><a href="bdb_basic/intro.html">Basic - The shipment program</a>
-        <ol>
-        <li><a href="bdb_basic/keyvalue.html">Defining serialized key and value classes</a>
-        <li><a href="bdb_basic/env.html">Opening and closing the database environment</a>
-        <li><a href="bdb_basic/catalog.html">Opening and closing the class catalog</a>
-        <li><a href="bdb_basic/stores.html">Opening and closing database stores</a>
-        <li><a href="bdb_basic/views.html">Creating bindings and collections</a>
-        <li><a href="bdb_basic/main.html">Implementing the main program</a>
-        <li><a href="bdb_basic/transact.html">Using transactions</a>
-        <li><a href="bdb_basic/write.html">Adding database items</a>
-        <li><a href="bdb_basic/read.html">Retrieving database items</a>
-        <li><a href="bdb_basic/except.html">Handling exceptions</a>
-        </ol>
-    <li><a href="bdb_index/intro.html">Index - Indices and foreign keys</a>
-        <ol>
-        <li><a href="bdb_index/second.html">Opening secondary key indices</a>
-        <li><a href="bdb_index/foreign.html">Opening foreign key indices</a>
-        <li><a href="bdb_index/views.html">Creating indexed collections</a>
-        <li><a href="bdb_index/read.html">Retrieving items by index key</a>
-        </ol>
-    <li><a href="bdb_entity/intro.html">Entity - Combining the key and value in a single object</a>
-        <ol>
-        <li><a href="bdb_entity/classes.html">Defining entity classes</a>
-        <li><a href="bdb_entity/bindings.html">Creating entity bindings</a>
-        <li><a href="bdb_entity/views.html">Creating collections with entity bindings</a>
-        <li><a href="bdb_entity/read.html">Using entities with collections</a>
-        </ol>
-    <li><a href="bdb_tuple/intro.html">Tuple - Compact ordered keys</a>
-        <ol>
-        <li><a href="bdb_tuple/format.html">Using the tuple format</a>
-        <li><a href="bdb_tuple/extract.html">Using tuples with key extractors</a>
-        <li><a href="bdb_tuple/tbinding.html">Creating tuple key bindings</a>
-        <li><a href="bdb_tuple/tsbinding.html">Creating tuple-serial entity bindings</a>
-        <li><a href="bdb_tuple/sorted.html">Using sorted collections</a>
-        </ol>
-    <li><a href="bdb_sentity/intro.html">Serializable Entity - One serializable class for entities and values</a>
-        <ol>
-        <li><a href="bdb_sentity/class.html">Using transient fields in an entity class</a>
-        <li><a href="bdb_sentity/binding.html">Using transient fields in an entity binding</a>
-        <li><a href="bdb_sentity/remove.html">Removing the redundant value classes</a>
-        </ol>
-    <li><a href="bdb_tut/summary.html">Summary and next steps</a>
-    </ol>
-<font size="+1"><li><a name="bdb">BDB Java API</a></font>
-    <ol>
-    <li><a href="bdb/overview.html">Introduction</a>
-    <li><a href="bdb/cs_bdb_bind.html">Using Data Formats and Bindings</a>
-    <li><a href="bdb/cs_bdb.html">Access Methods and Transaction Options</a>
-    <li><a href="bdb/cs_bdb_collection.html">Using Stored Collections</a>
-    <li><a href="bdb/cs_bdb_serial.html">Java serialization data format and bindings</a>
-    <li><a href="bdb/faq.html">BDB Java FAQ</a>
-    </ol>
 <font size="+1"><li><a name="java">Java API</a></font>
     <ol>
     <li><a href="java/conf.html">Java configuration</a>
@@ -198,13 +131,14 @@
 <font size="+1"><li><a name="cam">Berkeley DB Concurrent Data Store Applications</a></font>
     <ol>
     <li><a href="cam/intro.html">Berkeley DB Concurrent Data Store applications</a>
+    <li><a href="cam/app.html">Architecting Data Store and Concurrent Data Store applications</a>
     </ol>
 <font size="+1"><li><a name="transapp">Berkeley DB Transactional Data Store Applications</a></font>
     <ol>
     <li><a href="transapp/intro.html">Berkeley DB Transactional Data Store applications</a>
     <li><a href="transapp/why.html">Why transactions?</a>
     <li><a href="transapp/term.html">Terminology</a>
-    <li><a href="transapp/app.html">Application structure</a>
+    <li><a href="transapp/app.html">Architecting Transactional Data Store applications</a>
     <li><a href="transapp/env_open.html">Opening the environment</a>
     <li><a href="transapp/data_open.html">Opening the databases</a>
     <li><a href="transapp/put.html">Recoverability and deadlock handling</a>
@@ -234,9 +168,7 @@
     <li><a href="rep/app.html">Building replicated applications</a>
     <li><a href="rep/comm.html">Building the communications infrastructure</a>
     <li><a href="rep/newsite.html">Connecting to a new site</a>
-    <li><a href="rep/init.html">Initializing a new site</a>
     <li><a href="rep/elect.html">Elections</a>
-    <li><a href="rep/logonly.html">Log file only clients</a>
     <li><a href="rep/trans.html">Transactional guarantees</a>
     <li><a href="rep/partition.html">Network partitions</a>
     <li><a href="rep/faq.html">Replication FAQ</a>
@@ -267,7 +199,7 @@
     <li><a href="program/mt.html">Multithreaded applications</a>
     <li><a href="program/scope.html">Berkeley DB handles</a>
     <li><a href="program/namespace.html">Name spaces</a>
-    <li><a href="program/ram.html">RAM-only configurations</a>
+    <li><a href="program/ram.html">Memory-only configurations</a>
     <li><a href="program/cache.html">Disk drive caches</a>
     <li><a href="program/copy.html">Copying databases</a>
     <li><a href="program/compatible.html">Compatibility with historic UNIX interfaces</a>
@@ -307,16 +239,16 @@
     <li><a href="txn/config.html">Configuring transactions</a>
     <li><a href="txn/limits.html">Transaction limits</a>
     </ol>
+<font size="+1"><li><a name="txn">Sequences</a></font>
+    <ol>
+    <li><a href="sequence/intro.html">Sequences</a>
+    </ol>
 <font size="+1"><li><a name="rpc">RPC Client/Server</a></font>
     <ol>
     <li><a href="rpc/intro.html">Introduction</a>
     <li><a href="rpc/client.html">Client program</a>
     <li><a href="rpc/server.html">Server program</a>
     <li><a href="rpc/faq.html">RPC FAQ</a>
-    </ol>
-<font size="+1"><li><a name="perl">Perl API</a></font>
-    <ol>
-    <li><a href="perl/intro.html">Using Berkeley DB with Perl</a>
     </ol>
 <font size="+1"><li><a name="tcl">Tcl API</a></font>
     <ol>
@@ -325,6 +257,12 @@
     <li><a href="tcl/program.html">Tcl API programming notes</a>
     <li><a href="tcl/error.html">Tcl error handling</a>
     <li><a href="tcl/faq.html">Tcl FAQ</a>
+    </ol>
+<font size="+1"><li><a name="ext">Berkeley DB Extensions</a></font>
+    <ol>
+    <li><a href="ext/mod.html">Using Berkeley DB with Apache</a>
+    <li><a href="ext/perl.html">Using Berkeley DB with Perl</a>
+    <li><a href="ext/php.html">Using Berkeley DB with PHP</a>
     </ol>
 <font size="+1"><li><a name="dumpload">Dumping and Reloading Databases</a></font>
     <ol>
@@ -336,7 +274,6 @@
     <ol>
     <li><a href="install/file.html">File utility /etc/magic information</a>
     <li><a href="install/multiple.html">Building with multiple versions of Berkeley DB</a>
-    <li><a href="install/rpm.html">Building RPM distribution packages</a>
     </ol>
 <font size="+1"><li><a name="debug">Debugging Applications</a></font>
     <ol>
@@ -373,7 +310,8 @@
 <font size="+1"><li><a name="build_win">Building Berkeley DB for Win32 systems</a></font>
     <ol>
     <li><a href="build_win/intro.html">Building for Win32</a>
-    <li><a href="build_win/small.html">Building a small memory footprint library on Windows</a>
+    <li><a href="build_win/unicode.html">Unicode support</a>
+    <li><a href="build_win/small.html">Building a small memory footprint library</a>
     <li><a href="build_win/test.html">Running the test suite under Windows</a>
     <li><a href="build_win/notes.html">Windows notes</a>
     <li><a href="build_win/faq.html">Windows FAQ</a>
@@ -381,7 +319,6 @@
 <font size="+1"><li><a name="build_vxworks">Building Berkeley DB for VxWorks systems</a></font>
     <ol>
     <li><a href="build_vxworks/intro.html">Building for VxWorks 5.4</a>
-    <li><a href="build_vxworks/introae.html">Building for VxWorks AE</a>
     <li><a href="build_vxworks/notes.html">VxWorks notes</a>
     <li><a href="build_vxworks/faq.html">VxWorks FAQ</a>
     </ol>
@@ -406,6 +343,8 @@
 	    Upgrading Berkeley DB 4.0.X applications to Berkeley DB 4.1</a>
     <li><a href="upgrade.4.2/toc.html">
 	    Upgrading Berkeley DB 4.1.X applications to Berkeley DB 4.2</a>
+    <li><a href="upgrade.4.3/toc.html">
+	    Upgrading Berkeley DB 4.2.X applications to Berkeley DB 4.3</a>
     </ol>
 <font size="+1"><li><a name="test">Test Suite</a></font>
     <ol>
