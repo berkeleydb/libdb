@@ -4,7 +4,7 @@
  * Copyright (c) 2002-2003
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: IterDeadlockTest.java,v 1.3 2004/10/07 19:45:56 bostic Exp $
+ * $Id: IterDeadlockTest.java,v 12.2 2005/08/01 20:25:29 mark Exp $
  */
 
 package com.sleepycat.collections.test;

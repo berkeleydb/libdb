@@ -78,10 +78,9 @@ __bam_split_log(dbp, txnid, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -201,7 +200,7 @@ __bam_split_log(dbp, txnid, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -221,13 +220,14 @@ __bam_split_log(dbp, txnid, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_split_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -371,10 +371,9 @@ __bam_rsplit_log(dbp, txnid, ret_lsnp, flags, pgno, pgdbt, root_pgno, nrec, root
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -477,7 +476,7 @@ __bam_rsplit_log(dbp, txnid, ret_lsnp, flags, pgno, pgdbt, root_pgno, nrec, root
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -497,13 +496,14 @@ __bam_rsplit_log(dbp, txnid, ret_lsnp, flags, pgno, pgdbt, root_pgno, nrec, root
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_rsplit_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -633,10 +633,9 @@ __bam_adj_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, indx_copy, is_insert
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -720,7 +719,7 @@ __bam_adj_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, indx_copy, is_insert
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -740,13 +739,14 @@ __bam_adj_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, indx_copy, is_insert
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_adj_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -867,10 +867,9 @@ __bam_cadjust_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, adjust, opflags)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -954,7 +953,7 @@ __bam_cadjust_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, adjust, opflags)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -974,13 +973,14 @@ __bam_cadjust_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, adjust, opflags)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_cadjust_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -1100,10 +1100,9 @@ __bam_cdel_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -1177,7 +1176,7 @@ __bam_cdel_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -1197,13 +1196,14 @@ __bam_cdel_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_cdel_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -1321,10 +1321,9 @@ __bam_repl_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, isdeleted, orig,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -1437,7 +1436,7 @@ __bam_repl_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, isdeleted, orig,
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -1457,13 +1456,14 @@ __bam_repl_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, isdeleted, orig,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_repl_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -1598,10 +1598,9 @@ __bam_root_log(dbp, txnid, ret_lsnp, flags, meta_pgno, root_pgno, meta_lsn)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -1675,7 +1674,7 @@ __bam_root_log(dbp, txnid, ret_lsnp, flags, meta_pgno, root_pgno, meta_lsn)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -1695,13 +1694,14 @@ __bam_root_log(dbp, txnid, ret_lsnp, flags, meta_pgno, root_pgno, meta_lsn)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_root_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -1818,10 +1818,9 @@ __bam_curadj_log(dbp, txnid, ret_lsnp, flags, mode, from_pgno, to_pgno, left_pgn
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -1913,7 +1912,7 @@ __bam_curadj_log(dbp, txnid, ret_lsnp, flags, mode, from_pgno, to_pgno, left_pgn
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -1933,13 +1932,14 @@ __bam_curadj_log(dbp, txnid, ret_lsnp, flags, mode, from_pgno, to_pgno, left_pgn
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_curadj_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -2068,10 +2068,9 @@ __bam_rcuradj_log(dbp, txnid, ret_lsnp, flags, mode, root, recno, order)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -2148,7 +2147,7 @@ __bam_rcuradj_log(dbp, txnid, ret_lsnp, flags, mode, root, recno, order)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -2168,13 +2167,14 @@ __bam_rcuradj_log(dbp, txnid, ret_lsnp, flags, mode, root, recno, order)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__bam_rcuradj_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -2242,18 +2242,18 @@ __bam_rcuradj_read(dbenv, recbuf, argpp)
 
 /*
  * PUBLIC: int __bam_relink_log __P((DB *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, DB_LSN *, db_pgno_t,
+ * PUBLIC:     u_int32_t, db_pgno_t, db_pgno_t, db_pgno_t, DB_LSN *, db_pgno_t,
  * PUBLIC:     DB_LSN *));
  */
 int
-__bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
+__bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, new_pgno, prev, lsn_prev, next,
     lsn_next)
 	DB *dbp;
 	DB_TXN *txnid;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	db_pgno_t pgno;
-	DB_LSN * lsn;
+	db_pgno_t new_pgno;
 	db_pgno_t prev;
 	DB_LSN * lsn_prev;
 	db_pgno_t next;
@@ -2296,10 +2296,257 @@ __bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
+	}
+
+	DB_ASSERT(dbp->log_filename != NULL);
+	if (dbp->log_filename->id == DB_LOGFILEID_INVALID &&
+	    (ret = __dbreg_lazy_id(dbp)) != 0)
+		return (ret);
+
+	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t)
+	    + sizeof(*lsn_prev)
+	    + sizeof(u_int32_t)
+	    + sizeof(*lsn_next);
+	if (CRYPTO_ON(dbenv)) {
+		npad =
+		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+		logrec.size += npad;
+	}
+
+	if (is_durable || txnid == NULL) {
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+			return (ret);
+	} else {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+			__os_free(dbenv, lr);
+			return (ret);
+		}
+#else
+		logrec.data = lr->data;
+#endif
+	}
+	if (npad > 0)
+		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
+
+	bp = logrec.data;
+
+	memcpy(bp, &rectype, sizeof(rectype));
+	bp += sizeof(rectype);
+
+	memcpy(bp, &txn_num, sizeof(txn_num));
+	bp += sizeof(txn_num);
+
+	memcpy(bp, lsnp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+
+	uinttmp = (u_int32_t)dbp->log_filename->id;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)pgno;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)new_pgno;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)prev;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	if (lsn_prev != NULL)
+		memcpy(bp, lsn_prev, sizeof(*lsn_prev));
+	else
+		memset(bp, 0, sizeof(*lsn_prev));
+	bp += sizeof(*lsn_prev);
+
+	uinttmp = (u_int32_t)next;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	if (lsn_next != NULL)
+		memcpy(bp, lsn_next, sizeof(*lsn_next));
+	else
+		memset(bp, 0, sizeof(*lsn_next));
+	bp += sizeof(*lsn_next);
+
+	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
+
+	if (is_durable || txnid == NULL) {
+		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
+			*lsnp = *rlsnp;
+			if (rlsnp != ret_lsnp)
+				 *ret_lsnp = *rlsnp;
+		}
+	} else {
+#ifdef DIAGNOSTIC
+		/*
+		 * Set the debug bit if we are going to log non-durable
+		 * transactions so they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+
+		ret = __log_put(dbenv,
+		    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+#else
+		ret = 0;
+#endif
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
+		LSN_NOT_LOGGED(*ret_lsnp);
+	}
+
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__bam_relink_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
+#endif
+
+#ifdef DIAGNOSTIC
+	__os_free(dbenv, logrec.data);
+#else
+	if (is_durable || txnid == NULL)
+		__os_free(dbenv, logrec.data);
+#endif
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __bam_relink_read __P((DB_ENV *, void *, __bam_relink_args **));
+ */
+int
+__bam_relink_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	__bam_relink_args **argpp;
+{
+	__bam_relink_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(dbenv,
+	    sizeof(__bam_relink_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnid = (DB_TXN *)&argp[1];
+
+	memcpy(&argp->type, bp, sizeof(argp->type));
+	bp += sizeof(argp->type);
+
+	memcpy(&argp->txnid->txnid,  bp, sizeof(argp->txnid->txnid));
+	bp += sizeof(argp->txnid->txnid);
+
+	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->fileid = (int32_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->pgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->new_pgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->prev = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&argp->lsn_prev, bp,  sizeof(argp->lsn_prev));
+	bp += sizeof(argp->lsn_prev);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->next = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&argp->lsn_next, bp,  sizeof(argp->lsn_next));
+	bp += sizeof(argp->lsn_next);
+
+	*argpp = argp;
+	return (0);
+}
+
+/*
+ * PUBLIC: int __bam_merge_log __P((DB *, DB_TXN *, DB_LSN *,
+ * PUBLIC:     u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, DB_LSN *, const DBT *,
+ * PUBLIC:     const DBT *, const DBT *));
+ */
+int
+__bam_merge_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, npgno, nlsn, hdr,
+    data, ind)
+	DB *dbp;
+	DB_TXN *txnid;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	db_pgno_t pgno;
+	DB_LSN * lsn;
+	db_pgno_t npgno;
+	DB_LSN * nlsn;
+	const DBT *hdr;
+	const DBT *data;
+	const DBT *ind;
+{
+	DBT logrec;
+	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
+	DB_LSN *lsnp, null_lsn, *rlsnp;
+	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int npad;
+	u_int8_t *bp;
+	int is_durable, ret;
+
+	dbenv = dbp->dbenv;
+	COMPQUIET(lr, NULL);
+
+	rectype = DB___bam_merge;
+	npad = 0;
+	rlsnp = ret_lsnp;
+
+	ret = 0;
+
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		is_durable = 0;
+	} else
+		is_durable = 1;
+
+	if (txnid == NULL) {
+		txn_num = 0;
+		lsnp = &null_lsn;
+		null_lsn.file = null_lsn.offset = 0;
+	} else {
+		if (TAILQ_FIRST(&txnid->kids) != NULL &&
+		    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+			return (ret);
+		/*
+		 * We need to assign begin_lsn while holding region mutex.
+		 * That assignment is done inside the DbEnv->log_put call,
+		 * so pass in the appropriate memory location to be filled
+		 * in by the log_put code.
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
+		txn_num = txnid->txnid;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -2312,9 +2559,10 @@ __bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
 	    + sizeof(u_int32_t)
 	    + sizeof(*lsn)
 	    + sizeof(u_int32_t)
-	    + sizeof(*lsn_prev)
-	    + sizeof(u_int32_t)
-	    + sizeof(*lsn_next);
+	    + sizeof(*nlsn)
+	    + sizeof(u_int32_t) + (hdr == NULL ? 0 : hdr->size)
+	    + sizeof(u_int32_t) + (data == NULL ? 0 : data->size)
+	    + sizeof(u_int32_t) + (ind == NULL ? 0 : ind->size);
 	if (CRYPTO_ON(dbenv)) {
 		npad =
 		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
@@ -2367,32 +2615,55 @@ __bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
 		memset(bp, 0, sizeof(*lsn));
 	bp += sizeof(*lsn);
 
-	uinttmp = (u_int32_t)prev;
+	uinttmp = (u_int32_t)npgno;
 	memcpy(bp, &uinttmp, sizeof(uinttmp));
 	bp += sizeof(uinttmp);
 
-	if (lsn_prev != NULL)
-		memcpy(bp, lsn_prev, sizeof(*lsn_prev));
+	if (nlsn != NULL)
+		memcpy(bp, nlsn, sizeof(*nlsn));
 	else
-		memset(bp, 0, sizeof(*lsn_prev));
-	bp += sizeof(*lsn_prev);
+		memset(bp, 0, sizeof(*nlsn));
+	bp += sizeof(*nlsn);
 
-	uinttmp = (u_int32_t)next;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	if (hdr == NULL) {
+		zero = 0;
+		memcpy(bp, &zero, sizeof(u_int32_t));
+		bp += sizeof(u_int32_t);
+	} else {
+		memcpy(bp, &hdr->size, sizeof(hdr->size));
+		bp += sizeof(hdr->size);
+		memcpy(bp, hdr->data, hdr->size);
+		bp += hdr->size;
+	}
 
-	if (lsn_next != NULL)
-		memcpy(bp, lsn_next, sizeof(*lsn_next));
-	else
-		memset(bp, 0, sizeof(*lsn_next));
-	bp += sizeof(*lsn_next);
+	if (data == NULL) {
+		zero = 0;
+		memcpy(bp, &zero, sizeof(u_int32_t));
+		bp += sizeof(u_int32_t);
+	} else {
+		memcpy(bp, &data->size, sizeof(data->size));
+		bp += sizeof(data->size);
+		memcpy(bp, data->data, data->size);
+		bp += data->size;
+	}
+
+	if (ind == NULL) {
+		zero = 0;
+		memcpy(bp, &zero, sizeof(u_int32_t));
+		bp += sizeof(u_int32_t);
+	} else {
+		memcpy(bp, &ind->size, sizeof(ind->size));
+		bp += sizeof(ind->size);
+		memcpy(bp, ind->data, ind->size);
+		bp += ind->size;
+	}
 
 	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -2412,13 +2683,14 @@ __bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__bam_relink_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		(void)__bam_merge_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -2431,21 +2703,21 @@ __bam_relink_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, prev, lsn_prev, next,
 }
 
 /*
- * PUBLIC: int __bam_relink_read __P((DB_ENV *, void *, __bam_relink_args **));
+ * PUBLIC: int __bam_merge_read __P((DB_ENV *, void *, __bam_merge_args **));
  */
 int
-__bam_relink_read(dbenv, recbuf, argpp)
+__bam_merge_read(dbenv, recbuf, argpp)
 	DB_ENV *dbenv;
 	void *recbuf;
-	__bam_relink_args **argpp;
+	__bam_merge_args **argpp;
 {
-	__bam_relink_args *argp;
+	__bam_merge_args *argp;
 	u_int32_t uinttmp;
 	u_int8_t *bp;
 	int ret;
 
 	if ((ret = __os_malloc(dbenv,
-	    sizeof(__bam_relink_args) + sizeof(DB_TXN), &argp)) != 0)
+	    sizeof(__bam_merge_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnid = (DB_TXN *)&argp[1];
@@ -2471,18 +2743,264 @@ __bam_relink_read(dbenv, recbuf, argpp)
 	bp += sizeof(argp->lsn);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->prev = (db_pgno_t)uinttmp;
+	argp->npgno = (db_pgno_t)uinttmp;
 	bp += sizeof(uinttmp);
 
-	memcpy(&argp->lsn_prev, bp,  sizeof(argp->lsn_prev));
-	bp += sizeof(argp->lsn_prev);
+	memcpy(&argp->nlsn, bp,  sizeof(argp->nlsn));
+	bp += sizeof(argp->nlsn);
+
+	memset(&argp->hdr, 0, sizeof(argp->hdr));
+	memcpy(&argp->hdr.size, bp, sizeof(u_int32_t));
+	bp += sizeof(u_int32_t);
+	argp->hdr.data = bp;
+	bp += argp->hdr.size;
+
+	memset(&argp->data, 0, sizeof(argp->data));
+	memcpy(&argp->data.size, bp, sizeof(u_int32_t));
+	bp += sizeof(u_int32_t);
+	argp->data.data = bp;
+	bp += argp->data.size;
+
+	memset(&argp->ind, 0, sizeof(argp->ind));
+	memcpy(&argp->ind.size, bp, sizeof(u_int32_t));
+	bp += sizeof(u_int32_t);
+	argp->ind.data = bp;
+	bp += argp->ind.size;
+
+	*argpp = argp;
+	return (0);
+}
+
+/*
+ * PUBLIC: int __bam_pgno_log __P((DB *, DB_TXN *, DB_LSN *,
+ * PUBLIC:     u_int32_t, db_pgno_t, DB_LSN *, u_int32_t, db_pgno_t,
+ * PUBLIC:     db_pgno_t));
+ */
+int
+__bam_pgno_log(dbp, txnid, ret_lsnp, flags, pgno, lsn, indx, opgno, npgno)
+	DB *dbp;
+	DB_TXN *txnid;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	db_pgno_t pgno;
+	DB_LSN * lsn;
+	u_int32_t indx;
+	db_pgno_t opgno;
+	db_pgno_t npgno;
+{
+	DBT logrec;
+	DB_ENV *dbenv;
+	DB_TXNLOGREC *lr;
+	DB_LSN *lsnp, null_lsn, *rlsnp;
+	u_int32_t uinttmp, rectype, txn_num;
+	u_int npad;
+	u_int8_t *bp;
+	int is_durable, ret;
+
+	dbenv = dbp->dbenv;
+	COMPQUIET(lr, NULL);
+
+	rectype = DB___bam_pgno;
+	npad = 0;
+	rlsnp = ret_lsnp;
+
+	ret = 0;
+
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		is_durable = 0;
+	} else
+		is_durable = 1;
+
+	if (txnid == NULL) {
+		txn_num = 0;
+		lsnp = &null_lsn;
+		null_lsn.file = null_lsn.offset = 0;
+	} else {
+		if (TAILQ_FIRST(&txnid->kids) != NULL &&
+		    (ret = __txn_activekids(dbenv, rectype, txnid)) != 0)
+			return (ret);
+		/*
+		 * We need to assign begin_lsn while holding region mutex.
+		 * That assignment is done inside the DbEnv->log_put call,
+		 * so pass in the appropriate memory location to be filled
+		 * in by the log_put code.
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
+		txn_num = txnid->txnid;
+	}
+
+	DB_ASSERT(dbp->log_filename != NULL);
+	if (dbp->log_filename->id == DB_LOGFILEID_INVALID &&
+	    (ret = __dbreg_lazy_id(dbp)) != 0)
+		return (ret);
+
+	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t)
+	    + sizeof(*lsn)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t);
+	if (CRYPTO_ON(dbenv)) {
+		npad =
+		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+		logrec.size += npad;
+	}
+
+	if (is_durable || txnid == NULL) {
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+			return (ret);
+	} else {
+		if ((ret = __os_malloc(dbenv,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		if ((ret =
+		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
+			__os_free(dbenv, lr);
+			return (ret);
+		}
+#else
+		logrec.data = lr->data;
+#endif
+	}
+	if (npad > 0)
+		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
+
+	bp = logrec.data;
+
+	memcpy(bp, &rectype, sizeof(rectype));
+	bp += sizeof(rectype);
+
+	memcpy(bp, &txn_num, sizeof(txn_num));
+	bp += sizeof(txn_num);
+
+	memcpy(bp, lsnp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
+
+	uinttmp = (u_int32_t)dbp->log_filename->id;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)pgno;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	if (lsn != NULL)
+		memcpy(bp, lsn, sizeof(*lsn));
+	else
+		memset(bp, 0, sizeof(*lsn));
+	bp += sizeof(*lsn);
+
+	uinttmp = (u_int32_t)indx;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)opgno;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	uinttmp = (u_int32_t)npgno;
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
+
+	DB_ASSERT((u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
+
+	if (is_durable || txnid == NULL) {
+		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
+			*lsnp = *rlsnp;
+			if (rlsnp != ret_lsnp)
+				 *ret_lsnp = *rlsnp;
+		}
+	} else {
+#ifdef DIAGNOSTIC
+		/*
+		 * Set the debug bit if we are going to log non-durable
+		 * transactions so they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		memcpy(logrec.data, &rectype, sizeof(rectype));
+
+		ret = __log_put(dbenv,
+		    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+#else
+		ret = 0;
+#endif
+		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
+		LSN_NOT_LOGGED(*ret_lsnp);
+	}
+
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__bam_pgno_print(dbenv,
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
+#endif
+
+#ifdef DIAGNOSTIC
+	__os_free(dbenv, logrec.data);
+#else
+	if (is_durable || txnid == NULL)
+		__os_free(dbenv, logrec.data);
+#endif
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __bam_pgno_read __P((DB_ENV *, void *, __bam_pgno_args **));
+ */
+int
+__bam_pgno_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	__bam_pgno_args **argpp;
+{
+	__bam_pgno_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(dbenv,
+	    sizeof(__bam_pgno_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnid = (DB_TXN *)&argp[1];
+
+	memcpy(&argp->type, bp, sizeof(argp->type));
+	bp += sizeof(argp->type);
+
+	memcpy(&argp->txnid->txnid,  bp, sizeof(argp->txnid->txnid));
+	bp += sizeof(argp->txnid->txnid);
+
+	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	bp += sizeof(DB_LSN);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->next = (db_pgno_t)uinttmp;
+	argp->fileid = (int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
-	memcpy(&argp->lsn_next, bp,  sizeof(argp->lsn_next));
-	bp += sizeof(argp->lsn_next);
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->pgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&argp->lsn, bp,  sizeof(argp->lsn));
+	bp += sizeof(argp->lsn);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->indx = (u_int32_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->opgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->npgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
 
 	*argpp = argp;
 	return (0);
@@ -2529,6 +3047,12 @@ __bam_init_recover(dbenv, dtabp, dtabsizep)
 		return (ret);
 	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
 	    __bam_relink_recover, DB___bam_relink)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	    __bam_merge_recover, DB___bam_merge)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	    __bam_pgno_recover, DB___bam_pgno)) != 0)
 		return (ret);
 	return (0);
 }

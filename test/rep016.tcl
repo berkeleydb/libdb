@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2004
+# Copyright (c) 2002-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep016.tcl,v 11.13 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep016.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  rep016
 # TEST	Replication election test with varying required nvotes.
@@ -14,8 +14,13 @@
 
 proc rep016 { method args } {
 	global errorInfo
-	set tnum "016"
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
+	set tnum "016"
 	if { [is_btree $method] == 0 } {
 		puts "Rep$tnum: Skipping for method $method."
 		return
@@ -46,7 +51,7 @@ proc rep016 { method args } {
 	}
 }
 
-proc rep016_sub { method nclients tnum logset recargs args } {
+proc rep016_sub { method nclients tnum logset recargs largs } {
 	source ./include.tcl
 	set niter 5
 
@@ -101,7 +106,7 @@ proc rep016_sub { method nclients tnum logset recargs args } {
 
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]

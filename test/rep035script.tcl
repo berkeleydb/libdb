@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep035script.tcl,v 11.2 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep035script.tcl,v 12.1 2005/06/16 20:24:03 bostic Exp $
 #
 # Rep035 script - continually calls lock_detect, txn_checkpoint,
 # or mpool_trickle.

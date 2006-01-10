@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep020.tcl,v 1.10 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep020.tcl,v 12.5 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  rep020
 # TEST	Replication elections - test election generation numbers.
@@ -12,6 +12,11 @@
 proc rep020 { method args } {
 	global rand_init
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set tnum "020"
 	if { [is_btree $method] == 0 } {
 		puts "Rep$tnum: Skipping for method $method."
@@ -32,7 +37,7 @@ proc rep020 { method args } {
 	}
 }
 
-proc rep020_sub { method nclients tnum logset args } {
+proc rep020_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global errorInfo
 	global mixed_mode_logging
@@ -86,7 +91,7 @@ proc rep020_sub { method nclients tnum logset args } {
 	process_msgs $envlist
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
@@ -209,11 +214,20 @@ proc rep020_sub { method nclients tnum logset args } {
 		puts "\t$msg: Election generation is not changed in recovery."
 		# Note all client egens.  Close, recover, process messages,
 		# and check that egens are unchanged.
+		set big_e [big_endian]
 		foreach pair $envlist {
 			set i [expr [lindex $pair 1] - 2]
+			set fid [open $clientdir($i)/__db.rep.egen r]
+			fconfigure $fid -translation binary
+			set data [read $fid 4]
+			if { $big_e } {
+				binary scan $data I egen($i)
+			} else {
+				binary scan $data i egen($i)
+			}
+			binary scan $data c val
+			close $fid
 			set clientenv($i) [lindex $pair 0]
-			set egen($i) [stat_field $clientenv($i) \
-			    rep_stat "Election generation number"]
 			error_check_good \
 			    clientenv_close($i) [$clientenv($i) close] 0
 			set clientenv($i) [eval $env_cmd($i) -recover]
@@ -222,6 +236,7 @@ proc rep020_sub { method nclients tnum logset args } {
 		}
 		process_msgs $envlist
 		foreach pair $envlist {
+			set i [expr [lindex $pair 1] - 2]
 			set newegen($i) [stat_field $clientenv($i) \
 			    rep_stat "Election generation number"]
 			error_check_good egen_recovery $egen($i) $newegen($i)

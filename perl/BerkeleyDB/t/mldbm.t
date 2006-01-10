@@ -25,7 +25,8 @@ BEGIN
     }
 }
 
-use t::util ;
+use lib 't' ;
+use util ;
 
 print "1..12\n";
 

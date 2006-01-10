@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: LogRecordHandler.java,v 1.2 2004/04/21 01:09:09 mjc Exp $
+ * $Id: LogRecordHandler.java,v 12.1 2005/06/16 20:23:02 bostic Exp $
  */
 package com.sleepycat.db;
 

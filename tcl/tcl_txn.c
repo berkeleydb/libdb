@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_txn.c,v 11.70 2004/10/27 16:48:32 bostic Exp $
+ * $Id: tcl_txn.c,v 12.8 2005/11/02 20:22:25 bostic Exp $
  */
 
 #include "db_config.h"
@@ -142,28 +142,30 @@ tcl_Txn(interp, objc, objv, envp, envip)
 {
 	static const char *txnopts[] = {
 #ifdef CONFIG_TEST
-		"-degree_2",
-		"-dirty",
 		"-lock_timeout",
+		"-read_committed",
+		"-read_uncommitted",
 		"-txn_timeout",
 #endif
 		"-nosync",
 		"-nowait",
 		"-parent",
 		"-sync",
+		"-wrnosync",
 		NULL
 	};
 	enum txnopts {
 #ifdef CONFIG_TEST
-		TXNDEGREE2,
-		TXNDIRTY,
-		TXN_LOCK_TIMEOUT,
-		TXN_TIMEOUT,
+		TXNLOCK_TIMEOUT,
+		TXNREAD_COMMITTED,
+		TXNREAD_UNCOMMITTED,
+		TXNTIMEOUT,
 #endif
 		TXNNOSYNC,
 		TXNNOWAIT,
 		TXNPARENT,
-		TXNSYNC
+		TXNSYNC,
+		TXNWRNOSYNC
 	};
 	DBTCL_INFO *ip;
 	DB_TXN *parent;
@@ -196,35 +198,33 @@ tcl_Txn(interp, objc, objv, envp, envip)
 		i++;
 		switch ((enum txnopts)optindex) {
 #ifdef CONFIG_TEST
-		case TXNDEGREE2:
-			flag |= DB_DEGREE_2;
-			break;
-		case TXNDIRTY:
-			flag |= DB_DIRTY_READ;
-			break;
-		case TXN_LOCK_TIMEOUT:
+		case TXNLOCK_TIMEOUT:
 			lk_timeflag = DB_SET_LOCK_TIMEOUT;
-			goto getit;
-		case TXN_TIMEOUT:
+			goto get_timeout;
+		case TXNTIMEOUT:
 			tx_timeflag = DB_SET_TXN_TIMEOUT;
-getit:			if (i >= objc) {
+get_timeout:		if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
 				    "?-txn_timestamp time?");
 				return (TCL_ERROR);
 			}
 			result = Tcl_GetLongFromObj(interp, objv[i++], (long *)
-			    ((enum txnopts)optindex == TXN_LOCK_TIMEOUT ?
+			    ((enum txnopts)optindex == TXNLOCK_TIMEOUT ?
 			    &lk_time : &tx_time));
 			if (result != TCL_OK)
 				return (TCL_ERROR);
 			break;
+		case TXNREAD_COMMITTED:
+			flag |= DB_READ_COMMITTED;
+			break;
+		case TXNREAD_UNCOMMITTED:
+			flag |= DB_READ_UNCOMMITTED;
+			break;
 #endif
 		case TXNNOSYNC:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_NOSYNC;
 			break;
 		case TXNNOWAIT:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_NOWAIT;
 			break;
 		case TXNPARENT:
@@ -245,8 +245,10 @@ getit:			if (i >= objc) {
 			}
 			break;
 		case TXNSYNC:
-			FLAG_CHECK2(flag, DB_DIRTY_READ);
 			flag |= DB_TXN_SYNC;
+			break;
+		case TXNWRNOSYNC:
+			flag |= DB_TXN_WRITE_NOSYNC;
 			break;
 		}
 	}
@@ -428,18 +430,24 @@ txn_Cmd(clientData, interp, objc, objv)
 	static const char *txncmds[] = {
 #ifdef CONFIG_TEST
 		"discard",
+		"getname",
 		"id",
 		"prepare",
+		"setname",
 #endif
 		"abort",
 		"commit",
+		"getname",
+		"setname",
 		NULL
 	};
 	enum txncmds {
 #ifdef CONFIG_TEST
 		TXNDISCARD,
+		TXNGETNAME,
 		TXNID,
 		TXNPREPARE,
+		TXNSETNAME,
 #endif
 		TXNABORT,
 		TXNCOMMIT
@@ -449,7 +457,9 @@ txn_Cmd(clientData, interp, objc, objv)
 	Tcl_Obj *res;
 	int cmdindex, result, ret;
 #ifdef CONFIG_TEST
-	u_int8_t *gid;
+	u_int8_t *gid, garray[DB_XIDDATASIZE];
+	int length;
+	const char *name;
 #endif
 
 	Tcl_ResetResult(interp);
@@ -503,8 +513,9 @@ txn_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		_debug_check();
-		gid = (u_int8_t *)Tcl_GetByteArrayFromObj(objv[2], NULL);
-		ret = txnp->prepare(txnp, gid);
+		gid = (u_int8_t *)Tcl_GetByteArrayFromObj(objv[2], &length);
+		memcpy(garray, gid, (size_t)length);
+		ret = txnp->prepare(txnp, garray);
 		/*
 		 * !!!
 		 * DB_TXN->prepare commits all outstanding children.  But it
@@ -515,6 +526,27 @@ txn_Cmd(clientData, interp, objc, objv)
 		_TxnInfoDelete(interp, txnip);
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "txn prepare");
+		break;
+	case TXNGETNAME:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 2, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		ret = txnp->get_name(txnp, &name);
+		if ((result = _ReturnSetup(
+		    interp, ret, DB_RETOK_STD(ret), "txn getname")) == TCL_OK)
+			res = NewStringObj(name, strlen(name));
+		break;
+	case TXNSETNAME:
+		if (objc != 3) {
+			Tcl_WrongNumArgs(interp, 2, objv, "name");
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		ret = txnp->set_name(txnp, Tcl_GetStringFromObj(objv[2], NULL));
+		result =
+		    _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "setname");
 		break;
 #endif
 	case TXNABORT:
@@ -557,11 +589,13 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
 	static const char *commitopt[] = {
 		"-nosync",
 		"-sync",
+		"-wrnosync",
 		NULL
 	};
 	enum commitopt {
+		COMNOSYNC,
 		COMSYNC,
-		COMNOSYNC
+		COMWRNOSYNC
 	};
 	u_int32_t flag;
 	int optindex, result, ret;
@@ -580,12 +614,13 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
 			return (IS_HELP(objv[2]));
 		switch ((enum commitopt)optindex) {
 		case COMSYNC:
-			FLAG_CHECK(flag);
 			flag = DB_TXN_SYNC;
 			break;
 		case COMNOSYNC:
-			FLAG_CHECK(flag);
 			flag = DB_TXN_NOSYNC;
+			break;
+		case COMWRNOSYNC:
+			flag = DB_TXN_WRITE_NOSYNC;
 			break;
 		}
 	}

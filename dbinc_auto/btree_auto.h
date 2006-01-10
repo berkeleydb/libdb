@@ -132,11 +132,39 @@ typedef struct ___bam_relink_args {
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
-	DB_LSN	lsn;
+	db_pgno_t	new_pgno;
 	db_pgno_t	prev;
 	DB_LSN	lsn_prev;
 	db_pgno_t	next;
 	DB_LSN	lsn_next;
 } __bam_relink_args;
+
+#define	DB___bam_merge	148
+typedef struct ___bam_merge_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	DB_LSN	lsn;
+	db_pgno_t	npgno;
+	DB_LSN	nlsn;
+	DBT	hdr;
+	DBT	data;
+	DBT	ind;
+} __bam_merge_args;
+
+#define	DB___bam_pgno	149
+typedef struct ___bam_pgno_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	DB_LSN	lsn;
+	u_int32_t	indx;
+	db_pgno_t	opgno;
+	db_pgno_t	npgno;
+} __bam_pgno_args;
 
 #endif

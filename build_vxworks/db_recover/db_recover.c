@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
+ * Copyright (c) 1996-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_recover.c,v 11.41 2004/01/28 03:36:00 bostic Exp $
+ * $Id: db_recover.c,v 12.5 2005/06/16 20:21:29 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2004\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -36,9 +36,11 @@ static const char copyright[] =
 #include "db_int.h"
 
 int db_recover_main __P((int, char *[]));
-int db_recover_read_timestamp __P((const char *, char *, time_t *));
+int db_recover_read_timestamp __P((char *, time_t *));
 int db_recover_usage __P((void));
-int db_recover_version_check __P((const char *));
+int db_recover_version_check __P((void));
+
+const char *progname;
 
 int
 db_recover(args)
@@ -61,14 +63,18 @@ db_recover_main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind, __db_getopt_reset;
-	const char *progname = "db_recover";
 	DB_ENV	*dbenv;
 	time_t timestamp;
 	u_int32_t flags;
 	int ch, exitval, fatal_recover, ret, retain_env, verbose;
 	char *home, *passwd;
 
-	if ((ret = db_recover_version_check(progname)) != 0)
+	if ((progname = strrchr(argv[0], '/')) == NULL)
+		progname = argv[0];
+	else
+		++progname;
+
+	if ((ret = db_recover_version_check()) != 0)
 		return (ret);
 
 	home = passwd = NULL;
@@ -96,8 +102,7 @@ db_recover_main(argc, argv)
 			}
 			break;
 		case 't':
-			if ((ret =
-			    db_recover_read_timestamp(progname, optarg, &timestamp)) != 0)
+			if ((ret = db_recover_read_timestamp(optarg, &timestamp)) != 0)
 				return (ret);
 			break;
 		case 'V':
@@ -157,10 +162,10 @@ db_recover_main(argc, argv)
 	 * certainly use DB_CONFIG files in the directory.
 	 */
 	flags = 0;
-	LF_SET(DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+	LF_SET(DB_CREATE | DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_USE_ENVIRON);
 	LF_SET(fatal_recover ? DB_RECOVER_FATAL : DB_RECOVER);
-	LF_SET(retain_env ? 0 : DB_PRIVATE);
+	LF_SET(retain_env ? DB_INIT_LOCK : DB_PRIVATE);
 	if ((ret = dbenv->open(dbenv, home, flags, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->open");
 		goto shutdown;
@@ -219,8 +224,7 @@ shutdown:	exitval = 1;
  * SUCH DAMAGE.
  */
 int
-db_recover_read_timestamp(progname, arg, timep)
-	const char *progname;
+db_recover_read_timestamp(arg, timep)
 	char *arg;
 	time_t *timep;
 {
@@ -291,14 +295,13 @@ terr:		fprintf(stderr,
 int
 db_recover_usage()
 {
-	(void)fprintf(stderr, "%s\n",
-"usage: db_recover [-ceVv] [-h home] [-P password] [-t [[CC]YY]MMDDhhmm[.SS]]");
+	(void)fprintf(stderr, "usage: %s %s\n", progname,
+	    "[-ceVv] [-h home] [-P password] [-t [[CC]YY]MMDDhhmm[.SS]]");
 	return (EXIT_FAILURE);
 }
 
 int
-db_recover_version_check(progname)
-	const char *progname;
+db_recover_version_check()
 {
 	int v_major, v_minor, v_patch;
 

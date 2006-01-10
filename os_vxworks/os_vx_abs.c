@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2004
+ * Copyright (c) 1997-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: os_vx_abs.c,v 1.9 2004/01/28 03:36:19 bostic Exp $
+ * $Id: os_vx_abs.c,v 12.1 2005/06/16 20:23:26 bostic Exp $
  */
 
 #include "db_config.h"

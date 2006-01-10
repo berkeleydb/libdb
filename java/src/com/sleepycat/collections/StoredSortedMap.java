@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredSortedMap.java,v 1.3 2004/09/22 18:01:03 bostic Exp $
+ * $Id: StoredSortedMap.java,v 12.2 2005/10/05 20:40:10 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -151,7 +151,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntityBinding valueEntityBinding,
+                           EntityBinding valueEntityBinding, 
                            PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -230,6 +230,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * strictly less than toKey.
      * This method conforms to the {@link SortedMap#headMap} interface.
      *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param toKey is the upper bound.
      *
      * @return the submap.
@@ -246,6 +249,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * Returns a view of the portion of this sorted map whose elements are
      * strictly less than toKey, optionally including toKey.
      * This method does not exist in the standard {@link SortedMap} interface.
+     *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param toKey is the upper bound.
      *
@@ -266,6 +272,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * greater than or equal to fromKey.
      * This method conforms to the {@link SortedMap#tailMap} interface.
      *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param fromKey is the lower bound.
      *
      * @return the submap.
@@ -282,6 +291,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * Returns a view of the portion of this sorted map whose elements are
      * strictly greater than fromKey, optionally including fromKey.
      * This method does not exist in the standard {@link SortedMap} interface.
+     *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param fromKey is the lower bound.
      *
@@ -302,6 +314,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * from fromKey, inclusive, to toKey, exclusive.
      * This method conforms to the {@link SortedMap#subMap} interface.
      *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param fromKey is the lower bound.
      *
      * @param toKey is the upper bound.
@@ -321,6 +336,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * strictly greater than fromKey and strictly less than toKey,
      * optionally including fromKey and toKey.
      * This method does not exist in the standard {@link SortedMap} interface.
+     *
+     * <p>Note that the return value is a StoredStoredMap and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param fromKey is the lower bound.
      *

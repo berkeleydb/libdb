@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep023.tcl,v 11.3 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep023.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep023
 # TEST	Replication using two master handles.
@@ -15,7 +15,12 @@
 # TEST	up properly.
 #
 proc rep023 { method { niter 10 } { tnum "023" } args } {
-	global is_hp_test
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 
 	# We can't open two envs on HP-UX, so just skip the
 	# whole test since that is at the core of it.
@@ -131,11 +136,11 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	process_msgs $envlist
 
 	puts "\tRep$tnum.d: Run rep_test in 1st master; process messages."
-	eval rep_test $method $masterenv1 $db1 $niter 0 0
+	eval rep_test $method $masterenv1 $db1 $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.e: Run rep_test in 2nd master; process messages."
-	eval rep_test $method $masterenv2 $db2 $niter 0 0
+	eval rep_test $method $masterenv2 $db2 $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	# Contents of the two databases should match.
@@ -147,7 +152,7 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	error_check_good master2_close [$masterenv2 close] 0
 
 	puts "\tRep$tnum.g: Run test in master again."
-	eval rep_test $method $masterenv1 $db1 $niter $niter 0
+	eval rep_test $method $masterenv1 $db1 $niter $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.h: Closing"

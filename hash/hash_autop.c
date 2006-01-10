@@ -36,7 +36,7 @@ __ham_insdel_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_insdel_read(dbenv, dbtp->data, &argp)) != 0)
@@ -88,7 +88,7 @@ __ham_newpage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__ham_newpage_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_newpage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -135,7 +135,7 @@ __ham_splitdata_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_splitdata_read(dbenv, dbtp->data, &argp)) != 0)
@@ -182,7 +182,7 @@ __ham_replace_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_replace_read(dbenv, dbtp->data, &argp)) != 0)
@@ -237,7 +237,7 @@ __ham_copypage_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_copypage_read(dbenv, dbtp->data, &argp)) != 0)
@@ -287,7 +287,7 @@ __ham_metagroup_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__ham_metagroup_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_metagroup_read(dbenv, dbtp->data, &argp)) != 0)
@@ -334,7 +334,7 @@ __ham_groupalloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__ham_groupalloc_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_groupalloc_read(dbenv, dbtp->data, &argp)) != 0)
@@ -375,7 +375,7 @@ __ham_curadj_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__ham_curadj_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_curadj_read(dbenv, dbtp->data, &argp)) != 0)
@@ -417,7 +417,7 @@ __ham_chgpg_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__ham_chgpg_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __ham_chgpg_read(dbenv, dbtp->data, &argp)) != 0)

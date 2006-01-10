@@ -68,10 +68,9 @@ __qam_incfirst_log(dbp, txnid, ret_lsnp, flags, recno, meta_pgno)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -138,7 +137,7 @@ __qam_incfirst_log(dbp, txnid, ret_lsnp, flags, recno, meta_pgno)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -158,13 +157,14 @@ __qam_incfirst_log(dbp, txnid, ret_lsnp, flags, recno, meta_pgno)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__qam_incfirst_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -280,10 +280,9 @@ __qam_mvptr_log(dbp, txnid, ret_lsnp, flags,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -377,7 +376,7 @@ __qam_mvptr_log(dbp, txnid, ret_lsnp, flags,
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -397,13 +396,14 @@ __qam_mvptr_log(dbp, txnid, ret_lsnp, flags,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__qam_mvptr_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -531,10 +531,9 @@ __qam_del_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -613,7 +612,7 @@ __qam_del_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -633,13 +632,14 @@ __qam_del_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__qam_del_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -760,10 +760,9 @@ __qam_add_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -871,7 +870,7 @@ __qam_add_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data,
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -891,13 +890,14 @@ __qam_add_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__qam_add_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
@@ -1031,10 +1031,9 @@ __qam_delext_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data)
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	DB_ASSERT(dbp->log_filename != NULL);
@@ -1125,7 +1124,7 @@ __qam_delext_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data)
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -1145,13 +1144,14 @@ __qam_delext_log(dbp, txnid, ret_lsnp, flags, lsn, pgno, indx, recno, data)
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__qam_delext_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC

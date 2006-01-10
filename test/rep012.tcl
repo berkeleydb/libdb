@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep012.tcl,v 11.14 2004/10/18 14:46:35 carol Exp $
+# $Id: rep012.tcl,v 12.4 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep012
 # TEST	Replication and dead DB handles.
@@ -14,6 +14,12 @@
 # TEST	Downgrade the master and upgrade the client with open db handles.
 # TEST	Verify that the roll back on clients gives dead db handles.
 proc rep012 { method { niter 10 } { tnum "012" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
@@ -128,7 +134,7 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 		set msdb [eval {berkdb_open_noerr -env $env0 -auto_commit \
 		    -create -mode 0644} $largs $omethod $sname]
 		error_check_good dbopen [is_valid_db $msdb] TRUE
-		error_check_good associate [$mpdb associate -auto_commit \
+		error_check_good associate [$mpdb associate \
 		    [callback_n 0] $msdb] 0
 	}
 
@@ -146,7 +152,7 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a.0: Running rep_test in replicated env."
-	eval rep_test $method $masterenv $masterdb $niter 0 0
+	eval rep_test $method $masterenv $masterdb $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	if { $do_secondary } {
@@ -162,7 +168,8 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	}
 	set nstart $niter
 	puts "\tRep$tnum.c: Run test in master and client 2 only"
-	eval rep_test $method $masterenv $masterdb $niter $nstart $nstart
+	eval rep_test\
+	    $method $masterenv $masterdb $niter $nstart $nstart 0 0 $largs
 
 	# Ignore messages for $env1.
 	set envlist "{$env0 1} {$cl2env 3}"
@@ -240,7 +247,7 @@ proc rep012_sec {method pdb niter keysp datap} {
 		set keys($n) $key
 		set data($n) [pad_data $method $datum]
 
-		set ret [$pdb put -auto_commit $key [chop_data $method $datum]]
+		set ret [$pdb put $key [chop_data $method $datum]]
 		error_check_good put($n) $ret 0
 	}
 	close $did

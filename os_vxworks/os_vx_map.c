@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2004
+ * Copyright (c) 1998-2005
  *	Sleepycat Software.  All rights reserved.
  *
  * This code is derived from software contributed to Sleepycat Software by
  * Frederick G.M. Roeber of Netscape Communications Corp.
  *
- * $Id: os_vx_map.c,v 1.23 2004/01/28 03:36:19 bostic Exp $
+ * $Id: os_vx_map.c,v 12.1 2005/06/16 20:23:26 bostic Exp $
  */
 
 #include "db_config.h"

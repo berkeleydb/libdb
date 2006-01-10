@@ -1,5 +1,5 @@
-<!--$Id: txn_begin.so,v 10.72 2004/08/18 02:31:21 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: txn_begin.so,v 10.73 2005/02/10 20:02:45 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -53,13 +53,14 @@ failure, and returns 0 on success.
 <dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
 or more of the following values:
 <dl compact>
-<dt><a name="DB_DEGREE_2">DB_DEGREE_2</a><dd>This transaction will have degree 2 isolation.  This provides for cursor
+<dt><a name="DB_READ_COMMITTED">DB_READ_COMMITTED</a><dd>This transaction will have degree 2 isolation.  This provides for cursor
 stability but not repeatable reads.  Data items which have been
 previously read by this transaction may be deleted or modified by other
 transactions before this transaction completes.
-<dt><a name="DB_DIRTY_READ">DB_DIRTY_READ</a><dd>All read operations performed by the transaction may read modified but
-not yet committed data.  Silently ignored if the <a href="../api_cxx/db_open.html#DB_DIRTY_READ">DB_DIRTY_READ</a>
-flag was not specified when the underlying database was opened.
+<dt><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a><dd>This transaction will have degree 1 isolation.  Read operations
+performed by the transaction may read modified but not yet committed
+data.  Silently ignored if the <a href="../api_cxx/db_open.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag was not
+specified when the underlying database was opened.
 <dt><a name="DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><dd>Do not synchronously flush the log when this transaction commits or
 prepares. This means the transaction will exhibit the ACI (atomicity,
 consistency, and isolation) properties, but not D (durability); that is,
@@ -100,6 +101,6 @@ throw a DbMemoryException.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

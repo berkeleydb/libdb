@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: lock002.tcl,v 11.21 2004/01/28 03:36:28 bostic Exp $
+# $Id: lock002.tcl,v 12.2 2005/06/16 20:23:55 bostic Exp $
 #
 # TEST	lock002
 # TEST	Exercise basic multi-process aspects of lock.
@@ -83,7 +83,7 @@ proc mlock_wait { } {
 	puts "\tLock002.b multi-process get/put wait test"
 
 	# Open region locally
-	set env_cmd "berkdb_env -lock -home $testdir"
+	set env_cmd "berkdb_env -home $testdir"
 	set local_env [eval $env_cmd]
 	error_check_good env_open [is_valid_env $local_env] TRUE
 
@@ -123,8 +123,8 @@ proc mlock_wait { } {
 	error_check_good remote:lock_get \
 	    [is_valid_lock $remote_lock $remote_env] TRUE
 
-	# Now make the other guy wait 5 second and then release his
-	# lock while we try to get a write lock on it
+	# Now make the other guy wait 5 seconds and then release his
+	# lock while we try to get a write lock on it.
 	set start [timestamp -r]
 
 	set ret [send_cmd $f1 "tclsleep 5"]

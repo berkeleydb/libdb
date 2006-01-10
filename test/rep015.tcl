@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep015.tcl,v 11.6 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep015.tcl,v 12.2 2005/06/23 15:25:22 carol Exp $
 #
 # TEST	rep015
 # TEST	Locking across multiple pages with replication.
@@ -24,6 +24,12 @@
 proc rep015 { method { nentries 100 } { tnum "015" } { ndb 3 } args } {
 	global rand_init
 	berkdb srand $rand_init
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 

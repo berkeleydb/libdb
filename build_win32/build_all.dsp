@@ -2,7 +2,7 @@
 # Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
-# TARGTYPE "Win32 (x86) Generic Project" 0x010a
+# TARGTYPE "Win32 (x86) External Target" 0x0106
 
 CFG=build_all - Win32 Debug
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
@@ -19,8 +19,12 @@ CFG=build_all - Win32 Debug
 !MESSAGE 
 !MESSAGE "build_all - Win32 Release" (based on "Win32 (x86) External Target")
 !MESSAGE "build_all - Win32 Debug" (based on "Win32 (x86) External Target")
-!MESSAGE "build_all - Win32 Release Static" (based on "Win32 (x86) External Target")
-!MESSAGE "build_all - Win32 Debug Static" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win32 ASCII Debug" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win32 ASCII Release" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win64 Debug AMD64" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win64 Release AMD64" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win64 Debug IA64" (based on "Win32 (x86) External Target")
+!MESSAGE "build_all - Win64 Release IA64" (based on "Win32 (x86) External Target")
 !MESSAGE 
 
 # Begin Project
@@ -56,32 +60,94 @@ CFG=build_all - Win32 Debug
 # PROP Cmd_Line "echo DB Debug version built."
 # PROP Target_Dir ""
 
-!ELSEIF  "$(CFG)" == "build_all - Win32 Release Static"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_static"
-# PROP BASE Intermediate_Dir "Release_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_static"
-# PROP Intermediate_Dir "Release_static"
-# PROP Cmd_Line "echo DB Release Static version built."
-# PROP Target_Dir ""
-
-!ELSEIF  "$(CFG)" == "build_all - Win32 Debug Static"
+!ELSEIF  "$(CFG)" == "build_all - Win32 ASCII Debug"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_static"
-# PROP BASE Intermediate_Dir "Debug_Static"
+# PROP BASE Output_Dir "Debug_ASCII"
+# PROP BASE Intermediate_Dir "Debug_ASCII"
+# PROP BASE Cmd_Line "echo DB Debug version built."
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_static"
-# PROP Intermediate_Dir "Debug_Static"
-# PROP Cmd_Line "echo DB Debug Static version built."
+# PROP Output_Dir "Debug_ASCII"
+# PROP Intermediate_Dir "Debug_ASCII"
+# PROP Cmd_Line "echo DB Debug version built."
+# PROP Target_Dir ""
+
+!ELSEIF  "$(CFG)" == "build_all - Win32 ASCII Release"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_ASCII"
+# PROP BASE Intermediate_Dir "Release_ASCII"
+# PROP BASE Cmd_Line "echo DB Release version built."
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_ASCII"
+# PROP Intermediate_Dir "Release_ASCII"
+# PROP Cmd_Line "echo DB Release version built."
+# PROP Target_Dir ""
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Debug AMD64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 1
+# PROP BASE Output_Dir "Debug_AMD64"
+# PROP BASE Intermediate_Dir "Debug_AMD64/build_all"
+# PROP BASE Cmd_Line "echo DB Debug version built."
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 1
+# PROP Output_Dir "Debug_AMD64"
+# PROP Intermediate_Dir "Debug_AMD64/build_all"
+# PROP Cmd_Line "echo DB Debug version built."
+# PROP Target_Dir ""
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Release AMD64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_AMD64"
+# PROP BASE Intermediate_Dir "Release_AMD64/build_all"
+# PROP BASE Cmd_Line "echo DB Release version built."
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_AMD64"
+# PROP Intermediate_Dir "Release_AMD64/build_all"
+# PROP Cmd_Line "echo DB Release version built."
+# PROP Target_Dir ""
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Debug IA64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 1
+# PROP BASE Output_Dir "Debug_IA64"
+# PROP BASE Intermediate_Dir "Debug_IA64"
+# PROP BASE Cmd_Line "echo DB Debug version built."
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 1
+# PROP Output_Dir "Debug_IA64"
+# PROP Intermediate_Dir "Debug_IA64"
+# PROP Cmd_Line "echo DB Debug version built."
+# PROP Target_Dir ""
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Release IA64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_IA64"
+# PROP BASE Intermediate_Dir "Release_IA64"
+# PROP BASE Cmd_Line "echo DB Release version built."
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_IA64"
+# PROP Intermediate_Dir "Release_IA64"
+# PROP Cmd_Line "echo DB Release version built."
 # PROP Target_Dir ""
 
 !ENDIF 
@@ -90,7 +156,30 @@ CFG=build_all - Win32 Debug
 
 # Name "build_all - Win32 Release"
 # Name "build_all - Win32 Debug"
-# Name "build_all - Win32 Release Static"
-# Name "build_all - Win32 Debug Static"
+# Name "build_all - Win32 ASCII Debug"
+# Name "build_all - Win32 ASCII Release"
+# Name "build_all - Win64 Debug AMD64"
+# Name "build_all - Win64 Release AMD64"
+# Name "build_all - Win64 Debug IA64"
+# Name "build_all - Win64 Release IA64"
+
+!IF  "$(CFG)" == "build_all - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "build_all - Win32 Debug"
+
+!ELSEIF  "$(CFG)" == "build_all - Win32 ASCII Debug"
+
+!ELSEIF  "$(CFG)" == "build_all - Win32 ASCII Release"
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Debug AMD64"
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Release AMD64"
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Debug IA64"
+
+!ELSEIF  "$(CFG)" == "build_all - Win64 Release IA64"
+
+!ENDIF 
+
 # End Target
 # End Project

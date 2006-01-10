@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test095.tcl,v 11.30 2004/09/22 18:01:06 bostic Exp $
+# $Id: test095.tcl,v 12.1 2005/06/16 20:24:10 bostic Exp $
 #
 # TEST	test095
 # TEST	Bulk get test for methods supporting dups. [#2934]

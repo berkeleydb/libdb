@@ -1,5 +1,5 @@
-<!--$Id: comm.so,v 1.13 2004/06/28 14:48:07 sue Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: comm.so,v 1.14 2004/12/17 21:25:59 sue Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -61,6 +61,11 @@ calling the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method
 <dt><a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a>, it means
 that another database environment in the replication group has called
 for an election.  The application should call the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.
+<dt><a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a>, it means a
+this message cannot be processed.
+This is normally an indication that this message
+is irrelevant to the current replication state, such as a message
+from an old generation that arrived late.
 <dt><a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a>, it means a
 permanent record, perhaps a message previously returned as
 <a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a> was successfully
@@ -95,6 +100,6 @@ to resending log messages due to a request for log records from the client.
 </dl>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/app.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/newsite.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

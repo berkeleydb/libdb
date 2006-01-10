@@ -1,5 +1,5 @@
 Berkeley DB's Java API
-$Id: README,v 11.2 2003/03/06 00:42:16 mjc Exp $
+$Id: README,v 12.0 2004/11/17 03:44:05 bostic Exp $
 
 Berkeley DB's Java API is now generated with SWIG
 (http://www.swig.org).  This document describes how SWIG is used -

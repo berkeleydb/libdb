@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: Database.java,v 1.12 2004/09/28 19:30:37 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: Database.java,v 12.2 2005/10/19 04:27:44 mjc Exp $
+ */
 
 package com.sleepycat.db;
 
@@ -54,6 +54,21 @@ public class Database {
         close(false);
     }
 
+    public CompactStats compact(final Transaction txn,
+                                final DatabaseEntry start,
+                                final DatabaseEntry stop,
+                                final DatabaseEntry end,
+                                CompactConfig config)
+        throws DatabaseException {
+
+        config = CompactConfig.checkNull(config);
+        CompactStats compact = new CompactStats(config.getFillPercent(),
+            config.getTimeout(), config.getMaxPages());
+        db.compact((txn == null) ? null : txn.txn,
+            start, stop, compact, config.getFlags(), end);
+        return compact;
+    }
+
     public Cursor openCursor(final Transaction txn, CursorConfig config)
         throws DatabaseException {
 
@@ -75,7 +90,7 @@ public class Database {
                                SequenceConfig config)
         throws DatabaseException {
 
-       config = SequenceConfig.checkNull(config);
+        config = SequenceConfig.checkNull(config);
         final DbSequence seq = config.openSequence(
             db, (txn == null) ? null : txn.txn, key);
         seq.remove((txn == null) ? null : txn.txn,

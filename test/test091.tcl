@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test091.tcl,v 11.10 2004/01/28 03:36:32 bostic Exp $
+# $Id: test091.tcl,v 12.1 2005/06/16 20:24:10 bostic Exp $
 #
 # TEST	test091
 # TEST	Test of DB_CONSUME_WAIT.

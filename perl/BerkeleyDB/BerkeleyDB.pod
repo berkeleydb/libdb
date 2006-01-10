@@ -935,7 +935,7 @@ The code below is a simple example of using a btree database.
     tie %h, 'BerkeleyDB::Btree',
     		-Filename   => $filename,
 	        -Flags      => DB_CREATE
-      or die "Cannot open $filename: $!\n" ;
+      or die "Cannot open $filename: $! $BerkeleyDB::Error\n" ;
 
     # Add a key/value pair to the file
     $h{'Wall'} = 'Larry' ;

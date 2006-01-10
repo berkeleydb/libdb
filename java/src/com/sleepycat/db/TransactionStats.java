@@ -3,7 +3,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -29,6 +29,11 @@ public class TransactionStats
             return parentid;
         }
 
+        private int pid;
+        public int getPid() {
+            return pid;
+        }
+
         private LogSequenceNumber lsn;
         public LogSequenceNumber getLsn() {
             return lsn;
@@ -44,13 +49,20 @@ public class TransactionStats
             return xid;
         }
 
+        private String name;
+        public String getName() {
+            return name;
+        }
+
         public String toString() {
             return "Active:"
                 + "\n      txnid=" + txnid
                 + "\n      parentid=" + parentid
+                + "\n      pid=" + pid
                 + "\n      lsn=" + lsn
                 + "\n      xa_status=" + xa_status
                 + "\n      xid=" + DbUtil.byteArrayToString(xid)
+                + "\n      name=" + name
                 ;
         }
     };

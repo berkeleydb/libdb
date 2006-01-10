@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep035.tcl,v 11.3 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep035.tcl,v 12.4 2005/11/02 13:42:26 sue Exp $
 #
 # TEST  	rep035
 # TEST	Test sync-up recovery in replication.
@@ -19,8 +19,12 @@
 # TEST 	New master performs 1 operation, replicates and downgrades.
 
 proc rep035 { method { niter 100 } { tnum "035" } args } {
-	global passwd
-	global has_crypto
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 
 	set saved_args $args
 	set logsets [create_logsets 3]
@@ -36,10 +40,9 @@ proc rep035 { method { niter 100 } { tnum "035" } args } {
 	}
 }
 
-proc rep035_sub { method niter tnum envargs logset args } {
+proc rep035_sub { method niter tnum envargs logset largs } {
 	source ./include.tcl
 	global testdir
-	global encrypt
 
 	env_cleanup $testdir
 
@@ -175,13 +178,13 @@ proc rep035_sub { method niter tnum envargs logset args } {
 	for { set i 0 } { $i < $niter } { incr i } {
 
 		# Do a few ops
-		eval rep_test $method $masterenv $masterdb 2 $i $i
+		eval rep_test $method $masterenv $masterdb 2 $i $i 0 0 $largs
 		set envlist "{$masterenv $mid} {$clientenv $cid} {$env3 3}"
 		process_msgs $envlist
 
 		# Do one op on master and process messages and drop
 		# to clientenv to force sync-up recovery next time.
-		eval rep_test $method $masterenv $masterdb 1 $i $i
+		eval rep_test $method $masterenv $masterdb 1 $i $i 0 0 $largs
 		set envlist "{$masterenv $mid} {$env3 3}"
 		replclear $cid
 		process_msgs $envlist

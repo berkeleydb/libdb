@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead004.tcl,v 11.15 2004/01/28 03:36:27 bostic Exp $
+# $Id: dead004.tcl,v 12.1 2005/06/16 20:23:52 bostic Exp $
 #
 # Deadlock Test 4.
 # This test is designed to make sure that we handle youngest and oldest

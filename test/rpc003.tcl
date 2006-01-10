@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rpc003.tcl,v 11.16 2004/03/02 18:44:41 mjc Exp $
+# $Id: rpc003.tcl,v 12.1 2005/06/16 20:24:03 bostic Exp $
 #
 # TEST	rpc003
 # TEST	Test RPC and secondary indices.

@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
+ * Copyright (c) 1996-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_checkpoint.c,v 11.54 2004/03/24 15:13:12 bostic Exp $
+ * $Id: db_checkpoint.c,v 12.6 2005/09/09 12:38:30 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2004\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -28,7 +28,6 @@ static const char copyright[] =
 #endif
 #endif
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,12 +35,12 @@ static const char copyright[] =
 #endif
 
 #include "db_int.h"
-#include "dbinc/db_page.h"
-#include "dbinc/db_am.h"
 
 int	 db_checkpoint_main __P((int, char *[]));
 int	 db_checkpoint_usage __P((void));
-int	 db_checkpoint_version_check __P((const char *));
+int	 db_checkpoint_version_check __P((void));
+
+const char *progname;
 
 int
 db_checkpoint(args)
@@ -65,14 +64,18 @@ db_checkpoint_main(argc, argv)
 	extern char *optarg;
 	extern int optind, __db_getopt_reset;
 	DB_ENV	*dbenv;
-	const char *progname = "db_checkpoint";
 	time_t now;
 	long argval;
 	u_int32_t flags, kbytes, minutes, seconds;
 	int ch, exitval, once, ret, verbose;
 	char *home, *logfile, *passwd;
 
-	if ((ret = db_checkpoint_version_check(progname)) != 0)
+	if ((progname = strrchr(argv[0], '/')) == NULL)
+		progname = argv[0];
+	else
+		++progname;
+
+	if ((ret = db_checkpoint_version_check()) != 0)
 		return (ret);
 
 	/*
@@ -101,7 +104,7 @@ db_checkpoint_main(argc, argv)
 			if (__db_getlong(NULL, progname,
 			    optarg, 1, (long)MAX_UINT32_T, &argval))
 				return (EXIT_FAILURE);
-			kbytes = argval;
+			kbytes = (u_int32_t)argval;
 			break;
 		case 'L':
 			logfile = optarg;
@@ -119,7 +122,7 @@ db_checkpoint_main(argc, argv)
 			if (__db_getlong(NULL, progname,
 			    optarg, 1, (long)MAX_UINT32_T, &argval))
 				return (EXIT_FAILURE);
-			minutes = argval;
+			minutes = (u_int32_t)argval;
 			break;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
@@ -169,18 +172,16 @@ db_checkpoint_main(argc, argv)
 		dbenv->err(dbenv, ret, "set_passwd");
 		goto shutdown;
 	}
-	/* Initialize the environment. */
-	if ((ret = dbenv->open(dbenv,
-	    home, DB_JOINENV | DB_USE_ENVIRON, 0)) != 0) {
-		dbenv->err(dbenv, ret, "open");
-		goto shutdown;
-	}
 
-	/* Register the standard pgin/pgout functions, in case we do I/O. */
-	if ((ret = dbenv->memp_register(
-	    dbenv, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0) {
-		dbenv->err(dbenv, ret,
-    "DB_ENV->memp_register: failed to register access method functions");
+	/*
+	 * If attaching to a pre-existing environment fails, create a
+	 * private one and try again.
+	 */
+	if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON, 0)) != 0 &&
+	    (!once || ret == DB_VERSION_MISMATCH ||
+	    (ret = dbenv->open(dbenv, home,
+	    DB_CREATE | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0)) {
+		dbenv->err(dbenv, ret, "DB_ENV->open");
 		goto shutdown;
 	}
 
@@ -220,7 +221,7 @@ shutdown:	exitval = 1;
 
 	/* Clean up the logfile. */
 	if (logfile != NULL)
-		remove(logfile);
+		(void)remove(logfile);
 
 	/* Clean up the environment. */
 	if (dbenv != NULL && (ret = dbenv->close(dbenv, 0)) != 0) {
@@ -241,15 +242,13 @@ shutdown:	exitval = 1;
 int
 db_checkpoint_usage()
 {
-	(void)fprintf(stderr, "%s\n\t%s\n",
-	    "usage: db_checkpoint [-1Vv]",
+	(void)fprintf(stderr, "usage: %s [-1Vv]\n\t%s\n", progname,
 	    "[-h home] [-k kbytes] [-L file] [-P password] [-p min]");
 	return (EXIT_FAILURE);
 }
 
 int
-db_checkpoint_version_check(progname)
-	const char *progname;
+db_checkpoint_version_check()
 {
 	int v_major, v_minor, v_patch;
 

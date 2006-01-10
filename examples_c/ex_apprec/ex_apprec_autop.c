@@ -27,7 +27,7 @@ ex_apprec_mkdir_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = ex_apprec_mkdir_read(dbenv, dbtp->data, &argp)) != 0)

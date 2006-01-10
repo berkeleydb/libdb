@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep037.tcl,v 11.2 2004/10/14 14:55:55 sue Exp $
+# $Id: rep037.tcl,v 12.4 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep037
 # TEST	Test of internal initialization and page throttling.
@@ -16,6 +16,12 @@
 # TEST  Verify page throttling occurred.
 #
 proc rep037 { method { niter 1500 } { tnum "037" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set saved_args $args
 
@@ -93,7 +99,7 @@ proc rep037_sub { method niter tnum recargs clean largs } {
 
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Close client."
@@ -101,7 +107,7 @@ proc rep037_sub { method niter tnum recargs clean largs } {
 
 	# Run rep_test in the master (don't update client).
 	puts "\tRep$tnum.c: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	replclear 2
 
 	puts "\tRep$tnum.d: Run db_archive on master."
@@ -128,33 +134,13 @@ proc rep037_sub { method niter tnum recargs clean largs } {
 		# logs and that will trigger it.
 		#
 		set entries 10
-		eval rep_test $method $masterenv NULL $entries $niter 0 0 $largs
+		eval rep_test $method $masterenv NULL $entries $niter 0 0 0 $largs
 		process_msgs $envlist 0 NONE err
 	}
 
 	puts "\tRep$tnum.f: Verify logs and databases"
-	# Check that master and client logs and dbs are identical.
-	# Logs first ...
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $masterdir > $masterdir/prlog} result]
-	error_check_good stat_mprlog $stat 0
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $clientdir > $clientdir/prlog} result]
-	error_check_good stat_cprlog $stat 0
-	error_check_good log_cmp \
-	    [filecmp $masterdir/prlog $clientdir/prlog] 0
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1
 
-	# ... now the databases.
-	set dbname "test.db"
-	set db1 [eval {berkdb_open -env $masterenv} $largs {-rdonly $dbname}]
-	set db2 [eval {berkdb_open -env $clientenv} $largs {-rdonly $dbname}]
-
-	error_check_good comparedbs [db_compare \
-	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-	error_check_good db1_close [$db1 close] 0
-	error_check_good db2_close [$db2 close] 0
-
-	#
 	puts "\tRep$tnum.g: Verify throttling."
 	if { $niter > 1000 } {
                 set nthrottles \

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2003
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep021.tcl,v 1.6 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep021.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep021
 # TEST	Replication and multiple environments.
@@ -15,6 +15,12 @@
 # TEST	Verify all client logs are identical if successful.
 #
 proc rep021 { method { nclients 3 } { tnum "021" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets [expr $nclients + 1]]
 
@@ -155,9 +161,9 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set e2phase3 [expr $e2phase2 + $niter + $offset]
 
 	puts "\tRep$tnum.a: Running rep_test in 2nd replicated env."
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase1 1 1
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase2 1 1
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase3 1 1
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase1 1 1 0 $largs
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase2 1 1 0 $largs
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase3 1 1 0 $largs
 	error_check_good mdb_cl [$masterdb2 close] 0
 	process_msgs $env2list
 
@@ -224,9 +230,9 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.c: Running rep_test in primary replicated env."
-	eval rep_test $method $menv $masterdb $niter $e1phase1 1 1
-	eval rep_test $method $menv $masterdb $niter $e1phase2 1 1
-	eval rep_test $method $menv $masterdb $niter $e1phase3 1 1
+	eval rep_test $method $menv $masterdb $niter $e1phase1 1 1 0 $largs
+	eval rep_test $method $menv $masterdb $niter $e1phase2 1 1 0 $largs
+	eval rep_test $method $menv $masterdb $niter $e1phase3 1 1 0 $largs
 	error_check_good mdb_cl [$masterdb close] 0
 	# Process any close messages.
 	process_msgs $envlist

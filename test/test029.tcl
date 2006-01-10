@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test029.tcl,v 11.24 2004/09/22 18:01:06 bostic Exp $
+# $Id: test029.tcl,v 12.1 2005/06/16 20:24:06 bostic Exp $
 #
 # TEST	test029
 # TEST	Test the Btree and Record number renumbering.

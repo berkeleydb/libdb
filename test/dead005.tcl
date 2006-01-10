@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: dead005.tcl,v 11.15 2004/03/17 15:17:17 bostic Exp $
+# $Id: dead005.tcl,v 12.1 2005/06/16 20:23:52 bostic Exp $
 #
 # Deadlock Test 5.
 # Test out the minlocks, maxlocks, and minwrites options

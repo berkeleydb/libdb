@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep013.tcl,v 11.11 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep013.tcl,v 12.5 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep013
 # TEST	Replication and swapping master/clients with open dbs.
@@ -12,33 +12,45 @@
 # TEST	Make additional changes to master, but not to the client.
 # TEST	Swap master and client.
 # TEST	Verify that the roll back on clients gives dead db handles.
+# TEST	Rerun the test, turning on client-to-client synchronization.
 # TEST	Swap and verify several times.
 proc rep013 { method { niter 10 } { tnum "013" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
 	# Run the body of the test with and without recovery.
 	set recopts { "" "-recover" }
+	set anyopts { "" "anywhere" }
 	foreach r $recopts {
 		foreach l $logsets {
-			set logindex [lsearch -exact $l "in-memory"]
-			if { $r == "-recover" && $logindex != -1 } {
-				puts "Rep$tnum: Skipping\
-				    for in-memory logs with -recover."
-				continue
+			foreach a $anyopts {
+				set logindex [lsearch -exact $l "in-memory"]
+				if { $r == "-recover" && $logindex != -1 } {
+					puts "Rep$tnum: Skipping\
+					    for in-memory logs with -recover."
+					continue
+				}
+				puts "Rep$tnum ($r $a): Replication and \
+				    ($method) master/client swapping."
+				puts "Rep$tnum: Master logs are [lindex $l 0]"
+				puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
+				puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
+				rep013_sub $method $niter $tnum $l $r $a $args
 			}
-			puts "Rep$tnum ($r):\
-			    Replication and ($method) master/client swapping."
-			puts "Rep$tnum: Master logs are [lindex $l 0]"
-			puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
-			puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
-			rep013_sub $method $niter $tnum $l $r $args
 		}
 	}
 }
 
-proc rep013_sub { method niter tnum logset recargs largs } {
+proc rep013_sub { method niter tnum logset recargs anyopt largs } {
 	global testdir
+	global anywhere
+
 	env_cleanup $testdir
 	set orig_tdir $testdir
 
@@ -51,6 +63,11 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 	file mkdir $clientdir
 	file mkdir $clientdir2
 
+	if { $anyopt == "anywhere" } {
+		set anywhere 1
+	} else {
+		set anywhere 0
+	}
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
 	set c2_logtype [lindex $logset 2]
@@ -76,7 +93,7 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
 #	    $m_logargs -lock_max 2500 \
 #	    -cachesize {0 4194304 3} \
-#	    -errpfx ENV1 -verbose {recovery on} -errfile /dev/stderr \
+#	    -errpfx ENV1 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env1 [eval $ma_envcmd $recargs -rep_master]
 	error_check_good master_env [is_valid_env $env1] TRUE
@@ -90,7 +107,7 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
 #	    $c_logargs -lock_max 2500 \
 #	    -cachesize {0 2097152 2} \
-#	    -errpfx ENV2 -verbose {recovery on} -errfile /dev/stderr \
+#	    -errpfx ENV2 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env2 [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $env2] TRUE
@@ -103,7 +120,7 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 #	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
 #	    $c2_logargs -lock_max 2500 \
 #	    -cachesize {0 1048576 1} \
-#	    -errpfx ENV3 -verbose {recovery on} -errfile /dev/stderr \
+#	    -errpfx ENV3 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]
 	error_check_good client2_env [is_valid_env $cl2env] TRUE
@@ -155,7 +172,7 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv $masterdb $niter 0 0
+	eval rep_test $method $masterenv $masterdb $niter 0 0 0 0 $largs
 	set envlist "{$env1 1} {$env2 2} {$cl2env 3}"
 	process_msgs $envlist
 
@@ -195,7 +212,7 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 		set nstart [expr $nstart + $niter]
 		puts "\tRep$tnum.c.$i: Run test in master and client2 only"
 		eval rep_test \
-		    $method $masterenv $masterdb $niter $nstart $nstart
+		    $method $masterenv $masterdb $niter $nstart $nstart 0 0 $largs
 		set envlist "{$masterenv $mid} {$cl2env 3}"
 		process_msgs $envlist
 
@@ -225,7 +242,23 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 		set envlist "{$env1 1} {$env2 2} {$cl2env 3}"
 		process_msgs $envlist
 	}
-	puts "\tRep$tnum.e: Closing"
+	puts "\tRep$tnum.e: Check message handling of client."
+	set req3 [stat_field $cl2env rep_stat "Client service requests"]
+	set miss3 [stat_field $cl2env rep_stat "Client service req misses"]
+	set rereq1 [stat_field $env1 rep_stat "Client rerequests"]
+	set rereq2 [stat_field $env2 rep_stat "Client rerequests"]
+	if { $anyopt == "anywhere" } {
+		error_check_bad req $req3 0
+		error_check_bad miss $miss3 0
+		error_check_bad rereq1 $rereq1 0
+		error_check_bad rereq2 $rereq2 0
+	} else {
+		error_check_good req $req3 0
+		error_check_good miss $miss3 0
+		error_check_good rereq1 $rereq1 0
+		error_check_good rereq2 $rereq2 0
+	}
+	puts "\tRep$tnum.f: Closing"
 	error_check_good masterdb [$masterdb close] 0
 	error_check_good clientdb [$clientdb close] 0
 	error_check_good cl2db [$env3db close] 0
@@ -234,5 +267,6 @@ proc rep013_sub { method niter tnum logset recargs largs } {
 	error_check_good cl2_close [$cl2env close] 0
 	replclose $testdir/MSGQUEUEDIR
 	set testdir $orig_tdir
+	set anywhere 0
 	return
 }

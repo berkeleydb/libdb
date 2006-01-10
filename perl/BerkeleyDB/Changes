@@ -1,5 +1,22 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.27  1st Novemver 2005 
+
+        * Added support for Berkeley DB 4.4
+
+        * Fixed decondary key issue with recno databases
+
+        * Added libscan to Makefile.PL
+
+        * Fixed a problem in t/subdb.t that meant it hung on Win32.
+
+        * The logic for set_mutexlocks was inverted when using Berkeley DB 4.x
+          Bug spotted by Zefram <zefram@fysh.org>
+
+        * Transactional rename/remove added.
+          Patch supplied by Zefram <zefram@fysh.org>
+
+
 0.26  10th October 2004
 
         * Changed to allow Building with Berkeley DB 4.3

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd016.tcl,v 11.13 2004/07/07 19:08:21 carol Exp $
+# $Id: recd016.tcl,v 12.1 2005/06/16 20:23:59 bostic Exp $
 #
 # TEST	recd016
 # TEST	Test recovery after checksum error.

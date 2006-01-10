@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredMapEntry.java,v 1.1 2004/04/09 16:34:09 mark Exp $
+ * $Id: StoredMapEntry.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.collections;

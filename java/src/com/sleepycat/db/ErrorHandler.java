@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 1997-2004
+ * Copyright (c) 1997-2005
  *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: ErrorHandler.java,v 1.2 2004/04/20 20:45:11 mjc Exp $
+ * $Id: ErrorHandler.java,v 12.1 2005/06/16 20:23:01 bostic Exp $
  */
 package com.sleepycat.db;
 

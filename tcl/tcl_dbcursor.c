@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_dbcursor.c,v 11.65 2004/10/07 16:48:39 bostic Exp $
+ * $Id: tcl_dbcursor.c,v 12.2 2005/06/16 20:23:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -383,11 +383,11 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 {
 	static const char *dbcgetopts[] = {
 #ifdef CONFIG_TEST
-		"-degree_2",
-		"-dirty",
 		"-get_both_range",
 		"-multi",
 		"-multi_key",
+		"-read_committed",
+		"-read_uncommitted",
 #endif
 		"-current",
 		"-first",
@@ -409,11 +409,11 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	};
 	enum dbcgetopts {
 #ifdef CONFIG_TEST
-		DBCGET_DEGREE2,
-		DBCGET_DIRTY,
 		DBCGET_BOTH_RANGE,
 		DBCGET_MULTI,
 		DBCGET_MULTI_KEY,
+		DBCGET_READ_COMMITTED,
+		DBCGET_READ_UNCOMMITTED,
 #endif
 		DBCGET_CURRENT,
 		DBCGET_FIRST,
@@ -480,17 +480,14 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			break;
 		}
 		i++;
+
+#define	FLAG_CHECK2_STDARG	\
+	(DB_RMW | DB_MULTIPLE | DB_MULTIPLE_KEY | DB_READ_UNCOMMITTED)
+
 		switch ((enum dbcgetopts)optindex) {
 #ifdef CONFIG_TEST
-		case DBCGET_DEGREE2:
-			flag |= DB_DEGREE_2;
-			break;
-		case DBCGET_DIRTY:
-			flag |= DB_DIRTY_READ;
-			break;
 		case DBCGET_BOTH_RANGE:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_GET_BOTH_RANGE;
 			break;
 		case DBCGET_MULTI:
@@ -507,78 +504,70 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 				goto out;
 			i++;
 			break;
+		case DBCGET_READ_COMMITTED:
+			flag |= DB_READ_COMMITTED;
+			break;
+		case DBCGET_READ_UNCOMMITTED:
+			flag |= DB_READ_UNCOMMITTED;
+			break;
 #endif
 		case DBCGET_RMW:
 			flag |= DB_RMW;
 			break;
 		case DBCGET_CURRENT:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_CURRENT;
 			break;
 		case DBCGET_FIRST:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_FIRST;
 			break;
 		case DBCGET_LAST:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_LAST;
 			break;
 		case DBCGET_NEXT:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_NEXT;
 			break;
 		case DBCGET_PREV:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_PREV;
 			break;
 		case DBCGET_PREVNODUP:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_PREV_NODUP;
 			break;
 		case DBCGET_NEXTNODUP:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_NEXT_NODUP;
 			break;
 		case DBCGET_NEXTDUP:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_NEXT_DUP;
 			break;
 		case DBCGET_BOTH:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_GET_BOTH;
 			break;
 		case DBCGET_RECNO:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_GET_RECNO;
 			break;
 		case DBCGET_JOIN:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_JOIN_ITEM;
 			break;
 		case DBCGET_SET:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_SET;
 			break;
 		case DBCGET_SETRANGE:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_SET_RANGE;
 			break;
 		case DBCGET_SETRECNO:
-			FLAG_CHECK2(flag,
-			    DB_RMW|DB_MULTIPLE|DB_MULTIPLE_KEY|DB_DIRTY_READ);
+			FLAG_CHECK2(flag, FLAG_CHECK2_STDARG);
 			flag |= DB_SET_RECNO;
 			break;
 		case DBCGET_PART:

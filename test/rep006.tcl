@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep006.tcl,v 11.15 2004/09/22 18:01:05 bostic Exp $
+# $Id: rep006.tcl,v 12.2 2005/06/23 15:25:21 carol Exp $
 #
 # TEST  rep006
 # TEST	Replication and non-rep env handles.
@@ -15,6 +15,11 @@
 
 proc rep006 { method { niter 1000 } { tnum "006" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set logsets [create_logsets 2]
 
 	# Run the body of the test with and without recovery.

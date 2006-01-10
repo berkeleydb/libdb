@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
+ * Copyright (c) 1996-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_dump.c,v 11.99 2004/10/11 18:53:13 bostic Exp $
+ * $Id: db_dump.c,v 12.4 2005/09/09 12:38:30 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2004\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -33,7 +33,9 @@ int	 db_dump_is_sub __P((DB *, int *));
 int	 db_dump_main __P((int, char *[]));
 int	 db_dump_show_subs __P((DB *));
 int	 db_dump_usage __P((void));
-int	 db_dump_version_check __P((const char *));
+int	 db_dump_version_check __P((void));
+
+const char *progname;
 
 int
 db_dump(args)
@@ -56,7 +58,6 @@ db_dump_main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind, __db_getopt_reset;
-	const char *progname = "db_dump";
 	DB_ENV	*dbenv;
 	DB *dbp;
 	u_int32_t cache;
@@ -65,7 +66,12 @@ db_dump_main(argc, argv)
 	int ret, Rflag, rflag, resize, subs;
 	char *dopt, *home, *passwd, *subname;
 
-	if ((ret = db_dump_version_check(progname)) != 0)
+	if ((progname = strrchr(argv[0], '/')) == NULL)
+		progname = argv[0];
+	else
+		++progname;
+
+	if ((ret = db_dump_version_check()) != 0)
 		return (ret);
 
 	dbenv = NULL;
@@ -306,7 +312,7 @@ db_dump_db_init(dbenv, home, is_salvage, cache, is_privatep)
 	 * We wish to use the buffer pool so our information is as up-to-date
 	 * as possible, even if the mpool cache hasn't been flushed.
 	 *
-	 * If we are not doing a salvage, we wish to use the DB_JOINENV flag;
+	 * If we are not doing a salvage, we want to join the environment;
 	 * if a locking system is present, this will let us use it and be
 	 * safe to run concurrently with other threads of control.  (We never
 	 * need to use transactions explicitly, as we're read-only.)  Note
@@ -320,8 +326,8 @@ db_dump_db_init(dbenv, home, is_salvage, cache, is_privatep)
 	 * before we create our own.
 	 */
 	*is_privatep = 0;
-	if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON |
-	    (is_salvage ? DB_INIT_MPOOL : DB_JOINENV), 0)) == 0)
+	if ((ret = dbenv->open(dbenv, home,
+	    DB_USE_ENVIRON | (is_salvage ? DB_INIT_MPOOL : 0), 0)) == 0)
 		return (0);
 	if (ret == DB_VERSION_MISMATCH)
 		goto err;
@@ -505,15 +511,14 @@ db_dump_show_subs(dbp)
 int
 db_dump_usage()
 {
-	(void)fprintf(stderr, "%s\n\t%s\n",
-	    "usage: db_dump [-klNprRV]",
+	(void)fprintf(stderr, "usage: %s [-klNprRV]\n\t%s\n",
+	    progname,
     "[-d ahr] [-f output] [-h home] [-P password] [-s database] db_file");
 	return (EXIT_FAILURE);
 }
 
 int
-db_dump_version_check(progname)
-	const char *progname;
+db_dump_version_check()
 {
 	int v_major, v_minor, v_patch;
 

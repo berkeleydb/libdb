@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredCollection.java,v 1.4 2004/08/02 18:52:05 mjc Exp $
+ * $Id: StoredCollection.java,v 12.2 2005/10/05 20:40:10 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -340,8 +340,7 @@ public abstract class StoredCollection extends StoredContainer
 
     /**
      * Converts the collection to a string representation for debugging.
-     * WARNING: All elements will be converted to strings and returned and
-     * therefore the returned string may be very large.
+     * WARNING: The returned string may be very large.
      *
      * @return the string representation.
      *

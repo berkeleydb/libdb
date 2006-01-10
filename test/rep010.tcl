@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep010.tcl,v 11.10 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep010.tcl,v 12.2 2005/06/23 15:25:21 carol Exp $
 #
 # TEST  rep010
 # TEST	Replication and ISPERM
@@ -16,6 +16,11 @@
 # TEST	with ISPERM is found in the log.
 proc rep010 { method { niter 100 } { tnum "010" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep008.tcl,v 1.11 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep008.tcl,v 12.2 2005/06/23 15:25:21 carol Exp $
 #
 # TEST	rep008
 # TEST	Replication, back up and synchronizing
@@ -17,6 +17,11 @@
 proc rep008 { method { niter 10 } { tnum "008" } args } {
 	global mixed_mode_logging
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	if { $mixed_mode_logging == 1 } {
 		puts "Rep$tnum: Skipping for mixed-mode logging."
 		return

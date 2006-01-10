@@ -1,12 +1,12 @@
 /*
 
- BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2, 3 &4
+ BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2, 3 & 4
 
  written by Paul Marquess <pmqs@cpan.org>
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2004 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2005 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -125,6 +125,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_3
 #endif
 
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 4)
+#  define AT_LEAST_DB_4_4
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -230,8 +234,9 @@ typedef struct {
         bool    	in_hash ;
 #ifdef AT_LEAST_DB_3_3
         SV *   	 	associated ;
-	bool		secondary_db ;
+        bool		secondary_db ;
 #endif
+        bool		primary_recno_or_queue ;
 	int		Status ;
         DB_INFO *	info ;
         DBC *   	cursor ;
@@ -268,6 +273,7 @@ typedef struct {
         SV *   	 	associated ;
 	bool		secondary_db ;
 #endif
+	bool		primary_recno_or_queue ;
 	int		Status ;
         DB_INFO *	info ;
         DBC *   	cursor ;
@@ -337,6 +343,7 @@ typedef DBT 			DBTKEY ;
 typedef DBT 			DBT_OPT ;
 typedef DBT 			DBT_B ;
 typedef DBT 			DBTKEY_B ;
+typedef DBT 			DBTKEY_Br ;
 typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
@@ -454,8 +461,23 @@ hash_delete(char * hash, char * key);
 #define OutputKey_B(arg, name)                                  \
         { if (RETVAL == 0) 					\
           {                                                     \
-                if (db->recno_or_queue ||			\
-			(db->type == DB_BTREE && 		\
+                if (db->recno_or_queue 	                        \
+			|| (db->type == DB_BTREE && 		\
+			    flagSet(DB_GET_RECNO))){		\
+                    sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
+                }                                               \
+                else {                                          \
+                    my_sv_setpvn(arg, name.data, name.size);    \
+                }                                               \
+                DBM_ckFilter(arg, filter_fetch_key, "filter_fetch_key") ;            \
+          }                                                     \
+        }
+
+#define OutputKey_Br(arg, name)                                  \
+        { if (RETVAL == 0) 					\
+          {                                                     \
+                if (db->recno_or_queue || db->primary_recno_or_queue	\
+			|| (db->type == DB_BTREE && 		\
 			    flagSet(DB_GET_RECNO))){		\
                     sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
                 }                                               \
@@ -1411,6 +1433,10 @@ my_db_open(
 #endif
     }
 
+    /* In-memory database need DB_CREATE from 4.4 */
+    if (! file)
+        flags |= DB_CREATE;
+
 
 #ifdef AT_LEAST_DB_4_1
     if ((Status = (dbp->open)(dbp, txnid, file, subname, type, flags, mode)) == 0) {
@@ -1434,6 +1460,7 @@ my_db_open(
     	RETVAL->type = dbp->get_type(dbp) ;
 #endif
 #endif /* DB_VERSION_MAJOR > 2 */
+    	RETVAL->primary_recno_or_queue = FALSE;
     	RETVAL->recno_or_queue = (RETVAL->type == DB_RECNO ||
 	                          RETVAL->type == DB_QUEUE) ;
 	RETVAL->filename = my_strdup(file) ;
@@ -1499,6 +1526,7 @@ _db_remove(ref)
 	    const char *	db = NULL ;
 	    const char *	subdb 	= NULL ;
 	    BerkeleyDB__Env	env 	= NULL ;
+	    BerkeleyDB__Txn	txn 	= NULL ;
     	    DB_ENV *		dbenv   = NULL ;
 	    u_int32_t		flags	= 0 ;
 
@@ -1507,12 +1535,22 @@ _db_remove(ref)
 	    SetValue_pv(subdb, "Subname", char *) ;
 	    SetValue_iv(flags, "Flags") ;
 	    SetValue_ov(env, "Env", BerkeleyDB__Env) ;
-    	    if (env)
-		dbenv = env->Env ;
-            RETVAL = db_create(&dbp, dbenv, 0) ;
-	    if (RETVAL == 0) {
-	        RETVAL = dbp->remove(dbp, db, subdb, flags) ;
-	    }
+            if (txn) {
+#ifdef AT_LEAST_DB_4_1
+                if (!env)
+                    softCrash("transactional db_remove requires an environment");
+                RETVAL = env->Status = env->Env->dbremove(env->Env, txn->txn, db, subdb, flags);
+#else
+                softCrash("transactional db_remove requires Berkeley DB 4.1 or better");
+#endif                
+            } else {
+                if (env)
+                    dbenv = env->Env ;
+                RETVAL = db_create(&dbp, dbenv, 0) ;
+                if (RETVAL == 0) {
+                    RETVAL = dbp->remove(dbp, db, subdb, flags) ;
+            }
+        }
 #endif
 	}
 	OUTPUT:
@@ -1579,6 +1617,7 @@ _db_rename(ref)
 	    const char *	subdb 	= NULL ;
 	    const char *	newname	= NULL ;
 	    BerkeleyDB__Env	env 	= NULL ;
+	    BerkeleyDB__Txn	txn 	= NULL ;
     	    DB_ENV *		dbenv   = NULL ;
 	    u_int32_t		flags	= 0 ;
 
@@ -1588,12 +1627,23 @@ _db_rename(ref)
 	    SetValue_pv(newname, "Newname", char *) ;
 	    SetValue_iv(flags, "Flags") ;
 	    SetValue_ov(env, "Env", BerkeleyDB__Env) ;
-    	    if (env)
-		dbenv = env->Env ;
-            RETVAL = db_create(&dbp, dbenv, 0) ;
-	    if (RETVAL == 0) {
-	        RETVAL = (dbp->rename)(dbp, db, subdb, newname, flags) ;
-	    }
+            SetValue_ov(txn, "Txn", BerkeleyDB__Txn) ;
+            if (txn) {
+#ifdef AT_LEAST_DB_4_1
+                if (!env)
+                    softCrash("transactional db_rename requires an environment");
+                RETVAL = env->Status = env->Env->dbrename(env->Env, txn->txn, db, subdb, newname, flags);
+#else
+                softCrash("transactional db_rename requires Berkeley DB 4.1 or better");
+#endif
+            } else {
+                if (env)
+                    dbenv = env->Env ;
+                RETVAL = db_create(&dbp, dbenv, 0) ;
+                if (RETVAL == 0) {
+                    RETVAL = (dbp->rename)(dbp, db, subdb, newname, flags) ;
+            }
+        }
 #endif
 	}
 	OUTPUT:
@@ -1938,7 +1988,11 @@ log_archive(env, flags=0)
 	  env->Status = log_archive(env->Env, &list, flags, safemalloc) ;
 #    endif
 #  endif
-	  if (env->Status == 0 && list != NULL)
+#ifdef DB_ARCH_REMOVE
+	  if (env->Status == 0 && list != NULL && flags != DB_ARCH_REMOVE)
+#else
+	  if (env->Status == 0 && list != NULL )
+#endif
           {
 	      for (file = list; *file != NULL; ++file)
 	      {
@@ -2280,7 +2334,7 @@ set_mutexlocks(env, do_lock)
 	    softCrash("$env->set_setmutexlocks needs Berkeley DB 3.0 or better") ;
 #else
 #  ifdef AT_LEAST_DB_4
-	    RETVAL = env->Status = env->Env->set_flags(env->Env, DB_NOLOCKING, do_lock);
+	    RETVAL = env->Status = env->Env->set_flags(env->Env, DB_NOLOCKING, !do_lock);
 #  else
 #    if defined(AT_LEAST_DB_3_2_6) || defined(IS_DB_3_0_x)
 	    RETVAL = env->Status = env->Env->set_mutexlocks(env->Env, do_lock);
@@ -2606,7 +2660,9 @@ db_stat(db, flags=0)
 #else
 		hv_store_iv(RETVAL, "bt_flags", stat->bt_flags) ;
 #endif
+#ifndef AT_LEAST_DB_4_4
 		hv_store_iv(RETVAL, "bt_maxkey", stat->bt_maxkey) ;
+#endif
 		hv_store_iv(RETVAL, "bt_minkey", stat->bt_minkey);
 		hv_store_iv(RETVAL, "bt_re_len", stat->bt_re_len);
 		hv_store_iv(RETVAL, "bt_re_pad", stat->bt_re_pad);
@@ -2908,6 +2964,7 @@ _db_cursor(db, flags=0)
 #ifdef AT_LEAST_DB_3_3
               RETVAL->associated = db->associated ;
 	      RETVAL->secondary_db  = db->secondary_db;
+              RETVAL->primary_recno_or_queue = db->recno_or_queue ;
 #endif
               RETVAL->prefix  = db->prefix ;
               RETVAL->hash    = db->hash ;
@@ -2979,6 +3036,7 @@ _db_join(db, cursors, flags=0)
 #ifdef AT_LEAST_DB_3_3
               RETVAL->associated = db->associated ;
 	      RETVAL->secondary_db  = db->secondary_db;
+              RETVAL->primary_recno_or_queue = db->recno_or_queue ;
 #endif
               RETVAL->prefix  = db->prefix ;
               RETVAL->hash    = db->hash ;
@@ -3364,6 +3422,7 @@ associate(db, secondary, callback, flags=0)
 	  saveCurrentDB(db) ;
 	  /* db->associated = newSVsv(callback) ; */
 	  secondary->associated = newSVsv(callback) ;
+	  secondary->primary_recno_or_queue = db->recno_or_queue ;
 	  /* secondary->dbp->app_private = secondary->associated ; */
 	  secondary->secondary_db = TRUE;
 	  RETVAL = db_associate(db, secondary, associate_cb, flags);
@@ -3397,6 +3456,7 @@ _c_dup(db, flags=0)
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
               RETVAL->recno_or_queue    = db->recno_or_queue ;
+              RETVAL->primary_recno_or_queue    = db->primary_recno_or_queue ;
               RETVAL->cds_enabled    = db->cds_enabled ;
               RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
@@ -3485,7 +3545,7 @@ DualType
 cu_c_get(db, key, data, flags=0)
     int			flags
     BerkeleyDB::Cursor	db
-    DBTKEY_B		key 
+    DBTKEY_Br		key 
     DBT_B		data 
 	INIT:
 	  Trace(("c_get db [%p] in [%p] flags [%d]\n", db->dbp, db, flags)) ;
@@ -3506,7 +3566,7 @@ cu_c_pget(db, key, pkey, data, flags=0)
     int			flags
     BerkeleyDB::Cursor	db
     DBTKEY_B		key
-    DBTKEY_B		pkey = NO_INIT
+    DBTKEY_Br		pkey = NO_INIT
     DBT_B		data
 	CODE:
 #ifndef AT_LEAST_DB_3_3

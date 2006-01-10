@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd018.tcl,v 11.5 2004/01/28 03:36:29 bostic Exp $
+# $Id: recd018.tcl,v 12.1 2005/06/16 20:24:00 bostic Exp $
 #
 # TEST	recd018
 # TEST	Test recover of closely interspersed checkpoints and commits.

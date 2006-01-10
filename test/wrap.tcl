@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: wrap.tcl,v 11.8 2004/01/28 03:36:33 bostic Exp $
+# $Id: wrap.tcl,v 12.1 2005/06/16 20:24:11 bostic Exp $
 #
 # Sentinel file wrapper for multi-process tests.  This is designed to avoid a
 # set of nasty bugs, primarily on Windows, where pid reuse causes watch_procs

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test.tcl,v 11.273 2004/11/01 14:48:23 carol Exp $
+# $Id: test.tcl,v 12.20 2005/11/08 15:10:43 carol Exp $
 
 source ./include.tcl
 
@@ -80,10 +80,14 @@ source $test_path/testparams.tcl
 
 # Set up any OS-specific values
 global tcl_platform
-set is_windows_test [is_substr $tcl_platform(os) "Win"]
+set is_freebsd_test [is_substr $tcl_platform(os) "FreeBSD"]
 set is_hp_test [is_substr $tcl_platform(os) "HP-UX"]
-set is_je_test 0
+set is_linux_test [is_substr $tcl_platform(os) "Linux"]
 set is_qnx_test [is_substr $tcl_platform(os) "QNX"]
+set is_sunos_test [is_substr $tcl_platform(os) "SunOS"]
+set is_windows_test [is_substr $tcl_platform(os) "Win"]
+set is_windows9x_test [is_substr $tcl_platform(osVersion) "Windows 95"]
+set is_je_test 0
 set upgrade_be [big_endian]
 
 global EXE BAT
@@ -117,6 +121,7 @@ if { $stat != 0 } {
 proc run_std { { testname ALL } args } {
 	global test_names
 	global one_test
+	global has_crypto
 	source ./include.tcl
 
 	set one_test $testname
@@ -179,7 +184,6 @@ proc run_std { { testname ALL } args } {
 	{"locking"		"lock"}
 	{"logging"		"log"}
 	{"memory pool"		"memp"}
-	{"mutex"		"mutex"}
 	{"transaction"		"txn"}
 	{"deadlock detection"	"dead"}
 	{"subdatabase"		"sdb"}
@@ -189,10 +193,15 @@ proc run_std { { testname ALL } args } {
 	{"NDBM interface"	"ndbm"}
 	{"Hsearch interface"	"hsearch"}
 	{"secondary index"	"sindex"}
+	{"replication"		"rep"}
+	}
+
+	# If release supports encryption, run security tests.
+	if { $has_crypto == 1 } {
+	        lappend test_list {"security"   "sec"}
 	}
 
 	if { $am_only == 0 } {
-
 		foreach pair $test_list {
 			set msg [lindex $pair 0]
 			set cmd [lindex $pair 1]
@@ -320,7 +329,6 @@ proc check_output { file } {
 		.*?dbscript\.tcl.*|
 		.*?ddscript\.tcl.*|
 		.*?mpoolscript\.tcl.*|
-		.*?mutexscript\.tcl.*|
 		^\d\d:\d\d:\d\d\s\(\d\d:\d\d:\d\d\)$|
 		^\d\d:\d\d:\d\d\s\(\d\d:\d\d:\d\d\)\sCrashing$|
 		^\d\d:\d\d:\d\d\s\(\d\d:\d\d:\d\d\)\s[p|P]rocesses\srunning:.*|
@@ -352,6 +360,7 @@ proc check_output { file } {
 		^Repl:\stest\d\d\d:.*|
 		^Repl:\ssdb\d\d\d:.*|
 		^Script\swatcher\sprocess\s.*|
+		^Secondary\sindex\sjoin\s.*|
 		^Sleepycat\sSoftware:\sBerkeley\sDB\s.*|
 		^Test\ssuite\srun\s.*|
 		^Unlinking\slog:\serror\smessage\sOK$|
@@ -362,7 +371,9 @@ proc check_output { file } {
 		^\t*\.\.\.Skipping\sdbc.*|
 		^\t*and\s\d*\sduplicate\sduplicates\.$|
 		^\t*About\sto\srun\srecovery\s.*complete$|
+		^\t*Add\sa\sthird\sversion\s.*|
 		^\t*Archive[:\.].*|
+		^\t*Bigfile[0-9][0-9][0-9].*|
 		^\t*Building\s.*|
 		^\t*closing\ssecondaries\.$|
 		^\t*Command\sexecuted\sand\s.*$|
@@ -393,11 +404,15 @@ proc check_output { file } {
 		^\t*[r|R]ep_test.*|
 		^\t*[r|R]pc[0-9][0-9][0-9].*|
 		^\t*[r|R]src[0-9][0-9][0-9].*|
+		^\t*Recover\sfrom\sfirst\sdatabase$|
+		^\t*Recover\sfrom\ssecond\sdatabase$|
+		^\t*Remove\ssecond\sdb$|
+		^\t*Rep_verify.*|
 		^\t*Run_rpcmethod.*|
 		^\t*Running\srecovery\son\s.*|
 		^\t*[s|S]ec[0-9][0-9][0-9].*|
 		^\t*[s|S]i[0-9][0-9][0-9].*|
-		^\t*Sijoin.*|
+		^\t*[s|S]ijoin.*|
 		^\t*sdb[0-9][0-9][0-9].*|
 		^\t*Skipping\s.*|
 		^\t*Subdb[0-9][0-9][0-9].*|
@@ -450,13 +465,14 @@ proc r { args } {
 
 	if {[catch {
 		set sub [ lindex $args 0 ]
+		set starttest [lindex $args 1]
 		switch $sub {
+			bigfile -
 			dead -
 			env -
 			lock -
 			log -
 			memp -
-			mutex -
 			rsrc -
 			sdbtest -
 			txn {
@@ -485,8 +501,10 @@ proc r { args } {
 					}
 				}
 			}
-			bigfile -
+			compact -
 			elect -
+			inmemdb -
+			init -
 			fop {
 				foreach test $test_names($sub) {
 					eval run_test $test $display $run
@@ -555,9 +573,16 @@ proc r { args } {
 				run_recds $run $display [lrange $args 1 end]
 			}
 			rep {
-				foreach test $test_names(rep) {
+				set tindex [lsearch $test_names(rep) $starttest]
+				if { $tindex == -1 } {
+					set tindex 0
+				}
+				set rlist [lrange $test_names(rep) $tindex end]
+				foreach test $rlist {
 					run_test $test $display $run
 				}
+			}
+			repmethod {		
 				# We seed the random number generator here
 				# instead of in run_repmethod so that we
 				# aren't always reusing the first few
@@ -623,6 +648,13 @@ proc r { args } {
 				}
 				if { $run } {
 					run_subsystem $sub 0 1
+				}
+			}	
+			secmethod {
+				# Skip secure mode tests if release
+				# does not support encryption.
+				if { $has_crypto == 0 } {
+					return 
 				}
 				foreach test $test_names(test) {
 					eval run_test run_secmethod \
@@ -1000,7 +1032,7 @@ proc run_secenv { method test {largs ""} } {
 	set stat [catch {
 		check_handles
 		set env [eval {berkdb_env -create -mode 0644 -home $testdir \
-		    -encryptaes $passwd -cachesize {0 1048576 1}}]
+		    -encryptaes $passwd -cachesize {0 2097152 1}}]
 		error_check_good env_open [is_valid_env $env] TRUE
 		append largs " -env $env "
 
@@ -1055,6 +1087,15 @@ proc run_secenv { method test {largs ""} } {
 proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
     {do_sec 0} {do_oob 0} {largs "" } } {
 	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
+	if { $test == "test115" } {
+		puts "Skipping $test under repmethod (SR #13394)."
+		return
+	}
+
 	global __debug_on
 	global __debug_print
 	global __debug_test
@@ -1063,7 +1104,8 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 	global passwd
 	global has_crypto
 
-	puts "run_reptest: $method $test $droppct $nclients $do_del $do_sec $do_oob $largs"
+	puts "run_reptest: \
+	    $method $test $droppct $nclients $do_del $do_sec $do_oob $largs"
 
 	env_cleanup $testdir
 	set is_envmethod 1
@@ -1089,6 +1131,7 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 			    testparams.tcl; skipping."
 			continue
 		}
+
 		puts -nonewline \
 		    "Repl: $test: dropping $droppct%, $nclients clients "
 		if { $do_del } {
@@ -1146,6 +1189,11 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 proc run_repmethod { method test {numcl 0} {display 0} {run 1} \
     {outfile stdout} {largs ""} } {
 	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
+
 	global __debug_on
 	global __debug_print
 	global __debug_test
@@ -1204,6 +1252,9 @@ proc run_envmethod { method test {display 0} {run 1} {outfile stdout} \
 
 	set save_largs $largs
 	set envargs ""
+
+	# Enlarge the cache by default - some compaction tests need it.
+	set cacheargs "-cachesize {0 2097152 1}"
 	env_cleanup $testdir
 
 	if { $display == 1 } {
@@ -1239,12 +1290,16 @@ proc run_envmethod { method test {display 0} {run 1} {outfile stdout} \
 		set largs [lreplace $largs $aindex $aindex]
 	}
 
+	# We raise the number of locks and objects - there are a few
+	# compaction tests that require a large number. 
+	set lockargs " -lock_max_locks 40000 -lock_max_objects 20000 "
+
 	if { $run == 1 } {
 		set is_envmethod 1
 		set stat [catch {
 			check_handles
-			set env [eval {berkdb_env -create -txn \
-			    -mode 0644 -home $testdir} $envargs]
+			set env [eval {berkdb_env -create -txn -mode 0644 \
+			    -home $testdir} $cacheargs $lockargs $envargs]
 			error_check_good env_open [is_valid_env $env] TRUE
 			append largs " -env $env "
 
@@ -1499,7 +1554,7 @@ proc run_all { { testname ALL } args } {
 		foreach method \
 		   "btree rbtree hash queue queueext recno frecno rrecno" {
 			puts "Running $method tests with pagesize $pgsz"
-			foreach sub {test sdb} {
+			foreach sub {test sdb si} {
 				foreach test $test_names($sub) {
 					if { $run == 0 } {
 						set o [open ALL.OUT a]
@@ -1533,7 +1588,7 @@ proc run_all { { testname ALL } args } {
 	#
 	foreach method "btree rbtree hash queue queueext recno frecno rrecno" {
 		puts "Running $method tests in a txn env"
-		foreach sub {test sdb} {
+		foreach sub {test sdb si} {
 			foreach test $test_names($sub) {
 				if { $run == 0 } {
 					set o [open ALL.OUT a]
@@ -1564,7 +1619,7 @@ proc run_all { { testname ALL } args } {
 	#
 	foreach method "btree rbtree hash queue queueext recno frecno rrecno" {
 		puts "Running $method tests in a threaded txn env"
-		foreach sub {test sdb} {
+		foreach sub {test sdb si} {
 			foreach test $test_names($sub) {
 				if { $run == 0 } {
 					set o [open ALL.OUT a]
@@ -1594,7 +1649,7 @@ proc run_all { { testname ALL } args } {
 	#
 	foreach method "btree rbtree hash queue queueext recno frecno rrecno" {
 		puts "Running $method tests in an env with -alloc"
-		foreach sub {test sdb} {
+		foreach sub {test sdb si} {
 			foreach test $test_names($sub) {
 				if { $run == 0 } {
 					set o [open ALL.OUT a]
@@ -1619,16 +1674,22 @@ proc run_all { { testname ALL } args } {
 			}
 		}
 	}
+
+	# Run standard access method tests under replication.
 	#
-	# Run tests using proc r.  The replication tests have been
-	# moved from run_std to run_all.
-	#
-	set test_list [list {"replication"	"rep"}]
-	#
+	set test_list [list {"testNNN under replication"	"repmethod"}]
+
+	# If we're on Windows, Linux, FreeBSD, or Solaris, run the 
+	# bigfile tests.  These create files larger than 4 GB.
+	if { $is_freebsd_test == 1 || $is_linux_test == 1 || \
+	    $is_sunos_test == 1 || $is_windows_test == 1 } {
+		lappend test_list {"big files"	"bigfile"}	
+	}
+	
 	# If release supports encryption, run security tests.
 	#
 	if { $has_crypto == 1 } {
-		lappend test_list {"security"	"sec"}
+		lappend test_list {"testNNN with security"	"secmethod"}
 	}
 	#
 	# If configured for RPC, then run rpc tests too.

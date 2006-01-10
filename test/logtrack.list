@@ -1,5 +1,8 @@
 PREFIX	__crdel
 BEGIN	metasub	142
+BEGIN	inmem_create	138
+BEGIN	inmem_rename	139
+BEGIN	inmem_remove	140
 PREFIX	__db
 BEGIN	addrem	41
 BEGIN	big	43
@@ -13,6 +16,7 @@ BEGIN	pg_freedata	52
 BEGIN	pg_prepare	53
 BEGIN	pg_new	54
 BEGIN	pg_init	60
+BEGIN	pg_sort	61
 PREFIX	__dbreg
 BEGIN	register	2
 PREFIX	__bam
@@ -26,6 +30,8 @@ BEGIN	root	59
 BEGIN	curadj	64
 BEGIN	rcuradj	65
 BEGIN	relink	147
+BEGIN	merge	148
+BEGIN	pgno	149
 PREFIX	__fop
 BEGIN	create	143
 BEGIN	remove	144

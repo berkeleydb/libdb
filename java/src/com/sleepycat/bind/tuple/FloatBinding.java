@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: FloatBinding.java,v 1.4 2004/08/02 18:52:04 mjc Exp $
+ * $Id: FloatBinding.java,v 12.2 2005/08/01 20:25:13 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -39,13 +39,13 @@ public class FloatBinding extends TupleBinding {
     // javadoc is inherited
     public void objectToEntry(Object object, TupleOutput output) {
 
-        /* Do nothing.  Not called by objectToEntry(Object,DatabaseEntry). */
+        output.writeFloat(((Number) object).floatValue());
     }
 
     // javadoc is inherited
-    public void objectToEntry(Object object, DatabaseEntry entry) {
+    protected TupleOutput getTupleOutput(Object object) {
 
-        floatToEntry(((Number) object).floatValue(), entry);
+        return sizedOutput();
     }
 
     /**
@@ -69,6 +69,15 @@ public class FloatBinding extends TupleBinding {
      */
     public static void floatToEntry(float val, DatabaseEntry entry) {
 
-        outputToEntry(newOutput(new byte[FLOAT_SIZE]).writeFloat(val), entry);
+        outputToEntry(sizedOutput().writeFloat(val), entry);
+    }
+
+    /**
+     * Returns a tuple output object of the exact size needed, to avoid
+     * wasting space when a single primitive is output.
+     */
+    private static TupleOutput sizedOutput() {
+
+        return new TupleOutput(new byte[FLOAT_SIZE]);
     }
 }

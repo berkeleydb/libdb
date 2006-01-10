@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
-# Sleepycat Software. All rights reserved.
+# Copyright (c) 2003-2005
+#	Sleepycat Software. All rights reserved.
 #
-# $Id: txn011.tcl,v 1.11 2004/07/26 20:27:49 carol Exp $
+# $Id: txn011.tcl,v 12.1 2005/06/16 20:24:11 bostic Exp $
 #
 # TEST	txn011
 # TEST	Test durable and non-durable txns.

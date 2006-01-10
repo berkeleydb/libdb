@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd012.tcl,v 11.31 2004/04/19 14:56:13 bostic Exp $
+# $Id: recd012.tcl,v 12.1 2005/06/16 20:23:59 bostic Exp $
 #
 # TEST	recd012
 # TEST	Test of log file ID management. [#2288]

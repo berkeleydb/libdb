@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_rep.c,v 11.106 2004/10/14 18:09:00 bostic Exp $
+ * $Id: tcl_rep.c,v 12.11 2005/10/14 20:15:33 sue Exp $
  */
 
 #include "db_config.h"
@@ -19,6 +19,150 @@
 
 #include "db_int.h"
 #include "dbinc/tcl_db.h"
+
+#ifdef CONFIG_TEST
+/*
+ * tcl_RepConfig --
+ *	Call DB_ENV->rep_set_config().
+ *
+ * PUBLIC: int tcl_RepConfig
+ * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+ */
+int
+tcl_RepConfig(interp, dbenv, list)
+	Tcl_Interp *interp;		/* Interpreter */
+	DB_ENV *dbenv;			/* Environment pointer */
+	Tcl_Obj *list;			/* {which on|off} */
+{
+	static const char *confwhich[] = {
+		"bulk",
+		"delayclient",
+		"noautoinit",
+		"nowait",
+		NULL
+	};
+	enum confwhich {
+		REPCONF_BULK,
+		REPCONF_DELAYCLIENT,
+		REPCONF_NOAUTOINIT,
+		REPCONF_NOWAIT
+	};
+	static const char *confonoff[] = {
+		"off",
+		"on",
+		NULL
+	};
+	enum confonoff {
+		REPCONF_OFF,
+		REPCONF_ON
+	};
+	Tcl_Obj **myobjv, *onoff, *which;
+	int myobjc, on, optindex, result, ret;
+	u_int32_t wh;
+
+	result = Tcl_ListObjGetElements(interp, list, &myobjc, &myobjv);
+	which = myobjv[0];
+	onoff = myobjv[1];
+	if (result != TCL_OK)
+		return (result);
+	if (Tcl_GetIndexFromObj(interp, which, confwhich, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(which));
+
+	switch ((enum confwhich)optindex) {
+	case REPCONF_NOAUTOINIT:
+		wh = DB_REP_CONF_NOAUTOINIT;
+		break;
+	case REPCONF_BULK:
+		wh = DB_REP_CONF_BULK;
+		break;
+	case REPCONF_DELAYCLIENT:
+		wh = DB_REP_CONF_DELAYCLIENT;
+		break;
+	case REPCONF_NOWAIT:
+		wh = DB_REP_CONF_NOWAIT;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	if (Tcl_GetIndexFromObj(interp, onoff, confonoff, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(onoff));
+	switch ((enum confonoff)optindex) {
+	case REPCONF_OFF:
+		on = 0;
+		break;
+	case REPCONF_ON:
+		on = 1;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	ret = dbenv->rep_set_config(dbenv, wh, on);
+	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "env rep_config"));
+}
+
+/*
+ * tcl_RepGetConfig --
+ *	Call DB_ENV->rep_get_config().
+ *
+ * PUBLIC: int tcl_RepGetConfig
+ * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+ */
+int
+tcl_RepGetConfig(interp, dbenv, which)
+	Tcl_Interp *interp;		/* Interpreter */
+	DB_ENV *dbenv;			/* Environment pointer */
+	Tcl_Obj *which;			/* which flag */
+{
+	static const char *confwhich[] = {
+		"bulk",
+		"delayclient",
+		"noautoinit",
+		"nowait",
+		NULL
+	};
+	enum confwhich {
+		REPGCONF_BULK,
+		REPGCONF_DELAYCLIENT,
+		REPGCONF_NOAUTOINIT,
+		REPGCONF_NOWAIT
+	};
+	Tcl_Obj *res;
+	int on, optindex, result, ret;
+	u_int32_t wh;
+
+	if (Tcl_GetIndexFromObj(interp, which, confwhich, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(which));
+
+	res = NULL;
+	switch ((enum confwhich)optindex) {
+	case REPGCONF_BULK:
+		wh = DB_REP_CONF_BULK;
+		break;
+	case REPGCONF_DELAYCLIENT:
+		wh = DB_REP_CONF_DELAYCLIENT;
+		break;
+	case REPGCONF_NOAUTOINIT:
+		wh = DB_REP_CONF_NOAUTOINIT;
+		break;
+	case REPGCONF_NOWAIT:
+		wh = DB_REP_CONF_NOWAIT;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	ret = dbenv->rep_get_config(dbenv, wh, &on);
+	if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "env rep_config")) == TCL_OK) {
+		res = Tcl_NewIntObj(on);
+		Tcl_SetObjResult(interp, res);
+	}
+	return (result);
+}
+#endif
 
 #ifdef CONFIG_TEST
 /*
@@ -89,6 +233,33 @@ tcl_RepFlush(interp, objc, objv, dbenv)
 	_debug_check();
 	ret = dbenv->rep_flush(dbenv);
 	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret), "env rep_flush"));
+}
+#endif
+#ifdef CONFIG_TEST
+/*
+ * tcl_RepSync --
+ *	Call DB_ENV->rep_sync().
+ *
+ * PUBLIC: int tcl_RepSync
+ * PUBLIC:     __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
+ */
+int
+tcl_RepSync(interp, objc, objv, dbenv)
+	Tcl_Interp *interp;
+	int objc;
+	Tcl_Obj *CONST objv[];
+	DB_ENV *dbenv;
+{
+	int ret;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "");
+		return TCL_ERROR;
+	}
+
+	_debug_check();
+	ret = dbenv->rep_sync(dbenv, 0);
+	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret), "env rep_sync"));
 }
 #endif
 #ifdef CONFIG_TEST
@@ -164,6 +335,71 @@ tcl_RepRequest(interp, objc, objv, dbenv)
 
 	return (_ReturnSetup(interp,
 	    ret, DB_RETOK_STD(ret), "env set_rep_request"));
+}
+#endif
+
+#ifdef CONFIG_TEST
+/*
+ * tcl_RepTransport --
+ *	Call DB_ENV->set_rep_transport().
+ *
+ * PUBLIC: int tcl_RepTransport  __P((Tcl_Interp *, int, Tcl_Obj * CONST *,
+ * PUBLIC:    DB_ENV *, DBTCL_INFO *));
+ *
+ *	Note that this normally can/should be achieved as an argument to
+ * berkdb env, but we need to test changing the transport function on
+ * the fly.
+ */
+int
+tcl_RepTransport(interp, objc, objv, dbenv, ip)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *dbenv;
+	DBTCL_INFO *ip;
+{
+	int intarg, result, ret;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "{id transport_func");
+		return (TCL_ERROR);
+	}
+
+	/*
+	 * Store the objects containing the machine ID
+	 * and the procedure name.  We don't need to crack
+	 * the send procedure out now, but we do convert the
+	 * machine ID to an int, since set_rep_transport needs
+	 * it.  Even so, it'll be easier later to deal with
+	 * the Tcl_Obj *, so we save that, not the int.
+	 *
+	 * Note that we Tcl_IncrRefCount both objects
+	 * independently;  Tcl is free to discard the list
+	 * that they're bundled into.
+	 */
+
+	/*
+	 * Check that the machine ID is an int.  Note that
+	 * we do want to use GetIntFromObj;  the machine
+	 * ID is explicitly an int, not a u_int32_t.
+	 */
+	if (ip->i_rep_eid != NULL)
+		Tcl_DecrRefCount(ip->i_rep_eid);
+	ip->i_rep_eid = objv[0];
+	Tcl_IncrRefCount(ip->i_rep_eid);
+	result = Tcl_GetIntFromObj(interp,
+	    ip->i_rep_eid, &intarg);
+	if (result != TCL_OK)
+		return (result);
+
+	if (ip->i_rep_send != NULL)
+		Tcl_DecrRefCount(ip->i_rep_send);
+	ip->i_rep_send = objv[1];
+	Tcl_IncrRefCount(ip->i_rep_send);
+	_debug_check();
+	ret = dbenv->set_rep_transport(dbenv, intarg, tcl_rep_send);
+	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "env rep_transport"));
 }
 #endif
 
@@ -309,6 +545,7 @@ tcl_RepProcessMessage(interp, objc, objv, dbenv)
 	 * {NEWMASTER #} - NEWMASTER and its ID.
 	 * {NEWSITE 0} - NEWSITE, no other info needed.
 	 * {STARTUPDONE 0} - STARTUPDONE, no other info needed.
+	 * {IGNORE {LSN list}} - IGNORE and this msg's LSN.
 	 * {ISPERM {LSN list}} - ISPERM and the perm LSN.
 	 * {NOTPERM {LSN list}} - NOTPERM and this msg's LSN.
 	 */
@@ -327,6 +564,14 @@ tcl_RepProcessMessage(interp, objc, objv, dbenv)
 		myobjv[0] = Tcl_NewByteArrayObj(
 		    (u_char *)"HOLDELECTION", (int)strlen("HOLDELECTION"));
 		myobjv[1] = Tcl_NewIntObj(0);
+		break;
+	case DB_REP_IGNORE:
+		myobjv[0] = Tcl_NewLongObj((long)permlsn.file);
+		myobjv[1] = Tcl_NewLongObj((long)permlsn.offset);
+		lsnlist = Tcl_NewListObj(myobjc, myobjv);
+		myobjv[0] = Tcl_NewByteArrayObj(
+		    (u_char *)"IGNORE", (int)strlen("IGNORE"));
+		myobjv[1] = lsnlist;
 		break;
 	case DB_REP_ISPERM:
 		myobjv[0] = Tcl_NewLongObj((long)permlsn.file);
@@ -400,8 +645,8 @@ tcl_RepStat(interp, objc, objv, dbenv)
 	int myobjc, result, ret;
 	char *arg;
 
-	result = TCL_OK;
 	flag = 0;
+	result = TCL_OK;
 
 	if (objc > 3) {
 		Tcl_WrongNumArgs(interp, 2, objv, NULL);
@@ -439,6 +684,13 @@ tcl_RepStat(interp, objc, objv, dbenv)
 		MAKE_STAT_LIST("Client", 1);
 	MAKE_STAT_LSN("Next LSN expected", &sp->st_next_lsn);
 	MAKE_STAT_LSN("First missed LSN", &sp->st_waiting_lsn);
+	MAKE_STAT_LIST("Bulk buffer fills", sp->st_bulk_fills);
+	MAKE_STAT_LIST("Bulk buffer overflows", sp->st_bulk_overflows);
+	MAKE_STAT_LIST("Bulk records stored", sp->st_bulk_records);
+	MAKE_STAT_LIST("Bulk buffer transfers", sp->st_bulk_transfers);
+	MAKE_STAT_LIST("Client service requests", sp->st_client_svc_req);
+	MAKE_STAT_LIST("Client service req misses", sp->st_client_svc_miss);
+	MAKE_STAT_LIST("Client rerequests", sp->st_client_rerequests);
 	MAKE_STAT_LIST("Duplicate master conditions", sp->st_dupmasters);
 	MAKE_STAT_LIST("Environment ID", sp->st_env_id);
 	MAKE_STAT_LIST("Environment priority", sp->st_env_priority);
@@ -480,6 +732,8 @@ tcl_RepStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST("Election priority", sp->st_election_priority);
 	MAKE_STAT_LIST("Election tiebreaker", sp->st_election_tiebreaker);
 	MAKE_STAT_LIST("Election votes", sp->st_election_votes);
+	MAKE_STAT_LIST("Election seconds", sp->st_election_sec);
+	MAKE_STAT_LIST("Election usecs", sp->st_election_usec);
 
 	Tcl_SetObjResult(interp, res);
 error:

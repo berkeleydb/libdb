@@ -276,8 +276,8 @@
                 
                 
             method, or use the <tt class="literal">db_stat</tt> command line utility.
-            The number of locks that could not be obtained due to conflicts is
-            held in the lock statistic's <tt class="literal">st_nconflicts</tt> field.
+            The number of unavailable locks that your application waited for is
+            held in the lock statistic's <tt class="literal">st_lock_wait</tt> field.
                 
         </p>
         </div>

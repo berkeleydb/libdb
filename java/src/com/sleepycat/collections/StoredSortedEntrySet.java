@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredSortedEntrySet.java,v 1.2 2004/06/02 20:59:39 mark Exp $
+ * $Id: StoredSortedEntrySet.java,v 12.2 2005/10/05 20:40:10 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -98,6 +98,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * strictly less than toMapEntry.
      * This method conforms to the {@link SortedSet#headSet} interface.
      *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param toMapEntry the upper bound.
      *
      * @return the subset.
@@ -114,6 +117,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * Returns a view of the portion of this sorted set whose elements are
      * strictly less than toMapEntry, optionally including toMapEntry.
      * This method does not exist in the standard {@link SortedSet} interface.
+     *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param toMapEntry is the upper bound.
      *
@@ -134,6 +140,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * greater than or equal to fromMapEntry.
      * This method conforms to the {@link SortedSet#tailSet} interface.
      *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param fromMapEntry is the lower bound.
      *
      * @return the subset.
@@ -150,6 +159,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * Returns a view of the portion of this sorted set whose elements are
      * strictly greater than fromMapEntry, optionally including fromMapEntry.
      * This method does not exist in the standard {@link SortedSet} interface.
+     *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param fromMapEntry is the lower bound.
      *
@@ -170,6 +182,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * from fromMapEntry, inclusive, to toMapEntry, exclusive.
      * This method conforms to the {@link SortedSet#subSet} interface.
      *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
+     *
      * @param fromMapEntry is the lower bound.
      *
      * @param toMapEntry is the upper bound.
@@ -189,6 +204,9 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * strictly greater than fromMapEntry and strictly less than toMapEntry,
      * optionally including fromMapEntry and toMapEntry.
      * This method does not exist in the standard {@link SortedSet} interface.
+     *
+     * <p>Note that the return value is a StoredCollection and must be treated
+     * as such; for example, its iterators must be explicitly closed.</p>
      *
      * @param fromMapEntry is the lower bound.
      *

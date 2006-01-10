@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test068.tcl,v 11.21 2004/05/13 18:51:43 mjc Exp $
+# $Id: test068.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
 #
 # TEST	test068
 # TEST	Test of DB_BEFORE and DB_AFTER with partial puts.

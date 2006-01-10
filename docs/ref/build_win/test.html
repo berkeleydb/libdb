@@ -1,5 +1,5 @@
-<!--$Id: test.so,v 10.43 2003/11/27 18:25:58 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: test.so,v 10.44 2005/08/26 04:31:45 mjc Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -16,7 +16,7 @@
 </td></tr></table>
 <p>
 <h3 align=center>Running the test suite under Windows</h3>
-<p>To build the test suite on Win32 platforms, you will need to configure
+<p>To build the test suite on Windows platforms, you will need to configure
 Tcl support.  You will also need sufficient main memory (at least 64MB),
 and disk (around 250MB of disk will be sufficient).</p>
 <h3>Building the software needed by the tests</h3>
@@ -48,10 +48,10 @@ that reads:</p>
 <blockquote><pre>set tclsh_path SET_YOUR_TCLSH_PATH</pre></blockquote>
 <p>You will want to use the location of the <b>tclsh</b> program (be
 sure to include the name of the executable).  For example, if Tcl is
-installed in <b>d:/tcl</b>, this line should be the following:</p>
-<blockquote><pre>set tclsh_path d:/tcl/bin/tclsh83d.exe</pre></blockquote>
+installed in <b>d:\tcl</b>, this line should be the following:</p>
+<blockquote><pre>set tclsh_path d:\tcl\bin\tclsh84g.exe</pre></blockquote>
 <p>If your path includes spaces be sure to enclose it in quotes:</p>
-<blockquote><pre>set tclsh_path "c:/Program Files/tcl/bin/tclsh83d.exe"</pre></blockquote>
+<blockquote><pre>set tclsh_path "c:\Program Files\tcl\bin\tclsh84g.exe"</pre></blockquote>
 <p>Make sure that the path to Berkeley DB's tcl library is in your
 current path.  On Windows NT/2000/XP, edit your PATH using the My
 Computer -&gt; Properties -&gt; Advanced -&gt; Environment
@@ -61,7 +61,7 @@ convenient to add a line to c:\AUTOEXEC.BAT:</p>
 <p>Then, in a shell of your choice enter the following commands:</p>
 <ol>
 <p><li>cd build_win32
-<p><li>run <b>d:/tcl/bin/tclsh83d.exe</b>, or the equivalent name of
+<p><li>run <b>d:\tcl\bin\tclsh84g.exe</b>, or the equivalent name of
 the Tcl shell for your system.
 <p>You should get a "%" prompt.</p>
 <p><li>% source ../test/test.tcl
@@ -72,6 +72,6 @@ the Tcl shell for your system.
 information.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../build_win/small.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_win/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

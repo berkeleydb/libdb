@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: db_server_cxxutil.cpp,v 1.17 2004/09/22 17:30:13 bostic Exp $
+ * $Id: db_server_cxxutil.cpp,v 12.2 2005/06/16 20:23:40 bostic Exp $
  */
 
 #include "db_config.h"
@@ -318,7 +318,7 @@ __dbsrv_timeout(int force)
 		if (to < t || force) {
 			if (__dbsrv_verbose)
 				printf("Timing out env id %ld\n", ctp->ct_id);
-			(void)__dbenv_close_int(ctp->ct_id, 0, 1);
+			(void)__env_close_int(ctp->ct_id, 0, 1);
 			/*
 			 * If we timed out an env, we may have closed
 			 * all sorts of ctp's (maybe even all of them.
@@ -593,7 +593,7 @@ __dbc_close_int(ct_entry *dbc_ctp)
 }
 
 extern "C" int
-__dbenv_close_int(long id, u_int32_t flags, int force)
+__env_close_int(long id, u_int32_t flags, int force)
 {
 	DbEnv *dbenv;
 	int ret;

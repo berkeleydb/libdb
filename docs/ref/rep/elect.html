@@ -1,5 +1,5 @@
-<!--$Id: elect.so,v 1.20 2004/08/13 03:39:00 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: elect.so,v 1.22 2005/10/16 00:54:32 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
-<td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/trans.html"><img src="../../images/next.gif" alt="Next"></a>
+<td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mastersync.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
 <p>
 <h3 align=center>Elections</h3>
@@ -35,9 +35,9 @@ group members that must participate in an election for a winner to be
 declared.  We recommend at least ((N/2) + 1) members.  If fewer than the
 simple majority are specified, a warning will be given.</p>
 <p>If an application's policy for what site should win an election can be
-parameterized in terms the database environment's information (that is,
-the number of sites, available log records and a relative priority are
-all that matter), then Berkeley DB can handle all elections transparently.
+parameterized in terms of the database environment's information (that
+is, the number of sites, available log records and a relative priority
+are all that matter), then Berkeley DB can handle all elections transparently.
 However, there are cases where the application has more complete
 knowledge and needs to affect the outcome of elections.  For example,
 applications may choose to handle master selection, explicitly
@@ -107,8 +107,8 @@ and reconfigure itself as a client using the <a href="../../api_c/rep_start.html
 <li>Then, the current or preferred master should call for an election using
 the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.
 </ol>
-<table width="100%"><tr><td><br></td><td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/trans.html"><img src="../../images/next.gif" alt="Next"></a>
+<table width="100%"><tr><td><br></td><td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mastersync.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,5 +1,5 @@
-<!--$Id: memp_stat.so,v 10.63 2004/09/28 18:18:30 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: memp_stat.so,v 10.64 2005/07/20 16:27:00 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -77,9 +77,9 @@ obtaining a hash bucket lock.
 <dt>u_int32_t st_hash_max_wait;<dd>The maximum number of times any hash bucket lock was waited for by a
 thread of control.
 <dt>u_int32_t st_region_wait;<dd>The number of times that a thread of control was forced to wait before
-obtaining a region lock.
-<dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain a region
-lock without waiting.
+obtaining a cache region mutex.
+<dt>u_int32_t st_region_nowait;<dd>The number of times that a thread of control was able to obtain a cache
+region mutex without waiting.
 <dt>u_int32_t st_alloc;<dd>Number of page allocations.
 <dt>u_int32_t st_alloc_buckets;<dd>Number of hash buckets checked during allocation.
 <dt>u_int32_t st_alloc_max_buckets;<dd>Maximum number of hash buckets checked during an allocation.
@@ -125,9 +125,9 @@ the following value:
 <dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after returning their values.
 </dl>
 <dt><b>fsp</b><dd>The <b>fsp</b> parameter references memory into which
-a pointer to the allocated per-file statistics structures is copied.
+a pointer to the allocated per-file statistics structures is copied. 
 <dt><b>gsp</b><dd>The <b>gsp</b> parameter references memory into which
-a pointer to the allocated global statistics structure is copied.
+a pointer to the allocated global statistics structure is copied. 
 </dl>
 <h3>Errors</h3>
 <p>The DB_ENV-&gt;memp_stat method
@@ -164,6 +164,6 @@ of the following values:
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_rq_main.c,v 1.34 2004/07/16 14:56:22 bostic Exp $
+ * $Id: ex_rq_main.c,v 12.5 2005/11/02 22:14:24 alanb Exp $
  */
 
 #include <sys/types.h>
@@ -40,7 +40,7 @@ main(argc, argv)
 	all_args aa;
 	connect_args ca;
 	machtab_t *machtab;
-	thread all_thr, conn_thr;
+	thread_t all_thr, conn_thr;
 	void *astatus, *cstatus;
 #ifdef _WIN32
 	WSADATA wsaData;
@@ -187,8 +187,10 @@ main(argc, argv)
 	ca.progname = progname;
 	ca.machtab = machtab;
 	ca.port = selfp->port;
-	if ((ret = thread_create(&conn_thr, NULL, connect_thread, &ca)) != 0)
+	if ((ret = thread_create(&conn_thr, NULL, connect_thread, &ca)) != 0) {
+		dbenv->errx(dbenv, "can't create connect thread");
 		goto err;
+	}
 
 	aa.dbenv = dbenv;
 	aa.progname = progname;
@@ -196,8 +198,10 @@ main(argc, argv)
 	aa.machtab = machtab;
 	aa.sites = sitep;
 	aa.nsites = nsites;
-	if ((ret = thread_create(&all_thr, NULL, connect_all, &aa)) != 0)
+	if ((ret = thread_create(&all_thr, NULL, connect_all, &aa)) != 0) {
+		dbenv->errx(dbenv, "can't create connect-all thread");
 		goto err;
+	}
 
 	/*
 	 * We have now got the entire communication infrastructure set up.
@@ -215,7 +219,7 @@ main(argc, argv)
 	} else {
 		memset(&local, 0, sizeof(local));
 		local.data = myaddr;
-		local.size = strlen(myaddr) + 1;
+		local.size = (u_int32_t)strlen(myaddr) + 1;
 		if ((ret =
 		    dbenv->rep_start(dbenv, &local, DB_REP_CLIENT)) != 0) {
 			dbenv->err(dbenv, ret, "dbenv->rep_start failed");
@@ -234,7 +238,8 @@ main(argc, argv)
 	if (thread_join(all_thr, &astatus) || thread_join(conn_thr, &cstatus))
 		ret = -1;
 	if (ret == 0 &&
-	    ((int)astatus != EXIT_SUCCESS || (int)cstatus != EXIT_SUCCESS))
+	    ((uintptr_t)astatus != EXIT_SUCCESS ||
+	    (uintptr_t)cstatus != EXIT_SUCCESS))
 		ret = -1;
 
 err:	if (machtab != NULL)
@@ -315,8 +320,11 @@ env_init(progname, home, dbenvp, machtab, flags)
 	flags |= DB_CREATE | DB_THREAD | DB_INIT_REP |
 	    DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN;
 
-	ret = dbenv->open(dbenv, home, flags, 0);
+	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
+		*dbenvp = dbenv;
+	else
+		fprintf(stderr, "can't open DB environment: %s\n",
+		    db_strerror(ret));
 
-	*dbenvp = dbenv;
 	return (ret);
 }

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test063.tcl,v 11.20 2004/01/28 03:36:31 bostic Exp $
+# $Id: test063.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
 #
 # TEST	test063
 # TEST	Test of the DB_RDONLY flag to DB->open

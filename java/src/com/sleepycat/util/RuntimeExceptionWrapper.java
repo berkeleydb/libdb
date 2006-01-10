@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: RuntimeExceptionWrapper.java,v 1.1 2004/04/09 16:34:10 mark Exp $
+ * $Id: RuntimeExceptionWrapper.java,v 12.2 2005/08/01 20:25:23 mark Exp $
  */
 
 package com.sleepycat.util;
@@ -25,7 +25,15 @@ public class RuntimeExceptionWrapper extends RuntimeException
         this.e = e;
     }
 
+    /**
+     * @deprecated replaced by {@link #getCause}.
+     */
     public Throwable getDetail() {
+
+        return e;
+    }
+
+    public Throwable getCause() {
 
         return e;
     }

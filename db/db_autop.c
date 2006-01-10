@@ -34,7 +34,7 @@ __db_addrem_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_addrem_read(dbenv, dbtp->data, &argp)) != 0)
@@ -89,7 +89,7 @@ __db_big_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_big_read(dbenv, dbtp->data, &argp)) != 0)
@@ -140,7 +140,7 @@ __db_ovref_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__db_ovref_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_ovref_read(dbenv, dbtp->data, &argp)) != 0)
@@ -181,7 +181,7 @@ __db_debug_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_debug_read(dbenv, dbtp->data, &argp)) != 0)
@@ -235,7 +235,7 @@ __db_noop_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__db_noop_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_noop_read(dbenv, dbtp->data, &argp)) != 0)
@@ -273,7 +273,7 @@ __db_pg_alloc_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__db_pg_alloc_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_alloc_read(dbenv, dbtp->data, &argp)) != 0)
@@ -319,7 +319,7 @@ __db_pg_free_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_free_read(dbenv, dbtp->data, &argp)) != 0)
@@ -366,7 +366,7 @@ __db_cksum_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__db_cksum_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_cksum_read(dbenv, dbtp->data, &argp)) != 0)
@@ -402,7 +402,7 @@ __db_pg_freedata_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_freedata_read(dbenv, dbtp->data, &argp)) != 0)
@@ -455,7 +455,7 @@ __db_pg_prepare_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__db_pg_prepare_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_prepare_read(dbenv, dbtp->data, &argp)) != 0)
@@ -493,7 +493,7 @@ __db_pg_new_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_new_read(dbenv, dbtp->data, &argp)) != 0)
@@ -541,7 +541,7 @@ __db_pg_init_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __db_pg_init_read(dbenv, dbtp->data, &argp)) != 0)
@@ -566,6 +566,56 @@ __db_pg_init_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tdata: ");
 	for (i = 0; i < argp->data.size; i++) {
 		ch = ((u_int8_t *)argp->data.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(dbenv, argp);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __db_pg_sort_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__db_pg_sort_print(dbenv, dbtp, lsnp, notused2, notused3)
+	DB_ENV *dbenv;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__db_pg_sort_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret = __db_pg_sort_read(dbenv, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+	    "[%lu][%lu]__db_pg_sort%s: rec: %lu txnid %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file,
+	    (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnid->txnid,
+	    (u_long)argp->prev_lsn.file,
+	    (u_long)argp->prev_lsn.offset);
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tmeta: %lu\n", (u_long)argp->meta);
+	(void)printf("\tmeta_lsn: [%lu][%lu]\n",
+	    (u_long)argp->meta_lsn.file, (u_long)argp->meta_lsn.offset);
+	(void)printf("\tlast_free: %lu\n", (u_long)argp->last_free);
+	(void)printf("\tlast_lsn: [%lu][%lu]\n",
+	    (u_long)argp->last_lsn.file, (u_long)argp->last_lsn.offset);
+	(void)printf("\tlast_pgno: %lu\n", (u_long)argp->last_pgno);
+	(void)printf("\tlist: ");
+	for (i = 0; i < argp->list.size; i++) {
+		ch = ((u_int8_t *)argp->list.data)[i];
 		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
 	}
 	(void)printf("\n");
@@ -621,6 +671,9 @@ __db_init_print(dbenv, dtabp, dtabsizep)
 		return (ret);
 	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
 	    __db_pg_init_print, DB___db_pg_init)) != 0)
+		return (ret);
+	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	    __db_pg_sort_print, DB___db_pg_sort)) != 0)
 		return (ret);
 	return (0);
 }

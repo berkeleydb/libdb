@@ -1,11 +1,10 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: txn001.tcl,v 11.38 2004/01/28 03:36:32 bostic Exp $
+# $Id: txn001.tcl,v 12.1 2005/06/16 20:24:10 bostic Exp $
 #
-
 # TEST	txn001
 # TEST	Begin, commit, abort testing.
 proc txn001 { {tnum "001"} { max 1024 } { ntxns 50 } } {

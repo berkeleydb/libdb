@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep018script.tcl,v 1.5 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep018script.tcl,v 12.2 2005/06/16 20:24:02 bostic Exp $
 #
 # Rep018 script - concurrency with checkpoints.
 #
@@ -67,14 +67,14 @@ error_check_good markerenv_open [is_valid_env $markerenv] TRUE
 set marker \
     [eval "berkdb_open -create -btree -auto_commit -env $markerenv marker.db"]
 error_check_good timestamp_ready \
-    [$marker put -auto_commit CHILDREADY [timestamp -r]] 0
+    [$marker put CHILDREADY [timestamp -r]] 0
 
 # Give the parent a chance to process messages and hang.
 tclsleep 30
 
 # Clean up the child so the parent can go forward.
 error_check_good timestamp_done \
-    [$marker put -auto_commit CHILDDONE [timestamp -r]] 0
+    [$marker put CHILDDONE [timestamp -r]] 0
 error_check_good client_db_close [$db close] 0
 
 # Check that the master is done.

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep014.tcl,v 11.7 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep014.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep014
 # TEST	Replication and multiple replication handles.
@@ -11,8 +11,12 @@
 # TEST	make sure we get the right openfiles.
 #
 proc rep014 { method { niter 10 } { tnum "014" } args } {
-	global is_hp_test
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	# We can't open two envs on HP-UX, so just skip the
 	# whole test since that is at the core of it.
 	if { $is_hp_test == 1 } {
@@ -104,7 +108,7 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv $masterdb $niter 0 0
+	eval rep_test $method $masterenv $masterdb $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Close and reopen client env."
@@ -115,7 +119,7 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.c: Run test in master again."
 	set start $niter
-	eval rep_test $method $masterenv $masterdb $niter $start 0
+	eval rep_test $method $masterenv $masterdb $niter $start 0 0 0 $largs
 	set envlist "{$env0 1} {$env1 2}"
 	process_msgs $envlist
 
@@ -127,7 +131,7 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 	puts "\tRep$tnum.e: Run test in master again."
 	set start [expr $start + $niter]
 	error_check_good e1_pfx [$env1 errpfx CLIENT1] 0
-	eval rep_test $method $masterenv $masterdb $niter $start 0
+	eval rep_test $method $masterenv $masterdb $niter $start 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.f: Open env2, close env1, use env2."
@@ -141,7 +145,7 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 	puts "\tRep$tnum.g: Run test in master again."
 	set start [expr $start + $niter]
 	error_check_good e1_pfx [$env2 errpfx CLIENT2] 0
-	eval rep_test $method $masterenv $masterdb $niter $start 0
+	eval rep_test $method $masterenv $masterdb $niter $start 0 0 0 $largs
 	set envlist "{$env0 1} {$env2 2}"
 	process_msgs $envlist
 

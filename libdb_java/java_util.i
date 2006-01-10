@@ -3,9 +3,11 @@
 		/* An alternate library name can be specified via a property. */
 		String libname;
 
-		if ((libname = System.getProperty("sleepycat.db.libfile")) != null)
+		if ((libname =
+		    System.getProperty("sleepycat.db.libfile")) != null)
 			System.load(libname);
-		else if ((libname = System.getProperty("sleepycat.db.libname")) != null)
+		else if ((libname =
+		    System.getProperty("sleepycat.db.libname")) != null)
 			System.loadLibrary(libname);
 		else {
 			String os = System.getProperty("os.name");
@@ -44,7 +46,8 @@
 		if (DbEnv_get_version_major() != DbConstants.DB_VERSION_MAJOR ||
 		    DbEnv_get_version_minor() != DbConstants.DB_VERSION_MINOR ||
 		    DbEnv_get_version_patch() != DbConstants.DB_VERSION_PATCH)
-			throw new RuntimeException("Berkeley DB library version doesn't match Java classes");
+			throw new RuntimeException(
+		      "Berkeley DB library version doesn't match Java classes");
 	}
 
 	static native final void initialize();
@@ -69,13 +72,17 @@ static JavaVM *javavm;
 static jclass db_class, dbc_class, dbenv_class, dbt_class, dblsn_class;
 static jclass dbpreplist_class, dbtxn_class;
 static jclass keyrange_class;
-static jclass bt_stat_class, h_stat_class, lock_stat_class;
+static jclass bt_stat_class, compact_class, h_stat_class, lock_stat_class;
 static jclass log_stat_class, mpool_stat_class, mpool_fstat_class;
-static jclass qam_stat_class, rep_stat_class, seq_stat_class, txn_stat_class;
+static jclass mutex_stat_class, qam_stat_class, rep_stat_class;
+static jclass seq_stat_class, txn_stat_class;
 static jclass txn_active_class;
 static jclass lock_class, lockreq_class, rep_processmsg_class;
 static jclass dbex_class, deadex_class, lockex_class, memex_class;
-static jclass rephandledeadex_class, runrecex_class;
+static jclass repdupmasterex_class, rephandledeadex_class;
+static jclass repholdelectionex_class, repjoinfailex_class, replockoutex_class;
+static jclass repunavailex_class;
+static jclass runrecex_class, versionex_class;
 static jclass filenotfoundex_class, illegalargex_class, outofmemerr_class;
 static jclass bytearray_class, string_class, outputstream_class;
 
@@ -96,7 +103,6 @@ static jfieldID bt_stat_bt_metaflags_fid;
 static jfieldID bt_stat_bt_nkeys_fid;
 static jfieldID bt_stat_bt_ndata_fid;
 static jfieldID bt_stat_bt_pagesize_fid;
-static jfieldID bt_stat_bt_maxkey_fid;
 static jfieldID bt_stat_bt_minkey_fid;
 static jfieldID bt_stat_bt_re_len_fid;
 static jfieldID bt_stat_bt_re_pad_fid;
@@ -111,6 +117,15 @@ static jfieldID bt_stat_bt_int_pgfree_fid;
 static jfieldID bt_stat_bt_leaf_pgfree_fid;
 static jfieldID bt_stat_bt_dup_pgfree_fid;
 static jfieldID bt_stat_bt_over_pgfree_fid;
+static jfieldID compact_compact_fillpercent_fid;
+static jfieldID compact_compact_timeout_fid;
+static jfieldID compact_compact_pages_fid;
+static jfieldID compact_compact_pages_free_fid;
+static jfieldID compact_compact_pages_examine_fid;
+static jfieldID compact_compact_levels_fid;
+static jfieldID compact_compact_deadlock_fid;
+static jfieldID compact_compact_pages_truncated_fid;
+static jfieldID compact_compact_truncate_fid;
 static jfieldID h_stat_hash_magic_fid;
 static jfieldID h_stat_hash_version_fid;
 static jfieldID h_stat_hash_metaflags_fid;
@@ -139,10 +154,12 @@ static jfieldID lock_stat_st_nlockers_fid;
 static jfieldID lock_stat_st_maxnlockers_fid;
 static jfieldID lock_stat_st_nobjects_fid;
 static jfieldID lock_stat_st_maxnobjects_fid;
-static jfieldID lock_stat_st_nconflicts_fid;
 static jfieldID lock_stat_st_nrequests_fid;
 static jfieldID lock_stat_st_nreleases_fid;
-static jfieldID lock_stat_st_nnowaits_fid;
+static jfieldID lock_stat_st_nupgrade_fid;
+static jfieldID lock_stat_st_ndowngrade_fid;
+static jfieldID lock_stat_st_lock_wait_fid;
+static jfieldID lock_stat_st_lock_nowait_fid;
 static jfieldID lock_stat_st_ndeadlocks_fid;
 static jfieldID lock_stat_st_locktimeout_fid;
 static jfieldID lock_stat_st_nlocktimeouts_fid;
@@ -156,12 +173,14 @@ static jfieldID log_stat_st_version_fid;
 static jfieldID log_stat_st_mode_fid;
 static jfieldID log_stat_st_lg_bsize_fid;
 static jfieldID log_stat_st_lg_size_fid;
+static jfieldID log_stat_st_record_fid;
 static jfieldID log_stat_st_w_bytes_fid;
 static jfieldID log_stat_st_w_mbytes_fid;
 static jfieldID log_stat_st_wc_bytes_fid;
 static jfieldID log_stat_st_wc_mbytes_fid;
 static jfieldID log_stat_st_wcount_fid;
 static jfieldID log_stat_st_wcount_fill_fid;
+static jfieldID log_stat_st_rcount_fid;
 static jfieldID log_stat_st_scount_fid;
 static jfieldID log_stat_st_region_wait_fid;
 static jfieldID log_stat_st_region_nowait_fid;
@@ -214,6 +233,15 @@ static jfieldID mpool_stat_st_alloc_buckets_fid;
 static jfieldID mpool_stat_st_alloc_max_buckets_fid;
 static jfieldID mpool_stat_st_alloc_pages_fid;
 static jfieldID mpool_stat_st_alloc_max_pages_fid;
+static jfieldID mutex_stat_st_mutex_align_fid;
+static jfieldID mutex_stat_st_mutex_tas_spins_fid;
+static jfieldID mutex_stat_st_mutex_cnt_fid;
+static jfieldID mutex_stat_st_mutex_free_fid;
+static jfieldID mutex_stat_st_mutex_inuse_fid;
+static jfieldID mutex_stat_st_mutex_inuse_max_fid;
+static jfieldID mutex_stat_st_region_wait_fid;
+static jfieldID mutex_stat_st_region_nowait_fid;
+static jfieldID mutex_stat_st_regsize_fid;
 static jfieldID qam_stat_qs_magic_fid;
 static jfieldID qam_stat_qs_version_fid;
 static jfieldID qam_stat_qs_metaflags_fid;
@@ -235,6 +263,13 @@ static jfieldID rep_stat_st_waiting_pg_fid;
 static jfieldID rep_stat_st_dupmasters_fid;
 static jfieldID rep_stat_st_env_id_fid;
 static jfieldID rep_stat_st_env_priority_fid;
+static jfieldID rep_stat_st_bulk_fills_fid;
+static jfieldID rep_stat_st_bulk_overflows_fid;
+static jfieldID rep_stat_st_bulk_records_fid;
+static jfieldID rep_stat_st_bulk_transfers_fid;
+static jfieldID rep_stat_st_client_rerequests_fid;
+static jfieldID rep_stat_st_client_svc_req_fid;
+static jfieldID rep_stat_st_client_svc_miss_fid;
 static jfieldID rep_stat_st_gen_fid;
 static jfieldID rep_stat_st_egen_fid;
 static jfieldID rep_stat_st_log_duplicated_fid;
@@ -270,6 +305,8 @@ static jfieldID rep_stat_st_election_priority_fid;
 static jfieldID rep_stat_st_election_status_fid;
 static jfieldID rep_stat_st_election_tiebreaker_fid;
 static jfieldID rep_stat_st_election_votes_fid;
+static jfieldID rep_stat_st_election_sec_fid;
+static jfieldID rep_stat_st_election_usec_fid;
 static jfieldID seq_stat_st_wait_fid;
 static jfieldID seq_stat_st_nowait_fid;
 static jfieldID seq_stat_st_current_fid;
@@ -295,27 +332,34 @@ static jfieldID txn_stat_st_region_nowait_fid;
 static jfieldID txn_stat_st_regsize_fid;
 static jfieldID txn_active_txnid_fid;
 static jfieldID txn_active_parentid_fid;
+static jfieldID txn_active_pid_fid;
 static jfieldID txn_active_lsn_fid;
 static jfieldID txn_active_xa_status_fid;
 static jfieldID txn_active_xid_fid;
+static jfieldID txn_active_name_fid;
 /* END-STAT-FIELD-DECLS */
 
 static jmethodID dbenv_construct, dbt_construct, dblsn_construct;
 static jmethodID dbpreplist_construct, dbtxn_construct;
 static jmethodID bt_stat_construct, h_stat_construct;
-static jmethodID lock_stat_construct, log_stat_construct, mpool_stat_construct;
-static jmethodID mpool_fstat_construct, qam_stat_construct;
+static jmethodID lock_stat_construct, log_stat_construct;
+static jmethodID mpool_stat_construct, mpool_fstat_construct;
+static jmethodID mutex_stat_construct, qam_stat_construct;
 static jmethodID rep_stat_construct, seq_stat_construct;
 static jmethodID txn_stat_construct, txn_active_construct;
 static jmethodID dbex_construct, deadex_construct, lockex_construct;
 static jmethodID memex_construct, memex_update_method;
-static jmethodID rephandledeadex_construct, runrecex_construct;
+static jmethodID repdupmasterex_construct, rephandledeadex_construct;
+static jmethodID repholdelectionex_construct, repjoinfailex_construct;
+static jmethodID replockoutex_construct, repunavailex_construct;
+static jmethodID runrecex_construct, versionex_construct;
 static jmethodID filenotfoundex_construct, illegalargex_construct;
 static jmethodID outofmemerr_construct;
 static jmethodID lock_construct;
 
 static jmethodID app_dispatch_method, errcall_method, env_feedback_method;
 static jmethodID msgcall_method, paniccall_method, rep_transport_method;
+
 static jmethodID append_recno_method, bt_compare_method, bt_prefix_method;
 static jmethodID db_feedback_method, dup_compare_method, h_hash_method;
 static jmethodID seckey_create_method;
@@ -335,11 +379,13 @@ const struct {
 	{ &dbtxn_class, DB_PKG "internal/DbTxn" },
 
 	{ &bt_stat_class, DB_PKG "BtreeStats" },
+	{ &compact_class, DB_PKG "CompactStats" },
 	{ &h_stat_class, DB_PKG "HashStats" },
 	{ &lock_stat_class, DB_PKG "LockStats" },
 	{ &log_stat_class, DB_PKG "LogStats" },
 	{ &mpool_fstat_class, DB_PKG "CacheFileStats" },
 	{ &mpool_stat_class, DB_PKG "CacheStats" },
+	{ &mutex_stat_class, DB_PKG "MutexStats" },
 	{ &qam_stat_class, DB_PKG "QueueStats" },
 	{ &rep_stat_class, DB_PKG "ReplicationStats" },
 	{ &seq_stat_class, DB_PKG "SequenceStats" },
@@ -350,13 +396,20 @@ const struct {
 	{ &lock_class, DB_PKG "internal/DbLock" },
 	{ &lockreq_class, DB_PKG "LockRequest" },
 	{ &rep_processmsg_class, DB_PKG "internal/DbEnv$RepProcessMessage" },
+	{ &rep_processmsg_class, DB_PKG "internal/DbEnv$RepProcessMessage" },
 
 	{ &dbex_class, DB_PKG "DatabaseException" },
 	{ &deadex_class, DB_PKG "DeadlockException" },
 	{ &lockex_class, DB_PKG "LockNotGrantedException" },
 	{ &memex_class, DB_PKG "MemoryException" },
+	{ &repdupmasterex_class, DB_PKG "ReplicationDuplicateMasterException" },
 	{ &rephandledeadex_class, DB_PKG "ReplicationHandleDeadException" },
+	{ &repholdelectionex_class, DB_PKG "ReplicationHoldElectionException" },
+	{ &repjoinfailex_class, DB_PKG "ReplicationJoinFailureException" },
+	{ &replockoutex_class, DB_PKG "ReplicationLockoutException" },
+	{ &repunavailex_class, DB_PKG "ReplicationSiteUnavailableException" },
 	{ &runrecex_class, DB_PKG "RunRecoveryException" },
+	{ &versionex_class, DB_PKG "VersionMismatchException" },
 	{ &filenotfoundex_class, "java/io/FileNotFoundException" },
 	{ &illegalargex_class, "java/lang/IllegalArgumentException" },
 	{ &outofmemerr_class, "java/lang/OutOfMemoryError" },
@@ -394,8 +447,10 @@ const struct {
 	{ &lockreq_op_fid, &lockreq_class, "op", "I" },
 	{ &lockreq_modeflag_fid, &lockreq_class, "modeFlag", "I" },
 	{ &lockreq_timeout_fid, &lockreq_class, "timeout", "I" },
-	{ &lockreq_obj_fid, &lockreq_class, "obj", "L" DB_PKG "DatabaseEntry;" },
-	{ &lockreq_lock_fid, &lockreq_class, "lock", "L" DB_PKG "internal/DbLock;" },
+	{ &lockreq_obj_fid, &lockreq_class, "obj",
+	    "L" DB_PKG "DatabaseEntry;" },
+	{ &lockreq_lock_fid, &lockreq_class, "lock",
+	    "L" DB_PKG "internal/DbLock;" },
 
 /* BEGIN-STAT-FIELDS */
 	{ &bt_stat_bt_magic_fid, &bt_stat_class, "bt_magic", "I" },
@@ -404,7 +459,6 @@ const struct {
 	{ &bt_stat_bt_nkeys_fid, &bt_stat_class, "bt_nkeys", "I" },
 	{ &bt_stat_bt_ndata_fid, &bt_stat_class, "bt_ndata", "I" },
 	{ &bt_stat_bt_pagesize_fid, &bt_stat_class, "bt_pagesize", "I" },
-	{ &bt_stat_bt_maxkey_fid, &bt_stat_class, "bt_maxkey", "I" },
 	{ &bt_stat_bt_minkey_fid, &bt_stat_class, "bt_minkey", "I" },
 	{ &bt_stat_bt_re_len_fid, &bt_stat_class, "bt_re_len", "I" },
 	{ &bt_stat_bt_re_pad_fid, &bt_stat_class, "bt_re_pad", "I" },
@@ -419,6 +473,15 @@ const struct {
 	{ &bt_stat_bt_leaf_pgfree_fid, &bt_stat_class, "bt_leaf_pgfree", "I" },
 	{ &bt_stat_bt_dup_pgfree_fid, &bt_stat_class, "bt_dup_pgfree", "I" },
 	{ &bt_stat_bt_over_pgfree_fid, &bt_stat_class, "bt_over_pgfree", "I" },
+	{ &compact_compact_fillpercent_fid, &compact_class, "compact_fillpercent", "I" },
+	{ &compact_compact_timeout_fid, &compact_class, "compact_timeout", "I" },
+	{ &compact_compact_pages_fid, &compact_class, "compact_pages", "I" },
+	{ &compact_compact_pages_free_fid, &compact_class, "compact_pages_free", "I" },
+	{ &compact_compact_pages_examine_fid, &compact_class, "compact_pages_examine", "I" },
+	{ &compact_compact_levels_fid, &compact_class, "compact_levels", "I" },
+	{ &compact_compact_deadlock_fid, &compact_class, "compact_deadlock", "I" },
+	{ &compact_compact_pages_truncated_fid, &compact_class, "compact_pages_truncated", "I" },
+	{ &compact_compact_truncate_fid, &compact_class, "compact_truncate", "I" },
 	{ &h_stat_hash_magic_fid, &h_stat_class, "hash_magic", "I" },
 	{ &h_stat_hash_version_fid, &h_stat_class, "hash_version", "I" },
 	{ &h_stat_hash_metaflags_fid, &h_stat_class, "hash_metaflags", "I" },
@@ -447,10 +510,12 @@ const struct {
 	{ &lock_stat_st_maxnlockers_fid, &lock_stat_class, "st_maxnlockers", "I" },
 	{ &lock_stat_st_nobjects_fid, &lock_stat_class, "st_nobjects", "I" },
 	{ &lock_stat_st_maxnobjects_fid, &lock_stat_class, "st_maxnobjects", "I" },
-	{ &lock_stat_st_nconflicts_fid, &lock_stat_class, "st_nconflicts", "I" },
 	{ &lock_stat_st_nrequests_fid, &lock_stat_class, "st_nrequests", "I" },
 	{ &lock_stat_st_nreleases_fid, &lock_stat_class, "st_nreleases", "I" },
-	{ &lock_stat_st_nnowaits_fid, &lock_stat_class, "st_nnowaits", "I" },
+	{ &lock_stat_st_nupgrade_fid, &lock_stat_class, "st_nupgrade", "I" },
+	{ &lock_stat_st_ndowngrade_fid, &lock_stat_class, "st_ndowngrade", "I" },
+	{ &lock_stat_st_lock_wait_fid, &lock_stat_class, "st_lock_wait", "I" },
+	{ &lock_stat_st_lock_nowait_fid, &lock_stat_class, "st_lock_nowait", "I" },
 	{ &lock_stat_st_ndeadlocks_fid, &lock_stat_class, "st_ndeadlocks", "I" },
 	{ &lock_stat_st_locktimeout_fid, &lock_stat_class, "st_locktimeout", "I" },
 	{ &lock_stat_st_nlocktimeouts_fid, &lock_stat_class, "st_nlocktimeouts", "I" },
@@ -464,12 +529,14 @@ const struct {
 	{ &log_stat_st_mode_fid, &log_stat_class, "st_mode", "I" },
 	{ &log_stat_st_lg_bsize_fid, &log_stat_class, "st_lg_bsize", "I" },
 	{ &log_stat_st_lg_size_fid, &log_stat_class, "st_lg_size", "I" },
+	{ &log_stat_st_record_fid, &log_stat_class, "st_record", "I" },
 	{ &log_stat_st_w_bytes_fid, &log_stat_class, "st_w_bytes", "I" },
 	{ &log_stat_st_w_mbytes_fid, &log_stat_class, "st_w_mbytes", "I" },
 	{ &log_stat_st_wc_bytes_fid, &log_stat_class, "st_wc_bytes", "I" },
 	{ &log_stat_st_wc_mbytes_fid, &log_stat_class, "st_wc_mbytes", "I" },
 	{ &log_stat_st_wcount_fid, &log_stat_class, "st_wcount", "I" },
 	{ &log_stat_st_wcount_fill_fid, &log_stat_class, "st_wcount_fill", "I" },
+	{ &log_stat_st_rcount_fid, &log_stat_class, "st_rcount", "I" },
 	{ &log_stat_st_scount_fid, &log_stat_class, "st_scount", "I" },
 	{ &log_stat_st_region_wait_fid, &log_stat_class, "st_region_wait", "I" },
 	{ &log_stat_st_region_nowait_fid, &log_stat_class, "st_region_nowait", "I" },
@@ -522,6 +589,15 @@ const struct {
 	{ &mpool_stat_st_alloc_max_buckets_fid, &mpool_stat_class, "st_alloc_max_buckets", "I" },
 	{ &mpool_stat_st_alloc_pages_fid, &mpool_stat_class, "st_alloc_pages", "I" },
 	{ &mpool_stat_st_alloc_max_pages_fid, &mpool_stat_class, "st_alloc_max_pages", "I" },
+	{ &mutex_stat_st_mutex_align_fid, &mutex_stat_class, "st_mutex_align", "I" },
+	{ &mutex_stat_st_mutex_tas_spins_fid, &mutex_stat_class, "st_mutex_tas_spins", "I" },
+	{ &mutex_stat_st_mutex_cnt_fid, &mutex_stat_class, "st_mutex_cnt", "I" },
+	{ &mutex_stat_st_mutex_free_fid, &mutex_stat_class, "st_mutex_free", "I" },
+	{ &mutex_stat_st_mutex_inuse_fid, &mutex_stat_class, "st_mutex_inuse", "I" },
+	{ &mutex_stat_st_mutex_inuse_max_fid, &mutex_stat_class, "st_mutex_inuse_max", "I" },
+	{ &mutex_stat_st_region_wait_fid, &mutex_stat_class, "st_region_wait", "I" },
+	{ &mutex_stat_st_region_nowait_fid, &mutex_stat_class, "st_region_nowait", "I" },
+	{ &mutex_stat_st_regsize_fid, &mutex_stat_class, "st_regsize", "I" },
 	{ &qam_stat_qs_magic_fid, &qam_stat_class, "qs_magic", "I" },
 	{ &qam_stat_qs_version_fid, &qam_stat_class, "qs_version", "I" },
 	{ &qam_stat_qs_metaflags_fid, &qam_stat_class, "qs_metaflags", "I" },
@@ -543,6 +619,13 @@ const struct {
 	{ &rep_stat_st_dupmasters_fid, &rep_stat_class, "st_dupmasters", "I" },
 	{ &rep_stat_st_env_id_fid, &rep_stat_class, "st_env_id", "I" },
 	{ &rep_stat_st_env_priority_fid, &rep_stat_class, "st_env_priority", "I" },
+	{ &rep_stat_st_bulk_fills_fid, &rep_stat_class, "st_bulk_fills", "I" },
+	{ &rep_stat_st_bulk_overflows_fid, &rep_stat_class, "st_bulk_overflows", "I" },
+	{ &rep_stat_st_bulk_records_fid, &rep_stat_class, "st_bulk_records", "I" },
+	{ &rep_stat_st_bulk_transfers_fid, &rep_stat_class, "st_bulk_transfers", "I" },
+	{ &rep_stat_st_client_rerequests_fid, &rep_stat_class, "st_client_rerequests", "I" },
+	{ &rep_stat_st_client_svc_req_fid, &rep_stat_class, "st_client_svc_req", "I" },
+	{ &rep_stat_st_client_svc_miss_fid, &rep_stat_class, "st_client_svc_miss", "I" },
 	{ &rep_stat_st_gen_fid, &rep_stat_class, "st_gen", "I" },
 	{ &rep_stat_st_egen_fid, &rep_stat_class, "st_egen", "I" },
 	{ &rep_stat_st_log_duplicated_fid, &rep_stat_class, "st_log_duplicated", "I" },
@@ -578,6 +661,8 @@ const struct {
 	{ &rep_stat_st_election_status_fid, &rep_stat_class, "st_election_status", "I" },
 	{ &rep_stat_st_election_tiebreaker_fid, &rep_stat_class, "st_election_tiebreaker", "I" },
 	{ &rep_stat_st_election_votes_fid, &rep_stat_class, "st_election_votes", "I" },
+	{ &rep_stat_st_election_sec_fid, &rep_stat_class, "st_election_sec", "I" },
+	{ &rep_stat_st_election_usec_fid, &rep_stat_class, "st_election_usec", "I" },
 	{ &seq_stat_st_wait_fid, &seq_stat_class, "st_wait", "I" },
 	{ &seq_stat_st_nowait_fid, &seq_stat_class, "st_nowait", "I" },
 	{ &seq_stat_st_current_fid, &seq_stat_class, "st_current", "J" },
@@ -603,9 +688,11 @@ const struct {
 	{ &txn_stat_st_regsize_fid, &txn_stat_class, "st_regsize", "I" },
 	{ &txn_active_txnid_fid, &txn_active_class, "txnid", "I" },
 	{ &txn_active_parentid_fid, &txn_active_class, "parentid", "I" },
+	{ &txn_active_pid_fid, &txn_active_class, "pid", "I" },
 	{ &txn_active_lsn_fid, &txn_active_class, "lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_xa_status_fid, &txn_active_class, "xa_status", "I" },
 	{ &txn_active_xid_fid, &txn_active_class, "xid", "[B" },
+	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
 	{ &rep_processmsg_envid, &rep_processmsg_class, "envid", "I" }
@@ -630,6 +717,7 @@ const struct {
 	{ &log_stat_construct, &log_stat_class, "<init>", "()V" },
 	{ &mpool_stat_construct, &mpool_stat_class, "<init>", "()V" },
 	{ &mpool_fstat_construct, &mpool_fstat_class, "<init>", "()V" },
+	{ &mutex_stat_construct, &mutex_stat_class, "<init>", "()V" },
 	{ &qam_stat_construct, &qam_stat_class, "<init>", "()V" },
 	{ &rep_stat_construct, &rep_stat_class, "<init>", "()V" },
 	{ &seq_stat_construct, &seq_stat_class, "<init>", "()V" },
@@ -641,14 +729,28 @@ const struct {
 	{ &deadex_construct, &deadex_class, "<init>",
 	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
 	{ &lockex_construct, &lockex_class, "<init>",
-	    "(Ljava/lang/String;IIL" DB_PKG "DatabaseEntry;L" DB_PKG "internal/DbLock;IL" DB_PKG "internal/DbEnv;)V" },
+	    "(Ljava/lang/String;IIL" DB_PKG "DatabaseEntry;L"
+	    DB_PKG "internal/DbLock;IL" DB_PKG "internal/DbEnv;)V" },
 	{ &memex_construct, &memex_class, "<init>",
-	    "(Ljava/lang/String;L" DB_PKG "DatabaseEntry;IL" DB_PKG "internal/DbEnv;)V" },
+	    "(Ljava/lang/String;L" DB_PKG "DatabaseEntry;IL"
+	    DB_PKG "internal/DbEnv;)V" },
 	{ &memex_update_method, &memex_class, "updateDatabaseEntry",
 	    "(L" DB_PKG "DatabaseEntry;)V" },
+	{ &repdupmasterex_construct, &repdupmasterex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
 	{ &rephandledeadex_construct, &rephandledeadex_class, "<init>",
 	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
+	{ &repholdelectionex_construct, &repholdelectionex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
+	{ &repjoinfailex_construct, &repjoinfailex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
+	{ &replockoutex_construct, &replockoutex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
+	{ &repunavailex_construct, &repunavailex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
 	{ &runrecex_construct, &runrecex_class, "<init>",
+	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
+	{ &versionex_construct, &versionex_class, "<init>",
 	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
 	{ &filenotfoundex_construct, &filenotfoundex_class, "<init>",
 	    "(Ljava/lang/String;)V" },
@@ -669,28 +771,30 @@ const struct {
 	{ &paniccall_method, &dbenv_class, "handle_panic",
 	    "(L" DB_PKG "DatabaseException;)V" },
 	{ &rep_transport_method, &dbenv_class, "handle_rep_transport",
-	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG "LogSequenceNumber;II)I" },
+	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L"
+	    DB_PKG "LogSequenceNumber;II)I" },
 
 	{ &append_recno_method, &db_class, "handle_append_recno",
 	    "(L" DB_PKG "DatabaseEntry;I)V" },
 	{ &bt_compare_method, &db_class, "handle_bt_compare",
-	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)I" },
+	    "([B[B)I" },
 	{ &bt_prefix_method, &db_class, "handle_bt_prefix",
 	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)I" },
 	{ &db_feedback_method, &db_class, "handle_db_feedback", "(II)V" },
 	{ &dup_compare_method, &db_class, "handle_dup_compare",
-	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)I" },
+	    "([B[B)I" },
 	{ &h_hash_method, &db_class, "handle_h_hash", "([BI)I" },
 	{ &seckey_create_method, &db_class, "handle_seckey_create",
-	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)I" },
+	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L"
+	    DB_PKG "DatabaseEntry;)I" },
 
 	{ &outputstream_write_method, &outputstream_class, "write", "([BII)V" }
 };
 
 #define NELEM(x) (sizeof (x) / sizeof (x[0]))
 
-JNIEXPORT void JNICALL
-Java_com_sleepycat_db_internal_db_1javaJNI_initialize(JNIEnv *jenv, jclass clazz)
+JNIEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
+    JNIEnv *jenv, jclass clazz)
 {
 	jclass cl;
 	unsigned int i, j;
@@ -751,7 +855,8 @@ Java_com_sleepycat_db_internal_db_1javaJNI_initialize(JNIEnv *jenv, jclass clazz
 					break;
 			fprintf(stderr,
 			    "Failed to look up method %s.%s with sig %s\n",
-			    all_classes[j].name, all_methods[i].name, all_methods[i].sig);
+			    all_classes[j].name, all_methods[i].name,
+			    all_methods[i].sig);
 			return;
 		}
 	}

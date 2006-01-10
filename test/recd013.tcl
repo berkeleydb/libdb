@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd013.tcl,v 11.22 2004/09/20 17:06:15 sue Exp $
+# $Id: recd013.tcl,v 12.1 2005/06/16 20:23:59 bostic Exp $
 #
 # TEST	recd013
 # TEST	Test of cursor adjustment on child transaction aborts. [#2373]

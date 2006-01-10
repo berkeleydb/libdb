@@ -12,6 +12,7 @@ int __qam_append __P((DBC *, DBT *, DBT *));
 int __qam_c_dup __P((DBC *, DBC *));
 int __qam_c_init __P((DBC *));
 int __qam_truncate __P((DBC *, u_int32_t *));
+int __qam_delete __P((DBC *,  DBT *));
 int __qam_incfirst_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_recno_t, db_pgno_t));
 int __qam_incfirst_read __P((DB_ENV *, void *, __qam_incfirst_args **));
 int __qam_mvptr_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, u_int32_t, db_recno_t, db_recno_t, db_recno_t, db_recno_t, DB_LSN *, db_pgno_t));

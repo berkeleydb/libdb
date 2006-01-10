@@ -82,9 +82,34 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 		return (jthrowable)(*jenv)->NewObject(jenv, memex_class,
 		    memex_construct, jmsg, obj, err, jdbenv);
 
+	case DB_REP_DUPMASTER:
+		return (jthrowable)(*jenv)->NewObject(jenv,
+		    repdupmasterex_class, repdupmasterex_construct,
+		    jmsg, err, jdbenv);
+
 	case DB_REP_HANDLE_DEAD:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    rephandledeadex_class, rephandledeadex_construct,
+		    jmsg, err, jdbenv);
+
+	case DB_REP_HOLDELECTION:
+		return (jthrowable)(*jenv)->NewObject(jenv,
+		    repholdelectionex_class, repholdelectionex_construct,
+		    jmsg, err, jdbenv);
+
+	case DB_REP_JOIN_FAILURE:
+		return (jthrowable)(*jenv)->NewObject(jenv,
+		    repjoinfailex_class, repjoinfailex_construct,
+		    jmsg, err, jdbenv);
+
+	case DB_REP_LOCKOUT:
+		return (jthrowable)(*jenv)->NewObject(jenv,
+		    replockoutex_class, replockoutex_construct,
+		    jmsg, err, jdbenv);
+
+	case DB_REP_UNAVAIL:
+		return (jthrowable)(*jenv)->NewObject(jenv,
+		    repunavailex_class, repunavailex_construct,
 		    jmsg, err, jdbenv);
 
 	case DB_RUNRECOVERY:
@@ -98,6 +123,10 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 	case DB_LOCK_NOTGRANTED:
 		return (jthrowable)(*jenv)->NewObject(jenv, lockex_class,
 		    lockex_construct, jmsg, 0, 0, NULL, NULL, 0, jdbenv);
+	
+	case DB_VERSION_MISMATCH:
+		return (jthrowable)(*jenv)->NewObject(jenv, versionex_class,
+		    versionex_construct, jmsg, 0, 0, NULL, NULL, 0, jdbenv);
 	
 	default:
 		return (jthrowable)(*jenv)->NewObject(jenv, dbex_class,

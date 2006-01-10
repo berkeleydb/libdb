@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep024.tcl,v 1.7 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep024.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  	rep024
 # TEST	Replication page allocation / verify test
@@ -13,6 +13,12 @@
 # TEST	and site 1 comes back up as a client.  Verify database.
 
 proc rep024 { method { niter 1000 } { tnum "024" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	global fixed_len
 
 	set orig_fixed_len $fixed_len
@@ -118,7 +124,7 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	set testfile "test$tnum.db"
 	set db [eval "berkdb_open -create $omethod -auto_commit \
 	    -pagesize $pagesize -env $masterenv $largs $testfile"]
-	eval rep_test $method $masterenv $db $niter 0 0
+	eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	# Close client.  Force a page allocation on the master.

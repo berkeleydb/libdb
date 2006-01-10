@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep011.tcl,v 1.10 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep011.tcl,v 12.3 2005/11/02 13:42:26 sue Exp $
 #
 # TEST	rep011
 # TEST	Replication: test open handle across an upgrade.
@@ -18,8 +18,14 @@
 # TEST 	propagated back to the new client.
 
 proc rep011 { method { tnum "011" } args } {
+	global has_crypto
 	global passwd
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set logsets [create_logsets 2]
 	set recopts { "" "-recover" }
 	foreach r $recopts {
@@ -37,6 +43,9 @@ proc rep011 { method { tnum "011" } args } {
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep011_sub $method $tnum $envargs $l $r $args
 
+			if { $has_crypto == 0 } {
+				continue
+			}
 			append envargs " -encryptaes $passwd "
 			append args " -encrypt "
 

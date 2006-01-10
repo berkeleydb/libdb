@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: MemoryException.java,v 1.1 2004/04/06 20:43:40 mjc Exp $
+ * $Id: MemoryException.java,v 12.1 2005/06/16 20:23:02 bostic Exp $
  */
 package com.sleepycat.db;
 

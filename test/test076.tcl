@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test076.tcl,v 1.22 2004/01/28 03:36:31 bostic Exp $
+# $Id: test076.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
 #
 # TEST	test076
 # TEST	Test creation of many small databases in a single environment. [#1528].

@@ -1,5 +1,5 @@
-<!--$Id: memp_set_clear_len.so,v 10.16 2004/09/28 15:04:21 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: memp_set_clear_len.so,v 10.17 2005/11/08 02:36:33 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -33,8 +33,8 @@ DbMpoolFile::get_clear_len(u_int32_t *lenp);
 <p>The DbMpoolFile::set_clear_len method sets the number of initial bytes in a
 page that should be set to nul when the page is created as a result of
 the <a href="../api_cxx/memp_fget.html#DB_MPOOL_CREATE">DB_MPOOL_CREATE</a> or <a href="../api_cxx/memp_fget.html#DB_MPOOL_NEW">DB_MPOOL_NEW</a> flags being
-specified to <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>.  If no value is specified, or <b>len</b>
-is 0, the entire page is cleared.</p>
+specified to <a href="../api_cxx/memp_fget.html">DbMpoolFile::get</a>.  If no clear length is specified, the
+entire page is cleared when it is created.</p>
 <p>The DbMpoolFile::set_clear_len method configures a file in the memory pool, not only
 operations performed using the specified <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle.</p>
 <p>The DbMpoolFile::set_clear_len method may not be called after the <a href="../api_cxx/memp_fopen.html">DbMpoolFile::open</a> method is
@@ -69,6 +69,6 @@ application.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

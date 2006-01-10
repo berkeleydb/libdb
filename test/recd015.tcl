@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd015.tcl,v 1.16 2004/01/28 03:36:29 bostic Exp $
+# $Id: recd015.tcl,v 12.1 2005/06/16 20:23:59 bostic Exp $
 #
 # TEST	recd015
 # TEST	This is a recovery test for testing lots of prepared txns.

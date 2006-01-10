@@ -1,5 +1,7 @@
 AAAA
 ABS
+ABSMODE
+ACK
 ADDR
 AES
 AIX's
@@ -9,15 +11,18 @@ ALLBACK
 ALLDB
 ALLOC
 ALLZEROES
+AMs
 API
 APIs
 APP
 APPMALLOC
 APPNAME
 APPREC
+ASSOC
 ASYNC
 ATOI
 AUTOCOMMIT
+AUTOINIT
 AUTOREMOVE
 AccessExample
 AccesssExample
@@ -65,6 +70,7 @@ BTREEMETA
 BTREEOLDVER
 BTREEVERSION
 BUF
+BULKOVF
 Backoff
 Barreto
 Bc
@@ -92,6 +98,7 @@ CC
 CCCC
 CCYYMMDDhhmm
 CD
+CDATA
 CDB
 CDS
 CDdFILTVvX
@@ -112,10 +119,12 @@ CKP
 CKPLSN
 CL
 CLASSPATH
+CLEARLEN
 CLOSEFP
 CLR
 CLRDBC
 CLpsvxX
+CMD
 CMP
 CNT
 COMPQUIET
@@ -127,6 +136,7 @@ CONFIG
 CONST
 CRTL
 CRYPTO
+CSV
 CT
 CTX
 CXX
@@ -146,6 +156,8 @@ CloseHandle
 Cmd
 Cmp
 CollectionTest
+CompactStat
+CompactStats
 Config
 CopyObjBytes
 CreateFile
@@ -160,11 +172,13 @@ DBCursor
 DBENV
 DBHOME
 DBINFO
+DBINIT
 DBLOCAL
 DBLOG
 DBM
 DBMETA
 DBMETASIZE
+DBMSG
 DBNAME
 DBP
 DBP's
@@ -188,6 +202,7 @@ DEADFILE
 DECLS
 DEF
 DEFMINKEYPAGE
+DELAYCLIENT
 DELNO
 DGREE
 DIR
@@ -197,11 +212,14 @@ DIST
 DJ
 DLFCN
 DLL
+DLLs
 DOALL
 DONOTINDEX
+DONTEXTEND
 DS
 DST
 DSYNC
+DTL
 DUP
 DUPFIRST
 DUPID
@@ -239,6 +257,8 @@ DbBtreeCompare
 DbBtreePrefix
 DbBtreeStat
 DbClient
+DbCompact
+DbCompactStat
 DbCount
 DbDeadlockException
 DbDelete
@@ -252,6 +272,7 @@ DbErrorHandler
 DbException
 DbFeedback
 DbFeedbackHandler
+DbField
 DbGet
 DbGetFlags
 DbGetOpenFlags
@@ -283,6 +304,7 @@ DbPanicHandler
 DbPreplist
 DbPut
 DbQueueStat
+DbRecord
 DbRecoveryInit
 DbRemove
 DbRename
@@ -316,9 +338,11 @@ Dbt
 Dbt's
 Dbts
 Dde
+DeadLockException
 Deadfile
 DeadlockException
 Debian
+DeleteFile
 DeleteInfo
 Deref'ing
 Dir
@@ -331,6 +355,7 @@ EEXISTS
 EFAULT
 EGENCHG
 EID
+EIDS
 EINTR
 EINVAL
 EIO
@@ -348,11 +373,13 @@ EOFException
 EPG
 EPGNO
 EPHASE
+EPIPE
 EPRINT
 EPRINTed
 ETIME
 ETIMEDOUT
 EXCL
+EXDEV
 EXT
 Eefh
 Egen
@@ -362,7 +389,9 @@ EntityBinding
 EnvAttr
 EnvExample
 EnvGetEncryptFlags
+EnvIdReset
 EnvInfoDelete
+EnvLsnReset
 EnvOpen
 EnvRemove
 EnvSetErrfile
@@ -385,6 +414,7 @@ ExceptionWrapperTest
 Exp
 Externalizable
 FALLTHROUGH
+FCHMOD
 FCNTL
 FCONTROL
 FD
@@ -400,12 +430,15 @@ FILEWRITTEN
 FIXEDLEN
 FIXLEN
 FIXME
+FLDID
 FMAP
+FML
 FMT
 FN
 FNAME
 FOREACH
 FP
+FREELIST
 FST
 FSTAT
 FSTATI
@@ -413,7 +446,9 @@ FTRUNCATE
 FTYPE
 FastInputStream
 FastOutputStream
+FastOutputStreamTest
 FatalRecover
+Fchg
 Fd
 Ff
 Fh
@@ -422,6 +457,7 @@ FileIndexLow
 FileNotFoundException
 Fileinfo
 FindHashEntry
+Fneeded
 FooImp
 Foreach
 ForeignKeyIndex
@@ -437,6 +473,7 @@ GETCWD
 GETDYNAMIC
 GETNAME
 GETOPT
+GETRECNO
 GETRUSAGE
 GETTIME
 GETTIMEOFDAY
@@ -469,6 +506,7 @@ GetVerbose
 GetVersion
 Gh
 GlobalRefs
+GoDone
 GotRange
 HANDSOFF
 HASHC
@@ -503,6 +541,7 @@ Harbison
 HashStats
 Hashtable
 HelloDatabaseWorld
+Hmm
 Holder's
 Hsearch
 IA
@@ -510,6 +549,7 @@ IAFTER
 IBEFORE
 IBTREE
 ICURRENT
+ID's
 IDLETIMEOUT
 IDs
 IIL
@@ -541,6 +581,7 @@ IRGRP
 IRIX
 IROTH
 IRUSR
+ISBIG
 ISDUP
 ISPERM
 ISSET
@@ -551,6 +592,9 @@ IWOTH
 IWR
 IWRITE
 IWUSR
+IXGRP
+IXOTH
+IXUSR
 Ick
 Ids
 Ik
@@ -570,6 +614,7 @@ IterDeadlockTest
 JDB
 JE
 JHB
+JJ
 JKL
 JNI
 JNIEnv
@@ -627,6 +672,7 @@ LOGREADY
 LOGSONLY
 LOGVERSION
 LORDER
+LP
 LRECNO
 LRECNODUP
 LRU
@@ -652,6 +698,7 @@ LocalIterator
 LockDetect
 LockDetectMode
 LockExample
+LockFileEx
 LockGet
 LockMode
 LockNotGrantedException
@@ -663,6 +710,7 @@ LockStats
 LockTimeout
 LockVec
 Lockfhp
+Lockfile
 LogArchive
 LogCompare
 LogFile
@@ -699,6 +747,7 @@ MAXSIZEONPAGE
 MAXTIMEOUT
 MAXWRITE
 MC
+MDups
 MEM
 MEMCMP
 MEMCPY
@@ -713,6 +762,7 @@ MINIT
 MINLOCKS
 MINPAGECACHE
 MINWRITE
+MIPS
 MKS
 MLOCK
 MMAP
@@ -738,7 +788,10 @@ MSVC
 MT
 MUNLOCK
 MUNMAP
+MUTEXMGR
+MUTEXREGION
 MUTEXes
+MVS
 MYDIRECTORY
 Makoto
 Malloc
@@ -754,6 +807,7 @@ MarshalledTupleData
 MarshalledTupleEntry
 MarshalledTupleKeyEntity
 Matsumoto
+MaxID
 Maxid
 Maxkey
 Mb
@@ -781,6 +835,8 @@ Mpoolfile
 Msg
 MsgType
 Mutex
+MutexStats
+Mutexes
 Mv
 MyDbs
 NB
@@ -796,8 +852,10 @@ NEWFILE
 NEWMASTER
 NEWSITE
 NG
+NL
 NOARCHIVE
 NOAUTO
+NOAUTOINIT
 NOBUFFER
 NOCOPY
 NODUP
@@ -815,6 +873,7 @@ NOORDERCHK
 NOOVERWRITE
 NOPANIC
 NOPROMOTE
+NORECNUM
 NORUN
 NOSERVER
 NOSORT
@@ -823,6 +882,7 @@ NOTA
 NOTEXIST
 NOTFOUND
 NOTGRANTED
+NOTLOGGED
 NOTPERM
 NOTREACHED
 NOTSET
@@ -843,6 +903,7 @@ NUM
 NUMWRITES
 NameToInfo
 NameToPtr
+Ndbc
 Ndbm
 NdbmOpen
 NewInfo
@@ -854,6 +915,7 @@ NqV
 Nr
 NrV
 NsV
+NsVv
 Nuff
 NullClassCatalog
 NullPointerException
@@ -864,6 +926,7 @@ OBJ
 ODDFILESIZE
 OFFDUP
 OFFPAGE
+OLDVER
 OLDVERSION
 ONC
 OOB
@@ -871,10 +934,12 @@ OP
 OPD
 OPENFILES
 OPFLAGS
+OPS
 OR'd
 ORDERCHKONLY
 OSF
 OSO
+OSS
 OUTFILE
 OVFL
 Obj
@@ -884,6 +949,7 @@ ObjectStreamClass
 Objs
 Offpage
 Ol
+Ooops
 OpenFileMapping
 OpenServer
 OperationStatus
@@ -909,6 +975,7 @@ PHP
 PID
 PKG
 PLIST
+PMerge
 POPENFILES
 POSTDESTROY
 POSTLOG
@@ -954,6 +1021,7 @@ Prev
 PrimaryKeyAssigner
 Proc
 Pthread
+Ptr
 PtrToInfo
 QAM
 QAMDATA
@@ -964,6 +1032,7 @@ QAMVERSION
 QMETA
 QNX
 QPAGE
+QUIESCED
 QUOTESERVER
 QueueStats
 RB
@@ -980,6 +1049,7 @@ RBTRANSIENT
 RCLOSE
 RDONLY
 RDWRMASTER
+READLOCK
 READONLY
 REALLOC
 REALLOC'ed
@@ -999,9 +1069,11 @@ RELIANTUNIX
 RENAMEMAGIC
 REPLOCKED
 REPQUOTE
+REPTEST
 REPVERSION
 REQ
 REQs
+REREQUEST
 REVERSECONCAT
 REVERSEDATA
 REVSPLITOFF
@@ -1038,16 +1110,28 @@ Recnos
 RecordNumberBinding
 RecordNumberFormat
 RecoveryOperation
+Refcnt
+Refcount
 Reinit
+RepConfig
 RepElect
 RepElectResult
 RepFlush
+RepGetConfig
 RepLimit
 RepProcessMessage
 RepRequest
 RepStart
 RepStat
+RepSync
+RepTransport
+ReplicationConfig
+ReplicationDuplicateMasterException
 ReplicationHandleDeadException
+ReplicationHoldElectionException
+ReplicationJoinFailureException
+ReplicationLockoutException
+ReplicationSiteUnavailableException
 ReplicationStats
 ReplicationStatus
 ResetResult
@@ -1069,6 +1153,7 @@ Rusage
 SCHED
 SCO
 SCO's
+SDups
 SEGDATA
 SEGID
 SEM
@@ -1089,11 +1174,14 @@ SHMEM
 SHMGET
 SHQUEUE
 SIGALRM
+SIGCHLD
 SIGPIPE
 SIZEOF
 SKIPFIRSTKEY
 SKU
+SMerge
 SNPRINTF
+SPACEONLY
 SPL
 SPLITOLD
 SPRINTF
@@ -1132,6 +1220,7 @@ Sedgewick
 Seq
 SeqGet
 SeqGetFlags
+SeqNo
 SeqOpen
 SequenceExample
 SequenceStats
@@ -1158,6 +1247,7 @@ ShipmentKey
 ShipmentKeyBinding
 ShipmentValue
 Shm
+SibDup
 Signalling
 SimpleBuffer
 Skiplist
@@ -1240,11 +1330,14 @@ TODO
 TOPLEVEL
 TPC
 TPCB
+TPINIT
 TPS
 TRU
 TRUNC
 TRUNCDATA
+TS
 TSTRING
+TX
 TXN
 TXNAPP
 TXNHEAD
@@ -1257,6 +1350,7 @@ TXNS
 TXNVERSION
 TXNs
 Takuji
+Tbuf
 Tcl
 Tcl's
 TempFolder
@@ -1286,10 +1380,13 @@ TestSimpleAccess
 TestStat
 TestStore
 TestTruncate
+TestTxn
 TestUtil
 TestXAServlet
 Thang
 Thies
+ThreadOne
+ThreadTwo
 Threshhold
 Throwable
 TimeUnits
@@ -1325,6 +1422,8 @@ TupleTupleMarshalledBinding
 TupleTupleMarshalledKeyExtractor
 Txn
 TxnCheckpoint
+TxnGuide
+TxnGuideInMemory
 TxnInfoDelete
 TxnRecover
 TxnStat
@@ -1357,6 +1456,7 @@ UnixLib
 UnixWare
 Unixware
 UnknownError
+UnlockFile
 UnmapViewOfFile
 UnsupportedOperationException
 UtfOps
@@ -1373,6 +1473,7 @@ VX
 Var
 Vc
 VendorDB
+VersionMismatchException
 Vo
 Voter's
 Vv
@@ -1405,6 +1506,7 @@ XAException
 XAResource
 XID
 XIDDATASIZE
+XMIT
 XOR'd
 XP
 XPG
@@ -1424,6 +1526,7 @@ aaC
 aaD
 aaa
 aaaaaa
+aaaaaaaaaaaaaaaaaaaaaa
 aaaaab
 aaaaac
 aab
@@ -1434,6 +1537,7 @@ abc
 abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq
 abcdef
 abs
+abshome
 absname
 abspath
 ac
@@ -1461,6 +1565,7 @@ adlsVv
 admin
 afterop
 ahr
+alanb
 alfred
 alg
 algsetup
@@ -1471,8 +1576,10 @@ alloc'ed
 alloc'ing
 alloced
 allocs
+allreq
 alsVv
 alsn
+amd
 amx
 antoon
 anum
@@ -1486,6 +1593,7 @@ appnotes
 apprec
 apps
 aq
+archivable
 archivedir
 areDuplicatesAllowed
 areDuplicatesOrdered
@@ -1497,7 +1605,9 @@ argv
 arr
 arraycopy
 arraysz
+asap
 asites
+asprintf
 assertEquals
 astubble
 ata
@@ -1513,6 +1623,7 @@ avg
 awk
 baaaaa
 backoff
+backpointer
 badend
 badgen
 badkey
@@ -1530,6 +1641,7 @@ bdbcmds
 beginInclusive
 beginKey
 beq
+beql
 berkdb
 berkdbcmds
 berkeley
@@ -1541,6 +1653,7 @@ bhfree
 bhp
 bhwrite
 bi
+bigending
 bigint
 bigpages
 bigpair
@@ -1575,6 +1688,7 @@ btrec
 btree
 btreemeta
 btrees
+bucketsp
 buf
 bufp
 bufs
@@ -1595,16 +1709,19 @@ byteswap
 byteswapped
 bytevalue
 cEelmNrtVZ
+cEelmNrtVxZ
 caaaaa
 cachep
 cachesize
 cadjust
+call's
 callback
 callback's
 callbk
 calloc
 callocs
 callpgin
+capi
 carray
 catalogtest
 cbts
@@ -1622,6 +1739,8 @@ ceh
 celmNrtVZ
 celmNtV
 celmNtVZ
+cfile
+cfp
 cget
 cgetchk
 ch
@@ -1638,6 +1757,7 @@ childcursor
 childinc
 childproof
 childput
+childs
 chk
 chkpoint
 chkpt
@@ -1663,9 +1783,11 @@ clearIndexKey
 clearerr
 clib
 clientData
+clientdb
 clientrun
 clist
 clnt
+closeEnv
 closeevent
 closehandle
 closeme
@@ -1700,6 +1822,7 @@ copymap
 copyout
 copypage
 countElements
+countRecords
 countp
 cp
 cpage
@@ -1712,13 +1835,16 @@ creat
 createflag
 crypto
 cs
+csearch
 csp
+csv
 ct
 ctp
 ctp's
 ctps
 ctx
 ctxn
+cuVv
 curadj
 curfile
 curinfo
@@ -1730,6 +1856,7 @@ curslist
 cursp
 cursq
 cutlim
+cuz
 cxx
 cxxproc
 cxxthis
@@ -1744,6 +1871,7 @@ datalen
 datap
 datapage
 datastr
+datatype
 db
 dbFileName
 dbOpenFlags
@@ -1784,6 +1912,7 @@ dbminit
 dbmp
 dbname
 dbnamep
+dbo
 dbobj
 dbopen
 dbp
@@ -1794,6 +1923,7 @@ dbps
 dbq
 dbrdonly
 dbreg
+dbregister
 dbremove
 dbrename
 dbs
@@ -1812,6 +1942,8 @@ dbverify
 dbx
 dcursor
 dd
+dda
+ddbt
 deadfile
 deadlocker
 deadmap
@@ -1823,6 +1955,7 @@ defg
 defpfx
 defto
 del
+delayclient
 deletable
 deleteAction
 delext
@@ -1832,6 +1965,7 @@ delpg
 denom
 dereffing
 des
+desc
 deserialize
 deserialized
 deserializing
@@ -1842,6 +1976,7 @@ df
 dh
 diff
 difflen
+difftime
 dir
 directio
 dirent
@@ -1893,6 +2028,7 @@ dup
 dup'ed
 dupcompare
 duperr
+duplicate's
 dupmaster
 dupmasters
 dupped
@@ -1912,6 +2048,7 @@ egen
 eid
 eid's
 eidp
+eids
 ek
 ele
 electinit
@@ -1947,6 +2084,7 @@ env's
 envFlags
 envcl
 envdata
+envdir
 envdp
 envid
 envip
@@ -1954,11 +2092,13 @@ envlock
 envp
 envpanic
 envparent
+envreg
 envremove
 envrpcserver
 envs
 eof
 eor
+ep
 erlangen
 errbuf
 errcall
@@ -1972,7 +2112,9 @@ errpfx
 errunlock
 errx
 esat
+esec
 esp
+eusec
 eval
 exactp
 excl
@@ -1988,12 +2130,15 @@ externalizable
 extid
 extractIndexKey
 fN
+failcheck
+failchk
 faq
 faststat
 faultmem
 fc
 fcchk
 fchk
+fchmod
 fclose
 fcn
 fcntl
@@ -2001,6 +2146,7 @@ fcreate
 fd
 fd's
 fdatasync
+fdlock
 fdm
 fdp
 fdupcurs
@@ -2014,6 +2160,8 @@ fh
 fhp
 fid
 fids
+fieldlist
+fieldno
 fileID
 fileIDs
 filedone
@@ -2023,11 +2171,14 @@ fileids
 fileinfo
 fileinit
 filelist
+filemode
 filenamep
 filenum
 fileopen
 fileops
 fillf
+fillfactor
+fillpercent
 finalcount
 findFirst
 finddatum
@@ -2044,6 +2195,7 @@ floatToIntBits
 flushcommit
 fmax
 fmethod
+fmt
 fn
 fname
 fnl
@@ -2058,6 +2210,7 @@ form's
 format's
 formatID
 fp
+fprintf
 fprobe
 fptr
 fput
@@ -2071,7 +2224,10 @@ freefamilylocker
 freelist
 freelock
 freelocker
+freelst
+freeonly
 freep
+freespace
 fremove
 freq
 friedl
@@ -2095,6 +2251,7 @@ func
 funcs
 fv
 fwd
+gapflags
 gbytes
 gbytesp
 gc
@@ -2150,6 +2307,7 @@ getdynamic
 getenv
 getinfo
 getjoin
+getline
 getlocker
 getlong
 getname
@@ -2172,9 +2330,14 @@ getval
 getzip
 ghi
 gid
+gm
+golive
+gonna
 gotkey
 gotta
+grep
 groupalloc
+groupgrow
 gsf
 gsp
 gtrid
@@ -2193,6 +2356,7 @@ hashinit
 hashmeta
 hashp
 hashproc
+hashtab
 hc
 hcp
 hcreate
@@ -2209,18 +2373,23 @@ headp
 heldby
 helloworld
 hf
+hfp
 hijkl
 himark
 histdbt
 hlock
+hm
 hmac
 hmeta
+hmm
 holdl
 homep
 homeroot
 hostaddr
 hostname
+hotbackup
 hotcopy
+hotupdate
 hp
 hq
 href
@@ -2245,6 +2414,7 @@ idup'ed
 iface
 ifdef
 iff
+ifmt
 ifndef
 ihold
 iitem
@@ -2256,6 +2426,7 @@ incfirst
 incomp
 incr
 incursor
+ind
 indexCursor
 indexKey
 indexKeyData
@@ -2266,6 +2437,7 @@ indexOf
 indexViews
 indexlist
 indx
+indxp
 info's
 infop
 informatik
@@ -2280,6 +2452,7 @@ inlen
 inline
 inmem
 inmemdbflags
+inmemlist
 inmemory
 ino
 inode
@@ -2298,6 +2471,7 @@ intial
 ints
 inttypes
 inuse
+inval
 inventoryDB
 inventorydb
 io
@@ -2306,6 +2480,7 @@ iopsize
 iosDevFind
 ip
 ipcs
+iq
 iread
 isAutoCommit
 isByteLen
@@ -2316,6 +2491,7 @@ isIndexed
 isOrdered
 isTransactional
 isWriteAllowed
+isalive
 isbad
 isbigendian
 isdeleted
@@ -2325,6 +2501,7 @@ isdup
 isolder
 isopd
 ispget
+isprint
 isroot
 isspace
 istmp
@@ -2371,6 +2548,7 @@ keyName
 keyOutput
 keySet
 keybuf
+keyexists
 keyfirst
 keyflag
 keygroup
@@ -2383,6 +2561,7 @@ keyrange
 keystr
 kgnum
 ki
+kidsp
 killid
 killinterval
 killiteration
@@ -2390,6 +2569,7 @@ killtest
 klNpP
 klNprRV
 klNprRs
+klen
 klinks
 kow
 kp
@@ -2411,7 +2591,9 @@ lastpgno
 later's
 lbtree
 lbucket
+lbuf
 lc
+lcnt
 ld
 ldata
 ldbp
@@ -2483,6 +2665,7 @@ loggap
 logmaxset
 logmsg
 logrec
+logreq
 logset
 logsonly
 longBitsToDouble
@@ -2494,11 +2677,13 @@ lpgno
 lprint
 lput
 lrand
+lref
 lrp
 lru
 lsVv
 lsn
 lsnadd
+lsnget
 lsninit
 lsnoff
 lsnp
@@ -2612,6 +2797,7 @@ minver
 minwrite
 minwrites
 mip
+mips
 mis
 misc
 mjc
@@ -2629,6 +2815,7 @@ mmpgno
 modeFlag
 moremiddle
 mortem
+mov
 movl
 mp
 mpf
@@ -2649,6 +2836,7 @@ msgadd
 msgbuf
 msgcall
 msgdbt
+msgdir
 msgfile
 msgfp
 msgs
@@ -2657,6 +2845,9 @@ msize
 mswap
 mt
 mti
+mtx
+mtxmgr
+mtxregion
 munlock
 munmap
 mut
@@ -2667,6 +2858,10 @@ mutexp
 muxfile
 mv
 mvptr
+myClassDb
+myDb
+myclassdb
+mydb
 mydrive
 mydrivexxx
 myfree
@@ -2688,6 +2883,8 @@ namesp
 nargc
 nargv
 nbegins
+nbucket
+nbuf
 nbytes
 ncache
 ncachep
@@ -2695,19 +2892,24 @@ ncaches
 ncommit
 ncommits
 nconflicts
+ncp
 ncurs
 ndary
 ndata
+ndbc
 ndbm
 ndeadalloc
 ndeadlocks
 ndir
+ndowngrade
 ndx
 needswap
 neg
 nelem
 nelemp
+nelems
 nentries
+nentry
 nevict
 newalloc
 newclient
@@ -2739,6 +2941,7 @@ nfiles
 ng
 nitems
 nkeys
+nl
 nlist
 nlockers
 nlocks
@@ -2750,6 +2953,7 @@ nnextlsn
 nnowaits
 noWait
 noarchive
+noautoinit
 nobjects
 nobuffer
 nodup
@@ -2760,6 +2964,7 @@ nohasham
 nolock
 nolocking
 nolonger
+nomacro
 nomem
 nommap
 noop
@@ -2767,6 +2972,7 @@ nooverwrite
 nop
 nopanic
 nopenp
+noreorder
 norep
 nosort
 nosync
@@ -2781,6 +2987,8 @@ nowait
 nowaits
 np
 npages
+npg
+npg's
 npgno
 nprocs
 nptr
@@ -2791,6 +2999,7 @@ nrec
 nrecords
 nrecs
 nreg
+nregions
 nreleases
 nrepeat
 nrequests
@@ -2813,6 +3022,8 @@ numdup
 numdups
 numext
 numlocks
+nums
+nupgrade
 nval
 nvotes
 nwrite
@@ -2855,14 +3066,18 @@ onoff
 onoffp
 onpage
 op
+opcnt
 opd
 openCursors
+openDb
+openEnv
 openFlags
 openfd
 openfiles
 openhandle
 opensub
 opflags
+opgno
 opmods
 ops
 optarg
@@ -2916,6 +3131,7 @@ pagfno
 panic'd
 panic'ing
 paniccall
+panicing
 panicstate
 params
 parentid
@@ -2923,7 +3139,9 @@ parseLong
 partsize
 passwd
 passwds
+patchver
 paulo
+pbuf
 pct
 pdbp
 pdf
@@ -2947,6 +3165,7 @@ pggap
 pgin
 pginfo
 pgip
+pglist
 pgmax
 pgno
 pgnoadd
@@ -2955,7 +3174,9 @@ pgnop
 pgnos
 pgnum
 pgout
+pgp
 pgread
+pgrec
 pgs
 pgset
 pgsize
@@ -3044,6 +3265,7 @@ pthreads
 ptr
 ptrdiff
 ptype
+pupdate
 putAll
 putall
 putchar
@@ -3061,6 +3283,7 @@ qmeta
 qmpf
 qnx
 qp
+qr
 qs
 qtest
 quV
@@ -3074,6 +3297,8 @@ rand
 randtbl
 rbtree
 rcon
+rcount
+rcrd
 rcuradj
 rcursor
 rcvd
@@ -3103,6 +3328,7 @@ readdir
 readn
 readonly
 readratio
+readsocket
 realloc
 realloc'd
 realloc'ed
@@ -3116,17 +3342,23 @@ recnop
 recnos
 recnum
 recnums
+recognised
 recops
 record's
 recordNumber
 recordlen
+recordp
 recs
 rectype
+rectypes
 recvd
+refactor
 refcnt
 refcount
 refcounting
 reffed
+regcomp
+regenv
 regids
 reginfo
 regionmax
@@ -3146,6 +3378,7 @@ removeAll
 remrem
 renum
 renv
+reorg
 rep's
 repdb
 repl
@@ -3155,9 +3388,13 @@ replyp
 reppg
 repquote
 repsite
+reptest
+repth
 reput
 reputpair
 req
+rerequest
+rerequests
 resizep
 resync
 retPrimaryKey
@@ -3192,6 +3429,7 @@ riw
 rk
 rkey
 rlen
+rlimit
 rlsn
 rlsnp
 rm
@@ -3204,6 +3442,7 @@ roff
 rollforward
 rootent
 rootlsn
+rop
 rp
 rp's
 rpath
@@ -3228,12 +3467,15 @@ rusage
 rw
 rwrw
 rwrwrw
+rwx
 sS
 sV
 sVv
 salloc
 salvager's
+savekey
 savetime
+sc
 sched
 scount
 sdb
@@ -3255,8 +3497,10 @@ sendpages
 sendproc
 sep
 seq
+seqNo
 seqnum
 seqp
+sequentialness
 serialobj
 servlet
 setAppDispatch
@@ -3293,6 +3537,8 @@ setValue
 setflags
 setid
 setlsn
+setname
+setsid
 settimeout
 setto
 setval
@@ -3318,6 +3564,7 @@ shqueue
 shr
 shreg
 siginit
+signalled
 signo
 sigresend
 singleKey
@@ -3339,9 +3586,11 @@ smax
 snapshotting
 sniglet
 snprintf
+sockaddr
 sortdups
 sourcep
 sp
+spanp
 sparc
 spawnl
 spinlock
@@ -3378,6 +3627,7 @@ stdout
 stkgrow
 stkrel
 stl
+stmax
 storedCollection
 storedIterator
 storedList
@@ -3390,6 +3640,7 @@ stqh
 str
 strcasecmp
 strcmp
+strcpy
 strdup
 strdup'ed
 strerror
@@ -3399,6 +3650,7 @@ strlen
 strncasecmp
 strncmp
 strsep
+strtod
 strtol
 strtoul
 struct
@@ -3406,11 +3658,13 @@ structs
 structure's
 sts
 stwcx
+stype
 subList
 subMap
 subSet
 subcases
 subclassed
+subdata
 subdatabase
 subdatabase's
 subdb
@@ -3439,8 +3693,10 @@ sysconf
 sysdetach
 sz
 t's
+tNULL
 tV
 tVZ
+tVxX
 tableent
 tablesize
 tailMap
@@ -3448,11 +3704,13 @@ tailSet
 tailq
 tas
 taskLock
+tbuf
 tc
 tcl
 tcp
 td
 tdata
+tdkids
 tearDown
 terra
 testName
@@ -3470,6 +3728,8 @@ thr
 thread's
 threadID
 threadedness
+threadid
+thrp
 tid
 tids
 tiebreaker
@@ -3484,6 +3744,7 @@ tm
 tmap
 tmax
 tmp
+tmpath
 tmpdir
 tmpmap
 tmpname
@@ -3503,7 +3764,15 @@ toched
 todo
 toobig
 tp
+tpabort
+tpalloc
+tpbegin
 tpcb
+tpcommit
+tpinit
+tpsvrdone
+tpsvrinit
+tpterm
 tput
 tqe
 tqh
@@ -3515,13 +3784,16 @@ trinomials
 trunc
 truncdata
 ts
+tsize
 tsl
 tstart
+ttmax
 ttpcbddlk
 ttpcbi
 ttpcbr
 ttype
 tv
+tvoid
 tx
 txn
 txnal
@@ -3535,7 +3807,10 @@ txnlist
 txnp
 txns
 txntimeout
+txnwait
 txt
+typemore
+uVv
 ua
 ubell
 ud
@@ -3543,13 +3818,16 @@ udbt
 ufid
 ufree
 uid
+uint
 uintmax
 uintptr
 ul
 ulen
 ulens
 ulinks
+ulong
 umalloc
+umask
 uncorrect
 undef
 undeleting
@@ -3565,10 +3843,12 @@ unix
 unmap
 unmapfile
 unmark
+unmarshal
 unmarshalData
 unmarshalled
 unpinned
 unpinning
+unprintables
 unref
 unregistry
 upd
@@ -3582,6 +3862,7 @@ useCurrentKey
 usePrimaryKey
 useValue
 usec
+useconds
 usecs
 usecsp
 usermem
@@ -3593,6 +3874,7 @@ vVxXyZ
 vZ
 va
 val
+valn
 value's
 valueBinding
 valueData
@@ -3605,6 +3887,7 @@ valueOutput
 var
 variadic
 vars
+vbuf
 vdp
 vdp's
 vec
@@ -3612,6 +3895,8 @@ vendorDB
 vendordb
 ver
 verbage
+versioned
+versioning
 vflag
 vica
 view's
@@ -3634,7 +3919,10 @@ wSecond
 wYear
 waitl
 waitlist
+waitpid
 waitsfor
+wakeme
+wakep
 walkdupint
 walkpages
 walkqueue
@@ -3685,7 +3973,9 @@ xid
 xids
 xml
 xor
+xori
 xorl
+xunlock
 xxx
 xyz
 yieldcpu

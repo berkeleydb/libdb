@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: DatabaseEntry.java,v 1.7 2004/09/22 18:01:03 bostic Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: DatabaseEntry.java,v 12.2 2005/10/11 17:54:23 mark Exp $
+ */
 
 package com.sleepycat.db;
 
@@ -78,6 +78,12 @@ public class DatabaseEntry {
         setData(data, 0, (data == null) ? 0 : data.length);
     }
 
+    /**
+     * This method is called just before performing a get operation.  It is
+     * overridden by Multiple*Entry classes to return the flags used for bulk
+     * retrieval.  If non-zero is returned, this method should reset the entry
+     * position so that the next set of key/data can be returned.
+     */
     /* package */
     int getMultiFlag() {
         return 0;

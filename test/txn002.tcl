@@ -1,11 +1,10 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: txn002.tcl,v 11.41 2004/01/28 03:36:32 bostic Exp $
+# $Id: txn002.tcl,v 12.1 2005/06/16 20:24:11 bostic Exp $
 #
-
 # TEST	txn002
 # TEST	Verify that  read-only transactions do not write log records.
 proc txn002 { {tnum "002" } { max 1024 } { ntxns 50 } } {

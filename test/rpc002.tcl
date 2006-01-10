@@ -1,9 +1,9 @@
 # Sel the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rpc002.tcl,v 1.25 2004/07/15 17:19:12 sue Exp $
+# $Id: rpc002.tcl,v 12.2 2005/07/21 18:21:36 bostic Exp $
 #
 # TEST	rpc002
 # TEST	Test invalid RPC functions and make sure we error them correctly
@@ -64,7 +64,7 @@ proc rpc002 { } {
 			set stat [catch {eval $e $cmd} ret]
 			error_check_good $cmd $stat 1
 			error_check_good $cmd.err [is_substr $errorInfo \
-			    "unsupported in RPC environments"] 1
+			    "Interface not supported by Berkeley DB RPC"] 1
 		}
 
 		#
@@ -111,7 +111,7 @@ proc rpc002 { } {
 			set stat [catch {eval $env $cmd} ret]
 			error_check_good $cmd $stat 1
 			error_check_good $cmd.err [is_substr $errorInfo \
-			    "unsupported in RPC environments"] 1
+			    "Interface not supported by Berkeley DB RPC"] 1
 		}
 		error_check_good dbclose [$db close] 0
 
@@ -129,8 +129,8 @@ proc rpc002 { } {
 		    -env $env -cachesize {0 65536 0} $testfile"
 		set stat [catch {eval $dbcmd} ret]
 		error_check_good dbopen_cache $stat 1
-		error_check_good dbopen_cache_err \
-		    [is_substr $errorInfo "unsupported in RPC environments"] 1
+		error_check_good dbopen_cache_err [is_substr $errorInfo \
+		    "Interface not supported by Berkeley DB RPC"] 1
 
 		puts "\tRpc002.d1: Try to upgrade a database"
 		#
@@ -138,7 +138,7 @@ proc rpc002 { } {
 		set stat [catch {eval {berkdb upgrade -env} $env $testfile} ret]
 		error_check_good dbupgrade $stat 1
 		error_check_good dbupgrade_err [is_substr $errorInfo \
-		    "unsupported in RPC environments"] 1
+		    "Interface not supported by Berkeley DB RPC"] 1
 		error_check_good envclose [$env close] 0
 
 		puts "\tRpc002.e: Open env with unsupported home dir"

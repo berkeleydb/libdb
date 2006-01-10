@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TupleOrderingTest.java,v 1.4 2004/09/22 18:01:06 bostic Exp $
+ * $Id: TupleOrderingTest.java,v 12.2 2005/08/01 20:25:27 mark Exp $
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -13,7 +13,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import com.sleepycat.bind.tuple.TupleBinding;
 import com.sleepycat.bind.tuple.TupleOutput;
 import com.sleepycat.collections.test.DbTestUtil;
 
@@ -53,7 +52,7 @@ public class TupleOrderingTest extends TestCase {
     public void setUp() {
 
         DbTestUtil.printTestName("TupleOrderingTest." + getName());
-        out = TupleBinding.newOutput();
+        out = new TupleOutput();
         prevBuf = null;
     }
 
@@ -318,7 +317,7 @@ public class TupleOrderingTest extends TestCase {
     }
 
     public void testFloat() {
-
+        
         // Only positive floats and doubles are ordered deterministically
 
         final float[] DATA = {
@@ -337,7 +336,7 @@ public class TupleOrderingTest extends TestCase {
     }
 
     public void testDouble() {
-
+        
         // Only positive floats and doubles are ordered deterministically
 
         final double[] DATA = {

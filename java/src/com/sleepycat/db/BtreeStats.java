@@ -3,7 +3,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  */
 
@@ -41,11 +41,6 @@ public class BtreeStats extends DatabaseStats {
     private int bt_pagesize;
     public int getPageSize() {
         return bt_pagesize;
-    }
-
-    private int bt_maxkey;
-    public int getMaxKey() {
-        return bt_maxkey;
     }
 
     private int bt_minkey;
@@ -126,7 +121,6 @@ public class BtreeStats extends DatabaseStats {
             + "\n  bt_nkeys=" + bt_nkeys
             + "\n  bt_ndata=" + bt_ndata
             + "\n  bt_pagesize=" + bt_pagesize
-            + "\n  bt_maxkey=" + bt_maxkey
             + "\n  bt_minkey=" + bt_minkey
             + "\n  bt_re_len=" + bt_re_len
             + "\n  bt_re_pad=" + bt_re_pad

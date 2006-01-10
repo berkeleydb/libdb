@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: DatabaseConfig.java,v 1.9 2004/11/05 00:50:54 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: DatabaseConfig.java,v 12.2 2005/06/16 20:22:59 bostic Exp $
+ */
 
 package com.sleepycat.db;
 
@@ -51,7 +51,7 @@ public class DatabaseConfig implements Cloneable {
     private boolean allowCreate = false;
     private boolean btreeRecordNumbers = false;
     private boolean checksum = false;
-    private boolean dirtyRead = false;
+    private boolean readUncommitted = false;
     private boolean encrypted = false;
     private boolean exclusiveCreate = false;
     private boolean noMMap = false;
@@ -149,12 +149,22 @@ public class DatabaseConfig implements Cloneable {
         return checksum;
     }
 
-    public void setDirtyRead(final boolean dirtyRead) {
-        this.dirtyRead = dirtyRead;
+    public void setReadUncommitted(final boolean readUncommitted) {
+        this.readUncommitted = readUncommitted;
     }
 
+    public boolean getReadUncommitted() {
+        return readUncommitted;
+    }
+
+    /** @deprecated */
+    public void setDirtyRead(final boolean dirtyRead) {
+        setReadUncommitted(dirtyRead);
+    }
+
+    /** @deprecated */
     public boolean getDirtyRead() {
-        return dirtyRead;
+        return getReadUncommitted();
     }
 
     public void setDuplicateComparator(final java.util.Comparator duplicateComparator) {
@@ -462,7 +472,7 @@ public class DatabaseConfig implements Cloneable {
 
         int openFlags = 0;
         openFlags |= allowCreate ? DbConstants.DB_CREATE : 0;
-        openFlags |= dirtyRead ? DbConstants.DB_DIRTY_READ : 0;
+        openFlags |= readUncommitted ? DbConstants.DB_READ_UNCOMMITTED : 0;
         openFlags |= exclusiveCreate ? DbConstants.DB_EXCL : 0;
         openFlags |= noMMap ? DbConstants.DB_NOMMAP : 0;
         openFlags |= readOnly ? DbConstants.DB_RDONLY : 0;
@@ -568,7 +578,7 @@ public class DatabaseConfig implements Cloneable {
 
         final int openFlags = db.get_open_flags();
         allowCreate = (openFlags & DbConstants.DB_CREATE) != 0;
-        dirtyRead = (openFlags & DbConstants.DB_DIRTY_READ) != 0;
+        readUncommitted = (openFlags & DbConstants.DB_READ_UNCOMMITTED) != 0;
         exclusiveCreate = (openFlags & DbConstants.DB_EXCL) != 0;
         noMMap = (openFlags & DbConstants.DB_NOMMAP) != 0;
         readOnly = (openFlags & DbConstants.DB_RDONLY) != 0;

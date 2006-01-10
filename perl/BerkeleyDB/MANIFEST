@@ -43,6 +43,8 @@ t/subdb.t
 t/txn.t
 t/unknown.t
 t/util.pm
+t/Test/More.pm
+t/Test/Builder.pm
 Todo
 typemap
 patches/5.004

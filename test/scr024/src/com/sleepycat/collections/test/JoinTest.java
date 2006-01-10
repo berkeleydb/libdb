@@ -4,7 +4,7 @@
  * Copyright (c) 2000-2003
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: JoinTest.java,v 1.1 2004/04/09 16:34:10 mark Exp $
+ * $Id: JoinTest.java,v 12.2 2005/08/01 20:25:30 mark Exp $
  */
 package com.sleepycat.collections.test;
 

@@ -1,15 +1,21 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep022.tcl,v 1.11 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep022.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  rep022
 # TEST	Replication elections - test election generation numbers
 # TEST	during simulated network partition.
 # TEST
 proc rep022 { method args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	global rand_init
 	global mixed_mode_logging
 	set tnum "022"
@@ -38,7 +44,7 @@ proc rep022 { method args } {
 	}
 }
 
-proc rep022_sub { method nclients tnum logset args } {
+proc rep022_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global errorInfo
 	env_cleanup $testdir
@@ -92,7 +98,7 @@ proc rep022_sub { method nclients tnum logset args } {
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
@@ -200,7 +206,7 @@ proc rep022_sub { method nclients tnum logset args } {
 	}
 
 	# Have client 4 (currently a master) run an operation.
-	eval rep_test $method $clientenv(4) NULL $niter 0 0
+	eval rep_test $method $clientenv(4) NULL $niter 0 0 0 0 $largs
 
 	# Check that clients 0 and 4 get DUPMASTER messages and
 	# restart them as clients.

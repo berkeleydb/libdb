@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: SequenceConfig.java,v 1.2 2004/09/23 17:56:39 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: SequenceConfig.java,v 12.1 2005/06/16 20:23:03 bostic Exp $
+ */
 
 package com.sleepycat.db;
 

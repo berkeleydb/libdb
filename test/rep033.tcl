@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep033.tcl,v 1.5 2004/10/04 18:15:14 sue Exp $
+# $Id: rep033.tcl,v 12.5 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep033
 # TEST	Test of internal initialization with rename and remove of dbs.
@@ -15,6 +15,11 @@
 #
 proc rep033 { method { niter 200 } { tnum "033" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -117,8 +122,8 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	puts "\tRep$tnum.c: Create new databases.  Populate with rep_test."
 	set dba [eval {berkdb_open} $oflags $largs a.db]
 	set dbb [eval {berkdb_open} $oflags $largs b.db]
-	eval rep_test $method $masterenv $dba $niter 0 0 0 $largs
-	eval rep_test $method $masterenv $dbb $niter 0 0 0 $largs
+	eval rep_test $method $masterenv $dba $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv $dbb $niter 0 0 0 0 $largs
 	error_check_good dba_close [$dba close] 0
 	error_check_good dbb_close [$dbb close] 0
 
@@ -157,23 +162,18 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 		# logs and that will trigger it.
 		#
 		set entries 10
-		eval rep_test $method $masterenv NULL $entries $niter 0 0 $largs
+		eval rep_test $method $masterenv NULL $entries $niter 0 0 0 $largs
 		process_msgs $envlist 0 NONE err
 	}
 
 	puts "\tRep$tnum.f: Verify logs and databases"
-	# Check that master and client logs and dbs are identical.
-	# Logs first ...
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $masterdir > $masterdir/prlog} result]
-	error_check_good stat_mprlog $stat 0
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $clientdir > $clientdir/prlog} result]
-	error_check_good stat_cprlog $stat 0
-	error_check_good log_cmp \
-	    [filecmp $masterdir/prlog $clientdir/prlog] 0
-
-	# ... now the databases.  X, Y, and C should exist.
+	#
+	# By sending in a NULL for dbname, we only compare logs.
+	#
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1 NULL
+	#
+	# ... now the databases, manually.  X, Y, and C should exist.
+	#
 	set dbnames "x.db w.db c.db"
 	foreach db $dbnames {
 		set db1 [eval {berkdb_open -env $masterenv} $largs {-rdonly $db}]

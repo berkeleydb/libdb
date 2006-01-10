@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_rq_util.c,v 1.38 2004/07/16 14:57:38 bostic Exp $
+ * $Id: ex_rq_util.c,v 12.5 2005/11/02 22:14:24 alanb Exp $
  */
 
 #include <sys/types.h>
@@ -18,7 +18,7 @@
 #include "ex_repquote.h"
 
 static int   connect_site __P((DB_ENV *, machtab_t *,
-		 const char *, repsite_t *, int *, int *, thread *));
+		 const char *, repsite_t *, int *, int *, thread_t *));
 static void *elect_thread __P((void *));
 static void *hm_loop __P((void *));
 
@@ -31,7 +31,7 @@ typedef struct {
 	DB_ENV *dbenv;
 	const char *progname;
 	const char *home;
-	int fd;
+	socket_t fd;
 	u_int32_t eid;
 	machtab_t *tab;
 } hm_loop_args;
@@ -49,14 +49,15 @@ hm_loop(args)
 	DB_LSN permlsn;
 	DBT rec, control;
 	const char *c, *home, *progname;
-	int fd, eid, n, nsites, newm, nsites_allocd;
-	int open, pri, r, ret, t_ret, tmpid;
 	elect_args *ea;
 	hm_loop_args *ha;
 	machtab_t *tab;
-	thread elect_thr, *site_thrs, *tmp;
+	thread_t elect_thr, *site_thrs, *tmp, tid;
 	repsite_t self;
 	u_int32_t timeout;
+	int eid, n, nsites, newm, nsites_allocd;
+	int already_open, pri, r, ret, t_ret, tmpid;
+	socket_t fd;
 	void *status;
 
 	ea = NULL;
@@ -153,7 +154,7 @@ hm_loop(args)
 			if (nsites == nsites_allocd) {
 				/* Need to allocate more space. */
 				if ((tmp = realloc(site_thrs,
-				    (10 + nsites) * sizeof(thread))) == NULL) {
+				    (10 + nsites) * sizeof(thread_t))) == NULL) {
 					ret = errno;
 					goto out;
 				}
@@ -161,33 +162,46 @@ hm_loop(args)
 				nsites_allocd += 10;
 			}
 			if ((ret = connect_site(dbenv, tab, progname,
-			    &self, &open, &tmpid, &site_thrs[nsites++])) != 0)
+			    &self, &already_open, &tmpid, &tid)) != 0)
 				goto out;
+			if (!already_open)
+				memcpy(&site_thrs[nsites++], &tid, sizeof(thread_t));
 			break;
 		case DB_REP_HOLDELECTION:
 			if (master_eid == SELF_EID)
 				break;
 			/* Make sure that previous election has finished. */
 			if (ea != NULL) {
-				(void)thread_join(elect_thr, &status);
+				if (thread_join(elect_thr, &status) != 0) {
+					dbenv->errx(dbenv,
+					    "thread join failure");
+					goto out;
+				}
 				ea = NULL;
 			}
 			if ((ea = calloc(sizeof(elect_args), 1)) == NULL) {
+				dbenv->errx(dbenv, "can't allocate memory");
 				ret = errno;
 				goto out;
 			}
 			ea->dbenv = dbenv;
 			ea->machtab = tab;
-			ret = thread_create(&elect_thr,
-			    NULL, elect_thread, (void *)ea);
+			if ((ret = thread_create(&elect_thr,
+			     NULL, elect_thread, (void *)ea)) != 0) {
+				dbenv->errx(dbenv,
+				    "can't create election thread");
+			}
 			break;
 		case DB_REP_NEWMASTER:
 			/* Check if it's us. */
 			master_eid = tmpid;
 			if (tmpid == SELF_EID) {
 				if ((ret = dbenv->rep_start(dbenv,
-				    NULL, DB_REP_MASTER)) != 0)
+				    NULL, DB_REP_MASTER)) != 0) {
+					dbenv->err(dbenv, ret,
+					    "can't start as master");
 					goto out;
+				}
 				ret = domaster(dbenv, progname);
 			}
 			break;
@@ -205,14 +219,15 @@ out:	if ((t_ret = machtab_rem(tab, eid, 1)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Don't close the environment before any children exit. */
-	if (ea != NULL)
-		(void)thread_join(elect_thr, &status);
+	if (ea != NULL && thread_join(elect_thr, &status) != 0)
+		dbenv->errx(dbenv, "can't join election thread");
 
 	if (site_thrs != NULL)
 		while (--nsites >= 0)
-			(void)thread_join(site_thrs[nsites], &status);
+			if (thread_join(site_thrs[nsites], &status) != 0)
+				dbenv->errx(dbenv, "can't join site thread");
 
-	return ((void *)ret);
+	return ((void *)(uintptr_t)ret);
 }
 
 /*
@@ -229,9 +244,10 @@ connect_thread(args)
 	hm_loop_args *ha;
 	connect_args *cargs;
 	machtab_t *machtab;
-	thread hm_thrs[MAX_THREADS];
+	thread_t hm_thrs[MAX_THREADS];
 	void *status;
-	int fd, i, eid, ns, port, ret;
+	int i, eid, port, ret;
+	socket_t fd, ns;
 
 	ha = NULL;
 	cargs = (connect_args *)args;
@@ -252,11 +268,12 @@ connect_thread(args)
 
 	for (i = 0; i < MAX_THREADS; i++) {
 		if ((ns = listen_socket_accept(machtab,
-		    progname, fd, &eid)) < 0) {
+		    progname, fd, &eid)) == SOCKET_CREATION_FAILURE) {
 			ret = errno;
 			goto err;
 		}
 		if ((ha = calloc(sizeof(hm_loop_args), 1)) == NULL) {
+			dbenv->errx(dbenv, "can't allocate memory");
 			ret = errno;
 			goto err;
 		}
@@ -267,8 +284,10 @@ connect_thread(args)
 		ha->tab = machtab;
 		ha->dbenv = dbenv;
 		if ((ret = thread_create(&hm_thrs[i++], NULL,
-		    hm_loop, (void *)ha)) != 0)
+		    hm_loop, (void *)ha)) != 0) {
+			dbenv->errx(dbenv, "can't create thread for site");
 			goto err;
+		}
 		ha = NULL;
 	}
 
@@ -278,7 +297,8 @@ connect_thread(args)
 
 	/* Do not return until all threads have exited. */
 	while (--i >= 0)
-		(void)thread_join(hm_thrs[i], &status);
+		if (thread_join(hm_thrs[i], &status) != 0)
+			dbenv->errx(dbenv, "can't join site thread");
 
 err:	return (ret == 0 ? (void *)EXIT_SUCCESS : (void *)EXIT_FAILURE);
 }
@@ -297,7 +317,7 @@ connect_all(args)
 	hm_loop_args *ha;
 	int failed, i, eid, nsites, open, ret, *success;
 	machtab_t *machtab;
-	thread *hm_thr;
+	thread_t *hm_thr;
 	repsite_t *sites;
 
 	ha = NULL;
@@ -370,9 +390,10 @@ connect_site(dbenv, machtab, progname, site, is_open, eidp, hm_thrp)
 	const char *progname;
 	repsite_t *site;
 	int *is_open, *eidp;
-	thread *hm_thrp;
+	thread_t *hm_thrp;
 {
-	int ret, s;
+	int ret;
+	socket_t s;
 	hm_loop_args *ha;
 
 	if ((s = get_connected_socket(machtab, progname,
@@ -383,6 +404,7 @@ connect_site(dbenv, machtab, progname, site, is_open, eidp, hm_thrp)
 		return (0);
 
 	if ((ha = calloc(sizeof(hm_loop_args), 1)) == NULL) {
+		dbenv->errx(dbenv, "can't allocate memory");
 		ret = errno;
 		goto err;
 	}
@@ -395,9 +417,10 @@ connect_site(dbenv, machtab, progname, site, is_open, eidp, hm_thrp)
 
 	if ((ret = thread_create(hm_thrp, NULL,
 	    hm_loop, (void *)ha)) != 0) {
-		dbenv->err(dbenv, ret, "connect site");
+		dbenv->errx(dbenv, "can't create thread for connected site");
 		goto err1;
 	}
+	dbenv->errx(dbenv, "created thread %d\n", *hm_thrp); /* ### */
 
 	return (0);
 
@@ -416,9 +439,9 @@ elect_thread(args)
 {
 	DB_ENV *dbenv;
 	elect_args *eargs;
-	int n, ret, pri;
 	machtab_t *machtab;
 	u_int32_t timeout;
+	int n, ret, pri;
 
 	eargs = (elect_args *)args;
 	dbenv = eargs->dbenv;
@@ -432,7 +455,9 @@ elect_thread(args)
 
 	/* Check if it's us. */
 	if (master_eid == SELF_EID)
-		ret = dbenv->rep_start(dbenv, NULL, DB_REP_MASTER);
+		if ((ret = dbenv->rep_start(dbenv, NULL, DB_REP_MASTER)) != 0)
+			dbenv->err(dbenv, ret,
+			    "can't start as master in election thread");
 
-	return ((void *)(ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE));
+	return (NULL);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: DataCursor.java,v 1.5 2004/11/05 01:08:31 mjc Exp $
+ * $Id: DataCursor.java,v 12.3 2005/08/01 20:25:18 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -34,7 +34,7 @@ final class DataCursor implements Cloneable {
     private DataView view;
     private KeyRange range;
     private boolean writeAllowed;
-    private boolean dirtyRead;
+    private boolean readUncommitted;
     private DatabaseEntry keyThang;
     private DatabaseEntry valueThang;
     private DatabaseEntry primaryKeyThang;
@@ -136,8 +136,8 @@ final class DataCursor implements Cloneable {
         this.view = view;
         this.writeAllowed = writeAllowed && view.writeAllowed;
         this.range = (range != null) ? range : view.range;
-        dirtyRead = view.dirtyReadEnabled;
-
+        readUncommitted = view.cursorConfig.getReadUncommitted() ||
+            view.currentTxn.isReadUncommitted();
         initThangs();
 
         if (joinCursor == null) {
@@ -255,7 +255,7 @@ final class DataCursor implements Cloneable {
             return DbCompat.getRecordNumber(keyThang);
         }
     }
-
+    
     /**
      * Binding version of Cursor.getCurrent(), no join cursor allowed.
      */
@@ -266,7 +266,7 @@ final class DataCursor implements Cloneable {
         return cursor.getCurrent(keyThang, primaryKeyThang, valueThang,
                                  getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getFirst(), join cursor is allowed.
      */
@@ -281,7 +281,7 @@ final class DataCursor implements Cloneable {
                                    lockMode);
         }
     }
-
+    
     /**
      * Binding version of Cursor.getNext(), join cursor is allowed.
      */
@@ -296,7 +296,7 @@ final class DataCursor implements Cloneable {
                                   lockMode);
         }
     }
-
+    
     /**
      * Binding version of Cursor.getNext(), join cursor is allowed.
      */
@@ -311,7 +311,7 @@ final class DataCursor implements Cloneable {
                                        lockMode);
         }
     }
-
+    
     /**
      * Binding version of Cursor.getNextDup(), no join cursor allowed.
      */
@@ -322,7 +322,7 @@ final class DataCursor implements Cloneable {
         return cursor.getNextDup(keyThang, primaryKeyThang, valueThang,
                                  getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getLast(), no join cursor allowed.
      */
@@ -333,7 +333,7 @@ final class DataCursor implements Cloneable {
         return cursor.getLast(keyThang, primaryKeyThang, valueThang,
                               getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getPrev(), no join cursor allowed.
      */
@@ -344,7 +344,7 @@ final class DataCursor implements Cloneable {
         return cursor.getPrev(keyThang, primaryKeyThang, valueThang,
                               getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getPrevNoDup(), no join cursor allowed.
      */
@@ -355,7 +355,7 @@ final class DataCursor implements Cloneable {
         return cursor.getPrevNoDup(keyThang, primaryKeyThang, valueThang,
                                    getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getPrevDup(), no join cursor allowed.
      */
@@ -366,7 +366,7 @@ final class DataCursor implements Cloneable {
         return cursor.getPrevDup(keyThang, primaryKeyThang, valueThang,
                                  getLockMode(lockForWrite));
     }
-
+    
     /**
      * Binding version of Cursor.getSearchKey(), no join cursor allowed.
      * Searches by record number in a BTREE-RECNO db with RECNO access.
@@ -382,7 +382,7 @@ final class DataCursor implements Cloneable {
             return OperationStatus.NOTFOUND;
         }
     }
-
+    
     /**
      * Pass-thru version of Cursor.getSearchKey().
      * Searches by record number in a BTREE-RECNO db with RECNO access.
@@ -399,7 +399,7 @@ final class DataCursor implements Cloneable {
                                        valueThang, lockMode);
         }
     }
-
+    
     /**
      * Binding version of Cursor.getSearchKeyRange(), no join cursor allowed.
      */
@@ -416,7 +416,7 @@ final class DataCursor implements Cloneable {
             return OperationStatus.NOTFOUND;
         }
     }
-
+    
     /**
      * Binding version of Cursor.getSearchBoth(), no join cursor allowed.
      * Unlike SecondaryCursor.getSearchBoth, for a secondary this searches for
@@ -464,7 +464,6 @@ final class DataCursor implements Cloneable {
         throws DatabaseException {
 
         checkNoJoinCursor();
-        LockMode lockMode = getLockMode(false);
 
         if (view.entityBinding != null && !view.isSecondary() &&
             (findFirst || !view.dupsAllowed)) {
@@ -504,7 +503,7 @@ final class DataCursor implements Cloneable {
 
         checkWriteAllowed(false);
         view.useValue(value, valueThang, keyThang);
-
+        
         /*
          * Workaround for a DB core problem: With HASH type a put() with
          * different data is allowed.
@@ -652,11 +651,9 @@ final class DataCursor implements Cloneable {
      */
     LockMode getLockMode(boolean lockForWrite) {
 
-        /* Dirty-read takes precedence over write-locking. */
+        /* Read-uncommmitted takes precedence over write-locking. */
 
-        if (dirtyRead) {
-            return LockMode.DIRTY_READ;
-        } else if (lockForWrite && !view.currentTxn.isDirtyRead()) {
+        if (lockForWrite && !readUncommitted) {
             return view.currentTxn.getWriteLockMode();
         } else {
             return LockMode.DEFAULT;

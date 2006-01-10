@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb010.tcl,v 11.19 2004/10/18 17:34:17 carol Exp $
+# $Id: sdb010.tcl,v 12.1 2005/06/16 20:24:04 bostic Exp $
 #
 # TEST	sdb010
 # TEST	Test DB->remove() method and DB->truncate() for subdbs

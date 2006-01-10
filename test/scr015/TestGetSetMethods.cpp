@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TestGetSetMethods.cpp,v 1.6 2004/01/28 03:36:33 bostic Exp $
+ * $Id: TestGetSetMethods.cpp,v 12.2 2005/10/25 23:41:22 mjc Exp $
  */
 
 /*
@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
 		dbenv->set_lk_max_locks(10);
 		dbenv->set_lk_max_objects(1000);
 		dbenv->set_mp_mmapsize(0x10000);
-		dbenv->set_tas_spins(1000);
 
 		// Need to open the environment so we
 		// can get a transaction.
@@ -56,12 +55,11 @@ int main(int argc, char *argv[])
 
 		// We get a db, one for each type.
 		// That's because once we call (for instance)
-		// set_bt_maxkey, DB 'knows' that this is a
+		// set_bt_minkey, DB 'knows' that this is a
 		// Btree Db, and it cannot be used to try Hash
 		// or Recno functions.
 		//
 		Db *db_bt = new Db(NULL, 0);
-		db_bt->set_bt_maxkey(10000);
 		db_bt->set_bt_minkey(100);
 		db_bt->set_cachesize(0, 0x100000, 0);
 		db_bt->close(0);

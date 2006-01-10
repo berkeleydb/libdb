@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredClassCatalogTest.java,v 1.2 2004/09/01 14:34:22 mark Exp $
+ * $Id: StoredClassCatalogTest.java,v 12.1 2005/01/31 19:27:36 mark Exp $
  */
 package com.sleepycat.collections.test.serial;
 

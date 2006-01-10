@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: FastInputStream.java,v 1.2 2004/06/04 18:24:50 mark Exp $
+ * $Id: FastInputStream.java,v 12.2 2005/08/01 20:25:22 mark Exp $
  */
 
 package com.sleepycat.util;
@@ -141,9 +141,8 @@ public class FastInputStream extends InputStream {
         if (length > avail) {
             length = avail;
         }
-        for (int i = 0; i < length; i++) {
-            toBuf[offset++] = buf[off++];
-        }
+        System.arraycopy(buf, off, toBuf, offset, length);
+        off += length;
         return length;
     }
 

@@ -74,10 +74,9 @@ __dbreg_register_log(dbenv, txnid, ret_lsnp, flags,
 		 * That assignment is done inside the DbEnv->log_put call,
 		 * so pass in the appropriate memory location to be filled
 		 * in by the log_put code.
-		*/
-		DB_SET_BEGIN_LSNP(txnid, &rlsnp);
+		 */
+		DB_SET_TXN_LSNP(txnid, &rlsnp, &lsnp);
 		txn_num = txnid->txnid;
-		lsnp = &txnid->last_lsn;
 	}
 
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
@@ -173,7 +172,7 @@ __dbreg_register_log(dbenv, txnid, ret_lsnp, flags,
 	if (is_durable || txnid == NULL) {
 		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnid != NULL) {
-			txnid->last_lsn = *rlsnp;
+			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
 				 *ret_lsnp = *rlsnp;
 		}
@@ -193,13 +192,14 @@ __dbreg_register_log(dbenv, txnid, ret_lsnp, flags,
 		ret = 0;
 #endif
 		STAILQ_INSERT_HEAD(&txnid->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnid->td, TXN_DTL_INMEMORY);
 		LSN_NOT_LOGGED(*ret_lsnp);
 	}
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)__dbreg_register_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, NULL, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC

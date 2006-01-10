@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_log.c,v 11.61 2004/04/05 20:18:32 bostic Exp $
+ * $Id: tcl_log.c,v 12.4 2005/10/29 13:05:02 bostic Exp $
  */
 
 #include "db_config.h"
@@ -382,6 +382,7 @@ tcl_LogStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Log file mode", sp->st_mode);
 	MAKE_STAT_LIST("Log record cache size", sp->st_lg_bsize);
 	MAKE_STAT_LIST("Current log file size", sp->st_lg_size);
+	MAKE_STAT_LIST("Log file records written", sp->st_record);
 	MAKE_STAT_LIST("Mbytes written", sp->st_w_mbytes);
 	MAKE_STAT_LIST("Bytes written (over Mb)", sp->st_w_bytes);
 	MAKE_STAT_LIST("Mbytes written since checkpoint", sp->st_wc_mbytes);
@@ -390,7 +391,8 @@ tcl_LogStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Times log written", sp->st_wcount);
 	MAKE_STAT_LIST("Times log written because cache filled up",
 	    sp->st_wcount_fill);
-	MAKE_STAT_LIST("Times log flushed", sp->st_scount);
+	MAKE_STAT_LIST("Times log read from disk", sp->st_rcount);
+	MAKE_STAT_LIST("Times log flushed to disk", sp->st_scount);
 	MAKE_STAT_LIST("Current log file number", sp->st_cur_file);
 	MAKE_STAT_LIST("Current log file offset", sp->st_cur_offset);
 	MAKE_STAT_LIST("On-disk log file number", sp->st_disk_file);

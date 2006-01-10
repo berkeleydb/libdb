@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: TupleSerialMarshalledBinding.java,v 1.3 2004/09/22 18:01:01 bostic Exp $
+ * $Id: TupleSerialMarshalledBinding.java,v 12.1 2005/01/31 19:27:30 mark Exp $
  */
 
 package com.sleepycat.bind.serial;
@@ -16,7 +16,7 @@ import com.sleepycat.bind.tuple.TupleOutput;
 /**
  * A concrete <code>TupleSerialBinding</code> that delegates to the
  * <code>MarshalledTupleKeyEntity</code> interface of the entity class.
- *
+ * 
  * <p>The {@link MarshalledTupleKeyEntity} interface must be implemented by the
  * entity class to convert between the key/data entry and entity object.</p>
  *

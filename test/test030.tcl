@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test030.tcl,v 11.20 2004/01/28 03:36:30 bostic Exp $
+# $Id: test030.tcl,v 12.1 2005/06/16 20:24:06 bostic Exp $
 #
 # TEST	test030
 # TEST	Test DB_NEXT_DUP Functionality.

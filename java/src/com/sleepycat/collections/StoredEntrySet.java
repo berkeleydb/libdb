@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredEntrySet.java,v 1.3 2004/06/04 18:24:50 mark Exp $
+ * $Id: StoredEntrySet.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.collections;

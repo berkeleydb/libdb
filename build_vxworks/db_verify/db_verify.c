@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
+ * Copyright (c) 1996-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: db_verify.c,v 1.49 2004/08/01 00:21:58 bostic Exp $
+ * $Id: db_verify.c,v 12.3 2005/06/16 20:21:37 bostic Exp $
  */
 
 #include "db_config.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2004\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
 #endif
 
 #ifndef NO_SYSTEM_INCLUDES
@@ -27,7 +27,9 @@ static const char copyright[] =
 
 int db_verify_main __P((int, char *[]));
 int db_verify_usage __P((void));
-int db_verify_version_check __P((const char *));
+int db_verify_version_check __P((void));
+
+const char *progname;
 
 int
 db_verify(args)
@@ -50,7 +52,6 @@ db_verify_main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind, __db_getopt_reset;
-	const char *progname = "db_verify";
 	DB *dbp, *dbp1;
 	DB_ENV *dbenv;
 	u_int32_t flags, cache;
@@ -58,7 +59,12 @@ db_verify_main(argc, argv)
 	int quiet, resize, ret;
 	char *home, *passwd;
 
-	if ((ret = db_verify_version_check(progname)) != 0)
+	if ((progname = strrchr(argv[0], '/')) == NULL)
+		progname = argv[0];
+	else
+		++progname;
+
+	if ((ret = db_verify_version_check()) != 0)
 		return (ret);
 
 	dbenv = NULL;
@@ -245,14 +251,13 @@ shutdown:	exitval = 1;
 int
 db_verify_usage()
 {
-	fprintf(stderr, "%s\n",
-	    "usage: db_verify [-NoqV] [-h home] [-P password] db_file ...");
+	fprintf(stderr, "usage: %s %s\n", progname,
+	    "[-NoqV] [-h home] [-P password] db_file ...");
 	return (EXIT_FAILURE);
 }
 
 int
-db_verify_version_check(progname)
-	const char *progname;
+db_verify_version_check()
 {
 	int v_major, v_minor, v_patch;
 

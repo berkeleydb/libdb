@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.define,v 1.25 2004/10/07 18:54:37 bostic Exp $
+# $Id: chk.define,v 12.2 2005/10/20 16:41:02 bostic Exp $
 #
 # Check to make sure that all #defines are actually used.
 # Check to make sure that all #defines start in column 1.
@@ -31,7 +31,9 @@ egrep '^#define' $d/dbinc/*.h $d/dbinc/*.in |
     awk '{print $2}' |
     sed -e '/^B_DELETE/d' \
 	-e '/^B_MAX/d' \
+	-e '/^CHECK_THREAD/d' \
 	-e '/^DB_BTREEOLDVER/d' \
+	-e '/^DB_DEGREE_2/d' \
 	-e '/^DB_HASHOLDVER/d' \
 	-e '/^DB_LOCKVERSION/d' \
 	-e '/^DB_MAX_PAGES/d' \
@@ -42,6 +44,7 @@ egrep '^#define' $d/dbinc/*.h $d/dbinc/*.in |
 	-e '/^HASH_UNUSED/d' \
 	-e '/^HPUX_MUTEX_PAD/d' \
 	-e '/^LOG_OP/d' \
+	-e '/^MAX_ID/d' \
 	-e '/^MINFILL/d' \
 	-e '/^MUTEX_FIELDS/d' \
 	-e '/^NAME_TO_SEQUENCE/d' \
@@ -51,6 +54,8 @@ egrep '^#define' $d/dbinc/*.h $d/dbinc/*.in |
 	-e '/^P_16_COPY/d' \
 	-e '/^P_32_COPY/d' \
 	-e '/^P_32_SWAP/d' \
+	-e '/^P_64_COPY/d' \
+	-e '/^P_64_SWAP/d' \
 	-e '/^P_TO_UINT16/d' \
 	-e '/^QPAGE_CHKSUM/d' \
 	-e '/^QPAGE_NORMAL/d' \
@@ -62,6 +67,7 @@ egrep '^#define' $d/dbinc/*.h $d/dbinc/*.in |
 	-e '/^WRAPPED_CLASS/d' \
 	-e '/^__BIT_TYPES_DEFINED__/d' \
 	-e '/^__DBC_INTERNAL/d' \
+	-e '/^__lock_locker_hash/d' \
 	-e '/^i_/d' \
 	-e '/_H_/d' \
 	-e 's/(.*//' | sort > $t1

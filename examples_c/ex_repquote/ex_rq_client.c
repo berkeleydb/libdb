@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_rq_client.c,v 1.39 2004/01/28 03:36:03 bostic Exp $
+ * $Id: ex_rq_client.c,v 12.7 2005/11/02 22:14:24 alanb Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@ doclient(dbenv, progname, machtab)
 {
 	checkloop_args cargs;
 	disploop_args dargs;
-	thread check_thr, disp_thr;
+	thread_t check_thr, disp_thr;
 	void *cstatus, *dstatus;
 	int rval, s;
 
@@ -53,7 +53,7 @@ doclient(dbenv, progname, machtab)
 	dargs.progname = progname;
 	dargs.dbenv = dbenv;
 	if (thread_create(&disp_thr, NULL, display_loop, (void *)&dargs)) {
-		dbenv->err(dbenv, errno, "display_loop thread creation failed");
+		dbenv->errx(dbenv, "display_loop thread creation failed");
 		goto err;
 	}
 
@@ -61,12 +61,12 @@ doclient(dbenv, progname, machtab)
 	cargs.machtab = machtab;
 	cargs.progname = progname;
 	if (thread_create(&check_thr, NULL, check_loop, (void *)&cargs)) {
-		dbenv->err(dbenv, errno, "check_thread pthread_create failed");
+		dbenv->errx(dbenv, "check_thread pthread_create failed");
 		goto err;
 	}
 	if (thread_join(disp_thr, &dstatus) ||
 	    thread_join(check_thr, &cstatus)) {
-		dbenv->err(dbenv, errno, "pthread_join failed");
+		dbenv->errx(dbenv, "pthread_join failed");
 		goto err;
 	}
 
@@ -112,12 +112,12 @@ check_loop(args)
 		if (count == 0) {
 			memset(&dbt, 0, sizeof(dbt));
 			dbt.data = myaddr;
-			dbt.size = strlen(myaddr) + 1;
+			dbt.size = (u_int32_t)strlen(myaddr) + 1;
 			(void)dbenv->rep_start(dbenv, &dbt, DB_REP_CLIENT);
 			count = 1;
 		} else {
 			machtab_parm(machtab, &n, &pri, &timeout);
-		 	if (dbenv->rep_elect(dbenv,
+			if (dbenv->rep_elect(dbenv,
 			    n, (n/2+1), pri, timeout, &master_eid, 0) == 0)
 				break;
 			count = 0;
@@ -130,7 +130,7 @@ check_loop(args)
 	    dbenv->rep_start(dbenv, NULL, DB_REP_MASTER) == 0)
 		(void)domaster(dbenv, progname);
 
-	return ((void *)EXIT_SUCCESS);
+	return (NULL);
 }
 
 static void *
@@ -142,7 +142,7 @@ display_loop(args)
 	DBC *dbc;
 	const char *progname;
 	disploop_args *dargs;
-	int ret, rval, t_ret;
+	int ret, t_ret;
 
 	dargs = (disploop_args *)args;
 	progname = dargs->progname;
@@ -150,9 +150,10 @@ display_loop(args)
 
 	dbc = NULL;
 	dbp = NULL;
-	ret = 0;
 
 retry:	for (;;) {
+		ret = 0;
+
 		/* If we become master, shut this loop off. */
 		if (master_eid == SELF_EID)
 			break;
@@ -160,7 +161,7 @@ retry:	for (;;) {
 		if (dbp == NULL) {
 			if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 				dbenv->err(dbenv, ret, "db_create");
-				return ((void *)EXIT_FAILURE);
+				goto err;
 			}
 
 			if ((ret = dbp->open(dbp, NULL,
@@ -191,52 +192,45 @@ retry:	for (;;) {
 
 			if ((t_ret = dbc->c_close(dbc)) != 0) {
 				dbenv->err(dbenv, ret, "DBC->c_close");
-
 				if (ret == 0)
 					ret = t_ret;
 			}
 		}
-
-		if (ret == DB_REP_HANDLE_DEAD) {
-			dbp = NULL;
-			continue;
-		} else if (ret != 0)
+		if (ret != 0)
 			goto err;
 
 		dbc = NULL;
-
 		sleep(SLEEPTIME);
 	}
 
-err:	rval = EXIT_SUCCESS;
-	switch (ret) {
-		case DB_LOCK_DEADLOCK:
-			if (dbc != NULL) {
-				(void)dbc->c_close(dbc);
-				dbc = NULL;
-			}
-			ret = 0;
-			goto retry;
-		case DB_REP_HANDLE_DEAD:
-			if (dbp != NULL) {
-				(void)dbp->close(dbp, DB_NOSYNC);
-				dbp = NULL;
-			}
-			ret = 0;
-			goto retry;
-		default:
-			break;
+err:	switch (ret) {
+	case DB_LOCK_DEADLOCK:
+		if (dbc != NULL) {
+			ret = dbc->c_close(dbc);
+			dbc = NULL;
+			if (ret != 0)
+				break;
+		}
+		goto retry;
+	case DB_REP_HANDLE_DEAD:
+		if (dbp != NULL) {
+			ret = dbp->close(dbp, DB_NOSYNC);
+			dbp = NULL;
+			if (ret != 0)
+				break;
+		}
+		goto retry;
+	default:
+		break;
 	}
 
-	if (ret != 0)
-		rval = EXIT_FAILURE;
-
-	if (dbp != NULL && (ret = dbp->close(dbp, 0)) != 0) {
-		dbenv->err(dbenv, ret, "DB->close");
-		return ((void *)EXIT_FAILURE);
+	if (dbp != NULL && (t_ret = dbp->close(dbp, 0)) != 0) {
+		dbenv->err(dbenv, t_ret, "DB->close");
+		if (ret == 0)
+			ret = t_ret;
 	}
 
-	return ((void *)rval);
+	return (NULL);
 }
 
 static int

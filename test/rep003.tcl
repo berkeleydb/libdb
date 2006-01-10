@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2004
+# Copyright (c) 2002-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep003.tcl,v 11.19 2004/09/22 18:01:05 bostic Exp $
+# $Id: rep003.tcl,v 12.2 2005/06/23 15:25:21 carol Exp $
 #
 # TEST  	rep003
 # TEST	Repeated shutdown/restart replication test
@@ -17,6 +17,10 @@ proc rep003 { method { tnum "003" } args } {
 	source ./include.tcl
 	global rep003_dbname rep003_omethod rep003_oargs
 
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	if { [is_record_based $method] } {
 		puts "Rep$tnum: Skipping for method $method"
 		return

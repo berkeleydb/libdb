@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env004.tcl,v 11.22 2004/04/23 15:40:12 sue Exp $
+# $Id: env004.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	env004
 # TEST	Test multiple data directories.  Do a bunch of different opens

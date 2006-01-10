@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test066.tcl,v 11.15 2004/01/28 03:36:31 bostic Exp $
+# $Id: test066.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
 #
 # TEST	test066
 # TEST	Test of cursor overwrites of DB_CURRENT w/ duplicates.

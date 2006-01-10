@@ -1,19 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: ExceptionUnwrapper.java,v 1.1 2004/04/09 16:34:10 mark Exp $
+ * $Id: ExceptionUnwrapper.java,v 12.2 2005/08/01 20:25:21 mark Exp $
  */
 
 package com.sleepycat.util;
 
 /**
  * Unwraps nested exceptions by calling the {@link
- * ExceptionWrapper#getDetail()} method for exceptions that implement the
+ * ExceptionWrapper#getCause()} method for exceptions that implement the
  * {@link ExceptionWrapper} interface.  Does not currently support the Java 1.4
- * <code>Throwable.getDetail()</code> method.
+ * <code>Throwable.getCause()</code> method.
  *
  * @author Mark Hayes
  */
@@ -55,7 +55,7 @@ public class ExceptionUnwrapper {
 
         while (true) {
             if (e instanceof ExceptionWrapper) {
-                Throwable e2 = ((ExceptionWrapper) e).getDetail();
+                Throwable e2 = ((ExceptionWrapper) e).getCause();
                 if (e2 == null) {
                     return e;
                 } else {

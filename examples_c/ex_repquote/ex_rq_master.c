@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_rq_master.c,v 1.27 2004/01/28 03:36:03 bostic Exp $
+ * $Id: ex_rq_master.c,v 12.5 2005/11/02 22:14:24 alanb Exp $
  */
 
 #include <sys/types.h>
@@ -27,26 +27,34 @@ domaster(dbenv, progname)
 	const char *progname;
 {
 	int ret;
-	thread interface_thr;
+	thread_t interface_thr;
 #ifndef _WIN32
 	int t_ret;
 	pthread_attr_t attr;
 
 	/* Spawn off a thread to handle the basic master interface. */
-	if ((ret = pthread_attr_init(&attr)) != 0 &&
+	if ((ret = pthread_attr_init(&attr)) != 0 ||
 	    (ret = pthread_attr_setdetachstate(&attr,
-	    PTHREAD_CREATE_DETACHED)) != 0)
+	    PTHREAD_CREATE_DETACHED)) != 0) {
+		dbenv->err(dbenv, ret,
+		    "can't set up pthread DETACHED attribute");
 		goto err;
+	}
 #endif
 
 	if ((ret = thread_create(&interface_thr,
-	    &attr, master_loop, (void *)dbenv)) != 0)
+	    &attr, master_loop, (void *)dbenv)) != 0) {
+		dbenv->err(dbenv, ret, "can't create master thread");
 		goto err;
+	}
 
 err:
 #ifndef _WIN32
-	if ((t_ret = pthread_attr_destroy(&attr)) != 0 && ret == 0)
-		ret = t_ret;
+	if ((t_ret = pthread_attr_destroy(&attr)) != 0) {
+		dbenv->err(dbenv, t_ret, "can't destroy thread attribute");
+		if (ret == 0)
+			ret = t_ret;
+	}
 #endif
 	COMPQUIET(progname, NULL);
 
@@ -58,11 +66,11 @@ master_loop(dbenvv)
 	void *dbenvv;
 {
 	DB *dbp;
+	DBT key, data;
 	DB_ENV *dbenv;
 	DB_TXN *txn;
-	DBT key, data;
-	char buf[BUFSIZE], *rbuf;
 	int ret;
+	char buf[BUFSIZE], *rbuf;
 
 	dbp = NULL;
 	txn = NULL;
@@ -75,14 +83,14 @@ master_loop(dbenvv)
 	 */
 #ifdef NOTDEF
 	if ((ret = db_create(&dbp, NULL, 0)) != 0)
-		return (ret);
+		goto err;
 	if ((ret = dbp->verify(dbp, DATABASE, NULL, NULL, 0)) != 0) {
 		if ((ret = dbp->remove(dbp, DATABASE, NULL, 0)) != 0 &&
 		    ret != DB_NOTFOUND && ret != ENOENT)
-			return (ret);
+			goto err;
 #endif
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0)
-			return ((void *)ret);
+			goto err;
 		/* Set page size small so we can easily do page allocation. */
 		if ((ret = dbp->set_pagesize(dbp, 512)) != 0)
 			goto err;
@@ -103,9 +111,9 @@ master_loop(dbenvv)
 	} else {
 		/* Reopen in the environment. */
 		if ((ret = dbp->close(dbp, 0)) != 0)
-			return (ret);
+			goto err;
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0)
-			return (ret);
+			goto err;
 		if ((ret = dbp->open(dbp,
 		    DATABASE, NULL, DB_UNKNOWN, DB_THREAD, 0)) != 0)
 			goto err;
@@ -136,10 +144,10 @@ master_loop(dbenvv)
 		}
 
 		key.data = buf;
-		key.size = strlen(buf);
+		key.size = (u_int32_t)strlen(buf);
 
 		data.data = rbuf;
-		data.size = strlen(rbuf);
+		data.size = (u_int32_t)strlen(rbuf);
 
 		if ((ret = dbenv->txn_begin(dbenv, NULL, &txn, 0)) != 0)
 			goto err;
@@ -165,5 +173,5 @@ err:	if (txn != NULL)
 	if (dbp != NULL)
 		(void)dbp->close(dbp, DB_NOSYNC);
 
-	return ((void *)ret);
+	return ((void *)(uintptr_t)ret);
 }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: KeyRange.java,v 1.2 2004/05/05 15:43:48 mark Exp $
+ * $Id: KeyRange.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.collections;

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: log005.tcl,v 11.6 2004/09/22 18:01:05 bostic Exp $
+# $Id: log005.tcl,v 12.1 2005/06/16 20:23:56 bostic Exp $
 #
 # TEST	log005
 # TEST	Check that log file sizes can change on the fly.

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004
+ * Copyright (c) 2004-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_seq.c,v 11.12 2004/10/25 18:02:56 bostic Exp $
+ * $Id: tcl_seq.c,v 12.2 2005/06/16 20:23:49 bostic Exp $
  */
 
 #include "db_config.h"
@@ -291,13 +291,11 @@ tcl_SeqGet(interp, objc, objv, seq)
 	DB_SEQUENCE *seq;		/* Sequence pointer */
 {
 	static const char *seqgetopts[] = {
-		"-auto_commit",
 		"-nosync",
 		"-txn",
 		NULL
 	};
 	enum seqgetopts {
-		SEQGET_AUTO_COMMIT,
 		SEQGET_NOSYNC,
 		SEQGET_TXN
 	};
@@ -336,9 +334,6 @@ tcl_SeqGet(interp, objc, objv, seq)
 		}
 		i++;
 		switch ((enum seqgetopts)optindex) {
-		case SEQGET_AUTO_COMMIT:
-			aflag |= DB_AUTO_COMMIT;
-			break;
 		case SEQGET_NOSYNC:
 			aflag |= DB_TXN_NOSYNC;
 			break;
@@ -394,13 +389,11 @@ tcl_SeqRemove(interp, objc, objv, seq, ip)
 	DBTCL_INFO *ip;			/* Info pointer */
 {
 	static const char *seqgetopts[] = {
-		"-auto_commit",
 		"-nosync",
 		"-txn",
 		NULL
 	};
 	enum seqgetopts {
-		SEQGET_AUTO_COMMIT,
 		SEQGET_NOSYNC,
 		SEQGET_TXN
 	};
@@ -439,9 +432,6 @@ tcl_SeqRemove(interp, objc, objv, seq, ip)
 		}
 		i++;
 		switch ((enum seqgetopts)optindex) {
-		case SEQGET_AUTO_COMMIT:
-			aflag |= DB_AUTO_COMMIT;
-			break;
 		case SEQGET_NOSYNC:
 			aflag |= DB_TXN_NOSYNC;
 			break;

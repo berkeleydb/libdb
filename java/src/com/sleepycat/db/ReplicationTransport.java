@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: ReplicationTransport.java,v 1.3 2004/07/06 15:06:37 mjc Exp $
+ * $Id: ReplicationTransport.java,v 12.2 2005/10/25 08:51:14 mjc Exp $
  */
 package com.sleepycat.db;
 
@@ -18,7 +17,9 @@ public interface ReplicationTransport {
              LogSequenceNumber lsn,
              int envid,
              boolean noBuffer,
-             boolean permanent)
+             boolean permanent,
+             boolean anywhere,
+             boolean isRetry)
         throws DatabaseException;
 
     int EID_BROADCAST = DbConstants.DB_EID_BROADCAST;

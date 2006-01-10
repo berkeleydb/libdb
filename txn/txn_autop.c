@@ -47,7 +47,7 @@ __txn_regop_print(dbenv, dbtp, lsnp, notused2, notused3)
 	time_t timeval;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __txn_regop_read(dbenv, dbtp->data, &argp)) != 0)
@@ -70,6 +70,7 @@ __txn_regop_print(dbenv, dbtp, lsnp, notused2, notused3)
 	    (u_long)lt->tm_year - 100, (u_long)lt->tm_mon+1,
 	    (u_long)lt->tm_mday, (u_long)lt->tm_hour,
 	    (u_long)lt->tm_min, (u_long)lt->tm_sec);
+	(void)printf("\tenvid: %ld\n", (long)argp->envid);
 	(void)printf("\tlocks: \n");
 	__lock_list_print(dbenv, &argp->locks);
 	(void)printf("\n");
@@ -94,7 +95,7 @@ __txn_ckp_print(dbenv, dbtp, lsnp, notused2, notused3)
 	time_t timeval;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __txn_ckp_read(dbenv, dbtp->data, &argp)) != 0)
@@ -142,7 +143,7 @@ __txn_child_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__txn_child_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __txn_child_read(dbenv, dbtp->data, &argp)) != 0)
@@ -181,7 +182,7 @@ __txn_xa_regop_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __txn_xa_regop_read(dbenv, dbtp->data, &argp)) != 0)
@@ -229,7 +230,7 @@ __txn_recycle_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__txn_recycle_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __txn_recycle_read(dbenv, dbtp->data, &argp)) != 0)

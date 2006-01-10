@@ -9,6 +9,7 @@ typedef struct ___txn_regop_args {
 	DB_LSN prev_lsn;
 	u_int32_t	opcode;
 	int32_t	timestamp;
+	u_int32_t	envid;
 	DBT	locks;
 } __txn_regop_args;
 

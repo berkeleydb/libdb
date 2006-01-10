@@ -53,6 +53,7 @@ DBT_OPT			T_dbtdatum_opt
 DBT_B			T_dbtdatum_btree
 DBTKEY			T_dbtkeydatum
 DBTKEY_B		T_dbtkeydatum_btree
+DBTKEY_Br		T_dbtkeydatum_btree_r
 DBTYPE			T_U_INT
 DualType		T_DUAL
 BerkeleyDB_type *	T_IV
@@ -208,6 +209,24 @@ T_dbtkeydatum_btree
 	    }
 	}
 
+T_dbtkeydatum_btree_r
+	{
+	    SV* my_sv = $arg ;
+	    DBM_ckFilter(my_sv, filter_store_key, \"filter_store_key\");
+	    DBT_clear($var) ;
+            SvGETMAGIC($arg) ;
+	    if (db->recno_or_queue ||
+		    (db->type == DB_BTREE && flagSet(DB_SET_RECNO))) {
+	        Value = GetRecnoKey(db, SvIV(my_sv)) ; 
+	        $var.data = & Value; 
+	        $var.size = (int)sizeof(db_recno_t);
+	    }
+	    else {
+	        $var.data = SvPV(my_sv, PL_na);
+	        $var.size = (int)PL_na;
+	    }
+	}
+
 T_dbtdatum
 	{
 	    SV* my_sv = $arg ;
@@ -276,6 +295,8 @@ T_PV_NULL
 
 T_dbtkeydatum_btree
 	OutputKey_B($arg, $var)
+T_dbtkeydatum_btree_r
+	OutputKey_Br($arg, $var)
 T_dbtkeydatum
 	OutputKey($arg, $var)
 T_dbtdatum

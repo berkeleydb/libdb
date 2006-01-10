@@ -150,4 +150,18 @@ typedef struct ___db_pg_init_args {
 	DBT	data;
 } __db_pg_init_args;
 
+#define	DB___db_pg_sort	61
+typedef struct ___db_pg_sort_args {
+	u_int32_t type;
+	DB_TXN *txnid;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	meta;
+	DB_LSN	meta_lsn;
+	db_pgno_t	last_free;
+	DB_LSN	last_lsn;
+	db_pgno_t	last_pgno;
+	DBT	list;
+} __db_pg_sort_args;
+
 #endif

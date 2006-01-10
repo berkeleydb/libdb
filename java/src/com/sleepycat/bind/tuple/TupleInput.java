@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: TupleInput.java,v 1.4 2004/09/01 14:34:20 mark Exp $
+ * $Id: TupleInput.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -312,7 +312,7 @@ public class TupleInput extends FastInputStream {
         long c3 = readFast();
         long c4 = readFast();
         if ((c1 | c2 | c3 | c4) < 0) {
-             throw new IndexOutOfBoundsException();
+	    throw new IndexOutOfBoundsException();
         }
         return ((c1 << 24) | (c2 << 16) | (c3 << 8) | c4);
     }
@@ -396,8 +396,6 @@ public class TupleInput extends FastInputStream {
      * @param chars is the array to receive the data and whose length is used
      * to determine the number of bytes to be read.
      *
-     * @return the value read from the buffer.
-     *
      * @throws IndexOutOfBoundsException if not enough bytes are available in
      * the buffer.
      */
@@ -420,8 +418,6 @@ public class TupleInput extends FastInputStream {
      *
      * @param chars is the array to receive the data and whose length is used
      * to determine the number of characters to be read.
-     *
-     * @return the value read from the buffer.
      *
      * @throws IndexOutOfBoundsException if not enough bytes are available in
      * the buffer.
@@ -465,8 +461,6 @@ public class TupleInput extends FastInputStream {
      *
      * @param chars is the array to receive the data and whose length is used
      * to determine the number of characters to be read.
-     *
-     * @return the converted string.
      *
      * @throws IndexOutOfBoundsException if no null terminating byte is found
      * in the buffer.

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TupleFormatTest.java,v 1.3 2004/06/04 18:26:00 mark Exp $
+ * $Id: TupleFormatTest.java,v 12.2 2005/08/01 20:25:26 mark Exp $
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -59,7 +59,7 @@ public class TupleFormatTest extends TestCase {
 
         DbTestUtil.printTestName("TupleFormatTest." + getName());
         buffer = new DatabaseEntry();
-        out = TupleBinding.newOutput();
+        out = new TupleOutput();
     }
 
     public void tearDown() {

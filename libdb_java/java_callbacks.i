@@ -13,7 +13,8 @@ JAVA_TYPEMAP(_sig, _jclass, jobject)
 %enddef
 
 %{
-static void __dbj_error(const DB_ENV *dbenv, const char *prefix, const char *msg)
+static void __dbj_error(const DB_ENV *dbenv,
+    const char *prefix, const char *msg)
 {
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
@@ -30,8 +31,9 @@ static void __dbj_env_feedback(DB_ENV *dbenv, int opcode, int percent)
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
 
-	(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
-	    env_feedback_method, opcode, percent);
+	if (jdbenv != NULL)
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
+		    env_feedback_method, opcode, percent);
 }
 
 static void __dbj_message(const DB_ENV *dbenv, const char *msg)
@@ -49,8 +51,10 @@ static void __dbj_panic(DB_ENV *dbenv, int err)
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
 
-	(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
-	    paniccall_method, __dbj_get_except(jenv, err, NULL, NULL, jdbenv));
+	if (jdbenv != NULL)
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
+		    paniccall_method,
+		    __dbj_get_except(jenv, err, NULL, NULL, jdbenv));
 }
 
 static int __dbj_app_dispatch(DB_ENV *dbenv,
@@ -61,6 +65,9 @@ static int __dbj_app_dispatch(DB_ENV *dbenv,
 	jobject jdbt, jlsn;
 	jbyteArray jdbtarr;
 	int ret;
+
+	if (jdbenv == NULL)
+		return (EINVAL);
 
 	jdbt = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	__dbj_dbt_copyout(jenv, dbt, &jdbtarr, jdbt);
@@ -94,6 +101,9 @@ static int __dbj_rep_transport(DB_ENV *dbenv,
 	jobject jcontrol, jrec, jlsn;
 	jbyteArray jcontrolarr, jrecarr;
 	int ret;
+
+	if (jdbenv == NULL)
+		return (EINVAL);
 
 	jcontrol = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	jrec = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
@@ -134,6 +144,9 @@ static int __dbj_seckey_create(DB *db,
 	jbyteArray jkeyarr, jdataarr;
 	DBT_LOCKED lresult;
 	int ret;
+
+	if (jdb == NULL)
+		return (EINVAL);
 
 	jkey = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	jdata = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
@@ -190,6 +203,9 @@ static int __dbj_append_recno(DB *db, DBT *dbt, db_recno_t recno)
 	jbyteArray jdbtarr;
 	int ret;
 
+	if (jdb == NULL)
+		return (EINVAL);
+
 	jdbt = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	if (jdbt == NULL)
 		return (ENOMEM); /* An exception is pending */
@@ -234,15 +250,18 @@ static int __dbj_bt_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 	jbyteArray jdbtarr1, jdbtarr2;
 	int ret;
 
+	if (jdb == NULL)
+		return (EINVAL);
+
 	jdbtarr1 = (*jenv)->NewByteArray(jenv, (jsize)dbt1->size);
         if (jdbtarr1 == NULL)
-                return ENOMEM;
+                return (ENOMEM);
         (*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0, (jsize)dbt1->size,
             (jbyte *)dbt1->data);
 
 	jdbtarr2 = (*jenv)->NewByteArray(jenv, (jsize)dbt2->size);
         if (jdbtarr2 == NULL)
-                return ENOMEM;
+                return (ENOMEM);
         (*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0, (jsize)dbt2->size,
             (jbyte *)dbt2->data);
 
@@ -268,15 +287,18 @@ static size_t __dbj_bt_prefix(DB *db, const DBT *dbt1, const DBT *dbt2)
 	jbyteArray jdbtarr1, jdbtarr2;
 	int ret;
 
+	if (jdb == NULL)
+		return (EINVAL);
+
 	jdbt1 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	jdbt2 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	if (jdbt1 == NULL || jdbt2 == NULL)
-		return ENOMEM; /* An exception is pending */
+		return (ENOMEM); /* An exception is pending */
 
 	__dbj_dbt_copyout(jenv, dbt1, &jdbtarr1, jdbt1);
 	__dbj_dbt_copyout(jenv, dbt2, &jdbtarr2, jdbt2);
 	if (jdbtarr1 == NULL || jdbtarr2 == NULL)
-		return ENOMEM; /* An exception is pending */
+		return (ENOMEM); /* An exception is pending */
 	
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
 	    bt_prefix_method, jdbt1, jdbt2);
@@ -293,22 +315,26 @@ static int __dbj_dup_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 {
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdb = (jobject)DB_INTERNAL(db);
-	jobject jdbt1, jdbt2;
 	jbyteArray jdbtarr1, jdbtarr2;
 	int ret;
 
-	jdbt1 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
-	jdbt2 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
-	if (jdbt1 == NULL || jdbt2 == NULL)
-		return ENOMEM; /* An exception is pending */
+	if (jdb == NULL)
+		return (EINVAL);
 
-	__dbj_dbt_copyout(jenv, dbt1, &jdbtarr1, jdbt1);
-	__dbj_dbt_copyout(jenv, dbt2, &jdbtarr2, jdbt2);
-	if (jdbtarr1 == NULL || jdbtarr2 == NULL)
-		return ENOMEM; /* An exception is pending */
+	jdbtarr1 = (*jenv)->NewByteArray(jenv, (jsize)dbt1->size);
+        if (jdbtarr1 == NULL)
+                return (ENOMEM);
+        (*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0, (jsize)dbt1->size,
+            (jbyte *)dbt1->data);
+
+	jdbtarr2 = (*jenv)->NewByteArray(jenv, (jsize)dbt2->size);
+        if (jdbtarr2 == NULL)
+                return (ENOMEM);
+        (*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0, (jsize)dbt2->size,
+            (jbyte *)dbt2->data);
 
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
-	    dup_compare_method, jdbt1, jdbt2);
+	    dup_compare_method, jdbtarr1, jdbtarr2);
 	
 	if ((*jenv)->ExceptionOccurred(jenv)) {
 		/* The exception will be thrown, so this could be any error. */
@@ -317,8 +343,6 @@ static int __dbj_dup_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 	
 	(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
 	(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
-	(*jenv)->DeleteLocalRef(jenv, jdbt2);
-	(*jenv)->DeleteLocalRef(jenv, jdbt1);
 
 	return (ret);
 }
@@ -328,8 +352,9 @@ static void __dbj_db_feedback(DB *db, int opcode, int percent)
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdb = (jobject)DB_INTERNAL(db);
 
-	(*jenv)->CallNonvirtualVoidMethod(jenv, jdb, db_class,
-	    db_feedback_method, opcode, percent);
+	if (jdb != NULL)
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdb, db_class,
+		    db_feedback_method, opcode, percent);
 }
 
 static u_int32_t __dbj_h_hash(DB *db, const void *data, u_int32_t len)
@@ -339,8 +364,11 @@ static u_int32_t __dbj_h_hash(DB *db, const void *data, u_int32_t len)
 	jbyteArray jarr = (*jenv)->NewByteArray(jenv, (jsize)len);
 	int ret;
 
-	if (jarr == NULL)
-		return ENOMEM; /* An exception is pending */
+	if (jdb == NULL)
+		return (EINVAL);
+
+	if ((jarr = (*jenv)->NewByteArray(jenv, (jsize)len)) == NULL)
+		return (ENOMEM); /* An exception is pending */
 
 	(*jenv)->SetByteArrayRegion(jenv, jarr, 0, (jsize)len, (jbyte *)data);
 
@@ -353,8 +381,8 @@ static u_int32_t __dbj_h_hash(DB *db, const void *data, u_int32_t len)
 }
 %}
 
-JAVA_CALLBACK(void (*db_errcall_fcn)(const DB_ENV *, const char *, const char *),
-    com.sleepycat.db.ErrorHandler, error)
+JAVA_CALLBACK(void (*db_errcall_fcn)(const DB_ENV *,
+    const char *, const char *), com.sleepycat.db.ErrorHandler, error)
 JAVA_CALLBACK(void (*env_feedback_fcn)(DB_ENV *, int, int),
     com.sleepycat.db.FeedbackHandler, env_feedback)
 JAVA_CALLBACK(void (*db_msgcall_fcn)(const DB_ENV *, const char *),

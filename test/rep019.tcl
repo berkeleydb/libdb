@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep019.tcl,v 11.7 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep019.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  rep019
 # TEST	Replication and multiple clients at same LSN.
@@ -12,10 +12,15 @@
 # TEST  verify all client logs are identical.
 #
 proc rep019 { method { nclients 3 } { tnum "019" } args } {
-	global mixed_mode_logging
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	# This test needs to use recovery, so mixed-mode testing
 	# isn't appropriate.
+	global mixed_mode_logging
 	if { $mixed_mode_logging == 1 } {
 		puts "Rep$tnum: Skipping for mixed-mode logging."
 		return
@@ -85,7 +90,7 @@ proc rep019_sub { method nclients tnum recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $menv $masterdb $niter 0 0
+	eval rep_test $method $menv $masterdb $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	error_check_good mdb_cl [$masterdb close] 0

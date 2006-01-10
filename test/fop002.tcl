@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2004
+# Copyright (c) 2000-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: fop002.tcl,v 1.7 2004/02/25 17:49:05 carol Exp $
+# $Id: fop002.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	fop002.tcl
 # TEST	Test file system operations in the presence of bad permissions.

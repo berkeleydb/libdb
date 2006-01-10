@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: upgrade.tcl,v 11.37 2004/10/27 20:29:29 carol Exp $
+# $Id: upgrade.tcl,v 12.3 2005/06/16 20:24:11 bostic Exp $
 
 source ./include.tcl
 
@@ -13,6 +13,8 @@ set upgrade_dir "$test_path/upgrade/databases"
 
 global gen_upgrade
 set gen_upgrade 0
+global gen_dump
+set gen_dump 0
 global gen_chksum
 set gen_chksum 0
 global gen_upgrade_log
@@ -25,6 +27,7 @@ global upgrade_name
 
 proc upgrade { { archived_test_loc "DEFAULT" } } {
 	source ./include.tcl
+	global test_names
 	global upgrade_dir
 	global tcl_platform
 	global saved_logvers
@@ -174,6 +177,35 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 							close $o
 						}
 					}
+
+					# Then we test any .dmp files.  Move 
+					# the saved file to the current working 
+					# directory.  Run the test locally. 
+					# Compare the dumps; they should match.
+					if { [file exists $testdir/$name.dmp] } {
+						file rename -force \
+						    $testdir/$name.dmp $name.dmp
+
+						foreach test $test_names(plat) {
+							eval $test $method
+						}
+
+						# Discard lines that can differ.
+						discardline $name.dmp \
+						    TEMPFILE "db_pagesize="
+						file copy -force \
+						    TEMPFILE $name.dmp
+						discardline $testdir/$test.dmp \
+						    TEMPFILE "db_pagesize="
+						file copy -force \
+						    TEMPFILE $testdir/$test.dmp
+
+						error_check_good compare_dump \
+						    [filecmp $name.dmp \
+						    $testdir/$test.dmp] 0
+
+						fileremove $name.dmp
+					}
 				}
 			}
 		}
@@ -195,6 +227,7 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 proc _upgrade_test { temp_dir version method file endianness } {
 	source include.tcl
 	global errorInfo
+	global passwd
 	global encrypt
 
 	puts "Upgrade: $version $method $file $endianness"
@@ -203,6 +236,22 @@ proc _upgrade_test { temp_dir version method file endianness } {
 	if { [string match c-* $file] } {
 		set encrypt 1
 	}
+
+	# Open the database prior to upgrading.  If it fails, 
+	# it should fail with the DB_OLDVERSION message. 
+	set encargs ""
+	if { $encrypt == 1 } {
+		set encargs " -encryptany $passwd "
+	}
+	if { [catch \
+	    { set db [eval {berkdb open} $encargs \
+	    $temp_dir/$file-$endianness.db] } res] } {
+	    	error_check_good old_version [is_substr $res DB_OLDVERSION] 1
+	} else {
+		error_check_good db_close [$db close] 0
+	}
+
+	# Now upgrade the database. 
 	set ret [berkdb upgrade "$temp_dir/$file-$endianness.db"]
 	error_check_good dbupgrade $ret 0
 
@@ -290,6 +339,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 	global gen_upgrade
 	global gen_upgrade_log
 	global gen_chksum
+	global gen_dump
 	global upgrade_dir
 	global upgrade_be
 	global upgrade_method
@@ -331,7 +381,6 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 	error_check_good env_close [$env close] 0
 
 	# Generate test databases for each access method and endianness.
-	set gen_upgrade 1
 	foreach method \
 	    "btree rbtree hash recno rrecno frecno queue queueext" {
 		set o [open GENERATE.OUT a]
@@ -339,7 +388,25 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 		close $o
 		puts "\tGenerating $method files"
 		set upgrade_method $method
+
+		# We piggyback testing of dumped sequence files on upgrade
+		# testing because this is the only place that we ship files
+		# from one machine to another.  Create files for both 
+		# endiannesses, because who knows what platform we'll 
+		# be testing on.
+
+		set gen_dump 1
+		foreach test $test_names(plat) {
+			set upgrade_name $test
+			foreach upgrade_be { 0 1 } {
+				eval $test $method
+				cleanup $testdir NULL
+			}
+		}
+		set gen_dump 0 
+
 #set test_names(test) ""
+		set gen_upgrade 1
 		foreach test $test_names(test) {
 			if { [info exists parms($test)] != 1 } {
 				continue
@@ -429,8 +496,9 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 				cleanup $testdir NULL 1
 			}
 		}
+		set gen_upgrade 0
 	}
-	set gen_upgrade 0
+
 	# Set upgrade_be to the native value so log files go to the
 	# right place.
 	set upgrade_be [big_endian]
@@ -486,6 +554,7 @@ proc save_upgrade_files { dir } {
 	global upgrade_name
 	global gen_upgrade
 	global gen_upgrade_log
+	global gen_dump
 	global encrypt
 	global gen_chksum
 	global passwd
@@ -604,6 +673,29 @@ proc save_upgrade_files { dir } {
 			catch {eval exec tar -cvf $dest/$newname.tar \
 			    [glob $newname*]}
 			catch {exec gzip -9v $dest/$newname.tar}
+			cd $cwd
+		}
+	}
+
+	if { $gen_dump == 1 } {
+		# Save dump files.  We require that the files have 
+		# been created with the extension .dmp.
+		set dumpfiles [glob -nocomplain $dir/*.dmp]
+
+		foreach dumpfile $dumpfiles {
+			set basename [string range $dumpfile \
+			    [expr [string length $dir] + 1] end-4]
+
+			set newbasename $upgrade_name-$basename
+
+			# Rename dumpfile.
+			file rename $dumpfile $dir/$newbasename.dmp
+
+			set cwd [pwd]
+			cd $dir
+			catch {eval exec tar -cvf $dest/$newbasename.tar \
+			    [glob $newbasename.dmp]}
+			catch {exec gzip -9v $dest/$newbasename.tar} res
 			cd $cwd
 		}
 	}

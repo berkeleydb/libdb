@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2004
+ * Copyright (c) 1997-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 11.46 2004/10/27 16:17:10 bostic Exp $
+ * $Id: ex_tpcb.c,v 12.2 2005/09/22 03:53:45 mjc Exp $
  */
 
 #include <sys/types.h>
@@ -24,7 +24,7 @@ extern int getopt(int, char * const *, const char *);
 
 typedef enum { ACCOUNT, BRANCH, TELLER } FTYPE;
 
-DB_ENV	 *db_init __P((const char *, const char *, int, int, u_int32_t));
+DB_ENV	 *db_init __P((const char *, const char *, int, u_int32_t));
 int	  hpopulate __P((DB *, int, int, int, int));
 int	  populate __P((DB *, u_int32_t, u_int32_t, int, const char *));
 u_int32_t random_id __P((FTYPE, int, int, int));
@@ -174,7 +174,7 @@ main(argc, argv)
 
 	/* Initialize the database environment. */
 	if ((dbenv = db_init(home,
-	    progname, mpool, iflag, txn_no_sync ? DB_TXN_NOSYNC : 0)) == NULL)
+	    progname, mpool, txn_no_sync ? DB_TXN_NOSYNC : 0)) == NULL)
 		return (EXIT_FAILURE);
 
 	accounts = accounts == 0 ? ACCOUNTS : accounts;
@@ -237,9 +237,9 @@ usage(progname)
  *	Initialize the environment.
  */
 DB_ENV *
-db_init(home, prefix, cachesize, initializing, flags)
+db_init(home, prefix, cachesize, flags)
 	const char *home, *prefix;
-	int cachesize, initializing;
+	int cachesize;
 	u_int32_t flags;
 {
 	DB_ENV *dbenv;
@@ -259,8 +259,8 @@ db_init(home, prefix, cachesize, initializing, flags)
 		(void)dbenv->set_flags(dbenv, DB_TXN_NOSYNC, 1);
 	flags &= ~(DB_TXN_NOSYNC);
 
-	local_flags = flags | DB_CREATE | (initializing ? DB_INIT_MPOOL :
-	    DB_INIT_TXN | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL);
+	local_flags = flags | DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+	    DB_INIT_MPOOL | DB_INIT_TXN;
 	if ((ret = dbenv->open(dbenv, home, local_flags, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->open: %s", home);
 		(void)dbenv->close(dbenv, 0);
@@ -286,7 +286,7 @@ tp_populate(env, accounts, branches, history, tellers, verbose)
 
 	idnum = BEGID;
 	balance = 500000;
-	oflags = DB_CREATE | DB_TRUNCATE;
+	oflags = DB_CREATE;
 
 	if ((ret = db_create(&dbp, env, 0)) != 0) {
 		env->err(env, ret, "db_create");

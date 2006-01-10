@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep027.tcl,v 1.5 2004/10/07 16:21:17 sue Exp $
+# $Id: rep027.tcl,v 12.3 2005/06/23 15:25:22 carol Exp $
 #
 # TEST	rep027
 # TEST	Replication and secondary indexes.
@@ -13,6 +13,11 @@
 
 proc rep027 { method { niter 1000 } { tnum "027" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	# Renumbering recno is not permitted on a primary
 	# database.
 	if { [is_rrecno $method] == 1 } {
@@ -104,8 +109,7 @@ proc rep027_sub { method niter tnum logset recargs largs } {
 	set sdb [eval {berkdb_open -create \
 	    -auto_commit -env} $masterenv -btree $sname]
 	error_check_good second_open [is_valid_db $sdb] TRUE
-	error_check_good \
-	    db_associate [$pdb associate -auto_commit [callback_n 0] $sdb] 0
+	error_check_good db_associate [$pdb associate [callback_n 0] $sdb] 0
 
 	# Propagate to client.
 	process_msgs $envlist
@@ -123,7 +127,7 @@ proc rep027_sub { method niter tnum logset recargs largs } {
 		set keys($n) $key
 		set data($n) [pad_data $method $datum]
 
-		set ret [$pdb put -auto_commit $key [chop_data $method $datum]]
+		set ret [$pdb put $key [chop_data $method $datum]]
 		error_check_good put($n) $ret 0
 	}
 	close $did
@@ -143,7 +147,7 @@ proc rep027_sub { method niter tnum logset recargs largs } {
 	set clientsdb [eval {berkdb_open -auto_commit -env} $clientenv $sname]
 	error_check_good client_sec [is_valid_db $clientsdb] TRUE
 	error_check_good client_associate \
-	    [$clientpdb associate -auto_commit [callback_n 0] $clientsdb] 0
+	    [$clientpdb associate [callback_n 0] $clientsdb] 0
 
 	# Check secondaries on client.
 	puts "\tRep$tnum.c: Check secondaries on client."

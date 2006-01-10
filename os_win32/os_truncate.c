@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004
+ * Copyright (c) 2004-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: os_truncate.c,v 1.9 2004/10/05 14:45:30 mjc Exp $
+ * $Id: os_truncate.c,v 12.4 2005/10/12 17:57:33 bostic Exp $
  */
 
 #include "db_config.h"
@@ -78,18 +78,16 @@ __os_truncate(dbenv, fhp, pgno, pgsize)
 
 	off.bigint = (__int64)pgsize * pgno;
 	RETRY_CHK((SetFilePointer(dup_handle,
-	    off.low, &off.high, FILE_BEGIN) == (DWORD)-1 &&
+	    off.low, &off.high, FILE_BEGIN) == INVALID_SET_FILE_POINTER &&
 	    GetLastError() != NO_ERROR) ||
 	    !SetEndOfFile(dup_handle), ret);
 
 	if (!CloseHandle(dup_handle) && ret == 0)
 		ret = __os_get_errno();
 
-done:	if (ret != 0) {
+done:	if (ret != 0)
 		__db_err(dbenv,
 		    "ftruncate: %lu: %s", pgno * pgsize, strerror(ret));
-		fprintf(stderr, "ftruncate: %lu: %s\n", pgno * pgsize, strerror(ret));
-	}
 
 	return (ret);
 }

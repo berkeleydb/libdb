@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rpc004.tcl,v 11.12 2004/01/28 03:36:29 bostic Exp $
+# $Id: rpc004.tcl,v 12.1 2005/06/16 20:24:03 bostic Exp $
 #
 # TEST	rpc004
 # TEST	Test RPC server and security

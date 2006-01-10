@@ -1,5 +1,5 @@
-<!--$Id: rep_transport.so,v 1.31 2004/08/13 03:39:02 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: rep_transport.so,v 1.32 2005/10/16 00:54:32 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -73,6 +73,8 @@ cases, the sending site should not be asked to process the message.</p>
 <dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
 or more of the following values:
 <dl compact>
+<dt><a name="DB_REP_ANYWHERE">DB_REP_ANYWHERE</a><dd>The message is a client request that can be satisfied by another client
+as well as by the master.
 <dt><a name="DB_REP_NOBUFFER">DB_REP_NOBUFFER</a><dd>The record being sent should be transmitted immediately and not buffered
 or delayed.
 <dt><a name="DB_REP_PERMANENT">DB_REP_PERMANENT</a><dd>The record being sent is critical for maintaining database integrity
@@ -80,6 +82,8 @@ or delayed.
 application should take appropriate action to enforce the reliability
 guarantees it has chosen, such as waiting for acknowledgement from one
 or more clients.
+<dt><a name="DB_REP_REREQUEST">DB_REP_REREQUEST</a><dd>The message is a client request that has already been made and to which
+no response was received.
 </dl>
 </dl>
 <p>It may sometimes be useful to pass application-specific data to the
@@ -108,6 +112,6 @@ invalid flag value or parameter was specified.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

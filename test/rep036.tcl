@@ -1,15 +1,21 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep036.tcl,v 11.2 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep036.tcl,v 12.2 2005/06/23 15:25:22 carol Exp $
 #
 # TEST  	rep036
 # TEST	Multiple master processes writing to the database.
 # TEST	One process handles all message processing.
 
 proc rep036 { method { niter 200 } { tnum "036" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	if { [is_btree $method] == 0 } {
 		puts "Rep$tnum: Skipping for method $method."
 		return

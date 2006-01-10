@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredIterator.java,v 1.5 2004/09/22 18:01:03 bostic Exp $
+ * $Id: StoredIterator.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -370,6 +370,10 @@ public class StoredIterator implements ListIterator, Cloneable {
      * that when the collection is a list and the RECNO-RENUMBER access method
      * is not used, list indices will not be renumbered.
      *
+     * <p>Note that for the JE product, RECNO-RENUMBER databases are not
+     * supported, and therefore list indices are never renumbered by this
+     * method.</p>
+     *
      * @throws UnsupportedOperationException if the collection is a sublist, or
      * if the collection is read-only.
      *
@@ -397,6 +401,10 @@ public class StoredIterator implements ListIterator, Cloneable {
      * If duplicates are unsorted, the new value will be inserted in the same
      * manner as list elements.
      * If duplicates are sorted, the new value will be inserted in sort order.
+     *
+     * <p>Note that for the JE product, RECNO-RENUMBER databases are not
+     * supported, and therefore this method may only be used to add
+     * duplicates.</p>
      *
      * @param value the new value.
      *
@@ -484,7 +492,7 @@ public class StoredIterator implements ListIterator, Cloneable {
         toPrevious = MOVE_PREV;
         toCurrent = 0;
         currentData = null;
-        /*
+        /* 
 	 * Initialize cursor at beginning to avoid "initial previous == last"
 	 * behavior when cursor is uninitialized.
 	 *

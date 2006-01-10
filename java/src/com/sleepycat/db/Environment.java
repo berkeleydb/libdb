@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: Environment.java,v 1.6 2004/11/05 00:50:54 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: Environment.java,v 12.7 2005/10/31 05:08:14 mjc Exp $
+ */
 
 package com.sleepycat.db;
 
@@ -191,6 +191,13 @@ public class Environment {
     }
 
     /* Replication support */
+    public void startReplication(DatabaseEntry cdata, boolean master)
+        throws DatabaseException {
+
+        dbenv.rep_start(cdata,
+            master ? DbConstants.DB_REP_MASTER : DbConstants.DB_REP_CLIENT);
+    }
+
     public int electReplicationMaster(int nsites,
                                       int nvotes,
                                       int priority,
@@ -199,6 +206,12 @@ public class Environment {
 
         return dbenv.rep_elect(nsites, nvotes, priority, timeout,
             0 /* unused flags */);
+    }
+
+    public void flushReplication()
+        throws DatabaseException {
+
+	dbenv.rep_flush();
     }
 
     public ReplicationStatus processReplicationMessage(DatabaseEntry control,
@@ -217,11 +230,20 @@ public class Environment {
         return ReplicationStatus.getStatus(ret, cdata, wrappedID.envid, lsn);
     }
 
-    public void startReplication(DatabaseEntry cdata, boolean master)
+    public void setReplicationConfig(ReplicationConfig config, boolean onoff)
         throws DatabaseException {
 
-        dbenv.rep_start(cdata,
-            master ? DbConstants.DB_REP_MASTER : DbConstants.DB_REP_CLIENT);
+	dbenv.rep_set_config(config.getFlag(), onoff);
+    }
+
+    public boolean getReplicationConfig(ReplicationConfig config)
+        throws DatabaseException {
+
+	return dbenv.rep_get_config(config.getFlag());
+    }
+
+    public void syncReplication() throws DatabaseException {
+        dbenv.rep_sync(0);
     }
 
     /* Statistics */
@@ -253,6 +275,12 @@ public class Environment {
         throws DatabaseException {
 
         return dbenv.lock_stat(StatsConfig.checkNull(config).getFlags());
+    }
+
+    public MutexStats getMutexStats(StatsConfig config)
+        throws DatabaseException {
+
+        return dbenv.mutex_stat(StatsConfig.checkNull(config).getFlags());
     }
 
     public TransactionStats getTransactionStats(StatsConfig config)
@@ -289,6 +317,12 @@ public class Environment {
         final LogSequenceNumber lsn = new LogSequenceNumber();
         dbenv.log_put(lsn, data, flush ? DbConstants.DB_FLUSH : 0);
         return lsn;
+    }
+
+    public void logPrint(Transaction txn, String message)
+        throws DatabaseException {
+
+        dbenv.log_print((txn == null) ? null : txn.txn, message);
     }
 
     public java.io.File[] getArchiveLogFiles(boolean includeInUse)

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #       Sleepycat Software.  All rights reserved.
 #
-# $Id: env010.tcl,v 1.7 2004/01/28 03:36:27 bostic Exp $
+# $Id: env010.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	env010
 # TEST	Run recovery in an empty directory, and then make sure we can still

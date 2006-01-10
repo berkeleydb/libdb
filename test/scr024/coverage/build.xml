@@ -1,4 +1,4 @@
-<!-- $Id: build.xml,v 1.18 2004/09/22 16:17:13 mark Exp $ -->
+<!-- $Id: build.xml,v 12.1 2005/06/10 15:31:51 mark Exp $ -->
 <project name="clover" default="test" basedir=".">
 
   <property name="db" location="../../.."/>
@@ -7,7 +7,7 @@
   <property name="examples.src" location="${db}/examples_java/src"/>
   <property name="testserialdir" value="testserial"/>
   <property name="clover.initstring" location="reports/clover.db"/>
-  <property name="clover.excludes" value="**/test/** com/sleepycat/examples/** com/sleepycat/db/**"/>
+  <property name="clover.excludes" value="**/test/** collections/** db/** com/sleepycat/db/**"/>
   <!--
   <property name="build.compiler"
             value="org.apache.tools.ant.taskdefs.CloverCompilerAdapter"/>
@@ -43,8 +43,6 @@
       <src path="${test.src}"/>
       <src path="${examples.src}"/>
       <exclude name="com/sleepycat/**/release/**"/>
-      <exclude name="com/sleepycat/examples/bdb/**"/>
-      <exclude name="com/sleepycat/bdb/**"/>
       <exclude name="com/sleepycat/xa/**"/>
     </javac>
     <property name="testserialpath"
@@ -115,7 +113,7 @@
     <echo message=""/>
     <echo message="=== HelloDatabaseWorld ==="/>
     <java dir="." fork="yes" classpathref="classpath"
-         classname="com.sleepycat.examples.collections.hello.HelloDatabaseWorld"/>
+         classname="collections.hello.HelloDatabaseWorld"/>
   </target>
 
   <target name="one_shipment_example">
@@ -123,7 +121,7 @@
     <delete dir="tmp"/>
     <mkdir dir="tmp"/>
     <java dir="." fork="yes" classpathref="classpath"
-     classname="com.sleepycat.examples.collections.ship.${param_name}.Sample"/>
+     classname="collections.ship.${param_name}.Sample"/>
   </target>
 
     <!-- Using fork="yes" does not work for AccessExample, apparently because
@@ -133,7 +131,7 @@
   <target name="access_example" depends="build">
     <echo message="=== AccessExample ==="/>
     <java classpathref="classpath"
-          classname="com.sleepycat.examples.collections.access.AccessExample">
+          classname="collections.access.AccessExample">
     </java>
   </target>
 

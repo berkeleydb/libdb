@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep018.tcl,v 1.8 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep018.tcl,v 12.3 2005/06/23 15:25:22 carol Exp $
 #
 # TEST	rep018
 # TEST	Replication with dbremove.
@@ -13,6 +13,12 @@
 # TEST	handle on the client.
 # TEST
 proc rep018 { method { niter 10 } { tnum "018" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
@@ -123,10 +129,10 @@ proc rep018_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.f: Propagate changes to client.  Process should hang."
 	error_check_good timestamp_remove \
-	    [$marker put -auto_commit PARENTREMOVE [timestamp -r]] 0
+	    [$marker put PARENTREMOVE [timestamp -r]] 0
 	process_msgs "{$masterenv 1} {$clientenv 2}"
 	error_check_good timestamp_done \
-	    [$marker put -auto_commit PARENTDONE [timestamp -r]] 0
+	    [$marker put PARENTDONE [timestamp -r]] 0
 
 	watch_procs $pid 5
 

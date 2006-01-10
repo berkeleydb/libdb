@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: DataView.java,v 1.4 2004/08/02 18:52:05 mjc Exp $
+ * $Id: DataView.java,v 12.1 2005/01/31 19:27:32 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -12,6 +12,7 @@ package com.sleepycat.collections;
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.compat.DbCompat;
+import com.sleepycat.db.CursorConfig;
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
@@ -45,19 +46,19 @@ final class DataView implements Cloneable {
     EntityBinding entityBinding;
     PrimaryKeyAssigner keyAssigner;
     SecondaryKeyCreator secKeyCreator;
-    boolean writeAllowed;       // Read-write view
-    boolean ordered;            // Not a HASH Db
-    boolean recNumAllowed;      // QUEUE, RECNO, or BTREE-RECNUM Db
-    boolean recNumAccess;       // recNumAllowed && using a rec num binding
-    boolean btreeRecNumDb;      // BTREE-RECNUM Db
-    boolean btreeRecNumAccess;  // recNumAccess && BTREE-RECNUM Db
-    boolean recNumRenumber;     // RECNO-RENUM Db
-    boolean keysRenumbered;     // recNumRenumber || btreeRecNumAccess
-    boolean dupsAllowed;        // Dups configured
-    boolean dupsOrdered;        // Sorted dups configured
-    boolean transactional;      // Db is transactional
-    boolean dirtyReadAllowed;   // Dirty-read is optional in DB-CORE
-    boolean dirtyReadEnabled;   // This view is a dirty-ready view
+    CursorConfig cursorConfig;      // Used for all operations via this view
+    boolean writeAllowed;           // Read-write view
+    boolean ordered;                // Not a HASH Db
+    boolean recNumAllowed;          // QUEUE, RECNO, or BTREE-RECNUM Db
+    boolean recNumAccess;           // recNumAllowed && using a rec num binding
+    boolean btreeRecNumDb;          // BTREE-RECNUM Db
+    boolean btreeRecNumAccess;      // recNumAccess && BTREE-RECNUM Db
+    boolean recNumRenumber;         // RECNO-RENUM Db
+    boolean keysRenumbered;         // recNumRenumber || btreeRecNumAccess
+    boolean dupsAllowed;            // Dups configured
+    boolean dupsOrdered;            // Sorted dups configured
+    boolean transactional;          // Db is transactional
+    boolean readUncommittedAllowed; // Read-uncommited is optional in DB-CORE
 
     /**
      * Creates a view for a given database and bindings.  The initial key range
@@ -94,7 +95,7 @@ final class DataView implements Cloneable {
             dupsOrdered = DbCompat.getSortedDuplicates(dbConfig);
             transactional = currentTxn.isTxnMode() &&
                             dbConfig.getTransactional();
-            dirtyReadAllowed = DbCompat.getDirtyRead(dbConfig);
+            readUncommittedAllowed = DbCompat.getReadUncommitted(dbConfig);
             btreeRecNumDb = recNumAllowed && DbCompat.isTypeBtree(dbConfig);
             range = new KeyRange(dbConfig.getBtreeComparator());
         } catch (DatabaseException e) {
@@ -105,6 +106,7 @@ final class DataView implements Cloneable {
         this.valueBinding = valueBinding;
         this.entityBinding = entityBinding;
         this.keyAssigner = keyAssigner;
+        cursorConfig = CursorConfig.DEFAULT;
 
         if (valueBinding != null && entityBinding != null)
             throw new IllegalArgumentException(
@@ -211,14 +213,13 @@ final class DataView implements Cloneable {
     }
 
     /**
-     * Returns a new view with a specified dirtyRead setting.
+     * Returns a new view with a specified cursor configuration.
      */
-    DataView dirtyReadView(boolean enable) {
+    DataView configuredView(CursorConfig config) {
 
-        if (!dirtyReadAllowed)
-            return this;
         DataView view = cloneView();
-        view.dirtyReadEnabled = enable;
+        view.cursorConfig = (config != null) ?
+            DbCompat.cloneCursorConfig(config) : CursorConfig.DEFAULT;
         return view;
     }
 

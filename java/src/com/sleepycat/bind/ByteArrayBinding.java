@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: ByteArrayBinding.java,v 1.2 2004/06/04 18:24:49 mark Exp $
+ * $Id: ByteArrayBinding.java,v 12.1 2005/01/31 19:27:29 mark Exp $
  */
 
 package com.sleepycat.bind;

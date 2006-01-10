@@ -1,14 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: StoredContainer.java,v 1.2 2004/06/02 20:59:38 mark Exp $
+ * $Id: StoredContainer.java,v 12.3 2005/08/01 20:25:19 mark Exp $
  */
 
 package com.sleepycat.collections;
 
+import com.sleepycat.compat.DbCompat;
+import com.sleepycat.db.CursorConfig;
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.util.RuntimeExceptionWrapper;
@@ -40,8 +42,7 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * <li>{@link #areDuplicatesAllowed()}</li>
  * <li>{@link #areDuplicatesOrdered()}</li>
  * <li>{@link #areKeysRenumbered()}</li>
- * <li>{@link #isDirtyReadAllowed()}</li>
- * <li>{@link #isDirtyRead()}</li>
+ * <li>{@link #getCursorConfig()}</li>
  * <li>{@link #isTransactional()}</li>
  * </ul>
  *
@@ -70,37 +71,50 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Returns whether dirty-read is allowed for this container.
-     * For the JE product, dirty-read is always allowed; for the DB product,
-     * dirty-read is allowed if it was configured for the underlying database
-     * for this container.
-     * Even when dirty-read is allowed it must specifically be enabled by
+     * Returns the cursor configuration that is used for all operations
+     * performed via this container.
+     * For example, if <code>CursorConfig.getReadUncommitted</code> returns
+     * true, data will be read that is modified but not committed.
+     * This method does not exist in the standard {@link java.util.Map} or
+     * {@link java.util.Collection} interfaces.
+     *
+     * @return the cursor configuration, or null if no configuration has been
+     * specified.
+     */
+    public final CursorConfig getCursorConfig() {
+
+        return DbCompat.cloneCursorConfig(view.cursorConfig);
+    }
+
+    /**
+     * Returns whether read-uncommitted is allowed for this container.
+     * For the JE product, read-uncommitted is always allowed; for the DB
+     * product, read-uncommitted is allowed if it was configured for the
+     * underlying database for this container.
+     * Even when read-uncommitted is allowed it must specifically be enabled by
      * calling one of the {@link StoredCollections} methods.
      * This method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
      *
-     * @return whether dirty-read is allowed.
+     * @return whether read-uncommitted is allowed.
+     *
+     * @deprecated This method is deprecated with no replacement in this class.
+     * In the DB product, <code>DatabaseConfig.getReadUncommitted</code> may be
+     * called.
      */
     public final boolean isDirtyReadAllowed() {
 
-        return view.dirtyReadAllowed;
+        return view.readUncommittedAllowed;
     }
 
     /**
-     * Returns whether dirty-read is enabled for this container.
-     * If dirty-read is enabled, data will be read that is modified but not
-     * committed.
-     * Dirty-read is disabled by default.
-     * This method always returns false if {@link #isDirtyReadAllowed} returns
-     * false.
-     * This method does not exist in the standard {@link java.util.Map} or
-     * {@link java.util.Collection} interfaces.
-     *
-     * @return whether dirty-read is enabled.
+     * @deprecated This method has been replaced by {@link #getCursorConfig}.
+     * <code>CursorConfig.isReadUncommitted</code> may be called to determine
+     * whether dirty-read is enabled.
      */
     public final boolean isDirtyRead() {
 
-        return view.dirtyReadEnabled;
+        return view.cursorConfig.getReadUncommitted();
     }
 
     /**
@@ -120,17 +134,22 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Clones and enables dirty-read in the clone.
+     * Clones a container with a specified cursor configuration.
      */
-    final StoredContainer dirtyReadClone() {
+    final StoredContainer configuredClone(CursorConfig config) {
 
-        if (!isDirtyReadAllowed())
-            return this;
         try {
             StoredContainer cont = (StoredContainer) clone();
-            cont.view = cont.view.dirtyReadView(true);
+            cont.view = cont.view.configuredView(config);
+            cont.initAfterClone();
             return cont;
         } catch (CloneNotSupportedException willNeverOccur) { return null; }
+    }
+
+    /**
+     * Override this method to initialize view-dependent fields.
+     */
+    void initAfterClone() {
     }
 
     /**
@@ -138,6 +157,8 @@ public abstract class StoredContainer implements Cloneable {
      * Duplicates are optionally allowed for HASH and BTREE databases.
      * This method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
+     *
+     * <p>Note that the JE product only supports BTREE databases.</p>
      *
      * @return whether duplicates are allowed.
      */
@@ -152,6 +173,9 @@ public abstract class StoredContainer implements Cloneable {
      * This method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
      *
+     * <p>Note that the JE product only supports BTREE databases, and
+     * duplicates are always sorted.</p>
+     *
      * @return whether duplicates are ordered.
      */
     public final boolean areDuplicatesOrdered() {
@@ -165,6 +189,9 @@ public abstract class StoredContainer implements Cloneable {
      * This method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
      *
+     * <p>Note that the JE product does not support RECNO databases, and
+     * therefore keys are never renumbered.</p>
+     *
      * @return whether keys are renumbered.
      */
     public final boolean areKeysRenumbered() {
@@ -177,6 +204,9 @@ public abstract class StoredContainer implements Cloneable {
      * Keys are ordered for BTREE, RECNO and QUEUE database.
      * This method does not exist in the standard {@link java.util.Map} or
      * {@link java.util.Collection} interfaces.
+     *
+     * <p>Note that the JE product only support BTREE databases, and
+     * therefore keys are always ordered.</p>
      *
      * @return whether keys are ordered.
      */
@@ -302,7 +332,8 @@ public abstract class StoredContainer implements Cloneable {
                 if (oldVal != null && oldVal[0] == null) {
                     oldVal[0] = cursor.getCurrentValue();
                 }
-                status = cursor.getNextDup(true);
+                status = areDuplicatesAllowed() ?
+                    cursor.getNextDup(true): OperationStatus.NOTFOUND;
             }
             closeCursor(cursor);
             commitAutoCommit(doAutoCommit);
@@ -374,9 +405,9 @@ public abstract class StoredContainer implements Cloneable {
     final boolean beginAutoCommit() {
 
         if (view.transactional) {
+            CurrentTransaction currentTxn = view.getCurrentTxn();
             try {
-                CurrentTransaction currentTxn = view.getCurrentTxn();
-                if (currentTxn.getTransaction() == null) {
+                if (currentTxn.isAutoCommitAllowed()) {
                     currentTxn.beginTransaction(null);
                     return true;
                 }
@@ -399,6 +430,7 @@ public abstract class StoredContainer implements Cloneable {
             try {
                 view.getCurrentTxn().abortTransaction();
             } catch (DatabaseException ignored) {
+		/* Klockwork - ok */
             }
         }
         return StoredContainer.convertException(e);

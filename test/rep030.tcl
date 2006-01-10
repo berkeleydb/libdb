@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
+# Copyright (c) 2004-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep030.tcl,v 11.9 2004/10/07 18:24:11 carol Exp $
+# $Id: rep030.tcl,v 12.7 2005/10/18 19:04:17 carol Exp $
 #
 # TEST	rep030
 # TEST	Test of internal initialization multiple files and pagesizes.
-# TEST  Hold some databases open on master.
+# TEST  	Hold some databases open on master.
 # TEST
 # TEST	One master, one client.
 # TEST	Generate several log files.
@@ -16,6 +16,12 @@
 # TEST	Put one more record to the master.
 #
 proc rep030 { method { niter 500 } { tnum "030" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 
 	# This test needs to set its own pagesize.
@@ -25,20 +31,33 @@ proc rep030 { method { niter 500 } { tnum "030" } args } {
                 return
         }
 
+	set logsets [create_logsets 2]
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.
-	set recopts { " -recover " "" }
-	set cleanopts { noclean clean }
+	set recopts { "-recover" "" }
+	set opts { noclean clean bulk }
 	foreach r $recopts {
-		foreach c $cleanopts {
-			puts "Rep$tnum ($method $r $c):\
-			    Test of internal initialization."
-			rep030_sub $method $niter $tnum $r $c $args
+		foreach c $opts {
+			foreach l $logsets {
+				set logindex [lsearch -exact $l "in-memory"]
+				if { $r == "-recover" && $logindex != -1 } {
+					puts "Skipping rep$tnum for -recover\
+					    with in-memory logs."
+					continue
+				}
+				puts "Rep$tnum ($method $r $c):\
+				    Internal initialization - hold some\
+				    databases open on master."
+				puts "Rep$tnum: Master logs are [lindex $l 0]"
+				puts "Rep$tnum: Client logs are [lindex $l 1]"
+				rep030_sub $method $niter $tnum $l $r $c $args
+			}
 		}
 	}
 }
 
-proc rep030_sub { method niter tnum recargs clean largs } {
+proc rep030_sub { method niter tnum logset recargs opts largs } {
 	global testdir
 	global util_path
 
@@ -60,13 +79,20 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 	set log_max [expr $log_buf * 4]
 	set cache [expr $maxpg * 32 ]
 
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+
+	# In-memory logs cannot be used with -txn nosync.  
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
+
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
 	    -log_buffer $log_buf -log_max $log_max \
 	    -cachesize { 0 $cache 1 } \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
+#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
 #	    -log_buffer $log_buf -log_max $log_max \
 #	    -cachesize { 0 $cache 1 }\
 #	    -verbose {rep on} -errpfx MASTER \
@@ -76,11 +102,11 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
 	    -log_buffer $log_buf -log_max $log_max \
 	    -cachesize { 0 $cache 1 }\
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
+#	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
 #	    -log_buffer $log_buf -log_max $log_max \
 #	    -cachesize { 0 $cache 1 }\
 #	    -verbose {rep on} -errpfx CLIENT \
@@ -108,7 +134,7 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 		set pagesize [lindex $pglist $i]
 		set largs " -pagesize $pagesize "
 		eval rep_test $method $masterenv NULL $nentries $mult $mult \
-		    0 $largs
+		    0 0 $largs
 		process_msgs $envlist
 
 		#
@@ -159,7 +185,7 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit -create \
 	    -mode 0644} $largs $omethod $testfile $sub]
 	error_check_good subdb [is_valid_db $db] TRUE
-	eval rep_test $method $masterenv $db $niter 0 0 0 
+	eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Close client."
@@ -173,7 +199,7 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 	#
 	puts "\tRep$tnum.c: Running rep_test ( $largs) in replicated env."
 	set nentries [expr $niter * 2]
-	eval rep_test $method $masterenv $db $nentries 0 0 0
+	eval rep_test $method $masterenv $db $nentries 0 0 0 0 $largs
 	replclear 2
 
 	puts "\tRep$tnum.d: Run db_archive on master."
@@ -183,16 +209,19 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 	set res [eval exec $util_path/db_archive -l -h $masterdir]
 	error_check_good log.1.gone [lsearch -exact $res log.0000000001] -1
 
-	puts "\tRep$tnum.e: Reopen client ($clean)."
-	if { $clean == "clean" } {
+	puts "\tRep$tnum.e: Reopen client ($opts)."
+	if { $opts == "clean" } {
 		env_cleanup $clientdir
+	}
+	if { $opts == "bulk" } {
+		error_check_good bulk [$masterenv rep_config {bulk on}] 0
 	}
 
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist 0 NONE err
-	if { $clean == "noclean" } {
+	if { $opts != "clean" } {
 		puts "\tRep$tnum.e.1: Trigger log request"
 		#
 		# When we don't clean, starting the client doesn't
@@ -201,43 +230,31 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 		# logs and that will trigger it.
 		#
 		set entries 100
-		eval rep_test $method $masterenv $db $entries $niter 0 0
+		eval rep_test $method $masterenv $db $entries $niter 0 0 0 $largs
 		process_msgs $envlist 0 NONE err
 	}
 	error_check_good subdb_close [$db close] 0
 	process_msgs $envlist 0 NONE err
 
 	puts "\tRep$tnum.f: Verify logs and databases"
-	# Check that master and client logs and dbs are identical.
-	# Logs first ...
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $masterdir > $masterdir/prlog} result]
-	error_check_good stat_mprlog $stat 0
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $clientdir > $clientdir/prlog} result]
-	error_check_good stat_cprlog $stat 0
-	error_check_good log_cmp \
-	    [filecmp $masterdir/prlog $clientdir/prlog] 0
-
-	# ... now the databases.
-	set dbname "test.db"
-	set db1 [eval {berkdb_open -env $masterenv -rdonly} $dbname $sub]
-	set db2 [eval {berkdb_open -env $clientenv -rdonly} $dbname $sub]
-
-	error_check_good comparedbs [db_compare \
-	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-	error_check_good db1_close [$db1 close] 0
-	error_check_good db2_close [$db2 close] 0
+	#
+	# If doing bulk testing, turn it off now so that it forces us
+	# to flush anything currently in the bulk buffer.  We need to
+	# do this because rep_test might have aborted a transaction on
+	# its last iteration and those log records would still be in
+	# the bulk buffer causing the log comparison to fail.
+	#
+	if { $opts == "bulk" } {
+		puts "\tRep$tnum.f.1: Turn off bulk transfers."
+		error_check_good bulk [$masterenv rep_config {bulk off}] 0
+		process_msgs $envlist 0 NONE err
+	}
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1
 
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
-		set db1 [berkdb_open -env $masterenv -rdonly $dbname]
-		set db2 [berkdb_open -env $clientenv -rdonly $dbname]
-
-		error_check_good comparedbs [db_compare \
-		    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-		error_check_good db1_close [$db1 close] 0
-		error_check_good db2_close [$db2 close] 0
+		rep_verify $masterdir $masterenv $clientdir $clientenv \
+		    1 1 0 $dbname
 	}
 
 	#
@@ -253,38 +270,21 @@ proc rep030_sub { method niter tnum recargs clean largs } {
 	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
 	    -mode 0644} $largs $omethod $testfile $sub]
 	error_check_good subdb [is_valid_db $db] TRUE
-	eval rep_test $method $masterenv $db $entries $niter 0 0
+	eval rep_test $method $masterenv $db $entries $niter 0 0 0 $largs
 	error_check_good subdb_close [$db close] 0
 	process_msgs $envlist 0 NONE err
 
-	# Check again that master and client logs and dbs are identical.
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $masterdir > $masterdir/prlog} result]
-	error_check_good stat_mprlog $stat 0
-	set stat [catch {eval exec $util_path/db_printlog \
-	    -h $clientdir > $clientdir/prlog} result]
-	error_check_good stat_cprlog $stat 0
-	error_check_good log_cmp \
-	    [filecmp $masterdir/prlog $clientdir/prlog] 0
-
-	set dbname "test.db"
-	set db1 [eval {berkdb_open -env $masterenv -auto_commit} $dbname $sub]
-	set db2 [eval {berkdb_open -env $clientenv -auto_commit} $dbname $sub]
-
-	error_check_good comparedbs [db_compare \
-	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-	error_check_good db1_close [$db1 close] 0
-	error_check_good db2_close [$db2 close] 0
-
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
-		set db1 [berkdb_open -env $masterenv -auto_commit $dbname]
-		set db2 [berkdb_open -env $clientenv -auto_commit $dbname]
-
-		error_check_good comparedbs [db_compare \
-		    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-		error_check_good db1_close [$db1 close] 0
-		error_check_good db2_close [$db2 close] 0
+		rep_verify $masterdir $masterenv $clientdir $clientenv \
+		    1 1 0 $dbname
+	}
+	set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
+	if { $opts == "bulk" } {
+		error_check_bad bulkxferon $bulkxfer 0
+	} else {
+		error_check_good bulkxferoff $bulkxfer 0
 	}
 
 	error_check_good masterenv_close [$masterenv close] 0

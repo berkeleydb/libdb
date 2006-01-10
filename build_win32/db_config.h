@@ -25,6 +25,9 @@
 /* Define to 1 if you want a version with run-time diagnostic checking. */
 /* #undef DIAGNOSTIC */
 
+/* Define to 1 if 64-bit types are available. */
+#define HAVE_64BIT_TYPES 1
+
 /* Define to 1 if you have the `clock_gettime' function. */
 /* #undef HAVE_CLOCK_GETTIME */
 
@@ -45,6 +48,12 @@
 
 /* Define to 1 if you have EXIT_SUCCESS/EXIT_FAILURE #defines. */
 #define HAVE_EXIT_SUCCESS 1
+
+/* Define to 1 if you have the `fchmod' function. */
+/* #undef HAVE_FCHMOD */
+
+/* Define to 1 if you have the `fcntl' function. */
+/* #undef HAVE_FCNTL */
 
 /* Define to 1 if fcntl/F_SETFD denies child access to file descriptors. */
 /* #undef HAVE_FCNTL_F_SETFD */
@@ -78,14 +87,14 @@
 #define HAVE_HASH 1
 #endif
 
+/* Define to 1 if thread identifier type db_threadid_t is integral. */
+#define HAVE_INTEGRAL_THREAD_TYPE 1
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 /* #undef HAVE_INTTYPES_H */
 
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 /* #undef HAVE_LIBNSL */
-
-/* Define to 1 if the system has the type `long long'. */
-#define HAVE_LONG_LONG 1
 
 /* Define to 1 if you have the `memcmp' function. */
 #define HAVE_MEMCMP 1
@@ -139,6 +148,9 @@
 /* Define to 1 to use the GCC compiler and IA64 assembly language mutexes. */
 /* #undef HAVE_MUTEX_IA64_GCC_ASSEMBLY */
 
+/* Define to 1 to use the GCC compiler and MIPS assembly language mutexes. */
+/* #undef HAVE_MUTEX_MIPS_GCC_ASSEMBLY */
+
 /* Define to 1 to use the msem_XXX mutexes on systems other than HP-UX. */
 /* #undef HAVE_MUTEX_MSEM_INIT */
 
@@ -180,9 +192,6 @@
 /* Define to 1 if mutexes hold system resources. */
 /* #undef HAVE_MUTEX_SYSTEM_RESOURCES */
 
-/* Define to 1 if fast mutexes are available. */
-#define HAVE_MUTEX_THREADS 1
-
 /* Define to 1 to configure mutexes intra-process only. */
 /* #undef HAVE_MUTEX_THREAD_ONLY */
 
@@ -207,6 +216,9 @@
 /* Define to 1 to use the GCC compiler and Windows mutexes. */
 /* #undef HAVE_MUTEX_WIN32_GCC */
 
+/* Define to 1 to use the GCC compiler and amd64 assembly language mutexes. */
+/* #undef HAVE_MUTEX_X86_64_GCC_ASSEMBLY */
+
 /* Define to 1 to use the GCC compiler and x86 assembly language mutexes. */
 /* #undef HAVE_MUTEX_X86_GCC_ASSEMBLY */
 
@@ -221,6 +233,9 @@
 
 /* Define to 1 if you have the `pstat_getdynamic' function. */
 /* #undef HAVE_PSTAT_GETDYNAMIC */
+
+/* Define to 1 if you have the `pthread_self' function. */
+/* #undef HAVE_PTHREAD_SELF */
 
 /* Define to 1 if you have the `pwrite' function. */
 /* #undef HAVE_PWRITE */
@@ -330,9 +345,6 @@
 /* Define to 1 if unlink of file with open file descriptors will fail. */
 /* #undef HAVE_UNLINK_WITH_OPEN_FAILURE */
 
-/* Define to 1 if the system has the type `unsigned long long'. */
-#define HAVE_UNSIGNED_LONG_LONG 1
-
 /* Define to 1 if building access method verification support. */
 #ifndef HAVE_SMALLBUILD
 #define HAVE_VERIFY 1
@@ -350,9 +362,6 @@
 /* Define to 1 if you have the `_fstati64' function. */
 #define HAVE__FSTATI64 1
 
-/* Define to a value if using non-standard mutex alignment. */
-/* #undef MUTEX_ALIGN */
-
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "support@sleepycat.com"
 
@@ -360,13 +369,13 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 4.3.29"
+#define PACKAGE_STRING "Berkeley DB 4.4.20"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-4.3.29"
+#define PACKAGE_TARNAME "db-4.4.20"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.3.29"
+#define PACKAGE_VERSION "4.4.20"
 
 /* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
 /* #undef STAT_MACROS_BROKEN */

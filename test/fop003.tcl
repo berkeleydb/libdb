@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2004
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: fop003.tcl,v 1.6 2004/02/25 17:49:05 carol Exp $
+# $Id: fop003.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	fop003
 # TEST

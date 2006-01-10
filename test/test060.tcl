@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: test060.tcl,v 11.12 2004/01/28 03:36:31 bostic Exp $
+# $Id: test060.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
 #
 # TEST	test060
 # TEST	Test of the DB_EXCL flag to DB->open().

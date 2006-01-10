@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep017.tcl,v 11.6 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep017.tcl,v 12.2 2005/06/23 15:25:22 carol Exp $
 #
 # TEST	rep017
 # TEST	Concurrency with checkpoints.
@@ -16,6 +16,12 @@
 # TEST          	A subsequent checkpoint gets NOTPERM
 # TEST          	After checkpoint completes, next txn returns PERM
 proc rep017 { method { niter 10 } { tnum "017" } args } {
+
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 

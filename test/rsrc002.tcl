@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rsrc002.tcl,v 11.16 2004/01/28 03:36:29 bostic Exp $
+# $Id: rsrc002.tcl,v 12.1 2005/06/16 20:24:03 bostic Exp $
 #
 # TEST	rsrc002
 # TEST	Recno backing file test #2: test of set_re_delim.  Specify a backing

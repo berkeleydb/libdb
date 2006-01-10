@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_lock.c,v 11.59 2004/10/07 16:48:39 bostic Exp $
+ * $Id: tcl_lock.c,v 12.3 2005/10/28 19:40:27 bostic Exp $
  */
 
 #include "db_config.h"
@@ -259,10 +259,14 @@ tcl_LockStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Maximum number of lockers so far", sp->st_maxnlockers);
 	MAKE_STAT_LIST("Current number of objects", sp->st_nobjects);
 	MAKE_STAT_LIST("Maximum number of objects so far", sp->st_maxnobjects);
-	MAKE_STAT_LIST("Number of conflicts", sp->st_nconflicts);
 	MAKE_STAT_LIST("Lock requests", sp->st_nrequests);
 	MAKE_STAT_LIST("Lock releases", sp->st_nreleases);
-	MAKE_STAT_LIST("Lock requests that would have waited", sp->st_nnowaits);
+	MAKE_STAT_LIST("Lock upgrades", sp->st_nupgrade);
+	MAKE_STAT_LIST("Lock downgrades", sp->st_ndowngrade);
+	MAKE_STAT_LIST("Number of conflicted locks for which we waited",
+	    sp->st_lock_wait);
+	MAKE_STAT_LIST("Number of conflicted locks for which we did not wait",
+	    sp->st_lock_nowait);
 	MAKE_STAT_LIST("Deadlocks detected", sp->st_ndeadlocks);
 	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);

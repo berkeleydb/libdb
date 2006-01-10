@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 1997-2004
+ * Copyright (c) 1997-2005
  *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: LockRequest.java,v 1.3 2004/07/26 17:01:51 mjc Exp $
+ * $Id: LockRequest.java,v 12.1 2005/06/16 20:23:02 bostic Exp $
  */
 package com.sleepycat.db;
 

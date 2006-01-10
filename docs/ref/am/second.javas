@@ -1,10 +1,10 @@
 /*-
- * Copyright (c) 2002
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: second.javas,v 10.1 2004/09/15 19:40:07 bostic Exp $
+ * $Id: second.javas,v 10.3 2005/06/10 15:30:53 mark Exp $
  */
-package com.sleepycat.examples;
+package db;
 
 import com.sleepycat.db.*;
 import java.io.File;

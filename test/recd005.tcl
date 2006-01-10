@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd005.tcl,v 11.36 2004/01/28 03:36:28 bostic Exp $
+# $Id: recd005.tcl,v 12.1 2005/06/16 20:23:58 bostic Exp $
 #
 # TEST	recd005
 # TEST	Verify reuse of file ids works on catastrophic recovery.

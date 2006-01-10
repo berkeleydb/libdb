@@ -45,6 +45,18 @@ JAVA_TYPEMAP(_ctype, _jtype, jobject)
 %}
 %enddef
 
+JAVA_STAT_CLASS(DB_COMPACT *, com.sleepycat.db.CompactStats, compact)
+%typemap(freearg) DB_COMPACT * %{ __dbj_fill_compact(jenv, $input, $1); %}
+%typemap(in) DB_COMPACT * (DB_COMPACT compact) %{
+        $1 = &compact;
+        $1->compact_fillpercent = (*jenv)->GetIntField(jenv, $input,
+            compact_compact_fillpercent_fid);
+        $1->compact_timeout = (*jenv)->GetIntField(jenv, $input,
+            compact_compact_timeout_fid);
+        $1->compact_pages = (*jenv)->GetIntField(jenv, $input,
+            compact_compact_pages_fid);
+%}
+
 JAVA_STAT_CLASS(DB_LOCK_STAT *, com.sleepycat.db.LockStats, lock_stat)
 JAVA_STAT_CLASS(DB_LOG_STAT *, com.sleepycat.db.LogStats, log_stat)
 JAVA_STAT_CLASS(DB_MPOOL_STAT *, com.sleepycat.db.CacheStats, mpool_stat)
@@ -56,7 +68,8 @@ JAVA_TYPEMAP(DB_MPOOL_FSTAT **, com.sleepycat.db.CacheFileStats[], jobjectArray)
 	len = 0;
 	while ($1[len] != NULL)
 		len++;
-	$result = (*jenv)->NewObjectArray(jenv, (jsize)len, mpool_fstat_class, 0);
+	$result = (*jenv)->NewObjectArray(jenv, (jsize)len,
+	    mpool_fstat_class, 0);
 	if ($result == NULL) {
 		__os_ufree(NULL, $1);
 		return $null;
@@ -74,6 +87,7 @@ JAVA_TYPEMAP(DB_MPOOL_FSTAT **, com.sleepycat.db.CacheFileStats[], jobjectArray)
 	__os_ufree(NULL, $1);
 }
 
+JAVA_STAT_CLASS(DB_MUTEX_STAT *, com.sleepycat.db.MutexStats, mutex_stat)
 JAVA_STAT_CLASS(DB_REP_STAT *, com.sleepycat.db.ReplicationStats, rep_stat)
 JAVA_STAT_CLASS(DB_SEQUENCE_STAT *, com.sleepycat.db.SequenceStats, seq_stat)
 JAVA_TYPEMAP(DB_TXN_STAT *, com.sleepycat.db.TransactionStats, jobject)
@@ -90,7 +104,8 @@ JAVA_TYPEMAP(DB_TXN_STAT *, com.sleepycat.db.TransactionStats, jobject)
 		__os_ufree(NULL, $1);
 		return $null;
 	}
-	(*jenv)->SetObjectField(jenv, $result, txn_stat_st_txnarray_fid, actives);
+	(*jenv)->SetObjectField(jenv, $result,
+	    txn_stat_st_txnarray_fid, actives);
 	for (i = 0; i < $1->st_nactive; i++) {
 		jobject obj = (*jenv)->NewObject(jenv, txn_active_class,
 		    txn_active_construct);

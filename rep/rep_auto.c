@@ -17,7 +17,7 @@
 
 /*
  * PUBLIC: int __rep_update_buf __P((u_int8_t *, size_t, size_t *,
- * PUBLIC:     DB_LSN *, int));
+ * PUBLIC:     DB_LSN *, u_int32_t));
  */
 int
 __rep_update_buf(buf, max, lenp,
@@ -25,7 +25,7 @@ __rep_update_buf(buf, max, lenp,
 	u_int8_t *buf;
 	size_t max, *lenp;
 	DB_LSN * first_lsn;
-	int num_files;
+	u_int32_t num_files;
 {
 	u_int32_t uinttmp;
 	u_int8_t *endbuf;
@@ -80,7 +80,7 @@ __rep_update_read(dbenv, recbuf, nextp, argpp)
 	bp += sizeof(argp->first_lsn);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->num_files = (int)uinttmp;
+	argp->num_files = (u_int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
 	*nextp = bp;
@@ -90,7 +90,7 @@ __rep_update_read(dbenv, recbuf, nextp, argpp)
 
 /*
  * PUBLIC: int __rep_fileinfo_buf __P((u_int8_t *, size_t, size_t *,
- * PUBLIC:     size_t, db_pgno_t, db_pgno_t, int, int32_t, u_int32_t,
+ * PUBLIC:     u_int32_t, db_pgno_t, db_pgno_t, u_int32_t, int32_t, u_int32_t,
  * PUBLIC:     u_int32_t, const DBT *, const DBT *));
  */
 int
@@ -99,10 +99,10 @@ __rep_fileinfo_buf(buf, max, lenp,
     flags, uid, info)
 	u_int8_t *buf;
 	size_t max, *lenp;
-	size_t pgsize;
+	u_int32_t pgsize;
 	db_pgno_t pgno;
 	db_pgno_t max_pgno;
-	int filenum;
+	u_int32_t filenum;
 	int32_t id;
 	u_int32_t type;
 	u_int32_t flags;
@@ -222,7 +222,7 @@ __rep_fileinfo_read(dbenv, recbuf, nextp, argpp)
 		return (ret);
 	bp = recbuf;
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->pgsize = (size_t)uinttmp;
+	argp->pgsize = (u_int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
@@ -234,7 +234,7 @@ __rep_fileinfo_read(dbenv, recbuf, nextp, argpp)
 	bp += sizeof(uinttmp);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->filenum = (int)uinttmp;
+	argp->filenum = (u_int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));

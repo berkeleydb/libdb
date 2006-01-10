@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep007.tcl,v 11.22 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep007.tcl,v 12.5 2005/10/18 19:04:17 carol Exp $
 #
 # TEST  	rep007
 # TEST	Replication and bad LSNs
@@ -15,6 +15,11 @@
 # TEST	the client.  Verify periodically that contents are correct.
 proc rep007 { method { niter 10 } { tnum "007" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
@@ -72,7 +77,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env -create $m_txnargs \
 #	    $m_logargs -lock_max 2500 \
-#	    -verbose {rep on} \
+#	    -verbose {rep on} -errpfx MASTER -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
@@ -84,7 +89,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env -create $c_txnargs \
 #	    $c_logargs -lock_max 2500 \
-#	    -verbose {rep on} \
+#	    -verbose {rep on} -errpfx CLIENT -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
@@ -96,7 +101,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 #	set cl2_envcmd "berkdb_env -create $c2_txnargs \
 #	    $c2_logargs -lock_max 2500 \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\] \
-#	    -verbose {rep on}"
+#	    -verbose {rep on} -errpfx CLIENT2 -errfile /dev/stderr"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]
 	error_check_good client2_env [is_valid_env $cl2env] TRUE
 
@@ -106,7 +111,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 
 	# Run rep_test in the master (and update clients).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 
 	# Databases should now have identical contents.
@@ -130,7 +135,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 
 	# Change master and propagate changes to client 2.
 	set start $niter
-	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
 	set envlist "{$masterenv 1} {$cl2env 3}"
 	process_msgs $envlist
 
@@ -179,9 +184,8 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	if { [is_hash $method] == 0 } {
 		set db2 [berkdb_open -env $newmasterenv -auto_commit $dbname]
 
-		catch {db_compare $db2 $db3 $clientdir/$dbname \
-		    $clientdir2/$dbname} res
-		error_check_bad compare2and3_must_fail $res 0
+		error_check_good db_compare [db_compare $db2 $db3 \
+		    $clientdir/$dbname $clientdir2/$dbname] 1
 		error_check_good db2_close [$db2 close] 0
 	}
 	error_check_good db3_close [$db3 close] 0
@@ -209,7 +213,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	error_check_good txn [$t commit] 0
 	error_check_good dbclose [$db close] 0
 
-	eval rep_test $method $newmasterenv NULL $niter $start $start 0 $largs
+	eval rep_test $method $newmasterenv NULL $niter $start $start 0 0 $largs
 	set cl2rec 0
 	set envlist "{$newmasterenv 2} {$cl2env 3}"
 	process_msgs $envlist
@@ -246,7 +250,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	error_check_good db1_close [$db1 close] 0
 
 	set start [expr $niter * 2]
-	eval rep_test $method $newmasterenv NULL $niter $start $start 0 $largs
+	eval rep_test $method $newmasterenv NULL $niter $start $start 0 0 $largs
 	set envlist "{$newclientenv 1} {$newmasterenv 2} {$cl2env 3}"
 	process_msgs $envlist
 

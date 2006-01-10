@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
+# Copyright (c) 2001-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep009.tcl,v 11.8 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep009.tcl,v 12.3 2005/06/23 15:25:21 carol Exp $
 #
 # TEST  rep009
 # TEST	Replication and DUPMASTERs
@@ -13,6 +13,11 @@
 # TEST  Close a client, clean it and then declare it a 2nd master.
 proc rep009 { method { niter 10 } { tnum "009" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	if { [is_btree $method] == 0 } {
 		puts "Rep009: Skipping for method $method."
 		return
@@ -74,7 +79,7 @@ proc rep009_sub { method niter tnum clean logset recargs largs } {
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env -create $m_txnargs \
 # 	    $m_logargs -lock_max 2500 \
-#	    -verbose {rep on} \
+#	    -verbose {rep on} -errpfx MASTER -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
@@ -85,8 +90,8 @@ proc rep009_sub { method niter tnum clean logset recargs largs } {
 	    $c_logargs -lock_max 2500 \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env -create $c_txnargs \
-#         $c_logargs -lock_max 2500 \
-#	    -verbose {rep on} \
+#	    $c_logargs -lock_max 2500 \
+#	    -verbose {rep on} -errpfx CLIENT -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
@@ -96,9 +101,9 @@ proc rep009_sub { method niter tnum clean logset recargs largs } {
 	    $c2_logargs -lock_max 2500 \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 #	set cl2_envcmd "berkdb_env -create $c2_txnargs \
-#         $c2_logargs -lock_max 2500 \
+#	    $c2_logargs -lock_max 2500 \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\] \
-#	    -verbose {rep on}"
+#	    -verbose {rep on} -errpfx CLIENT2 -errfile /dev/stderr"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]
 	error_check_good client2_env [is_valid_env $cl2env] TRUE
 

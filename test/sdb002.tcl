@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb002.tcl,v 11.41 2004/04/05 17:49:26 carol Exp $
+# $Id: sdb002.tcl,v 12.1 2005/06/16 20:24:04 bostic Exp $
 #
 # TEST	sdb002
 # TEST	Tests basic subdb functionality

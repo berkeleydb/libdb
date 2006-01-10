@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TestEntityBinding.java,v 1.2 2004/06/04 18:26:02 mark Exp $
+ * $Id: TestEntityBinding.java,v 12.1 2005/01/31 19:27:35 mark Exp $
  */
 
 package com.sleepycat.collections.test;

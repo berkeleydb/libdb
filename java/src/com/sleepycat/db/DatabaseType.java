@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: DatabaseType.java,v 1.2 2004/04/21 01:09:09 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: DatabaseType.java,v 12.1 2005/06/16 20:23:00 bostic Exp $
+ */
 
 package com.sleepycat.db;
 

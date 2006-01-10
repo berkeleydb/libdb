@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #       Sleepycat Software.  All rights reserved.
 #
-# $Id: env011.tcl,v 1.4 2004/01/28 03:36:27 bostic Exp $
+# $Id: env011.tcl,v 12.2 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	env011
 # TEST	Run with region overwrite flag.
@@ -19,9 +19,9 @@ proc env011 { } {
 	set db [eval \
 	    {berkdb_open -auto_commit -env $e -btree -create -mode 0644} ]
 	error_check_good dbopen [is_valid_db $db] TRUE
-	set ret [eval {$db put} -auto_commit "aaa" "data"]
+	set ret [eval {$db put} "aaa" "data"]
 	error_check_good put $ret 0
-	set ret [eval {$db put} -auto_commit "bbb" "data"]
+	set ret [eval {$db put} "bbb" "data"]
 	error_check_good put $ret 0
 	error_check_good db_close [$db close] 0
 	error_check_good envclose [$e close] 0

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sec002.tcl,v 11.13 2004/11/02 16:12:04 carol Exp $
+# $Id: sec002.tcl,v 12.1 2005/06/16 20:24:04 bostic Exp $
 #
 # TEST	sec002
 # TEST	Test of security interface and catching errors in the

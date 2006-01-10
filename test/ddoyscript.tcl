@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: ddoyscript.tcl,v 11.8 2004/01/28 03:36:26 bostic Exp $
+# $Id: ddoyscript.tcl,v 12.1 2005/06/16 20:23:51 bostic Exp $
 #
 # Deadlock detector script tester.
 # Usage: ddoyscript dir lockerid numprocs

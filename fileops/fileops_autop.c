@@ -12,7 +12,6 @@
 #include "db_int.h"
 #include "dbinc/crypto.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_dispatch.h"
 #include "dbinc/db_am.h"
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
@@ -35,7 +34,7 @@ __fop_create_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __fop_create_read(dbenv, dbtp->data, &argp)) != 0)
@@ -79,7 +78,7 @@ __fop_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __fop_remove_read(dbenv, dbtp->data, &argp)) != 0)
@@ -128,7 +127,7 @@ __fop_write_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __fop_write_read(dbenv, dbtp->data, &argp)) != 0)
@@ -181,7 +180,7 @@ __fop_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __fop_rename_read(dbenv, dbtp->data, &argp)) != 0)
@@ -236,7 +235,7 @@ __fop_file_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __fop_file_remove_read(dbenv, dbtp->data, &argp)) != 0)

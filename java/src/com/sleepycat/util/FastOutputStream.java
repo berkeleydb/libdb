@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2004
+ * Copyright (c) 2000-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: FastOutputStream.java,v 1.3 2004/07/03 16:15:36 mark Exp $
+ * $Id: FastOutputStream.java,v 12.2 2005/08/01 20:25:22 mark Exp $
  */
 
 package com.sleepycat.util;
@@ -27,8 +27,17 @@ import java.io.UnsupportedEncodingException;
  */
 public class FastOutputStream extends OutputStream {
 
+    /**
+     * The default initial size of the buffer if no initialSize parameter is
+     * specified.  This constant is 100 bytes.
+     */
     public static final int DEFAULT_INIT_SIZE = 100;
-    public static final int DEFAULT_BUMP_SIZE = 100;
+
+    /**
+     * The default amount that the buffer is increased when it is full.  This
+     * constant is zero, which means to double the current buffer size.
+     */
+    public static final int DEFAULT_BUMP_SIZE = 0;
 
     private int len;
     private int bumpLen;
@@ -83,7 +92,9 @@ public class FastOutputStream extends OutputStream {
      *
      * @param buffer the initial buffer; will be owned by this object.
      *
-     * @param bumpSize the amount to increment the buffer.
+     * @param bumpSize the amount to increment the buffer.  If zero (the
+     * default), the current buffer size will be doubled when the buffer is
+     * full.
      */
     public FastOutputStream(byte[] buffer, int bumpSize) {
 
@@ -144,8 +155,7 @@ public class FastOutputStream extends OutputStream {
 
         byte[] toBuf = new byte[len];
 
-        for (int i = 0; i < len; i++)
-            toBuf[i] = buf[i];
+        System.arraycopy(buf, 0, toBuf, 0, len);
 
         return toBuf;
     }
@@ -176,8 +186,8 @@ public class FastOutputStream extends OutputStream {
         if (needed > 0)
             bump(needed);
 
-        for (int i = 0; i < fromBuf.length; i++)
-            buf[len++] = fromBuf[i];
+        System.arraycopy(fromBuf, 0, buf, len, fromBuf.length);
+        len += fromBuf.length;
     }
 
     /**
@@ -191,25 +201,8 @@ public class FastOutputStream extends OutputStream {
         if (needed > 0)
             bump(needed);
 
-        int fromLen = offset + length;
-
-        for (int i = offset; i < fromLen; i++)
-            buf[len++] = fromBuf[i];
-    }
-
-    /**
-     * Copy the buffered data to the given array.
-     *
-     * @param toBuf the buffer to hold a copy of the data.
-     *
-     * @param offset the offset at which to start copying.
-     */
-    public void toByteArray(byte[] toBuf, int offset) {
-
-        int toLen = (toBuf.length > len) ? len : toBuf.length;
-
-        for (int i = offset; i < toLen; i++)
-            toBuf[i] = buf[i];
+        System.arraycopy(fromBuf, offset, buf, len, length);
+        len += length;
     }
 
     /**
@@ -268,10 +261,12 @@ public class FastOutputStream extends OutputStream {
 
     private void bump(int needed) {
 
-        byte[] toBuf = new byte[buf.length + needed + bumpLen];
+        /* Double the buffer if the bumpLen is zero. */
+        int bump = (bumpLen > 0) ? bumpLen : buf.length;
 
-        for (int i = 0; i < len; i++)
-            toBuf[i] = buf[i];
+        byte[] toBuf = new byte[buf.length + needed + bump];
+
+        System.arraycopy(buf, 0, toBuf, 0, len);
 
         buf = toBuf;
     }

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: KeyRangeTest.java,v 1.4 2004/09/22 18:01:06 bostic Exp $
+ * $Id: KeyRangeTest.java,v 12.1 2005/01/31 19:27:35 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -107,7 +107,7 @@ public class KeyRangeTest extends TestCase {
 
     private void closeDb()
         throws Exception {
-
+        
         store.close();
         store = null;
         env.close();

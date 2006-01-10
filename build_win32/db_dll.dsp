@@ -19,6 +19,12 @@ CFG=db_dll - Win32 Debug
 !MESSAGE 
 !MESSAGE "db_dll - Win32 Release" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "db_dll - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - Win32 ASCII Debug" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - Win32 ASCII Release" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - x64 Debug AMD64" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - x64 Release AMD64" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - x64 Debug IA64" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "db_dll - x64 Release IA64" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
@@ -34,16 +40,16 @@ RSC=rc.exe
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
 # PROP BASE Output_Dir "Release"
-# PROP BASE Intermediate_Dir "Release"
+# PROP BASE Intermediate_Dir "Release/db_dll"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
 # PROP Output_Dir "Release"
-# PROP Intermediate_Dir "Release"
+# PROP Intermediate_Dir "Release/db_dll"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /c
+# ADD BASE CPP /nologo /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"  /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -52,24 +58,24 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb43.dll"
+# ADD BASE LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /machine:I386
+# ADD LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb44.dll" /libpath:"$(OUTDIR)"
 
 !ELSEIF  "$(CFG)" == "db_dll - Win32 Debug"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
 # PROP BASE Output_Dir "Debug"
-# PROP BASE Intermediate_Dir "Debug"
+# PROP BASE Intermediate_Dir "Debug/db_dll"
 # PROP BASE Target_Dir ""
-# PROP Use_MFC 2
+# PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
 # PROP Output_Dir "Debug"
-# PROP Intermediate_Dir "Debug"
+# PROP Intermediate_Dir "Debug/db_dll"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /YX /FD /c
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DB_CREATE_DLL" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX"config.h" /FD /c
+# ADD BASE CPP /nologo /MDd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /FD /c
+# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS"  /FD /c
 # SUBTRACT CPP /Fr
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
@@ -79,8 +85,175 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug/libdb43d.dll" /fixed:no
+# ADD BASE LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /pdb:none /debug /machine:I386 /out:"Debug/libdb44d.dll" /fixed:no /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - Win32 ASCII Debug"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 1
+# PROP BASE Output_Dir "Debug_ASCII"
+# PROP BASE Intermediate_Dir "Debug_ASCII/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 1
+# PROP Output_Dir "Debug_ASCII"
+# PROP Intermediate_Dir "Debug_ASCII/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS"  /FD /c
+# SUBTRACT BASE CPP /Fr
+# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS"  /FD /c
+# SUBTRACT CPP /Fr
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "_DEBUG"
+# ADD RSC /l 0x409 /d "_DEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug_ASCII/libdb44d.dll" /fixed:no
+# ADD LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /pdb:none /debug /machine:I386 /out:"Debug_ASCII/libdb44d.dll" /fixed:no /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - Win32 ASCII Release"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_ASCII"
+# PROP BASE Intermediate_Dir "Release_ASCII/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_ASCII"
+# PROP Intermediate_Dir "Release_ASCII/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS"  /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS"  /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release_ASCII/libdb44.dll"
+# ADD LINK32  kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release_ASCII/libdb44.dll" /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - x64 Debug AMD64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 1
+# PROP BASE Output_Dir "Debug_AMD64"
+# PROP BASE Intermediate_Dir "Debug_AMD64/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 1
+# PROP Output_Dir "Debug_AMD64"
+# PROP Intermediate_Dir "Debug_AMD64/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS"  /FD /c
+# SUBTRACT BASE CPP /Fr
+# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS"  /FD /Wp64 /c
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "_DEBUG"
+# ADD RSC /l 0x409 /d "_DEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:AMD64 /out:"Debug_AMD64/libdb44d.dll" /fixed:no
+# ADD LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:AMD64 /out:"Debug_AMD64/libdb44d.dll" /fixed:no /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - x64 Release AMD64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_AMD64"
+# PROP BASE Intermediate_Dir "Release_AMD64/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_AMD64"
+# PROP Intermediate_Dir "Release_AMD64/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb44.dll"
+# ADD LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb44.dll" /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - x64 Debug IA64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 1
+# PROP BASE Output_Dir "Debug_IA64"
+# PROP BASE Intermediate_Dir "Debug_IA64/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 1
+# PROP Output_Dir "Debug_IA64"
+# PROP Intermediate_Dir "Debug_IA64/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# SUBTRACT BASE CPP /Fr
+# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# SUBTRACT CPP /Fr
+# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "_DEBUG"
+# ADD RSC /l 0x409 /d "_DEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:IA64 /out:"Debug_IA64/libdb44d.dll" /fixed:no
+# ADD LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:IA64 /out:"Debug_IA64/libdb44d.dll" /fixed:no /libpath:"$(OUTDIR)"
+
+!ELSEIF  "$(CFG)" == "db_dll - x64 Release IA64"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release_IA64"
+# PROP BASE Intermediate_Dir "Release_IA64/db_dll"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release_IA64"
+# PROP Intermediate_Dir "Release_IA64/db_dll"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"  /Wp64 /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb44.dll"
+# ADD LINK32  bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb44.dll" /libpath:"$(OUTDIR)"
 
 !ENDIF 
 
@@ -88,6 +261,16 @@ LINK32=link.exe
 
 # Name "db_dll - Win32 Release"
 # Name "db_dll - Win32 Debug"
+# Name "db_dll - Win32 ASCII Debug"
+# Name "db_dll - Win32 ASCII Release"
+# Name "db_dll - x64 Debug AMD64"
+# Name "db_dll - x64 Release AMD64"
+# Name "db_dll - x64 Debug IA64"
+# Name "db_dll - x64 Release IA64"
+# Begin Source File
+
+SOURCE=..\btree\bt_compact.c
+# End Source File
 # Begin Source File
 
 SOURCE=..\btree\bt_compare.c
@@ -175,6 +358,10 @@ SOURCE=..\clib\strcasecmp.c
 # Begin Source File
 
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\db_clock.c
 # End Source File
 # Begin Source File
 
@@ -422,6 +609,10 @@ SOURCE=..\env\db_shash.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\env\env_failchk.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\env\env_file.c
 # End Source File
 # Begin Source File
@@ -439,6 +630,10 @@ SOURCE=..\env\env_recover.c
 # Begin Source File
 
 SOURCE=..\env\env_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\env\env_register.c
 # End Source File
 # Begin Source File
 
@@ -538,6 +733,10 @@ SOURCE=..\lock\lock_deadlock.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\lock\lock_failchk.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\lock\lock_id.c
 # End Source File
 # Begin Source File
@@ -575,6 +774,10 @@ SOURCE=..\log\log_archive.c
 # Begin Source File
 
 SOURCE=..\log\log_compare.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\log\log_debug.c
 # End Source File
 # Begin Source File
 
@@ -646,11 +849,23 @@ SOURCE=..\mp\mp_trickle.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\mutex\mut_win32.c
+SOURCE=..\mutex\mut_alloc.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\mutex\mutex.c
+SOURCE=..\mutex\mut_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mutex\mut_region.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mutex\mut_stat.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\mutex\mut_win32.c
 # End Source File
 # Begin Source File
 
@@ -663,6 +878,10 @@ SOURCE=..\os\os_id.c
 # Begin Source File
 
 SOURCE=..\os\os_method.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_mkdir.c
 # End Source File
 # Begin Source File
 
@@ -707,6 +926,10 @@ SOURCE=..\os_win32\os_errno.c
 # Begin Source File
 
 SOURCE=..\os_win32\os_fid.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os_win32\os_flock.c
 # End Source File
 # Begin Source File
 
@@ -806,6 +1029,14 @@ SOURCE=..\rep\rep_backup.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\rep\rep_elect.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\rep\rep_log.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\rep\rep_method.c
 # End Source File
 # Begin Source File
@@ -826,6 +1057,10 @@ SOURCE=..\rep\rep_util.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\rep\rep_verify.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\sequence\seq_stat.c
 # End Source File
 # Begin Source File
@@ -839,6 +1074,14 @@ SOURCE=..\txn\txn.c
 # Begin Source File
 
 SOURCE=..\txn\txn_auto.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_chkpt.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\txn\txn_failchk.c
 # End Source File
 # Begin Source File
 
@@ -876,5 +1119,6 @@ SOURCE=..\xa\xa_db.c
 
 SOURCE=..\xa\xa_map.c
 # End Source File
+
 # End Target
 # End Project

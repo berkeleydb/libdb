@@ -34,7 +34,7 @@ __dbreg_register_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __dbreg_register_read(dbenv, dbtp->data, &argp)) != 0)

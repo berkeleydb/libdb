@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2004
+ * Copyright (c) 2001-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: LogCursor.java,v 1.1 2004/04/06 20:43:40 mjc Exp $
+ * $Id: LogCursor.java,v 12.1 2005/06/16 20:23:02 bostic Exp $
  */
 
 package com.sleepycat.db;

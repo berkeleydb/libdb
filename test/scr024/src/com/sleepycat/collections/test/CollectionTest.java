@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: CollectionTest.java,v 1.3 2004/09/22 18:01:06 bostic Exp $
+ * $Id: CollectionTest.java,v 12.2 2005/08/01 20:25:28 mark Exp $
  */
 
 package com.sleepycat.collections.test;
@@ -154,7 +154,7 @@ public class CollectionTest extends TestCase {
                             TestEnv.ALL[i], TestStore.ALL[j],
                             entityBinding, false));
 
-                    if (TestEnv.ALL[i] == TestEnv.TXN) {
+                    if (TestEnv.ALL[i].isTxnMode()) {
                         addTest(args, suite, new CollectionTest(
                                 TestEnv.ALL[i], TestStore.ALL[j],
                                 entityBinding, true));
@@ -213,7 +213,7 @@ public class CollectionTest extends TestCase {
             // runner for writing via collections; if auto-commit is tested,
             // the per-collection auto-commit property will be set elsewhere.
             //
-            TransactionRunner normalRunner = new TransactionRunner(env);
+            TransactionRunner normalRunner = newTransactionRunner(env);
             normalRunner.setAllowNestedTransactions(
                     DbCompat.NESTED_TRANSACTIONS);
             TransactionRunner nullRunner = new NullTransactionRunner(env);
@@ -286,6 +286,15 @@ public class CollectionTest extends TestCase {
         }
     }
 
+    /**
+     * Is overridden in XACollectionTest.
+     */
+    protected TransactionRunner newTransactionRunner(Environment env)
+        throws DatabaseException {
+
+        return new TransactionRunner(env);
+    }
+
     void testCreation(StoredContainer cont)
         throws Exception {
 
@@ -294,7 +303,7 @@ public class CollectionTest extends TestCase {
         assertEquals(testStore.areKeysRenumbered(), cont.areKeysRenumbered());
         assertEquals(testStore.areDuplicatesAllowed(),
                      cont.areDuplicatesAllowed());
-        assertEquals(testEnv == TestEnv.TXN, cont.isTransactional());
+        assertEquals(testEnv.isTxnMode(), cont.isTransactional());
         try {
             cont.size();
             fail();
@@ -352,7 +361,7 @@ public class CollectionTest extends TestCase {
         // create primary list
         if (testStore.hasRecNumAccess()) {
             if (isEntityBinding) {
-                ilist = new StoredList(store, entityBinding,
+                ilist = new StoredList(store, entityBinding, 
                                        testStore.getKeyAssigner());
             } else {
                 ilist = new StoredList(store, valueBinding,

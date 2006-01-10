@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: Cursor.java,v 1.6 2004/11/05 01:08:31 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: Cursor.java,v 12.1 2005/06/16 20:22:58 bostic Exp $
+ */
 
 package com.sleepycat.db;
 

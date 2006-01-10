@@ -34,7 +34,7 @@ __qam_incfirst_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__qam_incfirst_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __qam_incfirst_read(dbenv, dbtp->data, &argp)) != 0)
@@ -71,7 +71,7 @@ __qam_mvptr_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__qam_mvptr_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __qam_mvptr_read(dbenv, dbtp->data, &argp)) != 0)
@@ -114,7 +114,7 @@ __qam_del_print(dbenv, dbtp, lsnp, notused2, notused3)
 	__qam_del_args *argp;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __qam_del_read(dbenv, dbtp->data, &argp)) != 0)
@@ -156,7 +156,7 @@ __qam_add_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __qam_add_read(dbenv, dbtp->data, &argp)) != 0)
@@ -211,7 +211,7 @@ __qam_delext_print(dbenv, dbtp, lsnp, notused2, notused3)
 	int ch;
 	int ret;
 
-	notused2 = DB_TXN_ABORT;
+	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
 	if ((ret = __qam_delext_read(dbenv, dbtp->data, &argp)) != 0)

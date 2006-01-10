@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env009.tcl,v 11.9 2004/09/23 21:45:21 mjc Exp $
+# $Id: env009.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	env009
 # TEST	Test calls to all the various stat functions.  We have several

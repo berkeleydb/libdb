@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: env003.tcl,v 11.23 2004/01/28 03:36:27 bostic Exp $
+# $Id: env003.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
 #
 # TEST	env003
 # TEST	Test DB_TMP_DIR and env name resolution

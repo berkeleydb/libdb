@@ -1,5 +1,5 @@
-<!--$Id: put.so,v 1.16 2003/11/05 19:05:10 bostic Exp $-->
-<!--Copyright 1997-2004 by Sleepycat Software, Inc.-->
+<!--$Id: put.so,v 1.17 2004/11/27 16:11:10 bostic Exp $-->
+<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -127,12 +127,14 @@ operations (that is, any call to a function underlying the handles
 returned by <a href="../../api_c/db_open.html">DB-&gt;open</a> and <a href="../../api_c/db_cursor.html">DB-&gt;cursor</a>) are usually
 performed on behalf of a unique locker.  Transactions can be used to
 perform multiple calls on behalf of the same locker within a single
-thread of control.  For example, consider the case in which a cursor
-scan locates a record and then accesses some other item in the database,
-based on that record.  If these operations are done using the handle's
-default locker IDs, they may conflict.  If the locks are obtained on
-behalf of a transaction, using the transaction's locker ID instead of
-the handle's locker ID, the operations will not conflict.</p>
+thread of control.  For example, consider the case in which an
+application uses a cursor scan to locate a record and then the
+application accesses another other item in the database, based on the
+key returned by the cursor, without first closing the cursor.  If these
+operations are done using default locker IDs, they may conflict.  If the
+locks are obtained on behalf of a transaction, using the transaction's
+locker ID instead of the database handle's locker ID, the operations
+will not conflict.</p>
 <p>There is a new error return in this function that you may not have seen
 before.  In transactional (not Concurrent Data Store) applications
 supporting both readers and writers, or just multiple writers, Berkeley DB
@@ -198,6 +200,6 @@ mainline code often results in the simplest and cleanest application
 code.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/data_open.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/atomicity.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2004</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
 </body>
 </html>

@@ -1,18 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2004
+ * Copyright (c) 2002-2005
  *      Sleepycat Software.  All rights reserved.
  *
- * $Id: RangeCursor.java,v 1.4 2004/11/05 01:08:31 mjc Exp $
+ * $Id: RangeCursor.java,v 12.2 2005/08/01 20:25:18 mark Exp $
  */
 
 package com.sleepycat.collections;
 
 import com.sleepycat.compat.DbCompat;
+import com.sleepycat.db.Cursor;
+import com.sleepycat.db.CursorConfig;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
-import com.sleepycat.db.Cursor;
 import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.SecondaryCursor;
@@ -37,7 +38,7 @@ class RangeCursor implements Cloneable {
     private Cursor cursor;
     private SecondaryCursor secCursor;
     private CurrentTransaction currentTxn;
-    private boolean writeAllowed;
+    private boolean writeCursor;
 
     /**
      * The range is always non-null, but may be unbounded meaning that it is
@@ -58,7 +59,7 @@ class RangeCursor implements Cloneable {
     /**
      * The privXxx entries are used only when the range is bounded.  We read
      * into these private entries to avoid modifying the caller's entry
-     * parameters in the case where we read sucessfully but the key is out of
+     * parameters in the case where we read successfully but the key is out of
      * range.  In that case we return NOTFOUND and we want to leave the entry
      * parameters unchanged.
      */
@@ -67,13 +68,13 @@ class RangeCursor implements Cloneable {
     private DatabaseEntry privData;
 
     /**
-     * The initialized flag is set to true whenever we sucessfully position the
-     * cursor.  It is used to implement the getNext/Prev logic for doing a
+     * The initialized flag is set to true whenever we successfully position
+     * the cursor.  It is used to implement the getNext/Prev logic for doing a
      * getFirst/Last when the cursor is not initialized.  We can't rely on
      * Cursor to do that for us, since if we position the underlying cursor
-     * sucessfully but the key is out of range, we have no way to set the
-     * underlying cursor to uninitialized.  A range cursor always starts in
-     * the uninitialized state.
+     * successfully but the key is out of range, we have no way to set the
+     * underlying cursor to uninitialized.  A range cursor always starts in the
+     * uninitialized state.
      */
     private boolean initialized;
 
@@ -84,11 +85,19 @@ class RangeCursor implements Cloneable {
         throws DatabaseException {
 
         this.range = range;
-        this.writeAllowed = writeAllowed;
         this.currentTxn = view.currentTxn;
         isRecnoOrQueue = view.recNumAllowed && !view.btreeRecNumDb;
 
-        cursor = currentTxn.openCursor(view.db, writeAllowed,
+        /*
+         * writeCursor is set to true if requested by the user via the cursor
+         * config, or if this is a writable cursor and the user has not
+         * specified a cursor config.  For CDB, a special cursor must be
+         * created for writing.  See CurrentTransaction.openCursor.
+         */
+        writeCursor = DbCompat.getWriteCursor(view.cursorConfig) ||
+            (view.cursorConfig == CursorConfig.DEFAULT && writeAllowed);
+
+        cursor = currentTxn.openCursor(view.db, view.cursorConfig, writeCursor,
                                        view.useTransaction());
         init();
     }
@@ -103,7 +112,7 @@ class RangeCursor implements Cloneable {
 
         try {
             RangeCursor c = (RangeCursor) super.clone();
-            c.cursor = currentTxn.dupCursor(cursor, writeAllowed,
+            c.cursor = currentTxn.dupCursor(cursor, writeCursor,
                                             samePosition);
             c.init();
             return c;
@@ -167,7 +176,7 @@ class RangeCursor implements Cloneable {
 
         Cursor oldCursor = cursor;
         if (initialized) {
-            cursor = currentTxn.dupCursor(cursor, writeAllowed, true);
+            cursor = currentTxn.dupCursor(cursor, writeCursor, true);
             if (secCursor != null) {
                 secCursor = (SecondaryCursor) cursor;
             }
@@ -219,7 +228,7 @@ class RangeCursor implements Cloneable {
      * Swaps the contents of the two entries.  Used to return entry data to
      * the caller when the operation was successful.
      */
-    static private void swapData(DatabaseEntry e1, DatabaseEntry e2) {
+    private static void swapData(DatabaseEntry e1, DatabaseEntry e2) {
 
         byte[] d1 = e1.getData();
         int o1 = e1.getOffset();
@@ -235,7 +244,7 @@ class RangeCursor implements Cloneable {
      * that the underlying operation will not modify the entry, for example,
      * with getSearchKey.
      */
-    static private void shareData(DatabaseEntry from, DatabaseEntry to) {
+    private static void shareData(DatabaseEntry from, DatabaseEntry to) {
 
         if (from != null) {
             to.setData(from.getData(), from.getOffset(), from.getSize());
@@ -245,7 +254,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getFirst(DatabaseEntry key,
                                     DatabaseEntry pKey,
                                     DatabaseEntry data,
-                                    LockMode lockMode)
+                                    LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -288,7 +297,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getLast(DatabaseEntry key,
                                    DatabaseEntry pKey,
                                    DatabaseEntry data,
-                                   LockMode lockMode)
+                                   LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status = OperationStatus.NOTFOUND;
@@ -334,7 +343,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getNext(DatabaseEntry key,
                                    DatabaseEntry pKey,
                                    DatabaseEntry data,
-                                   LockMode lockMode)
+                                   LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -369,7 +378,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getNextNoDup(DatabaseEntry key,
                                         DatabaseEntry pKey,
                                         DatabaseEntry data,
-                                        LockMode lockMode)
+                                        LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -403,7 +412,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getPrev(DatabaseEntry key,
                                    DatabaseEntry pKey,
                                    DatabaseEntry data,
-                                   LockMode lockMode)
+                                   LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -438,7 +447,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getPrevNoDup(DatabaseEntry key,
                                         DatabaseEntry pKey,
                                         DatabaseEntry data,
-                                        LockMode lockMode)
+                                        LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -472,7 +481,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getSearchKey(DatabaseEntry key,
                                         DatabaseEntry pKey,
                                         DatabaseEntry data,
-                                        LockMode lockMode)
+                                        LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -495,7 +504,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getSearchBoth(DatabaseEntry key,
                                          DatabaseEntry pKey,
                                          DatabaseEntry data,
-                                         LockMode lockMode)
+                                         LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -523,7 +532,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getSearchKeyRange(DatabaseEntry key,
                                              DatabaseEntry pKey,
                                              DatabaseEntry data,
-                                             LockMode lockMode)
+                                             LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status = OperationStatus.NOTFOUND;
@@ -550,7 +559,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getSearchBothRange(DatabaseEntry key,
                                               DatabaseEntry pKey,
                                               DatabaseEntry data,
-                                              LockMode lockMode)
+                                              LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status = OperationStatus.NOTFOUND;
@@ -582,7 +591,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getSearchRecordNumber(DatabaseEntry key,
                                                  DatabaseEntry pKey,
                                                  DatabaseEntry data,
-                                                 LockMode lockMode)
+                                                 LockMode lockMode) 
         throws DatabaseException {
 
         OperationStatus status;
@@ -605,7 +614,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getNextDup(DatabaseEntry key,
                                       DatabaseEntry pKey,
                                       DatabaseEntry data,
-                                      LockMode lockMode)
+                                      LockMode lockMode) 
         throws DatabaseException {
 
         if (!initialized) {
@@ -626,7 +635,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getPrevDup(DatabaseEntry key,
                                       DatabaseEntry pKey,
                                       DatabaseEntry data,
-                                      LockMode lockMode)
+                                      LockMode lockMode) 
         throws DatabaseException {
 
         if (!initialized) {
@@ -647,7 +656,7 @@ class RangeCursor implements Cloneable {
     public OperationStatus getCurrent(DatabaseEntry key,
                                       DatabaseEntry pKey,
                                       DatabaseEntry data,
-                                      LockMode lockMode)
+                                      LockMode lockMode) 
         throws DatabaseException {
 
         if (!initialized) {
@@ -682,20 +691,20 @@ class RangeCursor implements Cloneable {
 	return cursor.delete();
     }
 
-    public OperationStatus put(DatabaseEntry key, DatabaseEntry data)
+    public OperationStatus put(DatabaseEntry key, DatabaseEntry data) 
         throws DatabaseException {
 
         return cursor.put(key, data);
     }
 
     public OperationStatus putNoOverwrite(DatabaseEntry key,
-                                          DatabaseEntry data)
+                                          DatabaseEntry data) 
         throws DatabaseException {
 
         return cursor.putNoOverwrite(key, data);
     }
 
-    public OperationStatus putNoDupData(DatabaseEntry key, DatabaseEntry data)
+    public OperationStatus putNoDupData(DatabaseEntry key, DatabaseEntry data) 
         throws DatabaseException {
 
         return cursor.putNoDupData(key, data);
@@ -719,7 +728,7 @@ class RangeCursor implements Cloneable {
         return DbCompat.putBefore(cursor, key, data);
     }
 
-    private OperationStatus doGetFirst(LockMode lockMode)
+    private OperationStatus doGetFirst(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -729,7 +738,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetLast(LockMode lockMode)
+    private OperationStatus doGetLast(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -739,7 +748,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetNext(LockMode lockMode)
+    private OperationStatus doGetNext(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -749,7 +758,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetNextDup(LockMode lockMode)
+    private OperationStatus doGetNextDup(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -759,7 +768,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetNextNoDup(LockMode lockMode)
+    private OperationStatus doGetNextNoDup(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -770,7 +779,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetPrev(LockMode lockMode)
+    private OperationStatus doGetPrev(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -780,7 +789,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetPrevDup(LockMode lockMode)
+    private OperationStatus doGetPrevDup(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -790,7 +799,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetPrevNoDup(LockMode lockMode)
+    private OperationStatus doGetPrevNoDup(LockMode lockMode) 
         throws DatabaseException {
 
         if (secCursor != null && privPKey != null) {
@@ -801,7 +810,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetSearchKey(LockMode lockMode)
+    private OperationStatus doGetSearchKey(LockMode lockMode) 
         throws DatabaseException {
 
         if (isRecnoOrQueue && DbCompat.getRecordNumber(privKey) <= 0) {
@@ -815,7 +824,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetSearchKeyRange(LockMode lockMode)
+    private OperationStatus doGetSearchKeyRange(LockMode lockMode) 
         throws DatabaseException {
 
         if (isRecnoOrQueue && DbCompat.getRecordNumber(privKey) <= 0) {
@@ -829,7 +838,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetSearchBoth(LockMode lockMode)
+    private OperationStatus doGetSearchBoth(LockMode lockMode) 
         throws DatabaseException {
 
         if (isRecnoOrQueue && DbCompat.getRecordNumber(privKey) <= 0) {
@@ -843,7 +852,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetSearchBothRange(LockMode lockMode)
+    private OperationStatus doGetSearchBothRange(LockMode lockMode) 
         throws DatabaseException {
 
         if (isRecnoOrQueue && DbCompat.getRecordNumber(privKey) <= 0) {
@@ -857,7 +866,7 @@ class RangeCursor implements Cloneable {
         }
     }
 
-    private OperationStatus doGetSearchRecordNumber(LockMode lockMode)
+    private OperationStatus doGetSearchRecordNumber(LockMode lockMode) 
         throws DatabaseException {
 
         if (DbCompat.getRecordNumber(privKey) <= 0) {

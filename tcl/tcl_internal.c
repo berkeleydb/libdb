@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2004
+ * Copyright (c) 1999-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: tcl_internal.c,v 11.70 2004/10/25 18:04:44 bostic Exp $
+ * $Id: tcl_internal.c,v 12.3 2005/06/16 20:23:47 bostic Exp $
  */
 
 #include "db_config.h"
@@ -59,9 +59,9 @@ _NewInfo(interp, anyp, name, type)
 	enum INFOTYPE type;
 {
 	DBTCL_INFO *p;
-	int i, ret;
+	int ret;
 
-	if ((ret = __os_malloc(NULL, sizeof(DBTCL_INFO), &p)) != 0) {
+	if ((ret = __os_calloc(NULL, sizeof(DBTCL_INFO), 1, &p)) != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (NULL);
 	}
@@ -73,21 +73,7 @@ _NewInfo(interp, anyp, name, type)
 	}
 	p->i_interp = interp;
 	p->i_anyp = anyp;
-	p->i_data = 0;
-	p->i_data2 = 0;
 	p->i_type = type;
-	p->i_parent = NULL;
-	p->i_err = NULL;
-	p->i_errpfx = NULL;
-	p->i_lockobj.data = NULL;
-	p->i_btcompare = NULL;
-	p->i_dupcompare = NULL;
-	p->i_hashproc = NULL;
-	p->i_second_call = NULL;
-	p->i_rep_eid = NULL;
-	p->i_rep_send = NULL;
-	for (i = 0; i < MAX_ID; i++)
-		p->i_otherid[i] = 0;
 
 	LIST_INSERT_HEAD(&__db_infohead, p, entries);
 	return (p);
@@ -670,14 +656,14 @@ _debug_check()
  * memory.
  */
 /*
- * PUBLIC: int _CopyObjBytes  __P((Tcl_Interp *, Tcl_Obj *obj, void **,
+ * PUBLIC: int _CopyObjBytes  __P((Tcl_Interp *, Tcl_Obj *obj, void *,
  * PUBLIC:     u_int32_t *, int *));
  */
 int
 _CopyObjBytes(interp, obj, newp, sizep, freep)
 	Tcl_Interp *interp;
 	Tcl_Obj *obj;
-	void **newp;
+	void *newp;
 	u_int32_t *sizep;
 	int *freep;
 {
@@ -695,7 +681,7 @@ _CopyObjBytes(interp, obj, newp, sizep, freep)
 	*sizep = (u_int32_t)len;
 	if (ret == TCL_ERROR) {
 		Tcl_ResetResult(interp);
-		*newp = tmp;
+		*(void **)newp = tmp;
 		return (0);
 	}
 
@@ -707,7 +693,7 @@ _CopyObjBytes(interp, obj, newp, sizep, freep)
 	if ((ret = __os_malloc(NULL, (size_t)len, &new)) != 0)
 		return (ret);
 	memcpy(new, tmp, (size_t)len);
-	*newp = new;
+	*(void **)newp = new;
 	*freep = 1;
 	return (0);
 }

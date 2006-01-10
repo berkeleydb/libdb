@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: recd007.tcl,v 11.64 2004/07/07 19:08:21 carol Exp $
+# $Id: recd007.tcl,v 12.3 2005/09/28 18:17:04 carol Exp $
 #
 # TEST	recd007
 # TEST	File create/delete tests.
@@ -110,6 +110,7 @@ proc recd007 { method args} {
 	{ {"predestroy" "postdestroy"}	"Recd007.o: predestroy/postdestroy"}
 	{ {"postdestroy" "postdestroy"}	"Recd007.p: postdestroy/postdestroy"}
 	}
+
 	foreach op { dbremove dbrename dbtruncate } {
 		foreach pair $rlist {
 			set cmd [lindex $pair 0]
@@ -668,6 +669,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	}
 	set data1 recd007_data
 	set data2 NEWrecd007_data2
+	set data3 LASTrecd007_data3
 
 	set oflags \
 	    "-create $omethod -auto_commit -mode 0644 $opts $dbfile"
@@ -683,6 +685,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	error_check_good db_put $ret 0
 	error_check_good commit [$txn commit] 0
 	error_check_good db_close [$db close] 0
+	file copy -force $testdir/$dbfile $testdir/${dbfile}.1
 
 	set ret \
 	    [catch { berkdb dbremove -env $env -auto_commit $dbfile } remret]
@@ -717,7 +720,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	}
 	puts "complete"
 	error_check_good db_recover $stat 0
-	error_check_good db_recover.1 [file exists $dir/$dbfile] 1
+	error_check_good file_exist [file exists $dir/$dbfile] 1
 	#
 	# Since we ran recovery on the open db/env, we need to
 	# catch these calls.  Basically they are there to clean
@@ -742,6 +745,124 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	set kd [lindex $ret 0]
 	error_check_good key [lindex $kd 0] $key
 	error_check_good data2 [lindex $kd 1] [pad_data $method $data2]
+
+	error_check_good dbclose [$db close] 0
+	error_check_good envclose [$env close] 0
+
+	#
+	# Copy back the original database and run recovery again.
+	# SR [#13026]
+	#
+	puts "\t\tRecover from first database"
+	file copy -force $testdir/${dbfile}.1 $testdir/$dbfile
+	berkdb debug_check
+	puts -nonewline "\t\tAbout to run recovery ... "
+	flush stdout
+
+	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
+	if { $stat == 1 } {
+		error "FAIL: Recovery error: $result."
+		return
+	}
+	puts "complete"
+	error_check_good db_recover $stat 0
+	error_check_good db_recover.1 [file exists $dir/$dbfile] 1
+
+	#
+	# Reopen env and db and verify 2nd database is there.
+	#
+	set env [eval $env_cmd]
+	error_check_good env_open [is_valid_env $env] TRUE
+	set db [eval {berkdb_open_noerr} -env $env $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set ret [$db get $key]
+	error_check_good dbget [llength $ret] 1
+	set kd [lindex $ret 0]
+	error_check_good key [lindex $kd 0] $key
+	error_check_good data2 [lindex $kd 1] [pad_data $method $data2]
+
+	error_check_good dbclose [$db close] 0
+
+	file copy -force $testdir/$dbfile $testdir/${dbfile}.2
+
+	puts "\t\tRemove second db"
+	set ret \
+	    [catch { berkdb dbremove -env $env -auto_commit $dbfile } remret]
+
+	#
+	# Operation was committed, verify it does
+	# not exist.
+	#
+	puts "\t\tCommand executed and committed."
+	error_check_good dbremove $ret 0
+	error_check_good dbremove.2 [file exists $dir/$dbfile] 0
+
+	#
+	# Now create a new db with the same name.
+	#
+	puts "\t\tAdd a third version of the database"
+	set db [eval {berkdb_open_noerr} -env $env $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set txn [$env txn]
+	set ret [$db put -txn $txn $key [chop_data $method $data3]]
+	error_check_good db_put $ret 0
+	error_check_good commit [$txn commit] 0
+	error_check_good db_sync [$db sync] 0
+
+	berkdb debug_check
+	puts -nonewline "\t\tAbout to run recovery ... "
+	flush stdout
+
+	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
+	if { $stat == 1 } {
+		error "FAIL: Recovery error: $result."
+		return
+	}
+	puts "complete"
+	error_check_good db_recover $stat 0
+	error_check_good file_exist [file exists $dir/$dbfile] 1
+
+	#
+	# Since we ran recovery on the open db/env, we need to
+	# catch these calls to clean up the Tcl widgets.
+	#
+	set stat [catch {$db close} ret]
+	error_check_bad dbclose_after_remove $stat 0
+	error_check_good dbclose_after_remove [is_substr $ret recovery] 1
+	set stat [catch {$env close} ret]
+	error_check_bad envclose_after_remove $stat 0
+	error_check_good envclose_after_remove [is_substr $ret recovery] 1
+
+	#
+	# Copy back the second database and run recovery again.
+	#
+	puts "\t\tRecover from second database"
+	file copy -force $testdir/${dbfile}.2 $testdir/$dbfile
+	berkdb debug_check
+	puts -nonewline "\t\tAbout to run recovery ... "
+	flush stdout
+
+	set stat [catch {exec $util_path/db_recover -h $dir -c} result]
+	if { $stat == 1 } {
+		error "FAIL: Recovery error: $result."
+		return
+	}
+	puts "complete"
+	error_check_good db_recover $stat 0
+	error_check_good file_exist.2 [file exists $dir/$dbfile] 1
+
+	#
+	# Reopen env and db and verify 3rd database is there.
+	#
+	set env [eval $env_cmd]
+	error_check_good env_open [is_valid_env $env] TRUE
+	set db [eval {berkdb_open} -env $env $oflags]
+	error_check_good db_open [is_valid_db $db] TRUE
+	set ret [$db get $key]
+	error_check_good dbget [llength $ret] 1
+	set kd [lindex $ret 0]
+	error_check_good key [lindex $kd 0] $key
+	error_check_good data2 [lindex $kd 1] [pad_data $method $data3]
 
 	error_check_good dbclose [$db close] 0
 	error_check_good envclose [$env close] 0
@@ -811,7 +932,7 @@ proc recd007_check { op sub dir dbfile subdb new env oflags } {
 	#
 	if { $sub == 0 } {
 		if { $op == "dbremove" } {
-			error_check_good $op:not-exist \
+			error_check_good $op:not-exist:$dir/$dbfile \
 			    [file exists $dir/$dbfile] 0
 		} elseif { $op == "dbrename"} {
 			error_check_good $op:exist \

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003
+# Copyright (c) 2003-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep017script.tcl,v 11.4 2004/09/22 18:01:06 bostic Exp $
+# $Id: rep017script.tcl,v 12.1 2005/06/16 20:24:02 bostic Exp $
 #
 # Rep017 script - concurrency with checkpoints.
 #

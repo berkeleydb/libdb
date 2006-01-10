@@ -1,11 +1,10 @@
-/*
- *  -
- *  See the file LICENSE for redistribution information.
+/*-
+ * See the file LICENSE for redistribution information.
  *
- *  Copyright (c) 2001-2003
- *  Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2005
+ *	Sleepycat Software.  All rights reserved.
  *
- *  $Id: DbUtil.java,v 1.2 2004/09/22 18:01:04 bostic Exp $
+ * $Id: DbUtil.java,v 12.1 2005/06/16 20:23:04 bostic Exp $
  */
 package com.sleepycat.db.internal;
 

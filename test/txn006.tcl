@@ -1,10 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2004
+# Copyright (c) 1996-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: txn006.tcl,v 1.7 2004/01/28 03:36:33 bostic Exp $
-#
+# $Id: txn006.tcl,v 12.1 2005/06/16 20:24:11 bostic Exp $
 #
 #TEST	txn006
 #TEST	Test dump/load in transactional environment.

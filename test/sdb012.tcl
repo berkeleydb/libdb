@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
+# Copyright (c) 1999-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: sdb012.tcl,v 1.6 2004/01/28 03:36:29 bostic Exp $
+# $Id: sdb012.tcl,v 12.2 2005/06/16 20:24:04 bostic Exp $
 #
 # TEST	sdb012
 # TEST	Test subdbs with locking and transactions
@@ -50,6 +50,9 @@ proc sdb012 { method args } {
 	# aborted or committed.  It is not used and has no meaning
 	# in the removal case.  'auto' means use the -auto_commit flag
 	# to the operation, and 'abort' and 'commit' do the obvious.
+	# "-auto" is applied only to the creation of the subdbs, since
+	# it is done by default on database removes in transactional 
+	# environments. 
 	#
 	# First test locking w/o txns.  If any in tlist are 'none',
 	# all must be none.
@@ -67,8 +70,8 @@ proc sdb012 { method args } {
 				}
 			}
 			set tlet [lindex $testlet $count]
-			foreach r1 { none abort auto commit } {
-				foreach r2 { none abort auto commit } {
+			foreach r1 { none abort commit } {
+				foreach r2 { none abort commit } {
 					set tlist [list $t1 $t2 $r1 $r2]
 					sdb012_body $testdir $omethod $largs \
 					    $encargs $sdb$tlet $tlist

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2004
+# Copyright (c) 2002-2005
 #	Sleepycat Software.  All rights reserved.
 #
-# $Id: rep002.tcl,v 11.37 2004/09/22 18:01:05 bostic Exp $
+# $Id: rep002.tcl,v 12.4 2005/06/23 15:25:21 carol Exp $
 #
 # TEST  	rep002
 # TEST	Basic replication election test.
@@ -15,6 +15,11 @@
 
 proc rep002 { method { niter 10 } { nclients 3 } { tnum "002" } args } {
 
+	source ./include.tcl
+	if { $is_windows9x_test == 1 } { 
+		puts "Skipping replication test on Win 9x platform."
+		return
+	} 
 	if { [is_record_based $method] == 1 } {
 		puts "Rep002: Skipping for method $method."
 		return
@@ -45,7 +50,6 @@ proc rep002 { method { niter 10 } { nclients 3 } { tnum "002" } args } {
 proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	source ./include.tcl
 	global elect_timeout elect_serial
-	global is_windows_test
 	set elect_timeout 5000000
 
 	env_cleanup $testdir
@@ -313,11 +317,4 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	}
 
 	replclose $testdir/MSGQUEUEDIR
-
-	# If we're on Windows, we need to forcibly remove some of the
-	# files created when the alternate winner won.
-	if { $is_windows_test == 1 } {
-		set filelist [glob -nocomplain $testdir/CLIENTDIR.$altwin/*]
-		fileremove -f $filelist
-	}
 }

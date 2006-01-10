@@ -1,11 +1,11 @@
 /*-
-* See the file LICENSE for redistribution information.
-*
-* Copyright (c) 2002-2004
-*	Sleepycat Software.  All rights reserved.
-*
-* $Id: LockRequestMode.java,v 1.2 2004/07/26 17:01:51 mjc Exp $
-*/
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2005
+ *	Sleepycat Software.  All rights reserved.
+ *
+ * $Id: LockRequestMode.java,v 12.1 2005/06/16 20:23:02 bostic Exp $
+ */
 
 package com.sleepycat.db;
 

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2004
+ * Copyright (c) 1997-2005
  *	Sleepycat Software.  All rights reserved.
  *
- * $Id: TestKeyRange.cpp,v 1.6 2004/01/28 03:36:33 bostic Exp $
+ * $Id: TestKeyRange.cpp,v 12.1 2005/06/16 20:24:11 bostic Exp $
  */
 
 /*
