@@ -411,6 +411,12 @@ __qam_fremove(dbp, pgnoaddr)
 	    DB_APP_DATA, buf, 0, NULL, &real_name)) != 0)
 		goto err;
 #endif
+
+	mpf = array->mpfarray[offset].mpf;
+	/* This extent my already be marked for delete and closed. */
+	if (mpf == NULL)
+		goto err;
+
 	/*
 	 * The log must be flushed before the file is deleted.  We depend on
 	 * the log record of the last delete to recreate the file if we crash.
@@ -418,7 +424,6 @@ __qam_fremove(dbp, pgnoaddr)
 	if (LOGGING_ON(dbenv) && (ret = __log_flush(dbenv, NULL)) != 0)
 		goto err;
 
-	mpf = array->mpfarray[offset].mpf;
 	(void)__memp_set_flags(mpf, DB_MPOOL_UNLINK, 1);
 	/* Someone could be real slow, let them close it down. */
 	if (array->mpfarray[offset].pinref != 0)
