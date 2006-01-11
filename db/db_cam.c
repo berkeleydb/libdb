@@ -579,11 +579,12 @@ __db_c_get(dbc_arg, key, data, flags)
 	    flags == DB_NEXT || flags == DB_NEXT_DUP || flags == DB_PREV)) {
 		if (tmp_rmw && (ret = dbc_arg->c_am_writelock(dbc_arg)) != 0)
 			return (ret);
-		if ((ret = __db_c_idup(cp->opd, &opd, DB_POSITION)) != 0)
+		if (F_ISSET(dbc_arg, DBC_TRANSIENT))
+			opd = cp->opd;
+		else if ((ret = __db_c_idup(cp->opd, &opd, DB_POSITION)) != 0)
 			return (ret);
 
-		switch (ret =
-		    opd->c_am_get(opd, key, data, flags, NULL)) {
+		switch (ret = opd->c_am_get(opd, key, data, flags, NULL)) {
 		case 0:
 			goto done;
 		case DB_NOTFOUND:
@@ -596,12 +597,18 @@ __db_c_get(dbc_arg, key, data, flags)
 				if ((ret = __db_c_close(opd)) != 0)
 					goto err;
 				opd = NULL;
+				if (F_ISSET(dbc_arg, DBC_TRANSIENT))
+					cp->opd = NULL;
 				break;
 			}
 			goto err;
 		default:
 			goto err;
 		}
+	} else if (cp->opd != NULL && F_ISSET(dbc_arg, DBC_TRANSIENT)) {
+		if ((ret = __db_c_close(cp->opd)) != 0)
+			goto err;
+		cp->opd = NULL;
 	}
 
 	/*
