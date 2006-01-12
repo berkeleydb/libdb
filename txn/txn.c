@@ -1049,12 +1049,14 @@ __txn_set_name(txn, name)
 		return (ret);
 	memcpy(txn->name, name, len);
 
+	TXN_SYSTEM_LOCK(dbenv);
 	if (td->name != INVALID_ROFF) {
 		__db_shalloc_free(
 		    &mgr->reginfo, R_ADDR(&mgr->reginfo, td->name));
 		td->name = INVALID_ROFF;
 	}
 	if ((ret = __db_shalloc(&mgr->reginfo, len, 0, &p)) != 0) {
+		TXN_SYSTEM_UNLOCK(dbenv);
 		__db_err(dbenv,
 		    "Unable to allocate memory for transaction name");
 
@@ -1063,6 +1065,7 @@ __txn_set_name(txn, name)
 
 		return (ret);
 	}
+	TXN_SYSTEM_UNLOCK(dbenv);
 	td->name = R_OFFSET(&mgr->reginfo, p);
 	memcpy(p, name, len);
 
