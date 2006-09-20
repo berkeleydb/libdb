@@ -1,25 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: qam_verify.c,v 12.3 2005/06/16 20:23:34 bostic Exp $
+ * $Id: qam_verify.c,v 12.9 2006/08/24 14:46:24 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_verify.h"
 #include "dbinc/db_am.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/mp.h"
 #include "dbinc/qam.h"
 /*
@@ -165,7 +158,7 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		}
 	}
 	if (nextents > 0)
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		     "Warning: %d extra extent files found", nextents);
 	vdp->nextents = nextents;
 	vdp->extents = extents;
@@ -344,7 +337,7 @@ begin:	for (; i <= stop; i++) {
 		 */
 		if (LF_ISSET(DB_SALVAGE) && (__db_salvage_isdone(vdp, i) != 0))
 			continue;
-		if ((t_ret = __qam_fget(dbp, &i, 0, &h)) != 0) {
+		if ((t_ret = __qam_fget(dbp, &i, NULL, 0, &h)) != 0) {
 			if (t_ret == ENOENT || t_ret == DB_PAGE_NOTFOUND) {
 				i += (pg_ext - ((i - 1) % pg_ext)) - 1;
 				continue;

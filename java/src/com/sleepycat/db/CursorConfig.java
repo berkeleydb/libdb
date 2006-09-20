@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: CursorConfig.java,v 12.2 2005/06/16 20:22:59 bostic Exp $
+ * $Id: CursorConfig.java,v 12.5 2006/09/08 20:32:14 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -46,7 +46,7 @@ public class CursorConfig implements Cloneable {
     public void setReadCommitted(final boolean readCommitted) {
         this.readCommitted = readCommitted;
     }
-    
+
     public boolean getReadCommitted() {
         return readCommitted;
     }

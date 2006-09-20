@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os.h,v 12.10 2005/10/31 02:22:24 bostic Exp $
+ * $Id: os.h,v 12.18 2006/09/05 15:02:30 mjc Exp $
  */
 
 #ifndef _DB_OS_H_
@@ -23,31 +23,44 @@ extern "C" {
  * which has no symbolic name in OSS.  HP says to retry the fsync. [#12957]
  */
 #define	RETRY_CHK(op, ret) do {						\
-	int __retries = DB_RETRY;					\
-	do {								\
-		(ret) = (op);						\
-	} while ((ret) != 0 && (((ret) = __os_get_errno()) == EAGAIN ||	\
-	    (ret) == EBUSY || (ret) == EINTR || (ret) == EIO ||		\
-	    (ret) == 70) &&						\
-	    --__retries > 0);						\
+	int __retries, __t_ret;						\
+	for ((ret) = 0, __retries = DB_RETRY;;) {			\
+		if ((op) == 0)						\
+			break;						\
+		(ret) = __os_get_syserr();				\
+		if (((__t_ret = __os_posix_err(ret)) == EAGAIN ||	\
+		    __t_ret == EBUSY || __t_ret == EINTR ||		\
+		    __t_ret == EIO || __t_ret == 70) && --__retries > 0)\
+			continue;					\
+		break;							\
+	}								\
 } while (0)
 #else
 #define	RETRY_CHK(op, ret) do {						\
-	int __retries = DB_RETRY;					\
-	do {								\
-		(ret) = (op);						\
-	} while ((ret) != 0 && (((ret) = __os_get_errno()) == EAGAIN ||	\
-	    (ret) == EBUSY || (ret) == EINTR || (ret) == EIO) &&	\
-	    --__retries > 0);						\
+	int __retries, __t_ret;						\
+	for ((ret) = 0, __retries = DB_RETRY;;) {			\
+		if ((op) == 0)						\
+			break;						\
+		(ret) = __os_get_syserr();				\
+		if (((__t_ret = __os_posix_err(ret)) == EAGAIN ||	\
+		    __t_ret == EBUSY || __t_ret == EINTR ||		\
+		    __t_ret == EIO) && --__retries > 0)			\
+			continue;					\
+		break;							\
+	}								\
 } while (0)
 #endif
 
 #define	RETRY_CHK_EINTR_ONLY(op, ret) do {				\
-	int __retries = DB_RETRY;					\
-	do {								\
-		(ret) = (op);						\
-	} while ((ret) != 0 &&						\
-	    (((ret) = __os_get_errno()) == EINTR) && --__retries > 0);	\
+	int __retries;							\
+	for ((ret) = 0, __retries = DB_RETRY;;) {			\
+		if ((op) == 0)						\
+			break;						\
+		(ret) = __os_get_syserr();				\
+		if (__os_posix_err(ret) == EINTR && --__retries > 0)	\
+			continue;					\
+		break;							\
+	}								\
 } while (0)
 
 /*
@@ -63,15 +76,6 @@ extern "C" {
 #define	DB_OSO_SEQ	0x0080		/* Expected sequential access. */
 #define	DB_OSO_TEMP	0x0100		/* Remove after last close. */
 #define	DB_OSO_TRUNC	0x0200		/* POSIX: O_TRUNC */
-
-/*
- * Seek options understood by __os_seek.
- */
-typedef enum {
-	DB_OS_SEEK_CUR,			/* POSIX: SEEK_CUR */
-	DB_OS_SEEK_END,			/* POSIX: SEEK_END */
-	DB_OS_SEEK_SET			/* POSIX: SEEK_SET */
-} DB_OS_SEEK;
 
 /*
  * We group certain seek/write calls into a single function so that we
@@ -92,7 +96,8 @@ struct __fh_t {
 	int	ref;			/* Reference count. */
 
 #if defined(DB_WIN32)
-	HANDLE	handle;		/* Windows/32 file handle. */
+	HANDLE	handle;			/* Windows/32 file handle. */
+	HANDLE	trunc_handle;		/* Handle for truncate calls. */
 #endif
 	int	fd;			/* POSIX file descriptor. */
 
@@ -114,6 +119,9 @@ struct __fh_t {
 
 /* Standard 600 mode for __db_omode. */
 #define	OWNER_RW	"rw-------"
+
+/* Standard buffer size for ctime/ctime_r function calls. */
+#define	CTIME_BUFLEN	26
 
 #if defined(__cplusplus)
 }

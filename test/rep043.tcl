@@ -1,36 +1,47 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep043.tcl,v 1.4 2005/06/23 15:25:22 carol Exp $
+# $Id: rep043.tcl,v 1.10 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep043
-# TEST	
-# TEST	Constant writes during upgrade/downgrade. 
+# TEST
+# TEST	Constant writes during upgrade/downgrade.
 # TEST
 # TEST	Three envs take turns being master.  Each env
-# TEST	has a child process which does writes all the 
+# TEST	has a child process which does writes all the
 # TEST	time.  They will succeed when that env is master
-# TEST	and fail when it is not. 
+# TEST	and fail when it is not.
 
 proc rep043 { method { rotations 25 } { tnum "043" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
-	set args [convert_args $method $args]
-	set logsets [create_logsets 3]
+	}
 
+	# Skip for record-based methods.
+	if { $checking_valid_methods } {
+		set test_methods {}
+		foreach method $valid_methods {
+			if { [is_record_based $method] != 1 } {
+				lappend test_methods $method
+			}
+		}
+		return $test_methods
+	}
 	if { [is_record_based $method] == 1 } {
 		puts "Skipping rep$tnum for record-based methods."
 		return
 	}
+
+	set args [convert_args $method $args]
+	set logsets [create_logsets 3]
+
 	# Run the body of the test with and without recovery.
-	set recopts { "" " -recover " }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -87,11 +98,11 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -errpfx ENV0 -errfile /dev/stderr \
+	    $m_logargs -errpfx ENV0 -errfile /dev/stderr \
 	    -cachesize {0 4194304 3} -lock_detect default \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 -lock_detect default \
+#	    $m_logargs -lock_detect default \
 #	    -cachesize {0 4194304 3} \
 #	    -errpfx ENV0 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
@@ -101,11 +112,11 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -lock_max 2500 -errpfx ENV1 -errfile /dev/stderr \
+	    $c_logargs -errpfx ENV1 -errfile /dev/stderr \
 	    -cachesize {0 2097152 2} -lock_detect default \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 -lock_detect default \
+#	    $c_logargs -lock_detect default \
 #	    -cachesize {0 2097152 2} \
 #	    -errpfx ENV1 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
@@ -114,11 +125,11 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 
 	repladd 3
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -lock_max 2500 -errpfx ENV2 -errfile /dev/stderr \
+	    $c2_logargs -errpfx ENV2 -errfile /dev/stderr \
 	    -cachesize {0 1048576 1} -lock_detect default \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 #	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-#	    $c2_logargs -lock_max 2500 -lock_detect default \
+#	    $c2_logargs -lock_detect default \
 #	    -cachesize {0 1048576 1} \
 #	    -errpfx ENV2 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
@@ -136,7 +147,7 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 	    -create -btree -auto_commit -env $markerenv marker.db"]
 
 	# Start the 3 child processes: one for each env.
-	set pids {} 
+	set pids {}
 	set dirlist "0 $masterdir 1 $clientdir 2 $clientdir2"
 	foreach { writer dir } $dirlist {
 		puts "\tRep$tnum.a: Fork child process WRITER$writer."
@@ -158,7 +169,7 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 			set nextmasterenv $env1
 			set nextdir $clientdir
 		} elseif { $masterenv == $env1 } {
-			set nextmasterenv $env2 
+			set nextmasterenv $env2
 			set nextdir $clientdir2
 		} elseif { $masterenv == $env2 } {
 			set nextmasterenv $env0
@@ -166,7 +177,7 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 		} else {
 			puts "FAIL: could not identify current master"
 			return
-		}			
+		}
 
 		puts "\tRep$tnum.b.$i: Open master db in $curdir."
 		set mdb [eval {berkdb_open_noerr} -env $masterenv -auto_commit \
@@ -204,9 +215,9 @@ proc rep043_sub { method rotations tnum logset recargs largs } {
 
 		process_msgs $envlist
 	}
-	
 
-	puts "\tRep$tnum.f: Clean up."	
+
+	puts "\tRep$tnum.f: Clean up."
 	# Tell the child processes we are done.
 	error_check_good marker_done [$marker put DONE DONE] 0
 	error_check_good marker_close [$marker close] 0

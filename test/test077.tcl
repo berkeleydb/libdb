@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2000-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test077.tcl,v 12.1 2005/06/16 20:24:07 bostic Exp $
+# $Id: test077.tcl,v 12.3 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test077
 # TEST	Test of DB_GET_RECNO [#1206].

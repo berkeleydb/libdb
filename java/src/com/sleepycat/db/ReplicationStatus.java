@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: ReplicationStatus.java,v 12.2 2005/06/16 20:23:03 bostic Exp $
+ * $Id: ReplicationStatus.java,v 12.6 2006/08/24 14:46:09 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -64,10 +64,6 @@ public final class ReplicationStatus {
         return errCode == DbConstants.DB_REP_NOTPERM;
     }
 
-    public boolean isStartupDone() {
-        return errCode == DbConstants.DB_REP_STARTUPDONE;
-    }
-
     public DatabaseEntry getCData() {
         return cdata;
     }
@@ -102,8 +98,6 @@ public final class ReplicationStatus {
             return new ReplicationStatus("NEWSITE", errCode, cdata, envid, lsn);
         case DbConstants.DB_REP_NOTPERM:
             return new ReplicationStatus("NOTPERM", errCode, cdata, envid, lsn);
-	case DbConstants.DB_REP_STARTUPDONE:
-            return STARTUPDONE;
         default:
             throw new IllegalArgumentException(
                 "Unknown error code: " + DbEnv.strerror(errCode));
@@ -111,7 +105,5 @@ public final class ReplicationStatus {
     }
 
     private static final ReplicationStatus IGNORE =
-        new ReplicationStatus("IGNORE", DbConstants.DB_REP_STARTUPDONE);
-    private static final ReplicationStatus STARTUPDONE =
-        new ReplicationStatus("STARTUPDONE", DbConstants.DB_REP_STARTUPDONE);
+        new ReplicationStatus("IGNORE", DbConstants.DB_REP_IGNORE);
 }

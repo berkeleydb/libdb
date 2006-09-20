@@ -83,13 +83,34 @@ static int __dbj_app_dispatch(DB_ENV *dbenv,
 		/* The exception will be thrown, so this could be any error. */
 		ret = EINVAL;
 	}
-	
+
 	(*jenv)->DeleteLocalRef(jenv, jdbtarr);
 	(*jenv)->DeleteLocalRef(jenv, jdbt);
 	if (jlsn != NULL)
 		(*jenv)->DeleteLocalRef(jenv, jlsn);
 
 	return (ret);
+}
+
+static void __dbj_event_notify(DB_ENV *dbenv, u_int32_t event_id, void * info)
+{
+	JNIEnv *jenv = __dbj_get_jnienv();
+	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	int ret;
+
+	COMPQUIET(info, NULL);
+
+	if(jdbenv == NULL)
+		return ;
+
+	ret = (*jenv)->CallNonvirtualIntMethod(jenv, jdbenv, dbenv_class,
+	    event_notify_method, event_id);
+
+	if((*jenv)->ExceptionOccurred(jenv)) {
+		/* The exception will be thrown, so this could be any error. */
+		ret = EINVAL;
+	}
+	return ;
 }
 
 static int __dbj_rep_transport(DB_ENV *dbenv,
@@ -124,7 +145,7 @@ static int __dbj_rep_transport(DB_ENV *dbenv,
 		/* The exception will be thrown, so this could be any error. */
 		ret = EINVAL;
 	}
-	
+
 	(*jenv)->DeleteLocalRef(jenv, jrecarr);
 	(*jenv)->DeleteLocalRef(jenv, jcontrolarr);
 	(*jenv)->DeleteLocalRef(jenv, jrec);
@@ -148,18 +169,27 @@ static int __dbj_seckey_create(DB *db,
 	if (jdb == NULL)
 		return (EINVAL);
 
-	jkey = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
-	jdata = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
+	jkey = (key->app_data != NULL) ?
+	    ((DBT_LOCKED *)key->app_data)->jdbt :
+	    (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
+	jdata = (data->app_data != NULL) ?
+	    ((DBT_LOCKED *)data->app_data)->jdbt :
+	    (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	jresult = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	if (jkey == NULL || jdata == NULL || jresult == NULL)
 		return (ENOMEM); /* An exception is pending */
-	
-	__dbj_dbt_copyout(jenv, key, &jkeyarr, jkey);
-	__dbj_dbt_copyout(jenv, data, &jdataarr, jdata);
 
-	if (jkeyarr == NULL || jdataarr == NULL)
-		return (ENOMEM); /* An exception is pending */
-	
+	if (key->app_data == NULL) {
+		__dbj_dbt_copyout(jenv, key, &jkeyarr, jkey);
+		if (jkeyarr == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+	if (data->app_data == NULL) {
+		__dbj_dbt_copyout(jenv, data, &jdataarr, jdata);
+		if (jdataarr == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
 	    seckey_create_method, jkey, jdata, jresult);
 
@@ -171,24 +201,34 @@ static int __dbj_seckey_create(DB *db,
 		ret = EINVAL;
 		goto err;
 	}
-	
+
 	if ((ret = __dbj_dbt_copyin(jenv, &lresult, NULL, jresult, 0)) != 0)
 		goto err;
 
-	if (lresult.jarr != NULL) {
-		/*
-		 * If there's data, we've got a copy of it (that's the default
-		 * when no Dbt flags are set, so we can safely free the array.
-		 */
-		*result = lresult.dbt;
+	if (lresult.dbt.size != 0) {
+		/* If there's data, we need to take a copy of it.  */
+		memset(result, 0, sizeof (DBT));
+		result->size = lresult.dbt.size;
+		if ((ret =
+		    __os_umalloc(NULL, result->size, &result->data)) != 0)
+			goto err;
+		if ((ret = __dbj_dbt_memcopy(&lresult.dbt, 0,
+		    result->data, result->size,
+		    DB_USERCOPY_GETDATA)) != 0)
+			goto err;
+		__dbj_dbt_release(jenv, jresult, &lresult.dbt, &lresult);
 		(*jenv)->DeleteLocalRef(jenv, lresult.jarr);
-		result->flags |= DB_DBT_APPMALLOC;
+		F_SET(result, DB_DBT_APPMALLOC);
 	}
-	
-err:	(*jenv)->DeleteLocalRef(jenv, jkeyarr);
-	(*jenv)->DeleteLocalRef(jenv, jkey);
-	(*jenv)->DeleteLocalRef(jenv, jdataarr);
-	(*jenv)->DeleteLocalRef(jenv, jdata);
+
+err:	if (key->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jkeyarr);
+		(*jenv)->DeleteLocalRef(jenv, jkey);
+	}
+	if (data->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jdataarr);
+		(*jenv)->DeleteLocalRef(jenv, jdata);
+	}
 	(*jenv)->DeleteLocalRef(jenv, jresult);
 
 	return (ret);
@@ -206,6 +246,11 @@ static int __dbj_append_recno(DB *db, DBT *dbt, db_recno_t recno)
 	if (jdb == NULL)
 		return (EINVAL);
 
+	/*
+	 * The dbt we're passed will be from the application, but we can't
+	 * just reuse it, since we will have already taken a copy of the data.
+	 * Make a new DatabaseEntry object here for the callback.
+	 */
 	jdbt = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
 	if (jdbt == NULL)
 		return (ENOMEM); /* An exception is pending */
@@ -216,25 +261,29 @@ static int __dbj_append_recno(DB *db, DBT *dbt, db_recno_t recno)
 
 	ret = 0;
 	(*jenv)->CallNonvirtualVoidMethod(jenv, jdb, db_class,
- 	    append_recno_method, jdbt, recno);
+	    append_recno_method, jdbt, recno);
 
 	if ((*jenv)->ExceptionOccurred(jenv)) {
 		/* The exception will be thrown, so this could be any error. */
-		ret = EINVAL;
-		goto err;
+		return (EINVAL);
 	}
 
-	if ((ret = __dbj_dbt_copyin(jenv, &lresult, NULL, jdbt, 0)) != 0)
-		goto err;
+	ret = __dbj_dbt_copyin(jenv, &lresult, NULL, jdbt, 0);
+	memset(dbt, 0, sizeof (DBT));
 
-	if (lresult.jarr != NULL) {
-		/*
-		 * If there's data, we've got a copy of it (that's the default
-		 * when no Dbt flags are set, so we can safely free the array.
-		 */
-		*dbt = lresult.dbt;
+	if (ret == 0 && lresult.dbt.size != 0) {
+		/* If there's data, we need to take a copy of it.  */
+		dbt->size = lresult.dbt.size;
+		if ((ret =
+		    __os_umalloc(NULL, dbt->size, &dbt->data)) != 0)
+			goto err;
+		if ((ret = __dbj_dbt_memcopy(&lresult.dbt, 0,
+		    dbt->data, dbt->size,
+		    DB_USERCOPY_GETDATA)) != 0)
+			goto err;
+		__dbj_dbt_release(jenv, jdbt, &lresult.dbt, &lresult);
 		(*jenv)->DeleteLocalRef(jenv, lresult.jarr);
-		dbt->flags |= DB_DBT_APPMALLOC;
+		F_SET(dbt, DB_DBT_APPMALLOC);
 	}
 
 err:	(*jenv)->DeleteLocalRef(jenv, jdbtarr);
@@ -253,17 +302,25 @@ static int __dbj_bt_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 	if (jdb == NULL)
 		return (EINVAL);
 
-	jdbtarr1 = (*jenv)->NewByteArray(jenv, (jsize)dbt1->size);
-        if (jdbtarr1 == NULL)
-                return (ENOMEM);
-        (*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0, (jsize)dbt1->size,
-            (jbyte *)dbt1->data);
+	if (dbt1->app_data != NULL)
+		jdbtarr1 = ((DBT_LOCKED *)dbt1->app_data)->jarr;
+	else {
+		jdbtarr1 = (*jenv)->NewByteArray(jenv, (jsize)dbt1->size);
+		if (jdbtarr1 == NULL)
+			return (ENOMEM);
+		(*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0,
+		    (jsize)dbt1->size, (jbyte *)dbt1->data);
+	}
 
-	jdbtarr2 = (*jenv)->NewByteArray(jenv, (jsize)dbt2->size);
-        if (jdbtarr2 == NULL)
-                return (ENOMEM);
-        (*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0, (jsize)dbt2->size,
-            (jbyte *)dbt2->data);
+	if (dbt2->app_data != NULL)
+		jdbtarr2 = ((DBT_LOCKED *)dbt2->app_data)->jarr;
+	else {
+		jdbtarr2 = (*jenv)->NewByteArray(jenv, (jsize)dbt2->size);
+		if (jdbtarr2 == NULL)
+			return (ENOMEM);
+		(*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0,
+		    (jsize)dbt2->size, (jbyte *)dbt2->data);
+	}
 
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
 	    bt_compare_method, jdbtarr1, jdbtarr2);
@@ -272,9 +329,11 @@ static int __dbj_bt_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 		/* The exception will be thrown, so this could be any error. */
 		ret = EINVAL;
 	}
-	
-	(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
-	(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
+
+	if (dbt1->app_data == NULL)
+		(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
+	if (dbt2->app_data == NULL)
+		(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
 
 	return (ret);
 }
@@ -290,23 +349,37 @@ static size_t __dbj_bt_prefix(DB *db, const DBT *dbt1, const DBT *dbt2)
 	if (jdb == NULL)
 		return (EINVAL);
 
-	jdbt1 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
-	jdbt2 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
-	if (jdbt1 == NULL || jdbt2 == NULL)
-		return (ENOMEM); /* An exception is pending */
+	if (dbt1->app_data != NULL)
+		jdbt1 = ((DBT_LOCKED *)dbt1->app_data)->jdbt;
+	else {
+		if ((jdbt1 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct)) == NULL)
+			return (ENOMEM); /* An exception is pending */
+		__dbj_dbt_copyout(jenv, dbt1, &jdbtarr1, jdbt1);
+		if (jdbtarr1 == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
 
-	__dbj_dbt_copyout(jenv, dbt1, &jdbtarr1, jdbt1);
-	__dbj_dbt_copyout(jenv, dbt2, &jdbtarr2, jdbt2);
-	if (jdbtarr1 == NULL || jdbtarr2 == NULL)
-		return (ENOMEM); /* An exception is pending */
-	
+	if (dbt2->app_data != NULL)
+		jdbt2 = ((DBT_LOCKED *)dbt2->app_data)->jdbt;
+	else {
+		if ((jdbt2 = (*jenv)->NewObject(jenv, dbt_class, dbt_construct)) == NULL)
+			return (ENOMEM); /* An exception is pending */
+		__dbj_dbt_copyout(jenv, dbt2, &jdbtarr2, jdbt2);
+		if (jdbtarr2 == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
 	    bt_prefix_method, jdbt1, jdbt2);
-	
-	(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
-	(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
-	(*jenv)->DeleteLocalRef(jenv, jdbt2);
-	(*jenv)->DeleteLocalRef(jenv, jdbt1);
+
+	if (dbt1->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
+		(*jenv)->DeleteLocalRef(jenv, jdbt1);
+	}
+	if (dbt2->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
+		(*jenv)->DeleteLocalRef(jenv, jdbt2);
+	}
 
 	return (ret);
 }
@@ -322,25 +395,25 @@ static int __dbj_dup_compare(DB *db, const DBT *dbt1, const DBT *dbt2)
 		return (EINVAL);
 
 	jdbtarr1 = (*jenv)->NewByteArray(jenv, (jsize)dbt1->size);
-        if (jdbtarr1 == NULL)
-                return (ENOMEM);
-        (*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0, (jsize)dbt1->size,
-            (jbyte *)dbt1->data);
+	if (jdbtarr1 == NULL)
+		return (ENOMEM);
+	(*jenv)->SetByteArrayRegion(jenv, jdbtarr1, 0, (jsize)dbt1->size,
+	    (jbyte *)dbt1->data);
 
 	jdbtarr2 = (*jenv)->NewByteArray(jenv, (jsize)dbt2->size);
-        if (jdbtarr2 == NULL)
-                return (ENOMEM);
-        (*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0, (jsize)dbt2->size,
-            (jbyte *)dbt2->data);
+	if (jdbtarr2 == NULL)
+		return (ENOMEM);
+	(*jenv)->SetByteArrayRegion(jenv, jdbtarr2, 0, (jsize)dbt2->size,
+	    (jbyte *)dbt2->data);
 
 	ret = (int)(*jenv)->CallNonvirtualIntMethod(jenv, jdb, db_class,
 	    dup_compare_method, jdbtarr1, jdbtarr2);
-	
+
 	if ((*jenv)->ExceptionOccurred(jenv)) {
 		/* The exception will be thrown, so this could be any error. */
 		ret = EINVAL;
 	}
-	
+
 	(*jenv)->DeleteLocalRef(jenv, jdbtarr2);
 	(*jenv)->DeleteLocalRef(jenv, jdbtarr1);
 
@@ -389,10 +462,12 @@ JAVA_CALLBACK(void (*db_msgcall_fcn)(const DB_ENV *, const char *),
     com.sleepycat.db.MessageHandler, message)
 JAVA_CALLBACK(void (*db_panic_fcn)(DB_ENV *, int),
     com.sleepycat.db.PanicHandler, panic)
+JAVA_CALLBACK(void (*event_notify)(DB_ENV *, u_int32_t, void *),
+    com.sleepycat.db.EventHandler, event_notify)
 JAVA_CALLBACK(int (*tx_recover)(DB_ENV *, DBT *, DB_LSN *, db_recops),
     com.sleepycat.db.LogRecordHandler, app_dispatch)
 JAVA_CALLBACK(int (*send)(DB_ENV *, const DBT *, const DBT *,
-                               const DB_LSN *, int, u_int32_t),
+			       const DB_LSN *, int, u_int32_t),
     com.sleepycat.db.ReplicationTransport, rep_transport)
 
 /*

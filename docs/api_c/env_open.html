@@ -1,5 +1,5 @@
-<!--$Id: env_open.so,v 10.106 2005/09/23 14:36:39 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: env_open.so,v 10.111 2006/08/02 17:39:47 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -39,7 +39,7 @@ or more of the features of Berkeley DB.</p>
 <p>The DB_ENV-&gt;open method
 returns a non-zero error value on failure
 and 0 on success.
-If DB_ENV-&gt;open fails, the <a href="../api_c/env_close.html">DB_ENV-&gt;close</a> method should be called
+If DB_ENV-&gt;open fails, the <a href="../api_c/env_close.html">DB_ENV-&gt;close</a> method must be called
 to discard the <a href="../api_c/env_class.html">DB_ENV</a> handle.
 </p>
 <h3>Parameters</h3>
@@ -50,8 +50,9 @@ resolution in general, see <a href="../ref/env/naming.html">Berkeley DB File
 Naming</a>.  The environment variable <b>DB_HOME</b> may be used as
 the path of the database home, as described in
 <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<p>On Windows, the <b>db_home</b> argument will be interpreted as a UTF-8
-string, which is equivalent to ASCII for Latin characters.</p>
+<p>When using a Unicode build on Windows (the default), the <b>db_home</b>
+argument will be interpreted as a UTF-8 string, which is equivalent to
+ASCII for Latin characters.</p>
 <dt><b>flags</b><dd>The <b>flags</b> parameter specifies the subsystems that are initialized
 and how the application's environment affects Berkeley DB file naming, among
 other things.
@@ -173,16 +174,16 @@ application and Berkeley DB utilities (for example, <a href="../utility/db_archi
 environment, the DB_PRIVATE flag should not be specified.</p>
 <p>See <a href="../ref/env/region.html">Shared Memory Regions</a> for more
 information.</p>
-<dt><a name="DB_REGISTER">DB_REGISTER</a><dd>Check if a process has failed while using the database environment, that
-is, if a process has exited with an open <a href="../api_c/env_class.html">DB_ENV</a> handle.  (For
-this check to be accurate, all processes using the environment must
-specify DB_REGISTER when opening the environment.)  If recovery
-needs to be run for any reason and either DB_RECOVER or
-DB_RECOVER_FATAL are also specified, recovery will be performed
-and the open will proceed normally.  If recovery needs to be run and no
-recovery flag is specified, <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> will be returned.  If
-recovery does not need to be run, the DB_RECOVER and
-DB_RECOVER_FATAL flags will be ignored.  See
+<dt><a name="DB_REGISTER">DB_REGISTER</a><dd>Check to see if recovery needs to be performed before opening the
+database environment.  (For this check to be accurate, all processes
+using the environment must specify DB_REGISTER when opening the
+environment.)  If recovery needs to be performed for any reason
+(including the initial use of the DB_REGISTER flag), and
+DB_RECOVER is also specified, recovery will be performed and the
+open will proceed normally.  If recovery needs to be performed and
+DB_RECOVER is not specified, <a href="../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> will be
+returned.  If recovery does not need to be performed, the
+DB_RECOVER flag will be ignored.  See
 <a href="../ref/transapp/app.html">Architecting Transactional Data Store
 applications</a> for more information.
 <dt><a name="DB_SYSTEM_MEM">DB_SYSTEM_MEM</a><dd>Allocate region memory from system shared memory instead of from heap
@@ -192,9 +193,10 @@ information.</p>
 <dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_c/env_class.html">DB_ENV</a> handle returned by DB_ENV-&gt;open to be
 <i>free-threaded</i>; that is, concurrently usable by multiple
 threads in the address space.  The DB_THREAD flag should be specified
-if the <a href="../api_c/env_class.html">DB_ENV</a> handle will be concurrently used by multiple
-threads of control or if multiple DB handles, opened within the database
-environment, will be used concurrently.
+if the <a href="../api_c/env_class.html">DB_ENV</a> handle will be concurrently used by more than one
+thread in the process, or if any <a href="../api_c/db_class.html">DB</a> handles opened in the scope
+of the <a href="../api_c/env_class.html">DB_ENV</a> handle will be concurrently used by more than one
+thread in the process.
 </dl>
 <dt><b>mode</b><dd>On Windows systems, the mode parameter is ignored.
 <p>On UNIX systems or in IEEE/ANSI Std 1003.1 (POSIX) environments, files created by Berkeley DB
@@ -230,8 +232,12 @@ An incorrectly formatted <b>NAME VALUE</b> entry or line was found; or if an
 invalid flag value or parameter was specified.
 </dl>
 <dl compact>
-<dt>ENOSPC<dd>HP-UX only: a previously created Berkeley DB environment for this process still
-exists.
+<dt>ENOSPC<dd>HP-UX only:
+Due to the constraints of the PA-RISC memory architecture, HP-UX does not
+allow a process to map a file into its address space multiple times.
+For this reason, each Berkeley DB environment may be opened only once by a
+process on HP-UX; that is, calls to DB_ENV-&gt;open will fail if the
+specified Berkeley DB environment has been opened and not subsequently closed.
 </dl>
 <dl compact>
 <dt>ENOENT<dd>The file or directory does not exist.
@@ -264,6 +270,6 @@ open method flags in <b>flagsp</b>.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

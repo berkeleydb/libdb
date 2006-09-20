@@ -1,5 +1,5 @@
-<!--$Id: env_set_isalive.so,v 10.3 2005/11/01 13:31:29 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_isalive.so,v 10.4 2006/01/27 16:13:48 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -24,7 +24,7 @@
 <p>
 int
 DB_ENV-&gt;set_isalive(DB_ENV *dbenv,
-    int (*is_alive)(DB_ENV *dbenv, pid_t pid, db_threadid_t tid));
+    int (*is_alive)(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, u_int32_t flags));
 </pre></h3>
 <hr size=1 noshade>
 <h3>Description: DB_ENV-&gt;set_isalive</h3>
@@ -46,7 +46,7 @@ and 0 on success.
 <dl compact>
 <dt><b>is_alive</b><dd>The <b>is_alive</b> parameter is a function which returns non-zero if
 the thread of control, identified by the <b>pid</b> and <b>tid</b>
-arguments, is still running.  The function takes three arguments:
+arguments, is still running.  The function takes four arguments:
 <dl compact>
 <dt><b>dbenv</b><dd>The <b>dbenv</b> parameter is the enclosing database environment
 handle, allowing application access to the application-private fields
@@ -55,6 +55,11 @@ of that object.
 specified to the <a href="../api_c/env_set_thread_id.html">DB_ENV-&gt;set_thread_id</a> method.
 <dt><b>tid</b><dd>The <b>tid</b> parameter is a thread ID returned by the function
 specified to the <a href="../api_c/env_set_thread_id.html">DB_ENV-&gt;set_thread_id</a> method.
+<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or
+the following value:
+<dl compact>
+<dt><a name="DB_MUTEX_PROCESS_ONLY">DB_MUTEX_PROCESS_ONLY</a><dd>Return only if the process is alive, the thread ID should be ignored.
+</dl>
 </dl>
 </dl>
 <h3>Errors</h3>
@@ -73,6 +78,6 @@ invalid flag value or parameter was specified.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

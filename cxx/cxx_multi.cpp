@@ -1,19 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: cxx_multi.cpp,v 12.3 2005/09/30 07:40:20 mjc Exp $
+ * $Id: cxx_multi.cpp,v 12.7 2006/08/24 14:45:13 bostic Exp $
  */
 
 #include "db_config.h"
+
+#include "db_int.h"
 
 #include "db_cxx.h"
 
 DbMultipleIterator::DbMultipleIterator(const Dbt &dbt)
  : data_((u_int8_t*)dbt.get_data()),
-   p_((u_int32_t*)(data_ + dbt.get_size() - sizeof(u_int32_t)))
+   p_((u_int32_t*)(data_ + dbt.get_ulen() - sizeof(u_int32_t)))
 {
 }
 

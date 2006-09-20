@@ -1,30 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_stat.c,v 12.6 2005/10/24 18:37:10 alanb Exp $
+ * $Id: rep_stat.c,v 12.16 2006/09/07 16:51:04 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -52,8 +35,8 @@ __rep_stat_pp(dbenv, statp, flags)
 	int ret;
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->rep_handle, "DB_ENV->rep_stat", DB_INIT_REP);
+	ENV_REQUIRES_CONFIG_XX(
+	    dbenv, rep_handle, "DB_ENV->rep_stat", DB_INIT_REP);
 
 	if ((ret = __db_fchk(dbenv,
 	    "DB_ENV->rep_stat", flags, DB_STAT_CLEAR)) != 0)
@@ -104,21 +87,19 @@ __rep_stat(dbenv, statp, flags)
 	memcpy(stats, &rep->stat, sizeof(*stats));
 
 	/* Copy out election stats. */
-	if (IN_ELECTION_TALLY(rep)) {
-		if (F_ISSET(rep, REP_F_EPHASE1))
-			stats->st_election_status = 1;
-		else if (F_ISSET(rep, REP_F_EPHASE2))
-			stats->st_election_status = 2;
+	if (F_ISSET(rep, REP_F_EPHASE1))
+		stats->st_election_status = 1;
+	else if (F_ISSET(rep, REP_F_EPHASE2))
+		stats->st_election_status = 2;
 
-		stats->st_election_nsites = rep->sites;
-		stats->st_election_cur_winner = rep->winner;
-		stats->st_election_priority = rep->w_priority;
-		stats->st_election_gen = rep->w_gen;
-		stats->st_election_lsn = rep->w_lsn;
-		stats->st_election_votes = rep->votes;
-		stats->st_election_nvotes = rep->nvotes;
-		stats->st_election_tiebreaker = rep->w_tiebreaker;
-	}
+	stats->st_election_nsites = rep->sites;
+	stats->st_election_cur_winner = rep->winner;
+	stats->st_election_priority = rep->w_priority;
+	stats->st_election_gen = rep->w_gen;
+	stats->st_election_lsn = rep->w_lsn;
+	stats->st_election_votes = rep->votes;
+	stats->st_election_nvotes = rep->nvotes;
+	stats->st_election_tiebreaker = rep->w_tiebreaker;
 
 	/* Copy out other info that's protected by the rep mutex. */
 	stats->st_env_id = rep->eid;
@@ -182,8 +163,8 @@ __rep_stat_print_pp(dbenv, flags)
 	int ret;
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->rep_handle, "DB_ENV->rep_stat_print", DB_INIT_REP);
+	ENV_REQUIRES_CONFIG_XX(
+	    dbenv, rep_handle, "DB_ENV->rep_stat_print", DB_INIT_REP);
 
 	if ((ret = __db_fchk(dbenv, "DB_ENV->rep_stat_print",
 	    flags, DB_STAT_ALL | DB_STAT_CLEAR)) != 0)
@@ -386,6 +367,11 @@ __rep_print_stats(dbenv, flags)
 
 	__os_ufree(dbenv, sp);
 
+#ifdef HAVE_REPLICATION_THREADS
+	if ((ret = __repmgr_print_stats(dbenv)) != 0)
+		return (ret);
+#endif
+
 	return (0);
 }
 
@@ -423,6 +409,7 @@ __rep_print_all(dbenv, flags)
 	REGENV *renv;
 	REGINFO *infop;
 	REP *rep;
+	char time_buf[CTIME_BUFLEN];
 
 	db_rep = dbenv->rep_handle;
 	rep = db_rep->region;
@@ -462,12 +449,13 @@ __rep_print_all(dbenv, flags)
 
 	STAT_LONG("Thread is in rep_elect", rep->elect_th);
 	STAT_ULONG("Callers in rep_proc_msg", rep->msg_th);
-	STAT_LONG("Thread is in rep_start", rep->start_th);
+	STAT_LONG("Thread is in msg lockout", rep->lockout_th);
 	STAT_ULONG("Library handle count", rep->handle_cnt);
 	STAT_ULONG("Multi-step operation count", rep->op_cnt);
 	STAT_LONG("Running recovery", rep->in_recovery);
 	__db_msg(dbenv, "%.24s\tRecovery timestamp",
-	    renv->rep_timestamp == 0 ? "0" : ctime(&renv->rep_timestamp));
+	    renv->rep_timestamp == 0 ?
+	    "0" : __db_ctime(&renv->rep_timestamp, time_buf));
 
 	STAT_LONG("Sites heard from", rep->sites);
 	STAT_LONG("Current winner", rep->winner);

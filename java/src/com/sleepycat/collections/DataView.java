@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: DataView.java,v 12.1 2005/01/31 19:27:32 mark Exp $
+ * $Id: DataView.java,v 12.4 2006/08/31 18:14:07 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -25,6 +25,8 @@ import com.sleepycat.db.SecondaryDatabase;
 import com.sleepycat.db.SecondaryKeyCreator;
 import com.sleepycat.db.Transaction;
 import com.sleepycat.util.RuntimeExceptionWrapper;
+import com.sleepycat.util.keyrange.KeyRange;
+import com.sleepycat.util.keyrange.KeyRangeException;
 
 /**
  * Represents a Berkeley DB database and adds support for indices, bindings and
@@ -59,6 +61,16 @@ final class DataView implements Cloneable {
     boolean dupsOrdered;            // Sorted dups configured
     boolean transactional;          // Db is transactional
     boolean readUncommittedAllowed; // Read-uncommited is optional in DB-CORE
+
+    /*
+     * If duplicatesView is called, dupsView will be true and dupsKey will be
+     * the secondary key used as the "single key" range.  dupRange will be set
+     * as the range of the primary key values if subRange is subsequently
+     * called, to further narrow the view.
+     */
+    DatabaseEntry dupsKey;
+    boolean dupsView;
+    KeyRange dupsRange;
 
     /**
      * Creates a view for a given database and bindings.  The initial key range
@@ -191,7 +203,7 @@ final class DataView implements Cloneable {
          * Must do subRange before valueSetView since the latter clears the
          * key binding needed for the former.
          */
-        KeyRange singleKeyRange = subRange(singleKey);
+        KeyRange singleKeyRange = subRange(range, singleKey);
         DataView view = valueSetView();
         view.range = singleKeyRange;
         return view;
@@ -209,6 +221,28 @@ final class DataView implements Cloneable {
         DataView view = cloneView();
         view.setRange(beginKey, beginInclusive, endKey, endInclusive);
         if (keyBinding != null) view.keyBinding = keyBinding;
+        return view;
+    }
+
+    /**
+     * Return a new duplicates view for a given secondary key.
+     */
+    DataView duplicatesView(Object secondaryKey,
+                            EntryBinding primaryKeyBinding)
+        throws DatabaseException, KeyRangeException {
+
+        if (!isSecondary()) {
+            throw new UnsupportedOperationException
+                ("Only allowed for maps on secondary databases");
+        }
+        if (dupsView) {
+            throw new IllegalStateException();
+        }
+        DataView view = cloneView();
+        view.range = subRange(view.range, secondaryKey);
+        view.dupsKey = view.range.getSingleKey();
+        view.dupsView = true;
+        view.keyBinding = primaryKeyBinding;
         return view;
     }
 
@@ -239,7 +273,14 @@ final class DataView implements Cloneable {
                           Object endKey, boolean endInclusive)
         throws DatabaseException, KeyRangeException {
 
-        range = subRange(beginKey, beginInclusive, endKey, endInclusive);
+        KeyRange useRange = useSubRange();
+        useRange = subRange
+            (useRange, beginKey, beginInclusive, endKey, endInclusive);
+        if (dupsView) {
+            dupsRange = useRange;
+        } else {
+            range = useRange;
+        }
     }
 
     /**
@@ -459,7 +500,7 @@ final class DataView implements Cloneable {
                 throw new IllegalStateException(
                     "EntityBinding required to derive key from value");
             }
-            if (isSecondary()) {
+            if (!dupsView && isSecondary()) {
                 DatabaseEntry primaryKeyThang = new DatabaseEntry();
                 entityBinding.objectToKey(value, primaryKeyThang);
                 DatabaseEntry valueThang = new DatabaseEntry();
@@ -515,7 +556,7 @@ final class DataView implements Cloneable {
                     "non-null value with null value/entity binding");
             }
         } else {
-            valueThang.setData(new byte[0]);
+            valueThang.setData(KeyRange.ZERO_LENGTH_BYTE_ARRAY);
             valueThang.setOffset(0);
             valueThang.setSize(0);
         }
@@ -524,18 +565,24 @@ final class DataView implements Cloneable {
     /**
      * Converts a key entry to a key object.
      */
-    Object makeKey(DatabaseEntry keyThang)
-        throws DatabaseException {
+    Object makeKey(DatabaseEntry keyThang, DatabaseEntry priKeyThang) {
 
-        if (keyThang.getSize() == 0) return null;
-        return keyBinding.entryToObject(keyThang);
+        if (keyBinding == null) {
+            throw new UnsupportedOperationException();
+        } else {
+            DatabaseEntry thang = dupsView ? priKeyThang : keyThang;
+            if (thang.getSize() == 0) {
+                return null;
+            } else {
+                return keyBinding.entryToObject(thang);
+            }
+        }
     }
 
     /**
      * Converts a key-value entry pair to a value object.
      */
-    Object makeValue(DatabaseEntry primaryKeyThang, DatabaseEntry valueThang)
-        throws DatabaseException {
+    Object makeValue(DatabaseEntry primaryKeyThang, DatabaseEntry valueThang) {
 
         Object value;
         if (valueBinding != null) {
@@ -553,21 +600,22 @@ final class DataView implements Cloneable {
     /**
      * Intersects the given key and the current range.
      */
-    KeyRange subRange(Object singleKey)
+    KeyRange subRange(KeyRange useRange, Object singleKey)
         throws DatabaseException, KeyRangeException {
 
-        return range.subRange(makeRangeKey(singleKey));
+        return useRange.subRange(makeRangeKey(singleKey));
     }
 
     /**
      * Intersects the given range and the current range.
      */
-    KeyRange subRange(Object beginKey, boolean beginInclusive,
+    KeyRange subRange(KeyRange useRange,
+                      Object beginKey, boolean beginInclusive,
                       Object endKey, boolean endInclusive)
         throws DatabaseException, KeyRangeException {
 
         if (beginKey == endKey && beginInclusive && endInclusive) {
-            return subRange(beginKey);
+            return subRange(useRange, beginKey);
         }
         if (!ordered) {
             throw new UnsupportedOperationException(
@@ -578,8 +626,30 @@ final class DataView implements Cloneable {
         DatabaseEntry endThang =
             (endKey != null) ? makeRangeKey(endKey) : null;
 
-        return range.subRange(beginThang, beginInclusive,
-                              endThang, endInclusive);
+        return useRange.subRange(beginThang, beginInclusive,
+                                 endThang, endInclusive);
+    }
+
+    /**
+     * Returns the range to use for sub-ranges.  Returns range if this is not a
+     * dupsView, or the dupsRange if this is a dupsView, creating dupsRange if
+     * necessary.
+     */
+    KeyRange useSubRange()
+        throws DatabaseException {
+
+        if (dupsView) {
+            synchronized (this) {
+                if (dupsRange == null) {
+                    DatabaseConfig config =
+                        secDb.getPrimaryDatabase().getConfig();
+                    dupsRange = new KeyRange(config.getBtreeComparator());
+                }
+            }
+            return dupsRange;
+        } else {
+            return range;
+        }
     }
 
     /**

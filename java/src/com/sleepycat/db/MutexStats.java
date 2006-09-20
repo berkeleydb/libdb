@@ -3,15 +3,15 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 
 package com.sleepycat.db;
 
 public class MutexStats {
     // no public constructor
-    protected MutexStats() {}
+    /* package */ MutexStats() {}
 
     private int st_mutex_align;
     public int getMutexAlign() {

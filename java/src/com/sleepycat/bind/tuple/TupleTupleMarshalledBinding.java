@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: TupleTupleMarshalledBinding.java,v 12.1 2005/01/31 19:27:32 mark Exp $
+ * $Id: TupleTupleMarshalledBinding.java,v 12.4 2006/09/08 20:32:11 bostic Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -15,7 +15,7 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * A concrete <code>TupleTupleBinding</code> that delegates to the
  * <code>MarshalledTupleEntry</code> and
  * <code>MarshalledTupleKeyEntity</code> interfaces of the entity class.
- * 
+ *
  * <p>This class calls the methods of the {@link MarshalledTupleEntry}
  * interface to convert between the data entry and entity object.  It calls the
  * methods of the {@link MarshalledTupleKeyEntity} interface to convert between

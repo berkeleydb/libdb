@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: DatabaseConfig.java,v 12.2 2005/06/16 20:22:59 bostic Exp $
+ * $Id: DatabaseConfig.java,v 12.6 2006/08/24 14:46:07 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -54,6 +54,7 @@ public class DatabaseConfig implements Cloneable {
     private boolean readUncommitted = false;
     private boolean encrypted = false;
     private boolean exclusiveCreate = false;
+    private boolean multiversion = false;
     private boolean noMMap = false;
     private boolean queueInOrder = false;
     private boolean readOnly = false;
@@ -167,7 +168,8 @@ public class DatabaseConfig implements Cloneable {
         return getReadUncommitted();
     }
 
-    public void setDuplicateComparator(final java.util.Comparator duplicateComparator) {
+    public void setDuplicateComparator(
+            final java.util.Comparator duplicateComparator) {
         this.duplicateComparator = duplicateComparator;
     }
 
@@ -271,6 +273,14 @@ public class DatabaseConfig implements Cloneable {
         return mode;
     }
 
+    public void setMultiversion(final boolean Multiversion) {
+        this.multiversion = multiversion;
+    }
+
+    public boolean getMultiversion() {
+        return multiversion;
+    }
+
     public void setNoMMap(final boolean noMMap) {
         this.noMMap = noMMap;
     }
@@ -319,7 +329,8 @@ public class DatabaseConfig implements Cloneable {
         return readOnly;
     }
 
-    public void setRecordNumberAppender(final RecordNumberAppender recnoAppender) {
+    public void setRecordNumberAppender(
+            final RecordNumberAppender recnoAppender) {
         this.recnoAppender = recnoAppender;
     }
 
@@ -474,6 +485,7 @@ public class DatabaseConfig implements Cloneable {
         openFlags |= allowCreate ? DbConstants.DB_CREATE : 0;
         openFlags |= readUncommitted ? DbConstants.DB_READ_UNCOMMITTED : 0;
         openFlags |= exclusiveCreate ? DbConstants.DB_EXCL : 0;
+        openFlags |= multiversion ? DbConstants.DB_MULTIVERSION : 0;
         openFlags |= noMMap ? DbConstants.DB_NOMMAP : 0;
         openFlags |= readOnly ? DbConstants.DB_RDONLY : 0;
         openFlags |= threaded ? DbConstants.DB_THREAD : 0;
@@ -504,7 +516,6 @@ public class DatabaseConfig implements Cloneable {
 
         int dbFlags = 0;
         dbFlags |= checksum ? DbConstants.DB_CHKSUM : 0;
-        dbFlags |= (password != null) ? DbConstants.DB_ENCRYPT : 0;
         dbFlags |= btreeRecordNumbers ? DbConstants.DB_RECNUM : 0;
         dbFlags |= queueInOrder ? DbConstants.DB_INORDER : 0;
         dbFlags |= renumbering ? DbConstants.DB_RENUMBER : 0;
@@ -513,6 +524,8 @@ public class DatabaseConfig implements Cloneable {
         dbFlags |= snapshot ? DbConstants.DB_SNAPSHOT : 0;
         dbFlags |= unsortedDuplicates ? DbConstants.DB_DUP : 0;
         dbFlags |= transactionNotDurable ? DbConstants.DB_TXN_NOT_DURABLE : 0;
+        if (!db.getPrivateDbEnv())
+                dbFlags |= (password != null) ? DbConstants.DB_ENCRYPT : 0;
 
         if (dbFlags != 0)
             db.set_flags(dbFlags);
@@ -536,7 +549,7 @@ public class DatabaseConfig implements Cloneable {
             db.set_message_stream(messageStream);
         if (pageSize != oldConfig.pageSize)
             db.set_pagesize(pageSize);
-        if (password != oldConfig.password)
+        if (password != oldConfig.password && db.getPrivateDbEnv())
             db.set_encrypt(password, DbConstants.DB_ENCRYPT_AES);
         if (queueExtentSize != oldConfig.queueExtentSize)
             db.set_q_extentsize(queueExtentSize);
@@ -580,6 +593,7 @@ public class DatabaseConfig implements Cloneable {
         allowCreate = (openFlags & DbConstants.DB_CREATE) != 0;
         readUncommitted = (openFlags & DbConstants.DB_READ_UNCOMMITTED) != 0;
         exclusiveCreate = (openFlags & DbConstants.DB_EXCL) != 0;
+        multiversion = (openFlags & DbConstants.DB_MULTIVERSION) != 0;
         noMMap = (openFlags & DbConstants.DB_NOMMAP) != 0;
         readOnly = (openFlags & DbConstants.DB_RDONLY) != 0;
         truncate = (openFlags & DbConstants.DB_TRUNCATE) != 0;

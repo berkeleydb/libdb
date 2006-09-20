@@ -1,29 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_archive.c,v 12.4 2005/09/09 12:38:30 bostic Exp $
+ * $Id: db_archive.c,v 12.9 2006/08/26 09:23:00 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
+
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2006\nOracle Corporation.  All rights reserved.\n";
 #endif
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#endif
-
-#include "db_int.h"
 
 int db_archive_main __P((int, char *[]));
 int db_archive_usage __P((void));
@@ -101,6 +92,12 @@ db_archive_main(argc, argv)
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
 		case 'v':
+			/*
+			 * !!!
+			 * The verbose flag no longer actually does anything,
+			 * but it's left rather than adding it back at some
+			 * future date.
+			 */
 			verbose = 1;
 			break;
 		case '?':

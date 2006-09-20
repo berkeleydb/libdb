@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep029.tcl,v 12.10 2005/11/04 20:57:04 carol Exp $
+# $Id: rep029.tcl,v 12.17 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep029
 # TEST	Test of internal initialization.
@@ -17,10 +17,13 @@
 proc rep029 { method { niter 200 } { tnum "029" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
 	global passwd
 	global has_crypto
 
@@ -38,7 +41,7 @@ proc rep029 { method { niter 200 } { tnum "029" } args } {
 			return
 		}
 	}
-		
+
 	# This test needs to set its own pagesize.
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
@@ -51,9 +54,8 @@ proc rep029 { method { niter 200 } { tnum "029" } args } {
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
-	set recopts { "" "-recover" }
 	set opts { bulk clean noclean }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach c $opts {
 			foreach l $logsets {
 				set logindex [lsearch -exact $l "in-memory"]
@@ -69,12 +71,12 @@ proc rep029 { method { niter 200 } { tnum "029" } args } {
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep029_sub $method $niter $tnum $envargs \
-				    $l $r $c $inmem $args	
+				    $l $r $c $inmem $args
 
 				# Skip encrypted tests if not supported.
 				if { $has_crypto == 0 || $inmem } {
 					continue
-				}	
+				}
 
 				# Run same set of tests with security.
 				#
@@ -113,21 +115,25 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 	append largs " -pagesize $pagesize "
 	set log_buf [expr $pagesize * 2]
 	set log_max [expr $log_buf * 4]
+	set m_logargs " -log_buffer $log_buf"
+	set c_logargs " -log_buffer $log_buf"
 
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
 
-	# In-memory logs cannot be used with -txn nosync.  
+	# In-memory logs cannot be used with -txn nosync.
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
-	
+
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    -log_buffer $log_buf -log_max $log_max $envargs \
+	    $m_logargs -log_max $log_max $envargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    -log_buffer $log_buf -log_max $log_max $envargs \
+#	    $m_logargs -log_max $log_max $envargs \
 #	    -verbose {rep on} -errpfx MASTER -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -136,10 +142,10 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    -log_buffer $log_buf -log_max $log_max $envargs \
+	    $c_logargs -log_max $log_max $envargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    -log_buffer $log_buf -log_max $log_max $envargs \
+#	    $c_logargs -log_max $log_max $envargs \
 #	    -verbose {rep on} -errpfx CLIENT -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -151,12 +157,11 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $inmem $largs
+	set start 0
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $inmem $largs
+	incr start $niter
 	process_msgs $envlist 0 NONE err
 	error_check_good process_msgs $err 0
-
-	puts "\tRep$tnum.b: Close client."
-	error_check_good client_close [$clientenv close] 0
 
 	if { [lsearch $envargs "-encrypta*"] !=-1 } {
 		set enc "-P $passwd"
@@ -166,21 +171,28 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 
 	# Find out what exists on the client.  We need to loop until
 	# the first master log file > last client log file.
-	set res [eval exec $util_path/db_archive $enc -l -h $clientdir]
-
-	set last_client_log [lindex [lsort $res] end]
+	puts "\tRep$tnum.b: Close client."
+	if { $c_logtype != "in-memory" } {
+		set res [eval exec $util_path/db_archive $enc -l -h $clientdir]
+	}
+	set last_client_log [get_logfile $clientenv last]
+	error_check_good client_close [$clientenv close] 0
 
 	set stop 0
 	while { $stop == 0 } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
-		eval rep_test $method $masterenv NULL $niter 0 0 0 $inmem $largs
+	 	eval rep_test \
+		    $method $masterenv NULL $niter $start $start 0 $inmem $largs
+		incr start $niter
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."
-		set res [eval exec $util_path/db_archive $enc -d -h $masterdir]
-		set res [eval exec $util_path/db_archive $enc -l -h $masterdir]
-		if { [lsearch -exact $res $last_client_log] == -1 } {
+		if { $m_logtype != "in-memory"} {
+			set res [eval exec $util_path/db_archive $enc -d -h $masterdir]
+		}
+		set first_master_log [get_logfile $masterenv first]
+		if { $first_master_log > $last_client_log } {
 			set stop 1
 		}
 	}
@@ -207,7 +219,8 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 		#
 		set entries 10
 		eval rep_test\
-		    $method $masterenv NULL $entries $niter 0 0 $inmem $largs
+		    $method $masterenv NULL $entries $start $start 0 $inmem $largs
+		incr start $entries
 		process_msgs $envlist 0 NONE err
 		error_check_good process_msgs $err 0
 	}
@@ -237,30 +250,20 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 	} else {
 		set dbname "test.db"
 	}
-	set db1 [eval {berkdb_open -env $masterenv} $largs -rdonly $dbname]
-	set db2 [eval {berkdb_open -env $clientenv} $largs -rdonly $dbname]
 
-	error_check_good comparedbs [db_compare \
-	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-	error_check_good db1_close [$db1 close] 0
-	error_check_good db2_close [$db2 close] 0
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 0 $dbname
 
 	# Add records to the master and update client.
 	puts "\tRep$tnum.g: Add more records and check again."
 	set entries 10
-	eval rep_test $method $masterenv NULL $entries $niter 0 0 $inmem $largs
+	eval rep_test $method $masterenv NULL $entries $start $start 0 $inmem $largs
+	incr start $entries
 	process_msgs $envlist 0 NONE err
 	error_check_good process_msgs $err 0
 
-	# Check again that master and client logs and dbs are identical.
-	set db1 [eval {berkdb_open -env $masterenv} $largs -rdonly $dbname]
-	set db2 [eval {berkdb_open -env $clientenv} $largs -rdonly $dbname]
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 0 $dbname
 
-	error_check_good comparedbs [db_compare \
-	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-	error_check_good db1_close [$db1 close] 0
-	error_check_good db2_close [$db2 close] 0
-        set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
+	set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	if { $opts == "bulk" } {
 		error_check_bad bulkxferon $bulkxfer 0
 	} else {
@@ -271,3 +274,4 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 	error_check_good clientenv_close [$clientenv close] 0
 	replclose $testdir/MSGQUEUEDIR
 }
+

@@ -1,14 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: tcl_db.h,v 12.4 2005/08/08 14:52:30 bostic Exp $
+ * $Id: tcl_db.h,v 12.8 2006/08/24 14:45:30 bostic Exp $
  */
 
 #ifndef _DB_TCL_DB_H_
 #define	_DB_TCL_DB_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #define	MSG_SIZE 100		/* Message size */
 
@@ -81,6 +85,7 @@ typedef struct dbtcl_info {
 	/* Callbacks--Tcl_Objs containing proc names */
 	Tcl_Obj *i_btcompare;
 	Tcl_Obj *i_dupcompare;
+	Tcl_Obj *i_event;
 	Tcl_Obj *i_hashproc;
 	Tcl_Obj *i_rep_send;
 	Tcl_Obj *i_second_call;
@@ -236,6 +241,10 @@ extern DBTCL_GLOBAL __dbtcl_global;
  */
 #define	IS_HELP(s)						\
     (strcmp(Tcl_GetStringFromObj(s,NULL), "-?") == 0) ? TCL_OK : TCL_ERROR
+
+#if defined(__cplusplus)
+}
+#endif
 
 #include "dbinc_auto/tcl_ext.h"
 #endif /* !_DB_TCL_DB_H_ */

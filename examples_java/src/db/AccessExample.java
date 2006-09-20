@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: AccessExample.java,v 12.2 2005/06/16 20:22:47 bostic Exp $
+ * $Id: AccessExample.java,v 12.5 2006/08/24 14:46:01 bostic Exp $
  */
 
 
@@ -63,7 +63,7 @@ class AccessExample {
     }
 
     // Prompts for a line, and keeps prompting until a non blank
-    // line is returned.  Returns null on erroror.
+    // line is returned.  Returns null on error.
     //
     public static String askForLine(InputStreamReader reader,
                                     PrintStream out, String prompt) {
@@ -76,7 +76,7 @@ class AccessExample {
         return result;
     }
 
-    // Not terroribly efficient, but does the job.
+    // Not terribly efficient, but does the job.
     // Works for reading a line from stdin or a file.
     // Returns null on EOF.  If EOF appears in the middle
     // of a line, returns that line, then null on next call.

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: CurrentTransaction.java,v 12.3 2005/08/01 20:25:17 mark Exp $
+ * $Id: CurrentTransaction.java,v 12.7 2006/09/08 20:32:13 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -43,6 +43,7 @@ public class CurrentTransaction {
     private LockMode writeLockMode;
     private boolean cdbMode;
     private boolean txnMode;
+    private boolean lockingMode;
     private Environment env;
     private ThreadLocal localTrans = new ThreadLocal();
     private ThreadLocal localCdbCursors;
@@ -85,7 +86,8 @@ public class CurrentTransaction {
         try {
             EnvironmentConfig config = env.getConfig();
             txnMode = config.getTransactional();
-            if (txnMode || DbCompat.getInitializeLocking(config)) {
+            lockingMode = DbCompat.getInitializeLocking(config);
+            if (txnMode || lockingMode) {
                 writeLockMode = LockMode.RMW;
             } else {
                 writeLockMode = LockMode.DEFAULT;
@@ -97,6 +99,14 @@ public class CurrentTransaction {
         } catch (DatabaseException e) {
             throw new RuntimeExceptionWrapper(e);
         }
+    }
+
+    /**
+     * Returns whether environment is configured for locking.
+     */
+    final boolean isLockingMode() {
+
+        return lockingMode;
     }
 
     /**
@@ -320,7 +330,7 @@ public class CurrentTransaction {
             CursorConfig cdbConfig;
             if (writeCursor) {
                 if (cdbCursors.readCursors.size() > 0) {
-                    
+
                     /*
                      * Although CDB allows opening a write cursor when a read
                      * cursor is open, a self-deadlock will occur if a write is

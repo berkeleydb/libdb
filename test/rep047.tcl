@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep047.tcl,v 12.4 2005/10/19 19:13:44 carol Exp $
+# $Id: rep047.tcl,v 12.11 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST  rep047
 # TEST	Replication and log gap bulk transfers.
@@ -14,25 +14,43 @@
 # TEST	Process and verify on clients.
 #
 proc rep047 { method { nentries 200 } { tnum "047" } args } {
-	global mixed_mode_logging
 	source ./include.tcl
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
 		return
 	}
-	set args [convert_args $method $args]
 
-	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
-		puts "Rep$tnum ($method $r):\
-		    Replication and resend bulk transfer."
-		rep047_sub $method $nentries $tnum $r $args
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
+	set args [convert_args $method $args]
+	set logsets [create_logsets 3]
+
+	# Run the body of the test with and without recovery,
+	# and with and without cleaning.  Skip recovery with in-memory
+	# logging - it doesn't make sense.
+	foreach r $test_recopts {
+		foreach l $logsets {
+			set logindex [lsearch -exact $l "in-memory"]
+			if { $r == "-recover" && $logindex != -1 } {
+				puts "Skipping rep$tnum for -recover\
+				    with in-memory logs."
+				continue
+			}
+			puts "Rep$tnum ($method $r):\
+			    Replication and resend bulk transfer."
+			puts "Rep$tnum: Master logs are [lindex $l 0]"
+			puts "Rep$tnum: Client logs are [lindex $l 1]"
+			puts "Rep$tnum: Client 2 logs are [lindex $l 2]"
+			rep047_sub $method $nentries $tnum $l $r $args
+		}
 	}
 }
 
-proc rep047_sub { method niter tnum recargs largs } {
+proc rep047_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global overflowword1 overflowword2
@@ -47,38 +65,47 @@ proc rep047_sub { method niter tnum recargs largs } {
 	set masterdir $testdir/MASTERDIR
 	set clientdir $testdir/CLIENTDIR
 	set clientdir2 $testdir/CLIENTDIR2
+
 	file mkdir $masterdir
 	file mkdir $clientdir
 	file mkdir $clientdir2
 
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+	set c2_logtype [lindex $logset 2]
+
+	# In-memory logs cannot be used with -txn nosync.
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+	set c2_logargs [adjust_logargs $c2_logtype]
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
+	set c2_txnargs [adjust_txnargs $c2_logtype]
+
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env -create -txn nosync -lock_max 2500 \
+	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env -create -txn nosync -lock_max 2500 \
+#	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 #	    -errpfx MASTER -verbose {rep on} \
 #	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
 
 	repladd 2
-	set cl_envcmd "berkdb_env -create -txn nosync \
-	    -lock_max 2500 -home $clientdir \
-	    -rep_client -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env -create -txn nosync \
-#	    -lock_max 2500 -home $clientdir \
-#	    -errpfx CLIENT -verbose {rep on} \
+	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
+	    -home $clientdir -rep_client -rep_transport \[list 2 replsend\]"
+#	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
+#	    -home $clientdir -errpfx CLIENT -verbose {rep on} \
 #	    -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 
 	repladd 3
-	set cl2_envcmd "berkdb_env -create -txn nosync \
-	    -lock_max 2500 -home $clientdir2 \
-	    -rep_client -rep_transport \[list 3 replsend\]"
-#	set cl2_envcmd "berkdb_env -create -txn nosync \
-#	    -lock_max 2500 -home $clientdir2 \
-#	    -errpfx CLIENT2 -verbose {rep on} \
+	set cl2_envcmd "berkdb_env -create $c2_txnargs $c2_logargs \
+	    -home $clientdir2 -rep_client -rep_transport \[list 3 replsend\]"
+#	set cl2_envcmd "berkdb_env -create $c2_txnargs $c2_logargs \
+#	    -home $clientdir2 -errpfx CLIENT2 -verbose {rep on} \
 #	    -rep_client -rep_transport \[list 3 replsend\]"
 	# Bring the client online by processing the startup messages.
 	set envlist "{$masterenv 1} {$clientenv 2}"

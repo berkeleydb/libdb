@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep018script.tcl,v 12.2 2005/06/16 20:24:02 bostic Exp $
+# $Id: rep018script.tcl,v 12.5 2006/08/24 14:46:37 bostic Exp $
 #
 # Rep018 script - concurrency with checkpoints.
 #
@@ -33,10 +33,7 @@ set niter [ lindex $argv 1 ]
 set dbfile [ lindex $argv 2 ]
 set method [ lindex $argv 3 ]
 
-# Join the queue env.  We assume the rep test convention of
-# placing the messages in $testdir/MSGQUEUEDIR.
-set queueenv [eval berkdb_env -home $testdir/MSGQUEUEDIR]
-error_check_good script_qenv_open [is_valid_env $queueenv] TRUE
+set is_repchild 1
 
 #
 # We need to set up our own machids.

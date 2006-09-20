@@ -1,4 +1,4 @@
-<!-- $Id: dbcorewix.in,v 1.8 2005/04/18 18:40:27 philipr Exp $
+<!-- $Id: dbcorewix.in,v 1.10 2006/09/14 15:50:50 mjc Exp $
  -
  - Dbcorewix.in is the DB core WiX input file, and is used by
  - s_winmsi to create dbcore.wxs (an input to WiX).
@@ -47,7 +47,7 @@ m4_include(WIX_DB_SHARED_WINMSIDIR/dbwix.m4)   <!-- Define common macros -->
   <!-- The ???? stuff asks WiX to create a unique GUID for us -->
   <Product Id='????????-????-????-????-????????????'
    Name='Berkeley DB WIX_DB_VERSION' Version='WIX_DB_VERSION.0'
-   Manufacturer='Sleepycat Software, Inc.' Language='1033'>
+   Manufacturer='Oracle Corporation' Language='1033'>
 
     <!-- Store files as a compressed 'cabinet' embedded in the .MSI file. -->
     <Package Id='????????-????-????-????-????????????'
@@ -78,8 +78,7 @@ m4_include(WIX_DB_SHARED_WINMSIDIR/dbwix.m4)   <!-- Define common macros -->
       <Directory Id="FavoritesFolder" Name="." SourceName="." />
 
       <Directory Id="ProgramFilesFolder" Name="." SourceName=".">
-        <Directory Id="SleepycatSoftwareFolder" Name="Sleepy~1"
-                   LongName="Sleepycat Software">
+        <Directory Id="OracleFolder" Name="Oracle" LongName="Oracle">
           <Directory Id="INSTALLDIR" Name="WIX_DB_8CHAR_VERSION"
                    LongName="Berkeley DB WIX_DB_VERSION">
             <Directory Id="INSTALLUTIL" Name="instutil"
@@ -124,7 +123,7 @@ m4_include(WIX_DB_SHARED_WINMSIDIR/dbwix.m4)   <!-- Define common macros -->
               <File Id="README.txt" Name="README.txt"
                     src="WIX_DB_SRCDIR\README" />
 	      <Registry Id="RootDir.RegistryVal" Root="HKLM"
-                   Key="SOFTWARE\Sleepycat Software\Berkeley DB\WIX_DB_VERSION"
+                   Key="SOFTWARE\Oracle\Berkeley DB\WIX_DB_VERSION"
                    Name="RootDirectory" Value="[INSTALLDIR]" Type="string"
                    Action="write" />
               <CreateFolder />
@@ -166,7 +165,8 @@ m4_include(WIX_DB_SHARED_WINMSIDIR/dbwix.m4)   <!-- Define common macros -->
 
       DIALOG_PROGRESS(ShowProgressDlg, , )
       DIALOG_SUCCESS(InstallSuccessDlg, , , `Berkeley DB',
-                     `in the product blog http://www.sleepycat.com/blogs/db or in the news group news://comp.databases.berkeley-db')
+                     `Oracle Technology Network Berkeley DB forum')
+
 
       <!-- Here are extra admin dialogs -->
       DIALOG_ADMIN_CANCEL(CancelInstallerDlg)

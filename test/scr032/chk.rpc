@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.rpc,v 1.1 2005/07/21 18:21:38 bostic Exp $
+# $Id: chk.rpc,v 1.2 2006/09/11 15:40:46 bostic Exp $
 #
 # Check to make sure that the code samples in the documents build.
 
@@ -56,7 +56,9 @@ check()
 	# db/db_method.c files.
 	sed -e "/$1 PUBLIC HANDLE LIST BEGIN/,/$1 PUBLIC HANDLE LIST END/p" \
 	    -e d < "$3" |
-	sed -e '/PUBLIC/d' \
+	sed -e '/^#ifdef.HAVE_REPLICATION_THREADS/d' \
+	    -e '/^#else.*HAVE_REPLICATION_THREADS/,/^#endif/d' \
+	    -e '/PUBLIC/d' \
 	    -e 's/ = .*//' \
 	    -e 's/^.*->//' > $t2
 

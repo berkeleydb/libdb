@@ -1,28 +1,23 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: gen_client_ret.c,v 12.2 2005/07/21 18:21:30 bostic Exp $
+ * $Id: gen_client_ret.c,v 12.7 2006/09/08 19:27:46 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <rpc/rpc.h>
-
-#include <string.h>
-#endif
-
-#include "db_server.h"
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/txn.h"
+
+#ifndef NO_SYSTEM_INCLUDES
+#include <rpc/rpc.h>
+#endif
+#include "db_server.h"
 #include "dbinc_auto/rpc_client_ext.h"
 
 #define	FREE_IF_CHANGED(dbtp, orig)	do {				\
@@ -156,6 +151,35 @@ __dbcl_env_txn_begin_ret(envp, parent, txnpp, flags, replyp)
 	 * machines, we could overflow.  Ignore for now.
 	 */
 	__dbcl_txn_setup(envp, txn, parent, (u_int32_t)replyp->txnidcl_id);
+	*txnpp = txn;
+	return (replyp->status);
+}
+
+/*
+ * PUBLIC: int __dbcl_env_cdsgroup_begin_ret __P((DB_ENV *,
+ * PUBLIC:     DB_TXN **, __env_cdsgroup_begin_reply *));
+ */
+int
+__dbcl_env_cdsgroup_begin_ret(envp, txnpp, replyp)
+	DB_ENV *envp;
+	DB_TXN **txnpp;
+	__env_cdsgroup_begin_reply *replyp;
+{
+	DB_TXN *txn;
+	int ret;
+
+	if (replyp->status != 0)
+		return (replyp->status);
+
+	if ((ret = __os_calloc(envp, 1, sizeof(DB_TXN), &txn)) != 0)
+		return (ret);
+	/*
+	 * !!!
+	 * Cast the txnidcl_id to 32-bits.  We don't want to change the
+	 * size of the txn structure.  But if we're running on 64-bit
+	 * machines, we could overflow.  Ignore for now.
+	 */
+	__dbcl_txn_setup(envp, txn, NULL, (u_int32_t)replyp->txnidcl_id);
 	*txnpp = txn;
 	return (replyp->status);
 }

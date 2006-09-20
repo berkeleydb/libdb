@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep001.tcl,v 12.5 2005/11/04 20:57:04 carol Exp $
+# $Id: rep001.tcl,v 12.11 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST  rep001
 # TEST	Replication rename and forced-upgrade test.
@@ -24,6 +24,10 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 		return
 	}
 
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	# Rep056 runs rep001 with in-memory named databases.
 	set inmem 0
 	set msg "using regular named databases"
@@ -42,7 +46,7 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 	set logsets [create_logsets 2]
 	set saved_args $args
 
-	foreach recopt { "" "-recover" } {
+	foreach recopt $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $recopt == "-recover" && $logindex != -1 } {
@@ -57,13 +61,13 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep001_sub $method \
 			    $niter $tnum $envargs $l $recopt $inmem $args
-	
+
 			# Skip encrypted tests if not supported.
 			if { $has_crypto == 0 || $inmem } {
 				continue
 			}
 
-			# Run the same tests with security.  In-memory 
+			# Run the same tests with security.  In-memory
 			# databases don't work with encryption.
 			append envargs " -encryptaes $passwd "
 			append args " -encrypt "
@@ -105,11 +109,11 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create -lock_max 2500 \
+	set env_cmd(M) "berkdb_env_noerr -create \
 	    -log_max 1000000 $envargs $m_logargs $recargs \
 	    -home $masterdir -errpfx MASTER $m_txnargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
-#	set env_cmd(M) "berkdb_env_noerr -create -lock_max 2500 \
+#	set env_cmd(M) "berkdb_env_noerr -create \
 #	    -log_max 1000000 $envargs $m_logargs $recargs \
 #	    -home $masterdir \
 #	    -verbose {rep on} -errfile /dev/stderr \
@@ -120,11 +124,11 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env_noerr -create -lock_max 2500 \
+	set env_cmd(C) "berkdb_env_noerr -create \
 	    -log_max 1000000 $envargs $c_logargs $recargs \
 	    -home $clientdir -errpfx CLIENT $c_txnargs -rep_client \
 	    -rep_transport \[list 2 replsend\]"
-#	set env_cmd(C) "berkdb_env_noerr -create -lock_max 2500 \
+#	set env_cmd(C) "berkdb_env_noerr -create \
 #	    -log_max 1000000 $envargs $c_logargs $recargs \
 #	    -home $clientdir \
 #	    -verbose {rep on} -errfile /dev/stderr \
@@ -172,8 +176,8 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 	puts "\tRep$tnum.f: Reopen old master as client and catch up."
 	# Throttle master so it can't send everything at once
 	$newmasterenv rep_limit 0 [expr 64 * 1024]
-	set newclientenv [eval {berkdb_env -create -recover} $envargs \
-	    -txn nosync -lock_max 2500 \
+	set newclientenv [eval {berkdb_env -create -recover} \
+	    $envargs -txn nosync \
 	    {-home $masterdir -rep_client -rep_transport [list 1 replsend]}]
 	error_check_good newclient_env [is_valid_env $newclientenv] TRUE
 	set envlist "{$newclientenv 1} {$newmasterenv 2}"

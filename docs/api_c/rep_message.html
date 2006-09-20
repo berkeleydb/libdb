@@ -1,5 +1,5 @@
-<!--$Id: rep_message.so,v 1.34 2005/10/19 19:11:24 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: rep_message.so,v 1.38 2006/06/24 00:33:22 alanb Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -30,6 +30,11 @@ DB_ENV-&gt;rep_process_message(DB_ENV *env,
 <h3>Description: DB_ENV-&gt;rep_process_message</h3>
 <p>The DB_ENV-&gt;rep_process_message method processes an incoming replication message sent
 by a member of the replication group to the local database environment.</p>
+<p>The DB_ENV-&gt;rep_process_message method is not called by most replication
+applications.  It should only be called by applications implementing
+their own network transport layer, explicitly holding replication group
+elections and handling replication messages outside of the replication
+manager framework.</p>
 <p>For implementation reasons, all incoming replication messages must be
 processed using the same <a href="../api_c/env_class.html">DB_ENV</a> handle.  It is not required that
 a single thread of control process all messages, only that all threads
@@ -62,7 +67,7 @@ The maximum LSN of the permanent records stored is returned.
 <dt><a name="DB_REP_JOIN_FAILURE">DB_REP_JOIN_FAILURE</a><dd>
 <p>The DB_ENV-&gt;rep_process_message method will return DB_REP_JOIN_FAILURE if a new master has been chosen but the client is unable to synchronize
 with the new master (possibly because the client has been configured
-with the <a href="../api_c/rep_set_config.html#DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a> flag to turn-off automatic
+with the <a href="../api_c/rep_config.html#DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a> flag to turn-off automatic
 internal initialization).
 </p>
 <dt><a name="DB_REP_NEWMASTER">DB_REP_NEWMASTER</a><dd>
@@ -86,11 +91,6 @@ The LSN of this record is returned.  The application should take
 whatever action is deemed necessary to retain its recoverability
 characteristics.
 </p>
-<dt><a name="DB_REP_STARTUPDONE">DB_REP_STARTUPDONE</a><dd>
-<p>The DB_ENV-&gt;rep_process_message method will return DB_REP_STARTUPDONE if the system detects that a client completed startup synchronization.
-The client application knows that this client is now processing
-live log records received from the master.
-</p>
 </dl>
 <p>Unless otherwise specified, the DB_ENV-&gt;rep_process_message method
 returns a non-zero error value on failure
@@ -107,7 +107,7 @@ corresponds to the environment that sent the message to be processed
 information).
 <dt><b>rec</b><dd>The <b>rec</b> parameter should reference a copy of the <b>rec</b>
 parameter specified by Berkeley DB on the sending environment.
-<dt><b>ret_lsn</b><dd>If DB_ENV-&gt;rep_process_message method returns DB_REP_NOTPERM then the <b>ret_lsnp</b>
+<dt><b>ret_lsnp</b><dd>If DB_ENV-&gt;rep_process_message method returns DB_REP_NOTPERM then the <b>ret_lsnp</b>
 parameter will contain the log sequence number of this permanent log
 message that could not be written to disk.  If DB_ENV-&gt;rep_process_message method
 returns DB_REP_ISPERM then the <b>ret_lsnp</b> parameter will contain
@@ -124,6 +124,6 @@ cases the value of <b>ret_lsnp</b> is undefined.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

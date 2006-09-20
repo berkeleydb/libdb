@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-# Sleepycat Software. All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: txn012.tcl,v 12.1 2005/05/23 17:16:42 carol Exp $
+# $Id: txn012.tcl,v 12.4 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	txn012
-# TEST	Test txn->getname and txn->setname. 
+# TEST	Test txn->getname and txn->setname.
 
 proc txn012 { {ntxns 100} } {
 	source ./include.tcl
@@ -20,23 +20,23 @@ proc txn012 { {ntxns 100} } {
 	puts "\tTxn012.a: Set up env and txn."
 	set env [berkdb_env -create -home $testdir -txn]
 	set db [berkdb_open -create -auto_commit -btree -env $env test.db]
-	set txn0 [$env txn] 
+	set txn0 [$env txn]
 	set txn1 [$env txn]
 
 	# Name the transactions, check the name.
 	error_check_good name_txn0 [$txn0 setname $txnname] 0
-	set getname [$txn0 getname] 
-	error_check_good txnname $getname $txnname 
-	
+	set getname [$txn0 getname]
+	error_check_good txnname $getname $txnname
+
 	error_check_good longname_txn [$txn1 setname $longtxnname] 0
 	set getlongname [$txn1 getname]
-	error_check_good longtxnname $getlongname $longtxnname 
+	error_check_good longtxnname $getlongname $longtxnname
 
 	# Run db_stat.  The long txn name will be truncated.
 	set stat [exec $util_path/db_stat -h $testdir -t]
 	error_check_good stat_name [is_substr $stat $txnname] 1
 	error_check_good stat_longname [is_substr $stat $longtxnname] 0
-	set truncname [string range $longtxnname 0 49] 
+	set truncname [string range $longtxnname 0 49]
 	error_check_good stat_truncname [is_substr $stat $truncname] 1
 
 	# Start another process and make sure it can see the names too.

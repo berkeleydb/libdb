@@ -1,24 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_open.c,v 12.13 2005/10/12 17:45:53 bostic Exp $
+ * $Id: db_open.c,v 12.30 2006/09/19 15:06:58 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_swap.h"
 #include "dbinc/btree.h"
 #include "dbinc/crypto.h"
@@ -91,7 +83,7 @@ __db_open(dbp, txn, fname, dname, type, flags, mode, meta_pgno)
 	if (LF_ISSET(DB_READ_UNCOMMITTED))
 		F_SET(dbp, DB_AM_READ_UNCOMMITTED);
 
-	if (txn != NULL)
+	if (IS_REAL_TXN(txn))
 		F_SET(dbp, DB_AM_TXN);
 
 	/* Fill in the type. */
@@ -108,7 +100,7 @@ __db_open(dbp, txn, fname, dname, type, flags, mode, meta_pgno)
 	if (fname == NULL) {
 		if (dname == NULL) {
 			if (!LF_ISSET(DB_CREATE)) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 			    "DB_CREATE must be specified to create databases.");
 				return (ENOENT);
 			}
@@ -117,7 +109,7 @@ __db_open(dbp, txn, fname, dname, type, flags, mode, meta_pgno)
 			F_SET(dbp, DB_AM_CREATED);
 
 			if (dbp->type == DB_UNKNOWN) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 				    "DBTYPE of unknown without existing file");
 				return (EINVAL);
 			}
@@ -198,7 +190,7 @@ __db_open(dbp, txn, fname, dname, type, flags, mode, meta_pgno)
 			    txn, dname, mode, flags, &id)) == 0 &&
 			    DBENV_LOGGING(dbenv) && !F_ISSET(dbp, DB_AM_RECOVER)
 #if !defined(DEBUG_ROP)
-	    && !F_ISSET(dbp, DB_AM_RDONLY)
+			    && !F_ISSET(dbp, DB_AM_RDONLY)
 #endif
 			)
 				ret = __dbreg_log_id(dbp,
@@ -236,9 +228,9 @@ __db_open(dbp, txn, fname, dname, type, flags, mode, meta_pgno)
 	 * for a handle lock downgrade or lockevent in the case of named
 	 * files.
 	 */
-	if (!F_ISSET(dbp, DB_AM_RECOVER) && (fname != NULL || dname != NULL)
-	    && LOCK_ISSET(dbp->handle_lock)) {
-		if (txn != NULL)
+	if (!F_ISSET(dbp, DB_AM_RECOVER) && (fname != NULL || dname != NULL) &&
+	    LOCK_ISSET(dbp->handle_lock)) {
+		if (IS_REAL_TXN(txn))
 			ret = __txn_lockevent(dbenv,
 			    txn, dbp, &dbp->handle_lock, dbp->lid);
 		else if (LOCKING_ON(dbenv))
@@ -296,7 +288,7 @@ __db_new_file(dbp, txn, fhp, name)
 		break;
 	case DB_UNKNOWN:
 	default:
-		__db_err(dbp->dbenv,
+		__db_errx(dbp->dbenv,
 		    "%s: Invalid type %d specified", name, dbp->type);
 		ret = EINVAL;
 		break;
@@ -333,7 +325,8 @@ __db_init_subdb(mdbp, dbp, name, txn)
 	if (!F_ISSET(dbp, DB_AM_CREATED)) {
 		/* Subdb exists; read meta-data page and initialize. */
 		mpf = mdbp->mpf;
-		if  ((ret = __memp_fget(mpf, &dbp->meta_pgno, 0, &meta)) != 0)
+		if  ((ret = __memp_fget(mpf, &dbp->meta_pgno,
+		    txn, 0, &meta)) != 0)
 			goto err;
 		ret = __db_meta_setup(mdbp->dbenv, dbp, name, meta, 0, 0);
 		if ((t_ret = __memp_fput(mpf, meta, 0)) != 0 && ret == 0)
@@ -361,7 +354,7 @@ __db_init_subdb(mdbp, dbp, name, txn)
 		break;
 	case DB_UNKNOWN:
 	default:
-		__db_err(dbp->dbenv,
+		__db_errx(dbp->dbenv,
 		    "Invalid subdatabase type %d specified", dbp->type);
 		return (EINVAL);
 	}
@@ -385,7 +378,7 @@ __db_chk_meta(dbenv, dbp, meta, do_metachk)
 	DBMETA *meta;
 	int do_metachk;
 {
-	DB_LSN cur_lsn, swap_lsn;
+	DB_LSN swap_lsn;
 	int is_hmac, ret, swapped;
 	u_int32_t magic, orig_chk;
 	u_int8_t *chksum;
@@ -413,7 +406,7 @@ __db_chk_meta(dbenv, dbp, meta, do_metachk)
 		 */
 		if (do_metachk) {
 			swapped = 0;
-chk_retry:		if ((ret = __db_check_chksum(dbenv,
+chk_retry:		if ((ret = __db_check_chksum(dbenv, NULL,
 			    (DB_CIPHER *)dbenv->crypto_handle, chksum, meta,
 			    DBMETASIZE, is_hmac)) != 0) {
 				if (is_hmac || swapped)
@@ -461,25 +454,9 @@ lsn_retry:
 			goto lsn_retry;
 		}
 		if (!IS_REP_CLIENT(dbenv) &&
-		    !IS_NOT_LOGGED_LSN(swap_lsn) && !IS_ZERO_LSN(swap_lsn)) {
+		    !IS_NOT_LOGGED_LSN(swap_lsn) && !IS_ZERO_LSN(swap_lsn))
 			/* Need to do check. */
-			if ((ret = __log_current_lsn(dbenv,
-			    &cur_lsn, NULL, NULL)) != 0)
-				return (ret);
-			if (log_compare(&swap_lsn, &cur_lsn) > 0) {
-				__db_err(dbenv,
-			"file %s (meta pgno = %lu) has LSN [%lu][%lu].",
-				    dbp->fname == NULL
-				    ? "unknown" : dbp->fname,
-				    (u_long)dbp->meta_pgno,
-				    (u_long)swap_lsn.file,
-				    (u_long)swap_lsn.offset);
-				__db_err(dbenv, "end of log is [%lu][%lu]",
-				    (u_long)cur_lsn.file,
-				    (u_long)cur_lsn.offset);
-				return (EINVAL);
-			}
-		}
+			ret = __log_check_page_lsn(dbenv, dbp, &swap_lsn);
 	}
 	return (ret);
 }
@@ -533,7 +510,7 @@ swap_retry:
 		 * not yet initialized.
 		 */
 		if (F_ISSET(dbp, DB_AM_SUBDB) && ((IS_RECOVERING(dbenv) &&
-		    F_ISSET((DB_LOG *) dbenv->lg_handle, DBLOG_FORCE_OPEN)) ||
+		    F_ISSET(dbenv->lg_handle, DBLOG_FORCE_OPEN)) ||
 		    meta->pgno != PGNO_INVALID))
 			return (ENOENT);
 
@@ -556,7 +533,7 @@ swap_retry:
 	 */
 	if ((ret = __db_chk_meta(dbenv, dbp, meta, do_metachk)) != 0) {
 		if (ret == -1)
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "%s: metadata page checksum error", name);
 		goto bad_format;
 	}
@@ -611,6 +588,6 @@ bad_format:
 	if (F_ISSET(dbp, DB_AM_RECOVER))
 		ret = ENOENT;
 	else
-		__db_err(dbenv, "%s: unexpected file type or format", name);
+		__db_errx(dbenv, "%s: unexpected file type or format", name);
 	return (ret == 0 ? EINVAL : ret);
 }

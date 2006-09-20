@@ -50,6 +50,7 @@ main(int argc, char* argv[])
 
 	progname = argv[0];
 
+	dbp3 = NULL;
 	buf = replyBuf = NULL;
 	initBuf = NULL;
 	cnt = 1000;
@@ -307,7 +308,7 @@ mismatch:	fprintf(stderr,
 err:	if (dbc1 != NULL)
 		(void)dbc1->c_close(dbc1);
 	if (dbc3 != NULL)
-		(void)dbc3->c_close(dbc1);
+		(void)dbc3->c_close(dbc3);
 	if (dbp1 != NULL)
 		(void)dbp1->close(dbp1, 0);
 

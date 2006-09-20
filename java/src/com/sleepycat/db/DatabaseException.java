@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: DatabaseException.java,v 12.1 2005/06/16 20:22:59 bostic Exp $
+ * $Id: DatabaseException.java,v 12.4 2006/08/24 14:46:07 bostic Exp $
  */
 package com.sleepycat.db;
 
@@ -30,7 +30,7 @@ public class DatabaseException extends Exception {
         this.dbenv = dbenv;
     }
 
-    protected DatabaseException(final String s,
+    /* package */ DatabaseException(final String s,
                                 final int errno,
                                 final DbEnv dbenv) {
         this(s, errno, (dbenv == null) ? null : dbenv.wrapper);

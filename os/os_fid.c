@@ -1,32 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_fid.c,v 12.4 2005/10/14 15:33:08 bostic Exp $
+ * $Id: os_fid.c,v 12.11 2006/08/24 14:46:17 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
 /*
  * __os_fileid --
- *	Return a unique identifier for a file.  The structure
- * of a fileid is: ino(4) dev(4) time(4) pid(4) extra(4).
- * For real files, which have a backing inode and device, the first
- * 16 bytes are filled in and the extra bytes are left 0.  For
- * temporary files, the inode and device fields are left blank and
- * the extra four bytes are filled in with a random value.
+ *	Return a unique identifier for a file.
  *
  * PUBLIC: int __os_fileid __P((DB_ENV *, const char *, int, u_int8_t *));
  */
@@ -38,25 +25,34 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	u_int8_t *fidp;
 {
 	pid_t pid;
-	db_threadid_t tid;
-	struct stat sb;
 	size_t i;
-	int ret;
 	u_int32_t tmp;
 	u_int8_t *p;
 
-	/* Clear the buffer. */
-	memset(fidp, 0, DB_FILE_ID_LEN);
+#ifdef HAVE_STAT
+	struct stat sb;
+	int ret;
 
-	/* On POSIX/UNIX, use a dev/inode pair. */
+	/*
+	 * The structure of a fileid on a POSIX/UNIX system is: ino(4) dev(4)
+	 * time(4) pid(4) extra(4).
+	 *
+	 * For real files, which have a backing inode and device, the first
+	 * 16 bytes are filled in and the extra bytes are left 0.  For
+	 * temporary files, the inode and device fields are left blank and
+	 * the extra four bytes are filled in with a random value.
+	 *
+	 * Clear the buffer.
+	 */
+	memset(fidp, 0, DB_FILE_ID_LEN);
 #ifdef HAVE_VXWORKS
 	RETRY_CHK((stat((char *)fname, &sb)), ret);
 #else
 	RETRY_CHK((stat(fname, &sb)), ret);
 #endif
 	if (ret != 0) {
-		__db_err(dbenv, "%s: %s", fname, strerror(ret));
-		return (ret);
+		__db_syserr(dbenv, ret, "stat: %s", fname);
+		return (__os_posix_err(ret));
 	}
 
 	/*
@@ -92,6 +88,10 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	tmp = (u_int32_t)sb.st_dev;
 	for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 		*fidp++ = *p++;
+#else
+	 /* Use the file name. */
+	 (void)strncpy(fidp, fname, DB_FILE_ID_LEN);
+#endif /* HAVE_STAT */
 
 	if (unique_okay) {
 		static u_int32_t fid_serial = 0;
@@ -121,7 +121,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 		 * base 2.
 		 */
 		if (fid_serial == 0) {
-			dbenv->thread_id(dbenv, &pid, &tid);
+			dbenv->thread_id(dbenv, &pid, NULL);
 			fid_serial = (u_int32_t)pid;
 		} else
 			fid_serial += 100000;

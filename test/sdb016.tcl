@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb016.tcl,v 12.6 2005/10/18 15:00:02 carol Exp $
+# $Id: sdb016.tcl,v 12.9 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	sdb016
 # TEST	Creates many in-memory named dbs and puts a small amount of
@@ -12,7 +12,7 @@
 # TEST	Use the first 100 entries from the dictionary as names.
 # TEST	Insert each with entry as name of subdatabase and a partial list
 # TEST	as key/data.  After all are entered, retrieve all; compare output
-# TEST	to original. 
+# TEST	to original.
 proc sdb016 { method {nentries 100} args } {
 	source ./include.tcl
 
@@ -41,7 +41,7 @@ proc sdb016 { method {nentries 100} args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	env_cleanup $testdir
 
@@ -92,7 +92,7 @@ proc sdb016 { method {nentries 100} args } {
 		incr fcount
 	}
 	close $fdid
-	
+
 	puts "\tSubdb$tnum.b: Clean up."
 	error_check_good env_close [$env close] 0
 }

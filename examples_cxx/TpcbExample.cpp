@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 12.3 2005/09/22 03:53:46 mjc Exp $
+ * $Id: TpcbExample.cpp,v 12.5 2006/08/24 14:45:49 bostic Exp $
  */
 
 #include <sys/types.h>

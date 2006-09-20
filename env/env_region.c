@@ -1,33 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: env_region.c,v 12.13 2005/10/21 19:13:01 bostic Exp $
+ * $Id: env_region.c,v 12.19 2006/08/24 14:45:40 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/crypto.h"
 #include "dbinc/mp.h"
 
@@ -112,8 +94,7 @@ loop:	renv = NULL;
 		    dbenv->db_mode, &dbenv->lockfhp)) == 0)
 			goto creation;
 		if (ret != EEXIST) {
-			__db_err(dbenv,
-			    "%s: %s", infop->name, db_strerror(ret));
+			__db_err(dbenv, ret, "%s", infop->name);
 			goto err;
 		}
 	}
@@ -160,7 +141,7 @@ loop:	renv = NULL;
 	 */
 	if ((ret = __os_ioinfo(dbenv, infop->name,
 	    dbenv->lockfhp, &mbytes, &bytes, NULL)) != 0) {
-		__db_err(dbenv, "%s: %s", infop->name, db_strerror(ret));
+		__db_err(dbenv, ret, "%s", infop->name);
 		goto err;
 	}
 
@@ -188,9 +169,9 @@ loop:	renv = NULL;
 		    sizeof(ref), &nrw)) != 0 || nrw < (size_t)sizeof(ref)) {
 			if (ret == 0)
 				ret = EIO;
-			__db_err(dbenv,
-		    "%s: unable to read system-memory information from: %s",
-			    infop->name, db_strerror(ret));
+			__db_err(dbenv, ret,
+		    "%s: unable to read system-memory information",
+			    infop->name);
 			goto err;
 		}
 		size = ref.size;
@@ -199,9 +180,9 @@ loop:	renv = NULL;
 		F_SET(dbenv, DB_ENV_SYSTEM_MEM);
 	} else if (F_ISSET(dbenv, DB_ENV_SYSTEM_MEM)) {
 		ret = EINVAL;
-		__db_err(dbenv,
-		    "%s: existing environment not created in system memory: %s",
-		    infop->name, db_strerror(ret));
+		__db_err(dbenv, ret,
+		    "%s: existing environment not created in system memory",
+		    infop->name);
 		goto err;
 	} else
 		segid = INVALID_REGION_SEGID;
@@ -245,7 +226,7 @@ loop:	renv = NULL;
 	if (renv->majver != DB_VERSION_MAJOR ||
 	    renv->minver != DB_VERSION_MINOR) {
 		if (renv->majver != 0 || renv->minver != 0) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 	"Program version %d.%d doesn't match environment version %d.%d",
 			    DB_VERSION_MAJOR, DB_VERSION_MINOR,
 			    renv->majver, renv->minver);
@@ -309,7 +290,7 @@ loop:	renv = NULL;
 	if (init_flagsp != NULL) {
 		FLD_CLR(*init_flagsp, renv->init_flags);
 		if (*init_flagsp != 0) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
     "configured environment flags incompatible with existing environment");
 			ret = EINVAL;
 			goto err;
@@ -411,8 +392,8 @@ creation:
 	renv->region_cnt = nregions;
 	if ((ret =
 	    __db_shalloc(infop, nregions * sizeof(REGION), 0, &rp)) != 0) {
-		__db_err(dbenv, "unable to create new master region array: %s",
-		    db_strerror(ret));
+		__db_err(
+		    dbenv, ret, "unable to create new master region array");
 		goto err;
 	}
 	renv->region_off = R_OFFSET(infop, rp);
@@ -432,7 +413,7 @@ creation:
 	 * the REGION structure.
 	 */
 	if ((ret = __db_des_get(dbenv, infop, infop, &rp)) != 0) {
-find_err:	__db_err(dbenv, "%s: unable to find environment", infop->name);
+find_err:	__db_errx(dbenv, "%s: unable to find environment", infop->name);
 		if (ret == 0)
 			ret = EINVAL;
 		goto err;
@@ -459,9 +440,9 @@ find_err:	__db_err(dbenv, "%s: unable to find environment", infop->name);
 		ref.segid = tregion.segid;
 		if ((ret = __os_write(
 		    dbenv, dbenv->lockfhp, &ref, sizeof(ref), &nrw)) != 0) {
-			__db_err(dbenv,
-			    "%s: unable to write out public environment ID: %s",
-			    infop->name, db_strerror(ret));
+			__db_err(dbenv, ret,
+			    "%s: unable to write out public environment ID",
+			    infop->name);
 			goto err;
 		}
 	}
@@ -514,7 +495,7 @@ retry:	/* Close any open file handle. */
 	/* If we had a temporary error, wait awhile and try again. */
 	if (ret == 0) {
 		if (++retry_cnt > 3) {
-			__db_err(dbenv, "unable to join the environment");
+			__db_errx(dbenv, "unable to join the environment");
 			ret = EAGAIN;
 		} else {
 			__os_sleep(dbenv, retry_cnt * 3, 0);
@@ -580,7 +561,7 @@ __db_e_detach(dbenv, destroy)
 	/* Decrement the reference count. */
 	MUTEX_LOCK(dbenv, renv->mtx_regenv);
 	if (renv->refcnt == 0)
-		__db_err(dbenv, "environment reference count went negative");
+		__db_errx(dbenv, "environment reference count went negative");
 	else
 		--renv->refcnt;
 	MUTEX_UNLOCK(dbenv, renv->mtx_regenv);
@@ -841,7 +822,7 @@ __db_e_remfile(dbenv)
 
 	/* Get the list of file names. */
 	if ((ret = __os_dirlist(dbenv, dir, &names, &fcnt)) != 0)
-		__db_err(dbenv, "%s: %s", dir, db_strerror(ret));
+		__db_err(dbenv, ret, "%s", dir);
 
 	/* Restore the path, and free it. */
 	*p = saved_char;
@@ -868,7 +849,7 @@ __db_e_remfile(dbenv)
 			continue;
 
 		/* Skip replication files. */
-		if (strncmp(names[cnt], "__db.rep.", 9) == 0)
+		if (strncmp(names[cnt], "__db.rep", 8) == 0)
 			continue;
 
 		/*
@@ -1108,7 +1089,7 @@ __db_des_get(dbenv, env_infop, infop, rpp)
 	 * fail with an error message, there's a sizing problem.
 	 */
 	if (empty_slot == NULL) {
-		__db_err(dbenv, "no room remaining for additional REGIONs");
+		__db_errx(dbenv, "no room remaining for additional REGIONs");
 		return (ENOENT);
 	}
 

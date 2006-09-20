@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb018.tcl,v 12.3 2005/10/18 15:00:02 carol Exp $
+# $Id: sdb018.tcl,v 12.6 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	sdb018
 # TEST	Tests join of in-memory named databases.
@@ -44,7 +44,7 @@ proc sdb018 {method {nentries 100} args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	set testfile ""
 	berkdb srand $rand_init
@@ -54,7 +54,7 @@ proc sdb018 {method {nentries 100} args } {
 
 		set cache [expr 1024 * 1024 * 10]
 		set env [berkdb_env -create -home $testdir \
-		    -cachesize "0 $cache 1" ] 
+		    -cachesize "0 $cache 1" ]
 		append args $opt
 		set oargs $args
 		append oargs " -env $env"

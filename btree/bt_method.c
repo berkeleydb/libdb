@@ -1,17 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: bt_method.c,v 12.2 2005/06/16 20:20:16 bostic Exp $
+ * $Id: bt_method.c,v 12.6 2006/08/24 14:44:44 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -243,7 +239,7 @@ __bam_set_bt_minkey(dbp, bt_minkey)
 	t = dbp->bt_internal;
 
 	if (bt_minkey < 2) {
-		__db_err(dbp->dbenv, "minimum bt_minkey value is 2");
+		__db_errx(dbp->dbenv, "minimum bt_minkey value is 2");
 		return (EINVAL);
 	}
 

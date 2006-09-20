@@ -179,19 +179,14 @@ public class ExampleDatabaseRead {
     protected ExampleDatabaseRead() {}
 
     private static void parseArgs(String args[]) {
-        int nArgs = args.length;
         for(int i = 0; i < args.length; ++i) {
             if (args[i].startsWith("-")) {
                 switch(args[i].charAt(1)) {
                     case 'h':
-                        if (i < nArgs) {
-                            myDbsPath = new String(args[++i]);
-                        }
-                    break;
+                        myDbsPath = new String(args[++i]);
+                        break;
                     case 's':
-                        if (i < nArgs) {
-                            locateItem = new String(args[++i]);
-                        }
+                        locateItem = new String(args[++i]);
                     break;
                     default:
                         usage();

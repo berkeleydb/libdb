@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_method.c,v 12.5 2005/10/07 20:21:34 ubell Exp $
+ * $Id: mut_method.c,v 12.12 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/mutex_int.h"
@@ -35,8 +29,14 @@ __mutex_alloc_pp(dbenv, flags, indxp)
 
 	PANIC_CHECK(dbenv);
 
-	if (flags != 0 && flags != DB_MUTEX_SELF_BLOCK)
+	switch (flags) {
+	case 0:
+	case DB_MUTEX_PROCESS_ONLY:
+	case DB_MUTEX_SELF_BLOCK:
+		break;
+	default:
 		return (__db_ferr(dbenv, "DB_ENV->mutex_alloc", 0));
+	}
 
 	ENV_ENTER(dbenv, ip);
 	ret = __mutex_alloc(dbenv, MTX_APPLICATION, flags, indxp);
@@ -127,8 +127,8 @@ __mutex_get_align(dbenv, alignp)
 	u_int32_t *alignp;
 {
 	if (MUTEX_ON(dbenv))
-		*alignp = ((DB_MUTEXREGION *)((DB_MUTEXMGR *)
-		    dbenv->mutex_handle)->reginfo.primary)->stat.st_mutex_align;
+		*alignp = ((DB_MUTEXREGION *)
+		    dbenv->mutex_handle->reginfo.primary)->stat.st_mutex_align;
 	else
 		*alignp = dbenv->mutex_align;
 	return (0);
@@ -148,7 +148,7 @@ __mutex_set_align(dbenv, align)
 	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_mutex_align");
 
 	if (align == 0 || !POWER_OF_TWO(align)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
     "DB_ENV->mutex_set_align: alignment value must be a non-zero power-of-two");
 		return (EINVAL);
 	}
@@ -207,8 +207,8 @@ __mutex_get_max(dbenv, maxp)
 	u_int32_t *maxp;
 {
 	if (MUTEX_ON(dbenv))
-		*maxp = ((DB_MUTEXREGION *)((DB_MUTEXMGR *)
-		    dbenv->mutex_handle)->reginfo.primary)->stat.st_mutex_cnt;
+		*maxp = ((DB_MUTEXREGION *)
+		    dbenv->mutex_handle->reginfo.primary)->stat.st_mutex_cnt;
 	else
 		*maxp = dbenv->mutex_cnt;
 	return (0);
@@ -244,8 +244,8 @@ __mutex_get_tas_spins(dbenv, tas_spinsp)
 	u_int32_t *tas_spinsp;
 {
 	if (MUTEX_ON(dbenv))
-		*tas_spinsp = ((DB_MUTEXREGION *)((DB_MUTEXMGR *)dbenv->
-		    mutex_handle)->reginfo.primary)->stat.st_mutex_tas_spins;
+		*tas_spinsp = ((DB_MUTEXREGION *)dbenv->
+		    mutex_handle->reginfo.primary)->stat.st_mutex_tas_spins;
 	else
 		*tas_spinsp = dbenv->mutex_tas_spins;
 	return (0);
@@ -263,13 +263,22 @@ __mutex_set_tas_spins(dbenv, tas_spins)
 	u_int32_t tas_spins;
 {
 	/*
+	 * Bound the value -- less than 1 makes no sense, greater than 1M
+	 * makes no sense.
+	 */
+	if (tas_spins == 0)
+		tas_spins = 1;
+	else if (tas_spins > 1000000)
+		tas_spins = 1000000;
+
+	/*
 	 * There's a theoretical race here, but I'm not interested in locking
 	 * the test-and-set spin count.  The worst possibility is a thread
 	 * reads out a bad spin count and spins until it gets the lock, but
 	 * that's awfully unlikely.
 	 */
 	if (MUTEX_ON(dbenv))
-		((DB_MUTEXREGION *)((DB_MUTEXMGR *)dbenv->mutex_handle)
+		((DB_MUTEXREGION *)dbenv->mutex_handle
 		    ->reginfo.primary)->stat.st_mutex_tas_spins = tas_spins;
 	else
 		dbenv->mutex_tas_spins = tas_spins;

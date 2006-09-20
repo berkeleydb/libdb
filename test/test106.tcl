@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test106.tcl,v 12.2 2005/07/28 18:45:45 carol Exp $
+# $Id: test106.tcl,v 12.5 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test106
 # TEST
@@ -105,7 +105,7 @@ proc test106 { method {nitems 100} {niter 200} {tnum "106"} args } {
 		tclkill $dpid
 	}
 
-	# If this test created the env, close it. 
+	# If this test created the env, close it.
 	if { $eindex == -1 } {
 		error_check_good env_close [$env close] 0
 	}

@@ -1,14 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: crypto.h,v 12.2 2005/07/20 16:51:03 bostic Exp $
+ * $Id: crypto.h,v 12.5 2006/08/24 14:45:27 bostic Exp $
  */
 
 #ifndef	_DB_CRYPTO_H_
 #define	_DB_CRYPTO_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*
  * !!!
@@ -75,4 +79,8 @@ typedef struct __aes_cipher {
 
 #include "dbinc_auto/crypto_ext.h"
 #endif /* HAVE_CRYPTO */
+
+#if defined(__cplusplus)
+}
+#endif
 #endif /* !_DB_CRYPTO_H_ */

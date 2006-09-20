@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: Environment.java,v 12.7 2005/10/31 05:08:14 mjc Exp $
+ * $Id: Environment.java,v 12.16 2006/09/08 20:32:14 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -198,20 +198,15 @@ public class Environment {
             master ? DbConstants.DB_REP_MASTER : DbConstants.DB_REP_CLIENT);
     }
 
-    public int electReplicationMaster(int nsites,
-                                      int nvotes,
-                                      int priority,
-                                      int timeout)
+    public int electReplicationMaster(int nsites, int nvotes)
         throws DatabaseException {
-
-        return dbenv.rep_elect(nsites, nvotes, priority, timeout,
-            0 /* unused flags */);
+        return dbenv.rep_elect(nsites, nvotes, 0 /* unused flags */);
     }
 
     public void flushReplication()
         throws DatabaseException {
 
-	dbenv.rep_flush();
+        dbenv.rep_flush();
     }
 
     public ReplicationStatus processReplicationMessage(DatabaseEntry control,
@@ -233,17 +228,35 @@ public class Environment {
     public void setReplicationConfig(ReplicationConfig config, boolean onoff)
         throws DatabaseException {
 
-	dbenv.rep_set_config(config.getFlag(), onoff);
+        dbenv.rep_set_config(config.getFlag(), onoff);
     }
 
     public boolean getReplicationConfig(ReplicationConfig config)
         throws DatabaseException {
 
-	return dbenv.rep_get_config(config.getFlag());
+        return dbenv.rep_get_config(config.getFlag());
+    }
+
+    public void setReplicationTimeout(
+        final ReplicationTimeoutType type, final int replicationTimeout)
+        throws DatabaseException {
+        dbenv.rep_set_timeout(type.getId(), replicationTimeout);
+    }
+
+    public int getReplicationTimeout(final ReplicationTimeoutType type)
+        throws DatabaseException {
+        return dbenv.rep_get_timeout(type.getId());
     }
 
     public void syncReplication() throws DatabaseException {
         dbenv.rep_sync(0);
+    }
+
+    /* Replication Manager interface */
+    public void replicationManagerStart(
+        int nthreads, ReplicationManagerStartPolicy disp)
+        throws DatabaseException {
+        dbenv.repmgr_start(nthreads, disp.getId());
     }
 
     /* Statistics */
@@ -264,6 +277,11 @@ public class Environment {
 
         return dbenv.log_stat(StatsConfig.checkNull(config).getFlags());
     }
+
+	public ReplicationHostAddress[] getReplicationSiteList()
+	    throws DatabaseException {
+		return dbenv.repmgr_site_list();
+	}
 
     public ReplicationStats getReplicationStats(StatsConfig config)
         throws DatabaseException {
@@ -290,6 +308,11 @@ public class Environment {
     }
 
     /* Transaction management */
+    public Transaction beginCDSGroup() throws DatabaseException {
+
+        return new Transaction(dbenv.cdsgroup_begin());
+    }
+
     public Transaction beginTransaction(final Transaction parent,
                                         TransactionConfig config)
         throws DatabaseException {
@@ -361,6 +384,18 @@ public class Environment {
 
         return dbenv.txn_recover(count,
             continued ? DbConstants.DB_NEXT : DbConstants.DB_FIRST);
+    }
+
+    public void resetFileID(final String filename, boolean encrypted)
+        throws DatabaseException {
+
+        dbenv.fileid_reset(filename, encrypted ? DbConstants.DB_ENCRYPT : 0);
+    }
+
+    public void resetLogSequenceNumber(final String filename, boolean encrypted)
+        throws DatabaseException {
+
+        dbenv.lsn_reset(filename, encrypted ? DbConstants.DB_ENCRYPT : 0);
     }
 
     /* Panic the environment, or stop a panic. */

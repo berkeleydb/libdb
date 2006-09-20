@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2003
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: IterDeadlockTest.java,v 12.2 2005/08/01 20:25:29 mark Exp $
+ * $Id: IterDeadlockTest.java,v 12.5 2006/08/24 14:46:46 bostic Exp $
  */
 
 package com.sleepycat.collections.test;
@@ -15,7 +15,6 @@ import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DeadlockException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.bind.ByteArrayBinding;
-import com.sleepycat.collections.CurrentTransaction;
 import com.sleepycat.collections.TransactionRunner;
 import com.sleepycat.collections.TransactionWorker;
 import com.sleepycat.collections.StoredIterator;
@@ -58,7 +57,6 @@ public class IterDeadlockTest extends TestCase {
     }
 
     private Environment env;
-    private CurrentTransaction currentTxn;
     private Database store1;
     private Database store2;
     private StoredSortedMap map1;
@@ -74,7 +72,6 @@ public class IterDeadlockTest extends TestCase {
         throws Exception {
 
         env = TestEnv.TXN.open("IterDeadlockTest");
-        currentTxn = CurrentTransaction.getInstance(env);
         store1 = openDb("store1.db");
         store2 = openDb("store2.db");
         map1 = new StoredSortedMap(store1, binding, binding, true);
@@ -106,7 +103,6 @@ public class IterDeadlockTest extends TestCase {
         }
         /* Allow GC of DB objects in the test case. */
         env = null;
-        currentTxn = null;
         store1 = null;
         store2 = null;
         map1 = null;

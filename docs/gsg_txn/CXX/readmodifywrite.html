@@ -6,7 +6,7 @@
     <title>Read/Modify/Write</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
     <link rel="previous" href="txn_ccursor.html" title="Transactional Cursors and Concurrent Applications" />
     <link rel="next" href="txnnowait.html" title="No Wait on Blocks" />
@@ -42,7 +42,7 @@
             a read-modify-write cycle at the time that you read the 
                     <span>record.</span>
                     
-            Doing so causes JE to obtain write locks (instead of a read
+            Doing so causes DB to obtain write locks (instead of a read
             locks) at the time of the read. This helps to prevent deadlocks by
             preventing another transaction from acquiring a read lock on the same
             record while the read-modify-write cycle is in progress.
@@ -95,6 +95,7 @@ while (retry_count &lt; MAX_DEADLOCK_RETRIES) {
         // detection as normal.
         dbp-&gt;put(txn, &amp;key, &amp;data, 0);
         txn-&gt;commit(0);
+        return (EXIT_SUCCESS);
     } catch (DbDeadlockException &amp;de) {
         // Deadlock detection and exception handling omitted
         // for brevity

@@ -1,13 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_am.h,v 12.8 2005/09/28 17:44:24 margo Exp $
+ * $Id: db_am.h,v 12.17 2006/08/24 14:45:29 bostic Exp $
  */
 #ifndef _DB_AM_H_
 #define	_DB_AM_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*
  * IS_ENV_AUTO_COMMIT --
@@ -37,6 +41,8 @@
 #define	DB_REM_DUP	2
 #define	DB_ADD_BIG	3
 #define	DB_REM_BIG	4
+#define	DB_ADD_PAGE_COMPAT	5	/* Compatibility for 4.2 db_relink */
+#define	DB_REM_PAGE_COMPAT	6	/* Compatibility for 4.2 db_relink */
 
 /*
  * Standard initialization and shutdown macros for all recovery functions.
@@ -49,7 +55,7 @@
 	COMPQUIET(mpf, NULL);						\
 	if ((ret = func(dbenv, dbtp->data, &argp)) != 0)		\
 		goto out;						\
-	if ((ret = __dbreg_id_to_db(dbenv, argp->txnid,			\
+	if ((ret = __dbreg_id_to_db(dbenv, argp->txnp,			\
 	    &file_dbp, argp->fileid, inc_count)) != 0) {		\
 		if (ret	== DB_DELETED) {				\
 			ret = 0;					\
@@ -95,7 +101,7 @@
  */
 #ifndef HAVE_FTRUNCATE
 #define	REC_FGET(mpf, pgno, pagep, cont)				\
-	if ((ret = __memp_fget(mpf, &(pgno), 0, pagep)) != 0) {		\
+	if ((ret = __memp_fget(mpf, &(pgno), NULL, 0, pagep)) != 0) {	\
 		if (ret != DB_PAGE_NOTFOUND || DB_REDO(op)) {		\
 			ret = __db_pgerr(file_dbp, pgno, ret);		\
 			goto out;					\
@@ -104,7 +110,7 @@
 	}
 #else
 #define	REC_FGET(mpf, pgno, pagep, cont)				\
-	if ((ret = __memp_fget(mpf, &(pgno), 0, pagep)) != 0) {		\
+	if ((ret = __memp_fget(mpf, &(pgno), NULL, 0, pagep)) != 0) {	\
 		if (ret != DB_PAGE_NOTFOUND) {				\
 			ret = __db_pgerr(file_dbp, pgno, ret);		\
 			goto out;					\
@@ -112,6 +118,11 @@
 			goto cont;					\
 	}
 #endif
+#define	REC_DIRTY(mpf, pagep)						\
+	if ((ret = __memp_dirty(mpf, pagep, NULL, DB_MPOOL_EDIT)) != 0) {\
+		ret = __db_pgerr(file_dbp, PGNO(*(pagep)), ret);	\
+		goto out;						\
+	}
 
 /*
  * Standard debugging macro for all recovery functions.
@@ -169,8 +180,7 @@ typedef struct {
  */
 #define	DB_IS_READONLY(dbp)						\
     (F_ISSET(dbp, DB_AM_RDONLY) ||					\
-    (IS_REP_CLIENT((dbp)->dbenv) &&					\
-    !F_ISSET((dbp), DB_AM_CL_WRITER)))
+    (IS_REP_CLIENT((dbp)->dbenv)))
 
 /*
  * For portability, primary keys that are record numbers are stored in
@@ -182,13 +192,31 @@ typedef struct {
  */
 #include "dbinc/db_swap.h"
 
-#define	SWAP_IF_NEEDED(pdbp, sdbp, pkey)				\
+#define	SWAP_IF_NEEDED(sdbp, pkey)					\
 	do {								\
-		if (((pdbp)->type == DB_QUEUE ||			\
-		    (pdbp)->type == DB_RECNO) &&			\
+		if (((sdbp)->s_primary->type == DB_QUEUE ||		\
+		    (sdbp)->s_primary->type == DB_RECNO) &&		\
 		    F_ISSET((sdbp), DB_AM_SWAP))			\
 			P_32_SWAP((pkey)->data);			\
 	} while (0)
+
+/*
+ * Cursor adjustment:
+ *	Return the first DB handle in the sorted DB_ENV list of DB
+ *	handles that has a matching file ID.
+ */
+#define	FIND_FIRST_DB_MATCH(dbenv, dbp, tdbp) do {			\
+	for ((tdbp) = (dbp);						\
+	    TAILQ_PREV((tdbp), __dblist, dblistlinks) != NULL &&	\
+	    TAILQ_PREV((tdbp),						\
+		__dblist, dblistlinks)->adj_fileid == (dbp)->adj_fileid;\
+	    (tdbp) = TAILQ_PREV((tdbp), __dblist, dblistlinks))	\
+		;							\
+} while (0)
+
+#if defined(__cplusplus)
+}
+#endif
 
 #include "dbinc/db_dispatch.h"
 #include "dbinc_auto/db_auto.h"

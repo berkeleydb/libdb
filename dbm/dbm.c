@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993
@@ -39,19 +39,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: dbm.c,v 12.2 2005/06/16 20:21:49 bostic Exp $
+ * $Id: dbm.c,v 12.8 2006/08/24 14:45:31 bostic Exp $
  */
 
+#define	DB_DBM_HSEARCH	1
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <fcntl.h>
-#include <string.h>
-#endif
-
-#define	DB_DBM_HSEARCH	1
 #include "db_int.h"
 
 /*
@@ -207,7 +200,7 @@ __db_ndbm_open(file, oflags, mode)
 	DB *dbp;
 	DBC *dbc;
 	int ret;
-	char path[MAXPATHLEN];
+	char path[DB_MAXPATHLEN];
 
 	/*
 	 * !!!
@@ -285,10 +278,8 @@ __db_ndbm_fetch(dbm, key)
 
 	dbc = (DBC *)dbm;
 
-	memset(&_key, 0, sizeof(DBT));
+	DB_INIT_DBT(_key, key.dptr, key.dsize);
 	memset(&_data, 0, sizeof(DBT));
-	_key.size = (u_int32_t)key.dsize;
-	_key.data = key.dptr;
 
 	/*
 	 * Note that we can't simply use the dbc we have to do a c_get/SET,
@@ -397,9 +388,7 @@ __db_ndbm_delete(dbm, key)
 
 	dbc = (DBC *)dbm;
 
-	memset(&_key, 0, sizeof(DBT));
-	_key.data = key.dptr;
-	_key.size = (u_int32_t)key.dsize;
+	DB_INIT_DBT(_key, key.dptr, key.dsize);
 
 	if ((ret = dbc->dbp->del(dbc->dbp, NULL, &_key, 0)) == 0)
 		return (0);
@@ -431,13 +420,8 @@ __db_ndbm_store(dbm, key, data, flags)
 
 	dbc = (DBC *)dbm;
 
-	memset(&_key, 0, sizeof(DBT));
-	_key.data = key.dptr;
-	_key.size = (u_int32_t)key.dsize;
-
-	memset(&_data, 0, sizeof(DBT));
-	_data.data = data.dptr;
-	_data.size = (u_int32_t)data.dsize;
+	DB_INIT_DBT(_key, key.dptr, key.dsize);
+	DB_INIT_DBT(_data, data.dptr, data.dsize);
 
 	if ((ret = dbc->dbp->put(dbc->dbp, NULL,
 	    &_key, &_data, flags == DBM_INSERT ? DB_NOOVERWRITE : 0)) == 0)

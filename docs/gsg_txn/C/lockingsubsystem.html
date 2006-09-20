@@ -6,7 +6,7 @@
     <title>The Locking Subsystem</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
     <link rel="previous" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
     <link rel="next" href="isolation.html" title="Isolation" />
@@ -35,18 +35,18 @@
         <div></div>
       </div>
       <p>
-            In order to allow concurrent operations, JE provides the locking
+            In order to allow concurrent operations, DB provides the locking
             subsystem. This subsystem provides inter- and intra- process
-            concurrency mechanisms. It is extensively used by JE concurrent
-            applications, but it can also be generally used for non-JE
+            concurrency mechanisms. It is extensively used by DB concurrent
+            applications, but it can also be generally used for non-DB
             resources.
         </p>
       <p>
             This section describes the locking subsystem as it is used to
-            protect JE resources. In particular, issues on configuration are
+            protect DB resources. In particular, issues on configuration are
             examined here. For information on using the locking subsystem to
-            manage non-JE resources, see the <i class="citetitle">Berkeley DB Programmer's
-            Reference Guide.</i>
+            manage non-DB resources, see the
+            <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>.
         </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -231,7 +231,7 @@ err:
           <div></div>
         </div>
         <p>
-                In order for JE to know that a deadlock has occurred,
+                In order for DB to know that a deadlock has occurred,
                 some mechanism must be used to perform deadlock
                 detection. There are three ways that deadlock detection can
                 occur:
@@ -240,7 +240,7 @@ err:
           <ol type="1">
             <li>
               <p>
-                        Allow JE to internally detect deadlocks as they
+                        Allow DB to internally detect deadlocks as they
                         occur.
                     </p>
               <p>
@@ -248,11 +248,11 @@ err:
                             <span><tt class="methodname">DB_ENV-&gt;set_lk_detect()</tt>.</span>
                             
                             
-                            This method causes JE to walk its internal lock table 
+                            This method causes DB to walk its internal lock table 
                             looking for a deadlock whenever a lock request
-                            is blocked. This method also identifies how JE decides which lock
+                            is blocked. This method also identifies how DB decides which lock
                             requests are rejected when deadlocks are detected. For example,
-                            JE can decide to reject the lock request for the transaction
+                            DB can decide to reject the lock request for the transaction
                             that has the most number of locks, the least number of locks,
                             holds the oldest lock, holds the most number of write locks, and
                             so forth (see the API reference documentation for a complete
@@ -263,7 +263,7 @@ err:
                         lifetime, but typically it is used before you open your environment.
                     </p>
               <p>
-                        Note that how you want JE to decide which thread of control should break a deadlock is
+                        Note that how you want DB to decide which thread of control should break a deadlock is
                         extremely dependent on the nature of your application. It is not unusual for some performance
                         testing to be required in order to make this determination. That said, a transaction that is
                         holding the maximum number of locks is usually indicative of the transaction that has performed
@@ -296,7 +296,7 @@ err:
                             
                            method, or use the
                            <span><b class="command">db_deadlock</b></span> command line
-                           utility. This method (or command) causes JE to walk the
+                           utility. This method (or command) causes DB to walk the
                            lock table looking for deadlocks. 
                     </p>
               <p>
@@ -332,7 +332,7 @@ err:
                             Note that lock timeouts are only checked when a
                             lock request is blocked or when deadlock
                             detection is otherwise performed. Therefore, a lock can have timed out and still be held for
-                            some length of time until JE has a reason to examine its locking tables.
+                            some length of time until DB has a reason to examine its locking tables.
                     </p>
               <p>
                         Be aware that extremely long-lived transactions, or
@@ -347,7 +347,7 @@ err:
           </ol>
         </div>
         <p>
-                For example, to configure your application such that JE
+                For example, to configure your application such that DB
                 checks the lock table for deadlocks every time a lock
                 request is blocked:
             </p>
@@ -421,7 +421,7 @@ main(void)
         <pre class="programlisting">&gt; /usr/local/db_install/bin/db_deadlock -h /export/dbenv -a y</pre>
         <p>
         For more information, see the
-        <a href="http://www.sleepycat.com/docs/utility/db_deadlock.html" target="_top">
+        <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/utility/db_deadlock.html" target="_top">
             <tt class="literal">db_deadlock</tt> reference documentation.
         </a>
     </p>
@@ -436,7 +436,7 @@ main(void)
           <div></div>
         </div>
         <p>
-                When JE determines that a deadlock has occurred, it will
+                When DB determines that a deadlock has occurred, it will
                 select a thread of control to resolve the deadlock and then 
                     <span>
                         return <tt class="literal">DB_LOCK_DEADLOCK</tt> to that
@@ -532,8 +532,7 @@ main(void)
         return (EXIT_FAILURE);
     }
 
-    return (EXIT_SUCCESS);
-</pre>
+    return (EXIT_SUCCESS); </pre>
       </div>
     </div>
     <div class="navfooter">

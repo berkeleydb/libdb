@@ -6,9 +6,9 @@
     <title>Backup Procedures</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing JE Files" />
-    <link rel="previous" href="filemanagement.html" title="Chapter 5. Managing JE Files" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
+    <link rel="previous" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
     <link rel="next" href="recovery.html" title="Recovery Procedures" />
   </head>
   <body>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="filemanagement.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 5. Managing JE Files</th>
+          <th width="60%" align="center">Chapter 5. Managing DB Files</th>
           <td width="20%" align="right"> <a accesskey="n" href="recovery.html">Next</a></td>
         </tr>
       </table>
@@ -49,7 +49,7 @@
         </p>
       <p>
             There are three different types of backups that you can
-            perform with JE databases and log files.  They are:
+            perform with DB databases and log files.  They are:
         </p>
       <div class="itemizedlist">
         <ul type="disc">
@@ -235,7 +235,7 @@
                 at the time of the backup.
             </p>
         <p>
-                You can use the <span><b class="command">db_hotbackup</b></span> command line utility to create a hotbackup for you. This
+                You can use the <span><b class="command">db_hotbackup</b></span> command line utility to create a hot backup for you. This
                 utility will (optionally) run a checkpoint and the copy all necessary files to a target directory.
             </p>
         <p>
@@ -312,8 +312,8 @@
                 (should one be required).
               </p>
         <p>
-                You can also shorten recovery time by runnning recovery against the backup as you take each incremental
-                backup.  Running recovery as you go means that there will be less work for JE to do if you should
+                You can also shorten recovery time by running recovery against the backup as you take each incremental
+                backup.  Running recovery as you go means that there will be less work for DB to do if you should
                 ever need to restore your environment from the backup.
             </p>
       </div>
@@ -329,7 +329,7 @@
           <td width="40%" align="right"> <a accesskey="n" href="recovery.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Chapter 5. Managing JE Files </td>
+          <td width="40%" align="left" valign="top">Chapter 5. Managing DB Files </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

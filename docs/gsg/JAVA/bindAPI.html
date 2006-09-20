@@ -38,8 +38,12 @@
     and out of Java byte arrays for storage in a database can be a nontrivial
     operation. To help you with this problem, DB provides the Bind APIs. 
     While these APIs are described in detail in the
-    <i class="citetitle">Sleepycat Java Collections Tutorial</i> (see
-    <a href="http://www.sleepycat.com/docs/ref/toc.html" target="_top">http://www.sleepycat.com/docs/ref/toc.html</a>),
+    
+
+    <span>
+    <i class="citetitle">Berkeley DB Collections Tutorial</i>,
+    </span>
+
     this section provides a brief introduction to using the Bind APIs with:</p>
       <div class="itemizedlist">
         <ul type="disc">
@@ -208,7 +212,7 @@ try {
         // Use the binding to convert the byte array contained in theData
         // to a Long type.
         Long theLong = (Long) myBinding.entryToObject(theData);
-        retKey = new String(theKey.getData());
+        retKey = new String(theKey.getData(), &quot;UTF-8&quot;);
         System.out.println(&quot;For key: '&quot; + retKey + &quot;' found Long: '&quot; + 
                             theLong + &quot;'.&quot;);
     } else {
@@ -281,12 +285,13 @@ try {
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                <p>If you need to sort based on the objects your are storing. 
-        The sort order is meaningless for the byte arrays that you
-        obtain through serialization. Consequently, you should not use serialization for keys if you
-        care about their sort order. You should
-        also not use serialization for record data if your
-        <tt class="classname">Database</tt> supports duplicate records and you care about sort order.
+                <p>
+                If you need to sort based on the objects your are storing. 
+                The sort order is meaningless for the byte arrays that you
+                obtain through serialization. Consequently, you should not use serialization for keys if you
+                care about their sort order. You should
+                also not use serialization for record data if your
+                <tt class="classname">Database</tt> supports duplicate records and you care about sort order.
         </p>
               </li>
               <li>
@@ -547,8 +552,8 @@ try {
           Note that you do not have to implement the Serializable interface.</p>
             </li>
             <li>
-              <p>Implement the <tt class="classname">com.sleepycat.bind.tuple.TupleBinding</tt>
-          interface.</p>
+              <p>Write a tuple binding using the <tt class="classname">com.sleepycat.bind.tuple.TupleBinding</tt>
+          class.</p>
             </li>
             <li>
               <p>Open (create) your database. Unlike serialization, you only

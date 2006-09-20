@@ -1,17 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1998-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_config.c,v 12.2 2005/06/16 20:23:23 bostic Exp $
+ * $Id: os_config.c,v 12.6 2006/08/24 14:46:17 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
 
 #include "db_int.h"
 
@@ -26,6 +22,28 @@ __os_fs_notzero()
 {
 	/* Most filesystems zero out implicitly created pages. */
 	return (0);
+}
+
+/*
+ * __os_support_direct_io --
+ *	Return 1 if we support direct I/O.
+ *
+ * PUBLIC: int __os_support_direct_io __P((void));
+ */
+int
+__os_support_direct_io()
+{
+	int ret;
+
+	ret = 0;
+
+#ifdef HAVE_O_DIRECT
+	ret = 1;
+#endif
+#if defined(HAVE_DIRECTIO) && defined(DIRECTIO_ON)
+	ret = 1;
+#endif
+	return (ret);
 }
 
 /*

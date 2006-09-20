@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1996-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: testutils.tcl,v 12.12 2005/11/07 16:04:41 carol Exp $
+# $Id: testutils.tcl,v 12.26 2006/09/08 20:32:17 bostic Exp $
 #
 # Test system utilities
 #
@@ -225,7 +225,7 @@ proc dump_file_walk { c outfile checkfunc start continue {flag ""} } {
 		set d2 [lindex $kd 1]
 		if { $checkfunc != "NONE" } {
 			$checkfunc $k $d2
-		}		
+		}
 		puts $outf $k
 		# XXX: Geoff Mainland
 		# puts $outf "$k $d2"
@@ -712,7 +712,7 @@ proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
 			if { $r == 0 } {
 				lappend rlist $i
 			} else {
-				# It's OK if the process is already dead, but 
+				# It's OK if the process is already dead, but
 				# we want to know about other kinds of failures.
 				if { [is_substr $res "no such process"] == 0 &&
 				    [is_substr $res "No such process"] == 0 &&
@@ -740,6 +740,15 @@ proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
 	if { $quiet == 0 } {
 		puts "All processes have exited."
 	}
+
+	#
+	# Once we are done, remove all old sentinel files.
+	#
+	set oldsent [glob -nocomplain $testdir/begin* $testdir/end*]
+	foreach f oldsent {
+		fileremove -f $f
+	}
+
 }
 
 # These routines are all used from within the dbscript.tcl tester.
@@ -1214,13 +1223,13 @@ proc cleanup { dir env { quiet 0 } } {
 		}
 		if {[llength $remfiles] > 0} {
 			#
-			# In the HFS file system there are cases where not 
-			# all files are removed on the first attempt.  If 
-			# it fails, try again a few times. 
-			# 
-			# This bug has been compensated for in Tcl with a fix 
-			# checked into Tcl 8.4.  When Berkeley DB requires 
-			# Tcl 8.5, we can remove this while loop and replace 
+			# In the HFS file system there are cases where not
+			# all files are removed on the first attempt.  If
+			# it fails, try again a few times.
+			#
+			# This bug has been compensated for in Tcl with a fix
+			# checked into Tcl 8.4.  When Berkeley DB requires
+			# Tcl 8.5, we can remove this while loop and replace
 			# it with a simple 'fileremove -f $remfiles'.
 			#
 			set count 0
@@ -1617,6 +1626,7 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	# active transaction.  Leave it alone so the close won't
 	# quietly abort it on us.
 	if { [is_substr $op "prepare"] != 1 } {
+		error_check_good log_flush [$env log_flush] 0
 		error_check_good envclose [$env close] 0
 	}
 	return
@@ -1821,7 +1831,11 @@ proc unpopulate { db txn num } {
 	return 0
 }
 
+# Flush logs for txn envs only.
 proc reset_env { env } {
+	if { [is_txnenv $env] } {
+		error_check_good log_flush [$env log_flush] 0
+	}
 	error_check_good env_close [$env close] 0
 }
 
@@ -2170,8 +2184,13 @@ proc send_cmd { fd cmd {sleep 2}} {
 }
 
 proc rcv_result { fd } {
+	global errorInfo
+
 	set r [gets $fd result]
-	error_check_bad remote_read $r -1
+	if { $r == -1 } {
+		puts "FAIL: gets returned -1 (EOF)"
+		puts "FAIL: errorInfo is $errorInfo"
+	}
 
 	return $result
 }
@@ -3001,7 +3020,7 @@ proc dumploadtest { db } {
 	eval berkdb dbremove $dbarg $newdbname
 }
 
-# Test regular and aggressive salvage procedures for all databases 
+# Test regular and aggressive salvage procedures for all databases
 # in a directory.
 proc salvagetest { dir { noredo 0 } { quiet 0 } } {
 	global util_path
@@ -3032,23 +3051,23 @@ proc salvagetest { dir { noredo 0 } { quiet 0 } } {
 		set salvagefile $db-salvage
 		set sortedsalvage $db-salvage-sorted
 		set aggsalvagefile $db-aggsalvage
-	
+
 		set dbarg ""
 		set utilflag ""
 		if { $encrypt != 0 } {
 			set dbarg "-encryptany $passwd"
 			set utilflag "-P $passwd"
 		}
-	
-		# Dump the database with salvage, with aggressive salvage, 
+
+		# Dump the database with salvage, with aggressive salvage,
 		# and without salvage.
 		#
 		set rval [catch {eval {exec $util_path/db_dump} $utilflag -r \
 		    -f $salvagefile $db} res]
 		error_check_good salvage($db:$res) $rval 0
 		filesort $salvagefile $sortedsalvage
-	
-		# We can't avoid occasional verify failures in aggressive 
+
+		# We can't avoid occasional verify failures in aggressive
 		# salvage.  Make sure it's the expected failure.
 		set rval [catch {eval {exec $util_path/db_dump} $utilflag -R \
 		    -f $aggsalvagefile $db} res]
@@ -3059,22 +3078,22 @@ puts "res is $res"
 		} else {
 			error_check_good aggressive_salvage($db:$res) $rval 0
 		}
-	
-		# Queue databases must be dumped with -k to display record 
+
+		# Queue databases must be dumped with -k to display record
 		# numbers if we're not in salvage mode.
 		if { [isqueuedump $salvagefile] == 1 } {
 			append utilflag " -k "
 		}
-	
+
 		# Discard db_pagesize lines from file dumped with ordinary
-		# db_dump -- they are omitted from a salvage dump. 
+		# db_dump -- they are omitted from a salvage dump.
 		set rval [catch {eval {exec $util_path/db_dump} $utilflag \
 		    -f $dumpfile $db} res]
 		error_check_good dump($db:$res) $rval 0
 		filesort $dumpfile $sorteddump
 		discardline $sorteddump TEMPFILE "db_pagesize="
 		file copy -force TEMPFILE $sorteddump
-	
+
 		# A non-aggressively salvaged file should match db_dump.
 		error_check_good compare_dump_and_salvage \
 		    [filecmp $sorteddump $sortedsalvage] 0
@@ -3083,7 +3102,7 @@ puts "res is $res"
 	}
 }
 
-# Reads infile, writes to outfile, discarding any line whose 
+# Reads infile, writes to outfile, discarding any line whose
 # beginning matches the given string.
 proc discardline { infile outfile discard } {
 	set fdin [open $infile r]
@@ -3094,11 +3113,11 @@ proc discardline { infile outfile discard } {
 			puts $fdout $str
 		}
 	}
-	close $fdin 
+	close $fdin
 	close $fdout
 }
 
-# Inspects dumped file for "type=" line.  Returns 1 if type=queue. 
+# Inspects dumped file for "type=" line.  Returns 1 if type=queue.
 proc isqueuedump { file } {
 	set fd [open $file r]
 
@@ -3114,7 +3133,7 @@ proc isqueuedump { file } {
 		}
 	}
 	puts "did not find type= line in dumped file"
-	close $fd 
+	close $fd
 }
 
 # Generate randomly ordered, guaranteed-unique four-character strings that can
@@ -3524,62 +3543,22 @@ proc big_endian { } {
 	}
 }
 
-# Search logs to find if we have debug records.
-proc log_has_debug_records { dir } {
-	source ./include.tcl
-	global encrypt
+# Check if this is a debug build.  Use 'string equal' so we
+# don't get fooled by debug_rop and debug_wop.
+proc is_debug { } {
 
-	set tmpfile $dir/printlog.out
-	set stat [catch \
-	    {exec $util_path/db_printlog -h $dir > $tmpfile} ret]
-	error_check_good db_printlog $stat 0
-
-	set f [open $tmpfile r]
-	while { [gets $f record] >= 0 } {
-		set r [regexp {\[[^\]]*\]\[[^\]]*\]([^\:]*)\:} $record whl name]
-		if { $r == 1 && [string match *_debug $name] != 1 } {
-			close $f
-			fileremove $tmpfile
+	set conf [berkdb getconfig]
+	foreach item $conf {
+		if { [string equal $item "debug"] } {
 			return 1
 		}
-	}
-	close $f
-	fileremove $tmpfile
-	return 0
-}
-
-# Set up a temporary database to check if this is a debug build.
-proc is_debug { } {
-	source ./include.tcl
-
-	set tempdir $testdir/temp
-	file mkdir $tempdir
-	set env [berkdb_env -create -log -home $testdir/temp]
-	error_check_good temp_env_open [is_valid_env $env] TRUE
-
-	set file temp.db
-	set db [berkdb_open -create -env $env -btree $file]
-	error_check_good temp_db_open [is_valid_db $db] TRUE
-
-	set key KEY
-	set data DATA
-	error_check_good temp_db_put [$db put $key $data] 0
-	set ret [$db get $key]
-	error_check_good get_key [lindex [lindex $ret 0] 0] $key
-	error_check_good get_data [lindex [lindex $ret 0] 1] $data
-	error_check_good temp_db_close [$db close] 0
-	error_check_good temp_db_remove [$env dbremove $file] 0
-	error_check_good temp_env_close [$env close] 0
-
-	if { [log_has_debug_records $tempdir] == 1 } {
-		return 1
 	}
 	return 0
 }
 
 proc adjust_logargs { logtype } {
 	if { $logtype == "in-memory" } {
-		set lbuf [expr 8 * [expr 1024 * 1024]]
+		set lbuf [expr 1 * [expr 1024 * 1024]]
 		set logargs " -log_inmemory -log_buffer $lbuf "
 	} elseif { $logtype == "on-disk" } {
 		set logargs ""
@@ -3600,3 +3579,58 @@ proc adjust_txnargs { logtype } {
 	return $txnargs
 }
 
+proc get_logfile { env where } {
+	# Open a log cursor.
+	set m_logc [$env log_cursor]
+	error_check_good m_logc [is_valid_logc $m_logc $env] TRUE
+
+	# Check that we're in the expected virtual log file.
+	if { $where == "first" } {
+		set rec [$m_logc get -first]
+	} else {
+		set rec [$m_logc get -last]
+	}
+	error_check_good cursor_close [$m_logc close] 0
+	set lsn [lindex $rec 0]
+	set log [lindex $lsn 0]
+	return $log
+}
+
+# Determine whether logs are in-mem or on-disk.
+# This requires the existence of logs to work correctly.
+proc check_log_location { env } {
+	if { [catch {get_logfile $env first} res] } {
+		puts "FAIL: env $env not configured for logging"
+	}
+	set inmemory 0
+	set flags [$env get_flags]
+	if { [is_substr $flags -log_inmemory] == 1 } {
+		set inmemory 1
+	}
+
+	set env_home [get_home $env]
+	set logfiles [glob -nocomplain $env_home/log.*]
+	if { $inmemory == 1 } {
+		error_check_good no_logs_on_disk [llength $logfiles] 0
+	} else {
+		error_check_bad logs_on_disk [llength $logfiles] 0
+	}
+}
+
+proc find_valid_methods { test } {
+	global checking_valid_methods
+	global valid_methods
+
+	# To find valid methods, call the test with checking_valid_methods
+	# on.  It doesn't matter what method we use for this call, so we
+	# arbitrarily pick btree.
+	#
+	set checking_valid_methods 1
+	set test_methods [$test btree]
+	set checking_valid_methods 0
+	if { $test_methods == "ALL" } {
+		return $valid_methods
+	} else {
+		return $test_methods
+	}
+}

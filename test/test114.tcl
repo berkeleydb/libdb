@@ -1,31 +1,31 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test114.tcl,v 12.5 2005/09/20 17:26:26 carol Exp $
+# $Id: test114.tcl,v 12.10 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test114
 # TEST	Test database compaction with overflows.
-# TEST	
-# TEST	Populate a database.  Remove a high proportion of entries. 
+# TEST
+# TEST	Populate a database.  Remove a high proportion of entries.
 # TEST	Dump and save contents.  Compact the database, dump again,
 # TEST	and make sure we still have the same contents.
 # TEST  Add back some entries, delete more entries (this time by
-# TEST	cursor), dump, compact, and do the before/after check again. 
+# TEST	cursor), dump, compact, and do the before/after check again.
 
 proc test114 { method {nentries 10000} {tnum "114"} args } {
 	source ./include.tcl
 	global alphabet
 
-	# Compaction is an option for btree and recno databases only. 
+	# Compaction is an option for btree and recno databases only.
 	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
-		return 
+		return
 	}
 
 	# We run with a small page size to force overflows.  Skip
-	# testing for specified page size. 
+	# testing for specified page size.
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		puts "Test$tnum: Skipping for specific pagesize."
@@ -46,7 +46,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		set basename test$tnum
 		incr eindex
 		set env [lindex $args $eindex]
-		set rpcenv [is_rpcenv $env] 
+		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"
 			return
@@ -64,9 +64,9 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 	set splitopts { "" "-revsplitoff" }
 	set txn ""
 
-	if { [is_record_based $method] == 1 } { 
+	if { [is_record_based $method] == 1 } {
 		set checkfunc test001_recno.check
-	} else { 
+	} else {
 		set checkfunc test001.check
 	}
 
@@ -74,7 +74,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		set testfile $basename.db
 		if { $splitopt == "-revsplitoff" } {
 			set testfile $basename.rev.db
-			if { [is_record_based $method] == 1 } { 
+			if { [is_record_based $method] == 1 } {
 				puts "Skipping\
 				    -revsplitoff option for method $method."
 				continue
@@ -88,10 +88,10 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 
 		puts "\tTest$tnum.a: Create and populate database ($splitopt)."
 		set pagesize 512
-		set db [eval {berkdb_open -create -pagesize $pagesize\
+		set db [eval {berkdb_open -create -pagesize $pagesize \
 		    -mode 0644} $splitopt $args $omethod $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE
-	
+
 		set count 0
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -105,12 +105,12 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 				set key $str
 			}
 			set str [repeat $alphabet 100]
-	
+
 			set ret [eval \
 			    {$db put} $txn {$key [chop_data $method $str]}]
 			error_check_good put $ret 0
 			incr count
-	
+
 		}
 		if { $txnenv == 1 } {
 			error_check_good txn_commit [$t commit] 0
@@ -120,7 +120,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 
 		if { $env != "NULL" } {
 			set testdir [get_home $env]
-			set filename $testdir/$testfile 
+			set filename $testdir/$testfile
 		} else {
 			set filename $testfile
 		}
@@ -131,7 +131,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		set did [open $dict]
 		set count [expr $nentries - 1]
 		set n 57
-	
+
 		# Leave every nth item.  Since rrecno renumbers, we
 		# delete starting at nentries and working down to 0.
 		if { $txnenv == 1 } {
@@ -156,7 +156,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
-	
+
 		puts "\tTest$tnum.c: Do a dump_file on contents."
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -167,12 +167,12 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		if { $txnenv == 1 } {
 			error_check_good txn_commit [$t commit] 0
 		}
-	
+
 		puts "\tTest$tnum.d: Compact and verify database."
 		set ret [$db compact -freespace]
 		error_check_good db_sync [$db sync] 0
 		error_check_good verify_dir [verify_dir $testdir] 0
-	
+
 		set size2 [file size $filename]
 		set free2 [stat_field $db stat "Pages on freelist"]
 
@@ -182,7 +182,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		    file_size [expr [expr $size1 * $reduction] > $size2] 1
 
 		# Pages should be freed for all methods except maybe
-		# record-based non-queue methods.  Even with recno, the 
+		# record-based non-queue methods.  Even with recno, the
 		# number of free pages may not decline.
 		if { [is_record_based $method] == 1 } {
 			error_check_good pages_freed [expr $free2 >= $free1] 1
@@ -196,16 +196,16 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
 		}
-		dump_file $db $txn $t2 
+		dump_file $db $txn $t2
 		if { $txnenv == 1 } {
 			error_check_good txn_commit [$t commit] 0
 		}
-	
+
 		error_check_good filecmp [filecmp $t1 $t2] 0
-	
+
 		puts "\tTest$tnum.f: Add more entries to database."
-		# Use integers as keys instead of strings, just to mix it up 
-		# a little. 
+		# Use integers as keys instead of strings, just to mix it up
+		# a little.
 		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
@@ -222,7 +222,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
-	
+
 		set size3 [file size $filename]
 		set free3 [stat_field $db stat "Pages on freelist"]
 
@@ -234,23 +234,23 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			set txn "-txn $t"
 		}
 		set dbc [eval {$db cursor} $txn]
-	
+
 		# Leave every nth item.
 		for { set dbt [$dbc get -first] } { [llength $dbt] > 0 }\
 		    { set dbt [$dbc get -next] ; incr count } {
 			if { [expr $count % $n] != 0 } {
 				error_check_good dbc_del [$dbc del] 0
-			} 
-		} 
-	
+			}
+		}
+
 		error_check_good cursor_close [$dbc close] 0
 		if { $txnenv == 1 } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
-	
+
 		puts "\tTest$tnum.h: Save contents."
-		if { $txnenv == 1 } { 
+		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
@@ -264,7 +264,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		set ret [$db compact -freespace]
 		error_check_good db_sync [$db sync] 0
 		error_check_good verify_dir [verify_dir $testdir] 0
-	
+
 		set size4 [file size $filename]
 		set free4 [stat_field $db stat "Pages on freelist"]
 
@@ -277,7 +277,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		}
 
 		puts "\tTest$tnum.j: Contents are the same after compaction."
-		if { $txnenv == 1 } { 
+		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
@@ -287,7 +287,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good filecmp [filecmp $t1 $t2] 0
-	
+
 		error_check_good db_close [$db close] 0
 		close $did
 	}

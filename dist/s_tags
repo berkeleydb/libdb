@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_tags,v 12.1 2005/10/25 14:21:21 bostic Exp $
+#	$Id: s_tags,v 12.2 2006/04/23 15:58:33 bostic Exp $
 #
 # Build tags files.
 
@@ -27,6 +27,7 @@ files=`echo ../dbinc/*.h \
 	../os/*.[ch] \
 	../qam/*.[ch] \
 	../rep/*.[ch] \
+	../repmgr/*.[ch] \
 	../rpc_client/*.[ch] \
 	../rpc_server/c/*.[ch] \
 	../sequence/*.[ch] \

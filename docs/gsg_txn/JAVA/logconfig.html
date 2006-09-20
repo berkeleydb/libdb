@@ -6,8 +6,8 @@
     <title>Configuring the Logging Subsystem</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing JE Files" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
     <link rel="previous" href="logfileremoval.html" title="Removing Log Files" />
     <link rel="next" href="wrapup.html" title="Chapter 6. Summary and Examples" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="logfileremoval.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 5. Managing JE Files</th>
+          <th width="60%" align="center">Chapter 5. Managing DB Files</th>
           <td width="20%" align="right"> <a accesskey="n" href="wrapup.html">Next</a></td>
         </tr>
       </table>
@@ -83,7 +83,7 @@
         </div>
         <p>
                     Whenever a pre-defined amount of data is written to a
-                    log file (10 MB by default), JE stops using the
+                    log file (10 MB by default), DB stops using the
                     current log file and starts writing to a new file.
                     You can change the maximum amount of data contained in each
                     log file by using the 
@@ -192,10 +192,10 @@
         </div>
         <p>
                 The logging subsystem's default region size is 60 KB. The
-                logging's region is used to store filenames, and so you may
+                logging region is used to store filenames, and so you may
                 need to increase its size if a large number of files (that
                 is, if you have a very large number of databases) will
-                be opened and registered with JE's log manager.
+                be opened and registered with DB's log manager.
             </p>
         <p>
                 You can set the size of your logging region by using the 

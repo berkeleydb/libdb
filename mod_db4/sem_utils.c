@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2004-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2004-2006
+ *	Oracle Corporation.  All rights reserved.
  *
  * http://www.apache.org/licenses/LICENSE-2.0.txt
  * 

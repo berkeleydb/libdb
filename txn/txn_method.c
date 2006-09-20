@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: txn_method.c,v 12.2 2005/07/21 18:21:45 bostic Exp $
+ * $Id: txn_method.c,v 12.6 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/txn.h"
@@ -22,9 +16,9 @@
  * __txn_dbenv_create --
  *	Transaction specific initialization of the DB_ENV structure.
  *
- * PUBLIC: void __txn_dbenv_create __P((DB_ENV *));
+ * PUBLIC: int __txn_dbenv_create __P((DB_ENV *));
  */
-void
+int
 __txn_dbenv_create(dbenv)
 	DB_ENV *dbenv;
 {
@@ -35,6 +29,21 @@ __txn_dbenv_create(dbenv)
 	 * the panic state or acquire a mutex in the DB_ENV create path.
 	 */
 	dbenv->tx_max = DEF_MAX_TXNS;
+
+	return (0);
+}
+
+/*
+ * __txn_dbenv_destroy --
+ *	Transaction specific destruction of the DB_ENV structure.
+ *
+ * PUBLIC: void __txn_dbenv_destroy __P((DB_ENV *));
+ */
+void
+__txn_dbenv_destroy(dbenv)
+	DB_ENV *dbenv;
+{
+	COMPQUIET(dbenv, NULL);
 }
 
 /*
@@ -51,7 +60,7 @@ __txn_get_tx_max(dbenv, tx_maxp)
 	if (TXN_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
 		*tx_maxp = ((DB_TXNREGION *)
-		    ((DB_TXNMGR *)dbenv->tx_handle)->reginfo.primary)->maxtxns;
+		    dbenv->tx_handle->reginfo.primary)->maxtxns;
 	} else
 		*tx_maxp = dbenv->tx_max;
 	return (0);

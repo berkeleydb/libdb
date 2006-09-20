@@ -6,8 +6,8 @@
     <title>Removing Log Files</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing JE Files" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
     <link rel="previous" href="hotfailover.html" title="Using Hot Failovers" />
     <link rel="next" href="logconfig.html" title="Configuring the Logging Subsystem" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="hotfailover.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 5. Managing JE Files</th>
+          <th width="60%" align="center">Chapter 5. Managing DB Files</th>
           <td width="20%" align="right"> <a accesskey="n" href="logconfig.html">Next</a></td>
         </tr>
       </table>
@@ -35,8 +35,8 @@
         <div></div>
       </div>
       <p>
-            By default JE does not delete log files for you. For this reason,
-            JE's log files will eventually grow to consume an
+            By default DB does not delete log files for you. For this reason,
+            DB's log files will eventually grow to consume an
             unnecessarily large amount of disk space. To guard against
             this, you should periodically take administrative action to
             remove log files that are no longer in use by your application.
@@ -75,8 +75,8 @@
         </ul>
       </div>
       <p>
-            JE provides several mechanisms to remove log files that
-            meet all but the last criteria (JE has no way to know which
+            DB provides several mechanisms to remove log files that
+            meet all but the last criteria (DB has no way to know which
             log files have already been included in a backup). The
             following mechanisms make it easy to remove unneeded log files,
             but can result in an unusable backup if the log files are not first 

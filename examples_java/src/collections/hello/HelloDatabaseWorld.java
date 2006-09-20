@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: HelloDatabaseWorld.java,v 12.2 2005/06/16 20:22:17 bostic Exp $
+ * $Id: HelloDatabaseWorld.java,v 12.4 2006/08/24 14:45:51 bostic Exp $
  */
 
 package collections.hello;

@@ -3,8 +3,8 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -14,7 +14,7 @@ import com.sleepycat.db.internal.DbUtil;
 public class CompactStats
 {
     // no public constructor
-    protected CompactStats() {}
+    /* package */ CompactStats() {}
 
     /* package */
     CompactStats(int fillpercent, int timeout, int pages) {
@@ -24,17 +24,17 @@ public class CompactStats
     }
 
     private int compact_fillpercent;
-    public int getFillPercent() {
+    /* package */ int getFillPercent() {
         return compact_fillpercent;
     }
 
     private int compact_timeout;
-    public int getTimeout() {
+    /* package */ int getTimeout() {
         return compact_timeout;
     }
 
     private int compact_pages;
-    public int getPages() {
+    /* package */ int getPages() {
         return compact_pages;
     }
 
@@ -64,7 +64,7 @@ public class CompactStats
     }
 
     private int compact_truncate;
-    public int getTruncate() {
+    /* package */ int getTruncate() {
         return compact_truncate;
     }
 

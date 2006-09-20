@@ -1,29 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2004-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_verify.c,v 12.21 2005/10/19 19:06:37 sue Exp $
+ * $Id: rep_verify.c,v 12.32 2006/09/07 03:05:26 sue Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -70,7 +54,7 @@ __rep_verify(dbenv, rp, rec, eid, savetime)
 		return (ret);
 	memset(&mylog, 0, sizeof(mylog));
 	if ((ret = __log_c_get(logc, &rp->lsn, &mylog, DB_SET)) != 0)
-		goto err;;
+		goto err;
 	match = 0;
 	memcpy(&rectype, mylog.data, sizeof(rectype));
 	if (mylog.size == rec->size &&
@@ -82,7 +66,7 @@ __rep_verify(dbenv, rp, rec, eid, savetime)
 	 */
 	if (match == 0) {
 		ZERO_LSN(lsn);
-		if ((ret = __rep_log_backup(logc, &lsn)) == 0) {
+		if ((ret = __rep_log_backup(dbenv, rep, logc, &lsn)) == 0) {
 			MUTEX_LOCK(dbenv, rep->mtx_clientdb);
 			lp->verify_lsn = lsn;
 			lp->rcvd_recs = 0;
@@ -100,7 +84,7 @@ __rep_verify(dbenv, rp, rec, eid, savetime)
 			 * In the former, request internal backup.
 			 */
 			if (rp->lsn.file == 1) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 		"Client was never part of master's environment");
 				ret = DB_REP_JOIN_FAILURE;
 			} else {
@@ -111,7 +95,8 @@ __rep_verify(dbenv, rp, rec, eid, savetime)
 				LOG_SYSTEM_UNLOCK(dbenv);
 				REP_SYSTEM_LOCK(dbenv);
 				F_CLR(rep, REP_F_RECOVER_VERIFY);
-				if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT))
+				if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT) ||
+				    rep->version == DB_REPVERSION_42)
 					ret = DB_REP_JOIN_FAILURE;
 				else {
 					F_SET(rep, REP_F_RECOVER_UPDATE);
@@ -164,7 +149,11 @@ __rep_verify_fail(dbenv, rp, eid)
 	if (F_ISSET(rep, REP_F_RECOVER_MASK) &&
 	    !F_ISSET(rep, REP_F_RECOVER_VERIFY))
 		return (0);
+	/*
+	 * Update stats.  Reset startup_complete.
+	 */
 	rep->stat.st_outdated++;
+	rep->stat.st_startup_complete = 0;
 
 	MUTEX_LOCK(dbenv, rep->mtx_clientdb);
 	REP_SYSTEM_LOCK(dbenv);
@@ -182,16 +171,16 @@ __rep_verify_fail(dbenv, rp, eid)
 	 */
 	if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT) &&
 	    ((F_ISSET(rep, REP_F_RECOVER_VERIFY) &&
-	    log_compare(&rp->lsn, &lp->verify_lsn) == 0) ||
+	    LOG_COMPARE(&rp->lsn, &lp->verify_lsn) == 0) ||
 	    (F_ISSET(rep, REP_F_RECOVER_MASK) == 0 &&
-	    log_compare(&rp->lsn, &lp->ready_lsn) >= 0))) {
+	    LOG_COMPARE(&rp->lsn, &lp->ready_lsn) >= 0))) {
 		ret = DB_REP_JOIN_FAILURE;
 		goto unlock;
 	}
 	if (((F_ISSET(rep, REP_F_RECOVER_VERIFY)) &&
-	    log_compare(&rp->lsn, &lp->verify_lsn) == 0) ||
+	    LOG_COMPARE(&rp->lsn, &lp->verify_lsn) == 0) ||
 	    (F_ISSET(rep, REP_F_RECOVER_MASK) == 0 &&
-	    log_compare(&rp->lsn, &lp->ready_lsn) >= 0)) {
+	    LOG_COMPARE(&rp->lsn, &lp->ready_lsn) >= 0)) {
 		F_CLR(rep, REP_F_RECOVER_VERIFY);
 		F_SET(rep, REP_F_RECOVER_UPDATE);
 		ZERO_LSN(rep->first_lsn);
@@ -275,31 +264,51 @@ __rep_dorecovery(dbenv, lsnp, trunclsnp)
 	DB_REP *db_rep;
 	DBT mylog;
 	DB_LOGC *logc;
+	REP *rep;
 	int ret, t_ret, update;
-	u_int32_t rectype;
+	u_int32_t rectype, opcode;
 	__txn_regop_args *txnrec;
+	__txn_regop_42_args *txn42rec;
 
 	db_rep = dbenv->rep_handle;
+	rep = db_rep->region;
 
 	/* Figure out if we are backing out any committed transactions. */
 	if ((ret = __log_cursor(dbenv, &logc)) != 0)
 		return (ret);
 
 	memset(&mylog, 0, sizeof(mylog));
-	update = 0;
+	if (F_ISSET(rep, REP_F_RECOVER_LOG))
+		update = 1;
+	else
+		update = 0;
 	while (update == 0 &&
 	    (ret = __log_c_get(logc, &lsn, &mylog, DB_PREV)) == 0 &&
-	    log_compare(&lsn, lsnp) > 0) {
+	    LOG_COMPARE(&lsn, lsnp) > 0) {
 		memcpy(&rectype, mylog.data, sizeof(rectype));
 		if (rectype == DB___txn_regop) {
-			if ((ret =
-			    __txn_regop_read(dbenv, mylog.data, &txnrec)) != 0)
-				goto err;
-			if (txnrec->opcode != TXN_ABORT)
+			if (rep->version >= DB_REPVERSION_44) {
+				if ((ret = __txn_regop_read(dbenv,
+				    mylog.data, &txnrec)) != 0)
+					goto err;
+				opcode = txnrec->opcode;
+				__os_free(dbenv, txnrec);
+			} else {
+				if ((ret = __txn_regop_42_read(dbenv,
+				    mylog.data, &txn42rec)) != 0)
+					goto err;
+				opcode = txn42rec->opcode;
+				__os_free(dbenv, txn42rec);
+			}
+			if (opcode != TXN_ABORT)
 				update = 1;
-			__os_free(dbenv, txnrec);
 		}
 	}
+	/*
+	 * Handle if the log_c_get fails.
+	 */
+	if (ret != 0)
+		goto err;
 
 	/*
 	 * If we successfully run recovery, we've opened all the necessary
@@ -368,13 +377,17 @@ __rep_verify_match(dbenv, reclsnp, savetime)
 	 * operations out of DB and run recovery.
 	 */
 	REP_SYSTEM_LOCK(dbenv);
-	if (!F_ISSET(rep, REP_F_RECOVER_LOG) &&
-	    (F_ISSET(rep, REP_F_READY) || rep->in_recovery != 0)) {
+	if (rep->lockout_th != 0 ||
+	    (!F_ISSET(rep, REP_F_RECOVER_LOG) &&
+	    (F_ISSET(rep, REP_F_READY) || rep->in_recovery != 0))) {
 		rep->stat.st_msgs_recover++;
 		goto errunlock;
 	}
 
-	if ((ret = __rep_lockout(dbenv, rep, 1)) != 0)
+	if ((ret = __rep_lockout_msg(dbenv, rep, 1)) != 0)
+		goto errunlock;
+
+	if ((ret = __rep_lockout_api(dbenv, rep)) != 0)
 		goto errunlock;
 
 	/* OK, everyone is out, we can now run recovery. */
@@ -382,6 +395,7 @@ __rep_verify_match(dbenv, reclsnp, savetime)
 
 	if ((ret = __rep_dorecovery(dbenv, reclsnp, &trunclsn)) != 0) {
 		REP_SYSTEM_LOCK(dbenv);
+		rep->lockout_th = 0;
 		rep->in_recovery = 0;
 		F_CLR(rep, REP_F_READY);
 		goto errunlock;
@@ -416,8 +430,8 @@ __rep_verify_match(dbenv, reclsnp, savetime)
 	REP_SYSTEM_LOCK(dbenv);
 	rep->stat.st_log_queued = 0;
 	rep->in_recovery = 0;
+	rep->lockout_th = 0;
 	F_CLR(rep, REP_F_NOARCHIVE | REP_F_RECOVER_MASK);
-
 	if (ret != 0)
 		goto errunlock2;
 
@@ -473,10 +487,12 @@ errunlock:	REP_SYSTEM_UNLOCK(dbenv);
  * identification records.  Those are the only record types
  * we verify and match on.
  *
- * PUBLIC: int __rep_log_backup __P((DB_LOGC *, DB_LSN *));
+ * PUBLIC: int __rep_log_backup __P((DB_ENV *, REP *, DB_LOGC *, DB_LSN *));
  */
 int
-__rep_log_backup(logc, lsn)
+__rep_log_backup(dbenv, rep, logc, lsn)
+	DB_ENV *dbenv;
+	REP *rep;
 	DB_LOGC *logc;
 	DB_LSN *lsn;
 {
@@ -484,15 +500,36 @@ __rep_log_backup(logc, lsn)
 	u_int32_t rectype;
 	int ret;
 
+	COMPQUIET(dbenv, NULL);
 	ret = 0;
 	memset(&mylog, 0, sizeof(mylog));
 	while ((ret = __log_c_get(logc, lsn, &mylog, DB_PREV)) == 0) {
 		/*
-		 * Look at the record type.  Only txn_regop and txn_ckp
-		 * are interesting to us.
+		 * Determine what we look for based on version number.
+		 * Due to the contents of records changing between
+		 * versions we have to match based on criteria of that
+		 * particular version.
 		 */
 		memcpy(&rectype, mylog.data, sizeof(rectype));
-		if (rectype == DB___txn_ckp || rectype == DB___txn_regop)
+		/*
+		 * In 4.2, we match anything except ckp, recycle and
+		 * dbreg register.
+		 */
+		if (rep->version == DB_REPVERSION_42 &&
+		    rectype != DB___txn_ckp && rectype != DB___txn_recycle &&
+		    rectype != DB___dbreg_register)
+			break;
+		/*
+		 * In 4.3 we only match on checkpoint.
+		 */
+		if (rep->version == DB_REPVERSION_43 &&
+		    rectype == DB___txn_ckp)
+			break;
+		/*
+		 * In 4.4 and beyond we match checkpoint and commit.
+		 */
+		if (rep->version >= DB_REPVERSION_44 &&
+		    (rectype == DB___txn_ckp || rectype == DB___txn_regop))
 			break;
 	}
 	return (ret);

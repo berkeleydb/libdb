@@ -1,25 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_pr.c,v 12.17 2005/11/08 03:13:30 bostic Exp $
+ * $Id: db_pr.c,v 12.29 2006/09/07 20:05:26 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/mp.h"
@@ -36,9 +27,8 @@ void
 __db_loadme()
 {
 	pid_t pid;
-	db_threadid_t tid;
 
-	__os_id(NULL, &pid, &tid);
+	__os_id(NULL, &pid, NULL);
 }
 
 #ifdef HAVE_STATISTICS
@@ -48,18 +38,19 @@ static void	 __db_meta __P((DB *, DBMETA *, FN const *, u_int32_t));
 static const char *__db_pagetype_to_string __P((u_int32_t));
 static void	 __db_prdb __P((DB *, u_int32_t));
 static void	 __db_proff __P((DB_ENV *, DB_MSGBUF *, void *));
-static int	 __db_prtree __P((DB *, u_int32_t));
+static int	 __db_prtree __P((DB *, DB_TXN *, u_int32_t));
 static int	 __db_qmeta __P((DB *, QMETA *, u_int32_t));
 
 /*
  * __db_dumptree --
  *	Dump the tree to a file.
  *
- * PUBLIC: int __db_dumptree __P((DB *, char *, char *));
+ * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
  */
 int
-__db_dumptree(dbp, op, name)
+__db_dumptree(dbp, txn, op, name)
 	DB *dbp;
+	DB_TXN *txn;
 	char *op, *name;
 {
 	DB_ENV *dbenv;
@@ -96,7 +87,7 @@ __db_dumptree(dbp, op, name)
 
 	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
 
-	ret = __db_prtree(dbp, flags);
+	ret = __db_prtree(dbp, txn, flags);
 
 	if (fp != NULL) {
 		(void)fclose(fp);
@@ -227,8 +218,9 @@ __db_prdb(dbp, flags)
  *	Print out the entire tree.
  */
 static int
-__db_prtree(dbp, flags)
+__db_prtree(dbp, txn, flags)
 	DB *dbp;
+	DB_TXN *txn;
 	u_int32_t flags;
 {
 	DB_MPOOLFILE *mpf;
@@ -248,7 +240,7 @@ __db_prtree(dbp, flags)
 	if ((ret = __memp_last_pgno(mpf, &last)) != 0)
 		return (ret);
 	for (i = 0; i <= last; ++i) {
-		if ((ret = __memp_fget(mpf, &i, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &i, txn, 0, &h)) != 0)
 			return (ret);
 		(void)__db_prpage(dbp, h, flags);
 		if ((ret = __memp_fput(mpf, h, 0)) != 0)
@@ -298,7 +290,7 @@ __db_meta(dbp, dbmeta, fn, flags)
 		    dbenv, &mb, "\tfree list: %lu", (u_long)dbmeta->free);
 		for (pgno = dbmeta->free,
 		    cnt = 0, sep = ", "; pgno != PGNO_INVALID;) {
-			if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0) {
+			if ((ret = __memp_fget(mpf, &pgno, NULL, 0, &h)) != 0) {
 				DB_MSGBUF_FLUSH(dbenv, &mb);
 				__db_msg(dbenv,
 			    "Unable to retrieve free-list page: %lu: %s",
@@ -440,11 +432,12 @@ __db_qmeta(dbp, h, flags)
  * __db_prnpage
  *	-- Print out a specific page.
  *
- * PUBLIC: int __db_prnpage __P((DB *, db_pgno_t));
+ * PUBLIC: int __db_prnpage __P((DB *, DB_TXN *, db_pgno_t));
  */
 int
-__db_prnpage(dbp, pgno)
+__db_prnpage(dbp, txn, pgno)
 	DB *dbp;
+	DB_TXN *txn;
 	db_pgno_t pgno;
 {
 	DB_MPOOLFILE *mpf;
@@ -453,7 +446,7 @@ __db_prnpage(dbp, pgno)
 
 	mpf = dbp->mpf;
 
-	if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, txn, 0, &h)) != 0)
 		return (ret);
 
 	ret = __db_prpage(dbp, h, DB_PR_PAGE);
@@ -942,13 +935,15 @@ __db_pagetype_to_string(type)
  * __db_dumptree --
  *	Dump the tree to a file.
  *
- * PUBLIC: int __db_dumptree __P((DB *, char *, char *));
+ * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
  */
 int
-__db_dumptree(dbp, op, name)
+__db_dumptree(dbp, txn, op, name)
 	DB *dbp;
+	DB_TXN *txn;
 	char *op, *name;
 {
+	COMPQUIET(txn, NULL);
 	COMPQUIET(op, NULL);
 	COMPQUIET(name, NULL);
 
@@ -1233,12 +1228,11 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 	 * will have a non-NULL dbp (and vdp may or may not be NULL depending
 	 * on whether we're salvaging).
 	 */
-	DB_ASSERT(dbp != NULL || vdp != NULL);
-
 	if (dbp == NULL)
 		dbenv = NULL;
 	else
 		dbenv = dbp->dbenv;
+	DB_ASSERT(dbenv, dbp != NULL || vdp != NULL);
 
 	/*
 	 * If we've been passed a verifier statistics object, use that;  we're
@@ -1286,7 +1280,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			 * the verifier for pip to be non-NULL.) Pretend we're
 			 * a Btree and salvage what we can.
 			 */
-			DB_ASSERT(F_ISSET(dbp, DB_AM_VERIFYING));
+			DB_ASSERT(dbenv, F_ISSET(dbp, DB_AM_VERIFYING));
 			dbtype = DB_BTREE;
 			break;
 		}
@@ -1313,9 +1307,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		snprintf(buf, buflen, "database=");
 		if ((ret = callback(handle, buf)) != 0)
 			goto err;
-		memset(&dbt, 0, sizeof(dbt));
-		dbt.data = (char *)subname;
-		dbt.size = (u_int32_t)strlen(subname);
+		DB_INIT_DBT(dbt, subname, strlen(subname));
 		if ((ret = __db_prdbt(&dbt, 1, NULL, handle, callback, 0)) != 0)
 			goto err;
 	}
@@ -1327,8 +1319,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			tmp_int = F_ISSET(pip, VRFY_HAS_RECNUMS) ? 1 : 0;
 		else {
 			if ((ret = __db_get_flags(dbp, &flags)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_flags: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_flags");
 				goto err;
 			}
 			tmp_int = F_ISSET(dbp, DB_AM_RECNUM) ? 1 : 0;
@@ -1341,8 +1332,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		else
 			if ((ret =
 			    __bam_get_bt_minkey(dbp, &tmp_u_int32)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_bt_minkey: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_bt_minkey");
 				goto err;
 			}
 		if (tmp_u_int32 != 0 && tmp_u_int32 != DEFMINKEYPAGE) {
@@ -1361,8 +1351,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		else
 			if ((ret =
 			    __ham_get_h_ffactor(dbp, &tmp_u_int32)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_h_ffactor: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_h_ffactor");
 				goto err;
 			}
 		if (tmp_u_int32 != 0) {
@@ -1376,8 +1365,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			tmp_u_int32 = pip->h_nelem;
 		else
 			if ((ret = __ham_get_h_nelem(dbp, &tmp_u_int32)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_h_nelem: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_h_nelem");
 				goto err;
 			}
 		/*
@@ -1403,8 +1391,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			tmp_u_int32 = vdp->re_len;
 		else
 			if ((ret = __ram_get_re_len(dbp, &tmp_u_int32)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_re_len: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_re_len");
 				goto err;
 			}
 		snprintf(buf, buflen, "re_len=%lu\n", (u_long)tmp_u_int32);
@@ -1415,8 +1402,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			tmp_int = (int)vdp->re_pad;
 		else
 			if ((ret = __ram_get_re_pad(dbp, &tmp_int)) != 0) {
-				__db_err(dbenv,
-				    "DB->get_re_pad: %s", db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_re_pad");
 				goto err;
 			}
 		if (tmp_int != 0 && tmp_int != ' ') {
@@ -1430,8 +1416,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		else
 			if ((ret =
 			    __qam_get_extentsize(dbp, &tmp_u_int32)) != 0) {
-				__db_err(dbenv, "DB->get_q_extentsize: %s",
-				    db_strerror(ret));
+				__db_err(dbenv, ret, "DB->get_q_extentsize");
 				goto err;
 			}
 		if (tmp_u_int32 != 0) {
@@ -1466,8 +1451,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			else
 				if ((ret =
 				    __ram_get_re_len(dbp, &tmp_u_int32)) != 0) {
-					__db_err(dbenv, "DB->get_re_len: %s",
-					    db_strerror(ret));
+					__db_err(dbenv, ret, "DB->get_re_len");
 					goto err;
 				}
 			snprintf(buf, buflen,
@@ -1480,8 +1464,7 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			else
 				if ((ret =
 				    __ram_get_re_pad(dbp, &tmp_int)) != 0) {
-					__db_err(dbenv, "DB->get_re_pad: %s",
-					    db_strerror(ret));
+					__db_err(dbenv, ret, "DB->get_re_pad");
 					goto err;
 				}
 			if (tmp_int != 0 && tmp_int != ' ') {
@@ -1492,11 +1475,8 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			}
 		}
 		break;
-	case DB_UNKNOWN:
-		DB_ASSERT(0);			/* Impossible. */
-		__db_err(dbenv,
-		    "Unknown or unsupported DB type in __db_prheader");
-		ret = EINVAL;
+	case DB_UNKNOWN:			/* Impossible. */
+		ret = __db_unknown_path(dbenv, "__db_prheader");
 		goto err;
 	}
 

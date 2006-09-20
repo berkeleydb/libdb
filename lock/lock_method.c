@@ -1,31 +1,24 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock_method.c,v 12.6 2005/08/08 14:56:49 bostic Exp $
+ * $Id: lock_method.c,v 12.13 2006/08/24 14:46:11 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 
 /*
  * __lock_dbenv_create --
  *	Lock specific creation of the DB_ENV structure.
  *
- * PUBLIC: void __lock_dbenv_create __P((DB_ENV *));
+ * PUBLIC: int __lock_dbenv_create __P((DB_ENV *));
  */
-void
+int
 __lock_dbenv_create(dbenv)
 	DB_ENV *dbenv;
 {
@@ -38,24 +31,24 @@ __lock_dbenv_create(dbenv)
 	dbenv->lk_max = DB_LOCK_DEFAULT_N;
 	dbenv->lk_max_lockers = DB_LOCK_DEFAULT_N;
 	dbenv->lk_max_objects = DB_LOCK_DEFAULT_N;
+
+	return (0);
 }
 
 /*
- * __lock_dbenv_close --
+ * __lock_dbenv_destroy --
  *	Lock specific destruction of the DB_ENV structure.
  *
- * PUBLIC: int __lock_dbenv_close __P((DB_ENV *));
+ * PUBLIC: void __lock_dbenv_destroy __P((DB_ENV *));
  */
-int
-__lock_dbenv_close(dbenv)
+void
+__lock_dbenv_destroy(dbenv)
 	DB_ENV *dbenv;
 {
 	if (dbenv->lk_conflicts != NULL) {
 		__os_free(dbenv, dbenv->lk_conflicts);
 		dbenv->lk_conflicts = NULL;
 	}
-
-	return (0);
 }
 
 /*
@@ -177,7 +170,7 @@ __lock_set_lk_detect(dbenv, lk_detect)
 	case DB_LOCK_YOUNGEST:
 		break;
 	default:
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	    "DB_ENV->set_lk_detect: unknown deadlock detection mode specified");
 		return (EINVAL);
 	}
@@ -199,7 +192,7 @@ __lock_set_lk_detect(dbenv, lk_detect)
 		if (region->detect != DB_LOCK_NORUN &&
 		    lk_detect != DB_LOCK_DEFAULT &&
 		    region->detect != lk_detect) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 	    "DB_ENV->set_lk_detect: incompatible deadlock detector mode");
 			ret = EINVAL;
 		} else
@@ -210,25 +203,6 @@ __lock_set_lk_detect(dbenv, lk_detect)
 		dbenv->lk_detect = lk_detect;
 
 	return (ret);
-}
-
-/*
- * __lock_set_lk_max
- *	DB_ENV->set_lk_max.
- *
- * PUBLIC: int __lock_set_lk_max __P((DB_ENV *, u_int32_t));
- */
-int
-__lock_set_lk_max(dbenv, lk_max)
-	DB_ENV *dbenv;
-	u_int32_t lk_max;
-{
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_lk_max");
-
-	dbenv->lk_max = lk_max;
-	dbenv->lk_max_objects = lk_max;
-	dbenv->lk_max_lockers = lk_max;
-	return (0);
 }
 
 /*
@@ -244,8 +218,8 @@ __lock_get_lk_max_locks(dbenv, lk_maxp)
 
 	if (LOCKING_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
-		*lk_maxp = ((DB_LOCKREGION *)((DB_LOCKTAB *)
-		    dbenv->lk_handle)->reginfo.primary)->stat.st_maxlocks;
+		*lk_maxp = ((DB_LOCKREGION *)
+		    dbenv->lk_handle->reginfo.primary)->stat.st_maxlocks;
 	} else
 		*lk_maxp = dbenv->lk_max;
 	return (0);
@@ -281,8 +255,8 @@ __lock_get_lk_max_lockers(dbenv, lk_maxp)
 
 	if (LOCKING_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
-		*lk_maxp = ((DB_LOCKREGION *)((DB_LOCKTAB *)
-		    dbenv->lk_handle)->reginfo.primary)->stat.st_maxlockers;
+		*lk_maxp = ((DB_LOCKREGION *)
+		    dbenv->lk_handle->reginfo.primary)->stat.st_maxlockers;
 	} else
 		*lk_maxp = dbenv->lk_max_lockers;
 	return (0);
@@ -318,8 +292,8 @@ __lock_get_lk_max_objects(dbenv, lk_maxp)
 
 	if (LOCKING_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
-		*lk_maxp = ((DB_LOCKREGION *)((DB_LOCKTAB *)
-		    dbenv->lk_handle)->reginfo.primary)->stat.st_maxobjects;
+		*lk_maxp = ((DB_LOCKREGION *)
+		    dbenv->lk_handle->reginfo.primary)->stat.st_maxobjects;
 	} else
 		*lk_maxp = dbenv->lk_max_objects;
 	return (0);

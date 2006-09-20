@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#       Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test116.tcl,v 12.2 2005/10/12 18:30:38 sue Exp $
+# $Id: test116.tcl,v 12.6 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test116
 # TEST	Test of basic functionality of lsn_reset.
@@ -15,6 +15,7 @@ proc test116 { method {tnum "116"} args } {
 	global util_path
 	global passwd
 
+	set orig_tdir $testdir
 	puts "Test$tnum ($method): Test lsn_reset."
 
 	set args [convert_args $method $args]
@@ -27,8 +28,8 @@ proc test116 { method {tnum "116"} args } {
 	set nentries 50
 	set filenames "A B C D E"
 
-	# This test needs two envs.  If one is provided, create the 
-	# second under it.  If no env is provided, create both. 
+	# This test needs two envs.  If one is provided, create the
+	# second under it.  If no env is provided, create both.
 	set txn ""
 	set txnenv 0
 	set envargs ""
@@ -66,7 +67,7 @@ proc test116 { method {tnum "116"} args } {
 			puts "Skipping Test$tnum for non-transactional env."
 			return
 		}
-	 	set testdir [get_home $env] 
+	 	set testdir [get_home $env]
 	}
 
 	foreach lorder { 1234 4321 } {
@@ -74,7 +75,7 @@ proc test116 { method {tnum "116"} args } {
 		puts "\tTest$tnum.b: Creating database with lorder $lorder."
 	 	cleanup $testdir $env
 
-		# Create a second directory, and create an env there. 
+		# Create a second directory, and create an env there.
 		set testdir [get_home $env]
 		set newdir $testdir/NEWDIR
 		file mkdir $newdir
@@ -88,7 +89,7 @@ proc test116 { method {tnum "116"} args } {
 			set db [eval {berkdb_open} -env $env \
 			    $omethod $args -create -mode 0644 $testfile]
 			error_check_good dbopen [is_valid_db $db] TRUE
-			set pgsize [stat_field $db stat "Page size"]	
+			set pgsize [stat_field $db stat "Page size"]
 			if { $txnenv == 1 } {
 				set t [$env txn]
 				error_check_good txn [is_valid_txn $t $env] TRUE
@@ -110,7 +111,7 @@ proc test116 { method {tnum "116"} args } {
 				    $omethod $args -create \
 				    -mode 0644 $testfile $filename]
 				error_check_good dbopen [is_valid_db $db] TRUE
-				set pgsize [stat_field $db stat "Page size"]	
+				set pgsize [stat_field $db stat "Page size"]
 				if { $txnenv == 1 } {
 					set t [$env txn]
 					error_check_good \
@@ -126,20 +127,20 @@ proc test116 { method {tnum "116"} args } {
 				}
 				if { $txnenv == 1 } {
 					error_check_good t_commit [$t commit] 0
-				}		
+				}
 				error_check_good db_close [$db close] 0
 			}
-		}	
-	
-		# Copy database file A.  Reset LSNs on the copy. Then 
+		}
+
+		# Copy database file A.  Reset LSNs on the copy. Then
 		# test that the copy is usable both in its native env
-		# and in a new env. 
+		# and in a new env.
 
 		puts "\tTest$tnum.c: Copy database and reset its LSNs."
 		set testdir [get_home $env]
 		set newdir [get_home $newenv]
 
-		# Reset LSNs before copying. 
+		# Reset LSNs before copying.
 		file copy -force $testdir/$testfile $testdir/$newfile
 		error_check_good \
 		    lsn_reset [eval {$env lsn_reset} $resetargs {$newfile}] 0
@@ -152,7 +153,7 @@ proc test116 { method {tnum "116"} args } {
 			cd $testdir
 			set extents [glob __dbq.*]
 			foreach extent $extents {
-				set idx [string last . $extent] 
+				set idx [string last . $extent]
 				incr idx
 				set suffix [string range $extent $idx end]
 				file copy -force $extent __dbq.$newfile.$suffix
@@ -180,7 +181,7 @@ proc test116 { method {tnum "116"} args } {
 		    verify [verify_dir $testdir "\tTest$tnum.d: "] 0
 	 	error_check_good \
 		    verify [verify_dir $newdir "\tTest$tnum.e: "] 0
-	
+
 		puts "\tTest$tnum.f: Open new db, check data, close db."
 		if { [is_queue $method] == 1 } {
 			set db [eval {berkdb_open} -env $newenv \
@@ -223,14 +224,15 @@ proc test116 { method {tnum "116"} args } {
 				}
 				if { $txnenv == 1 } {
 					error_check_good txn_commit [$t commit] 0
-				}		
+				}
 				error_check_good db_close [$db close] 0
 			}
 		}
-		error_check_good newenv_close [$newenv close] 0 
+		error_check_good newenv_close [$newenv close] 0
 	}
 
-	# Close the parent env if this test created it. 
+	set testdir $orig_tdir
+	# Close the parent env if this test created it.
 	if { $eindex == -1 } {
 		error_check_good env_close [$env close] 0
 	}

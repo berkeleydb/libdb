@@ -1,8 +1,8 @@
-#	$Id: srcfiles.in,v 12.24 2005/10/27 14:45:25 bostic Exp $
+#	$Id: srcfiles.in,v 12.53 2006/09/09 14:08:39 bostic Exp $
 #
-# This is an input file for the s_win32_dsp and s_vxworks scripts.  It lists
+# This is an input file for the s_windows_dsp and s_vxworks scripts.  It lists
 # the source files in the Berkeley DB tree and notes which are used to build
-# the Win/32 and VxWorks libraries.
+# the Windows and VxWorks libraries.
 #
 # Please keep this list sorted alphabetically!
 #
@@ -53,19 +53,36 @@ build_vxworks/db_stat/db_stat.c
 build_vxworks/db_upgrade/db_upgrade.c
 build_vxworks/db_verify/db_verify.c
 build_vxworks/dbdemo/dbdemo.c
-build_win32/dbkill.cpp				testutil
-build_win32/libdb.def				dynamic
-build_win32/libdb.rc				dynamic
-build_win32/libdb_tcl.def			tcl
+build_windows/dbkill.cpp			testutil
+build_windows/libdb.def				dynamic
+build_windows/libdb.rc				dynamic
+build_windows/libdb_tcl.def			tcl
+clib/abort.c
+clib/atoi.c
+clib/atol.c
+clib/ctime.c					dynamic small static vx vxsmall
+clib/getaddrinfo.c				dynamic static
 clib/getcwd.c
 clib/getopt.c					vx vxsmall
+clib/isalpha.c
+clib/isdigit.c
+clib/isprint.c
+clib/isspace.c
 clib/memcmp.c
 clib/memmove.c
+clib/printf.c
 clib/raise.c
+clib/rand.c
 clib/snprintf.c					vx vxsmall
 clib/strcasecmp.c				dynamic small static vx vxsmall
+clib/strcat.c
+clib/strchr.c
 clib/strdup.c					vx vxsmall
 clib/strerror.c
+clib/strncat.c
+clib/strncmp.c
+clib/strrchr.c
+clib/strsep.c					dynamic small static vx vxsmall
 clib/strtol.c
 clib/strtoul.c
 common/crypto_stub.c				small vxsmall
@@ -75,6 +92,7 @@ common/db_err.c					dynamic small static vx vxsmall
 common/db_getlong.c				dynamic small static vx vxsmall
 common/db_idspace.c				dynamic small static vx vxsmall
 common/db_log2.c				dynamic small static vx vxsmall
+common/mkpath.c					dynamic small static vx vxsmall
 common/util_arg.c				vx vxsmall
 common/util_cache.c				dynamic small static vx vxsmall
 common/util_log.c				dynamic small static vx vxsmall
@@ -103,6 +121,7 @@ db/db_am.c					dynamic small static vx vxsmall
 db/db_auto.c					dynamic small static vx vxsmall
 db/db_autop.c					app=db_printlog
 db/db_cam.c					dynamic small static vx vxsmall
+db/db_cds.c					dynamic small static vx vxsmall
 db/db_conv.c					dynamic small static vx vxsmall
 db/db_dispatch.c				dynamic small static vx vxsmall
 db/db_dup.c					dynamic small static vx vxsmall
@@ -153,6 +172,7 @@ dbreg/dbreg_stat.c				dynamic small static vx vxsmall
 dbreg/dbreg_util.c				dynamic small static vx vxsmall
 env/db_salloc.c					dynamic small static vx vxsmall
 env/db_shash.c					dynamic small static vx vxsmall
+env/env_config.c				dynamic small static vx vxsmall
 env/env_failchk.c				dynamic small static vx vxsmall
 env/env_file.c					dynamic small static vx vxsmall
 env/env_method.c				dynamic small static vx vxsmall
@@ -181,11 +201,11 @@ examples_c/ex_dbclient.c
 examples_c/ex_env.c				app=ex_env
 examples_c/ex_lock.c				app=ex_lock
 examples_c/ex_mpool.c				app=ex_mpool
-examples_c/ex_repquote/ex_rq_client.c		app=ex_repquote
-examples_c/ex_repquote/ex_rq_main.c		app=ex_repquote
-examples_c/ex_repquote/ex_rq_master.c		app=ex_repquote
-examples_c/ex_repquote/ex_rq_net.c		app=ex_repquote
-examples_c/ex_repquote/ex_rq_util.c		app=ex_repquote
+examples_c/ex_rep/base/rep_base.c		app=ex_rep_base
+examples_c/ex_rep/base/rep_msg.c		app=ex_rep_base
+examples_c/ex_rep/base/rep_net.c		app=ex_rep_base
+examples_c/ex_rep/common/rep_common.c		app=ex_rep_base app=ex_rep_mgr
+examples_c/ex_rep/mgr/rep_mgr.c			app=ex_rep_mgr
 examples_c/ex_sequence.c			app=ex_sequence
 examples_c/ex_thread.c
 examples_c/ex_tpcb.c				app=ex_tpcb
@@ -201,6 +221,8 @@ examples_cxx/LockExample.cpp			app=excxx_lock
 examples_cxx/MpoolExample.cpp			app=excxx_mpool
 examples_cxx/SequenceExample.cpp		app=excxx_sequence
 examples_cxx/TpcbExample.cpp			app=excxx_tpcb
+examples_cxx/excxx_repquote/RepConfigInfo.cpp	app=excxx_repquote
+examples_cxx/excxx_repquote/RepQuoteExample.cpp	app=excxx_repquote
 examples_cxx/getting_started/MyDb.cpp		app=excxx_example_database_load app=excxx_example_database_read
 examples_cxx/getting_started/excxx_example_database_load.cpp	app=excxx_example_database_load
 examples_cxx/getting_started/excxx_example_database_read.cpp	app=excxx_example_database_read
@@ -258,12 +280,14 @@ mp/mp_fopen.c					dynamic small static vx vxsmall
 mp/mp_fput.c					dynamic small static vx vxsmall
 mp/mp_fset.c					dynamic small static vx vxsmall
 mp/mp_method.c					dynamic small static vx vxsmall
+mp/mp_mvcc.c					dynamic small static vx vxsmall
 mp/mp_region.c					dynamic small static vx vxsmall
 mp/mp_register.c				dynamic small static vx vxsmall
 mp/mp_stat.c					dynamic small static vx vxsmall
 mp/mp_sync.c					dynamic small static vx vxsmall
 mp/mp_trickle.c					dynamic small static vx vxsmall
 mutex/mut_alloc.c				dynamic small static vx vxsmall
+mutex/mut_failchk.c				dynamic small static vx vxsmall
 mutex/mut_fcntl.c
 mutex/mut_method.c				dynamic small static vx vxsmall
 mutex/mut_pthread.c
@@ -281,17 +305,19 @@ os/os_errno.c					vx vxsmall
 os/os_fid.c					vx vxsmall
 os/os_flock.c					vx vxsmall
 os/os_fsync.c					vx vxsmall
+os/os_fzero.c					dynamic small static vx vxsmall
+os/os_getenv.c					vx vxsmall
 os/os_handle.c					vx vxsmall
-os/os_id.c					dynamic small static vx vxsmall
 os/os_map.c
-os/os_method.c					dynamic small static vx vxsmall
+os/os_method.c					vx vxsmall
 os/os_mkdir.c					dynamic small static vx vxsmall
 os/os_oflags.c					dynamic small static vx vxsmall
 os/os_open.c					vx vxsmall
+os/os_pid.c					dynamic small static vx vxsmall
 os/os_region.c					dynamic small static vx vxsmall
 os/os_rename.c					vx vxsmall
 os/os_root.c					dynamic small static vx vxsmall
-os/os_rpath.c					dynamic small static vx vxsmall
+os/os_rpath.c					dynamic small static
 os/os_rw.c					vx vxsmall
 os/os_seek.c					vx vxsmall
 os/os_sleep.c					vx vxsmall
@@ -299,29 +325,60 @@ os/os_spin.c					vx vxsmall
 os/os_stat.c					vx vxsmall
 os/os_tmpdir.c					dynamic small static vx vxsmall
 os/os_truncate.c				vx vxsmall
+os/os_uid.c					dynamic small static vx vxsmall
 os/os_unlink.c					vx vxsmall
+os/os_yield.c					vx vxsmall
+os_brew/abort.c
+os_brew/ctime.c
+os_brew/fclose.c
+os_brew/fgetc.c
+os_brew/fgets.c
+os_brew/fopen.c
+os_brew/fwrite.c
+os_brew/getcwd.c
+os_brew/localtime.c
+os_brew/os_abs.c
+os_brew/os_config.c
+os_brew/os_dir.c
+os_brew/os_errno.c
+os_brew/os_handle.c
+os_brew/os_mkdir.c
+os_brew/os_oflags.c
+os_brew/os_open.c
+os_brew/os_pid.c
+os_brew/os_rename.c
+os_brew/os_rw.c
+os_brew/os_seek.c
+os_brew/os_sleep.c
+os_brew/os_stat.c
+os_brew/os_truncate.c
+os_brew/os_unlink.c
+os_brew/time.c
 os_vxworks/os_vx_abs.c				vx vxsmall
 os_vxworks/os_vx_config.c			vx vxsmall
 os_vxworks/os_vx_map.c				vx vxsmall
-os_win32/os_abs.c				dynamic small static
-os_win32/os_clock.c				dynamic small static
-os_win32/os_config.c				dynamic small static
-os_win32/os_dir.c				dynamic small static
-os_win32/os_errno.c				dynamic small static
-os_win32/os_fid.c				dynamic small static
-os_win32/os_flock.c				dynamic small static
-os_win32/os_fsync.c				dynamic small static
-os_win32/os_handle.c				dynamic small static
-os_win32/os_map.c				dynamic small static
-os_win32/os_open.c				dynamic small static
-os_win32/os_rename.c				dynamic small static
-os_win32/os_rw.c				dynamic small static
-os_win32/os_seek.c				dynamic small static
-os_win32/os_sleep.c				dynamic small static
-os_win32/os_spin.c				dynamic small static
-os_win32/os_stat.c				dynamic small static
-os_win32/os_truncate.c				dynamic small static
-os_win32/os_unlink.c				dynamic small static
+os_vxworks/os_vx_rpath.c			vx vxsmall
+os_windows/os_abs.c				dynamic small static
+os_windows/os_clock.c				dynamic small static
+os_windows/os_config.c				dynamic small static
+os_windows/os_dir.c				dynamic small static
+os_windows/os_errno.c				dynamic small static
+os_windows/os_fid.c				dynamic small static
+os_windows/os_flock.c				dynamic small static
+os_windows/os_fsync.c				dynamic small static
+os_windows/os_getenv.c				dynamic small static
+os_windows/os_handle.c				dynamic small static
+os_windows/os_map.c				dynamic small static
+os_windows/os_open.c				dynamic small static
+os_windows/os_rename.c				dynamic small static
+os_windows/os_rw.c				dynamic small static
+os_windows/os_seek.c				dynamic small static
+os_windows/os_sleep.c				dynamic small static
+os_windows/os_spin.c				dynamic small static
+os_windows/os_stat.c				dynamic small static
+os_windows/os_truncate.c			dynamic small static
+os_windows/os_unlink.c				dynamic small static
+os_windows/os_yield.c				dynamic small static
 qam/qam.c					dynamic static vx
 qam/qam_auto.c					dynamic static vx
 qam/qam_autop.c					app=db_printlog
@@ -346,6 +403,16 @@ rep/rep_stat.c					dynamic static vx
 rep/rep_stub.c					small vxsmall
 rep/rep_util.c					dynamic static vx
 rep/rep_verify.c				dynamic static vx
+repmgr/repmgr_elect.c				dynamic static
+repmgr/repmgr_method.c				dynamic static
+repmgr/repmgr_msg.c				dynamic static
+repmgr/repmgr_net.c				dynamic static
+repmgr/repmgr_posix.c
+repmgr/repmgr_queue.c				dynamic static
+repmgr/repmgr_sel.c				dynamic static
+repmgr/repmgr_stat.c				dynamic static
+repmgr/repmgr_util.c				dynamic static
+repmgr/repmgr_windows.c				dynamic static
 rpc_client/client.c
 rpc_client/gen_client.c
 rpc_client/gen_client_ret.c
@@ -380,7 +447,7 @@ test_perf/perf_log.c				app=db_perf
 test_perf/perf_misc.c				app=db_perf
 test_perf/perf_op.c				app=db_perf
 test_perf/perf_parse.c				app=db_perf
-test_perf/perf_rand.c				app=db_perf
+test_perf/perf_rand.c				app=db_perf app=db_reptest
 test_perf/perf_spawn.c				app=db_perf
 test_perf/perf_stat.c				app=db_perf
 test_perf/perf_sync.c				app=db_perf
@@ -389,6 +456,29 @@ test_perf/perf_trickle.c			app=db_perf
 test_perf/perf_txn.c				app=db_perf
 test_perf/perf_util.c				app=db_perf
 test_perf/perf_vx.c
+test_rep/db_reptest.c				app=db_reptest
+test_rep/reptest_accept.c			app=db_reptest
+test_rep/reptest_client.c			app=db_reptest
+test_rep/reptest_config.c			app=db_reptest
+test_rep/reptest_dbs.c				app=db_reptest
+test_rep/reptest_debug.c			app=db_reptest
+test_rep/reptest_elect.c			app=db_reptest
+test_rep/reptest_env.c				app=db_reptest
+test_rep/reptest_exec.c				app=db_reptest
+test_rep/reptest_file.c				app=db_reptest
+test_rep/reptest_key.c				app=db_reptest
+test_rep/reptest_master.c			app=db_reptest
+test_rep/reptest_misc.c				app=db_reptest
+test_rep/reptest_msg_thread.c			app=db_reptest
+test_rep/reptest_op.c				app=db_reptest
+test_rep/reptest_parse.c			app=db_reptest
+test_rep/reptest_send.c				app=db_reptest
+test_rep/reptest_site.c				app=db_reptest
+test_rep/reptest_socket.c			app=db_reptest
+test_rep/reptest_spawn.c			app=db_reptest
+test_rep/reptest_thread.c			app=db_reptest
+test_rep/reptest_txn.c				app=db_reptest
+test_rep/reptest_util.c				app=db_reptest
 txn/txn.c					dynamic small static vx vxsmall
 txn/txn_auto.c					dynamic small static vx vxsmall
 txn/txn_autop.c					app=db_printlog

@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: SerialBindingTest.java,v 12.2 2005/08/01 20:25:24 mark Exp $
+ * $Id: SerialBindingTest.java,v 12.5 2006/08/24 14:46:43 bostic Exp $
  */
 
 package com.sleepycat.bind.serial.test;
@@ -33,7 +33,6 @@ public class SerialBindingTest extends TestCase {
     private ClassCatalog catalog;
     private DatabaseEntry buffer;
     private DatabaseEntry keyBuffer;
-    private DatabaseEntry indexKeyBuffer;
 
     public static void main(String[] args)
         throws Exception {
@@ -66,7 +65,6 @@ public class SerialBindingTest extends TestCase {
         catalog = new TestClassCatalog();
         buffer = new DatabaseEntry();
         keyBuffer = new DatabaseEntry();
-        indexKeyBuffer = new DatabaseEntry();
     }
 
     public void tearDown() {
@@ -75,7 +73,6 @@ public class SerialBindingTest extends TestCase {
         catalog = null;
         buffer = null;
         keyBuffer = null;
-        indexKeyBuffer = null;
     }
 
     public void runTest()

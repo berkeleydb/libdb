@@ -1,4 +1,4 @@
-#	$Id: s_winmsi.fcn,v 1.9 2005/10/26 13:29:34 dda Exp $
+#	$Id: s_winmsi.fcn,v 1.12 2006/09/14 15:50:51 mjc Exp $
 #
 # The common functions used by the s_winmsi scripts (both
 # for core DB and DB/XML).
@@ -237,7 +237,7 @@ RunM4() {
 
     # Given a version number, like 2.3.45, we want to
     # create a 8 character name for the directory like db2_3_45.
-    # This name is under a "Sleepycat Software" directory,
+    # This name is under a "Oracle" directory,
     # so it only needs to be unique within the universe of BDB versions.
     # TODO: instead of using a version number like $DB_VERSION,
     # maybe use $DB_VERSION_UNIQUE_NAME which looks like "_2003"
@@ -477,7 +477,7 @@ ProcessLinks() {
             echo "[InternetShortcut]$CR"       >> $UrlName
             echo "URL=$Url$CR"     | RunM4     >> $UrlName   || exit 1
             echo "Modified=$MODTIMEHEX$CR"     >> $UrlName
-            # TODO: we could have an Entry for IconFile=sleepyweb.ico IconIndex=1?
+            # TODO: we could have an Entry for IconFile=oracleweb.ico IconIndex=1?
             echo ''
             Xecho "<File Id=\"File.$Shortname\" "
             Xecho "   LongName=\"$UrlName\" Name=\"$UrlShortName\""
@@ -488,7 +488,7 @@ ProcessLinks() {
          if $CommandShortcut; then
 	   echo "@echo off"                               > $UrlName
            echo "set DBROOTDIR="                         >> $UrlName
-           echo "for /F \"tokens=3 delims=	\" %%A in ('REG QUERY \"HKLM\\SOFTWARE\\Sleepycat Software\\$PRODUCT_NAME\\$PRODUCT_VERSION\" /v RootDirectory') do set DBROOTDIR=%%A"                                   >> $UrlName
+           echo "for /F \"tokens=3 delims=	\" %%A in ('REG QUERY \"HKLM\\SOFTWARE\\Oracle\\$PRODUCT_NAME\\$PRODUCT_VERSION\" /v RootDirectory') do set DBROOTDIR=%%A"                                   >> $UrlName
            echo "if ERRORLEVEL 2 goto MISSING"           >> $UrlName
            echo "if not defined DBROOTDIR goto MISSING"  >> $UrlName
            echo "set FN=\"%DBROOTDIR%$Program\""         >> $UrlName
@@ -959,10 +959,11 @@ CleanInputFile() {
         -e 's:\${PRODUCT_MAJMIN}:'"${PRODUCT_MAJMIN}":g \
         -e 's:\${PRODUCT_STAGE}:'"${PRODUCT_STAGE}":g \
 	-e 's:\${PRODUCT_SHARED_WINMSIDIR}:'"${PRODUCT_SHARED_WINMSIDIR}":g \
+        -e 's/^[ \t]*$//'	\
           < "$1" > "$2"
 
    # count tabs on each line
-   sed -e 's/[^	]//g' -e 's/[	]/x/g' < "$2" | (
+   sed -e 's/[^\t]//g' -e 's/[\t]/x/g' < "$2" | (
         read line
         linecount=1
         while [ "$line" != '' ]; do
@@ -1206,10 +1207,10 @@ CreateWindowsSystem() {
     local here=`pwd`
     Progress "Copy Window system files..."
     cd "${PRODUCT_SUB_BLDDIR}"
-    cp -f $SYSTEMROOT/system32/msvcr71.dll  build_win32/Release/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcp71.dll  build_win32/Release/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcr71d.dll build_win32/Debug/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcp71d.dll build_win32/Debug/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcr71.dll  build_windows/Release/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcp71.dll  build_windows/Release/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcr71d.dll build_windows/Debug/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcp71d.dll build_windows/Debug/ || exit 1
     cd $here
 }
 
@@ -1247,7 +1248,7 @@ CreateWindowsBuild() {
     #
     sed -e 's/$//' < ${PRODUCT_STAGE}/../winbuild.bat | tr '\001' '\015'  > wbuild.bat
     # TODO: Needed?
-    rm -f build_win32/Berkeley_DB.sln
+    rm -f build_windows/Berkeley_DB.sln
     rm -f winbld.out winbld.err
     touch winbld.out winbld.err
     echo "Build output and errors are collected in" >> $ERRORLOG

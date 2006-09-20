@@ -1,33 +1,33 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test113.tcl,v 12.4 2005/09/20 17:26:26 carol Exp $
+# $Id: test113.tcl,v 12.7 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test113
 # TEST	Test database compaction with duplicates.
-# TEST	
-# TEST	This is essentially test111 with duplicates. 
-# TEST	To make it simple we use numerical keys all the time. 
+# TEST
+# TEST	This is essentially test111 with duplicates.
+# TEST	To make it simple we use numerical keys all the time.
 # TEST
 # TEST	Dump and save contents.  Compact the database, dump again,
 # TEST	and make sure we still have the same contents.
 # TEST  Add back some entries, delete more entries (this time by
-# TEST	cursor), dump, compact, and do the before/after check again. 
+# TEST	cursor), dump, compact, and do the before/after check again.
 
 proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 	source ./include.tcl
 	global alphabet
 
-	# Compaction and duplicates can occur only with btree. 
+	# Compaction and duplicates can occur only with btree.
 	if { [is_btree $method] != 1 } {
 		puts "Skipping test$tnum for method $method."
-		return 
+		return
 	}
 
-        # Skip for specified pagesizes.  This test uses a small 
-	# pagesize to generate a deep tree. 
+        # Skip for specified pagesizes.  This test uses a small
+	# pagesize to generate a deep tree.
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		puts "Test$tnum: Skipping for specific pagesizes"
@@ -49,7 +49,7 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 		set testfile test$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
-		set rpcenv [is_rpcenv $env] 
+		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"
 			return
@@ -73,13 +73,13 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	puts "\tTest$tnum.a: Populate database with dups."
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
 	for { set i 1 } { $i <= $nentries } { incr i } {
-		set key $i 
+		set key $i
 		for { set j 1 } { $j <= $ndups } { incr j } {
 			set str $i.$j.$alphabet
 			set ret [eval \
@@ -94,7 +94,7 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 
 	if { $env != "NULL" } {
 		set testdir [get_home $env]
-		set filename $testdir/$testfile 
+		set filename $testdir/$testfile
 	} else {
 		set filename $testfile
 	}
@@ -102,8 +102,8 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 	set free1 [stat_field $db stat "Pages on freelist"]
 
 	puts "\tTest$tnum.b: Delete most entries from database."
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
@@ -123,12 +123,12 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 	error_check_good db_sync [$db sync] 0
 
 	puts "\tTest$tnum.c: Do a dump_file on contents."
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
-	dump_file $db $txn $t1 
+	dump_file $db $txn $t1
 	if { $txnenv == 1 } {
 		error_check_good txn_commit [$t commit] 0
 	}
@@ -145,25 +145,25 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 	error_check_good file_size [expr [expr $size1 * $reduction] > $size2] 1
 
 	puts "\tTest$tnum.e: Check that contents are the same after compaction."
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
-	dump_file $db $txn $t2 
+	dump_file $db $txn $t2
 	if { $txnenv == 1 } {
 		error_check_good txn_commit [$t commit] 0
 	}
 	error_check_good filecmp [filecmp $t1 $t2] 0
 
 	puts "\tTest$tnum.f: Add more entries to database."
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
 	for { set i 1 } { $i <= $nentries } { incr i } {
-		set key $i 
+		set key $i
 		for { set j 1 } { $j <= $ndups } { incr j } {
 			set str $i.$j.$alphabet.extra
 			set ret [eval \
@@ -175,15 +175,15 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 		error_check_good txn_commit [$t commit] 0
 	}
 	error_check_good db_sync [$db sync] 0
-	
+
 	set size3 [file size $filename]
 	set free3 [stat_field $db stat "Pages on freelist"]
 
 	puts "\tTest$tnum.g: Remove more entries, this time by cursor."
 	set i 0
 	set n 11
-	if { $txnenv == 1 } { 
-		set t [$env txn] 
+	if { $txnenv == 1 } {
+		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE
 		set txn "-txn $t"
 	}
@@ -191,11 +191,11 @@ proc test113 { method {nentries 10000} {ndups 5} {tnum "113"} args } {
 
 	for { set dbt [$dbc get -first] } { [llength $dbt] > 0 }\
 	    { set dbt [$dbc get -next] ; incr i } {
-	     
+
 		if { [expr $i % $n] != 0 } {
 			error_check_good dbc_del [$dbc del] 0
-		} 
-	} 
+		}
+	}
 	error_check_good cursor_close [$dbc close] 0
 	if { $txnenv == 1 } {
 		error_check_good txn_commit [$t commit] 0

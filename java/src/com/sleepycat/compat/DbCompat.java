@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: DbCompat.java,v 12.5 2005/08/01 20:25:20 mark Exp $
+ * $Id: DbCompat.java,v 12.7 2006/08/31 18:14:08 bostic Exp $
  */
 
 package com.sleepycat.compat;

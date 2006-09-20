@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: fop006.tcl,v 12.5 2005/10/19 15:54:35 margo Exp $
+# $Id: fop006.tcl,v 12.9 2006/08/24 14:46:35 bostic Exp $
 #
 # TEST	fop006
 # TEST	Test file system operations in multiple simultaneous
@@ -14,7 +14,7 @@
 proc fop006 { method { inmem 0 } args } {
 	source ./include.tcl
 
-	# The variable inmem determines whether the test is being 
+	# The variable inmem determines whether the test is being
 	# run on regular named databases or named in-memory databases.
 	if { $inmem == 0 } {
 		set tnum "006"
@@ -24,7 +24,7 @@ proc fop006 { method { inmem 0 } args } {
 		set tnum "008"
 		set string "in-memory named databases"
 		set operator do_inmem_op
-	} 
+	}
 
 	if { [is_btree $method] != 1 } {
 		puts "Skipping fop$tnum for method $method"
@@ -166,8 +166,7 @@ proc fop006 { method { inmem 0 } args } {
 
 			# Clean up for next case
 			error_check_good env_close [$env close] 0
-			error_check_good \
-			    envremove [berkdb envremove -home $testdir] 0
+			catch { [berkdb envremove -home $testdir] } res
 
 			# Check for errors in log file.
 			set errstrings [eval findfail $testdir/fop$tnum.log]

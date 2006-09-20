@@ -25,4 +25,8 @@ global is_sunos_test
 global is_windows_test
 global is_windows9x_test
 
-set KILL "@db_cv_path_kill@"
+global valid_methods
+global checking_valid_methods
+global test_recopts
+
+set KILL "@KILL@"

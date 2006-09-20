@@ -1,9 +1,10 @@
-# $Id: configure.ac,v 12.9 2005/10/14 20:52:29 bostic Exp $
+# $Id: configure.ac,v 12.46 2006/09/19 00:33:58 bostic Exp $
 # Process this file with autoconf to produce a configure script.
 
 PACKAGE=db
-AC_INIT(Berkeley DB,
-	__EDIT_DB_VERSION__, support@sleepycat.com, db-__EDIT_DB_VERSION__)
+AC_INIT(Berkeley DB, __EDIT_DB_VERSION__,
+	[Oracle Technology Network Berkeley DB forum],
+	db-__EDIT_DB_VERSION__)
 AC_CONFIG_SRCDIR([../db/db.c])
 AC_CONFIG_HEADERS([db_config.h:config.hin])
 
@@ -15,8 +16,11 @@ AC_ARG_PROGRAM()
 AC_MSG_CHECKING(if building in the top-level or dist directories)
 if [ test -d db_archive -o -f configure.ac ] ; then
 	AC_MSG_RESULT(yes)
-	AC_MSG_ERROR(
-    [Berkeley DB should not be built in the top-level or dist directories.])
+	AC_MSG_ERROR([\
+Berkeley DB should not be built in the top-level or "dist" directories. \
+Change directory to the build_unix directory and run ../dist/configure \
+from there.])
+
 fi
 AC_MSG_RESULT(no)
 
@@ -65,10 +69,14 @@ AC_SUBST(REPLACEMENT_OBJS)
 AC_SUBST(RPC_CLIENT_OBJS)
 AC_SUBST(RPC_SERVER_H)
 AC_SUBST(SOFLAGS)
+AC_SUBST(SWIGCFLAGS)
 AC_SUBST(TEST_LIBS)
-AC_SUBST(db_cv_build_type)
 AC_SUBST(db_int_def)
 AC_SUBST(o)
+
+# The Windows public header has two extra symbols we need to remove.
+AC_SUBST(platform_header)
+AC_SUBST(platform_footer)
 
 # Set the default installation location.
 AC_PREFIX_DEFAULT(/usr/local/BerkeleyDB.__EDIT_DB_VERSION_MAJOR__.__EDIT_DB_VERSION_MINOR__)
@@ -144,7 +152,7 @@ aix4.3.*|aix5*)
 	CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE"
 	LDFLAGS="$LDFLAGS -Wl,-brtl";;
 bsdi3*)	CC=${CC-"shlicc2"}
-	LIBS="$LIBS -lipc";;
+	LIBSO_LIBS="$LIBSO_LIBS -lipc";;
 cygwin*)
 	CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE -D_REENTRANT";;
 freebsd*)
@@ -156,12 +164,12 @@ hpux*)	CPPFLAGS="$CPPFLAGS -D_REENTRANT";;
 irix*)	optimize_debug="-O2"
 	CPPFLAGS="$CPPFLAGS -D_SGI_MP_SOURCE";;
 mpeix*)	CPPFLAGS="$CPPFLAGS -D_POSIX_SOURCE -D_SOCKET_SOURCE"
-	LIBS="$LIBS -lsocket -lsvipc";;
+	LIBSO_LIBS="$LIBSO_LIBS -lsocket -lsvipc";;
 osf*)	CPPFLAGS="$CPPFLAGS -pthread";;
 *qnx*)	AC_DEFINE(HAVE_QNX)
 	AH_TEMPLATE(HAVE_QNX, [Define to 1 if building on QNX.]);;
 solaris*)
-	CPPFLAGS="$CPPFLAGS -D_REENTRANT";;
+	CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS ";;
 esac
 
 # If the user wants a debugging environment, change any compiler optimization
@@ -189,9 +197,17 @@ AC_PROG_CC(cc gcc)
 
 # We know what compiler we're going to use, now.  Set per-compiler flags.
 if test "$GCC" = "yes"; then
-	# We want -O2 if we're using gcc.
+	# Use -O3 if we're using gcc, unless we're doing a small build, in
+	# which case we use -Os alone.  The code size for -O3 is quite a
+	# bit larger than -O2: a compromise is "-Os -finline-functions",
+	# it's smaller and explicitly inlining the functions helps Berkeley
+	# DB.
 	CFLAGS="$CFLAGS "
-	CFLAGS=`echo "$CFLAGS" | sed 's/-O /-O2 /g'`
+	if test "$db_cv_smallbuild" = "yes"; then
+		CFLAGS=`echo "$CFLAGS" | sed 's/-O /-Os /g'`
+	else
+		CFLAGS=`echo "$CFLAGS" | sed 's/-O /-O3 /g'`
+	fi
 else
 	case "$host_os" in
 	hpux11.0*)	;;
@@ -236,7 +252,7 @@ if test "$db_cv_cxx" = "yes"; then
 		case "$host_os" in
 		aix*)		AC_CHECK_TOOL(CCC, xlC_r)
 				LIBXSO_LIBS="-lC_r $LIBXSO_LIBS"
-				LIBS="-lC_r $LIBS";;
+				LIBSO_LIBS="-lC_r $LIBSO_LIBS";;
 		hpux*)		AC_CHECK_TOOL(CCC, aCC);;
 		irix*)		AC_CHECK_TOOL(CCC, CC);;
 		osf*)		AC_CHECK_TOOL(CCC, cxx);;
@@ -327,7 +343,7 @@ case "$host_os" in
     ;;
     *)
         LIBTSO_MODULE="-module"
-        LIBTSO_MODSUFFIX=@MODSUFFIX@
+        LIBTSO_MODSUFFIX=$MODSUFFIX
     ;;
 esac
 
@@ -360,14 +376,6 @@ if test "$db_cv_cxx" = "yes"; then
 	fi
 fi
 
-# We split DbConstants.java into debug and release versions so Windows
-# developers don't need to do anything special to use the Debug DLL.
-if test "$db_cv_debug" = "yes"; then
-	db_cv_build_type=debug
-else
-	db_cv_build_type=release
-fi
-
 # Optional Java API.
 if test "$db_cv_java" = "yes"; then
 	# Java requires shared libraries.
@@ -398,6 +406,14 @@ if test "$db_cv_java" = "yes"; then
 		AC_MSG_ERROR([Java version 1.3 or higher required, got $JAVA_VERSION]) ;;
 	esac
 
+	# Because of the code that SWIG generates to cast between pointers and
+	# integers, we need to add the flag "-fno-strict-aliasing" to the gcc
+	# command line when compiling the JNI code.  This is documented in
+	# [#14953] and at http://www.swig.org/Doc1.3/Java.html
+	if test ${GCC} = "yes"; then
+		SWIGCFLAGS="-fno-strict-aliasing"
+	fi
+
 	for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS
 	do
 		CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
@@ -411,7 +427,7 @@ fi
 
 # MinGW support.
 if test "$db_cv_mingw" = "yes"; then
-	OSDIR=os_win32
+	OSDIR=os_windows
 	PATH_SEPARATOR="\\\\/:"
 
 	AC_DEFINE(DB_WIN32)
@@ -438,61 +454,83 @@ if test "$db_cv_exit_defines" = "yes"; then
     [Define to 1 if you have EXIT_SUCCESS/EXIT_FAILURE #defines.])
 fi
 
+# Check for mutexes.
+# We do this first because it changes $LIBSO_LIBS.
+AM_DEFINE_MUTEXES
+
 # Test for various functions/libraries -- do tests that change library values
 # first.
 #
-# The Berkeley DB library calls fdatasync, and it's only available in -lrt on
-# Solaris.  See if we can find it either without additional libraries or in
-# -lrt.  If fdatasync is found in -lrt, add -lrt to the shared library links.
+# The yield function on Solaris is almost certainly pthread_yield (LWP threads
+# or POSIX pthreads), or thr_yield (UI threads).  There's an outside chance it
+# is sched_yield() though, only available in -lrt on Solaris.
+#
+# The Berkeley DB library calls fdatasync, only available in -lrt on Solaris.
+# See if we can find either without additional libraries or in -lrt.  If found
+# in -lrt and we haven't yet added -lrt,  add it to the shared library list.
 AC_SEARCH_LIBS(fdatasync, rt, [dnl
     if test "$ac_cv_search_fdatasync" != "none required" ; then
 	LIBSO_LIBS="$LIBSO_LIBS -lrt";
-    fi])
-
-# The test and example programs use the sched_yield function, taken from -lrt
-# on Solaris.
-AC_SEARCH_LIBS(sched_yield, rt)
-
-# !!!
-# We can't check for pthreads in the same way we did the test for sched_yield
-# because the Solaris C library includes pthread interfaces which are not
-# inter-process safe.  For that reason we always add -lpthread if we find a
-# pthread library.
-#
-# We can't depend on any specific call existing (pthread_create, for example),
-# as it may be #defined in an include file -- OSF/1 (Tru64) has this problem.
-AC_HAVE_LIBRARY(pthread, TEST_LIBS="$TEST_LIBS -lpthread")
+    fi], [dnl
+    AC_SEARCH_LIBS(sched_yield, rt, [dnl
+    if test "$ac_cv_search_sched_yield" != "none required" ; then
+	LIBSO_LIBS="$LIBSO_LIBS -lrt";
+    fi])])
 
 # !!!
 # We could be more exact about whether these libraries are needed, but don't
 # bother -- if they exist, we load them, it's only the test programs anyway.
 AC_HAVE_LIBRARY(m, TEST_LIBS="$TEST_LIBS -lm")
-AC_HAVE_LIBRARY(socket, TEST_LIBS="$TEST_LIBS -lsocket")
 AC_HAVE_LIBRARY(nsl, TEST_LIBS="$TEST_LIBS -lnsl")
+AC_HAVE_LIBRARY(pthread, TEST_LIBS="$TEST_LIBS -lpthread")
+AC_HAVE_LIBRARY(socket, TEST_LIBS="$TEST_LIBS -lsocket")
 
-# Check for mutexes.
-# We do this here because it changes $LIBS.
-AM_DEFINE_MUTEXES
+# Update LIBS so that the rest of our tests are run with the libraries we'll
+# load against.
+LIBS="$LIBSO_LIBS"
 
 # Checks for system functions for which we have replacements.
 #
-# XXX
 # The only portable getcwd call is getcwd(char *, size_t), where the
 # buffer is non-NULL -- Solaris can't handle a NULL buffer, and they
 # deleted getwd().
-AC_REPLACE_FUNCS(getcwd getopt memcmp memcpy memmove raise)
-AC_REPLACE_FUNCS(strcasecmp strdup strerror strtol strtoul)
+AC_REPLACE_FUNCS(\
+	abort atoi atol getcwd getenv getopt isalpha isdigit isprint isspace\
+	memcmp memcpy memmove printf raise rand strcasecmp strcat strchr\
+	strdup strerror strncat strncmp strrchr strsep strtol strtoul)
 
 # Check for system functions we optionally use.
 AC_CHECK_FUNCS(\
-   _fstati64 clock_gettime directio fchmod fcntl fdatasync ftruncate\
-   getrusage gettimeofday getuid pstat_getdynamic rand sched_yield\
-   select snprintf srand sysconf vsnprintf yield)
+   _fstati64 clock_gettime directio fchmod fcntl fdatasync getaddrinfo\
+   getrusage gettimeofday getuid mprotect pstat_getdynamic pthread_yield\
+   sched_yield select sigaction snprintf stat strftime sysconf vsnprintf\
+   yield)
 
-# Pthread_self.
-# The use of pthread_self to identify threads can be forced.
-if test "$db_cv_pthread_self" = "yes"; then
-	AC_CHECK_FUNCS(pthread_self)
+# Replication can't run correctly if ftruncate isn't available.
+AC_CHECK_FUNCS(ftruncate)
+if test \
+    "$db_cv_build_replication" = "yes" -a "$ac_cv_func_ftruncate" = "no"; then
+	db_cv_build_replication=no
+	AC_MSG_WARN([replication requires ftruncate, replication disabled.])
+fi
+
+# ctime_r --
+#
+# There are two versions of ctime_r, one of which takes a buffer length as a
+# third argument, and one which only takes two arguments.  (There is also a
+# difference in return values, but we handle that in the code itself.)
+AC_CHECK_FUNCS(ctime_r)
+if test "$ac_cv_func_ctime_r" = "yes"; then
+AC_CACHE_CHECK([for 2 or 3 argument version of ctime_r], db_cv_ctime_r_3arg, [
+AC_TRY_LINK([
+#include <time.h>], [
+	ctime_r(NULL, NULL, 100);
+],  [db_cv_ctime_r_3arg="3-argument"], [db_cv_ctime_r_3arg="2-argument"])])
+fi
+if test "$db_cv_ctime_r_3arg" = "3-argument"; then
+	AC_DEFINE(HAVE_CTIME_R_3ARG)
+	AH_TEMPLATE(HAVE_CTIME_R_3ARG,
+	    [Define to 1 if ctime_r takes a buffer length as a third argument.])
 fi
 
 # Pread/pwrite.
@@ -649,6 +687,10 @@ if test "$db_cv_build_replication" = "yes"; then
 	AH_TEMPLATE(HAVE_REPLICATION,
 	    [Define to 1 if building replication support.])
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REP_OBJS)"
+
+	if test "$db_cv_build_replication_mgr" = "yes"; then
+		ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REPMGR_OBJS)"
+	fi
 else
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS rep_stub${o}"
 fi
@@ -708,6 +750,7 @@ AC_SUBST(LTLIBOBJS)
 CREATE_LIST="Makefile
     db_cxx.h:$srcdir/../dbinc/db_cxx.in
     db_int.h:$srcdir/../dbinc/db_int.in
+    clib_port.h:$srcdir/../dist/clib_port.h
     include.tcl:$srcdir/../test/include.tcl"
 
 # MinGW needs win_db.h.

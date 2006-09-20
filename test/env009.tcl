@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: env009.tcl,v 12.1 2005/06/16 20:23:53 bostic Exp $
+# $Id: env009.tcl,v 12.4 2006/09/12 18:22:37 carol Exp $
 #
 # TEST	env009
 # TEST	Test calls to all the various stat functions.  We have several
@@ -44,7 +44,7 @@ proc env009 { } {
 	{ "lock_stat" "Maximum locks" "Env009.c" $e }
 	{ "log_stat" "Magic" "Env009.d" "$e" }
 	{ "mpool_stat" "Number of caches" "Env009.e" "$e"}
-	{ "txn_stat" "Max Txns" "Env009.f" "$e" }
+	{ "txn_stat" "Maximum txns" "Env009.f" "$e" }
 	{ "rep_stat" "{Environment ID} 1" "Env009.g (Master)" "$repenv(M)"}
 	{ "rep_stat" "{Environment ID} 2" "Env009.h (Client)" "$repenv(C)"}
 	}

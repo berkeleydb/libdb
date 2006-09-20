@@ -1,4 +1,4 @@
-<!-- $Id: dbwix.m4,v 1.7 2005/04/18 18:41:07 philipr Exp $
+<!-- $Id: dbwix.m4,v 1.8 2006/09/14 15:50:50 mjc Exp $
  - This file is included by WiX input files to define m4 macros.
  - m4 is tricky.  It has NO notion of XML comments, so
  - take care using these names in comments after they are defined,
@@ -147,7 +147,7 @@ m4_define(`WIX_DB_CLEAR_SUBDIR', `WIX_DB_SET_SUBDIR()')
 <!-- Create a GUID from the current product, directory, file -->
 m4_define(`WIX_DB_PERSISTENT_GUID', `m4_esyscmd(echo "_WIXDB_PRODUCT @@ _WIXDB_VERSION @@ _WIXDB_CURDIR @@ _WIXDB_SUBDIR @@ _WIXDB_CURFILE" | openssl md5 | sed -e "s/^\(........\)\(....\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/")')
 
-m4_define(`DB_LICENSE_INTRO', `The following license applies to this copy of software you are about to install.  Please read it carefully before proceeding.  Select below the nature of the license by which you will use this product.  For more information about Sleepycat Software&apos;s licensing please refer to http://www.sleepycat.com/download/incensinginfo.shtml or contact us at info@sleepycat.com.')
+m4_define(`DB_LICENSE_INTRO', `The following license applies to this copy of software you are about to install.  Please read it carefully before proceeding.  Select below the nature of the license by which you will use this product.  For more information about Oracle Corporation&apos;s licensing please contact us at berkeleydb-info_us@oracle.com')
 
 m4_define(`DB_ENVIRONMENT_INTRO', `[ProductName] will need to modify certain environment variables to work properly.  If you elect not to set these variables you may find that some utilities`,' scripts and other parts of [ProductName] won&apos;t work properly.  Please indicate that you skipped this step if you request support help from us.')
 
@@ -156,8 +156,8 @@ m4_define(`COMMON_PROPERTIES', `
     <Property Id="LicenseType"><![CDATA[Open]]></Property>
 
     <!-- The ARP* properties affect the Add/Remove Programs dialog -->
-    <Property Id="ARPURLINFOABOUT"><![CDATA[http://www.sleepycat.com]]></Property>
-    <Property Id="ARPCONTACT"><![CDATA[support@sleepycat.com]]></Property>
+    <Property Id="ARPURLINFOABOUT"><![CDATA[http://www.oracle.com]]></Property>
+    <Property Id="ARPCONTACT"><![CDATA[berkeleydb-info_us@oracle.com]]></Property>
     <Property Id="ARPNOMODIFY"><![CDATA[1]]></Property>
     <Property Id="ARPNOREPAIR"><![CDATA[1]]></Property>
     <!-- TODO: this icon does not work here -->
@@ -211,7 +211,7 @@ m4_define(`COMMON_PROPERTIES', `
     <Property Id="DoInstallDebug" Hidden="yes">yes</Property>
     <Property Id="DoInstallEnvironment" Hidden="yes">yes</Property>
 
-    <Binary Id="SleepycatLogo" src="WIX_DB_IMAGEDIR\sleepycat.jpg" />
+    <Binary Id="OracleLogo" src="WIX_DB_IMAGEDIR\oracle.jpg" />
     <Binary Id="Stripe" src="WIX_DB_IMAGEDIR\topstripe.ibd" />
 
     <!-- TODO: does not work yet -->
@@ -230,36 +230,36 @@ m4_define(`COMMON_COMPONENTS', `
                    Location="either" DiskId="1">
 	      <Registry Id="Ext.Registry" Root="HKCR"
                    Key=".bdbsc"
-                   Value="Sleepycat.InformationalShortcut"
+                   Value="Oracle.InformationalShortcut"
                    Type="string" Action="write" />
 	      <Registry Id="Name.Registry" Root="HKCR"
-                   Key="Sleepycat.InformationalShortcut"
-                   Value="Sleepycat Software Informational Shortcut"
+                   Key="Oracle.InformationalShortcut"
+                   Value="Oracle Corporation Informational Shortcut"
                    Type="string" Action="write" />
 	      <Registry Id="Tip.Registry" Root="HKCR"
-                   Key="Sleepycat.InformationalShortcut" Name="InfoTip"
-                   Value="Sleepycat Software Informational Shortcut"
+                   Key="Oracle.InformationalShortcut" Name="InfoTip"
+                   Value="Oracle Corporation Informational Shortcut"
                    Type="string" Action="write" />
 	      <Registry Id="NoShow.Registry" Root="HKCR"
-                   Key="Sleepycat.InformationalShortcut" Name="NeverShowExt"
+                   Key="Oracle.InformationalShortcut" Name="NeverShowExt"
                    Type="string" Action="write" />
 	      <Registry Id="Icon.Registry" Root="HKCR"
-                   Key="Sleepycat.InformationalShortcut\DefaultIcon"
+                   Key="Oracle.InformationalShortcut\DefaultIcon"
                    Value="[INSTALLDIR]\installutil\webicon.ico"
                    Type="string" Action="write" />
 	      <Registry Id="Command.Registry" Root="HKCR"
-                   Key="Sleepycat.InformationalShortcut\shell\open\command"
+                   Key="Oracle.InformationalShortcut\shell\open\command"
                    Value="rundll32.exe shdocvw.dll,OpenURL %1"
                    Type="string" Action="write" />
 	      <Registry Id="Explore.Registry" Root="HKCU"
-                   Key="Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.bdbsc\OpenWithProgIds\Sleepycat.InformationalShortcut"
+                   Key="Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.bdbsc\OpenWithProgIds\Oracle.InformationalShortcut"
                    Action="write" />
 	      <Registry Id="HklmExt.Registry" Root="HKLM"
                    Key="Software\Classes\.bdbsc"
-                   Value="Sleepycat.InformationalShortcut"
+                   Value="Oracle.InformationalShortcut"
                    Type="string" Action="write" />
 	      <Registry Id="HklmCommand.Registry" Root="HKLM"
-                   Key="Software\Classes\Sleepycat.InformationalShortcut\shell\open\command"
+                   Key="Software\Classes\Oracle.InformationalShortcut\shell\open\command"
                    Value="rundll32.exe shdocvw.dll,OpenURL %1"
                    Type="string" Action="write" />
             </Component>
@@ -354,7 +354,7 @@ m4_define(`DIALOG_WELCOME', `
 `The Installer will install [ProductName] on your computer.
 To continue, click Next.')
 
-        <Control Id="Logo" Type="Bitmap" Text="SleepycatLogo" 
+        <Control Id="Logo" Type="Bitmap" Text="OracleLogo" 
                  X="0" Width="DIALOG_WIDTH" PARTIALHEIGHT(168) />
       </Dialog>
 ')
@@ -721,13 +721,13 @@ m4_define(`DIALOG_SUCCESS', `
         TOPSTRIPE(44, `Installed', `[ProductName] is now installed.')
 
         TEXTCONTROL(InstallSuccessText, 80,
-`Please contact support@sleepycat.com for any technical issues or info@sleepycat.com for sales and licensing questions.
+`Please go to http://forums.oracle.com/forums/category.jspa?categoryID=18 for any technical issues or contact berkeleydb-info_us@oracle.com for sales and licensing questions.
 
 Information about this product can also be found $5.
 
 Thank you for installing [ProductName].')
 
-        <Control Id="Image" Type="Bitmap" Text="SleepycatLogo"
+        <Control Id="Image" Type="Bitmap" Text="OracleLogo"
                   X="0" Width="DIALOG_WIDTH" FULLHEIGHT TabSkip="no" />
 
       </Dialog>
@@ -780,7 +780,7 @@ m4_define(`DIALOG_ADMIN_INTERRUPTED', `
         TEXTCONTROL(FinishText, 25, `Click Finish to exit the install.')
 
         <Control Id="Image" Type="Bitmap"
-                  X="0" Width="DIALOG_WIDTH" PARTIALHEIGHT(168) Text="SleepycatLogo" />
+                  X="0" Width="DIALOG_WIDTH" PARTIALHEIGHT(168) Text="OracleLogo" />
       </Dialog>
 ')
 

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep040.tcl,v 12.4 2005/10/18 19:05:54 carol Exp $
+# $Id: rep040.tcl,v 12.11 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep040
 # TEST	Test of racing rep_start and transactions.
@@ -17,23 +17,40 @@
 proc rep040 { method { niter 200 } { tnum "040" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
-	set args [convert_args $method $args]
+	}
 
-	# Run the body of the test with and without recovery.
-	set recopts { "" " -recover " }
-	foreach r $recopts {
-		puts "Rep$tnum ($method $r $args):\
-		    Test of rep_start racing txns."
-		rep040_sub $method $niter $tnum \
-		    $r $args
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
+	set args [convert_args $method $args]
+	set logsets [create_logsets 2]
+
+	# Run the body of the test with and without recovery,
+	# and with and without cleaning.  Skip recovery with in-memory
+	# logging - it doesn't make sense.
+	foreach r $test_recopts {
+		foreach l $logsets {
+			set logindex [lsearch -exact $l "in-memory"]
+			if { $r == "-recover" && $logindex != -1 } {
+				puts "Skipping rep$tnum for -recover\
+				    with in-memory logs."
+				continue
+			}
+			puts "Rep$tnum ($method $r $args):\
+			    Test of rep_start racing txns."
+			puts "Rep$tnum: Master logs are [lindex $l 0]"
+			puts "Rep$tnum: Client logs are [lindex $l 1]"
+			rep040_sub $method $niter $tnum $l $r $args
+		}
 	}
 }
 
-proc rep040_sub { method niter tnum recargs largs } {
+proc rep040_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
 	global testdir
 	global util_path
@@ -49,11 +66,20 @@ proc rep040_sub { method niter tnum recargs largs } {
 	file mkdir $masterdir
 	file mkdir $clientdir
 
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+
+	# In-memory logs cannot be used with -txn nosync.
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
+
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
+#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
 #	    -verbose {rep on} -errpfx MASTER \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -61,9 +87,9 @@ proc rep040_sub { method niter tnum recargs largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $c_logargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
+#	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $c_logargs \
 #	    -verbose {rep on} -errpfx CLIENT \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -132,7 +158,7 @@ proc rep040_sub { method niter tnum recargs largs } {
 	process_msgs $envlist
 	error_check_good txn [$t commit] 0
 	tclsleep 80
-	
+
 	error_check_good txn [$t2 commit] 0
 	puts "\tRep$tnum.c: Waiting for child ..."
 	process_msgs $envlist
@@ -149,6 +175,9 @@ proc rep040_sub { method niter tnum recargs largs } {
 	error_check_good dbclose [$db1 close] 0
 	process_msgs $envlist
 
+	check_log_location $masterenv
+	check_log_location $clientenv
+
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0
 
@@ -159,7 +188,7 @@ proc rep040_sub { method niter tnum recargs largs } {
 	set ret [catch {open $outfile} ofid]
 	error_check_good open $ret 0
 	set contents [read $ofid]
-	error_check_good detect [is_substr $contents "Waiting for txn_cnt"] 1
+	error_check_good detect [is_substr $contents "Waiting for op_cnt"] 1
 	close $ofid
 
 	# Check that master and client logs and dbs are identical.

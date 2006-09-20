@@ -6,8 +6,8 @@
     <title>Chapter 1. Introduction</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="preface.html" title="Preface" />
     <link rel="next" href="recovery-intro.html" title="Recoverability" />
   </head>
@@ -79,7 +79,7 @@
       </div>
       <p>
     This book provides a thorough introduction and discussion on transactions as
-    used with Berkeley DB, Java Edition (JE). It begins by offering a general overview to
+    used with Berkeley DB (DB). It begins by offering a general overview to
     transactions, the guarantees they provide, and the general application
     infrastructure required to obtain full transactional protection for your
     data. 
@@ -92,13 +92,13 @@
     discussion on performance considerations for your transactional application.
   </p>
       <p>
-    You should understand the concepts from
+    You should understand the concepts from the
         <span>
-            <i class="citetitle">Getting Started with Berkeley DB</i>
+                <i class="citetitle">Getting Started with Berkeley DB</i>
         </span>
         
         
-     before reading this book.
+     guide before reading this book.
   </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -111,7 +111,7 @@
         </div>
         <p>
         Transactions offer your application's data protection from
-        application or system failures.  That is, JE transactions offer 
+        application or system failures.  That is, DB transactions offer 
         your application full ACID support:
     </p>
         <div class="itemizedlist">
@@ -132,7 +132,7 @@
                 course of the transaction.
             </p>
               <p>
-                Note that JE transactions can span one or more
+                Note that DB transactions can span one or more
                 database handles. 
             </p>
             </li>
@@ -148,9 +148,9 @@
                 application next runs, or none of them appear.
             </p>
               <p>
-                In other words, whatever consistency requirements your application has will never be violated by JE.
+                In other words, whatever consistency requirements your application has will never be violated by DB.
                 If, for example, your application requires every record to include an employee ID, and your
-                code faithfully adds that ID to the records it's database records, then JE will never
+                code faithfully adds that ID to its database records, then DB will never
                 violate that consistency requirement. The ID will remain in the database records until such a time as your
                 application chooses to delete it.
             </p>
@@ -166,8 +166,9 @@
                 wrapped inside a transaction will always have a clean and
                 consistent view of your databases. They never have to see
                 updates currently in progress under the protection of another transaction. 
-                Note, however, that
-                isolation guarantees can be relaxed. See 
+                Note, however, that isolation guarantees can be 
+                
+                 relaxed from the default setting.   See 
                 <a href="isolation.html">Isolation</a>
                 for more information.
             </p>
@@ -224,7 +225,7 @@
         </p>
           <p>
             Finally, by following the programming examples shown in this book, you can write your code so as to protect
-            you data in the event that your code crashes. However, no programming API can protect you against logic
+            your data in the event that your code crashes. However, no programming API can protect you against logic
             failures in your own code; transactions cannot protect you from simply writing the wrong thing to your
             databases.
         </p>
@@ -278,7 +279,7 @@
                     The logging subsystem is required for recovery purposes, but
                     its usage also means your application may require a
                     little more administrative effort than it does when logging
-                    is not in use. See <a href="filemanagement.html">Managing JE Files</a> for more information.
+                    is not in use. See <a href="filemanagement.html">Managing DB Files</a> for more information.
                 </p>
               </li>
               <li>
@@ -356,7 +357,7 @@
                     Note that this requirement is not
                     <span class="emphasis"><em>specific</em></span> to transactions
                     &#8211; you can certainly write concurrent
-                    non-transactional JE applications. Further, not
+                    non-transactional DB applications. Further, not
                     every transactional application uses concurrency and
                     so not every transactional application must
                     manage deadlocks. Still, deadlock management is so
@@ -381,11 +382,11 @@
             <div></div>
           </div>
           <p>
-            JE is designed to support multi-threaded  <span>and
+            DB is designed to support multi-threaded  <span>and
             multi-process</span> applications, but their usage means
             you must pay careful attention to issues of concurrency.
             Transactions help your application's concurrency by providing various levels of
-            isolation for your threads of control. In addition, JE
+            isolation for your threads of control. In addition, DB
             provides mechanisms that allow you to detect and respond to
             deadlocks (but strictly speaking, this is not limited to just
             transactional applications).
@@ -399,7 +400,7 @@
             database operations performed by different threads.
         </p>
           <p>
-            Note that JE supports different isolation levels. For example,
+            Note that DB supports different isolation levels. For example,
             you can configure your application to see uncommitted reads, which means
             that one transaction can see data that has been modified but not yet
             committed by another transaction. Doing this might mean your

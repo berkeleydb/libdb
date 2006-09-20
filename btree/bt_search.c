@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -39,20 +39,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_search.c,v 12.17 2005/11/10 21:17:13 ubell Exp $
+ * $Id: bt_search.c,v 12.24 2006/08/24 14:44:45 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
@@ -93,15 +86,15 @@ __bam_get_root(dbc, pg, slevel, flags, stack)
 	 * Retrieve the root page.
 	 */
 try_again:
-	*stack = LF_ISSET(S_STACK) &&
+	*stack = LF_ISSET(SR_STACK) &&
 	      (dbc->dbtype == DB_RECNO || F_ISSET(cp, C_RECNUM));
 	lock_mode = DB_LOCK_READ;
 	if (*stack ||
-	    LF_ISSET(S_DEL) || (LF_ISSET(S_NEXT) && LF_ISSET(S_WRITE)))
+	    LF_ISSET(SR_DEL) || (LF_ISSET(SR_NEXT) && LF_ISSET(SR_WRITE)))
 		lock_mode = DB_LOCK_WRITE;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0) {
+	if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0) {
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
@@ -116,9 +109,9 @@ try_again:
 	 * for a write lock.
 	 */
 	if (!*stack &&
-	    ((LF_ISSET(S_PARENT) && (u_int8_t)(slevel + 1) >= LEVEL(h)) ||
-	    (LF_ISSET(S_WRITE) && LEVEL(h) == LEAFLEVEL) ||
-	    (LF_ISSET(S_START) && slevel == LEVEL(h)))) {
+	    ((LF_ISSET(SR_PARENT) && (u_int8_t)(slevel + 1) >= LEVEL(h)) ||
+	    (LF_ISSET(SR_WRITE) && LEVEL(h) == LEAFLEVEL) ||
+	    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
 		if (!STD_LOCKING(dbc))
 			goto no_relock;
 		ret = __memp_fput(mpf, h, 0);
@@ -129,15 +122,15 @@ try_again:
 		lock_mode = DB_LOCK_WRITE;
 		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0) {
+		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0) {
 			/* Did not read it, so we can release the lock */
 			(void)__LPUT(dbc, lock);
 			return (ret);
 		}
-		if (!((LF_ISSET(S_PARENT) &&
+		if (!((LF_ISSET(SR_PARENT) &&
 		    (u_int8_t)(slevel + 1) >= LEVEL(h)) ||
-		    (LF_ISSET(S_WRITE) && LEVEL(h) == LEAFLEVEL) ||
-		    (LF_ISSET(S_START) && slevel == LEVEL(h)))) {
+		    (LF_ISSET(SR_WRITE) && LEVEL(h) == LEAFLEVEL) ||
+		    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
 			/* Someone else split the root, start over. */
 			ret = __memp_fput(mpf, h, 0);
 			if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
@@ -172,6 +165,7 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
+	DB_ENV *dbenv;
 	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
@@ -183,6 +177,7 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	h = NULL;
@@ -218,8 +213,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	for (;;) {
 		inp = P_INP(dbp, h);
 		adjust = TYPE(h) == P_LBTREE ? P_INDX : O_INDX;
-		if (LF_ISSET(S_MIN | S_MAX)) {
-			if (LF_ISSET(S_MIN) || NUM_ENT(h) == 0)
+		if (LF_ISSET(SR_MIN | SR_MAX)) {
+			if (LF_ISSET(SR_MIN) || NUM_ENT(h) == 0)
 				indx = 0;
 			else if (TYPE(h) == P_LBTREE)
 				indx = NUM_ENT(h) - 2;
@@ -227,8 +222,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 				indx = NUM_ENT(h) - 1;
 
 			if (LEVEL(h) == LEAFLEVEL ||
-			     (!LF_ISSET(S_START) && LEVEL(h) == slevel)) {
-				if (LF_ISSET(S_NEXT))
+			     (!LF_ISSET(SR_START) && LEVEL(h) == slevel)) {
+				if (LF_ISSET(SR_NEXT))
 					goto get_next;
 				goto found;
 			}
@@ -244,14 +239,14 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 		for (base = 0,
 		    lim = NUM_ENT(h) / (db_indx_t)adjust; lim != 0; lim >>= 1) {
 			indx = base + ((lim >> 1) * adjust);
-			if ((ret =
-			    __bam_cmp(dbp, key, h, indx, func, &cmp)) != 0)
+			if ((ret = __bam_cmp(dbp, dbc->txn, key,
+			     h, indx, func, &cmp)) != 0)
 				goto err;
 			if (cmp == 0) {
 				if (LEVEL(h) == LEAFLEVEL ||
-				    (!LF_ISSET(S_START) &&
+				    (!LF_ISSET(SR_START) &&
 				    LEVEL(h) == slevel)) {
-					if (LF_ISSET(S_NEXT))
+					if (LF_ISSET(SR_NEXT))
 						goto get_next;
 					goto found;
 				}
@@ -272,16 +267,16 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 		 * Delete only deletes exact matches.
 		 */
 		if (LEVEL(h) == LEAFLEVEL ||
-		    (!LF_ISSET(S_START) && LEVEL(h) == slevel)) {
+		    (!LF_ISSET(SR_START) && LEVEL(h) == slevel)) {
 			*exactp = 0;
 
-			if (LF_ISSET(S_EXACT)) {
+			if (LF_ISSET(SR_EXACT)) {
 				ret = DB_NOTFOUND;
 				goto err;
 			}
 
-			if (LF_ISSET(S_STK_ONLY)) {
-				BT_STK_NUM(dbp->dbenv, cp, h, base, ret);
+			if (LF_ISSET(SR_STK_ONLY)) {
+				BT_STK_NUM(dbenv, cp, h, base, ret);
 				if ((t_ret =
 				    __LPUT(dbc, lock)) != 0 && ret == 0)
 					ret = t_ret;
@@ -290,7 +285,7 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 					ret = t_ret;
 				return (ret);
 			}
-			if (LF_ISSET(S_NEXT)) {
+			if (LF_ISSET(SR_NEXT)) {
 get_next:			/*
 				 * The caller could have asked for a NEXT
 				 * at the root if the tree recently collapsed.
@@ -310,8 +305,8 @@ get_next:			/*
 				if ((ret = __memp_fput(mpf, h, 0)) != 0)
 					goto err;
 				h = NULL;
-				LF_SET(S_MIN);
-				LF_CLR(S_NEXT);
+				LF_SET(SR_MIN);
+				LF_CLR(SR_NEXT);
 				indx = cp->sp->indx + 1;
 				if (indx == NUM_ENT(cp->sp->page)) {
 					ret = DB_NOTFOUND;
@@ -336,10 +331,9 @@ get_next:			/*
 			 * to find an undeleted record.  This is handled by the
 			 * calling routine.
 			 */
-			if (LF_ISSET(S_DEL) && cp->csp == cp->sp)
+			if (LF_ISSET(SR_DEL) && cp->csp == cp->sp)
 				cp->csp++;
-			BT_STK_ENTER(dbp->dbenv,
-			    cp, h, base, lock, lock_mode, ret);
+			BT_STK_ENTER(dbenv, cp, h, base, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 			return (0);
@@ -364,12 +358,12 @@ next:		if (recnop != NULL)
 		pg = GET_BINTERNAL(dbp, h, indx)->pgno;
 
 		/* See if we are at the level to start stacking. */
-		if (LF_ISSET(S_START) && slevel == LEVEL(h))
+		if (LF_ISSET(SR_START) && slevel == LEVEL(h))
 			stack = 1;
 
-		if (LF_ISSET(S_STK_ONLY)) {
+		if (LF_ISSET(SR_STK_ONLY)) {
 			if (slevel == LEVEL(h)) {
-				BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
+				BT_STK_NUM(dbenv, cp, h, indx, ret);
 				if ((t_ret =
 				    __LPUT(dbc, lock)) != 0 && ret == 0)
 					ret = t_ret;
@@ -378,7 +372,7 @@ next:		if (recnop != NULL)
 					ret = t_ret;
 				return (ret);
 			}
-			BT_STK_NUMPUSH(dbp->dbenv, cp, h, indx, ret);
+			BT_STK_NUMPUSH(dbenv, cp, h, indx, ret);
 			(void)__memp_fput(mpf, h, 0);
 			h = NULL;
 			if ((ret = __db_lget(dbc,
@@ -393,14 +387,14 @@ next:		if (recnop != NULL)
 			}
 		} else if (stack) {
 			/* Return if this is the lowest page wanted. */
-			if (LF_ISSET(S_PARENT) && slevel == LEVEL(h)) {
-				BT_STK_ENTER(dbp->dbenv,
+			if (LF_ISSET(SR_PARENT) && slevel == LEVEL(h)) {
+				BT_STK_ENTER(dbenv,
 				    cp, h, indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
 				return (0);
 			}
-			if (LF_ISSET(S_DEL) && NUM_ENT(h) > 1) {
+			if (LF_ISSET(SR_DEL) && NUM_ENT(h) > 1) {
 				/*
 				 * There was a page with a singleton pointer
 				 * to a non-empty subtree.
@@ -411,7 +405,7 @@ next:		if (recnop != NULL)
 				stack = 0;
 				goto do_del;
 			}
-			BT_STK_PUSH(dbp->dbenv,
+			BT_STK_PUSH(dbenv,
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
@@ -427,7 +421,7 @@ next:		if (recnop != NULL)
 			 * page in the return stack.  If so, lock it and never
 			 * unlock it.
 			 */
-			if ((LF_ISSET(S_PARENT) &&
+			if ((LF_ISSET(SR_PARENT) &&
 			    (u_int8_t)(slevel + 1) >= (LEVEL(h) - 1)) ||
 			    (LEVEL(h) - 1) == LEAFLEVEL)
 				stack = 1;
@@ -437,26 +431,26 @@ next:		if (recnop != NULL)
 			 * point if so save the parent and set stack.
 			 * Otherwise free the parent and temporarily
 			 * save this one.
-			 * For S_DEL we need to find a page with 1 entry.
-			 * For S_NEXT we want find the minimal subtree
+			 * For SR_DEL we need to find a page with 1 entry.
+			 * For SR_NEXT we want find the minimal subtree
 			 * that contains the key and the next page.
 			 * We save pages as long as we are at the right
 			 * edge of the subtree.  When we leave the right
 			 * edge, then drop the subtree.
 			 */
-			if (!LF_ISSET(S_DEL | S_NEXT)) {
+			if (!LF_ISSET(SR_DEL | SR_NEXT)) {
 				if ((ret = __memp_fput(mpf, h, 0)) != 0)
 					goto err;
 				goto lock_next;
 			}
 
-			if ((LF_ISSET(S_DEL) && NUM_ENT(h) == 1)) {
+			if ((LF_ISSET(SR_DEL) && NUM_ENT(h) == 1)) {
 				stack = 1;
-				LF_SET(S_WRITE);
+				LF_SET(SR_WRITE);
 				/* Push the parent. */
 				cp->csp++;
 				/* Push this node. */
-				BT_STK_PUSH(dbp->dbenv, cp, h,
+				BT_STK_PUSH(dbenv, cp, h,
 				     indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
@@ -472,7 +466,7 @@ next:		if (recnop != NULL)
 			 * we find a singleton.
 			 */
 do_del:				if (cp->csp->page != NULL) {
-					if (LF_ISSET(S_NEXT) &&
+					if (LF_ISSET(SR_NEXT) &&
 					     indx == NUM_ENT(h) - 1)
 						cp->csp++;
 					else if ((ret =
@@ -480,7 +474,7 @@ do_del:				if (cp->csp->page != NULL) {
 						goto err;
 				}
 				/* Save this node. */
-				BT_STK_ENTER(dbp->dbenv, cp,
+				BT_STK_ENTER(dbenv, cp,
 				    h, indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
@@ -489,7 +483,7 @@ do_del:				if (cp->csp->page != NULL) {
 
 lock_next:		h = NULL;
 
-			if (stack && LF_ISSET(S_WRITE))
+			if (stack && LF_ISSET(SR_WRITE))
 				lock_mode = DB_LOCK_WRITE;
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
@@ -499,12 +493,12 @@ lock_next:		h = NULL;
 				 * descending the tree holding read-locks.
 				 */
 				(void)__LPUT(dbc, lock);
-				if (LF_ISSET(S_DEL | S_NEXT))
+				if (LF_ISSET(SR_DEL | SR_NEXT))
 					cp->csp++;
 				goto err;
 			}
 		}
-		if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
@@ -522,11 +516,11 @@ found:	*exactp = 1;
 	 * single leaf page.
 	 */
 	if (TYPE(h) == P_LBTREE && NUM_ENT(h) > P_INDX) {
-		if (LF_ISSET(S_DUPLAST))
+		if (LF_ISSET(SR_DUPLAST))
 			while (indx < (db_indx_t)(NUM_ENT(h) - P_INDX) &&
 			    inp[indx] == inp[indx + P_INDX])
 				indx += P_INDX;
-		else if (LF_ISSET(S_DUPFIRST))
+		else if (LF_ISSET(SR_DUPFIRST))
 			while (indx > 0 &&
 			    inp[indx] == inp[indx - P_INDX])
 				indx -= P_INDX;
@@ -535,13 +529,13 @@ found:	*exactp = 1;
 	/*
 	 * Now check if we are allowed to return deleted items; if not, then
 	 * find the next (or previous) non-deleted duplicate entry.  (We do
-	 * not move from the original found key on the basis of the S_DELNO
+	 * not move from the original found key on the basis of the SR_DELNO
 	 * flag.)
 	 */
-	DB_ASSERT(recnop == NULL || LF_ISSET(S_DELNO));
-	if (LF_ISSET(S_DELNO)) {
+	DB_ASSERT(dbenv, recnop == NULL || LF_ISSET(SR_DELNO));
+	if (LF_ISSET(SR_DELNO)) {
 		deloffset = TYPE(h) == P_LBTREE ? O_INDX : 0;
-		if (LF_ISSET(S_DUPLAST))
+		if (LF_ISSET(SR_DUPLAST))
 			while (B_DISSET(GET_BKEYDATA(dbp,
 			    h, indx + deloffset)->type) && indx > 0 &&
 			    inp[indx] == inp[indx - adjust])
@@ -569,7 +563,7 @@ found:	*exactp = 1;
 		 * duplicates and record numbers in the same tree.
 		 */
 		if (recnop != NULL) {
-			DB_ASSERT(TYPE(h) == P_LBTREE);
+			DB_ASSERT(dbenv, TYPE(h) == P_LBTREE);
 
 			for (i = 0; i < indx; i += P_INDX)
 				if (!B_DISSET(
@@ -581,16 +575,16 @@ found:	*exactp = 1;
 		}
 	}
 
-	if (LF_ISSET(S_STK_ONLY)) {
-		BT_STK_NUM(dbp->dbenv, cp, h, indx, ret);
+	if (LF_ISSET(SR_STK_ONLY)) {
+		BT_STK_NUM(dbenv, cp, h, indx, ret);
 		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 			ret = t_ret;
 		if ((t_ret = __memp_fput(mpf, h, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	} else {
-		if (LF_ISSET(S_DEL) && cp->csp == cp->sp)
+		if (LF_ISSET(SR_DEL) && cp->csp == cp->sp)
 			cp->csp++;
-		BT_STK_ENTER(dbp->dbenv, cp, h, indx, lock, lock_mode, ret);
+		BT_STK_ENTER(dbenv, cp, h, indx, lock, lock_mode, ret);
 	}
 	if (ret != 0)
 		goto err;

@@ -1,32 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_method.c,v 12.15 2005/11/08 03:24:58 bostic Exp $
+ * $Id: db_method.c,v 12.23 2006/08/24 14:45:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#ifdef HAVE_RPC
-#include <rpc/rpc.h>
-#endif
-
-#include <string.h>
-#endif
-
-#ifdef HAVE_RPC
-#include "db_server.h"
-#endif
-
 #include "db_int.h"
 #include "dbinc/crypto.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
@@ -35,6 +20,10 @@
 #include "dbinc/txn.h"
 
 #ifdef HAVE_RPC
+#ifndef NO_SYSTEM_INCLUDES
+#include <rpc/rpc.h>
+#endif
+#include "db_server.h"
 #include "dbinc_auto/rpc_client_ext.h"
 #endif
 
@@ -94,7 +83,7 @@ db_create(dbpp, dbenv, flags)
 		break;
 	case DB_XA_CREATE:
 		if (dbenv != NULL) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		"XA applications may not specify an environment to db_create");
 			return (EINVAL);
 		}
@@ -149,9 +138,7 @@ db_create(dbpp, dbenv, flags)
 	 * read the value.  All we check later is value equality.
 	 */
 	db_rep = dbenv->rep_handle;
-	dbp->fid_gen =
-	    (REP_ON(dbenv) && db_rep->region != NULL) ?
-	    ((REP *)db_rep->region)->gen : 0;
+	dbp->fid_gen = REP_ON(dbenv) ? ((REP *)db_rep->region)->gen : 0;
 
 	/* If not RPC, open a backing DB_MPOOLFILE handle in the memory pool. */
 	if (!RPC_ON(dbenv) &&
@@ -314,7 +301,7 @@ __dbh_am_chk(dbp, flags)
 		return (0);
 	}
 
-	__db_err(dbp->dbenv,
+	__db_errx(dbp->dbenv,
     "call implies an access method which is inconsistent with previous calls");
 	return (EINVAL);
 }
@@ -334,7 +321,7 @@ __dbh_err(dbp, error, fmt, va_alist)
 	va_dcl
 #endif
 {
-	DB_REAL_ERR(dbp->dbenv, error, 1, 1, fmt);
+	DB_REAL_ERR(dbp->dbenv, error, DB_ERROR_SET, 1, fmt);
 }
 
 /*
@@ -351,7 +338,7 @@ __dbh_errx(dbp, fmt, va_alist)
 	va_dcl
 #endif
 {
-	DB_REAL_ERR(dbp->dbenv, 0, 0, 1, fmt);
+	DB_REAL_ERR(dbp->dbenv, 0, DB_ERROR_NOT_SET, 1, fmt);
 }
 
 /*
@@ -662,7 +649,7 @@ __db_get_flags(dbp, flagsp)
 #ifdef HAVE_QUEUE
 		__qam_map_flags(dbp, &f, &mapped_flag);
 #endif
-		DB_ASSERT(f == 0);
+		DB_ASSERT(dbp->dbenv, f == 0);
 		if (F_ISSET(dbp, mapped_flag) == mapped_flag)
 			LF_SET(db_flags[i]);
 	}
@@ -688,7 +675,7 @@ __db_set_flags(dbp, flags)
 	dbenv = dbp->dbenv;
 
 	if (LF_ISSET(DB_ENCRYPT) && !CRYPTO_ON(dbenv)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Database environment not configured for encryption");
 		return (EINVAL);
 	}
@@ -829,12 +816,12 @@ __db_set_pagesize(dbp, db_pagesize)
 	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->set_pagesize");
 
 	if (db_pagesize < DB_MIN_PGSIZE) {
-		__db_err(dbp->dbenv, "page sizes may not be smaller than %lu",
+		__db_errx(dbp->dbenv, "page sizes may not be smaller than %lu",
 		    (u_long)DB_MIN_PGSIZE);
 		return (EINVAL);
 	}
 	if (db_pagesize > DB_MAX_PGSIZE) {
-		__db_err(dbp->dbenv, "page sizes may not be larger than %lu",
+		__db_errx(dbp->dbenv, "page sizes may not be larger than %lu",
 		    (u_long)DB_MAX_PGSIZE);
 		return (EINVAL);
 	}
@@ -844,7 +831,7 @@ __db_set_pagesize(dbp, db_pagesize)
 	 * for alignment of various types on the pages.
 	 */
 	if (!POWER_OF_TWO(db_pagesize)) {
-		__db_err(dbp->dbenv, "page sizes must be a power-of-2");
+		__db_errx(dbp->dbenv, "page sizes must be a power-of-2");
 		return (EINVAL);
 	}
 

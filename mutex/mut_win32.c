@@ -1,19 +1,13 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_win32.c,v 12.15 2005/11/01 11:49:31 mjc Exp $
+ * $Id: mut_win32.c,v 12.21 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -65,9 +59,8 @@ static __inline int get_handle(dbenv, mutexp, eventp)
 	}
 
 	if ((*eventp = CreateEvent(&all_sa, FALSE, FALSE, idbuf)) == NULL) {
-		ret = __os_get_errno();
-		__db_err(dbenv, "Win32 create event failed: %s",
-		    db_strerror(ret));
+		ret = __os_get_syserr();
+		__db_syserr(dbenv, ret, "Win32 create event failed");
 	}
 
 	return (ret);
@@ -151,7 +144,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 #ifdef DIAGNOSTIC
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			char buf[DB_THREADID_STRLEN];
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "Win32 lock failed: mutex already locked by %s",
 			     dbenv->thread_id_string(dbenv,
 			     mutexp->pid, mutexp->tid, buf));
@@ -187,7 +180,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		 * every time we get a mutex to ensure contention.
 		 */
 		if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-			__os_yield(NULL, 1);
+			__os_yield(dbenv);
 #endif
 
 		return (0);
@@ -210,7 +203,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 			goto err;
 	}
 	if ((ret = WaitForSingleObject(event, ms)) == WAIT_FAILED) {
-		ret = __os_get_errno();
+		ret = __os_get_syserr();
 		goto err;
 	}
 	if ((ms <<= 1) > MS_PER_SEC)
@@ -219,8 +212,8 @@ loop:	/* Attempt to acquire the resource for N spins. */
 	PANIC_CHECK(dbenv);
 	goto loop;
 
-err:	__db_err(dbenv, "Win32 lock failed: %s", db_strerror(ret));
-	return (__db_panic(dbenv, ret));
+err:	__db_syserr(dbenv, ret, "Win32 lock failed");
+	return (__db_panic(dbenv, __os_posix_err(ret)));
 }
 
 /*
@@ -251,7 +244,7 @@ __db_win32_mutex_unlock(dbenv, mutex)
 
 #ifdef DIAGNOSTIC
 	if (!mutexp->tas || !F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_err(dbenv, "Win32 unlock failed: lock already unlocked");
+		__db_errx(dbenv, "Win32 unlock failed: lock already unlocked");
 		return (__db_panic(dbenv, EACCES));
 	}
 #endif
@@ -268,7 +261,7 @@ __db_win32_mutex_unlock(dbenv, mutex)
 		    now.QuadPart, mutexp, mutexp->id);
 #endif
 		if (!PulseEvent(event)) {
-			ret = __os_get_errno();
+			ret = __os_get_syserr();
 			CloseHandle(event);
 			goto err;
 		}
@@ -278,8 +271,8 @@ __db_win32_mutex_unlock(dbenv, mutex)
 
 	return (0);
 
-err:	__db_err(dbenv, "Win32 unlock failed: %s", db_strerror(ret));
-	return (__db_panic(dbenv, ret));
+err:	__db_syserr(dbenv, ret, "Win32 unlock failed");
+	return (__db_panic(dbenv, __os_posix_err(ret)));
 }
 
 /*

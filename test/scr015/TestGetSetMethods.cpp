@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: TestGetSetMethods.cpp,v 12.2 2005/10/25 23:41:22 mjc Exp $
+ * $Id: TestGetSetMethods.cpp,v 12.5 2006/08/24 14:46:42 bostic Exp $
  */
 
 /*
@@ -32,8 +32,6 @@ int main(int argc, char *argv[])
 		dbenv->set_lg_regionmax(0x100000);
 		dbenv->set_lk_conflicts(conflicts, sizeof(conflicts));
 		dbenv->set_lk_detect(DB_LOCK_DEFAULT);
-		// exists, but is deprecated:
-		// dbenv->set_lk_max(0);
 		dbenv->set_lk_max_lockers(100);
 		dbenv->set_lk_max_locks(10);
 		dbenv->set_lk_max_objects(1000);

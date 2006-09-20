@@ -1,23 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: fop_util.c,v 12.19 2005/10/27 01:26:00 mjc Exp $
+ * $Id: fop_util.c,v 12.36 2006/09/19 15:06:59 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/hash.h"
 #include "dbinc/fop.h"
@@ -29,7 +22,7 @@
 static int __fop_set_pgsize __P((DB *, DB_FH *, const char *));
 static int __fop_inmem_create __P((DB *, const char *, DB_TXN *, u_int32_t));
 static int __fop_inmem_dummy __P((DB *, DB_TXN *, const char *, u_int8_t *));
-static int __fop_inmem_read_meta __P((DB *, const char *, u_int32_t));
+static int __fop_inmem_read_meta __P((DB *, DB_TXN *, const char *, u_int32_t));
 static int __fop_inmem_swap __P((DB *, DB *, DB_TXN *,
 	       const char *, const char *, const char *, u_int32_t));
 static int __fop_ondisk_dummy __P((DB *,
@@ -286,7 +279,7 @@ retry:
 	 * a previous crash).
 	 */
 	if (++retries > DB_RETRY) {
-		__db_err(dbenv, "__fop_file_setup:  Retry limit (%d) exceeded",
+		__db_errx(dbenv, "__fop_file_setup:  Retry limit (%d) exceeded",
 		    DB_RETRY);
 		goto err;
 	}
@@ -313,7 +306,7 @@ retry:
 			dbp->type = save_type;
 		}
 	} else
-		ret = __os_exists(real_name, NULL);
+		ret = __os_exists(dbenv, real_name, NULL);
 
 	if (ret == 0) {
 		/*
@@ -350,7 +343,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) &&
 
 		/* Cases 1,3-5: we need to read the meta-data page. */
 		if (F_ISSET(dbp, DB_AM_INMEM))
-			ret = __fop_inmem_read_meta(dbp, name, flags);
+			ret = __fop_inmem_read_meta(dbp, txn, name, flags);
 		else {
 			ret = __fop_read_meta(dbenv, real_name, mbuf,
 			    sizeof(mbuf), fhp,
@@ -405,7 +398,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) &&
 			 * We assert it here to make sure we aren't destroying
 			 * any application level FCNTL semantics.
 			 */
-			DB_ASSERT(!LF_ISSET(DB_FCNTL_LOCKING));
+			DB_ASSERT(dbenv, !LF_ISSET(DB_FCNTL_LOCKING));
 			if (!F_ISSET(dbp, DB_AM_INMEM)) {
 				if ((ret = __os_closehandle(dbenv, fhp)) != 0)
 					goto err;
@@ -437,7 +430,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) &&
 				    txn, DB_NOSYNC, NULL, 1)) != 0)
 					goto err;
 				ret = __db_dbenv_mpool(dbp, name, flags);
-			} else 
+			} else
 				ret = __os_open(dbenv, real_name, 0, 0, &fhp);
 
 			if (ret != 0) {
@@ -450,8 +443,9 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) &&
 			}
 
 			dbp->type = save_type;
-			if (F_ISSET(dbp, DB_AM_INMEM)) 
-				ret = __fop_inmem_read_meta(dbp, name, flags);
+			if (F_ISSET(dbp, DB_AM_INMEM))
+				ret = __fop_inmem_read_meta(dbp,
+				    txn, name, flags);
 			else if ((ret =
 			    __fop_read_meta(dbenv, real_name, mbuf,
 			    sizeof(mbuf), fhp,
@@ -539,7 +533,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) &&
 		goto err;
 
 create:	if (txn != NULL && IS_REP_CLIENT(dbenv)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Transactional create on replication client disallowed");
 		ret = EINVAL;
 		goto err;
@@ -556,13 +550,15 @@ create:	if (txn != NULL && IS_REP_CLIENT(dbenv)) {
 		if ((ret = __fop_create(dbenv,
 		    stxn, &fhp, tmpname, DB_APP_DATA, mode, dflags)) != 0) {
 			/*
-			 * If we don't have transactions there is a race on
-			 * creating the temp file.
+			 * If no transactions, there is a race on creating the
+			 * backup file, as the backup file name is the same for
+			 * all processes.  Wait for the other process to finish
+			 * with the name.
 			 */
 			if (!TXN_ON(dbenv) && ret == EEXIST) {
 				__os_free(dbenv, tmpname);
 				tmpname = NULL;
-				__os_yield(dbenv, 1);
+				__os_sleep(dbenv, 1, 0);
 				goto retry;
 			}
 			goto err;
@@ -612,7 +608,7 @@ creat2:	if (!F_ISSET(dbp, DB_AM_INMEM)) {
 	} else if (name == tmpname) {
 		/* We created it in place. */
 	} else if (!F_ISSET(dbp, DB_AM_INMEM) &&
-	    __os_exists(real_name, NULL) == 0) {
+	    __os_exists(dbenv, real_name, NULL) == 0) {
 		/*
 		 * Someone managed to create the file; remove our temp
 		 * and try to open the file that now exists.
@@ -651,7 +647,7 @@ creat2:	if (!F_ISSET(dbp, DB_AM_INMEM)) {
 	F_SET(dbp, DB_AM_CREATED);
 
 	if (0) {
-errmsg:		__db_err(dbenv, "%s: %s", name, db_strerror(ret));
+errmsg:		__db_err(dbenv, ret, "%s", name);
 
 err:		CLOSE_HANDLE(dbp, fhp);
 		if (stxn != NULL)
@@ -707,7 +703,7 @@ __fop_set_pgsize(dbp, fhp, name)
 	 * default pagesize to 16K.
 	 */
 	if ((ret = __os_ioinfo(dbenv, name, fhp, NULL, NULL, &iopsize)) != 0) {
-		__db_err(dbenv, "%s: %s", name, db_strerror(ret));
+		__db_err(dbenv, ret, "%s", name);
 		return (ret);
 	}
 	if (iopsize < 512)
@@ -872,7 +868,7 @@ DB_TEST_RECOVERY_LABEL
 	 * before we register this event, we'd better remove any
 	 * events that we've already registered for the master.
 	 */
-	if (!F_ISSET(dbp, DB_AM_RECOVER) && txn != NULL) {
+	if (!F_ISSET(dbp, DB_AM_RECOVER) && IS_REAL_TXN(txn)) {
 		/* Unregister old master events. */
 		 __txn_remlock(dbenv,
 		    txn, &mdbp->handle_lock, DB_LOCK_INVALIDID);
@@ -915,7 +911,6 @@ __fop_remove_setup(dbp, txn, name, flags)
 	DB_ENV *dbenv;
 	DB_FH *fhp;
 	DB_LOCK elock;
-	u_int32_t refcnt;
 	u_int8_t mbuf[DBMETASIZE];
 	int ret;
 
@@ -947,7 +942,7 @@ retry:	if (LOCKING_ON(dbenv)) {
 	 * that we shouldn't close the handle.
 	 */
 	fhp = dbp->saved_open_fhp;
-	DB_ASSERT(LF_ISSET(DB_FCNTL_LOCKING) || fhp == NULL);
+	DB_ASSERT(dbenv, LF_ISSET(DB_FCNTL_LOCKING) || fhp == NULL);
 
 	/*
 	 * Lock environment to protect file open.  That will enable us to
@@ -957,16 +952,17 @@ retry:	if (LOCKING_ON(dbenv)) {
 	GET_ENVLOCK(dbenv, dbp->lid, &elock);
 
 	/* Open database. */
-	if (F_ISSET(dbp, DB_AM_INMEM))
-		ret = __db_dbenv_mpool(dbp, name, flags);
-	else if (fhp == NULL)
+	if (F_ISSET(dbp, DB_AM_INMEM)) {
+		if ((ret = __db_dbenv_mpool(dbp, name, flags)) == 0)
+			ret = __os_strdup(dbenv, name, &dbp->dname);
+	} else if (fhp == NULL)
 		ret = __os_open(dbenv, name, DB_OSO_RDONLY, 0, &fhp);
 	if (ret != 0)
 		goto err;
 
 	/* Get meta-data */
 	if (F_ISSET(dbp, DB_AM_INMEM))
-		ret = __fop_inmem_read_meta(dbp, name, flags);
+		ret = __fop_inmem_read_meta(dbp, txn, name, flags);
 	else if ((ret = __fop_read_meta(dbenv,
 	    name, mbuf, sizeof(mbuf), fhp, 0, NULL)) == 0)
 		ret = __db_meta_setup(dbenv,
@@ -1008,25 +1004,7 @@ retry:	if (LOCKING_ON(dbenv)) {
 		goto retry;
 	} else if ((ret = __ENV_LPUT(dbenv, elock)) != 0)
 		goto err;
-
-	/* Check if the file is already open. */
-	if ((ret = __memp_get_refcnt(dbenv, dbp->fileid, &refcnt)) != 0)
-		goto err;
-
-	/*
-	 * Now, error check.  If the file is already open, then we must have
-	 * it open (since we got the lock) and we need to panic, because this
-	 * is a self deadlock and the application has a bug. If the file isn't
-	 * open, but it's in the midst of a rename then this file doesn't
-	 * really exist.  Note that in-memory files will always have an
-	 * artificially incremented ref count.
-	 */
-	if ((F_ISSET(dbp, DB_AM_INMEM) && refcnt != 2) ||
-	    (!F_ISSET(dbp, DB_AM_INMEM) && refcnt != 0)) {
-		__db_err(dbenv,
-"Attempting to remove file open in current transaction causing self-deadlock");
-		ret = __db_panic(dbenv, DB_LOCK_DEADLOCK);
-	} else if (F_ISSET(dbp, DB_AM_IN_RENAME))
+	else if (F_ISSET(dbp, DB_AM_IN_RENAME))
 		ret = ENOENT;
 
 	if (0) {
@@ -1081,13 +1059,13 @@ __fop_read_meta(dbenv, name, buf, size, fhp, errok, nbytesp)
 
 	if (ret != 0) {
 		if (!errok)
-			__db_err(dbenv, "%s: %s", name, db_strerror(ret));
+			__db_err(dbenv, ret, "%s", name);
 		goto err;
 	}
 
 	if (nr != size) {
 		if (!errok)
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "%s: unexpected file type or format", name);
 		ret = EINVAL;
 	}
@@ -1125,7 +1103,7 @@ __fop_dummy(dbp, txn, old, new, flags)
 	stxn = NULL;
 	tmpdbp = NULL;
 
-	DB_ASSERT(txn != NULL);
+	DB_ASSERT(dbenv, txn != NULL);
 	locker = txn->txnid;
 
 	/*
@@ -1214,11 +1192,11 @@ __fop_dbrename(dbp, old, new)
 	 */
 	GET_ENVLOCK(dbenv, dbp->lid, &elock);
 	ret = F_ISSET(dbp, DB_AM_INMEM) ? ENOENT :
-	    __os_exists(real_new, NULL);
+	    __os_exists(dbenv, real_new, NULL);
 
 	if (ret == 0) {
 		ret = EEXIST;
-		__db_err(dbenv, "rename: file %s exists", real_new);
+		__db_errx(dbenv, "rename: file %s exists", real_new);
 		goto err;
 	}
 
@@ -1292,9 +1270,7 @@ __fop_inmem_create(dbp, name, txn, flags)
 		goto err;
 
 	if (name != NULL && DBENV_LOGGING(dbenv)) {
-		memset(&name_dbt, 0, sizeof(name_dbt));
-		name_dbt.data = (void *)name;
-		name_dbt.size = (u_int32_t)strlen(name) + 1;
+		DB_INIT_DBT(name_dbt, name, strlen(name) + 1);
 		memset(&fid_dbt, 0, sizeof(fid_dbt));
 		fid_dbt.data = dbp->fileid;
 		fid_dbt.size = DB_FILE_ID_LEN;
@@ -1312,8 +1288,9 @@ err:
 }
 
 static int
-__fop_inmem_read_meta(dbp, name, flags)
+__fop_inmem_read_meta(dbp, txn, name, flags)
 	DB *dbp;
+	DB_TXN *txn;
 	const char *name;
 	u_int32_t flags;
 {
@@ -1322,7 +1299,7 @@ __fop_inmem_read_meta(dbp, name, flags)
 	int ret, t_ret;
 
 	pgno  = PGNO_BASE_MD;
-	if ((ret = __memp_fget(dbp->mpf, &pgno, 0, &metap)) != 0)
+	if ((ret = __memp_fget(dbp->mpf, &pgno, txn, 0, &metap)) != 0)
 		return (ret);
 	ret = __db_meta_setup(dbp->dbenv, dbp, name, metap, flags, 1);
 
@@ -1389,8 +1366,8 @@ __fop_inmem_dummy(dbp, txn, name, mbuf)
 		return (ret);
 
 	pgno  = PGNO_BASE_MD;
-	if ((ret =
-	    __memp_fget(dbp->mpf, &pgno, DB_MPOOL_CREATE, &metap)) != 0)
+	if ((ret = __memp_fget(dbp->mpf, &pgno, txn,
+	    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &metap)) != 0)
 		return (ret);
 	/* Check file existed. */
 	if (metap->magic != 0)
@@ -1401,9 +1378,8 @@ __fop_inmem_dummy(dbp, txn, name, mbuf)
 	/* Copy the fileid onto the meta-data page. */
 	memcpy(metap->uid, dbp->fileid, DB_FILE_ID_LEN);
 
-	if ((t_ret = __memp_fput(dbp->mpf,
-	    metap, ret == 0 ? DB_MPOOL_DIRTY : DB_MPOOL_DISCARD)) != 0 &&
-	    ret == 0)
+	if ((t_ret = __memp_fput(dbp->mpf, metap,
+	    ret == 0 ? 0 : DB_MPOOL_DISCARD)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (ret != 0)
@@ -1432,10 +1408,10 @@ __fop_ondisk_swap(dbp, tmpdbp, txn, old, new, back, locker, flags)
 	u_int8_t mbuf[DBMETASIZE];
 	u_int32_t child_txnid, dflags;
 
-	DB_ASSERT(txn != NULL);
-	DB_ASSERT(old != NULL);
-
 	dbenv = dbp->dbenv;
+	DB_ASSERT(dbenv, txn != NULL);
+	DB_ASSERT(dbenv, old != NULL);
+
 	realold = realnew = NULL;
 	LOCK_INIT(elock);
 	fhp = NULL;
@@ -1447,7 +1423,7 @@ __fop_ondisk_swap(dbp, tmpdbp, txn, old, new, back, locker, flags)
 
 	/* Now, lock the name space while we initialize this file. */
 retry:	GET_ENVLOCK(dbenv, locker, &elock);
-	if (__os_exists(realnew, NULL) == 0) {
+	if (__os_exists(dbenv, realnew, NULL) == 0) {
 		/*
 		 * It is possible that the only reason this file exists is
 		 * because we've done a previous rename of it and we have
@@ -1563,14 +1539,12 @@ retry:	GET_ENVLOCK(dbenv, locker, &elock);
 
 	/* Now log the child information in the parent. */
 	memset(&fiddbt, 0, sizeof(fiddbt));
-	memset(&tmpdbt, 0, sizeof(fiddbt));
-	memset(&namedbt, 0, sizeof(namedbt));
 	fiddbt.data = dbp->fileid;
 	fiddbt.size = DB_FILE_ID_LEN;
+	memset(&tmpdbt, 0, sizeof(fiddbt));
 	tmpdbt.data = tmpdbp->fileid;
 	tmpdbt.size = DB_FILE_ID_LEN;
-	namedbt.data = (void *)old;
-	namedbt.size = (u_int32_t)strlen(old) + 1;
+	DB_INIT_DBT(namedbt, old, strlen(old) + 1);
 	if ((t_ret = __fop_file_remove_log(dbenv,
 	    parent, &lsn, 0, &fiddbt, &tmpdbt, &namedbt,
 	    (u_int32_t)DB_APP_DATA, child_txnid)) != 0 && ret == 0)
@@ -1626,7 +1600,7 @@ retry:	LOCK_INIT(elock);
 		 * and allow this rename to succeed if that's the case.
 		 */
 
-		if ((ret = __fop_inmem_read_meta(tmpdbp, new, 0)) != 0) {
+		if ((ret = __fop_inmem_read_meta(tmpdbp, txn, new, 0)) != 0) {
 			ret = EEXIST;
 			goto err;
 		}
@@ -1647,7 +1621,7 @@ retry:	LOCK_INIT(elock);
 			    locker, DB_LOCK_WRITE, &elock, 0)) != 0)
 				goto err;
 
-			/* We now have the write lock; release it and start over. */
+			/* We have the write lock; release it and start over. */
 			(void)__lock_put(dbenv, &tmpdbp->handle_lock);
 			(void)__db_close(tmpdbp, NULL, DB_NOSYNC);
 			(void)__ENV_LPUT(dbenv, elock);
@@ -1664,23 +1638,16 @@ retry:	LOCK_INIT(elock);
 	/* Log the renames. */
 	if (LOGGING_ON(dbenv)) {
 		/* Rename old to new. */
-		memset(&fid_dbt, 0, sizeof(fid_dbt));
-		fid_dbt.data = olddbp->fileid;
-		fid_dbt.size = DB_FILE_ID_LEN;
-		memset(&n1_dbt, 0, sizeof(n1_dbt));
-		n1_dbt.data = (void *)old;
-		n1_dbt.size = (u_int32_t)strlen(old) + 1;
-		memset(&n2_dbt, 0, sizeof(n2_dbt));
-		n2_dbt.data = (void *)new;
-		n2_dbt.size = (u_int32_t)strlen(new) + 1;
+		DB_INIT_DBT(fid_dbt, olddbp->fileid, DB_FILE_ID_LEN);
+		DB_INIT_DBT(n1_dbt, old, strlen(old) + 1);
+		DB_INIT_DBT(n2_dbt, new, strlen(new) + 1);
 		if ((ret = __crdel_inmem_rename_log(dbenv, txn, &lsn, 0,
 		    &n1_dbt, &n2_dbt, &fid_dbt)) != 0)
 			goto err;
 
 		/* Rename back to old */
 		fid_dbt.data = backdbp->fileid;
-		n2_dbt.data = (char *)back;
-		n2_dbt.size = (u_int32_t)strlen(back) + 1;
+		DB_SET_DBT(n2_dbt, back, strlen(back) + 1);
 		if ((ret = __crdel_inmem_rename_log(dbenv, txn, &lsn, 0,
 		    &n2_dbt, &n1_dbt, &fid_dbt)) != 0)
 			goto err;
@@ -1716,7 +1683,7 @@ retry:	LOCK_INIT(elock);
 	 */
 	LOCK_INIT(tmpdbp->handle_lock);
 
-	DB_ASSERT(txn != NULL);
+	DB_ASSERT(dbenv, txn != NULL);
 
 	/* Commit the child. */
 	ret = __txn_commit(txn, 0);

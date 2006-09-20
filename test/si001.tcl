@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: si001.tcl,v 12.8 2005/10/26 18:44:02 carol Exp $
+# $Id: si001.tcl,v 12.11 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	si001
 # TEST	Secondary index put/delete with lorder test
@@ -33,13 +33,13 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 	set pomethod [convert_method $pmethod]
 
 	# Renumbering recno databases can't be used as primaries.
-	if { [is_rrecno $pmethod] == 1 } { 
+	if { [is_rrecno $pmethod] == 1 } {
 		puts "Skipping si$tnum for method $pmethod"
-		return 
+		return
 	}
 
 	# Method/args for all the secondaries.  If only one method
-	# was specified, assume the same method (for btree or hash) 
+	# was specified, assume the same method (for btree or hash)
 	# and a standard number of secondaries.  If primary is not
 	# btree or hash, force secondaries to be one btree, one hash.
 	set methods [lrange $methods 1 end]
@@ -74,7 +74,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 		if { [lsearch -exact $envflags "-thread"] != -1 &&\
 			[is_queue $pmethod] == 1 } {
 			puts "Skipping si$tnum for threaded env"
-			return 
+			return
 		}
 		set testdir [get_home $env]
 	}
@@ -98,9 +98,9 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 				puts "Si$tnum: Using swapped\
 				    byteorder $swappedargs for secondaries."
 			}
-			
+
 			puts "si$tnum\
-			    \{\[ list $pmethod $methods \]\} $nentries" 
+			    \{\[ list $pmethod $methods \]\} $nentries"
 			cleanup $testdir $env
 
 			# Open primary.
@@ -137,7 +137,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 				}
 				set keys($n) $key
 				set data($n) [pad_data $pmethod $datum]
-		
+
 				set ret [eval {$pdb put}\
 				    {$key [chop_data $pmethod $datum]}]
 				error_check_good put($n) $ret 0
@@ -146,7 +146,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 
 			check_secondaries\
 			    $pdb $sdbs $nentries keys data "Si$tnum.a"
-		
+
 			puts "\tSi$tnum.b: Put/overwrite loop"
 			for { set n 0 } { $n < $nentries } { incr n } {
 				set newd $data($n).$keys($n)
@@ -157,9 +157,9 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 			}
 			check_secondaries\
 			    $pdb $sdbs $nentries keys data "Si$tnum.b"
-		
-			# Delete the second half of the entries through 
-			# the primary.  We do the second half so we can 
+
+			# Delete the second half of the entries through
+			# the primary.  We do the second half so we can
 			# just pass keys(0 ... n/2) to check_secondaries.
 			set half [expr $nentries / 2]
 			puts "\tSi$tnum.c:\
@@ -170,8 +170,8 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 			}
 			check_secondaries\
 			    $pdb $sdbs $half keys data "Si$tnum.c"
-		
-			# Delete half of what's left through 
+
+			# Delete half of what's left through
 			# the first secondary.
 			set quar [expr $half / 2]
 			puts "\tSi$tnum.d:\
@@ -187,7 +187,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 			check_secondaries\
 			    $pdb $sdbs $quar keys data "Si$tnum.d"
 			set left $quar
-	
+
 			# For queue and recno only, test append, adding back
 			# a quarter of the original number of entries.
 			if { [is_record_based $pmethod] == 1 } {
@@ -206,19 +206,19 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 					set datum $str
 					set keys($n) $key
 					set data($n) [pad_data $pmethod $datum]
-		
+
 					set ret [eval {$pdb put} \
 					    {$key [chop_data $pmethod $datum]}]
 					error_check_good put($n) $ret 0
 				}
 				close $did
-		
+
 				check_secondaries\
 				    $pdb $sdbs $half keys data "Si$tnum.e"
 				set left $half
 			}
-	
-		
+
+
 			puts "\tSi$tnum.f:\
 			    Truncate primary, check secondaries are empty."
 			error_check_good truncate [$pdb truncate] $left
@@ -231,29 +231,29 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 				    sec_empty [string length $ret] 0
 				error_check_good cursor_close [$scursor close] 0
 			}
-		
-		
+
+
 			puts "\tSi$tnum.g: Closing/disassociating primary first"
 			error_check_good primary_close [$pdb close] 0
 			foreach sdb $sdbs {
 				error_check_good secondary_close [$sdb close] 0
 			}
-		
-			# Don't close the env if this test was given one. 
-			# Skip the test of truncating the secondary since 
+
+			# Don't close the env if this test was given one.
+			# Skip the test of truncating the secondary since
 			# we can't close and reopen the outside env.
 			if { $eindex == -1 } {
 				error_check_good env_close [$env close] 0
-	
-				# Reopen with _noerr for test of 
+
+				# Reopen with _noerr for test of
 				# truncate secondary.
 				puts "\tSi$tnum.h:\
 				    Truncate secondary (should fail)"
-	
+
 				set env [berkdb_env_noerr\
 				    -create -home $testdir]
 				error_check_good\
-				    env_open [is_valid_env $env] TRUE	
+				    env_open [is_valid_env $env] TRUE
 
 				set pdb [eval {berkdb_open_noerr -create -env}\
 				    $env $pomethod $pargs $pname]
@@ -270,7 +270,7 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 			}
 		}
 	}
-	# If this test made the last env, close it.  
+	# If this test made the last env, close it.
 	if { $eindex == -1 } {
 		error_check_good env_close [$env close] 0
 	}

@@ -1,26 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_server_cxxproc.cpp,v 12.6 2005/07/21 18:21:34 bostic Exp $
+ * $Id: db_server_cxxproc.cpp,v 12.12 2006/08/24 14:46:29 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <rpc/rpc.h>
-
-#include <string.h>
-#endif
-
-#include "db_server.h"
-
 #include "db_int.h"
 #include "db_cxx.h"
+#include "db_server.h"
 
 extern "C" {
 #include "dbinc/db_server_int.h"
@@ -58,6 +49,37 @@ __env_set_cachesize_proc(
 	dbenv = (DbEnv *)dbenv_ctp->ct_anyp;
 
 	ret = dbenv->set_cachesize(gbytes, bytes, ncache);
+
+	replyp->status = ret;
+	return;
+}
+
+void
+__env_cdsgroup_begin_proc(u_int dbenvcl_id, __env_cdsgroup_begin_reply *replyp)
+{
+	DbEnv *dbenv;
+	DbTxn *txnp;
+	ct_entry *ctp, *dbenv_ctp;
+	int ret;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DbEnv *)dbenv_ctp->ct_anyp;
+
+	ctp = new_ct_ent(&replyp->status);
+	if (ctp == NULL)
+		return;
+
+	ret = dbenv->cdsgroup_begin(&txnp);
+	if (ret == 0) {
+		ctp->ct_txnp = txnp;
+		ctp->ct_type = CT_TXN;
+		ctp->ct_parent = NULL;
+		ctp->ct_envparent = dbenv_ctp;
+		replyp->txnidcl_id = ctp->ct_id;
+		__dbsrv_settimeout(ctp, dbenv_ctp->ct_timeout);
+		__dbsrv_active(ctp);
+	} else
+		__dbclear_ctp(ctp);
 
 	replyp->status = ret;
 	return;
@@ -678,7 +700,7 @@ __db_create_proc(
 	 * We actually require env's for databases.  The client should
 	 * have caught it, but just in case.
 	 */
-	DB_ASSERT(dbenv != NULL);
+	DB_ASSERT(NULL, dbenv != NULL);
 	dbp = new Db(dbenv, flags);
 	dbp_ctp->ct_dbp = dbp;
 	dbp_ctp->ct_type = CT_DB;
@@ -1808,7 +1830,7 @@ __db_join_proc(
 	 * the same transaction, so just check the first.
 	 */
 	ctp = get_tableent(*curs);
-	DB_ASSERT(ctp->ct_type == CT_CURSOR);
+	DB_ASSERT(dbp->get_DB()->dbenv, ctp->ct_type == CT_CURSOR);
 	/*
 	 * If we are using a transaction, set the join activity timer
 	 * to point to the parent transaction.
@@ -1831,7 +1853,7 @@ __db_join_proc(
 		 * we know they are part of a join list and we can distinguish
 		 * them and later restore them when the join cursor is closed.
 		 */
-		DB_ASSERT(ctp->ct_type == CT_CURSOR);
+		DB_ASSERT(dbp->get_DB()->dbenv, ctp->ct_type == CT_CURSOR);
 		ctp->ct_type |= CT_JOIN;
 		ctp->ct_origp = ctp->ct_activep;
 		/*

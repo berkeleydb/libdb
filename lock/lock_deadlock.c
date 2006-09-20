@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock_deadlock.c,v 12.10 2005/10/07 20:21:30 ubell Exp $
+ * $Id: lock_deadlock.c,v 12.17 2006/08/24 14:46:10 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
@@ -99,7 +92,7 @@ __lock_detect_pp(dbenv, flags, atype, abortp)
 	case DB_LOCK_YOUNGEST:
 		break;
 	default:
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	    "DB_ENV->lock_detect: unknown deadlock detection mode specified");
 		return (EINVAL);
 	}
@@ -135,7 +128,7 @@ __lock_detect(dbenv, atype, abortp)
 	 * If this environment is a replication client, then we must use the
 	 * MINWRITE detection discipline.
 	 */
-	if (__rep_is_client(dbenv))
+	if (IS_REP_CLIENT(dbenv))
 		atype = DB_LOCK_MINWRITE;
 
 	free_me = NULL;
@@ -204,8 +197,8 @@ __lock_detect(dbenv, atype, abortp)
 	 */
 	if (TXN_ON(dbenv)) {
 		TXN_SYSTEM_LOCK(dbenv);
-		txn_max = ((DB_TXNREGION *)((DB_TXNMGR *)
-		    dbenv->tx_handle)->reginfo.primary)->cur_maxid;
+		txn_max = ((DB_TXNREGION *)
+		    dbenv->tx_handle->reginfo.primary)->cur_maxid;
 		TXN_SYSTEM_UNLOCK(dbenv);
 	} else
 		txn_max = TXN_MAXIMUM;
@@ -344,7 +337,7 @@ dokill:		if (killid == BAD_KILLID) {
 		 */
 		if (status != 0) {
 			if (status != DB_ALREADY_ABORTED)
-				__db_err(dbenv,
+				__db_errx(dbenv,
 				    "warning: unable to abort locker %lx",
 				    (u_long)idmap[killid].id);
 		} else if (FLD_ISSET(dbenv->verbose, DB_VERB_DEADLOCK))
@@ -400,12 +393,8 @@ __dd_build(dbenv, atype, bmp, nlockers, allocp, idmap)
 	 * needs to expect this.
 	 */
 	if (atype == DB_LOCK_EXPIRE) {
-		for (op = SH_TAILQ_FIRST(&region->dd_objs, __db_lockobj);
-		    op != NULL;
-		    op = SH_TAILQ_NEXT(op, dd_links, __db_lockobj))
-			for (lp = SH_TAILQ_FIRST(&op->waiters, __db_lock);
-			    lp != NULL;
-			    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
+		SH_TAILQ_FOREACH(op, &region->dd_objs, dd_links, __db_lockobj)
+			SH_TAILQ_FOREACH(lp, &op->waiters, links, __db_lock) {
 				LOCKER_LOCK(lt, region, lp->holder, ndx);
 				if ((ret = __lock_getlocker(lt,
 				    lp->holder, ndx, 0, &lockerp)) != 0)
@@ -482,9 +471,8 @@ retry:	count = region->stat.st_nlockers;
 	/*
 	 * First we go through and assign each locker a deadlock detector id.
 	 */
-	for (id = 0, lip = SH_TAILQ_FIRST(&region->lockers, __db_locker);
-	    lip != NULL;
-	    lip = SH_TAILQ_NEXT(lip, ulinks, __db_locker)) {
+	id = 0;
+	SH_TAILQ_FOREACH(lip, &region->lockers, ulinks, __db_locker) {
 		if (lip->master_locker == INVALID_ROFF) {
 			lip->dd_id = id++;
 			id_array[lip->dd_id].id = lip->id;
@@ -514,17 +502,14 @@ retry:	count = region->stat.st_nlockers;
 	 * list and add an entry in the waitsfor matrix for each waiter/holder
 	 * combination.
 	 */
-	for (op = SH_TAILQ_FIRST(&region->dd_objs, __db_lockobj);
-	    op != NULL; op = SH_TAILQ_NEXT(op, dd_links, __db_lockobj)) {
+	SH_TAILQ_FOREACH(op, &region->dd_objs, dd_links, __db_lockobj) {
 		CLEAR_MAP(tmpmap, nentries);
 
 		/*
 		 * First we go through and create a bit map that
 		 * represents all the holders of this object.
 		 */
-		for (lp = SH_TAILQ_FIRST(&op->holders, __db_lock);
-		    lp != NULL;
-		    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
+		SH_TAILQ_FOREACH(lp, &op->holders, links, __db_lock) {
 			LOCKER_LOCK(lt, region, lp->holder, ndx);
 			if ((ret = __lock_getlocker(lt,
 			    lp->holder, ndx, 0, &lockerp)) != 0)
@@ -637,7 +622,7 @@ retry:	count = region->stat.st_nlockers;
 		LOCKER_LOCK(lt, region, id_array[id].id, ndx);
 		if ((ret = __lock_getlocker(lt,
 		    id_array[id].id, ndx, 0, &lockerp)) != 0) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "No locks for locker %lu", (u_long)id_array[id].id);
 			continue;
 		}

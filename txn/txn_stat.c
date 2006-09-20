@@ -1,31 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: txn_stat.c,v 12.8 2005/10/07 20:21:43 ubell Exp $
+ * $Id: txn_stat.c,v 12.18 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -38,7 +20,11 @@ static int  __txn_compare __P((const void *, const void *));
 static int  __txn_print_all __P((DB_ENV *, u_int32_t));
 static int  __txn_print_stats __P((DB_ENV *, u_int32_t));
 static int  __txn_stat __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));
-static void __txn_xid_stats __P((DB_ENV *, DB_MSGBUF *, DB_TXN_ACTIVE *));
+static char *__txn_status __P((DB_TXN_ACTIVE *));
+static void __txn_gid __P((DB_ENV *, DB_MSGBUF *, DB_TXN_ACTIVE *));
+
+#define	XID_FIELD_IS_SET(p)						\
+	((p)->xa_status != 0 || (p)->status == TXN_PREPARED)
 
 /*
  * __txn_stat_pp --
@@ -127,9 +113,13 @@ __txn_stat(dbenv, statp, flags)
 		stats->st_txnarray[ndx].pid = td->pid;
 		stats->st_txnarray[ndx].tid = td->tid;
 		stats->st_txnarray[ndx].lsn = td->begin_lsn;
-		if ((stats->st_txnarray[ndx].xa_status = td->xa_status) != 0)
+		stats->st_txnarray[ndx].read_lsn = td->read_lsn;
+		stats->st_txnarray[ndx].mvcc_ref = td->mvcc_ref;
+		stats->st_txnarray[ndx].status = td->status;
+		stats->st_txnarray[ndx].xa_status = td->xa_status;
+		if (XID_FIELD_IS_SET(td))
 			memcpy(stats->st_txnarray[ndx].xid,
-			    td->xid, DB_XIDDATASIZE);
+			    td->xid, sizeof(td->xid));
 		if (td->name != INVALID_ROFF) {
 			(void)strncpy(stats->st_txnarray[ndx].name,
 			    R_ADDR(&mgr->reginfo, td->name),
@@ -149,6 +139,8 @@ __txn_stat(dbenv, statp, flags)
 		region->stat.st_maxtxns = region->maxtxns;
 		region->stat.st_maxnactive =
 		    region->stat.st_nactive = stats->st_nactive;
+		region->stat.st_maxnsnapshot =
+		    region->stat.st_nsnapshot = stats->st_nsnapshot;
 	}
 
 	TXN_SYSTEM_UNLOCK(dbenv);
@@ -225,9 +217,10 @@ __txn_print_stats(dbenv, flags)
 {
 	DB_MSGBUF mb;
 	DB_TXN_STAT *sp;
+	DB_TXN_ACTIVE *txn;
 	u_int32_t i;
 	int ret;
-	char buf[DB_THREADID_STRLEN];
+	char buf[DB_THREADID_STRLEN], time_buf[CTIME_BUFLEN];
 
 	if ((ret = __txn_stat(dbenv, &sp, flags)) != 0)
 		return (ret);
@@ -242,7 +235,7 @@ __txn_print_stats(dbenv, flags)
 		__db_msg(dbenv, "0\tNo checkpoint timestamp");
 	else
 		__db_msg(dbenv, "%.24s\tCheckpoint timestamp",
-		    ctime(&sp->st_time_ckp));
+		    __db_ctime(&sp->st_time_ckp, time_buf));
 	__db_msg(dbenv, "%#lx\tLast transaction ID allocated",
 	    (u_long)sp->st_last_txnid);
 	__db_dl(dbenv, "Maximum number of active transactions configured",
@@ -256,6 +249,9 @@ __txn_print_stats(dbenv, flags)
 	    "Number of transactions aborted", (u_long)sp->st_naborts);
 	__db_dl(dbenv,
 	    "Number of transactions committed", (u_long)sp->st_ncommits);
+	__db_dl(dbenv, "Snapshot transactions", (u_long)sp->st_nsnapshot);
+	__db_dl(dbenv, "Maximum snapshot transactions",
+	    (u_long)sp->st_maxnsnapshot);
 	__db_dl(dbenv,
 	    "Number of transactions restored", (u_long)sp->st_nrestores);
 
@@ -271,21 +267,26 @@ __txn_print_stats(dbenv, flags)
 	__db_msg(dbenv, "Active transactions:");
 	DB_MSGBUF_INIT(&mb);
 	for (i = 0; i < sp->st_nactive; ++i) {
+		txn = &sp->st_txnarray[i];
 		__db_msgadd(dbenv, &mb,
-	    "\t%lx: pid/thread %s; begin LSN: file/offset %lu/%lu",
-		    (u_long)sp->st_txnarray[i].txnid,
-		    dbenv->thread_id_string(dbenv,
-		    sp->st_txnarray[i].pid, sp->st_txnarray[i].tid, buf),
-		    (u_long)sp->st_txnarray[i].lsn.file,
-		    (u_long)sp->st_txnarray[i].lsn.offset);
-		if (sp->st_txnarray[i].parentid != 0)
-			__db_msgadd(dbenv, &mb, "; parent: %lx",
-			    (u_long)sp->st_txnarray[i].parentid);
-		if (sp->st_txnarray[i].xa_status != 0)
-			__txn_xid_stats(dbenv, &mb, &sp->st_txnarray[i]);
-		if (sp->st_txnarray[i].name[0] != '\0')
-			__db_msgadd(
-			    dbenv, &mb, "; \"%s\"", sp->st_txnarray[i].name);
+	    "\t%lx: %s; pid/thread %s; begin LSN: file/offset %lu/%lu",
+		    (u_long)txn->txnid, __txn_status(txn),
+		    dbenv->thread_id_string(dbenv, txn->pid, txn->tid, buf),
+		    (u_long)txn->lsn.file, (u_long)txn->lsn.offset);
+		if (txn->parentid != 0)
+			__db_msgadd(dbenv, &mb,
+			    "; parent: %lx", (u_long)txn->parentid);
+		if (!IS_MAX_LSN(txn->read_lsn))
+			__db_msgadd(dbenv, &mb, "; read LSN: %lu/%lu",
+			    (u_long)txn->read_lsn.file,
+			    (u_long)txn->read_lsn.offset);
+		if (txn->mvcc_ref != 0)
+			__db_msgadd(dbenv, &mb,
+			    "; mvcc refcount: %lu", (u_long)txn->mvcc_ref);
+		if (txn->name[0] != '\0')
+			__db_msgadd(dbenv, &mb, "; \"%s\"", txn->name);
+		if (XID_FIELD_IS_SET(txn))
+			__txn_gid(dbenv, &mb, txn);
 		DB_MSGBUF_FLUSH(dbenv, &mb);
 	}
 
@@ -309,6 +310,7 @@ __txn_print_all(dbenv, flags)
 	};
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
+	char time_buf[CTIME_BUFLEN];
 
 	mgr = dbenv->tx_handle;
 	region = mgr->reginfo.primary;
@@ -336,7 +338,8 @@ __txn_print_all(dbenv, flags)
 	STAT_LSN("Last checkpoint LSN", &region->last_ckp);
 	__db_msg(dbenv,
 	    "%.24s\tLast checkpoint timestamp",
-	    region->time_ckp == 0 ? "0" : ctime(&region->time_ckp));
+	    region->time_ckp == 0 ? "0" :
+	    __db_ctime(&region->time_ckp, time_buf));
 
 	__db_prflags(dbenv, NULL, region->flags, fn, NULL, "\tFlags");
 
@@ -353,47 +356,59 @@ __txn_print_all(dbenv, flags)
 	return (0);
 }
 
+static char *
+__txn_status(txn)
+	DB_TXN_ACTIVE *txn;
+{
+	switch (txn->xa_status) {
+	case 0:
+		switch (txn->status) {
+		case TXN_ABORTED:
+			return ("aborted");
+		case TXN_COMMITTED:
+			return ("committed");
+		case TXN_PREPARED:
+			return ("prepared");
+		case TXN_RUNNING:
+			return ("running");
+		default:
+			break;
+		}
+		break;
+	case TXN_XA_ABORTED:
+		return ("XA aborted");
+	case TXN_XA_DEADLOCKED:
+		return ("XA deadlocked");
+	case TXN_XA_ENDED:
+		return ("XA ended");
+	case TXN_XA_PREPARED:
+		return ("XA prepared");
+	case TXN_XA_STARTED:
+		return ("XA started");
+	case TXN_XA_SUSPENDED:
+		return ("XA suspended");
+	default:
+		break;
+	}
+	return ("unknown state");
+}
+
 static void
-__txn_xid_stats(dbenv, mbp, txn_active)
+__txn_gid(dbenv, mbp, txn)
 	DB_ENV *dbenv;
 	DB_MSGBUF *mbp;
-	DB_TXN_ACTIVE *txn_active;
+	DB_TXN_ACTIVE *txn;
 {
 	u_int32_t v, *xp;
 	u_int i;
 	int cnt;
-	const char *s;
 
-	switch (txn_active->xa_status) {
-	case TXN_XA_ABORTED:
-		s = "ABORTED";
-		break;
-	case TXN_XA_DEADLOCKED:
-		s = "DEADLOCKED";
-		break;
-	case TXN_XA_ENDED:
-		s = "ENDED";
-		break;
-	case TXN_XA_PREPARED:
-		s = "PREPARED";
-		break;
-	case TXN_XA_STARTED:
-		s = "STARTED";
-		break;
-	case TXN_XA_SUSPENDED:
-		s = "SUSPENDED";
-		break;
-	default:
-		s = "UNKNOWN STATE";
-		__db_err(dbenv,
-		    "XA: unknown state: %lu", (u_long)txn_active->xa_status);
-		break;
-	}
-	__db_msgadd(dbenv, mbp, "\tXA: %s; XID:\n\t\t", s == NULL ? "" : s);
-	for (cnt = 0, xp = (u_int32_t *)txn_active->xid,
-	    i = 0; i < DB_XIDDATASIZE; i += sizeof(u_int32_t)) {
+	__db_msgadd(dbenv, mbp, "\n\tGID/XID:");
+	for (cnt = 0, xp = (u_int32_t *)txn->xid, i = 0;;) {
 		memcpy(&v, xp++, sizeof(u_int32_t));
 		__db_msgadd(dbenv, mbp, "%#lx ", (u_long)v);
+		if ((i += sizeof(u_int32_t)) >= DB_XIDDATASIZE)
+			break;
 		if (++cnt == 4) {
 			DB_MSGBUF_FLUSH(dbenv, mbp);
 			__db_msgadd(dbenv, mbp, "\t\t");

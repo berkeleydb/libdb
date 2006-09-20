@@ -1,20 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: cxx_txn.cpp,v 12.2 2005/06/16 20:21:03 bostic Exp $
+ * $Id: cxx_txn.cpp,v 12.5 2006/08/24 14:45:13 bostic Exp $
  */
 
 #include "db_config.h"
 
-#include <errno.h>
+#include "db_int.h"
 
 #include "db_cxx.h"
 #include "dbinc/cxx_int.h"
 
-#include "db_int.h"
 #include "dbinc/txn.h"
 
 // Helper macro for simple methods that pass through to the

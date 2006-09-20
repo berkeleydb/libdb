@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep048script.tcl,v 12.1 2005/10/14 14:40:13 sue Exp $
+# $Id: rep048script.tcl,v 12.4 2006/08/24 14:46:38 bostic Exp $
 #
 # Rep048 script - toggle bulk transfer while updates are going on.
 
@@ -24,10 +24,7 @@ if { $argc != 1 } {
 # Initialize arguments
 set masterdir [ lindex $argv 0 ]
 
-# Join the queue env.  We assume the rep test convention of
-# placing the messages in $testdir/MSGQUEUEDIR.
-set queueenv [eval berkdb_env -home $testdir/MSGQUEUEDIR]
-error_check_good script_qenv_open [is_valid_env $queueenv] TRUE
+set is_repchild 1
 
 #
 # We need to set up our own machids.

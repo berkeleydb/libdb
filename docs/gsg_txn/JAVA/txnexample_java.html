@@ -6,7 +6,7 @@
     <title>Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="previous" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="next" href="inmem_txnexample_java.html" title="In-Memory Transaction Example" />
@@ -36,7 +36,7 @@
       </div>
       <p>
         The following Java code provides a fully functional example of a
-        multi-threaded transactional JE application. 
+        multi-threaded transactional DB application. 
         The example opens an environment and database, and then creates 5
         threads, each of which writes 500 records to the database. The keys
         used for these writes are pre-determined strings, while the data is
@@ -204,7 +204,7 @@ public class TxnGuide { </pre>
     the way, we make sure that every handle is free-threaded, and that the
     transactional subsystem is correctly initialized. Because this is a
     concurrent application, we also declare how we want deadlock detection
-    to be performed. In this case, we use JE's internal block detector
+    to be performed. In this case, we use DB's internal block detector
     to determine whether a deadlock has occurred when a thread attempts to
     acquire a lock. We also indicate that we want the deadlocked thread
     with the <span class="emphasis"><em>youngest</em></span> lock to receive deadlock
@@ -329,15 +329,12 @@ public class TxnGuide { </pre>
     private TxnGuide() {}
 
     private static void parseArgs(String args[]) {
-        int nArgs = args.length;
         for(int i = 0; i &lt; args.length; ++i) {
             if (args[i].startsWith(&quot;-&quot;)) {
                 switch(args[i].charAt(1)) {
                     case 'h':
-                        if (i &lt; nArgs - 1) {
-                            myEnvPath = new String(args[++i]);
-                        }
-                    break;
+                        myEnvPath = new String(args[++i]);
+                        break;
                     default:
                         usage();
                 }
@@ -360,7 +357,7 @@ public class TxnGuide { </pre>
     need to show the class that we will be placing into the database. This
     class is fairly minimal. It simply allows you to store and retrieve an
     <tt class="literal">int</tt>, a <tt class="literal">String</tt>, and a
-    <tt class="literal">double</tt>. We will be using the Sleepycat bind API from
+    <tt class="literal">double</tt>. We will be using the DB bind API from
     within the writer thread to serialize instances of this class and place
     them into our database.
 </p>
@@ -423,7 +420,7 @@ public class PayloadData implements Serializable {
         </div>
         <p>
                 In order to show off some of the ACID properties provided
-                by JE's transactional support,
+                by DB's transactional support,
                 <tt class="literal">DBWriter.java</tt> does some things in a less
                 efficient way than you would probably decide to use in a
                 true production application. First, it groups 10 database
@@ -478,7 +475,7 @@ public class DBWriter extends Thread
     for the environment and the database. We also obtain a handle for an
     <tt class="classname">EntryBinding</tt>. We will use this to serialize
     <tt class="classname">PayloadData</tt> class instances (see <a href="txnexample_java.html#payloaddata">PayloadData.java</a>) for storage in
-    the database.  The random number generator that we instatiate is used
+    the database.  The random number generator that we instantiate is used
     to generate unique data for storage in the database.  The
     <tt class="literal">MAX_RETRY</tt> variable is used to define how many times
     we will retry a transaction in the face of a deadlock. And, finally,
@@ -520,7 +517,8 @@ public class DBWriter extends Thread
     public void run () { </pre>
         <p>
     The first thing we do is get a <tt class="literal">null</tt> transaction
-    handle before going into our main loop.
+    handle before going into our main loop. We also begin the top transaction loop here that causes our application to
+    perform 50 transactions.
 </p>
         <pre class="programlisting">        Transaction txn = null;
 
@@ -621,7 +619,7 @@ public class DBWriter extends Thread
         point while the cursor waits for the read lock it has
         requested.  Because that read lock will never be released (the thread
         can never make any forward progress), this represents a
-        self-deadlock for the the thread.
+        self-deadlock for the thread.
     </p>
         <p>
         There are three ways to prevent this self-deadlock:
@@ -776,7 +774,7 @@ public class DBWriter extends Thread
       <p>
     This completes our transactional example. If you would like to
     experiment with this code, you can find the example in the following
-    location in your JE distribution:
+    location in your DB distribution:
 </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/src/db/txn</pre>
     </div>

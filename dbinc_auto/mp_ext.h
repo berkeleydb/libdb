@@ -7,15 +7,16 @@ extern "C" {
 #endif
 
 int __memp_alloc __P((DB_MPOOL *, REGINFO *, MPOOLFILE *, size_t, roff_t *, void *));
+void __memp_free __P((REGINFO *, MPOOLFILE *, void *));
 #ifdef DIAGNOSTIC
-void __memp_check_order __P((DB_MPOOL_HASH *));
+void __memp_check_order __P((DB_ENV *, DB_MPOOL_HASH *));
 #endif
 int __memp_bhwrite __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, int));
-int __memp_pgread __P((DB_MPOOLFILE *, db_mutex_t, BH *, int));
+int __memp_pgread __P((DB_MPOOLFILE *, DB_MPOOL_HASH *, BH *, int));
 int __memp_pg __P((DB_MPOOLFILE *, BH *, int));
 int __memp_bhfree __P((DB_MPOOL *, DB_MPOOL_HASH *, BH *, u_int32_t));
-int __memp_fget_pp __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
-int __memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, u_int32_t, void *));
+int __memp_fget_pp __P((DB_MPOOLFILE *, db_pgno_t *, DB_TXN *, u_int32_t, void *));
+int __memp_fget __P((DB_MPOOLFILE *, db_pgno_t *, DB_TXN *, u_int32_t, void *));
 int __memp_fcreate_pp __P((DB_ENV *, DB_MPOOLFILE **, u_int32_t));
 int __memp_fcreate __P((DB_ENV *, DB_MPOOLFILE **));
 int __memp_set_clear_len __P((DB_MPOOLFILE *, u_int32_t));
@@ -40,7 +41,9 @@ int __memp_fput_pp __P((DB_MPOOLFILE *, void *, u_int32_t));
 int __memp_fput __P((DB_MPOOLFILE *, void *, u_int32_t));
 int __memp_fset_pp __P((DB_MPOOLFILE *, void *, u_int32_t));
 int __memp_fset __P((DB_MPOOLFILE *, void *, u_int32_t));
-void __memp_dbenv_create __P((DB_ENV *));
+int __memp_dirty __P((DB_MPOOLFILE *, void *, DB_TXN *, u_int32_t));
+int __memp_dbenv_create __P((DB_ENV *));
+void __memp_dbenv_destroy __P((DB_ENV *));
 int __memp_get_cachesize __P((DB_ENV *, u_int32_t *, u_int32_t *, int *));
 int __memp_set_cachesize __P((DB_ENV *, u_int32_t, u_int32_t, int));
 int __memp_get_mp_max_openfd __P((DB_ENV *, int *));
@@ -50,12 +53,17 @@ int __memp_set_mp_max_write __P((DB_ENV *, int, int));
 int __memp_get_mp_mmapsize __P((DB_ENV *, size_t *));
 int __memp_set_mp_mmapsize __P((DB_ENV *, size_t));
 int __memp_nameop __P((DB_ENV *, u_int8_t *, const char *, const char *, const char *, int));
-int __memp_get_refcnt __P((DB_ENV *, u_int8_t *, u_int32_t *));
 int __memp_ftruncate __P((DB_MPOOLFILE *, db_pgno_t, u_int32_t));
 int __memp_alloc_freelist __P((DB_MPOOLFILE *, u_int32_t, db_pgno_t **));
-void __memp_free_freelist __P((DB_MPOOLFILE *));
+int __memp_free_freelist __P((DB_MPOOLFILE *));
 int __memp_get_freelist __P(( DB_MPOOLFILE *, u_int32_t *, db_pgno_t **));
 int __memp_extend_freelist __P(( DB_MPOOLFILE *, u_int32_t , db_pgno_t **));
+u_int32_t __memp_bh_priority __P((BH *));
+void __memp_bucket_reorder __P((DB_ENV *, DB_MPOOL_HASH *, BH *));
+int __memp_bh_settxn __P((DB_MPOOL *, MPOOLFILE *mfp, BH *, void *));
+int __memp_skip_curadj __P((DBC *, db_pgno_t));
+int __memp_bh_freeze __P((DB_MPOOL *, REGINFO *, DB_MPOOL_HASH *, BH *, int *));
+int __memp_bh_thaw __P((DB_MPOOL *, REGINFO *, DB_MPOOL_HASH *, BH *, BH *));
 int __memp_open __P((DB_ENV *));
 u_int32_t __memp_region_mutex_count __P((DB_ENV *));
 int __memp_dbenv_refresh __P((DB_ENV *));
@@ -65,6 +73,7 @@ int __memp_stat_pp __P((DB_ENV *, DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_
 int __memp_stat_print_pp __P((DB_ENV *, u_int32_t));
 int  __memp_stat_print __P((DB_ENV *, u_int32_t));
 void __memp_stat_hash __P((REGINFO *, MPOOL *, u_int32_t *));
+int __memp_walk_files __P((DB_ENV *, MPOOL *, int (*) __P((DB_ENV *, MPOOLFILE *, void *, u_int32_t *, u_int32_t)), void *, u_int32_t *, u_int32_t));
 int __memp_sync_pp __P((DB_ENV *, DB_LSN *));
 int __memp_sync __P((DB_ENV *, DB_LSN *));
 int __memp_fsync_pp __P((DB_MPOOLFILE *));

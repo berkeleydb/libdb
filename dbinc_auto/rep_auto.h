@@ -4,6 +4,7 @@
 #define	__rep_AUTO_H
 typedef struct ___rep_update_args {
 	DB_LSN	first_lsn;
+	u_int32_t	first_vers;
 	u_int32_t	num_files;
 } __rep_update_args;
 

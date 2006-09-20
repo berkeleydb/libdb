@@ -1,21 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2005-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: env_failchk.c,v 12.17 2005/11/07 14:51:52 bostic Exp $
+ * $Id: env_failchk.c,v 12.28 2006/08/24 14:45:39 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/mutex_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
@@ -47,7 +41,7 @@ __env_failchk_pp(dbenv, flags)
 	 * have a default self function, but no is-alive function.
 	 */
 	if (!ALIVE_ON(dbenv)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	"DB_ENV->failchk requires DB_ENV->is_alive be configured");
 		return (EINVAL);
 	}
@@ -69,6 +63,8 @@ __env_failchk_pp(dbenv, flags)
 
 	if (TXN_ON(dbenv) && (ret = __txn_failchk(dbenv)) != 0)
 		goto err;
+
+	ret = __mut_failchk(dbenv);
 
 err:	ENV_LEAVE(dbenv, ip);
 	return (ret);
@@ -100,22 +96,22 @@ __env_thread_init(dbenv, created)
 		if (dbenv->thr_nbucket == 0) {
 			dbenv->thr_hashtab = NULL;
 			if (ALIVE_ON(dbenv)) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 		"is_alive method specified but no thread region allocated");
 				return (EINVAL);
 			}
 			return (0);
 		}
-		
+
 		if (!created) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		"thread table must be allocated at environment create time");
 			return (EINVAL);
 		}
 
 		if ((ret = __db_shalloc(infop,
 		     sizeof(THREAD_INFO), 0, &thread)) != 0) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			     "cannot allocate a thread status block");
 			return (ret);
 		}
@@ -169,7 +165,8 @@ __env_in_api(dbenv)
 			    (ip->dbth_state == THREAD_OUT &&
 			    thread->thr_count <  thread->thr_max))
 				continue;
-			if (dbenv->is_alive(dbenv, ip->dbth_pid, ip->dbth_tid))
+			if (dbenv->is_alive(
+			    dbenv, ip->dbth_pid, ip->dbth_tid, 0))
 				continue;
 			if (ip->dbth_state == THREAD_OUT) {
 				ip->dbth_state = THREAD_SLOT_NOT_IN_USE;
@@ -187,33 +184,6 @@ struct __db_threadid {
 	pid_t pid;
 	db_threadid_t tid;
 };
-
-static int __thread_id_cmp __P((struct __db_threadid *, DB_THREAD_INFO *));
-static int __thread_state_cmp __P((DB_THREAD_STATE, DB_THREAD_INFO *));
-
-static
-int __thread_id_cmp(id, ip)
-	struct __db_threadid *id;
-	DB_THREAD_INFO *ip;
-{
-#ifdef HAVE_INTEGRAL_THREAD_TYPE
-	return (id->pid == ip->dbth_pid && id->tid == ip->dbth_tid);
-#else
-	if (memcmp(&id->pid, &ip->dbth_pid, sizeof(id->pid)) != 0)
-		return (0);
-	if (memcmp(&id->tid, &ip->dbth_tid, sizeof(id->tid)) != 0)
-		return (0);
-	return (1);
-#endif
-}
-
-static
-int __thread_state_cmp(state, ip)
-	DB_THREAD_STATE state;
-	DB_THREAD_INFO *ip;
-{
-	return (ip->dbth_state == state);
-}
 
 /*
  * PUBLIC: int __env_set_state __P((DB_ENV *,
@@ -243,7 +213,7 @@ __env_set_state(dbenv, ipp, state)
 	 * Hashing of thread ids.  This is simple but could be replaced with
 	 * something more expensive if needed.
 	 */
-#ifdef HAVE_INTEGRAL_THREAD_TYPE
+#ifdef HAVE_SIMPLE_THREAD_TYPE
 	/*
 	 * A thread ID may be a pointer, so explicitly cast to a pointer of
 	 * the appropriate size before doing the bitwise XOR.
@@ -253,8 +223,19 @@ __env_set_state(dbenv, ipp, state)
 	indx = __ham_func5(NULL, &id.tid, sizeof(id.tid));
 #endif
 	indx %= dbenv->thr_nbucket;
-	HASHLOOKUP(htab, indx,
-	     __db_thread_info, dbth_links, &id, ip, __thread_id_cmp);
+	SH_TAILQ_FOREACH(ip, &htab[indx], dbth_links, __db_thread_info) {
+#ifdef HAVE_SIMPLE_THREAD_TYPE
+		if (id.pid == ip->dbth_pid && id.tid == ip->dbth_tid)
+			break;
+#else
+		if (memcmp(&id.pid, &ip->dbth_pid, sizeof(id.pid)) != 0)
+			continue;
+		if (memcmp(&id.tid, &ip->dbth_tid, sizeof(id.tid)) != 0)
+			continue;
+		break;
+#endif
+	}
+
 #ifdef DIAGNOSTIC
 	if (state == THREAD_DIAGNOSTIC) {
 		*ipp = ip;
@@ -277,16 +258,14 @@ __env_set_state(dbenv, ipp, state)
 		 * it.
 		 */
 		if (thread->thr_count >= thread->thr_max) {
-			HASHLOOKUP(htab, indx, __db_thread_info,
-			    dbth_links, THREAD_OUT, ip, __thread_state_cmp);
-			while (ip != NULL &&
-			    ip->dbth_state != THREAD_SLOT_NOT_IN_USE &&
-			    (ip->dbth_state != THREAD_OUT || !ALIVE_ON(dbenv) ||
-			    dbenv->is_alive(dbenv,
-			    ip->dbth_pid, ip->dbth_tid))) {
-				ip = SH_TAILQ_NEXT(ip,
-				    dbth_links, __db_thread_info);
-			}
+			SH_TAILQ_FOREACH(
+			    ip, &htab[indx], dbth_links, __db_thread_info)
+				if (ip->dbth_state == THREAD_SLOT_NOT_IN_USE ||
+				    (ip->dbth_state == THREAD_OUT &&
+				    ALIVE_ON(dbenv) && !dbenv->is_alive(dbenv,
+				    ip->dbth_pid, ip->dbth_tid, 0)))
+					break;
+
 			if (ip != NULL)
 				goto init;
 		}
@@ -301,8 +280,8 @@ __env_set_state(dbenv, ipp, state)
 			 * so we only need to be able to write an offset
 			 * atomically.
 			 */
-			HASHINSERT(htab,
-			    indx, __db_thread_info, dbth_links, ip);
+			SH_TAILQ_INSERT_HEAD(
+			    &htab[indx], ip, dbth_links, __db_thread_info);
 init:			ip->dbth_pid = id.pid;
 			ip->dbth_tid = id.tid;
 			ip->dbth_state = state;
@@ -329,7 +308,7 @@ __env_thread_id_string(dbenv, pid, tid, buf)
 	db_threadid_t tid;
 	char *buf;
 {
-#ifdef HAVE_INTEGRAL_THREAD_TYPE
+#ifdef HAVE_SIMPLE_THREAD_TYPE
 #ifdef UINT64_FMT
 	char fmt[20];
 

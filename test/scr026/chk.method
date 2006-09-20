@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.method,v 12.2 2005/10/25 14:26:08 bostic Exp $
+# $Id: chk.method,v 12.3 2006/09/11 15:28:06 bostic Exp $
 #
 # Check that DB doesn't call DB or DB_ENV methods internally.
 
@@ -26,11 +26,13 @@ m=`grep '(\*[a-z][_a-z]*)' $d/dbinc/db.in |
        -e '/c_am_writelock/d' \
        -e '/db_append_recno/d' \
        -e '/db_errcall/d' \
+       -e '/db_event_func/d' \
        -e '/db_feedback/d' \
        -e '/db_free/d' \
        -e '/db_malloc/d' \
        -e '/db_paniccall/d' \
        -e '/db_realloc/d' \
+       -e '/dbt_usercopy/d' \
        -e '/dup_compare/d' \
        -e '/s_callback/d' |
    sort -u`

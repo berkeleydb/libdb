@@ -6,8 +6,8 @@
     <title>Chapter 4. Concurrency</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
     <link rel="next" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
   </head>
@@ -41,7 +41,7 @@
         <dl>
           <dt>
             <span class="sect1">
-              <a href="txnconcurrency.html#concurrenthandles">Which JE Handles are Free-Threaded</a>
+              <a href="txnconcurrency.html#concurrenthandles">Which DB Handles are Free-Threaded</a>
             </span>
           </dt>
           <dt>
@@ -114,6 +114,11 @@
                   <a href="isolation.html#readcommitted">Committed Reads</a>
                 </span>
               </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="isolation.html#snapshot_isolation">Using Snapshot Isolation</a>
+                </span>
+              </dt>
             </dl>
           </dd>
           <dt>
@@ -149,15 +154,17 @@
       </div>
       <p>
 
-        JE offers a great deal of support for multi-threaded
+        DB offers a great deal of support for multi-threaded
             <span>
                 and multi-process
             </span>
-        applications even when transactions are not in use. Many of JE's
-        handles are thread-safe, or can be made thread-safe by providing
-        the appropriate flag at handle creation time, and JE provides a
+        applications even when transactions are not in use. Many of DB's
+        handles are 
+        thread-safe<span>, or 
+        can be made thread-safe by providing the appropriate flag at handle creation time,</span> 
+        and DB provides a
         flexible locking subsystem for managing databases in a concurrent
-        application. Further, JE provides a robust mechanism for
+        application. Further, DB provides a robust mechanism for
         detecting and responding to deadlocks. All of these concepts are
         explored in this chapter.
      </p>
@@ -173,16 +180,16 @@
             </p>
             <p>
                 Refers to a thread that is performing work in your application.
-                Typically, in this book that thread will be performing JE
+                Typically, in this book that thread will be performing DB
                 operations.
             </p>
             <p>
                 Note that this term can also be taken to mean a separate process
-                that is performing work &#8212; JE supports multi-process
+                that is performing work &#8212; DB supports multi-process
                 operations on your databases.
             </p>
             <p>
-                Also, JE is agnostic with regard to the type or style of
+                Also, DB is agnostic with regard to the type or style of
                 threads in use in your application. So if you are using
                 multiple threads
                 (as opposed to multiple processes) to perform concurrent
@@ -201,7 +208,7 @@
                 When a thread of control obtains 
                 access to a shared resource, it is said to be
                 <span class="emphasis"><em>locking</em></span> that resource. Note that
-                JE supports both exclusive and non-exclusive locks. See
+                DB supports both exclusive and non-exclusive locks. See
                 <a href="blocking_deadlocks.html#locks">Locks</a> for more information.
             </p>
           </li>
@@ -219,8 +226,8 @@
                 same thing.
             </p>
             <p>
-                For a description of free-threaded JE objects, see
-                <a href="txnconcurrency.html#concurrenthandles">Which JE Handles are Free-Threaded</a>.
+                For a description of free-threaded DB objects, see
+                <a href="txnconcurrency.html#concurrenthandles">Which DB Handles are Free-Threaded</a>.
             </p>
           </li>
           <li>
@@ -259,7 +266,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h2 class="title" style="clear: both"><a id="concurrenthandles"></a>Which JE Handles are Free-Threaded</h2>
+              <h2 class="title" style="clear: both"><a id="concurrenthandles"></a>Which DB Handles are Free-Threaded</h2>
             </div>
           </div>
           <div></div>

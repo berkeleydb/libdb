@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb020.tcl,v 12.3 2005/10/18 15:00:02 carol Exp $
+# $Id: sdb020.tcl,v 12.6 2006/08/24 14:46:39 bostic Exp $
 #
-# TEST	sdb020	
+# TEST	sdb020
 # TEST	Tests in-memory subdatabases.
-# TEST	Create an in-memory subdb with one page size.  Close, and 
+# TEST	Create an in-memory subdb with one page size.  Close, and
 # TEST	open with a different page size: should fail.
 
 proc sdb020 { method { nentries 10 } args } {
@@ -29,7 +29,7 @@ proc sdb020 { method { nentries 10 } args } {
 		return
 	}
 
-	# If we are using an env, then skip this test.  It needs its own.	
+	# If we are using an env, then skip this test.  It needs its own.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {
 		set env NULL
@@ -44,7 +44,7 @@ proc sdb020 { method { nentries 10 } args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	puts "Subdb$tnum: $method ($args) \
 	    in-memory named db tests with different pagesizes"
@@ -55,7 +55,7 @@ proc sdb020 { method { nentries 10 } args } {
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	# Set filename to NULL; this causes the creation of an in-memory
-	# subdb. 
+	# subdb.
 	set testfile ""
 	set name NAME
 
@@ -115,7 +115,7 @@ proc sdb020 { method { nentries 10 } args } {
 	set newname NEWNAME
 	set db2 [eval {berkdb_open} -create $args -env $env \
 	    -pagesize $psize2 {$omethod $testfile $newname}]
-	
+
 	# Clean up.
 	error_check_good db_close [$db close] 0
 	error_check_good db2_close [$db2 close] 0

@@ -1,23 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_setid.c,v 12.8 2005/10/18 14:17:08 mjc Exp $
+ * $Id: db_setid.c,v 12.16 2006/08/24 14:45:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_swap.h"
 #include "dbinc/db_am.h"
 #include "dbinc/mp.h"
@@ -79,15 +72,18 @@ __env_fileid_reset(dbenv, name, encrypted)
 	DB *dbp;
 	DBC *dbcp;
 	DBT key, data;
+	DB_FH *fhp;
 	DB_MPOOLFILE *mpf;
 	db_pgno_t pgno;
 	int t_ret, ret;
-	void *pagep;
+	size_t n;
 	char *real_name;
-	u_int8_t fileid[DB_FILE_ID_LEN];
+	u_int8_t fileid[DB_FILE_ID_LEN], mbuf[256];
+	void *pagep;
 
 	dbp = NULL;
 	dbcp = NULL;
+	fhp = NULL;
 	real_name = NULL;
 
 	/* Get the real backing file name. */
@@ -99,7 +95,42 @@ __env_fileid_reset(dbenv, name, encrypted)
 	if ((ret = __os_fileid(dbenv, real_name, 1, fileid)) != 0)
 		goto err;
 
-	/* Create the DB object. */
+	/*
+	 * The user may have physically copied a file currently open in the
+	 * cache, which means if we open this file through the cache before
+	 * updating the file ID on page 0, we might connect to the file from
+	 * which the copy was made.
+	 *
+	 * !!!
+	 * This code depends on page 0 of the file not being encrypted.
+	 */
+	if ((ret = __os_open(dbenv, real_name, 0, 0, &fhp)) != 0)
+		goto err;
+	if ((ret = __os_read(dbenv, fhp, mbuf, sizeof(mbuf), &n)) != 0)
+		goto err;
+	if (n != sizeof(mbuf)) {
+		ret = EINVAL;
+		__db_errx(dbenv,
+		    "%s: unexpected file type or format", real_name);
+		goto err;
+	}
+	memcpy(((DBMETA *)mbuf)->uid, fileid, DB_FILE_ID_LEN);
+	if ((ret = __os_seek(dbenv, fhp, 0, 0, 0)) != 0)
+		goto err;
+	if ((ret = __os_write(dbenv, fhp, mbuf, 256, &n)) != 0)
+		goto err;
+	if ((ret = __os_fsync(dbenv, fhp)) != 0)
+		goto err;
+
+	/*
+	 * Page 0 of the file has an updated file ID, and we can open it in
+	 * the cache without connecting to a different, existing file.  Open
+	 * the file in the cache, and update the file IDs for subdatabases.
+	 * (No existing code, as far as I know, actually uses the file ID of
+	 * a subdatabase, but it's cleaner to get them all.)
+	 *
+	 * Create the DB object.
+	 */
 	if ((ret = db_create(&dbp, dbenv, 0)) != 0)
 		goto err;
 
@@ -118,15 +149,6 @@ __env_fileid_reset(dbenv, name, encrypted)
 	    name, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0, PGNO_BASE_MD)) != 0)
 		goto err;
 
-	mpf = dbp->mpf;
-
-	pgno = PGNO_BASE_MD;
-	if ((ret = __memp_fget(mpf, &pgno, 0, &pagep)) != 0)
-		goto err;
-	memcpy(((DBMETA *)pagep)->uid, fileid, DB_FILE_ID_LEN);
-	if ((ret = __memp_fput(mpf, pagep, DB_MPOOL_DIRTY)) != 0)
-		goto err;
-
 	/*
 	 * If the database file doesn't support subdatabases, we only have
 	 * to update a single metadata page.  Otherwise, we have to open a
@@ -136,6 +158,7 @@ __env_fileid_reset(dbenv, name, encrypted)
 	if (!F_ISSET(dbp, DB_AM_SUBDB))
 		goto err;
 
+	mpf = dbp->mpf;
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	if ((ret = __db_cursor(dbp, NULL, &dbcp, 0)) != 0)
@@ -149,10 +172,11 @@ __env_fileid_reset(dbenv, name, encrypted)
 		 */
 		memcpy(&pgno, data.data, sizeof(db_pgno_t));
 		DB_NTOHL(&pgno);
-		if ((ret = __memp_fget(mpf, &pgno, 0, &pagep)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, NULL,
+		    DB_MPOOL_DIRTY, &pagep)) != 0)
 			goto err;
 		memcpy(((DBMETA *)pagep)->uid, fileid, DB_FILE_ID_LEN);
-		if ((ret = __memp_fput(mpf, pagep, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = __memp_fput(mpf, pagep, 0)) != 0)
 			goto err;
 	}
 	if (ret == DB_NOTFOUND)
@@ -161,6 +185,9 @@ __env_fileid_reset(dbenv, name, encrypted)
 err:	if (dbcp != NULL && (t_ret = __db_c_close(dbcp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (dbp != NULL && (t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	if (fhp != NULL &&
+	    (t_ret = __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (real_name != NULL)
 		__os_free(dbenv, real_name);

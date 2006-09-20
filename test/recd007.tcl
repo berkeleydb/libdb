@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: recd007.tcl,v 12.3 2005/09/28 18:17:04 carol Exp $
+# $Id: recd007.tcl,v 12.6 2006/08/24 14:46:36 bostic Exp $
 #
 # TEST	recd007
 # TEST	File create/delete tests.
@@ -51,6 +51,7 @@ proc recd007 { method args} {
 	set fixed_len [expr $pg / 4]
 	error_check_good db_close [$db close] 0
 	error_check_good dbremove [berkdb dbremove -env $env $testfile] 0
+	error_check_good log_flush [$env log_flush] 0
 	error_check_good envclose [$env close] 0
 
 	# Convert the args again because fixed_len is now real.
@@ -187,6 +188,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 		puts "\tSkipping for method $method"
 		$env test copy none
 		$env test abort none
+		error_check_good log_flush [$env log_flush] 0
 		error_check_good env_close [$env close] 0
 		return
 	}
@@ -281,6 +283,7 @@ proc do_file_recover_create { dir env_cmd method opts dbfile sub cmd msg } {
 			copy_extent_file $dir $dbfile init
 		}
 	}
+	error_check_good log_flush [$env log_flush] 0
 	error_check_good env_close [$env close] 0
 
 	#
@@ -556,6 +559,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
                   [dbdump_diff $dflags $init_file $dir $dbfile] 0
 	}
 	$env mpool_sync
+	error_check_good log_flush [$env log_flush] 0
 	error_check_good env_close [$env close] 0
 	catch { file copy -force $dir/$dbfile $init_file } res
 	if { [is_queue $method] == 1} {
@@ -586,6 +590,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 		#
 		set env [eval $env_cmd]
 		recd007_check $op $sub $dir $dbfile $subdb $new $env $oflags
+		error_check_good log_flush [$env log_flush] 0
 		error_check_good env_close [$env close] 0
 	} else {
 		#
@@ -624,6 +629,7 @@ proc do_file_recover_delete { dir env_cmd method opts dbfile sub cmd msg op } {
 	if { [string first "none" $abort] != -1} {
 		set env [eval $env_cmd]
 		recd007_check $op $sub $dir $dbfile $subdb $new $env $oflags
+		error_check_good log_flush [$env log_flush] 0
 		error_check_good env_close [$env close] 0
 	} else {
 		#
@@ -729,6 +735,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	set stat [catch {$db close} ret]
 	error_check_bad dbclose_after_remove $stat 0
 	error_check_good dbclose_after_remove [is_substr $ret recovery] 1
+	set stat [catch {$env log_flush} ret]
 	set stat [catch {$env close} ret]
 	error_check_bad envclose_after_remove $stat 0
 	error_check_good envclose_after_remove [is_substr $ret recovery] 1
@@ -747,6 +754,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	error_check_good data2 [lindex $kd 1] [pad_data $method $data2]
 
 	error_check_good dbclose [$db close] 0
+	error_check_good log_flush [$env log_flush] 0
 	error_check_good envclose [$env close] 0
 
 	#
@@ -829,6 +837,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	set stat [catch {$db close} ret]
 	error_check_bad dbclose_after_remove $stat 0
 	error_check_good dbclose_after_remove [is_substr $ret recovery] 1
+	set stat [catch {$env log_flush} ret]
 	set stat [catch {$env close} ret]
 	error_check_bad envclose_after_remove $stat 0
 	error_check_good envclose_after_remove [is_substr $ret recovery] 1
@@ -865,6 +874,7 @@ proc do_file_recover_delmk { dir env_cmd method opts dbfile } {
 	error_check_good data2 [lindex $kd 1] [pad_data $method $data3]
 
 	error_check_good dbclose [$db close] 0
+	error_check_good log_flush [$env log_flush] 0
 	error_check_good envclose [$env close] 0
 }
 

@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -39,20 +39,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_delete.c,v 12.13 2005/10/20 18:14:59 bostic Exp $
+ * $Id: bt_delete.c,v 12.21 2006/08/24 14:44:44 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
@@ -72,14 +65,15 @@ __bam_ditem(dbc, h, indx)
 	BINTERNAL *bi;
 	BKEYDATA *bk;
 	DB *dbp;
-	DB_MPOOLFILE *mpf;
 	u_int32_t nbytes;
 	int ret;
 	db_indx_t *inp;
 
 	dbp = dbc->dbp;
-	mpf = dbp->mpf;
 	inp = P_INP(dbp, h);
+
+	/* The page should already have been dirtied by our caller. */
+	DB_ASSERT(dbp->dbenv, IS_DIRTY(h));
 
 	switch (TYPE(h)) {
 	case P_IBTREE:
@@ -160,8 +154,6 @@ __bam_ditem(dbc, h, indx)
 	/* Delete the item and mark the page dirty. */
 	if ((ret = __db_ditem(dbc, h, indx, nbytes)) != 0)
 		return (ret);
-	if ((ret = __memp_fset(mpf, h, DB_MPOOL_DIRTY)) != 0)
-		return (ret);
 
 	return (0);
 }
@@ -180,12 +172,10 @@ __bam_adjindx(dbc, h, indx, indx_copy, is_insert)
 	int is_insert;
 {
 	DB *dbp;
-	DB_MPOOLFILE *mpf;
 	db_indx_t copy, *inp;
 	int ret;
 
 	dbp = dbc->dbp;
-	mpf = dbp->mpf;
 	inp = P_INP(dbp, h);
 
 	/* Log the change. */
@@ -210,8 +200,6 @@ __bam_adjindx(dbc, h, indx, indx_copy, is_insert)
 			memmove(&inp[indx], &inp[indx + O_INDX],
 			    sizeof(db_indx_t) * (NUM_ENT(h) - indx));
 	}
-	if ((ret = __memp_fset(mpf, h, DB_MPOOL_DIRTY)) != 0)
-		return (ret);
 
 	return (0);
 }
@@ -228,8 +216,8 @@ __bam_dpages(dbc, use_top, update)
 	int use_top;
 	int update;
 {
-	BTREE_CURSOR *cp;
 	BINTERNAL *bi;
+	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT a, b;
 	DB_LOCK c_lock, p_lock;
@@ -286,6 +274,8 @@ __bam_dpages(dbc, use_top, update)
 	 * transactions, this lets the rest of the tree get back to business
 	 * immediately.
 	 */
+	if ((ret = __memp_dirty(mpf, &epg->page, dbc->txn, 0)) != 0)
+		goto discard;
 	if ((ret = __bam_ditem(dbc, epg->page, epg->indx)) != 0)
 		goto discard;
 	if ((ret = __bam_ca_di(dbc, PGNO(epg->page), epg->indx, -1)) != 0)
@@ -322,6 +312,8 @@ discard: for (epg = cp->sp; epg < stack_epg; ++epg) {
 
 	/* Free the rest of the pages in the stack. */
 	while (++epg <= cp->csp) {
+		if ((ret = __memp_dirty(mpf, &epg->page, dbc->txn, 0)) != 0)
+			goto err;
 		/*
 		 * Delete page entries so they will be restored as part of
 		 * recovery.  We don't need to do cursor adjustment here as
@@ -329,7 +321,7 @@ discard: for (epg = cp->sp; epg < stack_epg; ++epg) {
 		 * be referenced by a cursor.
 		 */
 		if (NUM_ENT(epg->page) != 0) {
-			DB_ASSERT(LEVEL(epg->page) != 1);
+			DB_ASSERT(dbp->dbenv, LEVEL(epg->page) != 1);
 
 			if ((ret = __bam_ditem(dbc, epg->page, epg->indx)) != 0)
 				goto err;
@@ -387,7 +379,8 @@ err:		for (; epg <= cp->csp; ++epg) {
 		if ((ret =
 		    __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, &p_lock)) != 0)
 			goto stop;
-		if ((ret = __memp_fget(mpf, &pgno, 0, &parent)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		    DB_MPOOL_DIRTY, &parent)) != 0)
 			goto stop;
 
 		if (NUM_ENT(parent) != 1)
@@ -417,7 +410,8 @@ err:		for (; epg <= cp->csp; ++epg) {
 		if ((ret =
 		    __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, &c_lock)) != 0)
 			goto stop;
-		if ((ret = __memp_fget(mpf, &pgno, 0, &child)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		    DB_MPOOL_DIRTY, &child)) != 0)
 			goto stop;
 
 		/* Log the change. */
@@ -454,12 +448,6 @@ err:		for (; epg <= cp->csp; ++epg) {
 		PGNO(parent) = root_pgno;
 		if (F_ISSET(cp, C_RECNUM) && LEVEL(child) > LEAFLEVEL)
 			RE_NREC_SET(parent, rcnt);
-
-		/* Mark the pages dirty. */
-		if ((ret = __memp_fset(mpf, parent, DB_MPOOL_DIRTY)) != 0)
-			goto stop;
-		if ((ret = __memp_fset(mpf, child, DB_MPOOL_DIRTY)) != 0)
-			goto stop;
 
 		/* Adjust the cursors. */
 		if ((ret = __bam_ca_rsplit(dbc, PGNO(child), root_pgno)) != 0)
@@ -530,7 +518,8 @@ __bam_relink(dbc, pagep, new_pgno)
 		if ((ret = __db_lget(dbc,
 		    0, pagep->next_pgno, DB_LOCK_WRITE, 0, &npl)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &pagep->next_pgno, 0, &np)) != 0) {
+		if ((ret = __memp_fget(mpf, &pagep->next_pgno, dbc->txn,
+		    DB_MPOOL_DIRTY, &np)) != 0) {
 			ret = __db_pgerr(dbp, pagep->next_pgno, ret);
 			goto err;
 		}
@@ -540,7 +529,8 @@ __bam_relink(dbc, pagep, new_pgno)
 		if ((ret = __db_lget(dbc,
 		    0, pagep->prev_pgno, DB_LOCK_WRITE, 0, &ppl)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &pagep->prev_pgno, 0, &pp)) != 0) {
+		if ((ret = __memp_fget(mpf, &pagep->prev_pgno,
+		    dbc->txn, DB_MPOOL_DIRTY, &pp)) != 0) {
 			ret = __db_pgerr(dbp, pagep->prev_pgno, ret);
 			goto err;
 		}
@@ -568,7 +558,7 @@ __bam_relink(dbc, pagep, new_pgno)
 			np->prev_pgno = pagep->prev_pgno;
 		else
 			np->prev_pgno = new_pgno;
-		ret = __memp_fput(mpf, np, DB_MPOOL_DIRTY);
+		ret = __memp_fput(mpf, np, 0);
 		if ((t_ret = __TLPUT(dbc, npl)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
@@ -580,7 +570,7 @@ __bam_relink(dbc, pagep, new_pgno)
 			pp->next_pgno = pagep->next_pgno;
 		else
 			pp->next_pgno = new_pgno;
-		ret = __memp_fput(mpf, pp, DB_MPOOL_DIRTY);
+		ret = __memp_fput(mpf, pp, 0);
 		if ((t_ret = __TLPUT(dbc, ppl)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
@@ -624,6 +614,9 @@ __bam_pupdate(dbc, lpg)
 	 * pinsert is better.
 	 */
 	for (epg = &cp->csp[-1]; epg >= cp->sp; epg--) {
+		if ((ret = __memp_dirty(dbc->dbp->mpf,
+		    &epg->page, dbc->txn, 0)) != 0)
+			return (ret);
 		if ((ret = __bam_ditem(dbc, epg->page, epg->indx)) != 0)
 			return (ret);
 		epg->indx--;
@@ -631,7 +624,7 @@ __bam_pupdate(dbc, lpg)
 		    lpg, epg[1].page, BPI_NORECNUM)) != 0) {
 			if (ret == DB_NEEDSPLIT) {
 				/* This should not happen. */
-				__db_err(dbenv,
+				__db_errx(dbenv,
 				     "Not enough room in parent: %s: page %lu",
 				     dbc->dbp->fname, (u_long)PGNO(epg->page));
 				ret = __db_panic(dbenv, EINVAL);

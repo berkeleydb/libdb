@@ -1,15 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb019.tcl,v 12.3 2005/10/18 18:14:34 carol Exp $
+# $Id: sdb019.tcl,v 12.7 2006/09/13 14:54:13 carol Exp $
 #
-# TEST	sdb019	
+# TEST	sdb019
 # TEST	Tests in-memory subdatabases.
 # TEST	Create an in-memory subdb.  Test for persistence after
 # TEST	overflowing the cache.  Test for conflicts when we have
-# TEST	two in-memory files. 
+# TEST	two in-memory files.
 
 proc sdb019 { method { nentries 100 } args } {
 	source ./include.tcl
@@ -24,7 +24,7 @@ proc sdb019 { method { nentries 100 } args } {
 	}
 	puts "Subdb$tnum: $method ($args) in-memory subdb tests"
 
-	# If we are using an env, then skip this test.  It needs its own.	
+	# If we are using an env, then skip this test.  It needs its own.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {
 		set env NULL
@@ -39,28 +39,31 @@ proc sdb019 { method { nentries 100 } args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
-	# The standard cachesize isn't big enough for 64k pages.  
-	set csize "0 65536 1"
+	# The standard cachesize isn't big enough for 64k pages.
+	set csize "0 262144 1"
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		incr pgindex
 		set pagesize [lindex $args $pgindex]
-		set cache [expr 8 * $pagesize]
-		set csize "0 $cache 1"
+		if { $pagesize > 16384 } {
+			set cache [expr 8 * $pagesize]
+			set csize "0 $cache 1"
+		}
 	}
 
 	# Create the env.
 	env_cleanup $testdir
-	set env [eval berkdb_env -create {-cachesize $csize} -home $testdir -txn]
+	set env [eval berkdb_env -create {-cachesize $csize} \
+	    -home $testdir -txn]
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	# Set filename to NULL; this allows us to create an in-memory
 	# named database.
 	set testfile ""
 
-	# Create two in-memory subdb and test for conflicts.  Try all the 
+	# Create two in-memory subdb and test for conflicts.  Try all the
 	# combinations of named (NULL/NAME) and purely temporary
 	# (NULL/NULL) databases.
 	#
@@ -86,11 +89,11 @@ proc sdb019 { method { nentries 100 } args } {
 				    [chop_data $method $string2.$key]] 0
 			}
 
-			# If the subs are both NULL/NULL, we have two handles 
-			# on the same db.  Skip testing the contents. 
+			# If the subs are both NULL/NULL, we have two handles
+			# on the same db.  Skip testing the contents.
 			if { $s1 != "" || $s2 != "" } {
-				# This can't work when both subs are NULL/NULL. 
-				# Check contents. 
+				# This can't work when both subs are NULL/NULL.
+				# Check contents.
 				for { set i 1 } { $i <= $nentries } { incr i } {
 					set key $i
 					set ret1 [lindex \
@@ -106,7 +109,7 @@ proc sdb019 { method { nentries 100 } args } {
 				error_check_good sdb1_close [$sdb1 close] 0
 				error_check_good sdb2_close [$sdb2 close] 0
 
-				# Reopen, make sure we get the right data. 
+				# Reopen, make sure we get the right data.
 				set sdb1 [eval {berkdb_open -mode 0644} \
 				    $args -env $env {$omethod $testfile $s1}]
 				error_check_good \
@@ -127,12 +130,11 @@ proc sdb019 { method { nentries 100 } args } {
 					error_check_good sdb2_get $ret2 \
 					    [pad_data $method $string2.$key]
 				}
-			}	
+			}
 			error_check_good sdb1_close [$sdb1 close] 0
-			error_check_good sdb2_close [$sdb2 close] 0	
+			error_check_good sdb2_close [$sdb2 close] 0
 		}
 	}
 	error_check_good env_close [$env close] 0
 }
-
 

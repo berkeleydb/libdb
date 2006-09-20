@@ -1,23 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: tcl_rep.c,v 12.11 2005/10/14 20:15:33 sue Exp $
+ * $Id: tcl_rep.c,v 12.25 2006/09/07 08:06:37 alexg Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
 #ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
 #include <tcl.h>
 #endif
-
-#include "db_int.h"
 #include "dbinc/tcl_db.h"
 
 #ifdef CONFIG_TEST
@@ -197,8 +192,16 @@ tcl_RepElect(interp, objc, objv, dbenv)
 		return (result);
 
 	_debug_check();
-	if ((ret = dbenv->rep_elect(dbenv, nsites, nvotes,
-	    pri, timeout, &eid, 0)) != 0)
+
+	if ((ret = dbenv->rep_set_priority(dbenv, pri)) != 0)
+		return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "env rep_elect (rep_set_priority)"));
+	if ((ret = dbenv->rep_set_timeout(dbenv, DB_REP_ELECTION_TIMEOUT,
+	    timeout)) != 0)
+		return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "env rep_elect (rep_set_timeout)"));
+
+	if ((ret = dbenv->rep_elect(dbenv, nsites, nvotes, &eid, 0)) != 0)
 		return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "env rep_elect"));
 
@@ -265,7 +268,7 @@ tcl_RepSync(interp, objc, objv, dbenv)
 #ifdef CONFIG_TEST
 /*
  * tcl_RepLimit --
- *	Call DB_ENV->set_rep_limit().
+ *	Call DB_ENV->rep_set_limit().
  *
  * PUBLIC: int tcl_RepLimit
  * PUBLIC:     __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
@@ -291,7 +294,7 @@ tcl_RepLimit(interp, objc, objv, dbenv)
 		return (result);
 
 	_debug_check();
-	if ((ret = dbenv->set_rep_limit(dbenv, gbytes, bytes)) != 0)
+	if ((ret = dbenv->rep_set_limit(dbenv, gbytes, bytes)) != 0)
 		return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "env set_rep_limit"));
 
@@ -341,7 +344,7 @@ tcl_RepRequest(interp, objc, objv, dbenv)
 #ifdef CONFIG_TEST
 /*
  * tcl_RepTransport --
- *	Call DB_ENV->set_rep_transport().
+ *	Call DB_ENV->rep_set_transport().
  *
  * PUBLIC: int tcl_RepTransport  __P((Tcl_Interp *, int, Tcl_Obj * CONST *,
  * PUBLIC:    DB_ENV *, DBTCL_INFO *));
@@ -369,7 +372,7 @@ tcl_RepTransport(interp, objc, objv, dbenv, ip)
 	 * Store the objects containing the machine ID
 	 * and the procedure name.  We don't need to crack
 	 * the send procedure out now, but we do convert the
-	 * machine ID to an int, since set_rep_transport needs
+	 * machine ID to an int, since rep_set_transport needs
 	 * it.  Even so, it'll be easier later to deal with
 	 * the Tcl_Obj *, so we save that, not the int.
 	 *
@@ -397,7 +400,7 @@ tcl_RepTransport(interp, objc, objv, dbenv, ip)
 	ip->i_rep_send = objv[1];
 	Tcl_IncrRefCount(ip->i_rep_send);
 	_debug_check();
-	ret = dbenv->set_rep_transport(dbenv, intarg, tcl_rep_send);
+	ret = dbenv->rep_set_transport(dbenv, intarg, tcl_rep_send);
 	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "env rep_transport"));
 }
@@ -599,11 +602,6 @@ tcl_RepProcessMessage(interp, objc, objv, dbenv)
 		    (u_char *)"NOTPERM", (int)strlen("NOTPERM"));
 		myobjv[1] = lsnlist;
 		break;
-	case DB_REP_STARTUPDONE:
-		myobjv[0] = Tcl_NewByteArrayObj(
-		    (u_char *)"STARTUPDONE", (int)strlen("STARTUPDONE"));
-		myobjv[1] = Tcl_NewIntObj(0);
-		break;
 	default:
 		msg = db_strerror(ret);
 		Tcl_AppendResult(interp, msg, NULL);
@@ -738,6 +736,287 @@ tcl_RepStat(interp, objc, objv, dbenv)
 	Tcl_SetObjResult(interp, res);
 error:
 	__os_ufree(dbenv, sp);
+	return (result);
+}
+
+/*
+ * tcl_RepMgr --
+ *	Configure and start the Replication Manager.
+ *
+ * PUBLIC: int tcl_RepMgr
+ * PUBLIC:     __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
+ */
+int
+tcl_RepMgr(interp, objc, objv, dbenv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *dbenv;			/* Environment pointer */
+{
+	static const char *rmgr[] = {
+		"-ack",
+		"-local",
+		"-msgth",
+		"-nsites",
+		"-pri",
+		"-remote",
+		"-start",
+		"-timeout",
+		NULL
+	};
+	enum rmgr {
+		RMGR_ACK,
+		RMGR_LOCAL,
+		RMGR_MSGTH,
+		RMGR_NSITES,
+		RMGR_PRI,
+		RMGR_REMOTE,
+		RMGR_START,
+		RMGR_TIMEOUT
+	};
+	Tcl_Obj **myobjv;
+	long to;
+	int ack, i, myobjc, optindex, result, ret, totype;
+	u_int32_t msgth, remote_flag, start_flag, uintarg;
+	char *arg;
+
+	result = TCL_OK;
+	ack = ret = totype = 0;
+	msgth = 1;
+	remote_flag = start_flag = 0;
+
+	if (objc <= 2) {
+		Tcl_WrongNumArgs(interp, 2, objv, "?args?");
+		return (TCL_ERROR);
+	}
+	/*
+	 * Get the command name index from the object based on the bdbcmds
+	 * defined above.
+	 */
+	i = 2;
+	while (i < objc) {
+		Tcl_ResetResult(interp);
+		if (Tcl_GetIndexFromObj(interp, objv[i], rmgr, "option",
+		    TCL_EXACT, &optindex) != TCL_OK) {
+			result = IS_HELP(objv[i]);
+			goto error;
+		}
+		i++;
+		switch ((enum rmgr)optindex) {
+		case RMGR_ACK:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-ack policy?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			if (strcmp(arg, "all") == 0)
+				ack = DB_REPMGR_ACKS_ALL;
+			else if (strcmp(arg, "allpeers") == 0)
+				ack = DB_REPMGR_ACKS_ALL_PEERS;
+			else if (strcmp(arg, "none") == 0)
+				ack = DB_REPMGR_ACKS_NONE;
+			else if (strcmp(arg, "one") == 0)
+				ack = DB_REPMGR_ACKS_ONE;
+			else if (strcmp(arg, "onepeer") == 0)
+				ack = DB_REPMGR_ACKS_ONE_PEER;
+			else if (strcmp(arg, "quorum") == 0)
+				ack = DB_REPMGR_ACKS_QUORUM;
+			else {
+				Tcl_AddErrorInfo(interp,
+				    "ack: illegal policy");
+				result = TCL_ERROR;
+				break;
+			}
+			_debug_check();
+			ret = dbenv->repmgr_set_ack_policy(dbenv, ack);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "ack");
+			break;
+		case RMGR_LOCAL:
+			result = Tcl_ListObjGetElements(interp, objv[i],
+			    &myobjc, &myobjv);
+			if (result == TCL_OK)
+				i++;
+			else
+				break;
+			if (myobjc != 2) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-local {host port}?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(myobjv[0], NULL);
+			if ((result = _GetUInt32(interp, myobjv[1], &uintarg))
+			    != TCL_OK)
+				break;
+			_debug_check();
+			/*
+			 * No flags for now.
+			 */
+			ret = dbenv->repmgr_set_local_site(dbenv,
+			    arg, uintarg, 0);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "repmgr_set_local_site");
+			break;
+		case RMGR_MSGTH:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(
+				    interp, 2, objv, "?-msgth nth?");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &msgth);
+			break;
+		case RMGR_NSITES:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-nsites num_sites?");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &uintarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = dbenv->rep_set_nsites(dbenv, uintarg);
+			}
+			break;
+		case RMGR_PRI:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-pri priority?");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &uintarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = dbenv->
+				    rep_set_priority(dbenv, (int)uintarg);
+			}
+			break;
+		case RMGR_REMOTE:
+			result = Tcl_ListObjGetElements(interp, objv[i],
+			    &myobjc, &myobjv);
+			if (result == TCL_OK)
+				i++;
+			else
+				break;
+			if (myobjc != 2 && myobjc != 3) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-remote {host port [peer]}?");
+				result = TCL_ERROR;
+				break;
+			}
+			/*
+			 * Get the flag first so we can reuse 'arg'.
+			 */
+			if (myobjc == 3) {
+				arg = Tcl_GetStringFromObj(myobjv[2], NULL);
+				if (strcmp(arg, "peer") == 0)
+					remote_flag = DB_REPMGR_PEER;
+				else {
+					Tcl_AddErrorInfo(interp,
+					    "remote: illegal flag");
+					result = TCL_ERROR;
+					break;
+				}
+			}
+			arg = Tcl_GetStringFromObj(myobjv[0], NULL);
+			if ((result = _GetUInt32(interp, myobjv[1], &uintarg))
+			    != TCL_OK)
+				break;
+			_debug_check();
+			ret = dbenv->repmgr_add_remote_site(dbenv,
+			    arg, uintarg, NULL, remote_flag);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "repmgr_add_remote_site");
+			break;
+		case RMGR_START:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(
+				    interp, 2, objv, "?-start state?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			if (strcmp(arg, "master") == 0)
+				start_flag = DB_REP_MASTER;
+			else if (strcmp(arg, "client") == 0)
+				start_flag = DB_REP_CLIENT;
+			else if (strcmp(arg, "elect") == 0)
+				start_flag = DB_REP_ELECTION;
+			else if (strcmp(arg, "full_elect") == 0)
+				start_flag = DB_REP_FULL_ELECTION;
+			else {
+				Tcl_AddErrorInfo(
+				    interp, "start: illegal state");
+				result = TCL_ERROR;
+				break;
+			}
+			/*
+			 * Some config functions need to be called
+			 * before repmgr_start.  So finish parsing all
+			 * the args and call repmgr_start at the end.
+			 */
+			break;
+		case RMGR_TIMEOUT:
+			result = Tcl_ListObjGetElements(interp, objv[i],
+			    &myobjc, &myobjv);
+			if (result == TCL_OK)
+				i++;
+			else
+				break;
+			if (myobjc != 2) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "?-timeout {type to}?");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(myobjv[0], NULL);
+			if (strcmp(arg, "ack") == 0)
+				totype = DB_REP_ACK_TIMEOUT;
+			else if (strcmp(arg, "elect") == 0)
+				totype = DB_REP_ELECTION_TIMEOUT;
+			else if (strcmp(arg, "elect_retry") == 0)
+				totype = DB_REP_ELECTION_RETRY;
+			else if (strcmp(arg, "conn_retry") == 0)
+				totype = DB_REP_CONNECTION_RETRY;
+			else {
+				Tcl_AddErrorInfo(interp,
+				    "timeout: illegal type");
+				result = TCL_ERROR;
+				break;
+			}
+			if ((result = Tcl_GetLongFromObj(
+			   interp, myobjv[1], &to)) != TCL_OK)
+				break;
+			_debug_check();
+			ret = dbenv->rep_set_timeout(dbenv, totype,
+			    (db_timeout_t)to);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "rep_set_timeout");
+			break;
+		}
+		/*
+		 * If, at any time, parsing the args we get an error,
+		 * bail out and return.
+		 */
+		if (result != TCL_OK)
+			goto error;
+	}
+	/*
+	 * Only call repmgr_start if needed.  The user may use this
+	 * call just to reconfigure, change policy, etc.
+	 */
+	if (start_flag != 0 && result == TCL_OK) {
+		_debug_check();
+		ret = dbenv->repmgr_start(dbenv, (int)msgth, start_flag);
+		result = _ReturnSetup(
+		    interp, ret, DB_RETOK_STD(ret), "repmgr_start");
+	}
+error:
 	return (result);
 }
 #endif

@@ -1,23 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: tcl_internal.c,v 12.3 2005/06/16 20:23:47 bostic Exp $
+ * $Id: tcl_internal.c,v 12.13 2006/08/24 14:46:33 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
 #ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
 #include <tcl.h>
 #endif
-
-#include "db_int.h"
 #include "dbinc/tcl_db.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
@@ -88,8 +83,7 @@ _NameToPtr(name)
 {
 	DBTCL_INFO *p;
 
-	for (p = LIST_FIRST(&__db_infohead); p != NULL;
-	    p = LIST_NEXT(p, entries))
+	LIST_FOREACH(p, &__db_infohead, entries)
 		if (strcmp(name, p->i_name) == 0)
 			return (p->i_anyp);
 	return (NULL);
@@ -104,8 +98,7 @@ _PtrToInfo(ptr)
 {
 	DBTCL_INFO *p;
 
-	for (p = LIST_FIRST(&__db_infohead); p != NULL;
-	    p = LIST_NEXT(p, entries))
+	LIST_FOREACH(p, &__db_infohead, entries)
 		if (p->i_anyp == ptr)
 			return (p);
 	return (NULL);
@@ -120,8 +113,7 @@ _NameToInfo(name)
 {
 	DBTCL_INFO *p;
 
-	for (p = LIST_FIRST(&__db_infohead); p != NULL;
-	    p = LIST_NEXT(p, entries))
+	LIST_FOREACH(p, &__db_infohead, entries)
 		if (strcmp(name, p->i_name) == 0)
 			return (p);
 	return (NULL);
@@ -153,7 +145,7 @@ _DeleteInfo(p)
 	LIST_REMOVE(p, entries);
 	if (p->i_lockobj.data != NULL)
 		__os_free(NULL, p->i_lockobj.data);
-	if (p->i_err != NULL && p->i_err != stderr) {
+	if (p->i_err != NULL && p->i_err != stderr && p->i_err != stdout) {
 		(void)fclose(p->i_err);
 		p->i_err = NULL;
 	}
@@ -229,7 +221,7 @@ _SetListElemInt(interp, list, elem1, elem2)
  * library, it's likely because we don't have a 64-bit type, and trying to
  * use int64_t is going to result in syntax errors.
  */
-#ifdef HAVE_SEQUENCE
+#ifdef HAVE_64BIT_TYPES
 /*
  * PUBLIC: int _SetListElemWideInt __P((Tcl_Interp *,
  * PUBLIC:     Tcl_Obj *, void *, int64_t));
@@ -253,7 +245,7 @@ _SetListElemWideInt(interp, list, elem1, elem2)
 		return (TCL_ERROR);
 	return (Tcl_ListObjAppendElement(interp, list, thislist));
 }
-#endif /* HAVE_SEQUENCE */
+#endif /* HAVE_64BIT_TYPES */
 
 /*
  * PUBLIC: int _SetListRecnoElem __P((Tcl_Interp *, Tcl_Obj *,
@@ -508,6 +500,107 @@ _ErrorFunc(dbenv, pfx, msg)
 	return;
 }
 
+/*
+ * PUBLIC: void _EventFunc __P((DB_ENV *, u_int32_t, void *));
+ */
+void
+_EventFunc(dbenv, event, info)
+	DB_ENV *dbenv;
+	u_int32_t event;
+	void *info;
+{
+#define	TCLDB_EVENTITEMS 2	/* Event name and any info */
+#define	TCLDB_SENDEVENT 2
+	DBTCL_INFO *ip;
+	Tcl_Interp *interp;
+	Tcl_Obj *event_o, *origobj;
+	Tcl_Obj *myobjv[TCLDB_EVENTITEMS], *objv[TCLDB_SENDEVENT];
+	int i, myobjc, result;
+
+	ip = (DBTCL_INFO *)dbenv->app_private;
+	interp = ip->i_interp;
+	if (ip->i_event == NULL)
+		return;
+	objv[0] = ip->i_event;
+
+	/*
+	 * Most events don't have additional info.  Assume none
+	 * and handle individually those that do.
+	 */
+	myobjv[1] = NULL;
+	myobjc = 1;
+	switch (event) {
+	case DB_EVENT_PANIC:
+		/*
+		 * Info is the original error code.
+		 */
+		myobjv[0] = NewStringObj("panic", strlen("panic"));
+		myobjv[myobjc++] = Tcl_NewIntObj(*(int *)info);
+		break;
+	case DB_EVENT_REP_CLIENT:
+		myobjv[0] = NewStringObj("rep_client", strlen("rep_client"));
+		break;
+	case DB_EVENT_REP_MASTER:
+		myobjv[0] = NewStringObj("rep_master", strlen("rep_master"));
+		break;
+	case DB_EVENT_REP_NEWMASTER:
+		/*
+		 * Info is the EID of the new master.
+		 */
+		myobjv[0] = NewStringObj("newmaster", strlen("newmaster"));
+		myobjv[myobjc++] = Tcl_NewIntObj(*(int *)info);
+		break;
+	case DB_EVENT_REP_STARTUPDONE:
+		myobjv[0] = NewStringObj("startupdone", strlen("startupdone"));
+		break;
+	case DB_EVENT_WRITE_FAILED:
+		myobjv[0] =
+		    NewStringObj("write_failed", strlen("write_failed"));
+		break;
+	default:
+		__db_errx(dbenv, "Tcl unknown event %lu", (u_long)event);
+		return;
+	}
+
+	for (i = 0; i < myobjc; i++)
+		Tcl_IncrRefCount(myobjv[i]);
+
+	event_o = Tcl_NewListObj(myobjc, myobjv);
+	Tcl_IncrRefCount(event_o);
+	objv[1] = event_o;
+
+	/*
+	 * We really want to return the original result to the
+	 * user.  So, save the result obj here, and then after
+	 * we've taken care of the Tcl_EvalObjv, set the result
+	 * back to this original result.
+	 */
+	origobj = Tcl_GetObjResult(interp);
+	Tcl_IncrRefCount(origobj);
+	result = Tcl_EvalObjv(interp, TCLDB_SENDEVENT, objv, 0);
+	if (result != TCL_OK) {
+		/*
+		 * XXX
+		 * This probably isn't the right error behavior, but
+		 * this error should only happen if the Tcl callback is
+		 * somehow invalid, which is a fatal scripting bug.
+		 * The event handler is a void function so we either
+		 * just return or abort.
+		 * For now, abort.
+		 */
+		__db_errx(dbenv, "Tcl event failure");
+		abort();
+	}
+
+	Tcl_SetObjResult(interp, origobj);
+	Tcl_DecrRefCount(origobj);
+	for (i = 0; i < myobjc; i++)
+		Tcl_DecrRefCount(myobjv[i]);
+	Tcl_DecrRefCount(event_o);
+
+	return;
+}
+
 #define	INVALID_LSNMSG "Invalid LSN with %d parts. Should have 2.\n"
 
 /*
@@ -617,7 +710,7 @@ _GetFlagsList(interp, flags, fnp)
 			 * into one).  If this is the case, we screwed up badly
 			 * somehow.
 			 */
-			DB_ASSERT(result == TCL_OK);
+			DB_ASSERT(NULL, result == TCL_OK);
 		}
 
 	return (newlist);

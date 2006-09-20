@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep038.tcl,v 12.6 2005/10/18 19:04:17 carol Exp $
+# $Id: rep038.tcl,v 12.12 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep038
 # TEST	Test of internal initialization and ongoing master updates.
@@ -17,10 +17,16 @@
 proc rep038 { method { niter 200 } { tnum "038" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 
 	# This test needs to set its own pagesize.
@@ -30,20 +36,32 @@ proc rep038 { method { niter 200 } { tnum "038" } args } {
                 return
         }
 
+	set logsets [create_logsets 2]
+
 	# Run the body of the test with and without recovery,
-	# and with and without cleaning.
-	set recopts { "" " -recover " }
+	# and with and without cleaning.  Skip recovery with in-memory
+	# logging - it doesn't make sense.
 	set cleanopts { clean noclean }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach c $cleanopts {
-			puts "Rep$tnum ($method $c $r $args):\
-			    Test of internal initialization with new records."
-			rep038_sub $method $niter $tnum $r $c $args
+			foreach l $logsets {
+				set logindex [lsearch -exact $l "in-memory"]
+				if { $r == "-recover" && $logindex != -1 } {
+					puts "Skipping rep$tnum for -recover\
+					    with in-memory logs."
+					continue
+				}
+				puts "Rep$tnum ($method $c $r $args):\
+				    Test of internal init with new records."
+				puts "Rep$tnum: Master logs are [lindex $l 0]"
+				puts "Rep$tnum: Client logs are [lindex $l 1]"
+				rep038_sub $method $niter $tnum $l $r $c $args
+			}
 		}
 	}
 }
 
-proc rep038_sub { method niter tnum recargs clean largs } {
+proc rep038_sub { method niter tnum logset recargs clean largs } {
 	global testdir
 	global util_path
 
@@ -64,14 +82,25 @@ proc rep038_sub { method niter tnum recargs clean largs } {
 	append largs " -pagesize $pagesize "
 	set log_buf [expr $pagesize * 2]
 	set log_max [expr $log_buf * 4]
+	set m_logargs " -log_buffer $log_buf"
+	set c_logargs " -log_buffer $log_buf"
+
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+
+	# In-memory logs cannot be used with -txn nosync.
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
-	    -log_buffer $log_buf -log_max $log_max \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $m_logargs -log_max $log_max \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
-#	    -log_buffer $log_buf -log_max $log_max \
+#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+#	    $m_logargs -log_max $log_max \
 #	    -verbose {rep on} -errpfx MASTER \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -79,11 +108,11 @@ proc rep038_sub { method niter tnum recargs clean largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
-	    -log_buffer $log_buf -log_max $log_max \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $c_logargs -log_max $log_max \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
-#	    -log_buffer $log_buf -log_max $log_max \
+#	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+#	    $c_logargs -log_max $log_max \
 #	    -verbose {rep on} -errpfx CLIENT \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -95,31 +124,39 @@ proc rep038_sub { method niter tnum recargs clean largs } {
 
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	set start 0
+	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	incr start $niter
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Close client."
+	if { $c_logtype != "in-memory" } {
+		set res [eval exec $util_path/db_archive -l -h $clientdir]
+	}
+	set last_client_log [get_logfile $clientenv last]
 	error_check_good client_close [$clientenv close] 0
-
-	# Find out what exists on the client.  We need to loop until
-	# the first master log file > last client log file.
-	set res [eval exec $util_path/db_archive -l -h $clientdir]
-
-	set last_client_log [lindex [lsort $res] end]
 
 	set stop 0
 	while { $stop == 0 } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test\
+		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		incr start $niter
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."
-		set res [eval exec $util_path/db_archive -d -h $masterdir]
-		set res [eval exec $util_path/db_archive -l -h $masterdir]
-		if { [lsearch -exact $res $last_client_log] == -1 } {
+		if { $m_logtype == "on-disk" } {
+			set res \
+			    [eval exec $util_path/db_archive -d -h $masterdir]
+		}
+		# Make sure we have a gap between the last client log
+		# and the first master log.
+		set first_master_log [get_logfile $masterenv first]
+		if { $first_master_log > $last_client_log } {
 			set stop 1
 		}
+
 	}
 
 	puts "\tRep$tnum.e: Reopen client ($clean)."
@@ -142,7 +179,9 @@ proc rep038_sub { method niter tnum recargs clean largs } {
 	while { $i < $loop } {
 		set nproced 0
 		set start [expr $start + $entries]
-		eval rep_test $method $masterenv NULL $entries $start 0 0 0 $largs
+		eval rep_test \
+		    $method $masterenv NULL $entries $start $start 0 0 $largs
+		incr start $entries
 		incr nproced [proc_msgs_once $envlist NONE err]
 		error_check_bad nproced $nproced 0
 		incr i
@@ -154,12 +193,16 @@ proc rep038_sub { method niter tnum recargs clean largs } {
 
 	# Add records to the master and update client.
 	puts "\tRep$tnum.g: Add more records and check again."
-	set entries 10
-	eval rep_test $method $masterenv NULL $entries $niter 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $entries $start $start 0 0 $largs
+	incr start $entries
 	process_msgs $envlist 0 NONE err
 
 	# Check again that master and client logs and dbs are identical.
 	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+
+	# Make sure log file are on-disk or not as expected.
+	check_log_location $masterenv
+	check_log_location $clientenv
 
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0

@@ -6,7 +6,7 @@
     <title>In-Memory Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="previous" href="txnexample_java.html" title="Transaction Example" />
   </head>
@@ -34,15 +34,15 @@
         <div></div>
       </div>
       <p>
-        JE is sometimes used for applications that simply need to cache
+        DB is sometimes used for applications that simply need to cache
         data retrieved from some other location (such as a remote database
-        server). JE is also often used in embedded systems.
+        server). DB is also often used in embedded systems.
     </p>
       <p>
         In both cases, applications may still want to use transactions for
         atomicity, consistency, and isolation guarantees, but they may want
         to forgo the durability guarantee entirely. That is, they may want
-        their JE environment and databases kept entirely in-memory so
+        their DB environment and databases kept entirely in-memory so
         as to avoid the performance impact of unneeded disk I/O.
     </p>
       <p>
@@ -54,7 +54,9 @@
             <p>
                 Refrain from specifying a home directory when you open your
                 environment. The exception to this is if you are using the
-                <tt class="literal">DB_CONFIG</tt> configuration file.
+                <tt class="literal">DB_CONFIG</tt> configuration file &#8212; in
+                that case you must identify the environment's home
+                directory so that the configuration file can be found.
             </p>
           </li>
           <li>
@@ -66,7 +68,7 @@
           <li>
             <p>
                 Configure your logging subsystem such that log files are kept
-                entirely in-memory. 
+                entirely in-memory.
             </p>
           </li>
           <li>
@@ -186,7 +188,7 @@ import java.io.FileNotFoundException;
                 to <tt class="literal">true</tt>.
                 This causes our environment to back regions using our
                 application's heap memory rather than by using the filesystem.
-                This is the first important step to keeping our JE data
+                This is the first important step to keeping our DB data
                 entirely in-memory.
             </p>
           </li>
@@ -532,7 +534,7 @@ public class DBWriter extends Thread
       <p>
     This completes our in-memory transactional example. If you would like to
     experiment with this code, you can find the example in the following
-    location in your JE distribution:
+    location in your DB distribution:
 </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/src/db/txn</pre>
     </div>

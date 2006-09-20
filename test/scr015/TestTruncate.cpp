@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: TestTruncate.cpp,v 12.1 2005/06/16 20:24:11 bostic Exp $
+ * $Id: TestTruncate.cpp,v 12.3 2006/08/24 14:46:43 bostic Exp $
  */
 
 /*

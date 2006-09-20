@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: ExceptionUnwrapper.java,v 12.2 2005/08/01 20:25:21 mark Exp $
+ * $Id: ExceptionUnwrapper.java,v 12.4 2006/08/31 18:14:09 bostic Exp $
  */
 
 package com.sleepycat.util;

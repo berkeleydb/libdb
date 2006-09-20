@@ -1,15 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb013.tcl,v 12.7 2005/11/05 00:18:27 carol Exp $
+# $Id: sdb013.tcl,v 12.10 2006/08/24 14:46:39 bostic Exp $
 #
-# TEST	sdb013	
+# TEST	sdb013
 # TEST	Tests in-memory subdatabases.
 # TEST	Create an in-memory subdb.  Test for persistence after
 # TEST	overflowing the cache.  Test for conflicts when we have
-# TEST	two in-memory files. 
+# TEST	two in-memory files.
 
 proc sdb013 { method { nentries 10 } args } {
 	source ./include.tcl
@@ -25,7 +25,7 @@ proc sdb013 { method { nentries 10 } args } {
 
 	puts "Subdb$tnum: $method ($args) in-memory subdb tests"
 
-	# If we are using an env, then skip this test.  It needs its own.	
+	# If we are using an env, then skip this test.  It needs its own.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {
 		set env NULL
@@ -40,7 +40,7 @@ proc sdb013 { method { nentries 10 } args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	# Create the env, with a very small cache that we can easily
 	# fill.  If a particularly large page size is specified, make
@@ -61,7 +61,7 @@ proc sdb013 { method { nentries 10 } args } {
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	# Set filename to NULL; this causes the creation of an in-memory
-	# subdb. 
+	# subdb.
 	set testfile ""
 	set subdb subdb0
 
@@ -81,7 +81,7 @@ proc sdb013 { method { nentries 10 } args } {
 	    -auto_commit $omethod $dummyfile]
 	error_check_good dummy_open [is_valid_db $db] TRUE
 
-	set entries [expr $nentries * 100] 
+	set entries [expr $nentries * 100]
 	set ret [sdb013_populate $db $method $entries]
 	error_check_good dummy_close [$db close] 0
 
@@ -99,36 +99,36 @@ proc sdb013 { method { nentries 10 } args } {
 	puts "\tSubdb$tnum.e: Check we cannot open the in-mem subdb."
 	set ret [catch {eval {berkdb_open_noerr} -env $env $args \
 	    -auto_commit {$omethod $testfile $subdb}} db]
-	error_check_bad dbopen $ret 0	
+	error_check_bad dbopen $ret 0
 
 	foreach end { commit abort } {
-		# Create an in-memory database. 
+		# Create an in-memory database.
 		puts "\tSubdb$tnum.f: Create in-mem subdb, add data, close."
 		set sdb [eval {berkdb_open_noerr -create -mode 0644} \
 		    $args -env $env -auto_commit {$omethod $testfile $subdb}]
 		error_check_good dbopen [is_valid_db $sdb] TRUE
-	
+
 		set ret [sdb013_populate $sdb $method $nentries]
 		error_check_good populate $ret 0
 		error_check_good sdb_close [$sdb close] 0
-								    
-		# Transactionally remove the database. 
+
+		# Transactionally remove the database.
 		puts "\tSubdb$tnum.g: Transactionally remove in-mem database."
 		set txn [$env txn]
 		error_check_good db_remove \
 		    [berkdb dbremove -env $env -txn $txn $testfile $subdb] 0
-	
+
 		# Write a cacheful of data.
 		puts "\tSubdb$tnum.h: Create another db, overflow the cache."
 		set db [eval {berkdb_open_noerr -create -mode 0644} $args \
 		    -env $env -auto_commit $omethod $dummyfile]
 		error_check_good dummy_open [is_valid_db $db] TRUE
-	
-		set entries [expr $nentries * 100] 
+
+		set entries [expr $nentries * 100]
 		set ret [sdb013_populate $db $method $entries]
 		error_check_good dummy_close [$db close] 0
-	
-		# Finish the txn and make sure the database is either 
+
+		# Finish the txn and make sure the database is either
 		# gone (if committed) or still there (if aborted).
 		error_check_good txn_$end [$txn $end] 0
 		if { $end == "abort" } {

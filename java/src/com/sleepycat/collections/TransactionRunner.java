@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: TransactionRunner.java,v 12.3 2005/10/05 20:38:28 mark Exp $
+ * $Id: TransactionRunner.java,v 12.6 2006/09/08 20:32:13 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -172,7 +172,7 @@ public class TransactionRunner {
     /**
      * Returns the transaction configuration used for calling
      * {@link Environment#beginTransaction}.
-     * 
+     *
      * <p>If this property is null, the default configuration is used.  The
      * configuration object is not cloned, and any modifications to it will
      * impact subsequent transactions.</p>
@@ -187,7 +187,7 @@ public class TransactionRunner {
     /**
      * Changes the transaction configuration used for calling
      * {@link Environment#beginTransaction}.
-     * 
+     *
      * <p>If this property is null, the default configuration is used.  The
      * configuration object is not cloned, and any modifications to it will
      * impact subsequent transactions.</p>

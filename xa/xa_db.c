@@ -1,17 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1998-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: xa_db.c,v 12.4 2005/10/20 18:57:16 bostic Exp $
+ * $Id: xa_db.c,v 12.8 2006/08/24 14:46:54 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/txn.h"
@@ -60,7 +56,7 @@ __xa_set_txn(dbp, txnpp, no_xa_txn)
 	 * Disallow specified DB_TXN handles.
 	 */
 	if (*txnpp != NULL) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
     "transaction handles should not be directly specified to XA interfaces");
 		return (EINVAL);
 	}
@@ -82,7 +78,7 @@ __xa_set_txn(dbp, txnpp, no_xa_txn)
 		return (0);
 	}
 
-	__db_err(dbenv, "no XA transaction declared");
+	__db_errx(dbenv, "no XA transaction declared");
 	return (EINVAL);
 }
 

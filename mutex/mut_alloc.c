@@ -1,24 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_alloc.c,v 12.6 2005/08/08 14:57:54 bostic Exp $
+ * $Id: mut_alloc.c,v 12.15 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/mutex_int.h"
-
-static int __mutex_free_int __P((DB_ENV *, int, db_mutex_t *));
 
 /*
  * __mutex_alloc --
@@ -47,7 +39,8 @@ __mutex_alloc(dbenv, alloc_id, flags, indxp)
 	if (alloc_id != MTX_APPLICATION &&
 	    (F_ISSET(dbenv, DB_ENV_NOLOCKING) ||
 	    (!F_ISSET(dbenv, DB_ENV_THREAD) &&
-	    (LF_ISSET(DB_MUTEX_THREAD) || F_ISSET(dbenv, DB_ENV_PRIVATE)))))
+	    (LF_ISSET(DB_MUTEX_PROCESS_ONLY) ||
+	    F_ISSET(dbenv, DB_ENV_PRIVATE)))))
 		return (0);
 
 	/*
@@ -117,7 +110,7 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
 		MUTEX_SYSTEM_LOCK(dbenv);
 
 	if (mtxregion->mutex_next == MUTEX_INVALID) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "unable to allocate memory for mutex; resize mutex region");
 		if (locksys)
 			MUTEX_SYSTEM_UNLOCK(dbenv);
@@ -138,12 +131,18 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
 
 	/* Initialize the mutex. */
 	memset(mutexp, 0, sizeof(*mutexp));
+	F_SET(mutexp, DB_MUTEX_ALLOCATED |
+	    LF_ISSET(DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_PROCESS_ONLY));
 
-	F_SET(mutexp, DB_MUTEX_ALLOCATED);
-	if (LF_ISSET(DB_MUTEX_LOGICAL_LOCK))
-		F_SET(mutexp, DB_MUTEX_LOGICAL_LOCK);
+	/*
+	 * If the mutex is associated with a single process, set the process
+	 * ID.  If the application ever calls DbEnv::failchk, we'll need the
+	 * process ID to know if the mutex is still in use.
+	 */
+	if (LF_ISSET(DB_MUTEX_PROCESS_ONLY))
+		dbenv->thread_id(dbenv, &mutexp->pid, NULL);
 
-#ifdef DIAGNOSTIC
+#ifdef HAVE_STATISTICS
 	mutexp->alloc_id = alloc_id;
 #else
 	COMPQUIET(alloc_id, 0);
@@ -188,8 +187,10 @@ __mutex_free(dbenv, indxp)
 /*
  * __mutex_free_int --
  *	Internal routine to free a mutex.
+ *
+ * PUBLIC: int __mutex_free_int __P((DB_ENV *, int, db_mutex_t *));
  */
-static int
+int
 __mutex_free_int(dbenv, locksys, indxp)
 	DB_ENV *dbenv;
 	int locksys;
@@ -208,7 +209,7 @@ __mutex_free_int(dbenv, locksys, indxp)
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
-	DB_ASSERT(F_ISSET(mutexp, DB_MUTEX_ALLOCATED));
+	DB_ASSERT(dbenv, F_ISSET(mutexp, DB_MUTEX_ALLOCATED));
 	F_CLR(mutexp, DB_MUTEX_ALLOCATED);
 
 	ret = __mutex_destroy(dbenv, mutex);

@@ -1,5 +1,5 @@
-<!--$Id: env_set_thread_id.so,v 10.7 2005/11/03 17:56:28 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: env_set_thread_id.so,v 10.9 2006/08/24 16:32:23 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -23,7 +23,7 @@
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::set_thread_id(int (*thread_id)(DbEnv *dbenv, pid_t *pid, db_threadid_t *tid));
+DbEnv::set_thread_id(void (*thread_id)(DbEnv *dbenv, pid_t *pid, db_threadid_t *tid));
 </pre></h3>
 <hr size=1 noshade>
 <h3>Description: DbEnv::set_thread_id</h3>
@@ -91,10 +91,10 @@ thread identifier is not an integral value and so will not fit into the
 configured db_threadid_t type, must either translate between the
 db_threadid_t type and the thread identifier (mapping the thread
 identifier to a unique identifier of the appropriate size), or modify
-the Berkeley DB sources to use an appropriate db_threadid_t type.  Note:
-Sleepycat Software does not currently know of any systems where this is
-necessary.  If your application has to solve this problem, please
-contact our support group by email and let us know.</p>
+the Berkeley DB sources to use an appropriate db_threadid_t type.  Note: we
+do not currently know of any systems where this is necessary.  If your
+application has to solve this problem, please contact our support group
+and let us know.</p>
 <p>If no <b>thread_id</b> function is specified by the application, the
 Berkeley DB library will identify threads of control by using the taskIdSelf()
 call on VxWorks, the getpid() and GetCurrentThreadID() calls on Windows,
@@ -121,6 +121,6 @@ invalid flag value or parameter was specified.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

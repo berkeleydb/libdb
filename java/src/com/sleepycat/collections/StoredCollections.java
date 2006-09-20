@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: StoredCollections.java,v 12.1 2005/01/31 19:27:32 mark Exp $
+ * $Id: StoredCollections.java,v 12.4 2006/08/31 18:14:08 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -20,13 +20,15 @@ import java.util.SortedSet;
 import com.sleepycat.db.CursorConfig;
 
 /**
- * This class consists exclusively of static methods that operate on or return
- * stored collections and maps, jointly called containers. It contains methods
- * for changing certain properties of a container.  Because container
+ * Static methods operating on collections and maps.
+ *
+ * <p>This class consists exclusively of static methods that operate on or
+ * return stored collections and maps, jointly called containers. It contains
+ * methods for changing certain properties of a container.  Because container
  * properties are immutable, these methods always return a new container
  * instance.  This allows stored container instances to be used safely by
  * multiple threads.  Creating the new container instance is not expensive and
- * creates only two new objects.
+ * creates only two new objects.</p>
  *
  * <p>When a container is created with a particular property, all containers
  * and iterators derived from that container will inherit the property.  For
@@ -241,18 +243,18 @@ public class StoredCollections {
     }
 
     /**
-     * Clones a stored iterator preserving its current position.
+     * Clones an iterator preserving its current position.
      *
-     * @param storedIterator an iterator to clone.
+     * @param iter an iterator to clone.
      *
-     * @return a new {@link StoredIterator} having the same position as the
-     * given iterator.
+     * @return a new {@code Iterator} having the same position as the given
+     * iterator.
      *
-     * @throws ClassCastException if the given iterator is not a
-     * StoredIterator.
+     * @throws ClassCastException if the given iterator was not obtained via a
+     * {@link StoredCollection} method.
      */
-    public static Iterator iterator(Iterator storedIterator) {
+    public static Iterator iterator(Iterator iter) {
 
-        return (Iterator) ((StoredIterator) storedIterator).clone();
+        return ((BaseIterator) iter).dup();
     }
 }

@@ -3,11 +3,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
-    <title>Chapter 5. Managing JE Files</title>
+    <title>Chapter 5. Managing DB Files</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="reversesplit.html" title="Reverse BTree Splits" />
     <link rel="next" href="backuprestore.html" title="Backup Procedures" />
   </head>
@@ -15,7 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Chapter 5. Managing JE Files</th>
+          <th colspan="3" align="center">Chapter 5. Managing DB Files</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="reversesplit.html">Prev</a> </td>
@@ -29,7 +29,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title"><a id="filemanagement"></a>Chapter 5. Managing JE Files</h2>
+            <h2 class="title"><a id="filemanagement"></a>Chapter 5. Managing DB Files</h2>
           </div>
         </div>
         <div></div>
@@ -153,7 +153,7 @@
         </dl>
       </div>
       <p>
-        JE is capable of storing several types of files on disk:
+        DB is capable of storing several types of files on disk:
     </p>
       <div class="itemizedlist">
         <ul type="disc">
@@ -202,10 +202,10 @@
           <div></div>
         </div>
         <p>
-            Before we can discuss JE file management, we need to
+            Before we can discuss DB file management, we need to
             describe checkpoints. When databases are modified (that is, a
             transaction is committed), the modifications are recorded in
-            JE's logs, but they are <span class="emphasis"><em>not</em></span>
+            DB's logs, but they are <span class="emphasis"><em>not</em></span>
             necessarily reflected in the actual database files on disk.
         </p>
         <p>
@@ -229,7 +229,7 @@
                     Flushes dirty pages from the in-memory cache. This means that data modifications found in your
                     in-memory cache are written to the database files on disk. Note that a checkpoint also causes data
                     dirtied by an uncommitted transaction to also be written to your database files on disk. In this latter
-                    case, JE's normal recovery is used to remove any such modifications that were subsequently
+                    case, DB's normal recovery is used to remove any such modifications that were subsequently
                     abandoned by your application using a transaction abort.
                 </p>
               <p>
@@ -282,21 +282,21 @@
         </p>
         <p>
             For configuration information, see the 
+            
                 
-                
-                <a href="http://www.sleepycat.com/docs/java/com/sleepycat/db/CheckpointConfig.html" target="_top">
+                <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/java/com/sleepycat/db/CheckpointConfig.html" target="_top">
                     CheckpointConfig Javadoc page.
                 </a>
         </p>
         <p>
-        Note that running checkpoints can be quite expensive. JE must
+        Note that running checkpoints can be quite expensive. DB must
         flush every dirty page to the backing database files. On the
         other hand, if you do not run checkpoints often enough, your
         recovery time can be unnecessarily long and you may be using more
         disk space than you really need. Also, you cannot remove log files
         until a checkpoint is run. Therefore, deciding how frequently
         to run a checkpoint is one of the most
-        common tuning activity for JE applications.
+        common tuning activity for DB applications.
     </p>
         <p>
     For example, the following class performs a checkpoint every 60 seconds, so long as 500 kb of logging data has been
@@ -446,14 +446,11 @@ public class TryCheckPoint {
     private TryCheckPoint() {}
 
     private static void parseArgs(String args[]) {
-        int nArgs = args.length;
         for(int i = 0; i &lt; args.length; ++i) {
             if (args[i].startsWith(&quot;-&quot;)) {
                 switch(args[i].charAt(1)) {
                     case 'h':
-                        if (i &lt; nArgs - 1) {
-                            myEnvPath = new String(args[++i]);
-                        }
+                        myEnvPath = new String(args[++i]);
                     break;
                     default:
                         usage();

@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_tas.c,v 12.14 2005/11/01 14:42:17 bostic Exp $
+ * $Id: mut_tas.c,v 12.20 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -49,15 +42,14 @@ __db_tas_mutex_init(dbenv, mutex, flags)
 
 	/* Check alignment. */
 	if (((uintptr_t)mutexp & (dbenv->mutex_align - 1)) != 0) {
-		__db_err(dbenv, "TAS: mutex not appropriately aligned");
+		__db_errx(dbenv, "TAS: mutex not appropriately aligned");
 		return (EINVAL);
 	}
 
 	if (MUTEX_INIT(&mutexp->tas)) {
-		ret = __os_get_errno();
-		__db_err(dbenv,
-		    "TAS: mutex initialize: %s", db_strerror(ret));
-		return (ret);
+		ret = __os_get_syserr();
+		__db_syserr(dbenv, ret, "TAS: mutex initialize");
+		return (__os_posix_err(ret));
 	}
 	return (0);
 }
@@ -152,7 +144,7 @@ relock:
 #ifdef DIAGNOSTIC
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			char buf[DB_THREADID_STRLEN];
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			      "TAS lock failed: lock currently in use: ID: %s",
 			      dbenv->thread_id_string(dbenv,
 			      mutexp->pid, mutexp->tid, buf));
@@ -169,15 +161,13 @@ relock:
 		 * every time we get a mutex to ensure contention.
 		 */
 		if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-			__os_yield(NULL, 1);
+			__os_yield(dbenv);
 #endif
 		return (0);
 	}
 
-	/*
-	 * Yield the processor.
-	 */
-	__os_yield(NULL, ms * USEC_PER_MS);
+	/* Wait for the lock to become available. */
+	__os_sleep(dbenv, 0, ms * USEC_PER_MS);
 	if ((ms <<= 1) > max_ms)
 		ms = max_ms;
 
@@ -216,7 +206,7 @@ __db_tas_mutex_unlock(dbenv, mutex)
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_err(dbenv, "TAS unlock failed: lock already unlocked");
+		__db_errx(dbenv, "TAS unlock failed: lock already unlocked");
 		return (__db_panic(dbenv, EACCES));
 	}
 #endif

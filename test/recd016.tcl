@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1996-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: recd016.tcl,v 12.1 2005/06/16 20:23:59 bostic Exp $
+# $Id: recd016.tcl,v 12.4 2006/08/24 14:46:36 bostic Exp $
 #
 # TEST	recd016
 # TEST	Test recovery after checksum error.
@@ -63,6 +63,7 @@ proc recd016 { method args} {
 		error_check_good txn_commit [$txn commit] 0
 	}
 	error_check_good db_close [$db close] 0
+	error_check_good log_flush [$dbenv log_flush] 0
 	error_check_good env_close [$dbenv close] 0
 	#
 	# We need to remove the env so that we don't get cached
@@ -173,6 +174,7 @@ proc recd016 { method args} {
 		error_check_good datachk $data [pad_data $method $i$datastr]
 	}
 	error_check_good db_close [$db close] 0
+	error_check_good log_flush [$dbenv log_flush] 0
 	error_check_good env_close [$dbenv close] 0
 	set fixed_len $orig_fixed_len
 	return

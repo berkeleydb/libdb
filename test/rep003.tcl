@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2002-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep003.tcl,v 12.2 2005/06/23 15:25:21 carol Exp $
+# $Id: rep003.tcl,v 12.7 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST  	rep003
 # TEST	Repeated shutdown/restart replication test
@@ -17,10 +17,21 @@ proc rep003 { method { tnum "003" } args } {
 	source ./include.tcl
 	global rep003_dbname rep003_omethod rep003_oargs
 
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Skip for record-based methods.
+	if { $checking_valid_methods } {
+		set test_methods {}
+		foreach method $valid_methods {
+			if { [is_record_based $method] != 1 } {
+				lappend test_methods $method
+			}
+		}
+		return $test_methods
+	}
 	if { [is_record_based $method] } {
 		puts "Rep$tnum: Skipping for method $method"
 		return
@@ -35,7 +46,7 @@ proc rep003 { method { tnum "003" } args } {
 	# and in-memory logging -- it doesn't make sense.
 
 	set logsets [create_logsets 2]
-	foreach recopt { "" "-recover" } {
+	foreach recopt $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $recopt == "-recover" && $logindex != -1 } {

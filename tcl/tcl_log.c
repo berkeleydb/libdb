@@ -1,26 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: tcl_log.c,v 12.4 2005/10/29 13:05:02 bostic Exp $
+ * $Id: tcl_log.c,v 12.10 2006/08/24 14:46:33 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
 #ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
 #include <tcl.h>
 #endif
-
-#include "db_int.h"
 #include "dbinc/log.h"
 #include "dbinc/tcl_db.h"
-#include "dbinc/txn.h"
 
 #ifdef CONFIG_TEST
 static int tcl_LogcGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_LOGC *));
@@ -423,14 +417,18 @@ logc_Cmd(clientData, interp, objc, objv)
 	static const char *logccmds[] = {
 		"close",
 		"get",
+		"version",
 		NULL
 	};
 	enum logccmds {
 		LOGCCLOSE,
-		LOGCGET
+		LOGCGET,
+		LOGCVERSION
 	};
 	DB_LOGC *logc;
 	DBTCL_INFO *logcip;
+	Tcl_Obj *res;
+	u_int32_t version;
 	int cmdindex, result, ret;
 
 	Tcl_ResetResult(interp);
@@ -479,7 +477,24 @@ logc_Cmd(clientData, interp, objc, objv)
 	case LOGCGET:
 		result = tcl_LogcGet(interp, objc, objv, logc);
 		break;
+	case LOGCVERSION:
+		/*
+		 * No args for this.  Error if there are some.
+		 */
+		if (objc > 2) {
+			Tcl_WrongNumArgs(interp, 2, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		ret = logc->version(logc, &version, 0);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "logc version")) == TCL_OK) {
+			res = Tcl_NewIntObj((int)version);
+			Tcl_SetObjResult(interp, res);
+		}
+		break;
 	}
+
 	return (result);
 }
 

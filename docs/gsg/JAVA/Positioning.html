@@ -128,8 +128,8 @@ try {
     while (cursor.getPrev(foundKey, foundData, LockMode.DEFAULT) == 
         OperationStatus.SUCCESS) {
 
-        String theKey = new String(foundKey.getData());
-        String theData = new String(foundData.getData());
+        String theKey = new String(foundKey.getData(), &quot;UTF-8&quot;);
+        String theData = new String(foundData.getData(), &quot;UTF-8&quot;);
         System.out.println(&quot;Key | Data : &quot; +  theKey + &quot; | &quot; + theData + &quot;&quot;);
     }
 } catch (DatabaseException de) {
@@ -201,7 +201,9 @@ try {
             that you provide for the database. If no 
                 <span>comparator</span> 
                  
-            is provided, then the default lexicographical sorting is used.
+                is provided, then the default 
+                
+                lexicographical sorting is used.
           </p>
               <p>
             For example, suppose you have database records that use the
@@ -351,8 +353,8 @@ try {
         // Upon completing a search, the key and data DatabaseEntry 
         // parameters for getSearchBothRange() are populated with the 
         // key/data values of the found record.
-        String foundKey = new String(theKey.getData());
-        String foundData = new String(theData.getData());
+        String foundKey = new String(theKey.getData(), &quot;UTF-8&quot;);
+        String foundData = new String(theData.getData(), &quot;UTF-8&quot;);
         System.out.println(&quot;Found record &quot; + foundKey + &quot;/&quot; + foundData + 
                            &quot;for search key/data: &quot; + searchKey + 
                            &quot;/&quot; + searchData);
@@ -556,8 +558,8 @@ try {
     // print the duplicates.
     if (cursor.count() &gt; 1) {
         while (retVal == OperationStatus.SUCCESS) {
-            String keyString = new String(theKey.getData());
-            String dataString = new String(theData.getData());
+            String keyString = new String(theKey.getData(), &quot;UTF-8&quot;);
+            String dataString = new String(theData.getData(), &quot;UTF-8&quot;);
             System.out.println(&quot;Key | Data : &quot; +  keyString + &quot; | &quot; + 
                                dataString + &quot;&quot;);
    

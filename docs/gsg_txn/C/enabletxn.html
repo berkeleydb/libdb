@@ -6,8 +6,8 @@
     <title>Chapter 2. Enabling Transactions</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="perftune-intro.html" title="Performance Tuning" />
     <link rel="next" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;        " />
   </head>
@@ -109,7 +109,7 @@
                 the logging subsystem is also initialized. Also, note that
                 if you do not initialize transactions when you first create
                 your environment, then you cannot use transactions for that
-                environment after that. This is because JE
+                environment after that. This is because DB
                 allocates certain structures needed for transactional
                 locking that are not available if the environment is
                 created without transactional support.
@@ -151,10 +151,11 @@
           </li>
           <li>
             <p>
-            Initialize the logging subsystem. While this is enabled by default for transactional applications, Sleepycat
-            recommends that you explicitly initialize it anyway for the purposes of code readability. The logging
+            Initialize the logging subsystem. While this is enabled by
+            default for transactional applications, we suggest that 
+            you explicitly initialize it anyway for the purposes of code readability. The logging
             subsystem is what provides your transactional application its durability guarantee, and it is required for
-            recoverability purposes. See <a href="filemanagement.html">Managing JE Files</a>
+            recoverability purposes. See <a href="filemanagement.html">Managing DB Files</a>
             for more information.
         </p>
             <p>
@@ -182,8 +183,11 @@
             
 
              <span>
-             Note that the common practice is for auto commit to be used to transaction-protect the
-             database open.
+             Note that the common practice is for auto commit to be used to
+             transaction-protect the database open. To use auto-commit, you
+             must still enable transactions as described here, but you do
+             not have to explicitly use a transaction when you open your
+             database. An example of this is given in the next section.
              </span>
         </p>
           </li>
@@ -199,7 +203,7 @@
           <div></div>
         </div>
         <p>
-        For simple JE applications, environments are optional. However, in
+        For simple DB applications, environments are optional. However, in
         order to transaction protect your database operations, you must use an
         environment.
     </p>
@@ -214,11 +218,11 @@
         of control had to manage these resources on its own.
     </p>
         <p>
-        By default all JE databases are backed by files on disk.  In
-        addition to these files, transactional JE applications create
+        By default all DB databases are backed by files on disk.  In
+        addition to these files, transactional DB applications create
         logs that are also by default stored on disk (they can optionally
         be backed using shared memory). Finally, transactional
-        JE applications also create and use shared-memory regions that
+        DB applications also create and use shared-memory regions that
         are also typically backed by the filesystem. But like databases and
         logs, the regions can be maintained strictly in-memory if your
         application requires it. For an example of an application that
@@ -237,9 +241,9 @@
             <div></div>
           </div>
           <p>
-            In order to operate, your JE application must be able to
+            In order to operate, your DB application must be able to
             locate its database files, log files, and region files. If these
-            are stored in the filesystem, then you must tell JE where
+            are stored in the filesystem, then you must tell DB where
             they are located (a number of mechanisms exist that allow you to
             identify the location of these files &#8211; see below). Otherwise, 
             by default they are located in the current working directory.
@@ -255,7 +259,7 @@
             </div>
             <p>
                 The environment home directory is used to determine where
-                JE files are located.  Its location
+                DB files are located.  Its location
                 is identified using one of the following mechanisms, in the
                 following order of priority:
             </p>
@@ -316,7 +320,7 @@
               <div></div>
             </div>
             <p>
-                By default, all JE files are created relative to the environment
+                By default, all DB files are created relative to the environment
                 home directory. For example, suppose your environment home is in 
                     <tt class="literal">/export/myAppHome</tt>. Also suppose you name your database 
                     <span><tt class="literal">data/myDatabase.db</tt>.</span>
@@ -326,7 +330,7 @@
                     
             </p>
             <p>
-            That said, JE always defers to absolute pathnames.
+            That said, DB always defers to absolute pathnames.
             This means that if you provide an absolute filename when you 
             name your database, then that file is <span class="emphasis"><em>not</em></span>
             placed relative to the environment home directory. Instead, it
@@ -356,7 +360,7 @@
             <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
               <h3 class="title">Note</h3>
               <p>
-                Sleepycat strongly discourages you from using absolute path names for your 
+                Try not to use absolute path names for your 
                 environment's files. Under certain recovery scenarios, absolute path names can
                 render your environment unrecoverable. This occurs if you are attempting to recover 
                 you environment on a system that does not support the absolute path name that you used.
@@ -373,7 +377,7 @@
               <div></div>
             </div>
             <p>
-                As described in the previous sections, JE will place all its
+                As described in the previous sections, DB will place all its
                 files in or relative to the environment home directory.
                 You can also cause a
                 specific database file to be placed in a particular location by
@@ -391,7 +395,7 @@
                 chance of surviving a disk failure.
             </p>
             <p>
-                You can cause JE's files to be placed in specific
+                You can cause DB's files to be placed in specific
                 locations using the following mechanisms:
             </p>
             <div class="informaltable">
@@ -542,7 +546,7 @@
             </p>
                 <p>
                 Defines the function that is called when an error message is
-                issued by JE. The error prefix and message are passed to
+                issued by DB. The error prefix and message are passed to
                 this callback. It is up to the application to display this
                 information correctly.
             </p>
@@ -553,7 +557,7 @@
             </p>
                 <p>
                 Sets the C library <tt class="literal">FILE *</tt> to be used for
-                displaying error messages issued by the JE library.
+                displaying error messages issued by the DB library.
             </p>
               </li>
               <li>
@@ -563,7 +567,7 @@
             </p>
                 <p>
                 Sets the prefix used to for any error messages issued by the
-                JE library.
+                DB library.
             </p>
               </li>
               <li>
@@ -571,7 +575,7 @@
                 <tt class="methodname">err()</tt>
             </p>
                 <p>
-                Issues an error message based upon a JE error code a message text that you supply.
+                Issues an error message based upon a DB error code a message text that you supply.
                 The error message is sent to the
                 callback function as defined by <tt class="methodname">set_errcall()</tt>.
                 If that method has not been used, then the error message is sent to the
@@ -585,7 +589,7 @@
                 The error message consists of the prefix string
                 (as defined by <tt class="methodname">set_errprefix()</tt>),
                 an optional <tt class="literal">printf</tt>-style formatted message,
-                the JE error message associated with the supplied error code, 
+                the DB error message associated with the supplied error code, 
                 and a trailing newline.
             </p>
               </li>
@@ -595,8 +599,8 @@
             </p>
                 <p>
                 Behaves identically to <tt class="methodname">err()</tt> except
-                that you do not provide the JE error code and so 
-                the JE message text is not displayed.
+                that you do not provide the DB error code and so 
+                the DB message text is not displayed.
             </p>
               </li>
             </ul>
@@ -606,14 +610,7 @@
         function to directly return the error string that corresponds to a
         particular error number. For more information on the 
         <tt class="function">db_strerror()</tt> function, see the <tt class="literal">Error Returns</tt>
-        section of the  
-        
-        <span>
-            <a href="http://www.sleepycat.com/docs/gsg/C/returns.html" target="_top">
-                Berkeley DB for C Getting Started Guide
-            </a>
-            
-        </span>
+        section of the <i class="citetitle">Getting Started with Berkeley DB</i> guide. 
      </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
@@ -720,10 +717,10 @@
                 
         </p>
             <p>
-            When region files are backed by system memory, JE creates a
+            When region files are backed by system memory, DB creates a
             single  file in the environment's home directory. This file
             contains information necessary to identify the system shared
-            memory in use by the environment. By creating this file, JE
+            memory in use by the environment. By creating this file, DB
             enables multiple processes to share the environment.
         </p>
             <p>
@@ -803,7 +800,7 @@
                     
 
                     so that environment variables can be used during file naming
-                    can be dangerous. Setting those flags in JE
+                    can be dangerous. Setting those flags in DB
                     applications with additional permissions (for example, UNIX
                     <tt class="literal">setuid</tt> or <tt class="literal">setgid</tt> 
                     applications) could potentially allow users
@@ -811,7 +808,7 @@
                     have access.
                 </p>
                 <p>
-                    For example, suppose you write a JE application
+                    For example, suppose you write a DB application
                     that runs <tt class="literal">setuid</tt>. This means that
                     when the application runs, it does so under a
                     userid different than that of the application's caller.
@@ -866,14 +863,14 @@
                     File permissions
                 </p>
                 <p>
-                    By default, JE always creates database and log files readable and
+                    By default, DB always creates database and log files readable and
                     writable by the owner and the group (that is,
                     <tt class="literal">S_IRUSR</tt>,
                     <tt class="literal">S_IWUSR</tt>, <tt class="literal">S_IRGRP</tt> and
                     <tt class="literal">S_IWGRP</tt>; or octal mode 0660 on historic
                     UNIX systems). The group ownership of created files is based
                     on the system and directory defaults, and is not further
-                    specified by JE.
+                    specified by DB.
                 </p>
               </li>
               <li>

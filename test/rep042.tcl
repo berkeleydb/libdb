@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep042.tcl,v 12.5 2005/10/04 20:34:34 sue Exp $
+# $Id: rep042.tcl,v 12.13 2006/09/08 20:32:18 bostic Exp $
 #
 # TEST	rep042
 # TEST	Concurrency with updates.
 # TEST
-# TEST 	Verify racing role changes and updates don't result in 
+# TEST 	Verify racing role changes and updates don't result in
 # TEST  pages with LSN 0,1.  Set up an environment that is master.
 # TEST  Spawn child process that does a delete, but using the
 # TEST  $env check so that it sleeps in the middle of the call.
@@ -19,16 +19,21 @@
 proc rep042 { method { niter 10 } { tnum "042" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -72,11 +77,11 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_cmd "berkdb_env_noerr -create -lock_max 2500 \
+	set ma_cmd "berkdb_env_noerr -create \
 	    -log_max 1000000 $m_txnargs $m_logargs \
 	    -home $masterdir -rep_master \
 	    -rep_transport \[list 1 replsend\]"
-#	set ma_cmd "berkdb_env_noerr -create -lock_max 2500 \
+#	set ma_cmd "berkdb_env_noerr -create \
 #	    -log_max 1000000 $m_txnargs $m_logargs \
 #	    -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_master -rep_transport \
@@ -120,7 +125,7 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 		set pid [exec $tclsh_path $test_path/wrap.tcl \
 		    rep042script.tcl $scrlog \
 		    $masterdir $sleepval $dbname $op &]
-	
+
 		# Wait for child process to start up.
 		while { 1 } {
 			if { [file exists $masterdir/marker.db] == 0  } {
@@ -130,10 +135,10 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 				break
 			}
 		}
-	
+
  		puts "\tRep$tnum.c: Downgrade during child $op."
 		error_check_good downgrade [$masterenv rep_start -client] 0
-	
+
 		puts "\tRep$tnum.d: Waiting for child ..."
 		# Watch until the child is done.
 		watch_procs $pid 5
@@ -146,9 +151,18 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 			    [eval $db put -txn $t $i [chop_data $method data$i]] 0
 			error_check_good txn_commit [$t commit] 0
 		}
-		process_msgs "{$masterenv 1} {$clientenv 2}" 
+		process_msgs "{$masterenv 1} {$clientenv 2}"
 
-		error_check_good check [check_script $scrlog "read-only"] 1
+		# We expect to find the error "attempt to modify a read-only
+		# database."  If we don't, report what we did find as a failure.
+		set readonly_error [check_script $scrlog "read-only"]
+		if { $readonly_error != 1 } {
+			set errstrings [eval findfail $scrlog]
+			if { [llength $errstrings] > 0 } {
+				puts "FAIL: unexpected error(s)\
+				    found in file $scrlog:$errstrings"
+			}
+		}
 		fileremove -f $masterdir/marker.db
 	}
 

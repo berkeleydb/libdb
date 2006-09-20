@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -35,32 +35,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.c,v 12.12 2005/11/10 21:11:42 bostic Exp $
+ * $Id: db_dispatch.c,v 12.26 2006/08/24 14:45:15 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#ifndef HAVE_FTRUNCATE
-#include "dbinc/db_shash.h"
-#endif
 #include "dbinc/hash.h"
-#ifndef HAVE_FTRUNCATE
-#include "dbinc/lock.h"
-#include "dbinc/mp.h"
-#endif
-#include "dbinc/log.h"
 #include "dbinc/fop.h"
+#include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-#ifndef HAVE_FTRUNCATE
 static int __db_limbo_fix __P((DB *, DB_TXN *,
 		DB_TXNLIST *, db_pgno_t *, DBMETA *, db_limbo_state));
 static int __db_limbo_bucket __P((DB_ENV *,
@@ -71,7 +59,6 @@ static int __db_lock_move __P((DB_ENV *,
 		u_int8_t *, db_pgno_t, db_lockmode_t, DB_TXN *, DB_TXN *));
 static int __db_txnlist_pgnoadd __P((DB_ENV *, DB_TXNHEAD *,
 		int32_t, u_int8_t *, char *, db_pgno_t));
-#endif
 static int __db_txnlist_find_internal __P((DB_ENV *, DB_TXNHEAD *,
 		db_txnlist_type, u_int32_t, u_int8_t *, DB_TXNLIST **,
 		int, u_int32_t *));
@@ -108,7 +95,7 @@ __db_dispatch(dbenv, dtab, dtabsize, db, lsnp, redo, info)
 	make_call = ret = 0;
 
 	/* If we don't have a dispatch table, it's hard to dispatch. */
-	DB_ASSERT(dtab != NULL);
+	DB_ASSERT(dbenv, dtab != NULL);
 
 	/*
 	 * If we find a record that is in the user's number space and they
@@ -320,7 +307,7 @@ __db_dispatch(dbenv, dtab, dtabsize, db, lsnp, redo, info)
 			 * as our sanity check.
 			 */
 			if (rectype > dtabsize || dtab[rectype] == NULL) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 				    "Illegal record type %lu in log",
 				    (u_long)rectype);
 				return (EINVAL);
@@ -468,8 +455,8 @@ __db_txnlist_add(dbenv, hp, txnid, status, lsn)
 	if (lsn != NULL && IS_ZERO_LSN(hp->maxlsn) && status == TXN_COMMIT)
 		hp->maxlsn = *lsn;
 
-	DB_ASSERT(lsn == NULL ||
-	    status != TXN_COMMIT || log_compare(&hp->maxlsn, lsn) >= 0);
+	DB_ASSERT(dbenv, lsn == NULL ||
+	    status != TXN_COMMIT || LOG_COMPARE(&hp->maxlsn, lsn) >= 0);
 
 	return (0);
 }
@@ -513,7 +500,7 @@ __db_txnlist_ckp(dbenv, hp, ckp_lsn)
 	COMPQUIET(dbenv, NULL);
 
 	if (IS_ZERO_LSN(hp->ckplsn) && !IS_ZERO_LSN(hp->maxlsn) &&
-	    log_compare(&hp->maxlsn, ckp_lsn) >= 0)
+	    LOG_COMPARE(&hp->maxlsn, ckp_lsn) >= 0)
 		hp->ckplsn = *ckp_lsn;
 }
 
@@ -671,7 +658,7 @@ __db_txnlist_find_internal(dbenv,
 			    (txnid >= hp->gen_array[i].txn_min ||
 			    txnid <= hp->gen_array[i].txn_max))
 				break;
-		DB_ASSERT(i <= hp->generation);
+		DB_ASSERT(dbenv, i <= hp->generation);
 		generation = hp->gen_array[i].generation;
 		break;
 	case TXNLIST_PGNO:
@@ -685,8 +672,7 @@ __db_txnlist_find_internal(dbenv,
 	}
 
 	head = &hp->head[DB_TXNLIST_MASK(hp, hash)];
-
-	for (p = LIST_FIRST(head); p != NULL; p = LIST_NEXT(p, links)) {
+	LIST_FOREACH(p, head, links) {
 		if (p->type != type)
 			continue;
 		switch (type) {
@@ -700,6 +686,7 @@ __db_txnlist_find_internal(dbenv,
 		case TXNLIST_PGNO:
 			if (memcmp(uid, p->u.p.uid, DB_FILE_ID_LEN) != 0)
 				continue;
+			*statusp = TXN_OK;
 			break;
 		case TXNLIST_DELETE:
 		case TXNLIST_LSN:
@@ -790,8 +777,7 @@ __db_txnlist_lsnadd(dbenv, hp, lsnp)
 	if (IS_ZERO_LSN(*lsnp))
 		return (0);
 
-	for (elp = LIST_FIRST(&hp->head[0]);
-	    elp != NULL; elp = LIST_NEXT(elp, links))
+	LIST_FOREACH(elp, &hp->head[0], links)
 		if (elp->type == TXNLIST_LSN)
 			break;
 
@@ -833,8 +819,7 @@ __db_txnlist_lsnget(dbenv, hp, lsnp, flags)
 	COMPQUIET(dbenv, NULL);
 	COMPQUIET(flags, 0);
 
-	for (elp = LIST_FIRST(&hp->head[0]);
-	    elp != NULL; elp = LIST_NEXT(elp, links))
+	LIST_FOREACH(elp, &hp->head[0], links)
 		if (elp->type == TXNLIST_LSN)
 			break;
 
@@ -883,15 +868,12 @@ err:	__db_txnlist_end(dbenv, hp);
 	return (ret);
 }
 
-#ifndef HAVE_FTRUNCATE
 /*
  * __db_add_limbo -- add pages to the limbo list.
  *	Get the file information and call pgnoadd for each page.
  *
- * PUBLIC: #ifndef HAVE_FTRUNCATE
  * PUBLIC: int __db_add_limbo __P((DB_ENV *,
- * PUBLIC:      DB_TXNHEAD *, int32_t, db_pgno_t, int32_t));
- * PUBLIC: #endif
+ * PUBLIC:      DB_TXNHEAD *, int32_t, db_pgno_t, u_int32_t));
  */
 int
 __db_add_limbo(dbenv, hp, fileid, pgno, count)
@@ -899,7 +881,7 @@ __db_add_limbo(dbenv, hp, fileid, pgno, count)
 	DB_TXNHEAD *hp;
 	int32_t fileid;
 	db_pgno_t pgno;
-	int32_t count;
+	u_int32_t count;
 {
 	DB_LOG *dblp;
 	FNAME *fnp;
@@ -952,10 +934,8 @@ __db_add_limbo(dbenv, hp, fileid, pgno, count)
  * "create list and write meta-data page" algorithm.  Otherwise, we're in
  * an abort and doing the "use compensating transaction" algorithm.
  *
- * PUBLIC: #ifndef HAVE_FTRUNCATE
  * PUBLIC: int __db_do_the_limbo __P((DB_ENV *,
  * PUBLIC:     DB_TXN *, DB_TXN *, DB_TXNHEAD *, db_limbo_state));
- * PUBLIC: #endif
  */
 int
 __db_do_the_limbo(dbenv, ptxn, txn, hp, state)
@@ -987,7 +967,7 @@ __db_do_the_limbo(dbenv, ptxn, txn, hp, state)
 	}
 
 err:	if (ret != 0) {
-		__db_err(dbenv, "Fatal error in abort of an allocation");
+		__db_errx(dbenv, "Fatal error in abort of an allocation");
 		ret = __db_panic(dbenv, ret);
 	}
 
@@ -1160,7 +1140,9 @@ retry:		dbp_created = 0;
 		if (meta == NULL &&
 		    (ctxn == NULL || state == LIMBO_COMPENSATE)) {
 			pgno = PGNO_BASE_MD;
-			if ((ret = __memp_fget(mpf, &pgno, 0, &meta)) != 0)
+			if ((ret = __memp_fget(mpf, &pgno, txn,
+			    (state != LIMBO_PREPARE) ? DB_MPOOL_DIRTY : 0,
+			    &meta)) != 0)
 				goto err;
 			last_pgno = meta->free;
 		}
@@ -1198,13 +1180,11 @@ retry:		dbp_created = 0;
 			 * off the recovery flag briefly.
 			 */
 			if (state == LIMBO_COMPENSATE)
-				F_CLR(
-				    (DB_LOG *)dbenv->lg_handle, DBLOG_RECOVER);
+				F_CLR(dbenv->lg_handle, DBLOG_RECOVER);
 			ret = __txn_commit(ctxn, DB_TXN_NOSYNC);
 			ctxn = NULL;
 			if (state == LIMBO_COMPENSATE)
-				F_SET(
-				    (DB_LOG *)dbenv->lg_handle, DBLOG_RECOVER);
+				F_SET(dbenv->lg_handle, DBLOG_RECOVER);
 			if (ret != 0)
 				goto retry;
 		}
@@ -1229,7 +1209,7 @@ retry:		dbp_created = 0;
 			 * first so that it isn't pinned when we try to sync.
 			 */
 			if (!IS_RECOVERING(dbenv) && !T_RESTORED(txn))
-				__db_err(dbenv, "Flushing free list to disk");
+				__db_errx(dbenv, "Flushing free list to disk");
 			if ((ret = __memp_fput(mpf, meta, 0)) != 0)
 				goto err;
 			meta = NULL;
@@ -1244,18 +1224,16 @@ retry:		dbp_created = 0;
 			 */
 			if ((ret = __db_sync(dbp)) == 0) {
 				pgno = PGNO_BASE_MD;
-				if ((ret =
-				    __memp_fget(mpf, &pgno, 0, &meta)) != 0)
+				if ((ret = __memp_fget(mpf, &pgno, txn,
+				    DB_MPOOL_DIRTY, &meta)) != 0)
 					goto err;
 				meta->free = last_pgno;
-				if ((ret = __memp_fput(mpf,
-				     meta, DB_MPOOL_DIRTY)) != 0)
+				if ((ret = __memp_fput(mpf, meta, 0)) != 0)
 					goto err;
 				meta = NULL;
 			} else {
-				__db_err(dbenv,
-				    "%s: %s", dbp->fname, db_strerror(ret));
-				__db_err(dbenv, "%s: %s %s", dbp->fname,
+				__db_err(dbenv, ret, "%s", dbp->fname);
+				__db_errx(dbenv, "%s: %s %s", dbp->fname,
 				    "allocation flush failed, some free pages",
 				    "may not appear in the free list");
 				ret = 0;
@@ -1328,8 +1306,8 @@ __db_limbo_fix(dbp, ctxn, elp, lastp, meta, state)
 		if (pgno == PGNO_INVALID)
 			continue;
 
-		if ((ret =
-		    __memp_fget(mpf, &pgno, DB_MPOOL_CREATE, &pagep)) != 0) {
+		if ((ret = __memp_fget(mpf, &pgno, ctxn,
+		    DB_MPOOL_CREATE | DB_MPOOL_EDIT, &pagep)) != 0) {
 			if (ret != ENOSPC)
 				goto err;
 			continue;
@@ -1346,7 +1324,7 @@ __db_limbo_fix(dbp, ctxn, elp, lastp, meta, state)
 					if (next == pgno)
 						break;
 					if ((ret = __memp_fget(mpf,
-					    &next, 0, &freep)) != 0)
+					    &next, ctxn, 0, &freep)) != 0)
 						goto err;
 					next = NEXT_PGNO(freep);
 					if ((ret =
@@ -1386,7 +1364,7 @@ __db_limbo_fix(dbp, ctxn, elp, lastp, meta, state)
 				 * marked compensating, but in case we didn't
 				 * do the open, we have to mark it explicitly.
 				 */
-				F_SET(dbc, DBC_COMPENSATE);
+				F_SET(dbc, DBC_DONTLOCK);
 
 				/*
 				 * If aborting a txn for a different process
@@ -1420,15 +1398,15 @@ __db_limbo_fix(dbp, ctxn, elp, lastp, meta, state)
 			elp->u.p.pgno_array[i] = PGNO_INVALID;
 
 		if (pagep != NULL) {
-			ret = __memp_fput(mpf, pagep, DB_MPOOL_DIRTY);
+			ret = __memp_fput(mpf, pagep, 0);
 			pagep = NULL;
 		}
 		if (ret != 0)
 			goto err;
 	}
 
-err:	if (pagep != NULL &&
-	    (t_ret = __memp_fput(mpf, pagep, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+err:	if (pagep != NULL && (t_ret = __memp_fput(mpf, pagep, 0)) != 0 &&
+	    ret == 0)
 		ret = t_ret;
 	if (dbc != NULL && (t_ret = __db_c_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -1459,8 +1437,8 @@ __db_limbo_prepare(dbp, txn, elp)
 	for (i = 0; i < elp->u.p.nentries; i++) {
 		pgno = elp->u.p.pgno_array[i];
 
-		if ((ret =
-		    __memp_fget(mpf, &pgno, DB_MPOOL_CREATE, &pagep)) != 0) {
+		if ((ret = __memp_fget(mpf,
+		    &pgno, txn, DB_MPOOL_CREATE, &pagep)) != 0) {
 			if (ret != ENOSPC)
 				return (ret);
 			continue;
@@ -1543,7 +1521,6 @@ __db_txnlist_pgnoadd(dbenv, hp, fileid, uid, fname, pgno)
 
 err:	return (ret);
 }
-#endif
 
 #ifdef DEBUG
 /*
@@ -1563,8 +1540,7 @@ __db_txnlist_print(hp)
 	printf("Maxid: %lu Generation: %lu\n",
 	    (u_long)hp->maxid, (u_long)hp->generation);
 	for (i = 0; i < hp->nslots; i++)
-		for (p = LIST_FIRST(&hp->head[i]);
-		    p != NULL; p = LIST_NEXT(p, links)) {
+		LIST_FOREACH(p, &hp->head[i], links) {
 			if (p->type != TXNLIST_TXNID) {
 				printf("Unrecognized type: %d\n", p->type);
 				continue;

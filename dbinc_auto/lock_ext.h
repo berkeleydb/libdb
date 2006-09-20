@@ -32,13 +32,12 @@ void __lock_freelocker __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *, u_int32_
 int __lock_fix_list __P((DB_ENV *, DBT *, u_int32_t));
 int __lock_get_list __P((DB_ENV *, u_int32_t, u_int32_t, db_lockmode_t, DBT *));
 void __lock_list_print __P((DB_ENV *, DBT *));
-void __lock_dbenv_create __P((DB_ENV *));
-int __lock_dbenv_close __P((DB_ENV *));
+int __lock_dbenv_create __P((DB_ENV *));
+void __lock_dbenv_destroy __P((DB_ENV *));
 int __lock_get_lk_conflicts __P((DB_ENV *, const u_int8_t **, int *));
 int __lock_set_lk_conflicts __P((DB_ENV *, u_int8_t *, int));
 int __lock_get_lk_detect __P((DB_ENV *, u_int32_t *));
 int __lock_set_lk_detect __P((DB_ENV *, u_int32_t));
-int __lock_set_lk_max __P((DB_ENV *, u_int32_t));
 int __lock_get_lk_max_locks __P((DB_ENV *, u_int32_t *));
 int __lock_set_lk_max_locks __P((DB_ENV *, u_int32_t));
 int __lock_get_lk_max_lockers __P((DB_ENV *, u_int32_t *));
@@ -59,8 +58,6 @@ int __lock_set_timeout_internal __P((DB_ENV *, u_int32_t, db_timeout_t, u_int32_
 int __lock_inherit_timeout __P(( DB_ENV *, u_int32_t, u_int32_t));
 void __lock_expires __P((DB_ENV *, db_timeval_t *, db_timeout_t));
 int __lock_expired __P((DB_ENV *, db_timeval_t *, db_timeval_t *));
-int __lock_cmp __P((const DBT *, DB_LOCKOBJ *));
-int __lock_locker_cmp __P((u_int32_t, DB_LOCKER *));
 u_int32_t __lock_ohash __P((const DBT *));
 u_int32_t __lock_lhash __P((DB_LOCKOBJ *));
 int __lock_nomem __P((DB_ENV *, const char *));

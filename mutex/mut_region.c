@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_region.c,v 12.9 2005/10/27 15:16:13 bostic Exp $
+ * $Id: mut_region.c,v 12.18 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/log.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
@@ -48,8 +41,9 @@ __mutex_open(dbenv)
 	 */
 	if (dbenv->mutex_align == 0)
 		dbenv->mutex_align = MUTEX_ALIGN;
-	if (dbenv->mutex_tas_spins == 0)
-		dbenv->mutex_tas_spins = __os_spin(dbenv);
+	if (dbenv->mutex_tas_spins == 0 &&
+	    ((ret = __mutex_set_tas_spins(dbenv, __os_spin(dbenv))) != 0))
+		return (ret);
 
 	/*
 	 * If the user didn't set an absolute value on the number of mutexes
@@ -63,7 +57,7 @@ __mutex_open(dbenv)
 		    __lock_region_mutex_count(dbenv) +
 		    __log_region_mutex_count(dbenv) +
 		    __memp_region_mutex_count(dbenv) +
-		    dbenv->mutex_inc + 500;
+		    dbenv->mutex_inc + 100;
 
 	/* Create/initialize the mutex manager structure. */
 	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_MUTEXMGR), &mtxmgr)) != 0)
@@ -94,7 +88,7 @@ __mutex_open(dbenv)
 
 	/* Allocate initial queue of mutexes. */
 	if (dbenv->mutex_iq != NULL) {
-		DB_ASSERT(F_ISSET(&mtxmgr->reginfo, REGION_CREATE));
+		DB_ASSERT(dbenv, F_ISSET(&mtxmgr->reginfo, REGION_CREATE));
 		for (i = 0; i < dbenv->mutex_iq_next; ++i) {
 			if ((ret = __mutex_alloc_int(
 			    dbenv, 0, dbenv->mutex_iq[i].alloc_id,
@@ -104,7 +98,7 @@ __mutex_open(dbenv)
 			 * Confirm we allocated the right index, correcting
 			 * for avoiding slot 0 (MUTEX_INVALID).
 			 */
-			DB_ASSERT(mutex == i + 1);
+			DB_ASSERT(dbenv, mutex == i + 1);
 		}
 		__os_free(dbenv, dbenv->mutex_iq);
 		dbenv->mutex_iq = NULL;
@@ -123,7 +117,7 @@ __mutex_open(dbenv)
 		    (ret = __mutex_lock(dbenv, mutex)) != 0 ||
 		    (ret = __mutex_unlock(dbenv, mutex)) != 0 ||
 		    (ret = __mutex_free(dbenv, &mutex)) != 0) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		    "Unable to acquire/release a mutex; check configuration");
 			goto err;
 		}
@@ -131,7 +125,7 @@ __mutex_open(dbenv)
 
 	/*
 	 * Initialize thread tracking.  We want to do this as early
-	 * has possible in case we die.  This sits in the mutex region
+	 * as possible in case we die.  This sits in the mutex region
 	 * so do it now.
 	 */
 	if ((ret = __env_thread_init(dbenv,
@@ -167,7 +161,7 @@ __mutex_region_init(dbenv, mtxmgr)
 
 	if ((ret = __db_shalloc(&mtxmgr->reginfo,
 	    sizeof(DB_MUTEXREGION), 0, &mtxmgr->reginfo.primary)) != 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Unable to allocate memory for the mutex region");
 		return (ret);
 	}
@@ -199,7 +193,7 @@ __mutex_region_init(dbenv, mtxmgr)
 	if ((ret = __db_shalloc(&mtxmgr->reginfo,
 	    (mtxregion->stat.st_mutex_cnt + 1) * mtxregion->mutex_size,
 	    mtxregion->stat.st_mutex_align, &mutex_array)) != 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Unable to allocate memory for mutexes from the region");
 		return (ret);
 	}

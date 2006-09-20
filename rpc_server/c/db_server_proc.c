@@ -1,25 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_server_proc.c,v 12.6 2005/07/21 18:21:33 bostic Exp $
+ * $Id: db_server_proc.c,v 12.14 2006/09/19 13:39:44 mjc Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <rpc/rpc.h>
-
-#include <string.h>
-#endif
-
-#include "db_server.h"
-
 #include "db_int.h"
+#ifndef NO_SYSTEM_INCLUDES
+#include <rpc/rpc.h>
+#endif
+#include "db_server.h"
 #include "dbinc/db_server_int.h"
 #include "dbinc_auto/rpc_server_ext.h"
 
@@ -62,6 +56,43 @@ __env_set_cachesize_proc(dbenvcl_id, gbytes, bytes, ncache, replyp)
 	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 
 	ret = dbenv->set_cachesize(dbenv, gbytes, bytes, ncache);
+
+	replyp->status = ret;
+	return;
+}
+
+/*
+ * PUBLIC: void __env_cdsgroup_begin_proc __P((u_int,
+ * PUBLIC:      __env_cdsgroup_begin_reply *));
+ */
+void
+__env_cdsgroup_begin_proc(dbenvcl_id, replyp)
+	u_int dbenvcl_id;
+	__env_cdsgroup_begin_reply *replyp;
+{
+	DB_ENV *dbenv;
+	DB_TXN *txnp;
+	ct_entry *ctp, *dbenv_ctp;
+	int ret;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
+
+	ctp = new_ct_ent(&replyp->status);
+	if (ctp == NULL)
+		return;
+
+	ret = dbenv->cdsgroup_begin(dbenv, &txnp);
+	if (ret == 0) {
+		ctp->ct_txnp = txnp;
+		ctp->ct_type = CT_TXN;
+		ctp->ct_parent = NULL;
+		ctp->ct_envparent = dbenv_ctp;
+		replyp->txnidcl_id = ctp->ct_id;
+		__dbsrv_settimeout(ctp, dbenv_ctp->ct_timeout);
+		__dbsrv_active(ctp);
+	} else
+		__dbclear_ctp(ctp);
 
 	replyp->status = ret;
 	return;
@@ -114,8 +145,8 @@ __env_create_proc(timeout, replyp)
 }
 
 /*
- * PUBLIC: void __env_dbremove_proc __P((u_int, u_int, char *, char *, u_int32_t,
- * PUBLIC:      __env_dbremove_reply *));
+ * PUBLIC: void __env_dbremove_proc __P((u_int, u_int, char *, char *,
+ * PUBLIC:	u_int32_t, __env_dbremove_reply *));
  */
 void
 __env_dbremove_proc(dbenvcl_id, txnpcl_id, name, subdb, flags, replyp)
@@ -784,7 +815,7 @@ __db_create_proc(dbenvcl_id, flags, replyp)
 	 * We actually require env's for databases.  The client should
 	 * have caught it, but just in case.
 	 */
-	DB_ASSERT(dbenv != NULL);
+	DB_ASSERT(dbenv, dbenv != NULL);
 	if ((ret = db_create(&dbp, dbenv, flags)) == 0) {
 		dbp_ctp->ct_dbp = dbp;
 		dbp_ctp->ct_type = CT_DB;
@@ -798,8 +829,9 @@ __db_create_proc(dbenvcl_id, flags, replyp)
 }
 
 /*
- * PUBLIC: void __db_del_proc __P((u_int, u_int, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:      u_int32_t, void *, u_int32_t, u_int32_t, __db_del_reply *));
+ * PUBLIC: void __db_del_proc __P((u_int, u_int, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, void *, u_int32_t, u_int32_t,
+ * PUBLIC:	__db_del_reply *));
  */
 void
 __db_del_proc(dbpcl_id, txnpcl_id, keydlen, keydoff, keyulen, keyflags,
@@ -969,10 +1001,10 @@ __db_set_flags_proc(dbpcl_id, flags, replyp)
 }
 
 /*
- * PUBLIC: void __db_get_proc __P((u_int, u_int, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, __db_get_reply *,
- * PUBLIC:     int *));
+ * PUBLIC: void __db_get_proc __P((u_int, u_int, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, void *, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, u_int32_t, void *, u_int32_t,
+ * PUBLIC:	u_int32_t, __db_get_reply *, int *));
  */
 void
 __db_get_proc(dbpcl_id, txnpcl_id, keydlen, keydoff, keyulen, keyflags,
@@ -1441,11 +1473,11 @@ __db_set_pagesize_proc(dbpcl_id, pagesize, replyp)
 }
 
 /*
- * PUBLIC: void __db_pget_proc __P((u_int, u_int, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, __db_pget_reply *,
- * PUBLIC:     int *));
+ * PUBLIC: void __db_pget_proc __P((u_int, u_int, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, void *, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, u_int32_t, void *, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, u_int32_t, u_int32_t, void *,
+ * PUBLIC:	u_int32_t, u_int32_t, __db_pget_reply *, int *));
  */
 void
 __db_pget_proc(dbpcl_id, txnpcl_id, skeydlen, skeydoff, skeyulen,
@@ -1615,10 +1647,10 @@ err:		FREE_IF_CHANGED(dbp->dbenv, skey.data, skeydata);
 }
 
 /*
- * PUBLIC: void __db_put_proc __P((u_int, u_int, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, __db_put_reply *,
- * PUBLIC:     int *));
+ * PUBLIC: void __db_put_proc __P((u_int, u_int, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, void *, u_int32_t, u_int32_t,
+ * PUBLIC:	u_int32_t, u_int32_t, u_int32_t, void *, u_int32_t,
+ * PUBLIC:	u_int32_t, __db_put_reply *, int *));
  */
 void
 __db_put_proc(dbpcl_id, txnpcl_id, keydlen, keydoff, keyulen, keyflags,
@@ -2072,6 +2104,7 @@ __db_join_proc(dbpcl_id, curs, curslen, flags, replyp)
 	u_int32_t flags;
 	__db_join_reply *replyp;
 {
+	DB_ENV *dbenv;
 	DB *dbp;
 	DBC **jcurs, **c;
 	DBC *dbc;
@@ -2082,14 +2115,15 @@ __db_join_proc(dbpcl_id, curs, curslen, flags, replyp)
 
 	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
 	dbp = (DB *)dbp_ctp->ct_anyp;
+	dbenv = dbp->dbenv;
 
 	dbc_ctp = new_ct_ent(&replyp->status);
 	if (dbc_ctp == NULL)
 		return;
 
 	size = (curslen + 1) * sizeof(DBC *);
-	if ((ret = __os_calloc(dbp->dbenv,
-	    curslen + 1, sizeof(DBC *), &jcurs)) != 0) {
+	if ((ret = __os_calloc(
+	    dbenv, curslen + 1, sizeof(DBC *), &jcurs)) != 0) {
 		replyp->status = ret;
 		__dbclear_ctp(dbc_ctp);
 		return;
@@ -2100,7 +2134,7 @@ __db_join_proc(dbpcl_id, curs, curslen, flags, replyp)
 	 * the same transaction, so just check the first.
 	 */
 	ctp = get_tableent(*curs);
-	DB_ASSERT(ctp->ct_type == CT_CURSOR);
+	DB_ASSERT(dbenv, ctp->ct_type == CT_CURSOR);
 	/*
 	 * If we are using a transaction, set the join activity timer
 	 * to point to the parent transaction.
@@ -2123,7 +2157,7 @@ __db_join_proc(dbpcl_id, curs, curslen, flags, replyp)
 		 * we know they are part of a join list and we can distinguish
 		 * them and later restore them when the join cursor is closed.
 		 */
-		DB_ASSERT(ctp->ct_type == CT_CURSOR);
+		DB_ASSERT(dbenv, ctp->ct_type == CT_CURSOR);
 		ctp->ct_type |= CT_JOIN;
 		ctp->ct_origp = ctp->ct_activep;
 		/*
@@ -2158,8 +2192,8 @@ __db_join_proc(dbpcl_id, curs, curslen, flags, replyp)
 	}
 
 	replyp->status = ret;
-out:
-	__os_free(dbp->dbenv, jcurs);
+
+out:	__os_free(dbenv, jcurs);
 	return;
 }
 
@@ -2312,29 +2346,37 @@ __dbc_c_get_proc(dbccl_id, keydlen, keydoff, keyulen, keyflags, keydata,
 	key.dlen = keydlen;
 	key.ulen = keyulen;
 	key.doff = keydoff;
-	/*
-	 * Ignore memory related flags on server.
-	 */
-	key.flags = DB_DBT_MALLOC;
+	key.size = keysize;
+	if (keyflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbenv, key.ulen, &key.data)) != 0)
+			goto err;
+		if (keydata != 0)
+			memcpy(key.data, keydata,
+			    (key.size < key.ulen) ? key.size : key.ulen);
+		key.flags = DB_DBT_USERMEM;
+	} else {
+		key.data = keydata;
+		key.flags = DB_DBT_MALLOC;
+	}
 	if (keyflags & DB_DBT_PARTIAL)
 		key.flags |= DB_DBT_PARTIAL;
-	key.size = keysize;
-	key.data = keydata;
 
 	data.dlen = datadlen;
 	data.ulen = dataulen;
 	data.doff = datadoff;
 	data.size = datasize;
-	data.data = datadata;
-	if (flags & DB_MULTIPLE || flags & DB_MULTIPLE_KEY) {
-		if (data.data == 0) {
-			ret = __os_umalloc(dbenv, data.ulen, &data.data);
-			if (ret != 0)
-				goto err;
-		}
-		data.flags |= DB_DBT_USERMEM;
-	} else
-		data.flags |= DB_DBT_MALLOC;
+	if (flags & (DB_MULTIPLE | DB_MULTIPLE_KEY) ||
+	    dataflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbenv, data.ulen, &data.data)) != 0)
+			goto err;
+		if (datadata != 0)
+			memcpy(data.data, datadata,
+			    (data.size < data.ulen) ? data.size : data.ulen);
+		data.flags = DB_DBT_USERMEM;
+	} else {
+		data.data = datadata;
+		data.flags = DB_DBT_MALLOC;
+	}
 	if (dataflags & DB_DBT_PARTIAL)
 		data.flags |= DB_DBT_PARTIAL;
 

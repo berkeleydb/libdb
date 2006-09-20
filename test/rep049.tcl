@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep049.tcl,v 12.5 2005/10/18 19:05:54 carol Exp $
+# $Id: rep049.tcl,v 12.11 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep049
 # TEST	Replication and delay syncing clients - basic test.
@@ -19,17 +19,21 @@
 proc rep049 { method { niter 10 } { tnum "049" } args } {
 	source ./include.tcl
 
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 4]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -84,12 +88,10 @@ proc rep049_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -errpfx ENV1 \
-	    -cachesize {0 4194304 3} \
+	    $m_logargs -errpfx ENV1 -cachesize {0 4194304 3} \
 	    -home $env1dir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 \
-#	    -cachesize {0 4194304 3} \
+#	    $m_logargs -cachesize {0 4194304 3} \
 #	    -errpfx ENV1 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $env1dir -rep_transport \[list 1 replsend\]"
 	set env1 [eval $ma_envcmd $recargs -rep_master]
@@ -98,22 +100,22 @@ proc rep049_sub { method niter tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -lock_max 2500 -errpfx ENV2 \
+	    $c_logargs -errpfx ENV2 \
 	    -home $env2dir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 \
-#	    -errpfx ENV2 -verbose {rep on} -errfile /dev/stderr \
+#	    $c_logargs -errpfx ENV2 \
+#	    -verbose {rep on} -errfile /dev/stderr \
 #	    -home $env2dir -rep_transport \[list 2 replsend\]"
 	set env2 [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $env2] TRUE
 
 	repladd 3
 	set dc_envcmd "berkdb_env_noerr -create $dc_txnargs \
-	    $dc_logargs -lock_max 2500 -errpfx ENV3 \
+	    $dc_logargs -errpfx ENV3 \
 	    -home $delaycldir -rep_transport \[list 3 replsend\]"
 #	set dc_envcmd "berkdb_env_noerr -create $dc_txnargs \
-#	    $dc_logargs -lock_max 2500 \
-#	    -errpfx DELAYCL -verbose {rep on} -errfile /dev/stderr \
+#	    $dc_logargs -errpfx DELAYCL \
+#	    -verbose {rep on} -errfile /dev/stderr \
 #	    -home $delaycldir -rep_transport \[list 3 replsend\]"
 	set dcenv [eval $dc_envcmd $recargs -rep_client]
 	error_check_good client2_env [is_valid_env $dcenv] TRUE
@@ -124,10 +126,10 @@ proc rep049_sub { method niter tnum logset recargs largs } {
 	# We'll do the repladd and execute this env command later.
 	#
 	set fc_envcmd "berkdb_env_noerr -create $fc_txnargs \
-	    $fc_logargs -lock_max 2500 -errpfx ENV4 \
+	    $fc_logargs -errpfx ENV4 \
 	    -home $freshcldir -rep_transport \[list 4 replsend\]"
 #	set fc_envcmd "berkdb_env_noerr -create $fc_txnargs \
-#	    $fc_logargs -lock_max 2500 \
+#	    $fc_logargs \
 #	    -errpfx FRESHCL -verbose {rep on} -errfile /dev/stderr \
 #	    -home $freshcldir -rep_transport \[list 4 replsend\]"
 

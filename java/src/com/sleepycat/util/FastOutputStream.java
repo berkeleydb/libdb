@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: FastOutputStream.java,v 12.2 2005/08/01 20:25:22 mark Exp $
+ * $Id: FastOutputStream.java,v 12.5 2006/08/31 18:14:09 bostic Exp $
  */
 
 package com.sleepycat.util;
@@ -42,6 +42,11 @@ public class FastOutputStream extends OutputStream {
     private int len;
     private int bumpLen;
     private byte[] buf;
+
+    /*
+     * We can return the same byte[] for 0 length arrays.
+     */
+    private static byte[] ZERO_LENGTH_BYTE_ARRAY = new byte[0];
 
     /**
      * Creates an output stream with default sizes.
@@ -153,11 +158,14 @@ public class FastOutputStream extends OutputStream {
 
     public byte[] toByteArray() {
 
-        byte[] toBuf = new byte[len];
+	if (len == 0) {
+	    return ZERO_LENGTH_BYTE_ARRAY;
+	} else {
+	    byte[] toBuf = new byte[len];
+	    System.arraycopy(buf, 0, toBuf, 0, len);
 
-        System.arraycopy(buf, 0, toBuf, 0, len);
-
-        return toBuf;
+	    return toBuf;
+	}
     }
 
     // --- end ByteArrayOutputStream compatible methods ---

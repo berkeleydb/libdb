@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
@@ -77,7 +78,7 @@ public class ExampleDatabaseLoad {
         // and loads it into a list for us to work with. The integer
         // parameter represents the number of fields expected in the
         // file.
-        ArrayList vendors = loadFile(vendorsFile, 8);
+        List vendors = loadFile(vendorsFile, 8);
 
         // Now load the data into the database. The vendor's name is the
         // key, and the data is a Vendor class object.
@@ -113,7 +114,7 @@ public class ExampleDatabaseLoad {
             myDbs.getVendorDB().put(null, theKey, theData);
         }
     }
-    
+
 
     private void loadInventoryDb()
         throws DatabaseException {
@@ -122,7 +123,7 @@ public class ExampleDatabaseLoad {
         // and loads it into a list for us to work with. The integer
         // parameter represents the number of fields expected in the
         // file.
-        ArrayList inventoryArray = loadFile(inventoryFile, 6);
+        List inventoryArray = loadFile(inventoryFile, 6);
 
         // Now load the data into the database. The item's sku is the
         // key, and the data is an Inventory class object.
@@ -157,24 +158,17 @@ public class ExampleDatabaseLoad {
 
 
     private static void parseArgs(String args[]) {
-        int nArgs = args.length;
         for(int i = 0; i < args.length; ++i) {
             if (args[i].startsWith("-")) {
                 switch(args[i].charAt(1)) {
                   case 'h':
-                    if (i < nArgs) {
-                        myDbsPath = new String(args[++i]);
-                    }
+                    myDbsPath = new String(args[++i]);
                     break;
                   case 'i':
-                    if (i < nArgs) {
-                        inventoryFile = new File(args[++i]);
-                    }
+                    inventoryFile = new File(args[++i]);
                     break;
                   case 'v':
-                    if (i < nArgs) {
-                        vendorsFile = new File(args[++i]);
-                    }
+                    vendorsFile = new File(args[++i]);
                     break;
                   default:
                     usage();
@@ -184,8 +178,8 @@ public class ExampleDatabaseLoad {
     }
 
 
-    private ArrayList loadFile(File theFile, int numFields) {
-        ArrayList records = new ArrayList();
+    private List loadFile(File theFile, int numFields) {
+        List records = new ArrayList();
         try {
             String theLine = null;
             FileInputStream fis = new FileInputStream(theFile);
@@ -200,6 +194,7 @@ public class ExampleDatabaseLoad {
                 }
                 records.add(theLineArray);
             }
+            fis.close();
         } catch (FileNotFoundException e) {
             System.err.println(theFile.getPath() + " does not exist.");
             e.printStackTrace();

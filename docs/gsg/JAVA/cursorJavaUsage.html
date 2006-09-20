@@ -88,7 +88,7 @@
       <div class="example">
         <a id="EDR"></a>
         <p class="title">
-          <b>Example 4.1  ExampleDatabaseRead.java</b>
+          <b>Example 4.1 ExampleDatabaseRead.java</b>
         </p>
         <p>To begin, we import the necessary classes:</p>
         <a id="java_cursor10"></a>
@@ -206,7 +206,7 @@ import com.sleepycat.db.OperationStatus;</pre>
                                         Inventory theInventory)
         throws DatabaseException {
 
-        String theSKU = new String(theKey.getData());
+        String theSKU = new String(theKey.getData(), &quot;UTF-8&quot;);
         System.out.println(theSKU + &quot;:&quot;);
         System.out.println(&quot;\t &quot; + theInventory.getItemName());
         System.out.println(&quot;\t &quot; + theInventory.getCategory());

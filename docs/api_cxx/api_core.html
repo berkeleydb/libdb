@@ -1,15 +1,15 @@
 <!--DO NOT EDIT: automatically built by build script.-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
-<title>Berkeley DB: Berkeley DB: C++ Handle Methods (version 4.4.20)</title>
+<title>Berkeley DB: Berkeley DB: C++ Handle Methods (version 4.5.20)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
-<h3 align=center>Berkeley DB: C++ Handle Methods (version 4.4.20)</h3>
+<h3 align=center>Berkeley DB: C++ Handle Methods (version 4.5.20)</h3>
 <table border=1 align=center>
 <tr><th>C++ Handle Methods</th><th>Description</th></tr>
 <!--Db::--><tr><td><a href="../api_cxx/db_class.html">Db</a></td><td>Create a database handle</td></tr>
@@ -22,12 +22,11 @@
 <!--Db::fd--><tr><td><a href="../api_cxx/db_fd.html">Db::fd</a></td><td>Return a file descriptor from a database</td></tr>
 <!--Db::get--><tr><td><a href="../api_cxx/db_get.html">Db::get</a>, <a href="../api_cxx/db_get.html">Db::pget</a></td><td>Get items from a database</td></tr>
 <!--Db::get_byteswapped--><tr><td><a href="../api_cxx/db_get_byteswapped.html">Db::get_byteswapped</a></td><td>Return if the underlying database is in host order</td></tr>
-<!--Db::get_env--><tr><td><a href="../api_cxx/db_getenv.html">Db::getenv</a></td><td>Return database environment handle</td></tr>
-<!--Db::get_mpf--><tr><td><a href="../api_cxx/db_get_mpf.html">Db::get_mpf</a></td><td>Return underlying <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle</td></tr>
+<!--Db::get_env--><tr><td><a href="../api_cxx/db_getenv.html">Db::getenv</a></td><td>Return <a href="../api_cxx/db_class.html">Db</a>'s underlying <a href="../api_cxx/env_class.html">DbEnv</a> handle</td></tr>
 <!--Db::get_type--><tr><td><a href="../api_cxx/db_get_type.html">Db::get_type</a></td><td>Return the database type</td></tr>
 <!--Db::join--><tr><td><a href="../api_cxx/db_join.html">Db::join</a></td><td>Perform a database join on cursors</td></tr>
 <!--Db::key_range--><tr><td><a href="../api_cxx/db_key_range.html">Db::key_range</a></td><td>Return estimate of key location</td></tr>
-<!--Db::mpf--><tr><td><a href="../api_cxx/db_get_mpf.html">Db::get_mpf</a></td><td>Return the database's memory pool handle</td></tr>
+<!--Db::mpf--><tr><td><a href="../api_cxx/db_get_mpf.html">Db::get_mpf</a></td><td>Return <a href="../api_cxx/db_class.html">Db</a>'s underlying <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle</td></tr>
 <!--Db::open--><tr><td><a href="../api_cxx/db_open.html">Db::open</a></td><td>Open a database</td></tr>
 <!--Db::put--><tr><td><a href="../api_cxx/db_put.html">Db::put</a></td><td>Store items into a database</td></tr>
 <!--Db::remove--><tr><td><a href="../api_cxx/db_remove.html">Db::remove</a></td><td>Remove a database</td></tr>
@@ -51,7 +50,6 @@
 <!--Db::set_h_nelem--><tr><td><a href="../api_cxx/db_set_h_nelem.html">Db::set_h_nelem</a></td><td>Set the Hash table size</td></tr>
 <!--Db::set_lorder--><tr><td><a href="../api_cxx/db_set_lorder.html">Db::set_lorder</a></td><td>Set the database byte order</td></tr>
 <!--Db::set_pagesize--><tr><td><a href="../api_cxx/db_set_pagesize.html">Db::set_pagesize</a></td><td>Set the underlying database page size</td></tr>
-<!--Db::set_paniccall--><tr><td><a href="../api_cxx/db_set_paniccall.html">Db::set_paniccall</a></td><td>Set panic callback</td></tr>
 <!--Db::set_q_extentsize--><tr><td><a href="../api_cxx/db_set_q_extentsize.html">Db::set_q_extentsize</a></td><td>Set Queue database extent size</td></tr>
 <!--Db::set_re_delim--><tr><td><a href="../api_cxx/db_set_re_delim.html">Db::set_re_delim</a></td><td>Set the variable-length record delimiter</td></tr>
 <!--Db::set_re_len--><tr><td><a href="../api_cxx/db_set_re_len.html">Db::set_re_len</a></td><td>Set the fixed-length record length</td></tr>
@@ -70,6 +68,7 @@
 <!--DbCursor::put--><tr><td><a href="../api_cxx/dbc_put.html">Dbc::put</a></td><td>Store by cursor</td></tr>
 <!--DbDeadlockException--><tr><td><a href="../api_cxx/deadlock_class.html">DbDeadlockException</a></td><td>Deadlock exception</td></tr>
 <!--DbEnv::--><tr><td><a href="../api_cxx/env_class.html">DbEnv</a></td><td>Create an environment handle</td></tr>
+<!--DbEnv::cdsgroup_begin--><tr><td><a href="../api_cxx/env_cdsgroup_begin.html">DbEnv::cdsgroup_begin</a></td><td>Get a locker ID in Berkeley DB Concurrent Data Store</td></tr>
 <!--DbEnv::close--><tr><td><a href="../api_cxx/env_close.html">DbEnv::close</a></td><td>Close an environment</td></tr>
 <!--DbEnv::dbremove--><tr><td><a href="../api_cxx/env_dbremove.html">DbEnv::dbremove</a></td><td>Remove a database</td></tr>
 <!--DbEnv::dbrename--><tr><td><a href="../api_cxx/env_dbrename.html">DbEnv::dbrename</a></td><td>Rename a database</td></tr>
@@ -110,10 +109,20 @@
 <!--DbEnv::remove--><tr><td><a href="../api_cxx/env_remove.html">DbEnv::remove</a></td><td>Remove an environment</td></tr>
 <!--DbEnv::rep_elect--><tr><td><a href="../api_cxx/rep_elect.html">DbEnv::rep_elect</a></td><td>Hold a replication election</td></tr>
 <!--DbEnv::rep_process_message--><tr><td><a href="../api_cxx/rep_message.html">DbEnv::rep_process_message</a></td><td>Process a replication message</td></tr>
-<!--DbEnv::rep_set_config--><tr><td><a href="../api_cxx/rep_set_config.html">DbEnv::rep_set_config</a></td><td>Configure the replication subsystem</td></tr>
+<!--DbEnv::rep_set_config--><tr><td><a href="../api_cxx/rep_config.html">DbEnv::rep_set_config</a></td><td>Configure the replication subsystem</td></tr>
+<!--DbEnv::rep_set_limit--><tr><td><a href="../api_cxx/rep_limit.html">DbEnv::rep_set_limit</a></td><td>Limit data sent in response to a single message</td></tr>
+<!--DbEnv::rep_set_nsites--><tr><td><a href="../api_cxx/rep_nsites.html">DbEnv::rep_set_nsites</a></td><td>Configure replication group site count</td></tr>
+<!--DbEnv::rep_set_priority--><tr><td><a href="../api_cxx/rep_priority.html">DbEnv::rep_set_priority</a></td><td>Configure replication site priority</td></tr>
+<!--DbEnv::rep_set_timeout--><tr><td><a href="../api_cxx/rep_timeout.html">DbEnv::rep_set_timeout</a></td><td>Configure replication timeouts</td></tr>
+<!--DbEnv::rep_set_transport--><tr><td><a href="../api_cxx/rep_transport.html">DbEnv::rep_set_transport</a></td><td>Configure replication transport callback</td></tr>
 <!--DbEnv::rep_start--><tr><td><a href="../api_cxx/rep_start.html">DbEnv::rep_start</a></td><td>Configure an environment for replication</td></tr>
 <!--DbEnv::rep_stat--><tr><td><a href="../api_cxx/rep_stat.html">DbEnv::rep_stat</a></td><td>Replication statistics</td></tr>
 <!--DbEnv::rep_sync--><tr><td><a href="../api_cxx/rep_sync.html">DbEnv::rep_sync</a></td><td>Replication synchronization</td></tr>
+<!--DbEnv::repmgr_add_remote_site--><tr><td><a href="../api_cxx/repmgr_remote_site.html">DbEnv::repmgr_add_remote_site</a></td><td>Specify the replication manager's remote sites</td></tr>
+<!--DbEnv::repmgr_set_ack_policy--><tr><td><a href="../api_cxx/repmgr_ack_policy.html">DbEnv::repmgr_set_ack_policy</a></td><td>Specify the replication manager's client acknowledgement policy</td></tr>
+<!--DbEnv::repmgr_set_local_site--><tr><td><a href="../api_cxx/repmgr_local_site.html">DbEnv::repmgr_set_local_site</a></td><td>Specify the replication manager's local site</td></tr>
+<!--DbEnv::repmgr_site_list--><tr><td><a href="../api_cxx/repmgr_site_list.html">DbEnv::repmgr_site_list</a></td><td>List the sites and their status</td></tr>
+<!--DbEnv::repmgr_start--><tr><td><a href="../api_cxx/repmgr_start.html">DbEnv::repmgr_start</a></td><td>Start the replication manager</td></tr>
 <!--DbEnv::set_alloc--><tr><td><a href="../api_cxx/env_set_alloc.html">DbEnv::set_alloc</a></td><td>Set local space allocation functions</td></tr>
 <!--DbEnv::set_app_dispatch--><tr><td><a href="../api_cxx/env_set_app_dispatch.html">DbEnv::set_app_dispatch</a></td><td>Configure application recovery</td></tr>
 <!--DbEnv::set_cachesize--><tr><td><a href="../api_cxx/env_set_cachesize.html">DbEnv::set_cachesize</a></td><td>Set the environment cache size</td></tr>
@@ -123,6 +132,7 @@
 <!--DbEnv::set_errfile--><tr><td><a href="../api_cxx/env_set_errfile.html">DbEnv::set_errfile</a>, <a href="../api_cxx/env_set_msgfile.html">DbEnv::set_msgfile</a></td><td>Set error and informational message FILE</td></tr>
 <!--DbEnv::set_error_stream--><tr><td><a href="../api_cxx/env_set_error_stream.html">DbEnv::set_error_stream</a>, <a href="../api_cxx/env_set_msg_stream.html">DbEnv::set_message_stream</a></td><td>Set error and informational message output stream</td></tr>
 <!--DbEnv::set_errpfx--><tr><td><a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a></td><td>Set error message prefix</td></tr>
+<!--DbEnv::set_event_notify--><tr><td><a href="../api_cxx/env_event_notify.html">DbEnv::set_event_notify</a></td><td>Set event notification callback</td></tr>
 <!--DbEnv::set_feedback--><tr><td><a href="../api_cxx/env_set_feedback.html">DbEnv::set_feedback</a></td><td>Set feedback callback</td></tr>
 <!--DbEnv::set_flags--><tr><td><a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a></td><td>Environment configuration</td></tr>
 <!--DbEnv::set_isalive--><tr><td><a href="../api_cxx/env_set_isalive.html">DbEnv::set_isalive</a></td><td>Set thread is-alive callback</td></tr>
@@ -139,11 +149,9 @@
 <!--DbEnv::set_mp_max_openfd--><tr><td><a href="../api_cxx/memp_openfd.html">DbEnv::set_mp_max_openfd</a></td><td>Set the maximum number of open file descriptors</td></tr>
 <!--DbEnv::set_mp_max_write--><tr><td><a href="../api_cxx/memp_maxwrite.html">DbEnv::set_mp_max_write</a></td><td>Set the maximum number of sequential disk writes</td></tr>
 <!--DbEnv::set_mp_mmapsize--><tr><td><a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a></td><td>Set maximum mapped-in database file size</td></tr>
-<!--DbEnv::set_paniccall--><tr><td><a href="../api_cxx/env_set_paniccall.html">DbEnv::set_paniccall</a></td><td>Set panic callback</td></tr>
-<!--DbEnv::set_rep_limit--><tr><td><a href="../api_cxx/rep_limit.html">DbEnv::set_rep_limit</a></td><td>Limit data sent in response to a single message</td></tr>
-<!--DbEnv::set_rep_transport--><tr><td><a href="../api_cxx/rep_transport.html">DbEnv::set_rep_transport</a></td><td>Configure replication transport</td></tr>
 <!--DbEnv::set_rpc_server--><tr><td><a href="../api_cxx/env_set_rpc_server.html">DbEnv::set_rpc_server</a></td><td>Establish an RPC server connection</td></tr>
 <!--DbEnv::set_shm_key--><tr><td><a href="../api_cxx/env_set_shm_key.html">DbEnv::set_shm_key</a></td><td>Set system memory shared segment ID</td></tr>
+<!--DbEnv::set_thread_count--><tr><td><a href="../api_cxx/env_set_thread_count.html">DbEnv::set_thread_count</a></td><td>Set approximate thread count</td></tr>
 <!--DbEnv::set_thread_id--><tr><td><a href="../api_cxx/env_set_thread_id.html">DbEnv::set_thread_id</a></td><td>Set thread of control ID function</td></tr>
 <!--DbEnv::set_thread_id_string--><tr><td><a href="../api_cxx/env_set_thread_id_string.html">DbEnv::set_thread_id_string</a></td><td>Set thread of control ID format function</td></tr>
 <!--DbEnv::set_timeout--><tr><td><a href="../api_cxx/env_set_timeout.html">DbEnv::set_timeout</a></td><td>Set lock and transaction timeout</td></tr>
@@ -203,6 +211,6 @@
 <!--db_version--><tr><td><a href="../api_cxx/env_version.html">DbEnv::version</a></td><td>Return version information</td></tr>
 <!--log_compare--><tr><td><a href="../api_cxx/log_compare.html">DbEnv::log_compare</a></td><td>Compare two Log Sequence Numbers</td></tr>
 </table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

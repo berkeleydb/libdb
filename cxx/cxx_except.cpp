@@ -1,19 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: cxx_except.cpp,v 12.2 2005/10/14 12:20:04 mjc Exp $
+ * $Id: cxx_except.cpp,v 12.10 2006/09/13 14:53:37 mjc Exp $
  */
 
 #include "db_config.h"
 
-#include <string.h>
-#include <errno.h>
+#include "db_int.h"
 
 #include "db_cxx.h"
 #include "dbinc/cxx_int.h"
+
+static const int MAX_DESCRIPTION_LENGTH = 1024;
 
 // Note: would not be needed if we can inherit from exception
 // It does not appear to be possible to inherit from exception
@@ -85,10 +86,11 @@ DbException &DbException::operator = (const DbException &that)
 
 void DbException::describe(const char *prefix, const char *description)
 {
-	char msgbuf[1024], *p, *end;
+	char *msgbuf, *p, *end;
 
+	msgbuf = new char[MAX_DESCRIPTION_LENGTH];
 	p = msgbuf;
-	end = msgbuf + sizeof(msgbuf) - 1;
+	end = msgbuf + MAX_DESCRIPTION_LENGTH - 1;
 
 	if (prefix != NULL) {
 		strncpy(p, prefix, (p < end) ? end - p: 0);
@@ -117,6 +119,7 @@ void DbException::describe(const char *prefix, const char *description)
 		*end = '\0';
 
 	what_ = dupString(msgbuf);
+	delete [] msgbuf;
 }
 
 int DbException::get_errno() const
@@ -151,13 +154,13 @@ DbMemoryException::~DbMemoryException() throw()
 }
 
 DbMemoryException::DbMemoryException(Dbt *dbt)
-:	DbException(memory_err_desc, ENOMEM)
+:	DbException(memory_err_desc, DB_BUFFER_SMALL)
 ,	dbt_(dbt)
 {
 }
 
 DbMemoryException::DbMemoryException(const char *prefix, Dbt *dbt)
-:	DbException(prefix, memory_err_desc, ENOMEM)
+:	DbException(prefix, memory_err_desc, DB_BUFFER_SMALL)
 ,	dbt_(dbt)
 {
 }

@@ -227,7 +227,7 @@ umask(0) ;
 
     $array[1] = 2 ;
     $array[10] = 20 ;
-    $array[1000] = 2000 ;
+    $array[100] = 200 ;
 
     my ($keys, $values) = (0,0);
     $count = 0 ;
@@ -239,8 +239,8 @@ umask(0) ;
 	++ $count ;
     }
     ok $count == 3 ;
-    ok $keys == 1011 ;
-    ok $values == 2022 ;
+    ok $keys == 111 ;
+    ok $values == 222 ;
 
     # unshift isn't allowed
 #    eval {
@@ -279,19 +279,19 @@ umask(0) ;
     $FA ? push @array, "the", "end" 
         : $db->push("the", "end") ;
     ok $cursor->c_get($k, $v, DB_LAST) == 0 ;
-    ok $k == 1002 ;
+    ok $k == 102 ;
     ok $v eq fillout("end", $rec_len) ;
     ok $cursor->c_get($k, $v, DB_PREV) == 0 ;
-    ok $k == 1001 ;
+    ok $k == 101 ;
     ok $v eq fillout("the", $rec_len) ;
     ok $cursor->c_get($k, $v, DB_PREV) == 0 ;
-    ok $k == 1000 ;
-    ok $v == 2000 ;
+    ok $k == 100 ;
+    ok $v == 200 ;
 
     # pop
     ok (( $FA ? pop @array : $db->pop ) eq fillout("end", $rec_len)) ;
     ok (( $FA ? pop @array : $db->pop ) eq fillout("the", $rec_len)) ;
-    ok (( $FA ? pop @array : $db->pop ) == 2000)  ;
+    ok (( $FA ? pop @array : $db->pop ) == 200)  ;
 
     # now clear the array 
     $FA ? @array = () 
@@ -782,7 +782,7 @@ EOM
 
     $array[1] = 2 ;
     $array[10] = 20 ;
-    $array[1000] = 2000 ;
+    $array[100] = 200 ;
 
     my ($keys, $values) = (0,0);
     $count = 0 ;
@@ -794,8 +794,8 @@ EOM
 	++ $count ;
     }
     ok $count == 3 ;
-    ok $keys == 1011 ;
-    ok $values == 2022 ;
+    ok $keys == 111 ;
+    ok $values == 222 ;
 
     # unshift isn't allowed
 #    eval {
@@ -834,19 +834,19 @@ EOM
     $FA ? push @array, "the", "end" 
         : $db->push("the", "end") ;
     ok $cursor->c_get($k, $v, DB_LAST) == 0 ;
-    ok $k == 1002 ;
+    ok $k == 102 ;
     ok $v eq fillout("end", $rec_len) ;
     ok $cursor->c_get($k, $v, DB_PREV) == 0 ;
-    ok $k == 1001 ;
+    ok $k == 101 ;
     ok $v eq fillout("the", $rec_len) ;
     ok $cursor->c_get($k, $v, DB_PREV) == 0 ;
-    ok $k == 1000 ;
-    ok $v == 2000 ;
+    ok $k == 100 ;
+    ok $v == 200 ;
 
     # pop
     ok (( $FA ? pop @array : $db->pop ) eq fillout("end", $rec_len)) ;
     ok (( $FA ? pop @array : $db->pop ) eq fillout("the", $rec_len)) ;
-    ok (( $FA ? pop @array : $db->pop ) == 2000 ) ;
+    ok (( $FA ? pop @array : $db->pop ) == 200 ) ;
 
     # now clear the array 
     $FA ? @array = () 

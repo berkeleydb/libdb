@@ -1,22 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: txn_util.c,v 12.2 2005/09/28 17:45:20 margo Exp $
+ * $Id: txn_util.c,v 12.8 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
@@ -255,7 +249,8 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 	if (preprocess) {
 		for (e = TAILQ_FIRST(&txn->events);
 		    e != NULL; e = TAILQ_NEXT(e, links)) {
-			if (e->op != TXN_TRADE)
+			if (e->op != TXN_TRADE ||
+			    IS_WRITELOCK(e->u.t.lock.mode))
 				continue;
 			DO_TRADE;
 		}
@@ -266,7 +261,7 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 	 * Prepare should only cause a preprocess, since the transaction
 	 * isn't over.
 	 */
-	DB_ASSERT(opcode != TXN_PREPARE);
+	DB_ASSERT(dbenv, opcode != TXN_PREPARE);
 	while ((e = TAILQ_FIRST(&txn->events)) != NULL) {
 		TAILQ_REMOVE(&txn->events, e, links);
 		/*
@@ -281,7 +276,7 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 		switch (e->op) {
 		case TXN_CLOSE:
 			/* If we didn't abort this txn, we screwed up badly. */
-			DB_ASSERT(opcode == TXN_ABORT);
+			DB_ASSERT(dbenv, opcode == TXN_ABORT);
 			if ((t_ret = __db_close(e->u.c.dbp,
 			    NULL, DB_NOSYNC)) != 0 && ret == 0)
 				ret = t_ret;
@@ -307,7 +302,7 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 			break;
 		default:
 			/* This had better never happen. */
-			DB_ASSERT(0);
+			DB_ASSERT(dbenv, 0);
 		}
 dofree:
 		/* Free resources here. */

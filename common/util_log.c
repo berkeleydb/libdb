@@ -1,31 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: util_log.c,v 12.4 2005/10/12 17:47:17 bostic Exp $
+ * $Id: util_log.c,v 12.11 2006/08/24 14:45:11 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -41,17 +23,18 @@ __db_util_logset(progname, fname)
 	char *fname;
 {
 	pid_t pid;
-	db_threadid_t tid;
 	FILE *fp;
 	time_t now;
+	char time_buf[CTIME_BUFLEN];
 
 	if ((fp = fopen(fname, "w")) == NULL)
 		goto err;
 
 	(void)time(&now);
 
-	__os_id(NULL, &pid, &tid);
-	fprintf(fp, "%s: %lu %s", progname, (u_long)pid, ctime(&now));
+	__os_id(NULL, &pid, NULL);
+	fprintf(fp,
+	    "%s: %lu %s", progname, (u_long)pid, __db_ctime(&now, time_buf));
 
 	if (fclose(fp) == EOF)
 		goto err;

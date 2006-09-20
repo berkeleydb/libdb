@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_salloc.c,v 12.4 2005/10/15 00:51:56 bostic Exp $
+ * $Id: db_salloc.c,v 12.10 2006/08/24 14:45:38 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -155,9 +148,7 @@ __db_shalloc(infop, len, align, retp)
 	p = infop->addr;
 
 	/* Walk the list, looking for a slot. */
-	for (elp = SH_LIST_FIRST((struct __head *)p, __data);
-	    elp != NULL;
-	    elp = SH_LIST_NEXT(elp, links, __data)) {
+	SH_LIST_FOREACH(elp, (struct __head *)p, links, __data) {
 		/*
 		 * Skip chunks that are too small to work.  This avoids address
 		 * wrap-around in the subsequent calculations (if len were too
@@ -259,7 +250,7 @@ __db_shalloc_free(infop, ptr)
 
 	/* In a private region, we call free. */
 	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
-		DB_ASSERT(infop->allocated >= free_size);
+		DB_ASSERT(dbenv, infop->allocated >= free_size);
 		infop->allocated -= free_size;
 
 		__os_free(dbenv, newp);
@@ -273,16 +264,7 @@ __db_shalloc_free(infop, ptr)
 	 *
 	 * Check it to make sure it hasn't been stomped.
 	 */
-	if (*((u_int8_t *)ptr + free_size - 1) != GUARD_BYTE) {
-		/*
-		 * Eventually, once we push a DB_ENV handle down to these
-		 * routines, we should use the standard output channels.
-		 */
-		fprintf(stderr,
-		    "Guard byte incorrect during shared memory free.\n");
-		abort();
-		/* NOTREACHED */
-	}
+	DB_ASSERT(dbenv, *((u_int8_t *)ptr + free_size - 1) == GUARD_BYTE);
 
 	/* Trash the returned memory (including guard byte). */
 	memset(ptr, CLEAR_BYTE, free_size);

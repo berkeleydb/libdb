@@ -9,6 +9,8 @@ extern "C" {
 int __mutex_alloc __P((DB_ENV *, int, u_int32_t, db_mutex_t *));
 int __mutex_alloc_int __P((DB_ENV *, int, int, u_int32_t, db_mutex_t *));
 int __mutex_free __P((DB_ENV *, db_mutex_t *));
+int __mutex_free_int __P((DB_ENV *, int, db_mutex_t *));
+int __mut_failchk __P((DB_ENV *));
 int __db_fcntl_mutex_init __P((DB_ENV *, db_mutex_t, u_int32_t));
 int __db_fcntl_mutex_lock __P((DB_ENV *, db_mutex_t));
 int __db_fcntl_mutex_unlock __P((DB_ENV *, db_mutex_t));

@@ -1,20 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mp_register.c,v 12.6 2005/10/07 20:21:33 ubell Exp $
+ * $Id: mp_register.c,v 12.11 2006/08/24 14:46:15 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
@@ -92,8 +87,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 	 * just update the entry, although it's probably unchanged.
 	 */
 	MUTEX_LOCK(dbenv, dbmp->mutex);
-	for (mpreg = LIST_FIRST(&dbmp->dbregq);
-	    mpreg != NULL; mpreg = LIST_NEXT(mpreg, q))
+	LIST_FOREACH(mpreg, &dbmp->dbregq, q)
 		if (mpreg->ftype == ftype) {
 			mpreg->pgin = pgin;
 			mpreg->pgout = pgout;

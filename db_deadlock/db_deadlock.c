@@ -1,41 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_deadlock.c,v 12.4 2005/10/03 16:00:16 bostic Exp $
+ * $Id: db_deadlock.c,v 12.13 2006/08/26 09:23:00 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
+
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2006\nOracle Corporation.  All rights reserved.\n";
 #endif
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#endif
-
-#include "db_int.h"
 
 int main __P((int, char *[]));
 int usage __P((void));
@@ -55,7 +34,7 @@ main(argc, argv)
 	time_t now;
 	u_long secs, usecs;
 	int ch, exitval, ret, verbose;
-	char *home, *logfile, *passwd, *str;
+	char *home, *logfile, *passwd, *str, time_buf[CTIME_BUFLEN];
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
@@ -70,7 +49,7 @@ main(argc, argv)
 	home = logfile = passwd = NULL;
 	secs = usecs = 0;
 	exitval = verbose = 0;
-	while ((ch = getopt(argc, argv, "a:h:L:P:t:Vvw")) != EOF)
+	while ((ch = getopt(argc, argv, "a:h:L:P:t:Vv")) != EOF)
 		switch (ch) {
 		case 'a':
 			switch (optarg[0]) {
@@ -116,6 +95,7 @@ main(argc, argv)
 				    progname, strerror(errno));
 				return (EXIT_FAILURE);
 			}
+			break;
 		case 't':
 			if ((str = strchr(optarg, '.')) != NULL) {
 				*str++ = '\0';
@@ -130,17 +110,11 @@ main(argc, argv)
 				return (usage());
 
 			break;
-
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
 		case 'v':
 			verbose = 1;
-			break;
-		case 'w':			/* Undocumented. */
-			/* Detect every 100ms (100000 us) when polling. */
-			secs = 0;
-			usecs = 100000;
 			break;
 		case '?':
 		default:
@@ -192,7 +166,8 @@ main(argc, argv)
 	while (!__db_util_interrupted()) {
 		if (verbose) {
 			(void)time(&now);
-			dbenv->errx(dbenv, "running at %.24s", ctime(&now));
+			dbenv->errx(dbenv,
+			    "running at %.24s", __db_ctime(&now, time_buf));
 		}
 
 		if ((ret = dbenv->lock_detect(dbenv, 0, atype, NULL)) != 0) {

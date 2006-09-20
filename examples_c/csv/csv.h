@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2005-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: csv.h,v 1.13 2005/04/18 19:30:57 bostic Exp $
+ * $Id: csv.h,v 1.15 2006/08/24 14:45:43 bostic Exp $
  */
 
 #include <sys/types.h>

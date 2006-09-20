@@ -3,17 +3,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
-    <title>Writing Transactional Applications with Berkeley DB, Java Edition</title>
+    <title>Getting Started with Berkeley DB Transaction Processing</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="next" href="preface.html" title="Preface" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Writing Transactional Applications with Berkeley DB, Java Edition</th>
+          <th colspan="3" align="center">Getting Started with Berkeley DB Transaction Processing</th>
         </tr>
         <tr>
           <td width="20%" align="left"> </td>
@@ -27,7 +27,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id651818"></a>Writing Transactional Applications with Berkeley DB, Java Edition</h1>
+            <h1 class="title"><a id="id650934"></a>Getting Started with Berkeley DB Transaction Processing</h1>
           </div>
           <div>
             <div class="legalnotice">
@@ -35,15 +35,21 @@
                 <b>Legal Notice</b>
               </p>
               <p>
-        This documentation is distributed under the terms of the Sleepycat
-        public license. You may review the terms of this license at:
-         <a href="http://www.sleepycat.com/download/oslicense.html" target="_top">http://www.sleepycat.com/download/oslicense.html</a>
+        This documentation is distributed under an open source license.
+        You may review the terms of this license at:
+        <a href="http://www.oracle.com/technology/software/products/berkeley-db/htdocs/oslicensing.html" target="_top">http://www.oracle.com/technology/software/products/berkeley-db/htdocs/oslicensing.html</a>
+        
+        
     </p>
               <p>
-      Sleepycat Software, Berkeley DB, Berkeley DB XML and the Sleepycat logo
-      are trademarks or service marks of Sleepycat Software, Inc. All rights to
-      these marks are reserved.  No third-party use is permitted without the
-      express prior written consent of Sleepycat Software, Inc.
+            Oracle, Berkeley DB,
+            
+            
+            and
+            Sleepycat are trademarks or registered trademarks of
+            Oracle Corporation. All rights to these marks are reserved.
+            No third-party use is permitted without the
+            express prior written consent of Oracle Corporation.
     </p>
               <p>
         <span class="trademark">Java</span>&#8482; and all Java-based marks are a trademark
@@ -51,13 +57,16 @@
         Inc, in the United States and other countries.
     </p>
               <p>
-        To obtain a copy of this document's original source code, please write
-        to <tt class="email">&lt;<a href="mailto:support@sleepycat.com">support@sleepycat.com</a>&gt;</tt>.
+        To obtain a copy of this document's original source code, please
+        submit a request to the Oracle Technology Network forum at:
+        <a href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+        
+        
     </p>
             </div>
           </div>
           <div>
-            <p class="pubdate">12/20/2005</p>
+            <p class="pubdate">9/20/2006</p>
           </div>
         </div>
         <div></div>
@@ -244,7 +253,7 @@
             <dl>
               <dt>
                 <span class="sect1">
-                  <a href="txnconcurrency.html#concurrenthandles">Which JE Handles are Free-Threaded</a>
+                  <a href="txnconcurrency.html#concurrenthandles">Which DB Handles are Free-Threaded</a>
                 </span>
               </dt>
               <dt>
@@ -317,6 +326,11 @@
                       <a href="isolation.html#readcommitted">Committed Reads</a>
                     </span>
                   </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="isolation.html#snapshot_isolation">Using Snapshot Isolation</a>
+                    </span>
+                  </dt>
                 </dl>
               </dd>
               <dt>
@@ -352,7 +366,7 @@
           </dd>
           <dt>
             <span class="chapter">
-              <a href="filemanagement.html">5. Managing JE Files</a>
+              <a href="filemanagement.html">5. Managing DB Files</a>
             </span>
           </dt>
           <dd>

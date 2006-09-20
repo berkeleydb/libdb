@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: log_archive.c,v 12.9 2005/11/04 17:27:58 ubell Exp $
+ * $Id: log_archive.c,v 12.21 2006/09/07 20:05:32 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -85,7 +78,7 @@ __log_archive(dbenv, listp, flags)
 	u_int array_size, n;
 	u_int32_t fnum;
 	int ret, t_ret;
-	char **array, **arrayp, *name, *p, *pref;
+	char **array, **arrayp, *name, *p, *pref, path[DB_MAXPATHLEN];
 
 	dblp = dbenv->lg_handle;
 	lp = (LOG *)dblp->reginfo.primary;
@@ -116,7 +109,25 @@ __log_archive(dbenv, listp, flags)
 	 * Prepend the original absolute pathname if the user wants an
 	 * absolute path to the database environment directory.
 	 */
-	pref = LF_ISSET(DB_ARCH_ABS) ? dbenv->db_abshome : NULL;
+	if (LF_ISSET(DB_ARCH_ABS)) {
+		/*
+		 * XXX
+		 * Can't trust getcwd(3) to set a valid errno, so don't display
+		 * one unless we know it's good.  It's likely a permissions
+		 * problem: use something bland and useless in the default
+		 * return value, so we don't send somebody off in the wrong
+		 * direction.
+		 */
+		__os_set_errno(0);
+		if (getcwd(path, sizeof(path)) == NULL) {
+			ret = __os_get_errno();
+			__db_err(dbenv,
+			    ret, "no absolute path for the current directory");
+			return (ret);
+		}
+		pref = path;
+	} else
+		pref = NULL;
 
 	LF_CLR(DB_ARCH_ABS);
 	switch (flags) {
@@ -157,8 +168,7 @@ __log_archive(dbenv, listp, flags)
 		fnum = stable_lsn.file - 1;
 		break;
 	default:
-		DB_ASSERT(0);
-		ret = EINVAL;
+		ret = __db_unknown_path(dbenv, "__log_archive");
 		goto err;
 	}
 
@@ -174,7 +184,7 @@ __log_archive(dbenv, listp, flags)
 	for (n = 0; fnum > 0; --fnum) {
 		if ((ret = __log_name(dblp, fnum, &name, NULL, 0)) != 0)
 			goto err;
-		if (__os_exists(name, NULL) != 0) {
+		if (__os_exists(dbenv, name, NULL) != 0) {
 			if (LF_ISSET(DB_ARCH_LOG) && fnum == stable_lsn.file)
 				continue;
 			__os_free(dbenv, name);
@@ -245,8 +255,11 @@ __log_get_stable_lsn(dbenv, stable_lsn)
 {
 	DB_LOGC *logc;
 	DBT rec;
+	LOG *lp;
 	__txn_ckp_args *ckp_args;
 	int ret, t_ret;
+
+	lp = dbenv->lg_handle->reginfo.primary;
 
 	ret = 0;
 	memset(&rec, 0, sizeof(rec));
@@ -275,12 +288,19 @@ __log_get_stable_lsn(dbenv, stable_lsn)
 	if ((ret = __log_cursor(dbenv, &logc)) != 0)
 		goto err;
 	/*
-	 * If we can read it, set the stable_lsn to the ckp_lsn in the
-	 * checkpoint record.
+	 * Read checkpoint records until we find one that is on disk,
+	 * then copy the ckp_lsn to the stable_lsn;
 	 */
-	if ((ret = __log_c_get(logc, stable_lsn, &rec, DB_SET)) == 0 &&
+	while ((ret = __log_c_get(logc, stable_lsn, &rec, DB_SET)) == 0 &&
 	    (ret = __txn_ckp_read(dbenv, rec.data, &ckp_args)) == 0) {
-		*stable_lsn = ckp_args->ckp_lsn;
+		if (stable_lsn->file < lp->s_lsn.file ||
+		    (stable_lsn->file == lp->s_lsn.file &&
+		    stable_lsn->offset < lp->s_lsn.offset)) {
+			*stable_lsn = ckp_args->ckp_lsn;
+			__os_free(dbenv, ckp_args);
+			break;
+		}
+		*stable_lsn = ckp_args->last_ckp;
 		__os_free(dbenv, ckp_args);
 	}
 	if ((t_ret = __log_c_close(logc)) != 0 && ret == 0)
@@ -310,8 +330,7 @@ __log_autoremove(dbenv)
 	 */
 	if ((ret = __log_archive(dbenv, &list, DB_ARCH_ABS)) != 0) {
 		if (ret != DB_NOTFOUND)
-			__db_err(dbenv,
-			    "log file auto-remove: %s", db_strerror(ret));
+			__db_err(dbenv, ret, "log file auto-remove");
 		return;
 	}
 
@@ -357,7 +376,7 @@ __build_data(dbenv, pref, listp)
 	for (n = 0; (ret = __log_c_get(logc, &lsn, &rec, DB_PREV)) == 0;) {
 		if (rec.size < sizeof(rectype)) {
 			ret = EINVAL;
-			__db_err(dbenv, "DB_ENV->log_archive: bad log record");
+			__db_errx(dbenv, "DB_ENV->log_archive: bad log record");
 			break;
 		}
 
@@ -367,7 +386,7 @@ __build_data(dbenv, pref, listp)
 		if ((ret =
 		    __dbreg_register_read(dbenv, rec.data, &argp)) != 0) {
 			ret = EINVAL;
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "DB_ENV->log_archive: unable to read log record");
 			break;
 		}
@@ -452,7 +471,7 @@ free_continue:	__os_free(dbenv, argp);
 			goto err2;
 
 		/* If the file doesn't exist, ignore it. */
-		if (__os_exists(real_name, NULL) != 0) {
+		if (__os_exists(dbenv, real_name, NULL) != 0) {
 			__os_free(dbenv, real_name);
 			__os_free(dbenv, array[last]);
 			array[last] = NULL;

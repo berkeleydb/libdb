@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1998-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: region.h,v 12.7 2005/10/13 00:53:00 bostic Exp $
+ * $Id: region.h,v 12.9 2006/08/24 14:45:30 bostic Exp $
  */
 
 #ifndef _DB_REGION_H_

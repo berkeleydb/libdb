@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1996-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test089.tcl,v 12.2 2005/06/16 20:24:09 bostic Exp $
+# $Id: test089.tcl,v 12.4 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test089
 # TEST	Concurrent Data Store test (CDB)

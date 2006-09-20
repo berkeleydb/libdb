@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: Database.java,v 12.2 2005/10/19 04:27:44 mjc Exp $
+ * $Id: Database.java,v 12.5 2006/08/24 14:46:07 bostic Exp $
  */
 
 package com.sleepycat.db;
@@ -317,13 +317,15 @@ public class Database {
         db.close(0);
     }
 
-    public boolean verify(final String fileName,
-                       final String databaseName,
-                       final java.io.PrintStream dumpStream,
-                       VerifyConfig config)
+    public static boolean verify(final String fileName,
+                                 final String databaseName,
+                                 final java.io.PrintStream dumpStream,
+                                 VerifyConfig verifyConfig,
+                                 DatabaseConfig dbConfig)
         throws DatabaseException, java.io.FileNotFoundException {
 
+        final Db db = DatabaseConfig.checkNull(dbConfig).createDatabase(null);
         return db.verify(fileName, databaseName, dumpStream,
-            VerifyConfig.checkNull(config).getFlags());
+            VerifyConfig.checkNull(verifyConfig).getFlags());
     }
 }

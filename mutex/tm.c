@@ -1,27 +1,18 @@
 /*
  * Standalone mutex tester for Berkeley DB mutexes.
  *
- * $Id: tm.c,v 12.10 2005/10/21 17:53:04 bostic Exp $
+ * $Id: tm.c,v 12.14 2006/07/17 15:16:46 bostic Exp $
  */
+
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <sys/wait.h>
+#include "db_int.h"
 
-#include <errno.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <sys/wait.h>
 
 #if defined(MUTEX_THREAD_TEST)
 #include <pthread.h>
 #endif
-#endif
-
-#include "db_int.h"
 
 #ifdef DB_WIN32
 extern int getopt(int, char * const *, const char *);
@@ -568,7 +559,7 @@ run_wthread(arg)
 	/* Loop, waking up sleepers and periodically sleeping ourselves. */
 	for (check_id = 0;; ++check_id) {
 		/* Check to see if the locking threads have finished. */
-		if (__os_exists(MT_FILE_QUIT, NULL) == 0)
+		if (__os_exists(dbenv, MT_FILE_QUIT, NULL) == 0)
 			break;
 
 		/* Check for ID wraparound. */
@@ -690,8 +681,7 @@ tm_file_init()
 		exit(EXIT_FAILURE);
 	}
 
-	if ((err = __os_seek(dbenv, fhp,
-	    0, 0, len, 0, DB_OS_SEEK_SET)) != 0 ||
+	if ((err = __os_seek(dbenv, fhp, 0, 0, len)) != 0 ||
 	    (err = __os_write(dbenv, fhp, &err, 1, &nwrite)) != 0 ||
 	    nwrite != 1) {
 		(void)fprintf(stderr,
@@ -926,7 +916,7 @@ os_wait(procs, nprocs)
 		ret = WaitForMultipleObjects(nprocs, procs, FALSE, INFINITE);
 		i = ret - WAIT_OBJECT_0;
 		if (i < 0 || i >= nprocs)
-			return (__os_get_errno());
+			return (__os_posix_err(__os_get_syserr()));
 
 		if ((GetExitCodeProcess(procs[i], &ret) == 0) || (ret != 0))
 			return (ret);
@@ -938,7 +928,7 @@ os_wait(procs, nprocs)
 #elif !defined(HAVE_VXWORKS)
 	do {
 		if ((i = wait(&status)) == -1)
-			return (__os_get_errno());
+			return (__os_posix_err(__os_get_syserr()));
 
 		if (WIFEXITED(status) == 0 || WEXITSTATUS(status) != 0) {
 			for (i = 0; i < nprocs; i++)

@@ -1,22 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_reclaim.c,v 12.2 2005/06/16 20:21:14 bostic Exp $
+ * $Id: db_reclaim.c,v 12.8 2006/08/24 14:45:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/mp.h"
 
@@ -28,13 +22,14 @@
  * where did_put is a return value indicating if the page in question has
  * already been returned to the mpool.
  *
- * PUBLIC: int __db_traverse_big __P((DB *,
- * PUBLIC:     db_pgno_t, int (*)(DB *, PAGE *, void *, int *), void *));
+ * PUBLIC: int __db_traverse_big __P((DB *, db_pgno_t, DB_TXN *,
+ * PUBLIC:	int (*)(DB *, PAGE *, void *, int *), void *));
  */
 int
-__db_traverse_big(dbp, pgno, callback, cookie)
+__db_traverse_big(dbp, pgno, txn, callback, cookie)
 	DB *dbp;
 	db_pgno_t pgno;
+	DB_TXN *txn;
 	int (*callback) __P((DB *, PAGE *, void *, int *));
 	void *cookie;
 {
@@ -46,7 +41,7 @@ __db_traverse_big(dbp, pgno, callback, cookie)
 
 	do {
 		did_put = 0;
-		if ((ret = __memp_fget(mpf, &pgno, 0, &p)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, txn, 0, &p)) != 0)
 			return (ret);
 		/*
 		 * If we are freeing pages only process the overflow
@@ -88,7 +83,6 @@ __db_reclaim_callback(dbp, p, cookie, putp)
 	 * If we abort then the subdb may not be openable to undo
 	 * the free.
 	 */
-
 	if ((dbp->type == DB_BTREE || dbp->type == DB_RECNO) &&
 	    PGNO(p) == ((BTREE *)dbp->bt_internal)->bt_root)
 		return (0);
@@ -145,6 +139,8 @@ __db_truncate_callback(dbp, p, cookie, putp)
 		}
 		break;
 	case P_OVERFLOW:
+		if ((ret = __memp_dirty(mpf, &p, param->dbc->txn, 0)) != 0)
+			return (ret);
 		if (DBC_LOGGING(param->dbc)) {
 			if ((ret = __db_ovref_log(dbp, param->dbc->txn,
 			    &LSN(p), 0, p->pgno, -1, &LSN(p))) != 0)
@@ -202,7 +198,10 @@ __db_truncate_callback(dbp, p, cookie, putp)
 		if (PREV_PGNO(p) == PGNO_INVALID) {
 			type = P_HASH;
 
-reinit:			*putp = 0;
+reinit:			if ((ret =
+			    __memp_dirty(mpf, &p, param->dbc->txn, 0)) != 0)
+				return (ret);
+			*putp = 0;
 			if (DBC_LOGGING(param->dbc)) {
 				memset(&ldbt, 0, sizeof(ldbt));
 				memset(&ddbt, 0, sizeof(ddbt));
@@ -230,7 +229,7 @@ reinit:			*putp = 0;
 		if ((ret = __db_free(param->dbc, p)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __memp_fput(mpf, p, DB_MPOOL_DIRTY)) != 0)
+		if ((ret = __memp_fput(mpf, p, 0)) != 0)
 			return (ret);
 		*putp = 1;
 	}

@@ -1,23 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: crdel_rec.c,v 12.6 2005/10/20 18:57:04 bostic Exp $
+ * $Id: crdel_rec.c,v 12.13 2006/08/24 14:45:15 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/fop.h"
 #include "dbinc/hash.h"
 #include "dbinc/log.h"
@@ -44,33 +37,34 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
-	int cmp_p, modified, ret;
+	int cmp_p, ret, t_ret;
 
 	pagep = NULL;
 	COMPQUIET(info, NULL);
 	REC_PRINT(__crdel_metasub_print);
 	REC_INTRO(__crdel_metasub_read, 0, 0);
 
-	if ((ret = __memp_fget(mpf, &argp->pgno, 0, &pagep)) != 0) {
+	if ((ret = __memp_fget(mpf, &argp->pgno, NULL,
+	    0, &pagep)) != 0) {
 		/* If this is an in-memory file, this might be OK. */
-		if (F_ISSET(file_dbp, DB_AM_INMEM) && (ret = __memp_fget(mpf,
-		    &argp->pgno, DB_MPOOL_CREATE, &pagep)) == 0)
+		if (F_ISSET(file_dbp, DB_AM_INMEM) &&
+		    (ret = __memp_fget(mpf, &argp->pgno, NULL,
+		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &pagep)) == 0) {
 			LSN_NOT_LOGGED(LSN(pagep));
-		else {
+		} else {
 			*lsnp = argp->prev_lsn;
 			ret = 0;
 			goto out;
 		}
 	}
 
-	modified = 0;
-	cmp_p = log_compare(&LSN(pagep), &argp->lsn);
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(dbenv, op, cmp_p, &LSN(pagep), &argp->lsn);
 
 	if (cmp_p == 0 && DB_REDO(op)) {
+		REC_DIRTY(mpf, &pagep);
 		memcpy(pagep, argp->page.data, argp->page.size);
 		LSN(pagep) = *lsnp;
-		modified = 1;
 
 		/*
 		 * If this was an in-memory database and we are re-creating
@@ -95,18 +89,17 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		 * freed.  Opening the subdb will have reinitialized the
 		 * page, but not the lsn.
 		 */
+		REC_DIRTY(mpf, &pagep);
 		LSN(pagep) = argp->lsn;
-		modified = 1;
 	}
-	if ((ret = __memp_fput(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0)) != 0)
-		goto out;
-	pagep = NULL;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	if (pagep != NULL)
-		(void)__memp_fput(mpf, pagep, 0);
+out:	if (pagep != NULL && (t_ret = __memp_fput(mpf, pagep, 0)) != 0 &&
+	    ret == 0)
+		ret = t_ret;
+
 	REC_CLOSE;
 }
 
@@ -143,7 +136,7 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 			ret = 0;
 	} else
 		ret = __dbreg_id_to_db_int(dbenv,
-		    argp->txnid, &dbp, argp->fileid, 0, 0);
+		    argp->txnp, &dbp, argp->fileid, 0, 0);
 
 	if (DB_REDO(op)) {
 		/*

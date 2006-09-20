@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -35,31 +35,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn_chkpt.c,v 12.19 2005/10/20 18:57:13 bostic Exp $
+ * $Id: txn_chkpt.c,v 12.27 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <stdlib.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
@@ -130,12 +111,11 @@ __txn_checkpoint(dbenv, kbytes, minutes, flags)
 	 */
 	if (IS_REP_CLIENT(dbenv)) {
 		if (MPOOL_ON(dbenv) && (ret = __memp_sync(dbenv, NULL)) != 0) {
-			__db_err(dbenv,
-		    "txn_checkpoint: failed to flush the buffer cache %s",
-			    db_strerror(ret));
+			__db_err(dbenv, ret,
+		    "txn_checkpoint: failed to flush the buffer cache");
 			return (ret);
-		} else
-			return (0);
+		}
+		return (0);
 	}
 
 	mgr = dbenv->tx_handle;
@@ -202,9 +182,8 @@ do_ckp:	MUTEX_LOCK(dbenv, region->mtx_ckp);
 		goto err;
 
 	if (MPOOL_ON(dbenv) && (ret = __memp_sync(dbenv, NULL)) != 0) {
-		__db_err(dbenv,
-		    "txn_checkpoint: failed to flush the buffer cache %s",
-		    db_strerror(ret));
+		__db_err(dbenv, ret,
+		    "txn_checkpoint: failed to flush the buffer cache");
 		goto err;
 	}
 
@@ -228,16 +207,15 @@ do_ckp:	MUTEX_LOCK(dbenv, region->mtx_ckp);
 		 * recovery from the ckp_lsn contained in this
 		 * checkpoint.
 		 */
-		logflags = DB_LOG_PERM | DB_LOG_CHKPNT;
+		logflags = DB_LOG_CHKPNT;
 		if (!IS_RECOVERING(dbenv))
 			logflags |= DB_FLUSH;
 		if ((ret = __dbreg_log_files(dbenv)) != 0 ||
 		    (ret = __txn_ckp_log(dbenv, NULL, &ckp_lsn, logflags,
 		    &ckp_lsn, &last_ckp, (int32_t)time(NULL), id, gen)) != 0) {
-			__db_err(dbenv,
-			    "txn_checkpoint: log failed at LSN [%ld %ld] %s",
-			    (long)ckp_lsn.file, (long)ckp_lsn.offset,
-			    db_strerror(ret));
+			__db_err(dbenv, ret,
+			    "txn_checkpoint: log failed at LSN [%ld %ld]",
+			    (long)ckp_lsn.file, (long)ckp_lsn.offset);
 			goto err;
 		}
 
@@ -276,12 +254,10 @@ __txn_getactive(dbenv, lsnp)
 	region = mgr->reginfo.primary;
 
 	TXN_SYSTEM_LOCK(dbenv);
-	for (td = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
-	    td != NULL;
-	    td = SH_TAILQ_NEXT(td, links, __txn_detail))
+	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
 		if (td->begin_lsn.file != 0 &&
 		    td->begin_lsn.offset != 0 &&
-		    log_compare(&td->begin_lsn, lsnp) < 0)
+		    LOG_COMPARE(&td->begin_lsn, lsnp) < 0)
 			*lsnp = td->begin_lsn;
 	TXN_SYSTEM_UNLOCK(dbenv);
 
@@ -343,7 +319,7 @@ __txn_updateckp(dbenv, lsnp)
 	 * called.
 	 */
 	TXN_SYSTEM_LOCK(dbenv);
-	if (log_compare(&region->last_ckp, lsnp) < 0) {
+	if (LOG_COMPARE(&region->last_ckp, lsnp) < 0) {
 		region->last_ckp = *lsnp;
 		(void)time(&region->time_ckp);
 	}

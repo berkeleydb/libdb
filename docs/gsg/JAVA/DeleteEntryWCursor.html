@@ -77,8 +77,9 @@ try {
     // one, delete that record.
     if (cursor.count() == 1) {
             System.out.println(&quot;Deleting &quot; + 
-                               new String(theKey.getData()) + &quot;|&quot; +
-                               new String(theData.getData()));
+                               new String(theKey.getData(), &quot;UTF-8&quot;) + 
+                               &quot;|&quot; + 
+                               new String(theData.getData(), &quot;UTF-8&quot;));
             cursor.delete();
     }
 } catch (Exception e) {

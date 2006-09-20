@@ -1,27 +1,33 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep044.tcl,v 12.4 2005/10/18 19:05:54 carol Exp $
+# $Id: rep044.tcl,v 12.10 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep044
-# TEST	
-# TEST	Test rollbacks with open file ids. 
 # TEST
-# TEST	We have one master with two handles and one client. 
+# TEST	Test rollbacks with open file ids.
+# TEST
+# TEST	We have one master with two handles and one client.
 # TEST	Each time through the main loop, we open a db, write
 # TEST	to the db, and close the db.  Each one of these actions
-# TEST	is propagated to the client, or a roll back is forced 
-# TEST	by swapping masters.  
+# TEST	is propagated to the client, or a roll back is forced
+# TEST	by swapping masters.
 
 proc rep044 { method { tnum "044" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
@@ -64,17 +70,17 @@ proc rep044_sub { method tnum logset largs } {
 	set omethod [convert_method $method]
 
 	# The main loop runs all the permutations of processing/not
-	# processing the database open to the clients; processing/not 
+	# processing the database open to the clients; processing/not
 	# processing the database writes to the clients; and processing/
 	# not processing the database close to the clients.  Set up the
-	# options in advance so the loop is not heavily indented. 
+	# options in advance so the loop is not heavily indented.
 	#
-	# Each entry displays { open write close }. 
-	# For example { 1 1 0 } means we process messages after the 
-	# db open and the db writes but not after the db close. 
+	# Each entry displays { open write close }.
+	# For example { 1 1 0 } means we process messages after the
+	# db open and the db writes but not after the db close.
 
 	set optionsets {
-		{1 1 1} 
+		{1 1 1}
 		{1 1 0}
 		{1 0 1}
 		{1 0 0}
@@ -97,10 +103,10 @@ proc rep044_sub { method tnum logset largs } {
 		set processcloses [lindex $set 2]
 
 		set notdoing {}
-		if { $processopens == 0 } { 
-			append notdoing " OPENS" 
+		if { $processopens == 0 } {
+			append notdoing " OPENS"
 		}
-		if { $processwrites == 0 } { 
+		if { $processwrites == 0 } {
 			append notdoing " WRITES"
 		}
 		if { $processcloses == 0 } {
@@ -114,21 +120,21 @@ proc rep044_sub { method tnum logset largs } {
 		# Open a master.
 		repladd 1
 		set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-		    $m_logargs -lock_max 2500 -lock_detect default \
+		    $m_logargs -lock_detect default \
 		    -home $masterdir -rep_transport \[list 1 replsend\]"
 #		set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-#		    $m_logargs -lock_max 2500 -lock_detect default \
+#		    $m_logargs -lock_detect default \
 #		    -errpfx ENV.M0 -verbose {rep on} -errfile /dev/stderr \
 #		    -home $masterdir -rep_transport \[list 1 replsend\]"
 		set menv0 [eval $envcmd(M0) -rep_master]
 		error_check_good master_env0 [is_valid_env $menv0] TRUE
 
-		# Open second handle on master env. 
+		# Open second handle on master env.
 		set envcmd(M1) "berkdb_env_noerr $m_txnargs \
-		    $m_logargs -lock_max 2500 -lock_detect default \
+		    $m_logargs -lock_detect default \
 		    -home $masterdir -rep_transport \[list 1 replsend\]"
 #		set envcmd(M1) "berkdb_env_noerr -create $m_txnargs \
-#		    $m_logargs -lock_max 2500 -lock_detect default \
+#		    $m_logargs -lock_detect default \
 #		    -errpfx ENV.M1 -verbose {rep on} -errfile /dev/stderr \
 #		    -home $masterdir -rep_transport \[list 1 replsend\]"
 		set menv1 [eval $envcmd(M1)]
@@ -138,11 +144,11 @@ proc rep044_sub { method tnum logset largs } {
 		# Open a client
 		repladd 2
 		set envcmd(C) "berkdb_env_noerr -create $c_txnargs \
-		    $c_logargs -lock_max 2500 -errpfx ENV.C \
+		    $c_logargs -errpfx ENV.C \
 		    -errfile /dev/stderr -lock_detect default \
 		    -home $clientdir -rep_transport \[list 2 replsend\]"
 #		set envcmd(C) "berkdb_env_noerr -create $c_txnargs \
-#	  	  $c_logargs -lock_max 2500 -lock_detect default \
+#	  	  $c_logargs -lock_detect default \
 #		    -errpfx ENV.C -verbose {rep on} -errfile /dev/stderr \
 #		    -home $clientdir -rep_transport \[list 2 replsend\]"
 		set cenv [eval $envcmd(C) -rep_client]
@@ -200,7 +206,7 @@ proc rep044_sub { method tnum logset largs } {
 			process_msgs $envlist
 		} else {
 			set start [do_switch $method $niter $start $menv0 $cenv $largs]
-		}	
+		}
 
 		puts "\tRep$tnum.d: Close database using 2nd master env handle."
 		error_check_good db_close [$db1 close] 0
@@ -211,9 +217,9 @@ proc rep044_sub { method tnum logset largs } {
 			process_msgs $envlist
 		} else {
 			set start [do_switch $method $niter $start $menv0 $cenv $largs]
-		}	
+		}
 
-		puts "\tRep$tnum.e: Clean up."	
+		puts "\tRep$tnum.e: Clean up."
 		error_check_good menv0_close [$menv0 close] 0
 		error_check_good menv1_close [$menv1 close] 0
 		error_check_good cenv_close [$cenv close] 0
@@ -236,7 +242,7 @@ proc do_switch { method niter start masterenv clientenv largs } {
 	eval rep_test $method $clientenv NULL $niter $start $start 0 0 $largs
 	incr start $niter
 	process_msgs $envlist
-	
+
 	# Downgrade newmaster, upgrade original master.
 	error_check_good client_downgrade [$clientenv rep_start -client] 0
 	error_check_good master_upgrade [$masterenv rep_start -master] 0

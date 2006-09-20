@@ -1,5 +1,5 @@
 #!/bin/bash -
-#	$Id: s_winmsi,v 1.7 2005/10/26 13:29:32 dda Exp $
+#	$Id: s_winmsi,v 1.8 2005/12/01 03:04:20 bostic Exp $
 #
 # Note: The s_winmsi script in Berkeley DB core closely parallels the
 # s_winmsi script in Berkeley DB/XML.  If you change one,
@@ -118,7 +118,7 @@ if [ "$OPT_USEBUILD" = '' ]; then
         ${PRODUCT_SUB_BLDDIR}/installed_include \
         ${PRODUCT_SUB_BLDDIR}/dbinc/* \
         ${PRODUCT_SUB_BLDDIR}/dbinc_auto/* \
-        ${PRODUCT_SUB_BLDDIR}/build_win32/*.h
+        ${PRODUCT_SUB_BLDDIR}/build_windows/*.h
     CreateDbPerl
 fi
 

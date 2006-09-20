@@ -1,33 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: env_stat.c,v 12.23 2005/11/01 00:44:25 bostic Exp $
+ * $Id: env_stat.c,v 12.36 2006/09/08 19:25:15 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include "string.h"
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
@@ -81,9 +64,10 @@ __env_stat_print(dbenv, flags)
 {
 	time_t now;
 	int ret;
+	char time_buf[CTIME_BUFLEN];
 
 	(void)time(&now);
-	__db_msg(dbenv, "%.24s\tLocal time", ctime(&now));
+	__db_msg(dbenv, "%.24s\tLocal time", __db_ctime(&now, time_buf));
 
 	if ((ret = __env_print_stats(dbenv, flags)) != 0)
 		return (ret);
@@ -100,12 +84,6 @@ __env_stat_print(dbenv, flags)
 
 	/* The subsystems don't know anything about DB_STAT_SUBSYSTEM. */
 	LF_CLR(DB_STAT_SUBSYSTEM);
-
-	if (MUTEX_ON(dbenv)) {
-		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-		if ((ret = __mutex_stat_print(dbenv, flags)) != 0)
-			return (ret);
-	}
 
 	if (LOGGING_ON(dbenv)) {
 		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
@@ -141,6 +119,12 @@ __env_stat_print(dbenv, flags)
 			return (ret);
 	}
 
+	if (MUTEX_ON(dbenv)) {
+		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
+		if ((ret = __mutex_stat_print(dbenv, flags)) != 0)
+			return (ret);
+	}
+
 	return (0);
 }
 
@@ -156,6 +140,7 @@ __env_print_stats(dbenv, flags)
 {
 	REGENV *renv;
 	REGINFO *infop;
+	char time_buf[CTIME_BUFLEN];
 
 	infop = dbenv->reginfo;
 	renv = infop->primary;
@@ -168,7 +153,8 @@ __env_print_stats(dbenv, flags)
 	STAT_LONG("Panic value", renv->panic);
 	__db_msg(dbenv, "%d.%d.%d\tEnvironment version",
 	    renv->majver, renv->minver, renv->patchver);
-	__db_msg(dbenv, "%.24s\tCreation time", ctime(&renv->timestamp));
+	__db_msg(dbenv,
+	    "%.24s\tCreation time", __db_ctime(&renv->timestamp, time_buf));
 	STAT_HEX("Environment ID", renv->envid);
 	__mutex_print_debug_single(dbenv,
 	    "Primary region allocation and reference count mutex",
@@ -258,7 +244,7 @@ __env_print_all(dbenv, flags)
 	REGINFO *infop;
 	REGION *rp;
 	u_int32_t i;
-	char **p;
+	char **p, time_buf[CTIME_BUFLEN];
 
 	infop = dbenv->reginfo;
 	renv = infop->primary;
@@ -271,9 +257,11 @@ __env_print_all(dbenv, flags)
 	__db_prflags(dbenv,
 	    NULL, renv->flags, regenvfn, NULL, "\tReplication flags");
 	__db_msg(dbenv, "%.24s\tOperation timestamp",
-	    renv->op_timestamp == 0 ? "!Set" : ctime(&renv->op_timestamp));
+	    renv->op_timestamp == 0 ?
+	    "!Set" : __db_ctime(&renv->op_timestamp, time_buf));
 	__db_msg(dbenv, "%.24s\tReplication timestamp",
-	    renv->rep_timestamp == 0 ? "!Set" : ctime(&renv->rep_timestamp));
+	    renv->rep_timestamp == 0 ?
+	    "!Set" : __db_ctime(&renv->rep_timestamp, time_buf));
 
 	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
 	__db_msg(dbenv, "Per region database environment information:");
@@ -293,6 +281,7 @@ __env_print_all(dbenv, flags)
 	STAT_ISSET("Errfile", dbenv->db_errfile);
 	STAT_STRING("Errpfx", dbenv->db_errpfx);
 	STAT_ISSET("Errcall", dbenv->db_errcall);
+	STAT_ISSET("Event", dbenv->db_event_func);
 	STAT_ISSET("Feedback", dbenv->db_feedback);
 	STAT_ISSET("Panic", dbenv->db_paniccall);
 	STAT_ISSET("Malloc", dbenv->db_malloc);
@@ -367,10 +356,8 @@ __env_print_threads(dbenv)
 
 	htab = (DB_HASHTAB *)dbenv->thr_hashtab;
 	__db_msg(dbenv, "Thread status blocks:");
-	for (i = 0; i < dbenv->thr_nbucket; i++) {
-		for (ip = SH_TAILQ_FIRST(&htab[i], __db_thread_info);
-		     ip != NULL;
-		     ip = SH_TAILQ_NEXT(ip, dbth_links, __db_thread_info)) {
+	for (i = 0; i < dbenv->thr_nbucket; i++)
+		SH_TAILQ_FOREACH(ip, &htab[i], dbth_links, __db_thread_info) {
 			if (ip->dbth_state == THREAD_SLOT_NOT_IN_USE)
 				continue;
 			__db_msg(dbenv, "\tprocess/thread %s: %s",
@@ -378,7 +365,6 @@ __env_print_threads(dbenv)
 			    dbenv, ip->dbth_pid, ip->dbth_tid, buf),
 			    __env_thread_state_print(ip->dbth_state));
 		}
-	}
 	return (0);
 }
 
@@ -591,7 +577,7 @@ __db_print_reginfo(dbenv, infop, s)
 	STAT_POINTER("Region address", infop->addr);
 	STAT_POINTER("Region primary address", infop->primary);
 	STAT_ULONG("Region maximum allocation", infop->max_alloc);
-	STAT_ULONG("Region allocated", infop->max_alloc);
+	STAT_ULONG("Region allocated", infop->allocated);
 
 	__db_prflags(dbenv, NULL, infop->flags, fn, NULL, "\tRegion flags");
 }
@@ -635,7 +621,7 @@ int
 __db_stat_not_built(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_err(dbenv, "Library build did not include statistics support");
+	__db_errx(dbenv, "Library build did not include statistics support");
 	return (DB_OPNOTSUP);
 }
 

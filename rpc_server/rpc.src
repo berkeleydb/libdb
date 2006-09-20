@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#       Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rpc.src,v 12.12 2005/10/21 19:52:57 bostic Exp $
+# $Id: rpc.src,v 12.20 2006/09/11 15:52:44 bostic Exp $
 #
 # Syntax:
 # BEGIN	function_name  {CODE | LINKONLY | RETCODE}
@@ -63,6 +63,11 @@ END
 ######################################################
 # DB_ENV handle methods.
 ######################################################
+BEGIN	env_cdsgroup_begin	RETCODE
+ARG	ID	DB_ENV *	dbenv
+ARG	IGNORE	DB_TXN **	txnpp
+RET	ID	long		txnid
+END
 BEGIN	env_close		CODE
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	flags
@@ -125,7 +130,6 @@ BEGIN	env_get_open_flags	CODE
 ARG	ID	DB_ENV *	dbenv
 ARET	INT	u_int32_t	flags
 END
-NOFUNC	env_get_rep_limit	DB_ENV *, u_int32_t *, u_int32_t *
 NOFUNC	env_get_shm_key		DB_ENV *, long *
 NOFUNC	env_get_timeout		DB_ENV *, db_timeout_t *, u_int32_t
 NOFUNC	env_get_tmp_dir		DB_ENV *, const char **
@@ -182,15 +186,30 @@ ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	home
 ARG	INT	u_int32_t	flags
 END
-NOFUNC	env_rep_elect		DB_ENV *, int, int, int, u_int32_t, int *, u_int32_t
+NOFUNC	env_rep_elect		DB_ENV *, int, int, int *, u_int32_t
 NOFUNC	env_rep_flush		DB_ENV *
 NOFUNC	env_rep_get_config	DB_ENV *, u_int32_t, int *
+NOFUNC	env_rep_get_limit	DB_ENV *, u_int32_t *, u_int32_t *
+NOFUNC	env_rep_get_nsites	DB_ENV *, int *
+NOFUNC	env_rep_get_priority	DB_ENV *, int *
+NOFUNC	env_rep_get_timeout	DB_ENV *, int, db_timeout_t *
 NOFUNC	env_rep_process_message	DB_ENV *, DBT *, DBT *, int *, DB_LSN *
 NOFUNC	env_rep_set_config	DB_ENV *, u_int32_t, int
+NOFUNC	env_rep_set_limit	DB_ENV *, u_int32_t, u_int32_t
+NOFUNC	env_rep_set_nsites	DB_ENV *, int
+NOFUNC	env_rep_set_priority	DB_ENV *, int
+NOFUNC	env_rep_set_timeout	DB_ENV *, int, db_timeout_t
+NOFUNC	env_rep_set_transport	DB_ENV *, int, int (*)(DB_ENV *, const DBT *, const DBT *, const DB_LSN *, int, u_int32_t)
 NOFUNC	env_rep_start		DB_ENV *, DBT *, u_int32_t
 NOFUNC	env_rep_stat		DB_ENV *, DB_REP_STAT **, u_int32_t
 NOFUNC	env_rep_stat_print	DB_ENV *, u_int32_t
 NOFUNC	env_rep_sync		DB_ENV *, u_int32_t
+NOFUNC	env_repmgr_add_remote_site	DB_ENV *, const char *, u_int, int *, u_int32_t
+NOFUNC	env_repmgr_get_ack_policy	DB_ENV *, int *
+NOFUNC	env_repmgr_set_ack_policy	DB_ENV *, int
+NOFUNC	env_repmgr_set_local_site	DB_ENV *, const char *, u_int, u_int32_t
+NOFUNC	env_repmgr_site_list	DB_ENV *, u_int *, DB_REPMGR_SITE **
+NOFUNC	env_repmgr_start	DB_ENV *, int, u_int32_t
 NOFUNC	env_set_alloc		DB_ENV *, void *(*)(size_t), void *(*)(void *, size_t), void (*)(void *)
 NOFUNC	env_set_app_dispatch	DB_ENV *, int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)
 BEGIN	env_set_cachesize	CODE
@@ -208,6 +227,7 @@ END
 LOCAL	env_set_errcall
 LOCAL	env_set_errfile
 LOCAL	env_set_errpfx
+NOFUNC	env_set_event_notify	DB_ENV *, void (*)(DB_ENV *, u_int32_t, void *)
 NOFUNC	env_set_feedback	DB_ENV *, void (*)(DB_ENV *, int, int)
 BEGIN	env_set_flags		CODE
 ARG	ID	DB_ENV *	dbenv
@@ -215,7 +235,7 @@ ARG	INT	u_int32_t	flags
 ARG	INT	int		onoff
 END
 NOFUNC	env_set_intermediate_dir	DB_ENV *, int, u_int32_t
-NOFUNC	env_set_isalive		DB_ENV *, int (*)(DB_ENV *, pid_t, db_threadid_t)
+NOFUNC	env_set_isalive		DB_ENV *, int (*)(DB_ENV *, pid_t, db_threadid_t, u_int32_t)
 NOFUNC	env_set_lg_bsize	DB_ENV *, u_int32_t
 NOFUNC	env_set_lg_dir		DB_ENV *, const char *
 NOFUNC	env_set_lg_filemode	DB_ENV *, int
@@ -223,7 +243,6 @@ NOFUNC	env_set_lg_max		DB_ENV *, u_int32_t
 NOFUNC	env_set_lg_regionmax	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_conflicts	DB_ENV *, u_int8_t *, int
 NOFUNC	env_set_lk_detect	DB_ENV *, u_int32_t
-NOFUNC	env_set_lk_max		DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_lockers	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_locks	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_objects	DB_ENV *, u_int32_t
@@ -233,9 +252,7 @@ NOFUNC	env_set_mp_mmapsize	DB_ENV *, size_t
 LOCAL	env_set_msgcall
 LOCAL	env_set_msgfile
 NOFUNC	env_set_paniccall	DB_ENV *, void (*)(DB_ENV *, int)
-NOFUNC	env_set_rep_limit	DB_ENV *, u_int32_t, u_int32_t
 NOFUNC	env_set_rep_request	DB_ENV *, u_int32_t, u_int32_t
-NOFUNC	env_set_rep_transport	DB_ENV *, int, int (*)(DB_ENV *, const DBT *, const DBT *, const DB_LSN *, int, u_int32_t)
 BEGIN	env_set_rpc_server	LINKONLY
 ARG	ID	DB_ENV *	dbenv
 END

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: upgrade.tcl,v 12.3 2005/06/16 20:24:11 bostic Exp $
+# $Id: upgrade.tcl,v 12.8 2006/09/18 14:22:44 carol Exp $
 
 source ./include.tcl
 
@@ -178,9 +178,9 @@ proc upgrade { { archived_test_loc "DEFAULT" } } {
 						}
 					}
 
-					# Then we test any .dmp files.  Move 
-					# the saved file to the current working 
-					# directory.  Run the test locally. 
+					# Then we test any .dmp files.  Move
+					# the saved file to the current working
+					# directory.  Run the test locally.
 					# Compare the dumps; they should match.
 					if { [file exists $testdir/$name.dmp] } {
 						file rename -force \
@@ -237,8 +237,8 @@ proc _upgrade_test { temp_dir version method file endianness } {
 		set encrypt 1
 	}
 
-	# Open the database prior to upgrading.  If it fails, 
-	# it should fail with the DB_OLDVERSION message. 
+	# Open the database prior to upgrading.  If it fails,
+	# it should fail with the DB_OLDVERSION message.
 	set encargs ""
 	if { $encrypt == 1 } {
 		set encargs " -encryptany $passwd "
@@ -251,7 +251,7 @@ proc _upgrade_test { temp_dir version method file endianness } {
 		error_check_good db_close [$db close] 0
 	}
 
-	# Now upgrade the database. 
+	# Now upgrade the database.
 	set ret [berkdb upgrade "$temp_dir/$file-$endianness.db"]
 	error_check_good dbupgrade $ret 0
 
@@ -320,18 +320,29 @@ proc _log_test { temp_dir release method file } {
 			# log version, that's okay.
 			if { $current_logvers <= $saved_logvers } {
 				puts "db_printlog failed: $message"
-		 	}	
+		 	}
 		}
 	}
 
-	if { $current_logvers > $saved_logvers } {
+	# Log versions prior to 8 can only be read by their own version.
+	# Log versions of 8 or greater are readable by Berkeley DB 4.5
+	# or greater, but the output of printlog does not match unless 
+	# the versions are identical.
+	set logoldver 8
+	if { $current_logvers > $saved_logvers &&\
+	    $current_logvers < $logoldver } {
 		error_check_good historic_log_version \
 		    [is_substr $message "historic log version"] 1
-	} else {
+	} elseif { $current_logvers > $saved_logvers } {
+		error_check_good db_printlog:$message $ret 0
+	} elseif { $current_logvers == $saved_logvers  } {
 		error_check_good db_printlog:$message $ret 0
 		# Compare logs.prlog and $file.prlog (should match)
 		error_check_good "Compare printlogs" [filecmp \
 		    "$temp_dir/logs.prlog" "$temp_dir/$file.prlog"] 0
+	} elseif { $current_logvers < $saved_logvers } {
+		puts -nonewline "FAIL: current log version $current_logvers "
+		puts "cannot be less than saved log version $save_logvers."
 	}
 }
 
@@ -344,6 +355,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 	global upgrade_be
 	global upgrade_method
 	global upgrade_name
+	global valid_methods
 	global test_names
 	global parms
 	global encrypt
@@ -381,8 +393,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 	error_check_good env_close [$env close] 0
 
 	# Generate test databases for each access method and endianness.
-	foreach method \
-	    "btree rbtree hash recno rrecno frecno queue queueext" {
+	foreach method $valid_methods {
 		set o [open GENERATE.OUT a]
 		puts $o "\nGenerating $method files"
 		close $o
@@ -391,8 +402,8 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 
 		# We piggyback testing of dumped sequence files on upgrade
 		# testing because this is the only place that we ship files
-		# from one machine to another.  Create files for both 
-		# endiannesses, because who knows what platform we'll 
+		# from one machine to another.  Create files for both
+		# endiannesses, because who knows what platform we'll
 		# be testing on.
 
 		set gen_dump 1
@@ -403,7 +414,7 @@ proc gen_upgrade { dir { save_crypto 1 } { save_non_crypto 1 } } {
 				cleanup $testdir NULL
 			}
 		}
-		set gen_dump 0 
+		set gen_dump 0
 
 #set test_names(test) ""
 		set gen_upgrade 1
@@ -678,7 +689,7 @@ proc save_upgrade_files { dir } {
 	}
 
 	if { $gen_dump == 1 } {
-		# Save dump files.  We require that the files have 
+		# Save dump files.  We require that the files have
 		# been created with the extension .dmp.
 		set dumpfiles [glob -nocomplain $dir/*.dmp]
 

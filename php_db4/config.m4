@@ -1,11 +1,11 @@
 #
-# Copyright (c) 2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
 # http://www.apache.org/licenses/LICENSE-2.0.txt
 #
 
-dnl $Id: config.m4,v 12.4 2005/11/02 04:37:14 george Exp $
+dnl $Id: config.m4,v 12.6 2006/08/24 14:46:22 bostic Exp $
 dnl config.m4 for extension db4
 
 dnl Comments in this file start with the string 'dnl'.

@@ -32,7 +32,6 @@ int __db_close __P((DB *, DB_TXN *, u_int32_t));
 int __db_refresh __P((DB *, DB_TXN *, u_int32_t, int *, int));
 int __db_log_page __P((DB *, DB_TXN *, DB_LSN *, db_pgno_t, PAGE *));
 int __db_backup_name __P((DB_ENV *, const char *, DB_TXN *, char **));
-DB *__dblist_get __P((DB_ENV *, u_int32_t));
 #ifdef CONFIG_TEST
 int __db_testcopy __P((DB_ENV *, DB *, const char *));
 #endif
@@ -48,16 +47,20 @@ int __db_big_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, u_int32_t, db_pgno_t,
 int __db_big_read __P((DB_ENV *, void *, __db_big_args **));
 int __db_ovref_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_pgno_t, int32_t, DB_LSN *));
 int __db_ovref_read __P((DB_ENV *, void *, __db_ovref_args **));
+int __db_relink_42_read __P((DB_ENV *, void *, __db_relink_42_args **));
 int __db_debug_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, int32_t, const DBT *, const DBT *, u_int32_t));
 int __db_debug_read __P((DB_ENV *, void *, __db_debug_args **));
 int __db_noop_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_pgno_t, DB_LSN *));
 int __db_noop_read __P((DB_ENV *, void *, __db_noop_args **));
+int __db_pg_alloc_42_read __P((DB_ENV *, void *, __db_pg_alloc_42_args **));
 int __db_pg_alloc_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, DB_LSN *, db_pgno_t, DB_LSN *, db_pgno_t, u_int32_t, db_pgno_t, db_pgno_t));
 int __db_pg_alloc_read __P((DB_ENV *, void *, __db_pg_alloc_args **));
+int __db_pg_free_42_read __P((DB_ENV *, void *, __db_pg_free_42_args **));
 int __db_pg_free_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, const DBT *, db_pgno_t, db_pgno_t));
 int __db_pg_free_read __P((DB_ENV *, void *, __db_pg_free_args **));
 int __db_cksum_log __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t));
 int __db_cksum_read __P((DB_ENV *, void *, __db_cksum_args **));
+int __db_pg_freedata_42_read __P((DB_ENV *, void *, __db_pg_freedata_42_args **));
 int __db_pg_freedata_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, const DBT *, db_pgno_t, db_pgno_t, const DBT *));
 int __db_pg_freedata_read __P((DB_ENV *, void *, __db_pg_freedata_args **));
 int __db_pg_prepare_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_pgno_t));
@@ -72,11 +75,15 @@ int __db_init_recover __P((DB_ENV *, int (***)(DB_ENV *, DBT *, DB_LSN *, db_rec
 int __db_addrem_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_big_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_ovref_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_relink_42_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_debug_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_noop_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_pg_alloc_42_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_alloc_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_pg_free_42_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_free_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_cksum_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_pg_freedata_42_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_freedata_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_prepare_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_new_print __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
@@ -100,6 +107,7 @@ int __db_s_first __P((DB *, DB **));
 int __db_s_next __P((DB **));
 int __db_s_done __P((DB *));
 u_int32_t __db_partsize __P((u_int32_t, DBT *));
+int __cdsgroup_begin __P((DB_ENV *, DB_TXN **));
 int __db_pgin __P((DB_ENV *, db_pgno_t, void *, DBT *));
 int __db_pgout __P((DB_ENV *, db_pgno_t, void *, DBT *));
 void __db_metaswap __P((PAGE *));
@@ -117,12 +125,8 @@ int __db_txnlist_gen __P((DB_ENV *, DB_TXNHEAD *, int, u_int32_t, u_int32_t));
 int __db_txnlist_lsnadd __P((DB_ENV *, DB_TXNHEAD *, DB_LSN *));
 int __db_txnlist_lsnget __P((DB_ENV *, DB_TXNHEAD *, DB_LSN *, u_int32_t));
 int __db_txnlist_lsninit __P((DB_ENV *, DB_TXNHEAD *, DB_LSN *));
-#ifndef HAVE_FTRUNCATE
-int __db_add_limbo __P((DB_ENV *, DB_TXNHEAD *, int32_t, db_pgno_t, int32_t));
-#endif
-#ifndef HAVE_FTRUNCATE
+int __db_add_limbo __P((DB_ENV *, DB_TXNHEAD *, int32_t, db_pgno_t, u_int32_t));
 int __db_do_the_limbo __P((DB_ENV *, DB_TXN *, DB_TXN *, DB_TXNHEAD *, db_limbo_state));
-#endif
 void __db_txnlist_print __P((DB_TXNHEAD *));
 int __db_ditem __P((DBC *, PAGE *, u_int32_t, u_int32_t));
 int __db_pitem __P((DBC *, PAGE *, u_int32_t, u_int32_t, DBT *, DBT *));
@@ -152,6 +156,8 @@ int __db_c_pget_pp __P((DBC *, DBT *, DBT *, DBT *, u_int32_t));
 int __db_c_put_pp __P((DBC *, DBT *, DBT *, u_int32_t));
 int __db_txn_auto_init __P((DB_ENV *, DB_TXN **));
 int __db_txn_auto_resolve __P((DB_ENV *, DB_TXN *, int, int));
+int __dbt_usercopy __P((DB_ENV *, DBT *));
+void __dbt_userfree __P((DB_ENV *, DBT *, DBT *, DBT *));
 int __db_join __P((DB *, DBC **, DBC **, u_int32_t));
 int __db_join_close __P((DBC *));
 int __db_secondary_corrupt __P((DB *));
@@ -161,7 +167,7 @@ int __db_free __P((DBC *, PAGE *));
 void __db_freelist_pos __P((db_pgno_t, db_pgno_t *, u_int32_t, u_int32_t *));
 #endif
 #ifdef HAVE_FTRUNCATE
-int __db_pg_truncate __P((DB_MPOOLFILE *, struct pglist *list, DB_COMPACT *, u_int32_t *, db_pgno_t *, DB_LSN *, int));
+int __db_pg_truncate __P((DB_MPOOLFILE *, DB_TXN *, struct pglist *list, DB_COMPACT *, u_int32_t *, db_pgno_t *, DB_LSN *, int));
 #endif
 #ifdef HAVE_FTRUNCATE
 int __db_free_truncate __P((DB *, DB_TXN *, u_int32_t, DB_COMPACT *, struct pglist **, u_int32_t *, db_pgno_t *));
@@ -181,23 +187,23 @@ int __db_new_file __P((DB *, DB_TXN *, DB_FH *, const char *));
 int __db_init_subdb __P((DB *, DB *, const char *, DB_TXN *));
 int __db_chk_meta __P((DB_ENV *, DB *, DBMETA *, int));
 int __db_meta_setup __P((DB_ENV *, DB *, const char *, DBMETA *, u_int32_t, int));
-int __db_goff __P((DB *, DBT *, u_int32_t, db_pgno_t, void **, u_int32_t *));
+int __db_goff __P((DB *, DB_TXN *, DBT *, u_int32_t, db_pgno_t, void **, u_int32_t *));
 int __db_poff __P((DBC *, const DBT *, db_pgno_t *));
-int __db_ovref __P((DBC *, db_pgno_t, int32_t));
+int __db_ovref __P((DBC *, db_pgno_t));
 int __db_doff __P((DBC *, db_pgno_t));
-int __db_moff __P((DB *, const DBT *, db_pgno_t, u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
+int __db_moff __P((DB *, DB_TXN *, const DBT *, db_pgno_t, u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
 int __db_vrfy_overflow __P((DB *, VRFY_DBINFO *, PAGE *, db_pgno_t, u_int32_t));
 int __db_vrfy_ovfl_structure __P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t, u_int32_t));
 int __db_safe_goff __P((DB *, VRFY_DBINFO *, db_pgno_t, DBT *, void *, u_int32_t));
 void __db_loadme __P((void));
-int __db_dumptree __P((DB *, char *, char *));
+int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
 const FN * __db_get_flags_fn __P((void));
-int __db_prnpage __P((DB *, db_pgno_t));
+int __db_prnpage __P((DB *, DB_TXN *, db_pgno_t));
 int __db_prpage __P((DB *, PAGE *, u_int32_t));
 void __db_pr __P((DB_ENV *, DB_MSGBUF *, u_int8_t *, u_int32_t));
 void __db_prflags __P((DB_ENV *, DB_MSGBUF *, u_int32_t, const FN *, const char *, const char *));
 const char * __db_lockmode_to_string __P((db_lockmode_t));
-int __db_dumptree __P((DB *, char *, char *));
+int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
 const FN * __db_get_flags_fn __P((void));
 int __db_dump_pp __P((DB *, const char *, int (*)(void *, const void *), void *, int, int));
 int __db_dump __P((DB *, const char *, int (*)(void *, const void *), void *, int, int));
@@ -219,7 +225,11 @@ int __db_cksum_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_prepare_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_init_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __db_pg_sort_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-int __db_traverse_big __P((DB *, db_pgno_t, int (*)(DB *, PAGE *, void *, int *), void *));
+int __db_pg_alloc_42_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_pg_free_42_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_pg_freedata_42_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_relink_42_recover __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+int __db_traverse_big __P((DB *, db_pgno_t, DB_TXN *, int (*)(DB *, PAGE *, void *, int *), void *));
 int __db_reclaim_callback __P((DB *, PAGE *, void *, int *));
 int __db_truncate_callback __P((DB *, PAGE *, void *, int *));
 int __env_dbremove_pp __P((DB_ENV *, DB_TXN *, const char *, const char *, u_int32_t));
@@ -231,7 +241,7 @@ int __env_dbrename_pp __P((DB_ENV *, DB_TXN *, const char *, const char *, const
 int __db_rename_pp __P((DB *, const char *, const char *, const char *, u_int32_t));
 int __db_rename __P((DB *, DB_TXN *, const char *, const char *, const char *));
 int __db_rename_int __P((DB *, DB_TXN *, const char *, const char *, const char *));
-int __db_ret __P((DB *, PAGE *, u_int32_t, DBT *, void **, u_int32_t *));
+int __db_ret __P((DB *, DB_TXN *, PAGE *, u_int32_t, DBT *, void **, u_int32_t *));
 int __db_retcopy __P((DB_ENV *, DBT *, void *, u_int32_t, void **, u_int32_t *));
 int __env_fileid_reset_pp __P((DB_ENV *, const char *, u_int32_t));
 int __env_lsn_reset_pp __P((DB_ENV *, const char *, u_int32_t));

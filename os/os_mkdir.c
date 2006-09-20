@@ -1,18 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_mkdir.c,v 12.8 2005/11/02 03:12:17 mjc Exp $
+ * $Id: os_mkdir.c,v 12.16 2006/08/24 14:46:18 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
 
 #include "db_int.h"
 
@@ -39,15 +34,18 @@ __os_mkdir(dbenv, name, mode)
 #ifdef DB_WIN32
 	RETRY_CHK((_mkdir(name)), ret);
 #else
-	RETRY_CHK((mkdir(name, 0600)), ret);
+	RETRY_CHK((mkdir(name, __db_omode("rwx------"))), ret);
 #endif
 	if (ret != 0)
-		return (ret);
+		return (__os_posix_err(ret));
 
 	/* Set the absolute permissions, if specified. */
 #ifndef DB_WIN32
-	if (mode != 0)
+	if (mode != 0) {
 		RETRY_CHK((chmod(name, mode)), ret);
+		if (ret != 0)
+			ret = __os_posix_err(ret);
+	}
 #endif
 #endif
 	return (ret);

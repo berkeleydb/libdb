@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_fsync.c,v 12.3 2005/09/07 17:30:20 bostic Exp $
+ * $Id: os_fsync.c,v 12.9 2006/08/24 14:46:17 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <fcntl.h>			/* Required on some platforms. */
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -69,7 +62,7 @@ __os_fsync(dbenv, fhp)
 	int ret;
 
 	/* Check for illegal usage. */
-	DB_ASSERT(F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+	DB_ASSERT(dbenv, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
 
 	/*
 	 * Do nothing if the file descriptor has been marked as not requiring
@@ -89,7 +82,9 @@ __os_fsync(dbenv, fhp)
 		RETRY_CHK((fsync(fhp->fd)), ret);
 #endif
 
-	if (ret != 0)
-		__db_err(dbenv, "fsync %s", strerror(ret));
+	if (ret != 0) {
+		__db_syserr(dbenv, ret, "fsync");
+		ret = __os_posix_err(ret);
+	}
 	return (ret);
 }

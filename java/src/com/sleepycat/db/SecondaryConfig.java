@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: SecondaryConfig.java,v 12.2 2005/06/16 20:23:03 bostic Exp $
+ * $Id: SecondaryConfig.java,v 12.4 2006/08/24 14:46:09 bostic Exp $
  */
 
 package com.sleepycat.db;

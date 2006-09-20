@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: TestSerial.java,v 12.1 2005/01/31 19:27:36 mark Exp $
+ * $Id: TestSerial.java,v 12.3 2006/08/31 18:14:14 bostic Exp $
  */
 package com.sleepycat.collections.test.serial;
 

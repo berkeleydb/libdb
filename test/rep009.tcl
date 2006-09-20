@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep009.tcl,v 12.3 2005/06/23 15:25:21 carol Exp $
+# $Id: rep009.tcl,v 12.9 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST  rep009
 # TEST	Replication and DUPMASTERs
@@ -14,10 +14,16 @@
 proc rep009 { method { niter 10 } { tnum "009" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Run for btree only.
+	if { $checking_valid_methods } {
+		set test_methods { btree }
+		return $test_methods
+	}
 	if { [is_btree $method] == 0 } {
 		puts "Rep009: Skipping for method $method."
 		return
@@ -26,8 +32,7 @@ proc rep009 { method { niter 10 } { tnum "009" } args } {
 	set logsets [create_logsets 3]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -74,11 +79,9 @@ proc rep009_sub { method niter tnum clean logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env -create $m_txnargs \
-	    $m_logargs -lock_max 2500 \
+	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env -create $m_txnargs \
-# 	    $m_logargs -lock_max 2500 \
+#	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 #	    -verbose {rep on} -errpfx MASTER -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -86,22 +89,18 @@ proc rep009_sub { method niter tnum clean logset recargs largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env -create $c_txnargs \
-	    $c_logargs -lock_max 2500 \
+	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 \
+#	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
 #	    -verbose {rep on} -errpfx CLIENT -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 
 	repladd 3
-	set cl2_envcmd "berkdb_env -create $c2_txnargs \
-	    $c2_logargs -lock_max 2500 \
+	set cl2_envcmd "berkdb_env -create $c2_txnargs $c2_logargs \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
-#	set cl2_envcmd "berkdb_env -create $c2_txnargs \
-#	    $c2_logargs -lock_max 2500 \
+#	set cl2_envcmd "berkdb_env -create $c2_txnargs $c2_logargs \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\] \
 #	    -verbose {rep on} -errpfx CLIENT2 -errfile /dev/stderr"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]

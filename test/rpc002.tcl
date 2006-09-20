@@ -1,9 +1,9 @@
 # Sel the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rpc002.tcl,v 12.2 2005/07/21 18:21:36 bostic Exp $
+# $Id: rpc002.tcl,v 12.5 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rpc002
 # TEST	Test invalid RPC functions and make sure we error them correctly
@@ -44,7 +44,9 @@ proc rpc002 { } {
 		{ "-log_max 100"		"Rpc002.b3"}
 		{ "-lock_conflict {3 {0 0 0 0 0 1 0 1 1}}"	"Rpc002.b4"}
 		{ "-lock_detect default"	"Rpc002.b5"}
-		{ "-lock_max 100"		"Rpc002.b6"}
+		{ "-lock_max_locks 100"		"Rpc002.b6"}
+		{ "-lock_max_objects 100"	"Rpc002.b6"}
+		{ "-lock_max_lockers 100"	"Rpc002.b6"}
 		{ "-mpool_mmap_size 100"	"Rpc002.b7"}
 		{ "-shm_key 100"		"Rpc002.b9"}
 		{ "-tmp_dir $rpc_testdir"	"Rpc002.b10"}

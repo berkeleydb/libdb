@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: MapEntryParameter.java,v 12.1 2005/01/31 19:27:32 mark Exp $
+ * $Id: MapEntryParameter.java,v 12.3 2006/08/31 18:14:08 bostic Exp $
  */
 
 package com.sleepycat.collections;

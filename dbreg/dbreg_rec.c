@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -32,23 +32,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: dbreg_rec.c,v 12.8 2005/11/09 14:20:32 margo Exp $
+ * $Id: dbreg_rec.c,v 12.17 2006/09/07 20:05:28 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/log.h"
-#include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
 static int __dbreg_open_file __P((DB_ENV *,
@@ -125,9 +117,8 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 			do_open = 1;
 		break;
 	default:
-		DB_ASSERT(0);
-		ret = EINVAL;
-		break;
+		ret = __db_unknown_path(dbenv, "__dbreg_register_recover");
+		goto out;
 	}
 
 	if (do_open) {
@@ -145,7 +136,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		ret = __dbreg_open_file(dbenv,
 		    op == DB_TXN_ABORT || op == DB_TXN_POPENFILES ?
-		    argp->txnid : NULL, argp, info);
+		    argp->txnp : NULL, argp, info);
 		if (ret == DB_PAGE_NOTFOUND && argp->meta_pgno != PGNO_BASE_MD)
 			ret = ENOENT;
 		if (ret == ENOENT || ret == EINVAL) {
@@ -157,7 +148,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 			 * for that case and possibly retry.
 			 */
 			if (op == DB_TXN_FORWARD_ROLL &&
-			    argp->txnid != 0 &&
+			    argp->txnp != 0 &&
 			    dblp->dbentry[argp->fileid].deleted) {
 				dblp->dbentry[argp->fileid].deleted = 0;
 				ret =
@@ -215,7 +206,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 				if ((DB_REDO(op) &&
 				    argp->opcode != DBREG_RCLOSE) ||
 				    argp->opcode == DBREG_CHKPNT) {
-					__db_err(dbenv,
+					__db_errx(dbenv,
 				    "Warning: Improper file close at %lu/%lu",
 					    (u_long)lsnp->file,
 					    (u_long)lsnp->offset);
@@ -273,7 +264,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 		if (do_rem && dbp != NULL) {
 			if (argp->id != TXN_INVALID) {
 				if ((ret = __db_txnlist_find(dbenv,
-				    info, argp->txnid->txnid, &status))
+				    info, argp->txnp->txnid, &status))
 				    != DB_NOTFOUND && ret != 0)
 					goto out;
 				if (ret == DB_NOTFOUND || status != TXN_COMMIT)
@@ -322,7 +313,7 @@ __dbreg_open_file(dbenv, txn, argp, info)
 	u_int32_t id, status;
 	int ret;
 
-	dblp = (DB_LOG *)dbenv->lg_handle;
+	dblp = dbenv->lg_handle;
 
 	/*
 	 * When we're opening, we have to check that the name we are opening
@@ -373,7 +364,7 @@ __dbreg_open_file(dbenv, txn, argp, info)
 			 * dbp from an openfiles pass, in which case, what's
 			 * here had better be the same dbp.
 			 */
-			DB_ASSERT(dbe->dbp == dbp);
+			DB_ASSERT(dbenv, dbe->dbp == dbp);
 			MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
 
 			/*

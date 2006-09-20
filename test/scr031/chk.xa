@@ -19,6 +19,7 @@ func_clean()
 #	lots of shell variables.
 func_ubbinit()
 {
+	MACHINE_NAME=`uname -n`
 	cat > $RUN/config/ubb.cfg << END_OF_UBB_FILE
 *RESOURCES
 IPCKEY		200103
@@ -37,7 +38,7 @@ DEFAULT:
 		TLOGDEVICE="$TLOGDEVICE"
 		TUXDIR="$TUXDIR"
 # Machine name is 30 characters max
-ocicat		LMID=cluster3
+$MACHINE_NAME		LMID=cluster3
 
 *GROUPS
 # Group name is 30 characters max
@@ -133,18 +134,18 @@ run()
 	# Boot Tuxedo.
 	# You should see something like:
 	#
-	# INFO: BEA Tuxedo, Version 8.1 
+	# INFO: BEA Tuxedo, Version 8.1
 	# INFO: Serial #: 650522264138-1510597376252,
 	#	Expiration 2005-02-15, Maxusers 100
 	# INFO: Licensed to: BEA Evaluation Customer
-	# 
+	#
 	# Booting admin processes ...
-	# 
+	#
 	# exec BBL -A :
 	#         process id=13845 ... Started.
-	# 
+	#
 	# Booting server processes ...
-	# 
+	#
 	# exec DBRM -A :
 	#         process id=13846 ... Started.
 	# exec DBRM -A :
@@ -206,12 +207,6 @@ run()
 # Debug the shell script.
 # set -x
 
-# This script is both Solaris and machine specific.
-test "`uname -n`" = "ocicat" || {
-	echo "chk.xa is both Solaris and ocicat specific; skipping test run."
-	exit 0
-}
-
 # Check to make sure we have a Tuxedo build we understand.
 test -z "$TUXDIR" && {
 	echo "FAIL: the TUXDIR environment variable NOT set"
@@ -229,7 +224,7 @@ for i in $dlist; do
 	}
 done
 flist="bin/buildclient bin/buildserver bin/buildtms bin/tmadmin bin/tmboot
-       bin/tmloadcf bin/tmshutdown lib/libtux.so.* udataobj/RM"
+       bin/tmloadcf bin/tmshutdown lib/libtux.so udataobj/RM"
 for i in $flist; do
 	test -f $TUXDIR/$i || {
 		echo "FAIL: check the Tuxedo install"
@@ -242,7 +237,7 @@ done
 # Check to make sure we have a Berkeley DB installation.  (I'd like to use the
 # local DB installation, but I've never been able to make Tuxedo load shared
 # libraries from the .libs directory.)
-test -z "$DB_INSTALL" && DB_INSTALL=/usr/local/BerkeleyDB.4.4
+test -z "$DB_INSTALL" && DB_INSTALL=/usr/local/BerkeleyDB.4.5
 export DB_INSTALL
 if test -f "$DB_INSTALL/lib/libdb.so"; then
 	msg "Using Berkeley DB $DB_INSTALL/lib/ installation"
@@ -262,13 +257,15 @@ fi
 # where DB_INSTALL is a Berkeley DB install, and /lib contains DB libraries.
 egrep "^BERKELEY-DB:db_xa_switch:" $TUXDIR/udataobj/RM > /dev/null || {
 	echo "FAIL: $TUXDIR/udataobj/RM does not list DB as one of its RMs"
+	echo "FAIL: Try adding:"
+	echo "FAIL:	BERKELEY-DB:db_xa_switch:-L\${DB_INSTALL}/lib -ldb"
 	exit 1
 }
 
 # Everything is built in and run from the "run" subdirectory.
 RUN=`pwd`/run; export RUN
 
-FIELDTBLS32=datafml.fml;	export FIELDTBLS32 
+FIELDTBLS32=datafml.fml;	export FIELDTBLS32
 FLDTBLDIR32=$RUN/config;	export FLDTBLDIR32
 TLOGDEVICE=$RUN/data/dlog;	export TLOGDEVICE
 TUXCONFIG=$RUN/config/tuxconfig;export TUXCONFIG

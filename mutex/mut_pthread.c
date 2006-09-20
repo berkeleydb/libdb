@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_pthread.c,v 12.12 2005/11/01 00:44:27 bostic Exp $
+ * $Id: mut_pthread.c,v 12.19 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/mutex_int.h"
@@ -76,7 +70,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 	pthread_condattr_t condattr, *condattrp = NULL;
 	pthread_mutexattr_t mutexattr, *mutexattrp = NULL;
 
-	if (!LF_ISSET(DB_MUTEX_THREAD)) {
+	if (!LF_ISSET(DB_MUTEX_PROCESS_ONLY)) {
 		RET_SET((pthread_mutexattr_init(&mutexattr)), ret);
 #ifndef HAVE_MUTEX_THREAD_ONLY
 		if (ret == 0)
@@ -91,7 +85,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 	if (mutexattrp != NULL)
 		(void)pthread_mutexattr_destroy(mutexattrp);
 	if (ret == 0 && LF_ISSET(DB_MUTEX_SELF_BLOCK)) {
-		if (!LF_ISSET(DB_MUTEX_THREAD)) {
+		if (!LF_ISSET(DB_MUTEX_PROCESS_ONLY)) {
 			RET_SET((pthread_condattr_init(&condattr)), ret);
 			if (ret == 0) {
 				condattrp = &condattr;
@@ -122,7 +116,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 	 * initialization values doesn't have surrounding braces.  There's not
 	 * much we can do.
 	 */
-	if (LF_ISSET(DB_MUTEX_THREAD)) {
+	if (LF_ISSET(DB_MUTEX_PROCESS_ONLY)) {
 		static lwp_mutex_t mi = DEFAULTMUTEX;
 
 		mutexp->mutex = mi;
@@ -132,7 +126,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 		mutexp->mutex = mi;
 	}
 	if (LF_ISSET(DB_MUTEX_SELF_BLOCK)) {
-		if (LF_ISSET(DB_MUTEX_THREAD)) {
+		if (LF_ISSET(DB_MUTEX_PROCESS_ONLY)) {
 			static lwp_cond_t ci = DEFAULTCV;
 
 			mutexp->cond = ci;
@@ -148,7 +142,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 	{
 	int type;
 
-	type = LF_ISSET(DB_MUTEX_THREAD) ? USYNC_THREAD : USYNC_PROCESS;
+	type = LF_ISSET(DB_MUTEX_PROCESS_ONLY) ? USYNC_THREAD : USYNC_PROCESS;
 
 	ret = mutex_init(&mutexp->mutex, type, NULL);
 	if (ret == 0 && LF_ISSET(DB_MUTEX_SELF_BLOCK)) {
@@ -159,8 +153,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 #endif
 
 	if (ret != 0) {
-		__db_err(dbenv,
-		    "unable to initialize mutex: %s", strerror(ret));
+		__db_err(dbenv, ret, "unable to initialize mutex");
 	}
 	return (ret);
 }
@@ -255,7 +248,7 @@ __db_pthread_mutex_lock(dbenv, mutex)
 			char buf[DB_THREADID_STRLEN];
 			(void)dbenv->thread_id_string(dbenv,
 			    mutexp->pid, mutexp->tid, buf);
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		    "pthread lock failed: lock currently in use: pid/tid: %s",
 			    buf);
 			ret = EINVAL;
@@ -273,11 +266,11 @@ __db_pthread_mutex_lock(dbenv, mutex)
 	 * we get a mutex to ensure contention.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-		__os_yield(NULL, 1);
+		__os_yield(dbenv);
 #endif
 	return (0);
 
-err:	__db_err(dbenv, "pthread lock failed: %s", db_strerror(ret));
+err:	__db_err(dbenv, ret, "pthread lock failed");
 	return (__db_panic(dbenv, ret));
 }
 
@@ -306,7 +299,8 @@ __db_pthread_mutex_unlock(dbenv, mutex)
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_err(dbenv, "pthread unlock failed: lock already unlocked");
+		__db_errx(
+		    dbenv, "pthread unlock failed: lock already unlocked");
 		return (__db_panic(dbenv, EACCES));
 	}
 #endif
@@ -330,7 +324,7 @@ __db_pthread_mutex_unlock(dbenv, mutex)
 	} while (ret == EFAULT && --i > 0);
 
 err:	if (ret != 0) {
-		__db_err(dbenv, "pthread unlock failed: %s", db_strerror(ret));
+		__db_err(dbenv, ret, "pthread unlock failed");
 		return (__db_panic(dbenv, ret));
 	}
 	return (ret);
@@ -363,12 +357,11 @@ __db_pthread_mutex_destroy(dbenv, mutex)
 	if (F_ISSET(mutexp, DB_MUTEX_SELF_BLOCK)) {
 		RET_SET((pthread_cond_destroy(&mutexp->cond)), ret);
 		if (ret != 0)
-			__db_err(NULL,
-			    "unable to destroy cond: %s", strerror(ret));
+			__db_err(dbenv, ret, "unable to destroy cond");
 	}
 	RET_SET((pthread_mutex_destroy(&mutexp->mutex)), t_ret);
 	if (t_ret != 0) {
-		__db_err(NULL, "unable to destroy mutex: %s", strerror(t_ret));
+		__db_err(dbenv, t_ret, "unable to destroy mutex");
 		if (ret == 0)
 			ret = t_ret;
 	}

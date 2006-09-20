@@ -1,5 +1,5 @@
-<!--$Id: faq.so,v 1.10 2005/01/20 15:18:44 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: faq.so,v 1.12 2006/09/07 19:26:44 alanb Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -23,7 +23,9 @@ this functionality, but in general this protocol is left entirely to the
 application.  Note, there is no reason not to use the communications
 channels the application establishes for replication support to forward
 database update messages to the master, since Berkeley DB does not require
-those channels to be used exclusively for replication messages.</p>
+those channels to be used exclusively for replication messages.
+Replication Manager does not currently offer this service to the
+application.</p>
 <p><li><b>Can I use replication to partition my environment across
 multiple sites?</b>
 <p>No, this is not possible.  All replicated databases must be equally
@@ -99,6 +101,6 @@ no longer have to maintain their own specific network connections.</p>
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/partition.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/ex.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

@@ -1,33 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_record.c,v 12.25 2005/10/20 18:57:13 bostic Exp $
+ * $Id: rep_record.c,v 12.51 2006/09/11 19:41:20 sue Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <stdlib.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
@@ -38,7 +21,7 @@ static int __rep_collect_txn __P((DB_ENV *, DB_LSN *, LSN_COLLECTION *));
 static int __rep_do_ckp __P((DB_ENV *, DBT *, REP_CONTROL *));
 static int __rep_getnext __P((DB_ENV *));
 static int __rep_lsn_cmp __P((const void *, const void *));
-static int __rep_newfile __P((DB_ENV *, REP_CONTROL *, DB_LSN *));
+static int __rep_newfile __P((DB_ENV *, REP_CONTROL *, DBT *, DB_LSN *));
 static int __rep_process_rec __P((DB_ENV *,
     REP_CONTROL *, DBT *, u_int32_t *, DB_LSN *));
 static int __rep_remfirst __P((DB_ENV *, DBT *, DBT *));
@@ -49,10 +32,10 @@ static int __rep_skip_msg __P((DB_ENV *, REP *, int, u_int32_t));
 
 #define	MASTER_ONLY(rep, rp) do {					\
 	if (!F_ISSET(rep, REP_F_MASTER)) {				\
-		RPRINT(dbenv, rep,					\
-		(dbenv, &mb, "Master record received on client"));	\
+		RPRINT(dbenv,						\
+		    (dbenv, &mb, "Master record received on client"));	\
 		REP_PRINT_MESSAGE(dbenv,				\
-		    *eidp, rp, "rep_process_message");			\
+		    *eidp, rp, "rep_process_message", 0);		\
 		ret = EINVAL;						\
 		goto errlock;						\
 	}								\
@@ -60,10 +43,10 @@ static int __rep_skip_msg __P((DB_ENV *, REP *, int, u_int32_t));
 
 #define	CLIENT_ONLY(rep, rp) do {					\
 	if (!F_ISSET(rep, REP_F_CLIENT)) {				\
-		RPRINT(dbenv, rep,					\
+		RPRINT(dbenv,						\
 		    (dbenv, &mb, "Client record received on master"));	\
 		REP_PRINT_MESSAGE(dbenv,				\
-		    *eidp, rp, "rep_process_message");			\
+		    *eidp, rp, "rep_process_message", 0);		\
 		(void)__rep_send_message(dbenv,				\
 		    DB_EID_BROADCAST, REP_DUPMASTER, NULL, NULL, 0, 0);	\
 		ret = DB_REP_DUPMASTER;					\
@@ -113,7 +96,7 @@ static int __rep_skip_msg __P((DB_ENV *, REP *, int, u_int32_t));
 	if (F_ISSET(rep, REP_F_DELAY) ||				\
 	    (recovering &&						\
 	    (!F_ISSET(rep, REP_F_RECOVER_LOG) ||			\
-	     log_compare(&rp->lsn, &rep->last_lsn) > 0))) {		\
+	     LOG_COMPARE(&rp->lsn, &rep->last_lsn) > 0))) {		\
 		/* Not holding region mutex, may miscount */		\
 		rep->stat.st_msgs_recover++;				\
 		ret = __rep_skip_msg(dbenv, rep, *eidp, rp->rectype);	\
@@ -148,7 +131,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 	DB_LSN *ret_lsnp;
 {
 	DB_LOG *dblp;
-	DB_LSN lsn;
+	DB_LSN last_lsn, lsn;
 	DB_REP *db_rep;
 	DBT data_dbt;
 	LOG *lp;
@@ -164,18 +147,18 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 #endif
 
 	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->rep_handle, "rep_process_message",
-	    DB_INIT_REP);
+	ENV_REQUIRES_CONFIG_XX(
+	    dbenv, rep_handle, "DB_ENV->rep_process_message", DB_INIT_REP);
 
 	/* Control argument must be non-Null. */
 	if (control == NULL || control->size == 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	"DB_ENV->rep_process_message: control argument must be specified");
 		return (EINVAL);
 	}
 
 	if (!IS_REP_MASTER(dbenv) && !IS_REP_CLIENT(dbenv)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	"Environment not configured as replication master or client");
 		return (EINVAL);
 	}
@@ -195,14 +178,14 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 	 * Acquire the replication lock.
 	 */
 	REP_SYSTEM_LOCK(dbenv);
-	if (rep->start_th != 0) {
+	if (rep->lockout_th != 0) {
 		/*
 		 * If we're racing with a thread in rep_start, then
 		 * just ignore the message and return.
 		 */
-		RPRINT(dbenv, rep, (dbenv, &mb,
-		    "Racing rep_start, ignore message."));
-		if (F_ISSET(rp, DB_LOG_PERM))
+		RPRINT(dbenv, (dbenv, &mb,
+		    "Racing replication msg lockout, ignore message."));
+		if (F_ISSET(rp, REPCTL_PERM))
 			ret = DB_REP_IGNORE;
 		REP_SYSTEM_UNLOCK(dbenv);
 		goto out;
@@ -215,18 +198,38 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 	rep->stat.st_msgs_processed++;
 	REP_SYSTEM_UNLOCK(dbenv);
 
-	REP_PRINT_MESSAGE(dbenv, *eidp, rp, "rep_process_message");
-
-	/* Complain if we see an improper version number. */
-	if (rp->rep_version != DB_REPVERSION) {
-		__db_err(dbenv,
+	/*
+	 * Check the version number for both rep and log.  If it is
+	 * an old version we support, convert it.  Otherwise complain.
+	 */
+	REP_PRINT_MESSAGE(dbenv, *eidp, rp, "rep_process_message", 0);
+	if (rp->rep_version < DB_REPVERSION) {
+		RPRINT(dbenv, (dbenv, &mb,
+		    "Received record %lu with old rep version %lu",
+		    (u_long)rp->rectype, (u_long)rp->rep_version));
+		rp->rectype = __rep_msg_from_old(rp->rep_version, rp->rectype);
+		/*
+		 * We should have a valid new record type for all the old
+		 * versions.
+		 */
+		DB_ASSERT(dbenv, rp->rectype != REP_INVALID);
+		RPRINT(dbenv, (dbenv, &mb,
+		    "Converted to record %lu with old rep version %lu",
+		    (u_long)rp->rectype, (u_long)rp->rep_version));
+	} else if (rp->rep_version > DB_REPVERSION) {
+		__db_errx(dbenv,
 		    "unexpected replication message version %lu, expected %d",
 		    (u_long)rp->rep_version, DB_REPVERSION);
 		ret = EINVAL;
 		goto errlock;
 	}
-	if (rp->log_version != DB_LOGVERSION) {
-		__db_err(dbenv,
+
+	if (rp->log_version < DB_LOGVERSION) {
+		RPRINT(dbenv, (dbenv, &mb,
+		    "Received record %lu with old log version %lu",
+		    (u_long)rp->rectype, (u_long)rp->log_version));
+	} else if (rp->log_version > DB_LOGVERSION) {
+		__db_errx(dbenv,
 		    "unexpected log record version %lu, expected %d",
 		    (u_long)rp->log_version, DB_LOGVERSION);
 		ret = EINVAL;
@@ -245,7 +248,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		 * We don't hold the rep mutex, and could miscount if we race.
 		 */
 		rep->stat.st_msgs_badgen++;
-		if (F_ISSET(rp, DB_LOG_PERM))
+		if (F_ISSET(rp, REPCTL_PERM))
 			ret = DB_REP_IGNORE;
 		goto errlock;
 	}
@@ -275,7 +278,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		if (rp->rectype == REP_ALIVE ||
 		    rp->rectype == REP_VOTE1 || rp->rectype == REP_VOTE2) {
 			REP_SYSTEM_LOCK(dbenv);
-			RPRINT(dbenv, rep, (dbenv, &mb,
+			RPRINT(dbenv, (dbenv, &mb,
 			    "Updating gen from %lu to %lu",
 			    (u_long)gen, (u_long)rp->gen));
 			rep->master_id = DB_EID_INVALID;
@@ -321,7 +324,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		ANYSITE(rep);
 		egen = *(u_int32_t *)rec->data;
 		REP_SYSTEM_LOCK(dbenv);
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Received ALIVE egen of %lu, mine %lu",
 		    (u_long)egen, (u_long)rep->egen));
 		if (egen > rep->egen) {
@@ -400,6 +403,8 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		break;
 	case REP_LOG_REQ:
 		RECOVERING_SKIP;
+		if (F_ISSET(rp, REPCTL_INIT))
+			MASTER_UPDATE(dbenv, renv);
 		ret = __rep_logreq(dbenv, rp, rec, *eidp);
 		CLIENT_REREQ;
 		break;
@@ -483,7 +488,9 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 	case REP_NEWFILE:
 		RECOVERING_LOG_SKIP;
 		CLIENT_ONLY(rep, rp);
-		ret = __rep_apply(dbenv, rp, rec, ret_lsnp, NULL);
+		ret = __rep_apply(dbenv, rp, rec, ret_lsnp, NULL, &last_lsn);
+		if (ret == DB_REP_LOGREADY)
+			ret = __rep_logready(dbenv, rep, savetime, &last_lsn);
 		break;
 	case REP_NEWMASTER:
 		/*
@@ -491,7 +498,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		 */
 		ANYSITE(rep);
 		if (F_ISSET(rep, REP_F_MASTER) &&
-		    *eidp != dbenv->rep_eid) {
+		    *eidp != rep->eid) {
 			/* We don't hold the rep mutex, and may miscount. */
 			rep->stat.st_dupmasters++;
 			ret = DB_REP_DUPMASTER;
@@ -508,6 +515,8 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		 */
 		CLIENT_ONLY(rep, rp);
 		ret = __rep_page(dbenv, *eidp, rp, rec);
+		if (ret == DB_REP_PAGEDONE)
+			ret = 0;
 		break;
 	case REP_PAGE_FAIL:
 		/*
@@ -556,7 +565,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 	case REP_VERIFY:
 		if (recovering) {
 			MUTEX_LOCK(dbenv, rep->mtx_clientdb);
-			cmp = log_compare(&lp->verify_lsn, &rp->lsn);
+			cmp = LOG_COMPARE(&lp->verify_lsn, &rp->lsn);
 			MUTEX_UNLOCK(dbenv, rep->mtx_clientdb);
 			/*
 			 * If this is not the verify record I want, skip it.
@@ -586,7 +595,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		/*
 		 * Handle even if we're recovering.
 		 */
-		ret = __rep_vote1(dbenv, rp, rec, *eidp);
+		ret = __rep_vote1(dbenv, rp, rec, eidp);
 		break;
 	case REP_VOTE2:
 		/*
@@ -595,7 +604,7 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		ret = __rep_vote2(dbenv, rec, eidp);
 		break;
 	default:
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	"DB_ENV->rep_process_message: unknown replication message: type %lu",
 		   (u_long)rp->rectype);
 		ret = EINVAL;
@@ -607,7 +616,7 @@ errlock:
 	rep->msg_th--;
 	REP_SYSTEM_UNLOCK(dbenv);
 out:
-	if (ret == 0 && F_ISSET(rp, DB_LOG_PERM)) {
+	if (ret == 0 && F_ISSET(rp, REPCTL_PERM)) {
 		if (ret_lsnp != NULL)
 			*ret_lsnp = rp->lsn;
 		ret = DB_REP_NOTPERM;
@@ -626,15 +635,16 @@ out:
  * we try to process as much as possible from __db.rep.db to catch up.
  *
  * PUBLIC: int __rep_apply __P((DB_ENV *, REP_CONTROL *,
- * PUBLIC:     DBT *, DB_LSN *, int *));
+ * PUBLIC:     DBT *, DB_LSN *, int *, DB_LSN *));
  */
 int
-__rep_apply(dbenv, rp, rec, ret_lsnp, is_dupp)
+__rep_apply(dbenv, rp, rec, ret_lsnp, is_dupp, last_lsnp)
 	DB_ENV *dbenv;
 	REP_CONTROL *rp;
 	DBT *rec;
 	DB_LSN *ret_lsnp;
 	int *is_dupp;
+	DB_LSN *last_lsnp;
 {
 	DB_REP *db_rep;
 	DBT control_dbt, key_dbt;
@@ -664,10 +674,10 @@ __rep_apply(dbenv, rp, rec, ret_lsnp, is_dupp)
 	lp = dblp->reginfo.primary;
 	REP_SYSTEM_LOCK(dbenv);
 	if (F_ISSET(rep, REP_F_RECOVER_LOG) &&
-	    log_compare(&lp->ready_lsn, &rep->first_lsn) < 0)
+	    LOG_COMPARE(&lp->ready_lsn, &rep->first_lsn) < 0)
 		lp->ready_lsn = rep->first_lsn;
 	REP_SYSTEM_UNLOCK(dbenv);
-	cmp = log_compare(&rp->lsn, &lp->ready_lsn);
+	cmp = LOG_COMPARE(&rp->lsn, &lp->ready_lsn);
 
 	if (cmp == 0) {
 		if ((ret =
@@ -682,7 +692,7 @@ __rep_apply(dbenv, rp, rec, ret_lsnp, is_dupp)
 		ZERO_LSN(lp->max_wait_lsn);
 
 		while (ret == 0 &&
-		    log_compare(&lp->ready_lsn, &lp->waiting_lsn) == 0) {
+		    LOG_COMPARE(&lp->ready_lsn, &lp->waiting_lsn) == 0) {
 			/*
 			 * We just filled in a gap in the log record stream.
 			 * Write subsequent records to the log.
@@ -731,7 +741,7 @@ gap_check:
 		 * need to ask for any records.
 		 */
 		if (!IS_ZERO_LSN(lp->waiting_lsn) &&
-		    log_compare(&lp->ready_lsn, &lp->waiting_lsn) != 0) {
+		    LOG_COMPARE(&lp->ready_lsn, &lp->waiting_lsn) != 0) {
 			/*
 			 * We got a record and processed it, but we may
 			 * still be waiting for more records.  If we
@@ -785,14 +795,14 @@ gap_check:
 			goto done;
 
 		if (IS_ZERO_LSN(lp->waiting_lsn) ||
-		    log_compare(&rp->lsn, &lp->waiting_lsn) < 0)
+		    LOG_COMPARE(&rp->lsn, &lp->waiting_lsn) < 0)
 			lp->waiting_lsn = rp->lsn;
 
 		/*
 		 * If this is permanent; let the caller know that we have
 		 * not yet written it to disk, but we've accepted it.
 		 */
-		if (ret == 0 && F_ISSET(rp, DB_LOG_PERM)) {
+		if (ret == 0 && F_ISSET(rp, REPCTL_PERM)) {
 			max_lsn = rp->lsn;
 			ret = DB_REP_NOTPERM;
 		}
@@ -805,22 +815,28 @@ gap_check:
 		rep->stat.st_log_duplicated++;
 		if (is_dupp != NULL)
 			*is_dupp = 1;
-		if (F_ISSET(rp, DB_LOG_PERM))
+		if (F_ISSET(rp, REPCTL_PERM))
 			max_lsn = lp->max_perm_lsn;
 		goto done;
 	}
 
 	/* Check if we need to go back into the table. */
-	if (ret == 0 && log_compare(&lp->ready_lsn, &lp->waiting_lsn) == 0)
+	if (ret == 0 && LOG_COMPARE(&lp->ready_lsn, &lp->waiting_lsn) == 0)
 		goto gap_check;
 
 done:
-err:	/* Check if we need to go back into the table. */
+err:	/*
+	 * In case of a race, to make sure only one thread can get
+	 * DB_REP_LOGREADY, zero out rep->last_lsn to show that we've gotten to
+	 * this point.
+	 */
 	REP_SYSTEM_LOCK(dbenv);
 	if (ret == 0 &&
 	    F_ISSET(rep, REP_F_RECOVER_LOG) &&
-	    log_compare(&lp->ready_lsn, &rep->last_lsn) >= 0) {
-		rep->last_lsn = max_lsn;
+	    !IS_ZERO_LSN(rep->last_lsn) &&
+	    LOG_COMPARE(&lp->ready_lsn, &rep->last_lsn) >= 0) {
+		*last_lsnp = max_lsn;
+		ZERO_LSN(rep->last_lsn);
 		ZERO_LSN(max_lsn);
 		ret = DB_REP_LOGREADY;
 	}
@@ -831,21 +847,24 @@ err:	/* Check if we need to go back into the table. */
 		if (ret_lsnp != NULL)
 			*ret_lsnp = max_lsn;
 		ret = DB_REP_ISPERM;
-		DB_ASSERT(log_compare(&max_lsn, &lp->max_perm_lsn) >= 0);
+		DB_ASSERT(dbenv, LOG_COMPARE(&max_lsn, &lp->max_perm_lsn) >= 0);
 		lp->max_perm_lsn = max_lsn;
 	}
 	MUTEX_UNLOCK(dbenv, rep->mtx_clientdb);
 
 	/*
-	 * Startup is complete when we process our first live record.  However,
-	 * we want to return DB_REP_STARTUPDONE on the first record we can --
-	 * but other return values trump this one.  We know we've processed at
-	 * least one record when rectype is non-zero.
+	 * Startup is complete when we process our first live record.  We know
+	 * we've processed at least one record when rectype is non-zero.
 	 */
-	if (ret == 0 && !F_ISSET(rp, DB_LOG_RESEND) &&
+	if ((ret == 0 || ret == DB_REP_ISPERM) && !F_ISSET(rp, REPCTL_RESEND) &&
 	    rectype != 0 && rep->stat.st_startup_complete == 0) {
 		rep->stat.st_startup_complete = 1;
-		ret = DB_REP_STARTUPDONE;
+#ifdef DIAGNOSTIC
+		RPRINT(dbenv, (dbenv, &mb,
+		    "Firing STARTUPDONE event [%lu][%lu]",
+		    (u_long)rp->lsn.file, (u_long)rp->lsn.offset));
+#endif
+		DB_EVENT(dbenv, DB_EVENT_REP_STARTUPDONE, NULL);
 	}
 	if (ret == 0 && rp->rectype == REP_NEWFILE && lp->db_log_autoremove)
 		__log_autoremove(dbenv);
@@ -860,22 +879,18 @@ err:	/* Check if we need to go back into the table. */
 
 #ifdef DIAGNOSTIC
 	if (ret == DB_REP_ISPERM)
-		RPRINT(dbenv, rep, (dbenv, &mb, "Returning ISPERM [%lu][%lu]",
+		RPRINT(dbenv, (dbenv, &mb, "Returning ISPERM [%lu][%lu]",
 		    (u_long)max_lsn.file, (u_long)max_lsn.offset));
 	else if (ret == DB_REP_LOGREADY)
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Returning LOGREADY up to [%lu][%lu]",
 		    (u_long)rep->last_lsn.file,
 		    (u_long)rep->last_lsn.offset));
 	else if (ret == DB_REP_NOTPERM)
-		RPRINT(dbenv, rep, (dbenv, &mb, "Returning NOTPERM [%lu][%lu]",
+		RPRINT(dbenv, (dbenv, &mb, "Returning NOTPERM [%lu][%lu]",
 		    (u_long)max_lsn.file, (u_long)max_lsn.offset));
-	else if (ret == DB_REP_STARTUPDONE)
-		RPRINT(dbenv, rep, (dbenv, &mb,
-		    "Returning STARTUPDONE [%lu][%lu]",
-		    (u_long)rp->lsn.file, (u_long)rp->lsn.offset));
 	else if (ret != 0)
-		RPRINT(dbenv, rep, (dbenv, &mb, "Returning %d [%lu][%lu]", ret,
+		RPRINT(dbenv, (dbenv, &mb, "Returning %d [%lu][%lu]", ret,
 		    (u_long)max_lsn.file, (u_long)max_lsn.offset));
 #endif
 	return (ret);
@@ -903,6 +918,7 @@ __rep_process_txn(dbenv, rec)
 	LSN_COLLECTION lc;
 	REP *rep;
 	__txn_regop_args *txn_args;
+	__txn_regop_42_args *txn42_args;
 	__txn_xa_regop_args *prep_args;
 	u_int32_t lockid, rectype;
 	u_int i;
@@ -912,6 +928,7 @@ __rep_process_txn(dbenv, rec)
 	rep = db_rep->region;
 	logc = NULL;
 	txn_args = NULL;
+	txn42_args = NULL;
 	prep_args = NULL;
 	txninfo = NULL;
 
@@ -935,17 +952,30 @@ __rep_process_txn(dbenv, rec)
 		 * We're the end of a transaction.  Make sure this is
 		 * really a commit and not an abort!
 		 */
-		if ((ret = __txn_regop_read(dbenv, rec->data, &txn_args)) != 0)
-			return (ret);
-		if (txn_args->opcode != TXN_COMMIT) {
-			__os_free(dbenv, txn_args);
-			return (0);
+		if (rep->version >= DB_REPVERSION_44) {
+			if ((ret = __txn_regop_read(dbenv, rec->data,
+			    &txn_args)) != 0)
+				return (ret);
+			if (txn_args->opcode != TXN_COMMIT) {
+				__os_free(dbenv, txn_args);
+				return (0);
+			}
+			prev_lsn = txn_args->prev_lsn;
+			lock_dbt = &txn_args->locks;
+		} else {
+			if ((ret = __txn_regop_42_read(dbenv, rec->data,
+			    &txn42_args)) != 0)
+				return (ret);
+			if (txn42_args->opcode != TXN_COMMIT) {
+				__os_free(dbenv, txn42_args);
+				return (0);
+			}
+			prev_lsn = txn42_args->prev_lsn;
+			lock_dbt = &txn42_args->locks;
 		}
-		prev_lsn = txn_args->prev_lsn;
-		lock_dbt = &txn_args->locks;
 	} else {
 		/* We're a prepare. */
-		DB_ASSERT(rectype == DB___txn_xa_regop);
+		DB_ASSERT(dbenv, rectype == DB___txn_xa_regop);
 
 		if ((ret =
 		    __txn_xa_regop_read(dbenv, rec->data, &prep_args)) != 0)
@@ -980,14 +1010,14 @@ __rep_process_txn(dbenv, rec)
 		goto err;
 	for (lsnp = &lc.array[0], i = 0; i < lc.nlsns; i++, lsnp++) {
 		if ((ret = __log_c_get(logc, lsnp, &data_dbt, DB_SET)) != 0) {
-			__db_err(dbenv, "failed to read the log at [%lu][%lu]",
+			__db_errx(dbenv, "failed to read the log at [%lu][%lu]",
 			    (u_long)lsnp->file, (u_long)lsnp->offset);
 			goto err;
 		}
 		if ((ret = __db_dispatch(dbenv, dbenv->recover_dtab,
 		    dbenv->recover_dtab_size, &data_dbt, lsnp,
 		    DB_TXN_APPLY, txninfo)) != 0) {
-			__db_err(dbenv, "transaction failed at [%lu][%lu]",
+			__db_errx(dbenv, "transaction failed at [%lu][%lu]",
 			    (u_long)lsnp->file, (u_long)lsnp->offset);
 			goto err;
 		}
@@ -1004,6 +1034,8 @@ err:	memset(&req, 0, sizeof(req));
 
 err1:	if (txn_args != NULL)
 		__os_free(dbenv, txn_args);
+	if (txn42_args != NULL)
+		__os_free(dbenv, txn42_args);
 	if (prep_args != NULL)
 		__os_free(dbenv, prep_args);
 	if (lc.array != NULL)
@@ -1090,7 +1122,7 @@ __rep_collect_txn(dbenv, lsnp, lc)
 			goto err;
 	}
 	if (ret != 0)
-		__db_err(dbenv, "collect failed at: [%lu][%lu]",
+		__db_errx(dbenv, "collect failed at: [%lu][%lu]",
 		    (u_long)lsnp->file, (u_long)lsnp->offset);
 
 err:	if ((t_ret = __log_c_close(logc)) != 0 && ret == 0)
@@ -1102,14 +1134,14 @@ err:	if ((t_ret = __log_c_close(logc)) != 0 && ret == 0)
 
 /*
  * __rep_lsn_cmp --
- *	qsort-type-compatible wrapper for log_compare.
+ *	qsort-type-compatible wrapper for LOG_COMPARE.
  */
 static int
 __rep_lsn_cmp(lsn1, lsn2)
 	const void *lsn1, *lsn2;
 {
 
-	return (log_compare((DB_LSN *)lsn1, (DB_LSN *)lsn2));
+	return (LOG_COMPARE((DB_LSN *)lsn1, (DB_LSN *)lsn2));
 }
 
 /*
@@ -1119,20 +1151,28 @@ __rep_lsn_cmp(lsn1, lsn2)
  * swapped files.
  */
 static int
-__rep_newfile(dbenv, rc, lsnp)
+__rep_newfile(dbenv, rc, rec, lsnp)
 	DB_ENV *dbenv;
 	REP_CONTROL *rc;
+	DBT *rec;
 	DB_LSN *lsnp;
 {
 	DB_LOG *dblp;
 	LOG *lp;
+	u_int32_t version;
+#ifdef DIAGNOSTIC
+	DB_MSGBUF mb;
+#endif
 
 	dblp = dbenv->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	if (rc->lsn.file + 1 > lp->lsn.file)
-		return (__log_newfile(dblp, lsnp, 0));
-	else {
+	if (rc->lsn.file + 1 > lp->lsn.file) {
+		version = *(u_int32_t *)rec->data;
+		RPRINT(dbenv, (dbenv, &mb, "Rep_newfile: File %d vers %d",
+		    rc->lsn.file + 1, version));
+		return (__log_newfile(dblp, lsnp, 0, version));
+	} else {
 		/* We've already applied this NEWFILE.  Just ignore it. */
 		*lsnp = lp->lsn;
 		return (0);
@@ -1170,7 +1210,7 @@ __rep_do_ckp(dbenv, rec, rp)
 	if (ret == 0)
 		ret = __txn_updateckp(dbenv, &rp->lsn);
 	else {
-		__db_err(dbenv, "Error syncing ckp [%lu][%lu]",
+		__db_errx(dbenv, "Error syncing ckp [%lu][%lu]",
 		    (u_long)ckp_lsn.file, (u_long)ckp_lsn.offset);
 		ret = __db_panic(dbenv, ret);
 	}
@@ -1307,7 +1347,7 @@ __rep_process_rec(dbenv, rp, rec, typep, ret_lsnp)
 	ret = 0;
 
 	if (rp->rectype == REP_NEWFILE) {
-		ret = __rep_newfile(dbenv, rp, &lp->ready_lsn);
+		ret = __rep_newfile(dbenv, rp, rec, &lp->ready_lsn);
 
 		/* Make this evaluate to a simple rectype. */
 		*typep = 0;
@@ -1351,15 +1391,22 @@ __rep_process_rec(dbenv, rp, rec, typep, ret_lsnp)
 		/*
 		 * DB opens occur in the context of a transaction, so we can
 		 * simply handle them when we process the transaction.  Closes,
-		 * however, are not transaction-protected, so we have to
-		 * handle them here.
+		 * however, are not transaction-protected, so we have to handle
+		 * them here.
 		 *
-		 * Note that it should be unsafe for the master to do a close
-		 * of a file that was opened in an active transaction, so we
-		 * should be guaranteed to get the ordering right.
+		 * It should be unsafe for the master to do a close of a file
+		 * that was opened in an active transaction, so we should be
+		 * guaranteed to get the ordering right.
+		 *
+		 * !!!
+		 * The txn ID is the second 4-byte field of the log record.
+		 * We should really be calling __dbreg_register_read() and
+		 * working from the __dbreg_register_args structure, but this
+		 * is considerably faster and the order of the fields won't
+		 * change.
 		 */
-		memcpy(&txnid, (u_int8_t *)rec->data +
-		    SSZ(__dbreg_register_args, txnid), sizeof(u_int32_t));
+		memcpy(&txnid, (u_int8_t *)
+		    rec->data + sizeof(u_int32_t), sizeof(u_int32_t));
 		if (txnid == TXN_INVALID)
 			ret = __db_dispatch(dbenv, dbenv->recover_dtab,
 			    dbenv->recover_dtab_size, rec, &rp->lsn,
@@ -1388,7 +1435,7 @@ __rep_process_rec(dbenv, rp, rec, typep, ret_lsnp)
 		if (ret == 0 && !F_ISSET(dbenv, DB_ENV_TXN_NOSYNC))
 			ret = __log_flush(dbenv, NULL);
 		if (ret != 0) {
-			__db_err(dbenv, "Error processing txn [%lu][%lu]",
+			__db_errx(dbenv, "Error processing txn [%lu][%lu]",
 			    (u_long)rp->lsn.file, (u_long)rp->lsn.offset);
 			ret = __db_panic(dbenv, ret);
 		}
@@ -1437,13 +1484,19 @@ __rep_process_rec(dbenv, rp, rec, typep, ret_lsnp)
 		if ((t_ret = __rep_remfirst(dbenv,
 		    &control_dbt, &rec_dbt)) != 0 && ret == 0)
 			ret = t_ret;
+		/*
+		 * If we're successful putting the log record in the
+		 * log, flush it for a checkpoint.
+		 */
+		if (ret == 0)
+			ret = __log_flush(dbenv, NULL);
 		break;
 	default:
 		break;
 	}
 
 out:
-	if (ret == 0 && F_ISSET(rp, DB_LOG_PERM))
+	if (ret == 0 && F_ISSET(rp, REPCTL_PERM))
 		*ret_lsnp = rp->lsn;
 	if (control_dbt.data != NULL)
 		__os_ufree(dbenv, control_dbt.data);
@@ -1564,7 +1617,7 @@ __rep_skip_msg(dbenv, rep, eid, rectype)
 	 * If we have a request message from a client then immediately
 	 * send a REP_REREQUEST back to that client since we're skipping it.
 	 */
-	if (rep->master_id != DB_EID_INVALID && eid != rep->master_id)
+	if (F_ISSET(rep, REP_F_CLIENT) && REP_MSG_REQ(rectype))
 		do_req = 1;
 	else {
 		/* Check for need to retransmit. */
@@ -1584,14 +1637,14 @@ __rep_skip_msg(dbenv, rep, eid, rectype)
 		 * then we need to rerequest.
 		 * 3.  If the message didn't come from a master (i.e. client
 		 * to client), then send a rerequest back to the sender so
-		 * the sender can rerequest it elsewhere.
+		 * the sender can rerequest it elsewhere, if we are a client.
 		 */
 		if (rep->master_id == DB_EID_INVALID)	/* Case 1. */
 			(void)__rep_send_message(dbenv,
 			    DB_EID_BROADCAST, REP_MASTER_REQ, NULL, NULL, 0, 0);
 		else if (eid == rep->master_id)		/* Case 2. */
 			ret = __rep_resend_req(dbenv, 0);
-		else					/* Case 3. */
+		else if (F_ISSET(rep, REP_F_CLIENT))	/* Case 3. */
 			(void)__rep_send_message(dbenv,
 			    eid, REP_REREQUEST, NULL, NULL, 0, 0);
 	}

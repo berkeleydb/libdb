@@ -1,11 +1,6 @@
 /* Do not edit: automatically built by gen_rpc.awk. */
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 #include "db_int.h"
 #include "dbinc/txn.h"
 
@@ -25,6 +20,30 @@ __dbcl_env_create_ret(dbenv, timeout, replyp)
 	if (replyp->status != 0)
 		return (replyp->status);
 	env = replyp->envcl_id;
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	return (replyp->status);
+}
+
+/*
+ * PUBLIC: int __dbcl_env_cdsgroup_begin_ret __P((DB_ENV *, DB_TXN **,
+ * PUBLIC:      __env_cdsgroup_begin_reply *));
+ */
+int
+__dbcl_env_cdsgroup_begin_ret(dbenv, txnpp, replyp)
+	DB_ENV * dbenv;
+	DB_TXN ** txnpp;
+	__env_cdsgroup_begin_reply *replyp;
+{
+	int ret;
+	long txnid;
+
+	if (replyp->status != 0)
+		return (replyp->status);
+	txnid = replyp->txnidcl_id;
 
 	/*
 	 * XXX Code goes here

@@ -1,19 +1,19 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep045.tcl,v 12.6 2005/10/18 19:05:54 carol Exp $
+# $Id: rep045.tcl,v 12.12 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep045
-# TEST	
+# TEST
 # TEST	Replication with versions.
 # TEST
-# TEST	Mimic an application where a database is set up in the 
+# TEST	Mimic an application where a database is set up in the
 # TEST	background and then put into a replication group for use.
 # TEST	The "version database" identifies the current live
-# TEST	version, the database against which queries are made. 
-# TEST	For example, the version database might say the current 
+# TEST	version, the database against which queries are made.
+# TEST	For example, the version database might say the current
 # TEST	version is 3, and queries would then be sent to db.3.
 # TEST	Version 4 is prepared for use while version 3 is in use.
 # TEST	When version 4 is complete, the version database is updated
@@ -21,15 +21,21 @@
 # TEST
 # TEST	This test has a master and two clients.  One client swaps
 # TEST	roles with the master, and the other client runs constantly
-# TEST	in another process. 
+# TEST	in another process.
 
 proc rep045 { method { tnum "045" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
@@ -58,10 +64,10 @@ proc rep045_sub { method tnum logset largs } {
 	file mkdir $masterdir
 	file mkdir $clientdir0
 	file mkdir $clientdir1
-	
+
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
-	set c2_logtype [lindex $logset 2] 
+	set c2_logtype [lindex $logset 2]
 
 	# In-memory logs require a large log buffer, and cannot
 	# be used with -txn nosync.
@@ -77,11 +83,11 @@ proc rep045_sub { method tnum logset largs } {
 	# Open a master.
 	repladd 1
 	set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -errpfx ENV.M0 \
+	    $m_logargs -errpfx ENV.M0 \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 -lock_detect default \
+#	    $m_logargs -lock_detect default \
 #	    -errpfx ENV.M0 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set menv [eval $envcmd(M0) -rep_master]
@@ -90,24 +96,24 @@ proc rep045_sub { method tnum logset largs } {
 	# Open a client
 	repladd 2
 	set envcmd(C0) "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -lock_max 2500 -errpfx ENV.C0 \
+	    $c_logargs -errpfx ENV.C0 \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir0 -rep_transport \[list 2 replsend\]"
 #	set envcmd(C0) "berkdb_env_noerr -create $c_txnargs \
-#  	  $c_logargs -lock_max 2500 -lock_detect default \
+#  	  $c_logargs -lock_detect default \
 #	    -errpfx ENV.C0 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir0 -rep_transport \[list 2 replsend\]"
 	set cenv0 [eval $envcmd(C0) -rep_client]
 	error_check_good client_env [is_valid_env $cenv0] TRUE
 
-	# Open second client. 
+	# Open second client.
 	repladd 3
 	set envcmd(C1) "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -lock_max 2500 -errpfx ENV.C1 \
+	    $c2_logargs -errpfx ENV.C1 \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir1 -rep_transport \[list 3 replsend\]"
 #	set envcmd(C1) "berkdb_env_noerr -create $c2_txnargs \
-#  	  $c2_logargs -lock_max 2500 -lock_detect default \
+#  	  $c2_logargs -lock_detect default \
 #	    -errpfx ENV.C -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir1 -rep_transport \[list 3 replsend\]"
 	set cenv1 [eval $envcmd(C1) -rep_client]
@@ -118,8 +124,8 @@ proc rep045_sub { method tnum logset largs } {
 	process_msgs $envlist
 
 	puts "\tRep$tnum.a: Initialize version database."
-	# Set up variables so we cycle through version numbers 1 
-	# through maxversion several times. 
+	# Set up variables so we cycle through version numbers 1
+	# through maxversion several times.
 	set vname "version.db"
 	set version 0
 	set maxversion 5
@@ -127,15 +133,15 @@ proc rep045_sub { method tnum logset largs } {
 	set nentries 100
 	set start 0
 
-	# The version db is always btree. 
+	# The version db is always btree.
 	set vdb [eval {berkdb_open_noerr -env $menv -create \
 	    -auto_commit -mode 0644} -btree $vname]
 	error_check_good init_version [$vdb put VERSION $version] 0
 	error_check_good vdb_close [$vdb close] 0
 	process_msgs $envlist
 
-	# Start up a separate process that constantly reads data 
-	# from the current official version. 
+	# Start up a separate process that constantly reads data
+	# from the current official version.
 	puts "\tRep$tnum.b: Spawn a child tclsh to do client work."
 	set pid [exec $tclsh_path $test_path/wrap.tcl \
 	    rep045script.tcl $testdir/rep045script.log \
@@ -149,7 +155,7 @@ proc rep045_sub { method tnum logset largs } {
 
 		# If database.N exists, clean it up.
 		set dbname "db.$version"
-		if { [file exists $masterdir/$dbname] == 1 } { 
+		if { [file exists $masterdir/$dbname] == 1 } {
 			puts "\tRep$tnum.c.$i: Removing old version $version."
 			error_check_good dbremove \
 			   [$menv dbremove -auto_commit $dbname] 0
@@ -163,35 +169,35 @@ proc rep045_sub { method tnum logset largs } {
 		incr start $nentries
 		error_check_good db_close [$db close] 0
 
-		# We alternate between processing the messages and 
+		# We alternate between processing the messages and
 		# clearing the messages to simulate a failure.
 
-		set process [expr $i % 2] 
+		set process [expr $i % 2]
 		if { $process == 1 } {
 			process_msgs $envlist
-		} else { 
-			replclear 2 
+		} else {
+			replclear 2
 			replclear 3
 		}
 
-		# Announce new version. 
+		# Announce new version.
 		puts "\tRep$tnum.d.$i: Announce new version $version."
 		set vdb [eval {berkdb_open_noerr -env $menv \
-		    -auto_commit -mode 0644} $vname]	
+		    -auto_commit -mode 0644} $vname]
 		error_check_good update_version [$vdb put VERSION $version] 0
 		error_check_good vdb_close [$vdb close] 0
-		
-		# Process messages or simulate failure. 
+
+		# Process messages or simulate failure.
 		if { $process == 1 } {
 			process_msgs $envlist
-		} else { 
-			replclear 2 
+		} else {
+			replclear 2
 			replclear 3
 		}
 
 		# Switch master, update envlist.
 		puts "\tRep$tnum.e.$i: Switch masters."
-		set envlist [switch_master $envlist] 
+		set envlist [switch_master $envlist]
 
 		# Update values for next iteration.
 		set menv [lindex [lindex $envlist 0] 0]
@@ -202,14 +208,14 @@ proc rep045_sub { method tnum logset largs } {
 		}
 	}
 
-	# Signal to child that we are done. 
+	# Signal to child that we are done.
 	set vdb [eval {berkdb_open_noerr -env $menv \
-	    -auto_commit -mode 0644} $vname]	
+	    -auto_commit -mode 0644} $vname]
 	error_check_good version_done [$vdb put VERSION DONE] 0
-	error_check_good vdb_close [$vdb close] 0	
+	error_check_good vdb_close [$vdb close] 0
 	process_msgs $envlist
 
-	# Watch for child to finish. 
+	# Watch for child to finish.
 	watch_procs $pid 5
 
 	puts "\tRep$tnum.f: Clean up."
@@ -230,12 +236,12 @@ proc rep045_sub { method tnum logset largs } {
 }
 
 proc switch_master { envlist } {
-	# Find env handles and machine ids. 
+	# Find env handles and machine ids.
 	set menv [lindex [lindex $envlist 0] 0]
 	set mid [lindex [lindex $envlist 0] 1]
-	set cenv [lindex [lindex $envlist 1] 0] 
+	set cenv [lindex [lindex $envlist 1] 0]
 	set cid [lindex [lindex $envlist 1] 1]
-	set cenv1 [lindex [lindex $envlist 2] 0] 
+	set cenv1 [lindex [lindex $envlist 2] 0]
 	set cid1 [lindex [lindex $envlist 2] 1]
 
 	# Downgrade master, upgrade client.
@@ -243,7 +249,7 @@ proc switch_master { envlist } {
 	error_check_good client_upgrade [$cenv rep_start -master] 0
 	process_msgs $envlist
 
-	# Adjust envlist.  The former client env is the new master, 
+	# Adjust envlist.  The former client env is the new master,
 	# and vice versa.
 	set newenvlist "{$cenv $cid} {$menv $mid} {$cenv1 $cid1}"
 	return $newenvlist

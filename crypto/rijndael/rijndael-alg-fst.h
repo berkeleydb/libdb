@@ -1,5 +1,5 @@
 /*
- * $Id: rijndael-alg-fst.h,v 12.0 2004/11/17 03:43:17 bostic Exp $
+ * $Id: rijndael-alg-fst.h,v 12.1 2006/09/08 20:32:03 bostic Exp $
  */
 /**
  * rijndael-alg-fst.h
@@ -33,8 +33,8 @@
 #define MAXKB	(256/8)
 #define MAXNR	14
 
-typedef u_int8_t	u8;	
-typedef u_int16_t	u16;	
+typedef u_int8_t	u8;
+typedef u_int16_t	u16;
 typedef u_int32_t	u32;
 
 #endif /* __RIJNDAEL_ALG_FST_H */

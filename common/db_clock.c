@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2005-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_clock.c,v 1.2 2005/08/08 14:39:52 bostic Exp $
+ * $Id: db_clock.c,v 1.5 2006/08/24 14:45:11 bostic Exp $
  */
 
 #include "db_config.h"
+
 #include "db_int.h"
 
 /*

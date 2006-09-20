@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1996-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: recd022.tcl,v 12.3 2005/06/16 20:24:00 bostic Exp $
+# $Id: recd022.tcl,v 12.6 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	recd022
 # TEST	Test that pages allocated by an aborted subtransaction
-# TEST	within an aborted prepared parent transaction are returned 
+# TEST	within an aborted prepared parent transaction are returned
 # TEST 	to the free list after recovery.  This exercises
 # TEST	__db_pg_prepare in systems without FTRUNCATE.  [#7403]
 
@@ -17,7 +17,7 @@ proc recd022 { method args} {
 	global is_hp_test
 	source ./include.tcl
 
-	# Skip test for specified page sizes -- we want to 
+	# Skip test for specified page sizes -- we want to
 	# specify our own page size.
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
@@ -30,7 +30,7 @@ proc recd022 { method args} {
 		puts "Recd022: Skipping for HP-UX."
 		return
 	}
-										
+
 
 	# Increase size of fixed-length records to match other methods.
 	set orig_fixed_len $fixed_len
@@ -46,7 +46,7 @@ proc recd022 { method args} {
 	set testfile recd022.db
 
 	puts "\tRecd022.a: creating environment"
-	# We open the env and database with _noerr so we don't 
+	# We open the env and database with _noerr so we don't
 	# get error messages when cleaning up at the end of the test.
 	set env_cmd "berkdb_env_noerr -create -txn -home $testdir"
 	set dbenv [eval $env_cmd]
@@ -80,8 +80,8 @@ proc recd022 { method args} {
 	puts "\tRecd022.e: abort child txn"
 	error_check_good child1_abort [$child1 abort] 0
 
-	# Start a second child.  Put some data, enough to allocate 
-	# a new page, then delete it. 
+	# Start a second child.  Put some data, enough to allocate
+	# a new page, then delete it.
 	puts "\tRecd022.f: start second child txn, put some data"
 	set child2 [$dbenv txn -parent $parent]
 	for { set i 1 } { $i <= $iter2 } { incr i } {
@@ -111,7 +111,7 @@ proc recd022 { method args} {
 	error_check_good parent_abort [$aborttxn abort] 0
 
 	# Verify database and then clean up.  We still need to get
-	# rid of the handles created before recovery. 
+	# rid of the handles created before recovery.
 	puts "\tRecd022.i: verify and clean up"
 	verify_dir $testdir
 	set stat [catch {$db close} res]
@@ -125,7 +125,7 @@ proc recd022 { method args} {
 		logtrack_read $testdir
 	}
 
-	# Set fixed_len back to the global value so we don't 
+	# Set fixed_len back to the global value so we don't
 	# mess up other tests.
 	set fixed_len $orig_fixed_len
 	return

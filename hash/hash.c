@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -39,20 +39,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash.c,v 12.10 2005/10/20 18:57:07 bostic Exp $
+ * $Id: hash.c,v 12.25 2006/08/24 14:46:04 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
@@ -103,10 +96,11 @@ __ham_quick_delete(dbc)
 	 * Assert we're initialized, but not to an off-page duplicate.
 	 * Assert we're not using secondary indices.
 	 */
-	DB_ASSERT(IS_INITIALIZED(dbc));
-	DB_ASSERT(dbc->internal->opd == NULL);
-	DB_ASSERT(!F_ISSET(dbc->dbp, DB_AM_SECONDARY));
-	DB_ASSERT(LIST_FIRST(&dbc->dbp->s_secondaries) == NULL);
+	DB_ASSERT(dbc->dbp->dbenv, IS_INITIALIZED(dbc));
+	DB_ASSERT(dbc->dbp->dbenv, dbc->internal->opd == NULL);
+	DB_ASSERT(dbc->dbp->dbenv, !F_ISSET(dbc->dbp, DB_AM_SECONDARY));
+	DB_ASSERT(dbc->dbp->dbenv,
+	    LIST_FIRST(&dbc->dbp->s_secondaries) == NULL);
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
@@ -179,11 +173,9 @@ __ham_c_close(dbc, root_pgno, rmroot)
 	HKEYDATA *dp;
 	db_lockmode_t lock_mode;
 	int doroot, gotmeta, ret, t_ret;
-	u_int32_t dirty;
 
 	COMPQUIET(rmroot, 0);
 	mpf = dbc->dbp->mpf;
-	dirty = 0;
 	doroot = gotmeta = ret = 0;
 	hcp = (HASH_CURSOR *) dbc->internal;
 
@@ -215,14 +207,16 @@ __ham_c_close(dbc, root_pgno, rmroot)
 		    hcp->opd->c_am_close(hcp->opd, root_pgno, &doroot)) != 0)
 			goto out;
 		if (doroot != 0) {
+			if ((ret = __memp_dirty(mpf, &hcp->page,
+			    dbc->txn, 0)) != 0)
+				goto out;
 			if ((ret = __ham_del_pair(dbc, 1)) != 0)
 				goto out;
-			dirty = DB_MPOOL_DIRTY;
 		}
 	}
 
-out:	if (hcp->page != NULL && (t_ret =
-	    __memp_fput(mpf, hcp->page, dirty)) != 0 && ret == 0)
+out:	if (hcp->page != NULL &&
+	    (t_ret = __memp_fput(mpf, hcp->page, 0)) != 0 && ret == 0)
 		ret = t_ret;
 	if (gotmeta != 0 && (t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -338,6 +332,9 @@ __ham_c_del(dbc)
 	if (HPAGE_TYPE(dbp, hcp->page, H_DATAINDEX(hcp->indx)) == H_OFFDUP)
 		goto out;
 
+	if ((ret = __memp_dirty(mpf, &hcp->page, dbc->txn, 0)) != 0)
+		goto out;
+
 	if (F_ISSET(hcp, H_ISDUP)) { /* On-page duplicate. */
 		if (hcp->dup_off == 0 &&
 		    DUP_SIZE(hcp->dup_len) == LEN_HDATA(dbp, hcp->page,
@@ -358,13 +355,11 @@ __ham_c_del(dbc)
 				    DUP_SIZE(hcp->dup_len), 0, 1);
 			}
 		}
-
 	} else /* Not a duplicate */
 		ret = __ham_del_pair(dbc, 1);
 
 out:	if (hcp->page != NULL) {
-		if ((t_ret = __memp_fput(mpf,
-		    hcp->page, ret == 0 ? DB_MPOOL_DIRTY : 0)) != 0 && ret == 0)
+		if ((t_ret = __memp_fput(mpf, hcp->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		hcp->page = NULL;
 	}
@@ -385,7 +380,6 @@ __ham_c_dup(orig_dbc, new_dbc)
 	DBC *orig_dbc, *new_dbc;
 {
 	HASH_CURSOR *orig, *new;
-	int ret;
 
 	orig = (HASH_CURSOR *)orig_dbc->internal;
 	new = (HASH_CURSOR *)new_dbc->internal;
@@ -401,20 +395,6 @@ __ham_c_dup(orig_dbc, new_dbc)
 	if (F_ISSET(orig, H_ISDUP))
 		F_SET(new, H_ISDUP);
 
-	/*
-	 * If the old cursor held a lock and we're not in transactions, get one
-	 * for the new one.   The reason that we don't need a new lock if we're
-	 * in a transaction is because we already hold a lock and will continue
-	 * to do so until commit, so there is no point in re-acquiring it. We
-	 * don't know if the old lock was a read or write lock, but it doesn't
-	 * matter. We'll get a read lock.  We know that this locker already
-	 * holds a lock of the correct type, so if we need a write lock and
-	 * request it, we know that we'll get it.
-	 */
-	if (orig_dbc->txn == NULL && LOCK_ISSET(orig->lock))
-		if ((ret = __ham_lock_bucket(new_dbc, DB_LOCK_READ)) != 0)
-			return (ret);
-
 	return (0);
 }
 
@@ -427,13 +407,15 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 	db_pgno_t *pgnop;
 {
 	DB *dbp;
+	DB_ENV *dbenv;
 	DB_MPOOLFILE *mpf;
 	HASH_CURSOR *hcp;
 	db_lockmode_t lock_type;
-	int get_key, ret, t_ret;
+	int ret, t_ret;
 
 	hcp = (HASH_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 	mpf = dbp->mpf;
 
 	/* Clear OR'd in additional bits so we can check for flag equality. */
@@ -447,7 +429,6 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 	hcp->seek_size = 0;
 
 	ret = 0;
-	get_key = 1;
 	switch (flags) {
 	case DB_PREV_NODUP:
 		F_SET(hcp, H_NEXT_NODUP);
@@ -483,13 +464,11 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 	case DB_GET_BOTH:
 	case DB_GET_BOTH_RANGE:
 		ret = __ham_lookup(dbc, key, 0, lock_type, pgnop);
-		get_key = 0;
 		break;
 	case DB_GET_BOTHC:
 		F_SET(hcp, H_DUPONLY);
 
 		ret = __ham_item_next(dbc, lock_type, pgnop);
-		get_key = 0;
 		break;
 	case DB_CURRENT:
 		/* cgetchk has already determined that the cursor is set. */
@@ -501,7 +480,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 		ret = __ham_item(dbc, lock_type, pgnop);
 		break;
 	default:
-		ret = __db_unknown_flag(dbp->dbenv, "__ham_c_get", flags);
+		ret = __db_unknown_flag(dbenv, "__ham_c_get", flags);
 		break;
 	}
 
@@ -517,8 +496,7 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 				ret = __ham_dup_return(dbc, data, flags);
 			break;
 		} else if (!F_ISSET(hcp, H_NOMORE)) {
-			__db_err(dbp->dbenv,
-			    "H_NOMORE returned to __ham_c_get");
+			__db_errx(dbenv, "H_NOMORE returned to __ham_c_get");
 			ret = EINVAL;
 			break;
 		}
@@ -583,12 +561,9 @@ __ham_c_get(dbc, key, data, flags, pgnop)
 				ret = DB_KEYEMPTY;
 				goto err;
 			default:
-				DB_ASSERT(0);
+				DB_ASSERT(dbenv, 0);
 		}
 	}
-
-	if (get_key == 0)
-		F_SET(key, DB_DBT_ISSET);
 
 err:	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -1031,13 +1006,13 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 	case DB_KEYLAST:
 	case DB_KEYFIRST:
 	case DB_NODUPDATA:
+	case DB_NOOVERWRITE:
 		nbytes = (ISBIG(hcp, key->size) ? HOFFPAGE_PSIZE :
 		    HKEYDATA_PSIZE(key->size)) +
 		    (ISBIG(hcp, data->size) ? HOFFPAGE_PSIZE :
 		    HKEYDATA_PSIZE(data->size));
 		if ((ret = __ham_lookup(dbc,
 		    key, nbytes, DB_LOCK_WRITE, pgnop)) == DB_NOTFOUND) {
-			ret = 0;
 			if (hcp->seek_found_page != PGNO_INVALID &&
 			    hcp->seek_found_page != hcp->pgno) {
 				if ((ret = __memp_fput(mpf, hcp->page, 0)) != 0)
@@ -1058,18 +1033,26 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 				if ((ret = __ham_init_dbt(dbp->dbenv, &tmp_val,
 				    data->size + data->doff,
 				    &dbc->my_rdata.data,
-				    &dbc->my_rdata.ulen)) == 0) {
-					memset(tmp_val.data, 0, data->doff);
-					memcpy((u_int8_t *)tmp_val.data +
-					    data->doff, data->data, data->size);
-					myval = &tmp_val;
-				}
+				    &dbc->my_rdata.ulen)) != 0)
+					goto err2;
+
+				memset(tmp_val.data, 0, data->doff);
+				memcpy((u_int8_t *)tmp_val.data +
+				    data->doff, data->data, data->size);
+				myval = &tmp_val;
 			} else
 				myval = (DBT *)data;
 
-			if (ret == 0)
-				ret = __ham_add_el(dbc, key, myval, H_KEYDATA);
+			ret = __ham_add_el(dbc, key, myval, H_KEYDATA);
 			goto done;
+		} else if (flags == DB_NOOVERWRITE &&
+		    !F_ISSET(hcp, H_DELETED)) {
+			if (*pgnop == PGNO_INVALID)
+				ret = DB_KEYEXIST;
+			else
+				ret = __bam_opd_exists(dbc, *pgnop);
+			if (ret != 0)
+				goto done;
 		}
 		break;
 	case DB_BEFORE:
@@ -1083,6 +1066,8 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 	}
 
 	if (*pgnop == PGNO_INVALID && ret == 0) {
+		if ((ret = __memp_dirty(mpf, &hcp->page, dbc->txn, 0)) != 0)
+			goto done;
 		if (flags == DB_CURRENT ||
 		    ((flags == DB_KEYFIRST ||
 		    flags == DB_KEYLAST || flags == DB_NODUPDATA) &&
@@ -1093,8 +1078,7 @@ __ham_c_put(dbc, key, data, flags, pgnop)
 	}
 
 done:	if (hcp->page != NULL) {
-		if ((t_ret = __memp_fput(mpf,
-		    hcp->page, DB_MPOOL_DIRTY)) != 0 && ret == 0)
+		if ((t_ret = __memp_fput(mpf, hcp->page, 0)) != 0 && ret == 0)
 			ret = t_ret;
 		if (t_ret == 0)
 			hcp->page = NULL;
@@ -1131,20 +1115,20 @@ __ham_expand_table(dbc)
 	HASH_CURSOR *hcp;
 	PAGE *h;
 	db_pgno_t pgno, mpgno;
-	u_int32_t dirty_meta, logn, newalloc, new_bucket, old_bucket;
+	u_int32_t logn, newalloc, new_bucket, old_bucket;
 	int got_meta, new_double, ret, t_ret;
 
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
-	if ((ret = __ham_dirty_meta(dbc)) != 0)
+	if ((ret = __ham_dirty_meta(dbc, 0)) != 0)
 		return (ret);
 
 	LOCK_INIT(metalock);
 	mmeta = (DBMETA *) hcp->hdr;
 	mpgno = mmeta->pgno;
 	h = NULL;
-	dirty_meta = newalloc = 0;
+	newalloc = 0;
 	got_meta = 0;
 
 	/*
@@ -1174,8 +1158,8 @@ __ham_expand_table(dbc)
 	if (!new_double || hcp->hdr->spares[logn + 1] != PGNO_INVALID) {
 		/* Page exists; get it so we can get its LSN */
 		pgno = BUCKET_TO_PAGE(hcp, new_bucket);
-		if ((ret =
-		    __memp_fget(mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &h)) != 0)
 			goto err;
 		lsn = h->lsn;
 	} else {
@@ -1185,7 +1169,8 @@ __ham_expand_table(dbc)
 			if ((ret = __db_lget(dbc,
 			   0, mpgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 				goto err;
-			if ((ret = __memp_fget(mpf, &mpgno, 0, &mmeta)) != 0)
+			if ((ret = __memp_fget(mpf, &mpgno, dbc->txn,
+			    DB_MPOOL_DIRTY, &mmeta)) != 0)
 				goto err;
 			got_meta = 1;
 		}
@@ -1226,14 +1211,14 @@ __ham_expand_table(dbc)
 
 		pgno += hcp->hdr->max_bucket;
 
-		if ((ret = __memp_fget(mpf, &pgno, DB_MPOOL_CREATE, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &h)) != 0)
 			goto err;
 
 		hcp->hdr->spares[logn + 1] =
 		    (pgno - new_bucket) - hcp->hdr->max_bucket;
 		mmeta->last_pgno = pgno;
 		mmeta->lsn = lsn;
-		dirty_meta = DB_MPOOL_DIRTY;
 
 		P_INIT(h, dbp->pgsize,
 		    pgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
@@ -1241,7 +1226,7 @@ __ham_expand_table(dbc)
 
 	/* Write out whatever page we ended up modifying. */
 	h->lsn = lsn;
-	if ((ret = __memp_fput(mpf, h, DB_MPOOL_DIRTY)) != 0)
+	if ((ret = __memp_fput(mpf, h, 0)) != 0)
 		goto err;
 	h = NULL;
 
@@ -1259,7 +1244,7 @@ __ham_expand_table(dbc)
 
 err:	if (got_meta)
 		if ((t_ret =
-		    __memp_fput(mpf, mmeta, dirty_meta)) != 0 && ret == 0)
+		    __memp_fput(mpf, mmeta, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 			ret = t_ret;
@@ -1335,7 +1320,7 @@ __ham_dup_return(dbc, val, flags)
 	 */
 
 	/* We should never get here with off-page dups. */
-	DB_ASSERT(type != H_OFFDUP);
+	DB_ASSERT(dbp->dbenv, type != H_OFFDUP);
 
 	/* Case 1 */
 	if (type != H_DUPLICATE && flags != DB_GET_BOTH &&
@@ -1400,7 +1385,7 @@ __ham_dup_return(dbc, val, flags)
 				    HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
 				memcpy(&pgno,
 				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
-				if ((ret = __db_moff(dbp, val,
+				if ((ret = __db_moff(dbp, dbc->txn, val,
 				    pgno, tlen, dbp->dup_compare, &cmp)) != 0)
 					return (ret);
 			} else {
@@ -1422,15 +1407,11 @@ __ham_dup_return(dbc, val, flags)
 	}
 
 	/*
-	 * If we're doing a bulk get, we don't want to actually return
-	 * the data:  __ham_bulk will take care of cracking out the
-	 * duplicates appropriately.
-	 *
-	 * The rest of this function calculates partial offsets and
-	 * handles the actual __db_ret, so just return if
-	 * DB_MULTIPLE(_KEY) is set.
+	 * If we've already got the data for this value, or we're doing a bulk
+	 * get, we don't want to return the data.
 	 */
-	if (F_ISSET(dbc, DBC_MULTIPLE | DBC_MULTIPLE_KEY))
+	if (F_ISSET(dbc, DBC_MULTIPLE | DBC_MULTIPLE_KEY) ||
+	    F_ISSET(val, DB_DBT_ISSET))
 		return (0);
 
 	/*
@@ -1478,8 +1459,8 @@ __ham_dup_return(dbc, val, flags)
 	 * Finally, if we had a duplicate, pp, ndx, and myval should be
 	 * set appropriately.
 	 */
-	if ((ret = __db_ret(dbp, pp, ndx, myval, &dbc->rdata->data,
-	    &dbc->rdata->ulen)) != 0)
+	if ((ret = __db_ret(dbp, dbc->txn,
+	    pp, ndx, myval, &dbc->rdata->data, &dbc->rdata->ulen)) != 0)
 		return (ret);
 
 	/*
@@ -1518,7 +1499,7 @@ __ham_overwrite(dbc, nval, flags)
 		 * This is an overwrite of a duplicate. We should never
 		 * be off-page at this point.
 		 */
-		DB_ASSERT(hcp->opd == NULL);
+		DB_ASSERT(dbenv, hcp->opd == NULL);
 		/* On page dups */
 		if (F_ISSET(nval, DB_DBT_PARTIAL)) {
 			/*
@@ -1655,7 +1636,7 @@ __ham_overwrite(dbc, nval, flags)
 				tmp_val2.size = hcp->dup_len;
 				if (dbp->dup_compare(
 				    dbp, nval, &tmp_val2) != 0) {
-					__db_err(dbenv,
+					__db_errx(dbenv,
 			"Existing data sorts differently from put data");
 					return (EINVAL);
 				}
@@ -1704,7 +1685,7 @@ __ham_overwrite(dbc, nval, flags)
  * If the key is not found, the H_OK flag is not set.  If the sought
  * field is non-0, the pagep, bndx, pgno (dpagep, dndx, dpgno) fields
  * are set indicating where an add might take place.  If it is 0,
- * non of the cursor pointer field are valid.
+ * none of the cursor pointer field are valid.
  */
 static int
 __ham_lookup(dbc, key, sought, mode, pgnop)
@@ -1749,7 +1730,7 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 			if (tlen == key->size) {
 				memcpy(&pgno,
 				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
-				if ((ret = __db_moff(dbp,
+				if ((ret = __db_moff(dbp, dbc->txn,
 				    key, pgno, tlen, NULL, &match)) != 0)
 					return (ret);
 				if (match == 0)
@@ -1873,13 +1854,12 @@ __ham_c_update(dbc, len, add, is_dup)
 	 */
 	order = 0;
 	if (!add) {
-		order = 1;
-		for (ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+		FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+		for (order = 1;
 		    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
-		    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+		    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
 			MUTEX_LOCK(dbenv, dbp->mutex);
-			for (cp = TAILQ_FIRST(&ldbp->active_queue); cp != NULL;
-			    cp = TAILQ_NEXT(cp, links)) {
+			TAILQ_FOREACH(cp, &ldbp->active_queue, links) {
 				if (cp == dbc || cp->dbtype != DB_HASH)
 					continue;
 				lcp = (HASH_CURSOR *)cp->internal;
@@ -1887,7 +1867,8 @@ __ham_c_update(dbc, len, add, is_dup)
 				    hcp->pgno == lcp->pgno &&
 				    hcp->indx == lcp->indx &&
 				    order <= lcp->order &&
-				    (!is_dup || hcp->dup_off == lcp->dup_off))
+				    (!is_dup || hcp->dup_off == lcp->dup_off) &&
+				    !MVCC_SKIP_CURADJ(cp, lcp->pgno))
 					order = lcp->order + 1;
 			}
 			MUTEX_UNLOCK(dbenv, dbp->mutex);
@@ -1895,18 +1876,20 @@ __ham_c_update(dbc, len, add, is_dup)
 		hcp->order = order;
 	}
 
-	for (ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	for (;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
-	    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
 		MUTEX_LOCK(dbenv, dbp->mutex);
-		for (cp = TAILQ_FIRST(&ldbp->active_queue); cp != NULL;
-		    cp = TAILQ_NEXT(cp, links)) {
+		TAILQ_FOREACH(cp, &ldbp->active_queue, links) {
 			if (cp == dbc || cp->dbtype != DB_HASH)
 				continue;
 
 			lcp = (HASH_CURSOR *)cp->internal;
 
-			if (lcp->pgno != hcp->pgno || lcp->indx == NDX_INVALID)
+			if (lcp->pgno != hcp->pgno ||
+			    lcp->indx == NDX_INVALID ||
+			    MVCC_SKIP_CURADJ(cp, lcp->pgno))
 				continue;
 
 			if (my_txn != NULL && cp->txn != my_txn)
@@ -2036,21 +2019,21 @@ __ham_get_clist(dbp, pgno, indx, listp)
 	u_int nalloc, nused;
 	int ret;
 
+	*listp = NULL;
+	dbenv = dbp->dbenv;
+	nalloc = nused = 0;
+
 	/*
 	 * Assume that finding anything is the exception, so optimize for
 	 * the case where there aren't any.
 	 */
-	nalloc = nused = 0;
-	*listp = NULL;
-	dbenv = dbp->dbenv;
-
 	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	for (ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	for (;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
-	    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
 		MUTEX_LOCK(dbenv, dbp->mutex);
-		for (cp = TAILQ_FIRST(&ldbp->active_queue); cp != NULL;
-		    cp = TAILQ_NEXT(cp, links))
+		TAILQ_FOREACH(cp, &ldbp->active_queue, links)
 			/*
 			 * We match if cp->pgno matches the specified
 			 * pgno, and if either the cp->indx matches
@@ -2058,7 +2041,8 @@ __ham_get_clist(dbp, pgno, indx, listp)
 			 */
 			if (cp->internal->pgno == pgno &&
 			    (indx == NDX_INVALID ||
-			    cp->internal->indx == indx)) {
+			    cp->internal->indx == indx) &&
+			    !MVCC_SKIP_CURADJ(cp, pgno)) {
 				if (nused >= nalloc) {
 					nalloc += 10;
 					if ((ret = __os_realloc(dbp->dbenv,

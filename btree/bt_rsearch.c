@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -36,19 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_rsearch.c,v 12.5 2005/08/08 03:37:05 ubell Exp $
+ * $Id: bt_rsearch.c,v 12.11 2006/08/24 14:44:44 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
@@ -121,7 +116,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	 * a fast check now.
 	 */
 	total = RE_NREC(h);
-	if (LF_ISSET(S_APPEND)) {
+	if (LF_ISSET(SR_APPEND)) {
 		*exactp = 0;
 		*recnop = recno = total + 1;
 	} else {
@@ -130,7 +125,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			*exactp = 1;
 		else {
 			*exactp = 0;
-			if (!LF_ISSET(S_PAST_EOF) || recno > total + 1) {
+			if (!LF_ISSET(SR_PAST_EOF) || recno > total + 1) {
 				/*
 				 * Keep the page locked for serializability.
 				 *
@@ -173,7 +168,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			for (t_recno = 0, indx = 0;; indx += adjust) {
 				if (indx >= NUM_ENT(h)) {
 					*exactp = 0;
-					if (!LF_ISSET(S_PAST_EOF) ||
+					if (!LF_ISSET(SR_PAST_EOF) ||
 					    recno > t_recno + 1) {
 						ret = __memp_fput(mpf, h, 0);
 						h = NULL;
@@ -255,7 +250,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			 * page in the stack.  If we do, write lock it and
 			 * never unlock it.
 			 */
-			if ((LF_ISSET(S_PARENT) &&
+			if ((LF_ISSET(SR_PARENT) &&
 			    (u_int8_t)(stop + 1) >= (u_int8_t)(LEVEL(h) - 1)) ||
 			    (LEVEL(h) - 1) == LEAFLEVEL)
 				stack = 1;
@@ -265,7 +260,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			h = NULL;
 
 			lock_mode = stack &&
-			    LF_ISSET(S_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
+			    LF_ISSET(SR_WRITE) ? DB_LOCK_WRITE : DB_LOCK_READ;
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
 				/*
@@ -278,7 +273,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			}
 		}
 
-		if ((ret = __memp_fget(mpf, &pg, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
@@ -320,6 +315,9 @@ __bam_adjust(dbc, adjust)
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
 		h = epg->page;
 		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
+			if ((ret = __memp_dirty(mpf, &h, dbc->txn, 0)) != 0)
+				return (ret);
+			epg->page = h;
 			if (DBC_LOGGING(dbc)) {
 				if ((ret = __bam_cadjust_log(dbp, dbc->txn,
 				    &LSN(h), 0, PGNO(h), &LSN(h),
@@ -339,9 +337,6 @@ __bam_adjust(dbc, adjust)
 
 			if (PGNO(h) == root_pgno)
 				RE_NREC_ADJ(h, adjust);
-
-			if ((ret = __memp_fset(mpf, h, DB_MPOOL_DIRTY)) != 0)
-				return (ret);
 		}
 	}
 	return (0);
@@ -371,7 +366,7 @@ __bam_nrecs(dbc, rep)
 	pgno = dbc->internal->root;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = __memp_fget(mpf, &pgno, 0, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &h)) != 0)
 		return (ret);
 
 	*rep = RE_NREC(h);

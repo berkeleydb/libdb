@@ -5,7 +5,7 @@
 #define	DB___bam_split	62
 typedef struct ___bam_split_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	left;
@@ -23,7 +23,7 @@ typedef struct ___bam_split_args {
 #define	DB___bam_rsplit	63
 typedef struct ___bam_rsplit_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -37,7 +37,7 @@ typedef struct ___bam_rsplit_args {
 #define	DB___bam_adj	55
 typedef struct ___bam_adj_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -50,7 +50,7 @@ typedef struct ___bam_adj_args {
 #define	DB___bam_cadjust	56
 typedef struct ___bam_cadjust_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -63,7 +63,7 @@ typedef struct ___bam_cadjust_args {
 #define	DB___bam_cdel	57
 typedef struct ___bam_cdel_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -74,7 +74,7 @@ typedef struct ___bam_cdel_args {
 #define	DB___bam_repl	58
 typedef struct ___bam_repl_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -90,7 +90,7 @@ typedef struct ___bam_repl_args {
 #define	DB___bam_root	59
 typedef struct ___bam_root_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	meta_pgno;
@@ -101,7 +101,7 @@ typedef struct ___bam_root_args {
 #define	DB___bam_curadj	64
 typedef struct ___bam_curadj_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_ca_mode	mode;
@@ -116,7 +116,7 @@ typedef struct ___bam_curadj_args {
 #define	DB___bam_rcuradj	65
 typedef struct ___bam_rcuradj_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	ca_recno_arg	mode;
@@ -125,10 +125,24 @@ typedef struct ___bam_rcuradj_args {
 	u_int32_t	order;
 } __bam_rcuradj_args;
 
+#define	DB___bam_relink_43	147
+typedef struct ___bam_relink_43_args {
+	u_int32_t type;
+	DB_TXN *txnp;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	pgno;
+	DB_LSN	lsn;
+	db_pgno_t	prev;
+	DB_LSN	lsn_prev;
+	db_pgno_t	next;
+	DB_LSN	lsn_next;
+} __bam_relink_43_args;
+
 #define	DB___bam_relink	147
 typedef struct ___bam_relink_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -142,7 +156,7 @@ typedef struct ___bam_relink_args {
 #define	DB___bam_merge	148
 typedef struct ___bam_merge_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;
@@ -157,7 +171,7 @@ typedef struct ___bam_merge_args {
 #define	DB___bam_pgno	149
 typedef struct ___bam_pgno_args {
 	u_int32_t type;
-	DB_TXN *txnid;
+	DB_TXN *txnp;
 	DB_LSN prev_lsn;
 	int32_t	fileid;
 	db_pgno_t	pgno;

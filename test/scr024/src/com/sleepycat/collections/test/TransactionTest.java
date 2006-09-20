@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: TransactionTest.java,v 12.3 2005/02/11 23:17:00 mark Exp $
+ * $Id: TransactionTest.java,v 12.7 2006/08/24 14:46:47 bostic Exp $
  */
 
 package com.sleepycat.collections.test;
@@ -200,7 +200,7 @@ public class TransactionTest extends TestCase {
         DatabaseConfig dbConfig = new DatabaseConfig();
         DbCompat.setTypeBtree(dbConfig);
         dbConfig.setAllowCreate(true);
-        Database db = DbCompat.openDatabase(env, null, 
+        Database db = DbCompat.openDatabase(env, null,
                                             dbName(1), null,
                                             dbConfig);
         map = new StoredSortedMap(db, testStore.getKeyBinding(),
@@ -214,7 +214,7 @@ public class TransactionTest extends TestCase {
         //
         dbConfig.setTransactional(true);
         currentTxn.beginTransaction(null);
-        db = DbCompat.openDatabase(env, currentTxn.getTransaction(), 
+        db = DbCompat.openDatabase(env, currentTxn.getTransaction(),
                                    dbName(2), null, dbConfig);
         currentTxn.commitTransaction();
         map = new StoredSortedMap(db, testStore.getKeyBinding(),
@@ -621,7 +621,6 @@ public class TransactionTest extends TestCase {
 
     private static class ReadUncommittedThreadOne extends Thread {
 
-        private Environment env;
         private CurrentTransaction currentTxn;
         private TransactionTest parent;
         private StoredSortedMap map;
@@ -629,7 +628,6 @@ public class TransactionTest extends TestCase {
         private ReadUncommittedThreadOne(Environment env,
                                          TransactionTest parent) {
 
-            this.env = env;
             this.currentTxn = CurrentTransaction.getInstance(env);
             this.parent = parent;
             this.map = parent.map;

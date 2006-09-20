@@ -1,4 +1,4 @@
-<!-- $Id: build.xml,v 12.1 2005/06/10 15:31:51 mark Exp $ -->
+<!-- $Id: build.xml,v 12.2 2006/06/09 14:32:17 mark Exp $ -->
 <project name="clover" default="test" basedir=".">
 
   <property name="db" location="../../.."/>
@@ -38,7 +38,7 @@
   </path>
 
   <target name="build" depends="init">
-    <javac destdir="classes" debug="on">
+    <javac destdir="classes" debug="on" source="1.3">
       <src path="${src}"/>
       <src path="${test.src}"/>
       <src path="${examples.src}"/>
@@ -49,7 +49,7 @@
               value="com/sleepycat/collections/test/serial/TestSerial"/>
     <copy file="${test.src}/${testserialpath}.java.original"
           tofile="${testserialdir}/${testserialpath}.java"/>
-    <javac destdir="${testserialdir}" debug="on"
+    <javac destdir="${testserialdir}" debug="on" source="1.3"
            includeAntRuntime="true" srcdir="${testserialdir}">
       <include name="${testserialpath}.java"/>
     </javac>
@@ -75,6 +75,7 @@
            showoutput="on">
       <formatter type="xml"/>
       <classpath refid="classpath"/>
+      <sysproperty key="longtest" value="${longtest}"/>
       <batchtest todir="reports">
         <fileset dir="classes" includes="**/*Test.class"/>
       </batchtest>

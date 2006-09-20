@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#       Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: env013.tcl,v 1.5 2005/09/27 14:48:12 carol Exp $
+# $Id: env013.tcl,v 1.8 2006/08/24 14:46:35 bostic Exp $
 #
 # TEST	env013
 # TEST	Test of basic functionality of fileid_reset.
@@ -26,7 +26,7 @@ proc env013 { } {
 		env_cleanup $testdir
 		set env [berkdb_env -create -home $testdir -txn]
 		error_check_good dbenv [is_valid_env $env] TRUE
-	
+
 		# Open database A, populate and close.
 		puts "\tEnv013.b: Creating database with lorder $lorder."
 		foreach filename $filenames {
@@ -45,11 +45,11 @@ proc env013 { } {
 			error_check_good txn_commit [$t commit] 0
 			error_check_good db_close [$db close] 0
 		}
-	
+
 		# Copy database file A to database file B for fileid testing.
 		puts "\tEnv013.c: Copy database."
 		file copy -force $testdir/$testfile $testdir/$dupfile
-	
+
 		# Reset B's fileid and confirm the ID has changed.
 		puts "\tEnv013.d: Resetting file id for copied database."
 		error_check_good fileid_reset [$env id_reset $dupfile] 0
@@ -57,15 +57,15 @@ proc env013 { } {
 		puts "\tEnv013.d: orig: $orig_id"
 		set new_id [getfileid $testdir/$dupfile]
 		puts "\tEnv013.d: new: $new_id"
-		error_check_bad id_changed $orig_id $new_id 
-	
+		error_check_bad id_changed $orig_id $new_id
+
 		# Verify and open B.
 		puts "\tEnv013.e: Verify and open database copy."
 	 	error_check_good verify [verify_dir $testdir "\tEnv013.e: "] 0
 		set db [eval {berkdb_open} \
 		    -env $env -auto_commit -btree -mode 0644 -rdonly $dupfile]
 		error_check_good dup_open [is_valid_db $db] TRUE
-	
+
 		# Clean up.
 		error_check_good db_close [$db close] 0
 		error_check_good env_close [$env close] 0

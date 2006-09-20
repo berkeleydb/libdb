@@ -192,7 +192,7 @@ if (ret == DB_KEYEXIST) {
 ...
 
 float money;
-char *description;
+char *description[DESCRIPTION_SIZE + 1];
 
 Db my_database(NULL, 0);
 // Database open omitted for clarity 
@@ -200,16 +200,17 @@ Db my_database(NULL, 0);
 money = 122.45;
 
 Dbt key, data;
-// Use our own memory to retrieve the float.
-// For data alignment purposes.
+
 key.set_data(&amp;money);
 key.set_ulen(sizeof(float));
-key.set_flags(DB_DBT_USERMEM);
+
+data.set_data(&amp;description);
+data.set_ulen(DESCRIPTION_SIZE + 1);
+data.set_flags(DB_DBT_USERMEM);
 
 my_database.get(NULL, &amp;key, &amp;data, 0);
 
-// Money is set into the memory that we supplied.
-description = (char *)data.get_data();</pre>
+// Description is set into the memory that we supplied.  </pre>
         <p>
         Note that in this example, the 
             <tt class="literal">data.size</tt>
@@ -287,7 +288,13 @@ my_database.del(NULL, &amp;key, 0);</pre>
             database modifications. Every time you commit a transaction, DB
             ensures that the data will not be lost due to application or 
             system failure.  Transaction usage is described in the
-                <i class="citetitle">DB Transaction Processing Guide</i>.
+                
+
+                
+
+                <span>
+                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide.
+                </span>
         </p>
         <p>
             If you do not want to use transactions, then the assumption is that

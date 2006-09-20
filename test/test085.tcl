@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2000-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test085.tcl,v 12.1 2005/06/16 20:24:09 bostic Exp $
+# $Id: test085.tcl,v 12.3 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test085
 # TEST	Test of cursor behavior when a cursor is pointing to a deleted

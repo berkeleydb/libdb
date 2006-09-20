@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep054.tcl,v 1.3 2005/10/18 19:05:54 carol Exp $
+# $Id: rep054.tcl,v 1.9 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep054
 # TEST	Test of internal initialization where a far-behind
@@ -12,15 +12,20 @@
 # TEST	One master, two clients.
 # TEST	Run rep_test and process.
 # TEST	Close client 1.
-# TEST	Run rep_test, opening new databases, and processing 
+# TEST	Run rep_test, opening new databases, and processing
 # TEST	messages.  Archive as we go so that log files get removed.
 # TEST	Close master and reopen client 1 as master.  Process messages.
 # TEST	Verify that new master and client are in sync.
-# TEST	Run rep_test again, adding data to one of the new 
+# TEST	Run rep_test again, adding data to one of the new
 # TEST	named databases.
 
 proc rep054 { method { nentries 200 } { tnum "054" } args } {
-	set args [convert_args $method $args]
+	source ./include.tcl
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
 
 	# This test needs to set its own pagesize.
 	set pgindex [lsearch -exact $args "-pagesize"]
@@ -29,18 +34,33 @@ proc rep054 { method { nentries 200 } { tnum "054" } args } {
 		return
 	}
 
-	# Run the body of the test with and without recovery.
-	set recopts { "" " -recover " }
-	foreach r $recopts {
-		puts "Rep$tnum ($method $r $args):  Internal\
-		    initialization test: far-behind client\
-		    becomes master."
-		rep054_sub $method $nentries $tnum \
-		    $r $args
+	set args [convert_args $method $args]
+	set logsets [create_logsets 3]
+
+	# Run the body of the test with and without recovery,
+	# and with and without cleaning.  Skip recovery with in-memory
+	# logging - it doesn't make sense.
+	foreach r $test_recopts {
+		foreach l $logsets {
+			set logindex [lsearch -exact $l "in-memory"]
+			if { $r == "-recover" && $logindex != -1 } {
+				puts "Skipping rep$tnum for -recover\
+				    with in-memory logs."
+				continue
+			}
+			puts "Rep$tnum ($method $r $args):  Internal\
+			    initialization test: far-behind client\
+			    becomes master."
+			puts "Rep$tnum: Master logs are [lindex $l 0]"
+			puts "Rep$tnum: Client logs are [lindex $l 1]"
+			puts "Rep$tnum: Client2 logs are [lindex $l 2]"
+
+			rep054_sub $method $nentries $tnum $l $r $args
+		}
 	}
 }
 
-proc rep054_sub { method nentries tnum recargs largs } {
+proc rep054_sub { method nentries tnum logset recargs largs } {
 	global testdir
 	global util_path
 
@@ -65,13 +85,29 @@ proc rep054_sub { method nentries tnum recargs largs } {
 	set log_buf [expr $pagesize * 2]
 	set log_max [expr $log_buf * 4]
 
+	set m_logargs " -log_buffer $log_buf"
+	set c_logargs " -log_buffer $log_buf"
+	set c2_logargs " -log_buffer $log_buf"
+
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+	set c2_logtype [lindex $logset 2]
+
+	# In-memory logs cannot be used with -txn nosync.
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+	set c2_logargs [adjust_logargs $c2_logtype]
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
+	set c2_txnargs [adjust_txnargs $c2_logtype]
+
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
-	    -log_buffer $log_buf -log_max $log_max \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $m_logargs -log_max $log_max \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
-#	    -log_buffer $log_buf -log_max $log_max \
+#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+#	    $m_logargs -log_max $log_max \
 #	    -verbose {rep on} -errpfx MASTER -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -79,11 +115,11 @@ proc rep054_sub { method nentries tnum recargs largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
-	    -log_buffer $log_buf -log_max $log_max \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $c_logargs -log_max $log_max \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
-#	    -log_buffer $log_buf -log_max $log_max \
+#	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+#	    $c_logargs -log_max $log_max \
 #	    -verbose {rep on} -errpfx CLIENT \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -91,11 +127,11 @@ proc rep054_sub { method nentries tnum recargs largs } {
 
 	# Open 2nd client
 	repladd 3
-	set cl2_envcmd "berkdb_env_noerr -create -txn nosync \
-	    -log_buffer $log_buf -log_max $log_max \
+	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
+	    $c2_logargs -log_max $log_max \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
-#	set cl2_envcmd "berkdb_env_noerr -create -txn nosync \
-#	    -log_buffer $log_buf -log_max $log_max \
+#	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
+#	    $c2_logargs -log_max $log_max \
 #	    -verbose {rep on} -errpfx CLIENT2 \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set clientenv2 [eval $cl2_envcmd $recargs -rep_client]
@@ -109,7 +145,7 @@ proc rep054_sub { method nentries tnum recargs largs } {
 	puts "\tRep$tnum.a: Running rep_test in master & clients."
 	set start 0
 	eval rep_test $method $masterenv NULL $nentries $start $start 0 0 $largs
-	set start [expr $nentries + $start]
+	incr start $nentries
 	process_msgs $envlist
 
 	# Master is in sync with both clients.
@@ -118,14 +154,13 @@ proc rep054_sub { method nentries tnum recargs largs } {
 	process_msgs $envlist
 	rep_verify $masterdir $masterenv $clientdir2 $clientenv2
 
+	# Identify last log on client, then close.  Loop until the first
+	# master log file is greater than the last client log file.
+	set last_client_log [get_logfile $clientenv last]
+
 	puts "\tRep$tnum.b: Close client 1."
 	error_check_good client_close [$clientenv close] 0
 	set envlist "{$masterenv 1} {$clientenv2 3}"
-
-	# Find out what exists on the client.  Loop until the first 
-	# master log file is greater than the last client log file.
-	set res [eval exec $util_path/db_archive -l -h $clientdir]
-	set last_client_log [lindex [lsort $res] end]
 
 	set stop 0
 	while { $stop == 0 } {
@@ -133,13 +168,17 @@ proc rep054_sub { method nentries tnum recargs largs } {
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 		eval rep_test $method $masterenv NULL $nentries \
 		    $start $start 0 0 $largs
-		set start [expr $nentries + $start]
+		incr start $nentries
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."
-		set res [eval exec $util_path/db_archive -d -h $masterdir]
-		set res [eval exec $util_path/db_archive -l -h $masterdir]
-		if { [lsearch -exact $res $last_client_log] == -1 } {
+		if { $m_logtype != "in-memory" } {
+			set res [eval exec $util_path/db_archive -d -h $masterdir]
+		}
+		# Make sure we have a gap between the last client log and
+		# the first master log.
+		set first_master_log [get_logfile $masterenv first]
+		if { $first_master_log > $last_client_log } {
 			set stop 1
 		}
 	}
@@ -155,7 +194,7 @@ proc rep054_sub { method nentries tnum recargs largs } {
 
 	# Identify last master log file.
 	set res [eval exec $util_path/db_archive -l -h $masterdir]
-	set last_master_log [lindex [lsort $res] end]
+	set last_master_log [get_logfile $masterenv last]
 	set stop 0
 
 	# Send the master and client2 far ahead of client 1.  Archive
@@ -167,36 +206,39 @@ proc rep054_sub { method nentries tnum recargs largs } {
 
 		eval rep_test \
 		    $method $masterenv NULL $nentries $start $start 0 0 $largs
-		set start [expr $start + $nentries]
+		incr start $nentries
 
 		process_msgs $envlist
 
-		puts "\tRep$tnum.f: Archiving ..."
-		set res [eval exec $util_path/db_archive -d -h $masterdir]
-		set res [eval exec $util_path/db_archive -d -h $clientdir2]
-		if { [lsearch -exact $res $last_master_log] == -1 } {
-			set stop 1 
+		puts "\tRep$tnum.f: Send master ahead of closed client."
+		if { $m_logtype != "in-memory" } {
+			set res [eval exec $util_path/db_archive -d -h $masterdir]
+		}
+		if { $c2_logtype != "in-memory" } {
+			set res [eval exec $util_path/db_archive -d -h $clientdir2]
+		}
+		set first_master_log [get_logfile $masterenv first]
+		if { $first_master_log > $last_master_log } {
+			set stop 1
 		}
 	}
 	process_msgs $envlist
 
 	# Master is in sync with client 2.
-	rep_verify $masterdir $masterenv $clientdir2 $clientenv2
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 1
 
 	# Close master.
 	puts "\tRep$tnum.g: Close master."
 	error_check_good newdb_close [$newdb close] 0
 	error_check_good close_master [$masterenv close] 0
 
-	# The new database is still there. 
+	# The new database is still there.
 	error_check_good newfile_exists [file exists $masterdir/$newfile] 1
 
 	puts "\tRep$tnum.h: Reopen client1 as master."
 	replclear 2
 	set newmasterenv [eval $cl_envcmd $recargs -rep_master]
 	error_check_good newmasterenv [is_valid_env $newmasterenv] TRUE
-	# Archive the first log file away.
-	set res [$newmasterenv log_archive -arch_remove]
 
 	puts "\tRep$tnum.i: Reopen master as client."
 	set oldmasterenv [eval $ma_envcmd $recargs -rep_client]

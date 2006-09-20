@@ -1,23 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock_id.c,v 12.10 2005/10/14 15:15:16 ubell Exp $
+ * $Id: lock_id.c,v 12.16 2006/08/24 14:46:11 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#include <stdlib.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 
@@ -88,9 +80,7 @@ __lock_id(dbenv, idp, lkp)
 		    sizeof(u_int32_t) * region->stat.st_nlockers, &ids)) != 0)
 			goto err;
 		nids = 0;
-		for (lk = SH_TAILQ_FIRST(&region->lockers, __db_locker);
-		    lk != NULL;
-		    lk = SH_TAILQ_NEXT(lk, ulinks, __db_locker))
+		SH_TAILQ_FOREACH(lk, &region->lockers, ulinks, __db_locker)
 			ids[nids++] = lk->id;
 		region->stat.st_id = DB_LOCK_INVALIDID;
 		region->stat.st_cur_maxid = DB_LOCK_MAXID;
@@ -183,13 +173,13 @@ __lock_id_free(dbenv, id)
 		goto err;
 
 	if (sh_locker == NULL) {
-		__db_err(dbenv, "Unknown locker ID: %lx", (u_long)id);
+		__db_errx(dbenv, "Unknown locker ID: %lx", (u_long)id);
 		ret = EINVAL;
 		goto err;
 	}
 
 	if (sh_locker->nlocks != 0) {
-		__db_err(dbenv, "Locker still has locks");
+		__db_errx(dbenv, "Locker still has locks");
 		ret = EINVAL;
 		goto err;
 	}
@@ -251,13 +241,13 @@ __lock_getlocker(lt, locker, indx, create, retp)
 	dbenv = lt->dbenv;
 	region = lt->reginfo.primary;
 
-	HASHLOOKUP(lt->locker_tab,
-	    indx, __db_locker, links, locker, sh_locker, __lock_locker_cmp);
-
 	/*
-	 * If we found the locker, then we can just return it.  If
-	 * we didn't find the locker, then we need to create it.
+	 * If we find the locker, then we can just return it.  If we don't find
+	 * the locker, then we need to create it.
 	 */
+	SH_TAILQ_FOREACH(sh_locker, &lt->locker_tab[indx], links, __db_locker)
+		if (sh_locker->id == locker)
+			break;
 	if (sh_locker == NULL && create) {
 		/* Create new locker and then insert it into hash table. */
 		if ((sh_locker = SH_TAILQ_FIRST(
@@ -282,7 +272,8 @@ __lock_getlocker(lt, locker, indx, create, retp)
 		LOCK_SET_TIME_INVALID(&sh_locker->tx_expire);
 		LOCK_SET_TIME_INVALID(&sh_locker->lk_expire);
 
-		HASHINSERT(lt->locker_tab, indx, __db_locker, links, sh_locker);
+		SH_TAILQ_INSERT_HEAD(
+		    &lt->locker_tab[indx], sh_locker, links, __db_locker);
 		SH_TAILQ_INSERT_HEAD(&region->lockers,
 		    sh_locker, ulinks, __db_locker);
 	}
@@ -383,7 +374,7 @@ __lock_freefamilylocker(lt, locker)
 
 	if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) != NULL) {
 		ret = EINVAL;
-		__db_err(dbenv, "Freeing locker with locks");
+		__db_errx(dbenv, "Freeing locker with locks");
 		goto err;
 	}
 
@@ -413,8 +404,7 @@ __lock_freelocker(lt, region, sh_locker, indx)
 	u_int32_t indx;
 
 {
-	HASHREMOVE_EL(
-	    lt->locker_tab, indx, __db_locker, links, sh_locker);
+	SH_TAILQ_REMOVE(&lt->locker_tab[indx], sh_locker, links, __db_locker);
 	SH_TAILQ_INSERT_HEAD(
 	    &region->free_lockers, sh_locker, links, __db_locker);
 	SH_TAILQ_REMOVE(&region->lockers, sh_locker, ulinks, __db_locker);

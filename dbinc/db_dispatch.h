@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -32,11 +32,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.h,v 12.5 2005/10/19 15:10:44 bostic Exp $
+ * $Id: db_dispatch.h,v 12.8 2006/08/24 14:45:29 bostic Exp $
  */
 
 #ifndef _DB_DISPATCH_H_
 #define	_DB_DISPATCH_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*
  * Declarations and typedefs for the list of transaction IDs used during
@@ -105,5 +109,9 @@ typedef enum {
 	LIMBO_TIMESTAMP,	/* We are recovering to a timestamp. */
 	LIMBO_COMPENSATE	/* After recover to ts, generate log records. */
 } db_limbo_state;
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* !_DB_DISPATCH_H_ */

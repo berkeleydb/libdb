@@ -6,8 +6,8 @@
     <title>Designing Your Application for Recovery</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing JE Files" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
     <link rel="previous" href="recovery.html" title="Recovery Procedures" />
     <link rel="next" href="hotfailover.html" title="Using Hot Failovers" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="recovery.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 5. Managing JE Files</th>
+          <th width="60%" align="center">Chapter 5. Managing DB Files</th>
           <td width="20%" align="right"> <a accesskey="n" href="hotfailover.html">Next</a></td>
         </tr>
       </table>
@@ -35,7 +35,7 @@
         <div></div>
       </div>
       <p>
-            When building your JE application, you should consider how you will run recovery. If you are building a
+            When building your DB application, you should consider how you will run recovery. If you are building a
             single threaded, single process application, it is fairly simple to run recovery when your application first
             opens its environment. In this case, you need only decide if you want to run recovery every time you open
             your application (recommended) or only some of the time, presumably triggered by a start up option
@@ -58,7 +58,7 @@
                 If your application uses only one environment handle, then handling recovery for a multi-threaded
                 application is no more difficult than for a single threaded application. You simply open the environment
                 in the application's main thread, and then pass that handle to each of the threads that will be
-                performing JE operations. We illustrate this with our final example in this book (see 
+                performing DB operations. We illustrate this with our final example in this book (see 
                 <a href="txnexample_c.html">Transaction Example</a>
                 
                 
@@ -140,7 +140,7 @@
                         ability to gracefully finalize any on-going
                         transactions. If this is the case, your
                         code must be capable of signaling each thread 
-                        to halt JE activities and close its
+                        to halt DB activities and close its
                         environment. If you simply run recovery against the
                         environment, your database threads will
                         detect this and fail in the midst of performing their
@@ -178,7 +178,7 @@
           <div></div>
         </div>
         <p>
-                Frequently, JE applications use multiple processes to interact with the databases. For example, you may
+                Frequently, DB applications use multiple processes to interact with the databases. For example, you may
                 have a long-running process, such as some kind of server, and then a series of administrative tools that
                 you use to inspect and administer the underlying databases. Or, in some web-based architectures, different
                 services are run as independent processes that are managed by the server.
@@ -218,7 +218,7 @@
           </ol>
         </div>
         <p>
-                JE offers you two methods by which you can manage recovery for multi-process JE applications.
+                DB offers you two methods by which you can manage recovery for multi-process DB applications.
                 Each has different strengths and weaknesses, and they are described in the next sections.
             </p>
         <div class="sect3" lang="en" xml:lang="en">
@@ -281,7 +281,7 @@
                         </span>
 
                         
-                        If during the open, JE determines that recovery must be run, this indicates the type of
+                        If during the open, DB determines that recovery must be run, this indicates the type of
                         recovery that is run. If you do not specify either type of recovery, then no recovery is run if
                         the registration process identifies a need for it. In this case, the environment open simply
                         fails by 
@@ -330,7 +330,7 @@
           <p>
                     For very large and robust multi-process applications, the most common way to ensure all the
                     processes are working as intended is to make use of a watchdog process. To assist a watchdog
-                    process, Sleepycat offers a failure checking mechanism.
+                    process, DB offers a failure checking mechanism.
                 </p>
           <p>
                     When a thread of control fails with open environment handles, the result is that there may be
@@ -338,7 +338,7 @@
                     quickly or not at all, depending on data access patterns.
                 </p>
           <p>
-                    In any case, the Sleepycat failure checking mechanism allows a watchdog to detect if an environment is 
+                    In any case, the DB failure checking mechanism allows a watchdog to detect if an environment is 
                     unusable as a result of a thread of control failure. It should be called periodically 
                     (for example, once a minute) from the watchdog process. If the environment is deemed unusable, then
                     the watchdog process is notified that recovery should be run. It is then up to the watchdog to
@@ -365,7 +365,7 @@
                                 method. 
                             </span>
                             
-                                JE uses this method to determine whether a specified process and thread
+                                DB uses this method to determine whether a specified process and thread
                                 is alive when the failure checking is performed.
                         </p>
               </li>

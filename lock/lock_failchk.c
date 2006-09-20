@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2005-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock_failchk.c,v 12.3 2005/10/14 15:06:44 bostic Exp $
+ * $Id: lock_failchk.c,v 12.9 2006/08/24 14:46:11 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/txn.h"
 
@@ -45,10 +38,7 @@ retry:	LOCK_SYSTEM_LOCK(dbenv);
 
 	ret = 0;
 	for (i = 0; i < lrp->locker_t_size; i++)
-		for (lip =
-		    SH_TAILQ_FIRST(&lt->locker_tab[i], __db_locker);
-		    lip != NULL;
-		    lip = SH_TAILQ_NEXT(lip, links, __db_locker)) {
+		SH_TAILQ_FOREACH(lip, &lt->locker_tab[i], links, __db_locker) {
 			/*
 			 * If the locker is transactional, we can ignore it;
 			 * __txn_failchk aborts any transactions the locker
@@ -58,7 +48,7 @@ retry:	LOCK_SYSTEM_LOCK(dbenv);
 				continue;
 
 			/* If the locker is still alive, it's not a problem. */
-			if (dbenv->is_alive(dbenv, lip->pid, lip->tid))
+			if (dbenv->is_alive(dbenv, lip->pid, lip->tid, 0))
 				continue;
 
 			/*

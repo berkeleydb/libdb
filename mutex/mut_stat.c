@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2004
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_stat.c,v 12.10 2005/11/01 00:44:28 bostic Exp $
+ * $Id: mut_stat.c,v 12.17 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -211,10 +204,11 @@ __mutex_print_all(dbenv, flags)
 {
 	static const FN fn[] = {
 		{ DB_MUTEX_ALLOCATED,		"alloc" },
+		{ DB_MUTEX_LOCKED,		"locked" },
 		{ DB_MUTEX_LOGICAL_LOCK,	"logical" },
+		{ DB_MUTEX_PROCESS_ONLY,	"process-private" },
 		{ DB_MUTEX_SELF_BLOCK,		"self-block" },
-		{ DB_MUTEX_THREAD,		"thread" },
-		{ 0,			NULL }
+		{ 0,				NULL }
 	};
 	DB_MSGBUF mb, *mbp;
 	DB_MUTEX *mutexp;
@@ -364,10 +358,11 @@ __mutex_print_id(alloc_id)
 	case MTX_LOG_HANDLE:		return ("log handle");
 	case MTX_LOG_REGION:		return ("log region");
 	case MTX_MPOOLFILE_HANDLE:	return ("mpoolfile handle");
-	case MTX_MPOOL_BUFFER:		return ("mpool buffer");
 	case MTX_MPOOL_FH:		return ("mpool filehandle");
+	case MTX_MPOOL_FILE_BUCKET:	return ("mpool file bucket");
 	case MTX_MPOOL_HANDLE:		return ("mpool handle");
 	case MTX_MPOOL_HASH_BUCKET:	return ("mpool hash bucket");
+	case MTX_MPOOL_IO:		return ("mpool buffer I/O");
 	case MTX_MPOOL_REGION:		return ("mpool region");
 	case MTX_REP_DATABASE:		return ("replication database");
 	case MTX_REP_REGION:		return ("replication region");
@@ -375,6 +370,7 @@ __mutex_print_id(alloc_id)
 	case MTX_TWISTER:		return ("twister");
 	case MTX_TXN_ACTIVE:		return ("txn active list");
 	case MTX_TXN_COMMIT:		return ("txn commit");
+	case MTX_TXN_MVCC:		return ("txn mvcc");
 	case MTX_TXN_REGION:		return ("txn region");
 	default:			return ("unknown mutex type");
 	}

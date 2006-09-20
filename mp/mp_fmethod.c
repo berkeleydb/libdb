@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mp_fmethod.c,v 12.7 2005/10/07 20:21:32 ubell Exp $
+ * $Id: mp_fmethod.c,v 12.13 2006/08/24 14:46:14 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
@@ -147,7 +140,7 @@ __memp_get_fileid(dbmfp, fileid)
 	u_int8_t *fileid;
 {
 	if (!F_ISSET(dbmfp, MP_FILEID_SET)) {
-		__db_err(dbmfp->dbenv, "get_fileid: file ID not set");
+		__db_errx(dbmfp->dbenv, "get_fileid: file ID not set");
 		return (EINVAL);
 	}
 
@@ -330,13 +323,13 @@ __memp_get_maxsize(dbmfp, gbytesp, bytesp)
 	} else {
 		dbenv = dbmfp->dbenv;
 
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MUTEX_LOCK(dbenv, mfp->mutex);
 		*gbytesp = (u_int32_t)
 		    (mfp->maxpgno / (GIGABYTE / mfp->stat.st_pagesize));
 		*bytesp = (u_int32_t)
 		    ((mfp->maxpgno % (GIGABYTE / mfp->stat.st_pagesize)) *
 		    mfp->stat.st_pagesize);
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MUTEX_UNLOCK(dbenv, mfp->mutex);
 	}
 
 	return (0);
@@ -360,7 +353,7 @@ __memp_set_maxsize(dbmfp, gbytes, bytes)
 	} else {
 		dbenv = dbmfp->dbenv;
 
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MUTEX_LOCK(dbenv, mfp->mutex);
 		mfp->maxpgno = (db_pgno_t)
 		    (gbytes * (GIGABYTE / mfp->stat.st_pagesize));
 		mfp->maxpgno += (db_pgno_t)
@@ -447,7 +440,7 @@ __memp_get_priority(dbmfp, priorityp)
 		*priorityp = DB_PRIORITY_VERY_HIGH;
 		break;
 	default:
-		__db_err(dbmfp->dbenv,
+		__db_errx(dbmfp->dbenv,
 		    "DB_MPOOLFILE->get_priority: unknown priority value: %d",
 		    dbmfp->priority);
 		return (EINVAL);
@@ -482,7 +475,7 @@ __memp_set_priority(dbmfp, priority)
 		dbmfp->priority = MPOOL_PRI_VERY_HIGH;
 		break;
 	default:
-		__db_err(dbmfp->dbenv,
+		__db_errx(dbmfp->dbenv,
 		    "DB_MPOOLFILE->set_priority: unknown priority value: %d",
 		    priority);
 		return (EINVAL);
@@ -510,12 +503,14 @@ __memp_last_pgno(dbmfp, pgnoaddr)
 	db_pgno_t *pgnoaddr;
 {
 	DB_ENV *dbenv;
+	MPOOLFILE *mfp;
 
 	dbenv = dbmfp->dbenv;
+	mfp = dbmfp->mfp;
 
-	MPOOL_SYSTEM_LOCK(dbenv);
-	*pgnoaddr = dbmfp->mfp->last_pgno;
-	MPOOL_SYSTEM_UNLOCK(dbenv);
+	MUTEX_LOCK(dbenv, mfp->mutex);
+	*pgnoaddr = mfp->last_pgno;
+	MUTEX_UNLOCK(dbenv, mfp->mutex);
 
 	return (0);
 }

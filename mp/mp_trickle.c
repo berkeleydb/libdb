@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mp_trickle.c,v 12.4 2005/10/07 20:21:33 ubell Exp $
+ * $Id: mp_trickle.c,v 12.9 2006/08/24 14:46:15 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
@@ -57,8 +50,8 @@ __memp_trickle(dbenv, pct, nwrotep)
 {
 	DB_MPOOL *dbmp;
 	MPOOL *c_mp, *mp;
-	u_int32_t dirty, i, total, dtmp, wrote;
-	int n, ret;
+	u_int32_t clean, dirty, i, need_clean, total, dtmp, wrote;
+	int ret;
 
 	dbmp = dbenv->mp_handle;
 	mp = dbmp->reginfo[0].primary;
@@ -66,20 +59,21 @@ __memp_trickle(dbenv, pct, nwrotep)
 	if (nwrotep != NULL)
 		*nwrotep = 0;
 
-	if (pct < 1 || pct > 100)
+	if (pct < 1 || pct > 100) {
+		__db_errx(dbenv,
+	    "DB_ENV->memp_trickle: %d: percent must be between 1 and 100",
+		    pct);
 		return (EINVAL);
+	}
 
 	/*
-	 * If there are sufficient clean buffers, no buffers or no dirty
-	 * buffers, we're done.
+	 * Loop through the caches counting total/dirty buffers.
 	 *
 	 * XXX
 	 * Using hash_page_dirty is our only choice at the moment, but it's not
 	 * as correct as we might like in the presence of pools having more
-	 * than one page size, as a free 512B buffer isn't the same as a free
-	 * 8KB buffer.
-	 *
-	 * Loop through the caches counting total/dirty buffers.
+	 * than one page size, as a free 512B buffer may not be equivalent to
+	 * having a free 8KB buffer.
 	 */
 	for (ret = 0, i = dirty = total = 0; i < mp->nreg; ++i) {
 		c_mp = dbmp->reginfo[i].primary;
@@ -89,15 +83,20 @@ __memp_trickle(dbenv, pct, nwrotep)
 	}
 
 	/*
-	 * !!!
-	 * Be careful in modifying this calculation, total may be 0.
+	 * If there are sufficient clean buffers, no buffers or no dirty
+	 * buffers, we're done.
 	 */
-	n = ((total * (u_int)pct) / 100) - (total - dirty);
-	if (dirty == 0 || n <= 0)
+	if (total == 0 || dirty == 0)
 		return (0);
 
+	clean = total - dirty;
+	need_clean = (total * (u_int)pct) / 100;
+	if (clean >= need_clean)
+		return (0);
+
+	need_clean -= clean;
 	ret = __memp_sync_int(
-	    dbenv, NULL, (u_int32_t)n, DB_SYNC_TRICKLE, &wrote);
+	    dbenv, NULL, need_clean, DB_SYNC_TRICKLE, &wrote);
 	mp->stat.st_page_trickle += wrote;
 	if (nwrotep != NULL)
 		*nwrotep = (int)wrote;

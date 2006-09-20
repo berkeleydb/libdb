@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: txn012script.tcl,v 12.1 2005/05/23 17:16:42 carol Exp $
+# $Id: txn012script.tcl,v 12.4 2006/08/24 14:46:41 bostic Exp $
 #
 # Script to check that txn names can be seen across processes.
-# Names over 50 characters will be truncated. 
+# Names over 50 characters will be truncated.
 #
 # Usage: txn012script dir txnname longtxnname
 

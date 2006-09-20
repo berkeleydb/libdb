@@ -1,14 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_verify.h,v 12.4 2005/06/16 20:21:47 bostic Exp $
+ * $Id: db_verify.h,v 12.9 2006/09/08 21:57:14 bostic Exp $
  */
 
 #ifndef _DB_VERIFY_H_
 #define	_DB_VERIFY_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*
  * Structures and macros for the storage and retrieval of all information
@@ -21,14 +25,8 @@
  */
 #define	EPRINT(x) do {							\
 	if (!LF_ISSET(DB_SALVAGE))					\
-		__db_err x;						\
+		__db_errx x;						\
 } while (0)
-
-/* For fatal type errors--i.e., verifier bugs. */
-#define	TYPE_ERR_PRINT(dbenv, func, pgno, ptype)			\
-	EPRINT(((dbenv),						\
-	    "Page %lu: %s called on nonsensical page of type %lu",	\
-	    (u_long)(pgno), (func), (u_long)(ptype)));
 
 /* Complain about a totally zeroed page where we don't expect one. */
 #define	ZEROPG_ERR_PRINT(dbenv, pgno, str) do {				\
@@ -215,4 +213,7 @@ struct __vrfy_childinfo {
 	LIST_ENTRY(__vrfy_childinfo) links;
 }; /* VRFY_CHILDINFO */
 
+#if defined(__cplusplus)
+}
+#endif
 #endif /* !_DB_VERIFY_H_ */

@@ -1,21 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: mut_fcntl.c,v 12.13 2005/11/01 14:42:17 bostic Exp $
+ * $Id: mut_fcntl.c,v 12.20 2006/08/24 14:46:16 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/mutex_int.h"
@@ -81,7 +73,7 @@ __db_fcntl_mutex_lock(dbenv, mutex)
 		 * up to 1 second.
 		 */
 		for (ms = 1; F_ISSET(mutexp, DB_MUTEX_LOCKED);) {
-			__os_yield(NULL, ms * USEC_PER_MS);
+			__os_sleep(NULL, 0, ms * USEC_PER_MS);
 			if ((ms <<= 1) > MS_PER_SEC)
 				ms = MS_PER_SEC;
 		}
@@ -124,13 +116,13 @@ __db_fcntl_mutex_lock(dbenv, mutex)
 	 * we get a mutex to ensure contention.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-		__os_yield(NULL, 1);
+		__os_yield(dbenv);
 #endif
 	return (0);
 
-err:	ret = __os_get_errno();
-	__db_err(dbenv, "fcntl lock failed: %s", db_strerror(ret));
-	return (__db_panic(dbenv, ret));
+err:	ret = __os_get_syserr();
+	__db_syserr(dbenv, ret, "fcntl lock failed");
+	return (__db_panic(dbenv, __os_posix_err(ret)));
 }
 
 /*
@@ -157,7 +149,7 @@ __db_fcntl_mutex_unlock(dbenv, mutex)
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_err(dbenv, "fcntl unlock failed: lock already unlocked");
+		__db_errx(dbenv, "fcntl unlock failed: lock already unlocked");
 		return (__db_panic(dbenv, EACCES));
 	}
 #endif
@@ -165,7 +157,7 @@ __db_fcntl_mutex_unlock(dbenv, mutex)
 	/*
 	 * Release the resource.  We don't have to acquire any locks because
 	 * processes trying to acquire the lock are waiting for the flag to
-	 * go to 0.  Once that happens the waiters will serialize acquiring 
+	 * go to 0.  Once that happens the waiters will serialize acquiring
 	 * an exclusive kernel lock before locking the mutex.
 	 */
 	F_CLR(mutexp, DB_MUTEX_LOCKED);

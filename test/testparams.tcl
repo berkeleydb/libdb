@@ -1,13 +1,17 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2000-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: testparams.tcl,v 12.50 2005/11/07 20:19:13 carol Exp $
+# $Id: testparams.tcl,v 12.82 2006/09/08 20:32:18 bostic Exp $
 
+source ./include.tcl
+global is_freebsd_test
+global tcl_platform
+global rpc_tests
 global one_test
 global serial_tests
-set serial_tests {rep002 rep005 rep016 rep020 rep026 rep031}
+set serial_tests {rep002 rep005 rep016 rep020 rep022 rep026 rep031 rep063}
 
 set subs {bigfile dead env fop lock log memp plat recd rep rpc rsrc\
 	sdb sdbtest sec si test txn}
@@ -16,18 +20,18 @@ set test_names(bigfile)	[list bigfile001 bigfile002]
 set test_names(compact) [list test111 test112 test113 test114 test115 test117]
 set test_names(dead)    [list dead001 dead002 dead003 dead004 dead005 dead006 \
     dead007]
-set test_names(elect)	[list rep002 rep005 rep016 rep020 rep022]
+set test_names(elect)	[list rep002 rep005 rep016 rep020 rep022 rep026 rep063]
 set test_names(env)	[list env001 env002 env003 env004 env005 env006 \
-    env007 env008 env009 env010 env011 env012 env013 env014]
+    env007 env008 env009 env010 env011 env012 env013 env014 env015]
 set test_names(fop)	[list fop001 fop002 fop003 fop004 fop005 fop006 \
     fop007 fop008]
 set test_names(init)	[list rep029 rep030 rep031 rep033 rep037 rep038 rep039\
-    rep055]
+    rep055 rep060 rep061 rep062]
 set test_names(inmemdb)	[list fop007 fop008 rep056 rep057 sdb013 sdb014 \
     sdb015 sdb016 sdb017 sdb018 sdb019 sdb020]
 set test_names(lock)    [list lock001 lock002 lock003 lock004 lock005 lock006]
 set test_names(log)     [list log001 log002 log003 log004 log005 log006 \
-    log007]
+    log007 log008 log009]
 set test_names(memp)	[list memp001 memp002 memp003 memp004]
 set test_names(plat)	[list plat001]
 set test_names(recd)	[list recd001 recd002 recd003 recd004 recd005 recd006 \
@@ -42,8 +46,9 @@ set test_names(rep)	[list rep001 rep002 rep003 rep005 rep006 rep007 \
     rep008 rep009 rep010 rep011 rep012 rep013 rep014 rep015 rep016 rep017 \
     rep018 rep019 rep020 rep021 rep022 rep023 rep024 rep025 rep026 rep027 \
     rep028 rep029 rep030 rep031 rep032 rep033 rep034 rep035 rep036 rep037 \
-    rep038 rep039 rep040 rep041 rep042 rep045 rep046 rep047 rep048 \
-    rep049 rep050 rep051 rep052 rep053 rep054 rep055 rep056 rep057 rep058]
+    rep038 rep039 rep040 rep041 rep042 rep043 rep044 rep045 rep046 rep047 \
+    rep048 rep049 rep050 rep051 rep052 rep053 rep054 rep055 rep056 rep057 \
+    rep058 rep060 rep061 rep062 rep063 rep064 rep065 rep066]
 set test_names(rpc)	[list rpc001 rpc002 rpc003 rpc004 rpc005 rpc006]
 set test_names(rsrc)	[list rsrc001 rsrc002 rsrc003 rsrc004]
 set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
@@ -64,13 +69,38 @@ set test_names(test)	[list test001 test002 test003 test004 test005 \
     test078 test079 test081 test082 test083 test084 test085 test086 \
     test087 test088 test089 test090 test091 test092 test093 test094 test095 \
     test096 test097 test098 test099 test100 test101 test102 test103 test107 \
-    test109 test110 test111 test112 test113 test114 test115 test116 test117]
+    test109 test110 test111 test112 test113 test114 test115 test116 test117 \
+    test119 test120 test121 test122]
 set test_names(txn)	[list txn001 txn002 txn003 txn004 txn005 txn006 \
-    txn007 txn008 txn009 txn010 txn011 txn012]
+    txn007 txn008 txn009 txn010 txn011 txn012 txn013]
 
 set rpc_tests(berkeley_db_svc) [concat $test_names(test) $test_names(sdb)]
 set rpc_tests(berkeley_db_cxxsvc) $test_names(test)
 set rpc_tests(berkeley_db_javasvc) $test_names(test)
+
+# FreeBSD, in version 5.4, has problems dealing with large messages
+# over RPC.  Exclude those tests.  We believe these problems are
+# resolved for later versions.  SR [#13542]
+set freebsd_skip_tests_for_rpc [list test003 test008 test009 test012 test017 \
+    test028 test081 test095 test102 test103 test119 sdb004 sdb011]
+set freebsd_5_4 0
+if { $is_freebsd_test } {
+	set version $tcl_platform(osVersion)
+	if { [is_substr $version "5.4"] } {
+		set freebsd_5_4 1
+	}
+}
+if { $freebsd_5_4 } {
+	foreach svc {berkeley_db_svc berkeley_db_cxxsvc berkeley_db_javasvc} {
+		foreach test $freebsd_skip_tests_for_rpc {
+			set idx [lsearch -exact $rpc_tests($svc) $test]
+			if { $idx >= 0 } {
+				set rpc_tests($svc)\
+				    [lreplace $rpc_tests($svc) $idx $idx]
+			}
+		}
+	}
+}
 
 # JE tests are a subset of regular RPC tests -- exclude these ones.
 # be fixable by modifying tests dealing with unsorted duplicates, second line
@@ -184,10 +214,9 @@ set parms(rep038) {200 "038"}
 set parms(rep039) {200 "039"}
 set parms(rep040) {200 "040"}
 set parms(rep041) {500 "041"}
-set parms(rep042) {20 "042"}
-set parms(rep043) {10 "042"}
+set parms(rep042) {10 "042"}
 set parms(rep043) {25 "043"}
-set parms(rep044) ""
+set parms(rep044) {"044"}
 set parms(rep045) {"045"}
 set parms(rep046) {200 "046"}
 set parms(rep047) {200 "047"}
@@ -202,6 +231,12 @@ set parms(rep055) {200 "055"}
 set parms(rep056) ""
 set parms(rep057) ""
 set parms(rep058) "058"
+set parms(rep060) {200 "060"}
+set parms(rep061) {500 "061"}
+set parms(rep062) "062"
+set parms(rep063) ""
+set parms(rep064) {10 "064"}
+set parms(rep065} {3}
 set parms(subdb001) ""
 set parms(subdb002) 10000
 set parms(subdb003) 1000
@@ -353,6 +388,10 @@ set parms(test114) {10000 "114"}
 set parms(test115) {10000 "115"}
 set parms(test116) {"116"}
 set parms(test117) {10000 "117"}
+set parms(test119) {"119"}
+set parms(test120) {"120"}
+set parms(test121) {"121"}
+set parms(test122) {"122"}
 
 # RPC server executables.  Each of these is tested (if it exists)
 # when running the RPC tests.

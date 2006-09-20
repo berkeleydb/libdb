@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: log_debug.c,v 1.5 2005/10/14 01:17:09 bostic Exp $
+ * $Id: log_debug.c,v 1.9 2006/08/24 14:46:12 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -143,7 +136,7 @@ __log_printf_int(dbenv, txnid, fmt, ap)
 	char __logbuf[2048];	/* !!!: END OF THE STACK DON'T TRUST SPRINTF. */
 
 	if (!DBENV_LOGGING(dbenv)) {
-		__db_err(dbenv, "Logging not currently permitted");
+		__db_errx(dbenv, "Logging not currently permitted");
 		return (EAGAIN);
 	}
 

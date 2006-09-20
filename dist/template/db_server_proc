@@ -1,16 +1,10 @@
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <rpc/rpc.h>
-
-#include <string.h>
-#endif
-
-#include "db_server.h"
-
 #include "db_int.h"
+#ifndef NO_SYSTEM_INCLUDES
+#include <rpc/rpc.h>
+#endif
+#include "db_server.h"
 #include "dbinc/db_server_int.h"
 
 /* BEGIN __env_create_proc */
@@ -22,6 +16,28 @@ __env_create_proc(timeout, replyp)
 {
 	int ret;
 
+
+	/*
+	 * XXX Code goes here
+	 */
+
+	replyp->status = ret;
+	return;
+}
+
+/* BEGIN __env_cdsgroup_begin_proc */
+void
+__env_cdsgroup_begin_proc(dbenvcl_id, replyp)
+	unsigned int dbenvcl_id;
+	__env_cdsgroup_begin_reply *replyp;
+/* END __env_cdsgroup_begin_proc */
+{
+	int ret;
+	DB_ENV * dbenv;
+	ct_entry *dbenv_ctp;
+
+	ACTIVATE_CTP(dbenv_ctp, dbenvcl_id, CT_ENV);
+	dbenv = (DB_ENV *)dbenv_ctp->ct_anyp;
 
 	/*
 	 * XXX Code goes here

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep020.tcl,v 12.5 2005/10/18 19:04:17 carol Exp $
+# $Id: rep020.tcl,v 12.10 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST  rep020
 # TEST	Replication elections - test election generation numbers.
@@ -13,11 +13,17 @@ proc rep020 { method args } {
 	global rand_init
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
 	set tnum "020"
+
+	# Run for btree only.
+	if { $checking_valid_methods } {
+		set test_methods { btree }
+		return $test_methods
+	}
 	if { [is_btree $method] == 0 } {
 		puts "Rep$tnum: Skipping for method $method."
 		return

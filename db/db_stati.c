@@ -1,35 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_stati.c,v 12.10 2005/11/08 03:13:31 bostic Exp $
+ * $Id: db_stati.c,v 12.21 2006/08/24 14:45:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/qam.h"
@@ -156,14 +137,7 @@ __db_stat_arg(dbp, flags)
 	switch (flags) {
 	case 0:
 	case DB_FAST_STAT:
-	case DB_CACHED_COUNTS:		/* Deprecated and undocumented. */
 		break;
-	case DB_RECORDCOUNT:		/* Deprecated and undocumented. */
-		if (dbp->type == DB_RECNO)
-			break;
-		if (dbp->type == DB_BTREE && F_ISSET(dbp, DB_AM_RECNUM))
-			break;
-		/* FALLTHROUGH */
 	default:
 		return (__db_ferr(dbenv, "DB->stat", 0));
 	}
@@ -229,11 +203,12 @@ __db_stat_print(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
-	int ret;
 	time_t now;
+	int ret;
+	char time_buf[CTIME_BUFLEN];
 
 	(void)time(&now);
-	__db_msg(dbp->dbenv, "%.24s\tLocal time", ctime(&now));
+	__db_msg(dbp->dbenv, "%.24s\tLocal time", __db_ctime(&now, time_buf));
 
 	if (LF_ISSET(DB_STAT_ALL) && (ret = __db_print_all(dbp, flags)) != 0)
 		return (ret);
@@ -331,6 +306,7 @@ __db_print_all(dbp, flags)
 		{ 0,				NULL }
 	};
 	DB_ENV *dbenv;
+	char time_buf[CTIME_BUFLEN];
 
 	dbenv = dbp->dbenv;
 
@@ -361,7 +337,7 @@ __db_print_all(dbp, flags)
 
 	__db_msg(dbenv,
 	    "%.24s\tReplication handle timestamp",
-	    dbp->timestamp == 0 ? "0" : ctime(&dbp->timestamp));
+	    dbp->timestamp == 0 ? "0" : __db_ctime(&dbp->timestamp, time_buf));
 
 	STAT_ISSET("Secondary callback", dbp->s_callback);
 	STAT_ISSET("Primary handle", dbp->s_primary);
@@ -404,18 +380,15 @@ __db_print_cursor(dbp)
 	ret = 0;
 	MUTEX_LOCK(dbp->dbenv, dbp->mutex);
 	__db_msg(dbenv, "Active queue:");
-	for (dbc = TAILQ_FIRST(&dbp->active_queue);
-	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links))
+	TAILQ_FOREACH(dbc, &dbp->active_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
 	__db_msg(dbenv, "Join queue:");
-	for (dbc = TAILQ_FIRST(&dbp->join_queue);
-	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links))
+	TAILQ_FOREACH(dbc, &dbp->join_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
 	__db_msg(dbenv, "Free queue:");
-	for (dbc = TAILQ_FIRST(&dbp->free_queue);
-	    dbc != NULL; dbc = TAILQ_NEXT(dbc, links))
+	TAILQ_FOREACH(dbc, &dbp->free_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
 	MUTEX_UNLOCK(dbp->dbenv, dbp->mutex);
@@ -429,7 +402,7 @@ int __db_print_citem(dbc)
 {
 	static const FN fn[] = {
 		{ DBC_ACTIVE,		"DBC_ACTIVE" },
-		{ DBC_COMPENSATE,	"DBC_COMPENSATE" },
+		{ DBC_DONTLOCK,		"DBC_DONTLOCK" },
 		{ DBC_MULTIPLE,		"DBC_MULTIPLE" },
 		{ DBC_MULTIPLE_KEY,	"DBC_MULTIPLE_KEY" },
 		{ DBC_OPD,		"DBC_OPD" },
@@ -477,7 +450,7 @@ int __db_print_citem(dbc)
 		__ham_print_cursor(dbc);
 		break;
 	case DB_UNKNOWN:
-		DB_ASSERT(dbp->type != DB_UNKNOWN);
+		DB_ASSERT(dbenv, dbp->type != DB_UNKNOWN);
 		/* FALLTHROUGH */
 	case DB_QUEUE:
 	default:

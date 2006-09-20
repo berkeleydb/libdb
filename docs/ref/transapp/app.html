@@ -1,5 +1,5 @@
-<!--$Id: app.so,v 10.24 2005/10/28 19:29:43 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: app.so,v 10.28 2006/02/28 16:30:53 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -153,13 +153,14 @@ action, recovering the environment.</p>
 <p>The Berkeley DB library includes one built-in implementation of this approach,
 the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method's <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag:</p>
 <p>If the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag is set, each process opening the
-database environment first checks that no other process has failed while
-holding an open <a href="../../api_c/env_class.html">DB_ENV</a> handle.  If failure is detected and either
-<a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> or <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> is also specified,
-recovery will be performed and then the open will proceed normally.  If
-failure is detected and no recovery flag is specified,
-<a href="../../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> will be returned.  If no failure is detected,
-<a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> and <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> will be ignored.</p>
+database environment first checks to see if recovery needs to be
+performed.  If recovery needs to be performed for any reason (including
+the initial creation of the database environment), and
+<a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> is also specified, recovery will be performed and
+then the open will proceed normally.  If recovery needs to be performed
+and <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> is not specified, <a href="../../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> will be
+returned.  If recovery does not need to be performed, <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a>
+will be ignored.</p>
 <p>There are two additional requirements for the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a>
 architecture to work: First, all applications using the database
 environment must specify the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag when opening the
@@ -167,9 +168,10 @@ environment.  However, there is no additional requirement the
 application choose a single process to recover the environment, as the
 first process to open the database environment will know to perform
 recovery.  Second, there can only be a single <a href="../../api_c/env_class.html">DB_ENV</a> handle per
-environment.  As the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> locking is per-process, not
-per-thread, multiple <a href="../../api_c/env_class.html">DB_ENV</a> handles in a single environment could
-race with each other, potentially causing data corruption.</p>
+database environment in each process.  As the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a>
+locking is per-process, not per-thread, multiple <a href="../../api_c/env_class.html">DB_ENV</a> handles
+in a single environment could race with each other, potentially causing
+data corruption.</p>
 <p>A second solution for groups of unrelated processes is also based on a
 "watcher process".  This solution is intended for systems where it is
 not practical to monitor the processes sharing a database environment,
@@ -209,6 +211,6 @@ control, it is important the watcher process' code be as simple and
 well-tested as possible, because the application may hang if it fails.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/fail.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

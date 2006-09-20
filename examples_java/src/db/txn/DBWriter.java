@@ -19,7 +19,7 @@ import com.sleepycat.db.Transaction;
 import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
-public class DBWriter extends Thread 
+public class DBWriter extends Thread
 {
     private Database myDb = null;
     private Environment myEnv = null;
@@ -40,7 +40,7 @@ public class DBWriter extends Thread
     // This consturctor allows us to indicate whether the
     // txn handle should be handed to countRecords()
     DBWriter(Environment env, Database db, StoredClassCatalog scc,
-        boolean passtxn) 
+        boolean passtxn)
 
         throws DatabaseException {
         myDb = db;
@@ -51,7 +51,7 @@ public class DBWriter extends Thread
     }
 
     // Constructor. Get our DB handles from here
-    DBWriter(Environment env, Database db, StoredClassCatalog scc) 
+    DBWriter(Environment env, Database db, StoredClassCatalog scc)
 
         throws DatabaseException {
         myDb = db;
@@ -87,7 +87,7 @@ public class DBWriter extends Thread
                         StringBinding.stringToEntry(keys[j], key);
 
                         // Get the data
-                        PayloadData pd = new PayloadData(i+j, getName(), 
+                        PayloadData pd = new PayloadData(i+j, getName(),
                             generator.nextDouble());
                         DatabaseEntry data = new DatabaseEntry();
                         dataBinding.objectToEntry(pd, data);
@@ -99,7 +99,7 @@ public class DBWriter extends Thread
                     // commit
                     System.out.println(getName() + " : committing txn : " + i);
 
-                    // This code block allows us to decide if txn handle is 
+                    // This code block allows us to decide if txn handle is
                     // passed to countRecords()
                     //
                     // TxnGuideInMemory requires a txn handle be handed to
@@ -115,22 +115,22 @@ public class DBWriter extends Thread
                         txn.commit();
                         txn = null;
                     } catch (DatabaseException e) {
-                        System.err.println("Error on txn commit: " + 
+                        System.err.println("Error on txn commit: " +
                             e.toString());
-                    } 
+                    }
                     retry = false;
 
                 } catch (DeadlockException de) {
-                    System.out.println("################# " + getName() + 
+                    System.out.println("################# " + getName() +
                         " : caught deadlock");
                     // retry if necessary
                     if (retry_count < MAX_RETRY) {
-                        System.err.println(getName() + 
+                        System.err.println(getName() +
                             " : Retrying operation.");
                         retry = true;
                         retry_count++;
                     } else {
-                        System.err.println(getName() + 
+                        System.err.println(getName() +
                             " : out of retries. Giving up.");
                         retry = false;
                     }
@@ -147,7 +147,7 @@ public class DBWriter extends Thread
                         try {
                             txn.abort();
                         } catch (Exception e) {
-                            System.err.println("Error aborting transaction: " + 
+                            System.err.println("Error aborting transaction: " +
                                 e.toString());
                             e.printStackTrace();
                         }
@@ -168,7 +168,7 @@ public class DBWriter extends Thread
     // Third, call countRecords AFTER the writer has committed
     //    its transaction.
     //
-    // If you do none of these things, the writer thread will 
+    // If you do none of these things, the writer thread will
     // self-deadlock.
     //
     // Note that this method exists only for illustrative purposes.
@@ -200,6 +200,6 @@ public class DBWriter extends Thread
         }
 
         return count;
-        
+
     }
 }

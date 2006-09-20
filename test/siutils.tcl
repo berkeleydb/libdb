@@ -1,9 +1,9 @@
 #See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: siutils.tcl,v 12.1 2005/06/16 20:24:05 bostic Exp $
+# $Id: siutils.tcl,v 12.3 2006/08/24 14:46:39 bostic Exp $
 #
 # Secondary index utilities.  This file used to be known as
 # sindex.tcl.

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: plat001.tcl,v 1.2 2005/06/16 20:23:57 bostic Exp $
+# $Id: plat001.tcl,v 1.5 2006/08/24 14:46:36 bostic Exp $
 #
 # TEST	plat001
 # TEST
@@ -47,7 +47,7 @@ proc plat001 { method {tnum "001"} args } {
 	cleanup $testdir $env
 
 	# Make the key numeric so we can test record-based methods.
-	set key 1 
+	set key 1
 
 	puts "\tPlat$tnum.a: Create $method db with a sequence."
 	set db [eval {berkdb_open -create -mode 0644} $args $omethod $testfile]
@@ -61,7 +61,7 @@ proc plat001 { method {tnum "001"} args } {
 	error_check_good is_valid_seq [is_valid_seq $seq] TRUE
 
 	error_check_good seq_close [$seq close] 0
-	error_check_good db_close [$db close] 0   
+	error_check_good db_close [$db close] 0
 
 	puts "\tPlat$tnum.b: Dump the db."
 	set stat [catch {eval {exec $util_path/db_dump} -f $testdump \

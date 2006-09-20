@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: envscript.tcl,v 12.2 2005/06/16 20:23:53 bostic Exp $
+# $Id: envscript.tcl,v 12.5 2006/08/24 14:46:35 bostic Exp $
 #
 # Envscript -- for use with env012, DB_REGISTER test.
 # Usage: envscript testdir testfile putget key data recover envclose wait
-# testdir: directory containing the env we are joining. 
+# testdir: directory containing the env we are joining.
 # testfile: file name for database.
 # putget: What to do in the db: put, get, or loop.
 # key: key to store or get
@@ -66,7 +66,7 @@ switch $putget {
 	}
 	LOOP {
 		while { 1 } {
-			set txn [$dbenv txn] 
+			set txn [$dbenv txn]
 			error_check_good db_put \
 			    [eval {$db put} -txn $txn $key $data] 0
 			error_check_good txn_commit [$txn commit] 0
@@ -75,7 +75,7 @@ switch $putget {
 	}
 	default {
 		puts "FAIL: Unrecognized putget value $putget"
-	} 
+	}
 }
 
 error_check_good db_close [$db close] 0

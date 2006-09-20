@@ -6,7 +6,7 @@
     <title>Configuring the Transaction Subsystem</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
     <link rel="previous" href="txnindices.html" title="Secondary Indices with Transaction Applications" />
     <link rel="next" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
@@ -36,11 +36,11 @@
       </div>
       <p>
             Most of the configuration activities that you need to perform
-            for your transactional JE application will involve the
+            for your transactional DB application will involve the
             locking and logging subsystems. See 
             <a href="txnconcurrency.html">Concurrency</a>
             and
-            <a href="filemanagement.html">Managing JE Files</a>
+            <a href="filemanagement.html">Managing DB Files</a>
             for details.
         </p>
       <p>
@@ -55,8 +55,12 @@
                     Configure the maximum number of simultaneous
                     transactions needed by your application. 
                     In general, you should not need to do this unless you
-                    use deeply nest transactions or have many threads all
-                    of which have active transactions.
+                    use deeply nested transactions or you have many threads all
+                    of which have active transactions. In addition, you may
+                    need to a higher maximum number of transactions if you
+                    are using snapshot isolation. See
+                    <a href="isolation.html#sisolation_maxtxn">Snapshot Isolation Transactional Requirements</a>
+                    for details.
                 </p>
             <p>
                     By default, your application can support 20 active
@@ -92,11 +96,11 @@
                     
                     This value represents the longest period of time a
                     transaction can be active. Note, however, that
-                    transaction timeouts are checked only when JE
+                    transaction timeouts are checked only when DB
                     examines its lock tables for blocked locks
                     (see <a href="blocking_deadlocks.html">Locks, Blocks, and Deadlocks</a>
                     for more information). Therefore, a transaction's timeout can
-                    have expired, but the application will not be notified until JE 
+                    have expired, but the application will not be notified until DB 
                     has a reason to examine its lock tables.
                 </p>
                 <p>
@@ -110,6 +114,10 @@
                     (This might happen if, for example, your
                     transaction blocks or requests too much
                     data.)
+                </p>
+                <p>
+                    Note that by default transaction timeouts are set to 0 seconds, which means that they never time
+                    out.
                 </p>
                 <p>
                     To set the maximum timeout value for your transactions,

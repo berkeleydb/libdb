@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: bench_001.c,v 12.2 2005/11/07 17:41:46 bostic Exp $
+ * $Id: bench_001.c,v 12.5 2006/08/24 14:45:41 bostic Exp $
  */
 
 /*
@@ -35,7 +35,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+extern int getopt(int, char * const *, const char *);
+#else
 #include <unistd.h>
+#endif
 
 #include <db.h>
 

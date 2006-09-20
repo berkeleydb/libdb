@@ -1,30 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: txn_region.c,v 12.10 2005/10/14 21:12:18 ubell Exp $
+ * $Id: txn_region.c,v 12.20 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/log.h"
@@ -74,7 +57,7 @@ __txn_open(dbenv)
 
 	/* If threaded, acquire a mutex to protect the active TXN list. */
 	if ((ret = __mutex_alloc(
-	    dbenv, MTX_TXN_ACTIVE, DB_MUTEX_THREAD, &mgr->mutex)) != 0)
+	    dbenv, MTX_TXN_ACTIVE, DB_MUTEX_PROCESS_ONLY, &mgr->mutex)) != 0)
 		goto err;
 
 	dbenv->tx_handle = mgr;
@@ -125,7 +108,7 @@ __txn_init(dbenv, mgr)
 
 	if ((ret = __db_shalloc(&mgr->reginfo,
 	    sizeof(DB_TXNREGION), 0, &mgr->reginfo.primary)) != 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Unable to allocate memory for the transaction region");
 		return (ret);
 	}
@@ -152,6 +135,7 @@ __txn_init(dbenv, mgr)
 	region->stat.st_maxtxns = region->maxtxns;
 
 	SH_TAILQ_INIT(&region->active_txn);
+	SH_TAILQ_INIT(&region->mvcc_txn);
 	return (ret);
 }
 
@@ -256,34 +240,29 @@ __txn_dbenv_refresh(dbenv)
 			txnid = txn->txnid;
 			if (((TXN_DETAIL *)txn->td)->status == TXN_PREPARED) {
 				if ((ret = __txn_discard_int(txn, 0)) != 0) {
-					__db_err(dbenv,
-					    "Unable to discard txn 0x%x: %s",
-					    txnid, db_strerror(ret));
+					__db_err(dbenv, ret,
+					    "unable to discard txn %#lx",
+					    (u_long)txnid);
 					break;
 				}
 				continue;
 			}
 			aborted = 1;
 			if ((t_ret = __txn_abort(txn)) != 0) {
-				__db_err(dbenv,
-				    "Unable to abort transaction 0x%x: %s",
-				    txnid, db_strerror(t_ret));
+				__db_err(dbenv, t_ret,
+				    "unable to abort transaction %#lx",
+				    (u_long)txnid);
 				ret = __db_panic(dbenv, t_ret);
 				break;
 			}
 		}
 		if (aborted) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 	"Error: closing the transaction region with active transactions");
 			if (ret == 0)
 				ret = EINVAL;
 		}
 	}
-
-	/* Flush the log. */
-	if (LOGGING_ON(dbenv) &&
-	    (t_ret = __log_flush(dbenv, NULL)) != 0 && ret == 0)
-		ret = t_ret;
 
 	/* Discard the per-thread lock. */
 	if ((t_ret = __mutex_free(dbenv, &mgr->mutex)) != 0 && ret == 0)
@@ -343,14 +322,115 @@ __txn_id_set(dbenv, cur_txnid, max_txnid)
 
 	ret = 0;
 	if (cur_txnid < TXN_MINIMUM) {
-		__db_err(dbenv, "Current ID value %lu below minimum",
+		__db_errx(dbenv, "Current ID value %lu below minimum",
 		    (u_long)cur_txnid);
 		ret = EINVAL;
 	}
 	if (max_txnid < TXN_MINIMUM) {
-		__db_err(dbenv, "Maximum ID value %lu below minimum",
+		__db_errx(dbenv, "Maximum ID value %lu below minimum",
 		    (u_long)max_txnid);
 		ret = EINVAL;
 	}
+	return (ret);
+}
+
+/*
+ * __txn_oldest_reader --
+ *	 Find the oldest "read LSN" of any active transaction'
+ *	 MVCC changes older than this can safely be discarded from the cache.
+ *
+ * PUBLIC: int __txn_oldest_reader __P((DB_ENV *, DB_LSN *));
+ */
+int
+__txn_oldest_reader(dbenv, lsnp)
+	DB_ENV *dbenv;
+	DB_LSN *lsnp;
+{
+	DB_LSN old_lsn;
+	DB_TXNMGR *mgr;
+	DB_TXNREGION *region;
+	TXN_DETAIL *td;
+	int ret;
+
+	if ((mgr = dbenv->tx_handle) == NULL)
+		return (0);
+	region = mgr->reginfo.primary;
+
+	if ((ret = __log_current_lsn(dbenv, &old_lsn, NULL, NULL)) != 0)
+		return (ret);
+
+	TXN_SYSTEM_LOCK(dbenv);
+	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
+		if (LOG_COMPARE(&td->read_lsn, &old_lsn) < 0)
+			old_lsn = td->read_lsn;
+	TXN_SYSTEM_UNLOCK(dbenv);
+
+	DB_ASSERT(dbenv, LOG_COMPARE(&old_lsn, lsnp) >= 0);
+	*lsnp = old_lsn;
+
+	return (0);
+}
+
+/*
+ * __txn_add_buffer --
+ *	Add to the count of buffers created by the given transaction.
+ *
+ * PUBLIC: int __txn_add_buffer __P((DB_ENV *, TXN_DETAIL *));
+ */
+int __txn_add_buffer(dbenv, td)
+	DB_ENV *dbenv;
+	TXN_DETAIL *td;
+{
+	DB_ASSERT(dbenv, td != NULL);
+
+	MUTEX_LOCK(dbenv, td->mvcc_mtx);
+	DB_ASSERT(dbenv, td->mvcc_ref < UINT32_MAX);
+	++td->mvcc_ref;
+	MUTEX_UNLOCK(dbenv, td->mvcc_mtx);
+
+	return (0);
+}
+
+/*
+ * __txn_remove_buffer --
+ *	Remove a buffer from a transaction -- free the transaction if necessary.
+ *
+ * PUBLIC: int __txn_remove_buffer __P((DB_ENV *, TXN_DETAIL *, db_mutex_t));
+ */
+int __txn_remove_buffer(dbenv, td, hash_mtx)
+	DB_ENV *dbenv;
+	TXN_DETAIL *td;
+	db_mutex_t hash_mtx;
+{
+	DB_TXNMGR *mgr;
+	DB_TXNREGION *region;
+	int need_free, ret;
+
+	DB_ASSERT(dbenv, td != NULL);
+	ret = 0;
+	mgr = dbenv->tx_handle;
+	region = mgr->reginfo.primary;
+
+	MUTEX_LOCK(dbenv, td->mvcc_mtx);
+	DB_ASSERT(dbenv, td->mvcc_ref > 0);
+	need_free = (--td->mvcc_ref == 0);
+	MUTEX_UNLOCK(dbenv, td->mvcc_mtx);
+
+	if (need_free &&
+	    (td->status == TXN_COMMITTED || td->status == TXN_ABORTED)) {
+		MUTEX_UNLOCK(dbenv, hash_mtx);
+
+		ret = __mutex_free(dbenv, &td->mvcc_mtx);
+		td->mvcc_mtx = MUTEX_INVALID;
+
+		TXN_SYSTEM_LOCK(dbenv);
+		SH_TAILQ_REMOVE(&region->mvcc_txn, td, links, __txn_detail);
+		--region->stat.st_nsnapshot;
+		__db_shalloc_free(&mgr->reginfo, td);
+		TXN_SYSTEM_UNLOCK(dbenv);
+
+		MUTEX_LOCK(dbenv, hash_mtx);
+	}
+
 	return (ret);
 }

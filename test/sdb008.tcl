@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb008.tcl,v 12.1 2005/06/16 20:24:04 bostic Exp $
+# $Id: sdb008.tcl,v 12.3 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	sdb008
 # TEST	Tests explicit setting of lorders for subdatabases -- the

@@ -62,6 +62,7 @@ import java.util.Comparator;
 	public Environment wrapper;
 
 	private LogRecordHandler app_dispatch_handler;
+	private EventHandler event_notify_handler;
 	private FeedbackHandler env_feedback_handler;
 	private ErrorHandler error_handler;
 	private String errpfx;
@@ -109,6 +110,14 @@ import java.util.Comparator;
 
 	public LogRecordHandler get_app_dispatch() {
 		return app_dispatch_handler;
+	}
+
+	private final int handle_event_notify(int event) {
+		return event_notify_handler.handleEvent(EventType.fromInt(event));
+	}
+
+	public EventHandler get_event_notify() {
+		return event_notify_handler;
 	}
 
 	private final void handle_env_feedback(int opcode, int percent) {
@@ -262,6 +271,10 @@ import java.util.Comparator;
 		dbenv = null;
 	}
 
+	public boolean getPrivateDbEnv() {
+		return private_dbenv;
+	}
+
 	public synchronized void close(int flags) throws DatabaseException {
 		try {
 			close0(flags);
@@ -269,7 +282,7 @@ import java.util.Comparator;
 			cleanup();
 		}
 	}
-	
+
 	public DbEnv get_env() throws DatabaseException {
 		return dbenv;
 	}
@@ -562,13 +575,13 @@ JNIEXPORT jlong JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_getDbEnv0(
     JNIEnv *jenv, jclass jcls, jlong jarg1) {
 	DB *self = *(DB **)(void *)&jarg1;
-	jlong env_cptr;
+	jlong ret;
 
 	COMPQUIET(jenv, NULL);
 	COMPQUIET(jcls, NULL);
 
-	*(DB_ENV **)(void *)&env_cptr = self->dbenv;
-	return (env_cptr);
+	*(DB_ENV **)(void *)&ret = self->dbenv;
+	return (ret);
 }
 
 JNIEXPORT jboolean JNICALL

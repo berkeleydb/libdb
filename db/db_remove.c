@@ -1,26 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_remove.c,v 12.16 2005/10/27 01:25:53 mjc Exp $
+ * $Id: db_remove.c,v 12.28 2006/09/19 15:06:58 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/fop.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
@@ -77,7 +70,8 @@ __env_dbremove_pp(dbenv, txn, name, subdb, flags)
 			goto err;
 		txn_local = 1;
 	} else
-		if (txn != NULL && !TXN_ON(dbenv)) {
+		if (txn != NULL && !TXN_ON(dbenv) &&
+		    (!CDB_LOCKING(dbenv) || !F_ISSET(txn, TXN_CDSGROUP))) {
 			ret = __db_not_txn_env(dbenv);
 			goto err;
 		}
@@ -239,7 +233,7 @@ __db_remove_int(dbp, txn, name, subdb, flags)
 	real_name = tmpname = NULL;
 
 	if (name == NULL && subdb == NULL) {
-		__db_err(dbenv, "Remove on temporary files invalid");
+		__db_errx(dbenv, "Remove on temporary files invalid");
 		ret = EINVAL;
 		goto err;
 	}
@@ -253,7 +247,7 @@ __db_remove_int(dbp, txn, name, subdb, flags)
 	}
 
 	/* Handle transactional file removes separately. */
-	if (txn != NULL) {
+	if (IS_REAL_TXN(txn)) {
 		ret = __db_dbtxn_remove(dbp, txn, name, subdb);
 		goto err;
 	}
@@ -299,6 +293,7 @@ err:	if (!F_ISSET(dbp, DB_AM_INMEM) && real_name != NULL)
 /*
  * __db_inmem_remove --
  *	Removal of a named in-memory database.
+ *
  * PUBLIC: int __db_inmem_remove __P((DB *, DB_TXN *, const char *));
  */
 int
@@ -316,56 +311,48 @@ __db_inmem_remove(dbp, txn, name)
 	dbenv = dbp->dbenv;
 	locker = DB_LOCK_INVALIDID;
 
-	DB_ASSERT(name != NULL);
+	DB_ASSERT(dbenv, name != NULL);
 
 	/* This had better exist if we are trying to do a remove. */
 	(void)__memp_set_flags(dbp->mpf, DB_MPOOL_NOFILE, 1);
 	if ((ret = __memp_fopen(dbp->mpf, NULL, name, 0, 0, 0)) != 0)
 		return (ret);
 	if ((ret = __memp_get_fileid(dbp->mpf, dbp->fileid)) != 0)
-		goto err;
+		return (ret);
 	dbp->preserve_fid = 1;
 
 	if (LOCKING_ON(dbenv)) {
 		if (dbp->lid == DB_LOCK_INVALIDID &&
 		    (ret = __lock_id(dbenv, &dbp->lid, NULL)) != 0)
-			goto err;
+			return (ret);
 		locker = txn == NULL ? dbp->lid : txn->txnid;
 	}
 
 	/*
-	 * In a transactional environment, we'll play the same game
-	 * that we play for databases in the file system -- create a
-	 * temporary database and put it in with the current name
-	 * and then rename this one to another name.  We'll then use
-	 * a commit-time event to remove the entry.
+	 * In a transactional environment, we'll play the same game we play
+	 * for databases in the file system -- create a temporary database
+	 * and put it in with the current name and then rename this one to
+	 * another name.  We'll then use a commit-time event to remove the
+	 * entry.
 	 */
-
-	if ((ret = __fop_lock_handle(dbenv,
-	    dbp, locker, DB_LOCK_WRITE, NULL, 0)) != 0)
-		goto err;
+	if ((ret =
+	    __fop_lock_handle(dbenv, dbp, locker, DB_LOCK_WRITE, NULL, 0)) != 0)
+		return (ret);
 
 	if (LOGGING_ON(dbenv)) {
-		memset(&fid_dbt, 0, sizeof(fid_dbt));
-		fid_dbt.data = dbp->fileid;
-		fid_dbt.size = DB_FILE_ID_LEN;
-		memset(&name_dbt, 0, sizeof(name_dbt));
-		name_dbt.data = (void *)name;
-		name_dbt.size = (u_int32_t)strlen(name) + 1;
-
 		if (txn != NULL && (ret =
 		    __txn_remevent(dbenv, txn, name, dbp->fileid, 1)) != 0)
-			goto err;
+			return (ret);
 
-		if ((ret = __crdel_inmem_remove_log(dbenv,
-		    txn, &lsn, 0, &name_dbt, &fid_dbt)) != 0)
-			goto err;
+		DB_INIT_DBT(name_dbt, name, strlen(name) + 1);
+		DB_INIT_DBT(fid_dbt, dbp->fileid, DB_FILE_ID_LEN);
+		if ((ret = __crdel_inmem_remove_log(
+		    dbenv, txn, &lsn, 0, &name_dbt, &fid_dbt)) != 0)
+			return (ret);
 	}
 
-	if (txn == NULL)
-		ret = __memp_nameop(dbenv, dbp->fileid, NULL, name, NULL, 1);
-
-err:	return (ret);
+	return (!IS_REAL_TXN(txn) ?
+	    __memp_nameop(dbenv, dbp->fileid, NULL, name, NULL, 1) : 0);
 }
 
 /*

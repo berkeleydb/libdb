@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: StoredSortedMap.java,v 12.2 2005/10/05 20:40:10 mark Exp $
+ * $Id: StoredSortedMap.java,v 12.6 2006/09/08 20:32:13 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -20,22 +20,10 @@ import com.sleepycat.db.OperationStatus;
 /**
  * A SortedMap view of a {@link Database}.
  *
- * <p><em>Note that this class does not conform to the standard Java
- * collections interface in the following ways:</em></p>
- * <ul>
- * <li>The {@link #size} method always throws
- * <code>UnsupportedOperationException</code> because, for performance reasons,
- * databases do not maintain their total record count.</li>
- * <li>All iterators must be explicitly closed using {@link
- * StoredIterator#close()} or {@link StoredIterator#close(java.util.Iterator)}
- * to release the underlying database cursor resources.</li>
- * </ul>
- *
  * <p>In addition to the standard SortedMap methods, this class provides the
  * following methods for stored sorted maps only.  Note that the use of these
  * methods is not compatible with the standard Java collections interface.</p>
  * <ul>
- * <li>{@link #duplicates(Object)}</li>
  * <li>{@link #headMap(Object, boolean)}</li>
  * <li>{@link #tailMap(Object, boolean)}</li>
  * <li>{@link #subMap(Object, boolean, Object, boolean)}</li>
@@ -151,7 +139,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntityBinding valueEntityBinding, 
+                           EntityBinding valueEntityBinding,
                            PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,

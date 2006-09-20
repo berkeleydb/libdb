@@ -1,31 +1,31 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test111.tcl,v 1.11 2005/11/01 16:42:51 carol Exp $
+# $Id: test111.tcl,v 1.14 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test111
 # TEST	Test database compaction.
-# TEST	
-# TEST	Populate a database.  Remove a high proportion of entries. 
+# TEST
+# TEST	Populate a database.  Remove a high proportion of entries.
 # TEST	Dump and save contents.  Compact the database, dump again,
 # TEST	and make sure we still have the same contents.
 # TEST  Add back some entries, delete more entries (this time by
-# TEST	cursor), dump, compact, and do the before/after check again. 
+# TEST	cursor), dump, compact, and do the before/after check again.
 
 proc test111 { method {nentries 10000} {tnum "111"} args } {
 
-	# Compaction is an option for btree and recno databases only. 
+	# Compaction is an option for btree and recno databases only.
 	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
-		return 
+		return
 	}
 
-	# If a page size was specified, find out what it is.  Pages 
-	# might not be freed in the case of really large pages (64K) 
-	# but we still want to run this test just to make sure 
-	# nothing funny happens. 
+	# If a page size was specified, find out what it is.  Pages
+	# might not be freed in the case of really large pages (64K)
+	# but we still want to run this test just to make sure
+	# nothing funny happens.
 	set pagesize 0
         set pgindex [lsearch -exact $args "-pagesize"]
         if { $pgindex != -1 } {
@@ -50,7 +50,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set basename test$tnum
 		incr eindex
 		set env [lindex $args $eindex]
-		set rpcenv [is_rpcenv $env] 
+		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"
 			return
@@ -67,9 +67,9 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 	set splitopts { "" "-revsplitoff" }
 	set txn ""
 
-	if { [is_record_based $method] == 1 } { 
+	if { [is_record_based $method] == 1 } {
 		set checkfunc test001_recno.check
-	} else { 
+	} else {
 		set checkfunc test001.check
 	}
 
@@ -77,7 +77,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set testfile $basename.db
 		if { $splitopt == "-revsplitoff" } {
 			set testfile $basename.rev.db
-	 		if { [is_record_based $method] == 1 } { 
+	 		if { [is_record_based $method] == 1 } {
 				puts "Skipping\
 				    -revsplitoff option for method $method."
 				continue
@@ -93,7 +93,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set db [eval {berkdb_open -create \
 		    -mode 0644} $splitopt $args $omethod $testfile]
 		error_check_good dbopen [is_valid_db $db] TRUE
-	
+
 		set count 0
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -101,8 +101,8 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			set txn "-txn $t"
 		}
 		while { [gets $did str] != -1 && $count < $nentries } {
-			global kvals 
-	
+			global kvals
+
 			if { [is_record_based $method] == 1 } {
 				set key [expr $count + 1]
 				set kvals($key) [pad_data $method $str]
@@ -110,12 +110,12 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 				set key $str
 				set str [reverse $str]
 			}
-	
+
 			set ret [eval \
 			    {$db put} $txn {$key [chop_data $method $str]}]
 			error_check_good put $ret 0
 			incr count
-	
+
 		}
 		if { $txnenv == 1 } {
 			error_check_good txn_commit [$t commit] 0
@@ -125,7 +125,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 
 		if { $env != "NULL" } {
 			set testdir [get_home $env]
-			set filename $testdir/$testfile 
+			set filename $testdir/$testfile
 		} else {
 			set filename $testfile
 		}
@@ -135,18 +135,18 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set internal1 [stat_field $db stat "Internal pages"]
 
 		# Delete between 1 and maxdelete items, then skip over between
-		# 1 and maxskip items.  This is to make the data bunchy, 
-		# so we sometimes follow the code path where merging is 
-		# done record by record, and sometimes the path where 
+		# 1 and maxskip items.  This is to make the data bunchy,
+		# so we sometimes follow the code path where merging is
+		# done record by record, and sometimes the path where
 		# the whole page is merged at once.
 
 		puts "\tTest$tnum.b: Delete most entries from database."
 		set did [open $dict]
 		set count [expr $nentries - 1]
-		set maxskip 4 
+		set maxskip 4
 		set maxdelete 48
 
-		# Since rrecno and rbtree renumber, we delete starting at 
+		# Since rrecno and rbtree renumber, we delete starting at
 		# nentries and working down to 0.
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -160,7 +160,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			set target [expr $count - $ndeletes]
 			while { [expr $count > $target] && $count > 0 } {
 				if { [is_record_based $method] == 1 } {
-					set key [expr $count + 1] 
+					set key [expr $count + 1]
 				} else {
 					set key [gets $did]
 				}
@@ -169,7 +169,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 				error_check_good del $ret 0
 				incr count -1
 			}
-			# Skip over a random smaller number of items. 
+			# Skip over a random smaller number of items.
 			set skip [berkdb random_int 1 [expr $maxskip]]
 			set target [expr $count - $skip]
 			while { [expr $count > $target] && $count > 0 } {
@@ -180,7 +180,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
-	
+
 		puts "\tTest$tnum.c: Do a dump_file on contents."
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -196,7 +196,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set ret [$db compact -freespace]
 		error_check_good db_sync [$db sync] 0
 		error_check_good verify_dir [verify_dir $testdir] 0
-	
+
 		set size2 [file size $filename]
 		set free2 [stat_field $db stat "Pages on freelist"]
 		set leaf2 [stat_field $db stat "Leaf pages"]
@@ -220,16 +220,16 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
 		}
-		dump_file $db $txn $t2 
+		dump_file $db $txn $t2
 		if { $txnenv == 1 } {
 			error_check_good txn_commit [$t commit] 0
 		}
-	
+
 		error_check_good filecmp [filecmp $t1 $t2] 0
-	
+
 		puts "\tTest$tnum.f: Add more entries to database."
-		# Use integers as keys instead of strings, just to mix it up 
-		# a little. 
+		# Use integers as keys instead of strings, just to mix it up
+		# a little.
 		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
@@ -254,30 +254,30 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 
 		puts "\tTest$tnum.g: Remove more entries, this time by cursor."
 		set count 0
-		if { $txnenv == 1 } { 
+		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
 		}
 		set dbc [eval {$db cursor} $txn]
-	
-		# Delete all items except those evenly divisible by 
+
+		# Delete all items except those evenly divisible by
 		# $maxdelete -- so the db is nearly empty.
 		for { set dbt [$dbc get -first] } { [llength $dbt] > 0 }\
 		    { set dbt [$dbc get -next] ; incr count } {
 			if { [expr $count % $maxdelete] != 0 } {
 				error_check_good dbc_del [$dbc del] 0
-			} 
-		} 
-	
+			}
+		}
+
 		error_check_good cursor_close [$dbc close] 0
 		if { $txnenv == 1 } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
-	
+
 		puts "\tTest$tnum.h: Save contents."
-		if { $txnenv == 1 } { 
+		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
@@ -291,7 +291,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set ret [$db compact -freespace]
 		error_check_good db_sync [$db sync] 0
 		error_check_good verify_dir [verify_dir $testdir] 0
-	
+
 		set size4 [file size $filename]
 		set free4 [stat_field $db stat "Pages on freelist"]
 		set leaf4 [stat_field $db stat "Leaf pages"]
@@ -309,7 +309,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		    file_size [expr [expr $size3 * $reduction] > $size4] 1
 
 		puts "\tTest$tnum.j: Contents are the same after compaction."
-		if { $txnenv == 1 } { 
+		if { $txnenv == 1 } {
 			set t [$env txn]
 			error_check_good txn [is_valid_txn $t $env] TRUE
 			set txn "-txn $t"
@@ -319,7 +319,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good filecmp [filecmp $t1 $t2] 0
-	
+
 		error_check_good db_close [$db close] 0
 		close $did
 	}

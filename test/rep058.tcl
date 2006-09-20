@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep058.tcl,v 12.1 2005/10/14 18:39:21 sue Exp $
+# $Id: rep058.tcl,v 12.8 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep058
-# TEST	
+# TEST
 # TEST	Replication with early databases
 # TEST
 # TEST	Mimic an application where they create a database before
@@ -16,13 +16,16 @@
 proc rep058 { method { tnum "058" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
-	#
+	}
+
 	# There should be no difference with methods.  Just use btree.
-	#
+	if { $checking_valid_methods } {
+		set test_methods { btree }
+		return $test_methods
+	}
 	if { [is_btree $method] == 0 } {
 		puts "Rep058: Skipping for method $method."
 		return
@@ -30,15 +33,26 @@ proc rep058 { method { tnum "058" } args } {
 
 	set args [convert_args $method $args]
 
-	set recopts { "" " -recover " }
-	foreach r $recopts {
-		puts "Rep$tnum ($method $r): Replication with pre-created \
-		    databases."
-		rep058_sub $method $tnum $r $args
+	set logsets [create_logsets 2]
+	foreach r $test_recopts {
+		foreach l $logsets {
+			set logindex [lsearch -exact $l "in-memory"]
+			if { $r == "-recover" && $logindex != -1 } {
+				puts "Skipping test with -recover for\
+				    in-memory logs."
+				continue
+			}
+
+			puts "Rep$tnum ($method $r): Replication with \
+			    pre-created databases."
+			puts "Rep$tnum: Master logs are [lindex $l 0]"
+			puts "Rep$tnum: Client logs are [lindex $l 1]"
+			rep058_sub $method $tnum $l $r $args
+		}
 	}
 }
 
-proc rep058_sub { method tnum recargs largs } {
+proc rep058_sub { method tnum logset recargs largs } {
 	global testdir
 	source ./include.tcl
 	set orig_tdir $testdir
@@ -50,16 +64,27 @@ proc rep058_sub { method tnum recargs largs } {
 	replsetup $testdir/MSGQUEUEDIR
 	file mkdir $masterdir
 	file mkdir $clientdir
-	
+
+	set m_logtype [lindex $logset 0]
+	set c_logtype [lindex $logset 1]
+
+	# In-memory logs require a large log buffer, and cannot
+	# be used with -txn nosync.  Adjust the args for master
+	# and client.
+	set m_logargs [adjust_logargs $m_logtype]
+	set m_txnargs [adjust_txnargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+	set c_txnargs [adjust_txnargs $c_logtype]
+
 	set omethod [convert_method $method]
 
 	# Open a master.
 	repladd 1
-	set envcmd(M) "berkdb_env_noerr -create -txn nosync\
-	    -lock_max 2500 -lock_detect default \
+	set envcmd(M) "berkdb_env_noerr -create $m_txnargs \
+	    $m_logargs -lock_detect default \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set envcmd(M) "berkdb_env_noerr -create -txn nosync \
-#	    -lock_max 2500 -lock_detect default \
+#	set envcmd(M) "berkdb_env_noerr -create $m_txnargs \
+#	    $m_logargs -lock_detect default \
 #	    -errpfx ENV.M -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set menv [eval $envcmd(M) $recargs]
@@ -67,11 +92,11 @@ proc rep058_sub { method tnum recargs largs } {
 
 	# Open a client
 	repladd 2
-	set envcmd(C) "berkdb_env_noerr -create -txn nosync \
-	    -lock_max 2500 -lock_detect default \
+	set envcmd(C) "berkdb_env_noerr -create $c_txnargs \
+	    $c_logargs -lock_detect default \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set envcmd(C) "berkdb_env_noerr -create -txn nosync \
-# 	    -lock_max 2500 -lock_detect default \
+#	set envcmd(C) "berkdb_env_noerr -create $c_txnargs \
+# 	    $c_logargs -lock_detect default \
 #	    -errpfx ENV.C -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set cenv [eval $envcmd(C) $recargs]

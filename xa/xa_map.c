@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: xa_map.c,v 12.4 2005/10/13 20:42:34 bostic Exp $
+ * $Id: xa_map.c,v 12.8 2006/08/24 14:46:54 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/txn.h"
@@ -155,6 +149,6 @@ __db_unmap_xid(dbenv, xid, off)
 
 	COMPQUIET(xid, NULL);
 
-	td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 	memset(td->xid, 0, sizeof(td->xid));
 }

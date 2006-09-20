@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep048.tcl,v 12.2 2005/10/14 15:15:05 sue Exp $
+# $Id: rep048.tcl,v 12.8 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST  rep048
 # TEST	Replication and log gap bulk transfers.
@@ -13,11 +13,16 @@
 # TEST	Process message and verify master and client match.
 #
 proc rep048 { method { nentries 3000 } { tnum "048" } args } {
+	source ./include.tcl
+
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		puts "Rep$tnum ($method $r):\
 		    Replication and toggling bulk transfer."
 		rep048_sub $method $nentries $tnum $r $args
@@ -43,20 +48,18 @@ proc rep048_sub { method niter tnum recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env -create -txn nosync -lock_max 2500 \
+	set ma_envcmd "berkdb_env -create -txn nosync \
 	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env -create -txn nosync -lock_max 2500 \
+#	set ma_envcmd "berkdb_env -create -txn nosync \
 #	    -errpfx MASTER -verbose {rep on} \
 #	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
 
 	repladd 2
-	set cl_envcmd "berkdb_env -create -txn nosync \
-	    -lock_max 2500 -home $clientdir \
+	set cl_envcmd "berkdb_env -create -txn nosync -home $clientdir \
 	    -rep_client -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env -create -txn nosync \
-#	    -lock_max 2500 -home $clientdir \
+#	set cl_envcmd "berkdb_env -create -txn nosync -home $clientdir \
 #	    -errpfx CLIENT -verbose {rep on} \
 #	    -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs]
@@ -106,7 +109,7 @@ proc rep048_sub { method niter tnum recargs largs } {
 
 	set bulkxfer1 [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	error_check_bad bulk $bulkxfer1 0
-	
+
 	puts "\tRep$tnum.d: Waiting for child ..."
 	# Watch until the child is done.
 	watch_procs $pid 5

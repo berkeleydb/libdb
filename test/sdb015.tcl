@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb015.tcl,v 12.4 2005/10/21 20:21:31 carol Exp $
+# $Id: sdb015.tcl,v 12.7 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	sdb015
 # TEST	Tests basic in-memory named database functionality
@@ -21,7 +21,7 @@ proc sdb015 { method {nentries 1000} args } {
 
 	if { [is_queueext $method] == 1 } {
 		puts "Subdb015: skipping for method $method"
-		return 
+		return
 	}
 
 	# Skip test if given an env - this test needs its own.
@@ -38,7 +38,7 @@ proc sdb015 { method {nentries 1000} args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	set largs $args
 	subdb015_main $method $nentries $largs

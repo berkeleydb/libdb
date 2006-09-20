@@ -1,17 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_byteorder.c,v 12.1 2005/06/16 20:20:52 bostic Exp $
+ * $Id: db_byteorder.c,v 12.5 2006/08/24 14:45:10 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
 
 #include "db_int.h"
 
@@ -64,7 +60,7 @@ __db_byteorder(dbenv, lorder)
 			return (DB_SWAPBYTES);
 		break;
 	default:
-		__db_err(dbenv,
+		__db_errx(dbenv,
 	    "unsupported byte order, only big and little-endian supported");
 		return (EINVAL);
 	}

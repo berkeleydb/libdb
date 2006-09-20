@@ -1,18 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_stub.c,v 12.11 2005/10/09 16:12:07 bostic Exp $
+ * $Id: rep_stub.c,v 12.18 2006/08/24 14:46:25 bostic Exp $
  */
 
-#include "db_config.h"
-
 #ifndef HAVE_REPLICATION
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#endif
+#include "db_config.h"
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -32,7 +28,7 @@ static int
 __db_norep(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_err(dbenv,
+	__db_errx(dbenv,
 	    "library build did not include support for replication");
 	return (DB_OPNOTSUP);
 }
@@ -95,14 +91,6 @@ __rep_bulk_message(dbenv, bulkp, repth, lsnp, dbt, flags)
 	return (__db_norep(dbenv));
 }
 
-int
-__rep_dbenv_close(dbenv)
-	DB_ENV *dbenv;
-{
-	COMPQUIET(dbenv, NULL);
-	return (0);
-}
-
 void
 __rep_dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
@@ -112,16 +100,14 @@ __rep_dbenv_refresh(dbenv)
 }
 
 int
-__rep_elect(dbenv, nsites, nvotes, priority, timeout, eidp, flags)
+__rep_elect(dbenv, nsites, nvotes, eidp, flags)
 	DB_ENV *dbenv;
-	int nsites, nvotes, priority;
-	u_int32_t timeout, flags;
+	int nsites, nvotes;
+	u_int32_t flags;
 	int *eidp;
 {
 	COMPQUIET(nsites, 0);
 	COMPQUIET(nvotes, 0);
-	COMPQUIET(priority, 0);
-	COMPQUIET(timeout, 0);
 	COMPQUIET(eidp, NULL);
 	COMPQUIET(flags, 0);
 	return (__db_norep(dbenv));
@@ -131,6 +117,64 @@ int
 __rep_flush(dbenv)
 	DB_ENV *dbenv;
 {
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_set_nsites(dbenv, n)
+	DB_ENV *dbenv;
+	int n;
+{
+	COMPQUIET(n, 0);
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_get_nsites(dbenv, n)
+	DB_ENV *dbenv;
+	int *n;
+{
+	COMPQUIET(n, NULL);
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_set_priority(dbenv, priority)
+	DB_ENV *dbenv;
+	int priority;
+{
+	COMPQUIET(priority, 0);
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_get_priority(dbenv, priority)
+	DB_ENV *dbenv;
+	int *priority;
+{
+	COMPQUIET(priority, NULL);
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_set_timeout(dbenv, which, timeout)
+	DB_ENV *dbenv;
+	int which;
+	db_timeout_t timeout;
+{
+	COMPQUIET(which, 0);
+	COMPQUIET(timeout, 0);
+	return (__db_norep(dbenv));
+}
+
+int
+__rep_get_timeout(dbenv, which, timeout)
+	DB_ENV *dbenv;
+	int which;
+	db_timeout_t *timeout;
+{
+	COMPQUIET(which, 0);
+	COMPQUIET(timeout, NULL);
 	return (__db_norep(dbenv));
 }
 
@@ -173,14 +217,6 @@ __rep_get_gen(dbenv, genp)
 {
 	COMPQUIET(genp, NULL);
 	return (__db_norep(dbenv));
-}
-
-int
-__rep_is_client(dbenv)
-	DB_ENV *dbenv;
-{
-	COMPQUIET(dbenv, NULL);
-	return (0);
 }
 
 int
@@ -229,14 +265,6 @@ __rep_region_destroy(dbenv)
 }
 
 int
-__rep_region_init(dbenv)
-	DB_ENV *dbenv;
-{
-	COMPQUIET(dbenv, NULL);
-	return (0);
-}
-
-int
 __rep_send_message(dbenv, eid, rtype, lsnp, dbtp, logflags, repflags)
 	DB_ENV *dbenv;
 	int eid;
@@ -265,7 +293,7 @@ __rep_set_limit(dbenv, gbytes, bytes)
 }
 
 int
-__rep_set_rep_transport(dbenv, eid, f_send)
+__rep_set_transport(dbenv, eid, f_send)
 	DB_ENV *dbenv;
 	int eid;
 	int (*f_send) __P((DB_ENV *, const DBT *, const DBT *, const DB_LSN *,

@@ -1,14 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_server_int.h,v 12.4 2005/08/08 14:52:30 bostic Exp $
+ * $Id: db_server_int.h,v 12.9 2006/08/24 14:45:29 bostic Exp $
  */
 
 #ifndef _DB_SERVER_INT_H_
 #define	_DB_SERVER_INT_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #define	DB_SERVER_TIMEOUT	300	/* 5 minutes */
 #define	DB_SERVER_MAXTIMEOUT	1200	/* 20 minutes */
@@ -135,19 +139,23 @@ extern int __dbsrv_verbose;
  * Assumes local variable 'replyp'.
  * NOTE: May 'return' from macro.
  */
-#define	ACTIVATE_CTP(ctp, id, type) {		\
-	(ctp) = get_tableent(id);		\
-	if ((ctp) == NULL) {			\
-		replyp->status = DB_NOSERVER_ID;\
-		return;				\
-	}					\
-	DB_ASSERT((ctp)->ct_type & (type));	\
-	__dbsrv_active(ctp);			\
+#define	ACTIVATE_CTP(ctp, id, type) {					\
+	(ctp) = get_tableent(id);					\
+	if ((ctp) == NULL) {						\
+		replyp->status = DB_NOSERVER_ID;			\
+		return;							\
+	}								\
+	/* We don't have a dbenv handle at this point. */		\
+	DB_ASSERT(NULL, (ctp)->ct_type & (type));			\
+	__dbsrv_active(ctp);						\
 }
 
-#define	FREE_IF_CHANGED(dbenv, p, orig) do {	\
-	if ((p) != NULL && (p) != (orig))	\
-		__os_ufree((dbenv), (p));	\
+#define	FREE_IF_CHANGED(dbenv, p, orig) do {				\
+	if ((p) != NULL && (p) != (orig))				\
+		__os_ufree((dbenv), (p));				\
 } while (0)
 
+#if defined(__cplusplus)
+}
+#endif
 #endif	/* !_DB_SERVER_INT_H_ */

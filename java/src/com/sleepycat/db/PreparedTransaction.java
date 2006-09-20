@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: PreparedTransaction.java,v 12.1 2005/06/16 20:23:03 bostic Exp $
+ * $Id: PreparedTransaction.java,v 12.3 2006/08/24 14:46:08 bostic Exp $
  */
 package com.sleepycat.db;
 

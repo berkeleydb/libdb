@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -32,11 +32,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_swap.h,v 12.3 2005/06/16 20:21:47 bostic Exp $
+ * $Id: db_swap.h,v 12.6 2006/08/24 14:45:29 bostic Exp $
  */
 
 #ifndef _DB_SWAP_H_
 #define	_DB_SWAP_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /*
  * Little endian <==> big endian 64-bit swap macros.
@@ -167,4 +171,7 @@
 		P_32_SWAP(p);						\
 } while (0)
 
+#if defined(__cplusplus)
+}
+#endif
 #endif /* !_DB_SWAP_H_ */

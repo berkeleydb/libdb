@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: txn_recover.c,v 12.11 2005/10/14 21:12:18 ubell Exp $
+ * $Id: txn_recover.c,v 12.19 2006/08/24 14:46:53 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/txn.h"
@@ -50,9 +44,7 @@ __txn_map_gid(dbenv, gid, tdp, offp)
 	 * can create a hash table, but I doubt it's worth it.
 	 */
 	TXN_SYSTEM_LOCK(dbenv);
-	for (*tdp = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
-	    *tdp != NULL;
-	    *tdp = SH_TAILQ_NEXT(*tdp, links, __txn_detail))
+	SH_TAILQ_FOREACH(*tdp, &region->active_txn, links, __txn_detail)
 		if (memcmp(gid, (*tdp)->xid, sizeof((*tdp)->xid)) == 0)
 			break;
 	TXN_SYSTEM_UNLOCK(dbenv);
@@ -85,12 +77,14 @@ __txn_recover_pp(dbenv, preplist, count, retp, flags)
 	ENV_REQUIRES_CONFIG(
 	    dbenv, dbenv->tx_handle, "txn_recover", DB_INIT_TXN);
 
-	if (F_ISSET((DB_TXNREGION *)
-	    ((DB_TXNMGR *)dbenv->tx_handle)->reginfo.primary,
+	if (F_ISSET((DB_TXNREGION *)dbenv->tx_handle->reginfo.primary,
 	    TXN_IN_RECOVERY)) {
-		__db_err(dbenv, "operation not permitted while in recovery");
+		__db_errx(dbenv, "operation not permitted while in recovery");
 		return (EINVAL);
 	}
+
+	if (flags != DB_FIRST && flags != DB_NEXT)
+		return (__db_ferr(dbenv, "DB_ENV->txn_recover", 0));
 
 	ENV_ENTER(dbenv, ip);
 	REPLICATION_WRAP(dbenv,
@@ -180,13 +174,9 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	 */
 	TXN_SYSTEM_LOCK(dbenv);
 	if (flags == DB_FIRST) {
-		for (td = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
-		    td != NULL;
-		    td = SH_TAILQ_NEXT(td, links, __txn_detail)) {
+		SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail) {
 			if (F_ISSET(td, TXN_DTL_RESTORED))
 				nrestores++;
-			if (F_ISSET(td, TXN_DTL_COLLECTED))
-				open_files = 0;
 			F_CLR(td, TXN_DTL_COLLECTED);
 		}
 		mgr->n_discards = 0;
@@ -227,7 +217,7 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 		}
 
 		if (!IS_ZERO_LSN(td->begin_lsn) &&
-		    log_compare(&td->begin_lsn, &min) < 0)
+		    LOG_COMPARE(&td->begin_lsn, &min) < 0)
 			min = td->begin_lsn;
 
 		(*retp)++;
@@ -249,9 +239,9 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	}
 
 	if (open_files && nrestores && *retp != 0 && !IS_MAX_LSN(min)) {
-		F_SET((DB_LOG *)dbenv->lg_handle, DBLOG_RECOVER);
+		F_SET(dbenv->lg_handle, DBLOG_RECOVER);
 		ret = __txn_openfiles(dbenv, &min, 0);
-		F_CLR((DB_LOG *)dbenv->lg_handle, DBLOG_RECOVER);
+		F_CLR(dbenv->lg_handle, DBLOG_RECOVER);
 	}
 	return (0);
 
@@ -291,11 +281,11 @@ __txn_openfiles(dbenv, min, force)
 		while (!IS_ZERO_LSN(open_lsn) && (ret =
 		    __log_c_get(logc, &open_lsn, &data, DB_SET)) == 0 &&
 		    (force ||
-		    (min != NULL && log_compare(min, &open_lsn) < 0))) {
+		    (min != NULL && LOG_COMPARE(min, &open_lsn) < 0))) {
 			/* Format the log record. */
 			if ((ret = __txn_ckp_read(dbenv,
 			    data.data, &ckp_args)) != 0) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
 			    "Invalid checkpoint record at [%lu][%lu]",
 				    (u_long)open_lsn.file,
 				    (u_long)open_lsn.offset);
@@ -328,7 +318,7 @@ __txn_openfiles(dbenv, min, force)
 	 */
 	if ((ret == DB_NOTFOUND || IS_ZERO_LSN(open_lsn)) && (ret =
 	    __log_c_get(logc, &open_lsn, &data, DB_FIRST)) != 0) {
-		__db_err(dbenv, "No log records");
+		__db_errx(dbenv, "No log records");
 		goto err;
 	}
 

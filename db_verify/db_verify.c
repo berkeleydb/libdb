@@ -1,29 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_verify.c,v 12.3 2005/06/16 20:21:37 bostic Exp $
+ * $Id: db_verify.c,v 12.8 2006/08/26 09:23:23 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
+
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2006\nOracle Corporation.  All rights reserved.\n";
 #endif
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#endif
-
-#include "db_int.h"
 
 int main __P((int, char *[]));
 int usage __P((void));
@@ -156,9 +147,21 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		}
 	}
 
+	/*
+	 * Find out if we have a transactional environment so that we can
+	 * make sure that we don't open the verify database with logging
+	 * enabled.
+	 */
 	for (; !__db_util_interrupted() && argv[0] != NULL; ++argv) {
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			dbenv->err(dbenv, ret, "%s: db_create", progname);
+			goto shutdown;
+		}
+
+		if (TXN_ON(dbenv) &&
+		    (ret = dbp->set_flags(dbp, DB_TXN_NOT_DURABLE)) != 0) {
+			dbenv->err(
+			    dbenv, ret, "%s: db_set_flags", progname);
 			goto shutdown;
 		}
 
@@ -174,6 +177,13 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			if ((ret = db_create(&dbp1, dbenv, 0)) != 0) {
 				dbenv->err(
 				    dbenv, ret, "%s: db_create", progname);
+				goto shutdown;
+			}
+
+			if (TXN_ON(dbenv) && (ret =
+			    dbp1->set_flags(dbp1, DB_TXN_NOT_DURABLE)) != 0) {
+				dbenv->err(
+				    dbenv, ret, "%s: db_set_flags", progname);
 				goto shutdown;
 			}
 

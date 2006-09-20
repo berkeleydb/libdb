@@ -2,14 +2,8 @@
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <stdlib.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
@@ -17,14 +11,15 @@
 
 /*
  * PUBLIC: int __rep_update_buf __P((u_int8_t *, size_t, size_t *,
- * PUBLIC:     DB_LSN *, u_int32_t));
+ * PUBLIC:     DB_LSN *, u_int32_t, u_int32_t));
  */
 int
 __rep_update_buf(buf, max, lenp,
-    first_lsn, num_files)
+    first_lsn, first_vers, num_files)
 	u_int8_t *buf;
 	size_t max, *lenp;
 	DB_LSN * first_lsn;
+	u_int32_t first_vers;
 	u_int32_t num_files;
 {
 	u_int32_t uinttmp;
@@ -44,6 +39,12 @@ __rep_update_buf(buf, max, lenp,
 	else
 		memset(bp, 0, sizeof(*first_lsn));
 	bp += sizeof(*first_lsn);
+
+	uinttmp = (u_int32_t)first_vers;
+	if (bp + sizeof(uinttmp) > endbuf)
+		return (ENOMEM);
+	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	bp += sizeof(uinttmp);
 
 	uinttmp = (u_int32_t)num_files;
 	if (bp + sizeof(uinttmp) > endbuf)
@@ -78,6 +79,10 @@ __rep_update_read(dbenv, recbuf, nextp, argpp)
 	bp = recbuf;
 	memcpy(&argp->first_lsn, bp,  sizeof(argp->first_lsn));
 	bp += sizeof(argp->first_lsn);
+
+	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	argp->first_vers = (u_int32_t)uinttmp;
+	bp += sizeof(uinttmp);
 
 	memcpy(&uinttmp, bp, sizeof(uinttmp));
 	argp->num_files = (u_int32_t)uinttmp;

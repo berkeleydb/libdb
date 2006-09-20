@@ -1,21 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: cxx_db.cpp,v 12.4 2005/10/18 14:25:53 mjc Exp $
+ * $Id: cxx_db.cpp,v 12.13 2006/08/24 14:45:13 bostic Exp $
  */
 
 #include "db_config.h"
 
-#include <errno.h>
-#include <string.h>
+#include "db_int.h"
 
 #include "db_cxx.h"
 #include "dbinc/cxx_int.h"
 
-#include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc_auto/db_auto.h"
 #include "dbinc_auto/crdel_auto.h"
@@ -51,8 +49,8 @@ int Db::_name _argspec							\
 		DB_ERROR(env_, "Db::" # _name, EINVAL, error_policy());	\
 		return (EINVAL);					\
 	}								\
-	cleanup();							\
 	ret = db->_name _arglist;					\
+	cleanup();							\
 	if (!_retok(ret))						\
 		DB_ERROR(env_, "Db::" # _name, ret, error_policy());	\
 	return (ret);							\
@@ -121,8 +119,8 @@ Db::~Db()
 
 	db = unwrap(this);
 	if (db != NULL) {
-		cleanup();
 		(void)db->close(db, 0);
+		cleanup();
 	}
 }
 
@@ -165,16 +163,11 @@ int Db::initialize()
 }
 
 // private method to cleanup after destructor or during close.
-// If the environment was created by this Db object, we optionally
-// delete it, or return it so the caller can delete it after
-// last use.
+// If the environment was created by this Db object, we need to delete it.
 //
 void Db::cleanup()
 {
-	DB *db = unwrap(this);
-
-	if (db != NULL) {
-		// extra safety
+	if (imp_ != 0) {
 		imp_ = 0;
 
 		// we must dispose of the DbEnv object if
@@ -236,14 +229,14 @@ void Db::err(int error, const char *format, ...)
 {
 	DB *db = unwrap(this);
 
-	DB_REAL_ERR(db->dbenv, error, 1, 1, format);
+	DB_REAL_ERR(db->dbenv, error, DB_ERROR_SET, 1, format);
 }
 
 void Db::errx(const char *format, ...)
 {
 	DB *db = unwrap(this);
 
-	DB_REAL_ERR(db->dbenv, 0, 0, 1, format);
+	DB_REAL_ERR(db->dbenv, 0, DB_ERROR_NOT_SET, 1, format);
 }
 
 DB_METHOD(fd, (int *fdp), (db, fdp), DB_RETOK_STD)
@@ -408,10 +401,11 @@ extern "C" _rettype _db_##_name##_intercept_c _cargspec			\
 {									\
 	Db *cxxthis;							\
 									\
-	DB_ASSERT(cthis != NULL);					\
+	/* We don't have a dbenv handle at this point. */		\
+	DB_ASSERT(NULL, cthis != NULL);					\
 	cxxthis = Db::get_Db(cthis);					\
-	DB_ASSERT(cxxthis != NULL);					\
-	DB_ASSERT(cxxthis->_name##_callback_ != 0);			\
+	DB_ASSERT(cthis->dbenv, cxxthis != NULL);			\
+	DB_ASSERT(cthis->dbenv, cxxthis->_name##_callback_ != 0);	\
 									\
 	_return (*cxxthis->_name##_callback_) _cxxargs;			\
 }
@@ -521,14 +515,13 @@ int Db::verify(const char *name, const char *subdb,
 	if (!db)
 		ret = EINVAL;
 	else {
-		// after a DB->verify (no matter if success or failure),
-		// the underlying DB object must not be accessed,
-		// so we clean up in advance.
-		//
-		cleanup();
-
 		ret = __db_verify_internal(db, name, subdb, ostr,
 		    _verify_callback_c, flags);
+
+		// After a DB->verify (no matter if success or failure),
+		// the underlying DB object must not be accessed.
+		//
+		cleanup();
 	}
 
 	if (!DB_RETOK_STD(ret))

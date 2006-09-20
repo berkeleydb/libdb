@@ -1,23 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_truncate.c,v 12.10 2005/10/21 19:22:59 bostic Exp $
+ * $Id: db_truncate.c,v 12.18 2006/08/24 14:45:16 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/qam.h"
@@ -52,7 +45,7 @@ __db_truncate_pp(dbp, txn, countp, flags)
 
 	/* Check for invalid flags. */
 	if (F_ISSET(dbp, DB_AM_SECONDARY)) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "DB->truncate forbidden on secondary indices");
 		return (EINVAL);
 	}
@@ -66,12 +59,12 @@ __db_truncate_pp(dbp, txn, countp, flags)
 	 * pages we cannot really adjust cursors.
 	 */
 	if (__db_cursor_check(dbp) != 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		     "DB->truncate not permitted with active cursors");
 		goto err;
 	}
 
-#if CONFIG_TEST
+#ifdef CONFIG_TEST
 	if (IS_REP_MASTER(dbenv))
 		DB_TEST_WAIT(dbenv, dbenv->test_check);
 #endif
@@ -212,17 +205,16 @@ __db_cursor_check(dbp)
 	dbenv = dbp->dbenv;
 
 	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	for (found = 0, ldbp = __dblist_get(dbenv, dbp->adj_fileid);
+	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	for (found = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
-	    ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
 		MUTEX_LOCK(dbenv, dbp->mutex);
-		for (dbc = TAILQ_FIRST(&ldbp->active_queue);
-		    dbc != NULL; dbc = TAILQ_NEXT(dbc, links)) {
+		TAILQ_FOREACH(dbc, &ldbp->active_queue, links)
 			if (IS_INITIALIZED(dbc)) {
 				found = 1;
 				break;
 			}
-		}
 		MUTEX_UNLOCK(dbenv, dbp->mutex);
 		if (found == 1)
 			break;

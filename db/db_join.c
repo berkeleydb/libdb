@@ -1,20 +1,13 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1998-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_join.c,v 12.6 2005/10/07 20:21:22 ubell Exp $
+ * $Id: db_join.c,v 12.14 2006/08/24 14:45:15 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -328,8 +321,8 @@ __db_join_get_pp(dbc, key, data, flags)
 	PANIC_CHECK(dbenv);
 
 	if (LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW)) {
-		if (!LOCKING_ON(dbp->dbenv))
-			return (__db_fnl(dbp->dbenv, "DBcursor->c_get"));
+		if (!LOCKING_ON(dbenv))
+			return (__db_fnl(dbenv, "DBcursor->c_get"));
 		LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW);
 	}
 
@@ -338,7 +331,7 @@ __db_join_get_pp(dbc, key, data, flags)
 	case DB_JOIN_ITEM:
 		break;
 	default:
-		return (__db_ferr(dbp->dbenv, "DBcursor->c_get", 0));
+		return (__db_ferr(dbenv, "DBcursor->c_get", 0));
 	}
 
 	/*
@@ -353,14 +346,14 @@ __db_join_get_pp(dbc, key, data, flags)
 	 * and causes us no headaches, so we permit it.
 	 */
 	if (F_ISSET(key, DB_DBT_PARTIAL)) {
-		__db_err(dbp->dbenv,
+		__db_errx(dbenv,
 		    "DB_DBT_PARTIAL may not be set on key during join_get");
 		return (EINVAL);
 	}
 
 	ENV_ENTER(dbenv, ip);
 
-	handle_check = IS_ENV_REPLICATED(dbp->dbenv);
+	handle_check = IS_ENV_REPLICATED(dbenv);
 	if (handle_check &&
 	    (ret = __db_rep_enter(dbp, 1, 0, dbc->txn != NULL)) != 0) {
 		handle_check = 0;
@@ -376,6 +369,7 @@ __db_join_get_pp(dbc, key, data, flags)
 		ret = t_ret;
 
 err:	ENV_LEAVE(dbenv, ip);
+	__dbt_userfree(dbenv, key, NULL, NULL);
 	return (ret);
 }
 
@@ -385,14 +379,16 @@ __db_join_get(dbc, key_arg, data_arg, flags)
 	DBT *key_arg, *data_arg;
 	u_int32_t flags;
 {
-	DBT *key_n, key_n_mem;
 	DB *dbp;
 	DBC *cp;
+	DBT *key_n, key_n_mem;
+	DB_ENV *dbenv;
 	JOIN_CURSOR *jc;
 	int db_manage_data, ret;
 	u_int32_t i, j, operation, opmods;
 
 	dbp = dbc->dbp;
+	dbenv = dbp->dbenv;
 	jc = (JOIN_CURSOR *)dbc->internal;
 
 	operation = LF_ISSET(DB_OPFLAGS_MASK);
@@ -409,8 +405,8 @@ __db_join_get(dbc, key_arg, data_arg, flags)
 	 * management flags.  If necessary, use a stack-allocated DBT;
 	 * we'll appropriately copy and/or allocate the data later.
 	 */
-	if (F_ISSET(key_arg, DB_DBT_USERMEM) ||
-	    F_ISSET(key_arg, DB_DBT_MALLOC)) {
+	if (F_ISSET(key_arg,
+	    DB_DBT_MALLOC | DB_DBT_USERCOPY | DB_DBT_USERMEM)) {
 		/* We just use the default buffer;  no need to go malloc. */
 		key_n = &key_n_mem;
 		memset(key_n, 0, sizeof(DBT));
@@ -421,6 +417,8 @@ __db_join_get(dbc, key_arg, data_arg, flags)
 		 */
 		key_n = key_arg;
 	}
+	if (F_ISSET(key_arg, DB_DBT_USERCOPY))
+		key_arg->data = NULL;
 
 	/*
 	 * If our last attempt to do a get on the primary key failed,
@@ -435,7 +433,7 @@ retry:	ret = __db_c_get(jc->j_workcurs[0], &jc->j_key, key_n,
 
 	if (ret == DB_BUFFER_SMALL) {
 		jc->j_key.ulen <<= 1;
-		if ((ret = __os_realloc(dbp->dbenv,
+		if ((ret = __os_realloc(dbenv,
 		    jc->j_key.ulen, &jc->j_key.data)) != 0)
 			goto mem_err;
 		goto retry;
@@ -479,7 +477,7 @@ retry:	ret = __db_c_get(jc->j_workcurs[0], &jc->j_key, key_n,
 
 	/* We have the first element; now look for it in the other cursors. */
 	for (i = 1; i < jc->j_ncurs; i++) {
-		DB_ASSERT(jc->j_curslist[i] != NULL);
+		DB_ASSERT(dbenv, jc->j_curslist[i] != NULL);
 		if (jc->j_workcurs[i] == NULL)
 			/* If this is NULL, we need to dup curslist into it. */
 			if ((ret = __db_c_dup(jc->j_curslist[i],
@@ -582,9 +580,9 @@ retry2:		cp = jc->j_workcurs[i];
 
 		if (ret == DB_BUFFER_SMALL) {
 			jc->j_key.ulen <<= 1;
-			if ((ret = __os_realloc(dbp->dbenv, jc->j_key.ulen,
+			if ((ret = __os_realloc(dbenv, jc->j_key.ulen,
 			    &jc->j_key.data)) != 0) {
-mem_err:			__db_err(dbp->dbenv,
+mem_err:			__db_errx(dbenv,
 				    "Allocation failed for join key, len = %lu",
 				    (u_long)jc->j_key.ulen);
 				goto err;
@@ -643,11 +641,12 @@ samekey:	/*
 	 * back into the dbt we were given for the key; call __db_retcopy.
 	 * Otherwise, assert that we do not need to copy anything and proceed.
 	 */
-	DB_ASSERT(F_ISSET(
-	    key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) || key_n == key_arg);
+	DB_ASSERT(dbenv, F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC |
+	    DB_DBT_USERCOPY) || key_n == key_arg);
 
-	if (F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC) &&
-	    (ret = __db_retcopy(dbp->dbenv,
+	if ((F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC |
+	    DB_DBT_USERCOPY)) &&
+	    (ret = __db_retcopy(dbenv,
 	    key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
 		/*
 		 * The retcopy failed, most commonly because we have a user
@@ -661,9 +660,6 @@ samekey:	/*
 	/*
 	 * If DB_JOIN_ITEM is set, we return it; otherwise we do the lookup
 	 * in the primary and then return.
-	 *
-	 * Note that we use key_arg here;  it is safe (and appropriate)
-	 * to do so.
 	 */
 	if (operation == DB_JOIN_ITEM)
 		return (0);
@@ -678,14 +674,19 @@ samekey:	/*
 	 * Instead, use memory that is managed by the join cursor, in
 	 * jc->j_rdata.
 	 */
-	if (!F_ISSET(data_arg, DB_DBT_MALLOC | DB_DBT_REALLOC | DB_DBT_USERMEM))
+	if (!F_ISSET(data_arg, DB_DBT_MALLOC | DB_DBT_REALLOC |
+	    DB_DBT_USERMEM | DB_DBT_USERCOPY))
 		db_manage_data = 1;
 	else
 		db_manage_data = 0;
 	if ((ret = __db_join_primget(jc->j_primary,
-	    jc->j_curslist[0]->txn, jc->j_curslist[0]->locker, key_arg,
+	    jc->j_curslist[0]->txn, jc->j_curslist[0]->locker, key_n,
 	    db_manage_data ? &jc->j_rdata : data_arg, opmods)) != 0) {
-		if (ret == DB_NOTFOUND)
+		if (ret == DB_NOTFOUND) {
+			if (LF_ISSET(DB_READ_UNCOMMITTED) ||
+			    (jc->j_curslist[0]->txn != NULL && F_ISSET(
+			    jc->j_curslist[0]->txn, TXN_READ_UNCOMMITTED)))
+				goto retry;
 			/*
 			 * If ret == DB_NOTFOUND, the primary and secondary
 			 * are out of sync;  every item in each secondary
@@ -694,7 +695,7 @@ samekey:	/*
 			 * Wail.
 			 */
 			ret = __db_secondary_corrupt(jc->j_primary);
-		else
+		} else
 			/*
 			 * The get on the primary failed for some other
 			 * reason, most commonly because we're using a user
@@ -906,7 +907,7 @@ __db_join_primget(dbp, txn, lockerid, key, data, flags)
 		F_SET(dbc, DBC_READ_COMMITTED);
 
 	LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW);
-	DB_ASSERT(flags == 0);
+	DB_ASSERT(dbp->dbenv, flags == 0);
 
 	F_SET(dbc, DBC_TRANSIENT);
 
@@ -936,7 +937,7 @@ int
 __db_secondary_corrupt(dbp)
 	DB *dbp;
 {
-	__db_err(dbp->dbenv,
+	__db_errx(dbp->dbenv,
 	    "Secondary index corrupt: not consistent with primary");
 	return (DB_SECONDARY_BAD);
 }

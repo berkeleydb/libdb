@@ -1,13 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: StoredContainer.java,v 12.3 2005/08/01 20:25:19 mark Exp $
+ * $Id: StoredContainer.java,v 12.6 2006/08/31 18:14:08 bostic Exp $
  */
 
 package com.sleepycat.collections;
+
+import java.util.Collection;
+import java.util.Iterator;
 
 import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.CursorConfig;
@@ -20,17 +23,6 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * provides implementations of methods that are common to the {@link
  * java.util.Collection} and the {@link java.util.Map} interfaces, namely
  * {@link #clear}, {@link #isEmpty} and {@link #size}.
- *
- * <p><em>Note that this class does not conform to the standard Java
- * collections interface in the following ways:</em></p>
- * <ul>
- * <li>The {@link #size} method always throws
- * <code>UnsupportedOperationException</code> because, for performance reasons,
- * databases do not maintain their total record count.</li>
- * <li>All iterators must be explicitly closed using {@link
- * StoredIterator#close()} or {@link StoredIterator#close(java.util.Iterator)}
- * to release the underlying database cursor resources.</li>
- * </ul>
  *
  * <p>In addition, this class provides the following methods for stored
  * collections only.  Note that the use of these methods is not compatible with
@@ -229,20 +221,21 @@ public abstract class StoredContainer implements Cloneable {
     }
 
     /**
-     * Always throws UnsupportedOperationException.  The size of a database
-     * cannot be obtained reliably or inexpensively.
-     * This method therefore violates the {@link java.util.Collection#size} and
-     * {@link java.util.Map#size} interfaces.
+     * Returns the number of records in the collection or map.
+     * This method conforms to the {@link java.util.Collection#size} and {@link
+     * java.util.Map#size} interfaces.
      *
-     * @return always throws an exception.
+     * <p>Note that if other threads are adding or removing records while this
+     * method is executing, the size returned may be incorrect.  This method
+     * does not lock the database.</p>
      *
-     * @throws UnsupportedOperationException unconditionally.
+     * <p>Also note that, for a large database, this method may be expensive.
+     * All non-duplicate records in the database are enumerated by this method,
+     * bringing them into memory if they are not already cached.</p>
+     *
+     * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is thrown.
      */
-    public int size() {
-
-        throw new UnsupportedOperationException(
-            "collection size not available");
-    }
+    public abstract int size();
 
     /**
      * Returns true if this map or collection contains no mappings or elements.
@@ -364,7 +357,7 @@ public abstract class StoredContainer implements Cloneable {
         boolean doAutoCommit = beginAutoCommit();
         try {
             cursor = new DataCursor(view, true);
-            OperationStatus status = cursor.find(value, true);
+            OperationStatus status = cursor.findValue(value, true);
             if (status == OperationStatus.SUCCESS) {
                 cursor.delete();
             }
@@ -382,12 +375,26 @@ public abstract class StoredContainer implements Cloneable {
         DataCursor cursor = null;
         try {
             cursor = new DataCursor(view, false);
-            OperationStatus status = cursor.find(value, true);
+            OperationStatus status = cursor.findValue(value, true);
             return (status == OperationStatus.SUCCESS);
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         } finally {
             closeCursor(cursor);
+        }
+    }
+
+    /**
+     * Returns a StoredIterator if the given collection is a StoredCollection,
+     * else returns a regular/external Iterator.  The iterator returned should
+     * be closed with the static method StoredIterator.close(Iterator).
+     */
+    final Iterator storedOrExternalIterator(Collection coll) {
+
+        if (coll instanceof StoredCollection) {
+            return ((StoredCollection) coll).storedIterator();
+        } else {
+            return coll.iterator();
         }
     }
 

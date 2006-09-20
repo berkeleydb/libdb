@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: EnvExample.java,v 12.2 2005/06/16 20:22:47 bostic Exp $
+ * $Id: EnvExample.java,v 12.4 2006/08/24 14:46:02 bostic Exp $
  */
 
 package db;

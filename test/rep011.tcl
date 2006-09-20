@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2003-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep011.tcl,v 12.3 2005/11/02 13:42:26 sue Exp $
+# $Id: rep011.tcl,v 12.9 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep011
 # TEST	Replication: test open handle across an upgrade.
@@ -22,13 +22,18 @@ proc rep011 { method { tnum "011" } args } {
 	global passwd
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Run for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set logsets [create_logsets 2]
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -85,7 +90,7 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env -create -lock_max 2500 \
+	set env_cmd(M) "berkdb_env -create \
 	    -log_max 1000000 $m_logargs $envargs -home $masterdir \
 	    $m_txnargs -rep_master -rep_transport \
 	    \[list 1 replsend\]"
@@ -94,7 +99,7 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env -create -lock_max 2500 \
+	set env_cmd(C) "berkdb_env -create \
 	    $c_logargs $envargs -home $clientdir \
 	    $c_txnargs -rep_client -rep_transport \
 	    \[list 2 replsend\]"
@@ -137,7 +142,7 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 
 	puts "\tRep$tnum.d: Reopen old master as client and catch up."
 	set newclientenv [eval {berkdb_env -create -recover} $envargs \
-	    -txn nosync -lock_max 2500 \
+	    -txn nosync \
 	    {-home $masterdir -rep_client -rep_transport [list 1 replsend]}]
 	error_check_good newclient_env [is_valid_env $newclientenv] TRUE
 	set envlist "{$newclientenv 1} {$newmasterenv 2}"

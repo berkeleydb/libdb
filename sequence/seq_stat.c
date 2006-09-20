@@ -1,21 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2004-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: seq_stat.c,v 12.6 2005/10/07 20:21:39 ubell Exp $
+ * $Id: seq_stat.c,v 12.10 2006/08/24 14:46:31 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifdef HAVE_SEQUENCE
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
+#ifdef HAVE_64BIT_TYPES
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -277,4 +270,4 @@ __db_get_seq_flags_fn()
 	return (__db_seq_flags_fn);
 }
 #endif /* !HAVE_STATISTICS */
-#endif /* HAVE_SEQUENCE */
+#endif /* HAVE_64BIT_TYPES */

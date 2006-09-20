@@ -468,6 +468,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.bind.serial.SerialBinding;
@@ -566,7 +567,7 @@ import com.sleepycat.db.DatabaseException; </pre>
         // and loads it into a list for us to work with. The integer
         // parameter represents the number of fields expected in the
         // file.
-        ArrayList vendors = loadFile(vendorsFile, 8);
+        List vendors = loadFile(vendorsFile, 8);
 
         // Now load the data into the database. The vendor's name is the
         // key, and the data is a Vendor class object.
@@ -613,7 +614,7 @@ import com.sleepycat.db.DatabaseException; </pre>
         // and loads it into a list for us to work with. The integer
         // parameter represents the number of fields expected in the
         // file.
-        ArrayList inventoryArray = loadFile(inventoryFile, 6);
+        List inventoryArray = loadFile(inventoryFile, 6);
 
         // Now load the data into the database. The item's sku is the
         // key, and the data is an Inventory class object.
@@ -658,8 +659,8 @@ import com.sleepycat.db.DatabaseException; </pre>
         // Implementation omitted for brevity.
     }
 
-    private ArrayList loadFile(File theFile, int numFields) {
-        ArrayList records = new ArrayList();
+    private List loadFile(File theFile, int numFields) {
+        List records = new ArrayList();
         // Implementation omitted for brevity.
         return records;
     }

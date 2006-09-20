@@ -62,7 +62,7 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 
 	if (msg == NULL)
 		msg = db_strerror(err);
-	
+
 	jmsg = (*jenv)->NewStringUTF(jenv, msg);
 
 	switch (err) {
@@ -119,15 +119,15 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 	case DB_LOCK_DEADLOCK:
 		return (jthrowable)(*jenv)->NewObject(jenv, deadex_class,
 		    deadex_construct, jmsg, err, jdbenv);
-	
+
 	case DB_LOCK_NOTGRANTED:
 		return (jthrowable)(*jenv)->NewObject(jenv, lockex_class,
-		    lockex_construct, jmsg, 0, 0, NULL, NULL, 0, jdbenv);
-	
+		    lockex_construct, jmsg, err, 0, NULL, NULL, 0, jdbenv);
+
 	case DB_VERSION_MISMATCH:
 		return (jthrowable)(*jenv)->NewObject(jenv, versionex_class,
-		    versionex_construct, jmsg, 0, 0, NULL, NULL, 0, jdbenv);
-	
+		    versionex_construct, jmsg, err, jdbenv);
+
 	default:
 		return (jthrowable)(*jenv)->NewObject(jenv, dbex_class,
 		    dbex_construct, jmsg, err, jdbenv);
@@ -148,17 +148,17 @@ static int __dbj_throw(JNIEnv *jenv,
 			 * exception.  We have to assume there is an exception
 			 * created by the JVM that is pending as a result
 			 * (e.g., OutOfMemoryError), but we don't want to lose
-			 * this error, so we just call __db_err here.
+			 * this error, so we just call __db_errx here.
 			 */
 			if (msg == NULL)
 				msg = db_strerror(err);
-	
-			 __db_err(NULL, "Couldn't create exception for: '%s'",
+
+			 __db_errx(NULL, "Couldn't create exception for: '%s'",
 			     msg);
 		} else
 			(*jenv)->Throw(jenv, t);
 	}
-	
+
 	return (err);
 }
 %}

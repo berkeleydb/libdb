@@ -1,18 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: dbreg_stat.c,v 12.5 2005/10/12 15:01:47 margo Exp $
+ * $Id: dbreg_stat.c,v 12.9 2006/08/24 14:45:32 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -96,8 +91,8 @@ __dbreg_print_dblist(dbenv, flags)
 	STAT_LONG("Fid max", lp->fid_max);
 
 	MUTEX_LOCK(dbenv, lp->mtx_filelist);
-	for (first = 1, fnp = SH_TAILQ_FIRST(&lp->fq, __fname);
-	    fnp != NULL; fnp = SH_TAILQ_NEXT(fnp, q, __fname)) {
+	first = 1;
+	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
 		if (first) {
 			first = 0;
 			__db_msg(dbenv,

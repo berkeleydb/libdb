@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: TupleBindingTest.java,v 12.2 2005/08/01 20:25:25 mark Exp $
+ * $Id: TupleBindingTest.java,v 12.5 2006/08/24 14:46:45 bostic Exp $
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -23,6 +23,8 @@ import com.sleepycat.bind.tuple.FloatBinding;
 import com.sleepycat.bind.tuple.IntegerBinding;
 import com.sleepycat.bind.tuple.LongBinding;
 import com.sleepycat.bind.tuple.ShortBinding;
+import com.sleepycat.bind.tuple.SortedDoubleBinding;
+import com.sleepycat.bind.tuple.SortedFloatBinding;
 import com.sleepycat.bind.tuple.StringBinding;
 import com.sleepycat.bind.tuple.TupleBinding;
 import com.sleepycat.bind.tuple.TupleInput;
@@ -42,7 +44,6 @@ public class TupleBindingTest extends TestCase {
 
     private DatabaseEntry buffer;
     private DatabaseEntry keyBuffer;
-    private DatabaseEntry indexKeyBuffer;
 
     public static void main(String[] args)
         throws Exception {
@@ -74,7 +75,6 @@ public class TupleBindingTest extends TestCase {
         DbTestUtil.printTestName("TupleBindingTest." + getName());
         buffer = new DatabaseEntry();
         keyBuffer = new DatabaseEntry();
-        indexKeyBuffer = new DatabaseEntry();
     }
 
     public void tearDown() {
@@ -82,7 +82,6 @@ public class TupleBindingTest extends TestCase {
         /* Ensure that GC can cleanup. */
         buffer = null;
         keyBuffer = null;
-        indexKeyBuffer = null;
     }
 
     public void runTest()
@@ -239,6 +238,23 @@ public class TupleBindingTest extends TestCase {
         assertTrue(123.123 == DoubleBinding.entryToDouble(entry));
 
         new DoubleBinding().objectToEntry(new Double(123.123), entry);
+	assertEquals(8, entry.getData().length);
+
+
+        SortedFloatBinding.floatToEntry((float) 123.123, entry);
+	assertEquals(4, entry.getData().length);
+        assertTrue(((float) 123.123) ==
+                   SortedFloatBinding.entryToFloat(entry));
+
+        new SortedFloatBinding().objectToEntry
+            (new Float((float) 123.123), entry);
+	assertEquals(4, entry.getData().length);
+
+        SortedDoubleBinding.doubleToEntry(123.123, entry);
+	assertEquals(8, entry.getData().length);
+        assertTrue(123.123 == SortedDoubleBinding.entryToDouble(entry));
+
+        new SortedDoubleBinding().objectToEntry(new Double(123.123), entry);
 	assertEquals(8, entry.getData().length);
     }
 

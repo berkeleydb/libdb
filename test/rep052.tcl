@@ -1,31 +1,36 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep052.tcl,v 12.3 2005/10/18 19:05:54 carol Exp $
+# $Id: rep052.tcl,v 12.9 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep052
 # TEST	Test of replication with NOWAIT.
 # TEST
-# TEST	One master, one client.  After initializing 
-# TEST	everything normally, close client and let the 
-# TEST	master get ahead -- far enough that the master 
+# TEST	One master, one client.  After initializing
+# TEST	everything normally, close client and let the
+# TEST	master get ahead -- far enough that the master
 # TEST 	no longer has the client's last log file.
-# TEST	Reopen the client and turn on NOWAIT. 
+# TEST	Reopen the client and turn on NOWAIT.
 # TEST	Process a few messages to get the client into
 # TEST	recovery mode, and verify that lockout occurs
 # TEST 	on a txn API call (txn_begin) and an env API call.
-# TEST	Process all the messages and verify that lockout 
-# TEST 	is over. 
+# TEST	Process all the messages and verify that lockout
+# TEST 	is over.
 
 proc rep052 { method { niter 200 } { tnum "052" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
 
 	set args [convert_args $method $args]
 	set saved_args $args
@@ -42,8 +47,7 @@ proc rep052 { method { niter 200 } { tnum "052" } args } {
 
 	# Run the body of the test with and without recovery.  Skip
 	# recovery with in-memory logging - it doesn't make sense.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -58,7 +62,7 @@ proc rep052 { method { niter 200 } { tnum "052" } args } {
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep052_sub $method $niter $tnum $envargs \
-			    $l $r $args	
+			    $l $r $args
 		}
 	}
 }
@@ -84,21 +88,25 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	append largs " -pagesize $pagesize "
 	set log_buf [expr $pagesize * 2]
 	set log_max [expr $log_buf * 4]
+	set m_logargs " -log_buffer $log_buf"
+	set c_logargs " -log_buffer $log_buf"
 
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
 
-	# In-memory logs cannot be used with -txn nosync.  
+	# In-memory logs cannot be used with -txn nosync.
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
-	
+	set m_logargs [adjust_logargs $m_logtype]
+	set c_logargs [adjust_logargs $c_logtype]
+
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    -log_buffer $log_buf -log_max $log_max $envargs \
+	    $m_logargs -log_max $log_max $envargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    -log_buffer $log_buf -log_max $log_max $envargs \
+#	    $m_logargs -log_max $log_max $envargs \
 #	    -verbose {rep on} -errpfx MASTER \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -107,10 +115,10 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    -log_buffer $log_buf -log_max $log_max $envargs \
+	    $c_logargs -log_max $log_max $envargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    -log_buffer $log_buf -log_max $log_max $envargs \
+#	    $c_logargs -log_max $log_max $envargs \
 #	    -verbose {rep on} -errpfx CLIENT \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -122,29 +130,40 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	set start 0
+	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	incr start $niter
 	process_msgs $envlist
+
+	# Find out what exists on the client before closing.  We'll need
+	# to loop until the first master log file > last client log file.
+	set last_client_log [get_logfile $clientenv last]
 
 	puts "\tRep$tnum.b: Close client."
 	error_check_good client_close [$clientenv close] 0
 
 	# Find out what exists on the client.  We need to loop until
 	# the first master log file > last client log file.
-	set res [eval exec $util_path/db_archive -l -h $clientdir]
-
-	set last_client_log [lindex [lsort $res] end]
 
 	set stop 0
 	while { $stop == 0 } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test \
+		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		incr start $niter
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."
-		set res [eval exec $util_path/db_archive -d -h $masterdir]
-		set res [eval exec $util_path/db_archive -l -h $masterdir]
-		if { [lsearch -exact $res $last_client_log] == -1 } {
+		if { $m_logtype != "in-memory" } {
+			set res \
+			    [eval exec $util_path/db_archive -d -h $masterdir]
+		}
+		# Make sure we have a gap between the last client log and
+		# the first master log.  This is easy with on-disk logs, since
+		# we archive, but will take longer with in-memory logging.
+		set first_master_log [get_logfile $masterenv first]
+		if { $first_master_log > $last_client_log } {
 			set stop 1
 		}
 	}
@@ -158,10 +177,10 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	# Turn on nowait.
 	$clientenv rep_config {nowait on}
 
-	# Process messages a few times, just enough to get client 
+	# Process messages a few times, just enough to get client
 	# into lockout/recovery mode, but not enough to complete recovery.
 	set iter 4
-	for { set i 0 } { $i < $iter } { incr i } { 
+	for { set i 0 } { $i < $iter } { incr i } {
 		set nproced [proc_msgs_once $envlist NONE err]
 	}
 
@@ -196,7 +215,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	}
 
 	puts "\tRep$tnum.h: Verify logs and databases"
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1
 
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0

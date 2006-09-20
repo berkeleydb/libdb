@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1998-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: xa.c,v 12.5 2005/11/01 00:44:39 bostic Exp $
+ * $Id: xa.c,v 12.12 2006/08/24 14:46:54 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/txn.h"
@@ -95,8 +88,8 @@ __xa_get_txn(dbenv, txnp, do_init)
 	dbenv->thread_id(dbenv, &pid, &tid);
 	*txnp = NULL;
 
-	DB_ASSERT(dbenv->tx_handle != NULL);
-	mgr = (DB_TXNMGR *)dbenv->tx_handle;
+	DB_ASSERT(dbenv, dbenv->tx_handle != NULL);
+	mgr = dbenv->tx_handle;
 
 	/*
 	 * We need to protect the xa_txn linked list, but the environment does
@@ -104,13 +97,11 @@ __xa_get_txn(dbenv, txnp, do_init)
 	 * we know there is a transaction structure, we can use its mutex.
 	 */
 	MUTEX_LOCK(dbenv, mgr->mutex);
-	for (t = TAILQ_FIRST(&dbenv->xa_txn);
-	    t != NULL;
-	    t = TAILQ_NEXT(t, xalinks)) {
+	TAILQ_FOREACH(t, &dbenv->xa_txn, xalinks) {
 		td = t->td;
 		if (td->pid != pid)
 			continue;
-#ifdef HAVE_INTEGRAL_THREAD_TYPE
+#ifdef HAVE_SIMPLE_THREAD_TYPE
 		if (t->tid == tid) {
 			*txnp = t;
 			break;
@@ -156,7 +147,7 @@ __xa_put_txn(dbenv, txnp)
 {
 #ifdef XA_MULTI_THREAD
 	DB_TXNMGR *mgr;
-	mgr = (DB_TXNMGR *)dbenv->tx_handle;
+	mgr = dbenv->tx_handle;
 
 	MUTEX_LOCK(dbenv, mgr->mutex);
 	TAILQ_REMOVE(&dbenv->xa_txn, txnp, xalinks);
@@ -332,7 +323,7 @@ __db_xa_start(xid, rmid, arg_flags)
 	 * Other error conditions: RMERR, RMFAIL, OUTSIDE, PROTO, RB*
 	 */
 	if (is_known) {
-		td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+		td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 		if (td->xa_status == TXN_XA_SUSPENDED &&
 		    !LF_ISSET(TMRESUME | TMJOIN))
 			return (XAER_PROTO);
@@ -385,7 +376,7 @@ __db_xa_end(xid, rmid, flags)
 	if (__xa_get_txn(dbenv, &txn, 0) != 0)
 		return (XAER_RMERR);
 
-	td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 	if (td != txn->td)
 		return (XAER_PROTO);
 
@@ -449,7 +440,7 @@ __db_xa_prepare(xid, rmid, arg_flags)
 
 	if (__db_xid_to_txn(dbenv, xid, &off) != 0)
 		return (XAER_NOTA);
-	td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
@@ -509,7 +500,7 @@ __db_xa_commit(xid, rmid, arg_flags)
 	if (__db_xid_to_txn(dbenv, xid, &off) != 0)
 		return (XAER_NOTA);
 
-	td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 
@@ -604,7 +595,7 @@ __db_xa_rollback(xid, rmid, arg_flags)
 	if (__db_xid_to_txn(dbenv, xid, &off) != 0)
 		return (XAER_NOTA);
 
-	td = R_ADDR(&((DB_TXNMGR *)dbenv->tx_handle)->reginfo, off);
+	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
 	if (td->xa_status == TXN_XA_DEADLOCKED)
 		return (XA_RBDEADLOCK);
 

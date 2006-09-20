@@ -1,34 +1,34 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test112.tcl,v 12.8 2005/10/10 17:27:35 carol Exp $
+# $Id: test112.tcl,v 12.11 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test112
 # TEST	Test database compaction with a deep tree.
-# TEST	
-# TEST	This is a lot like test111, but with a large number of 
-# TEST 	entries and a small page size to make the tree deep. 
-# TEST	To make it simple we use numerical keys all the time. 
+# TEST
+# TEST	This is a lot like test111, but with a large number of
+# TEST 	entries and a small page size to make the tree deep.
+# TEST	To make it simple we use numerical keys all the time.
 # TEST
 # TEST	Dump and save contents.  Compact the database, dump again,
 # TEST	and make sure we still have the same contents.
 # TEST  Add back some entries, delete more entries (this time by
-# TEST	cursor), dump, compact, and do the before/after check again. 
+# TEST	cursor), dump, compact, and do the before/after check again.
 
 proc test112 { method {nentries 80000} {tnum "112"} args } {
 	source ./include.tcl
 	global alphabet
 
-	# Compaction is an option for btree and recno databases only. 
+	# Compaction is an option for btree and recno databases only.
 	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
-		return 
+		return
 	}
 
-        # Skip for specified pagesizes.  This test uses a small 
-	# pagesize to generate a deep tree. 
+        # Skip for specified pagesizes.  This test uses a small
+	# pagesize to generate a deep tree.
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		puts "Test$tnum: Skipping for specific pagesizes"
@@ -50,14 +50,14 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 		set testfile test$tnum.db
 		incr eindex
 		set env [lindex $args $eindex]
-		set rpcenv [is_rpcenv $env] 
+		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"
 			return
 		}
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
-			append args " -auto_commit " 
+			append args " -auto_commit "
 		}
 		set testdir [get_home $env]
 	}
@@ -71,9 +71,9 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	    -pagesize 512 -mode 0644} $args $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
-	if { [is_record_based $method] == 1 } { 
+	if { [is_record_based $method] == 1 } {
 		set checkfunc test001_recno.check
-	} else { 
+	} else {
 		set checkfunc test001.check
 	}
 
@@ -84,7 +84,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 		set txn "-txn $t"
 	}
 	for { set i 1 } { $i <= $nentries } { incr i } {
-		set key $i 
+		set key $i
 		set str $i.$alphabet
 
 		set ret [eval \
@@ -98,7 +98,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 
 	if { $env != "NULL" } {
 		set testdir [get_home $env]
-		set filename $testdir/$testfile 
+		set filename $testdir/$testfile
 	} else {
 		set filename $testfile
 	}
@@ -108,7 +108,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	set free1 [stat_field $db stat "Pages on freelist"]
 
 	puts "\tTest$tnum.b: Delete most entries from database."
-	# Leave every nth item.  Since rrecno renumbers, we 
+	# Leave every nth item.  Since rrecno renumbers, we
 	# delete starting at nentries and working down to 0.
 	if { $txnenv == 1 } {
 		set t [$env txn]
@@ -131,7 +131,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	error_check_good db_sync [$db sync] 0
 
 	puts "\tTest$tnum.c: Do a dump_file on contents."
-	dump_file $db "" $t1 
+	dump_file $db "" $t1
 
 	puts "\tTest$tnum.d: Compact database."
 	set ret [$db compact -freespace]
@@ -146,7 +146,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	error_check_good file_size [expr [expr $size1 * $reduction] > $size2] 1
 
 	# Pages should be freed for all methods except maybe
-	# record-based non-queue methods.  Even with recno, the 
+	# record-based non-queue methods.  Even with recno, the
 	# number of free pages may not decline.
 
 	if { [is_record_based $method] == 1 } {
@@ -160,7 +160,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	error_check_good fewer_levels [expr $newlevels < $levels ] 1
 
 	puts "\tTest$tnum.e: Check that contents are the same after compaction."
-	dump_file $db "" $t2 
+	dump_file $db "" $t2
 	error_check_good filecmp [filecmp $t1 $t2] 0
 
 	puts "\tTest$tnum.f: Add more entries to database."
@@ -198,8 +198,8 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	    { set dbt [$dbc get -next] ; incr i } {
 		if { [expr $i % $n] != 0 } {
 			error_check_good dbc_del [$dbc del] 0
-		} 
-	} 
+		}
+	}
 	error_check_good cursor_close [$dbc close] 0
 	if { $txnenv == 1 } {
 		error_check_good txn_commit [$t commit] 0
@@ -221,7 +221,7 @@ proc test112 { method {nentries 80000} {tnum "112"} args } {
 	set ret [$db compact -freespace]
 	error_check_good db_sync [$db sync] 0
 	error_check_good verify_dir [verify_dir $testdir] 0
-	
+
 	set size4 [file size $filename]
 	set free4 [stat_field $db stat "Pages on freelist"]
 

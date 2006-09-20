@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep012.tcl,v 12.4 2005/10/18 19:04:17 carol Exp $
+# $Id: rep012.tcl,v 12.10 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep012
 # TEST	Replication and dead DB handles.
@@ -16,16 +16,21 @@
 proc rep012 { method { niter 10 } { tnum "012" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Run for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -75,11 +80,10 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -lock_max 2500 \
-	    -errpfx ENV0 \
+	    $m_logargs -errpfx ENV0 \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 \
+#	    $m_logargs \
 #	    -errpfx ENV0 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env0 [eval $ma_envcmd $recargs -rep_master]
@@ -89,11 +93,10 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -lock_max 2500 \
-	    -errpfx ENV1 \
+	    $c_logargs -errpfx ENV1 \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 \
+#	    $c_logargs \
 #	    -errpfx ENV1 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env1 [eval $cl_envcmd $recargs -rep_client]
@@ -102,11 +105,10 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 
 	repladd 3
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -lock_max 2500 \
-	    -errpfx ENV2 \
+	    $c2_logargs -errpfx ENV2 \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 #	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-#	    $c2_logargs -lock_max 2500 \
+#	    $c2_logargs \
 #	    -errpfx ENV2 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]
@@ -128,7 +130,7 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 		set mpdb [eval {berkdb_open_noerr -env $env0 -auto_commit \
 		    -create -mode 0644} $largs $omethod $pname]
 		error_check_good dbopen [is_valid_db $mpdb] TRUE
-	
+
 		# Open the secondary
 		# Open a 2nd handle to the same secondary
 		set msdb [eval {berkdb_open_noerr -env $env0 -auto_commit \

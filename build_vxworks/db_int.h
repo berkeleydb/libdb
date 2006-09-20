@@ -2,26 +2,74 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_int.in,v 12.15 2005/11/03 17:46:08 bostic Exp $
+ * $Id: db_int.in,v 12.41 2006/09/19 15:06:59 bostic Exp $
  */
 
-#ifndef _DB_INTERNAL_H_
-#define	_DB_INTERNAL_H_
+#ifndef _DB_INT_H_
+#define	_DB_INT_H_
 
 /*******************************************************
- * System includes, db.h, a few general DB includes.  The DB includes are
- * here because it's OK if db_int.h includes queue structure declarations.
+ * Berkeley DB includes.
  *******************************************************/
 #ifndef NO_SYSTEM_INCLUDES
+#include <sys/types.h>
+#ifdef DIAG_MVCC
+#include <sys/mman.h>
+#endif
+#include <sys/stat.h>
+
+#if defined(__INCLUDE_SELECT_H)
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+#ifdef HAVE_VXWORKS
+#include <selectLib.h>
+#endif
+#endif
+
+#if TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#if HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+
+#ifdef HAVE_VXWORKS
+#include <net/uio.h>
+#else
+#include <sys/uio.h>
+#endif
+
+#if defined(__INCLUDE_NETWORKING)
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
+
 #if defined(STDC_HEADERS) || defined(__cplusplus)
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
+
+#include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <signal.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #endif
 
 #include "db.h"
@@ -56,9 +104,6 @@ extern "C" {
 #define	INT64_MAX	_I64_MAX
 #define	INT64_MIN	_I64_MIN
 #define	UINT64_MAX	_UI64_MAX
-
-#define	INT64_FMT	"%l64d"
-#define	UINT64_FMT	"%l64u"
 #else
 /*
  * Override the system's 64-bit min/max constants.  AIX's 32-bit compiler can
@@ -68,11 +113,16 @@ extern "C" {
 #define	INT64_MAX	9223372036854775807LL
 #define	INT64_MIN	(-INT64_MAX-1)
 #define	UINT64_MAX	18446744073709551615ULL
+#endif	/* DB_WIN32 */
 
 #define	INT64_FMT	"%lld"
 #define	UINT64_FMT	"%llu"
-#endif	/* DB_WIN32 */
-#endif	/* HAVE_LONG_LONG && HAVE_UNSIGNED_LONG_LONG */
+#endif	/* HAVE_64BIT_TYPES */
+
+#undef	FALSE
+#define	FALSE		0
+#undef	TRUE
+#define	TRUE		(!FALSE)
 
 #define	MEGABYTE	1048576
 #define	GIGABYTE	1073741824
@@ -230,6 +280,21 @@ typedef struct __db_msgbuf {
 #define	STAT_ULONG(msg, v)						\
 	__db_msg(dbenv, "%lu\t%s", (u_long)(v), msg)
 
+/*
+ * There are quite a few places in Berkeley DB where we want to initialize
+ * a DBT from a string or other random pointer type, using a length typed
+ * to size_t in most cases.  This macro avoids a lot of casting.  The macro
+ * comes in two flavors because we often want to clear the DBT first.
+ */
+#define	DB_SET_DBT(dbt, d, s)  do {					\
+	(dbt).data = (void *)(d);					\
+	(dbt).size = (u_int32_t)(s);					\
+} while (0)
+#define	DB_INIT_DBT(dbt, d, s)  do {					\
+	memset(&(dbt), 0, sizeof(dbt));					\
+	DB_SET_DBT(dbt, d, s);						\
+} while (0)
+
 /*******************************************************
  * API return values
  *******************************************************/
@@ -255,8 +320,7 @@ typedef struct __db_msgbuf {
 				    (ret) == DB_REP_ISPERM || \
 				    (ret) == DB_REP_NEWMASTER || \
 				    (ret) == DB_REP_NEWSITE || \
-				    (ret) == DB_REP_NOTPERM || \
-				    (ret) == DB_REP_STARTUPDONE)
+				    (ret) == DB_REP_NOTPERM)
 
 /* Find a reasonable operation-not-supported error. */
 #ifdef	EOPNOTSUPP
@@ -277,8 +341,7 @@ typedef struct __db_msgbuf {
  * the real path length is, as it was traditionally stored in <sys/param.h>,
  * and that file isn't always available.
  */
-#undef	MAXPATHLEN
-#define	MAXPATHLEN	1024
+#define	DB_MAXPATHLEN	1024
 
 #define	PATH_DOT	"."	/* Current working directory. */
 				/* Path separator character(s). */
@@ -296,6 +359,8 @@ typedef enum {
 } APPNAME;
 
 /*
+ * A set of macros to check if various functionality has been configured.
+ *
  * ALIVE_ON	The is_alive function is configured.
  * CDB_LOCKING	CDB product locking.
  * CRYPTO_ON	Security has been configured.
@@ -306,6 +371,11 @@ typedef enum {
  * REP_ON	Replication has been configured.
  * RPC_ON	RPC has been configured.
  * TXN_ON	Transactions have been configured.
+ *
+ * REP_ON is more complex than most: if the BDB library was compiled without
+ * replication support, dbenv->rep_handle will be NULL; if the BDB library
+ * has replication support, but it was not configured, the region reference
+ * will be NULL.
  */
 #define	ALIVE_ON(dbenv)		((dbenv)->is_alive != NULL)
 #define	CDB_LOCKING(dbenv)	F_ISSET(dbenv, DB_ENV_CDB)
@@ -314,7 +384,8 @@ typedef enum {
 #define	LOGGING_ON(dbenv)	((dbenv)->lg_handle != NULL)
 #define	MPOOL_ON(dbenv)		((dbenv)->mp_handle != NULL)
 #define	MUTEX_ON(dbenv)		((dbenv)->mutex_handle != NULL)
-#define	REP_ON(dbenv)		((dbenv)->rep_handle != NULL)
+#define	REP_ON(dbenv)							\
+	((dbenv)->rep_handle != NULL && (dbenv)->rep_handle->region != NULL)
 #define	RPC_ON(dbenv)		((dbenv)->cl_handle != NULL)
 #define	TXN_ON(dbenv)		((dbenv)->tx_handle != NULL)
 
@@ -331,8 +402,7 @@ typedef enum {
  * IS_RECOVERING: The system is running recovery.
  */
 #define	IS_RECOVERING(dbenv)						\
-	(LOGGING_ON(dbenv) &&						\
-	    F_ISSET((DB_LOG *)(dbenv)->lg_handle, DBLOG_RECOVER))
+	(LOGGING_ON(dbenv) && F_ISSET((dbenv)->lg_handle, DBLOG_RECOVER))
 
 /* Initialization methods are often illegal before/after open is called. */
 #define	ENV_ILLEGAL_AFTER_OPEN(dbenv, name)				\
@@ -345,6 +415,9 @@ typedef enum {
 /* We're not actually user hostile, honest. */
 #define	ENV_REQUIRES_CONFIG(dbenv, handle, i, flags)			\
 	if (handle == NULL)						\
+		return (__db_env_config(dbenv, i, flags));
+#define	ENV_REQUIRES_CONFIG_XX(dbenv, handle, i, flags)			\
+	if ((dbenv)->handle->region == NULL)				\
 		return (__db_env_config(dbenv, i, flags));
 #define	ENV_NOT_CONFIGURED(dbenv, handle, i, flags)			\
 	if (F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
@@ -364,7 +437,7 @@ typedef enum {
 #ifdef DIAGNOSTIC
 #define	ENV_LEAVE(dbenv, ip) do {					\
 	if ((ip) != NULL) {						\
-		DB_ASSERT(ip->dbth_state == THREAD_ACTIVE);		\
+		DB_ASSERT(dbenv, ip->dbth_state == THREAD_ACTIVE);	\
 		(ip)->dbth_state = THREAD_OUT;				\
 	}								\
 } while (0)
@@ -379,16 +452,20 @@ typedef enum {
 	DB_THREAD_INFO *__ip;						\
 	if ((dbenv)->thr_hashtab != NULL) {				\
 		(void)__env_set_state(dbenv, &__ip, THREAD_DIAGNOSTIC);	\
-		DB_ASSERT(__ip != NULL &&				\
-		     __ip->dbth_state != THREAD_OUT);			\
+		DB_ASSERT(dbenv,					\
+		    __ip != NULL && __ip->dbth_state != THREAD_OUT);	\
 	}								\
 } while (0)
+#ifdef HAVE_STATISTICS
 #define	CHECK_MTX_THREAD(dbenv, mtx) do {				\
 	if (mtx->alloc_id != MTX_MUTEX_REGION &&			\
 	    mtx->alloc_id != MTX_ENV_REGION &&				\
 	    mtx->alloc_id != MTX_APPLICATION)				\
 		CHECK_THREAD(dbenv);					\
 } while (0)
+#else
+#define	CHECK_MTX_THREAD(dbenv, mtx)
+#endif
 #else
 #define	CHECK_THREAD(dbenv)
 #define	CHECK_MTX_THREAD(dbenv, mtx)
@@ -417,6 +494,11 @@ typedef struct __env_thread_info {
 	u_int32_t	thr_nbucket;
 	roff_t		thr_hashoff;
 } THREAD_INFO;
+
+#define	DB_EVENT(dbenv, e, einfo) do {					\
+	if ((dbenv)->db_event_func != NULL)				\
+		(dbenv)->db_event_func(dbenv, e, einfo);		\
+} while (0)
 
 /*******************************************************
  * Database Access Methods.
@@ -474,9 +556,9 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
 #define	IS_INITIALIZED(dbc)	((dbc)->internal->pgno != PGNO_INVALID)
 
 /* Free the callback-allocated buffer, if necessary, hanging off of a DBT. */
-#define	FREE_IF_NEEDED(sdbp, dbt)					\
+#define	FREE_IF_NEEDED(dbenv, dbt)					\
 	if (F_ISSET((dbt), DB_DBT_APPMALLOC)) {				\
-		__os_ufree((sdbp)->dbenv, (dbt)->data);			\
+		__os_ufree((dbenv), (dbt)->data);			\
 		F_CLR((dbt), DB_DBT_APPMALLOC);				\
 	}
 
@@ -556,12 +638,25 @@ typedef struct __dbpginfo {
 #define	IS_NOT_LOGGED_LSN(LSN) \
 	((LSN).file == 0 && (LSN).offset == 1)
 
+/*
+ * LOG_COMPARE -- compare two LSNs.
+ */
+
+#define	LOG_COMPARE(lsn0, lsn1)						\
+    ((lsn0)->file != (lsn1)->file ?					\
+    ((lsn0)->file < (lsn1)->file ? -1 : 1) :				\
+    ((lsn0)->offset != (lsn1)->offset ?					\
+    ((lsn0)->offset < (lsn1)->offset ? -1 : 1) : 0))
+
+
 /*******************************************************
  * Txn.
  *******************************************************/
 #define	DB_NONBLOCK(C)	((C)->txn != NULL && F_ISSET((C)->txn, TXN_NOWAIT))
 #define	NOWAIT_FLAG(txn) \
 	((txn) != NULL && F_ISSET((txn), TXN_NOWAIT) ? DB_LOCK_NOWAIT : 0)
+#define	IS_REAL_TXN(txn)						\
+	((txn) != NULL && !F_ISSET(txn, TXN_CDSGROUP))
 #define	IS_SUBTRANSACTION(txn)						\
 	((txn) != NULL && (txn)->parent != NULL)
 
@@ -608,6 +703,8 @@ struct __vrfy_childinfo;typedef struct __vrfy_childinfo VRFY_CHILDINFO;
 struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
 struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
 
+typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
+
 #if defined(__cplusplus)
 }
 #endif
@@ -623,6 +720,9 @@ struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
 #include "dbinc_auto/env_ext.h"
 #include "dbinc/mutex.h"
 #include "dbinc/os.h"
+#ifdef HAVE_REPLICATION_THREADS
+#include "dbinc/repmgr.h"
+#endif
 #include "dbinc/rep.h"
 #include "dbinc_auto/clib_ext.h"
 #include "dbinc_auto/common_ext.h"
@@ -668,4 +768,4 @@ struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
 	    !F_ISSET((dbc), DBC_RECOVER) && !IS_REP_CLIENT((dbc)->dbp->dbenv))
 #endif
 
-#endif /* !_DB_INTERNAL_H_ */
+#endif /* !_DB_INT_H_ */

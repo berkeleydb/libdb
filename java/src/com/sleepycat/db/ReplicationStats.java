@@ -3,15 +3,15 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 
 package com.sleepycat.db;
 
 public class ReplicationStats {
     // no public constructor
-    protected ReplicationStats() {}
+    /* package */ ReplicationStats() {}
 
     private int st_status;
     public int getStatus() {

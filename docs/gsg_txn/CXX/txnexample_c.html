@@ -6,7 +6,7 @@
     <title>Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="previous" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="next" href="inmem_txnexample_c.html" title="In-Memory Transaction Example" />
@@ -36,7 +36,7 @@
       </div>
       <p>
         The following code provides a fully functional example of a
-        multi-threaded transactional JE application. For improved
+        multi-threaded transactional DB application. For improved
         portability across platforms, this examples uses pthreads to
         provide threading support.
     </p>
@@ -113,7 +113,7 @@ usage()
     With that, we have finished up our program's housekeeping, and we can
     now move on to the main part of our program. As usual, we begin with
     <tt class="function">main()</tt>. First we declare all our variables, and
-    then we initialize our JE handles.
+    then we initialize our DB handles.
 </p>
       <pre class="programlisting">int
 main(int argc, char *argv[])
@@ -163,7 +163,7 @@ main(int argc, char *argv[])
             <p>
             We specify <tt class="literal">DB_RECOVER</tt>, which means that normal
             recovery is run every time we start the application. This is
-            highly desirable and recommended by Sleepycat for most
+            highly desirable and recommended for most
             applications.
         </p>
           </li>
@@ -192,7 +192,7 @@ main(int argc, char *argv[])
         // Create and open the environment 
         envp = new DbEnv(0);  </pre>
       <p>
-    Now we configure how we want deadlock detection performed. In our case, we will cause JE to perform deadlock
+    Now we configure how we want deadlock detection performed. In our case, we will cause DB to perform deadlock
     detection by walking its internal lock tables looking for a block every time a lock is requested.  Further, in the
     event of a deadlock, the thread that holds the youngest lock will receive the deadlock notification.
  </p>
@@ -226,7 +226,7 @@ The implementation of <tt class="function">open_db()</tt> is described
       <p>
         Now we create our threads. In this example we are using pthreads
         for our threading package. A description of threading (beyond how
-        it impacts JE usage) is beyond the scope of this manual. 
+        it impacts DB usage) is beyond the scope of this manual. 
         However, the things that we are doing here should be familiar to
         anyone who has prior experience with any threading package. We are
         simply initializing a mutex, creating our threads, and then joining
@@ -254,7 +254,7 @@ The implementation of <tt class="function">open_db()</tt> is described
     }  </pre>
       <p>
         Finally, to wrap up <tt class="function">main()</tt>, we close out our
-        database and environment handle, as is normal for any JE
+        database and environment handle, as is normal for any DB
         application. Notice that this is where our <tt class="literal">err</tt>
         label is placed in our application. If any database operation prior
         to this point in the program returns an error status, the program
@@ -606,7 +606,7 @@ countRecords(Db *dbp, DbTxn *txn)
         function would cause our
         thread to self-deadlock because the cursor could not be opened to
         support uncommitted reads (that flag on the cursor open would, in fact, 
-        be silently ignored by JE).
+        be silently ignored by DB).
     </p>
       <pre class="programlisting">// Open a Berkeley DB database
 int
@@ -647,7 +647,7 @@ openDb(Db **dbpp, const char *progname, const char *fileName,
       <p>
     This completes our transactional example. If you would like to
     experiment with this code, you can find the example in the following
-    location in your JE distribution:
+    location in your DB distribution:
 </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_cxx/txn_guide</pre>
     </div>

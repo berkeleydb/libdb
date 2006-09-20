@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1996-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test013.tcl,v 12.1 2005/06/16 20:24:05 bostic Exp $
+# $Id: test013.tcl,v 12.4 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	test013
 # TEST	Partial put test
 # TEST		Overwrite entire records using partial puts.
-# TEST		Make surethat NOOVERWRITE flag works.
+# TEST		Make sure that NOOVERWRITE flag works.
 # TEST
 # TEST	1. Insert 10000 keys and retrieve them (equal key/data pairs).
 # TEST	2. Attempt to overwrite keys with NO_OVERWRITE set (expect error).

@@ -1,5 +1,5 @@
-<!--$Id: conf.so,v 10.62 2005/10/12 14:52:10 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: conf.so,v 10.63 2006/04/07 21:08:34 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -109,12 +109,15 @@ database environments, that is, environments where the
 <a href="../../api_c/env_open.html#DB_PRIVATE">DB_PRIVATE</a> flag is specified to the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> method.</p>
 <p>Specifying the --enable-posixmutexes configuration argument may require
 that applications and Berkeley DB be linked with the -lpthread library.</p>
-<dt><a name="--enable-pthread_self">--enable-pthread_self</a><dd>To force Berkeley DB to use the POSIX pthread pthread_self function to identify
-threads of control, even when configured for test-and-set mutexes, enter
---enable-pthread_self as an argument to configure.  The --enable-pthread_self
-argument requires that POSIX pthread support already be installed on
-your system.
-<p>Specifying the --enable-pthread_self configuration argument may require
+<dt><a name="--enable-pthread_api">--enable-pthread_api</a><dd>To configure Berkeley DB for a POSIX pthreads application (with the exception
+that POSIX pthread mutexes may not be selected as the underlying mutex
+implementation for the build), enter --enable-pthread_api as an argument
+to configure.  The build will include the Berkeley DB replication manager
+interfaces and will use the POSIX standard pthread_self and
+pthread_yield functions to identify threads of control and yield the
+processor.  The --enable-pthread_api argument requires POSIX pthread
+support already be installed on your system.
+<p>Specifying the --enable-pthread_api configuration argument may require
 that applications and Berkeley DB be linked with the -lpthread library.</p>
 <a name="11"><!--meow--></a>
 <dt><a name="--enable-rpc">--enable-rpc</a><dd>To build the Berkeley DB RPC client code and server utility, enter --enable-rpc
@@ -184,6 +187,6 @@ multiple versions of Berkeley DB</a> for more information.
 </dl>
 <table width="100%"><tr><td><br></td><td align=right><a href="../build_unix/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_unix/small.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

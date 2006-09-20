@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: StoredSortedValueSet.java,v 12.2 2005/10/05 20:40:10 mark Exp $
+ * $Id: StoredSortedValueSet.java,v 12.5 2006/08/31 18:14:08 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -20,17 +20,6 @@ import com.sleepycat.db.Database;
  * directly if a Map is not needed.
  * Although this collection is a set it may contain duplicate values.  Only if
  * an entity value binding is used are all elements guaranteed to be unique.
- *
- * <p><em>Note that this class does not conform to the standard Java
- * collections interface in the following ways:</em></p>
- * <ul>
- * <li>The {@link #size} method always throws
- * <code>UnsupportedOperationException</code> because, for performance reasons,
- * databases do not maintain their total record count.</li>
- * <li>All iterators must be explicitly closed using {@link
- * StoredIterator#close()} or {@link StoredIterator#close(java.util.Iterator)}
- * to release the underlying database cursor resources.</li>
- * </ul>
  *
  * <p>In addition to the standard SortedSet methods, this class provides the
  * following methods for stored sorted value sets only.  Note that the use of

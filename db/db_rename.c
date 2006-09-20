@@ -1,22 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_rename.c,v 12.11 2005/10/07 20:21:22 ubell Exp $
+ * $Id: db_rename.c,v 12.20 2006/09/19 15:06:58 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_am.h"
 #include "dbinc/fop.h"
 #include "dbinc/lock.h"
@@ -75,7 +69,8 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 			goto err;
 		txn_local = 1;
 	} else
-		if (txn != NULL && !TXN_ON(dbenv)) {
+		if (txn != NULL && !TXN_ON(dbenv) &&
+		    (!CDB_LOCKING(dbenv) || !F_ISSET(txn, TXN_CDSGROUP))) {
 			ret = __db_not_txn_env(dbenv);
 			goto err;
 		}
@@ -97,11 +92,11 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 		dbp->lid = DB_LOCK_INVALIDID;
 	} else if (txn != NULL) {
 		/*
-		 * We created this handle locally so we need to close it
-		 * and clean it up.  Unfortunately, it's holding transactional
-		 * locks that need to persist until the end of transaction.
-		 * If we invalidate the locker id (dbp->lid), then the close
-		 * won't free these locks prematurely.
+		 * We created this handle locally so we need to close it and
+		 * clean it up.  Unfortunately, it's holding transactional
+		 * or CDS group locks that need to persist until the end of
+		 * transaction.  If we invalidate the locker id (dbp->lid),
+		 * then the close won't free these locks prematurely.
 		 */
 		 dbp->lid = DB_LOCK_INVALIDID;
 	}
@@ -237,7 +232,7 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 
 	if (name == NULL && subdb == NULL) {
-		__db_err(dbenv, "Rename on temporary files invalid");
+		__db_errx(dbenv, "Rename on temporary files invalid");
 		ret = EINVAL;
 		goto err;
 	}
@@ -279,7 +274,7 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 	 * create a temporary object as a placeholder.  This is all
 	 * taken care of in the fop layer.
 	 */
-	if (txn != NULL) {
+	if (IS_REAL_TXN(txn)) {
 		if ((ret = __fop_dummy(dbp, txn, old, newname, 0)) != 0)
 			goto err;
 	} else {
@@ -291,7 +286,7 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 	 * I am pretty sure that we haven't gotten a dbreg id, so calling
 	 * dbreg_filelist_update is not necessary.
 	 */
-	DB_ASSERT(dbp->log_filename == NULL ||
+	DB_ASSERT(dbenv, dbp->log_filename == NULL ||
 	    dbp->log_filename->id == DB_LOGFILEID_INVALID);
 
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, newname);
@@ -341,7 +336,8 @@ __db_subdb_rename(dbp, txn, name, subdb, newname)
 	    MU_OPEN, NULL, 0)) != 0)
 		goto err;
 
-	if ((ret = __memp_fget(mdbp->mpf, &dbp->meta_pgno, 0, &meta)) != 0)
+	if ((ret = __memp_fget(mdbp->mpf, &dbp->meta_pgno,
+	    txn, 0, &meta)) != 0)
 		goto err;
 	memcpy(dbp->fileid, ((DBMETA *)meta)->uid, DB_FILE_ID_LEN);
 	if ((ret = __fop_lock_handle(dbenv,

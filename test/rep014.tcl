@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep014.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
+# $Id: rep014.tcl,v 12.10 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep014
 # TEST	Replication and multiple replication handles.
@@ -13,22 +13,28 @@
 proc rep014 { method { niter 10 } { tnum "014" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Run for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	# We can't open two envs on HP-UX, so just skip the
 	# whole test since that is at the core of it.
 	if { $is_hp_test == 1 } {
 		puts "Rep$tnum: Skipping for HP-UX."
 		return
 	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -68,11 +74,9 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env -create $m_txnargs \
-	    $m_logargs -lock_max 2500 \
+	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 \
+#	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 #	    -errpfx MASTER -verbose {rep on} \
 #	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env0 [eval $ma_envcmd $recargs -rep_master]
@@ -81,11 +85,9 @@ proc rep014_sub { method niter tnum logset recargs largs } {
 
 	# Open a client.
 	repladd 2
-	set cl_envcmd "berkdb_env -create $c_txnargs \
-	    $c_logargs -lock_max 2500 \
+	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
-#	set cl_envcmd "berkdb_env -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 \
+#	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
 #	    -errpfx CLIENT1 -verbose {rep on} \
 #	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env1 [eval $cl_envcmd $recargs]

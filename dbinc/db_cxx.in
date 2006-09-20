@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_cxx.in,v 12.13 2005/10/18 14:17:08 mjc Exp $
+ * $Id: db_cxx.in,v 12.28 2006/09/13 14:53:37 mjc Exp $
  */
 
 #ifndef _DB_CXX_H_
@@ -73,11 +73,9 @@ class DbLogc;                                    // forward
 class DbLsn;                                     // forward
 class DbMpoolFile;                               // forward
 class DbPreplist;                                // forward
-class Dbt;                                       // forward
-class DbTxn;                                     // forward
-class DbLock;                                    // forward
 class DbSequence;                                // forward
 class Dbt;                                       // forward
+class DbTxn;                                     // forward
 
 class DbMultipleIterator;                        // forward
 class DbMultipleKeyDataIterator;                 // forward
@@ -110,6 +108,7 @@ class DbRunRecoveryException;                    // forward
 // 4514: unreferenced inline function has been removed
 //       certain include files in MSVC define methods that are not called
 //
+#pragma warning(push)
 #pragma warning(disable: 4201 4514)
 
 #endif
@@ -387,6 +386,7 @@ public:
 
 	// These methods match those in the C interface.
 	//
+	virtual int cdsgroup_begin(DbTxn **tid);
 	virtual int close(u_int32_t);
 	virtual int dbremove(DbTxn *txn, const char *name, const char *subdb,
 	    u_int32_t flags);
@@ -412,7 +412,8 @@ public:
 	virtual int set_data_dir(const char *);
 	virtual int get_encrypt_flags(u_int32_t *);
 	virtual int set_intermediate_dir(int, u_int32_t);
-	virtual int set_isalive(int (*)(DbEnv *, pid_t, db_threadid_t));
+	virtual int set_isalive(
+			int (*)(DbEnv *, pid_t, db_threadid_t, u_int32_t));
 	virtual int set_encrypt(const char *, u_int32_t);
 	virtual void set_errcall(
 			void (*)(const DbEnv *, const char *, const char *));
@@ -420,6 +421,7 @@ public:
 	virtual void set_errfile(FILE *);
 	virtual void get_errpfx(const char **);
 	virtual void set_errpfx(const char *);
+	virtual int set_event_notify(void (*)(DbEnv *, u_int32_t, void *));
 	virtual int get_flags(u_int32_t *);
 	virtual int set_flags(u_int32_t, int);
 	virtual bool is_bigendian();
@@ -439,7 +441,6 @@ public:
 	virtual int set_lk_conflicts(u_int8_t *, int);
 	virtual int get_lk_detect(u_int32_t *);
 	virtual int set_lk_detect(u_int32_t);
-	virtual int set_lk_max(u_int32_t);
 	virtual int get_lk_max_lockers(u_int32_t *);
 	virtual int set_lk_max_lockers(u_int32_t);
 	virtual int get_lk_max_locks(u_int32_t *);
@@ -570,23 +571,41 @@ public:
 
 	// Replication functions
 	//
-	virtual int rep_elect(int, int, int, u_int32_t, int *, u_int32_t);
+	virtual int rep_elect(int, int, int *, u_int32_t);
 	virtual int rep_flush();
 	virtual int rep_process_message(Dbt *, Dbt *, int *, DbLsn *);
 	virtual int rep_start(Dbt *, u_int32_t);
 	virtual int rep_stat(DB_REP_STAT **statp, u_int32_t flags);
 	virtual int rep_stat_print(u_int32_t flags);
-	virtual int get_rep_limit(u_int32_t *, u_int32_t *);
-	virtual int set_rep_limit(u_int32_t, u_int32_t);
-	virtual int set_rep_transport(int, int (*)(DbEnv *,
+	virtual int rep_get_limit(u_int32_t *, u_int32_t *);
+	virtual int rep_set_limit(u_int32_t, u_int32_t);
+	virtual int rep_set_transport(int, int (*)(DbEnv *,
 	    const Dbt *, const Dbt *, const DbLsn *, int, u_int32_t));
 	virtual int set_rep_request(u_int32_t, u_int32_t);
 	virtual int set_thread_count(u_int32_t);
 	virtual int set_thread_id(void (*)(DbEnv *, pid_t *, db_threadid_t *));
-	virtual int set_thread_id_string(char *(*)(DbEnv *, pid_t, db_threadid_t, char *));
+	virtual int set_thread_id_string(char *(*)(DbEnv *,
+	    pid_t, db_threadid_t, char *));
 	virtual int rep_set_config(u_int32_t which, int onoff);
 	virtual int rep_get_config(u_int32_t which, int *onoffp);
 	virtual int rep_sync(u_int32_t flags);
+
+	// Advanced replication functions
+	//
+	virtual int rep_get_nsites(int *n);
+	virtual int rep_set_nsites(int n);
+	virtual int rep_get_priority(int *priority);
+	virtual int rep_set_priority(int priority);
+	virtual int rep_get_timeout(int which, db_timeout_t *timeout);
+	virtual int rep_set_timeout(int which, db_timeout_t timeout);
+	virtual int repmgr_add_remote_site(const char * host, u_int16_t port,
+	    int *eidp, u_int32_t flags);
+	virtual int repmgr_get_ack_policy(int *policy);
+	virtual int repmgr_set_ack_policy(int policy);
+	virtual int repmgr_set_local_site(const char * host, u_int16_t port,
+	    u_int32_t flags);
+	virtual int repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);
+	virtual int repmgr_start(int nthreads, u_int32_t flags);
 
 	// Conversion functions
 	//
@@ -621,8 +640,9 @@ public:
 				       db_recops op);
 	static void _paniccall_intercept(DB_ENV *env, int errval);
 	static void _feedback_intercept(DB_ENV *env, int opcode, int pct);
+	static void  _event_func_intercept(DB_ENV *env, u_int32_t, void *);
 	static int _isalive_intercept(DB_ENV *env, pid_t pid,
-	    db_threadid_t thrid);
+	    db_threadid_t thrid, u_int32_t flags);
 	static int _rep_send_intercept(DB_ENV *env, const DBT *cntrl,
 	    const DBT *data, const DB_LSN *lsn, int id, u_int32_t flags);
 	static void _stream_error_function(const DB_ENV *env,
@@ -654,11 +674,12 @@ private:
 	__DB_STD(ostream) *message_stream_;
 
 	int (*app_dispatch_callback_)(DbEnv *, Dbt *, DbLsn *, db_recops);
-	int (*isalive_callback_)(DbEnv *, pid_t, db_threadid_t);
+	int (*isalive_callback_)(DbEnv *, pid_t, db_threadid_t, u_int32_t);
 	void (*error_callback_)(const DbEnv *, const char *, const char *);
 	void (*feedback_callback_)(DbEnv *, int, int);
 	void (*message_callback_)(const DbEnv *, const char *);
 	void (*paniccall_callback_)(DbEnv *, int);
+	void (*event_func_callback_)(DbEnv *, u_int32_t, void *);
 	int (*rep_send_callback_)(DbEnv *, const Dbt *, const Dbt *,
 	    const DbLsn *, int, u_int32_t);
 	void (*thread_id_callback_)(DbEnv *, pid_t *, db_threadid_t *);
@@ -731,7 +752,7 @@ class _exported DbMpoolFile
 
 public:
 	int close(u_int32_t flags);
-	int get(db_pgno_t *pgnoaddr, u_int32_t flags, void *pagep);
+	int get(db_pgno_t *pgnoaddr, DbTxn *txn, u_int32_t flags, void *pagep);
 	int open(const char *file, u_int32_t flags, int mode, size_t pagesize);
 	int get_transactional(void);
 	int put(void *pgaddr, u_int32_t flags);
@@ -1144,4 +1165,17 @@ public:
 	DbRunRecoveryException(const DbRunRecoveryException &);
 	DbRunRecoveryException &operator = (const DbRunRecoveryException &);
 };
+
+//
+// A specific sort of exception that occurs when
+
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+//
+// Restore default compiler warnings
+//
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 #endif /* !_DB_CXX_H_ */

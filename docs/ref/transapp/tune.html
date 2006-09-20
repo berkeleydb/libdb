@@ -1,5 +1,5 @@
-<!--$Id: tune.so,v 11.23 2005/07/20 16:28:04 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: tune.so,v 11.24 2006/08/08 05:24:09 mjc Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -39,13 +39,13 @@ are two different approaches to resolving this problem.  First, as the
 Btree access method uses page-level locking, decreasing the database
 page size can result in fewer lock conflicts.  Second, in the case of
 databases that are cyclically growing and shrinking, turning off reverse
-splits can leave the database with enough pages that there will be fewer
-lock conflicts.
-<dt>transactionally protected read operations<dd>Most applications do not need repeatable reads.  Performing all read
-operations outside of transactions can often significantly increase
-application throughput.  In addition, limiting the lifetime of
-non-transactional cursors will reduce the length of times locks are
-held, thereby improving concurrency.
+splits (with <a href="../../api_c/db_set_flags.html#DB_REVSPLITOFF">DB_REVSPLITOFF</a>) can leave the database with enough
+pages that there will be fewer lock conflicts.
+<dt>read locks<dd>Performing all read operations outside of transactions or at
+<a href="../../ref/transapp/read.html">snapshot isolation</a> can often
+significantly increase application throughput.  In addition, limiting
+the lifetime of non-transactional cursors will reduce the length of
+times locks are held, thereby improving concurrency.
 <dt><a href="../../api_c/env_set_flags.html#DB_DIRECT_DB">DB_DIRECT_DB</a>, <a href="../../api_c/env_set_flags.html#DB_DIRECT_LOG">DB_DIRECT_LOG</a><dd>Consider using the <a href="../../api_c/env_set_flags.html#DB_DIRECT_DB">DB_DIRECT_DB</a> and <a href="../../api_c/env_set_flags.html#DB_DIRECT_LOG">DB_DIRECT_LOG</a> flags.
 On some systems, avoiding caching in the operating system can improve
 write throughput and allow the creation of larger Berkeley DB caches.
@@ -63,11 +63,11 @@ and can significantly increase application throughput in applications
 that do not require data be guaranteed to be permanent in the database.
 This is also called <i>degree 1 isolation</i>, or <i>dirty
 reads</i>.</p>
-<dt><a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a><dd>Consider using the <a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a> flag to immediate acquire write locks
-when reading data items that will subsequently be modified.  Although
-this flag may increase contention (because write locks are held longer
-than they would otherwise be), it may decrease the number of deadlocks
-that occur.
+<dt><a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a><dd>If there are many deadlocks, consider using the <a href="../../api_c/dbc_get.html#DB_RMW">DB_RMW</a> flag to
+immediate acquire write locks when reading data items that will
+subsequently be modified.  Although this flag may increase contention
+(because write locks are held longer than they would otherwise be), it
+may decrease the number of deadlocks that occur.
 <dt><a href="../../api_c/env_set_flags.html#DB_TXN_WRITE_NOSYNC">DB_TXN_WRITE_NOSYNC</a>, <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><dd>By default, transactional commit in Berkeley DB implies durability, that is,
 all committed operations will be present in the database after recovery
 from any application or system failure.  For applications not requiring
@@ -137,6 +137,6 @@ the overall throughput of the application.
 </dl>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/reclimit.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/throughput.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1><a href="../../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

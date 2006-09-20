@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 12.4 2005/07/21 18:21:20 bostic Exp $
+# $Id: gen_rpc.awk,v 12.7 2006/05/05 15:29:43 bostic Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -721,9 +721,9 @@ END {
 			continue;
 		printf("\tif (%s != NULL) {\n", args[i]) >> CFILE
 		if (!env_handle) {
-			printf("\t\t__db_err(dbenv, ") >> CFILE
+			printf("\t\t__db_errx(dbenv, ") >> CFILE
 		} else {
-			printf("\t\t__db_err(%s, ", args[env_idx]) >> CFILE
+			printf("\t\t__db_errx(%s, ", args[env_idx]) >> CFILE
 		}
 		printf("\"User functions not supported in RPC\");\n") >> CFILE
 		printf("\t\treturn (EINVAL);\n\t}\n") >> CFILE
@@ -840,10 +840,10 @@ END {
 	}
 	printf("\tif (replyp == NULL) {\n") >> CFILE
 	if (!env_handle) {
-		printf("\t\t__db_err(dbenv, ") >> CFILE
+		printf("\t\t__db_errx(dbenv, ") >> CFILE
 		printf("clnt_sperror(cl, \"Berkeley DB\"));\n") >> CFILE
 	} else {
-		printf("\t\t__db_err(%s, ", args[env_idx]) >> CFILE
+		printf("\t\t__db_errx(%s, ", args[env_idx]) >> CFILE
 		printf("clnt_sperror(cl, \"Berkeley DB\"));\n") >> CFILE
 	}
 	printf("\t\tret = DB_NOSERVER;\n") >> CFILE
@@ -983,62 +983,39 @@ function general_headers()
 {
 	printf("#include \"db_config.h\"\n") >> CFILE
 	printf("\n") >> CFILE
-	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> CFILE
-	printf("#include <sys/types.h>\n") >> CFILE
-	printf("\n") >> CFILE
-	printf("#include <rpc/rpc.h>\n") >> CFILE
-	printf("\n") >> CFILE
-	printf("#include <string.h>\n") >> CFILE
-	printf("#endif\n") >> CFILE
-	printf("\n") >> CFILE
-	printf("#include \"db_server.h\"\n") >> CFILE
-	printf("\n") >> CFILE
 	printf("#include \"db_int.h\"\n") >> CFILE
+	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> CFILE
+	printf("#include <rpc/rpc.h>\n") >> CFILE
+	printf("#endif\n") >> CFILE
+	printf("#include \"db_server.h\"\n") >> CFILE
 	printf("#include \"dbinc/txn.h\"\n") >> CFILE
 	printf("#include \"dbinc_auto/rpc_client_ext.h\"\n") >> CFILE
 	printf("\n") >> CFILE
 
 	printf("#include \"db_config.h\"\n") >> TFILE
 	printf("\n") >> TFILE
-	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> TFILE
-	printf("#include <sys/types.h>\n") >> TFILE
-	printf("\n") >> TFILE
-	printf("#include <string.h>\n") >> TFILE
-	printf("#endif\n") >> TFILE
 	printf("#include \"db_int.h\"\n") >> TFILE
 	printf("#include \"dbinc/txn.h\"\n") >> TFILE
 	printf("\n") >> TFILE
 
 	printf("#include \"db_config.h\"\n") >> SFILE
 	printf("\n") >> SFILE
-	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> SFILE
-	printf("#include <sys/types.h>\n") >> SFILE
-	printf("\n") >> SFILE
-	printf("#include <rpc/rpc.h>\n") >> SFILE
-	printf("\n") >> SFILE
-	printf("#include <string.h>\n") >> SFILE
-	printf("#endif\n") >> SFILE
-	printf("\n") >> SFILE
-	printf("#include \"db_server.h\"\n") >> SFILE
-	printf("\n") >> SFILE
 	printf("#include \"db_int.h\"\n") >> SFILE
+	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> SFILE
+	printf("#include <rpc/rpc.h>\n") >> SFILE
+	printf("#endif\n") >> SFILE
+	printf("#include \"db_server.h\"\n") >> SFILE
 	printf("#include \"dbinc/db_server_int.h\"\n") >> SFILE
 	printf("#include \"dbinc_auto/rpc_server_ext.h\"\n") >> SFILE
 	printf("\n") >> SFILE
 
 	printf("#include \"db_config.h\"\n") >> PFILE
 	printf("\n") >> PFILE
-	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> PFILE
-	printf("#include <sys/types.h>\n") >> PFILE
-	printf("\n") >> PFILE
-	printf("#include <rpc/rpc.h>\n") >> PFILE
-	printf("\n") >> PFILE
-	printf("#include <string.h>\n") >> PFILE
-	printf("#endif\n") >> PFILE
-	printf("\n") >> PFILE
-	printf("#include \"db_server.h\"\n") >> PFILE
-	printf("\n") >> PFILE
 	printf("#include \"db_int.h\"\n") >> PFILE
+	printf("#ifndef NO_SYSTEM_INCLUDES\n") >> PFILE
+	printf("#include <rpc/rpc.h>\n") >> PFILE
+	printf("#endif\n") >> PFILE
+	printf("#include \"db_server.h\"\n") >> PFILE
 	printf("#include \"dbinc/db_server_int.h\"\n") >> PFILE
 	printf("\n") >> PFILE
 }
@@ -1056,7 +1033,7 @@ function illegal_functions(OUTPUT)
 	printf("static int\n") >> OUTPUT
 	printf("__dbcl_noserver(dbenv)\n") >> OUTPUT
 	printf("\tDB_ENV *dbenv;\n") >> OUTPUT
-	printf("{\n\t__db_err(dbenv,") >> OUTPUT
+	printf("{\n\t__db_errx(dbenv,") >> OUTPUT
 	printf(" \"No Berkeley DB RPC server environment\");\n") >> OUTPUT
 	printf("\treturn (DB_NOSERVER);\n") >> OUTPUT
 	printf("}\n\n") >> OUTPUT
@@ -1071,7 +1048,7 @@ function illegal_functions(OUTPUT)
 	printf("int\n") >> OUTPUT
 	printf("__dbcl_dbenv_illegal(dbenv)\n") >> OUTPUT
 	printf("\tDB_ENV *dbenv;\n") >> OUTPUT
-	printf("{\n\t__db_err(dbenv,") >> OUTPUT
+	printf("{\n\t__db_errx(dbenv,") >> OUTPUT
 	printf("\n\t    \"Interface not supported by ") >> OUTPUT
 	printf("Berkeley DB RPC client environments\");\n") >> OUTPUT
 	printf("\treturn (DB_OPNOTSUP);\n") >> OUTPUT

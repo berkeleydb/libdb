@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_region.c,v 12.4 2005/07/21 01:36:18 bostic Exp $
+ * $Id: os_region.c,v 12.9 2006/08/24 14:46:18 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -48,7 +42,7 @@ __os_r_attach(dbenv, infop, rp)
 #ifdef DB_REGIONSIZE_MAX
 	/* Some architectures have hard limits on the maximum region size. */
 	if (rp->size > DB_REGIONSIZE_MAX) {
-		__db_err(dbenv, "region size %lu is too large; maximum is %lu",
+		__db_errx(dbenv, "region size %lu is too large; maximum is %lu",
 		    (u_long)rp->size, (u_long)DB_REGIONSIZE_MAX);
 		return (EINVAL);
 	}
@@ -72,9 +66,9 @@ __os_r_attach(dbenv, infop, rp)
 		 * be threaded.
 		 */
 		if (F_ISSET(dbenv, DB_ENV_THREAD)) {
-			__db_err(dbenv, "%s",
+			__db_errx(dbenv, "%s",
     "architecture does not support locks inside process-local (malloc) memory");
-			__db_err(dbenv, "%s",
+			__db_errx(dbenv, "%s",
     "application may not specify both DB_PRIVATE and DB_THREAD");
 			return (EINVAL);
 		}
@@ -108,8 +102,8 @@ __os_r_attach(dbenv, infop, rp)
 
 	rp->size_orig = rp->size;
 	if (infop->addr != infop->addr_orig)
-		rp->size -=
-		    (u_int8_t *)infop->addr - (u_int8_t *)infop->addr_orig;
+		rp->size -= (roff_t)
+		    ((u_int8_t *)infop->addr - (u_int8_t *)infop->addr_orig);
 
 	return (0);
 }

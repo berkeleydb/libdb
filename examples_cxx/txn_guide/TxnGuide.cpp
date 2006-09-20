@@ -50,7 +50,7 @@ int global_thread_num;
 mutex_t thread_num_lock;
 
 // Forward declarations
-int countRecords(Db *, DbTxn *); 
+int countRecords(Db *, DbTxn *);
 int openDb(Db **, const char *, const char *, DbEnv *, u_int32_t);
 int usage(void);
 void *writerThread(void *);
@@ -63,7 +63,7 @@ usage()
     return (EXIT_FAILURE);
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
     // Initialize our handles
@@ -111,19 +111,19 @@ main(int argc, char *argv[])
       DB_THREAD;       // Cause the environment to be free-threaded
 
     try {
-        // Create and open the environment 
+        // Create and open the environment
         envp = new DbEnv(0);
 
-        // Indicate that we want db to internally perform deadlock 
-        // detection.  Also indicate that the transaction with 
-        // the fewest number of write locks will receive the 
+        // Indicate that we want db to internally perform deadlock
+        // detection.  Also indicate that the transaction with
+        // the fewest number of write locks will receive the
         // deadlock notification in the event of a deadlock.
         envp->set_lk_detect(DB_LOCK_MINWRITE);
 
         envp->open(dbHomeDir, envFlags, 0);
 
 
-        // If we had utility threads (for running checkpoints or 
+        // If we had utility threads (for running checkpoints or
         // deadlock detection, for example) we would spawn those
         // here. However, for a simple example such as this,
         // that is not required.
@@ -131,14 +131,14 @@ main(int argc, char *argv[])
         // Open the database
         openDb(&dbp, progName, fileName,
             envp, DB_DUPSORT);
-        
+
         // Initialize a mutex. Used to help provide thread ids.
         (void)mutex_init(&thread_num_lock, NULL);
 
         // Start the writer threads.
         for (i = 0; i < NUMWRITERS; i++)
             (void)thread_create(
-                &writerThreads[i], NULL, 
+                &writerThreads[i], NULL,
                 writerThread, (void *)dbp);
 
         // Join the writers
@@ -161,7 +161,7 @@ main(int argc, char *argv[])
         if (envp != NULL)
             envp->close(0);
     } catch(DbException &e) {
-        std::cerr << "Error closing database and environment." 
+        std::cerr << "Error closing database and environment."
                   << std::endl;
         std::cerr << e.what() << std::endl;
         return (EXIT_FAILURE);
@@ -196,11 +196,11 @@ writerThread(void *args)
     thread_num = global_thread_num;
     (void)mutex_unlock(&thread_num_lock);
 
-    // Initialize the random number generator 
+    // Initialize the random number generator
     srand(thread_num);
 
     // Perform 50 transactions
-    for (int i=0; i<50; i++) { 
+    for (int i=0; i<50; i++) {
         DbTxn *txn;
         bool retry = true;
         int retry_count = 0;
@@ -212,15 +212,15 @@ writerThread(void *args)
 
                 // Begin our transaction. We group multiple writes in
                 // this thread under a single transaction so as to
-                // (1) show that you can atomically perform multiple 
-                // writes at a time, and (2) to increase the chances 
-                // of a deadlock occurring so that we can observe our 
+                // (1) show that you can atomically perform multiple
+                // writes at a time, and (2) to increase the chances
+                // of a deadlock occurring so that we can observe our
                 // deadlock detection at work.
-         
-                // Normally we would want to avoid the potential for 
-                // deadlocks, so for this workload the correct thing 
-                // would be to perform our puts with autocommit. But 
-                // that would excessively simplify our example, so we 
+
+                // Normally we would want to avoid the potential for
+                // deadlocks, so for this workload the correct thing
+                // would be to perform our puts with autocommit. But
+                // that would excessively simplify our example, so we
                 // do the "wrong" thing here instead.
                 txn = NULL;
                 envp->txn_begin(NULL, &txn, 0);
@@ -241,11 +241,11 @@ writerThread(void *args)
 
                 // countRecords runs a cursor over the entire database.
                 // We do this to illustrate issues of deadlocking
-                std::cout << thread_num <<  " : Found " 
-                          <<  countRecords(dbp, NULL) 
+                std::cout << thread_num <<  " : Found "
+                          <<  countRecords(dbp, NULL)
                           << " records in the database." << std::endl;
 
-                std::cout << thread_num <<  " : committing txn : " << i 
+                std::cout << thread_num <<  " : committing txn : " << i
                           << std::endl;
 
                 // commit
@@ -254,7 +254,7 @@ writerThread(void *args)
                     retry = false;
                     txn = NULL;
                 } catch (DbException &e) {
-                    std::cout << "Error on txn commit: " 
+                    std::cout << "Error on txn commit: "
                               << e.what() << std::endl;
                 }
             } catch (DbDeadlockException &) {
@@ -266,7 +266,7 @@ writerThread(void *args)
                 // If we have retried less than max_retries,
                 // increment the retry count and goto retry.
                 if (retry_count < max_retries) {
-                    std::cout << "############### Writer " << thread_num 
+                    std::cout << "############### Writer " << thread_num
                               << ": Got DB_LOCK_DEADLOCK.\n"
                               << "Retrying write operation."
                               << std::endl;
@@ -274,7 +274,7 @@ writerThread(void *args)
                     retry = true;
                  } else {
                     // Otherwise, just give up.
-                    std::cerr << "Writer " << thread_num 
+                    std::cerr << "Writer " << thread_num
                               << ": Got DeadLockException and out of "
                               << "retries. Giving up." << std::endl;
                     retry = false;
@@ -305,14 +305,14 @@ writerThread(void *args)
 // Third, call countRecords AFTER the writer has committed
 //    its transaction.
 //
-// If you do none of these things, the writer thread will 
-// self-deadlock. 
+// If you do none of these things, the writer thread will
+// self-deadlock.
 //
 // Note that this method exists only for illustrative purposes.
 // A more straight-forward way to count the number of records in
 // a database is to use the Database.getStats() method.
-int 
-countRecords(Db *dbp, DbTxn *txn) 
+int
+countRecords(Db *dbp, DbTxn *txn)
 {
 
     Dbc *cursorp = NULL;

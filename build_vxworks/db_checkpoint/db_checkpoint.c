@@ -1,40 +1,20 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: db_checkpoint.c,v 12.6 2005/09/09 12:38:30 bostic Exp $
+ * $Id: db_checkpoint.c,v 12.15 2006/08/26 09:23:25 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
+
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2005\nSleepycat Software Inc.  All rights reserved.\n";
+    "Copyright (c) 1996-2006\nOracle Corporation.  All rights reserved.\n";
 #endif
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#endif
-
-#include "db_int.h"
 
 int	 db_checkpoint_main __P((int, char *[]));
 int	 db_checkpoint_usage __P((void));
@@ -68,7 +48,7 @@ db_checkpoint_main(argc, argv)
 	long argval;
 	u_int32_t flags, kbytes, minutes, seconds;
 	int ch, exitval, once, ret, verbose;
-	char *home, *logfile, *passwd;
+	char *home, *logfile, *passwd, time_buf[CTIME_BUFLEN];
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
@@ -144,7 +124,7 @@ db_checkpoint_main(argc, argv)
 		(void)fprintf(stderr,
 		    "%s: at least one of -1, -k and -p must be specified\n",
 		    progname);
-		return (EXIT_FAILURE);
+		return (db_checkpoint_usage());
 	}
 
 	/* Handle possible interruptions. */
@@ -194,7 +174,8 @@ db_checkpoint_main(argc, argv)
 	while (!__db_util_interrupted()) {
 		if (verbose) {
 			(void)time(&now);
-			dbenv->errx(dbenv, "checkpoint begin: %s", ctime(&now));
+			dbenv->errx(dbenv,
+		    "checkpoint begin: %s", __db_ctime(&now, time_buf));
 		}
 
 		if ((ret = dbenv->txn_checkpoint(dbenv,
@@ -206,7 +187,7 @@ db_checkpoint_main(argc, argv)
 		if (verbose) {
 			(void)time(&now);
 			dbenv->errx(dbenv,
-			    "checkpoint complete: %s", ctime(&now));
+		    "checkpoint complete: %s", __db_ctime(&now, time_buf));
 		}
 
 		if (once)

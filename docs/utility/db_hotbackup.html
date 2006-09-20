@@ -1,5 +1,5 @@
-<!--$Id: db_hotbackup.so,v 1.3 2005/03/29 14:01:42 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--$Id: db_hotbackup.so,v 1.6 2006/03/08 17:34:24 bostic Exp $-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -16,7 +16,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_hotbackup [<b>-cuVv</b>] [<b>-d data_dir ...</b>] [<b>-h home</b>] [<b>-l log_dir</b>] [<b>-P password</b>] <b>-b</b> backup_dir</pre></h3>
+<h3><pre>db_hotbackup [<b>-cDuVv</b>] [<b>-d data_dir ...</b>] [<b>-h home</b>] [<b>-l log_dir</b>] [<b>-P password</b>] <b>-b</b> backup_dir</pre></h3>
 <h3>Description</h3>
 <a name="2"><!--meow--></a>
 <p>The db_hotbackup utility creates "hot backup" or "hot failover"
@@ -38,26 +38,61 @@ the backup.
 <p><li>Copy all log files found in the directory specified by the <b>-l</b>
 option (or in the database environment home directory, if no <b>-l</b>
 option was specified), into the target directory for the backup.
-<p><li>Perform catastrophic recovery on the hot backup.
-<p><li>Remove any unnecessary log files from the hot backup.
+<p><li>Perform catastrophic recovery in the target directory for the backup.
+<p><li>Remove any unnecessary log files from the target directory for the
+backup.
 </ol>
 <p>The db_hotbackup utility does not resolve pending transactions that
 are in the prepared state.  Applications that use <a href="../api_c/txn_prepare.html">DB_TXN-&gt;prepare</a>
 should specify <a href="../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a> when opening the environment,
 and run <a href="../api_c/txn_recover.html">DB_ENV-&gt;txn_recover</a> to resolve any pending transactions, when
-failing over to the hot backup.</p>
+failing over to the backup.</p>
 <p>The options are as follows:</p>
 <dl compact>
 <dt><b>-b</b><dd>Specify the target directory for the backup.
-<dt><b>-c</b><dd>Before performing the snapshot, checkpoint the source database environment
+<dt><b>-c</b><dd>Before performing the backup, checkpoint the source database environment
 and remove any log files that are no longer required in that environment.
 <b>To avoid making catastrophic failure impossible, log file removal
 must be integrated with log file archival.</b>
-<dt><b>-d</b><dd>Specify one or more source directories that contain databases; if none
-is specified, the database environment home directory will be searched
-for database files.  As database files are copied into a single backup
-directory, files named the same, stored in different source directories,
-could overwrite each other when copied into the backup directory.
+<dt><b>-D</b><dd>Use the data directories listed in the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> configuration
+file in the source directory.   This option has three effects:
+<ol>
+<p><li>First, if they do not already exist, the specified data directories will
+be created relative to the target directory (with mode read-write-execute
+owner).
+<p><li>Second, all files in the source data directories will be copied to the
+target data directories.  If the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file specifies one
+or more absolute pathnames, files in those source directories will be
+copied to the top-level target directory.
+<p><li>Third, the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> configuration file will be copied from the
+source directory to the target directory, and subsequently used for
+configuration if recovery is run in the target directory.
+</ol>
+<p>Care should be taken with the <b>-D</b> option and data directories
+which are named relative to the source directory but are not
+subdirectories (that is, the name includes the element "..")
+Specifically, the constructed target directory names must be meaningful
+and distinct from the source directory names, otherwise running recovery
+in the target directory might corrupt the source data files.</p>
+<p><b>It is an error to use absolute pathnames for data directories
+or the log directory in this mode, as the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a>
+configuration file copied into the target directory would then point at
+the source directories and running recovery would corrupt the source
+data files.</b></p>
+<dt><b>-d</b><dd>Specify one or more source directories that contain database files; if
+no source directories are specified, the source directory will be
+searched for database files.
+<b>As all database files are copied into a single backup directory, files
+named the same, stored in different source directories, would overwrite
+each other when copied into the backup directory.</b>
+<p>Please note the database environment recovery log references database
+files as they are named by the application program.  <b>If the
+application uses absolute or relative pathnames to name database files,
+(rather than filenames and the <a href="../api_c/env_set_data_dir.html">DB_ENV-&gt;set_data_dir</a> method or the
+<a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> configuration file to specify filenames), running
+recovery in the target directory may not properly find the copies of
+the files or might even find the source files, potentially resulting in
+corruption.</b></p>
 <dt><b>-h</b><dd>Specify the source directory for the backup, that is, the database
 environment home directory.
 <dt><b>-l</b><dd>Specify a source directory that contains log files; if none is specified,
@@ -89,6 +124,6 @@ DB_HOME is set, it is used as the path of the database home, as described
 in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
 </dl>
 </tt>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

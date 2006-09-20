@@ -156,7 +156,7 @@ get_item_name(Db *dbp, const Dbt *pkey, const Dbt *pdata, Dbt *skey)
     }
     // Now set the secondary key's data to be the item name 
 
-    skey-&gt;set_data(temname);
+    skey-&gt;set_data(itemname);
     skey-&gt;set_size(strlen(itemname) + 1);
 
     return (0);

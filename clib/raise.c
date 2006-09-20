@@ -1,18 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: raise.c,v 12.2 2005/06/16 20:20:50 bostic Exp $
+ * $Id: raise.c,v 12.5 2006/08/24 14:45:10 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <signal.h>
-#include <unistd.h>
-#endif
+#include "db_int.h"
 
 /*
  * raise --

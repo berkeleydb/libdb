@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: env014.tcl,v 12.1 2005/09/16 14:08:57 carol Exp $
+# $Id: env014.tcl,v 12.4 2006/08/24 14:46:35 bostic Exp $
 #
 # TEST	env014
-# TEST	
+# TEST
 # TEST	Make sure that attempts to open an environment with
 # TEST	incompatible flags (e.g. replication without transactions)
 # TEST	fail with the appropriate messages.
@@ -106,7 +106,7 @@ proc env014 { } {
 	error_check_good env_close [$env close] 0
 	error_check_good env_remove [berkdb envremove -force -home $testdir] 0
 
-  	# Join plain vanilla env with -txn; should fail. 
+  	# Join plain vanilla env with -txn; should fail.
 	puts "\tEnv$tnum.i: Join plain vanilla env with -txn."
 	set env [berkdb_env_noerr -create -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE

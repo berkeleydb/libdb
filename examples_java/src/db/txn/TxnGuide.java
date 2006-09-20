@@ -76,11 +76,11 @@ public class TxnGuide {
         myEnvConfig.setInitializeLogging(true);
         myEnvConfig.setRunRecovery(true);
         myEnvConfig.setTransactional(true);
-        // EnvironmentConfig.setThreaded(true) is the default behavior 
+        // EnvironmentConfig.setThreaded(true) is the default behavior
         // in Java, so we do not have to do anything to cause the
         // environment handle to be free-threaded.
 
-        // Indicate that we want db to internally perform deadlock 
+        // Indicate that we want db to internally perform deadlock
         // detection. Also indicate that the transaction that has
         // performed the least amount of write activity to
         // receive the deadlock notification, if any.
@@ -110,7 +110,7 @@ public class TxnGuide {
                                       null,     // Database name
                                       myDbConfig);
 
-            // Used by the bind API for serializing objects 
+            // Used by the bind API for serializing objects
             // Class database must not support duplicates
             myDbConfig.setSortedDuplicates(false);
             myClassDb = myEnv.openDatabase(null,     // txn handle
@@ -129,7 +129,7 @@ public class TxnGuide {
             try {
                 myDb.close();
             } catch (DatabaseException e) {
-                System.err.println("closeEnv: myDb: " + 
+                System.err.println("closeEnv: myDb: " +
                     e.toString());
                 e.printStackTrace();
             }
@@ -139,7 +139,7 @@ public class TxnGuide {
             try {
                 myClassDb.close();
             } catch (DatabaseException e) {
-                System.err.println("closeEnv: myClassDb: " + 
+                System.err.println("closeEnv: myClassDb: " +
                     e.toString());
                 e.printStackTrace();
             }
@@ -158,15 +158,12 @@ public class TxnGuide {
     private TxnGuide() {}
 
     private static void parseArgs(String args[]) {
-        int nArgs = args.length;
         for(int i = 0; i < args.length; ++i) {
             if (args[i].startsWith("-")) {
                 switch(args[i].charAt(1)) {
                     case 'h':
-                        if (i < nArgs - 1) {
-                            myEnvPath = new String(args[++i]);
-                        }
-                    break;
+                        myEnvPath = new String(args[++i]);
+                        break;
                     default:
                         usage();
                 }

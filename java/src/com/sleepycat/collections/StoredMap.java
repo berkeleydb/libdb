@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: StoredMap.java,v 12.3 2005/10/05 20:40:10 mark Exp $
+ * $Id: StoredMap.java,v 12.7 2006/09/08 20:32:13 bostic Exp $
  */
 
 package com.sleepycat.collections;
@@ -18,27 +18,18 @@ import java.util.Set;
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.db.Database;
+import com.sleepycat.util.keyrange.KeyRangeException;
 
 /**
  * A Map view of a {@link Database}.
- *
- * <p><em>Note that this class does not conform to the standard Java
- * collections interface in the following ways:</em></p>
- * <ul>
- * <li>The {@link #size} method always throws
- * <code>UnsupportedOperationException</code> because, for performance reasons,
- * databases do not maintain their total record count.</li>
- * <li>All iterators must be explicitly closed using {@link
- * StoredIterator#close()} or {@link StoredIterator#close(java.util.Iterator)}
- * to release the underlying database cursor resources.</li>
- * </ul>
  *
  * <p>In addition to the standard Map methods, this class provides the
  * following methods for stored maps only.  Note that the use of these methods
  * is not compatible with the standard Java collections interface.</p>
  * <ul>
- * <li>{@link #duplicates(Object)}</li>
- * <li>{@link #append(Object)}</li>
+ * <li>{@link #duplicates}</li>
+ * <li>{@link #duplicatesMap}</li>
+ * <li>{@link #append}</li>
  * </ul>
  *
  * @author Mark Hayes
@@ -99,7 +90,7 @@ public class StoredMap extends StoredContainer implements Map {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredMap(Database database, EntryBinding keyBinding,
-                     EntryBinding valueBinding, 
+                     EntryBinding valueBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
@@ -157,7 +148,7 @@ public class StoredMap extends StoredContainer implements Map {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredMap(Database database, EntryBinding keyBinding,
-                     EntityBinding valueEntityBinding, 
+                     EntityBinding valueEntityBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -217,7 +208,7 @@ public class StoredMap extends StoredContainer implements Map {
      * duplicates are allowed, this method returns the first duplicate, in the
      * order in which duplicates are configured, that maps to the specified
      * key.
-     * 
+     *
      * This method conforms to the {@link Map#get} interface.
      *
      * @throws RuntimeExceptionWrapper if a {@link
@@ -354,17 +345,18 @@ public class StoredMap extends StoredContainer implements Map {
     public void putAll(Map map) {
 
         boolean doAutoCommit = beginAutoCommit();
-        Iterator entries = null;
+        Iterator i = null;
         try {
-            entries = map.entrySet().iterator();
-            while (entries.hasNext()) {
-                Map.Entry entry = (Map.Entry) entries.next();
+            Collection coll = map.entrySet();
+            i = storedOrExternalIterator(coll);
+            while (i.hasNext()) {
+                Map.Entry entry = (Map.Entry) i.next();
                 put(entry.getKey(), entry.getValue());
             }
-            StoredIterator.close(entries);
+            StoredIterator.close(i);
             commitAutoCommit(doAutoCommit);
         } catch (Exception e) {
-            StoredIterator.close(entries);
+            StoredIterator.close(i);
             throw handleException(e, doAutoCommit);
         }
     }
@@ -447,9 +439,6 @@ public class StoredMap extends StoredContainer implements Map {
      * supported by the standard Map interface.  This method does not exist in
      * the standard {@link Map} interface.
      *
-     * <p>Note that the return value is a StoredCollection and must be treated
-     * as such; for example, its iterators must be explicitly closed.</p>
-     *
      * <p>If no mapping for the given key is present, an empty collection is
      * returned.  If duplicates are not allowed, at most a single value will be
      * in the collection returned.  If duplicates are allowed, the returned
@@ -465,9 +454,44 @@ public class StoredMap extends StoredContainer implements Map {
 
         try {
             DataView newView = view.valueSetView(key);
-            return new StoredValueSet(newView, true);
+            return new StoredValueSet(newView);
         } catch (KeyRangeException e) {
             return Collections.EMPTY_SET;
+        } catch (Exception e) {
+            throw StoredContainer.convertException(e);
+        }
+    }
+
+    /**
+     * Returns a new map from primary key to value for the subset of records
+     * having a given secondary key (duplicates).  This method does not exist
+     * in the standard {@link Map} interface.
+     *
+     * <p>If no mapping for the given key is present, an empty collection is
+     * returned.  If duplicates are not allowed, at most a single value will be
+     * in the collection returned.  If duplicates are allowed, the returned
+     * collection's add() method may be used to add values for the given
+     * key.</p>
+     *
+     * @param secondaryKey is the secondary key for which duplicates values
+     * will be represented by the returned map.
+     *
+     * @param primaryKeyBinding is the binding used for keys in the returned
+     * map.
+     *
+     * @throws RuntimeExceptionWrapper if a {@link
+     * com.sleepycat.db.DatabaseException} is thrown.
+     */
+    public Map duplicatesMap(Object secondaryKey,
+                             EntryBinding primaryKeyBinding) {
+        try {
+            DataView newView =
+                view.duplicatesView(secondaryKey, primaryKeyBinding);
+            if (isOrdered()) {
+                return new StoredSortedMap(newView);
+            } else {
+                return new StoredMap(newView);
+            }
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }
@@ -497,6 +521,11 @@ public class StoredMap extends StoredContainer implements Map {
      */
     public int hashCode() {
 	return super.hashCode();
+    }
+
+    // Inherit javadoc
+    public int size() {
+        return values().size();
     }
 
     /**

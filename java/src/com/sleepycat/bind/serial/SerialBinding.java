@@ -1,10 +1,10 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2005
- *      Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2000-2006
+ *      Oracle Corporation.  All rights reserved.
  *
- * $Id: SerialBinding.java,v 12.2 2005/08/01 20:25:05 mark Exp $
+ * $Id: SerialBinding.java,v 12.5 2006/08/31 18:14:05 bostic Exp $
  */
 
 package com.sleepycat.bind.serial;
@@ -25,6 +25,18 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * deserialized objects are returned by the binding, and their
  * <code>Class</code> must implement the <code>Serializable</code>
  * interface.</p>
+ *
+ * <p>For key bindings, a tuple binding is usually a better choice than a
+ * serial binding.  A tuple binding gives a reasonable sort order, and works
+ * with comparators in all cases -- see below.</p>
+ *
+ * <p><em>WARNING:</em> SerialBinding should not be used with Berkeley DB Java
+ * Edition for key bindings, when a custom comparator is used.  In JE,
+ * comparators are instantiated and called internally at times when databases
+ * are not accessible.  Because serial bindings depend on the class catalog
+ * database, a serial binding cannot be used during these times.  An attempt
+ * to use a serial binding with a custom comparator will result in a
+ * NullPointerException during environment open or close.</p>
  *
  * @author Mark Hayes
  */

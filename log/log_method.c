@@ -1,20 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: log_method.c,v 12.4 2005/07/21 18:21:25 bostic Exp $
+ * $Id: log_method.c,v 12.10 2006/08/30 10:05:32 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/log.h"
@@ -23,9 +16,9 @@
  * __log_dbenv_create --
  *	Log specific initialization of the DB_ENV structure.
  *
- * PUBLIC: void __log_dbenv_create __P((DB_ENV *));
+ * PUBLIC: int __log_dbenv_create __P((DB_ENV *));
  */
-void
+int
 __log_dbenv_create(dbenv)
 	DB_ENV *dbenv;
 {
@@ -37,6 +30,21 @@ __log_dbenv_create(dbenv)
 	 */
 	dbenv->lg_bsize = 0;
 	dbenv->lg_regionmax = LG_BASE_REGION_SIZE;
+
+	return (0);
+}
+
+/*
+ * __log_dbenv_destroy --
+ *	Log specific destruction of the DB_ENV structure.
+ *
+ * PUBLIC: void __log_dbenv_destroy __P((DB_ENV *));
+ */
+void
+__log_dbenv_destroy(dbenv)
+	DB_ENV *dbenv;
+{
+	COMPQUIET(dbenv, NULL);
 }
 
 /*
@@ -52,8 +60,8 @@ __log_get_lg_bsize(dbenv, lg_bsizep)
 
 	if (LOGGING_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
-		*lg_bsizep = ((LOG *)
-		    ((DB_LOG *)dbenv->lg_handle)->reginfo.primary)->buffer_size;
+		*lg_bsizep =
+		    ((LOG *)dbenv->lg_handle->reginfo.primary)->buffer_size;
 	} else
 		*lg_bsizep = dbenv->lg_bsize;
 	return (0);
@@ -198,8 +206,8 @@ __log_get_lg_regionmax(dbenv, lg_regionmaxp)
 
 	if (LOGGING_ON(dbenv)) {
 		/* Cannot be set after open, no lock required to read. */
-		*lg_regionmaxp = ((LOG *)
-		    ((DB_LOG *)dbenv->lg_handle)->reginfo.primary)->regionmax;
+		*lg_regionmaxp =
+		    ((LOG *)dbenv->lg_handle->reginfo.primary)->regionmax;
 	} else
 		*lg_regionmaxp = dbenv->lg_regionmax;
 	return (0);
@@ -220,8 +228,8 @@ __log_set_lg_regionmax(dbenv, lg_regionmax)
 
 					/* Let's not be silly. */
 	if (lg_regionmax != 0 && lg_regionmax < LG_BASE_REGION_SIZE) {
-		__db_err(dbenv,
-		    "log file size must be >= %d", LG_BASE_REGION_SIZE);
+		__db_errx(dbenv,
+		    "log region size must be >= %d", LG_BASE_REGION_SIZE);
 		return (EINVAL);
 	}
 
@@ -331,7 +339,7 @@ __log_check_sizes(dbenv, lg_max, lg_bsize)
 	int inmem;
 
 	if (LOGGING_ON(dbenv)) {
-		lp = ((DB_LOG *)dbenv->lg_handle)->reginfo.primary;
+		lp = dbenv->lg_handle->reginfo.primary;
 		inmem = lp->db_log_inmemory;
 		lg_bsize = lp->buffer_size;
 	} else
@@ -344,7 +352,7 @@ __log_check_sizes(dbenv, lg_max, lg_bsize)
 			lg_max = LG_MAX_INMEM;
 
 		if (lg_bsize <= lg_max) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		  "in-memory log buffer must be larger than the log file size");
 			return (EINVAL);
 		}

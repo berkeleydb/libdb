@@ -1,5 +1,5 @@
 <!--$Id: db_stat.so,v 10.89 2005/02/10 20:02:28 bostic Exp $-->
-<!--Copyright 1997-2005 by Sleepycat Software, Inc.-->
+<!--Copyright 1997-2006 by Oracle Corporation-->
 <!--All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
@@ -54,8 +54,10 @@ database was opened.
 </dl>
 <dt><b>txnid</b><dd>If the operation is part of an application-specified
 transaction, the <b>txnid</b> parameter is a transaction handle
-returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>; otherwise NULL.  If no transaction
-handle is specified, but the
+returned from <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a>; if the operation is part of a Berkeley DB Concurrent Data Store
+group, the <b>txnid</b> parameter is a handle returned from
+<a href="../api_c/env_cdsgroup_begin.html">DB_ENV-&gt;cdsgroup_begin</a>; otherwise NULL.  If no transaction handle is
+specified, but the
 operation occurs in a transactional
 database,
 the operation will be implicitly transaction protected.  
@@ -222,14 +224,15 @@ and 0 on success.
 </p>
 <h3>Parameters</h3>
 <dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or
-the following value:
+<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
 <dl compact>
 <dt><a name="DB_FAST_STAT">DB_FAST_STAT</a><dd>Return only the values which do not require traversal of the database.
 Among other things, this flag makes it possible for applications to
 request key and record counts without incurring the performance penalty
 of traversing the entire database.
 <dt><a name="DB_STAT_ALL">DB_STAT_ALL</a><dd>Display all available information.
+<dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after displaying their values.
 </dl>
 </dl>
 <hr size=1 noshade>
@@ -241,6 +244,6 @@ of traversing the entire database.
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1><a href="../sleepycat/legal.html">Copyright (c) 1996-2005</a> <a href="http://www.sleepycat.com">Sleepycat Software, Inc.</a> - All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996-2006 Oracle Corporation - All rights reserved.</font>
 </body>
 </html>

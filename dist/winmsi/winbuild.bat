@@ -1,10 +1,10 @@
 @echo off
-::	$Id: winbuild.bat,v 1.5 2005/10/26 13:29:34 dda Exp $
+::	$Id: winbuild.bat,v 1.6 2005/12/01 03:04:21 bostic Exp $
 ::	Helper script to build Berkeley DB libraries and executables
 ::	using MSDEV
 ::
 
-cd build_win32
+cd build_windows
 
 :: One of these calls should find the desired batch file
 

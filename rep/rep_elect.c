@@ -1,39 +1,36 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2004-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_elect.c,v 12.10 2005/08/23 14:18:19 sue Exp $
+ * $Id: rep_elect.c,v 12.35 2006/09/13 17:43:40 alanb Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <stdlib.h>
-#include <string.h>
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/log.h"
 
+/*
+ * We need to check sites == nsites, not more than half
+ * like we do in __rep_elect and the VOTE2 code.  The
+ * reason is that we want to process all the incoming votes
+ * and not short-circuit once we reach more than half.  The
+ * real winner's vote may be in the last half.
+ */
+#define	IS_PHASE1_DONE(rep)    \
+    ((rep)->sites >= (rep)->nsites && (rep)->w_priority > 0)
+
+#define	I_HAVE_WON(rep, winner)   \
+    ((rep)->votes >= (rep)->nvotes && winner == (rep)->eid)
+
 static void __rep_cmp_vote __P((DB_ENV *, REP *, int, DB_LSN *,
-    int, u_int32_t, u_int32_t));
-static int __rep_cmp_vote2 __P((DB_ENV *, REP *, int, u_int32_t));
+    int, u_int32_t, u_int32_t, u_int32_t));
 static int __rep_elect_init
-	       __P((DB_ENV *, DB_LSN *, int, int, int, int *, u_int32_t *));
+	       __P((DB_ENV *, DB_LSN *, int, int, int *, u_int32_t *));
 static int __rep_tally __P((DB_ENV *, REP *, int, int *, u_int32_t, roff_t));
 static int __rep_wait __P((DB_ENV *, u_int32_t, int *, u_int32_t));
 
@@ -42,58 +39,55 @@ static int __rep_wait __P((DB_ENV *, u_int32_t, int *, u_int32_t));
  *	Called after master failure to hold/participate in an election for
  *	a new master.
  *
- * PUBLIC:  int __rep_elect __P((DB_ENV *, int, int, int,
- * PUBLIC:     u_int32_t, int *, u_int32_t));
+ * PUBLIC:  int __rep_elect __P((DB_ENV *, int, int, int *, u_int32_t));
  */
 int
-__rep_elect(dbenv, nsites, nvotes, priority, timeout, eidp, flags)
+__rep_elect(dbenv, given_nsites, nvotes, eidp, flags)
 	DB_ENV *dbenv;
-	int nsites, nvotes, priority;
-	u_int32_t timeout;
+	int given_nsites, nvotes;
 	int *eidp;
 	u_int32_t flags;
 {
 	DB_LOG *dblp;
 	DB_LSN lsn;
 	DB_REP *db_rep;
+	LOG *lp;
 	REP *rep;
-	int ack, done, in_progress, ret, send_vote;
-	u_int32_t egen, orig_tally, tiebreaker, to;
+	int ack, done, in_progress, nsites, priority, realpri, ret, send_vote;
+	u_int32_t ctlflags, egen, orig_tally, tiebreaker, to, timeout;
 #ifdef DIAGNOSTIC
 	DB_MSGBUF mb;
 #endif
+	COMPQUIET(flags, 0);
 
 	PANIC_CHECK(dbenv);
-	COMPQUIET(flags, 0);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->rep_handle, "rep_elect", DB_INIT_REP);
+	ENV_REQUIRES_CONFIG_XX(
+	    dbenv, rep_handle, "DB_ENV->rep_elect", DB_INIT_REP);
 
 	/* Error checking. */
-	if (nsites <= 0) {
-		__db_err(dbenv,
-		    "DB_ENV->rep_elect: nsites must be greater than 0");
+	if (given_nsites < 0) {
+		__db_errx(dbenv,
+		    "DB_ENV->rep_elect: nsites may not be negative");
 		return (EINVAL);
 	}
 	if (nvotes < 0) {
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "DB_ENV->rep_elect: nvotes may not be negative");
 		return (EINVAL);
 	}
-	if (priority < 0) {
-		__db_err(dbenv,
-		    "DB_ENV->rep_elect: priority may not be negative");
-		return (EINVAL);
-	}
-	if (nsites < nvotes) {
-		__db_err(dbenv,
-    "DB_ENV->rep_elect: nvotes (%d) is larger than nsites (%d)",
-		    nvotes, nsites);
-		return (EINVAL);
-	}
 
-	ack = nvotes;
-	/* If they give us a 0 for nvotes, default to simple majority.  */
-	if (nvotes == 0)
-		ack = (nsites / 2) + 1;
+	db_rep = dbenv->rep_handle;
+	rep = db_rep->region;
+	dblp = dbenv->lg_handle;
+	lp = dblp->reginfo.primary;
+
+	/*
+	 * Specifying 0 for nsites signals us to use the value configured
+	 * previously via rep_set_nsites.  Similarly, if the given nvotes is 0,
+	 * it asks us to compute the value representing a simple majority.
+	 */
+	nsites = given_nsites == 0 ? db_rep->config_nsites : given_nsites;
+	ack = nvotes == 0 ? ELECTION_MAJORITY(nsites) : nvotes;
 
 	/*
 	 * XXX
@@ -102,31 +96,63 @@ __rep_elect(dbenv, nsites, nvotes, priority, timeout, eidp, flags)
 	 * scenario of master/1 client to elect the client.  Allow
 	 * sub-majority values, but give a warning.
 	 */
-	if (nvotes <= (nsites / 2)) {
-		__db_err(dbenv,
+	if (ack <= (nsites / 2)) {
+		__db_errx(dbenv,
     "DB_ENV->rep_elect:WARNING: nvotes (%d) is sub-majority with nsites (%d)",
 		    nvotes, nsites);
 	}
 
-	db_rep = dbenv->rep_handle;
-	rep = db_rep->region;
-	dblp = dbenv->lg_handle;
+	if (nsites < ack) {
+		__db_errx(dbenv,
+    "DB_ENV->rep_elect: nvotes (%d) is larger than nsites (%d)",
+		    ack, nsites);
+		return (EINVAL);
+	}
 
-	RPRINT(dbenv, rep,
+	timeout = rep->elect_timeout;
+	realpri = rep->priority;
+
+	RPRINT(dbenv,
 	    (dbenv, &mb, "Start election nsites %d, ack %d, priority %d",
-	    nsites, ack, priority));
+	    nsites, ack, realpri));
 
+	/*
+	 * Special case when having an election while running with
+	 * sites of potentially mixed versions.  We set a bit indicating
+	 * we're an electable site, but set our priority to 0.
+	 * Old sites will never elect us, with 0 priority, but if all
+	 * we have are new sites, then we can elect the best electable
+	 * site of the group.
+	 *     Thus 'priority' is this special, possibly-fake, effective
+	 * priority that we'll use for this election, while 'realpri' is our
+	 * real, configured priority, as retrieved from REP region.
+	 */
+	ctlflags = realpri != 0 ? REPCTL_ELECTABLE : 0;
 	LOG_SYSTEM_LOCK(dbenv);
-	lsn = ((LOG *)dblp->reginfo.primary)->lsn;
+	lsn = lp->lsn;
+	priority = lp->persist.version != DB_LOGVERSION ? 0 : realpri;
+#ifdef	CONFIG_TEST
+	/*
+	 * This allows us to unit test the ELECTABLE flag simply by
+	 * using the priority values.
+	 */
+	if (priority > 0 && priority <= 10) {
+		RPRINT(dbenv,
+		    (dbenv, &mb,
+	   "Artificially setting priority 0 (ELECTABLE) for CONFIG_TEST mode"));
+		DB_ASSERT(dbenv, ctlflags == REPCTL_ELECTABLE);
+		priority = 0;
+	}
+#endif
 	LOG_SYSTEM_UNLOCK(dbenv);
 
 	orig_tally = 0;
 	to = timeout;
 	if ((ret = __rep_elect_init(dbenv,
-	    &lsn, nsites, ack, priority, &in_progress, &orig_tally)) != 0) {
+	    &lsn, nsites, ack, &in_progress, &orig_tally)) != 0) {
 		if (ret == DB_REP_NEWMASTER) {
 			ret = 0;
-			*eidp = dbenv->rep_eid;
+			*eidp = rep->eid;
 		}
 		goto err;
 	}
@@ -163,24 +189,29 @@ restart:
 		goto lockdone;
 	}
 	__rep_cmp_vote(dbenv, rep, rep->eid, &lsn, priority, rep->gen,
-	    tiebreaker);
+	    tiebreaker, ctlflags);
 
-	RPRINT(dbenv, rep, (dbenv, &mb, "Beginning an election"));
+	RPRINT(dbenv, (dbenv, &mb, "Beginning an election"));
 
 	/* Now send vote */
 	send_vote = DB_EID_INVALID;
 	egen = rep->egen;
+	done = IS_PHASE1_DONE(rep);
 	REP_SYSTEM_UNLOCK(dbenv);
 	__rep_send_vote(dbenv, &lsn, nsites, ack, priority, tiebreaker, egen,
-	    DB_EID_BROADCAST, REP_VOTE1);
+	    DB_EID_BROADCAST, REP_VOTE1, ctlflags);
 	DB_ENV_TEST_RECOVERY(dbenv, DB_TEST_ELECTVOTE1, ret, NULL);
+	if (done) {
+		REP_SYSTEM_LOCK(dbenv);
+		goto vote;
+	}
 	ret = __rep_wait(dbenv, to, eidp, REP_F_EPHASE1);
 	switch (ret) {
 		case 0:
 			/* Check if election complete or phase complete. */
-			if (*eidp != DB_EID_INVALID) {
-				RPRINT(dbenv, rep, (dbenv, &mb,
-				    "Ended election phase 1 %d", ret));
+			if (*eidp != DB_EID_INVALID && !IN_ELECTION(rep)) {
+				RPRINT(dbenv, (dbenv, &mb,
+				    "Ended election phase 1"));
 				goto edone;
 			}
 			goto phase2;
@@ -188,7 +219,7 @@ restart:
 			if (to > timeout)
 				to = timeout;
 			to = (to * 8) / 10;
-			RPRINT(dbenv, rep, (dbenv, &mb,
+			RPRINT(dbenv, (dbenv, &mb,
 "Egen changed while waiting. Now %lu.  New timeout %lu, orig timeout %lu",
 			    (u_long)rep->egen, (u_long)to, (u_long)timeout));
 			/*
@@ -218,12 +249,12 @@ restart:
 	 */
 	if (egen != rep->egen) {
 		REP_SYSTEM_UNLOCK(dbenv);
-		RPRINT(dbenv, rep, (dbenv, &mb, "Egen changed from %lu to %lu",
+		RPRINT(dbenv, (dbenv, &mb, "Egen changed from %lu to %lu",
 		    (u_long)egen, (u_long)rep->egen));
 		goto restart;
 	}
 	if (rep->sites >= rep->nvotes) {
-
+vote:
 		/* We think we've seen enough to cast a vote. */
 		send_vote = rep->winner;
 		/*
@@ -234,7 +265,7 @@ restart:
 		if (rep->winner == rep->eid) {
 			(void)__rep_tally(dbenv, rep, rep->eid, &rep->votes,
 			    egen, rep->v2tally_off);
-			RPRINT(dbenv, rep, (dbenv, &mb,
+			RPRINT(dbenv, (dbenv, &mb,
 			    "Counted my vote %d", rep->votes));
 		}
 		F_SET(rep, REP_F_EPHASE2);
@@ -243,7 +274,7 @@ restart:
 	REP_SYSTEM_UNLOCK(dbenv);
 	if (send_vote == DB_EID_INVALID) {
 		/* We do not have enough votes to elect. */
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Not enough votes to elect: recvd %d of %d from %d sites",
 		    rep->sites, rep->nvotes, rep->nsites));
 		ret = DB_REP_UNAVAIL;
@@ -255,9 +286,9 @@ restart:
 		 * for all the vote2's.
 		 */
 		if (send_vote != rep->eid) {
-			RPRINT(dbenv, rep, (dbenv, &mb, "Sending vote"));
+			RPRINT(dbenv, (dbenv, &mb, "Sending vote"));
 			__rep_send_vote(dbenv, NULL, 0, 0, 0, 0, egen,
-			    send_vote, REP_VOTE2);
+			    send_vote, REP_VOTE2, 0);
 			/*
 			 * If we are NOT the new master we want to send
 			 * our vote to the winner, and wait longer.  The
@@ -274,17 +305,28 @@ restart:
 
 		}
 
-phase2:		ret = __rep_wait(dbenv, to, eidp, REP_F_EPHASE2);
-		RPRINT(dbenv, rep, (dbenv, &mb,
+phase2:
+		if (I_HAVE_WON(rep, rep->winner)) {
+			RPRINT(dbenv, (dbenv, &mb,
+			    "Skipping phase2 wait: already got %d votes",
+			    rep->votes));
+			REP_SYSTEM_LOCK(dbenv);
+			goto i_won;
+		}
+		ret = __rep_wait(dbenv, to, eidp, REP_F_EPHASE2);
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Ended election phase 2 %d", ret));
 		switch (ret) {
 			case 0:
-				goto edone;
+				if (*eidp != DB_EID_INVALID)				
+					goto edone;
+				ret = DB_REP_UNAVAIL;
+				break;
 			case DB_REP_EGENCHG:
 				if (to > timeout)
 					to = timeout;
 				to = (to * 8) / 10;
-				RPRINT(dbenv, rep, (dbenv, &mb,
+				RPRINT(dbenv, (dbenv, &mb,
 "While waiting egen changed to %lu.  Phase 2 New timeout %lu, orig timeout %lu",
 				    (u_long)rep->egen,
 				    (u_long)to, (u_long)timeout));
@@ -298,17 +340,17 @@ phase2:		ret = __rep_wait(dbenv, to, eidp, REP_F_EPHASE2);
 		REP_SYSTEM_LOCK(dbenv);
 		if (egen != rep->egen) {
 			REP_SYSTEM_UNLOCK(dbenv);
-			RPRINT(dbenv, rep, (dbenv, &mb,
+			RPRINT(dbenv, (dbenv, &mb,
 			    "Egen ph2 changed from %lu to %lu",
 			    (u_long)egen, (u_long)rep->egen));
 			goto restart;
 		}
 		done = rep->votes >= rep->nvotes;
-		RPRINT(dbenv, rep, (dbenv, &mb,
-		    "After phase 2: done %d, votes %d, nsites %d",
-		    done, rep->votes, rep->nsites));
-		if (send_vote == rep->eid && done) {
-			__rep_elect_master(dbenv, rep, eidp);
+		RPRINT(dbenv, (dbenv, &mb,
+		    "After phase 2: votes %d, nvotes %d, nsites %d",
+		    rep->votes, rep->nvotes, rep->nsites));
+		if (I_HAVE_WON(rep, rep->winner)) {
+i_won:			__rep_elect_master(dbenv, rep, eidp);
 			ret = 0;
 			goto lockdone;
 		}
@@ -337,7 +379,7 @@ edone:		REP_SYSTEM_LOCK(dbenv);
 	}
 	rep->elect_th = 0;
 
-	RPRINT(dbenv, rep, (dbenv, &mb,
+	RPRINT(dbenv, (dbenv, &mb,
 	    "Ended election with %d, sites %d, egen %lu, flags 0x%lx",
 	    ret, rep->sites, (u_long)rep->egen, (u_long)rep->flags));
 	REP_SYSTEM_UNLOCK(dbenv);
@@ -350,14 +392,14 @@ DB_TEST_RECOVERY_LABEL
  * __rep_vote1 --
  *	Handle incoming vote1 message on a client.
  *
- * PUBLIC: int __rep_vote1 __P((DB_ENV *, REP_CONTROL *, DBT *, int));
+ * PUBLIC: int __rep_vote1 __P((DB_ENV *, REP_CONTROL *, DBT *, int *));
  */
 int
-__rep_vote1(dbenv, rp, rec, eid)
+__rep_vote1(dbenv, rp, rec, eidp)
 	DB_ENV *dbenv;
 	REP_CONTROL *rp;
 	DBT *rec;
-	int eid;
+	int *eidp;
 {
 	DB_LOG *dblp;
 	DB_LSN lsn;
@@ -365,9 +407,10 @@ __rep_vote1(dbenv, rp, rec, eid)
 	DBT data_dbt;
 	LOG *lp;
 	REP *rep;
-	REP_VOTE_INFO *vi;
+	REP_OLD_VOTE_INFO *ovi;
+	REP_VOTE_INFO tmpvi, *vi;
 	u_int32_t egen;
-	int done, master, ret;
+	int master, ret;
 #ifdef DIAGNOSTIC
 	DB_MSGBUF mb;
 #endif
@@ -379,8 +422,7 @@ __rep_vote1(dbenv, rp, rec, eid)
 	lp = dblp->reginfo.primary;
 
 	if (F_ISSET(rep, REP_F_MASTER)) {
-		RPRINT(dbenv, rep,
-		    (dbenv, &mb, "Master received vote"));
+		RPRINT(dbenv, (dbenv, &mb, "Master received vote"));
 		LOG_SYSTEM_LOCK(dbenv);
 		lsn = lp->lsn;
 		LOG_SYSTEM_UNLOCK(dbenv);
@@ -389,7 +431,16 @@ __rep_vote1(dbenv, rp, rec, eid)
 		return (ret);
 	}
 
-	vi = (REP_VOTE_INFO *)rec->data;
+	if (rep->version == DB_REPVERSION_42) {
+		ovi = (REP_OLD_VOTE_INFO *)rec->data;
+		tmpvi.egen = ovi->egen;
+		tmpvi.nsites = ovi->nsites;
+		tmpvi.nvotes = ovi->nsites / 2 + 1;
+		tmpvi.priority = ovi->priority;
+		tmpvi.tiebreaker = ovi->tiebreaker;
+		vi = &tmpvi;
+	} else
+		vi = (REP_VOTE_INFO *)rec->data;
 	REP_SYSTEM_LOCK(dbenv);
 
 	/*
@@ -398,11 +449,11 @@ __rep_vote1(dbenv, rp, rec, eid)
 	 * start over by tallying it.  If we get an old vote,
 	 * send an ALIVE to the old participant.
 	 */
-	RPRINT(dbenv, rep, (dbenv, &mb,
+	RPRINT(dbenv, (dbenv, &mb,
 	    "Received vote1 egen %lu, egen %lu",
 	    (u_long)vi->egen, (u_long)rep->egen));
 	if (vi->egen < rep->egen) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Received old vote %lu, egen %lu, ignoring vote1",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		egen = rep->egen;
@@ -410,26 +461,32 @@ __rep_vote1(dbenv, rp, rec, eid)
 		data_dbt.data = &egen;
 		data_dbt.size = sizeof(egen);
 		(void)__rep_send_message(dbenv,
-		    eid, REP_ALIVE, &rp->lsn, &data_dbt, 0, 0);
+		    *eidp, REP_ALIVE, &rp->lsn, &data_dbt, 0, 0);
 		return (ret);
 	}
 	if (vi->egen > rep->egen) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Received VOTE1 from egen %lu, my egen %lu; reset",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		__rep_elect_done(dbenv, rep);
 		rep->egen = vi->egen;
 	}
-	if (!IN_ELECTION(rep))
+
+	/*
+	 * If this site (sender of the VOTE1) is the first to the party, simply
+	 * initialize values from the message.  Otherwise, see if the site knows
+	 * about more sites, and/or requires more votes, than we do.
+	 */
+	if (!IN_ELECTION_TALLY(rep)) {
 		F_SET(rep, REP_F_TALLY);
-
-	/* Check if this site knows about more sites than we do. */
-	if (vi->nsites > rep->nsites)
 		rep->nsites = vi->nsites;
-
-	/* Check if this site requires more votes than we do. */
-	if (vi->nvotes > rep->nvotes)
 		rep->nvotes = vi->nvotes;
+	} else {
+		if (vi->nsites > rep->nsites)
+			rep->nsites = vi->nsites;
+		if (vi->nvotes > rep->nvotes)
+			rep->nvotes = vi->nvotes;
+	}
 
 	/*
 	 * We are keeping the vote, let's see if that changes our
@@ -439,7 +496,7 @@ __rep_vote1(dbenv, rp, rec, eid)
 		rep->nsites = rep->sites + 1;
 	if (rep->nsites > rep->asites &&
 	    (ret = __rep_grow_sites(dbenv, rep->nsites)) != 0) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Grow sites returned error %d", ret));
 		goto err;
 	}
@@ -448,7 +505,7 @@ __rep_vote1(dbenv, rp, rec, eid)
 	 * Ignore vote1's if we're in phase 2.
 	 */
 	if (F_ISSET(rep, REP_F_EPHASE2)) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "In phase 2, ignoring vote1"));
 		goto err;
 	}
@@ -457,37 +514,38 @@ __rep_vote1(dbenv, rp, rec, eid)
 	 * Record this vote.  If we get back non-zero, we
 	 * ignore the vote.
 	 */
-	if ((ret = __rep_tally(dbenv, rep, eid, &rep->sites,
+	if ((ret = __rep_tally(dbenv, rep, *eidp, &rep->sites,
 	    vi->egen, rep->tally_off)) != 0) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Tally returned %d, sites %d",
 		    ret, rep->sites));
 		ret = 0;
 		goto err;
 	}
-	RPRINT(dbenv, rep, (dbenv, &mb,
-	    "Incoming vote: (eid)%d (pri)%d (gen)%lu (egen)%lu [%lu,%lu]",
-	    eid, vi->priority,
+	RPRINT(dbenv, (dbenv, &mb,
+	    "Incoming vote: (eid)%d (pri)%d %s (gen)%lu (egen)%lu [%lu,%lu]",
+	    *eidp, vi->priority,
+	    F_ISSET(rp, REPCTL_ELECTABLE) ? "ELECTABLE" : "",
 	    (u_long)rp->gen, (u_long)vi->egen,
 	    (u_long)rp->lsn.file, (u_long)rp->lsn.offset));
 #ifdef DIAGNOSTIC
 	if (rep->sites > 1)
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
     "Existing vote: (eid)%d (pri)%d (gen)%lu (sites)%d [%lu,%lu]",
 		    rep->winner, rep->w_priority,
 		    (u_long)rep->w_gen, rep->sites,
 		    (u_long)rep->w_lsn.file,
 		    (u_long)rep->w_lsn.offset));
 #endif
-	__rep_cmp_vote(dbenv, rep, eid, &rp->lsn, vi->priority,
-	    rp->gen, vi->tiebreaker);
+	__rep_cmp_vote(dbenv, rep, *eidp, &rp->lsn, vi->priority,
+	    rp->gen, vi->tiebreaker, rp->flags);
 	/*
 	 * If you get a vote and you're not in an election, we've
 	 * already recorded this vote.  But that is all we need
 	 * to do.
 	 */
 	if (!IN_ELECTION(rep)) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Not in election, but received vote1 0x%x",
 		    rep->flags));
 		ret = DB_REP_HOLDELECTION;
@@ -496,18 +554,10 @@ __rep_vote1(dbenv, rp, rec, eid)
 
 	master = rep->winner;
 	lsn = rep->w_lsn;
-	/*
-	 * We need to check sites == nsites, not more than half
-	 * like we do in __rep_elect and the VOTE2 code below.  The
-	 * reason is that we want to process all the incoming votes
-	 * and not short-circuit once we reach more than half.  The
-	 * real winner's vote may be in the last half.
-	 */
-	done = rep->sites >= rep->nsites && rep->w_priority != 0;
-	if (done) {
-		RPRINT(dbenv, rep,
+	if (IS_PHASE1_DONE(rep)) {
+		RPRINT(dbenv,
 		    (dbenv, &mb, "Phase1 election done"));
-		RPRINT(dbenv, rep, (dbenv, &mb, "Voting for %d%s",
+		RPRINT(dbenv, (dbenv, &mb, "Voting for %d%s",
 		    master, master == rep->eid ? "(self)" : ""));
 		egen = rep->egen;
 		F_SET(rep, REP_F_EPHASE2);
@@ -515,13 +565,20 @@ __rep_vote1(dbenv, rp, rec, eid)
 		if (master == rep->eid) {
 			(void)__rep_tally(dbenv, rep, rep->eid,
 			    &rep->votes, egen, rep->v2tally_off);
+			RPRINT(dbenv, (dbenv, &mb,
+			    "After phase 1 done: counted vote %d of %d",
+			    rep->votes, rep->nvotes));
+			if (I_HAVE_WON(rep, rep->winner)) {
+				__rep_elect_master(dbenv, rep, eidp);
+				ret = DB_REP_NEWMASTER;
+			}
 			goto err;
 		}
 		REP_SYSTEM_UNLOCK(dbenv);
 
 		/* Vote for someone else. */
 		__rep_send_vote(dbenv, NULL, 0, 0, 0, 0, egen,
-		    master, REP_VOTE2);
+		    master, REP_VOTE2, 0);
 	} else
 err:		REP_SYSTEM_UNLOCK(dbenv);
 	return (ret);
@@ -529,7 +586,7 @@ err:		REP_SYSTEM_UNLOCK(dbenv);
 
 /*
  * __rep_vote2 --
- *	Handle incoming vote1 message on a client.
+ *	Handle incoming vote2 message on a client.
  *
  * PUBLIC: int __rep_vote2 __P((DB_ENV *, DBT *, int *));
  */
@@ -544,8 +601,9 @@ __rep_vote2(dbenv, rec, eidp)
 	DB_REP *db_rep;
 	LOG *lp;
 	REP *rep;
-	REP_VOTE_INFO *vi;
-	int done, ret;
+	REP_OLD_VOTE_INFO *ovi;
+	REP_VOTE_INFO tmpvi, *vi;
+	int ret;
 #ifdef DIAGNOSTIC
 	DB_MSGBUF mb;
 #endif
@@ -556,7 +614,7 @@ __rep_vote2(dbenv, rec, eidp)
 	dblp = dbenv->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	RPRINT(dbenv, rep, (dbenv, &mb, "We received a vote%s",
+	RPRINT(dbenv, (dbenv, &mb, "We received a vote%s",
 	    F_ISSET(rep, REP_F_MASTER) ? " (master)" : ""));
 	if (F_ISSET(rep, REP_F_MASTER)) {
 		LOG_SYSTEM_LOCK(dbenv);
@@ -571,7 +629,7 @@ __rep_vote2(dbenv, rec, eidp)
 	REP_SYSTEM_LOCK(dbenv);
 
 	/* If we have priority 0, we should never get a vote. */
-	DB_ASSERT(rep->priority != 0);
+	DB_ASSERT(dbenv, rep->priority != 0);
 
 	/*
 	 * We might be the last to the party and we haven't had
@@ -581,9 +639,18 @@ __rep_vote2(dbenv, rec, eidp)
 	 * election thread catches up we'll have the votes we
 	 * already received.
 	 */
-	vi = (REP_VOTE_INFO *)rec->data;
+	if (rep->version == DB_REPVERSION_42) {
+		ovi = (REP_OLD_VOTE_INFO *)rec->data;
+		tmpvi.egen = ovi->egen;
+		tmpvi.nsites = ovi->nsites;
+		tmpvi.nvotes = ovi->nsites / 2 + 1;
+		tmpvi.priority = ovi->priority;
+		tmpvi.tiebreaker = ovi->tiebreaker;
+		vi = &tmpvi;
+	} else
+		vi = (REP_VOTE_INFO *)rec->data;
 	if (!IN_ELECTION_TALLY(rep) && vi->egen >= rep->egen) {
-		RPRINT(dbenv, rep, (dbenv, &mb,
+		RPRINT(dbenv, (dbenv, &mb,
 		    "Not in election gen %lu, at %lu, got vote",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		ret = DB_REP_HOLDELECTION;
@@ -599,31 +666,35 @@ __rep_vote2(dbenv, rec, eidp)
 	 * 1. If we receive a latent VOTE2 from an earlier election,
 	 * we want to ignore it.
 	 * 2. If we receive a VOTE2 from a site from which we never
-	 * received a VOTE1, we want to ignore it.
+	 * received a VOTE1, we want to record it, because we simply
+	 * may be processing messages out of order or its vote1 got lost,
+	 * but that site got all the votes it needed to send it.
 	 * 3. If we have received a duplicate VOTE2 from this election
 	 * from the same site we want to ignore it.
 	 * 4. If this is from the current election and someone is
 	 * really voting for us, then we finally get to record it.
 	 */
 	/*
-	 * __rep_cmp_vote2 checks for cases 1 and 2.
+	 * Case 1.
 	 */
-	if ((ret = __rep_cmp_vote2(dbenv, rep, *eidp, vi->egen)) != 0) {
+	if (vi->egen != rep->egen) {
+		RPRINT(dbenv, (dbenv, &mb, "Bad vote egen %lu.  Mine %lu",
+		    (u_long)vi->egen, (u_long)rep->egen));
 		ret = 0;
 		goto err;
 	}
+
 	/*
-	 * __rep_tally takes care of cases 3 and 4.
+	 * __rep_tally takes care of cases 2, 3 and 4.
 	 */
 	if ((ret = __rep_tally(dbenv, rep, *eidp, &rep->votes,
 	    vi->egen, rep->v2tally_off)) != 0) {
 		ret = 0;
 		goto err;
 	}
-	done = rep->votes >= rep->nvotes;
-	RPRINT(dbenv, rep, (dbenv, &mb, "Counted vote %d of %d",
+	RPRINT(dbenv, (dbenv, &mb, "Counted vote %d of %d",
 	    rep->votes, rep->nvotes));
-	if (done) {
+	if (I_HAVE_WON(rep, rep->winner)) {
 		__rep_elect_master(dbenv, rep, eidp);
 		ret = DB_REP_NEWMASTER;
 	}
@@ -634,7 +705,7 @@ err:	REP_SYSTEM_UNLOCK(dbenv);
 
 /*
  * __rep_tally --
- *	Handle incoming vote1 message on a client.  Called with the db_rep
+ *	Handle incoming vote message on a client.  Called with the db_rep
  *	mutex held.  This function will return 0 if we successfully tally
  *	the vote and non-zero if the vote is ignored.  This will record
  *	both VOTE1 and VOTE2 records, depending on which region offset the
@@ -671,7 +742,7 @@ __rep_tally(dbenv, rep, eid, countp, egen, vtoff)
 		 * Also ignore votes that are duplicates.
 		 */
 		if (vtp->eid == eid) {
-			RPRINT(dbenv, rep, (dbenv, &mb,
+			RPRINT(dbenv, (dbenv, &mb,
 			    "Tally found[%d] (%d, %lu), this vote (%d, %lu)",
 				    i, vtp->eid, (u_long)vtp->egen,
 				    eid, (u_long)egen));
@@ -691,10 +762,10 @@ __rep_tally(dbenv, rep, eid, countp, egen, vtoff)
 	 */
 #ifdef DIAGNOSTIC
 	if (vtoff == rep->tally_off)
-		RPRINT(dbenv, rep, (dbenv, &mb, "Tallying VOTE1[%d] (%d, %lu)",
+		RPRINT(dbenv, (dbenv, &mb, "Tallying VOTE1[%d] (%d, %lu)",
 		    i, eid, (u_long)egen));
 	else
-		RPRINT(dbenv, rep, (dbenv, &mb, "Tallying VOTE2[%d] (%d, %lu)",
+		RPRINT(dbenv, (dbenv, &mb, "Tallying VOTE2[%d] (%d, %lu)",
 		    i, eid, (u_long)egen));
 #endif
 	vtp->eid = eid;
@@ -710,13 +781,13 @@ __rep_tally(dbenv, rep, eid, countp, egen, vtoff)
  *
  */
 static void
-__rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker)
+__rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker, flags)
 	DB_ENV *dbenv;
 	REP *rep;
 	int eid;
 	DB_LSN *lsnp;
 	int priority;
-	u_int32_t gen, tiebreaker;
+	u_int32_t flags, gen, tiebreaker;
 {
 	int cmp;
 
@@ -725,21 +796,34 @@ __rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker)
 #else
 	COMPQUIET(dbenv, NULL);
 #endif
-	cmp = log_compare(lsnp, &rep->w_lsn);
+	cmp = LOG_COMPARE(lsnp, &rep->w_lsn);
 	/*
 	 * If we've seen more than one, compare us to the best so far.
 	 * If we're the first, make ourselves the winner to start.
 	 */
-	if (rep->sites > 1 && priority != 0) {
+	if (rep->sites > 1 &&
+	    (priority != 0 || LF_ISSET(REPCTL_ELECTABLE))) {
 		/*
-		 * LSN is primary determinant. Then priority if LSNs
+		 * Special case, if we have a mixed version group of sites,
+		 * we set priority to 0, but set the ELECTABLE flag so that
+		 * all sites talking at lower versions can correctly elect.
+		 * If a non-zero priority comes in and current winner is
+		 * zero priority (but was electable), then the non-zero
+		 * site takes precedence no matter what its LSN is.
+		 *
+		 * Then LSN is determinant only if we're comparing
+		 * like-styled version/priorities.  I.e. both with
+		 * 0/ELECTABLE priority or both with non-zero priority.
+		 * Then actual priority value if LSNs
 		 * are equal, then tiebreaker if both are equal.
 		 */
-		if (cmp > 0 ||
+		if ((priority != 0 && rep->w_priority == 0) ||
+		    (((priority == 0 && rep->w_priority == 0) ||
+		     (priority != 0 && rep->w_priority != 0)) && cmp > 0) ||
 		    (cmp == 0 && (priority > rep->w_priority ||
 		    (priority == rep->w_priority &&
 		    (tiebreaker > rep->w_tiebreaker))))) {
-			RPRINT(dbenv, rep, (dbenv, &mb, "Accepting new vote"));
+			RPRINT(dbenv, (dbenv, &mb, "Accepting new vote"));
 			rep->winner = eid;
 			rep->w_priority = priority;
 			rep->w_lsn = *lsnp;
@@ -747,7 +831,7 @@ __rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker)
 			rep->w_tiebreaker = tiebreaker;
 		}
 	} else if (rep->sites == 1) {
-		if (priority != 0) {
+		if (priority != 0 || LF_ISSET(REPCTL_ELECTABLE)) {
 			/* Make ourselves the winner to start. */
 			rep->winner = eid;
 			rep->w_priority = priority;
@@ -756,7 +840,7 @@ __rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker)
 			rep->w_tiebreaker = tiebreaker;
 		} else {
 			rep->winner = DB_EID_INVALID;
-			rep->w_priority = 0;
+			rep->w_priority = -1;
 			rep->w_gen = 0;
 			ZERO_LSN(rep->w_lsn);
 			rep->w_tiebreaker = 0;
@@ -766,53 +850,15 @@ __rep_cmp_vote(dbenv, rep, eid, lsnp, priority, gen, tiebreaker)
 }
 
 /*
- * __rep_cmp_vote2 --
- *	Compare incoming vote2 message with vote1's we've recorded.  Called
- *	with the db_rep mutex held.  We return 0 if the VOTE2 is from a
- *	site we've heard from and it is from this election.  Otherwise return 1.
- *
- */
-static int
-__rep_cmp_vote2(dbenv, rep, eid, egen)
-	DB_ENV *dbenv;
-	REP *rep;
-	int eid;
-	u_int32_t egen;
-{
-	int i;
-	REP_VTALLY *tally, *vtp;
-#ifdef DIAGNOSTIC
-	DB_MSGBUF mb;
-#endif
-
-	tally = R_ADDR((REGINFO *)dbenv->reginfo, rep->tally_off);
-	i = 0;
-	vtp = &tally[i];
-	for (i = 0; i < rep->sites; i++) {
-		vtp = &tally[i];
-		if (vtp->eid == eid && vtp->egen == egen) {
-			RPRINT(dbenv, rep, (dbenv, &mb,
-			    "Found matching vote1 (%d, %lu), at %d of %d",
-			    eid, (u_long)egen, i, rep->sites));
-			return (0);
-		}
-	}
-	RPRINT(dbenv, rep,
-	    (dbenv, &mb, "Didn't find vote1 for eid %d, egen %lu",
-	    eid, (u_long)egen));
-	return (1);
-}
-
-/*
  * __rep_elect_init
  *	Initialize an election.  Sets beginp non-zero if the election is
  * already in progress; makes it 0 otherwise.
  */
 static int
-__rep_elect_init(dbenv, lsnp, nsites, nvotes, priority, beginp, otally)
+__rep_elect_init(dbenv, lsnp, nsites, nvotes, beginp, otally)
 	DB_ENV *dbenv;
 	DB_LSN *lsnp;
-	int nsites, nvotes, priority;
+	int nsites, nvotes;
 	int *beginp;
 	u_int32_t *otally;
 {
@@ -852,10 +898,20 @@ __rep_elect_init(dbenv, lsnp, nsites, nvotes, priority, beginp, otally)
 			goto err;
 		DB_ENV_TEST_RECOVERY(dbenv, DB_TEST_ELECTINIT, ret, NULL);
 		rep->elect_th = 1;
-		rep->nsites = nsites;
-		rep->nvotes = nvotes;
-		rep->priority = priority;
-		rep->master_id = DB_EID_INVALID;
+		/*
+		 * If we're the first to the party, we simply set initial
+		 * values: pre-existing values would be left over from previous
+		 * election.
+		 */
+		if (!IN_ELECTION_TALLY(rep)) {
+			rep->nsites = nsites;
+			rep->nvotes = nvotes;
+		} else {
+			if (nsites > rep->nsites)
+				rep->nsites = nsites;
+			if (nvotes > rep->nvotes)
+				rep->nvotes = nvotes;
+		}
 	}
 DB_TEST_RECOVERY_LABEL
 err:	REP_SYSTEM_UNLOCK(dbenv);
@@ -885,7 +941,7 @@ __rep_elect_master(dbenv, rep, eidp)
 	if (eidp != NULL)
 		*eidp = rep->master_id;
 	rep->stat.st_elections_won++;
-	RPRINT(dbenv, rep, (dbenv, &mb,
+	RPRINT(dbenv, (dbenv, &mb,
 	    "Got enough votes to win; election done; winner is %d, gen %lu",
 	    rep->master_id, (u_long)rep->gen));
 }
@@ -919,7 +975,7 @@ __rep_wait(dbenv, timeout, eidp, flags)
 		__os_sleep(dbenv, 0, sleeptime);
 		REP_SYSTEM_LOCK(dbenv);
 		echg = egen != rep->egen;
-		done = !F_ISSET(rep, flags) && rep->master_id != DB_EID_INVALID;
+		done = !F_ISSET(rep, flags);
 
 		*eidp = rep->master_id;
 		REP_SYSTEM_UNLOCK(dbenv);

@@ -1,21 +1,22 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2004
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: sdb014.tcl,v 12.5 2005/10/21 14:29:14 carol Exp $
+# $Id: sdb014.tcl,v 12.9 2006/08/24 14:46:39 bostic Exp $
 #
 # TEST	sdb014
 # TEST	Tests mixing in-memory named and in-memory unnamed dbs.
 # TEST	Create a regular in-memory db, add data.
-# TEST	Create a named in-memory db. 
+# TEST	Create a named in-memory db.
 # TEST  Try to create the same named in-memory db again (should fail).
 # TEST	Try to create a different named in-memory db (should succeed).
-# TEST	
+# TEST
 proc sdb014 { method args } {
 	source ./include.tcl
 
 	set tnum "014"
+	set orig_tdir $testdir
 	if { [is_queueext $method] == 1 } {
 		puts "Subdb$tnum: skipping for method $method"
 		return
@@ -29,7 +30,7 @@ proc sdb014 { method args } {
 	set chkindex [lsearch -exact $args "-chksum"]
 	if { $chkindex != -1 } {
 		set args [lreplace $args $chkindex $chkindex]
-	} 
+	}
 
 	puts "Subdb$tnum ($method $args):\
 	    In-memory named dbs with regular in-mem dbs."
@@ -52,7 +53,7 @@ proc sdb014 { method args } {
 		set testdir [get_home $env]
 	}
 
-	puts "\tSubdb$tnum.a: Create and populate in-memory unnamed database." 
+	puts "\tSubdb$tnum.a: Create and populate in-memory unnamed database."
 	set testfile ""
 	set db [eval {berkdb_open -env $env -create -mode 0644} \
 	    $args {$omethod $testfile}]
@@ -90,7 +91,7 @@ proc sdb014 { method args } {
 	# Create named in-memory db.  Try to create a second in-memory db of
 	# the same name.  Should fail.
 	puts "\tSubdb$tnum.b: Create in-memory named database."
-	set subdb "SUBDB" 
+	set subdb "SUBDB"
 	set db [eval {berkdb_open -env $env -create -excl -mode 0644} \
 	    $args $omethod {$testfile $subdb}]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -105,6 +106,8 @@ proc sdb014 { method args } {
 	if { $eindex == -1 } {
 		error_check_good env_close [$env close] 0
 	}
+
+	set testdir $orig_tdir
 	return
 }
 

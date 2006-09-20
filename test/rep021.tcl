@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep021.tcl,v 12.3 2005/10/18 19:04:17 carol Exp $
+# $Id: rep021.tcl,v 12.9 2006/08/24 14:46:37 bostic Exp $
 #
 # TEST	rep021
 # TEST	Replication and multiple environments.
@@ -17,16 +17,21 @@
 proc rep021 { method { nclients 3 } { tnum "021" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Run for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets [expr $nclients + 1]]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -106,10 +111,10 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	# For the 2nd group, just have 1 master and 1 client.
 	repladd 10
 	set ma2_envcmd "berkdb_env -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -home $masterdir2 \
+	    $m_logargs -home $masterdir2 \
 	    -rep_master -rep_transport \[list 10 replsend\]"
 #	set ma2_envcmd "berkdb_env -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 -home $masterdir2 \
+#	    $m_logargs -home $masterdir2 \
 #	    -errpfx MASTER2 -verbose {rep on} \
 #	    -rep_master -rep_transport \[list 10 replsend\]"
 	set menv2 [eval $ma2_envcmd $recargs]
@@ -124,10 +129,10 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 
 	set id2 11
 	repladd $id2
-	set cl2_envcmd "berkdb_env -create $c_txnargs($id2) -lock_max 2500 \
+	set cl2_envcmd "berkdb_env -create $c_txnargs($id2) \
 	    $c_logargs($id2) -home $clientdir2 \
 	    -rep_client -rep_transport \[list $id2 replsend\]"
-#	set cl2_envcmd "berkdb_env -create $c_txnargs($id2) -lock_max 2500 \
+#	set cl2_envcmd "berkdb_env -create $c_txnargs($id2) \
 #	    -errpfx CLIENT2 -verbose {rep on} \
 #	    $c_logargs($id2) -home $clientdir2 \
 #	    -rep_client -rep_transport \[list $id2 replsend\]"
@@ -188,10 +193,10 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -home $masterdir \
+	    $m_logargs -home $masterdir \
 	    -rep_master -rep_transport \[list 1 replsend\]"
 #	set ma_envcmd "berkdb_env -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 -home $masterdir \
+#	    $m_logargs -home $masterdir \
 #	    -errpfx MASTER -verbose {rep on} \
 #	    -rep_master -rep_transport \[list 1 replsend\]"
 	set menv [eval $ma_envcmd $recargs]
@@ -206,10 +211,10 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 		set id($i) [expr 2 + $i]
 		repladd $id($i)
 		set cl_envcmd($i) "berkdb_env -create $c_txnargs($i) \
-		    $c_logargs($i) -lock_max 2500 -home $clientdir($i) \
+		    $c_logargs($i) -home $clientdir($i) \
 		    -rep_client -rep_transport \[list $id($i) replsend\]"
 #		set cl_envcmd($i) "berkdb_env -create $c_txnargs($i) \
-#	 	    $c_logargs($i) -lock_max 2500 -home $clientdir($i) \
+#	 	    $c_logargs($i) -home $clientdir($i) \
 #		    -errpfx CLIENT$i -verbose {rep on} \
 #		    -rep_client -rep_transport \[list $id($i) replsend\]"
 		set clenv($i) [eval $cl_envcmd($i) $recargs]
@@ -245,10 +250,10 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set clientdir($i) $clientdir2
 	set id($i) [expr 2 + $i]
 	repladd $id($i)
-	set cl_envcmd($i) "berkdb_env_noerr -create -txn nosync -lock_max 2500 \
+	set cl_envcmd($i) "berkdb_env_noerr -create -txn nosync \
 	    -home $clientdir($i) \
 	    -rep_client -rep_transport \[list $id($i) replsend\]"
-#	set cl_envcmd($i) "berkdb_env -create -txn nosync -lock_max 2500 \
+#	set cl_envcmd($i) "berkdb_env -create -txn nosync \
 #	    -errpfx CLIENT$i -verbose {rep on} \
 #	    -home $clientdir($i) \
 #	    -rep_client -rep_transport \[list $id($i) replsend\]"

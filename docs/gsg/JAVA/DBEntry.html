@@ -216,8 +216,8 @@ import com.sleepycat.db.DatabaseEntry;
 byte[] myKey = theKey.getData();
 byte[] myData = theData.getData();
 
-String key = new String(myKey);
-String data = new String(myData); </pre>
+String key = new String(myKey, &quot;UTF-8&quot;);
+String data = new String(myData, &quot;UTF-8&quot;); </pre>
         <p>
         There are a large number of mechanisms that you can use to move data in
         and out of <tt class="literal">byte</tt> arrays. To help you with this

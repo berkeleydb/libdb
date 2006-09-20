@@ -1,28 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2001-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: rep_region.c,v 12.12 2005/10/19 19:10:40 sue Exp $
+ * $Id: rep_region.c,v 12.29 2006/08/24 14:46:25 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#if TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -32,13 +17,13 @@
 static int __rep_egen_init  __P((DB_ENV *, REP *));
 
 /*
- * __rep_region_init --
+ * __rep_open --
  *	Initialize the shared memory state for the replication system.
  *
- * PUBLIC: int __rep_region_init __P((DB_ENV *));
+ * PUBLIC: int __rep_open __P((DB_ENV *));
  */
 int
-__rep_region_init(dbenv)
+__rep_open(dbenv)
 	DB_ENV *dbenv;
 {
 	REGENV *renv;
@@ -57,14 +42,15 @@ __rep_region_init(dbenv)
 		if ((ret = __db_shalloc(infop, sizeof(REP), 0, &rep)) != 0)
 			return (ret);
 		memset(rep, 0, sizeof(*rep));
-		rep->tally_off = INVALID_ROFF;
-		rep->v2tally_off = INVALID_ROFF;
-		renv->rep_off = R_OFFSET(infop, rep);
 
+		/*
+		 * We have the region; fill in the values.  Some values may
+		 * have been configured before we open the region, and those
+		 * are taken from the DB_REP structure.
+		 */
 		if ((ret = __mutex_alloc(
 		    dbenv, MTX_REP_REGION, 0, &rep->mtx_region)) != 0)
 			return (ret);
-
 		/*
 		 * Because we have no way to prevent deadlocks and cannot log
 		 * changes made to it, we single-thread access to the client
@@ -76,19 +62,28 @@ __rep_region_init(dbenv)
 		    dbenv, MTX_REP_DATABASE, 0, &rep->mtx_clientdb)) != 0)
 			return (ret);
 
-		/* We have the region; fill in the values. */
-		rep->eid = DB_EID_INVALID;
+		rep->tally_off = INVALID_ROFF;
+		rep->v2tally_off = INVALID_ROFF;
+		rep->eid = db_rep->eid;
 		rep->master_id = DB_EID_INVALID;
 		rep->gen = 0;
+		rep->version = DB_REPVERSION;
 		if ((ret = __rep_egen_init(dbenv, rep)) != 0)
 			return (ret);
-		/*
-		 * Set default values for the min and max log records that we
-		 * wait before requesting a missing log record.
-		 */
-		rep->request_gap = DB_REP_REQUEST_GAP;
-		rep->max_gap = DB_REP_MAX_GAP;
+		rep->gen = 0;
+		rep->gbytes = db_rep->gbytes;
+		rep->bytes = db_rep->bytes;
+		rep->request_gap = db_rep->request_gap;
+		rep->max_gap = db_rep->max_gap;
+		rep->config_nsites = db_rep->config_nsites;
+		rep->config = db_rep->config;
+		rep->elect_timeout = db_rep->elect_timeout;
+		rep->priority = db_rep->my_priority;
+
 		F_SET(rep, REP_F_NOARCHIVE);
+
+		/* Initialize encapsulating region. */
+		renv->rep_off = R_OFFSET(infop, rep);
 		(void)time(&renv->rep_timestamp);
 		renv->op_timestamp = 0;
 		F_CLR(renv, DB_REGENV_REPLOCKED);
@@ -146,34 +141,31 @@ void
 __rep_dbenv_refresh(dbenv)
 	DB_ENV *dbenv;
 {
-	if (REP_ON(dbenv))
-		((DB_REP *)dbenv->rep_handle)->region = NULL;
-	return;
+	dbenv->rep_handle->region = NULL;
 }
 
 /*
- * __rep_dbenv_close --
- *	Replication-specific destruction of the DB_ENV structure.
+ * __rep_close --
+ *      Shut down all of replication.
  *
- * PUBLIC: int __rep_dbenv_close __P((DB_ENV *));
+ * PUBLIC: int __rep_close __P((DB_ENV *));
  */
 int
-__rep_dbenv_close(dbenv)
+__rep_close(dbenv)
 	DB_ENV *dbenv;
 {
-	if (REP_ON(dbenv)) {
-		__os_free(dbenv, dbenv->rep_handle);
-		dbenv->rep_handle = NULL;
-		dbenv->rep_send = NULL;
-	}
+	int ret, t_ret;
 
-	return (0);
+	ret = __rep_preclose(dbenv);
+	if ((t_ret = __rep_closefiles(dbenv)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
 }
 
 /*
  * __rep_preclose --
- *	If we are a client, shut down our client database and close
- * all databases we've opened while applying messages as a client.
+ *	If we are a client, shut down our client database and send
+ * any outstanding bulk buffers.
  *
  * PUBLIC: int __rep_preclose __P((DB_ENV *));
  */
@@ -185,28 +177,37 @@ __rep_preclose(dbenv)
 	DB_REP *db_rep;
 	LOG *lp;
 	REP_BULK bulk;
-	int ret, t_ret;
+	int ret;
 
 	ret = 0;
 
 	db_rep = dbenv->rep_handle;
 	dblp = dbenv->lg_handle;
-	lp = dblp->reginfo.primary;
 
+	/*
+	 * If we have a rep region, we can preclose.  Otherwise, return.
+	 * If we're on an error path from env open, we may not have
+	 * a region, even though we have a handle.
+	 */
+	if (db_rep == NULL || db_rep->region == NULL)
+		return (ret);
 	MUTEX_LOCK(dbenv, db_rep->region->mtx_clientdb);
 	if (db_rep->rep_db != NULL) {
 		ret = __db_close(db_rep->rep_db, NULL, DB_NOSYNC);
 		db_rep->rep_db = NULL;
 	}
-
-	if ((t_ret = __dbreg_close_files(dbenv)) != 0 && ret == 0)
-		ret = t_ret;
-	F_CLR(db_rep, DBREP_OPENFILES);
+	/*
+	 * We could be called early in an env_open error path, so
+	 * only do this if we have a log region set up.
+	 */
+	if (dblp == NULL)
+		goto out;
+	lp = dblp->reginfo.primary;
 	/*
 	 * If we have something in the bulk buffer, send anything in it
 	 * if we are able to.
 	 */
-	if (lp->bulk_off != 0 && dbenv->rep_send != NULL) {
+	if (lp->bulk_off != 0 && db_rep->send != NULL) {
 		memset(&bulk, 0, sizeof(bulk));
 		bulk.addr = R_ADDR(&dblp->reginfo, lp->bulk_buf);
 		bulk.offp = &lp->bulk_off;
@@ -220,7 +221,39 @@ __rep_preclose(dbenv)
 		 */
 		(void)__rep_send_bulk(dbenv, &bulk, 0);
 	}
-	MUTEX_UNLOCK(dbenv, db_rep->region->mtx_clientdb);
+out:	MUTEX_UNLOCK(dbenv, db_rep->region->mtx_clientdb);
+	return (ret);
+}
+
+/*
+ * __rep_closefiles --
+ *	If we were a client and are now a master, close all databases
+ *	we've opened while applying messages as a client.  This can
+ *	be called from __env_close and we need to check if the env,
+ *	handles and regions are set up, or not.
+ *
+ * PUBLIC: int __rep_closefiles __P((DB_ENV *));
+ */
+int
+__rep_closefiles(dbenv)
+	DB_ENV *dbenv;
+{
+	DB_LOG *dblp;
+	DB_REP *db_rep;
+	int ret;
+
+	ret = 0;
+
+	db_rep = dbenv->rep_handle;
+	dblp = dbenv->lg_handle;
+
+	if (db_rep == NULL)
+		return (ret);
+	if (dblp == NULL)
+		return (ret);
+	if ((ret = __dbreg_close_files(dbenv)) == 0)
+		F_CLR(db_rep, DBREP_OPENFILES);
+
 	return (ret);
 }
 
@@ -250,7 +283,7 @@ __rep_egen_init(dbenv, rep)
 	/*
 	 * If the file doesn't exist, create it now and initialize with 1.
 	 */
-	if (__os_exists(p, NULL) != 0) {
+	if (__os_exists(dbenv, p, NULL) != 0) {
 		rep->egen = rep->gen + 1;
 		if ((ret = __rep_write_egen(dbenv, rep->egen)) != 0)
 			goto err;
@@ -264,7 +297,7 @@ __rep_egen_init(dbenv, rep)
 		if ((ret = __os_read(dbenv, fhp, &rep->egen, sizeof(u_int32_t),
 		    &cnt)) < 0 || cnt == 0)
 			goto err1;
-		RPRINT(dbenv, rep, (dbenv, &mb, "Read in egen %lu",
+		RPRINT(dbenv, (dbenv, &mb, "Read in egen %lu",
 		    (u_long)rep->egen));
 err1:		 (void)__os_closehandle(dbenv, fhp);
 	}
@@ -295,7 +328,7 @@ __rep_write_egen(dbenv, egen)
 	    __db_omode(OWNER_RW), &fhp)) == 0) {
 		if ((ret = __os_write(dbenv, fhp, &egen, sizeof(u_int32_t),
 		    &cnt)) != 0 || ((ret = __os_fsync(dbenv, fhp)) != 0))
-			__db_err(dbenv, "%s: %s", p, db_strerror(ret));
+			__db_err(dbenv, ret, "%s", p);
 		(void)__os_closehandle(dbenv, fhp);
 	}
 	__os_free(dbenv, p);

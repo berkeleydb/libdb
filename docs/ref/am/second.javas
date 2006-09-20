@@ -1,8 +1,8 @@
 /*-
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: second.javas,v 10.3 2005/06/10 15:30:53 mark Exp $
+ * $Id: second.javas,v 10.5 2006/08/24 16:32:26 bostic Exp $
  */
 package db;
 

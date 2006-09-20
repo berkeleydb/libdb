@@ -247,7 +247,7 @@ try {
 
         // Recreate the data String.
         byte[] retData = theData.getData();
-        String foundData = new String(retData);
+        String foundData = new String(retData, &quot;UTF-8&quot;);
         System.out.println(&quot;For key: '&quot; + aKey + &quot;' found data: '&quot; + 
                             foundData + &quot;'.&quot;);
     } else {
@@ -338,7 +338,13 @@ try {
             database modifications. Every time you commit a transaction, DB
             ensures that the data will not be lost due to application or 
             system failure.  Transaction usage is described in the
-                <i class="citetitle">DB Transaction Processing Guide</i>.
+                
+
+                
+
+                <span>
+                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide.
+                </span>
         </p>
         <p>
             If you do not want to use transactions, then the assumption is that

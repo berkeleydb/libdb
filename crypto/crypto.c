@@ -1,20 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield
  * -- astubble@rice.edu
  *
- * $Id: crypto.c,v 12.5 2005/07/20 16:50:56 bostic Exp $
+ * $Id: crypto.c,v 12.10 2006/08/24 14:45:12 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <string.h>
-#endif
 
 #include "db_int.h"
 #include "dbinc/db_page.h"
@@ -44,12 +40,12 @@ __crypto_region_init(dbenv)
 		if (!CRYPTO_ON(dbenv))
 			return (0);
 		if (!F_ISSET(infop, REGION_CREATE)) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
     "Joining non-encrypted environment with encryption key");
 			return (EINVAL);
 		}
 		if (F_ISSET(db_cipher, CIPHER_ANY)) {
-			__db_err(dbenv, "Encryption algorithm not supplied");
+			__db_errx(dbenv, "Encryption algorithm not supplied");
 			return (EINVAL);
 		}
 		/*
@@ -74,7 +70,7 @@ __crypto_region_init(dbenv)
 		renv->cipher_off = R_OFFSET(infop, cipher);
 	} else {
 		if (!CRYPTO_ON(dbenv)) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		    "Encrypted environment: no encryption key supplied");
 			return (EINVAL);
 		}
@@ -82,12 +78,12 @@ __crypto_region_init(dbenv)
 		sh_passwd = R_ADDR(infop, cipher->passwd);
 		if ((cipher->passwd_len != dbenv->passwd_len) ||
 		    memcmp(dbenv->passwd, sh_passwd, cipher->passwd_len) != 0) {
-			__db_err(dbenv, "Invalid password");
+			__db_errx(dbenv, "Invalid password");
 			return (EPERM);
 		}
 		if (!F_ISSET(db_cipher, CIPHER_ANY) &&
 		    db_cipher->alg != cipher->flags) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
     "Environment encrypted using a different algorithm");
 			return (EINVAL);
 		}
@@ -186,7 +182,7 @@ __crypto_algsetup(dbenv, db_cipher, alg, do_init)
 
 	ret = 0;
 	if (!CRYPTO_ON(dbenv)) {
-		__db_err(dbenv, "No cipher structure given");
+		__db_errx(dbenv, "No cipher structure given");
 		return (EINVAL);
 	}
 	F_CLR(db_cipher, CIPHER_ANY);
@@ -277,7 +273,7 @@ __crypto_decrypt_meta(dbenv, dbp, mbuf, do_metachk)
 		db_cipher = (DB_CIPHER *)dbenv->crypto_handle;
 		if (!F_ISSET(dbp, DB_AM_ENCRYPT)) {
 			if (!CRYPTO_ON(dbenv)) {
-				__db_err(dbenv,
+				__db_errx(dbenv,
     "Encrypted database: no encryption flag specified");
 				return (EINVAL);
 			}
@@ -293,14 +289,14 @@ __crypto_decrypt_meta(dbenv, dbp, mbuf, do_metachk)
 		 * This was checked in set_flags when DB_AM_ENCRYPT was set.
 		 * So it better still be true here.
 		 */
-		DB_ASSERT(CRYPTO_ON(dbenv));
+		DB_ASSERT(dbenv, CRYPTO_ON(dbenv));
 		if (!F_ISSET(db_cipher, CIPHER_ANY) &&
 		    meta->encrypt_alg != db_cipher->alg) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 			    "Database encrypted using a different algorithm");
 			return (EINVAL);
 		}
-		DB_ASSERT(F_ISSET(dbp, DB_AM_CHKSUM));
+		DB_ASSERT(dbenv, F_ISSET(dbp, DB_AM_CHKSUM));
 		iv = ((BTMETA *)mbuf)->iv;
 		/*
 		 * For ALL pages, we do not encrypt the beginning of the page
@@ -320,7 +316,7 @@ alg_retry:
 				return (ret);
 			if (((BTMETA *)meta)->crypto_magic !=
 			    meta->magic) {
-				__db_err(dbenv, "Invalid password");
+				__db_errx(dbenv, "Invalid password");
 				return (EINVAL);
 			}
 			/*
@@ -358,7 +354,7 @@ alg_retry:
 		 * Therefore, asking for encryption with a database that
 		 * was not encrypted is an error.
 		 */
-		__db_err(dbenv,
+		__db_errx(dbenv,
 		    "Unencrypted database with a supplied encryption key");
 		return (EINVAL);
 	}
@@ -386,7 +382,7 @@ __crypto_set_passwd(dbenv_src, dbenv_dest)
 	infop = dbenv_src->reginfo;
 	renv = infop->primary;
 
-	DB_ASSERT(CRYPTO_ON(dbenv_src));
+	DB_ASSERT(dbenv_src, CRYPTO_ON(dbenv_src));
 
 	cipher = R_ADDR(infop, renv->cipher_off);
 	sh_passwd = R_ADDR(infop, cipher->passwd);

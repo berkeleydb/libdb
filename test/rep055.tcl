@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep055.tcl,v 1.2 2005/10/18 19:05:54 carol Exp $
+# $Id: rep055.tcl,v 1.8 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep055
 # TEST	Test of internal initialization and log archiving.
@@ -12,16 +12,23 @@
 # TEST	Generate several log files.
 # TEST	Remove old master log files and generate several more.
 # TEST  Get list of archivable files from db_archive and restart client.
-# TEST  As client is in the middle of internal init, remove 
+# TEST  As client is in the middle of internal init, remove
 # TEST	the log files returned earlier by db_archive.
 #
 proc rep055 { method { niter 200 } { tnum "055" } args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } { 
+	global mixed_mode_logging
+
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
 
 	# This test needs to set its own pagesize.
 	set pgindex [lsearch -exact $args "-pagesize"]
@@ -30,16 +37,21 @@ proc rep055 { method { niter 200 } { tnum "055" } args } {
 		return
 	}
 
+	# This test is all about log archive issues, so don't run with
+	# in-memory logging.
+	if { $mixed_mode_logging > 0 } {
+		puts "Rep$tnum: Skipping for mixed-mode logging."
+		return
+	}
+
 	# Run the body of the test with and without recovery,
-	# and with and without cleaning.  Skip recovery with in-memory
-	# logging - it doesn't make sense.
-	set recopts { "" "-recover" }
+	# and with and without cleaning.
 	set opts { clean noclean }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach c $opts {
 			puts "Rep$tnum ($method $r $c $args):\
 			    Test of internal initialization."
-			rep055_sub $method $niter $tnum $r $c $args	
+			rep055_sub $method $niter $tnum $r $c $args
 
 		}
 	}

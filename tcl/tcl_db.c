@@ -1,23 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1999-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: tcl_db.c,v 12.15 2005/11/10 20:13:53 bostic Exp $
+ * $Id: tcl_db.c,v 12.23 2006/08/24 14:46:32 bostic Exp $
  */
 
 #include "db_config.h"
 
+#include "db_int.h"
 #ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <stdlib.h>
-#include <string.h>
 #include <tcl.h>
 #endif
-
-#include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/tcl_db.h"
@@ -1038,6 +1033,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 {
 	static const char *dbgetopts[] = {
 #ifdef CONFIG_TEST
+		"-data_buf_size",
 		"-multi",
 		"-read_committed",
 		"-read_uncommitted",
@@ -1055,6 +1051,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 	};
 	enum dbgetopts {
 #ifdef CONFIG_TEST
+		DBGET_DATA_BUF_SIZE,
 		DBGET_MULTI,
 		DBGET_READ_COMMITTED,
 		DBGET_READ_UNCOMMITTED,
@@ -1081,7 +1078,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 	char *arg, *pattern, *prefix, msg[MSG_SIZE];
 	void *dtmp, *ktmp;
 #ifdef CONFIG_TEST
-	int bufsize;
+	int bufsize, data_buf_size;
 #endif
 
 	result = TCL_OK;
@@ -1093,6 +1090,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 	dtmp = ktmp = NULL;
 #ifdef CONFIG_TEST
 	COMPQUIET(bufsize, 0);
+	data_buf_size = 0;
 #endif
 
 	if (objc < 3) {
@@ -1128,9 +1126,17 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 		i++;
 		switch ((enum dbgetopts)optindex) {
 #ifdef CONFIG_TEST
+		case DBGET_DATA_BUF_SIZE:
+			result =
+			    Tcl_GetIntFromObj(interp, objv[i], &data_buf_size);
+			if (result != TCL_OK)
+				goto out;
+			i++;
+			break;
 		case DBGET_MULTI:
 			mflag |= DB_MULTIPLE;
-			result = Tcl_GetIntFromObj(interp, objv[i], &bufsize);
+			result =
+			    Tcl_GetIntFromObj(interp, objv[i], &bufsize);
 			if (result != TCL_OK)
 				goto out;
 			i++;
@@ -1283,6 +1289,22 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 		result = TCL_ERROR;
 		goto out;
 	}
+#ifdef	CONFIG_TEST
+	if (data_buf_size != 0 && flag == DB_GET_BOTH) {
+		Tcl_SetResult(interp,
+    "Only one of -data_buf_size or -get_both can be specified.\n",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+		goto out;
+	}
+	if (data_buf_size != 0 && mflag != 0) {
+		Tcl_SetResult(interp,
+    "Only one of -data_buf_size or -multi can be specified.\n",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+		goto out;
+	}
+#endif
 	if (useglob && flag == DB_GET_BOTH) {
 		Tcl_SetResult(interp,
 		    "Only one of -glob or -get_both can be specified.\n",
@@ -1316,8 +1338,23 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 	 * instead of a cursor operation.
 	 */
 	if (pattern == NULL && (isdup == 0 || mflag != 0 ||
+#ifdef	CONFIG_TEST
+	    data_buf_size != 0 ||
+#endif
 	    flag == DB_SET_RECNO || flag == DB_GET_BOTH ||
 	    flag == DB_CONSUME || flag == DB_CONSUME_WAIT)) {
+#ifdef	CONFIG_TEST
+		if (data_buf_size == 0) {
+			F_CLR(&save, DB_DBT_USERMEM);
+			F_SET(&save, DB_DBT_MALLOC);
+		} else {
+			(void)__os_malloc(
+			    NULL, (size_t)data_buf_size, &save.data);
+			save.ulen = (u_int32_t)data_buf_size;
+			F_CLR(&save, DB_DBT_MALLOC);
+			F_SET(&save, DB_DBT_USERMEM);
+		}
+#endif
 		if (flag == DB_GET_BOTH) {
 			if (userecno) {
 				result = _GetUInt32(interp,
@@ -1334,14 +1371,14 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 				 * the allocated key space in a tmp.
 				 */
 				ret = _CopyObjBytes(interp, objv[objc-2],
-				    &ktmp, &key.size, &freekey);
+				    &key.data, &key.size, &freekey);
 				if (ret != 0) {
 					result = _ReturnSetup(interp, ret,
 					    DB_RETOK_DBGET(ret), "db get");
 					goto out;
 				}
-				key.data = ktmp;
 			}
+			ktmp = key.data;
 			/*
 			 * Already checked args above.  Fill in key and save.
 			 * Save is used in the dbp->get call below to fill in
@@ -1385,14 +1422,14 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 				 * the allocated key space in a tmp.
 				 */
 				ret = _CopyObjBytes(interp, objv[objc-1],
-				    &ktmp, &key.size, &freekey);
+				    &key.data, &key.size, &freekey);
 				if (ret != 0) {
 					result = _ReturnSetup(interp, ret,
 					    DB_RETOK_DBGET(ret), "db get");
 					goto out;
 				}
-				key.data = ktmp;
 			}
+			ktmp = key.data;
 #ifdef CONFIG_TEST
 			if (mflag & DB_MULTIPLE) {
 				if ((ret = __os_malloc(dbp->dbenv,
@@ -1494,15 +1531,15 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 		 * key pointers.  So, we need to store
 		 * the allocated key space in a tmp.
 		 */
-		ret = _CopyObjBytes(interp, objv[objc-1], &ktmp,
+		ret = _CopyObjBytes(interp, objv[objc-1], &key.data,
 		    &key.size, &freekey);
 		if (ret != 0) {
 			result = _ReturnSetup(interp, ret,
 			    DB_RETOK_DBGET(ret), "db get");
 			return (result);
 		}
-		key.data = ktmp;
 	}
+	ktmp = key.data;
 	ret = dbp->cursor(dbp, txn, &dbc, 0);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "db cursor");
 	if (result == TCL_ERROR)
@@ -2182,7 +2219,7 @@ tcl_second_call(dbp, pkey, data, skey)
 	Tcl_DecrRefCount(dobj);
 
 	if (result != TCL_OK) {
-		__db_err(dbp->dbenv,
+		__db_errx(dbp->dbenv,
 		    "Tcl callback function failed with code %d", result);
 		return (EINVAL);
 	}
@@ -3068,6 +3105,8 @@ out:
 		__os_free(NULL, start.data);
 	if (stop.data != NULL && stop.data != &srecno)
 		__os_free(NULL, stop.data);
+	if (end.data != NULL)
+		__os_free(NULL, end.data);
 
 	return (result);
 }

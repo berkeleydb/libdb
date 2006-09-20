@@ -1,17 +1,17 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep051.tcl,v 12.3 2005/10/18 19:05:54 carol Exp $
+# $Id: rep051.tcl,v 12.9 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep051
 # TEST	Test of compaction with replication.
 # TEST
 # TEST	Run rep_test in a replicated master environment.
 # TEST	Delete a large number of entries and compact with -freespace.
-# TEST	Propagate the changes to the client and make sure client and 
-# TEST	master match.  
+# TEST	Propagate the changes to the client and make sure client and
+# TEST	master match.
 
 proc rep051 { method { niter 5000 } { tnum "051" } args } {
 	source ./include.tcl
@@ -21,18 +21,27 @@ proc rep051 { method { niter 5000 } { tnum "051" } args } {
 	}
 
 	# Compaction is an option for btree and recno databases only.
+	if { $checking_valid_methods } {
+		set test_methods {}
+		foreach method $valid_methods {
+			if { [is_btree $method] == 1 || [is_recno $method] == 1 } {
+				lappend test_methods $method
+			}
+		}
+		return $test_methods
+	}
 	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
 		return
 	}
-							
+
 	# Run tests with and without recovery.  If we're doing testing
 	# of in-memory logging, skip the combination of recovery
 	# and in-memory logging -- it doesn't make sense.
 	set logsets [create_logsets 2]
 	set saved_args $args
 
-	foreach recopt { "" "-recover" } {
+	foreach recopt $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $recopt == "-recover" && $logindex != -1 } {
@@ -77,11 +86,11 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create -lock_max 2500 \
+	set env_cmd(M) "berkdb_env_noerr -create \
 	    -log_max 1000000 $envargs $m_logargs $recargs \
 	    -home $masterdir -errpfx MASTER $m_txnargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
-#	set env_cmd(M) "berkdb_env_noerr -create -lock_max 2500 \
+#	set env_cmd(M) "berkdb_env_noerr -create \
 #	    -log_max 1000000 $envargs $m_logargs $recargs \
 #	    -home $masterdir \
 #	    -verbose {rep on} -errfile /dev/stderr \
@@ -92,11 +101,11 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env_noerr -create -lock_max 2500 \
+	set env_cmd(C) "berkdb_env_noerr -create \
 	    -log_max 1000000 $envargs $c_logargs $recargs \
 	    -home $clientdir -errpfx CLIENT $c_txnargs -rep_client \
 	    -rep_transport \[list 2 replsend\]"
-#	set env_cmd(C) "berkdb_env_noerr -create -lock_max 2500 \
+#	set env_cmd(C) "berkdb_env_noerr -create \
 #	    -log_max 1000000 $envargs $c_logargs $recargs \
 #	    -home $clientdir \
 #	    -verbose {rep on} -errfile /dev/stderr \
@@ -109,7 +118,7 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist
 
-	# Explicitly create the db handle so we can do deletes, 
+	# Explicitly create the db handle so we can do deletes,
 	# and also to make the page size small.
 	set testfile "test.db"
 	set omethod [convert_method $method]
@@ -144,7 +153,7 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 		if { [expr $count % $n] != 0 } {
 			error_check_good dbc_del [$dbc del] 0
 		}
-		set dbt [$dbc get -next] 
+		set dbt [$dbc get -next]
 		incr count -1
 	}
 
@@ -157,8 +166,8 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 	set t [$masterenv txn]
 	error_check_good txn [is_valid_txn $t $masterenv] TRUE
 	set txn "-txn $t"
- 
-	set ret [eval {$db compact} $txn {-freespace}] 
+
+	set ret [eval {$db compact} $txn {-freespace}]
 
 	error_check_good t_commit [$t commit] 0
 	error_check_good db_sync [$db sync] 0
@@ -171,7 +180,7 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 	# Reverify.
 	puts "\tRep$tnum.b: Verifying client database contents."
 	rep_verify $masterdir $masterenv $clientdir $clientenv
-	
+
 	# Clean up.
 	error_check_good db_close [$db close] 0
 	error_check_good masterenv_close [$masterenv close] 0

@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 1999-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: env007.tcl,v 12.7 2005/10/11 18:27:45 carol Exp $
+# $Id: env007.tcl,v 12.13 2006/09/12 18:19:08 carol Exp $
 #
 # TEST	env007
 # TEST	Test DB_CONFIG config file options for berkdb env.
@@ -42,7 +42,7 @@ proc env007 { } {
 	set rlist {
 	{ " -txn_max " "set_tx_max" "19" "31"
 	    "Env007.a1: Txn Max" "txn_stat"
-	    "Max Txns" "0" "get_tx_max" }
+	    "Maximum txns" "0" "get_tx_max" }
 	{ " -lock_max_locks " "set_lk_max_locks" "17" "29"
 	    "Env007.a2: Lock Max" "lock_stat"
 	    "Maximum locks" "0" "get_lk_max_locks" }
@@ -283,7 +283,7 @@ proc env007 { } {
 	}
 
 	if { $has_crypto == 1 } {
-		lappend envopenlist { 
+		lappend envopenlist {
 		    "-encryptaes" "$passwd" "-encryptaes" "get_encrypt_flags" }
 	}
 
@@ -308,9 +308,9 @@ proc env007 { } {
 		set ret [catch {eval $e $envarg $envval} env]
 
 		if { $ret != 0 } {
-			# If the env open failed, it may be because we're on a 
-			# platform such as HP-UX 10 that won't support mutexes 
-			# in shmget memory.  Verify that the return value was 
+			# If the env open failed, it may be because we're on a
+			# platform such as HP-UX 10 that won't support mutexes
+			# in shmget memory.  Verify that the return value was
 			# EINVAL or EOPNOTSUPP and bail gracefully.
 			error_check_good \
 			    is_shm_test [is_substr $envarg -system_mem] 1
@@ -434,7 +434,6 @@ proc env007 { } {
 	{ "set_lk_detect" "db_xxx" }
 	{ "set_lk_detect" "1" }
 	{ "set_lk_detect" "db_lock_youngest x" }
-	{ "set_lk_max" "db_xxx" }
 	{ "set_lk_max_locks" "db_xxx" }
 	{ "set_lk_max_lockers" "db_xxx" }
 	{ "set_lk_max_objects" "db_xxx" }
@@ -461,8 +460,7 @@ proc env007 { } {
 		#  verify using just config file
 		set stat [catch {eval $e} ret]
 		error_check_good envopen $stat 1
-		error_check_good error [is_substr $errorInfo \
-		    "incorrect arguments for name-value pair"] 1
+		error_check_good error [is_substr $errorCode EINVAL] 1
 	}
 
 	puts "\tEnv007.g: Config name error set_xxx"
@@ -534,8 +532,8 @@ proc env007 { } {
 			    $testdir/a.db} db]
 		}
 		if { $ret != 0 } {
-			# If the open failed, it may be because we're on a 
-			# platform such as HP-UX 10 that won't support 
+			# If the open failed, it may be because we're on a
+			# platform such as HP-UX 10 that won't support
 			# locks in process-local memory.
 			# Verify that the return value was EOPNOTSUPP
 			# and bail gracefully.

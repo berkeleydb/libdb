@@ -70,22 +70,23 @@ $FA = 0 ;
 
     sub new
     {
-	my $self = shift ;
+        my $self = shift ;
         #my @files = () ;
         foreach (@_)
         {
             $_ = $basename ;
-            unlink $basename ;
+            1 while unlink $basename ;
             push @files, $basename ;
             ++ $basename ;
         }
- 	bless [ @files ], $self ;
+        bless [ @files ], $self ;
     }
 
     sub DESTROY
     {
-	my $self = shift ;
-	#unlink @{ $self } ;
+        my $self = shift ;
+        chmod 0777, @{ $self } ;
+        for (@$self) { 1 while unlink $_ } ;
     }
 
     END

@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2005-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: log007.tcl,v 12.2 2005/06/14 20:53:51 carol Exp $
+# $Id: log007.tcl,v 12.5 2006/08/24 14:46:36 bostic Exp $
 #
 # TEST	log007
 # TEST	Test of in-memory logging bugs. [#11505]
 # TEST
-# TEST	Test db_printlog with in-memory logs. 	
+# TEST	Test db_printlog with in-memory logs.
 #
 proc log007 { } {
 	global testdir
@@ -18,20 +18,20 @@ proc log007 { } {
 	puts "Log$tnum: Test in-memory logs with db_printlog."
 
 	# Log size is small so we quickly create more than one.
-	# Since we are in-memory the buffer is larger than the 
-	# file size. 
+	# Since we are in-memory the buffer is larger than the
+	# file size.
 	set pagesize 4096
 	append args " -pagesize $pagesize "
 	set log_max [expr $pagesize * 2]
 	set log_buf [expr $log_max * 2]
 
 	# We have 13-byte records.  We want to fill slightly more
-	# than one virtual log file on each iteration.  The first 
-	# record always has an offset of 28. 
+	# than one virtual log file on each iteration.  The first
+	# record always has an offset of 28.
 	#
 	set recsize 13
 	set recsperfile [expr [expr $log_max - 28] / $recsize]
-	set nrecs [expr $recsperfile + 1] 
+	set nrecs [expr $recsperfile + 1]
 
 	# Open environment.
 	env_cleanup $testdir
@@ -48,7 +48,7 @@ proc log007 { } {
 		for { set j 0 } { $j < $nrecs } { incr j } {
 			set rec "1"
 			# Make the first record one byte larger for each
-			# successive log file so we hit the end of the 
+			# successive log file so we hit the end of the
 			# log file at each of the 13 possibilities.
 			set nentries [expr [expr $i * $nrecs] + $j]
 			if { [expr $nentries % 628] == 0 } {
@@ -64,12 +64,12 @@ proc log007 { } {
 		# Open a log cursor.
 		set m_logc [$env log_cursor]
 		error_check_good m_logc [is_valid_logc $m_logc $env] TRUE
- 
+
 		# Check that we're in the expected virtual log file.
 		set first [$m_logc get -first]
 		error_check_good first_lsn [lindex $first 0] "[expr $i + 1] 28"
 		set last [$m_logc get -last]
-		
+
 		puts "\tLog$tnum.b.$i: Read log records sequentially."
 		set j 0
 		for { set logrec [$m_logc get -first] } \

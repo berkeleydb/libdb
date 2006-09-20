@@ -1,8 +1,8 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -36,20 +36,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db.c,v 12.22 2005/11/12 17:41:44 bostic Exp $
+ * $Id: db.c,v 12.42 2006/09/19 15:06:58 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/db_swap.h"
 #include "dbinc/btree.h"
 #include "dbinc/fop.h"
@@ -122,27 +115,27 @@ __db_master_open(subdbp, txn, name, flags, mode, dbpp)
 		goto err;
 
 	/*
-	 * Verify that pagesize is the same on both.  The items in dbp were now
-	 * initialized from the meta page.  The items in dbp were set in
-	 * __db_dbopen when we either read or created the master file.  Other
-	 * items such as checksum and encryption are checked when we read the
-	 * meta-page.  So we do not check those here.  However, if the
-	 * meta-page caused checksumming to be turned on and it wasn't already,
-	 * set it here.
+	 * The items in dbp are initialized from the master file's meta page.
+	 * Other items such as checksum and encryption are checked when we
+	 * read the meta-page, so we do not check those here.  However, if
+	 * the meta-page caused checksumming to be turned on and it wasn't
+	 * already, set it here.
 	 */
 	if (F_ISSET(dbp, DB_AM_CHKSUM))
 		F_SET(subdbp, DB_AM_CHKSUM);
-	if (subdbp->pgsize != 0 && dbp->pgsize != subdbp->pgsize) {
-		ret = EINVAL;
-		__db_err(dbp->dbenv,
-		    "Different pagesize specified on existent file");
-		goto err;
+
+	/*
+	 * The user may have specified a page size for an existing file,
+	 * which we want to ignore.
+	 */
+	subdbp->pgsize = dbp->pgsize;
+	*dbpp = dbp;
+
+	if (0) {
+err:		if (!F_ISSET(dbp, DB_AM_DISCARD))
+			(void)__db_close(dbp, txn, 0);
 	}
-err:
-	if (ret != 0 && !F_ISSET(dbp, DB_AM_DISCARD))
-		(void)__db_close(dbp, txn, 0);
-	else
-		*dbpp = dbp;
+
 	return (ret);
 }
 
@@ -174,19 +167,17 @@ __db_master_update(mdbp, sdbp, txn, subdb, type, action, newname, flags)
 	dbc = ndbc = NULL;
 	p = NULL;
 
-	memset(&key, 0, sizeof(key));
-	memset(&data, 0, sizeof(data));
-
-	/* Might we modify the master database?  If so, we'll need to lock. */
-	modify = (action != MU_OPEN || LF_ISSET(DB_CREATE)) ? 1 : 0;
-
 	/*
 	 * Open up a cursor.  If this is CDB and we're creating the database,
 	 * make it an update cursor.
+	 *
+	 * Might we modify the master database?  If so, we'll need to lock.
 	 */
+	modify = (action != MU_OPEN || LF_ISSET(DB_CREATE)) ? 1 : 0;
+
 	if ((ret = __db_cursor(mdbp, txn, &dbc,
 	    (CDB_LOCKING(dbenv) && modify) ? DB_WRITECURSOR : 0)) != 0)
-		goto err;
+		return (ret);
 
 	/*
 	 * Point the cursor at the record.
@@ -201,8 +192,8 @@ __db_master_update(mdbp, sdbp, txn, subdb, type, action, newname, flags)
 	 * !!!
 	 * We don't include the name's nul termination in the database.
 	 */
-	key.data = (void *)subdb;
-	key.size = (u_int32_t)strlen(subdb);
+	DB_INIT_DBT(key, subdb, strlen(subdb));
+	memset(&data, 0, sizeof(data));
 	F_SET(&data, DB_DBT_MALLOC);
 
 	ret = __db_c_get(dbc, &key, &data,
@@ -238,15 +229,16 @@ __db_master_update(mdbp, sdbp, txn, subdb, type, action, newname, flags)
 		 */
 		memcpy(&sdbp->meta_pgno, data.data, sizeof(db_pgno_t));
 		DB_NTOHL(&sdbp->meta_pgno);
-		if ((ret =
-		    __memp_fget(mdbp->mpf, &sdbp->meta_pgno, 0, &p)) != 0)
+		if ((ret = __memp_fget(mdbp->mpf, &sdbp->meta_pgno,
+		    dbc->txn, DB_MPOOL_DIRTY, &p)) != 0)
 			goto err;
 
 		/* Free the root on the master db if it was created. */
 		if (TYPE(p) == P_BTREEMETA &&
 		    ((BTMETA *)p)->root != PGNO_INVALID) {
 			if ((ret = __memp_fget(mdbp->mpf,
-			     &((BTMETA *)p)->root, 0, &r)) != 0)
+			    &((BTMETA *)p)->root, dbc->txn,
+			    DB_MPOOL_DIRTY, &r)) != 0)
 				goto err;
 
 			/* Free and put the page. */
@@ -274,10 +266,10 @@ __db_master_update(mdbp, sdbp, txn, subdb, type, action, newname, flags)
 		 * for the existence of newname;  it shouldn't appear under
 		 * us since we hold the metadata lock.
 		 */
-		if ((ret = __db_cursor(mdbp, txn, &ndbc, 0)) != 0)
+		if ((ret = __db_cursor(mdbp, txn, &ndbc,
+		    CDB_LOCKING(dbenv) ? DB_WRITECURSOR : 0)) != 0)
 			goto err;
-		key.data = (void *)newname;
-		key.size = (u_int32_t)strlen(newname);
+		DB_SET_DBT(key, newname, strlen(newname));
 
 		/*
 		 * We don't actually care what the meta page of the potentially-
@@ -289,7 +281,7 @@ __db_master_update(mdbp, sdbp, txn, subdb, type, action, newname, flags)
 		if ((ret = __db_c_get(ndbc, &key, &ndata, DB_SET)) == 0) {
 			/* A subdb called newname exists.  Bail. */
 			ret = EEXIST;
-			__db_err(dbenv, "rename: database %s exists", newname);
+			__db_errx(dbenv, "rename: database %s exists", newname);
 			goto err;
 		} else if (ret != DB_NOTFOUND)
 			goto err;
@@ -366,14 +358,9 @@ done:	/*
 	 * If we allocated a page: if we're successful, mark the page dirty
 	 * and return it to the cache, otherwise, discard/free it.
 	 */
-	if (p != NULL) {
-		if (ret == 0) {
-			if ((t_ret =
-			    __memp_fput(mdbp->mpf, p, DB_MPOOL_DIRTY)) != 0)
-				ret = t_ret;
-		} else
-			(void)__memp_fput(mdbp->mpf, p, 0);
-	}
+	if (p != NULL &&
+	    (t_ret = __memp_fput(mdbp->mpf, p, 0)) != 0 && ret == 0)
+		ret = t_ret;
 
 	/* Discard the cursor(s) and data. */
 	if (data.data != NULL)
@@ -428,7 +415,7 @@ __db_dbenv_setup(dbp, txn, fname, dname, id, flags)
 
 	/* We may need a per-thread mutex. */
 	if (LF_ISSET(DB_THREAD) && (ret = __mutex_alloc(
-	    dbenv, MTX_DB_HANDLE, DB_MUTEX_THREAD, &dbp->mutex)) != 0)
+	    dbenv, MTX_DB_HANDLE, DB_MUTEX_PROCESS_ONLY, &dbp->mutex)) != 0)
 		return (ret);
 
 	/*
@@ -463,14 +450,20 @@ __db_dbenv_setup(dbp, txn, fname, dname, id, flags)
 	 * expensive memcmps.
 	 */
 	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	for (maxid = 0, ldbp = LIST_FIRST(&dbenv->dblist);
-	    ldbp != NULL; ldbp = LIST_NEXT(ldbp, dblistlinks)) {
+	maxid = 0;
+	TAILQ_FOREACH(ldbp, &dbenv->dblist, dblistlinks) {
+		/*
+		 * There are three cases: on-disk database (first clause),
+		 * named in-memory database (second clause), temporary database
+		 * (never matches; no clause).
+		 */
 		if (!F_ISSET(dbp, DB_AM_INMEM)) {
 			if (memcmp(ldbp->fileid, dbp->fileid, DB_FILE_ID_LEN)
 			    == 0 && ldbp->meta_pgno == dbp->meta_pgno)
 				break;
 		} else if (dname != NULL) {
 			if (F_ISSET(ldbp, DB_AM_INMEM) &&
+			    ldbp->dname != NULL &&
 			    strcmp(ldbp->dname, dname) == 0)
 				break;
 		}
@@ -479,8 +472,7 @@ __db_dbenv_setup(dbp, txn, fname, dname, id, flags)
 	}
 
 	/*
-	 * If ldbp is NULL, we didn't find a match, or we weren't
-	 * really looking because fname is NULL.  Assign the dbp an
+	 * If ldbp is NULL, we didn't find a match. Assign the dbp an
 	 * adj_fileid one higher than the largest we found, and
 	 * insert it at the head of the master dbp list.
 	 *
@@ -490,10 +482,10 @@ __db_dbenv_setup(dbp, txn, fname, dname, id, flags)
 	 */
 	if (ldbp == NULL) {
 		dbp->adj_fileid = maxid + 1;
-		LIST_INSERT_HEAD(&dbenv->dblist, dbp, dblistlinks);
+		TAILQ_INSERT_HEAD(&dbenv->dblist, dbp, dblistlinks);
 	} else {
 		dbp->adj_fileid = ldbp->adj_fileid;
-		LIST_INSERT_AFTER(ldbp, dbp, dblistlinks);
+		TAILQ_INSERT_AFTER(&dbenv->dblist, ldbp, dbp, dblistlinks);
 	}
 	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
 
@@ -520,8 +512,6 @@ __db_dbenv_mpool(dbp, fname, flags)
 	int32_t lsn_off;
 	u_int8_t nullfid[DB_FILE_ID_LEN];
 	u_int32_t clear_len;
-
-	COMPQUIET(mpf, NULL);
 
 	dbenv = dbp->dbenv;
 	lsn_off = 0;
@@ -620,8 +610,15 @@ __db_dbenv_mpool(dbp, fname, flags)
 	pgcookie.size = sizeof(DB_PGINFO);
 	(void)__memp_set_pgcookie(mpf, &pgcookie);
 
+#ifndef DIAG_MVCC
+	if (F_ISSET(dbenv, DB_ENV_MULTIVERSION))
+#endif
+		if (F_ISSET(dbp, DB_AM_TXN) &&
+		    dbp->type != DB_QUEUE && dbp->type != DB_UNKNOWN)
+			LF_SET(DB_MULTIVERSION);
+
 	if ((ret = __memp_fopen(mpf, NULL, fname,
-	    LF_ISSET(DB_CREATE | DB_DURABLE_UNKNOWN |
+	    LF_ISSET(DB_CREATE | DB_DURABLE_UNKNOWN | DB_MULTIVERSION |
 		DB_NOMMAP | DB_ODDFILESIZE | DB_RDONLY | DB_TRUNCATE) |
 	    (F_ISSET(dbenv, DB_ENV_DIRECT_DB) ? DB_DIRECT : 0) |
 	    (F_ISSET(dbp, DB_AM_NOT_DURABLE) ? DB_TXN_NOT_DURABLE : 0),
@@ -764,8 +761,7 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	 * is mostly done just so we can close primaries and secondaries in
 	 * any order--but within one thread of control.
 	 */
-	for (sdbp = LIST_FIRST(&dbp->s_secondaries);
-	    sdbp != NULL; sdbp = LIST_NEXT(sdbp, s_links)) {
+	LIST_FOREACH(sdbp, &dbp->s_secondaries, s_links) {
 		LIST_REMOVE(sdbp, s_links);
 		if ((t_ret = __db_disassociate(sdbp)) != 0 && ret == 0)
 			ret = t_ret;
@@ -851,7 +847,7 @@ never_opened:
 		 * if and only if this is not a recovery dbp or a client dbp,
 		 * or a dead dbp handle.
 		 */
-		DB_ASSERT(renv != NULL);
+		DB_ASSERT(dbenv, renv != NULL);
 		if (F_ISSET(dbp, DB_AM_RECOVER) || IS_REP_CLIENT(dbenv) ||
 		    dbp->timestamp != renv->rep_timestamp)
 			t_ret = __dbreg_revoke_id(dbp, 0, DB_LOGFILEID_INVALID);
@@ -910,11 +906,18 @@ never_opened:
 	 * Close our reference to the underlying cache while locked, we don't
 	 * want to race with a thread searching for our underlying cache link
 	 * while opening a DB handle.
+	 *
+	 * The DB handle may not yet have been added to the DB_ENV list, don't
+	 * blindly call the underlying TAILQ_REMOVE macro.  Explicitly reset
+	 * the field values to NULL so that we can't call TAILQ_REMOVE twice.
 	 */
 	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	if (!reuse && dbp->dblistlinks.le_prev != NULL) {
-		LIST_REMOVE(dbp, dblistlinks);
-		dbp->dblistlinks.le_prev = NULL;
+	if (!reuse &&
+	    (dbp->dblistlinks.tqe_next != NULL ||
+	    dbp->dblistlinks.tqe_prev != NULL)) {
+		TAILQ_REMOVE(&dbenv->dblist, dbp, dblistlinks);
+		dbp->dblistlinks.tqe_next = NULL;
+		dbp->dblistlinks.tqe_prev = NULL;
 	}
 
 	/* Close the memory pool file handle. */
@@ -927,7 +930,7 @@ never_opened:
 		if (reuse &&
 		    (t_ret = __memp_fcreate(dbenv, &dbp->mpf)) != 0 &&
 		    ret == 0)
-		    	ret = t_ret;
+			ret = t_ret;
 	}
 
 	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
@@ -968,7 +971,7 @@ never_opened:
 
 	if (!reuse && dbp->lid != DB_LOCK_INVALIDID) {
 		/* We may have pending trade operations on this dbp. */
-		if (txn != NULL)
+		if (IS_REAL_TXN(txn))
 			__txn_remlock(dbenv, txn, &dbp->handle_lock, dbp->lid);
 
 		/* We may be holding the handle lock; release it. */
@@ -1005,7 +1008,7 @@ never_opened:
 		save_flags = F_ISSET(dbp, DB_AM_INMEM | DB_AM_TXN);
 
 		/*
-		 * XXX If this is an XA handle, we'll want to specify 
+		 * XXX If this is an XA handle, we'll want to specify
 		 * DB_XA_CREATE.
 		 */
 		if ((ret = __bam_db_create(dbp)) != 0)
@@ -1173,7 +1176,7 @@ __db_backup_name(dbenv, name, txn, backup)
 	 *	4. multi-component path + transaction
 	 */
 	p = __db_rpath(name);
-	if (txn == NULL) {
+	if (!IS_REAL_TXN(txn)) {
 #ifdef HAVE_VXWORKS
 	    { int i, n;
 		/* On VxWorks we must support 8.3 names. */
@@ -1231,28 +1234,6 @@ __db_backup_name(dbenv, name, txn, backup)
 }
 
 /*
- * __dblist_get --
- *	Get the first element of dbenv->dblist with
- *	dbp->adj_fileid matching adjid.
- *
- * PUBLIC: DB *__dblist_get __P((DB_ENV *, u_int32_t));
- */
-DB *
-__dblist_get(dbenv, adjid)
-	DB_ENV *dbenv;
-	u_int32_t adjid;
-{
-	DB *dbp;
-
-	for (dbp = LIST_FIRST(&dbenv->dblist);
-	    dbp != NULL && dbp->adj_fileid != adjid;
-	    dbp = LIST_NEXT(dbp, dblistlinks))
-		;
-
-	return (dbp);
-}
-
-/*
  * __db_disassociate --
  *	Destroy the association between a given secondary and its primary.
  */
@@ -1277,7 +1258,7 @@ __db_disassociate(sdbp)
 	if (sdbp->s_refcnt != 1 ||
 	    TAILQ_FIRST(&sdbp->active_queue) != NULL ||
 	    TAILQ_FIRST(&sdbp->join_queue) != NULL) {
-		__db_err(sdbp->dbenv,
+		__db_errx(sdbp->dbenv,
     "Closing a primary DB while a secondary DB has active cursors is unsafe");
 		ret = EINVAL;
 	}
@@ -1309,7 +1290,7 @@ __db_testcopy(dbenv, dbp, name)
 	DB_MPOOL *dbmp;
 	DB_MPOOLFILE *mpf;
 
-	DB_ASSERT(dbp != NULL || name != NULL);
+	DB_ASSERT(dbenv, dbp != NULL || name != NULL);
 
 	if (name == NULL) {
 		dbmp = dbenv->mp_handle;
@@ -1329,8 +1310,8 @@ __qam_testdocopy(dbp, name)
 	const char *name;
 {
 	QUEUE_FILELIST *filelist, *fp;
-	char buf[256], *dir;
 	int ret;
+	char buf[DB_MAXPATHLEN], *dir;
 
 	filelist = NULL;
 	if ((ret = __db_testdocopy(dbp->dbenv, name)) != 0)

@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_java_stat,v 12.9 2005/11/04 00:09:21 mjc Exp $
+#	$Id: s_java_stat,v 12.14 2006/08/24 14:45:35 bostic Exp $
 #
 # Build the Java files.
 
@@ -8,10 +8,9 @@ msgjava="/*-
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 2002-2006
+ *	Oracle Corporation.  All rights reserved.
  */"
-
 
 s=/tmp/__java.sed
 t=/tmp/__java
@@ -89,6 +88,7 @@ EOF
 	           -e 'if (m/get.*\(/) {' \
 	           -e     's/_n([b-df-hj-np-tv-z]|upgrade)/_num_$1/;' \
 	           -e     's/_(min|max)([a-z])/_$1_$2/;' \
+	           -e     's/_mvcc/_multiversion/;' \
 	           -e     's/_cnt/_count_/;' \
 	           -e     's/_pg/_pages_/;' \
 	           -e     's/(count|flag|free|page|percent|size|timeout)/_$1/g;' \
@@ -140,7 +140,7 @@ jclass_jni()
 	s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	JAVADB_STAT_INT(jnienv, jobj, $1_\1_fid, statp, \1);/p
 }
 EOF
-	echo "static int $fill(JNIEnv *jnienv, " >> $c
+	echo "static int $fill(JNIEnv *jnienv," >> $c
 	echo "    jobject jobj, struct __db_$1 *statp) {" >> $c
 	sed -n -f $s < ../dbinc/db.in >> $c
         echo '	return (0);' >> $c
@@ -267,7 +267,7 @@ stat_class()
 	 echo
 	 echo "public class $j_class$extends {"
 	 echo "    // no public constructor"
-	 echo "    protected $j_class() {}"
+	 echo "    /* package */ $j_class() {}"
 	 jclass $1
 	 jclass_toString $1 $2
 	 echo '}') > $t
@@ -294,7 +294,7 @@ stat_class bt_stat BtreeStats " extends DatabaseStats"
  echo "public class CompactStats"
  echo '{'
  echo "    // no public constructor"
- echo "    protected CompactStats() {}"
+ echo "    /* package */ CompactStats() {}"
  echo
  echo "    /* package */"
  echo "    CompactStats(int fillpercent, int timeout, int pages) {"
@@ -305,7 +305,8 @@ stat_class bt_stat BtreeStats " extends DatabaseStats"
  jclass compact
  jclass_toString compact CompactStats
  echo '}'
- echo '// end of TransactionStats.java') > $t
+ echo '// end of TransactionStats.java') |
+   psed 's,public int get\(FillPercent\|Pages(\|Timeout\|Truncate\),/* package */ int get\1,g'> $t
 jclass_jni compact __dbj_fill_compact
 f=../java/src/com/sleepycat/db/CompactStats.java
 cmp $t $f > /dev/null 2>&1 ||
@@ -331,11 +332,11 @@ stat_class seq_stat SequenceStats
  echo "public class TransactionStats"
  echo '{'
  echo "    // no public constructor"
- echo "    protected TransactionStats() {}"
+ echo "    /* package */ TransactionStats() {}"
  echo
  echo -n "    public static class Active {"
  echo    "        // no public constructor"
- echo    "        protected Active() {}"
+ echo    "        /* package */ Active() {}"
  jclass txn_active "    "
  jclass_toString txn_active Active "    "
  echo '    };'

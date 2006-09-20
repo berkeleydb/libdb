@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2000-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: fop001.tcl,v 12.3 2005/09/28 18:17:02 carol Exp $
+# $Id: fop001.tcl,v 12.6 2006/08/24 14:46:35 bostic Exp $
 #
 # TEST	fop001.tcl
 # TEST	Test file system operations, combined in a transaction. [#7363]
@@ -13,7 +13,7 @@ proc fop001 { method { inmem 0 } args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	# The variable inmem determines whether the test is being 
+	# The variable inmem determines whether the test is being
 	# run with regular named databases or named in-memory databases.
 	if { $inmem == 0 } {
 		set tnum "001"
@@ -23,8 +23,8 @@ proc fop001 { method { inmem 0 } args } {
 		set tnum "007"
 		set string "in-memory named databases"
 		set operator do_inmem_op
-	} 
-		
+	}
+
 	puts "\nFop$tnum: ($method)\
 	    Two file system ops in one transaction for $string."
 

@@ -1,22 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock_region.c,v 12.6 2005/10/07 20:21:31 ubell Exp $
+ * $Id: lock_region.c,v 12.11 2006/08/24 14:46:11 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
-
 #include "db_int.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/lock.h"
 
 static int  __lock_region_init __P((DB_ENV *, DB_LOCKTAB *));
@@ -121,7 +114,7 @@ __lock_open(dbenv)
 		if (region->detect != DB_LOCK_NORUN &&
 		    dbenv->lk_detect != DB_LOCK_DEFAULT &&
 		    region->detect != dbenv->lk_detect) {
-			__db_err(dbenv,
+			__db_errx(dbenv,
 		    "lock_open: incompatible deadlock detector mode");
 			ret = EINVAL;
 			goto err;
@@ -263,7 +256,7 @@ __lock_region_init(dbenv, lt)
 	for (i = 0; i < region->stat.st_maxlockers; ++i) {
 		if ((ret = __db_shalloc(&lt->reginfo,
 		    sizeof(DB_LOCKER), 0, &lidp)) != 0) {
-mem_err:		__db_err(dbenv,
+mem_err:		__db_errx(dbenv,
 			    "Unable to allocate memory for the lock table");
 			return (ret);
 		}

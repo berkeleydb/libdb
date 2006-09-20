@@ -1,19 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: os_unlink.c,v 12.3 2005/08/10 15:47:27 bostic Exp $
+ * $Id: os_unlink.c,v 12.8 2006/08/24 14:46:18 bostic Exp $
  */
 
 #include "db_config.h"
-
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-
-#include <string.h>
-#endif
 
 #include "db_int.h"
 
@@ -36,10 +30,9 @@ __os_region_unlink(dbenv, path)
 		goto err;
 
 	if ((ret = shm_unlink(newname)) != 0) {
-		ret = __os_get_errno();
-		if (ret != ENOENT)
-			__db_err(dbenv, "shm_unlink: %s: %s",
-			    newname, strerror(ret));
+		ret = __os_get_syserr();
+		if (__os_posix_err(ret) != ENOENT)
+			__db_syserr(dbenv, ret, "shm_unlink: %s", newname);
 	}
 err:
 	if (newname != NULL)
@@ -64,7 +57,7 @@ __os_unlink(dbenv, path)
 	DB_ENV *dbenv;
 	const char *path;
 {
-	int ret;
+	int ret, t_ret;
 
 	if (DB_GLOBAL(j_unlink) != NULL)
 		ret = DB_GLOBAL(j_unlink)(path);
@@ -89,8 +82,12 @@ __os_unlink(dbenv, path)
 	 * are expecting not to be there.  Reporting errors in these cases
 	 * is annoying.
 	 */
-	if (ret != 0 && ret != ENOENT)
-		__db_err(dbenv, "unlink: %s: %s", path, strerror(ret));
+	if (ret != 0) {
+		t_ret = __os_posix_err(ret);
+		if (t_ret != ENOENT)
+			__db_syserr(dbenv, ret, "unlink: %s", path);
+		ret = t_ret;
+	}
 
 	return (ret);
 }

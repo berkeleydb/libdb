@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2001-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: rep050.tcl,v 12.4 2005/10/18 19:08:24 carol Exp $
+# $Id: rep050.tcl,v 12.10 2006/08/24 14:46:38 bostic Exp $
 #
 # TEST	rep050
 # TEST	Replication and delay syncing clients - change master test.
@@ -21,16 +21,21 @@
 proc rep050 { method { niter 10 } { tnum "050" } args } {
 	source ./include.tcl
 
-	if { $is_windows9x_test == 1 } { 
+	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
-	} 
+	}
+
+	# Valid for all access methods.
+	if { $checking_valid_methods } {
+		return "ALL"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 5]
 
 	# Run the body of the test with and without recovery.
-	set recopts { "" "-recover" }
-	foreach r $recopts {
+	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
 			if { $r == "-recover" && $logindex != -1 } {
@@ -96,10 +101,9 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -lock_max 2500 -errpfx ENV1 \
+	    $m_logargs -errpfx ENV1 \
 	    -home $env1dir -rep_transport \[list 1 replsend\]"
-#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-#	    $m_logargs -lock_max 2500 \
+#	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
 #	    -errpfx ENV1 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $env1dir -rep_transport \[list 1 replsend\]"
 	set env1 [eval $ma_envcmd $recargs -rep_master]
@@ -108,12 +112,10 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -lock_max 2500 -errpfx ENV2 \
-	    -cachesize {0 2097152 2} \
+	    $c_logargs -errpfx ENV2 -cachesize {0 2097152 2} \
 	    -home $env2dir -rep_transport \[list 2 replsend\]"
 #	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-#	    $c_logargs -lock_max 2500 \
-#	    -cachesize {0 2097152 2} \
+#	    $c_logargs -cachesize {0 2097152 2} \
 #	    -errpfx ENV2 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $env2dir -rep_transport \[list 2 replsend\]"
 	set env2 [eval $cl_envcmd $recargs -rep_client]
@@ -121,10 +123,10 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 
 	repladd 3
 	set dc1_envcmd "berkdb_env_noerr -create $dc1_txnargs \
-	    $dc1_logargs -lock_max 2500 -errpfx ENV3 \
+	    $dc1_logargs -errpfx ENV3 \
 	    -home $delaycldir1 -rep_transport \[list 3 replsend\]"
 #	set dc1_envcmd "berkdb_env_noerr -create $dc1_txnargs \
-#	    $dc1_logargs -lock_max 2500 \
+#	    $dc1_logargs \
 #	    -errpfx ENV3 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $delaycldir1 -rep_transport \[list 3 replsend\]"
 	set dc1env [eval $dc1_envcmd $recargs -rep_client]
@@ -132,10 +134,10 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 
 	repladd 4
 	set dc2_envcmd "berkdb_env_noerr -create $dc2_txnargs \
-	    $dc2_logargs -lock_max 2500 -errpfx ENV4 \
+	    $dc2_logargs -errpfx ENV4 \
 	    -home $delaycldir2 -rep_transport \[list 4 replsend\]"
 #	set dc2_envcmd "berkdb_env_noerr -create $dc2_txnargs \
-#	    $dc2_logargs -lock_max 2500 \
+#	    $dc2_logargs \
 #	    -errpfx ENV4 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $delaycldir2 -rep_transport \[list 4 replsend\]"
 	set dc2env [eval $dc2_envcmd $recargs -rep_client]
@@ -143,10 +145,10 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 
 	repladd 5
 	set dc3_envcmd "berkdb_env_noerr -create $dc3_txnargs \
-	    $dc3_logargs -lock_max 2500 -errpfx ENV5 \
+	    $dc3_logargs -errpfx ENV5 \
 	    -home $delaycldir3 -rep_transport \[list 5 replsend\]"
 #	set dc3_envcmd "berkdb_env_noerr -create $dc3_txnargs \
-#	    $dc3_logargs -lock_max 2500 \
+#	    $dc3_logargs \
 #	    -errpfx ENV5 -verbose {rep on} -errfile /dev/stderr \
 #	    -home $delaycldir3 -rep_transport \[list 5 replsend\]"
 
@@ -259,7 +261,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 			set tmp $mid
 			set mid $cid
 			set cid $tmp
-	
+
 			puts "\tRep$tnum.g: Swap master/client while delayed"
 			set nextlet "h"
 			error_check_good downgrade \
@@ -294,7 +296,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 			set tmp $mid
 			set mid $cid
 			set cid $tmp
-	
+
 			puts "\tRep$tnum.h: Swap master/client while syncing"
 			error_check_good downgrade \
 			    [$clientenv rep_start -client] 0

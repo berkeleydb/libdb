@@ -1,9 +1,9 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2005
-#	Sleepycat Software.  All rights reserved.
+# Copyright (c) 2004-2006
+#	Oracle Corporation.  All rights reserved.
 #
-# $Id: test107.tcl,v 12.4 2005/10/03 16:04:04 carol Exp $
+# $Id: test107.tcl,v 12.6 2006/08/24 14:46:41 bostic Exp $
 #
 # TEST	test107
 # TEST	Test of read-committed (degree 2 isolation). [#8689]

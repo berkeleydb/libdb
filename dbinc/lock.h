@@ -1,14 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1996-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: lock.h,v 12.7 2005/10/07 20:21:23 ubell Exp $
+ * $Id: lock.h,v 12.11 2006/08/24 14:45:29 bostic Exp $
  */
 
 #ifndef	_DB_LOCK_H_
 #define	_DB_LOCK_H_
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
 
@@ -56,11 +60,11 @@ typedef struct {
 
 /* Macros to lock/unlock the lock region as a whole. */
 #define	LOCK_SYSTEM_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, ((DB_LOCKREGION *)((DB_LOCKTAB *)		\
-	    (dbenv)->lk_handle)->reginfo.primary)->mtx_region)
+	MUTEX_LOCK(dbenv, ((DB_LOCKREGION *)				\
+	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
 #define	LOCK_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((DB_LOCKREGION *)((DB_LOCKTAB *)		\
-	    (dbenv)->lk_handle)->reginfo.primary)->mtx_region)
+	MUTEX_UNLOCK(dbenv, ((DB_LOCKREGION *)				\
+	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
 
 /*
  * DB_LOCKREGION --
@@ -162,13 +166,13 @@ typedef struct __db_locker {
  *	The primary library lock data structure (i.e., the one referenced
  * by the environment, as opposed to the internal one laid out in the region.)
  */
-typedef struct __db_locktab {
+struct __db_locktab {
 	DB_ENV		*dbenv;		/* Environment. */
 	REGINFO		 reginfo;	/* Region information. */
 	u_int8_t	*conflicts;	/* Pointer to conflict matrix. */
 	DB_HASHTAB	*obj_tab;	/* Beginning of object hash table. */
 	DB_HASHTAB	*locker_tab;	/* Beginning of locker hash table. */
-} DB_LOCKTAB;
+};
 
 /*
  * Test for conflicts.
@@ -231,6 +235,10 @@ struct __db_lock {
 #define	__lock_locker_hash(locker)	(locker)
 #define	LOCKER_LOCK(lt, reg, locker, ndx)				\
 	ndx = __lock_locker_hash(locker) % (reg)->locker_t_size;
+
+#if defined(__cplusplus)
+}
+#endif
 
 #include "dbinc_auto/lock_ext.h"
 #endif /* !_DB_LOCK_H_ */

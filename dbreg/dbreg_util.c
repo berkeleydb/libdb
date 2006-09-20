@@ -1,23 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2005
- *	Sleepycat Software.  All rights reserved.
+ * Copyright (c) 1997-2006
+ *	Oracle Corporation.  All rights reserved.
  *
- * $Id: dbreg_util.c,v 12.10 2005/10/12 15:01:47 margo Exp $
+ * $Id: dbreg_util.c,v 12.20 2006/09/09 14:28:22 bostic Exp $
  */
 
 #include "db_config.h"
 
-#ifndef NO_SYSTEM_INCLUDES
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/db_shash.h"
 #include "dbinc/fop.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
@@ -64,7 +58,7 @@ __dbreg_add_dbentry(dbenv, dblp, dbp, ndx)
 		dblp->dbentry_cnt = i;
 	}
 
-	DB_ASSERT(dblp->dbentry[ndx].dbp == NULL);
+	DB_ASSERT(dbenv, dblp->dbentry[ndx].dbp == NULL);
 	dblp->dbentry[ndx].deleted = dbp == NULL;
 	dblp->dbentry[ndx].dbp = dbp;
 
@@ -117,9 +111,10 @@ __dbreg_log_files(dbenv)
 
 	MUTEX_LOCK(dbenv, lp->mtx_filelist);
 
-	for (fnp = SH_TAILQ_FIRST(&lp->fq, __fname);
-	    fnp != NULL; fnp = SH_TAILQ_NEXT(fnp, q, __fname)) {
-
+	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
+		/* This id was revoked by a switch in replication master. */
+		if (fnp->id == DB_LOGFILEID_INVALID)
+			continue;
 		if (fnp->name_off == INVALID_ROFF)
 			dbtp = NULL;
 		else {
@@ -178,6 +173,7 @@ __dbreg_close_files(dbenv)
 
 	dblp = dbenv->lg_handle;
 	ret = 0;
+
 	MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
 	for (i = 0; i < dblp->dbentry_cnt; i++) {
 		/*
@@ -222,6 +218,45 @@ __dbreg_close_files(dbenv)
 		dblp->dbentry[i].dbp = NULL;
 	}
 	MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+	return (ret);
+}
+
+/*
+ * __dbreg_invalidate_files --
+ *	Invalidate files when we change replication roles.  Save the
+ * id so that another process will be able to clean up the information
+ * when it notices.
+ *
+ * PUBLIC: int __dbreg_invalidate_files __P((DB_ENV *));
+ */
+int
+__dbreg_invalidate_files(dbenv)
+	DB_ENV *dbenv;
+{
+	DB_LOG *dblp;
+	FNAME *fnp;
+	LOG *lp;
+	int ret;
+
+	/* If we haven't initialized logging, we have nothing to do. */
+	if (!LOGGING_ON(dbenv))
+		return (0);
+
+	dblp = dbenv->lg_handle;
+	lp = dblp->reginfo.primary;
+
+	ret = 0;
+	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
+		if (fnp->id != DB_LOGFILEID_INVALID) {
+			if ((ret = __dbreg_log_close(dbenv,
+			    fnp, NULL, DBREG_RCLOSE)) != 0)
+				goto err;
+			fnp->old_id = fnp->id;
+			fnp->id = DB_LOGFILEID_INVALID;
+		}
+	}
+err:	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
 	return (ret);
 }
 
@@ -385,14 +420,12 @@ __dbreg_id_to_fname(dblp, id, have_lock, fnamep)
 
 	if (!have_lock)
 		MUTEX_LOCK(dbenv, lp->mtx_filelist);
-	for (fnp = SH_TAILQ_FIRST(&lp->fq, __fname);
-	    fnp != NULL; fnp = SH_TAILQ_NEXT(fnp, q, __fname)) {
+	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname)
 		if (fnp->id == id) {
 			*fnamep = fnp;
 			ret = 0;
 			break;
 		}
-	}
 	if (!have_lock)
 		MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
 
@@ -424,14 +457,12 @@ __dbreg_fid_to_fname(dblp, fid, have_lock, fnamep)
 
 	if (!have_lock)
 		MUTEX_LOCK(dbenv, lp->mtx_filelist);
-	for (fnp = SH_TAILQ_FIRST(&lp->fq, __fname);
-	    fnp != NULL; fnp = SH_TAILQ_NEXT(fnp, q, __fname)) {
+	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname)
 		if (memcmp(fnp->ufid, fid, DB_FILE_ID_LEN) == 0) {
 			*fnamep = fnp;
 			ret = 0;
 			break;
 		}
-	}
 	if (!have_lock)
 		MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
 
@@ -612,6 +643,10 @@ __dbreg_check_master(dbenv, uid, name)
  * at this point we have no way of knowing whether the log record that incited
  * us to call this will be part of a committed transaction.
  *
+ *	We first revoke any old id this handle may have had.  That can happen
+ * if a master becomes a client and then becomes a master again and
+ * there are other processes with valid open handles to this env.
+ *
  * PUBLIC: int __dbreg_lazy_id __P((DB *));
  */
 int
@@ -628,7 +663,7 @@ __dbreg_lazy_id(dbp)
 
 	dbenv = dbp->dbenv;
 
-	DB_ASSERT(IS_REP_MASTER(dbenv));
+	DB_ASSERT(dbenv, IS_REP_MASTER(dbenv));
 
 	dbenv = dbp->dbenv;
 	dblp = dbenv->lg_handle;
@@ -642,6 +677,14 @@ __dbreg_lazy_id(dbp)
 		return (0);
 	}
 	id = DB_LOGFILEID_INVALID;
+	/*
+	 * When we became master we moved the fnp->id to old_id in
+	 * every FNAME structure that was open.  If our id was changed,
+	 * we need to revoke and give back that id.
+	 */
+	if (fnp->old_id != DB_LOGFILEID_INVALID &&
+	    (ret = __dbreg_revoke_id(dbp, 1, DB_LOGFILEID_INVALID)) != 0)
+		goto err;
 	if ((ret = __txn_begin(dbenv, NULL, &txn, 0)) != 0)
 		goto err;
 

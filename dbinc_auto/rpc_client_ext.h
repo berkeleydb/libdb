@@ -19,6 +19,7 @@ int __dbcl_c_setup __P((u_int, DB *, DBC **));
 int __dbcl_dbclose_common __P((DB *));
 int __dbcl_dbenv_illegal __P((DB_ENV *));
 int __dbcl_env_create __P((DB_ENV *, long));
+int __dbcl_env_cdsgroup_begin __P((DB_ENV *, DB_TXN **));
 int __dbcl_env_close __P((DB_ENV *, u_int32_t));
 int __dbcl_env_dbremove __P((DB_ENV *, DB_TXN *, const char *, const char *, u_int32_t));
 int __dbcl_env_dbrename __P((DB_ENV *, DB_TXN *, const char *, const char *, const char *, u_int32_t));
@@ -94,6 +95,7 @@ int __dbcl_env_open_ret __P((DB_ENV *, const char *, u_int32_t, int, __env_open_
 int __dbcl_env_remove_ret __P((DB_ENV *, const char *, u_int32_t, __env_remove_reply *));
 int __dbcl_txn_abort_ret __P((DB_TXN *, __txn_abort_reply *));
 int __dbcl_env_txn_begin_ret __P((DB_ENV *, DB_TXN *, DB_TXN **, u_int32_t, __env_txn_begin_reply *));
+int __dbcl_env_cdsgroup_begin_ret __P((DB_ENV *, DB_TXN **, __env_cdsgroup_begin_reply *));
 int __dbcl_txn_commit_ret __P((DB_TXN *, u_int32_t, __txn_commit_reply *));
 int __dbcl_txn_discard_ret __P((DB_TXN *, u_int32_t, __txn_discard_reply *));
 int __dbcl_env_txn_recover_ret __P((DB_ENV *, DB_PREPLIST *, long, long *, u_int32_t, __env_txn_recover_reply *));

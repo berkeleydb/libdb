@@ -42,7 +42,7 @@
 		}
 
 		initialize();
-    
+
 		if (DbEnv_get_version_major() != DbConstants.DB_VERSION_MAJOR ||
 		    DbEnv_get_version_minor() != DbConstants.DB_VERSION_MINOR ||
 		    DbEnv_get_version_patch() != DbConstants.DB_VERSION_PATCH)
@@ -75,7 +75,7 @@ static jclass keyrange_class;
 static jclass bt_stat_class, compact_class, h_stat_class, lock_stat_class;
 static jclass log_stat_class, mpool_stat_class, mpool_fstat_class;
 static jclass mutex_stat_class, qam_stat_class, rep_stat_class;
-static jclass seq_stat_class, txn_stat_class;
+static jclass rephost_class, seq_stat_class, txn_stat_class;
 static jclass txn_active_class;
 static jclass lock_class, lockreq_class, rep_processmsg_class;
 static jclass dbex_class, deadex_class, lockex_class, memex_class;
@@ -88,13 +88,15 @@ static jclass bytearray_class, string_class, outputstream_class;
 
 static jfieldID dbc_cptr_fid;
 static jfieldID dblsn_file_fid, dblsn_offset_fid;
-static jfieldID dbt_data_fid, dbt_size_fid, dbt_ulen_fid, dbt_dlen_fid;
-static jfieldID dbt_doff_fid, dbt_flags_fid, dbt_offset_fid;
+static jfieldID dbt_data_fid, dbt_data_nio_fid, dbt_size_fid, dbt_ulen_fid;
+static jfieldID dbt_dlen_fid, dbt_doff_fid, dbt_flags_fid, dbt_offset_fid;
 static jfieldID kr_less_fid, kr_equal_fid, kr_greater_fid;
 static jfieldID lock_cptr_fid;
 static jfieldID lockreq_op_fid, lockreq_modeflag_fid, lockreq_timeout_fid;
 static jfieldID lockreq_obj_fid, lockreq_lock_fid;
-static jfieldID rep_processmsg_envid;
+static jfieldID rep_processmsg_envid_fid;
+static jfieldID rephost_port_fid, rephost_host_fid, rephost_eid_fid;
+static jfieldID rephost_status_fid;
 
 /* BEGIN-STAT-FIELD-DECLS */
 static jfieldID bt_stat_bt_magic_fid;
@@ -225,14 +227,19 @@ static jfieldID mpool_stat_st_hash_longest_fid;
 static jfieldID mpool_stat_st_hash_examined_fid;
 static jfieldID mpool_stat_st_hash_nowait_fid;
 static jfieldID mpool_stat_st_hash_wait_fid;
+static jfieldID mpool_stat_st_hash_max_nowait_fid;
 static jfieldID mpool_stat_st_hash_max_wait_fid;
 static jfieldID mpool_stat_st_region_nowait_fid;
 static jfieldID mpool_stat_st_region_wait_fid;
+static jfieldID mpool_stat_st_mvcc_frozen_fid;
+static jfieldID mpool_stat_st_mvcc_thawed_fid;
+static jfieldID mpool_stat_st_mvcc_freed_fid;
 static jfieldID mpool_stat_st_alloc_fid;
 static jfieldID mpool_stat_st_alloc_buckets_fid;
 static jfieldID mpool_stat_st_alloc_max_buckets_fid;
 static jfieldID mpool_stat_st_alloc_pages_fid;
 static jfieldID mpool_stat_st_alloc_max_pages_fid;
+static jfieldID mpool_stat_st_io_wait_fid;
 static jfieldID mutex_stat_st_mutex_align_fid;
 static jfieldID mutex_stat_st_mutex_tas_spins_fid;
 static jfieldID mutex_stat_st_mutex_cnt_fid;
@@ -324,8 +331,10 @@ static jfieldID txn_stat_st_naborts_fid;
 static jfieldID txn_stat_st_nbegins_fid;
 static jfieldID txn_stat_st_ncommits_fid;
 static jfieldID txn_stat_st_nactive_fid;
+static jfieldID txn_stat_st_nsnapshot_fid;
 static jfieldID txn_stat_st_nrestores_fid;
 static jfieldID txn_stat_st_maxnactive_fid;
+static jfieldID txn_stat_st_maxnsnapshot_fid;
 static jfieldID txn_stat_st_txnarray_fid;
 static jfieldID txn_stat_st_region_wait_fid;
 static jfieldID txn_stat_st_region_nowait_fid;
@@ -334,6 +343,9 @@ static jfieldID txn_active_txnid_fid;
 static jfieldID txn_active_parentid_fid;
 static jfieldID txn_active_pid_fid;
 static jfieldID txn_active_lsn_fid;
+static jfieldID txn_active_read_lsn_fid;
+static jfieldID txn_active_mvcc_ref_fid;
+static jfieldID txn_active_status_fid;
 static jfieldID txn_active_xa_status_fid;
 static jfieldID txn_active_xid_fid;
 static jfieldID txn_active_name_fid;
@@ -351,6 +363,7 @@ static jmethodID dbex_construct, deadex_construct, lockex_construct;
 static jmethodID memex_construct, memex_update_method;
 static jmethodID repdupmasterex_construct, rephandledeadex_construct;
 static jmethodID repholdelectionex_construct, repjoinfailex_construct;
+static jmethodID rephost_construct;
 static jmethodID replockoutex_construct, repunavailex_construct;
 static jmethodID runrecex_construct, versionex_construct;
 static jmethodID filenotfoundex_construct, illegalargex_construct;
@@ -359,6 +372,7 @@ static jmethodID lock_construct;
 
 static jmethodID app_dispatch_method, errcall_method, env_feedback_method;
 static jmethodID msgcall_method, paniccall_method, rep_transport_method;
+static jmethodID event_notify_method;
 
 static jmethodID append_recno_method, bt_compare_method, bt_prefix_method;
 static jmethodID db_feedback_method, dup_compare_method, h_hash_method;
@@ -405,6 +419,7 @@ const struct {
 	{ &repdupmasterex_class, DB_PKG "ReplicationDuplicateMasterException" },
 	{ &rephandledeadex_class, DB_PKG "ReplicationHandleDeadException" },
 	{ &repholdelectionex_class, DB_PKG "ReplicationHoldElectionException" },
+	{ &rephost_class, DB_PKG "ReplicationHostAddress" },
 	{ &repjoinfailex_class, DB_PKG "ReplicationJoinFailureException" },
 	{ &replockoutex_class, DB_PKG "ReplicationLockoutException" },
 	{ &repunavailex_class, DB_PKG "ReplicationSiteUnavailableException" },
@@ -429,8 +444,9 @@ const struct {
 
 	{ &dblsn_file_fid, &dblsn_class, "file", "I" },
 	{ &dblsn_offset_fid, &dblsn_class, "offset", "I" },
-	
+
 	{ &dbt_data_fid, &dbt_class, "data", "[B" },
+	{ &dbt_data_nio_fid, &dbt_class, "data_nio", "Ljava/nio/ByteBuffer;" },
 	{ &dbt_size_fid, &dbt_class, "size", "I" },
 	{ &dbt_ulen_fid, &dbt_class, "ulen", "I" },
 	{ &dbt_dlen_fid, &dbt_class, "dlen", "I" },
@@ -581,14 +597,19 @@ const struct {
 	{ &mpool_stat_st_hash_examined_fid, &mpool_stat_class, "st_hash_examined", "I" },
 	{ &mpool_stat_st_hash_nowait_fid, &mpool_stat_class, "st_hash_nowait", "I" },
 	{ &mpool_stat_st_hash_wait_fid, &mpool_stat_class, "st_hash_wait", "I" },
+	{ &mpool_stat_st_hash_max_nowait_fid, &mpool_stat_class, "st_hash_max_nowait", "I" },
 	{ &mpool_stat_st_hash_max_wait_fid, &mpool_stat_class, "st_hash_max_wait", "I" },
 	{ &mpool_stat_st_region_nowait_fid, &mpool_stat_class, "st_region_nowait", "I" },
 	{ &mpool_stat_st_region_wait_fid, &mpool_stat_class, "st_region_wait", "I" },
+	{ &mpool_stat_st_mvcc_frozen_fid, &mpool_stat_class, "st_mvcc_frozen", "I" },
+	{ &mpool_stat_st_mvcc_thawed_fid, &mpool_stat_class, "st_mvcc_thawed", "I" },
+	{ &mpool_stat_st_mvcc_freed_fid, &mpool_stat_class, "st_mvcc_freed", "I" },
 	{ &mpool_stat_st_alloc_fid, &mpool_stat_class, "st_alloc", "I" },
 	{ &mpool_stat_st_alloc_buckets_fid, &mpool_stat_class, "st_alloc_buckets", "I" },
 	{ &mpool_stat_st_alloc_max_buckets_fid, &mpool_stat_class, "st_alloc_max_buckets", "I" },
 	{ &mpool_stat_st_alloc_pages_fid, &mpool_stat_class, "st_alloc_pages", "I" },
 	{ &mpool_stat_st_alloc_max_pages_fid, &mpool_stat_class, "st_alloc_max_pages", "I" },
+	{ &mpool_stat_st_io_wait_fid, &mpool_stat_class, "st_io_wait", "I" },
 	{ &mutex_stat_st_mutex_align_fid, &mutex_stat_class, "st_mutex_align", "I" },
 	{ &mutex_stat_st_mutex_tas_spins_fid, &mutex_stat_class, "st_mutex_tas_spins", "I" },
 	{ &mutex_stat_st_mutex_cnt_fid, &mutex_stat_class, "st_mutex_cnt", "I" },
@@ -680,8 +701,10 @@ const struct {
 	{ &txn_stat_st_nbegins_fid, &txn_stat_class, "st_nbegins", "I" },
 	{ &txn_stat_st_ncommits_fid, &txn_stat_class, "st_ncommits", "I" },
 	{ &txn_stat_st_nactive_fid, &txn_stat_class, "st_nactive", "I" },
+	{ &txn_stat_st_nsnapshot_fid, &txn_stat_class, "st_nsnapshot", "I" },
 	{ &txn_stat_st_nrestores_fid, &txn_stat_class, "st_nrestores", "I" },
 	{ &txn_stat_st_maxnactive_fid, &txn_stat_class, "st_maxnactive", "I" },
+	{ &txn_stat_st_maxnsnapshot_fid, &txn_stat_class, "st_maxnsnapshot", "I" },
 	{ &txn_stat_st_txnarray_fid, &txn_stat_class, "st_txnarray", "[L" DB_PKG "TransactionStats$Active;" },
 	{ &txn_stat_st_region_wait_fid, &txn_stat_class, "st_region_wait", "I" },
 	{ &txn_stat_st_region_nowait_fid, &txn_stat_class, "st_region_nowait", "I" },
@@ -690,12 +713,19 @@ const struct {
 	{ &txn_active_parentid_fid, &txn_active_class, "parentid", "I" },
 	{ &txn_active_pid_fid, &txn_active_class, "pid", "I" },
 	{ &txn_active_lsn_fid, &txn_active_class, "lsn", "L" DB_PKG "LogSequenceNumber;" },
+	{ &txn_active_read_lsn_fid, &txn_active_class, "read_lsn", "L" DB_PKG "LogSequenceNumber;" },
+	{ &txn_active_mvcc_ref_fid, &txn_active_class, "mvcc_ref", "I" },
+	{ &txn_active_status_fid, &txn_active_class, "status", "I" },
 	{ &txn_active_xa_status_fid, &txn_active_class, "xa_status", "I" },
 	{ &txn_active_xid_fid, &txn_active_class, "xid", "[B" },
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
-	{ &rep_processmsg_envid, &rep_processmsg_class, "envid", "I" }
+	{ &rephost_port_fid, &rephost_class, "port", "I" },
+	{ &rephost_host_fid, &rephost_class, "host", "Ljava/lang/String;" },
+	{ &rephost_eid_fid, &rephost_class, "eid", "I" },
+	{ &rephost_status_fid, &rephost_class, "status", "I" },
+	{ &rep_processmsg_envid_fid, &rep_processmsg_class, "envid", "I" }
 };
 
 const struct {
@@ -723,6 +753,7 @@ const struct {
 	{ &seq_stat_construct, &seq_stat_class, "<init>", "()V" },
 	{ &txn_stat_construct, &txn_stat_class, "<init>", "()V" },
 	{ &txn_active_construct, &txn_active_class, "<init>", "()V" },
+	{ &rephost_construct, &rephost_class, "<init>", "()V" },
 
 	{ &dbex_construct, &dbex_class, "<init>",
 	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
@@ -763,6 +794,8 @@ const struct {
 
 	{ &app_dispatch_method, &dbenv_class, "handle_app_dispatch",
 	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "LogSequenceNumber;I)I" },
+	{ &event_notify_method, &dbenv_class, "handle_event_notify",
+	    "(I)I" },
 	{ &env_feedback_method, &dbenv_class, "handle_env_feedback", "(II)V" },
 	{ &errcall_method, &dbenv_class, "handle_error",
 	    "(Ljava/lang/String;)V" },
@@ -791,21 +824,21 @@ const struct {
 	{ &outputstream_write_method, &outputstream_class, "write", "([BII)V" }
 };
 
-#define NELEM(x) (sizeof (x) / sizeof (x[0]))
+#define	NELEM(x) (sizeof (x) / sizeof (x[0]))
 
 JNIEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
     JNIEnv *jenv, jclass clazz)
 {
 	jclass cl;
 	unsigned int i, j;
-	
+
 	COMPQUIET(clazz, NULL);
-	
+
 	if ((*jenv)->GetJavaVM(jenv, &javavm) != 0) {
-		__db_err(NULL, "Cannot get Java VM");
+		__db_errx(NULL, "Cannot get Java VM");
 		return;
 	}
-	
+
 	for (i = 0; i < NELEM(all_classes); i++) {
 		cl = (*jenv)->FindClass(jenv, all_classes[i].name);
 		if (cl == NULL) {
@@ -829,12 +862,11 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
 		}
 	}
 
-
 	/* Get field IDs */
 	for (i = 0; i < NELEM(all_fields); i++) {
 		*all_fields[i].fid = (*jenv)->GetFieldID(jenv,
 		    *all_fields[i].cl, all_fields[i].name, all_fields[i].sig);
-		
+
 		if (*all_fields[i].fid == NULL) {
 			fprintf(stderr,
 			    "Failed to look up field %s with sig %s\n",
@@ -842,13 +874,13 @@ JNIEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
 			return;
 		}
 	}
-	
+
 	/* Get method IDs */
 	for (i = 0; i < NELEM(all_methods); i++) {
 		*all_methods[i].mid = (*jenv)->GetMethodID(jenv,
 		    *all_methods[i].cl, all_methods[i].name,
 		    all_methods[i].sig);
-		
+
 		if (*all_methods[i].mid == NULL) {
 			for (j = 0; j < NELEM(all_classes); j++)
 				if (all_methods[i].cl == all_classes[j].cl)

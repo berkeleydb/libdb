@@ -6,8 +6,8 @@
     <title>Chapter 3. Transaction Basics</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
-    <link rel="up" href="index.html" title="Writing Transactional Applications with Berkeley DB, Java Edition" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;        " />
     <link rel="next" href="abortresults.html" title="Aborting a Transaction" />
   </head>
@@ -284,7 +284,7 @@ err:
         <p>
             In order to fully understand what is happening when you commit
             a transaction, you must first understand a little about what
-            JE is doing with 
+            DB is doing with 
             
             <span>
             the logging subsystem. 
@@ -301,10 +301,10 @@ err:
             
                     
             in the event of a system or application failure, so by performing
-            logging, JE ensures the integrity of your data. 
+            logging, DB ensures the integrity of your data. 
         </p>
         <p>
-            Moreover, JE performs <span class="emphasis"><em>write-ahead</em></span>
+            Moreover, DB performs <span class="emphasis"><em>write-ahead</em></span>
             logging. This means that information is written to the logs
             <span class="emphasis"><em>before</em></span> the actual database is changed.
             This means that all write activity performed under the
@@ -322,6 +322,14 @@ err:
           <ul type="disc">
             <li>
               <p>
+                    A commit record is written to the log. This
+                    indicates that the modifications made by the
+                    transaction are now permanent. By default, this write is performed synchronously to disk so the
+                    commit record arrives in the log files before any other actions are taken.
+                </p>
+            </li>
+            <li>
+              <p>
                     Any log information held in memory is (by default)
                     synchronously written to disk. Note that this requirement can be
                     relaxed, depending on the type of commit you perform.
@@ -333,13 +341,6 @@ err:
                     logging system for in-memory usage, see
                     <a href="logconfig.html#inmemorylogging">Configuring In-Memory Logging</a>.
                     </span>
-                </p>
-            </li>
-            <li>
-              <p>
-                    A commit record is written to the log files. This
-                    indicates that the modifications made by the
-                    transaction are now permanent.
                 </p>
             </li>
             <li>
@@ -458,7 +459,7 @@ err:
                             method. 
                             </span>
                             
-                         This causes JE to not synchronously force any
+                         This causes DB to not synchronously force any
                             <span>
                                 log 
                             </span>
@@ -476,7 +477,7 @@ err:
                                 logging 
                             </span>
                          data will eventually make it to the filesystem (assuming no
-                         application or OS crashes) as a part of JE's
+                         application or OS crashes) as a part of DB's
                          management of its logging buffers and/or cache.
                          </p>
                 <p>
