@@ -228,6 +228,9 @@ __seq_open_pp(seq, txn, keyp, flags)
 	seq->seq_data.ulen = seq->seq_data.size = sizeof(seq->seq_record);
 	seq->seq_rp = &seq->seq_record;
 
+	if ((ret = __dbt_usercopy(dbenv, keyp)) != 0)
+		goto err;
+
 	memset(&seq->seq_key, 0, sizeof(DBT));
 	if ((ret = __os_malloc(dbenv, keyp->size, &seq->seq_key.data)) != 0)
 		goto err;
@@ -365,6 +368,7 @@ err:	if (txn_local &&
 		ret = t_ret;
 
 	ENV_LEAVE(dbenv, ip);
+	__dbt_userfree(dbenv, keyp, NULL, NULL);
 	return (ret);
 }
 
@@ -764,6 +768,10 @@ __seq_get_key(seq, key)
 	DBT *key;
 {
 	SEQ_ILLEGAL_BEFORE_OPEN(seq, "DB_SEQUENCE->get_key");
+
+	if (F_ISSET(key, DB_DBT_USERCOPY))
+		return (__db_retcopy(seq->seq_dbp->dbenv, key,
+		    seq->seq_key.data, seq->seq_key.size, NULL, 0));
 
 	key->data = seq->seq_key.data;
 	key->size = key->ulen = seq->seq_key.size;
