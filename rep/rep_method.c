@@ -526,10 +526,12 @@ __rep_start(dbenv, dbt, flags)
 		 * will allow the client to either perform recovery or
 		 * simply join in.
 		 */
-		if (announce)
+		if (announce) {
+			if ((ret = __dbt_usercopy(dbenv, dbt)) != 0)
+				goto err;
 			(void)__rep_send_message(dbenv,
 			    DB_EID_BROADCAST, REP_NEWCLIENT, NULL, dbt, 0, 0);
-		else
+		} else
 			(void)__rep_send_message(dbenv,
 			    DB_EID_BROADCAST, REP_ALIVE_REQ, NULL, NULL, 0, 0);
 	}
@@ -553,6 +555,7 @@ err:		REP_SYSTEM_UNLOCK(dbenv);
 	}
 	if (pending_event != DB_EVENT_NO_SUCH_EVENT)
 		DB_EVENT(dbenv, pending_event, NULL);
+	__dbt_userfree(dbenv, dbt, NULL, NULL);
 	return (ret);
 }
 

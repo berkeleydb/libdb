@@ -163,6 +163,14 @@ __rep_process_message(dbenv, control, rec, eidp, ret_lsnp)
 		return (EINVAL);
 	}
 
+	if ((ret = __dbt_usercopy(dbenv, control)) != 0 ||
+ 	    (ret = __dbt_usercopy(dbenv, rec)) != 0) {
+ 		__dbt_userfree(dbenv, control, rec, NULL);
+ 		__db_errx(dbenv,
+ 	"DB_ENV->rep_process_message: error retrieving DBT contents");
+ 		return ret;
+ 	}
+
 	ret = 0;
 	db_rep = dbenv->rep_handle;
 	rep = db_rep->region;
@@ -621,6 +629,7 @@ out:
 			*ret_lsnp = rp->lsn;
 		ret = DB_REP_NOTPERM;
 	}
+	__dbt_userfree(dbenv, control, rec, NULL);
 	return (ret);
 }
 
