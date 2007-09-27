@@ -1,12 +1,11 @@
-# $Id: Makefile,v 1.13 2005/10/14 12:37:40 bostic Exp $
+# $Id: Makefile,v 1.14 2006/10/27 00:56:44 bostic Exp $
 
 # Berkeley DB installation.
-DB_INCLUDE=/usr/local/BerkeleyDB.4.4/include
-DB_LIBRARY=/usr/local/BerkeleyDB.4.4/lib
+DB_INCLUDE=../../build_unix
+LIBS=	-L../../build_unix -L../../build_unix/.libs/ -ldb
 
 INC=	-I. -I$(DB_INCLUDE)
 CFLAGS=	$(INC) -g -W -Wall -Wpointer-arith -Wmissing-prototypes
-LIBS=	-L$(DB_LIBRARY) -ldb
 
 PROGS=	csv_code csv_load csv_query
 SRCS=	DbRecord.c code.c csv_local.c db.c load.c load_main.c query.c \

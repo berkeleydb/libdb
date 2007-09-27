@@ -1,4 +1,3 @@
-phpincludedir=$(prefix)/include/php
 
 PHP_DB4_HEADER_FILES = php_db4.h
 
