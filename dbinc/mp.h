@@ -639,6 +639,9 @@ struct __bh_frozen_a {
  */
 #define	MP_TRUNC_RECOVER	0x01
 
+/* Private flags to DB_MPOOLFILE->close. */
+#define	DB_MPOOL_NOLOCK		0x002	/* Already have mpf locked. */
+
 #if defined(__cplusplus)
 }
 #endif

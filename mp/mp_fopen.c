@@ -888,7 +888,8 @@ __memp_fclose(dbmfp, flags)
 	 * when we try to flush them.
 	 */
 	deleted = 0;
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	if (!LF_ISSET(DB_MPOOL_NOLOCK))
+		MUTEX_LOCK(dbenv, mfp->mutex);
 	if (F_ISSET(dbmfp, MP_MULTIVERSION))
 		--mfp->multiversion;
 	if (--mfp->mpf_cnt == 0 || LF_ISSET(DB_MPOOL_DISCARD)) {
@@ -909,13 +910,19 @@ __memp_fclose(dbmfp, flags)
 			}
 		}
 		if (mfp->block_cnt == 0) {
+			/*
+			 * We should never discard this mp file if our caller
+			 * is holding the lock on it.  See comment in
+			 * __memp_sync_file.
+			 */
+			DB_ASSERT(dbenv, !LF_ISSET(DB_MPOOL_NOLOCK));
 			if ((t_ret =
 			    __memp_mf_discard(dbmp, mfp)) != 0 && ret == 0)
 				ret = t_ret;
 			deleted = 1;
 		}
 	}
-	if (!deleted)
+	if (!deleted && !LF_ISSET(DB_MPOOL_NOLOCK))
 		MUTEX_UNLOCK(dbenv, mfp->mutex);
 
 done:	/* Discard the DB_MPOOLFILE structure. */

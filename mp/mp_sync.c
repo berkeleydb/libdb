@@ -755,7 +755,8 @@ __memp_sync_file(dbenv, mfp, argp, countp, flags)
 	 * This is important since we are called with the hash bucket
 	 * locked.  The mfp will get freed via the cleanup pass.
 	 */
-	if (dbmfp != NULL && (t_ret = __memp_fclose(dbmfp, 0)) != 0 && ret == 0)
+	if (dbmfp != NULL &&
+	    (t_ret = __memp_fclose(dbmfp, DB_MPOOL_NOLOCK)) != 0 && ret == 0)
 		ret = t_ret;
 
 	--mfp->mpf_cnt;
