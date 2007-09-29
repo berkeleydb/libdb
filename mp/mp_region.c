@@ -249,8 +249,14 @@ __memp_init(dbenv, dbmp, reginfo_off, htab_buckets, max_nreg)
 		mtx_base = htab[0].mtx_hash;
 	}
 
+	/*
+	 * We preallocated all of the mutexes in a block, so for regions after
+	 * the first, we skip mutexes in use in earlier regions.  Each region
+	 * has the same number of buckets and there are two mutexes per hash
+	 * bucket (the bucket mutex and the I/O mutex).
+	 */
 	if (mtx_base != MUTEX_INVALID)
-		mtx_base += reginfo_off * htab_buckets;
+		mtx_base += reginfo_off * htab_buckets * 2;
 
 	/* Allocate hash table space and initialize it. */
 	if ((ret = __env_alloc(infop,
