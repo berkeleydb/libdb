@@ -36,6 +36,20 @@ typedef struct iovec db_iovec_t;
 #endif
 
 /*
+ * The (arbitrary) maximum number of outgoing messages we're willing to hold, on
+ * a queue per connection, waiting for TCP buffer space to become available in
+ * the kernel.  Rather than exceeding this limit, we simply discard additional
+ * messages (since this is always allowed by the replication protocol).
+ *    As a special dispensation, if a message is destined for a specific remote
+ * site (i.e., it's not a broadcast), then we first try blocking the sending
+ * thread, waiting for space to become available (though we only wait a limited
+ * time).  This is so as to be able to handle the immediate flood of (a
+ * potentially large number of) outgoing messages that replication generates, in
+ * a tight loop, when handling PAGE_REQ, LOG_REQ and ALL_REQ requests.
+ */
+#define	OUT_QUEUE_LIMIT	10
+
+/*
  * The system value is available from sysconf(_SC_HOST_NAME_MAX).
  * Historically, the maximum host name was 256.
  */
@@ -46,6 +60,11 @@ typedef struct iovec db_iovec_t;
 /* A buffer big enough for the string "site host.domain.com:65535". */
 #define	MAX_SITE_LOC_STRING (MAXHOSTNAMELEN+20)
 typedef char SITE_STRING_BUFFER[MAX_SITE_LOC_STRING+1];
+
+/* Default timeout values, in seconds. */
+#define	DB_REPMGR_DEFAULT_ACK_TIMEOUT		(1 * US_PER_SEC)
+#define	DB_REPMGR_DEFAULT_CONNECTION_RETRY	(30 * US_PER_SEC)
+#define	DB_REPMGR_DEFAULT_ELECTION_RETRY	(10 * US_PER_SEC)
 
 struct __repmgr_connection;
     typedef struct __repmgr_connection REPMGR_CONNECTION;
@@ -171,8 +190,9 @@ struct __repmgr_connection {
 #ifdef DB_WIN32
 	WSAEVENT event_object;
 #endif
-#define	CONN_CONNECTING	0x01	/* nonblocking connect in progress */
-#define	CONN_DEFUNCT	0x02	/* socket close pending */
+#define	CONN_CONGESTED	0x01	/* msg thread wait has exceeded timeout */
+#define	CONN_CONNECTING	0x02	/* nonblocking connect in progress */
+#define	CONN_DEFUNCT	0x04	/* socket close pending */
 	u_int32_t flags;
 
 	/*
@@ -180,10 +200,16 @@ struct __repmgr_connection {
 	 * send() function's thread.  But if TCP doesn't have enough network
 	 * buffer space for us when we first try it, we instead allocate some
 	 * memory, and copy the message, and then send it as space becomes
-	 * available in our main select() thread.
+	 * available in our main select() thread.  In some cases, if the queue
+	 * gets too long we wait until it's drained, and then append to it.
+	 * This condition variable's associated mutex is the normal per-repmgr
+	 * db_rep->mutex, because that mutex is always held anyway whenever the
+	 * output queue is consulted.
 	 */
 	OUT_Q_HEADER outbound_queue;
 	int out_queue_length;
+	cond_var_t drained;
+	int blockers;		/* ref count of msg threads waiting on us */
 
 	/*
 	 * Input: while we're reading a message, we keep track of what phase

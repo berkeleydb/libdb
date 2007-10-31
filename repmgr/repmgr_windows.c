@@ -11,6 +11,9 @@
 #define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
+/* Convert time-out from microseconds to milliseconds, rounding up. */
+#define	DB_TIMEOUT_TO_WINDOWS_TIMEOUT(t) (((t) + (US_PER_MS - 1)) / US_PER_MS)
+
 typedef struct __ack_waiter {
 	HANDLE event;
 	const DB_LSN *lsnp;
@@ -120,17 +123,15 @@ __repmgr_await_ack(dbenv, lsnp)
 {
 	DB_REP *db_rep;
 	ACK_WAITER *me;
-	DWORD ret;
-	DWORD timeout;
+	DWORD ret, timeout;
 
 	db_rep = dbenv->rep_handle;
 
 	if ((ret = allocate_wait_slot(dbenv, &me)) != 0)
 		goto err;
 
-	/* convert time-out from microseconds to milliseconds, rounding up */
 	timeout = db_rep->ack_timeout > 0 ?
-	    ((db_rep->ack_timeout + (US_PER_MS - 1)) / US_PER_MS) : INFINITE;
+	    DB_TIMEOUT_TO_WINDOWS_TIMEOUT(db_rep->ack_timeout) : INFINITE;
 	me->lsnp = lsnp;
 	if ((ret = SignalObjectAndWait(db_rep->mutex, me->event, timeout,
 	    FALSE)) == WAIT_FAILED) {
@@ -209,6 +210,85 @@ free_wait_slot(dbenv, slot)
 	slot->lsnp = NULL;	/* show it's not in use */
 	slot->next_free = db_rep->waiters->first_free;
 	db_rep->waiters->first_free = slot;
+}
+
+/* (See requirements described in repmgr_posix.c.) */
+int
+__repmgr_await_drain(dbenv, conn, timeout)
+	DB_ENV *dbenv;
+	REPMGR_CONNECTION *conn;
+	db_timeout_t timeout;
+{
+	DB_REP *db_rep;
+	db_timespec deadline, delta, now;
+	db_timeout_t t;
+	DWORD duration, ret;
+	int round_up;
+	
+	db_rep = dbenv->rep_handle;
+	
+	__os_gettime(dbenv, &deadline);
+	DB_TIMEOUT_TO_TIMESPEC(timeout, &delta);
+	timespecadd(&deadline, &delta);
+
+	while (conn->out_queue_length >= OUT_QUEUE_LIMIT) {
+		if (!ResetEvent(conn->drained))
+			return (GetLastError());
+
+		/* How long until the deadline? */
+		__os_gettime(dbenv, &now);
+		if (timespeccmp(&now, &deadline, >=)) {
+			F_SET(conn, CONN_CONGESTED);
+			return (0);
+		}
+		delta = deadline;
+		timespecsub(&delta, &now);
+		round_up = TRUE;
+		DB_TIMESPEC_TO_TIMEOUT(t, &delta, round_up);
+		duration = DB_TIMEOUT_TO_WINDOWS_TIMEOUT(t);
+
+		ret = SignalObjectAndWait(db_rep->mutex,
+		    conn->drained, duration, FALSE);
+		LOCK_MUTEX(db_rep->mutex);
+		if (ret == WAIT_FAILED)
+			return (GetLastError());
+		else if (ret == WAIT_TIMEOUT) {
+			F_SET(conn, CONN_CONGESTED);
+			return (0);
+		} else
+			DB_ASSERT(dbenv, ret == WAIT_OBJECT_0);
+		
+		if (db_rep->finished)
+			return (0);
+		if (F_ISSET(conn, CONN_DEFUNCT))
+			return (DB_REP_UNAVAIL);
+	}
+	return (0);
+}
+
+/*
+ * Creates a manual reset event, which is usually our best choice when we may
+ * have multiple threads waiting on a single event.
+ */
+int
+__repmgr_alloc_cond(c)
+	cond_var_t *c;
+{
+	HANDLE event;
+
+	if ((event = CreateEvent(NULL, TRUE, FALSE, NULL)) == NULL)
+		return (GetLastError());
+	*c = event;
+	return (0);
+}
+
+int
+__repmgr_free_cond(c)
+	cond_var_t *c;
+{
+	if (CloseHandle(*c))
+		return (0);
+	return (GetLastError());
 }
 
 /*
@@ -488,6 +568,9 @@ __repmgr_select_loop(dbenv)
 		 * don't hurt anything flow-control-wise.
 		 */
 		TAILQ_FOREACH(conn, &db_rep->connections, entries) {
+			if (F_ISSET(conn, CONN_DEFUNCT))
+				continue;
+
 			if (F_ISSET(conn, CONN_CONNECTING) ||
 			    !STAILQ_EMPTY(&conn->outbound_queue) ||
 			    (!flow_control || !IS_VALID_EID(conn->eid))) {
@@ -534,8 +617,10 @@ __repmgr_select_loop(dbenv)
 		     conn != NULL;
 		     conn = next) {
 			next = TAILQ_NEXT(conn, entries);
-			if (F_ISSET(conn, CONN_DEFUNCT))
-				__repmgr_cleanup_connection(dbenv, conn);
+			if (F_ISSET(conn, CONN_DEFUNCT) &&
+			    (ret = __repmgr_cleanup_connection(dbenv,
+			    conn)) != 0)
+				goto unlock;
 		}
 
 		/*
@@ -587,11 +672,6 @@ out:
 	return (ret);
 }
 
-/*
- * !!!
- * Only ever called on the select() thread, since we may call
- * __repmgr_bust_connection(..., TRUE).
- */
 static int
 handle_completion(dbenv, conn)
 	DB_ENV *dbenv;
@@ -651,10 +731,12 @@ handle_completion(dbenv, conn)
 		}
 	}
 
-	return (0);
-
-err:	if (ret == DB_REP_UNAVAIL)
-		return (__repmgr_bust_connection(dbenv, conn, TRUE));
+err:
+	if (ret == DB_REP_UNAVAIL) {
+		if ((ret = __repmgr_bust_connection(dbenv, conn)) != 0)
+			return (ret);
+		ret = __repmgr_cleanup_connection(dbenv, conn);
+	}
 	return (ret);
 }
 
@@ -708,7 +790,8 @@ err:
 	}
 
 	DB_ASSERT(dbenv, !TAILQ_EMPTY(&db_rep->connections));
-	__repmgr_cleanup_connection(dbenv, conn);
+	if ((ret = __repmgr_cleanup_connection(dbenv, conn)) != 0)
+		return (ret);
 	ret = __repmgr_connect_site(dbenv, eid);
 	DB_ASSERT(dbenv, ret != DB_REP_UNAVAIL);
 	return (ret);

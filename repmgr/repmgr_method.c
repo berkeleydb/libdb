@@ -196,9 +196,9 @@ __repmgr_env_create(dbenv, db_rep)
 	int ret;
 
 	/* Set some default values. */
-	db_rep->ack_timeout = 1 * US_PER_SEC;			/*  1 second */
-	db_rep->connection_retry_wait = 30 * US_PER_SEC;	/* 30 seconds */
-	db_rep->election_retry_wait = 10 * US_PER_SEC;		/* 10 seconds */
+	db_rep->ack_timeout = DB_REPMGR_DEFAULT_ACK_TIMEOUT;
+	db_rep->connection_retry_wait = DB_REPMGR_DEFAULT_CONNECTION_RETRY;
+	db_rep->election_retry_wait = DB_REPMGR_DEFAULT_ELECTION_RETRY;
 	db_rep->config_nsites = 0;
 	db_rep->peer = DB_EID_INVALID;
 	db_rep->perm_policy = DB_REPMGR_ACKS_QUORUM;
@@ -238,6 +238,7 @@ __repmgr_stop_threads(dbenv)
 	DB_ENV *dbenv;
 {
 	DB_REP *db_rep;
+	REPMGR_CONNECTION *conn;
 	int ret;
 
 	db_rep = dbenv->rep_handle;
@@ -254,6 +255,12 @@ __repmgr_stop_threads(dbenv)
 
 	if ((ret = __repmgr_signal(&db_rep->queue_nonempty)) != 0)
 		goto unlock;
+
+	TAILQ_FOREACH(conn, &db_rep->connections, entries) {
+		if (conn->blockers > 0 &&
+		    ((ret = __repmgr_signal(&conn->drained)) != 0))
+			goto unlock;
+	}
 	UNLOCK_MUTEX(db_rep->mutex);
 
 	return (__repmgr_wake_main_thread(dbenv));

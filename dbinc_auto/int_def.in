@@ -1420,6 +1420,9 @@
 #define	__repmgr_wake_waiting_senders __repmgr_wake_waiting_senders@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_await_ack __repmgr_await_ack@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_compute_wait_deadline __repmgr_compute_wait_deadline@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_await_drain __repmgr_await_drain@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_alloc_cond __repmgr_alloc_cond@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_free_cond __repmgr_free_cond@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_init_sync __repmgr_init_sync@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_close_sync __repmgr_close_sync@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_net_init __repmgr_net_init@DB_VERSION_UNIQUE_NAME@

@@ -36,10 +36,6 @@ __repmgr_select_thread(args)
 
 /*
  * PUBLIC: int __repmgr_accept __P((DB_ENV *));
- *
- * !!!
- * Only ever called in the select() thread, since we may call
- * __repmgr_bust_connection(..., TRUE).
  */
 int
 __repmgr_accept(dbenv)
@@ -133,7 +129,7 @@ __repmgr_accept(dbenv)
 	case 0:
 		return (0);
 	case DB_REP_UNAVAIL:
-		return (__repmgr_bust_connection(dbenv, conn, TRUE));
+		return (__repmgr_bust_connection(dbenv, conn));
 	default:
 		return (ret);
 	}
@@ -254,10 +250,6 @@ __repmgr_try_one(dbenv, eid)
  * starting with the "current" element of its address list and trying as many
  * addresses as necessary until the list is exhausted.
  *
- * !!!
- * Only ever called in the select() thread, since we may call
- * __repmgr_bust_connection(..., TRUE).
- *
  * PUBLIC: int __repmgr_connect_site __P((DB_ENV *, u_int eid));
  */
 int
@@ -332,7 +324,7 @@ __repmgr_connect_site(dbenv, eid)
 		case 0:
 			break;
 		case DB_REP_UNAVAIL:
-			return (__repmgr_bust_connection(dbenv, con, TRUE));
+			return (__repmgr_bust_connection(dbenv, con));
 		default:
 			return (ret);
 		}
@@ -437,7 +429,15 @@ __repmgr_send_handshake(dbenv, conn)
 
 	DB_SET_DBT(rec, my_addr->host, strlen(my_addr->host) + 1);
 
-	return (__repmgr_send_one(dbenv, conn, REPMGR_HANDSHAKE, &cntrl, &rec));
+	/*
+	 * It would of course be disastrous to block the select() thread, so
+	 * pass the "blockable" argument as FALSE.  Fortunately blocking should
+	 * never be necessary here, because the hand-shake is always the first
+	 * thing we send.  Which is a good thing, because it would be almost as
+	 * disastrous if we allowed ourselves to drop a handshake.
+	 */
+	return (__repmgr_send_one(dbenv,
+	    conn, REPMGR_HANDSHAKE, &cntrl, &rec, FALSE));
 }
 
 /*
@@ -854,6 +854,19 @@ __repmgr_write_some(dbenv, conn)
 			conn->out_queue_length--;
 			if (--msg->ref_count <= 0)
 				__os_free(dbenv, msg);
+
+			/*
+			 * We've achieved enough movement to free up at least
+			 * one space in the outgoing queue.  Wake any message
+			 * threads that may be waiting for space.  Clear the
+			 * CONGESTED status so that when the queue reaches the
+			 * high-water mark again, the filling thread will be
+			 * allowed to try waiting again.
+			 */
+			F_CLR(conn, CONN_CONGESTED);
+			if (conn->blockers > 0 &&
+			    (ret = __repmgr_signal(&conn->drained)) != 0)
+				return (ret);
 		}
 	}
 

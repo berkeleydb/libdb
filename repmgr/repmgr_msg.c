@@ -183,10 +183,6 @@ __repmgr_handle_event(dbenv, event, info)
 
 /*
  * Acknowledges a message.
- *
- * !!!
- * Note that this cannot be called from the select() thread, in case we call
- * __repmgr_bust_connection(..., FALSE).
  */
 static int
 ack_message(dbenv, generation, lsn)
@@ -227,9 +223,14 @@ ack_message(dbenv, generation, lsn)
 		rec2.size = 0;
 
 		conn = site->ref.conn;
+		/*
+		 * It's hard to imagine anyone would care about a lost ack if
+		 * the path to the master is so congested as to need blocking;
+		 * so pass "blockable" argument as FALSE.
+		 */
 		if ((ret = __repmgr_send_one(dbenv, conn, REPMGR_ACK,
-		    &control2, &rec2)) == DB_REP_UNAVAIL)
-			ret = __repmgr_bust_connection(dbenv, conn, FALSE);
+		    &control2, &rec2, FALSE)) == DB_REP_UNAVAIL)
+			ret = __repmgr_bust_connection(dbenv, conn);
 	}
 
 	UNLOCK_MUTEX(db_rep->mutex);

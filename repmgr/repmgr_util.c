@@ -103,6 +103,11 @@ __repmgr_new_connection(dbenv, connp, s, flags)
 	db_rep = dbenv->rep_handle;
 	if ((ret = __os_malloc(dbenv, sizeof(REPMGR_CONNECTION), &c)) != 0)
 		return (ret);
+	if ((ret = __repmgr_alloc_cond(&c->drained)) != 0) {
+		__os_free(dbenv, c);
+		return (ret);
+	}
+	c->blockers = 0;
 
 	c->fd = s;
 	c->flags = flags;

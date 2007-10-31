@@ -63,7 +63,7 @@ static int __repmgr_send_broadcast
 static void setup_sending_msg
     __P((struct sending_msg *, u_int, const DBT *, const DBT *));
 static int __repmgr_send_internal
-    __P((DB_ENV *, REPMGR_CONNECTION *, struct sending_msg *));
+    __P((DB_ENV *, REPMGR_CONNECTION *, struct sending_msg *, int));
 static int enqueue_msg
     __P((DB_ENV *, REPMGR_CONNECTION *, struct sending_msg *, size_t));
 static int flatten __P((DB_ENV *, struct sending_msg *));
@@ -72,13 +72,6 @@ static REPMGR_SITE *__repmgr_available_site __P((DB_ENV *, int));
 /*
  * __repmgr_send --
  *	The send function for DB_ENV->rep_set_transport.
- *
- * !!!
- * This is only ever called as the replication transport call-back, which means
- * it's either on one of our message processing threads or an application
- * thread.  It mustn't be called from the select() thread, because we might call
- * __repmgr_bust_connection(..., FALSE) here, and that's not allowed in the
- * select() thread.
  *
  * PUBLIC: int __repmgr_send __P((DB_ENV *, const DBT *, const DBT *,
  * PUBLIC:     const DB_LSN *, int, u_int32_t));
@@ -126,9 +119,10 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 		}
 
 		conn = site->ref.conn;
+		/* Pass the "blockable" argument as TRUE. */
 		if ((ret = __repmgr_send_one(dbenv, conn, REPMGR_REP_MESSAGE,
-		    control, rec)) == DB_REP_UNAVAIL &&
-		    (t_ret = __repmgr_bust_connection(dbenv, conn, FALSE)) != 0)
+		    control, rec, TRUE)) == DB_REP_UNAVAIL &&
+		    (t_ret = __repmgr_bust_connection(dbenv, conn)) != 0)
 			ret = t_ret;
 		if (ret != 0)
 			goto out;
@@ -222,7 +216,7 @@ __repmgr_available_site(dbenv, eid)
 	if (site->state != SITE_CONNECTED)
 		return (NULL);
 
-	if (F_ISSET(site->ref.conn, CONN_CONNECTING))
+	if (F_ISSET(site->ref.conn, CONN_CONNECTING|CONN_DEFUNCT))
 		return (NULL);
 	return (site);
 }
@@ -235,10 +229,6 @@ __repmgr_available_site(dbenv, eid)
  *
  * !!!
  * Caller must hold dbenv->mutex.
- *
- * !!!
- * Note that this cannot be called from the select() thread, in case we call
- * __repmgr_bust_connection(..., FALSE).
  */
 static int
 __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
@@ -268,14 +258,20 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
 		    !IS_VALID_EID(conn->eid))
 			continue;
 
-		if ((ret = __repmgr_send_internal(dbenv, conn, &msg)) == 0) {
+		/*
+		 * Broadcast messages are either application threads committing
+		 * transactions, or replication status message that we can
+		 * afford to lose.  So don't allow blocking for them (pass
+		 * "blockable" argument as FALSE).
+		 */
+		if ((ret = __repmgr_send_internal(dbenv,
+		    conn, &msg, FALSE)) == 0) {
 			site = SITE_FROM_EID(conn->eid);
 			nsites++;
 			if (site->priority > 0)
 				npeers++;
 		} else if (ret == DB_REP_UNAVAIL) {
-			if ((ret = __repmgr_bust_connection(
-			     dbenv, conn, FALSE)) != 0)
+			if ((ret = __repmgr_bust_connection(dbenv, conn)) != 0)
 				return (ret);
 		} else
 			return (ret);
@@ -301,38 +297,58 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
  * intersperse writes that are part of two single messages.
  *
  * PUBLIC: int __repmgr_send_one __P((DB_ENV *, REPMGR_CONNECTION *,
- * PUBLIC:    u_int, const DBT *, const DBT *));
+ * PUBLIC:    u_int, const DBT *, const DBT *, int));
  */
 int
-__repmgr_send_one(dbenv, conn, msg_type, control, rec)
+__repmgr_send_one(dbenv, conn, msg_type, control, rec, blockable)
 	DB_ENV *dbenv;
 	REPMGR_CONNECTION *conn;
 	u_int msg_type;
 	const DBT *control, *rec;
+	int blockable;
 {
 	struct sending_msg msg;
 
 	setup_sending_msg(&msg, msg_type, control, rec);
-	return (__repmgr_send_internal(dbenv, conn, &msg));
+	return (__repmgr_send_internal(dbenv, conn, &msg, blockable));
 }
 
 /*
  * Attempts a "best effort" to send a message on the given site.  If there is an
- * excessive backlog of message already queued on the connection, we simply drop
- * this message, and still return 0 even in this case.
+ * excessive backlog of message already queued on the connection, what shall we
+ * do?  If the caller doesn't mind blocking, we'll wait (a limited amount of
+ * time) for the queue to drain.  Otherwise we'll simply drop the message.  This
+ * is always allowed by the replication protocol.  But in the case of a
+ * multi-message response to a request like PAGE_REQ, LOG_REQ or ALL_REQ we
+ * almost always get a flood of messages that instantly fills our queue, so
+ * blocking improves performance (by avoiding the need for the client to
+ * re-request).
+ *
+ * How long shall we wait?  We could of course create a new timeout
+ * configuration type, so that the application could set it directly.  But that
+ * would start to overwhelm the user with too many choices to think about.  We
+ * already have an ACK timeout, which is the user's estimate of how long it
+ * should take to send a message to the client, have it be processed, and return
+ * a message back to us.  We multiply that by the queue size, because that's how
+ * many messages have to be swallowed up by the client before we're able to
+ * start sending again (at least to a rough approximation).
  */
 static int
-__repmgr_send_internal(dbenv, conn, msg)
+__repmgr_send_internal(dbenv, conn, msg, blockable)
 	DB_ENV *dbenv;
 	REPMGR_CONNECTION *conn;
 	struct sending_msg *msg;
+	int blockable;
 {
-#define	OUT_QUEUE_LIMIT 10	/* arbitrary, for now */
+	DB_REP *db_rep;
 	REPMGR_IOVECS iovecs;
 	SITE_STRING_BUFFER buffer;
+	db_timeout_t drain_to;
 	int ret;
 	size_t nw;
 	size_t total_written;
+
+	db_rep = dbenv->rep_handle;
 
 	DB_ASSERT(dbenv, !F_ISSET(conn, CONN_CONNECTING));
 	if (!STAILQ_EMPTY(&conn->outbound_queue)) {
@@ -344,15 +360,34 @@ __repmgr_send_internal(dbenv, conn, msg)
 		RPRINT(dbenv, (dbenv, "msg to %s to be queued",
 		    __repmgr_format_eid_loc(dbenv->rep_handle,
 		    conn->eid, buffer)));
+		if (conn->out_queue_length >= OUT_QUEUE_LIMIT &&
+		    blockable && !F_ISSET(conn, CONN_CONGESTED)) {
+			RPRINT(dbenv, (dbenv,
+			    "block msg thread, await queue space"));
+
+			if ((drain_to = db_rep->ack_timeout) == 0)
+				drain_to = DB_REPMGR_DEFAULT_ACK_TIMEOUT;
+			conn->blockers++;
+			ret = __repmgr_await_drain(dbenv,
+			    conn, drain_to * OUT_QUEUE_LIMIT);
+			conn->blockers--;
+			if (db_rep->finished)
+				return (DB_TIMEOUT);
+			if (ret != 0)
+				return (ret);
+			if (STAILQ_EMPTY(&conn->outbound_queue))
+				goto empty;
+		}
 		if (conn->out_queue_length < OUT_QUEUE_LIMIT)
 			return (enqueue_msg(dbenv, conn, msg, 0));
 		else {
 			RPRINT(dbenv, (dbenv, "queue limit exceeded"));
 			STAT(dbenv->rep_handle->
 			    region->mstat.st_msgs_dropped++);
-			return (0);
+			return (blockable ? DB_TIMEOUT : 0);
 		}
 	}
+empty:
 
 	/*
 	 * Send as much data to the site as we can, without blocking.  Keep
@@ -498,24 +533,21 @@ __repmgr_is_permanent(dbenv, lsnp)
 
 /*
  * Abandons a connection, to recover from an error.  Upon entry the conn struct
- * must be on the connections list.
- *
- * If the 'do_close' flag is true, we do the whole job; the clean-up includes
- * removing the struct from the list and freeing all its memory, so upon return
- * the caller must not refer to it any further.  Otherwise, we merely mark the
- * connection for clean-up later by the main thread.
+ * must be on the connections list.  For now, just mark it as unusable; it will
+ * be fully cleaned up in the top-level select thread, as soon as possible.
  *
  * PUBLIC: int __repmgr_bust_connection __P((DB_ENV *,
- * PUBLIC:     REPMGR_CONNECTION *, int));
+ * PUBLIC:     REPMGR_CONNECTION *));
  *
  * !!!
  * Caller holds mutex.
+ *
+ * Must be idempotent
  */
 int
-__repmgr_bust_connection(dbenv, conn, do_close)
+__repmgr_bust_connection(dbenv, conn)
 	DB_ENV *dbenv;
 	REPMGR_CONNECTION *conn;
-	int do_close;
 {
 	DB_REP *db_rep;
 	int connecting, ret, eid;
@@ -526,12 +558,9 @@ __repmgr_bust_connection(dbenv, conn, do_close)
 	DB_ASSERT(dbenv, !TAILQ_EMPTY(&db_rep->connections));
 	eid = conn->eid;
 	connecting = F_ISSET(conn, CONN_CONNECTING);
-	if (do_close)
-		__repmgr_cleanup_connection(dbenv, conn);
-	else {
-		F_SET(conn, CONN_DEFUNCT);
-		conn->eid = -1;
-	}
+
+	F_SET(conn, CONN_DEFUNCT);
+	conn->eid = -1;
 
 	/*
 	 * When we first accepted the incoming connection, we set conn->eid to
@@ -557,7 +586,7 @@ __repmgr_bust_connection(dbenv, conn, do_close)
 			    dbenv, ELECT_FAILURE_ELECTION)) != 0)
 				return (ret);
 		}
-	} else if (!do_close) {
+	} else {
 		/*
 		 * One way or another, make sure the main thread is poked, so
 		 * that we do the deferred clean-up.
@@ -568,10 +597,14 @@ __repmgr_bust_connection(dbenv, conn, do_close)
 }
 
 /*
- * PUBLIC: void __repmgr_cleanup_connection
+ * PUBLIC: int __repmgr_cleanup_connection
  * PUBLIC:    __P((DB_ENV *, REPMGR_CONNECTION *));
+ *
+ * !!!
+ * Idempotent.  This can be called repeatedly as blocking message threads (of
+ * which there could be multiples) wake up in case of error on the connection.
  */
-void
+int
 __repmgr_cleanup_connection(dbenv, conn)
 	DB_ENV *dbenv;
 	REPMGR_CONNECTION *conn;
@@ -580,17 +613,31 @@ __repmgr_cleanup_connection(dbenv, conn)
 	QUEUED_OUTPUT *out;
 	REPMGR_FLAT *msg;
 	DBT *dbt;
+	int ret;
 
 	db_rep = dbenv->rep_handle;
 
-	TAILQ_REMOVE(&db_rep->connections, conn, entries);
+	DB_ASSERT(dbenv, F_ISSET(conn, CONN_DEFUNCT) || db_rep->finished);
+	
 	if (conn->fd != INVALID_SOCKET) {
-		(void)closesocket(conn->fd);
+		ret = closesocket(conn->fd);
+		conn->fd = INVALID_SOCKET;
+		if (ret == SOCKET_ERROR) {
+			ret = net_errno;
+			__db_err(dbenv, ret, "closing socket");
+		}
 #ifdef DB_WIN32
-		(void)WSACloseEvent(conn->event_object);
+		if (!WSACloseEvent(conn->event_object) && ret != 0)
+			ret = net_errno;
 #endif
+		if (ret != 0)
+			return (ret);
 	}
 
+	if (conn->blockers > 0)
+		return (__repmgr_signal(&conn->drained));
+
+	TAILQ_REMOVE(&db_rep->connections, conn, entries);
 	/*
 	 * Deallocate any input and output buffers we may have.
 	 */
@@ -614,7 +661,9 @@ __repmgr_cleanup_connection(dbenv, conn)
 		__os_free(dbenv, out);
 	}
 
+	ret = __repmgr_free_cond(&conn->drained);
 	__os_free(dbenv, conn);
+	return (ret);
 }
 
 static int
@@ -1063,7 +1112,7 @@ __repmgr_net_destroy(dbenv, db_rep)
 
 	while (!TAILQ_EMPTY(&db_rep->connections)) {
 		conn = TAILQ_FIRST(&db_rep->connections);
-		__repmgr_cleanup_connection(dbenv, conn);
+		(void)__repmgr_cleanup_connection(dbenv, conn);
 	}
 
 	for (i = 0; i < db_rep->site_cnt; i++) {

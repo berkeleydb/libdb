@@ -21,6 +21,8 @@
 size_t __repmgr_guesstimated_max = (128 * 1024);
 #endif
 
+static int __repmgr_conn_work __P((DB_ENV *,
+    REPMGR_CONNECTION *, fd_set *, fd_set *, int));
 static int finish_connecting __P((DB_ENV *, REPMGR_CONNECTION *));
 
 /*
@@ -186,6 +188,94 @@ __repmgr_compute_wait_deadline(dbenv, result, wait)
 	DB_TIMEOUT_TO_TIMESPEC(wait, &v);
 
 	timespecadd(result, &v);
+}
+
+/*
+ * PUBLIC: int __repmgr_await_drain __P((DB_ENV *,
+ * PUBLIC:    REPMGR_CONNECTION *, db_timeout_t));
+ *
+ * Waits for space to become available on the connection's output queue.
+ * Various ways we can exit:
+ *
+ * 1. queue becomes non-full
+ * 2. exceed time limit
+ * 3. connection becomes defunct (due to error in another thread)
+ * 4. repmgr is shutting down
+ * 5. any unexpected system resource failure
+ *
+ * In cases #3 and #5 we return an error code.  Caller is responsible for
+ * distinguishing the remaining cases if desired.
+ * 
+ * !!!
+ * Caller must hold repmgr->mutex.
+ */
+int
+__repmgr_await_drain(dbenv, conn, timeout)
+	DB_ENV *dbenv;
+	REPMGR_CONNECTION *conn;
+	db_timeout_t timeout;
+{
+	DB_REP *db_rep;
+	struct timespec deadline;
+	int ret;
+
+	db_rep = dbenv->rep_handle;
+
+	__repmgr_compute_wait_deadline(dbenv, &deadline, timeout);
+
+	ret = 0;
+	while (conn->out_queue_length >= OUT_QUEUE_LIMIT) {
+		ret = pthread_cond_timedwait(&conn->drained,
+		    &db_rep->mutex, &deadline);
+		switch (ret) {
+		case 0:
+			if (db_rep->finished)
+				goto out; /* #4. */
+			/*
+			 * Another thread could have stumbled into an error on
+			 * the socket while we were waiting.
+			 */
+			if (F_ISSET(conn, CONN_DEFUNCT)) {
+				ret = DB_REP_UNAVAIL; /* #3. */
+				goto out;
+			}
+			break;
+		case ETIMEDOUT:
+			F_SET(conn, CONN_CONGESTED);
+			ret = 0;
+			goto out; /* #2. */
+		default:
+			goto out; /* #5. */
+		}
+	}
+	/* #1. */
+
+out:
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __repmgr_alloc_cond __P((cond_var_t *));
+ *
+ * Initialize a condition variable (in allocated space).
+ */
+int
+__repmgr_alloc_cond(c)
+	cond_var_t *c;
+{
+	return (pthread_cond_init(c, NULL));
+}
+
+/*
+ * PUBLIC: int __repmgr_free_cond __P((cond_var_t *));
+ *
+ * Clean up a previously initialized condition variable.
+ */
+int
+__repmgr_free_cond(c)
+	cond_var_t *c;
+{
+	return (pthread_cond_destroy(c));
 }
 
 /*
@@ -443,7 +533,7 @@ __repmgr_select_loop(dbenv)
 	REPMGR_RETRY *retry;
 	db_timespec timeout;
 	fd_set reads, writes;
-	int ret, flow_control, maxfd, nready;
+	int ret, flow_control, maxfd;
 	u_int8_t buf[10];	/* arbitrary size */
 
 	flow_control = FALSE;
@@ -477,6 +567,9 @@ __repmgr_select_loop(dbenv)
 		 * each one.
 		 */
 		TAILQ_FOREACH(conn, &db_rep->connections, entries) {
+			if (F_ISSET(conn, CONN_DEFUNCT))
+				continue;
+			
 			if (F_ISSET(conn, CONN_CONNECTING)) {
 				FD_SET((u_int)conn->fd, &reads);
 				FD_SET((u_int)conn->fd, &writes);
@@ -533,16 +626,14 @@ __repmgr_select_loop(dbenv)
 				return (ret);
 			}
 		}
-		nready = ret;
-
 		LOCK_MUTEX(db_rep->mutex);
 
+		if ((ret = __repmgr_retry_connections(dbenv)) != 0)
+			goto out;
+
 		/*
-		 * The first priority thing we must do is to clean up any
-		 * pending defunct connections.  Otherwise, if they have any
-		 * lingering pending input, we get very confused if we try to
-		 * process it.
-		 *
+		 * Examine each connection, to see what work needs to be done.
+		 * 
 		 * The TAILQ_FOREACH macro would be suitable here, except that
 		 * it doesn't allow unlinking the current element, which is
 		 * needed for cleanup_connection.
@@ -551,66 +642,9 @@ __repmgr_select_loop(dbenv)
 		     conn != NULL;
 		     conn = next) {
 			next = TAILQ_NEXT(conn, entries);
-			if (F_ISSET(conn, CONN_DEFUNCT))
-				__repmgr_cleanup_connection(dbenv, conn);
-		}
-
-		if ((ret = __repmgr_retry_connections(dbenv)) != 0)
-			goto out;
-		if (nready == 0)
-			continue;
-
-		/*
-		 * Traverse the linked list.  (Again, like TAILQ_FOREACH, except
-		 * that we need the ability to unlink an element along the way.)
-		 */
-		for (conn = TAILQ_FIRST(&db_rep->connections);
-		     conn != NULL;
-		     conn = next) {
-			next = TAILQ_NEXT(conn, entries);
-			if (F_ISSET(conn, CONN_CONNECTING)) {
-				if (FD_ISSET((u_int)conn->fd, &reads) ||
-				    FD_ISSET((u_int)conn->fd, &writes)) {
-					if ((ret = finish_connecting(dbenv,
-					    conn)) == DB_REP_UNAVAIL) {
-						if ((ret =
-						    __repmgr_bust_connection(
-						    dbenv, conn, TRUE)) != 0)
-							goto out;
-					} else if (ret != 0)
-						goto out;
-				}
-				continue;
-			}
-
-			/*
-			 * Here, the site is connected, and the FD_SET's are
-			 * valid.
-			 */
-			if (FD_ISSET((u_int)conn->fd, &writes)) {
-				if ((ret = __repmgr_write_some(
-				    dbenv, conn)) == DB_REP_UNAVAIL) {
-					if ((ret =
-					    __repmgr_bust_connection(dbenv,
-					    conn, TRUE)) != 0)
-						goto out;
-					continue;
-				} else if (ret != 0)
-					goto out;
-			}
-
-			if (!flow_control &&
-			    FD_ISSET((u_int)conn->fd, &reads)) {
-				if ((ret = __repmgr_read_from_site(dbenv, conn))
-				    == DB_REP_UNAVAIL) {
-					if ((ret =
-					    __repmgr_bust_connection(dbenv,
-					    conn, TRUE)) != 0)
-						goto out;
-					continue;
-				} else if (ret != 0)
-					goto out;
-			}
+			if ((ret = __repmgr_conn_work(dbenv,
+			    conn, &reads, &writes, flow_control)) != 0)
+				goto out;
 		}
 
 		/*
@@ -637,6 +671,49 @@ out:
 }
 
 static int
+__repmgr_conn_work(dbenv, conn, reads, writes, flow_control)
+	DB_ENV *dbenv;
+	REPMGR_CONNECTION *conn;
+	fd_set *reads, *writes;
+	int flow_control;
+{
+	int ret;
+	u_int fd;
+
+	if (F_ISSET(conn, CONN_DEFUNCT)) {
+		/*
+		 * Deferred clean-up, from an error that happened in another
+		 * thread, while we were sleeping in select().
+		*/
+		return (__repmgr_cleanup_connection(dbenv, conn));
+	}
+
+	ret = 0;
+	fd = (u_int)conn->fd;
+	
+	if (F_ISSET(conn, CONN_CONNECTING)) {
+		if (FD_ISSET(fd, reads) || FD_ISSET(fd, writes))
+			ret = finish_connecting(dbenv, conn);
+	} else {
+		/*
+		 * Here, the site is connected, and the FD_SET's are valid.
+		 */
+		if (FD_ISSET(fd, writes))
+			ret = __repmgr_write_some(dbenv, conn);
+				
+		if (ret == 0 && !flow_control && FD_ISSET(fd, reads))
+			ret = __repmgr_read_from_site(dbenv, conn);
+	}
+
+	if (ret == DB_REP_UNAVAIL) {
+		if ((ret = __repmgr_bust_connection(dbenv, conn)) != 0)
+			return (ret);
+		ret = __repmgr_cleanup_connection(dbenv, conn);
+	}
+	return (ret);
+}
+
+static int
 finish_connecting(dbenv, conn)
 	DB_ENV *dbenv;
 	REPMGR_CONNECTION *conn;
@@ -657,6 +734,7 @@ finish_connecting(dbenv, conn)
 		goto err_rpt;
 	}
 
+	DB_ASSERT(dbenv, F_ISSET(conn, CONN_CONNECTING));
 	F_CLR(conn, CONN_CONNECTING);
 	return (__repmgr_send_handshake(dbenv, conn));
 
@@ -671,20 +749,25 @@ err_rpt:
 	    "connecting to %s", __repmgr_format_site_loc(site, buffer));
 
 	/* If we've exhausted the list of possible addresses, give up. */
-	if (ADDR_LIST_NEXT(&site->net_addr) == NULL)
+	if (ADDR_LIST_NEXT(&site->net_addr) == NULL) {
+		STAT(db_rep->region->mstat.st_connect_fail++);
 		return (DB_REP_UNAVAIL);
+	}
 
 	/*
 	 * This is just like a little mini-"bust_connection", except that we
 	 * don't reschedule for later, 'cuz we're just about to try again right
-	 * now.
+	 * now.  (Note that we don't have to worry about message threads
+	 * blocking on a full output queue: that can't happen when we're only
+	 * just connecting.)
 	 *
 	 * !!!
 	 * Which means this must only be called on the select() thread, since
 	 * only there are we allowed to actually close a connection.
 	 */
 	DB_ASSERT(dbenv, !TAILQ_EMPTY(&db_rep->connections));
-	__repmgr_cleanup_connection(dbenv, conn);
+	if ((ret = __repmgr_cleanup_connection(dbenv, conn)) != 0)
+		return (ret);
 	ret = __repmgr_connect_site(dbenv, eid);
 	DB_ASSERT(dbenv, ret != DB_REP_UNAVAIL);
 	return (ret);
